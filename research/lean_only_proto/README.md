@@ -11,6 +11,9 @@ What this includes
 - A proof (`transfer_sound`) that the implementation satisfies the spec.
 - A Lean implementation of `mint` with a simple supply increase.
 - A Lean spec (`mintSpec`) and proof (`mint_sound`).
+- A lending state model (`LState`) with collateral, debt, and a `minHealthFactor`.
+- Euler-style health factor rules (`hfOk`, `globalHF`) and specs for `borrow`, `repay`, and `withdraw`.
+- Proofs that the implementations satisfy their specs and preserve the global health invariant.
 
 How to build (if Lean is installed)
 ```bash
@@ -20,5 +23,7 @@ lake build
 
 Notes
 - This is intentionally small and focused on proof shape, not EVM semantics.
+- The lending example is a minimal, generic smart-contract rule that mirrors
+  the Euler-style invariant: `collateral >= debt * minHealthFactor`.
 - It is a starting point for a Lean-first workflow and can be extended with
-  additional specs, invariants, and a richer state model.
+  additional specs, invariants, and a richer state model (events, storage maps).

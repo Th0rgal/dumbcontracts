@@ -8,7 +8,8 @@ Last updated: 2026-02-08
 - Maintain reliable unit tests for each "goal scenario" and run them in CI.
 - Prioritize spec-to-constraints and formal proof (diff validation is out of scope for now).
 - Define a Spec IR and a Lean-backed proof track for a sound checker.
-- Build out a Lean-only prototype to validate a DSL-free proof path.
+- Build out a Lean-only prototype to validate a DSL-free proof path, centered on
+  a smart-contract lending rule (health factor).
 
 ## In Progress
 
@@ -19,6 +20,7 @@ Last updated: 2026-02-08
 - Preserve implementation hints as metadata while keeping constraints minimal.
 - Extend the DSL with a quantifier-intent syntax that compiles into witness-based constraints.
 - Define a Spec IR and formal semantics as a Lean sketch (prove checker soundness).
+- Lean-only lending example: Euler-style health factor invariant + borrow/repay/withdraw specs.
 
 ## Completed
 
@@ -50,6 +52,8 @@ Last updated: 2026-02-08
 - Refreshed the tooling landscape with Act and Kontrol references.
 - Added `docs/formal-approach.md` with a Spec IR + Lean + EVM-bridge plan.
 - Expanded the Lean-only prototype with a mint spec + proof.
+- Added a Lean-only lending model with a health factor invariant and proofs that
+  borrow/repay/withdraw preserve it.
 
 ## Next
 

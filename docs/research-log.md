@@ -76,3 +76,9 @@ This log captures decisions, questions, and short summaries as we progress.
 
 - Expanded the Lean-only prototype in `research/lean_only_proto/` with a mint example.
 - Added `mintSpec` + `mint_sound` proof to show a second, DSL-free spec/implementation proof.
+
+## 2026-02-08 (Current)
+
+- Added a Lean-only lending state model (`LState`) with collateral, debt, and `minHealthFactor`.
+- Implemented Euler-style health factor invariant (`collateral >= debt * minHealthFactor`).
+- Added Lean specs and proofs for `borrow`, `repay`, and `withdraw` and showed each preserves the invariant.

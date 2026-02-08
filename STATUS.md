@@ -11,10 +11,9 @@ Last updated: 2026-02-08
 
 ## In Progress
 
-- Refactor documentation to remove DSL-first framing and focus on Lean-only.
-- Expand the Lean-only prototype into a reusable spec/impl/proof library.
-- Formalize a small-step semantics for the Lean contract model.
-- Add a minimal ABI/dispatch strategy for Yul output.
+- Add ABI encoding and dispatch helpers in Lean -> Yul.
+- Expand the Lean AST semantics to include calldata and return data.
+- Prove a first semantic preservation lemma for arithmetic + storage updates.
 
 ## Completed
 
@@ -52,9 +51,12 @@ Last updated: 2026-02-08
 - Added a Lean AST subset and a compiler to a minimal Yul AST.
 - Added a Yul pretty-printer and a Lean executable that emits `out/example.yul`.
 - Added scripts to generate Yul and run `solc --strict-assembly` checks.
+- Added a Lean AST operational semantics module (Env + storage) for compiler proofs.
+- Added a `solc` installer script and installed a static solc binary in the VM.
+- Updated compiler output to include a safe top-level `stop()` in generated Yul.
 
 ## Next
 
-- Add ABI encoding and dispatch helpers in Lean -> Yul.
-- Prove a first semantic preservation lemma for a tiny arithmetic subset.
-- Build a Yul round-trip POC via `solc --strict-assembly` to validate emitted Yul.
+- Add ABI encoding/dispatch and a minimal calldata decode path in Lean.
+- Prove the first compiler correctness lemma for the arithmetic subset.
+- Add an end-to-end example that compiles a Lean implementation and checks Yul with solc.

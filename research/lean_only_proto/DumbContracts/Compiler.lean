@@ -51,7 +51,7 @@ def compileEntry (e : EntryPoint) : Yul.Program :=
     | Yul.Stmt.block ss => Yul.Stmt.block ss
     | s => Yul.Stmt.block [s]
   let funStmt := Yul.Stmt.func e.name e.args [] funBody
-  let code := Yul.Stmt.block [funStmt]
+  let code := Yul.Stmt.block [funStmt, Yul.Stmt.expr (Yul.Expr.call "stop" [])]
   { obj := { name := "DumbContract", code := code } }
 
 -- Example: a minimal storage update entry.

@@ -7,7 +7,7 @@ if [[ $# -lt 1 ]]; then
 fi
 
 if ! command -v solc >/dev/null 2>&1; then
-  echo "solc not found. Install Solidity compiler and re-run." >&2
+  echo "solc not found. Run ./scripts/install_solc.sh or install Solidity compiler and re-run." >&2
   exit 1
 fi
 

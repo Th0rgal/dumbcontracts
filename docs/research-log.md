@@ -96,3 +96,11 @@ This log captures decisions, questions, and short summaries as we progress.
 - Added a tiny Lean AST subset and a compiler to a minimal Yul AST.
 - Implemented a Yul pretty-printer and a Lean executable that emits `out/example.yul`.
 - Added scripts to generate Yul and run `solc --strict-assembly` checks.
+
+## 2026-02-08 (Lean-Only Compiler Continued)
+
+- Added a Lean AST operational semantics module (`DumbContracts.Semantics`) with Env + storage evaluation.
+- Added `updateStr` helpers in the core for environment updates.
+- Updated the Lean -> Yul compiler output to include a top-level `stop()`.
+- Added a `solc` installer script and installed a static solc binary for strict-assembly checks.
+- Refreshed the research landscape and roadmap to reflect the Lean AST semantics step.

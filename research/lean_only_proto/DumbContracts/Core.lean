@@ -34,6 +34,9 @@ def update {A : Type} (f : Address -> A) (k : Address) (v : A) (a : Address) : A
 def updateNat {A : Type} (f : Nat -> A) (k : Nat) (v : A) (a : Nat) : A :=
   if a = k then v else f a
 
+def updateStr {A : Type} (f : String -> A) (k : String) (v : A) (a : String) : A :=
+  if a = k then v else f a
+
 theorem update_eq {A : Type} (f : Address -> A) (k : Address) (v : A) :
   update f k v k = v := by
   simp [update]
@@ -49,5 +52,13 @@ theorem updateNat_eq {A : Type} (f : Nat -> A) (k : Nat) (v : A) :
 theorem updateNat_ne {A : Type} (f : Nat -> A) (k : Nat) (v : A) (a : Nat)
     (h : a ≠ k) : updateNat f k v a = f a := by
   simp [updateNat, h]
+
+theorem updateStr_eq {A : Type} (f : String -> A) (k : String) (v : A) :
+  updateStr f k v k = v := by
+  simp [updateStr]
+
+theorem updateStr_ne {A : Type} (f : String -> A) (k : String) (v : A) (a : String)
+    (h : a ≠ k) : updateStr f k v a = f a := by
+  simp [updateStr, h]
 
 end DumbContracts

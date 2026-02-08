@@ -17,23 +17,29 @@ compile to valid Ethereum bytecode (via Yul) with a semantic preservation story.
 - Provide proof helpers for common patterns (transfer, mint, borrow/repay).
 - Extend the Lean-only prototype to cover the token and lending examples.
 
-## Milestone 3: Lean -> Yul Compiler Skeleton
+## Milestone 3: Lean AST + Semantics
 
-- Define a small Lean AST subset for implementations (arithmetic, maps, conditionals).
+- Define a Lean AST subset for implementations.
+- Define a small-step semantics for the subset (Env + storage).
+- Add proof helpers that connect the subset semantics to specs.
+
+## Milestone 4: Lean -> Yul Compiler Skeleton
+
 - Define a Yul AST and a pretty-printer.
-- Emit Yul and compile it with `solc --strict-assembly`.
+- Emit Yul from the Lean AST subset.
+- Compile Yul with `solc --strict-assembly`.
 
-## Milestone 4: Semantic Preservation (Subset)
+## Milestone 5: Semantic Preservation (Subset)
 
-- Prove correctness for the initial subset (arith + map updates + if/else).
+- Prove compiler correctness for the initial subset (arith + map updates + if/else).
 - Validate with small end-to-end examples (transfer, mint, borrow).
 
-## Milestone 5: Expand Coverage
+## Milestone 6: Expand Coverage
 
 - Add events/logs and error/revert handling.
 - Add loops and bounded quantifiers.
 - Expand the Yul subset until it covers the example suite.
 
-## Milestone 6: EVM-Level Anchoring (Optional)
+## Milestone 7: EVM-Level Anchoring (Optional)
 
-- Connect to an EVM semantics framework (e.g., KEVM/Act) for stronger guarantees.
+- Connect to an EVM semantics framework (e.g., KEVM/Act/Kontrol) for stronger guarantees.

@@ -16,3 +16,5 @@ This log captures decisions, questions, and short summaries as we progress.
 - Added a minimal DSL -> constraint harness compiler and a health-factor scenario.
 - Added SMTChecker-based proof step in CI using a Solidity spec harness.
 - Added `Loan` implementation + `LoanSpecHarness` and unit tests.
+- Extended the DSL compiler with `constructor(...)`, `require:`, and `old(...)` support.
+- Added `SimpleToken` + `SimpleTokenSpecHarness` with unit tests for pre/post constraints.

@@ -9,6 +9,7 @@ contract LoanSpecHarness is Loan {
     constructor(uint256 minHealthFactor_) Loan(minHealthFactor_) {}
 
     function update_spec(address user, uint256 newCollateral, uint256 newDebt) external {
+
         super.update(user, newCollateral, newDebt);
         assert(debt[user] == 0 || collateral[user] * 1e18 >= debt[user] * minHealthFactor);
     }

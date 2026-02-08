@@ -2,14 +2,15 @@
 
 These scenarios are the “golden paths” we want the DSL compiler and proof tooling to express and prove.
 
-## Scenario A: Token Transfer (Spec → Constraints)
+## Scenario A: Simple Token Transfer (Spec → Constraints)
 
 - State variables: `balance[account]`, `totalSupply`.
-- Invariants:
-  - Non-negative balances.
-  - Supply conservation (no mint/burn in transfer).
-- Transition: `Transfer(from, to, amount)`.
-- Proof model: DSL compiles to postcondition assertions; SMTChecker proves the implementation satisfies them.
+- Transition: `transfer(to, amount)` with explicit preconditions (`to != address(0)` and sufficient balance).
+- Postconditions:
+  - `balance[msg.sender]` decreases by `amount`.
+  - `balance[to]` increases by `amount`.
+  - `totalSupply` unchanged.
+- Proof model: DSL compiles to a spec harness with `old(...)` capture + `assert`; SMTChecker proves the implementation satisfies them.
 
 ## Scenario B: Health Factor (Loan Update)
 

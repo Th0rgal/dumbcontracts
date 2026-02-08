@@ -14,3 +14,10 @@ docker run --rm -v "$PWD":/src -w /src \
   --model-checker-targets assert \
   --model-checker-timeout 0 \
   src/LoanSpecHarness.sol
+
+docker run --rm -v "$PWD":/src -w /src \
+  "$IMAGE" \
+  --model-checker-engine chc \
+  --model-checker-targets assert \
+  --model-checker-timeout 0 \
+  src/SimpleTokenSpecHarness.sol

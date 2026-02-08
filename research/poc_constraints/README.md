@@ -6,19 +6,24 @@ postconditions of an implementation contract.
 ## Supported DSL
 
 ```
-contract Loan
+contract SimpleToken
 
-spec update(address user, uint256 newCollateral, uint256 newDebt):
-  ensure: debt[user] == 0 || collateral[user] * 1e18 >= debt[user] * minHealthFactor
+constructor(address owner, uint256 supply)
+
+spec transfer(address to, uint256 amount):
+  require: to != address(0)
+  require: balance[msg.sender] >= amount
+  ensure: balance[msg.sender] == old(balance[msg.sender]) - amount && balance[to] == old(balance[to]) + amount && totalSupply == old(totalSupply)
 ```
 
 ## Run
 
 ```bash
-python3 research/poc_constraints/dsl_to_constraints.py specs/loan.dc src/LoanSpecHarness.sol
+python3 research/poc_constraints/dsl_to_constraints.py specs/simple_token.dc src/SimpleTokenSpecHarness.sol
 ```
 
 ## Notes
 
 - The harness calls the implementation and asserts the `ensure` clause.
+- `old(<expr>)` captures pre-state values (currently limited to `uint256`).
 - This is intentionally minimal to keep the pipeline auditable.

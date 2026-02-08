@@ -1,20 +1,20 @@
 # Dumb Contracts Research
 
-This repository contains research notes, sketches, and prototypes for the "Ethereum Dumb Contracts" idea.
+This repo explores a spec-first model for Ethereum smart contracts where state transitions are validated against simple rules (“dumb contracts”). The focus is on minimal, auditable constraints and testable POCs.
 
-## Goals
+## What’s Here
 
-- Explore a DSL for specifying contract behavior as auditable rules and invariants.
-- Investigate compilation targets (Solidity subset / EVM opcodes) from specs.
-- Evaluate proof-generation workflows that link specs to implementations.
-- Identify constraints, threat models, and implementation tradeoffs.
+- `docs/idea-draft.md` captures the original framing and goals.
+- `docs/landscape.md` tracks the current tooling landscape.
+- `src/` and `test/` contain small Solidity POCs with unit tests.
 
-## Repository Layout
+## Quick Start
 
-- `docs/` - Research notes and working documents.
-- `research/` - Structured explorations, literature notes, and comparisons.
-- `specs/` - DSL drafts and example specs.
+```bash
+forge build
+forge test
+```
 
-## Getting Started
+## Foundry Notes
 
-See `docs/research-log.md` for the running log and `docs/agenda.md` for the current research agenda.
+Foundry is used for unit testing the POCs. If you don’t have it installed, see https://book.getfoundry.sh/.

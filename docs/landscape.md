@@ -2,35 +2,35 @@
 
 ## Specification & Runtime Verification
 
-- Scribble (ConsenSys Diligence) provides a specification language that annotates Solidity with properties, then translates them into runtime assertions. It is oriented toward testing and fuzzing rather than full formal verification.
+- Scribble (ConsenSys Diligence) provides a spec language that annotates Solidity and instruments contracts with runtime assertions. It is meant to work with fuzzers and other analysis tools rather than replacing them.
+  - https://docs.scribble.codes/
   - https://diligence.security/scribble/
-  - https://consensys.io/blog/introducing-scribble-by-consensys-diligence
 
 ## Formal Verification (Contract-Level)
 
-- Certora Prover uses its own CVL (Certora Verification Language) to specify properties and prove them against EVM contract code. It is a leading industrial formal verification tool for smart contracts.
+- Certora Prover uses CVL (Certora Verification Language) to express rules, invariants, and method behaviors that are proven against contract implementations.
   - https://docs.certora.com/
 
-- Solidity SMTChecker (built into `solc`) provides model checking capabilities, including property verification, CHC/BMC engines, and inferred invariants. It is tied to Solidity and has known unsupported constructs.
+- Solidity SMTChecker (in `solc`) provides bounded model checking and CHC-based reasoning, tied to Solidity semantics and supported constructs.
   - https://docs.solidity.org/en/latest/smtchecker.html
 
 ## Semantics-Based Verification
 
-- KEVM (K Framework) models EVM semantics and supports symbolic execution and proof-oriented verification. It underpins a body of verified contracts and provides a semantic ground truth for EVM behavior.
+- KEVM (K Framework) models EVM semantics and supports proof-oriented verification with a formal EVM definition.
   - https://github.com/runtimeverification/evm-semantics
-  - https://docs.runtimeverification.com/kevm
+  - https://jellopaper.org/
 
 ## Fuzzing / Invariant Testing (Practical Assurance)
 
-- Echidna is a widely used property-based fuzzer that checks invariants expressed as Solidity functions.
+- Echidna is a property-based fuzzer that checks invariants expressed as Solidity functions (e.g., `echidna_*`).
   - https://github.com/crytic/echidna
 
-- Foundry invariant testing provides randomized call sequences and invariant checks inside the Forge test framework.
+- Foundry invariant testing runs randomized call sequences and asserts invariants after each call.
   - https://learnblockchain.cn/docs/foundry/i18n/en/forge/invariant-testing.html
 
 ## Implications for Dumb Contracts
 
-1. Existing tools center on verifying *implementations* against properties, not on enforcing state-diff rules for variable ownership.
-2. Most systems assume the contract code defines the transition function; “dumb contracts” invert this by letting external parties propose state diffs with proofs.
-3. Quantifiers and global invariants remain expensive or require off-chain proof systems; DSL design should treat these as first-class but likely off-chain obligations.
-4. Tooling gaps: a spec-first DSL that compiles to verifiable transition checkers is not a mainstream workflow today.
+1. Most tools verify *implementations* against properties rather than validating state diffs against a spec.
+2. Spec languages exist, but they are typically embedded in Solidity or tightly coupled to implementation semantics.
+3. Quantified invariants and global sums are still expensive; a “dumb contract” DSL should make off-chain obligations explicit.
+4. A spec-first, state-diff validator is still not a mainstream workflow in today’s toolchain.

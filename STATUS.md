@@ -4,21 +4,22 @@ Last updated: 2026-02-08
 
 ## Current Focus
 
-- Map the formal spec/verification landscape and identify gaps that “dumb contracts” can address.
-- Iterate on a minimal DSL and proof-oriented execution model.
+- Keep the POCs minimal and auditable while validating real-world invariants.
+- Maintain reliable unit tests for each "goal scenario" and run them in CI.
 
 ## In Progress
 
-- Landscape scan of specification languages, verification stacks, and invariant/fuzz tools.
-- Defining the MVP constraints for a DSL that remains auditable and non-Turing-complete.
+- Expand the tooling landscape with up-to-date references and gaps.
+- Iterate on a state-diff validator pattern that matches the DSL intent.
 
 ## Completed
 
 - Repository scaffolding and initial draft capture.
-- POC: DSL-to-Solidity skeleton for a token transfer spec.
+- DSL-to-Solidity skeleton for a token transfer spec.
+- POC contracts and tests for two goal scenarios (token transfer, health factor).
 
 ## Next
 
-- Expand the DSL POC to support quantified invariants with off-chain proof obligations.
-- Prototype a state-diff validation model (transition proof verifier).
-- Compare compilation targets: Solidity subset vs. EVM bytecode, and collect tradeoffs.
+- Add a tiny DSL -> verifier compilation path for Scenario A.
+- Explore off-chain proof obligations for quantified invariants.
+- Prototype a minimal transition verifier interface for state diffs.

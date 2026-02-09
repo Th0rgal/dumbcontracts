@@ -20,6 +20,7 @@ def compileExpr : Lang.Expr -> Yul.Expr
   | Lang.Expr.or a b => Yul.Expr.call "or" [compileExpr a, compileExpr b]
   | Lang.Expr.not a => Yul.Expr.call "iszero" [compileExpr a]
   | Lang.Expr.sload k => Yul.Expr.call "sload" [compileExpr k]
+  | Lang.Expr.calldataload k => Yul.Expr.call "calldataload" [compileExpr k]
 
 def compileStmt : Lang.Stmt -> Yul.Stmt
   | Lang.Stmt.skip => Yul.Stmt.block []
@@ -37,27 +38,45 @@ def compileStmt : Lang.Stmt -> Yul.Stmt
       ]
   | Lang.Stmt.sstore k v => Yul.Stmt.expr (Yul.Expr.call "sstore" [compileExpr k, compileExpr v])
   | Lang.Stmt.revert => Yul.Stmt.expr (Yul.Expr.call "revert" [Yul.Expr.lit 0, Yul.Expr.lit 0])
-  | Lang.Stmt.return_ v => Yul.Stmt.expr (Yul.Expr.call "return" [Yul.Expr.lit 0, compileExpr v])
+  | Lang.Stmt.return_ v =>
+      let storeRet := Yul.Stmt.expr (Yul.Expr.call "mstore" [Yul.Expr.lit 0, compileExpr v])
+      let doRet := Yul.Stmt.expr (Yul.Expr.call "return" [Yul.Expr.lit 0, Yul.Expr.lit 32])
+      Yul.Stmt.block [storeRet, doRet]
 
 structure EntryPoint where
   name : String
   args : List String
   body : Lang.Stmt
+  selector : Nat
   deriving Repr
 
--- Wrap a simple entry block into a Yul object with a single function.
+-- Wrap a simple entry block into a Yul object with a dispatcher.
 def compileEntry (e : EntryPoint) : Yul.Program :=
   let funBody := match compileStmt e.body with
     | Yul.Stmt.block ss => Yul.Stmt.block ss
     | s => Yul.Stmt.block [s]
   let funStmt := Yul.Stmt.func e.name e.args [] funBody
-  let code := Yul.Stmt.block [funStmt, Yul.Stmt.expr (Yul.Expr.call "stop" [])]
+  let selector :=
+    Yul.Expr.call "shr" [
+      Yul.Expr.lit 224,
+      Yul.Expr.call "calldataload" [Yul.Expr.lit 0]
+    ]
+  let mkArg (i : Nat) : Yul.Expr :=
+    Yul.Expr.call "calldataload" [Yul.Expr.lit (4 + 32 * i)]
+  let args := (List.range e.args.length).map mkArg
+  let callEntry := Yul.Stmt.expr (Yul.Expr.call e.name args)
+  let okCase := Yul.Stmt.block [callEntry, Yul.Stmt.expr (Yul.Expr.call "stop" [])]
+  let badCase := Yul.Stmt.block [Yul.Stmt.expr (Yul.Expr.call "revert" [Yul.Expr.lit 0, Yul.Expr.lit 0])]
+  let dispatcher := Yul.Stmt.switch selector [(e.selector, okCase)] badCase
+  let code := Yul.Stmt.block [funStmt, dispatcher]
   { obj := { name := "DumbContract", code := code } }
 
 -- Example: a minimal storage update entry.
 def exampleEntry : EntryPoint :=
-  { name := "setSlot"
-    args := ["slot", "value"]
-    body := Lang.Stmt.sstore (Lang.Expr.var "slot") (Lang.Expr.var "value") }
+  { name := "getSlot"
+    args := ["slot"]
+    body := Lang.Stmt.return_ (Lang.Expr.sload (Lang.Expr.var "slot"))
+    -- getSlot(uint256) -> 0x7eba7ba6
+    selector := 0x7eba7ba6 }
 
 end DumbContracts.Compiler

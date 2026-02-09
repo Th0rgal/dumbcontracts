@@ -18,6 +18,7 @@
 - Implement a Yul AST and pretty-printer.
 - Generate Yul text for the Lean implementation subset.
 - Validate output by compiling Yul with `solc --strict-assembly`.
+- Add minimal ABI dispatch and 32-byte return encoding.
 
 ## Phase 4: Semantic Preservation
 

@@ -82,6 +82,8 @@ This log captures decisions, questions, and short summaries as we progress.
 - Added a Lean-only lending state model (`LState`) with collateral, debt, and `minHealthFactor`.
 - Implemented Euler-style health factor invariant (`collateral >= debt * minHealthFactor`).
 - Added Lean specs and proofs for `borrow`, `repay`, and `withdraw` and showed each preserves the invariant.
+- Added a minimal ABI dispatcher stub (selector + calldata loads) to the Lean -> Yul compiler output.
+- Validated the generated Yul with `solc --strict-assembly`.
 
 ## 2026-02-08 (Lean-Only Focus)
 
@@ -104,3 +106,15 @@ This log captures decisions, questions, and short summaries as we progress.
 - Updated the Lean -> Yul compiler output to include a top-level `stop()`.
 - Added a `solc` installer script and installed a static solc binary for strict-assembly checks.
 - Refreshed the research landscape and roadmap to reflect the Lean AST semantics step.
+
+## 2026-02-08 (Return Data)
+
+- Added 32-byte return-data encoding in the Lean -> Yul compiler (`mstore` + `return`).
+- Updated the Yul example entry to `getSlot`, returning a storage word.
+- Refreshed landscape notes with up-to-date Yul/via-IR/Lean/Act/KEVM references.
+
+## 2026-02-09 (Semantics + Calldata)
+
+- Extended the Lean AST semantics to model calldata and return data.
+- Added `calldataload` to the Lean AST and compiler surface.
+- Added a small executable semantics example showing `getSlot` returns the storage word.

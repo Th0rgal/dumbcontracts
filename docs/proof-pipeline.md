@@ -18,3 +18,4 @@ Token and lending examples, proofs, and the compiler skeleton.
 - Expand the Lean contract core (storage maps, events, msg context).
 - Define and prove properties about the Lean AST semantics.
 - Prove semantic preservation for a tiny subset, then grow it.
+- Calldata + return-data modeling is now reflected in the Lean semantics.

@@ -16,6 +16,7 @@ inductive Expr where
   | or : Expr -> Expr -> Expr
   | not : Expr -> Expr
   | sload : Expr -> Expr
+  | calldataload : Expr -> Expr
   deriving Repr
 
 inductive Stmt where

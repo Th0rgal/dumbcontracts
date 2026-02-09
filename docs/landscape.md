@@ -8,8 +8,10 @@
 ## Yul as the Compilation Target
 
 - Yul is Solidity's intermediate language and can be compiled to EVM bytecode.
-- Stand-alone Yul can be compiled via `solc --strict-assembly`.
-- Solidity's "via-IR" pipeline uses Yul as the IR.
+- Stand-alone Yul can be compiled via `solc --strict-assembly` using object notation.
+- Solidity's "via-IR" pipeline uses Yul as the IR between Solidity and bytecode.
+- The `--strict-assembly` flag is the standard way to compile untyped EVM-flavored Yul.
+- The deprecated `--yul` flag was for a typed dialect and is no longer relevant.
 
 ## Semantics Anchors (EVM-Level)
 
@@ -30,7 +32,9 @@ https://lean-lang.org/
 https://docs.soliditylang.org/en/v0.8.30/yul.html
 https://docs.soliditylang.org/en/v0.8.30/yul.html#strict-assembly
 https://soliditylang.org/blog/2024/07/12/a-closer-look-at-via-ir/
+https://www.soliditylang.org/blog/2024/09/04/solidity-0.8.27-release-announcement/
 https://ethereum.github.io/act/
 https://docs.runtimeverification.com/kontrol
+https://docs.runtimeverification.com/kevm/overview/repository-structure
 https://github.com/runtimeverification/evm-semantics
 ```

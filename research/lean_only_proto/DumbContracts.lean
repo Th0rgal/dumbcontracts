@@ -1,5 +1,6 @@
 import DumbContracts.Core
 import DumbContracts.Semantics
+import DumbContracts.Examples
 
 namespace DumbContracts
 

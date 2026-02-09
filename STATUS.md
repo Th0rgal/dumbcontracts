@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-02-08
+Last updated: 2026-02-09
 
 ## Current Focus
 
@@ -11,9 +11,9 @@ Last updated: 2026-02-08
 
 ## In Progress
 
-- Add ABI encoding and dispatch helpers in Lean -> Yul.
-- Expand the Lean AST semantics to include calldata and return data.
 - Prove a first semantic preservation lemma for arithmetic + storage updates.
+- Extend the compiler to multiple entry points + a minimal selector table.
+- Add a tiny end-to-end example that compiles Lean -> Yul -> bytecode.
 
 ## Completed
 
@@ -54,9 +54,15 @@ Last updated: 2026-02-08
 - Added a Lean AST operational semantics module (Env + storage) for compiler proofs.
 - Added a `solc` installer script and installed a static solc binary in the VM.
 - Updated compiler output to include a safe top-level `stop()` in generated Yul.
+- Added a minimal ABI dispatcher stub (selector + calldata loads) in the Yul output.
+- Verified the generated Yul with `solc --strict-assembly`.
+- Added 32-byte return-value encoding in the Lean -> Yul compiler (`mstore` + `return`).
+- Switched the Yul example entry point to `getSlot` returning a storage word.
+- Added calldata + return-data modeling to the Lean semantics.
+- Added a tiny executable semantics example (`getSlot`) to validate the return path.
 
 ## Next
 
-- Add ABI encoding/dispatch and a minimal calldata decode path in Lean.
+- Add minimal calldata/return-data modeling to the Lean semantics.
 - Prove the first compiler correctness lemma for the arithmetic subset.
 - Add an end-to-end example that compiles a Lean implementation and checks Yul with solc.

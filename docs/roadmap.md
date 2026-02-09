@@ -21,6 +21,7 @@ compile to valid Ethereum bytecode (via Yul) with a semantic preservation story.
 
 - Define a Lean AST subset for implementations.
 - Define a small-step semantics for the subset (Env + storage).
+- Extend semantics with calldata + return data modeling.
 - Add proof helpers that connect the subset semantics to specs.
 
 ## Milestone 4: Lean -> Yul Compiler Skeleton
@@ -28,6 +29,7 @@ compile to valid Ethereum bytecode (via Yul) with a semantic preservation story.
 - Define a Yul AST and a pretty-printer.
 - Emit Yul from the Lean AST subset.
 - Compile Yul with `solc --strict-assembly`.
+- Add minimal ABI dispatcher and 32-byte return encoding.
 
 ## Milestone 5: Semantic Preservation (Subset)
 

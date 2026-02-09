@@ -439,3 +439,261 @@ A: Regular functions work fine. Just call a `constructor` function.
 - Modified: DumbContracts/Examples/Counter.lean (added storageAddr field)
 - Modified: STATUS.md (updated for iteration 3)
 - Modified: RESEARCH.md (this file)
+
+---
+
+## Iteration 4: Pattern Composition - OwnedCounter (2026-02-09)
+
+### What I Added
+1. **OwnedCounter Example Contract** (DumbContracts/Examples/OwnedCounter.lean:1-80)
+   - Combines Owned and Counter patterns seamlessly
+   - Storage: owner (Address) at slot 0, count (Uint256) at slot 1
+   - Owner-only operations: increment, decrement, transferOwnership
+   - Public read operations: getCount, getOwner
+   - Helper functions reused from Owned pattern (isOwner, onlyOwner)
+   - Evaluates to (2, "0xBob") - count of 2 after 2 increments, owner transferred to Bob
+
+2. **Solidity Reference Implementation** (contracts/OwnedCounter.sol:1-43)
+   - Clean combination of ownership and counter patterns
+   - Uses modifier syntax for access control
+   - Identical semantics to Lean version
+
+3. **Comprehensive Test Suite** (test/OwnedCounter.t.sol:1-140)
+   - Tests initial state (owner + count both initialized)
+   - Tests owner can increment/decrement
+   - Tests non-owner cannot increment/decrement
+   - Tests example usage from Lean
+   - Tests ownership transfer changes access control
+   - Tests multiple operations
+   - **Critical test**: Patterns don't interfere (counter ops don't affect owner, vice versa)
+   - 2 fuzz tests (only owner can operate, increment N times)
+   - All 11 tests pass with 256 fuzz runs each
+
+### What I Tried
+
+**Approach 1: Copy-paste pattern code**
+- Initial thought: Copy helper functions from Owned and Counter
+- Problem: Code duplication, harder to maintain
+- **Actual approach**: Reused pattern structure, wrote functions fresh
+- **Learning**: Pattern structure is more important than code reuse at this stage
+
+**Approach 2: Storage slot allocation**
+- Challenge: Both patterns need storage, how to avoid conflicts?
+- Solution: Explicit slot numbers (owner at 0, count at 1)
+- Pattern emerged: Manual slot allocation works fine for simple contracts
+- **Learning**: No automatic slot allocation needed yet (examples are simple)
+
+**Approach 3: Combining access control with state updates**
+- Pattern discovered:
+  ```lean
+  def increment : Contract Unit := do
+    onlyOwner      -- Access control first
+    let current ← getStorage count
+    setStorage count (current + 1)  -- Then state update
+  ```
+- This composes perfectly without any special machinery
+- **Learning**: Do-notation makes pattern composition trivial
+
+**Approach 4: Multiple return values in example**
+- Challenge: Want to return both count and owner from example
+- Solution: Use tuple `(Uint256 × Address)`
+- Works naturally in Lean
+- **Learning**: Tuples work fine for returning multiple values
+
+### Findings
+
+**1. Pattern Composition Works Perfectly ⭐⭐⭐**
+
+The most important finding: **Patterns compose without any special support**.
+
+```lean
+-- Owned pattern functions
+def isOwner : Contract Bool := ...
+def onlyOwner : Contract Unit := ...
+
+-- Counter pattern functions
+def increment : Contract Unit := do
+  onlyOwner  -- Just call the guard!
+  let current ← getStorage count
+  setStorage count (current + 1)
+```
+
+**Why this works:**
+- Functions are first-class values
+- Do-notation sequences operations naturally
+- State monad handles composition automatically
+- No interference between patterns
+
+**This validates the core EDSL design** - simple building blocks compose to make complex contracts.
+
+**2. No New Primitives Needed ✅**
+
+OwnedCounter uses:
+- Existing storage operations (getStorage, setStorage, getStorageAddr, setStorageAddr)
+- Existing helpers (msgSender, require)
+- Pattern structures from Owned and Counter
+- **Zero additions to core**
+
+**Implication**: The core is sufficient for building complex contracts through composition.
+
+**3. Storage Slot Management is Manual but Simple**
+
+```lean
+def owner : StorageSlot Address := ⟨0⟩
+def count : StorageSlot Uint256 := ⟨1⟩
+```
+
+**Observations:**
+- Manual slot allocation works fine
+- No conflicts as long as you're careful
+- Could be improved later, but not urgent
+- Pattern: Start slots at 0, increment for each variable
+
+**Future consideration**: Could add compiler-like slot allocation, but not needed yet.
+
+**4. Testing Reveals Non-Interference ⭐**
+
+The test `test_PatternsIndependent` is crucial:
+
+```solidity
+function test_PatternsIndependent() public {
+    // Counter operations don't affect ownership
+    vm.prank(alice);
+    ownedCounter.increment();
+    assertEq(ownedCounter.getOwner(), alice, "Owner should still be Alice");
+
+    // Ownership transfer doesn't affect count
+    vm.prank(alice);
+    ownedCounter.transferOwnership(bob);
+    assertEq(ownedCounter.getCount(), 1, "Count should still be 1");
+}
+```
+
+**This test validates:**
+- Storage slots don't interfere
+- State updates are isolated
+- Pattern composition maintains independence
+
+**5. Access Control Composes Naturally**
+
+Every protected operation follows the same pattern:
+
+```lean
+def protectedOperation : Contract Unit := do
+  onlyOwner  -- Guard at the start
+  -- ... actual logic
+```
+
+**Benefits:**
+- Consistent pattern across all functions
+- Easy to see which operations are protected
+- No magic - just function composition
+- Refactorable if needed (could extract pattern)
+
+**6. Multiple Storage Types Work Together**
+
+OwnedCounter uses both storage maps:
+- `storageAddr` for owner (Address)
+- `storage` for count (Uint256)
+
+**Observation**: No issues with having multiple storage maps. Type safety prevents mixing them up.
+
+### Complexity Metrics
+- Core EDSL: 72 lines (unchanged - no new primitives!)
+- OwnedCounter Example: 80 lines (45 code, 35 comments/blank)
+- OwnedCounter Solidity: 43 lines
+- OwnedCounter Tests: 140 lines (11 comprehensive tests)
+- Total test coverage: 30 tests across 4 contracts, all passing
+
+### Test Coverage Analysis
+| Contract | Tests | Fuzz Tests | Status |
+|----------|-------|------------|--------|
+| SimpleStorage | 4 | 1 | ✅ All pass |
+| Counter | 7 | 1 | ✅ All pass |
+| Owned | 8 | 2 | ✅ All pass |
+| OwnedCounter | 11 | 2 | ✅ All pass |
+| **Total** | **30** | **6** | **✅ 100%** |
+
+**Fuzz runs**: 1,536 total (256 per fuzz test × 6 tests)
+
+### Pattern Library Status
+
+**4 patterns now available:**
+1. **SimpleStorage** - Basic state management
+2. **Counter** - Arithmetic operations
+3. **Owned** - Access control and ownership
+4. **OwnedCounter** - Composition of ownership + arithmetic ⭐
+
+**Pattern composition validated** ✅
+
+### Composability Insights
+
+**What makes patterns composable in this EDSL:**
+
+1. **Explicit state management** (StateM monad)
+   - All state changes go through get/modify
+   - No hidden side effects
+   - Clear data flow
+
+2. **First-class functions**
+   - Guards like `onlyOwner` are just functions
+   - Can be called from any other function
+   - Easy to compose
+
+3. **Type-safe storage**
+   - StorageSlot prevents mixing types
+   - Separate maps for different types
+   - No interference between storage slots
+
+4. **Do-notation sequencing**
+   - Natural composition syntax
+   - Clear execution order
+   - Easy to understand control flow
+
+### Next Iteration Ideas (Updated Priorities)
+
+1. **Math Safety Helpers** (Now High Priority)
+   - Have multiple examples that could use checked arithmetic
+   - Counter and OwnedCounter both do arithmetic
+   - Time to create stdlib with safeAdd, safeSub, etc.
+   - Can refactor Counter to demonstrate usage
+
+2. **Mapping Support** (Medium Priority)
+   - Next natural data structure
+   - Needed for ERC20-like contracts (balances mapping)
+   - Would enable more realistic examples
+
+3. **More Pattern Combinations**
+   - OwnedStorage (ownership + simple storage)
+   - Could show other composition possibilities
+   - Lower priority (composition is validated)
+
+4. **Events** (Lower Priority)
+   - Observability is nice but not critical
+   - Tests validate behavior without events
+   - Can wait until after stdlib
+
+### Questions Answered
+
+**Q: Do patterns compose without special support?**
+A: ✅ YES! Patterns compose perfectly through function calls in do-notation.
+
+**Q: Do we need automatic storage slot allocation?**
+A: Not yet. Manual allocation works fine for simple examples.
+
+**Q: Will multiple storage maps cause issues?**
+A: No. Type safety prevents mixing them. Works perfectly.
+
+**Q: Can we build complex contracts from simple patterns?**
+A: ✅ YES! OwnedCounter demonstrates this clearly.
+
+**Q: Does composition require core changes?**
+A: No. Core is sufficient - composition is free.
+
+### Files Modified This Iteration
+- Created: DumbContracts/Examples/OwnedCounter.lean
+- Created: contracts/OwnedCounter.sol
+- Created: test/OwnedCounter.t.sol
+- Modified: DumbContracts.lean (added OwnedCounter import)
+- Modified: STATUS.md (updated for iteration 4)
+- Modified: RESEARCH.md (this file)

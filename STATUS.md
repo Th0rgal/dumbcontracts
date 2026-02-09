@@ -1,43 +1,44 @@
 # Dumb Contracts Research Status
 
-## Current Iteration: Ownership Pattern (2026-02-09)
+## Current Iteration: Pattern Composition - OwnedCounter (2026-02-09)
 
 ### Goal
-Add an Owned contract to demonstrate access control and the ownership pattern, a fundamental building block for smart contracts.
+Demonstrate pattern composition by creating an OwnedCounter that combines the ownership and counter patterns, validating that simple patterns compose cleanly to build more complex contracts.
 
 ### What I'm About to Do
-1. Create an Owned example contract that:
-   - Stores the contract owner address
-   - Implements onlyOwner modifier pattern
-   - Demonstrates msgSender usage
-   - Shows require guards for access control
-   - Includes transferOwnership function
+1. Create an OwnedCounter example contract that:
+   - Combines Owned and Counter patterns
+   - Stores both owner (Address) and count (Uint256)
+   - Makes increment/decrement owner-only operations
+   - Demonstrates that patterns don't interfere with each other
+   - Shows how to compose access control with state updates
 
 2. Create Solidity reference implementation and Foundry tests
 
-3. Validate that existing primitives (msgSender, require) work well for access control
+3. Validate that pattern composition works seamlessly
 
 ### Why This Approach
-The Ownership pattern is chosen because:
-- It's a fundamental pattern in smart contracts (nearly universal)
-- It demonstrates real usage of msgSender (not yet used in examples)
-- It shows how require guards work for access control
-- It builds entirely on existing primitives (no core changes needed)
-- It's simpler than adding stdlib infrastructure for math safety
-- It provides a building block for more complex examples later
+Pattern composition is the critical next step because:
+- Tests that simple patterns can be combined
+- Validates the composability of the EDSL design
+- Shows how to build complex contracts from simple building blocks
+- Demonstrates real-world pattern (many contracts combine ownership + state)
+- No new primitives needed - uses existing Owned and Counter patterns
+- Natural progression from individual patterns to composition
 
 ### Current State
-- Previous: Counter iteration complete (2 examples working)
-- Now: Starting Ownership pattern iteration
-- Core primitives (msgSender, require) ready to be demonstrated
+- Previous: Owned iteration complete (3 examples working)
+- Now: Starting pattern composition iteration
+- Have: SimpleStorage, Counter, Owned patterns
+- Ready to combine patterns
 
 ### Expected Outcomes
-- Owned contract showing access control
-- Validation that existing primitives are sufficient
-- Pattern for future access-controlled contracts
-- Continued confidence in EDSL design
+- OwnedCounter contract working correctly
+- Validation that patterns compose without interference
+- Demonstration of building complex from simple
+- Confidence in EDSL composability
 
 ### Next Steps After This Iteration
-- Add math safety stdlib (now that we have multiple examples to refactor)
-- Combine patterns (e.g., OwnedCounter)
+- Add math safety stdlib (with multiple examples to refactor)
+- Add mapping support for more complex data structures
 - Consider events for observability

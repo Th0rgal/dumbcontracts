@@ -8,10 +8,10 @@ open DumbContracts.Yul
 
 -- Emit Yul/EVM artifacts.
 def main : IO Unit := do
-  let exampleProg := compileProgram [exampleEntry, exampleEntry2, exampleEntry3, exampleEntry4, exampleEntry5]
+  let exampleProg := compileProgram exampleEntries
   let exampleYul := Yul.Pretty.program exampleProg
   IO.FS.writeFile "out/example.yul" exampleYul
-  let healthProg := compileProgram [healthEntrySet, healthEntryCheck]
+  let healthProg := compileProgram healthEntries
   let healthYul := Yul.Pretty.program healthProg
   IO.FS.writeFile "out/health.yul" healthYul
   let evmAsm := DumbContracts.EvmAsm.pretty DumbContracts.EvmAsm.directProgramAsm

@@ -33,6 +33,7 @@ def exampleUsage : Contract Uint256 := do
 
 #eval (exampleUsage.run {
   storage := fun _ => 0,
+  storageAddr := fun _ => "",
   sender := "0xAlice",
   thisAddress := "0xContract"
 }).1

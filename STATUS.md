@@ -1,41 +1,43 @@
 # Dumb Contracts Research Status
 
-## Current Iteration: Counter Pattern (2026-02-09)
+## Current Iteration: Ownership Pattern (2026-02-09)
 
 ### Goal
-Add a Counter contract to demonstrate arithmetic operations and identify opportunities for math safety helpers.
+Add an Owned contract to demonstrate access control and the ownership pattern, a fundamental building block for smart contracts.
 
 ### What I'm About to Do
-1. Create a Counter example contract that:
-   - Stores a counter value
-   - Implements increment function
-   - Implements decrement function
-   - Implements a getter function
+1. Create an Owned example contract that:
+   - Stores the contract owner address
+   - Implements onlyOwner modifier pattern
+   - Demonstrates msgSender usage
+   - Shows require guards for access control
+   - Includes transferOwnership function
 
 2. Create Solidity reference implementation and Foundry tests
 
-3. Identify if we need math safety helpers (checked arithmetic)
+3. Validate that existing primitives (msgSender, require) work well for access control
 
 ### Why This Approach
-The Counter pattern is a natural next step because:
-- It's the second-most common smart contract pattern (after storage)
-- It introduces arithmetic operations (add/subtract)
-- It will reveal whether we need overflow protection
-- It demonstrates how the EDSL handles stateful updates
-- It's simple enough to keep the iteration focused
+The Ownership pattern is chosen because:
+- It's a fundamental pattern in smart contracts (nearly universal)
+- It demonstrates real usage of msgSender (not yet used in examples)
+- It shows how require guards work for access control
+- It builds entirely on existing primitives (no core changes needed)
+- It's simpler than adding stdlib infrastructure for math safety
+- It provides a building block for more complex examples later
 
 ### Current State
-- Previous: Bootstrap iteration complete (SimpleStorage working)
-- Now: Starting Counter pattern iteration
-- Ready to implement arithmetic operations
+- Previous: Counter iteration complete (2 examples working)
+- Now: Starting Ownership pattern iteration
+- Core primitives (msgSender, require) ready to be demonstrated
 
 ### Expected Outcomes
-- Counter contract demonstrating increment/decrement
-- Insight into whether we need checked arithmetic
-- Growing library of example contracts
-- Continued validation of EDSL design
+- Owned contract showing access control
+- Validation that existing primitives are sufficient
+- Pattern for future access-controlled contracts
+- Continued confidence in EDSL design
 
 ### Next Steps After This Iteration
-- Potentially add math safety stdlib if Counter reveals the need
-- Add ownership pattern (msg.sender checks)
+- Add math safety stdlib (now that we have multiple examples to refactor)
+- Combine patterns (e.g., OwnedCounter)
 - Consider events for observability

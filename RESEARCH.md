@@ -239,3 +239,203 @@ The Counter example reveals an important semantic question:
 - Modified: DumbContracts.lean (added Counter import)
 - Modified: STATUS.md (updated for iteration 2)
 - Modified: RESEARCH.md (this file)
+
+---
+
+## Iteration 3: Ownership Pattern (2026-02-09)
+
+### What I Added
+1. **Owned Example Contract** (DumbContracts/Examples/Owned.lean:1-59)
+   - Demonstrates ownership pattern and access control
+   - Storage for owner address
+   - Helper function `isOwner` to check caller identity
+   - `onlyOwner` modifier pattern for access control
+   - `constructor` to initialize owner
+   - `transferOwnership` function (owner-only)
+   - `getOwner` getter function
+   - Includes executable example that evaluates to "0xBob" (after transfer)
+
+2. **Core Enhancement: Address Storage** (DumbContracts/Core.lean:23-52)
+   - Added `storageAddr` field to ContractState
+   - Added `getStorageAddr` and `setStorageAddr` functions
+   - Parallel to existing Uint256 storage operations
+   - Minimal change driven by real example need
+
+3. **Solidity Reference Implementation** (contracts/Owned.sol:1-30)
+   - Clean ownership pattern with constructor
+   - Custom error `NotOwner` for gas efficiency
+   - `onlyOwner` modifier
+   - Identical semantics to Lean version
+
+4. **Comprehensive Test Suite** (test/Owned.t.sol:1-82)
+   - Tests initial owner setup
+   - Tests successful ownership transfer
+   - Tests example usage from Lean
+   - Tests access control (non-owner cannot transfer)
+   - Tests new owner can transfer
+   - Tests original owner loses access after transfer
+   - 2 fuzz tests (transfer to any address, only owner can transfer)
+   - All 8 tests pass with 256 fuzz runs each
+
+### What I Tried
+
+**Approach 1: Encoding Address as Uint256**
+- Initial thought: Avoid extending core by encoding addresses
+- Problem: This would be hacky and defeat type safety
+- Solution: Extend core minimally with Address storage
+- **Learning**: Example-driven additions to core are justified
+
+**Approach 2: Generic storage operations**
+- Considered: Making storage fully generic over all types
+- Problem: Would complicate core significantly
+- Solution: Add specific storage operations per type as needed
+- **Learning**: Keep it minimal - add types when examples need them
+
+**Approach 3: Modifier pattern implementation**
+- Challenge: Lean doesn't have Solidity-style modifiers
+- Solution: Use helper functions that return Contract Unit
+- Pattern: `onlyOwner` is just a function you call first
+- **Learning**: Functions compose naturally in do-notation
+
+**Approach 4: Constructor pattern**
+- Challenge: How to represent contract initialization?
+- Solution: Just a regular function named `constructor`
+- It's called explicitly in examples
+- **Learning**: No special syntax needed, regular functions work
+
+### Findings
+
+**1. Core Extension Strategy Validated**
+
+The Address storage addition validates our approach:
+- **Minimal**: Only 10 lines added to core (2 storage ops + 1 field)
+- **Justified**: Real example (Owned) needs it
+- **Clean**: Parallel to existing Uint256 storage pattern
+- **Backward compatible**: Existing examples just add `storageAddr := fun _ => ""`
+
+This confirms the strategy: extend core minimally when examples demonstrate need.
+
+**2. Access Control Patterns Work Naturally**
+
+The ownership pattern reveals excellent composability:
+
+```lean
+def onlyOwner : Contract Unit := do
+  let ownerCheck ← isOwner
+  require ownerCheck "Caller is not the owner"
+
+def transferOwnership (newOwner : Address) : Contract Unit := do
+  onlyOwner  -- Just call it first!
+  setStorageAddr owner newOwner
+```
+
+**Key insights:**
+- No special modifier syntax needed
+- Functions compose in do-notation
+- Clear and explicit about access control
+- Easy to understand the control flow
+
+**3. msgSender Finally Demonstrated**
+
+Previous examples didn't use `msgSender`, now we see it in action:
+- Works exactly as expected
+- Natural integration with require guards
+- Enables authentication/authorization patterns
+- Validates the ContractState design
+
+**4. Type Safety Prevents Mistakes**
+
+The StorageSlot type parameter prevents common errors:
+- Can't mix Address and Uint256 storage
+- Compiler catches type mismatches
+- Clear which storage operation to use
+- No runtime encoding/decoding issues
+
+**5. Testing Insights**
+
+The Owned tests reveal strong patterns:
+- **Access control testing is critical**: Half the tests check authorization
+- **State transitions matter**: Original owner loses access after transfer
+- **Fuzz testing ownership**: Any address can be owner (found no issues)
+- **Lean example validation**: test_ExampleUsage ensures Lean semantics match
+
+### Complexity Metrics
+- Core EDSL: 72 lines (+14 from iteration 2)
+  - Storage operations: 24 lines (Uint256 + Address)
+  - State: 4 fields (storage, storageAddr, sender, thisAddress)
+  - Helpers: 3 (msgSender, contractAddress, require)
+- Owned Example: 59 lines (35 code, 24 comments/blank)
+- Test coverage: 19 tests total (8 Owned + 7 Counter + 4 SimpleStorage), all passing
+- Build time: ~2 seconds (Lean), ~64ms (Foundry tests)
+
+### Core Growth Analysis
+- Iteration 1: 58 lines (bootstrap)
+- Iteration 2: 58 lines (no change)
+- Iteration 3: 72 lines (+24%)
+
+**Growth is justified:**
+- Added real functionality (Address storage)
+- Driven by concrete example need
+- Still minimal and maintainable
+- Growth rate is sustainable
+
+### Pattern Library Growing
+We now have 3 fundamental patterns:
+
+1. **SimpleStorage**: Basic state management
+2. **Counter**: Arithmetic operations
+3. **Owned**: Access control and ownership
+
+Each demonstrates a core smart contract concept. Together they provide:
+- State management primitives
+- Arithmetic operations
+- Access control patterns
+- Foundation for complex contracts
+
+### Next Iteration Ideas (Updated)
+
+1. **Combined Pattern: OwnedCounter** (Recommended)
+   - Combine ownership + counter patterns
+   - Demonstrates pattern composition
+   - Tests that patterns work together
+   - Shows how to build complex contracts from simple ones
+
+2. **Math Safety Helpers** (High Priority)
+   - Add optional checked arithmetic to stdlib
+   - Refactor Counter to show usage
+   - Address the arithmetic safety question
+
+3. **Mapping Support**
+   - Add mapping storage (Address → Uint256)
+   - Common pattern in ERC20, etc.
+   - Would require core extension
+
+4. **Events**
+   - Event emission support
+   - Observability pattern
+   - Lower priority (tests validate behavior)
+
+### Questions Answered
+
+**Q: Can we do access control without special syntax?**
+A: Yes! Regular functions compose beautifully in do-notation.
+
+**Q: Should we extend core for new types?**
+A: Yes, when examples demonstrate concrete need. Keep it minimal.
+
+**Q: Do we need Solidity-style modifiers?**
+A: No. Helper functions called in sequence work perfectly.
+
+**Q: How to handle contract initialization?**
+A: Regular functions work fine. Just call a `constructor` function.
+
+### Files Modified This Iteration
+- Created: DumbContracts/Examples/Owned.lean
+- Created: contracts/Owned.sol
+- Created: test/Owned.t.sol
+- Modified: DumbContracts/Core.lean (added Address storage)
+- Modified: DumbContracts.lean (added Owned import)
+- Modified: DumbContracts/Examples/SimpleStorage.lean (added storageAddr field)
+- Modified: DumbContracts/Examples/Counter.lean (added storageAddr field)
+- Modified: STATUS.md (updated for iteration 3)
+- Modified: RESEARCH.md (this file)

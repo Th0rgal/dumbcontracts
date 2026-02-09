@@ -1,0 +1,2 @@
+import DumbContracts.Core
+import DumbContracts.Examples.SimpleStorage

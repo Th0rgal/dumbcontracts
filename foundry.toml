@@ -1,0 +1,8 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+test = "test"
+cache_path = "cache"
+
+[rpc_endpoints]

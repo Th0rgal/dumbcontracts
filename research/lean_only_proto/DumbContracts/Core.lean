@@ -27,7 +27,12 @@ structure Spec (S : Type) where
   requires : Pred S
   ensures : Rel S
 
--- Functional update for maps.
+structure SpecR (S : Type) where
+  requires : Pred S
+  ensures : Rel S
+  reverts : Pred S
+
+-- Map update.
 def update {A : Type} (f : Address -> A) (k : Address) (v : A) (a : Address) : A :=
   if a = k then v else f a
 

@@ -1,26 +1,29 @@
-# Dumb Contracts Research (Lean-Only)
+# Dumb Contracts
 
-This repo now focuses on a Lean-first workflow for “dumb contracts”: write a
-very small spec in Lean, write the implementation in Lean, and prove the
-implementation satisfies the spec. The long-term goal is to compile the Lean
-implementation to Yul (or EVM bytecode) while preserving the proof.
+Lean specs + Lean proofs -> Yul/EVM.
 
-## What’s Here
-
-- `research/lean_only_proto/` is the canonical prototype (specs, impls, proofs).
-- `docs/roadmap.md` defines the Lean-first roadmap, including codegen to Yul/EVM.
-- `docs/landscape.md` tracks relevant formal-methods tooling and semantics work.
-- `STATUS.md` is the current project status and near-term plan.
-- `docs/research-log.md` is the running research journal.
-
-Legacy DSL/SMT POCs still live in `specs/`, `src/`, `test/`, and `script/`, but
-they are no longer the active path.
-
-## Quick Start (Lean)
-
+**Start**
 ```bash
 cd /workspaces/mission-a7986e44/dumbcontracts/research/lean_only_proto
 PATH=/opt/lean-4.27.0/bin:$PATH lake build
+./scripts/end_to_end.sh
 ```
 
-This builds the Lean-only prototype and checks the proofs.
+**Make A Contract (Lean)**
+1. Write spec + function in `dumbcontracts/research/lean_only_proto/DumbContracts/Examples.lean`.
+2. Add selector + dispatcher in `dumbcontracts/research/lean_only_proto/DumbContracts/Compiler.lean`.
+3. Emit Yul in `dumbcontracts/research/lean_only_proto/Main.lean`.
+4. Rebuild with `./scripts/end_to_end.sh`.
+
+**Spec Pattern**
+```
+def mySpecR : SpecR Store := { requires := ..., ensures := ..., reverts := ... }
+theorem mySpec_ok : mySpecR.requires s -> ... := by ...
+theorem mySpec_reverts : mySpecR.reverts s -> ... := by ...
+```
+
+**Docs**
+- Start page: `dumbcontracts/docs/index.html`
+- Status: `dumbcontracts/STATUS.md`
+- Roadmap: `dumbcontracts/docs/roadmap.md`
+- Research log: `dumbcontracts/docs/research-log.md`

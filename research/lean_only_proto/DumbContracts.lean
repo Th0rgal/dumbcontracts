@@ -11,16 +11,16 @@ structure State where
 abbrev Pred := State -> Prop
 abbrev Rel := State -> State -> Prop
 
--- Transfer precondition.
+-- Transfer pre.
 def preTransfer (from to : Address) (amount : Int) (s : State) : Prop :=
   amount >= 0 ∧ from ≠ to ∧ s.balance from >= amount
 
--- Transfer implementation (Lean-only prototype).
+-- Transfer impl.
 def transfer (from to : Address) (amount : Int) (s : State) : State :=
   { balance := update (update s.balance from (s.balance from - amount)) to (s.balance to + amount)
     totalSupply := s.totalSupply }
 
--- Transfer spec in Lean (no DSL).
+-- Transfer spec.
 def transferSpec (from to : Address) (amount : Int) : Spec State :=
   { requires := preTransfer from to amount
     ensures := fun s s' =>
@@ -29,42 +29,38 @@ def transferSpec (from to : Address) (amount : Int) : Spec State :=
       (forall a, a ≠ from -> a ≠ to -> s'.balance a = s.balance a) ∧
       s'.totalSupply = s.totalSupply }
 
--- Proof: the Lean implementation satisfies the Lean spec.
+-- Transfer proof.
 theorem transfer_sound (s : State) (from to : Address) (amount : Int) :
     preTransfer from to amount s ->
     (transferSpec from to amount).ensures s (transfer from to amount s) := by
   intro hpre
   have hft : from ≠ to := hpre.2.1
   constructor
-  · -- balance[from]
-    simp [transfer, update, hft]
+  · simp [transfer, update, hft]
   constructor
-  · -- balance[to]
-    simp [transfer, update]
+  · simp [transfer, update]
   constructor
-  · -- frame for other addresses
-    intro a ha_from ha_to
+  · intro a ha_from ha_to
     simp [transfer, update, ha_from, ha_to]
-  · -- totalSupply unchanged
-    simp [transfer]
+  · simp [transfer]
 
--- Convenience: spec holds when its requires clause holds.
+-- Spec holds when requires holds.
 theorem transfer_spec_holds (s : State) (from to : Address) (amount : Int) :
     (transferSpec from to amount).requires s ->
     (transferSpec from to amount).ensures s (transfer from to amount s) := by
   intro hreq
   exact transfer_sound s from to amount hreq
 
--- Mint precondition.
+-- Mint pre.
 def preMint (to : Address) (amount : Int) (s : State) : Prop :=
   amount >= 0
 
--- Mint implementation (Lean-only prototype).
+-- Mint impl.
 def mint (to : Address) (amount : Int) (s : State) : State :=
   { balance := update s.balance to (s.balance to + amount)
     totalSupply := s.totalSupply + amount }
 
--- Mint spec in Lean (no DSL).
+-- Mint spec.
 def mintSpec (to : Address) (amount : Int) : Spec State :=
   { requires := preMint to amount
     ensures := fun s s' =>
@@ -72,22 +68,19 @@ def mintSpec (to : Address) (amount : Int) : Spec State :=
       (forall a, a ≠ to -> s'.balance a = s.balance a) ∧
       s'.totalSupply = s.totalSupply + amount }
 
--- Proof: the Lean implementation satisfies the Lean spec.
+-- Mint proof.
 theorem mint_sound (s : State) (to : Address) (amount : Int) :
     preMint to amount s ->
     (mintSpec to amount).ensures s (mint to amount s) := by
   intro _hpre
   constructor
-  · -- balance[to]
-    simp [mint, update]
+  · simp [mint, update]
   constructor
-  · -- frame for other addresses
-    intro a ha_to
+  · intro a ha_to
     simp [mint, update, ha_to]
-  · -- totalSupply increases
-    simp [mint]
+  · simp [mint]
 
--- Convenience: spec holds when its requires clause holds.
+-- Spec holds when requires holds.
 theorem mint_spec_holds (s : State) (to : Address) (amount : Int) :
     (mintSpec to amount).requires s ->
     (mintSpec to amount).ensures s (mint to amount s) := by
@@ -119,11 +112,11 @@ def hfOk (s : LState) (a : Address) : Prop :=
 def globalHF (s : LState) : Prop :=
   forall a, hfOk s a
 
--- Borrow precondition: keep health factor safe after the debt increase.
+-- Borrow pre.
 def preBorrow (borrower : Address) (amount : Nat) (s : LState) : Prop :=
   s.collateral borrower >= (s.debt borrower + amount) * s.minHealthFactor
 
--- Borrow implementation: increase debt only.
+-- Borrow impl.
 def borrow (borrower : Address) (amount : Nat) (s : LState) : LState :=
   { collateral := s.collateral
     debt := DumbContracts.update s.debt borrower (s.debt borrower + amount)
@@ -153,7 +146,7 @@ theorem borrow_sound (s : LState) (borrower : Address) (amount : Nat) :
     simp [borrow]
   · simp [borrow]
 
--- Borrow preserves health factor.
+-- Borrow preserves HF.
 theorem borrow_preserves_hf (s : LState) (borrower : Address) (amount : Nat) :
     globalHF s ->
     preBorrow borrower amount s ->
@@ -169,11 +162,11 @@ theorem borrow_preserves_hf (s : LState) (borrower : Address) (amount : Nat) :
     simp [DumbContracts.update, h] at hprev ⊢
     exact hprev
 
--- Repay precondition: cannot repay more than the debt.
+-- Repay pre.
 def preRepay (borrower : Address) (amount : Nat) (s : LState) : Prop :=
   s.debt borrower >= amount
 
--- Repay implementation.
+-- Repay impl.
 def repay (borrower : Address) (amount : Nat) (s : LState) : LState :=
   { collateral := s.collateral
     debt := DumbContracts.update s.debt borrower (s.debt borrower - amount)
@@ -203,7 +196,7 @@ theorem repay_sound (s : LState) (borrower : Address) (amount : Nat) :
     simp [repay]
   · simp [repay]
 
--- Repay preserves health factor.
+-- Repay preserves HF.
 theorem repay_preserves_hf (s : LState) (borrower : Address) (amount : Nat) :
     globalHF s ->
     preRepay borrower amount s ->
@@ -223,12 +216,12 @@ theorem repay_preserves_hf (s : LState) (borrower : Address) (amount : Nat) :
     simp [DumbContracts.update, h] at hprev ⊢
     exact hprev
 
--- Withdraw precondition: keep health factor safe after collateral decrease.
+-- Withdraw pre.
 def preWithdraw (borrower : Address) (amount : Nat) (s : LState) : Prop :=
   s.collateral borrower >= amount ∧
   s.collateral borrower - amount >= s.debt borrower * s.minHealthFactor
 
--- Withdraw implementation.
+-- Withdraw impl.
 def withdraw (borrower : Address) (amount : Nat) (s : LState) : LState :=
   { collateral := DumbContracts.update s.collateral borrower (s.collateral borrower - amount)
     debt := s.debt
@@ -258,7 +251,7 @@ theorem withdraw_sound (s : LState) (borrower : Address) (amount : Nat) :
     simp [withdraw]
   · simp [withdraw]
 
--- Withdraw preserves health factor.
+-- Withdraw preserves HF.
 theorem withdraw_preserves_hf (s : LState) (borrower : Address) (amount : Nat) :
     globalHF s ->
     preWithdraw borrower amount s ->

@@ -1,6 +1,7 @@
 # Compiler files
 cache/
 out/
+forge-out/
 
 # Ignores development broadcast logs
 !/broadcast

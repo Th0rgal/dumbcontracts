@@ -1,0 +1,9 @@
+# Simplification Plan
+
+**Keep**
+- `research/lean_only_proto/`
+- `README.md`, `STATUS.md`, `docs/roadmap.md`
+
+**Trim**
+- Legacy artifacts unless referenced.
+- Big build outputs (regen in CI).

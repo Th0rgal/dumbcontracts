@@ -76,11 +76,11 @@ def compileProgram (entries : List EntryPoint) : Yul.Program :=
   let code := Yul.Stmt.block ((entries.map mkFun) ++ [dispatcher])
   { obj := { name := "DumbContract", code := code } }
 
--- Wrap a simple entry block into a Yul object with a dispatcher.
+-- Single-entry wrapper.
 def compileEntry (e : EntryPoint) : Yul.Program :=
   compileProgram [e]
 
--- Example: a minimal storage update entry.
+-- Example entries.
 def exampleEntry : EntryPoint :=
   { name := "getSlot"
     args := ["slot"]
@@ -95,6 +95,52 @@ def exampleEntry2 : EntryPoint :=
     body := Lang.Stmt.sstore (Lang.Expr.var "slot") (Lang.Expr.var "value")
     -- setSlot(uint256,uint256) -> 0xf2c298be
     selector := 0xf2c298be
+    returns := false }
+
+def exampleEntry3 : EntryPoint :=
+  { name := "addSlot"
+    args := ["slot", "delta"]
+    body := Lang.Stmt.sstore
+      (Lang.Expr.var "slot")
+      (Lang.Expr.add (Lang.Expr.sload (Lang.Expr.var "slot")) (Lang.Expr.var "delta"))
+    -- addSlot(uint256,uint256) -> 0x02222aec
+    selector := 0x02222aec
+    returns := false }
+
+def exampleEntry4 : EntryPoint :=
+  { name := "guardedAddSlot"
+    args := ["slot", "delta"]
+    body := Lang.Stmt.if_
+      (Lang.Expr.gt (Lang.Expr.var "delta") (Lang.Expr.lit 0))
+      (Lang.Stmt.sstore
+        (Lang.Expr.var "slot")
+        (Lang.Expr.add (Lang.Expr.sload (Lang.Expr.var "slot")) (Lang.Expr.var "delta")))
+      Lang.Stmt.revert
+    -- guardedAddSlot(uint256,uint256) -> 0x49f583e3
+    selector := 0x49f583e3
+    returns := false }
+
+def healthEntrySet : EntryPoint :=
+  { name := "setRisk"
+    args := ["collateral", "debt", "minHF"]
+    body :=
+      Lang.Stmt.sstore (Lang.Expr.lit 0) (Lang.Expr.var "collateral") ;;
+      Lang.Stmt.sstore (Lang.Expr.lit 1) (Lang.Expr.var "debt") ;;
+      Lang.Stmt.sstore (Lang.Expr.lit 2) (Lang.Expr.var "minHF")
+    -- setRisk(uint256,uint256,uint256) -> 0xf978da39
+    selector := 0xf978da39
+    returns := false }
+
+def healthEntryCheck : EntryPoint :=
+  { name := "checkHealth"
+    args := []
+    body := Lang.Stmt.if_
+      (Lang.Expr.lt (Lang.Expr.sload (Lang.Expr.lit 0))
+        (Lang.Expr.mul (Lang.Expr.sload (Lang.Expr.lit 1)) (Lang.Expr.sload (Lang.Expr.lit 2))))
+      Lang.Stmt.revert
+      Lang.Stmt.skip
+    -- checkHealth() -> 0x1753bbd7
+    selector := 0x1753bbd7
     returns := false }
 
 end DumbContracts.Compiler

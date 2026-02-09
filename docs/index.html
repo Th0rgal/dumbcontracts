@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dumb Contracts</title>
+    <meta name="description" content="Lean specs + proofs -> Yul/EVM." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Dumb Contracts</p>
+          <h1>Specs first. Proofs first.</h1>
+          <p class="lede">
+            Lean only. Emit Yul + EVM.
+          </p>
+        </div>
+        <div class="cta">
+          <span>Start</span>
+          <code>research/lean_only_proto/</code>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2>Get Started</h2>
+        <div class="steps">
+          <div class="step">
+            <span>1</span>
+            <div>
+              <h3>Build</h3>
+              <pre><code>cd /workspaces/mission-a7986e44/dumbcontracts/research/lean_only_proto
+PATH=/opt/lean-4.27.0/bin:$PATH lake build
+./scripts/end_to_end.sh</code></pre>
+            </div>
+          </div>
+          <div class="step">
+            <span>2</span>
+            <div>
+              <h3>Write</h3>
+              <p><code>DumbContracts/Examples.lean</code> (spec + function).</p>
+            </div>
+          </div>
+          <div class="step">
+            <span>3</span>
+            <div>
+              <h3>Wire</h3>
+              <p><code>DumbContracts/Compiler.lean</code> (selector + dispatch).</p>
+            </div>
+          </div>
+          <div class="step">
+            <span>4</span>
+            <div>
+              <h3>Emit</h3>
+              <p><code>Main.lean</code> then run <code>./scripts/end_to_end.sh</code>.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Artifacts</h2>
+        <div class="grid">
+          <div>
+            <p><strong>Yul</strong></p>
+            <p><code>out/*.yul</code></p>
+          </div>
+          <div>
+            <p><strong>Runtime</strong></p>
+            <p><code>out/*.bin</code></p>
+          </div>
+          <div>
+            <p><strong>Creation</strong></p>
+            <p><code>out/*.creation.bin</code></p>
+          </div>
+          <div>
+            <p><strong>Selectors</strong></p>
+            <p><code>out/selectors.md</code></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Docs</h2>
+        <div class="links">
+          <a href="../README.md">README</a>
+          <a href="roadmap.md">Roadmap</a>
+          <a href="formal-approach.md">Formal approach</a>
+          <a href="landscape.md">Tooling landscape</a>
+          <a href="simplification.md">Simplification plan</a>
+          <a href="research-log.md">Research log</a>
+          <a href="../STATUS.md">Status</a>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <span>Lean-only prototype</span>
+        <span>Yul + EVM output</span>
+      </footer>
+    </main>
+  </body>
+</html>

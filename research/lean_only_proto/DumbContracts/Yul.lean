@@ -48,7 +48,11 @@ partial def stmt : Stmt -> String
       "{" ++ "\n" ++ indent body ++ "\n" ++ "}"
   | Stmt.let_ v e => s!"let {v} := {expr e}"
   | Stmt.assign v e => s!"{v} := {expr e}"
-  | Stmt.if_ c t => s!"if {expr c} {stmt t}"
+  | Stmt.if_ c t =>
+      let body := match t with
+        | Stmt.block _ => t
+        | _ => Stmt.block [t]
+      s!"if {expr c} {stmt body}"
   | Stmt.switch e cases dflt =>
       let cs := cases.map (fun (n, s) => s!"case {n} {stmt s}")
       let d := s!"default {stmt dflt}"

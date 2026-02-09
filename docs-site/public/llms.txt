@@ -1,0 +1,40 @@
+# Dumb Contracts Documentation
+# For AI Agents and LLMs
+# https://github.com/Th0rgal/dumbcontracts
+
+> Dumb Contracts explores auditable smart contract specs with Lean proofs compiled toward Yul/EVM.
+> The goal is simple, human-auditable rules and machine-checked implementations.
+
+## How to Access Documentation
+
+All docs are available as raw markdown:
+
+1. **Automatic**: If your User-Agent is a known LLM (ChatGPT, GPTBot, PerplexityBot, ClaudeBot, etc.), you automatically get raw markdown
+2. **Add .md extension**: `/status.md` returns raw markdown
+3. **Accept header**: `Accept: text/markdown`
+4. **Query param**: `/status?format=md`
+5. **API directly**: `/api/docs/status`
+
+Known LLM User-Agents that get markdown automatically:
+ChatGPT-User, GPTBot, Claude-Web, ClaudeBot, PerplexityBot, Applebot, cohere-ai, anthropic-ai, Google-Extended, CCBot
+
+## Documentation Index
+
+### Overview
+- /index.md - Project overview and quick start
+- /status.md - Current focus and progress
+- /roadmap.md - Milestones and next steps
+
+### Research
+- /formal-approach.md - Lean specs + proofs, compiled toward Yul/EVM
+- /simplification.md - Keep the repo small and auditable
+- /landscape.md - External tooling landscape
+- /research-log.md - Timestamped change history
+
+### Special Endpoints
+- /api/docs/_index - JSON index of all documents
+- /api/docs/_all - All documentation concatenated (for full context loading)
+
+## Source
+
+- Repository: https://github.com/Th0rgal/dumbcontracts

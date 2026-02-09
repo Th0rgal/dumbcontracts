@@ -23,7 +23,12 @@ theorem mySpec_reverts : mySpecR.reverts s -> ... := by ...
 ```
 
 **Docs**
-- Start page: `dumbcontracts/docs/index.html`
+- Docs site (Next.js): `dumbcontracts/docs-site`
 - Status: `dumbcontracts/STATUS.md`
 - Roadmap: `dumbcontracts/docs/roadmap.md`
 - Research log: `dumbcontracts/docs/research-log.md`
+
+**Deploy Docs (Vercel)**
+1. Create a new Vercel project from this repo.
+2. Set the Root Directory to `docs-site`.
+3. Deploy (defaults are fine for Next.js).

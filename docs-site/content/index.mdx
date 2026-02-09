@@ -1,0 +1,45 @@
+---
+title: Dumb Contracts
+description: Lean specs + proofs for auditable smart contract rules
+---
+
+import { Callout } from 'nextra/components'
+
+# Dumb Contracts
+
+Auditable smart contract specs: rules first, implementations second. Lean specs + proofs compile toward Yul/EVM.
+
+<Callout type="info">
+**Are you an AI?** This site is LLM-friendly. Check [/llms.txt](/llms.txt) or add `.md` to any page URL to get raw markdown and save tokens.
+</Callout>
+
+## Why This Exists
+
+Smart contracts are too smart for their own good. We want contracts where the rules are the code, and the implementation must match the rules by construction.
+
+## Core Idea
+
+- Write a **dumb contract spec** (invariants + ensures).
+- Generate or verify an implementation against the spec.
+- Keep the spec short enough to audit in minutes.
+
+## Where To Start
+
+- **[Status](/status)** for current focus and progress.
+- **[Roadmap](/roadmap)** for near-term and longer-term milestones.
+- **[Formal Approach](/formal-approach)** for the Lean/Yul direction.
+- **[Research Log](/research-log)** for a timestamped change history.
+
+## Repository Map
+
+- `research/lean_only_proto/` is the canonical Lean prototype.
+- `docs/` is the short-form documentation set.
+- `STATUS.md` tracks current focus and next steps.
+
+## Quick Start
+
+```bash
+cd /workspaces/mission-a7986e44/dumbcontracts/research/lean_only_proto
+PATH=/opt/lean-4.27.0/bin:$PATH lake build
+./scripts/end_to_end.sh
+```

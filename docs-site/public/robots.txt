@@ -1,0 +1,8 @@
+# Dumb Contracts Documentation
+# https://github.com/Th0rgal/dumbcontracts
+
+User-agent: *
+Allow: /
+
+# AI agent documentation index
+# See /llms.txt for structured documentation access

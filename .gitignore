@@ -13,3 +13,13 @@ forge-out/
 
 # Lean build artifacts
 .lake/
+
+# Docs site (Next.js)
+docs-site/node_modules/
+docs-site/.next/
+docs-site/out/
+docs-site/build/
+docs-site/.vercel/
+docs-site/public/_pagefind/
+docs-site/content/_pagefind/
+docs-site/.env*.local

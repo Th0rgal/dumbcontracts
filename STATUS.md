@@ -43,6 +43,7 @@ Last updated: 2026-02-09
 - Added a minimal EDSL stdlib (`require`, `unless`, `assert`, `sloadSlot`, `sstoreSlot`, `v`, `n`) to reduce syntax noise.
 - Added `sloadVar`/`sstoreVar` helpers to cut boilerplate when using variable slots.
 - Added a `maxStore` example (stores max(a,b) into a slot) plus selector + Foundry test.
+- Added a `requireNonZero` helper and a tiny `setNonZero` example + Foundry test.
 - Minimal docs frontend and compressed docs.
 - Further docs tightening (shorter guide + text).
 - External landscape scan (spec languages, model checkers, prover stacks).

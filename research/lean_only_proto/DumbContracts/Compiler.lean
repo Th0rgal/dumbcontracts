@@ -131,8 +131,19 @@ def exampleEntry5 : EntryPoint :=
     selector := 0xb61d4088
     returns := false }
 
+def exampleEntry6 : EntryPoint :=
+  { name := "setNonZero"
+    args := ["slot", "value"]
+    body := Lang.Stmt.if_
+      (Lang.Expr.not (Lang.Expr.eq (Lang.Expr.var "value") (Lang.Expr.lit 0)))
+      (Lang.Stmt.sstore (Lang.Expr.var "slot") (Lang.Expr.var "value"))
+      Lang.Stmt.revert
+    -- setNonZero(uint256,uint256) -> 0xac1f1f67
+    selector := 0xac1f1f67
+    returns := false }
+
 def exampleEntries : List EntryPoint :=
-  [exampleEntry, exampleEntry2, exampleEntry3, exampleEntry4, exampleEntry5]
+  [exampleEntry, exampleEntry2, exampleEntry3, exampleEntry4, exampleEntry5, exampleEntry6]
 
 def healthEntrySet : EntryPoint :=
   { name := "setRisk"

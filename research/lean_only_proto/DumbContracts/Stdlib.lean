@@ -19,6 +19,9 @@ def unless (cond : Expr) (body : Stmt) : Stmt :=
 def assert (cond : Expr) : Stmt :=
   Stmt.if_ cond Stmt.skip Stmt.revert
 
+def requireNonZero (value : Expr) (body : Stmt) : Stmt :=
+  require (Expr.not (Expr.eq value (Expr.lit 0))) body
+
 /-- Shorthand for loading/storing fixed slots. -/
 
 def sloadSlot (slot : Nat) : Expr :=

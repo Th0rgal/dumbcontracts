@@ -120,6 +120,20 @@ def exampleEntry4 : EntryPoint :=
     selector := 0x49f583e3
     returns := false }
 
+def exampleEntry5 : EntryPoint :=
+  { name := "maxStore"
+    args := ["slot", "a", "b"]
+    body := Lang.Stmt.if_
+      (Lang.Expr.gt (Lang.Expr.var "a") (Lang.Expr.var "b"))
+      (Lang.Stmt.sstore (Lang.Expr.var "slot") (Lang.Expr.var "a"))
+      (Lang.Stmt.sstore (Lang.Expr.var "slot") (Lang.Expr.var "b"))
+    -- maxStore(uint256,uint256,uint256) -> 0xb61d4088
+    selector := 0xb61d4088
+    returns := false }
+
+def exampleEntries : List EntryPoint :=
+  [exampleEntry, exampleEntry2, exampleEntry3, exampleEntry4, exampleEntry5]
+
 def healthEntrySet : EntryPoint :=
   { name := "setRisk"
     args := ["collateral", "debt", "minHF"]
@@ -142,5 +156,8 @@ def healthEntryCheck : EntryPoint :=
     -- checkHealth() -> 0x1753bbd7
     selector := 0x1753bbd7
     returns := false }
+
+def healthEntries : List EntryPoint :=
+  [healthEntrySet, healthEntryCheck]
 
 end DumbContracts.Compiler

@@ -101,3 +101,26 @@ jobs:
         env:
           RPC_URL: http://127.0.0.1:8545
         run: ./scripts/deploy_example.sh
+
+  foundry-legacy:
+    name: Foundry legacy contract tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install Foundry
+        working-directory: research/lean_only_proto
+        run: ./scripts/install_foundry.sh
+
+      - name: Install solc
+        working-directory: research/lean_only_proto
+        run: ./scripts/install_solc.sh
+
+      - name: Run legacy Foundry tests
+        working-directory: legacy/foundry
+        run: forge test

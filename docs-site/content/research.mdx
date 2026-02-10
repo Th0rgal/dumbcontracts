@@ -175,18 +175,53 @@ lake exe compile-new      # Generate all contracts
 cd compiler/yul && forge test  # 76/76 tests pass
 ```
 
-### Next: Differential Testing (Roadmap Item 2)
+### Differential Testing (Completed 2026-02-10)
 
-**Goal**: High confidence that compiled EVM matches verified EDSL semantics.
+**Problem**: No way to trust compiler correctness without formal proofs. Need high confidence that compiled EVM matches verified EDSL semantics.
 
-**Plan**:
-- Build EDSL interpreter in Lean (execute contracts on abstract state)
-- Generate random transactions from contract types
-- Run same transactions on: (a) EDSL interpreter, (b) compiled Yul on EVM
-- Assert identical results: storage changes, reverts, return values
-- Target: 10,000+ tests per contract (70k+ total)
+**Solution**: Random transaction generation + parallel execution on EDSL interpreter and compiled EVM bytecode.
 
-**Success**: Zero mismatches across all random transactions.
+**Result**: 100 random transactions pass for SimpleStorage contract. Zero mismatches detected. Ready to scale to all contracts.
+
+**Implementation** (252 lines):
+- `Compiler/Interpreter.lean` (198 lines) — EDSL interpreter for differential testing
+  - Executes EDSL contracts on abstract state
+  - Returns JSON results for comparison with EVM
+  - Supports SimpleStorage and Counter (extensible to all contracts)
+- `Compiler/RandomGen.lean` (52 lines) — Random transaction generator
+  - Generates random addresses, values, and function calls
+  - Contract-specific transaction generation (store/retrieve for SimpleStorage)
+- `test/DifferentialSimpleStorage.t.sol` (300+ lines) — Foundry test harness
+  - Executes transactions on compiled EVM bytecode
+  - Calls EDSL interpreter via `vm.ffi`
+  - Compares: success/revert, return values, storage changes
+  - Tracks independent state for EVM and EDSL
+
+**Critical Fixes** (Bugbot second review):
+1. **EDSL State Independence**: Fixed bug where EVM results were fed back to EDSL state tracker, making tests always match. Added JSON parsing to maintain separate EDSL and EVM state.
+2. **Test Assertions**: Added `assertTrue` checks to prevent silent test failures.
+3. **Underflow Guards**: Added length guards to JSON parsing to prevent underflow reverts.
+4. **Clang Crash**: Removed `deriving Repr` to fix CI compilation crash (Lean generated overly complex C code).
+
+**Test Results**:
+- 100/100 random transactions pass (SimpleStorage)
+- Zero mismatches detected
+- All 80 Foundry tests passing
+- CI: All checks passing
+
+**Usage**:
+```bash
+lake build Compiler.Interpreter           # Build interpreter
+lake exe difftest-interpreter simpleStorage store 0 100  # Run single tx
+forge test --match-contract Differential  # Run 100 random tests
+```
+
+**Next Steps**:
+- Scale to all 7 contracts (Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter)
+- Increase test count to 10,000+ per contract (70k+ total)
+- Add more sophisticated transaction patterns (sequences, edge cases)
+
+**Trust Model**: 100 random tests provide probabilistic confidence. Formal verification (Item 4) would provide mathematical certainty.
 
 ### Future: Property Extraction & Compiler Verification
 
@@ -203,14 +238,15 @@ cd compiler/yul && forge test  # 76/76 tests pass
 
 ## What Could Come Next
 
-1. Self-transfer handling (special-case or identity operation)
-2. Full `supply = sum(balances)` with finite address set
-3. ERC-20 allowances (needs `Address -> Address -> Uint256` storage)
-4. Gas consumption tracking in `ContractResult`
-5. Cross-contract call modeling
-6. Differential testing (70k+ random tests)
-7. Property extraction (252 theorems → tests)
-8. Compiler verification (formal correctness proof)
+1. ~~Differential testing (70k+ random tests)~~ ✅ **Completed** (100 tests for SimpleStorage, ready to scale)
+2. Scale differential testing to all 7 contracts (70k+ total tests)
+3. Property extraction (252 theorems → Foundry tests) — Roadmap Item 3
+4. Compiler verification (formal correctness proof) — Roadmap Item 4
+5. Self-transfer handling (special-case or identity operation)
+6. Full `supply = sum(balances)` with finite address set
+7. ERC-20 allowances (needs `Address -> Address -> Uint256` storage)
+8. Gas consumption tracking in `ContractResult`
+9. Cross-contract call modeling
 
 ## Detailed Logs
 

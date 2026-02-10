@@ -66,7 +66,6 @@ def genBool (rng : RNG) : RNG × Bool :=
 
 -- Generate random SimpleStorage transaction
 def genSimpleStorageTx (rng : RNG) : RNG × Transaction :=
-  let (rng, useSender) := genBool rng
   let (rng, sender) := genAddress rng
   let (rng, useStore) := genBool rng
   if useStore then

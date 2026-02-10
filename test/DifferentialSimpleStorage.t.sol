@@ -119,10 +119,20 @@ contract DifferentialSimpleStorage is YulTestBase {
         }
 
         // Validate: Storage changes must match
-        // For SimpleStorage, this means final storage[0] should match
-        if (evmStorageAfter != edslStorage[0] && evmStorageAfter != evmStorageBefore) {
-            // Storage changed on EVM, update EDSL tracking
-            edslStorage[0] = evmStorageAfter;
+        // Parse EDSL storage changes from JSON and update tracking
+        uint256 edslStorageChange = _extractStorageChange(edslResult, 0);
+        if (edslStorageChange != type(uint256).max) {
+            // EDSL reported a storage change, update our tracking
+            edslStorage[0] = edslStorageChange;
+        }
+
+        // Now validate: EVM final storage must match EDSL final storage
+        if (evmStorageAfter != edslStorage[0]) {
+            console2.log("MISMATCH: Storage states differ!");
+            console2.log("  EVM storage[0]:", evmStorageAfter);
+            console2.log("  EDSL storage[0]:", edslStorage[0]);
+            testsFailed++;
+            return false;
         }
 
         testsPassed++;
@@ -138,6 +148,7 @@ contract DifferentialSimpleStorage is YulTestBase {
         bytes memory searchBytes = bytes("\"returnValue\":\"");
 
         // Find "returnValue":"
+        if (jsonBytes.length < searchBytes.length) return 0;
         for (uint i = 0; i <= jsonBytes.length - searchBytes.length; i++) {
             bool found = true;
             for (uint j = 0; j < searchBytes.length; j++) {
@@ -180,6 +191,56 @@ contract DifferentialSimpleStorage is YulTestBase {
     }
 
     /**
+     * @notice Extract storage change for a specific slot from JSON
+     * Parses: "storageChanges":[{"slot":0,"value":42}]
+     * Returns type(uint256).max if slot not found in changes
+     */
+    function _extractStorageChange(string memory json, uint256 slot) internal pure returns (uint256) {
+        bytes memory jsonBytes = bytes(json);
+        bytes memory slotPattern = bytes(string.concat("\"slot\":", vm.toString(slot)));
+
+        // Find the slot pattern
+        if (jsonBytes.length < slotPattern.length) return type(uint256).max;
+        for (uint i = 0; i < jsonBytes.length - slotPattern.length; i++) {
+            bool found = true;
+            for (uint j = 0; j < slotPattern.length; j++) {
+                if (jsonBytes[i + j] != slotPattern[j]) {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) {
+                // Found the slot, now find the value after it
+                // Look for "value": pattern
+                bytes memory valuePattern = bytes("\"value\":");
+                for (uint k = i; k < jsonBytes.length - valuePattern.length; k++) {
+                    bool valueFound = true;
+                    for (uint l = 0; l < valuePattern.length; l++) {
+                        if (jsonBytes[k + l] != valuePattern[l]) {
+                            valueFound = false;
+                            break;
+                        }
+                    }
+                    if (valueFound) {
+                        // Extract the number after "value":
+                        uint start = k + valuePattern.length;
+                        uint end = start;
+                        while (end < jsonBytes.length && jsonBytes[end] >= 0x30 && jsonBytes[end] <= 0x39) {
+                            end++;
+                        }
+                        bytes memory numBytes = new bytes(end - start);
+                        for (uint m = 0; m < end - start; m++) {
+                            numBytes[m] = jsonBytes[start + m];
+                        }
+                        return _stringToUint(string(numBytes));
+                    }
+                }
+            }
+        }
+        return type(uint256).max; // Not found
+    }
+
+    /**
      * @notice Build storage state string for EDSL interpreter
      * Format: "slot:value,slot:value,..."
      */
@@ -219,14 +280,19 @@ contract DifferentialSimpleStorage is YulTestBase {
      */
     function testDifferential_BasicOperations() public {
         // Test store
-        executeDifferentialTest("store", address(0xA11CE), 42);
+        bool success1 = executeDifferentialTest("store", address(0xA11CE), 42);
+        assertTrue(success1, "Store test 1 failed");
 
         // Test retrieve
-        executeDifferentialTest("retrieve", address(0xA11CE), 0);
+        bool success2 = executeDifferentialTest("retrieve", address(0xA11CE), 0);
+        assertTrue(success2, "Retrieve test 1 failed");
 
         // Test overwrite
-        executeDifferentialTest("store", address(0xB0B), 100);
-        executeDifferentialTest("retrieve", address(0xB0B), 0);
+        bool success3 = executeDifferentialTest("store", address(0xB0B), 100);
+        assertTrue(success3, "Store test 2 failed");
+
+        bool success4 = executeDifferentialTest("retrieve", address(0xB0B), 0);
+        assertTrue(success4, "Retrieve test 2 failed");
 
         console2.log("Differential tests passed:", testsPassed);
     }

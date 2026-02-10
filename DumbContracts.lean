@@ -12,10 +12,12 @@ import DumbContracts.Examples.SimpleToken
 import DumbContracts.Specs.SimpleStorage.Spec
 import DumbContracts.Specs.SimpleStorage.Invariants
 import DumbContracts.Proofs.SimpleStorage.Basic
+import DumbContracts.Proofs.SimpleStorage.Correctness
 
 import DumbContracts.Specs.Counter.Spec
 import DumbContracts.Specs.Counter.Invariants
 import DumbContracts.Proofs.Counter.Basic
+import DumbContracts.Proofs.Counter.Correctness
 
 import DumbContracts.Specs.Owned.Spec
 import DumbContracts.Specs.Owned.Invariants
@@ -40,3 +42,4 @@ import DumbContracts.Proofs.Ledger.Correctness
 import DumbContracts.Specs.SafeCounter.Spec
 import DumbContracts.Specs.SafeCounter.Invariants
 import DumbContracts.Proofs.SafeCounter.Basic
+import DumbContracts.Proofs.SafeCounter.Correctness

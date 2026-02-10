@@ -55,6 +55,9 @@ def requireNonZero (value : Expr) (body : Stmt) : Stmt :=
 def requireZero (value : Expr) (body : Stmt) : Stmt :=
   requireEq value (Expr.lit 0) body
 
+def requireNonZeroAndLt (value max : Expr) (body : Stmt) : Stmt :=
+  requireAnd (neq value (Expr.lit 0)) (Expr.lt value max) body
+
 /-- Shorthand for loading/storing fixed slots. -/
 
 def letSload (name : String) (slot : Expr) (body : Stmt) : Stmt :=

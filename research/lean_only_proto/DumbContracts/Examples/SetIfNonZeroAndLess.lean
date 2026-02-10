@@ -15,9 +15,9 @@ def setIfNonZeroAndLessFun : Fun :=
   { name := "setIfNonZeroAndLess"
     args := ["slot", "value", "max"]
     body :=
-      requireAnd
-        (neq (v "value") (n 0))
-        (Expr.lt (v "value") (v "max"))
+      requireNonZeroAndLt
+        (v "value")
+        (v "max")
         (sstoreVar "slot" (v "value"))
     ret := none }
 
@@ -33,24 +33,28 @@ theorem setIfNonZeroAndLess_meets_specR_ok (s : Store) (slot value max : Nat) :
       | _ => False) := by
   intro hreq
   rcases hreq with ⟨hnonzero, hlt⟩
-  simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireAnd, require, neq, eq, sstoreVar,
-    v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hnonzero, hlt]
+  simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireNonZeroAndLt, requireAnd, require,
+    neq, eq, sstoreVar, v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore,
+    hnonzero, hlt]
 
 theorem setIfNonZeroAndLess_meets_specR_reverts (s : Store) (slot value max : Nat) :
     (setIfNonZeroAndLessSpecR slot value max).reverts s ->
     execFun setIfNonZeroAndLessFun [slot, value, max] s [] = ExecResult.reverted := by
   intro hrev
   rcases hrev with hzero | hge
-  · simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireAnd, require, neq, eq, sstoreVar,
-      v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hzero]
+  · simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireNonZeroAndLt, requireAnd, require,
+      neq, eq, sstoreVar, v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
+      updateStore, hzero]
   · by_cases hnonzero : value != 0
     · have hnotlt : ¬ value < max := by
         exact Nat.not_lt.mpr hge
-      simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireAnd, require, neq, eq, sstoreVar,
-        v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hnonzero, hnotlt]
+      simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireNonZeroAndLt, requireAnd, require,
+        neq, eq, sstoreVar, v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
+        updateStore, hnonzero, hnotlt]
     · have hnot : ¬ value != 0 := by
         exact hnonzero
-      simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireAnd, require, neq, eq, sstoreVar,
-        v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hnot]
+      simp [setIfNonZeroAndLessSpecR, setIfNonZeroAndLessFun, requireNonZeroAndLt, requireAnd, require,
+        neq, eq, sstoreVar, v, n, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
+        updateStore, hnot]
 
 end DumbContracts.Examples

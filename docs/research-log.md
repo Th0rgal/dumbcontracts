@@ -1,6 +1,11 @@
 # Research Log
 
 ## 2026-02-10
+- Added `requireNonZeroAndLt` stdlib helper for combined nonzero + max guards.
+- Refactored `setIfNonZeroAndLess` to use `requireNonZeroAndLt`.
+- Added `addIfNonZeroAndLess` example (guarded add on `delta != 0` and `delta < max`) with SpecR + proofs.
+- Added Foundry test for `addIfNonZeroAndLess`.
+- Updated compiler entries + direct EVM asm for `addIfNonZeroAndLess`.
 - Added `sstoreIfEq` stdlib helper for guarded stores on slot equality.
 - Refactored `compareAndSwap` to use `sstoreIfEq`.
 - Added `clearIfEq` example (clear slot when it matches expected) with SpecR + proofs.

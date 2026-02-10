@@ -1,34 +1,96 @@
 # Dumb Contracts
 
-Lean specs + Lean proofs -> Yul/EVM.
+A minimal, elegant Lean 4 EDSL for smart contract development.
 
-**Start**
+## Philosophy
+
+**Dumb Contracts** is intentionally minimal. We only add features when concrete examples demonstrate the need. The goal is to make smart contract development:
+
+- **Simple**: Minimal boilerplate, clear syntax
+- **Safe**: Type-safe storage, explicit state management
+- **Testable**: Paired with Foundry tests for runtime validation
+- **Maintainable**: Small, focused examples that are easy to understand
+
+## Project Structure
+
+```
+DumbContracts/
+├── Core.lean                    # Minimal EDSL core (~60 lines)
+├── Examples/                    # One contract per file
+│   └── SimpleStorage.lean       # Basic storage pattern
+└── Stdlib/                      # Common patterns (future)
+
+contracts/                       # Solidity reference implementations
+test/                           # Foundry tests for validation
+```
+
+## Quick Start
+
+### Build the Lean project
+
 ```bash
-cd /workspaces/mission-a7986e44/dumbcontracts/research/lean_only_proto
-PATH=/opt/lean-4.27.0/bin:$PATH lake build
-./scripts/end_to_end.sh
+lake build
 ```
 
-**Make A Contract (Lean)**
-1. Write spec + function in `dumbcontracts/research/lean_only_proto/DumbContracts/Examples.lean`.
-2. Add selector + dispatcher in `dumbcontracts/research/lean_only_proto/DumbContracts/Compiler.lean`.
-3. Emit Yul in `dumbcontracts/research/lean_only_proto/Main.lean`.
-4. Rebuild with `./scripts/end_to_end.sh`.
+### Run Foundry tests
 
-**Spec Pattern**
-```
-def mySpecR : SpecR Store := { requires := ..., ensures := ..., reverts := ... }
-theorem mySpec_ok : mySpecR.requires s -> ... := by ...
-theorem mySpec_reverts : mySpecR.reverts s -> ... := by ...
+```bash
+forge test
 ```
 
-**Docs**
-- Docs site (Next.js): `dumbcontracts/docs-site`
-- Status: `dumbcontracts/STATUS.md`
-- Roadmap: `dumbcontracts/docs/roadmap.md`
-- Research log: `dumbcontracts/docs/research-log.md`
+## Examples
 
-**Deploy Docs (Vercel)**
-1. Create a new Vercel project from this repo.
-2. Set the Root Directory to `docs-site`.
-3. Deploy (defaults are fine for Next.js).
+### SimpleStorage
+
+The simplest possible contract - store and retrieve a value:
+
+```lean
+-- Storage layout
+def storedData : StorageSlot Uint256 := ⟨0⟩
+
+-- Set the stored value
+def store (value : Uint256) : Contract Unit := do
+  setStorage storedData value
+
+-- Get the stored value
+def retrieve : Contract Uint256 := do
+  getStorage storedData
+```
+
+See `DumbContracts/Examples/SimpleStorage.lean` for the complete example.
+
+## Development Process
+
+Each iteration:
+1. Pick ONE feature or pattern to showcase
+2. Implement the smallest change that makes the EDSL easier to use
+3. Add a focused example contract
+4. Add a Foundry test
+5. Update STATUS.md and RESEARCH.md
+
+## Core API
+
+### Types
+- `Address` - Ethereum address (String for now)
+- `Uint256` - Unsigned 256-bit integer (Nat)
+- `StorageSlot α` - Type-safe storage location
+- `Contract α` - Contract computation monad
+
+### Storage
+- `getStorage : StorageSlot Uint256 → Contract Uint256`
+- `setStorage : StorageSlot Uint256 → Uint256 → Contract Unit`
+
+### Context
+- `msgSender : Contract Address`
+- `contractAddress : Contract Address`
+
+### Guards
+- `require : Bool → String → Contract Unit`
+
+## Status
+
+See `STATUS.md` for current research goals and `RESEARCH.md` for detailed findings.
+
+## License
+
+MIT

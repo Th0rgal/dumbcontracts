@@ -1,25 +1,22 @@
-# Compiler files
-cache/
-out/
-forge-out/
-
-# Ignores development broadcast logs
-!/broadcast
-/broadcast/*/31337/
-/broadcast/**/dry-run/
-
-# Dotenv file
-.env
-
-# Lean build artifacts
+build/
 .lake/
-
-# Docs site (Next.js)
-docs-site/node_modules/
-docs-site/.next/
-docs-site/out/
-docs-site/build/
-docs-site/.vercel/
-docs-site/public/_pagefind/
-docs-site/content/_pagefind/
-docs-site/.env*.local
+lake-packages/
+.cache/
+output/
+temp/
+*.olean
+*.trace
+.DS_Store
+node_modules/
+.claude/
+.opencode/
+.config/
+.local/
+.npm/
+.elan/
+.sandboxed-sh/
+.claude-session-initiated
+opencode.json
+lib/
+out/
+cache/

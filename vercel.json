@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd docs-site && npm run build",
-  "outputDirectory": "docs-site/.next",
-  "devCommand": "cd docs-site && npm run dev"
-}

@@ -22,10 +22,12 @@ const config = {
     ),
   },
   head: () => {
-    const config = useConfig();
-    const title = config.title ? `${config.title} – Dumb Contracts` : "Dumb Contracts";
+    const { frontMatter } = useConfig();
+    const title = frontMatter.title
+      ? `${frontMatter.title} – Dumb Contracts`
+      : "Dumb Contracts";
     const description =
-      config.frontMatter.description || "Minimal Lean EDSL for Smart Contracts";
+      frontMatter.description || "Minimal Lean EDSL for Smart Contracts";
 
     return (
       <>

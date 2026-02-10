@@ -5,11 +5,21 @@
   Uses a simple pseudo-random number generator for reproducibility.
 -/
 
-import Compiler.Interpreter
+import DumbContracts.Core
 
 namespace Compiler.RandomGen
 
-open Compiler.Interpreter
+open DumbContracts
+
+-- Re-define types to avoid importing Interpreter (which has conflicting main)
+structure Transaction where
+  sender : Address
+  functionName : String
+  args : List Nat
+
+inductive ContractType
+  | simpleStorage
+  | counter
 
 /-!
 ## Simple PRNG
@@ -79,7 +89,6 @@ def genTransaction (contractType : ContractType) (rng : RNG) : RNG × Transactio
   match contractType with
   | ContractType.simpleStorage => genSimpleStorageTx rng
   | ContractType.counter => genCounterTx rng
-  | _ => genSimpleStorageTx rng  -- Default
 
 /-!
 ## Generate Test Sequence
@@ -97,11 +106,15 @@ def genTestSequence (contractType : ContractType) (count : Nat) (seed : Nat) : L
   let rng := RNG.init seed
   genTransactions contractType count rng
 
+end Compiler.RandomGen
+
 /-!
 ## CLI Entry Point
 
 For generating test sequences from command line.
 -/
+
+open Compiler.RandomGen
 
 def main (args : List String) : IO Unit := do
   match args with
@@ -115,13 +128,15 @@ def main (args : List String) : IO Unit := do
     let txs := genTestSequence contractTypeEnum count seed
     -- Output as JSON array
     IO.println "["
-    for i in [:txs.length] do
-      let tx := txs.get! i
-      let comma := if i < txs.length - 1 then "," else ""
-      IO.println s!"  {{\"sender\":\"{tx.sender}\",\"function\":\"{tx.functionName}\",\"args\":[{String.intercalate "," (tx.args.map toString)}]}}{comma}"
+    let mut isFirst := true
+    for tx in txs do
+      if !isFirst then IO.println ","
+      let argsStr := String.intercalate "," (tx.args.map toString)
+      let jsonStr := "  {" ++ "\"sender\":\"" ++ tx.sender ++ "\",\"function\":\"" ++ tx.functionName ++ "\",\"args\":[" ++ argsStr ++ "]}"
+      IO.print jsonStr
+      isFirst := false
+    IO.println ""
     IO.println "]"
   | _ =>
     IO.println "Usage: random-gen <contract> <count> <seed>"
     IO.println "Example: random-gen SimpleStorage 100 42"
-
-end Compiler.RandomGen

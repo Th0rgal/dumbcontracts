@@ -3,6 +3,7 @@ open Lake DSL
 
 package «dumb-contracts» where
   version := v!"0.1.0"
+  -- Cache invalidation: 2026-02-10
 
 @[default_target]
 lean_lib «DumbContracts» where

@@ -338,7 +338,9 @@ def safeCounterSpec : ContractSpec := {
       params := []
       returnType := none
       body := [
-        -- TODO: Add overflow check (current + 1 >= current)
+        -- Overflow check: require (count + 1 > count)
+        -- On overflow, MAX_UINT + 1 = 0, which is NOT > MAX_UINT, so this will revert
+        Stmt.require (Expr.gt (Expr.add (Expr.storage "count") (Expr.literal 1)) (Expr.storage "count")) "Overflow",
         Stmt.setStorage "count" (Expr.add (Expr.storage "count") (Expr.literal 1)),
         Stmt.stop
       ]
@@ -377,5 +379,25 @@ def allSpecs : List (ContractSpec × List Nat) := [
   (simpleTokenSpec, simpleTokenSelectors),
   (safeCounterSpec, safeCounterSelectors)
 ]
+
+/-!
+## Compile-Time Validation
+
+Ensure each spec has exactly the right number of selectors.
+These checks run at compile time and will fail the build if mismatched.
+-/
+
+-- Validate selector counts match function counts
+private def validateSpec (name : String) (spec : ContractSpec) (selectors : List Nat) : Bool :=
+  spec.functions.length == selectors.length
+
+-- Compile-time assertions (evaluated during type-checking)
+#guard validateSpec "SimpleStorage" simpleStorageSpec simpleStorageSelectors
+#guard validateSpec "Counter" counterSpec counterSelectors
+#guard validateSpec "Owned" ownedSpec ownedSelectors
+#guard validateSpec "Ledger" ledgerSpec ledgerSelectors
+#guard validateSpec "OwnedCounter" ownedCounterSpec ownedCounterSelectors
+#guard validateSpec "SimpleToken" simpleTokenSpec simpleTokenSelectors
+#guard validateSpec "SafeCounter" safeCounterSpec safeCounterSelectors
 
 end Compiler.Specs

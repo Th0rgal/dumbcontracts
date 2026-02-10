@@ -78,7 +78,9 @@ inductive Expr
   | sub (a b : Expr)
   | eq (a b : Expr)
   | ge (a b : Expr)
+  | gt (a b : Expr)  -- Greater than (strict)
   | lt (a b : Expr)
+  | le (a b : Expr)  -- Less than or equal
   deriving Repr
 
 inductive Stmt
@@ -140,7 +142,9 @@ private def compileExpr (fields : List Field) : Expr → YulExpr
   | Expr.sub a b => YulExpr.call "sub" [compileExpr fields a, compileExpr fields b]
   | Expr.eq a b => YulExpr.call "eq" [compileExpr fields a, compileExpr fields b]
   | Expr.ge a b => YulExpr.call "iszero" [YulExpr.call "lt" [compileExpr fields a, compileExpr fields b]]
+  | Expr.gt a b => YulExpr.call "gt" [compileExpr fields a, compileExpr fields b]
   | Expr.lt a b => YulExpr.call "lt" [compileExpr fields a, compileExpr fields b]
+  | Expr.le a b => YulExpr.call "iszero" [YulExpr.call "gt" [compileExpr fields a, compileExpr fields b]]
 termination_by e => sizeOf e
 
 -- Compile statement to Yul
@@ -230,6 +234,7 @@ private def compileConstructor (fields : List Field) (ctor : Option ConstructorS
     argLoads ++ body
 
 -- Main compilation function
+-- SAFETY: selectors.length must equal spec.functions.length (checked at compile time in Specs.lean)
 def compile (spec : ContractSpec) (selectors : List Nat) : IRContract :=
   { name := spec.name
     deploy := compileConstructor spec.fields spec.constructor

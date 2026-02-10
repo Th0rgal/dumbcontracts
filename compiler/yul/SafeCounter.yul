@@ -8,6 +8,9 @@ object "SafeCounter" {
             switch shr(224, calldataload(0))
             case 0xd09de08a {
                 /* increment() */
+                if iszero(gt(add(sload(0), 1), sload(0))) {
+                    revert(0, 0)
+                }
                 sstore(0, add(sload(0), 1))
                 stop()
             }

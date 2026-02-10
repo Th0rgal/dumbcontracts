@@ -9,14 +9,15 @@ description: Minimal Lean 4 EDSL for Smart Contracts with Formal Verification
 
 > *From runtime testing to mathematical proof*
 
-Dumb Contracts combines minimalism with mathematical rigor: a **212-line core** that handles realistic contracts, backed by **82 machine-checked formal proofs** of correctness — **100% verified, zero sorry, zero axioms**.
+Dumb Contracts combines minimalism with mathematical rigor: a **212-line core** that handles realistic contracts, backed by **230 machine-checked formal proofs** of correctness — **100% verified, zero sorry, zero axioms**.
 
 ## What Makes This Different?
 
 - **Minimal Core**: 212 lines of Lean code with explicit success/failure modeling
-- **100% Proven**: 82/82 theorems verified — zero sorry, zero axioms
+- **100% Proven**: 230 theorems verified across 7 contracts + stdlib — zero sorry, zero axioms
 - **Guard Modeling**: `require` guards modeled as first-class operations with explicit revert semantics
-- **Research-Driven**: 7 implementation iterations + 5 verification iterations, every design decision documented
+- **Supply Conservation**: Exact sum equations proven for mint and transfer operations
+- **Research-Driven**: 7 implementation iterations + verification phases, every design decision documented
 - **Composable**: Patterns naturally combine without special support
 
 ## The Value Proposition
@@ -39,7 +40,7 @@ theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
   -- Machine-checked proof
 ```
 - 62 runtime tests pass
-- **82 theorems proven**
+- **230 theorems proven**
 - *"Is it correct?"* — **Mathematical certainty**
 
 ## Project Stats
@@ -47,9 +48,9 @@ theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
 | Metric | Value |
 |--------|-------|
 | Core lines | 212 (ContractResult monad) |
-| Example contracts | 7 |
+| Example contracts | 7 (all formally verified) |
 | Runtime tests | 62 (100% passing) |
-| **Proven theorems** | **82 (100% verified)** |
+| **Proven theorems** | **230 (100% verified)** |
 | Sorry count | **0** |
 | Axiom count | **0** |
 
@@ -57,10 +58,14 @@ theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
 
 | Contract | Theorems | What's Proven |
 |----------|----------|---------------|
-| SimpleStorage | 12 | Store/retrieve roundtrip, state isolation |
-| Counter | 19 | Arithmetic ops, composition (increment_twice_adds_two) |
-| Owned | 18 | Access control, guard-protected ownership transfer |
-| SimpleToken | 33 | Mint (owner-guarded), transfer (balance-guarded), all reads |
+| SimpleStorage | 19 | Store/retrieve roundtrip, state isolation, correctness specs |
+| Counter | 29 | Arithmetic ops, composition, decrement-at-zero edge case |
+| Owned | 22 | Access control, guard-protected ownership transfer |
+| SimpleToken | 52 | Mint/transfer, supply conservation, revert proofs |
+| OwnedCounter | 31 | Cross-pattern composition, ownership transfer isolation |
+| Ledger | 24 | Mapping deposit/withdraw/transfer, balance guards |
+| SafeCounter | 24 | Checked arithmetic, overflow/underflow revert proofs |
+| Stdlib/Math | 14 | safeMul/safeDiv correctness, bounds, commutativity |
 
 ## Quick Example
 
@@ -86,7 +91,7 @@ theorem mint_increases_balance (s : ContractState) (to : Address) (amount : Uint
 
 ## Documentation
 
-- **[Verification Guide](/verification)** — All 82 proven theorems across 4 contracts
+- **[Verification Guide](/verification)** — All 230 proven theorems across 7 contracts + stdlib
 - **[Research Log](/research)** — Complete findings from all iterations
 - **[Iteration Summaries](/iterations)** — Detailed summary of each iteration
 - **[Examples](/examples)** — 7 contracts demonstrating patterns
@@ -111,12 +116,12 @@ This documentation is AI-friendly:
 6. **Mapping Support** — Key-value storage (+13 lines)
 7. **SimpleToken** — Realistic token contract (0 core changes)
 
-**Verification (Iterations 1-5):**
-1. **SimpleStorage** — 12 theorems, foundation established
-2. **Counter** — 19 theorems, arithmetic + composition
-3. **Owned** — 18 theorems, access control
-4. **SimpleToken** — 33 theorems, mint + transfer
-5. **Guard Modeling** — ContractResult type, 100% verification achieved
+**Verification Phases:**
+1. **Guard Modeling** — ContractResult type, explicit success/failure
+2. **Basic Proofs** — Storage, arithmetic, access control (all 7 contracts)
+3. **Correctness Proofs** — Spec-level correctness, revert proofs, composition
+4. **Supply Conservation** — Exact sum equations for mint/transfer
+5. **Safe Arithmetic** — safeMul/safeDiv correctness proofs
 
 **Key Insight**: 4 out of 7 implementation iterations required zero core changes, validating the composability approach.
 

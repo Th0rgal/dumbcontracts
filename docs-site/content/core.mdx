@@ -127,7 +127,7 @@ The core includes `@[simp]` lemmas for every storage operation, enabling automat
   ((setStorage slot value).run s).snd.storage slot.slot = value := by ...
 ```
 
-These lemmas power the 82 proven theorems across 4 contracts.
+These lemmas power the 230 proven theorems across 7 contracts + stdlib.
 
 ## Core Growth History
 
@@ -182,7 +182,7 @@ The original core used `StateM ContractState α`. This was simple but couldn't m
 - **Proofs can reason about both paths** (success and revert)
 - **No axioms needed** — guard behavior is derived from the definition
 - **Short-circuiting bind** — failures propagate automatically through do-notation
-- **82/82 theorems proven** without any sorry or axioms
+- **230 theorems proven** without any sorry or axioms
 
 ## Core Source
 

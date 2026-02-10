@@ -19,7 +19,6 @@ Last updated: 2026-02-10
 - Decide whether to guard old-state specs with `from ≠ to` or adopt sequential reads by default.
 - Supply accounting abstraction (list vs set/dedup semantics).
 - EDSL ergonomics: add helpers, notations, and a minimal stdlib for common patterns.
-- Iteration: add `sstoreInc` helper plus a `bumpIfNonZero` example to reduce increment boilerplate with guards.
 
 ## Recently Done
 - Lean -> Yul pipeline with runtime + creation bytecode artifacts.
@@ -49,6 +48,7 @@ Last updated: 2026-02-10
 - Added `requireEq`/`requireNeq` helpers plus a `compareAndSwap` example + Foundry test.
 - Added `requireGt` helper plus a `setIfGreater` example + Foundry test (and refactored guarded add to use it).
 - Added `sstoreAdd` helper plus a `bumpSlot` example + Foundry test (and refactored add-slot examples to use it).
+- Added `sstoreMax` helper plus an `updateMax` example + Foundry test (monotonic max update).
 - Added a `revertIf` helper, refactored `checkHealth`, and added a `setIfLess` example + Foundry test.
 - Updated compiler entries + direct EVM asm for `setIfLess`.
 - Minimal docs frontend and compressed docs.

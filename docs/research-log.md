@@ -1,6 +1,11 @@
 # Research Log
 
 ## 2026-02-10
+- Added `sstoreMax` stdlib helper to reduce max-store boilerplate.
+- Refactored `maxStore` to use `sstoreMax`.
+- Added `updateMax` example (monotonic max update against a stored slot) with Spec + proof.
+- Added Foundry test for `updateMax`.
+- Updated compiler entries + direct EVM asm for `updateMax`.
 - Added `sstoreInc` stdlib helper to increment a slot without repeating `add` boilerplate.
 - Refactored `bumpSlot` to use `sstoreInc`.
 - Added `bumpIfNonZero` example (guarded increment when slot is nonzero) with SpecR + proofs.

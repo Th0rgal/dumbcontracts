@@ -57,6 +57,9 @@ def sstoreAdd (slot delta : Expr) : Stmt :=
 def sstoreInc (slot : Expr) : Stmt :=
   sstoreAdd slot (Expr.lit 1)
 
+def sstoreMax (slot a b : Expr) : Stmt :=
+  Stmt.if_ (Expr.gt a b) (Stmt.sstore slot a) (Stmt.sstore slot b)
+
 def sloadSlot (slot : Nat) : Expr :=
   Expr.sload (Expr.lit slot)
 

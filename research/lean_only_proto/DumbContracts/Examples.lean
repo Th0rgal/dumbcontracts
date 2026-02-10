@@ -4,6 +4,7 @@ import DumbContracts.Examples.TokenBase
 import DumbContracts.Examples.Supply
 import DumbContracts.Examples.TokenTransfer
 import DumbContracts.Examples.MaxStore
+import DumbContracts.Examples.UpdateMax
 import DumbContracts.Examples.NonZeroStore
 import DumbContracts.Examples.CompareAndSwap
 import DumbContracts.Examples.InitOnce

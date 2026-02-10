@@ -14,11 +14,7 @@ open DumbContracts.Std
 def maxStoreFun : Fun :=
   { name := "maxStore"
     args := ["slot", "a", "b"]
-    body :=
-      Stmt.if_
-        (Expr.gt (v "a") (v "b"))
-        (sstoreVar "slot" (v "a"))
-        (sstoreVar "slot" (v "b"))
+    body := sstoreMax (v "slot") (v "a") (v "b")
     ret := none }
 
 def maxStoreSpec (slot a b : Nat) : Spec Store :=
@@ -32,9 +28,9 @@ theorem maxStore_meets_spec (s : Store) (slot a b : Nat) :
       | _ => False) := by
   intro _hreq
   by_cases h : a > b
-  · simp [maxStoreFun, maxStoreSpec, sstoreVar, v, execFun, execStmt, evalExpr, bindArgs, emptyEnv,
-      updateEnv, updateStore, h]
-  · simp [maxStoreFun, maxStoreSpec, sstoreVar, v, execFun, execStmt, evalExpr, bindArgs, emptyEnv,
-      updateEnv, updateStore, h]
+  · simp [maxStoreFun, maxStoreSpec, sstoreMax, sstoreVar, v, execFun, execStmt, evalExpr, bindArgs,
+      emptyEnv, updateEnv, updateStore, h]
+  · simp [maxStoreFun, maxStoreSpec, sstoreMax, sstoreVar, v, execFun, execStmt, evalExpr, bindArgs,
+      emptyEnv, updateEnv, updateStore, h]
 
 end DumbContracts.Examples

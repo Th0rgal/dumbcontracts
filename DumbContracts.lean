@@ -6,3 +6,4 @@ import DumbContracts.Examples.SafeCounter
 import DumbContracts.Examples.Owned
 import DumbContracts.Examples.OwnedCounter
 import DumbContracts.Examples.Ledger
+import DumbContracts.Examples.SimpleToken

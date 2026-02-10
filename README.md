@@ -6,48 +6,41 @@
 [![Lean](https://img.shields.io/badge/lean-4.15.0-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
-> *From runtime testing to mathematical proof*
+> From runtime testing to mathematical proof
 
-## What Makes This Different?
+An 82-line core that handles realistic smart contracts, backed by machine-checked formal proofs of correctness.
 
-**Dumb Contracts** combines minimalism with mathematical rigor:
-
-- **🎯 Minimal Core**: Just **82 lines** of Lean code
-- **✅ Proven Correct**: Machine-checked formal proofs, not just tests
-- **🔬 Research-Driven**: 7 iterations documenting every design decision
-- **🧩 Composable**: Patterns naturally combine without special support
-- **📊 Well-Tested**: 62 runtime tests + 11 formal proofs
+**Core Stats:**
+- 82 lines of Lean (minimal core)
+- 7 example contracts
+- 62 runtime tests (100% passing)
+- 11 formal proofs (100% verified)
 
 ## The Value Proposition
 
-### Before: Runtime Testing Only
+Traditional smart contract testing gives you confidence through examples. Formal verification gives you certainty through proofs.
+
+**Before (Testing Only):**
 ```lean
 def store (value : Uint256) : Contract Unit := ...
 def retrieve : Contract Uint256 := ...
 ```
-✅ 4 Foundry tests pass
-✅ 256 fuzz runs
-❓ *"Is it correct?"* → **High confidence**
+Result: High confidence from 256 fuzz runs
 
-### Now: Testing + Formal Verification
+**After (Testing + Verification):**
 ```lean
 theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
   let s' := (store value).run s |>.2
   let result := retrieve.run s' |>.1
   result = value := by
-  -- Proof here
+  -- Machine-checked proof
 ```
-✅ 4 Foundry tests pass
-✅ 256 fuzz runs
-✅ **11 theorems proven**
-❓ *"Is it correct?"* → **Mathematical certainty**
+Result: Mathematical certainty for all possible inputs
 
-## Quick Start
-
-### See It In Action
+## Quick Example
 
 ```lean
--- SimpleStorage contract
+-- Implementation
 def storedData : StorageSlot Uint256 := ⟨0⟩
 
 def store (value : Uint256) : Contract Unit := do
@@ -56,83 +49,84 @@ def store (value : Uint256) : Contract Unit := do
 def retrieve : Contract Uint256 := do
   getStorage storedData
 
--- PROVEN: After storing v, retrieve returns v
+-- Proof: retrieve always returns what store stored
 theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
   let s' := (store value).run s |>.2
   let result := retrieve.run s' |>.1
   result = value := by
-  -- Machine-checked proof
+  have h_store := store_meets_spec s value
+  have h_retrieve := retrieve_meets_spec ((store value).run s |>.2)
+  simp [store_spec] at h_store
+  simp [retrieve_spec] at h_retrieve
+  simp only [h_retrieve, h_store.1]
 ```
 
-### Build & Verify
-
+Build and verify:
 ```bash
-# Build Lean project (includes verification)
-lake build
-
-# Run runtime tests
-forge test
-
-# All examples evaluate
-lake build  # Shows #eval outputs
+lake build  # Verifies all proofs
+forge test  # Runs all tests
 ```
 
-## Architecture: Three Layers
+## Architecture
+
+Clean three-layer separation:
 
 ```
 DumbContracts/
-├── Examples/           # 🔧 Implementations (82-line core)
-│   ├── SimpleStorage   # Basic state management
-│   ├── Counter         # Arithmetic operations
-│   ├── Owned           # Access control
-│   └── SimpleToken     # Full token contract
+├── Examples/           # Implementations (82-line core)
+│   ├── SimpleStorage
+│   ├── Counter
+│   ├── Owned
+│   └── SimpleToken
 │
-├── Specs/             # 📐 Formal specifications
+├── Specs/             # Formal specifications
 │   └── SimpleStorage/
-│       ├── Spec.lean        # What it should do
-│       └── Invariants.lean  # What must always hold
+│       ├── Spec.lean
+│       └── Invariants.lean
 │
-└── Proofs/            # ✓ Machine-checked proofs
+└── Proofs/            # Machine-checked proofs
     └── SimpleStorage/
-        └── Basic.lean       # 11 proven theorems
+        └── Basic.lean
 ```
 
-**Clean separation**: Implementation, specification, and proofs never mix.
+Implementation, specification, and proofs remain completely separate.
 
 ## Proven Properties
 
-### SimpleStorage (11 theorems ✓)
+**SimpleStorage** (11 theorems verified):
 
-**Basic Correctness:**
-- ✅ `store_retrieve_correct` - Store then retrieve returns the stored value
-- ✅ `store_meets_spec` - Store satisfies its specification
-- ✅ `retrieve_meets_spec` - Retrieve satisfies its specification
+*Correctness*
+- `store_retrieve_correct` — retrieve always returns what store stored
+- `store_meets_spec` — store satisfies its formal specification
+- `retrieve_meets_spec` — retrieve satisfies its formal specification
 
-**Isolation:**
-- ✅ `setStorage_preserves_other_slots` - No interference between slots
-- ✅ `setStorage_preserves_addr_storage` - Type isolation maintained
-- ✅ `setStorage_preserves_map_storage` - Mapping storage untouched
+*Isolation*
+- `setStorage_preserves_other_slots` — operations don't interfere between slots
+- `setStorage_preserves_addr_storage` — type isolation for addresses
+- `setStorage_preserves_map_storage` — type isolation for mappings
 
-**State Preservation:**
-- ✅ `store_preserves_wellformedness` - Well-formed state maintained
-- ✅ `retrieve_preserves_state` - Read operations don't modify state
+*State Preservation*
+- `store_preserves_wellformedness` — operations maintain well-formed state
+- `retrieve_preserves_state` — read operations are pure
 
-[See VERIFICATION_ITERATION_1_SUMMARY.md for details]
+See [VERIFICATION_ITERATION_1_SUMMARY.md](VERIFICATION_ITERATION_1_SUMMARY.md) for complete details.
 
-## Examples: From Simple to Complex
+## Example Contracts
 
 | Contract | Lines | Tests | Proofs | Description |
 |----------|-------|-------|--------|-------------|
-| **SimpleStorage** | 38 | 4 | ✅ 11 | Basic state management |
-| **Counter** | 50 | 7 | 🔄 Next | Arithmetic operations |
-| **Owned** | 59 | 8 | 🔜 Soon | Access control |
-| **OwnedCounter** | 80 | 11 | 🔜 Soon | Pattern composition |
-| **Ledger** | 70 | 11 | 🔜 Soon | Mapping storage |
-| **SimpleToken** | 96 | 12 | 🔜 Soon | Full ERC20-like token |
+| SimpleStorage | 38 | 4 | 11 ✓ | Basic state management |
+| Counter | 50 | 7 | — | Arithmetic operations |
+| Owned | 59 | 8 | — | Access control |
+| OwnedCounter | 80 | 11 | — | Pattern composition |
+| Ledger | 70 | 11 | — | Mapping storage |
+| SimpleToken | 96 | 12 | — | ERC20-like token |
 
-**Total:** 7 contracts, 62 tests (100% passing), 11 proofs (100% verified)
+Total: 7 contracts, 62 tests (100% passing), 11 proofs (100% verified)
 
-## Core API: Type-Safe by Design
+## Core API
+
+The entire API in 82 lines:
 
 ```lean
 -- Types
@@ -141,7 +135,7 @@ abbrev Uint256 := Nat
 structure StorageSlot (α : Type)
 abbrev Contract (α : Type) := StateM ContractState α
 
--- Storage operations (type-safe!)
+-- Storage operations (type-safe)
 def getStorage : StorageSlot Uint256 → Contract Uint256
 def setStorage : StorageSlot Uint256 → Uint256 → Contract Unit
 def getMapping : StorageSlot (Address → Uint256) → Address → Contract Uint256
@@ -154,123 +148,86 @@ def contractAddress : Contract Address
 def require : Bool → String → Contract Unit
 ```
 
-**Type safety prevents errors at compile-time:**
+Type safety at compile-time:
 ```lean
 def owner : StorageSlot Address := ⟨0⟩
 def count : StorageSlot Uint256 := ⟨1⟩
 
-let x ← getStorage owner    -- ❌ Compile error! owner is Address, not Uint256
-let x ← getStorageAddr owner -- ✅ Correct
+getStorage owner      -- Error: type mismatch
+getStorageAddr owner  -- OK
 ```
 
-## Research: Documented Design Decisions
+## Design Evolution
 
-Every choice is documented with:
-- ✅ What was tried
-- ✅ What worked / didn't work
-- ✅ Why this approach was chosen
-- ✅ Metrics and evidence
+The project evolved through 7 documented iterations, with 4 requiring zero core changes:
 
-See:
-- **RESEARCH.md** - Complete 7-iteration research log
-- **ITERATION_*_SUMMARY.md** - Detailed iteration summaries
-- **VERIFICATION_ITERATION_1_SUMMARY.md** - Verification details
+1. **Bootstrap** — 58-line minimal core
+2. **Counter** — Arithmetic operations
+3. **Owned** — Access control (+14 lines)
+4. **OwnedCounter** — Pattern composition (0 core changes)
+5. **Math Safety** — Stdlib extensibility (0 core changes)
+6. **Mapping Support** — Key-value storage (+13 lines)
+7. **SimpleToken** — Full token contract (0 core changes)
 
-## Project Philosophy
+Then verification phase: formal proofs without changing implementations.
 
-### Minimalism
-- **82-line core** - Only essentials
-- **4 out of 7 iterations** needed zero core changes
-- **Example-driven** - Only add what examples need
+See [RESEARCH.md](RESEARCH.md) for complete design history.
 
-### Rigor
-- **Separation of concerns** - Specs, implementations, proofs separate
-- **Incremental verification** - Start simple, build up
-- **Document everything** - Every decision explained
+## Design Principles
 
-### Practicality
-- **Real contracts** - SimpleToken is deployable
-- **Runtime testing** - Foundry validates behavior
-- **Formal proofs** - Lean validates correctness
+**Minimalism** — 82-line core, only essentials. 4 of 7 iterations needed zero core changes.
+
+**Rigor** — Complete separation of specs, implementations, and proofs. Every design decision documented.
+
+**Practicality** — Real contracts with both runtime tests and formal verification.
 
 ## Verification Roadmap
 
-- [x] **SimpleStorage** - 11 theorems proven
-- [ ] **Counter** - Arithmetic correctness
-- [ ] **Owned** - Access control guarantees
-- [ ] **SimpleToken** - Complex invariants (supply = Σ balances)
+- [x] SimpleStorage — 11 theorems proven
+- [ ] Counter — Arithmetic correctness
+- [ ] Owned — Access control guarantees
+- [ ] SimpleToken — Complex invariants (total supply = sum of balances)
 
 ## Getting Started
 
-### Prerequisites
-
-- [Lean 4](https://leanprover.github.io/) (4.15.0+)
-- [Foundry](https://getfoundry.sh/) (for testing)
-
-### Installation
+Requirements: [Lean 4](https://leanprover.github.io/) (4.15.0+) and [Foundry](https://getfoundry.sh/)
 
 ```bash
-# Clone repository
 git clone https://github.com/Th0rgal/dumbcontracts.git
 cd dumbcontracts
-
-# Build Lean project
-lake build
-
-# Run tests
-forge test
+lake build   # Verifies all proofs
+forge test   # Runs all tests
 ```
 
-### Writing Your First Verified Contract
+To write a verified contract:
+1. Implementation → `DumbContracts/Examples/`
+2. Specification → `DumbContracts/Specs/`
+3. Proofs → `DumbContracts/Proofs/`
+4. Tests → `test/`
 
-1. **Write implementation** in `DumbContracts/Examples/`
-2. **Write specification** in `DumbContracts/Specs/`
-3. **Prove properties** in `DumbContracts/Proofs/`
-4. **Test runtime behavior** in `test/`
-
-See `VERIFICATION_ITERATION_1_SUMMARY.md` for a complete example.
+See [VERIFICATION_ITERATION_1_SUMMARY.md](VERIFICATION_ITERATION_1_SUMMARY.md) for a complete walkthrough.
 
 ## Documentation
 
-- 📖 **[Research Log](RESEARCH.md)** - Complete design history
-- 📊 **[Iteration Summaries](ITERATION_*_SUMMARY.md)** - Detailed breakdowns
-- ✓ **[Verification Summary](VERIFICATION_ITERATION_1_SUMMARY.md)** - Proof details
-- 🌐 **[Docs Website](docs-site/)** - AI-friendly documentation
+- [RESEARCH.md](RESEARCH.md) — Complete design history
+- [ITERATION_*_SUMMARY.md](ITERATION_1_SUMMARY.md) — Detailed iteration breakdowns
+- [VERIFICATION_ITERATION_1_SUMMARY.md](VERIFICATION_ITERATION_1_SUMMARY.md) — Proof details
+- [docs-site/](docs-site/) — AI-friendly documentation website
 
-## Contributing
+## Key Results
 
-This is a research project exploring:
-- How minimal can a practical EDSL be?
-- How to verify smart contracts incrementally?
-- What proof patterns work well in Lean 4?
+**Minimalism** — 82-line core sufficient for realistic token contracts. 4 of 7 iterations required zero core changes.
 
-Contributions welcome! See current research goals in `STATUS.md`.
+**Verification** — 11 theorems proven for SimpleStorage, establishing clear patterns for verifying complex contracts.
 
-## Key Achievements
+**Composability** — Patterns combine naturally without special support (OwnedCounter, SimpleToken).
 
-🎯 **Minimalism Validated**
-- 82-line core sufficient for realistic contracts
-- 4/7 iterations with zero core changes
-
-✅ **Verification Established**
-- 11 theorems proven for SimpleStorage
-- Clear path to verifying complex contracts
-
-🧩 **Composability Proven**
-- Patterns combine naturally (OwnedCounter, SimpleToken)
-- No special composition support needed
-
-📊 **Well-Tested**
-- 62 Foundry tests (100% passing)
-- 2,816 fuzz runs
-- 11 formal proofs
+**Testing** — 62 Foundry tests (100% passing), 2,816 fuzz runs, 11 formal proofs.
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details
+MIT
 
 ---
-
-**Built with ❤️ using Lean 4**
 
 *From runtime confidence to mathematical certainty*

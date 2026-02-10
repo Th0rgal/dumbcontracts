@@ -1,4 +1,4 @@
-object "Counter" {
+object "SimpleStorage" {
     code {
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
@@ -6,18 +6,14 @@ object "Counter" {
     object "runtime" {
         code {
             switch shr(224, calldataload(0))
-            case 0xd09de08a {
-                /* increment() */
-                sstore(0, add(sload(0), 1))
+            case 0x6057361d {
+                /* store() */
+                let value := calldataload(4)
+                sstore(0, value)
                 stop()
             }
-            case 0x2baeceb7 {
-                /* decrement() */
-                sstore(0, sub(sload(0), 1))
-                stop()
-            }
-            case 0xa87d942c {
-                /* getCount() */
+            case 0x2e64cec1 {
+                /* retrieve() */
                 mstore(0, sload(0))
                 return(0, 32)
             }

@@ -90,14 +90,14 @@ This lets proofs reason about both the success path and the revert path of guard
 | 7 | `increment_preserves_other_slots` | Other slots unchanged |
 | 8 | `decrement_meets_spec` | Decrement satisfies spec |
 | 9 | `decrement_subtracts_one` | Count decreases by exactly 1 |
-| 10 | `increment_decrement_inverse` | Increment then decrement = identity |
-| 11 | `decrement_increment_inverse` | Decrement then increment = identity |
+| 10 | `increment_decrement_inverse` | Increment then decrement equals identity |
+| 11 | `decrement_increment_inverse` | Decrement then increment equals identity |
 | 12 | `increment_twice_adds_two` | Two increments add 2 |
 | 13 | `increment_preserves_sender` | Sender preserved |
 | 14 | `increment_preserves_address` | Contract address preserved |
 | 15 | `increment_preserves_wellformedness` | Well-formedness maintained |
-| 16 | `constructor_increment_gives_one` | Constructor then increment = 1 |
-| 17 | `constructor_getValue_gives_zero` | Constructor then getValue = 0 |
+| 16 | `constructor_increment_gives_one` | Constructor then increment equals 1 |
+| 17 | `constructor_getValue_gives_zero` | Constructor then getValue equals 0 |
 | 18 | `decrement_preserves_other_slots` | Other slots unchanged |
 | 19 | `decrement_preserves_wellformedness` | Well-formedness maintained |
 
@@ -113,7 +113,7 @@ This lets proofs reason about both the success path and the revert path of guard
 | 6 | `two_increments_meets_spec` | Two increments composition |
 | 7 | `increment_decrement_meets_cancel` | Cancellation property |
 | 8 | `getCount_preserves_wellformedness` | Read-only well-formedness |
-| 9 | `decrement_getCount_correct` | Decrement then getCount = count - 1 |
+| 9 | `decrement_getCount_correct` | Decrement then getCount equals count - 1 |
 | 10 | `decrement_at_zero_stays_zero` | Decrementing at zero saturates to zero |
 
 ### Owned (22 theorems: 18 Basic + 4 Correctness)
@@ -123,12 +123,12 @@ This lets proofs reason about both the success path and the revert path of guard
 | # | Theorem | Property |
 |---|---------|----------|
 | 1 | `constructor_meets_spec` | Constructor sets owner to sender |
-| 2 | `constructor_sets_owner` | Owner = deployer |
+| 2 | `constructor_sets_owner` | Owner equals deployer |
 | 3 | `getOwner_meets_spec` | getOwner reads correct slot |
 | 4 | `getOwner_returns_owner` | Returns stored owner |
 | 5 | `isOwner_correct_when_owner` | isOwner returns true for owner |
 | 6 | `isOwner_correct_when_not_owner` | isOwner returns false for non-owner |
-| 7 | `constructor_getOwner_composition` | Constructor then getOwner = sender |
+| 7 | `constructor_getOwner_composition` | Constructor then getOwner equals sender |
 | 8-12 | Storage preservation theorems | Slots, sender, address preserved |
 | 13 | `constructor_preserves_wellformedness` | Well-formedness maintained |
 | 14 | `transferOwnership_preserves_other_slots` | Other slots unchanged |
@@ -188,9 +188,9 @@ This lets proofs reason about both the success path and the revert path of guard
 | # | Theorem | Property |
 |---|---------|----------|
 | 1 | `constructor_establishes_supply_bounds` | Constructor establishes supply invariant |
-| 2 | `mint_sum_equation` | new_sum = old_sum + count(to) * amount |
-| 3 | `transfer_sum_equation` | new_sum + count(sender)*amt = old_sum + count(to)*amt |
-| 4 | `transfer_sum_bounded` | new_sum <= old_sum + count(to) * amount |
+| 2 | `mint_sum_equation` | `new_sum = old_sum + count(to) * amount` |
+| 3 | `transfer_sum_equation` | `new_sum + count(sender)*amt = old_sum + count(to)*amt` |
+| 4 | `transfer_sum_bounded` | `new_sum <= old_sum + count(to) * amount` |
 | 5-9 | Helper lemmas | countOcc, map_sum_point_update, map_sum_transfer_eq |
 
 Transfer proofs require `sender != to` because the implementation writes the recipient balance last, overwriting the sender deduction on self-transfer. Supply conservation uses exact sum equations rather than the `supply_bounds_balances` invariant, which cannot be preserved for lists with duplicate addresses.
@@ -260,13 +260,13 @@ Transfer proofs require `sender != to` because the implementation writes the rec
 
 | # | Theorem | Property |
 |---|---------|----------|
-| 1 | `deposit_sum_equation` | new_sum = old_sum + count(sender) * amount |
-| 2 | `deposit_sum_singleton_sender` | For unique sender: new_sum = old_sum + amount |
-| 3 | `withdraw_sum_equation` | new_sum + count(sender) * amount = old_sum |
-| 4 | `withdraw_sum_singleton_sender` | For unique sender: new_sum + amount = old_sum |
-| 5 | `transfer_sum_equation` | new_sum + count(sender)*amt = old_sum + count(to)*amt |
-| 6 | `transfer_sum_preserved_unique` | For unique sender & to: new_sum = old_sum |
-| 7 | `transfer_sum_bounded` | new_sum <= old_sum + count(to) * amount |
+| 1 | `deposit_sum_equation` | `new_sum = old_sum + count(sender) * amount` |
+| 2 | `deposit_sum_singleton_sender` | For unique sender: `new_sum = old_sum + amount` |
+| 3 | `withdraw_sum_equation` | `new_sum + count(sender) * amount = old_sum` |
+| 4 | `withdraw_sum_singleton_sender` | For unique sender: `new_sum + amount = old_sum` |
+| 5 | `transfer_sum_equation` | `new_sum + count(sender)*amt = old_sum + count(to)*amt` |
+| 6 | `transfer_sum_preserved_unique` | For unique sender & to: `new_sum = old_sum` |
+| 7 | `transfer_sum_bounded` | `new_sum <= old_sum + count(to) * amount` |
 | 8 | `deposit_withdraw_sum_cancel` | Deposit then withdraw preserves total sum |
 | 9-13 | Helper lemmas | countOcc, map_sum_point_update/decrease, map_sum_transfer_eq |
 
@@ -291,7 +291,7 @@ Transfer proofs require `sender != to` because the implementation writes the rec
 | 3-4 | Storage isolation | increment/decrement preserve storage isolation |
 | 5-6 | Read-only | getCount preserves context, well-formedness |
 | 7 | `increment_decrement_cancel` | Increment then decrement cancellation |
-| 8 | `decrement_getCount_correct` | Decrement then getCount = count - 1 |
+| 8 | `decrement_getCount_correct` | Decrement then getCount equals count - 1 |
 
 ### Stdlib/Math (14 theorems)
 
@@ -299,17 +299,17 @@ Transfer proofs require `sender != to` because the implementation writes the rec
 |---|---------|----------|
 | 1 | `safeMul_some` | Returns product when no overflow |
 | 2 | `safeMul_none` | Returns none on overflow |
-| 3 | `safeMul_zero_left` | 0 * b = 0, always safe |
-| 4 | `safeMul_zero_right` | a * 0 = 0, always safe |
-| 5 | `safeMul_one_left` | 1 * b = b when bounded |
-| 6 | `safeMul_one_right` | a * 1 = a when bounded |
+| 3 | `safeMul_zero_left` | 0 * b equals 0, always safe |
+| 4 | `safeMul_zero_right` | a * 0 equals 0, always safe |
+| 5 | `safeMul_one_left` | 1 * b equals b when bounded |
+| 6 | `safeMul_one_right` | a * 1 equals a when bounded |
 | 7 | `safeMul_comm` | Commutativity |
-| 8 | `safeMul_result_bounded` | Successful result <= MAX_UINT256 |
+| 8 | `safeMul_result_bounded` | Successful result less than or equal to MAX_UINT256 |
 | 9 | `safeDiv_some` | Returns quotient when divisor nonzero |
 | 10 | `safeDiv_none` | Returns none on division by zero |
-| 11 | `safeDiv_zero_numerator` | 0 / b = 0 |
-| 12 | `safeDiv_by_one` | a / 1 = a |
-| 13 | `safeDiv_self` | a / a = 1 (when a > 0) |
+| 11 | `safeDiv_zero_numerator` | 0 / b equals 0 |
+| 12 | `safeDiv_by_one` | a / 1 equals a |
+| 13 | `safeDiv_self` | a / a equals 1 (when a > 0) |
 | 14 | `safeDiv_result_le_numerator` | Result never exceeds numerator |
 
 ## Proof techniques

@@ -112,30 +112,35 @@ theorem isOwner_returns_correct_value (s : ContractState) :
 
 /-! ## transferOwnership Correctness
 
-Note: These proofs assume onlyOwner succeeds (caller is owner).
-Full verification would require modeling require behavior.
+These proofs show that when the caller is the current owner,
+transferOwnership correctly updates the owner address.
+The key insight: with ContractResult, require/onlyOwner behavior
+is fully modeled and can be unfolded in proofs.
 -/
-
--- Axiom: require succeeds when condition is true
--- This models the expected behavior of require in a successful execution path
-axiom require_succeeds (cond : Bool) (msg : String) (s : ContractState) :
-  cond = true →
-  (require cond msg).run s = ContractResult.success () s
 
 theorem transferOwnership_meets_spec_when_owner (s : ContractState) (newOwner : Address)
   (h_is_owner : s.sender = s.storageAddr 0) :
   let s' := ((transferOwnership newOwner).run s).snd
   transferOwnership_spec newOwner s s' := by
-  simp [transferOwnership, transferOwnership_spec]
-  -- We need to handle the onlyOwner guard
-  -- For now, we'll use sorry and document this as a limitation
-  sorry
+  -- Unfold the full execution: transferOwnership → onlyOwner → isOwner → require → setStorageAddr
+  simp only [transferOwnership, onlyOwner, isOwner, owner,
+    msgSender, getStorageAddr, setStorageAddr,
+    DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    transferOwnership_spec]
+  -- After unfolding, the guard condition is (s.sender == s.storageAddr 0)
+  -- Since h_is_owner tells us s.sender = s.storageAddr 0, the guard passes
+  simp [h_is_owner]
+  intro slot h_neq h_eq
+  exact absurd h_eq h_neq
 
 theorem transferOwnership_changes_owner_when_allowed (s : ContractState) (newOwner : Address)
   (h_is_owner : s.sender = s.storageAddr 0) :
   let s' := ((transferOwnership newOwner).run s).snd
   s'.storageAddr 0 = newOwner := by
-  sorry -- Requires modeling onlyOwner/require behavior
+  have h := transferOwnership_meets_spec_when_owner s newOwner h_is_owner
+  simp [transferOwnership_spec] at h
+  exact h.1
 
 /-! ## Composition Properties -/
 
@@ -171,7 +176,8 @@ theorem getOwner_preserves_wellformedness (s : ContractState) (h : WellFormedSta
 
 /-! ## Summary of Proven Properties
 
-Fully Proven (10 theorems):
+All 18 theorems fully proven with zero sorry and zero axioms:
+
 1. setStorageAddr_updates_owner
 2. getStorageAddr_reads_owner
 3. setStorageAddr_preserves_other_slots
@@ -185,18 +191,11 @@ Fully Proven (10 theorems):
 11. getOwner_preserves_state
 12. isOwner_meets_spec
 13. isOwner_returns_correct_value
-14. constructor_getOwner_correct
-15. constructor_preserves_wellformedness
-16. getOwner_preserves_wellformedness
-
-Partially Proven (with assumptions):
-- transferOwnership_meets_spec_when_owner (requires require modeling)
-- transferOwnership_changes_owner_when_allowed (requires require modeling)
-
-Limitations:
-- onlyOwner guard behavior not fully modeled
-- require failure paths not captured
-- Access control enforcement relies on axioms about require
+14. transferOwnership_meets_spec_when_owner ✅ (guard fully modeled)
+15. transferOwnership_changes_owner_when_allowed ✅ (guard fully modeled)
+16. constructor_getOwner_correct
+17. constructor_preserves_wellformedness
+18. getOwner_preserves_wellformedness
 -/
 
 end DumbContracts.Proofs.Owned

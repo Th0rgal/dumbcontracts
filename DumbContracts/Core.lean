@@ -41,10 +41,11 @@ inductive ContractResult (α : Type) where
 namespace ContractResult
 
 -- Projections for backward compatibility with proofs
--- These assume success (proofs will ensure no revert happens)
-def fst {α : Type} : ContractResult α → α
+-- fst extracts the value from success; for revert, uses default
+-- (proofs that use fst always show the result is success)
+def fst {α : Type} [Inhabited α] : ContractResult α → α
   | success a _ => a
-  | revert _ _ => sorry  -- Proofs will show this case doesn't occur
+  | revert _ _ => default
 
 def snd {α : Type} : ContractResult α → ContractState
   | success _ s => s
@@ -87,10 +88,10 @@ def ContractResult.getState {α : Type} : ContractResult α → ContractState
 -- These helpers assume the contract succeeds and extract the result/state
 namespace Contract
 
-def runValue {α : Type} (c : Contract α) (s : ContractState) : α :=
+def runValue {α : Type} [Inhabited α] (c : Contract α) (s : ContractState) : α :=
   match c s with
   | ContractResult.success a _ => a
-  | ContractResult.revert _ _ => sorry  -- Proofs will show this doesn't occur
+  | ContractResult.revert _ _ => default
 
 def runState {α : Type} (c : Contract α) (s : ContractState) : ContractState :=
   match c s with
@@ -191,6 +192,17 @@ def require (condition : Bool) (message : String) : Contract Unit :=
   fun s => if condition
            then ContractResult.success () s
            else ContractResult.revert message s
+
+-- Simp lemmas for require
+@[simp] theorem require_true (msg : String) (s : ContractState) :
+  (require true msg).run s = ContractResult.success () s := by rfl
+
+@[simp] theorem require_false (msg : String) (s : ContractState) :
+  (require false msg).run s = ContractResult.revert msg s := by rfl
+
+theorem require_succeeds (cond : Bool) (msg : String) (s : ContractState) :
+  cond = true → (require cond msg).run s = ContractResult.success () s := by
+  intro h; subst h; rfl
 
 -- Monad instance for do-notation
 instance : Monad Contract where

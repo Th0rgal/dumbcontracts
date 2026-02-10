@@ -30,6 +30,7 @@ import DumbContracts.Specs.SimpleToken.Invariants
 import DumbContracts.Proofs.SimpleToken.Basic
 import DumbContracts.Proofs.SimpleToken.Correctness
 import DumbContracts.Proofs.SimpleToken.Supply
+import DumbContracts.Proofs.SimpleToken.Isolation
 
 import DumbContracts.Specs.OwnedCounter.Spec
 import DumbContracts.Specs.OwnedCounter.Invariants
@@ -40,6 +41,7 @@ import DumbContracts.Specs.Ledger.Spec
 import DumbContracts.Specs.Ledger.Invariants
 import DumbContracts.Proofs.Ledger.Basic
 import DumbContracts.Proofs.Ledger.Correctness
+import DumbContracts.Proofs.Ledger.Conservation
 
 import DumbContracts.Specs.SafeCounter.Spec
 import DumbContracts.Specs.SafeCounter.Invariants

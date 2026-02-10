@@ -1,12 +1,14 @@
 import DumbContracts.Examples.TokenBase
 import DumbContracts.Lang
 import DumbContracts.Semantics
+import DumbContracts.Stdlib
 
 namespace DumbContracts.Examples
 
 open DumbContracts.Lang
 open DumbContracts.Semantics
 open DumbContracts
+open DumbContracts.Std
 
 /-- Simple ERC20-style transfer. -/
 
@@ -19,11 +21,9 @@ def transferFun : Fun :=
       (Stmt.if_
         (Expr.lt (Expr.sload (Expr.add (Expr.lit 1000) (Expr.var "from"))) (Expr.var "amount"))
         Stmt.revert
-        (Stmt.sstore
+        (sstoreSub
             (Expr.add (Expr.lit 1000) (Expr.var "from"))
-            (Expr.sub
-              (Expr.sload (Expr.add (Expr.lit 1000) (Expr.var "from")))
-              (Expr.var "amount"))
+            (Expr.var "amount")
           ;;
           Stmt.sstore
             (Expr.add (Expr.lit 1000) (Expr.var "to"))
@@ -111,7 +111,7 @@ theorem transfer_meets_specR_ok (s : Store) (from to amount : Nat) :
   have hbal : s (balanceSlot from) >= amount := hreq.right
   have hnotlt : ¬ s (balanceSlot from) < amount := by
     exact not_lt_of_ge hbal
-  simp [transferSpecR, transferFun, execFun, execStmt, evalExpr, bindArgs, emptyEnv,
+  simp [transferSpecR, transferFun, sstoreSub, execFun, execStmt, evalExpr, bindArgs, emptyEnv,
     updateEnv, updateStore, balanceSlot, setBalance, hto, hnotlt]
 
 theorem transfer_meets_specRNoSelf_ok (s : Store) (from to amount : Nat) :
@@ -134,7 +134,7 @@ theorem transfer_meets_specRSeq_ok (s : Store) (from to amount : Nat) :
   have hbal : s (balanceSlot from) >= amount := hreq.right
   have hnotlt : ¬ s (balanceSlot from) < amount := by
     exact not_lt_of_ge hbal
-  simp [transferSpecRSeq, transferStoreSeq, transferFun, execFun, execStmt, evalExpr,
+  simp [transferSpecRSeq, transferStoreSeq, transferFun, sstoreSub, execFun, execStmt, evalExpr,
     bindArgs, emptyEnv, updateEnv, updateStore, balanceSlot, setBalance, hto, hnotlt]
 
 theorem transfer_meets_specR_reverts (s : Store) (from to amount : Nat) :
@@ -143,13 +143,13 @@ theorem transfer_meets_specR_reverts (s : Store) (from to amount : Nat) :
   intro hrev
   cases hrev with
   | inl hto =>
-      simp [transferFun, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
+      simp [transferFun, sstoreSub, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
         updateStore, balanceSlot, setBalance, hto]
   | inr hlt =>
       by_cases hto : to = 0
-      · simp [transferFun, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
+      · simp [transferFun, sstoreSub, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
           updateStore, balanceSlot, setBalance, hto]
-      · simp [transferFun, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
+      · simp [transferFun, sstoreSub, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
           updateStore, balanceSlot, setBalance, hto, hlt]
 
 -- Aliasing boundary facts.
@@ -168,7 +168,7 @@ theorem transfer_self_noop (s : Store) (from amount : Nat)
             (updateStore s (balanceSlot from) (s (balanceSlot from) - amount))
             (balanceSlot from)
             (s (balanceSlot from) - amount + amount)) := by
-    simp [transferFun, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
+    simp [transferFun, sstoreSub, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv,
       updateStore, balanceSlot, hto, hnotlt]
   have hshadow :
       updateStore

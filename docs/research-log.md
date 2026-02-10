@@ -1,6 +1,11 @@
 # Research Log
 
 ## 2026-02-10
+- Added `sstoreSub` stdlib helper for slot decrements.
+- Refactored `transfer` to use `sstoreSub` for balance subtraction.
+- Added `subIfEnough` example (guarded decrement when slot >= delta) with SpecR + proofs.
+- Added Foundry test for `subIfEnough`.
+- Updated compiler entries + direct EVM asm for `subIfEnough`.
 - Added `requireBetween` stdlib helper for strict range guards.
 - Refactored `setIfBetween` to use `requireBetween`.
 - Added `addIfBetween` example (guarded add on `min < delta < max`) with SpecR + proofs.

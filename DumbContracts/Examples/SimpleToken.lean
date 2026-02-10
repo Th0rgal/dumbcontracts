@@ -4,18 +4,20 @@
   This contract shows:
   - Combining Owned (access control) + Ledger (balances mapping) patterns
   - Owner-controlled minting
-  - Public transfer operations
+  - Public transfer operations with EVM modular arithmetic
   - Total supply tracking
   - Pattern composition with mappings works seamlessly
 
-  Pattern: Token contract (ERC20-like, minimal)
+  Pattern: Token contract (ERC20-like, minimal) with EVM-compatible operations
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 
 namespace DumbContracts.Examples.SimpleToken
 
 open DumbContracts
+open DumbContracts.EVM.Uint256
 
 -- Storage layout
 def owner : StorageSlot Address := ⟨0⟩
@@ -38,23 +40,23 @@ def constructor (initialOwner : Address) : Contract Unit := do
   setStorageAddr owner initialOwner
   setStorage totalSupply 0
 
--- Mint tokens to an address (owner-only)
+-- Mint tokens to an address (owner-only, with EVM modular arithmetic)
 def mint (to : Address) (amount : Uint256) : Contract Unit := do
   onlyOwner
   let currentBalance ← getMapping balances to
-  setMapping balances to (currentBalance + amount)
+  setMapping balances to (add currentBalance amount)
   let currentSupply ← getStorage totalSupply
-  setStorage totalSupply (currentSupply + amount)
+  setStorage totalSupply (add currentSupply amount)
 
--- Transfer tokens from caller to another address
+-- Transfer tokens from caller to another address (with EVM modular arithmetic)
 def transfer (to : Address) (amount : Uint256) : Contract Unit := do
   let sender ← msgSender
   let senderBalance ← getMapping balances sender
   require (senderBalance >= amount) "Insufficient balance"
 
   let recipientBalance ← getMapping balances to
-  setMapping balances sender (senderBalance - amount)
-  setMapping balances to (recipientBalance + amount)
+  setMapping balances sender (sub senderBalance amount)
+  setMapping balances to (add recipientBalance amount)
 
 -- Get balance of an address
 def balanceOf (addr : Address) : Contract Uint256 := do

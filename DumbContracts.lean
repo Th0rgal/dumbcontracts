@@ -24,6 +24,7 @@ import DumbContracts.Proofs.Owned.Basic
 import DumbContracts.Specs.SimpleToken.Spec
 import DumbContracts.Specs.SimpleToken.Invariants
 import DumbContracts.Proofs.SimpleToken.Basic
+import DumbContracts.Proofs.SimpleToken.Correctness
 
 import DumbContracts.Specs.OwnedCounter.Spec
 import DumbContracts.Specs.OwnedCounter.Invariants

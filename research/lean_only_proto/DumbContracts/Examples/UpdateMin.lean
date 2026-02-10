@@ -15,8 +15,7 @@ def updateMinFun : Fun :=
   { name := "updateMin"
     args := ["slot", "value"]
     body :=
-      letSload "current" (v "slot")
-        (sstoreMin (v "slot") (v "current") (v "value"))
+      sstoreIfLt (v "slot") (v "value")
     ret := none }
 
 def updateMinSpec (slot value : Nat) : Spec Store :=
@@ -29,10 +28,10 @@ theorem updateMin_meets_spec (s : Store) (slot value : Nat) :
       | ExecResult.ok _ s' => (updateMinSpec slot value).ensures s s'
       | _ => False) := by
   intro _hreq
-  by_cases h : s slot < value
-  · simp [updateMinFun, updateMinSpec, letSload, sstoreMin, v, execFun, execStmt, evalExpr,
+  by_cases h : value < s slot
+  · simp [updateMinFun, updateMinSpec, sstoreIfLt, letSload, v, execFun, execStmt, evalExpr,
       bindArgs, emptyEnv, updateEnv, updateStore, h]
-  · simp [updateMinFun, updateMinSpec, letSload, sstoreMin, v, execFun, execStmt, evalExpr,
+  · simp [updateMinFun, updateMinSpec, sstoreIfLt, letSload, v, execFun, execStmt, evalExpr,
       bindArgs, emptyEnv, updateEnv, updateStore, h]
 
 end DumbContracts.Examples

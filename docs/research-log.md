@@ -118,3 +118,10 @@
 - Updated compiler entries + direct EVM asm wiring for `initDouble`.
 - `end_to_end` initially failed due to direct EVM asm mismatch in `initDouble`; fixed by aligning the stack order (`swap1` prelude + `swap1` before `sstore`) with solc output.
 - Ran `PATH=/opt/lean-4.27.0/bin:$PATH lake build`, `./scripts/end_to_end.sh`, and `./scripts/foundry_test_generated.sh` (all green).
+- Added `sstoreIfLt` stdlib helper to avoid redundant stores when capping a slot.
+- Refactored `updateMin` to use `sstoreIfLt` (skip store when the slot is already below the cap).
+- Added `capSlot` example (cap a slot to a maximum without reverting) with Spec + proof.
+- Added Foundry test for `capSlot`.
+- Updated compiler entries + direct EVM asm wiring for `updateMin` and `capSlot`.
+- `end_to_end` initially failed due to direct EVM asm block layout for `capSlot`/`updateMin`; fixed by matching solc's `jump(tag_out)` shape and using `PUSH0` for zero.
+- Ran `PATH=/opt/lean-4.27.0/bin:$PATH lake build`, `./scripts/end_to_end.sh`, and `./scripts/foundry_test_generated.sh` (all green).

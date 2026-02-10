@@ -69,6 +69,13 @@ def sstoreIfEq (slot expected value : Expr) : Stmt :=
 def sstoreIfZero (slot value : Expr) : Stmt :=
   letSload "current" slot (requireZero (Expr.var "current") (Stmt.sstore slot value))
 
+def sstoreIfLt (slot value : Expr) : Stmt :=
+  letSload "current" slot
+    (Stmt.if_
+      (Expr.lt value (Expr.var "current"))
+      (Stmt.sstore slot value)
+      Stmt.skip)
+
 def sstoreAdd (slot delta : Expr) : Stmt :=
   Stmt.sstore slot (Expr.add (Expr.sload slot) delta)
 

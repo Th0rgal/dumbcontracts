@@ -201,7 +201,7 @@ contract DifferentialSimpleStorage is YulTestBase {
 
         // Find the slot pattern
         if (jsonBytes.length < slotPattern.length) return type(uint256).max;
-        for (uint i = 0; i < jsonBytes.length - slotPattern.length; i++) {
+        for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
             bool found = true;
             for (uint j = 0; j < slotPattern.length; j++) {
                 if (jsonBytes[i + j] != slotPattern[j]) {
@@ -213,7 +213,8 @@ contract DifferentialSimpleStorage is YulTestBase {
                 // Found the slot, now find the value after it
                 // Look for "value": pattern
                 bytes memory valuePattern = bytes("\"value\":");
-                for (uint k = i; k < jsonBytes.length - valuePattern.length; k++) {
+                if (jsonBytes.length < valuePattern.length) return type(uint256).max;
+                for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
                     bool valueFound = true;
                     for (uint l = 0; l < valuePattern.length; l++) {
                         if (jsonBytes[k + l] != valuePattern[l]) {

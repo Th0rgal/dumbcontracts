@@ -31,11 +31,13 @@ object "SimpleToken" {
                 /* transfer() */
                 let to := and(calldataload(4), 0xffffffffffffffffffffffffffffffffffffffff)
                 let amount := calldataload(36)
-                if iszero(iszero(lt(sload(mappingSlot(1, caller())), amount))) {
+                let senderBal := sload(mappingSlot(1, caller()))
+                let recipientBal := sload(mappingSlot(1, to))
+                if iszero(iszero(lt(senderBal, amount))) {
                     revert(0, 0)
                 }
-                sstore(mappingSlot(1, caller()), sub(sload(mappingSlot(1, caller())), amount))
-                sstore(mappingSlot(1, to), add(sload(mappingSlot(1, to)), amount))
+                sstore(mappingSlot(1, caller()), sub(senderBal, amount))
+                sstore(mappingSlot(1, to), add(recipientBal, amount))
                 stop()
             }
             case 0x70a08231 {

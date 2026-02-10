@@ -159,13 +159,16 @@ def ledgerSpec : ContractSpec := {
       ]
       returnType := none
       body := [
+        -- Pre-load both balances to match EDSL semantics (prevents self-transfer bug)
+        Stmt.letVar "senderBal" (Expr.mapping "balances" Expr.caller),
+        Stmt.letVar "recipientBal" (Expr.mapping "balances" (Expr.param "to")),
         Stmt.require
-          (Expr.ge (Expr.mapping "balances" Expr.caller) (Expr.param "amount"))
+          (Expr.ge (Expr.localVar "senderBal") (Expr.param "amount"))
           "Insufficient balance",
         Stmt.setMapping "balances" Expr.caller
-          (Expr.sub (Expr.mapping "balances" Expr.caller) (Expr.param "amount")),
+          (Expr.sub (Expr.localVar "senderBal") (Expr.param "amount")),
         Stmt.setMapping "balances" (Expr.param "to")
-          (Expr.add (Expr.mapping "balances" (Expr.param "to")) (Expr.param "amount")),
+          (Expr.add (Expr.localVar "recipientBal") (Expr.param "amount")),
         Stmt.stop
       ]
     },
@@ -285,13 +288,16 @@ def simpleTokenSpec : ContractSpec := {
       ]
       returnType := none
       body := [
+        -- Pre-load both balances to match EDSL semantics (prevents self-transfer bug)
+        Stmt.letVar "senderBal" (Expr.mapping "balances" Expr.caller),
+        Stmt.letVar "recipientBal" (Expr.mapping "balances" (Expr.param "to")),
         Stmt.require
-          (Expr.ge (Expr.mapping "balances" Expr.caller) (Expr.param "amount"))
+          (Expr.ge (Expr.localVar "senderBal") (Expr.param "amount"))
           "Insufficient balance",
         Stmt.setMapping "balances" Expr.caller
-          (Expr.sub (Expr.mapping "balances" Expr.caller) (Expr.param "amount")),
+          (Expr.sub (Expr.localVar "senderBal") (Expr.param "amount")),
         Stmt.setMapping "balances" (Expr.param "to")
-          (Expr.add (Expr.mapping "balances" (Expr.param "to")) (Expr.param "amount")),
+          (Expr.add (Expr.localVar "recipientBal") (Expr.param "amount")),
         Stmt.stop
       ]
     },

@@ -74,6 +74,7 @@ inductive Expr
   | storage (field : String)
   | mapping (field : String) (key : Expr)
   | caller
+  | localVar (name : String)  -- Reference to local variable
   | add (a b : Expr)
   | sub (a b : Expr)
   | eq (a b : Expr)
@@ -84,6 +85,7 @@ inductive Expr
   deriving Repr
 
 inductive Stmt
+  | letVar (name : String) (value : Expr)  -- Declare local variable
   | setStorage (field : String) (value : Expr)
   | setMapping (field : String) (key : Expr) (value : Expr)
   | require (cond : Expr) (message : String)
@@ -138,6 +140,7 @@ private def compileExpr (fields : List Field) : Expr → YulExpr
     | some slot => YulExpr.call "sload" [YulExpr.call "mappingSlot" [YulExpr.lit slot, compileExpr fields key]]
     | none => YulExpr.lit 0
   | Expr.caller => YulExpr.call "caller" []
+  | Expr.localVar name => YulExpr.ident name
   | Expr.add a b => YulExpr.call "add" [compileExpr fields a, compileExpr fields b]
   | Expr.sub a b => YulExpr.call "sub" [compileExpr fields a, compileExpr fields b]
   | Expr.eq a b => YulExpr.call "eq" [compileExpr fields a, compileExpr fields b]
@@ -149,6 +152,8 @@ termination_by e => sizeOf e
 
 -- Compile statement to Yul
 private def compileStmt (fields : List Field) : Stmt → List YulStmt
+  | Stmt.letVar name value =>
+    [YulStmt.let_ name (compileExpr fields value)]
   | Stmt.setStorage field value =>
     match findFieldSlot fields field with
     | some slot => [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, compileExpr fields value])]

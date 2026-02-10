@@ -30,11 +30,13 @@ object "Ledger" {
                 /* transfer() */
                 let to := and(calldataload(4), 0xffffffffffffffffffffffffffffffffffffffff)
                 let amount := calldataload(36)
-                if iszero(iszero(lt(sload(mappingSlot(0, caller())), amount))) {
+                let senderBal := sload(mappingSlot(0, caller()))
+                let recipientBal := sload(mappingSlot(0, to))
+                if iszero(iszero(lt(senderBal, amount))) {
                     revert(0, 0)
                 }
-                sstore(mappingSlot(0, caller()), sub(sload(mappingSlot(0, caller())), amount))
-                sstore(mappingSlot(0, to), add(sload(mappingSlot(0, to)), amount))
+                sstore(mappingSlot(0, caller()), sub(senderBal, amount))
+                sstore(mappingSlot(0, to), add(recipientBal, amount))
                 stop()
             }
             case 0xf8b2cb4f {

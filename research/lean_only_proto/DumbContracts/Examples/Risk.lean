@@ -34,9 +34,8 @@ def setRiskFun : Fun :=
 def checkHealthFun : Fun :=
   { name := "checkHealth"
     args := []
-    body := unless
+    body := revertIf
       (Expr.lt (sloadSlot 0) (Expr.mul (sloadSlot 1) (sloadSlot 2)))
-      Stmt.skip
     ret := none }
 
 -- Execution facts.
@@ -52,13 +51,13 @@ theorem setRisk_updates (collateral debt minHF : Nat) :
 theorem checkHealth_ok (collateral debt minHF : Nat) (h : debt * minHF <= collateral) :
     execFun checkHealthFun [] (riskStore collateral debt minHF) [] =
       ExecResult.ok (bindArgs emptyEnv [] []) (riskStore collateral debt minHF) := by
-  simp [checkHealthFun, unless, sloadSlot, execFun, execStmt, evalExpr, riskStore,
+  simp [checkHealthFun, revertIf, sloadSlot, execFun, execStmt, evalExpr, riskStore,
     bindArgs, emptyEnv, updateEnv, updateStore, not_lt_of_ge h]
 
 theorem checkHealth_reverts (collateral debt minHF : Nat) (h : collateral < debt * minHF) :
     execFun checkHealthFun [] (riskStore collateral debt minHF) [] =
       ExecResult.reverted := by
-  simp [checkHealthFun, unless, sloadSlot, execFun, execStmt, evalExpr, riskStore,
+  simp [checkHealthFun, revertIf, sloadSlot, execFun, execStmt, evalExpr, riskStore,
     bindArgs, emptyEnv, updateEnv, updateStore, h]
 
 -- Risk specs (Store-level).
@@ -95,7 +94,7 @@ theorem checkHealth_meets_spec (s : Store) :
       | ExecResult.ok _ s' => checkHealthSpec.ensures s s'
       | _ => False) := by
   intro hreq
-  simp [checkHealthSpec, riskOk, checkHealthFun, unless, sloadSlot, execFun, execStmt,
+  simp [checkHealthSpec, riskOk, checkHealthFun, revertIf, sloadSlot, execFun, execStmt,
     evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, not_lt_of_ge hreq]
 
 theorem checkHealth_meets_specR_ok (s : Store) :
@@ -104,14 +103,14 @@ theorem checkHealth_meets_specR_ok (s : Store) :
       | ExecResult.ok _ s' => checkHealthSpecR.ensures s s'
       | _ => False) := by
   intro hreq
-  simp [checkHealthSpecR, riskOk, checkHealthFun, unless, sloadSlot, execFun, execStmt,
+  simp [checkHealthSpecR, riskOk, checkHealthFun, revertIf, sloadSlot, execFun, execStmt,
     evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, not_lt_of_ge hreq]
 
 theorem checkHealth_meets_specR_reverts (s : Store) :
     checkHealthSpecR.reverts s ->
     execFun checkHealthFun [] s [] = ExecResult.reverted := by
   intro hrev
-  simp [checkHealthSpecR, checkHealthFun, unless, sloadSlot, execFun, execStmt, evalExpr,
+  simp [checkHealthSpecR, checkHealthFun, revertIf, sloadSlot, execFun, execStmt, evalExpr,
     bindArgs, emptyEnv, updateEnv, updateStore, hrev]
 
 end DumbContracts.Examples

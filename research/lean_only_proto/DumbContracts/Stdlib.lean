@@ -16,6 +16,9 @@ def require (cond : Expr) (body : Stmt) : Stmt :=
 def unless (cond : Expr) (body : Stmt) : Stmt :=
   Stmt.if_ cond Stmt.revert body
 
+def revertIf (cond : Expr) : Stmt :=
+  Stmt.if_ cond Stmt.revert Stmt.skip
+
 def assert (cond : Expr) : Stmt :=
   Stmt.if_ cond Stmt.skip Stmt.revert
 

@@ -1,6 +1,11 @@
 # Research Log
 
 ## 2026-02-10
+- Added `revertIf` stdlib helper for guard-style reverts.
+- Refactored `checkHealth` to use `revertIf`.
+- Added `setIfLess` example (guarded store on `value < max`) with SpecR + proofs.
+- Added Foundry test for `setIfLess`.
+- Updated compiler entries + direct EVM asm for `setIfLess`.
 - Added `sstoreAdd` stdlib helper to make slot increments less noisy.
 - Added `bumpSlot` example (increment slot by one) with a basic Spec + proof.
 - Refactored `addSlot` and `guardedAddSlot` to use `sstoreAdd`.

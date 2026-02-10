@@ -48,6 +48,8 @@ Last updated: 2026-02-10
 - Added `requireEq`/`requireNeq` helpers plus a `compareAndSwap` example + Foundry test.
 - Added `requireGt` helper plus a `setIfGreater` example + Foundry test (and refactored guarded add to use it).
 - Added `sstoreAdd` helper plus a `bumpSlot` example + Foundry test (and refactored add-slot examples to use it).
+- Added a `revertIf` helper, refactored `checkHealth`, and added a `setIfLess` example + Foundry test.
+- Updated compiler entries + direct EVM asm for `setIfLess`.
 - Minimal docs frontend and compressed docs.
 - Further docs tightening (shorter guide + text).
 - External landscape scan (spec languages, model checkers, prover stacks).

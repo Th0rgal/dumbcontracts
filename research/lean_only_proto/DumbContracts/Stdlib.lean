@@ -54,6 +54,9 @@ def letSload (name : String) (slot : Expr) (body : Stmt) : Stmt :=
 def sstoreAdd (slot delta : Expr) : Stmt :=
   Stmt.sstore slot (Expr.add (Expr.sload slot) delta)
 
+def sstoreInc (slot : Expr) : Stmt :=
+  sstoreAdd slot (Expr.lit 1)
+
 def sloadSlot (slot : Nat) : Expr :=
   Expr.sload (Expr.lit slot)
 

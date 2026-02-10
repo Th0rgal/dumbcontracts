@@ -14,7 +14,7 @@ open DumbContracts.Std
 def bumpSlotFun : Fun :=
   { name := "bumpSlot"
     args := ["slot"]
-    body := sstoreAdd (v "slot") (n 1)
+    body := sstoreInc (v "slot")
     ret := none }
 
 def bumpSlotSpec (slot : Nat) : Spec Store :=
@@ -27,7 +27,7 @@ theorem bumpSlot_meets_spec (s : Store) (slot : Nat) :
       | ExecResult.ok _ s' => (bumpSlotSpec slot).ensures s s'
       | _ => False) := by
   intro _hreq
-  simp [bumpSlotSpec, bumpSlotFun, sstoreAdd, execFun, execStmt, evalExpr,
+  simp [bumpSlotSpec, bumpSlotFun, sstoreInc, sstoreAdd, execFun, execStmt, evalExpr,
     bindArgs, emptyEnv, updateEnv, updateStore, v, n]
 
 end DumbContracts.Examples

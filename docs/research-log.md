@@ -1,6 +1,11 @@
 # Research Log
 
 ## 2026-02-10
+- Added `sstoreInc` stdlib helper to increment a slot without repeating `add` boilerplate.
+- Refactored `bumpSlot` to use `sstoreInc`.
+- Added `bumpIfNonZero` example (guarded increment when slot is nonzero) with SpecR + proofs.
+- Added Foundry test for `bumpIfNonZero`.
+- Updated compiler entries + direct EVM asm for `bumpIfNonZero`.
 - Added `requireAnd` stdlib helper to combine guard conditions cleanly.
 - Refactored `setIfBetween` to use `requireAnd` instead of nested guards.
 - Added `setIfNonZeroAndLess` example (nonzero + max guard) with SpecR + proofs.

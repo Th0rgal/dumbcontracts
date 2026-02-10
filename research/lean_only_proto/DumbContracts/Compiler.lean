@@ -232,9 +232,25 @@ def exampleEntry13 : EntryPoint :=
     selector := 0x8ba43d8f
     returns := false }
 
+def exampleEntry14 : EntryPoint :=
+  { name := "bumpIfNonZero"
+    args := ["slot"]
+    body :=
+      Lang.Stmt.if_
+        (Lang.Expr.not
+          (Lang.Expr.eq (Lang.Expr.sload (Lang.Expr.var "slot")) (Lang.Expr.lit 0)))
+        (Lang.Stmt.sstore
+          (Lang.Expr.var "slot")
+          (Lang.Expr.add (Lang.Expr.sload (Lang.Expr.var "slot")) (Lang.Expr.lit 1)))
+        Lang.Stmt.revert
+    -- bumpIfNonZero(uint256) -> 0xc2311456
+    selector := 0xc2311456
+    returns := false }
+
 def exampleEntries : List EntryPoint :=
   [exampleEntry, exampleEntry2, exampleEntry3, exampleEntry4, exampleEntry5, exampleEntry6, exampleEntry7,
-    exampleEntry12, exampleEntry8, exampleEntry9, exampleEntry10, exampleEntry11, exampleEntry13]
+    exampleEntry12, exampleEntry8, exampleEntry9, exampleEntry10, exampleEntry11, exampleEntry13,
+    exampleEntry14]
 
 def healthEntrySet : EntryPoint :=
   { name := "setRisk"

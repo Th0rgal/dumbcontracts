@@ -19,7 +19,7 @@ Last updated: 2026-02-10
 - Decide whether to guard old-state specs with `from ≠ to` or adopt sequential reads by default.
 - Supply accounting abstraction (list vs set/dedup semantics).
 - EDSL ergonomics: add helpers, notations, and a minimal stdlib for common patterns.
-- Iteration: add `requireAnd` helper plus a `setIfNonZeroAndLess` example to reduce nested guard boilerplate.
+- Iteration: add `sstoreInc` helper plus a `bumpIfNonZero` example to reduce increment boilerplate with guards.
 
 ## Recently Done
 - Lean -> Yul pipeline with runtime + creation bytecode artifacts.

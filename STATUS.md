@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-02-09
+Last updated: 2026-02-10
 
 ## Current Focus
 - Lean-only specs + implementations + proofs.

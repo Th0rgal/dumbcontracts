@@ -60,6 +60,9 @@ def sstoreInc (slot : Expr) : Stmt :=
 def sstoreMax (slot a b : Expr) : Stmt :=
   Stmt.if_ (Expr.gt a b) (Stmt.sstore slot a) (Stmt.sstore slot b)
 
+def sstoreMin (slot a b : Expr) : Stmt :=
+  Stmt.if_ (Expr.lt a b) (Stmt.sstore slot a) (Stmt.sstore slot b)
+
 def sloadSlot (slot : Nat) : Expr :=
   Expr.sload (Expr.lit slot)
 

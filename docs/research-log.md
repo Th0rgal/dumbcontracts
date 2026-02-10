@@ -1,6 +1,10 @@
 # Research Log
 
 ## 2026-02-10
+- Added `sstoreMin` stdlib helper to mirror `sstoreMax` for min updates.
+- Added `updateMin` example (monotonic min update against a stored slot) with Spec + proof.
+- Added Foundry test for `updateMin`.
+- Updated compiler entries + direct EVM asm for `updateMin`.
 - Added `sstoreMax` stdlib helper to reduce max-store boilerplate.
 - Refactored `maxStore` to use `sstoreMax`.
 - Added `updateMax` example (monotonic max update against a stored slot) with Spec + proof.

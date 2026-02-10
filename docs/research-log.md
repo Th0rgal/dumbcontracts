@@ -22,6 +22,7 @@
 - Added `sloadVar`/`sstoreVar` stdlib helpers for variable slot access.
 - Added a tiny `maxStore` example (store max(a,b) into a slot) plus selector + Foundry test.
 - Added a `requireNonZero` helper plus a tiny `setNonZero` example + Foundry test.
+- Updated direct EVM asm to include `setNonZero` and force label pushes to `PUSH2` so bytecode matches solc output.
 - Refreshed external landscape notes (Act, Scribble, Certora, SMTChecker, KEVM, Kontrol).
 - Added selector map artifact (fixed + ABI keccak).
 - Fixed Foundry selectors and moved to Shanghai EVM.

@@ -1,67 +1,86 @@
 # Dumb Contracts Research Status
 
-## Current Iteration: Verification Iteration 1 - SimpleStorage (2026-02-10)
+## Current Iteration: Verification Iteration 2 - Counter (2026-02-10)
 
 ### Goal
-Add formal verification to SimpleStorage, proving basic correctness properties. This establishes the foundation for verifying more complex contracts.
+Add formal verification to Counter, proving arithmetic correctness properties. Build on SimpleStorage foundation to verify operations that modify state with arithmetic.
 
 ### What I'm About to Do
 
-1. **Create specification files** (DumbContracts/Specs/SimpleStorage/):
-   - `Spec.lean` - Formal specification of store/retrieve behavior
-   - `Invariants.lean` - State invariants (well-formedness)
+1. **Create specification files** (DumbContracts/Specs/Counter/):
+   - `Spec.lean` - Formal specification of increment/decrement/getCount behavior
+   - `Invariants.lean` - State invariants (well-formedness, count validity)
 
-2. **Create proof files** (DumbContracts/Proofs/SimpleStorage/):
-   - `Basic.lean` - Prove store/retrieve correctness
-   - Prove: retrieve returns the last stored value
-   - Prove: setStorage preserves state well-formedness
+2. **Create proof files** (DumbContracts/Proofs/Counter/):
+   - `Basic.lean` - Prove increment/decrement correctness
+   - Prove: increment increases count by exactly 1
+   - Prove: decrement decreases count by exactly 1
+   - Prove: multiple operations compose correctly
+   - Prove: getCount returns current count
 
 3. **Document proof strategy**:
-   - What properties are proven
-   - What assumptions are made
-   - What remains unproven
+   - Arithmetic properties proven
+   - State preservation properties
+   - Composition properties
+   - Assumptions about Nat arithmetic
 
 ### Why This Approach
 
-SimpleStorage verification is the right starting point because:
-- Simplest contract (store/retrieve only)
-- Establishes proof patterns for future contracts
-- Tests verification infrastructure
-- No complex invariants (single storage slot)
-- Foundation for Counter, Owned, etc.
+Counter verification is the natural next step because:
+- Builds on SimpleStorage verification patterns
+- Introduces arithmetic operations (addition, subtraction)
+- Tests composition of multiple operations
+- Still relatively simple (single storage slot)
+- Foundation for more complex contracts with arithmetic
 
 ### Key Properties to Prove
 
 **Tier 1: Basic Correctness**
-- `store_retrieve_correct`: After storing value v, retrieve returns v
-- `store_updates_storage`: setStorage actually updates the storage slot
-- `retrieve_reads_storage`: getStorage returns the value in the slot
+- `increment_adds_one`: increment increases count by exactly 1
+- `decrement_subtracts_one`: decrement decreases count by exactly 1
+- `getCount_reads_count`: getCount returns the current count
+- `increment_meets_spec`: increment satisfies its formal specification
+- `decrement_meets_spec`: decrement satisfies its formal specification
 
-**Tier 2: State Invariants**
+**Tier 2: Composition**
+- `increment_twice_adds_two`: Two increments add 2
+- `increment_decrement_cancel`: increment then decrement restores original value
+- `operations_compose`: Multiple operations have cumulative effect
+
+**Tier 3: State Invariants**
 - `state_well_formed`: ContractState structure is valid
-- `storage_isolation`: Different slots don't interfere
+- `operations_preserve_wellformedness`: Operations maintain well-formed state
 
 ### Current State
-- Previous: Documentation website complete (PR #4)
+- Previous: SimpleStorage verification complete (11 theorems proven)
 - Core: 82 lines, stable
 - Examples: 7 contracts (all runtime-tested)
-- Verification: None yet (this is the first!)
+- Verification: SimpleStorage complete, Counter starting
 
 ### Expected Outcomes
-- Specs/SimpleStorage/ directory with formal specifications
-- Proofs/SimpleStorage/ directory with proven theorems
-- At least 1 complete proof (store_retrieve_correct)
-- Documentation of proof strategy and limitations
-- Foundation for future verification work
+- Specs/Counter/ directory with formal specifications
+- Proofs/Counter/ directory with proven theorems
+- At least 5 complete proofs (basic correctness + composition)
+- Documentation of arithmetic proof strategies
+- Foundation for contracts with more complex arithmetic
 
 ### Next Steps After This Iteration
-- Counter verification (arithmetic properties)
 - Owned verification (access control properties)
-- SimpleToken verification (complex invariants)
+- SimpleToken verification (complex invariants + arithmetic)
 
 ---
 
-## Previous Work: Implementation Phase Complete
+## Previous Work
+
+### Verification Phase
+
+**Iteration 1: SimpleStorage** ✅ Complete
+- 11 theorems proven
+- store_retrieve_correct proven
+- Foundation established
+- See VERIFICATION_ITERATION_1_SUMMARY.md
+
+### Implementation Phase Complete
 
 **7 iterations completed** (see RESEARCH.md for full details):
 1. Bootstrap - 58-line minimal core
@@ -72,6 +91,6 @@ SimpleStorage verification is the right starting point because:
 6. Mapping Support - Key-value storage (+13 lines)
 7. SimpleToken - Realistic token contract
 
-**Current State**: 82-line core, 7 examples, 62 tests (100% passing)
+**Current State**: 82-line core, 7 examples, 62 tests (100% passing), 11 proofs (SimpleStorage)
 
-**New Phase**: Formal verification via Lean proofs
+**New Phase**: Formal verification via Lean proofs (Counter in progress)

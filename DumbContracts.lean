@@ -12,3 +12,7 @@ import DumbContracts.Examples.SimpleToken
 import DumbContracts.Specs.SimpleStorage.Spec
 import DumbContracts.Specs.SimpleStorage.Invariants
 import DumbContracts.Proofs.SimpleStorage.Basic
+
+import DumbContracts.Specs.Counter.Spec
+import DumbContracts.Specs.Counter.Invariants
+import DumbContracts.Proofs.Counter.Basic

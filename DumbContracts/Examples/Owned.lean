@@ -57,7 +57,7 @@ def exampleUsage : Contract Address := do
   storageMap := fun _ _ => 0,
   sender := "0xAlice",  -- Alice is the caller
   thisAddress := "0xContract"
-}).1
--- Expected output: "0xBob" (after transfer)
+}).getValue?
+-- Expected output: some "0xBob" (after transfer)
 
 end DumbContracts.Examples.Owned

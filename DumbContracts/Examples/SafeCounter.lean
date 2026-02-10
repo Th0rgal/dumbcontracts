@@ -50,7 +50,7 @@ def exampleUsage : Contract Uint256 := do
   storageMap := fun _ _ => 0,
   sender := "0xAlice",
   thisAddress := "0xSafeCounter"
-}).1
--- Expected output: 1
+}).getValue?
+-- Expected output: some 1
 
 end DumbContracts.Examples.SafeCounter

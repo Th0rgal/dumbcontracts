@@ -79,7 +79,7 @@ def exampleUsage : Contract (Uint256 × Address) := do
   storageMap := fun _ _ => 0,
   sender := "0xAlice",  -- Alice is the caller
   thisAddress := "0xContract"
-}).1
--- Expected output: (2, "0xBob")
+}).getValue?
+-- Expected output: some (2, "0xBob")
 
 end DumbContracts.Examples.OwnedCounter

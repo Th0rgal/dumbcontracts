@@ -65,7 +65,7 @@ def exampleUsage : Contract (Uint256 × Uint256) := do
   storageMap := fun _ _ => 0,
   sender := "0xAlice",
   thisAddress := "0xLedger"
-}).1
--- Expected output: (20, 50) - Alice has 20, Bob has 50
+}).getValue?
+-- Expected output: some (20, 50) - Alice has 20, Bob has 50
 
 end DumbContracts.Examples.Ledger

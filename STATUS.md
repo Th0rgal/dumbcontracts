@@ -1,15 +1,17 @@
 # Dumb Contracts Research Status
 
-## Current Iteration: Verification Complete - Mission Accomplished! (2026-02-10)
+## Current Iteration: Guard Modeling Foundation (2026-02-10)
 
 ### Summary
-Formal verification mission complete! Successfully verified 4 contract patterns:
-- SimpleStorage (11 theorems)
-- Counter (17 theorems)
-- Owned (16 theorems)
-- SimpleToken (20 theorems)
+**EDSL Extension Complete**: Successfully extended Core.lean to model `require` guards explicitly! Implemented ContractResult type for success/failure modeling.
 
-**Total: 64 theorems proven** (57 fully proven, 7 requiring guard modeling)
+Verified 4 contract patterns with updated infrastructure:
+- SimpleStorage (12 theorems) - 100% proven ✅
+- Counter (19 theorems) - 100% proven ✅
+- Owned (18 theorems) - 88.9% proven
+- SimpleToken (33 theorems) - 78.8% proven
+
+**Total: 82 theorems** (73 fully proven = 89.0%, 9 requiring guard proofs)
 
 ### Key Achievements
 

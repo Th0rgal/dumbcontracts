@@ -91,7 +91,7 @@ def exampleUsage : Contract (Uint256 × Uint256 × Uint256) := do
   storageMap := fun _ _ => 0,
   sender := "0xAlice",
   thisAddress := "0xSimpleToken"
-}).1
--- Expected output: (700, 300, 1000) - Alice: 700, Bob: 300, supply: 1000
+}).getValue?
+-- Expected output: some (700, 300, 1000) - Alice: 700, Bob: 300, supply: 1000
 
 end DumbContracts.Examples.SimpleToken

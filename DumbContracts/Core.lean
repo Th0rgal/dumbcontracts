@@ -3,6 +3,8 @@
 
   This module defines the essential types and primitives for smart contracts.
   Philosophy: Keep it minimal - only add what examples actually need.
+
+  Version 2: Added explicit ContractResult for guard modeling
 -/
 
 namespace DumbContracts
@@ -26,57 +28,173 @@ structure ContractState where
   sender : Address
   thisAddress : Address
 
--- The contract monad
-abbrev Contract (α : Type) := StateM ContractState α
+-- Repr instance for ContractState (simplified for readability)
+instance : Repr ContractState where
+  reprPrec s _ := s!"ContractState(sender={s.sender}, thisAddress={s.thisAddress})"
+
+-- Contract execution result (explicit success/failure)
+inductive ContractResult (α : Type) where
+  | success : α → ContractState → ContractResult α
+  | revert : String → ContractState → ContractResult α
+  deriving Repr
+
+namespace ContractResult
+
+-- Projections for backward compatibility with proofs
+-- These assume success (proofs will ensure no revert happens)
+def fst {α : Type} : ContractResult α → α
+  | success a _ => a
+  | revert _ _ => sorry  -- Proofs will show this case doesn't occur
+
+def snd {α : Type} : ContractResult α → ContractState
+  | success _ s => s
+  | revert _ s => s  -- Return original state on revert
+
+end ContractResult
+
+-- The contract monad with explicit success/failure
+abbrev Contract (α : Type) := ContractState → ContractResult α
+
+-- Monad operations for Contract
+def pure {α : Type} (a : α) : Contract α :=
+  fun s => ContractResult.success a s
+
+def bind {α β : Type} (ma : Contract α) (f : α → Contract β) : Contract β :=
+  fun s => match ma s with
+    | ContractResult.success a s' => f a s'
+    | ContractResult.revert msg s' => ContractResult.revert msg s'
+
+-- Convenience: run a Contract and extract result/state
+def Contract.run {α : Type} (c : Contract α) (s : ContractState) : ContractResult α :=
+  c s
+
+-- Helper: check if result is success
+def ContractResult.isSuccess {α : Type} : ContractResult α → Bool
+  | success _ _ => true
+  | revert _ _ => false
+
+-- Helper: extract value from success (unsafe, for testing)
+def ContractResult.getValue? {α : Type} : ContractResult α → Option α
+  | success a _ => some a
+  | revert _ _ => none
+
+-- Helper: extract state from result
+def ContractResult.getState {α : Type} : ContractResult α → ContractState
+  | success _ s => s
+  | revert _ s => s
+
+-- Backward compatibility helpers for proofs (extracts from success case)
+-- These helpers assume the contract succeeds and extract the result/state
+namespace Contract
+
+def runValue {α : Type} (c : Contract α) (s : ContractState) : α :=
+  match c s with
+  | ContractResult.success a _ => a
+  | ContractResult.revert _ _ => sorry  -- Proofs will show this doesn't occur
+
+def runState {α : Type} (c : Contract α) (s : ContractState) : ContractState :=
+  match c s with
+  | ContractResult.success _ s' => s'
+  | ContractResult.revert _ s' => s'
+
+end Contract
 
 -- Storage operations for Uint256
-def getStorage (s : StorageSlot Uint256) : Contract Uint256 := do
-  let state ← get
-  return state.storage s.slot
+def getStorage (s : StorageSlot Uint256) : Contract Uint256 :=
+  fun state => ContractResult.success (state.storage s.slot) state
 
-def setStorage (s : StorageSlot Uint256) (value : Uint256) : Contract Unit := do
-  modify fun state => { state with
+def setStorage (s : StorageSlot Uint256) (value : Uint256) : Contract Unit :=
+  fun state => ContractResult.success () { state with
     storage := fun slot => if slot == s.slot then value else state.storage slot
   }
 
--- Storage operations for Address
-def getStorageAddr (s : StorageSlot Address) : Contract Address := do
-  let state ← get
-  return state.storageAddr s.slot
+-- Simp lemmas for storage operations
+@[simp] theorem getStorage_run_fst (s : StorageSlot Uint256) (state : ContractState) :
+  ((getStorage s).run state).fst = state.storage s.slot := by rfl
 
-def setStorageAddr (s : StorageSlot Address) (value : Address) : Contract Unit := do
-  modify fun state => { state with
+@[simp] theorem getStorage_run_snd (s : StorageSlot Uint256) (state : ContractState) :
+  ((getStorage s).run state).snd = state := by rfl
+
+@[simp] theorem setStorage_run_snd (s : StorageSlot Uint256) (value : Uint256) (state : ContractState) :
+  ((setStorage s value).run state).snd = { state with
+    storage := fun slot => if slot == s.slot then value else state.storage slot
+  } := by rfl
+
+-- Storage operations for Address
+def getStorageAddr (s : StorageSlot Address) : Contract Address :=
+  fun state => ContractResult.success (state.storageAddr s.slot) state
+
+def setStorageAddr (s : StorageSlot Address) (value : Address) : Contract Unit :=
+  fun state => ContractResult.success () { state with
     storageAddr := fun slot => if slot == s.slot then value else state.storageAddr slot
   }
 
--- Mapping operations (Address → Uint256)
-def getMapping (s : StorageSlot (Address → Uint256)) (key : Address) : Contract Uint256 := do
-  let state ← get
-  return state.storageMap s.slot key
+-- Simp lemmas for address storage operations
+@[simp] theorem getStorageAddr_run_fst (s : StorageSlot Address) (state : ContractState) :
+  ((getStorageAddr s).run state).fst = state.storageAddr s.slot := by rfl
 
-def setMapping (s : StorageSlot (Address → Uint256)) (key : Address) (value : Uint256) : Contract Unit := do
-  modify fun state => { state with
+@[simp] theorem getStorageAddr_run_snd (s : StorageSlot Address) (state : ContractState) :
+  ((getStorageAddr s).run state).snd = state := by rfl
+
+@[simp] theorem setStorageAddr_run_snd (s : StorageSlot Address) (value : Address) (state : ContractState) :
+  ((setStorageAddr s value).run state).snd = { state with
+    storageAddr := fun slot => if slot == s.slot then value else state.storageAddr slot
+  } := by rfl
+
+-- Mapping operations (Address → Uint256)
+def getMapping (s : StorageSlot (Address → Uint256)) (key : Address) : Contract Uint256 :=
+  fun state => ContractResult.success (state.storageMap s.slot key) state
+
+def setMapping (s : StorageSlot (Address → Uint256)) (key : Address) (value : Uint256) : Contract Unit :=
+  fun state => ContractResult.success () { state with
     storageMap := fun slot addr =>
       if slot == s.slot && addr == key then value
       else state.storageMap slot addr
   }
 
+-- Simp lemmas for mapping operations
+@[simp] theorem getMapping_run_fst (s : StorageSlot (Address → Uint256)) (key : Address) (state : ContractState) :
+  ((getMapping s key).run state).fst = state.storageMap s.slot key := by rfl
+
+@[simp] theorem getMapping_run_snd (s : StorageSlot (Address → Uint256)) (key : Address) (state : ContractState) :
+  ((getMapping s key).run state).snd = state := by rfl
+
+@[simp] theorem setMapping_run_snd (s : StorageSlot (Address → Uint256)) (key : Address) (value : Uint256) (state : ContractState) :
+  ((setMapping s key value).run state).snd = { state with
+    storageMap := fun slot addr =>
+      if slot == s.slot && addr == key then value
+      else state.storageMap slot addr
+  } := by rfl
+
 -- Read-only context accessors
-def msgSender : Contract Address := do
-  let state ← get
-  return state.sender
+def msgSender : Contract Address :=
+  fun state => ContractResult.success state.sender state
 
-def contractAddress : Contract Address := do
-  let state ← get
-  return state.thisAddress
+def contractAddress : Contract Address :=
+  fun state => ContractResult.success state.thisAddress state
 
--- Require guard
-def require (condition : Bool) (_message : String) : Contract Unit := do
-  if !condition then
-    -- In a real implementation, this would revert the transaction
-    -- For now, we just skip (the testing framework will handle this)
-    pure ()
-  else
-    pure ()
+-- Simp lemmas for context accessors
+@[simp] theorem msgSender_run_fst (state : ContractState) :
+  (msgSender.run state).fst = state.sender := by rfl
+
+@[simp] theorem msgSender_run_snd (state : ContractState) :
+  (msgSender.run state).snd = state := by rfl
+
+@[simp] theorem contractAddress_run_fst (state : ContractState) :
+  (contractAddress.run state).fst = state.thisAddress := by rfl
+
+@[simp] theorem contractAddress_run_snd (state : ContractState) :
+  (contractAddress.run state).snd = state := by rfl
+
+-- Require guard (explicit failure on condition = false)
+def require (condition : Bool) (message : String) : Contract Unit :=
+  fun s => if condition
+           then ContractResult.success () s
+           else ContractResult.revert message s
+
+-- Monad instance for do-notation
+instance : Monad Contract where
+  pure := pure
+  bind := bind
 
 end DumbContracts

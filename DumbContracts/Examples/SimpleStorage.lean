@@ -37,7 +37,7 @@ def exampleUsage : Contract Uint256 := do
   storageMap := fun _ _ => 0,
   sender := "0xAlice",
   thisAddress := "0xContract"
-}).1
--- Expected output: 42
+}).getValue?
+-- Expected output: some 42
 
 end DumbContracts.Examples

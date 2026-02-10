@@ -63,25 +63,26 @@ def keccak_256(data: bytes) -> bytes:
     rate = 1088 // 8  # 136 bytes
     state = [0] * 25
 
-    # Absorb
+    # Absorb full blocks
     offset = 0
-    while offset < len(data):
+    while offset + rate <= len(data):
         block = data[offset:offset + rate]
         offset += rate
-        if len(block) < rate:
-            # Padding: 0x01 ... 0x80
-            block = block + b"\x01" + b"\x00" * (rate - len(block) - 2) + b"\x80"
-            last = True
-        else:
-            last = False
-
         for i in range(0, rate, 8):
             word = int.from_bytes(block[i:i + 8], byteorder="little")
             state[i // 8] ^= word
-
         keccak_f(state)
-        if last:
-            break
+
+    # Final block with padding (always applied, even for empty or exact blocks)
+    remaining = data[offset:]
+    block = bytearray(rate)
+    block[:len(remaining)] = remaining
+    block[len(remaining)] ^= 0x01
+    block[rate - 1] ^= 0x80
+    for i in range(0, rate, 8):
+        word = int.from_bytes(block[i:i + 8], byteorder="little")
+        state[i // 8] ^= word
+    keccak_f(state)
 
     # Squeeze
     out = bytearray()

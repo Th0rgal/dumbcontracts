@@ -6,6 +6,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.Counter
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.Counter.Spec
 import DumbContracts.Specs.Counter.Invariants
 
@@ -82,7 +83,7 @@ theorem increment_meets_spec (s : ContractState) :
 
 theorem increment_adds_one (s : ContractState) :
   let s' := ((increment).run s).snd
-  s'.storage 0 = s.storage 0 + 1 := by
+  s'.storage 0 = EVM.Uint256.add (s.storage 0) 1 := by
   have h := increment_meets_spec s
   simp [increment_spec] at h
   exact h.1
@@ -112,7 +113,7 @@ theorem decrement_meets_spec (s : ContractState) :
 
 theorem decrement_subtracts_one (s : ContractState) :
   let s' := ((decrement).run s).snd
-  s'.storage 0 = s.storage 0 - 1 := by
+  s'.storage 0 = EVM.Uint256.sub (s.storage 0) 1 := by
   have h := decrement_meets_spec s
   simp [decrement_spec] at h
   exact h.1
@@ -136,7 +137,7 @@ theorem getCount_reads_count_value (s : ContractState) :
 theorem increment_getCount_correct (s : ContractState) :
   let s' := ((increment).run s).snd
   let result := ((getCount).run s').fst
-  result = s.storage 0 + 1 := by
+  result = EVM.Uint256.add (s.storage 0) 1 := by
   have h_inc := increment_adds_one s
   have h_get := getCount_reads_count_value (((increment).run s).snd)
   simp only [h_inc] at h_get
@@ -145,7 +146,7 @@ theorem increment_getCount_correct (s : ContractState) :
 theorem decrement_getCount_correct (s : ContractState) :
   let s' := ((decrement).run s).snd
   let result := ((getCount).run s').fst
-  result = s.storage 0 - 1 := by
+  result = EVM.Uint256.sub (s.storage 0) 1 := by
   have h_dec := decrement_subtracts_one s
   have h_get := getCount_reads_count_value (((decrement).run s).snd)
   simp only [h_dec] at h_get
@@ -154,26 +155,26 @@ theorem decrement_getCount_correct (s : ContractState) :
 theorem increment_twice_adds_two (s : ContractState) :
   let s' := ((increment).run s).snd
   let s'' := ((increment).run s').snd
-  s''.storage 0 = s.storage 0 + 2 := by
-  have h1 : (((increment).run s).snd).storage 0 = s.storage 0 + 1 := increment_adds_one s
-  have h2 : (((increment).run (((increment).run s).snd)).snd).storage 0 = (((increment).run s).snd).storage 0 + 1 :=
+  s''.storage 0 = EVM.Uint256.add (EVM.Uint256.add (s.storage 0) 1) 1 := by
+  have h1 : (((increment).run s).snd).storage 0 = EVM.Uint256.add (s.storage 0) 1 := increment_adds_one s
+  have h2 : (((increment).run (((increment).run s).snd)).snd).storage 0 =
+      EVM.Uint256.add (((increment).run s).snd.storage 0) 1 :=
     increment_adds_one (((increment).run s).snd)
   calc (((increment).run (((increment).run s).snd)).snd).storage 0
-      = (((increment).run s).snd).storage 0 + 1 := h2
-    _ = (s.storage 0 + 1) + 1 := by rw [h1]
-    _ = s.storage 0 + 2 := by simp_arith
+      = EVM.Uint256.add (((increment).run s).snd.storage 0) 1 := h2
+    _ = EVM.Uint256.add (EVM.Uint256.add (s.storage 0) 1) 1 := by rw [h1]
 
 theorem increment_decrement_cancel (s : ContractState) :
   let s' := ((increment).run s).snd
   let s'' := ((decrement).run s').snd
-  s''.storage 0 = s.storage 0 := by
-  have h1 : (((increment).run s).snd).storage 0 = s.storage 0 + 1 := increment_adds_one s
-  have h2 : (((decrement).run (((increment).run s).snd)).snd).storage 0 = (((increment).run s).snd).storage 0 - 1 :=
+  s''.storage 0 = EVM.Uint256.sub (EVM.Uint256.add (s.storage 0) 1) 1 := by
+  have h1 : (((increment).run s).snd).storage 0 = EVM.Uint256.add (s.storage 0) 1 := increment_adds_one s
+  have h2 : (((decrement).run (((increment).run s).snd)).snd).storage 0 =
+      EVM.Uint256.sub (((increment).run s).snd.storage 0) 1 :=
     decrement_subtracts_one (((increment).run s).snd)
   calc (((decrement).run (((increment).run s).snd)).snd).storage 0
-      = (((increment).run s).snd).storage 0 - 1 := h2
-    _ = (s.storage 0 + 1) - 1 := by rw [h1]
-    _ = s.storage 0 := by simp_arith
+      = EVM.Uint256.sub (((increment).run s).snd.storage 0) 1 := h2
+    _ = EVM.Uint256.sub (EVM.Uint256.add (s.storage 0) 1) 1 := by rw [h1]
 
 /-! ## State Preservation -/
 

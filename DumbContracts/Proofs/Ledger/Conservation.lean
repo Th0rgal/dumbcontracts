@@ -13,6 +13,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.Ledger
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.Ledger.Spec
 import DumbContracts.Specs.Ledger.Invariants
 import DumbContracts.Proofs.Ledger.Basic
@@ -159,11 +160,16 @@ private theorem map_sum_transfer_eq
 /-- Exact sum relationship after deposit: the new sum equals the old sum plus
     count(sender, addrs) * amount. Each occurrence of the sender in the list
     contributes an additional `amount` to the sum. -/
-theorem deposit_sum_equation (s : ContractState) (amount : Uint256) :
+theorem deposit_sum_equation (s : ContractState) (amount : Uint256)
+  (h_no_overflow : s.storageMap 0 s.sender + amount < 2^256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((deposit amount).run s).snd.storageMap 0 addr)).sum
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum + countOcc s.sender addrs * amount := by
-  have h_inc := deposit_increases_balance s amount
+  have h_inc_raw := deposit_increases_balance s amount
+  have h_inc :
+      ((deposit amount).run s).snd.storageMap 0 s.sender =
+        s.storageMap 0 s.sender + amount := by
+    simpa [EVM.Uint256.add_eq_of_lt h_no_overflow] using h_inc_raw
   have h_other : ∀ addr, addr ≠ s.sender →
     ((deposit amount).run s).snd.storageMap 0 addr = s.storageMap 0 addr :=
     fun addr h_ne => deposit_preserves_other_balances s amount addr h_ne
@@ -174,10 +180,11 @@ theorem deposit_sum_equation (s : ContractState) (amount : Uint256) :
 
 /-- Corollary: for a list where sender appears exactly once, deposit adds exactly `amount`. -/
 theorem deposit_sum_singleton_sender (s : ContractState) (amount : Uint256)
+  (h_no_overflow : s.storageMap 0 s.sender + amount < 2^256)
   (addrs : List Address) (h_once : countOcc s.sender addrs = 1) :
   (addrs.map (fun addr => ((deposit amount).run s).snd.storageMap 0 addr)).sum
   = (addrs.map (fun addr => s.storageMap 0 addr)).sum + amount := by
-  have h := deposit_sum_equation s amount addrs
+  have h := deposit_sum_equation s amount h_no_overflow addrs
   rw [h_once] at h; simp at h; exact h
 
 /-! ## Withdraw: Exact Sum Equation -/
@@ -191,7 +198,13 @@ theorem withdraw_sum_equation (s : ContractState) (amount : Uint256)
     (addrs.map (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)).sum
       + countOcc s.sender addrs * amount
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
-  have h_dec := withdraw_decreases_balance s amount h_balance
+  have h_dec_raw := withdraw_decreases_balance s amount h_balance
+  have h_dec :
+      ((withdraw amount).run s).snd.storageMap 0 s.sender =
+        s.storageMap 0 s.sender - amount := by
+    have h_le : amount ≤ s.storageMap 0 s.sender := by
+      exact h_balance
+    simpa [EVM.Uint256.sub_eq_of_le h_le] using h_dec_raw
   have h_other : ∀ addr, addr ≠ s.sender →
     ((withdraw amount).run s).snd.storageMap 0 addr = s.storageMap 0 addr := by
     intro addr h_ne
@@ -221,7 +234,9 @@ theorem withdraw_sum_singleton_sender (s : ContractState) (amount : Uint256)
     of the sender in the list loses `amount`, and each occurrence of the recipient
     gains `amount`. The equation holds exactly (not just as an inequality). -/
 theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow_to : s.storageMap 0 to + amount < 2^256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
       + countOcc s.sender addrs * amount
@@ -230,32 +245,46 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
   have h_spec := transfer_meets_spec s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
   obtain ⟨h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _, _⟩ := h_spec
+  have h_sender_bal' :
+      ((transfer to amount).run s).snd.storageMap 0 s.sender =
+        s.storageMap 0 s.sender - amount := by
+    have h_le : amount ≤ s.storageMap 0 s.sender := by
+      exact h_balance
+    simpa [EVM.Uint256.sub_eq_of_le h_le] using h_sender_bal
+  have h_recip_bal' :
+      ((transfer to amount).run s).snd.storageMap 0 to =
+        s.storageMap 0 to + amount := by
+    simpa [EVM.Uint256.add_eq_of_lt h_no_overflow_to] using h_recip_bal
   exact map_sum_transfer_eq
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)
-    s.sender to amount h_ne h_sender_bal h_recip_bal
+    s.sender to amount h_ne h_sender_bal' h_recip_bal'
     (fun addr h1 h2 => h_other_bal addr h1 h2) h_balance
 
 /-- Corollary: for NoDup lists where sender and to each appear once,
     the total sum is exactly preserved by transfer. -/
 theorem transfer_sum_preserved_unique (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to)
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow_to : s.storageMap 0 to + amount < 2^256)
   (addrs : List Address)
   (h_sender_once : countOcc s.sender addrs = 1)
   (h_to_once : countOcc to addrs = 1) :
   (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
   = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
-  have h := transfer_sum_equation s to amount h_balance h_ne addrs
+  have h := transfer_sum_equation s to amount h_balance h_ne h_no_overflow_to addrs
   rw [h_sender_once, h_to_once] at h; simp at h; exact h
 
 /-- Corollary: the new sum is bounded by old_sum + count(to) * amount. -/
 theorem transfer_sum_bounded (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow_to : s.storageMap 0 to + amount < 2^256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
     ≤ (addrs.map (fun addr => s.storageMap 0 addr)).sum + countOcc to addrs * amount := by
   intro addrs
-  have h := transfer_sum_equation s to amount h_balance h_ne addrs
+  have h := transfer_sum_equation s to amount h_balance h_ne h_no_overflow_to addrs
   calc (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
       ≤ (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
         + countOcc s.sender addrs * amount := Nat.le_add_right _ _
@@ -265,27 +294,36 @@ theorem transfer_sum_bounded (s : ContractState) (to : Address) (amount : Uint25
 
 /-- Deposit then withdraw of the same amount preserves the balance sum for any list.
     This is stronger than the single-address cancellation in Correctness.lean. -/
-theorem deposit_withdraw_sum_cancel (s : ContractState) (amount : Uint256) :
+theorem deposit_withdraw_sum_cancel (s : ContractState) (amount : Uint256)
+  (h_no_overflow : s.storageMap 0 s.sender + amount < 2^256) :
   ∀ addrs : List Address,
     let s1 := ((deposit amount).run s).snd
     (addrs.map (fun addr => ((withdraw amount).run s1).snd.storageMap 0 addr)).sum
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
   intro addrs
-  simp only [deposit, withdraw, msgSender, getMapping, setMapping, balances,
-    DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [Nat.add_sub_cancel]
-  -- After simp, the nested if-then-else doesn't fully collapse.
-  -- Show the mapping function is extensionally equal to s.storageMap 0.
-  have h_ext : ∀ addr : Address,
-    (if addr = s.sender then s.storageMap 0 s.sender
-     else if addr = s.sender then s.storageMap 0 s.sender + amount
-     else s.storageMap 0 addr) = s.storageMap 0 addr := by
-    intro addr
-    by_cases h : addr = s.sender
-    · simp [h]
-    · simp [h]
-  simp [h_ext]
+  let s1 := ((deposit amount).run s).snd
+  have h_inc_raw := deposit_increases_balance s amount
+  have h_inc :
+      s1.storageMap 0 s.sender = s.storageMap 0 s.sender + amount := by
+    simpa [s1, EVM.Uint256.add_eq_of_lt h_no_overflow] using h_inc_raw
+  have h_balance : s1.storageMap 0 s.sender ≥ amount := by
+    have h_le : amount ≤ s.storageMap 0 s.sender + amount := by
+      exact Nat.le_add_left _ _
+    simpa [h_inc] using h_le
+  have h_dep := deposit_sum_equation s amount h_no_overflow addrs
+  have h_wd := withdraw_sum_equation (s := s1) amount h_balance addrs
+  have h_eq :
+      (addrs.map (fun addr => ((withdraw amount).run s1).snd.storageMap 0 addr)).sum
+        + countOcc s.sender addrs * amount
+        = (addrs.map (fun addr => s.storageMap 0 addr)).sum
+          + countOcc s.sender addrs * amount := by
+    calc
+      (addrs.map (fun addr => ((withdraw amount).run s1).snd.storageMap 0 addr)).sum
+          + countOcc s.sender addrs * amount
+          = (addrs.map (fun addr => s1.storageMap 0 addr)).sum := h_wd
+      _ = (addrs.map (fun addr => s.storageMap 0 addr)).sum
+          + countOcc s.sender addrs * amount := h_dep
+  exact Nat.add_right_cancel h_eq
 
 /-! ## Summary
 

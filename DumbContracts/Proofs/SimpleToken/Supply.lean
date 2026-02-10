@@ -16,6 +16,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.SimpleToken
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.SimpleToken.Spec
 import DumbContracts.Specs.SimpleToken.Invariants
 import DumbContracts.Proofs.SimpleToken.Basic
@@ -131,13 +132,17 @@ private theorem map_sum_point_update
     count(to, addrs) * amount. This captures that each occurrence of `to` in
     the list contributes an additional `amount` to the sum. -/
 theorem mint_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_overflow : s.storageMap 1 to + amount < 2^256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((mint to amount).run s).snd.storageMap 1 addr)).sum
     = (addrs.map (fun addr => s.storageMap 1 addr)).sum + countOcc to addrs * amount := by
   have h_spec := mint_meets_spec_when_owner s to amount h_owner
   simp [mint_spec] at h_spec
-  obtain ⟨h_bal, _, h_other, _, _, _, _, _⟩ := h_spec
+  obtain ⟨h_bal_raw, _, h_other, _, _, _, _, _⟩ := h_spec
+  have h_bal :
+      ((mint to amount).run s).snd.storageMap 1 to = s.storageMap 1 to + amount := by
+    simpa [EVM.Uint256.add_eq_of_lt h_no_overflow] using h_bal_raw
   exact map_sum_point_update
     (fun addr => s.storageMap 1 addr)
     (fun addr => ((mint to amount).run s).snd.storageMap 1 addr)
@@ -231,7 +236,9 @@ private theorem map_sum_transfer_eq
     sender in the list loses `amount`, and each occurrence of the recipient gains
     `amount`. The equation holds exactly (not just as an inequality). -/
 theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount) (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount)
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow_to : s.storageMap 1 to + amount < 2^256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum
       + countOcc s.sender addrs * amount
@@ -240,20 +247,30 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
   have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
   obtain ⟨_, h_sender_bal, h_recip_bal, _, h_other_bal, _, _, _, _, _, _⟩ := h_spec
+  have h_sender_bal' :
+      ((transfer to amount).run s).snd.storageMap 1 s.sender = s.storageMap 1 s.sender - amount := by
+    have h_le : amount ≤ s.storageMap 1 s.sender := by
+      exact h_balance
+    simpa [EVM.Uint256.sub_eq_of_le h_le] using h_sender_bal
+  have h_recip_bal' :
+      ((transfer to amount).run s).snd.storageMap 1 to = s.storageMap 1 to + amount := by
+    simpa [EVM.Uint256.add_eq_of_lt h_no_overflow_to] using h_recip_bal
   exact map_sum_transfer_eq
     (fun addr => s.storageMap 1 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)
-    s.sender to amount h_ne h_sender_bal h_recip_bal
+    s.sender to amount h_ne h_sender_bal' h_recip_bal'
     (fun addr h1 h2 => h_other_bal addr h1 h2) h_balance
 
 /-- Corollary: the new sum is bounded by old_sum + count(to) * amount. -/
 theorem transfer_sum_bounded (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount) (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount)
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow_to : s.storageMap 1 to + amount < 2^256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum
     ≤ (addrs.map (fun addr => s.storageMap 1 addr)).sum + countOcc to addrs * amount := by
   intro addrs
-  have h := transfer_sum_equation s to amount h_balance h_ne addrs
+  have h := transfer_sum_equation s to amount h_balance h_ne h_no_overflow_to addrs
   calc (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum
       ≤ (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum
         + countOcc s.sender addrs * amount := Nat.le_add_right _ _

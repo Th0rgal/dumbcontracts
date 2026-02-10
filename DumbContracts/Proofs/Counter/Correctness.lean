@@ -9,6 +9,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.Counter
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.Counter.Spec
 import DumbContracts.Specs.Counter.Invariants
 import DumbContracts.Proofs.Counter.Basic
@@ -104,7 +105,7 @@ theorem getCount_preserves_wellformedness (s : ContractState) (h : WellFormedSta
 /-- decrement followed by getCount returns count - 1. -/
 theorem decrement_getCount_correct (s : ContractState) :
   let s' := ((decrement).run s).snd
-  ((getCount).run s').fst = s.storage 0 - 1 := by
+  ((getCount).run s').fst = EVM.Uint256.sub (s.storage 0) 1 := by
   have h_dec := decrement_subtracts_one s
   have h_get := getCount_reads_count_value (((decrement).run s).snd)
   simp only [h_dec] at h_get
@@ -112,13 +113,13 @@ theorem decrement_getCount_correct (s : ContractState) :
 
 /-! ## Edge Cases -/
 
-/-- Decrementing at zero stays at zero (Nat subtraction truncation).
-    Unlike SafeCounter which reverts, Counter silently saturates to 0. -/
-theorem decrement_at_zero_stays_zero (s : ContractState) (h : s.storage 0 = 0) :
+/-- Decrementing at zero wraps to max (EVM modular subtraction). -/
+theorem decrement_at_zero_wraps_max (s : ContractState) (h : s.storage 0 = 0) :
   let s' := ((decrement).run s).snd
-  s'.storage 0 = 0 := by
-  show ((decrement).run s).snd.storage 0 = 0
+  s'.storage 0 = EVM.MAX_UINT256 := by
+  show ((decrement).run s).snd.storage 0 = EVM.MAX_UINT256
   rw [decrement_subtracts_one s, h]
+  simp [EVM.MAX_UINT256, EVM.Uint256.sub]
 
 /-! ## Summary
 

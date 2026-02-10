@@ -11,6 +11,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.OwnedCounter
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.OwnedCounter.Spec
 import DumbContracts.Specs.OwnedCounter.Invariants
 
@@ -81,7 +82,7 @@ theorem isOwner_correct (s : ContractState) :
 private theorem increment_unfold (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
   (increment.run s) = ContractResult.success ()
-    { storage := fun slot => if (slot == 1) = true then s.storage 1 + 1 else s.storage slot,
+    { storage := fun slot => if (slot == 1) = true then EVM.Uint256.add (s.storage 1) 1 else s.storage slot,
       storageAddr := s.storageAddr,
       storageMap := s.storageMap,
       sender := s.sender,
@@ -104,7 +105,7 @@ theorem increment_meets_spec_when_owner (s : ContractState)
 theorem increment_adds_one_when_owner (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := (increment.run s).snd
-  s'.storage 1 = s.storage 1 + 1 := by
+  s'.storage 1 = EVM.Uint256.add (s.storage 1) 1 := by
   rw [increment_unfold s h_owner]
   simp [ContractResult.snd]
 
@@ -125,7 +126,7 @@ theorem increment_reverts_when_not_owner (s : ContractState)
 private theorem decrement_unfold (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
   (decrement.run s) = ContractResult.success ()
-    { storage := fun slot => if (slot == 1) = true then s.storage 1 - 1 else s.storage slot,
+    { storage := fun slot => if (slot == 1) = true then EVM.Uint256.sub (s.storage 1) 1 else s.storage slot,
       storageAddr := s.storageAddr,
       storageMap := s.storageMap,
       sender := s.sender,
@@ -148,7 +149,7 @@ theorem decrement_meets_spec_when_owner (s : ContractState)
 theorem decrement_subtracts_one_when_owner (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := (decrement.run s).snd
-  s'.storage 1 = s.storage 1 - 1 := by
+  s'.storage 1 = EVM.Uint256.sub (s.storage 1) 1 := by
   rw [decrement_unfold s h_owner]
   simp [ContractResult.snd]
 
@@ -275,7 +276,7 @@ theorem constructor_increment_getCount (s : ContractState) (initialOwner : Addre
   (h_sender : s.sender = initialOwner) :
   let s1 := ((constructor initialOwner).run s).snd
   let s2 := (increment.run s1).snd
-  (getCount.run s2).fst = s.storage 1 + 1 := by
+  (getCount.run s2).fst = EVM.Uint256.add (s.storage 1) 1 := by
   -- Fully unfold constructor → increment → getCount in one go
   simp only [constructor, increment, onlyOwner, isOwner, owner, count,
     getCount, getStorage, getStorageAddr, setStorage, setStorageAddr,

@@ -36,7 +36,7 @@ def div (a b : Nat) : Nat :=
 def mod (a b : Nat) : Nat :=
   if b = 0 then 0 else a % b
 
--- Overflow detection predicates for safety proofs
+  -- Overflow detection predicates for safety proofs
 
 def willAddOverflow (a b : Nat) : Bool :=
   a + b ≥ 2^256
@@ -44,38 +44,16 @@ def willAddOverflow (a b : Nat) : Bool :=
 def willSubUnderflow (a b : Nat) : Bool :=
   b > a
 
-def willMulOverflow (a b : Nat) : Bool :=
-  a * b ≥ 2^256
+  def willMulOverflow (a b : Nat) : Bool :=
+    a * b ≥ 2^256
 
--- Lemmas for modular arithmetic reasoning
+  -- Lemmas for modular arithmetic reasoning when no overflow/underflow occurs.
 
-theorem add_comm (a b : Nat) : add a b = add b a := by
-  simp [add]; sorry  -- TODO: modular arithmetic proof
+  theorem add_eq_of_lt {a b : Nat} (h : a + b < 2^256) : add a b = a + b := by
+    simp [add, Nat.mod_eq_of_lt h]
 
-theorem add_assoc (a b c : Nat) : add (add a b) c = add a (add b c) := by
-  sorry  -- TODO: modular arithmetic proof
-
-theorem add_wraps_at_max (a b : Nat) : add a b = (a + b) % (2^256) := by
-  rfl
-
-theorem mul_comm (a b : Nat) : mul a b = mul b a := by
-  simp [mul]; sorry  -- TODO: modular arithmetic proof
-
-theorem div_by_zero (a : Nat) : div a 0 = 0 := by
-  rfl
-
-theorem mod_by_zero (a : Nat) : mod a 0 = 0 := by
-  rfl
-
--- Overflow detection correctness
-
-theorem willAddOverflow_correct (a b : Nat) :
-  willAddOverflow a b = true ↔ add a b ≠ a + b := by
-  sorry  -- TODO: overflow detection proof
-
-theorem no_overflow_preserves_value (a b : Nat) :
-  willAddOverflow a b = false → add a b = a + b := by
-  sorry  -- TODO: no overflow proof
+  theorem sub_eq_of_le {a b : Nat} (h : b ≤ a) : sub a b = a - b := by
+    simp [sub, h]
 
 end Uint256
 

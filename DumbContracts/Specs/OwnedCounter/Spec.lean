@@ -9,12 +9,14 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.OwnedCounter
 
 namespace DumbContracts.Specs.OwnedCounter
 
 open DumbContracts
 open DumbContracts.Examples.OwnedCounter
+open DumbContracts.EVM.Uint256
 
 /-! ## Operation Specifications -/
 
@@ -37,7 +39,7 @@ def getOwner_spec (result : Address) (s : ContractState) : Prop :=
 
 /-- increment (when owner): count increases by 1, owner unchanged, context preserved -/
 def increment_spec (s s' : ContractState) : Prop :=
-  s'.storage 1 = s.storage 1 + 1 ∧
+  s'.storage 1 = add (s.storage 1) 1 ∧
   (∀ slot : Nat, slot ≠ 1 → s'.storage slot = s.storage slot) ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
@@ -46,7 +48,7 @@ def increment_spec (s s' : ContractState) : Prop :=
 
 /-- decrement (when owner): count decreases by 1, owner unchanged, context preserved -/
 def decrement_spec (s s' : ContractState) : Prop :=
-  s'.storage 1 = s.storage 1 - 1 ∧
+  s'.storage 1 = sub (s.storage 1) 1 ∧
   (∀ slot : Nat, slot ≠ 1 → s'.storage slot = s.storage slot) ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧

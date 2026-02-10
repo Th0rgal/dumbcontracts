@@ -9,6 +9,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.OwnedCounter
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.OwnedCounter.Spec
 import DumbContracts.Specs.OwnedCounter.Invariants
 import DumbContracts.Proofs.OwnedCounter.Basic
@@ -98,7 +99,7 @@ theorem increment_survives_transfer (s : ContractState) (initialOwner newOwner :
   let s1 := ((constructor initialOwner).run s).snd
   let s2 := (increment.run s1).snd
   let s3 := ((transferOwnership newOwner).run s2).snd
-  (getCount.run s3).fst = s.storage 1 + 1 := by
+  (getCount.run s3).fst = EVM.Uint256.add (s.storage 1) 1 := by
   simp only [constructor, increment, transferOwnership, onlyOwner, isOwner, owner, count,
     getCount, getStorage, getStorageAddr, setStorage, setStorageAddr,
     msgSender, DumbContracts.require, DumbContracts.pure, DumbContracts.bind,

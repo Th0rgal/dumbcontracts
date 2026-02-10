@@ -6,10 +6,12 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 
 namespace DumbContracts.Specs.SimpleToken
 
 open DumbContracts
+open DumbContracts.EVM.Uint256
 
 /-! ## Storage Slot Definitions -/
 
@@ -44,8 +46,8 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
     - Preserves owner
 -/
 def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
-  s'.storageMap 1 to = s.storageMap 1 to + amount ∧
-  s'.storage 2 = s.storage 2 + amount ∧
+  s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
+  s'.storage 2 = add (s.storage 2) amount ∧
   (∀ addr : Address, addr ≠ to → s'.storageMap 1 addr = s.storageMap 1 addr) ∧
   s'.storageAddr 0 = s.storageAddr 0 ∧
   (∀ slot : Nat, slot ≠ 1 → ∀ addr : Address, s'.storageMap slot addr = s.storageMap slot addr) ∧
@@ -62,8 +64,8 @@ def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
 -/
 def transfer_spec (sender to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   s.storageMap 1 sender ≥ amount ∧
-  s'.storageMap 1 sender = s.storageMap 1 sender - amount ∧
-  s'.storageMap 1 to = s.storageMap 1 to + amount ∧
+  s'.storageMap 1 sender = sub (s.storageMap 1 sender) amount ∧
+  s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
   s'.storage 2 = s.storage 2 ∧
   (∀ addr : Address, addr ≠ sender → addr ≠ to → s'.storageMap 1 addr = s.storageMap 1 addr) ∧
   s'.storageAddr 0 = s.storageAddr 0 ∧
@@ -105,16 +107,16 @@ def constructor_getTotalSupply_spec (initialOwner : Address) (s : ContractState)
 
 /-- Mint followed by balanceOf returns increased balance -/
 def mint_balanceOf_spec (to : Address) (amount : Uint256) (s : ContractState) (result : Uint256) : Prop :=
-  result = s.storageMap 1 to + amount
+  result = add (s.storageMap 1 to) amount
 
 /-- Transfer followed by balanceOf (sender) returns decreased balance -/
 def transfer_balanceOf_sender_spec (sender to : Address) (amount : Uint256) (s : ContractState) (result : Uint256) : Prop :=
   s.storageMap 1 sender ≥ amount →
-  result = s.storageMap 1 sender - amount
+  result = sub (s.storageMap 1 sender) amount
 
 /-- Transfer followed by balanceOf (recipient) returns increased balance -/
 def transfer_balanceOf_recipient_spec (sender to : Address) (amount : Uint256) (s : ContractState) (result : Uint256) : Prop :=
   s.storageMap 1 sender ≥ amount →
-  result = s.storageMap 1 to + amount
+  result = add (s.storageMap 1 to) amount
 
 end DumbContracts.Specs.SimpleToken

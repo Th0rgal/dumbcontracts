@@ -11,6 +11,7 @@
 -/
 
 import DumbContracts.Examples.SimpleToken
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.SimpleToken.Spec
 import DumbContracts.Specs.SimpleToken.Invariants
 import DumbContracts.Proofs.SimpleToken.Basic
@@ -123,7 +124,7 @@ They combine state-modifying operations with read operations.
 theorem mint_then_balanceOf_correct (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := ((mint to amount).run s).snd
-  ((balanceOf to).run s').fst = s.storageMap 1 to + amount := by
+  ((balanceOf to).run s').fst = EVM.Uint256.add (s.storageMap 1 to) amount := by
   show ((balanceOf to).run ((mint to amount).run s).snd).fst = _
   rw [balanceOf_returns_balance, mint_increases_balance s to amount h_owner]
 
@@ -131,7 +132,7 @@ theorem mint_then_balanceOf_correct (s : ContractState) (to : Address) (amount :
 theorem mint_then_getTotalSupply_correct (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := ((mint to amount).run s).snd
-  ((getTotalSupply).run s').fst = s.storage 2 + amount := by
+  ((getTotalSupply).run s').fst = EVM.Uint256.add (s.storage 2) amount := by
   show ((getTotalSupply).run ((mint to amount).run s).snd).fst = _
   rw [getTotalSupply_returns_supply, mint_increases_supply s to amount h_owner]
 
@@ -139,7 +140,7 @@ theorem mint_then_getTotalSupply_correct (s : ContractState) (to : Address) (amo
 theorem transfer_then_balanceOf_sender_correct (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount) (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  ((balanceOf s.sender).run s').fst = s.storageMap 1 s.sender - amount := by
+  ((balanceOf s.sender).run s').fst = EVM.Uint256.sub (s.storageMap 1 s.sender) amount := by
   show ((balanceOf s.sender).run ((transfer to amount).run s).snd).fst = _
   rw [balanceOf_returns_balance]
   exact transfer_decreases_sender_balance s to amount h_balance h_ne
@@ -148,7 +149,7 @@ theorem transfer_then_balanceOf_sender_correct (s : ContractState) (to : Address
 theorem transfer_then_balanceOf_recipient_correct (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount) (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  ((balanceOf to).run s').fst = s.storageMap 1 to + amount := by
+  ((balanceOf to).run s').fst = EVM.Uint256.add (s.storageMap 1 to) amount := by
   show ((balanceOf to).run ((transfer to amount).run s).snd).fst = _
   rw [balanceOf_returns_balance]
   exact transfer_increases_recipient_balance s to amount h_balance h_ne

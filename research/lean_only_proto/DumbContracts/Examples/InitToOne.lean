@@ -14,9 +14,7 @@ open DumbContracts.Std
 def initToOneFun : Fun :=
   { name := "initToOne"
     args := ["slot"]
-    body :=
-      letSload "current" (v "slot")
-        (requireZero (v "current") (sstoreVar "slot" (n 1)))
+    body := sstoreIfZero (v "slot") (n 1)
     ret := none }
 
 def initToOneSpecR (slot : Nat) : SpecR Store :=
@@ -31,14 +29,14 @@ theorem initToOne_meets_specR_ok (s : Store) (slot : Nat) :
       | _ => False) := by
   intro hreq
   have hzero : s slot = 0 := by exact hreq
-  simp [initToOneSpecR, initToOneFun, letSload, requireZero, requireEq, eq, require, execFun,
-    execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hzero]
+  simp [initToOneSpecR, initToOneFun, sstoreIfZero, letSload, requireZero, requireEq, eq, require,
+    execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hzero]
 
 theorem initToOne_meets_specR_reverts (s : Store) (slot : Nat) :
     (initToOneSpecR slot).reverts s ->
     execFun initToOneFun [slot] s [] = ExecResult.reverted := by
   intro hrev
-  simp [initToOneSpecR, initToOneFun, letSload, requireZero, requireEq, eq, require, execFun,
-    execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hrev]
+  simp [initToOneSpecR, initToOneFun, sstoreIfZero, letSload, requireZero, requireEq, eq, require,
+    execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore, hrev]
 
 end DumbContracts.Examples

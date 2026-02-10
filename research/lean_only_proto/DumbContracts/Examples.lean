@@ -11,6 +11,7 @@ import DumbContracts.Examples.CompareAndSwap
 import DumbContracts.Examples.ClearIfEq
 import DumbContracts.Examples.InitOnce
 import DumbContracts.Examples.InitToOne
+import DumbContracts.Examples.InitDouble
 import DumbContracts.Examples.SetIfGreater
 import DumbContracts.Examples.SetIfAtLeast
 import DumbContracts.Examples.SetIfLess

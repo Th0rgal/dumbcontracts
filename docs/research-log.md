@@ -110,3 +110,11 @@
 - Added Foundry tests for generated contracts.
 - Compressed docs + tightened minimal frontend.
 - Scanned external tooling landscape (Act, Scribble, Certora, SMTChecker, KEVM/Kontrol, VerX, Move Prover).
+# 2026-02-10
+- Added `sstoreIfZero` stdlib helper to package the common "load + require zero + store" pattern.
+- Refactored `initOnce` and `initToOne` to use `sstoreIfZero`.
+- Added `initDouble` example (initialize to `value * 2` on zero) with SpecR + proofs.
+- Added Foundry test for `initDouble`.
+- Updated compiler entries + direct EVM asm wiring for `initDouble`.
+- `end_to_end` initially failed due to direct EVM asm mismatch in `initDouble`; fixed by aligning the stack order (`swap1` prelude + `swap1` before `sstore`) with solc output.
+- Ran `PATH=/opt/lean-4.27.0/bin:$PATH lake build`, `./scripts/end_to_end.sh`, and `./scripts/foundry_test_generated.sh` (all green).

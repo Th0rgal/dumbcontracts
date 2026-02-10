@@ -1,6 +1,13 @@
 # Research Log
 
 ## 2026-02-10
+- Added `sstoreIfGt` stdlib helper to avoid redundant stores on monotonic increases.
+- Refactored `updateMax` to use `sstoreIfGt`.
+- Added `raiseSlot` example (raise slot to a floor without reverting) with Spec + proof.
+- Added Foundry test for `raiseSlot`.
+- Updated compiler entries + direct EVM asm wiring for `raiseSlot` and `updateMax`.
+- `end_to_end` initially failed due to cap/raise stub ordering; swapped the `tag_raiseSlot`/`tag_capSlot` order so jumpdest offsets match solc.
+- Ran `PATH=/opt/lean-4.27.0/bin:$PATH lake build`, `./scripts/end_to_end.sh`, and `./scripts/foundry_test_generated.sh` (all green).
 - Added `requireNonZeroAndLt` stdlib helper for combined nonzero + max guards.
 - Refactored `setIfNonZeroAndLess` to use `requireNonZeroAndLt`.
 - Added `addIfNonZeroAndLess` example (guarded add on `delta != 0` and `delta < max`) with SpecR + proofs.

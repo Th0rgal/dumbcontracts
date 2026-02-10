@@ -14,14 +14,12 @@ open DumbContracts.Std
 def updateMaxFun : Fun :=
   { name := "updateMax"
     args := ["slot", "value"]
-    body :=
-      letSload "current" (v "slot")
-        (sstoreMax (v "slot") (v "current") (v "value"))
+    body := sstoreIfGt (v "slot") (v "value")
     ret := none }
 
 def updateMaxSpec (slot value : Nat) : Spec Store :=
   { requires := fun _ => True
-    ensures := fun s s' => s' = updateStore s slot (if s slot > value then s slot else value) }
+    ensures := fun s s' => s' = updateStore s slot (if value > s slot then value else s slot) }
 
 theorem updateMax_meets_spec (s : Store) (slot value : Nat) :
     (updateMaxSpec slot value).requires s ->
@@ -29,10 +27,10 @@ theorem updateMax_meets_spec (s : Store) (slot value : Nat) :
       | ExecResult.ok _ s' => (updateMaxSpec slot value).ensures s s'
       | _ => False) := by
   intro _hreq
-  by_cases h : s slot > value
-  · simp [updateMaxFun, updateMaxSpec, letSload, sstoreMax, v, execFun, execStmt, evalExpr,
+  by_cases h : value > s slot
+  · simp [updateMaxFun, updateMaxSpec, sstoreIfGt, letSload, v, execFun, execStmt, evalExpr,
       bindArgs, emptyEnv, updateEnv, updateStore, h]
-  · simp [updateMaxFun, updateMaxSpec, letSload, sstoreMax, v, execFun, execStmt, evalExpr,
+  · simp [updateMaxFun, updateMaxSpec, sstoreIfGt, letSload, v, execFun, execStmt, evalExpr,
       bindArgs, emptyEnv, updateEnv, updateStore, h]
 
 end DumbContracts.Examples

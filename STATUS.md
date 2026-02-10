@@ -19,10 +19,11 @@ Last updated: 2026-02-10
 - Decide whether to guard old-state specs with `from ≠ to` or adopt sequential reads by default.
 - Supply accounting abstraction (list vs set/dedup semantics).
 - EDSL ergonomics: add helpers, notations, and a minimal stdlib for common patterns.
-- Iteration: add `sstoreIfLt` helper plus a capped-slot example to avoid redundant writes.
+- Iteration: add `sstoreIfGt` helper plus a raise-slot example to avoid redundant writes.
  
 
 ## Recently Done
+- Added `sstoreIfGt` helper, refactored `updateMax`, and added `raiseSlot` example + Foundry test.
 - Added `sstoreIfLt` helper, refactored `updateMin`, and added `capSlot` example + Foundry test.
 - Added `sstoreIfZero` helper and an `initDouble` example + Foundry test.
 - Added `requireZero` helper and an `initToOne` example + Foundry test.

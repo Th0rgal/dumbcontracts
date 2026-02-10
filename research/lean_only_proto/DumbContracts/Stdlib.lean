@@ -76,6 +76,13 @@ def sstoreIfLt (slot value : Expr) : Stmt :=
       (Stmt.sstore slot value)
       Stmt.skip)
 
+def sstoreIfGt (slot value : Expr) : Stmt :=
+  letSload "current" slot
+    (Stmt.if_
+      (Expr.gt value (Expr.var "current"))
+      (Stmt.sstore slot value)
+      Stmt.skip)
+
 def sstoreAdd (slot delta : Expr) : Stmt :=
   Stmt.sstore slot (Expr.add (Expr.sload slot) delta)
 

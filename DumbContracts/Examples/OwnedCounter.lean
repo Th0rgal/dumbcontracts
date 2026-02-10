@@ -76,6 +76,7 @@ def exampleUsage : Contract (Uint256 × Address) := do
 #eval (exampleUsage.run {
   storage := fun _ => 0,
   storageAddr := fun _ => "",
+  storageMap := fun _ _ => 0,
   sender := "0xAlice",  -- Alice is the caller
   thisAddress := "0xContract"
 }).1

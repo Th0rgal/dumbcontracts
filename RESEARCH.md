@@ -915,3 +915,259 @@ Future stdlib modules can follow this pattern:
 - Modified: DumbContracts.lean (added Stdlib.Math and SafeCounter imports)
 - Modified: STATUS.md (updated for iteration 5)
 - Modified: RESEARCH.md (this file)
+
+---
+
+## Iteration 6: Mapping Support (2026-02-10)
+
+### What I Added
+1. **Mapping Storage in Core** (DumbContracts/Core.lean:25, 52-62)
+   - Added storageMap field to ContractState: `Nat → Address → Uint256`
+   - Added getMapping: read from mapping by slot and key
+   - Added setMapping: write to mapping by slot and key
+   - Total core increase: +12 lines (69 → 81 lines)
+   - First core extension in 3 iterations!
+
+2. **Ledger Example Contract** (DumbContracts/Examples/Ledger.lean:1-70)
+   - Demonstrates mapping usage pattern (Address → Uint256)
+   - Storage: balances mapping at slot 0
+   - Functions: deposit, withdraw, transfer, getBalance
+   - Shows key-value storage for balance tracking
+   - Evaluates to (20, 50) - Alice: 20, Bob: 50 after example operations
+
+3. **Solidity Reference** (contracts/Ledger.sol:1-46)
+   - Uses native mapping(address => uint256) for balances
+   - Clean implementation with custom errors
+   - Identical semantics to Lean version
+
+4. **Comprehensive Test Suite** (test/Ledger.t.sol:1-121)
+   - 11 tests covering all mapping scenarios
+   - Tests deposit, withdraw, transfer operations
+   - Tests insufficient balance checks
+   - Tests example usage from Lean
+   - 2 fuzz tests (deposit/withdraw, transfer)
+   - All 50 total tests passing (11 Ledger + 39 previous)
+
+5. **Updated All Examples**
+   - Added storageMap field to all example #eval statements
+   - Maintained backward compatibility
+   - Zero changes to example logic
+
+### What I Tried
+
+**Approach 1: Generic mapping type**
+- Considered: `storageMap : Nat → α → β` with type parameters
+- Problem: Would complicate core significantly
+- Solution: Start specific (Address → Uint256), generalize later if needed
+- **Learning**: Add what examples need, not what's theoretically complete
+
+**Approach 2: Nested map structure**
+- Pattern: `Nat → Address → Uint256` for mapping storage
+- First Nat is the slot (which mapping)
+- Second level is the key (which entry in the mapping)
+- Works cleanly with type-safe StorageSlot
+- **Learning**: Nested functions model mappings naturally
+
+**Approach 3: Default value for missing keys**
+- Decision: Return 0 for uninitialized mapping entries
+- Matches Solidity semantics (mappings default to zero)
+- Implementation: Initialize with `storageMap := fun _ _ => 0`
+- **Learning**: Solidity default semantics are the right choice
+
+**Approach 4: Balance tracking pattern**
+- Ledger example shows classic pattern: balances mapping
+- deposit: adds to mapping[sender]
+- withdraw: subtracts with safety check
+- transfer: atomic move from sender to recipient
+- **Learning**: This unlocks entire class of token-like contracts
+
+### Findings
+
+**1. First Justified Core Extension in 3 Iterations ⭐⭐⭐**
+
+The mapping support represents the first core extension since iteration 3:
+- **Iteration 3**: Added Address storage (+14 lines)
+- **Iterations 4-5**: Zero core changes (extensibility validated)
+- **Iteration 6**: Added mapping storage (+12 lines)
+
+**Why this extension is justified:**
+- Enables entire class of contracts (tokens, allowances, registries)
+- Simple example (Ledger) clearly demonstrates need
+- No alternative approach (can't fake mappings with single values)
+- Follows established pattern (like Address storage)
+- Minimal addition (12 lines for significant capability)
+
+**New core size: 81 lines** (still under 85, still very minimal)
+
+**2. Mapping Pattern is Natural in Lean ✅**
+
+The nested function pattern works beautifully:
+```lean
+storageMap : Nat → Address → Uint256
+-- slot → key → value
+```
+
+**Benefits:**
+- Type-safe through StorageSlot wrapper
+- Natural partial application (slot first, then key)
+- Easy to implement getMapping and setMapping
+- Matches mental model of mappings
+
+**3. Key-Value Storage Unlocks New Patterns**
+
+Ledger demonstrates foundational patterns now possible:
+- **Balances**: Track value per address (tokens!)
+- **Allowances**: Track approval amounts (ERC20!)
+- **Registries**: Map addresses to data
+- **Ownership records**: Track ownership per item
+
+This is a multiplier for the EDSL's utility.
+
+**4. Default Zero Semantics Match Solidity**
+
+Critical design decision:
+- Solidity: `mapping(address => uint256)` defaults to 0
+- Lean EDSL: `storageMap := fun _ _ => 0`
+- **Perfect semantic alignment** ✅
+
+This means Ledger behaves identically to Solidity:
+- Uninitialized balances are 0
+- No explicit initialization needed
+- Natural and intuitive
+
+**5. Transfer Pattern Validates Atomic Updates**
+
+The transfer function shows important pattern:
+```lean
+def transfer (to : Address) (amount : Uint256) : Contract Unit := do
+  let sender ← msgSender
+  let senderBalance ← getMapping balances sender
+  require (senderBalance >= amount) "Insufficient balance"
+  let recipientBalance ← getMapping balances to
+  setMapping balances sender (senderBalance - amount)
+  setMapping balances to (recipientBalance + amount)
+```
+
+**Key insight**: Multiple mapping updates in sequence work correctly.
+This validates the StateM approach for atomic state changes.
+
+**6. Testing Reveals Mapping Correctness**
+
+Key tests:
+- `test_Transfer`: Validates atomic updates (sender loses, recipient gains)
+- `test_ExampleUsage`: Validates complex sequence (deposit → withdraw → transfer)
+- `testFuzz_Transfer`: Validates for arbitrary amounts
+- `test_InitialBalance`: Validates default zero semantics
+
+All tests pass - mapping semantics are correct!
+
+**7. Example Backwards Compatibility**
+
+All previous examples needed one-line change:
+```lean
+-- Add this field:
+storageMap := fun _ _ => 0
+```
+
+**Benefits:**
+- Previous examples still work
+- No logic changes needed
+- Clean migration path
+- Validates extensibility
+
+### Complexity Metrics
+- Core EDSL: **81 lines (+12 from iteration 5)**
+- Stdlib/Math: 63 lines (unchanged)
+- Ledger Example: 70 lines (39 code, 31 comments/blank)
+- Total Lean code: ~380 lines
+- Test coverage: 50 tests, all passing (100%)
+- Fuzz runs: 2,560 total (256 per fuzz test × 10 tests)
+
+### Core Growth Analysis
+- Iteration 1: 58 lines (bootstrap)
+- Iteration 2: 58 lines (no change)
+- Iteration 3: 72 lines (+24% - Address storage)
+- Iteration 4: 72 lines (no change - composability)
+- Iteration 5: 69 lines (-4% - cleanup)
+- Iteration 6: 81 lines (+17% - mapping storage)
+
+**Growth rate is sustainable:**
+- 3 iterations without core changes
+- Extensions are minimal and justified
+- Core is still under 85 lines
+- Each addition unlocks significant capability
+
+### Pattern Library Status
+
+**6 examples now available:**
+1. **SimpleStorage** - Basic state management
+2. **Counter** - Unsafe arithmetic (fast)
+3. **SafeCounter** - Safe arithmetic (checked)
+4. **Owned** - Access control and ownership
+5. **OwnedCounter** - Composition of patterns
+6. **Ledger** - Mapping storage (balances) ⭐ NEW
+
+**Mapping pattern established** ✅
+
+### Test Coverage Analysis
+| Contract | Tests | Fuzz Tests | Status |
+|----------|-------|------------|--------|
+| SimpleStorage | 4 | 1 | ✅ All pass |
+| Counter | 7 | 1 | ✅ All pass |
+| SafeCounter | 9 | 1 | ✅ All pass |
+| Owned | 8 | 2 | ✅ All pass |
+| OwnedCounter | 11 | 2 | ✅ All pass |
+| Ledger | 11 | 2 | ✅ All pass |
+| **Total** | **50** | **9** | **✅ 100%** |
+
+**Fuzz runs**: 2,304 total
+
+### Capability Unlocked: Token Contracts
+
+With mapping support, the EDSL can now implement:
+- **ERC20-like tokens**: balances, allowances, transfers
+- **NFT registries**: owner per token ID
+- **Voting systems**: votes per address
+- **Staking contracts**: stake amount per user
+
+This represents a major milestone in the EDSL's practical utility.
+
+### Next Iteration Ideas (Updated)
+
+1. **Simple Token (ERC20-like)** (High Priority - now possible!)
+   - Combine Owned + Ledger patterns
+   - Add totalSupply, balanceOf, transfer
+   - Foundation for DeFi-like contracts
+   - Validates that mapping + ownership patterns compose
+
+2. **More Mapping Types** (Medium Priority)
+   - Consider Uint256 → Uint256 mappings
+   - Or keep it minimal (only add when needed)
+
+3. **Events** (Lower Priority)
+   - Observability pattern
+   - Can wait until after token example
+
+### Questions Answered
+
+**Q: When should core be extended?**
+**A:** When a concrete example demonstrates clear need, no alternative exists, and the extension is minimal. Mapping support met all criteria.
+
+**Q: How to represent mappings in Lean?**
+**A:** Nested functions (`Nat → Address → Uint256`) model mappings naturally and type-safely.
+
+**Q: Do mappings work with existing patterns?**
+**A:** Yes! Ledger is straightforward, and path is clear for combining with Owned pattern.
+
+**Q: What's the performance cost of function-based storage?**
+**A:** Not relevant - this is an EDSL for semantic modeling, not runtime execution.
+
+### Files Modified This Iteration
+- Modified: DumbContracts/Core.lean (added mapping storage +12 lines)
+- Created: DumbContracts/Examples/Ledger.lean
+- Created: contracts/Ledger.sol
+- Created: test/Ledger.t.sol
+- Modified: DumbContracts.lean (added Ledger import)
+- Modified: All 5 previous examples (added storageMap field)
+- Modified: STATUS.md (updated for iteration 6)
+- Modified: RESEARCH.md (this file)

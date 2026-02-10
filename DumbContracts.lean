@@ -5,3 +5,4 @@ import DumbContracts.Examples.Counter
 import DumbContracts.Examples.SafeCounter
 import DumbContracts.Examples.Owned
 import DumbContracts.Examples.OwnedCounter
+import DumbContracts.Examples.Ledger

@@ -20,8 +20,9 @@ structure StorageSlot (α : Type) where
 
 -- State monad for contract execution
 structure ContractState where
-  storage : Nat → Uint256      -- Uint256 storage mapping
-  storageAddr : Nat → Address  -- Address storage mapping
+  storage : Nat → Uint256                -- Uint256 storage mapping
+  storageAddr : Nat → Address            -- Address storage mapping
+  storageMap : Nat → Address → Uint256  -- Mapping storage (Address → Uint256)
   sender : Address
   thisAddress : Address
 
@@ -46,6 +47,18 @@ def getStorageAddr (s : StorageSlot Address) : Contract Address := do
 def setStorageAddr (s : StorageSlot Address) (value : Address) : Contract Unit := do
   modify fun state => { state with
     storageAddr := fun slot => if slot == s.slot then value else state.storageAddr slot
+  }
+
+-- Mapping operations (Address → Uint256)
+def getMapping (s : StorageSlot (Address → Uint256)) (key : Address) : Contract Uint256 := do
+  let state ← get
+  return state.storageMap s.slot key
+
+def setMapping (s : StorageSlot (Address → Uint256)) (key : Address) (value : Uint256) : Contract Unit := do
+  modify fun state => { state with
+    storageMap := fun slot addr =>
+      if slot == s.slot && addr == key then value
+      else state.storageMap slot addr
   }
 
 -- Read-only context accessors

@@ -1,51 +1,77 @@
 # Dumb Contracts Research Status
 
-## Current Iteration: Simple Token Contract (2026-02-10)
+## Current Iteration: Verification Iteration 1 - SimpleStorage (2026-02-10)
 
 ### Goal
-Create a Simple Token contract that combines Owned and Ledger patterns to demonstrate pattern composition with mappings. This validates that ownership, access control, and mapping storage all work together seamlessly.
+Add formal verification to SimpleStorage, proving basic correctness properties. This establishes the foundation for verifying more complex contracts.
 
 ### What I'm About to Do
-1. Create SimpleToken example contract:
-   - Combine Owned (access control) + Ledger (balances mapping) patterns
-   - Owner-controlled minting
-   - Public transfer operations
-   - Functions: mint (owner-only), transfer, balanceOf, totalSupply
-   - Demonstrates that patterns compose with mappings
 
-2. Add Foundry test suite:
-   - Test initial supply is zero
-   - Test owner can mint tokens
-   - Test non-owner cannot mint
-   - Test transfer between addresses
-   - Test balanceOf queries
-   - Test totalSupply tracking
-   - Fuzz test for minting and transfers
+1. **Create specification files** (DumbContracts/Specs/SimpleStorage/):
+   - `Spec.lean` - Formal specification of store/retrieve behavior
+   - `Invariants.lean` - State invariants (well-formedness)
+
+2. **Create proof files** (DumbContracts/Proofs/SimpleStorage/):
+   - `Basic.lean` - Prove store/retrieve correctness
+   - Prove: retrieve returns the last stored value
+   - Prove: setStorage preserves state well-formedness
+
+3. **Document proof strategy**:
+   - What properties are proven
+   - What assumptions are made
+   - What remains unproven
 
 ### Why This Approach
-Simple Token is the right next step because:
-- Natural next step after Ledger (iteration 6) and Owned (iteration 3)
-- Demonstrates that patterns compose with mappings
-- Validates the architecture can handle realistic contracts
-- Foundation pattern for DeFi-like contracts
-- Zero core changes needed (uses existing primitives)
-- Clean example that's easy to understand
+
+SimpleStorage verification is the right starting point because:
+- Simplest contract (store/retrieve only)
+- Establishes proof patterns for future contracts
+- Tests verification infrastructure
+- No complex invariants (single storage slot)
+- Foundation for Counter, Owned, etc.
+
+### Key Properties to Prove
+
+**Tier 1: Basic Correctness**
+- `store_retrieve_correct`: After storing value v, retrieve returns v
+- `store_updates_storage`: setStorage actually updates the storage slot
+- `retrieve_reads_storage`: getStorage returns the value in the slot
+
+**Tier 2: State Invariants**
+- `state_well_formed`: ContractState structure is valid
+- `storage_isolation`: Different slots don't interfere
 
 ### Current State
-- Previous: Mapping Support complete (6 examples, 50 tests passing)
-- Core: 82 lines (stable, mapping support added)
-- Stdlib: Math.lean (63 lines)
-- Pattern library: SimpleStorage, Counter, SafeCounter, Owned, OwnedCounter, Ledger
-- Ready to validate pattern composition with mappings
+- Previous: Documentation website complete (PR #4)
+- Core: 82 lines, stable
+- Examples: 7 contracts (all runtime-tested)
+- Verification: None yet (this is the first!)
 
 ### Expected Outcomes
-- SimpleToken example (~80-90 lines)
-- All tests passing (expect ~60-65 total)
-- Validation that Owned + Ledger patterns compose
-- Zero core changes needed
-- Foundation for more complex token contracts
+- Specs/SimpleStorage/ directory with formal specifications
+- Proofs/SimpleStorage/ directory with proven theorems
+- At least 1 complete proof (store_retrieve_correct)
+- Documentation of proof strategy and limitations
+- Foundation for future verification work
 
 ### Next Steps After This Iteration
-- Consider allowances (ERC20-like approve/transferFrom pattern)
-- More stdlib helpers based on token patterns
-- Events for observability (lower priority)
+- Counter verification (arithmetic properties)
+- Owned verification (access control properties)
+- SimpleToken verification (complex invariants)
+
+---
+
+## Previous Work: Implementation Phase Complete
+
+**7 iterations completed** (see RESEARCH.md for full details):
+1. Bootstrap - 58-line minimal core
+2. Counter - Arithmetic operations
+3. Owned - Access control (+14 lines)
+4. OwnedCounter - Pattern composition
+5. Math Safety Stdlib - Extensibility
+6. Mapping Support - Key-value storage (+13 lines)
+7. SimpleToken - Realistic token contract
+
+**Current State**: 82-line core, 7 examples, 62 tests (100% passing)
+
+**New Phase**: Formal verification via Lean proofs

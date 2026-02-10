@@ -181,6 +181,19 @@ def exampleEntry7 : EntryPoint :=
     selector := 0xc74962fa
     returns := false }
 
+def exampleEntry21 : EntryPoint :=
+  { name := "clearIfEq"
+    args := ["slot", "expected"]
+    body :=
+      Lang.Stmt.let_ "current" (Lang.Expr.sload (Lang.Expr.var "slot"))
+        (Lang.Stmt.if_
+          (Lang.Expr.eq (Lang.Expr.var "current") (Lang.Expr.var "expected"))
+          (Lang.Stmt.sstore (Lang.Expr.var "slot") (Lang.Expr.lit 0))
+          Lang.Stmt.revert)
+    -- clearIfEq(uint256,uint256) -> 0xb41535b4
+    selector := 0xb41535b4
+    returns := false }
+
 def exampleEntry12 : EntryPoint :=
   { name := "initOnce"
     args := ["slot", "value"]
@@ -333,9 +346,9 @@ def exampleEntry14 : EntryPoint :=
 
 def exampleEntries : List EntryPoint :=
   [exampleEntry, exampleEntry2, exampleEntry3, exampleEntry4, exampleEntry5, exampleEntry15,
-    exampleEntry16, exampleEntry6, exampleEntry7, exampleEntry12, exampleEntry20, exampleEntry8,
-    exampleEntry9, exampleEntry19, exampleEntry10, exampleEntry11, exampleEntry17, exampleEntry18,
-    exampleEntry13, exampleEntry14]
+    exampleEntry16, exampleEntry6, exampleEntry7, exampleEntry21, exampleEntry12, exampleEntry20,
+    exampleEntry8, exampleEntry9, exampleEntry19, exampleEntry10, exampleEntry11, exampleEntry17,
+    exampleEntry18, exampleEntry13, exampleEntry14]
 
 def healthEntrySet : EntryPoint :=
   { name := "setRisk"

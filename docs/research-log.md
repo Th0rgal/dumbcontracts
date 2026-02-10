@@ -1,6 +1,11 @@
 # Research Log
 
 ## 2026-02-10
+- Added `sstoreIfEq` stdlib helper for guarded stores on slot equality.
+- Refactored `compareAndSwap` to use `sstoreIfEq`.
+- Added `clearIfEq` example (clear slot when it matches expected) with SpecR + proofs.
+- Added Foundry test for `clearIfEq`.
+- Updated compiler entries + direct EVM asm for `clearIfEq`.
 - Added `requireZero` stdlib helper for zero guards.
 - Refactored `initOnce` to use `requireZero`.
 - Added `initToOne` example (initialize slot to `1` when empty) with SpecR + proofs.

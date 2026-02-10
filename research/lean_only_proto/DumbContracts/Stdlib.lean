@@ -60,6 +60,9 @@ def requireZero (value : Expr) (body : Stmt) : Stmt :=
 def letSload (name : String) (slot : Expr) (body : Stmt) : Stmt :=
   Stmt.let_ name (Expr.sload slot) body
 
+def sstoreIfEq (slot expected value : Expr) : Stmt :=
+  letSload "current" slot (requireEq (Expr.var "current") expected (Stmt.sstore slot value))
+
 def sstoreAdd (slot delta : Expr) : Stmt :=
   Stmt.sstore slot (Expr.add (Expr.sload slot) delta)
 

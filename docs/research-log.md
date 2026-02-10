@@ -1,6 +1,11 @@
 # Research Log
 
 ## 2026-02-10
+- Added `sstoreAdd` stdlib helper to make slot increments less noisy.
+- Added `bumpSlot` example (increment slot by one) with a basic Spec + proof.
+- Refactored `addSlot` and `guardedAddSlot` to use `sstoreAdd`.
+- Added Foundry test for `bumpSlot`.
+- Updated compiler entries + direct EVM asm for `bumpSlot`.
 - Added `requireGt` stdlib helper to reduce guard boilerplate.
 - Added `setIfGreater` example (guarded store on `value > min`) with SpecR + proofs.
 - Refactored `guardedAddSlot` to use `requireGt`.

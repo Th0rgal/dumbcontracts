@@ -26,7 +26,7 @@ def setSlotFun : Fun :=
 def addSlotFun : Fun :=
   { name := "addSlot"
     args := ["slot", "delta"]
-    body := Stmt.sstore (Expr.var "slot") (Expr.add (Expr.sload (Expr.var "slot")) (Expr.var "delta"))
+    body := sstoreAdd (v "slot") (v "delta")
     ret := none }
 
 def guardedAddSlotFun : Fun :=
@@ -35,8 +35,7 @@ def guardedAddSlotFun : Fun :=
     body := requireGt
       (v "delta")
       (n 0)
-      (Stmt.sstore (Expr.var "slot")
-        (Expr.add (Expr.sload (Expr.var "slot")) (Expr.var "delta")))
+      (sstoreAdd (v "slot") (v "delta"))
     ret := none }
 
 /-- A minimal store for point examples. -/
@@ -59,7 +58,7 @@ theorem setSlot_updates (slot value : Nat) :
 theorem addSlot_updates (slot base delta : Nat) :
     execFun addSlotFun [slot, delta] (storeOf slot base) [] =
       ExecResult.ok (bindArgs emptyEnv ["slot", "delta"] [slot, delta]) (storeOf slot (base + delta)) := by
-  simp [addSlotFun, execFun, execStmt, evalExpr, storeOf, bindArgs, emptyEnv, updateEnv, updateStore]
+  simp [addSlotFun, sstoreAdd, execFun, execStmt, evalExpr, storeOf, bindArgs, emptyEnv, updateEnv, updateStore]
 
 theorem set_then_get (slot value : Nat) :
     (match execFun setSlotFun [slot, value] (storeOf slot 0) [] with
@@ -75,13 +74,14 @@ theorem add_then_get (slot base delta : Nat) :
           execFun getSlotFun [slot] store1 [] =
             ExecResult.returned [base + delta] (bindArgs emptyEnv ["slot"] [slot]) (storeOf slot (base + delta))
       | _ => False) := by
-  simp [addSlotFun, getSlotFun, execFun, execStmt, evalExpr, storeOf, bindArgs, emptyEnv, updateEnv, updateStore]
+  simp [addSlotFun, sstoreAdd, getSlotFun, execFun, execStmt, evalExpr, storeOf, bindArgs, emptyEnv,
+    updateEnv, updateStore]
 
 theorem guarded_add_updates (slot base delta : Nat) (h : delta > 0) :
     execFun guardedAddSlotFun [slot, delta] (storeOf slot base) [] =
       ExecResult.ok (bindArgs emptyEnv ["slot", "delta"] [slot, delta]) (storeOf slot (base + delta)) := by
   simp [guardedAddSlotFun, require, execFun, execStmt, evalExpr, storeOf, bindArgs, emptyEnv,
-    updateEnv, updateStore, h, requireGt, v, n]
+    updateEnv, updateStore, h, requireGt, v, n, sstoreAdd]
 
 theorem guarded_add_reverts (slot base delta : Nat) (h : delta = 0) :
     execFun guardedAddSlotFun [slot, delta] (storeOf slot base) [] =
@@ -110,7 +110,8 @@ theorem addSlot_meets_spec (s : Store) (slot delta : Nat) :
       | ExecResult.ok _ s' => (addSlotSpec slot delta).ensures s s'
       | _ => False) := by
   intro _hreq
-  simp [addSlotSpec, addSlotFun, execFun, execStmt, evalExpr, bindArgs, emptyEnv, updateEnv, updateStore]
+  simp [addSlotSpec, addSlotFun, sstoreAdd, execFun, execStmt, evalExpr, bindArgs, emptyEnv,
+    updateEnv, updateStore]
 
 theorem guardedAddSlot_meets_spec (s : Store) (slot delta : Nat) :
     (guardedAddSlotSpec slot delta).requires s ->
@@ -120,7 +121,7 @@ theorem guardedAddSlot_meets_spec (s : Store) (slot delta : Nat) :
   intro hreq
   have hpos : delta > 0 := by exact hreq
   simp [guardedAddSlotSpec, guardedAddSlotFun, require, execFun, execStmt, evalExpr,
-    bindArgs, emptyEnv, updateEnv, updateStore, hpos, requireGt, v, n]
+    bindArgs, emptyEnv, updateEnv, updateStore, hpos, requireGt, v, n, sstoreAdd]
 
 theorem guardedAddSlot_meets_specR_ok (s : Store) (slot delta : Nat) :
     (guardedAddSlotSpecR slot delta).requires s ->
@@ -130,14 +131,14 @@ theorem guardedAddSlot_meets_specR_ok (s : Store) (slot delta : Nat) :
   intro hreq
   have hpos : delta > 0 := by exact hreq
   simp [guardedAddSlotSpecR, guardedAddSlotFun, require, execFun, execStmt, evalExpr,
-    bindArgs, emptyEnv, updateEnv, updateStore, hpos, requireGt, v, n]
+    bindArgs, emptyEnv, updateEnv, updateStore, hpos, requireGt, v, n, sstoreAdd]
 
 theorem guardedAddSlot_meets_specR_reverts (s : Store) (slot delta : Nat) :
     (guardedAddSlotSpecR slot delta).reverts s ->
     execFun guardedAddSlotFun [slot, delta] s [] = ExecResult.reverted := by
   intro hrev
   simp [guardedAddSlotSpecR, guardedAddSlotFun, require, execFun, execStmt, evalExpr,
-    bindArgs, emptyEnv, updateEnv, updateStore, hrev, requireGt, v, n]
+    bindArgs, emptyEnv, updateEnv, updateStore, hrev, requireGt, v, n, sstoreAdd]
 
 theorem guardedAddSlot_reverts_when_not_requires (slot delta : Nat) (h : delta = 0) :
     (guardedAddSlotSpec slot delta).requires (storeOf slot 0) = False ∧
@@ -145,6 +146,6 @@ theorem guardedAddSlot_reverts_when_not_requires (slot delta : Nat) (h : delta =
   constructor
   · simp [guardedAddSlotSpec, h]
   · simp [guardedAddSlotFun, require, execFun, execStmt, evalExpr, storeOf, bindArgs, emptyEnv,
-      updateEnv, updateStore, h, requireGt, v, n]
+      updateEnv, updateStore, h, requireGt, v, n, sstoreAdd]
 
 end DumbContracts.Examples

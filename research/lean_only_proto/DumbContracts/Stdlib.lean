@@ -39,6 +39,9 @@ def requireNonZero (value : Expr) (body : Stmt) : Stmt :=
 
 /-- Shorthand for loading/storing fixed slots. -/
 
+def sstoreAdd (slot delta : Expr) : Stmt :=
+  Stmt.sstore slot (Expr.add (Expr.sload slot) delta)
+
 def sloadSlot (slot : Nat) : Expr :=
   Expr.sload (Expr.lit slot)
 

@@ -167,9 +167,20 @@ def exampleEntry8 : EntryPoint :=
     selector := 0x2dbeb1ba
     returns := false }
 
+def exampleEntry9 : EntryPoint :=
+  { name := "bumpSlot"
+    args := ["slot"]
+    body :=
+      Lang.Stmt.sstore
+        (Lang.Expr.var "slot")
+        (Lang.Expr.add (Lang.Expr.sload (Lang.Expr.var "slot")) (Lang.Expr.lit 1))
+    -- bumpSlot(uint256) -> 0xb8df0e12
+    selector := 0xb8df0e12
+    returns := false }
+
 def exampleEntries : List EntryPoint :=
   [exampleEntry, exampleEntry2, exampleEntry3, exampleEntry4, exampleEntry5, exampleEntry6, exampleEntry7,
-    exampleEntry8]
+    exampleEntry8, exampleEntry9]
 
 def healthEntrySet : EntryPoint :=
   { name := "setRisk"

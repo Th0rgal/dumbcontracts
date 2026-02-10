@@ -1,20 +1,20 @@
 # Dumb Contracts Research Status
 
-## Current State: 152 Theorems, 7/7 Contracts Verified (2026-02-10)
+## Current State: 167 Theorems, 7/7 Contracts Verified (2026-02-10)
 
 ### Summary
-**Full Verification Achieved**: All 152 theorems proven with zero `sorry`, zero axioms, zero errors. Guard modeling via `ContractResult` type enables complete verification of `require`-guarded operations.
+**Full Verification Achieved**: All 167 theorems proven with zero `sorry`, zero axioms, zero errors. Guard modeling via `ContractResult` type enables complete verification of `require`-guarded operations.
 
 All 7 contract patterns verified at 100%:
 - SimpleStorage (12 theorems) — 100% proven ✅
 - Counter (19 theorems) — 100% proven ✅
-- Owned (18 theorems) — 100% proven ✅
+- Owned (22 theorems: 18 basic + 4 correctness) — 100% proven ✅
 - SimpleToken (43 theorems: 33 basic + 10 correctness) — 100% proven ✅
-- OwnedCounter (26 theorems) — 100% proven ✅
-- Ledger (18 theorems) — 100% proven ✅
+- OwnedCounter (31 theorems: 26 basic + 5 correctness) — 100% proven ✅
+- Ledger (24 theorems: 18 basic + 6 correctness) — 100% proven ✅
 - SafeCounter (16 theorems) — 100% proven ✅
 
-**Total: 152/152 theorems fully proven (100%) — zero sorry, zero axioms**
+**Total: 167/167 theorems fully proven (100%) — zero sorry, zero axioms**
 
 ### Verification Tiers Achieved
 
@@ -31,16 +31,21 @@ All 7 contract patterns verified at 100%:
 - Constructor initializes correctly
 
 **Tier 3: Invariants** ✅
-- WellFormedState preserved by all operations (constructor, mint, transfer, reads)
+- WellFormedState preserved by all operations (constructor, mint, transfer, transferOwnership, reads)
 - Owner stability (mint and transfer don't change owner)
 - Storage isolation (operations only modify their designated slots)
 - Bounds preservation (SafeCounter count stays within MAX_UINT256)
+- Transfer preserves non-mapping storage (Ledger)
 
 **Tier 4: Composition** ✅
 - mint→balanceOf returns expected balance
 - mint→getTotalSupply returns expected supply
 - transfer→balanceOf returns expected sender/recipient balances
 - constructor→getCount, constructor→getOwner end-to-end
+- withdraw→getBalance, transfer→getBalance (Ledger)
+- deposit→withdraw cancellation (Ledger)
+- Cross-operation guard interaction: transferOwnership locks out old owner from increment/decrement/re-transfer (OwnedCounter)
+- Counter value survives ownership transfer (OwnedCounter isolation)
 
 ### Key Achievements
 
@@ -73,10 +78,13 @@ DumbContracts/
     ├── SimpleStorage/Basic.lean (12 theorems)
     ├── Counter/Basic.lean (19 theorems)
     ├── Owned/Basic.lean (18 theorems)
+    ├── Owned/Correctness.lean (4 theorems)
     ├── SimpleToken/Basic.lean (33 theorems)
     ├── SimpleToken/Correctness.lean (10 theorems)
     ├── OwnedCounter/Basic.lean (26 theorems)
+    ├── OwnedCounter/Correctness.lean (5 theorems)
     ├── Ledger/Basic.lean (18 theorems)
+    ├── Ledger/Correctness.lean (6 theorems)
     └── SafeCounter/Basic.lean (16 theorems)
 ```
 

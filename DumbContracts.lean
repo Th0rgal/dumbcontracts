@@ -7,3 +7,8 @@ import DumbContracts.Examples.Owned
 import DumbContracts.Examples.OwnedCounter
 import DumbContracts.Examples.Ledger
 import DumbContracts.Examples.SimpleToken
+
+-- Formal Verification
+import DumbContracts.Specs.SimpleStorage.Spec
+import DumbContracts.Specs.SimpleStorage.Invariants
+import DumbContracts.Proofs.SimpleStorage.Basic

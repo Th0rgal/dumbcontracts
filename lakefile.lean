@@ -16,3 +16,9 @@ lean_exe «dumbcontracts-compiler» where
 
 lean_exe «compile-new» where
   root := `Compiler.MainNew
+
+lean_exe «difftest-interpreter» where
+  root := `Compiler.Interpreter
+
+lean_exe «random-gen» where
+  root := `Compiler.RandomGen

@@ -73,7 +73,7 @@ jobs:
           restore-keys: lake-${{ hashFiles('lean-toolchain') }}-
 
       - name: Build compiler
-        run: lake build
+        run: lake build dumbcontracts-compiler
 
       - name: Generate Yul
         run: ./.lake/build/bin/dumbcontracts-compiler

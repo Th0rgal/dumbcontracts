@@ -1,0 +1,386 @@
+/-
+  Compiler.Specs: Declarative Contract Specifications
+
+  This file demonstrates the new declarative contract specification system.
+  Each contract is specified once, and IR is generated automatically.
+
+  This replaces the manual IR definitions in Translate.lean.
+-/
+
+import Compiler.ContractSpec
+
+namespace Compiler.Specs
+
+open Compiler.ContractSpec
+
+/-!
+## SimpleStorage Specification
+-/
+
+def simpleStorageSpec : ContractSpec := {
+  name := "SimpleStorage"
+  fields := [
+    { name := "storedData", ty := FieldType.uint256 }
+  ]
+  constructor := none  -- No initialization needed
+  functions := [
+    { name := "store"
+      params := [{ name := "value", ty := ParamType.uint256 }]
+      returnType := none
+      body := [
+        Stmt.setStorage "storedData" (Expr.param "value"),
+        Stmt.stop
+      ]
+    },
+    { name := "retrieve"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "storedData")
+      ]
+    }
+  ]
+}
+
+
+/-!
+## Counter Specification
+-/
+
+def counterSpec : ContractSpec := {
+  name := "Counter"
+  fields := [
+    { name := "count", ty := FieldType.uint256 }
+  ]
+  constructor := none
+  functions := [
+    { name := "increment"
+      params := []
+      returnType := none
+      body := [
+        Stmt.setStorage "count" (Expr.add (Expr.storage "count") (Expr.literal 1)),
+        Stmt.stop
+      ]
+    },
+    { name := "decrement"
+      params := []
+      returnType := none
+      body := [
+        Stmt.setStorage "count" (Expr.sub (Expr.storage "count") (Expr.literal 1)),
+        Stmt.stop
+      ]
+    },
+    { name := "getCount"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "count")
+      ]
+    }
+  ]
+}
+
+
+/-!
+## Owned Specification
+-/
+
+def ownedSpec : ContractSpec := {
+  name := "Owned"
+  fields := [
+    { name := "owner", ty := FieldType.address }
+  ]
+  constructor := some {
+    params := [{ name := "initialOwner", ty := ParamType.address }]
+    body := [
+      Stmt.setStorage "owner" (Expr.constructorArg 0)
+    ]
+  }
+  functions := [
+    { name := "transferOwnership"
+      params := [{ name := "newOwner", ty := ParamType.address }]
+      returnType := none
+      body := [
+        Stmt.require (Expr.eq Expr.caller (Expr.storage "owner")) "Not owner",
+        Stmt.setStorage "owner" (Expr.param "newOwner"),
+        Stmt.stop
+      ]
+    },
+    { name := "getOwner"
+      params := []
+      returnType := some FieldType.address
+      body := [
+        Stmt.return (Expr.storage "owner")
+      ]
+    }
+  ]
+}
+
+
+/-!
+## Ledger Specification
+-/
+
+def ledgerSpec : ContractSpec := {
+  name := "Ledger"
+  fields := [
+    { name := "balances", ty := FieldType.mapping }
+  ]
+  constructor := none
+  functions := [
+    { name := "deposit"
+      params := [{ name := "amount", ty := ParamType.uint256 }]
+      returnType := none
+      body := [
+        Stmt.letVar "senderBal" (Expr.mapping "balances" Expr.caller),
+        Stmt.setMapping "balances" Expr.caller
+          (Expr.add (Expr.localVar "senderBal") (Expr.param "amount")),
+        Stmt.stop
+      ]
+    },
+    { name := "withdraw"
+      params := [{ name := "amount", ty := ParamType.uint256 }]
+      returnType := none
+      body := [
+        Stmt.letVar "senderBal" (Expr.mapping "balances" Expr.caller),
+        Stmt.require
+          (Expr.ge (Expr.localVar "senderBal") (Expr.param "amount"))
+          "Insufficient balance",
+        Stmt.setMapping "balances" Expr.caller
+          (Expr.sub (Expr.localVar "senderBal") (Expr.param "amount")),
+        Stmt.stop
+      ]
+    },
+    { name := "transfer"
+      params := [
+        { name := "to", ty := ParamType.address },
+        { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        -- Pre-load both balances to match EDSL semantics (prevents self-transfer bug)
+        Stmt.letVar "senderBal" (Expr.mapping "balances" Expr.caller),
+        Stmt.letVar "recipientBal" (Expr.mapping "balances" (Expr.param "to")),
+        Stmt.require
+          (Expr.ge (Expr.localVar "senderBal") (Expr.param "amount"))
+          "Insufficient balance",
+        Stmt.setMapping "balances" Expr.caller
+          (Expr.sub (Expr.localVar "senderBal") (Expr.param "amount")),
+        Stmt.setMapping "balances" (Expr.param "to")
+          (Expr.add (Expr.localVar "recipientBal") (Expr.param "amount")),
+        Stmt.stop
+      ]
+    },
+    { name := "getBalance"
+      params := [{ name := "addr", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.mapping "balances" (Expr.param "addr"))
+      ]
+    }
+  ]
+}
+
+
+/-!
+## OwnedCounter Specification (Combines Owned + Counter)
+-/
+
+def ownedCounterSpec : ContractSpec := {
+  name := "OwnedCounter"
+  fields := [
+    { name := "owner", ty := FieldType.address },
+    { name := "count", ty := FieldType.uint256 }
+  ]
+  constructor := some {
+    params := [{ name := "initialOwner", ty := ParamType.address }]
+    body := [
+      Stmt.setStorage "owner" (Expr.constructorArg 0)
+    ]
+  }
+  functions := [
+    { name := "increment"
+      params := []
+      returnType := none
+      body := [
+        Stmt.require (Expr.eq Expr.caller (Expr.storage "owner")) "Not owner",
+        Stmt.setStorage "count" (Expr.add (Expr.storage "count") (Expr.literal 1)),
+        Stmt.stop
+      ]
+    },
+    { name := "decrement"
+      params := []
+      returnType := none
+      body := [
+        Stmt.require (Expr.eq Expr.caller (Expr.storage "owner")) "Not owner",
+        Stmt.setStorage "count" (Expr.sub (Expr.storage "count") (Expr.literal 1)),
+        Stmt.stop
+      ]
+    },
+    { name := "getCount"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "count")
+      ]
+    },
+    { name := "getOwner"
+      params := []
+      returnType := some FieldType.address
+      body := [
+        Stmt.return (Expr.storage "owner")
+      ]
+    },
+    { name := "transferOwnership"
+      params := [{ name := "newOwner", ty := ParamType.address }]
+      returnType := none
+      body := [
+        Stmt.require (Expr.eq Expr.caller (Expr.storage "owner")) "Not owner",
+        Stmt.setStorage "owner" (Expr.param "newOwner"),
+        Stmt.stop
+      ]
+    }
+  ]
+}
+
+
+/-!
+## SimpleToken Specification (Owned + Balances + Supply)
+-/
+
+def simpleTokenSpec : ContractSpec := {
+  name := "SimpleToken"
+  fields := [
+    { name := "owner", ty := FieldType.address },
+    { name := "balances", ty := FieldType.mapping },
+    { name := "totalSupply", ty := FieldType.uint256 }
+  ]
+  constructor := some {
+    params := [{ name := "initialOwner", ty := ParamType.address }]
+    body := [
+      Stmt.setStorage "owner" (Expr.constructorArg 0),
+      Stmt.setStorage "totalSupply" (Expr.literal 0)
+    ]
+  }
+  functions := [
+    { name := "mint"
+      params := [
+        { name := "to", ty := ParamType.address },
+        { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        Stmt.require (Expr.eq Expr.caller (Expr.storage "owner")) "Not owner",
+        Stmt.letVar "recipientBal" (Expr.mapping "balances" (Expr.param "to")),
+        Stmt.letVar "supply" (Expr.storage "totalSupply"),
+        Stmt.setMapping "balances" (Expr.param "to")
+          (Expr.add (Expr.localVar "recipientBal") (Expr.param "amount")),
+        Stmt.setStorage "totalSupply"
+          (Expr.add (Expr.localVar "supply") (Expr.param "amount")),
+        Stmt.stop
+      ]
+    },
+    { name := "transfer"
+      params := [
+        { name := "to", ty := ParamType.address },
+        { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        -- Pre-load both balances to match EDSL semantics (prevents self-transfer bug)
+        Stmt.letVar "senderBal" (Expr.mapping "balances" Expr.caller),
+        Stmt.letVar "recipientBal" (Expr.mapping "balances" (Expr.param "to")),
+        Stmt.require
+          (Expr.ge (Expr.localVar "senderBal") (Expr.param "amount"))
+          "Insufficient balance",
+        Stmt.setMapping "balances" Expr.caller
+          (Expr.sub (Expr.localVar "senderBal") (Expr.param "amount")),
+        Stmt.setMapping "balances" (Expr.param "to")
+          (Expr.add (Expr.localVar "recipientBal") (Expr.param "amount")),
+        Stmt.stop
+      ]
+    },
+    { name := "balanceOf"
+      params := [{ name := "addr", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.mapping "balances" (Expr.param "addr"))
+      ]
+    },
+    { name := "totalSupply"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "totalSupply")
+      ]
+    },
+    { name := "owner"
+      params := []
+      returnType := some FieldType.address
+      body := [
+        Stmt.return (Expr.storage "owner")
+      ]
+    }
+  ]
+}
+
+
+/-!
+## SafeCounter Specification (Counter with overflow/underflow checks)
+-/
+def safeCounterSpec : ContractSpec := {
+  name := "SafeCounter"
+  fields := [
+    { name := "count", ty := FieldType.uint256 }
+  ]
+  constructor := none
+  functions := [
+    { name := "increment"
+      params := []
+      returnType := none
+      body := [
+        -- Overflow check: require (count + 1 > count)
+        -- On overflow, MAX_UINT + 1 = 0, which is NOT > MAX_UINT, so this will revert
+        Stmt.letVar "count" (Expr.storage "count"),
+        Stmt.letVar "newCount" (Expr.add (Expr.localVar "count") (Expr.literal 1)),
+        Stmt.require (Expr.gt (Expr.localVar "newCount") (Expr.localVar "count")) "Overflow in increment",
+        Stmt.setStorage "count" (Expr.localVar "newCount"),
+        Stmt.stop
+      ]
+    },
+    { name := "decrement"
+      params := []
+      returnType := none
+      body := [
+        Stmt.letVar "count" (Expr.storage "count"),
+        Stmt.require (Expr.ge (Expr.localVar "count") (Expr.literal 1)) "Underflow in decrement",
+        Stmt.setStorage "count" (Expr.sub (Expr.localVar "count") (Expr.literal 1)),
+        Stmt.stop
+      ]
+    },
+    { name := "getCount"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "count")
+      ]
+    }
+  ]
+}
+
+
+/-!
+## Generate All Contracts
+-/
+
+def allSpecs : List ContractSpec := [
+  simpleStorageSpec,
+  counterSpec,
+  ownedSpec,
+  ledgerSpec,
+  ownedCounterSpec,
+  simpleTokenSpec,
+  safeCounterSpec
+]
+
+end Compiler.Specs

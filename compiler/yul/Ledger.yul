@@ -13,34 +13,39 @@ object "Ledger" {
             switch shr(224, calldataload(0))
             case 0xb6b55f25 {
                 /* deposit() */
-                let sender := caller()
                 let amount := calldataload(4)
-                let current := sload(mappingSlot(0, sender))
-                sstore(mappingSlot(0, sender), add(current, amount))
+                let senderBal := sload(mappingSlot(0, caller()))
+                sstore(mappingSlot(0, caller()), add(senderBal, amount))
                 stop()
             }
             case 0x2e1a7d4d {
                 /* withdraw() */
-                let sender := caller()
                 let amount := calldataload(4)
-                let current := sload(mappingSlot(0, sender))
-                if lt(current, amount) {
-                    revert(0, 0)
+                let senderBal := sload(mappingSlot(0, caller()))
+                if lt(senderBal, amount) {
+                    mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
+                    mstore(4, 32)
+                    mstore(36, 20)
+                    mstore(68, 0x496e73756666696369656e742062616c616e6365000000000000000000000000)
+                    revert(0, 100)
                 }
-                sstore(mappingSlot(0, sender), sub(current, amount))
+                sstore(mappingSlot(0, caller()), sub(senderBal, amount))
                 stop()
             }
             case 0xa9059cbb {
                 /* transfer() */
-                let sender := caller()
                 let to := and(calldataload(4), 0xffffffffffffffffffffffffffffffffffffffff)
                 let amount := calldataload(36)
-                let senderBal := sload(mappingSlot(0, sender))
-                if lt(senderBal, amount) {
-                    revert(0, 0)
-                }
+                let senderBal := sload(mappingSlot(0, caller()))
                 let recipientBal := sload(mappingSlot(0, to))
-                sstore(mappingSlot(0, sender), sub(senderBal, amount))
+                if lt(senderBal, amount) {
+                    mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
+                    mstore(4, 32)
+                    mstore(36, 20)
+                    mstore(68, 0x496e73756666696369656e742062616c616e6365000000000000000000000000)
+                    revert(0, 100)
+                }
+                sstore(mappingSlot(0, caller()), sub(senderBal, amount))
                 sstore(mappingSlot(0, to), add(recipientBal, amount))
                 stop()
             }

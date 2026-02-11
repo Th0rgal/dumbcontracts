@@ -3,31 +3,33 @@
 
   This contract shows:
   - Stateful counter variable
-  - Increment operation (addition)
-  - Decrement operation (subtraction)
+  - Increment operation (addition with EVM modular semantics)
+  - Decrement operation (subtraction with EVM modular semantics)
   - Getter for current count
 
-  Pattern: Basic arithmetic and state updates
+  Pattern: Basic arithmetic and state updates with EVM-compatible operations
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 
 namespace DumbContracts.Examples.Counter
 
 open DumbContracts
+open DumbContracts.EVM.Uint256
 
 -- Storage layout
 def count : StorageSlot Uint256 := ⟨0⟩
 
--- Increment the counter by 1
+-- Increment the counter by 1 (with EVM modular arithmetic)
 def increment : Contract Unit := do
   let current ← getStorage count
-  setStorage count (current + 1)
+  setStorage count (add current 1)
 
--- Decrement the counter by 1
+-- Decrement the counter by 1 (with EVM modular arithmetic)
 def decrement : Contract Unit := do
   let current ← getStorage count
-  setStorage count (current - 1)
+  setStorage count (sub current 1)
 
 -- Get the current count
 def getCount : Contract Uint256 := do
@@ -45,7 +47,9 @@ def exampleUsage : Contract Uint256 := do
   storageAddr := fun _ => "",
   storageMap := fun _ _ => 0,
   sender := "0xAlice",
-  thisAddress := "0xCounter"
+  thisAddress := "0xCounter",
+  msgValue := 0,
+  blockTimestamp := 0
 }).getValue?
 -- Expected output: some 1
 

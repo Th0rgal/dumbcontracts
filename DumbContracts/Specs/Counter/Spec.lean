@@ -5,12 +5,14 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.Counter
 
 namespace DumbContracts.Specs.Counter
 
 open DumbContracts
 open DumbContracts.Examples.Counter
+open DumbContracts.EVM.Uint256
 
 /-! ## Operation Specifications
 
@@ -23,10 +25,12 @@ These define the expected behavior of each Counter operation.
     - Preserves contract context (sender, address)
 -/
 def increment_spec (s s' : ContractState) : Prop :=
-  s'.storage 0 = s.storage 0 + 1 ∧
+  s'.storage 0 = add (s.storage 0) 1 ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
   s'.sender = s.sender ∧
   s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap
 
@@ -36,10 +40,12 @@ def increment_spec (s s' : ContractState) : Prop :=
     - Preserves contract context
 -/
 def decrement_spec (s s' : ContractState) : Prop :=
-  s'.storage 0 = s.storage 0 - 1 ∧
+  s'.storage 0 = sub (s.storage 0) 1 ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
   s'.sender = s.sender ∧
   s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap
 
@@ -57,11 +63,11 @@ Properties about sequences of operations.
 
 /-- Increment followed by getCount returns the incremented value -/
 def increment_getCount_spec (s : ContractState) (result : Uint256) : Prop :=
-  result = s.storage 0 + 1
+  result = add (s.storage 0) 1
 
 /-- Decrement followed by getCount returns the decremented value -/
 def decrement_getCount_spec (s : ContractState) (result : Uint256) : Prop :=
-  result = s.storage 0 - 1
+  result = sub (s.storage 0) 1
 
 /-- Increment then decrement returns to original value -/
 def increment_decrement_cancel (s s' : ContractState) : Prop :=
@@ -69,6 +75,6 @@ def increment_decrement_cancel (s s' : ContractState) : Prop :=
 
 /-- Two increments add 2 to the count -/
 def two_increments_spec (s s' : ContractState) : Prop :=
-  s'.storage 0 = s.storage 0 + 2
+  s'.storage 0 = add (add (s.storage 0) 1) 1
 
 end DumbContracts.Specs.Counter

@@ -5,19 +5,21 @@ description: How the 212-line core works
 
 # Core Architecture
 
-The core is 212 lines of Lean 4. It provides types for contract state, storage operations, a `require` guard, and `@[simp]` lemmas for proof automation.
+The core is intentionally small. It provides types for contract state, storage operations, a `require` guard, and `@[simp]` lemmas for proof automation.
 
 ## Types
 
 ```lean
 abbrev Address := String
-abbrev Uint256 := Nat
+abbrev Uint256 := DumbContracts.Core.Uint256
 
 structure StorageSlot (α : Type) where
   slot : Nat
 ```
 
 `StorageSlot` is parameterized by type, so `StorageSlot Uint256`, `StorageSlot Address`, and `StorageSlot (Address -> Uint256)` are all distinct. This prevents mixing storage types at compile time.
+
+`Uint256` is a dedicated 256-bit modular integer type, so `+`, `-`, `*`, `/`, and `%` wrap exactly like the EVM.
 
 ## ContractState
 
@@ -28,9 +30,11 @@ structure ContractState where
   storageMap : Nat → Address → Uint256  -- Mapping storage
   sender : Address
   thisAddress : Address
+  msgValue : Uint256
+  blockTimestamp : Uint256
 ```
 
-Three independent storage spaces: Uint256 slots, Address slots, and Mapping slots. Each is indexed by a natural number (the slot). The state also carries the sender address and the contract's own address.
+Three independent storage spaces: Uint256 slots, Address slots, and Mapping slots. Each is indexed by a natural number (the slot). The state also carries the sender address, the contract's own address, and the EVM context fields `msg.value` and `block.timestamp`.
 
 ## ContractResult
 
@@ -118,9 +122,9 @@ The original core used `StateM ContractState α`. This was simpler but couldn't 
 | 5 (SafeCounter) | 69 | -3 | Cleanup |
 | 6 (Ledger) | 82 | +13 | Mapping storage |
 | 7 (SimpleToken) | 82 | 0 | Nothing needed |
-| 8 (Verification) | 212 | +130 | ContractResult, bind, simp lemmas |
+| 8 (Verification) | 234 | +152 | ContractResult, bind, simp lemmas, EVM context |
 
-4 out of 7 implementation iterations needed no core changes. The jump from 82 to 212 lines was for verification infrastructure, not contract primitives.
+4 out of 7 implementation iterations needed no core changes. The jump from 82 to ~234 lines was for verification infrastructure and EVM context, not contract primitives.
 
 ## Type safety
 
@@ -142,4 +146,4 @@ let wrong ← getStorage owner  -- Type error: owner is Address, not Uint256
 
 ## Source
 
-[`edsl/DumbContracts/Core.lean`](https://github.com/Th0rgal/dumbcontracts/blob/main/edsl/DumbContracts/Core.lean)
+[`DumbContracts/Core.lean`](https://github.com/Th0rgal/dumbcontracts/blob/main/DumbContracts/Core.lean)

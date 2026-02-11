@@ -10,6 +10,7 @@
 -/
 
 import DumbContracts.Examples.SimpleToken
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.SimpleToken.Spec
 import DumbContracts.Specs.SimpleToken.Invariants
 
@@ -99,6 +100,10 @@ theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
   · rfl
   constructor
   · rfl
+  constructor
+  · rfl
+  constructor
+  · rfl
   · rfl
 
 theorem constructor_sets_owner (s : ContractState) (initialOwner : Address) :
@@ -140,13 +145,15 @@ private abbrev unfold_defs := [``mint, ``transfer,
 private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0) :
   (mint to amount).run s = ContractResult.success ()
-    { storage := fun slot => if (slot == 2) = true then s.storage 2 + amount else s.storage slot,
+    { storage := fun slot => if (slot == 2) = true then EVM.Uint256.add (s.storage 2) amount else s.storage slot,
       storageAddr := s.storageAddr,
       storageMap := fun slot addr =>
-        if (slot == 1 && addr == to) = true then s.storageMap 1 to + amount
+        if (slot == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [mint, DumbContracts.Examples.SimpleToken.onlyOwner, isOwner,
     Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
     msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
@@ -176,7 +183,7 @@ theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : 
 theorem mint_increases_balance (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := ((mint to amount).run s).snd
-  s'.storageMap 1 to = s.storageMap 1 to + amount := by
+  s'.storageMap 1 to = EVM.Uint256.add (s.storageMap 1 to) amount := by
   have h := mint_meets_spec_when_owner s to amount h_owner
   simp [mint_spec] at h
   exact h.1
@@ -184,7 +191,7 @@ theorem mint_increases_balance (s : ContractState) (to : Address) (amount : Uint
 theorem mint_increases_supply (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := ((mint to amount).run s).snd
-  s'.storage 2 = s.storage 2 + amount := by
+  s'.storage 2 = EVM.Uint256.add (s.storage 2) amount := by
   have h := mint_meets_spec_when_owner s to amount h_owner
   simp [mint_spec] at h
   exact h.2.1
@@ -208,11 +215,13 @@ private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uin
     { storage := s.storage,
       storageAddr := s.storageAddr,
       storageMap := fun slot addr =>
-        if (slot == 1 && addr == to) = true then s.storageMap 1 to + amount
-        else if (slot == 1 && addr == s.sender) = true then s.storageMap 1 s.sender - amount
+        if (slot == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
+        else if (slot == 1 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 1 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [transfer, Examples.SimpleToken.balances,
     msgSender, getMapping, setMapping,
     DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
@@ -263,7 +272,7 @@ theorem transfer_decreases_sender_balance (s : ContractState) (to : Address) (am
   (h_balance : s.storageMap 1 s.sender ≥ amount)
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  s'.storageMap 1 s.sender = s.storageMap 1 s.sender - amount := by
+  s'.storageMap 1 s.sender = EVM.Uint256.sub (s.storageMap 1 s.sender) amount := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h
   exact h.2.1
@@ -272,7 +281,7 @@ theorem transfer_increases_recipient_balance (s : ContractState) (to : Address) 
   (h_balance : s.storageMap 1 s.sender ≥ amount)
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  s'.storageMap 1 to = s.storageMap 1 to + amount := by
+  s'.storageMap 1 to = EVM.Uint256.add (s.storageMap 1 to) amount := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h
   exact h.2.2.1
@@ -356,7 +365,7 @@ theorem constructor_preserves_wellformedness (s : ContractState) (initialOwner :
   WellFormedState s' := by
   have h_spec := constructor_meets_spec s initialOwner
   simp [constructor_spec] at h_spec
-  obtain ⟨h_owner_set, h_supply_set, h_other_addr, h_other_uint, h_map, h_sender, h_this⟩ := h_spec
+  obtain ⟨h_owner_set, h_supply_set, h_other_addr, h_other_uint, h_map, h_sender, h_this, _h_value, _h_time⟩ := h_spec
   constructor
   · exact h_sender ▸ h.sender_nonempty
   · exact h_this ▸ h.contract_nonempty

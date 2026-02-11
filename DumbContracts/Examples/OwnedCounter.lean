@@ -12,10 +12,12 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 
 namespace DumbContracts.Examples.OwnedCounter
 
 open DumbContracts
+open DumbContracts.EVM.Uint256
 
 -- Storage layout
 def owner : StorageSlot Address := ⟨0⟩
@@ -36,17 +38,17 @@ def onlyOwner : Contract Unit := do
 def constructor (initialOwner : Address) : Contract Unit := do
   setStorageAddr owner initialOwner
 
--- Increment the counter (owner-only)
+-- Increment the counter (owner-only, with EVM modular arithmetic)
 def increment : Contract Unit := do
   onlyOwner
   let current ← getStorage count
-  setStorage count (current + 1)
+  setStorage count (add current 1)
 
--- Decrement the counter (owner-only)
+-- Decrement the counter (owner-only, with EVM modular arithmetic)
 def decrement : Contract Unit := do
   onlyOwner
   let current ← getStorage count
-  setStorage count (current - 1)
+  setStorage count (sub current 1)
 
 -- Get the current count (public read)
 def getCount : Contract Uint256 := do
@@ -78,7 +80,9 @@ def exampleUsage : Contract (Uint256 × Address) := do
   storageAddr := fun _ => "",
   storageMap := fun _ _ => 0,
   sender := "0xAlice",  -- Alice is the caller
-  thisAddress := "0xContract"
+  thisAddress := "0xContract",
+  msgValue := 0,
+  blockTimestamp := 0
 }).getValue?
 -- Expected output: some (2, "0xBob")
 

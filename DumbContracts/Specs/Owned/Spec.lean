@@ -28,7 +28,9 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
   s'.storage = s.storage ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Specification for getOwner operation:
     - Returns the current owner address
@@ -49,7 +51,9 @@ def transferOwnership_spec (newOwner : Address) (s s' : ContractState) : Prop :=
   s'.storage = s.storage ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Specification for isOwner check:
     - Returns true if sender equals current owner
@@ -65,11 +69,11 @@ Properties about sequences of operations.
 -/
 
 /-- Constructor followed by getOwner returns the initial owner -/
-def constructor_getOwner_spec (initialOwner : Address) (s : ContractState) (result : Address) : Prop :=
+def constructor_getOwner_spec (initialOwner : Address) (_s : ContractState) (result : Address) : Prop :=
   result = initialOwner
 
 /-- TransferOwnership followed by getOwner returns the new owner -/
-def transfer_getOwner_spec (newOwner : Address) (s : ContractState) (result : Address) : Prop :=
+def transfer_getOwner_spec (newOwner : Address) (_s : ContractState) (result : Address) : Prop :=
   result = newOwner
 
 end DumbContracts.Specs.Owned

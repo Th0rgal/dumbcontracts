@@ -6,10 +6,12 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 
 namespace DumbContracts.Specs.SimpleToken
 
 open DumbContracts
+open DumbContracts.EVM.Uint256
 
 /-! ## State Invariants
 
@@ -60,7 +62,10 @@ def owner_addr_isolated (s s' : ContractState) (slot : Nat) : Prop :=
 
 /-- Context preservation (sender, contract address unchanged) -/
 def context_preserved (s s' : ContractState) : Prop :=
-  s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- State preserved except for specific modifications -/
 def state_preserved_except (s s' : ContractState)
@@ -78,7 +83,7 @@ def transfer_preserves_supply (s s' : ContractState) : Prop :=
 
 /-- Mint increases total supply by exactly the minted amount -/
 def mint_increases_supply (amount : Uint256) (s s' : ContractState) : Prop :=
-  s'.storage 2 = s.storage 2 + amount
+  s'.storage 2 = add (s.storage 2) amount
 
 /-- Access control: only owner can mint
     Note: This requires modeling of the require/onlyOwner guard

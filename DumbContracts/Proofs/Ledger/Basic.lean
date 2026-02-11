@@ -11,6 +11,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.Ledger
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.Ledger.Spec
 import DumbContracts.Specs.Ledger.Invariants
 
@@ -43,10 +44,12 @@ private theorem deposit_unfold (s : ContractState) (amount : Uint256) :
     { storage := s.storage,
       storageAddr := s.storageAddr,
       storageMap := fun slot addr =>
-        if (slot == 0 && addr == s.sender) = true then s.storageMap 0 s.sender + amount
+        if (slot == 0 && addr == s.sender) = true then EVM.Uint256.add (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [deposit, msgSender, getMapping, setMapping, balances,
     DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
@@ -56,7 +59,7 @@ theorem deposit_meets_spec (s : ContractState) (amount : Uint256) :
   deposit_spec amount s s' := by
   rw [deposit_unfold]
   simp only [ContractResult.snd, deposit_spec]
-  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
   · intro addr h_ne
     simp [beq_iff_eq]
     intro h_eq; exact absurd h_eq h_ne
@@ -66,7 +69,7 @@ theorem deposit_meets_spec (s : ContractState) (amount : Uint256) :
 
 theorem deposit_increases_balance (s : ContractState) (amount : Uint256) :
   let s' := ((deposit amount).run s).snd
-  s'.storageMap 0 s.sender = s.storageMap 0 s.sender + amount := by
+  s'.storageMap 0 s.sender = EVM.Uint256.add (s.storageMap 0 s.sender) amount := by
   rw [deposit_unfold]; simp [ContractResult.snd]
 
 theorem deposit_preserves_other_balances (s : ContractState) (amount : Uint256)
@@ -85,10 +88,12 @@ private theorem withdraw_unfold (s : ContractState) (amount : Uint256)
     { storage := s.storage,
       storageAddr := s.storageAddr,
       storageMap := fun slot addr =>
-        if (slot == 0 && addr == s.sender) = true then s.storageMap 0 s.sender - amount
+        if (slot == 0 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [withdraw, msgSender, getMapping, setMapping, balances,
     DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
@@ -100,7 +105,7 @@ theorem withdraw_meets_spec (s : ContractState) (amount : Uint256)
   withdraw_spec amount s s' := by
   rw [withdraw_unfold s amount h_balance]
   simp only [ContractResult.snd, withdraw_spec]
-  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
   · intro addr h_ne
     simp [beq_iff_eq]
     intro h_eq; exact absurd h_eq h_ne
@@ -111,7 +116,7 @@ theorem withdraw_meets_spec (s : ContractState) (amount : Uint256)
 theorem withdraw_decreases_balance (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
   let s' := ((withdraw amount).run s).snd
-  s'.storageMap 0 s.sender = s.storageMap 0 s.sender - amount := by
+  s'.storageMap 0 s.sender = EVM.Uint256.sub (s.storageMap 0 s.sender) amount := by
   rw [withdraw_unfold s amount h_balance]; simp [ContractResult.snd]
 
 theorem withdraw_reverts_insufficient (s : ContractState) (amount : Uint256)
@@ -133,11 +138,13 @@ private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uin
     { storage := s.storage,
       storageAddr := s.storageAddr,
       storageMap := fun slot addr =>
-        if (slot == 0 && addr == to) = true then s.storageMap 0 to + amount
-        else if (slot == 0 && addr == s.sender) = true then s.storageMap 0 s.sender - amount
+        if (slot == 0 && addr == to) = true then EVM.Uint256.add (s.storageMap 0 to) amount
+        else if (slot == 0 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [transfer, msgSender, getMapping, setMapping, balances,
     DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
@@ -168,7 +175,7 @@ theorem transfer_decreases_sender (s : ContractState) (to : Address) (amount : U
   (h_balance : s.storageMap 0 s.sender >= amount)
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  s'.storageMap 0 s.sender = s.storageMap 0 s.sender - amount := by
+  s'.storageMap 0 s.sender = EVM.Uint256.sub (s.storageMap 0 s.sender) amount := by
   have h := transfer_meets_spec s to amount h_balance h_ne
   simp [transfer_spec] at h
   exact h.1
@@ -177,7 +184,7 @@ theorem transfer_increases_recipient (s : ContractState) (to : Address) (amount 
   (h_balance : s.storageMap 0 s.sender >= amount)
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  s'.storageMap 0 to = s.storageMap 0 to + amount := by
+  s'.storageMap 0 to = EVM.Uint256.add (s.storageMap 0 to) amount := by
   have h := transfer_meets_spec s to amount h_balance h_ne
   simp [transfer_spec] at h
   exact h.2.1
@@ -226,7 +233,7 @@ theorem withdraw_preserves_wellformedness (s : ContractState) (amount : Uint256)
 
 theorem deposit_getBalance_correct (s : ContractState) (amount : Uint256) :
   let s' := ((deposit amount).run s).snd
-  ((getBalance s.sender).run s').fst = s.storageMap 0 s.sender + amount := by
+  ((getBalance s.sender).run s').fst = EVM.Uint256.add (s.storageMap 0 s.sender) amount := by
   rw [deposit_unfold]
   simp [ContractResult.snd, getBalance, getMapping, balances, Contract.run, ContractResult.fst]
 

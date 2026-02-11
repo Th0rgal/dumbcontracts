@@ -75,6 +75,9 @@ jobs:
       - name: Build compiler
         run: lake build dumbcontracts-compiler
 
+      - name: Build difftest interpreter
+        run: lake build difftest-interpreter
+
       - name: Generate Yul
         run: ./.lake/build/bin/dumbcontracts-compiler
 

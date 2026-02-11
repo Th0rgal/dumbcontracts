@@ -2,8 +2,8 @@ object "SimpleToken" {
     code {
         let argsOffset := sub(codesize(), 32)
         codecopy(0, argsOffset, 32)
-        let initialOwner := and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)
-        sstore(0, initialOwner)
+        let arg0 := and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)
+        sstore(0, arg0)
         sstore(2, 0)
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
@@ -18,28 +18,35 @@ object "SimpleToken" {
             switch shr(224, calldataload(0))
             case 0x40c10f19 {
                 /* mint() */
-                if iszero(eq(caller(), sload(0))) {
-                    revert(0, 0)
-                }
                 let to := and(calldataload(4), 0xffffffffffffffffffffffffffffffffffffffff)
                 let amount := calldataload(36)
-                let currentBal := sload(mappingSlot(1, to))
-                sstore(mappingSlot(1, to), add(currentBal, amount))
+                if iszero(eq(caller(), sload(0))) {
+                    mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
+                    mstore(4, 32)
+                    mstore(36, 9)
+                    mstore(68, 0x4e6f74206f776e65720000000000000000000000000000000000000000000000)
+                    revert(0, 100)
+                }
+                let recipientBal := sload(mappingSlot(1, to))
                 let supply := sload(2)
+                sstore(mappingSlot(1, to), add(recipientBal, amount))
                 sstore(2, add(supply, amount))
                 stop()
             }
             case 0xa9059cbb {
                 /* transfer() */
-                let sender := caller()
                 let to := and(calldataload(4), 0xffffffffffffffffffffffffffffffffffffffff)
                 let amount := calldataload(36)
-                let senderBal := sload(mappingSlot(1, sender))
-                if lt(senderBal, amount) {
-                    revert(0, 0)
-                }
+                let senderBal := sload(mappingSlot(1, caller()))
                 let recipientBal := sload(mappingSlot(1, to))
-                sstore(mappingSlot(1, sender), sub(senderBal, amount))
+                if lt(senderBal, amount) {
+                    mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
+                    mstore(4, 32)
+                    mstore(36, 20)
+                    mstore(68, 0x496e73756666696369656e742062616c616e6365000000000000000000000000)
+                    revert(0, 100)
+                }
+                sstore(mappingSlot(1, caller()), sub(senderBal, amount))
                 sstore(mappingSlot(1, to), add(recipientBal, amount))
                 stop()
             }

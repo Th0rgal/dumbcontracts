@@ -9,6 +9,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.Ledger
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.Ledger.Spec
 import DumbContracts.Specs.Ledger.Invariants
 import DumbContracts.Proofs.Ledger.Basic
@@ -31,7 +32,7 @@ theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (am
   WellFormedState s' := by
   have h_spec := transfer_meets_spec s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
-  obtain ⟨_, _, _, _, _, _, h_sender, h_this⟩ := h_spec
+  obtain ⟨_, _, _, _, _, _, h_sender, h_this, _h_value, _h_time⟩ := h_spec
   constructor
   · exact h_sender ▸ h.sender_nonempty
   · exact h_this ▸ h.contract_nonempty
@@ -42,8 +43,10 @@ theorem transfer_preserves_non_mapping (s : ContractState) (to : Address) (amoun
   let s' := ((transfer to amount).run s).snd
   non_mapping_storage_unchanged s s' := by
   have h_spec := transfer_meets_spec s to amount h_balance h_ne
-  simp [transfer_spec, non_mapping_storage_unchanged] at *
-  exact ⟨h_spec.2.2.2.2.1, h_spec.2.2.2.2.2.1⟩
+  simp [transfer_spec] at h_spec
+  obtain ⟨_, _, _, _, h_storage, h_addr, _h_sender, _h_this, _h_value, _h_time⟩ := h_spec
+  simp [non_mapping_storage_unchanged]
+  exact ⟨h_storage, h_addr⟩
 
 /-! ## End-to-End Composition -/
 
@@ -51,7 +54,7 @@ theorem transfer_preserves_non_mapping (s : ContractState) (to : Address) (amoun
 theorem withdraw_getBalance_correct (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
   let s' := ((withdraw amount).run s).snd
-  ((getBalance s.sender).run s').fst = s.storageMap 0 s.sender - amount := by
+  ((getBalance s.sender).run s').fst = EVM.Uint256.sub (s.storageMap 0 s.sender) amount := by
   show ((getBalance s.sender).run ((withdraw amount).run s).snd).fst = _
   rw [getBalance_returns_balance]
   exact withdraw_decreases_balance s amount h_balance
@@ -60,7 +63,7 @@ theorem withdraw_getBalance_correct (s : ContractState) (amount : Uint256)
 theorem transfer_getBalance_sender_correct (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  ((getBalance s.sender).run s').fst = s.storageMap 0 s.sender - amount := by
+  ((getBalance s.sender).run s').fst = EVM.Uint256.sub (s.storageMap 0 s.sender) amount := by
   show ((getBalance s.sender).run ((transfer to amount).run s).snd).fst = _
   rw [getBalance_returns_balance]
   exact transfer_decreases_sender s to amount h_balance h_ne
@@ -69,7 +72,7 @@ theorem transfer_getBalance_sender_correct (s : ContractState) (to : Address) (a
 theorem transfer_getBalance_recipient_correct (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
-  ((getBalance to).run s').fst = s.storageMap 0 to + amount := by
+  ((getBalance to).run s').fst = EVM.Uint256.add (s.storageMap 0 to) amount := by
   show ((getBalance to).run ((transfer to amount).run s).snd).fst = _
   rw [getBalance_returns_balance]
   exact transfer_increases_recipient s to amount h_balance h_ne
@@ -83,19 +86,29 @@ returns to the original balance. This proves operations are inverses.
 /-- Deposit then withdraw of the same amount returns to original balance.
     Requires that the intermediate balance (original + amount) is sufficient
     for withdrawal, which is trivially true. -/
-theorem deposit_withdraw_cancel (s : ContractState) (amount : Uint256) :
+theorem deposit_withdraw_cancel (s : ContractState) (amount : Uint256)
+  (h_balance : amount ≤ EVM.Uint256.add (s.storageMap 0 s.sender) amount) :
   let s1 := ((deposit amount).run s).snd
   let s2 := ((withdraw amount).run s1).snd
   s2.storageMap 0 s.sender = s.storageMap 0 s.sender := by
-  -- After deposit, sender balance = original + amount
-  have h_dep := deposit_increases_balance s amount
-  -- The intermediate state has sufficient balance for withdrawal
-  -- s1.storageMap 0 s.sender = s.storageMap 0 s.sender + amount
-  -- s1.sender = s.sender (context preserved)
-  simp only [deposit, withdraw, msgSender, getMapping, setMapping, balances,
-    DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [Nat.add_sub_cancel]
+  let s1 := ((deposit amount).run s).snd
+  have h_inc := deposit_increases_balance s amount
+  have h_sender : s1.sender = s.sender := by
+    simp [s1, deposit, msgSender, getMapping, setMapping, balances,
+      DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Contract.run, ContractResult.snd]
+  have h_balance' : s1.storageMap 0 s.sender ≥ amount := by
+    simpa [s1, h_inc] using h_balance
+  have h_wd := withdraw_decreases_balance (s := s1) amount h_balance'
+  -- Rewrite through the deposit result
+  have h_wd' := h_wd
+  rw [h_sender] at h_wd'
+  rw [h_inc] at h_wd'
+  have h_cancel :
+      EVM.Uint256.sub (EVM.Uint256.add (s.storageMap 0 s.sender) amount) amount =
+      s.storageMap 0 s.sender := by
+    exact (EVM.Uint256.sub_add_cancel (s.storageMap 0 s.sender) amount)
+  simpa [s1, h_cancel] using h_wd'
 
 /-! ## Summary
 

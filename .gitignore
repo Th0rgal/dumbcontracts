@@ -20,3 +20,4 @@ opencode.json
 lib/
 out/
 cache/
+.sandboxed-sh_context.json

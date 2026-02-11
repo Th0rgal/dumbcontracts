@@ -39,7 +39,10 @@ def map_storage_unchanged (s s' : ContractState) : Prop :=
 
 /-- Contract context preserved: Operations don't change sender or contract address -/
 def context_preserved (s s' : ContractState) : Prop :=
-  s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Complete state preservation except for owner:
     Everything except owner slot remains unchanged

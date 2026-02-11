@@ -13,6 +13,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Examples.Ledger
+import DumbContracts.EVM.Uint256
 import DumbContracts.Specs.Ledger.Spec
 import DumbContracts.Specs.Ledger.Invariants
 import DumbContracts.Proofs.Ledger.Basic
@@ -31,6 +32,10 @@ def countOcc (target : Address) : List Address → Nat
   | [] => 0
   | a :: rest => (if a = target then 1 else 0) + countOcc target rest
 
+/-- Uint256 version of countOcc for arithmetic in sum equations. -/
+def countOccU (target : Address) (addrs : List Address) : Uint256 :=
+  Core.Uint256.ofNat (countOcc target addrs)
+
 private theorem countOcc_cons_eq (target : Address) (rest : List Address) :
   countOcc target (target :: rest) = 1 + countOcc target rest := by
   simp [countOcc]
@@ -38,6 +43,14 @@ private theorem countOcc_cons_eq (target : Address) (rest : List Address) :
 private theorem countOcc_cons_ne (a target : Address) (rest : List Address) (h : a ≠ target) :
   countOcc target (a :: rest) = countOcc target rest := by
   simp [countOcc, h]
+
+private theorem countOccU_cons_eq (target : Address) (rest : List Address) :
+  countOccU target (target :: rest) = (1 : Uint256) + countOccU target rest := by
+  simp [countOccU, countOcc, DumbContracts.Core.Uint256.ofNat_add]
+
+private theorem countOccU_cons_ne (a target : Address) (rest : List Address) (h : a ≠ target) :
+  countOccU target (a :: rest) = countOccU target rest := by
+  simp [countOccU, countOcc, h]
 
 /-! ## Generic List Sum Lemma: Point Update -/
 
@@ -48,25 +61,39 @@ private theorem map_sum_point_update
   (h_target : f' target = f target + delta)
   (h_other : ∀ addr, addr ≠ target → f' addr = f addr) :
   ∀ addrs : List Address,
-    (addrs.map f').sum = (addrs.map f).sum + countOcc target addrs * delta := by
+    (addrs.map f').sum = (addrs.map f).sum + countOccU target addrs * delta := by
   intro addrs
   induction addrs with
-  | nil => simp [countOcc]
+  | nil => simp [countOcc, countOccU]
   | cons a rest ih =>
     simp only [List.map, List.sum_cons]
     rw [ih]
     by_cases h : a = target
-    · rw [h, h_target, countOcc_cons_eq]
-      have h_mul : (1 + countOcc target rest) * delta = delta + countOcc target rest * delta := by
-        rw [Nat.add_mul]; simp
+    · simp [h, h_target, countOccU_cons_eq]
+      have h_mul : delta * (1 + countOccU target rest) = delta + delta * countOccU target rest := by
+        calc
+          delta * (1 + countOccU target rest)
+              = (1 + countOccU target rest) * delta := by
+                  simp [DumbContracts.Core.Uint256.mul_comm]
+          _ = delta + countOccU target rest * delta := by
+                  have h_add_mul := DumbContracts.Core.Uint256.add_mul
+                    (1 : Uint256) (countOccU target rest) delta
+                  calc
+                    (1 + countOccU target rest) * delta
+                        = 1 * delta + countOccU target rest * delta := h_add_mul
+                    _ = delta + countOccU target rest * delta := by
+                        simp [DumbContracts.Core.Uint256.one_mul]
+          _ = delta + delta * countOccU target rest := by
+                  simp [DumbContracts.Core.Uint256.mul_comm]
       rw [h_mul]
-      rw [Nat.add_assoc (f target) delta]
-      rw [← Nat.add_assoc delta _ _]
-      rw [Nat.add_comm delta (List.map f rest).sum]
-      rw [Nat.add_assoc (List.map f rest).sum delta]
-      rw [← Nat.add_assoc (f target)]
-    · rw [h_other a h, countOcc_cons_ne a target rest h]
-      rw [Nat.add_assoc]
+      rw [← DumbContracts.Core.Uint256.add_assoc delta (f target) _]
+      rw [DumbContracts.Core.Uint256.add_comm delta (f target)]
+      rw [DumbContracts.Core.Uint256.add_assoc (f target) delta _]
+      rw [← DumbContracts.Core.Uint256.add_assoc delta (List.map f rest).sum _]
+      rw [DumbContracts.Core.Uint256.add_comm delta (List.map f rest).sum]
+      rw [DumbContracts.Core.Uint256.add_assoc (List.map f rest).sum delta _]
+    · simp [h, h_other a h, countOccU_cons_ne a target rest h]
+      -- simp closes the goal
 
 /-! ## Generic List Sum Lemma: Point Decrease -/
 
@@ -76,33 +103,51 @@ private theorem map_sum_point_update
 private theorem map_sum_point_decrease
   (f f' : Address → Uint256) (target : Address) (delta : Uint256)
   (h_target : f' target = f target - delta)
-  (h_other : ∀ addr, addr ≠ target → f' addr = f addr)
-  (h_bal : f target ≥ delta) :
+  (h_other : ∀ addr, addr ≠ target → f' addr = f addr) :
   ∀ addrs : List Address,
-    (addrs.map f').sum + countOcc target addrs * delta = (addrs.map f).sum := by
+    (addrs.map f').sum + countOccU target addrs * delta = (addrs.map f).sum := by
   intro addrs
   induction addrs with
-  | nil => simp [countOcc]
+  | nil => simp [countOcc, countOccU]
   | cons a rest ih =>
     simp only [List.map, List.sum_cons]
     by_cases h : a = target
-    · rw [h, h_target, countOcc_cons_eq]
-      have h_mul : (1 + countOcc target rest) * delta = delta + countOcc target rest * delta := by
-        rw [Nat.add_mul]; simp
+    · simp [h, h_target, countOccU_cons_eq]
+      have h_mul : delta * (1 + countOccU target rest) = delta + delta * countOccU target rest := by
+        calc
+          delta * (1 + countOccU target rest)
+              = (1 + countOccU target rest) * delta := by
+                  simp [DumbContracts.Core.Uint256.mul_comm]
+          _ = delta + countOccU target rest * delta := by
+                  have h_add_mul := DumbContracts.Core.Uint256.add_mul
+                    (1 : Uint256) (countOccU target rest) delta
+                  calc
+                    (1 + countOccU target rest) * delta
+                        = 1 * delta + countOccU target rest * delta := h_add_mul
+                    _ = delta + countOccU target rest * delta := by
+                        simp [DumbContracts.Core.Uint256.one_mul]
+          _ = delta + delta * countOccU target rest := by
+                  simp [DumbContracts.Core.Uint256.mul_comm]
       rw [h_mul]
-      have h_cancel : f target - delta + delta = f target := Nat.sub_add_cancel h_bal
-      -- LHS: ((f target - delta) + (rest.map f').sum) + (delta + countOcc target rest * delta)
-      -- RHS: f target + (rest.map f).sum
-      rw [Nat.add_assoc (f target - delta)]
-      rw [← Nat.add_assoc (List.map f' rest).sum delta]
-      rw [Nat.add_comm (List.map f' rest).sum delta]
-      rw [Nat.add_assoc delta]
-      rw [← Nat.add_assoc (f target - delta) delta]
+      have h_cancel : f target - delta + delta = f target := DumbContracts.Core.Uint256.sub_add_cancel_left (f target) delta
+      rw [← DumbContracts.Core.Uint256.add_assoc (List.map f' rest).sum delta _]
+      rw [DumbContracts.Core.Uint256.add_left_comm (List.map f' rest).sum delta _]
+      rw [DumbContracts.Core.Uint256.add_assoc delta (List.map f' rest).sum _]
+      rw [← DumbContracts.Core.Uint256.add_assoc (f target - delta) delta _]
       rw [h_cancel]
-      rw [ih]
-    · rw [h_other a h, countOcc_cons_ne a target rest h]
-      rw [Nat.add_assoc]
-      rw [ih]
+      have h_congr := congrArg (fun x => f target + x) ih
+      have h_congr' := h_congr
+      simp [DumbContracts.Core.Uint256.mul_comm,
+        DumbContracts.Core.Uint256.add_assoc] at h_congr'
+      exact h_congr'
+    · simp [h, h_other a h, countOccU_cons_ne a target rest h]
+      have h_congr := congrArg (fun x => f a + x) ih
+      have h_congr' := h_congr
+      simp [DumbContracts.Core.Uint256.mul_comm,
+        DumbContracts.Core.Uint256.add_assoc,
+        DumbContracts.Core.Uint256.add_left_comm,
+        DumbContracts.Core.Uint256.add_comm] at h_congr'
+      exact h_congr'
 
 /-! ## Generic List Sum Lemma: Transfer (Two-Point Update) -/
 
@@ -113,57 +158,102 @@ private theorem map_sum_transfer_eq
   (h_ne : src ≠ dst)
   (h_src : f' src = f src - d)
   (h_dst : f' dst = f dst + d)
-  (h_other : ∀ addr, addr ≠ src → addr ≠ dst → f' addr = f addr)
-  (h_bal : f src ≥ d) :
+  (h_other : ∀ addr, addr ≠ src → addr ≠ dst → f' addr = f addr) :
   ∀ addrs : List Address,
-    (addrs.map f').sum + countOcc src addrs * d
-    = (addrs.map f).sum + countOcc dst addrs * d := by
+    (addrs.map f').sum + countOccU src addrs * d
+    = (addrs.map f).sum + countOccU dst addrs * d := by
   intro addrs
   induction addrs with
-  | nil => simp [countOcc]
+  | nil => simp [countOcc, countOccU]
   | cons a rest ih =>
     simp only [List.map, List.sum_cons]
     by_cases ha_s : a = src
-    · rw [ha_s, h_src, countOcc_cons_eq]
-      rw [countOcc_cons_ne src dst rest h_ne]
-      have h_mul : (1 + countOcc src rest) * d = d + countOcc src rest * d := by
-        rw [Nat.add_mul]; simp
+    · simp [ha_s, h_src, countOccU_cons_eq, countOccU_cons_ne src dst rest h_ne]
+      have h_mul : d * (1 + countOccU src rest) = d + d * countOccU src rest := by
+        calc
+          d * (1 + countOccU src rest)
+              = (1 + countOccU src rest) * d := by
+                  simp [DumbContracts.Core.Uint256.mul_comm]
+          _ = d + countOccU src rest * d := by
+                  have h_add_mul := DumbContracts.Core.Uint256.add_mul
+                    (1 : Uint256) (countOccU src rest) d
+                  calc
+                    (1 + countOccU src rest) * d
+                        = 1 * d + countOccU src rest * d := h_add_mul
+                    _ = d + countOccU src rest * d := by
+                        simp [DumbContracts.Core.Uint256.one_mul]
+          _ = d + d * countOccU src rest := by
+                  simp [DumbContracts.Core.Uint256.mul_comm]
       rw [h_mul]
-      have h_cancel : f src - d + d = f src := Nat.sub_add_cancel h_bal
-      rw [Nat.add_assoc (f src - d)]
-      rw [← Nat.add_assoc (List.map f' rest).sum d]
-      rw [Nat.add_comm (List.map f' rest).sum d]
-      rw [Nat.add_assoc d]
-      rw [← Nat.add_assoc (f src - d) d]
+      have h_cancel : f src - d + d = f src := DumbContracts.Core.Uint256.sub_add_cancel_left (f src) d
+      rw [← DumbContracts.Core.Uint256.add_assoc (List.map f' rest).sum d _]
+      rw [DumbContracts.Core.Uint256.add_left_comm (List.map f' rest).sum d _]
+      rw [DumbContracts.Core.Uint256.add_assoc d (List.map f' rest).sum _]
+      rw [← DumbContracts.Core.Uint256.add_assoc (f src - d) d _]
       rw [h_cancel]
-      rw [ih]
-      rw [Nat.add_assoc]
+      have h_congr := congrArg (fun x => f src + x) ih
+      have h_congr' := h_congr
+      simp [DumbContracts.Core.Uint256.mul_comm,
+        DumbContracts.Core.Uint256.add_assoc] at h_congr'
+      exact h_congr'
     · by_cases ha_d : a = dst
-      · rw [ha_d, h_dst]
+      · simp [ha_d, h_dst]
         have h_ne_sym : dst ≠ src := Ne.symm h_ne
-        rw [countOcc_cons_ne dst src rest h_ne_sym, countOcc_cons_eq]
-        have h_mul : (1 + countOcc dst rest) * d = d + countOcc dst rest * d := by
-          rw [Nat.add_mul]; simp
+        simp [countOccU_cons_ne dst src rest h_ne_sym, countOccU_cons_eq]
+        have h_mul : d * (1 + countOccU dst rest) = d + d * countOccU dst rest := by
+          calc
+            d * (1 + countOccU dst rest)
+                = (1 + countOccU dst rest) * d := by
+                    simp [DumbContracts.Core.Uint256.mul_comm]
+            _ = d + countOccU dst rest * d := by
+                    have h_add_mul := DumbContracts.Core.Uint256.add_mul
+                      (1 : Uint256) (countOccU dst rest) d
+                    calc
+                      (1 + countOccU dst rest) * d
+                          = 1 * d + countOccU dst rest * d := h_add_mul
+                      _ = d + countOccU dst rest * d := by
+                          simp [DumbContracts.Core.Uint256.one_mul]
+            _ = d + d * countOccU dst rest := by
+                    simp [DumbContracts.Core.Uint256.mul_comm]
         rw [h_mul]
-        rw [Nat.add_assoc (f dst + d) _ _, Nat.add_assoc (f dst) d _,
-            Nat.add_assoc (f dst) _ _]
-        congr 1
-        rw [ih]
-        rw [Nat.add_left_comm]
-      · rw [h_other a ha_s ha_d, countOcc_cons_ne a src rest ha_s, countOcc_cons_ne a dst rest ha_d]
-        rw [Nat.add_assoc, Nat.add_assoc]
-        exact congrArg (f a + ·) ih
+        rw [← DumbContracts.Core.Uint256.add_assoc d (f dst) _]
+        rw [DumbContracts.Core.Uint256.add_comm d (f dst)]
+        rw [DumbContracts.Core.Uint256.add_assoc (f dst) d _]
+        have h_congr := congrArg (fun x => f dst + (d + x)) ih
+        calc
+          f dst + (d + ((List.map f' rest).sum + d * countOccU src rest))
+              = f dst + (d + ((List.map f rest).sum + d * countOccU dst rest)) := by
+                  have h_congr' := h_congr
+                  simp [DumbContracts.Core.Uint256.mul_comm] at h_congr'
+                  exact h_congr'
+          _ = f dst + ((List.map f rest).sum + (d + d * countOccU dst rest)) := by
+                  rw [← DumbContracts.Core.Uint256.add_assoc d (List.map f rest).sum _]
+                  rw [DumbContracts.Core.Uint256.add_comm d (List.map f rest).sum]
+                  rw [← DumbContracts.Core.Uint256.add_assoc (List.map f rest).sum d _]
+      · simp [h_other a ha_s ha_d, countOccU_cons_ne a src rest ha_s, countOccU_cons_ne a dst rest ha_d]
+        have h_congr := congrArg (fun x => f a + x) ih
+        have h_congr' := h_congr
+        simp [DumbContracts.Core.Uint256.add_assoc] at h_congr'
+        exact h_congr'
 
 /-! ## Deposit: Exact Sum Equation -/
 
 /-- Exact sum relationship after deposit: the new sum equals the old sum plus
     count(sender, addrs) * amount. Each occurrence of the sender in the list
     contributes an additional `amount` to the sum. -/
-theorem deposit_sum_equation (s : ContractState) (amount : Uint256) :
+theorem deposit_sum_equation (s : ContractState) (amount : Uint256)
+  :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((deposit amount).run s).snd.storageMap 0 addr)).sum
-    = (addrs.map (fun addr => s.storageMap 0 addr)).sum + countOcc s.sender addrs * amount := by
-  have h_inc := deposit_increases_balance s amount
+    = (addrs.map (fun addr => s.storageMap 0 addr)).sum + countOccU s.sender addrs * amount := by
+  have h_inc_raw := deposit_increases_balance s amount
+  have h_inc :
+      ((deposit amount).run s).snd.storageMap 0 s.sender =
+        s.storageMap 0 s.sender + amount := by
+    have h_inc' := h_inc_raw
+    simp [DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
+      HAdd.hAdd, DumbContracts.Core.Uint256.add_comm] at h_inc'
+    exact h_inc'
   have h_other : ∀ addr, addr ≠ s.sender →
     ((deposit amount).run s).snd.storageMap 0 addr = s.storageMap 0 addr :=
     fun addr h_ne => deposit_preserves_other_balances s amount addr h_ne
@@ -178,7 +268,15 @@ theorem deposit_sum_singleton_sender (s : ContractState) (amount : Uint256)
   (addrs.map (fun addr => ((deposit amount).run s).snd.storageMap 0 addr)).sum
   = (addrs.map (fun addr => s.storageMap 0 addr)).sum + amount := by
   have h := deposit_sum_equation s amount addrs
-  rw [h_once] at h; simp at h; exact h
+  have h' := h
+  simp [countOccU, h_once] at h'
+  exact (by
+    calc
+      (addrs.map (fun addr => ((deposit amount).run s).snd.storageMap 0 addr)).sum
+          = amount + (addrs.map (fun addr => s.storageMap 0 addr)).sum := h'
+      _ = (addrs.map (fun addr => s.storageMap 0 addr)).sum + amount := by
+          exact DumbContracts.Core.Uint256.add_comm amount
+            ((addrs.map (fun addr => s.storageMap 0 addr)).sum))
 
 /-! ## Withdraw: Exact Sum Equation -/
 
@@ -189,9 +287,13 @@ theorem withdraw_sum_equation (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)).sum
-      + countOcc s.sender addrs * amount
+      + countOccU s.sender addrs * amount
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
-  have h_dec := withdraw_decreases_balance s amount h_balance
+  have h_dec_raw := withdraw_decreases_balance s amount h_balance
+  have h_dec :
+      ((withdraw amount).run s).snd.storageMap 0 s.sender =
+        s.storageMap 0 s.sender - amount := by
+    exact h_dec_raw
   have h_other : ∀ addr, addr ≠ s.sender →
     ((withdraw amount).run s).snd.storageMap 0 addr = s.storageMap 0 addr := by
     intro addr h_ne
@@ -201,7 +303,7 @@ theorem withdraw_sum_equation (s : ContractState) (amount : Uint256)
   exact map_sum_point_decrease
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)
-    s.sender amount h_dec h_other h_balance
+    s.sender amount h_dec h_other
 
 /-- Corollary: for a list where sender appears exactly once, withdraw removes exactly `amount`. -/
 theorem withdraw_sum_singleton_sender (s : ContractState) (amount : Uint256)
@@ -210,7 +312,16 @@ theorem withdraw_sum_singleton_sender (s : ContractState) (amount : Uint256)
   (addrs.map (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)).sum + amount
   = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
   have h := withdraw_sum_equation s amount h_balance addrs
-  rw [h_once] at h; simp at h; exact h
+  have h' := h
+  simp [countOccU, h_once] at h'
+  exact (by
+    calc
+      (addrs.map (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)).sum + amount
+          = amount + (addrs.map (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)).sum := by
+              exact DumbContracts.Core.Uint256.add_comm
+                ((addrs.map (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)).sum) amount
+      _ = (addrs.map (fun addr => s.storageMap 0 addr)).sum := h'
+    )
 
 /-! ## Transfer: Exact Sum Conservation Equation -/
 
@@ -221,71 +332,111 @@ theorem withdraw_sum_singleton_sender (s : ContractState) (amount : Uint256)
     of the sender in the list loses `amount`, and each occurrence of the recipient
     gains `amount`. The equation holds exactly (not just as an inequality). -/
 theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_ne : s.sender ≠ to) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
-      + countOcc s.sender addrs * amount
+      + countOccU s.sender addrs * amount
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum
-      + countOcc to addrs * amount := by
+      + countOccU to addrs * amount := by
   have h_spec := transfer_meets_spec s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
   obtain ⟨h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _, _⟩ := h_spec
+  have h_sender_bal' :
+      ((transfer to amount).run s).snd.storageMap 0 s.sender =
+        s.storageMap 0 s.sender - amount := by
+    exact h_sender_bal
+  have h_recip_bal' :
+      ((transfer to amount).run s).snd.storageMap 0 to =
+        s.storageMap 0 to + amount := by
+    have h_recip_bal' := h_recip_bal
+    simp [DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
+      HAdd.hAdd, DumbContracts.Core.Uint256.add_comm] at h_recip_bal'
+    exact h_recip_bal'
   exact map_sum_transfer_eq
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)
-    s.sender to amount h_ne h_sender_bal h_recip_bal
-    (fun addr h1 h2 => h_other_bal addr h1 h2) h_balance
+    s.sender to amount h_ne h_sender_bal' h_recip_bal'
+    (fun addr h1 h2 => h_other_bal addr h1 h2)
 
 /-- Corollary: for NoDup lists where sender and to each appear once,
     the total sum is exactly preserved by transfer. -/
 theorem transfer_sum_preserved_unique (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to)
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_ne : s.sender ≠ to)
   (addrs : List Address)
   (h_sender_once : countOcc s.sender addrs = 1)
   (h_to_once : countOcc to addrs = 1) :
   (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
   = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
   have h := transfer_sum_equation s to amount h_balance h_ne addrs
-  rw [h_sender_once, h_to_once] at h; simp at h; exact h
-
-/-- Corollary: the new sum is bounded by old_sum + count(to) * amount. -/
-theorem transfer_sum_bounded (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to) :
-  ∀ addrs : List Address,
-    (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
-    ≤ (addrs.map (fun addr => s.storageMap 0 addr)).sum + countOcc to addrs * amount := by
-  intro addrs
-  have h := transfer_sum_equation s to amount h_balance h_ne addrs
-  calc (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
-      ≤ (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum
-        + countOcc s.sender addrs * amount := Nat.le_add_right _ _
-    _ = (addrs.map (fun addr => s.storageMap 0 addr)).sum + countOcc to addrs * amount := h
+  have h' : (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum + amount =
+      (addrs.map (fun addr => s.storageMap 0 addr)).sum + amount := by
+    have h'' := h
+    simp [countOccU, h_sender_once, h_to_once] at h''
+    exact (by
+      calc
+        (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum + amount
+            = amount + (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum := by
+                exact DumbContracts.Core.Uint256.add_comm
+                  ((addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)).sum) amount
+        _ = amount + (addrs.map (fun addr => s.storageMap 0 addr)).sum := h''
+        _ = (addrs.map (fun addr => s.storageMap 0 addr)).sum + amount := by
+            exact DumbContracts.Core.Uint256.add_comm amount
+              ((addrs.map (fun addr => s.storageMap 0 addr)).sum))
+  exact DumbContracts.Core.Uint256.add_right_cancel h'
 
 /-! ## Deposit-Withdraw Inverse (Sum Level) -/
 
 /-- Deposit then withdraw of the same amount preserves the balance sum for any list.
     This is stronger than the single-address cancellation in Correctness.lean. -/
-theorem deposit_withdraw_sum_cancel (s : ContractState) (amount : Uint256) :
+theorem deposit_withdraw_sum_cancel (s : ContractState) (amount : Uint256)
+  (h_no_overflow : (s.storageMap 0 s.sender : Nat) + (amount : Nat) < 2^256) :
   ∀ addrs : List Address,
     let s1 := ((deposit amount).run s).snd
     (addrs.map (fun addr => ((withdraw amount).run s1).snd.storageMap 0 addr)).sum
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
   intro addrs
-  simp only [deposit, withdraw, msgSender, getMapping, setMapping, balances,
-    DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [Nat.add_sub_cancel]
-  -- After simp, the nested if-then-else doesn't fully collapse.
-  -- Show the mapping function is extensionally equal to s.storageMap 0.
-  have h_ext : ∀ addr : Address,
-    (if addr = s.sender then s.storageMap 0 s.sender
-     else if addr = s.sender then s.storageMap 0 s.sender + amount
-     else s.storageMap 0 addr) = s.storageMap 0 addr := by
-    intro addr
-    by_cases h : addr = s.sender
-    · simp [h]
-    · simp [h]
-  simp [h_ext]
+  let s1 := ((deposit amount).run s).snd
+  have h_inc_raw := deposit_increases_balance s amount
+  have h_inc :
+      s1.storageMap 0 s.sender = s.storageMap 0 s.sender + amount := by
+    have h_inc' := h_inc_raw
+    simp [s1, DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
+      HAdd.hAdd, DumbContracts.Core.Uint256.add_comm] at h_inc'
+    exact h_inc'
+  have h_balance : s1.storageMap 0 s.sender ≥ amount := by
+    have h_le : (amount : Nat) ≤ (s.storageMap 0 s.sender : Nat) + (amount : Nat) := by
+      exact Nat.le_add_left _ _
+    have h_inc_val : (s1.storageMap 0 s.sender : Nat) =
+        (s.storageMap 0 s.sender : Nat) + (amount : Nat) := by
+      have h_add :
+          ((s.storageMap 0 s.sender + amount : Uint256) : Nat) =
+            (s.storageMap 0 s.sender : Nat) + (amount : Nat) :=
+        DumbContracts.Core.Uint256.add_eq_of_lt h_no_overflow
+      have h_inc_val' : (s1.storageMap 0 s.sender : Nat) =
+          ((s.storageMap 0 s.sender + amount : Uint256) : Nat) := by
+        exact congrArg (fun x => x.val) h_inc
+      calc
+        (s1.storageMap 0 s.sender : Nat)
+            = ((s.storageMap 0 s.sender + amount : Uint256) : Nat) := h_inc_val'
+        _ = (s.storageMap 0 s.sender : Nat) + (amount : Nat) := h_add
+    -- Convert to Uint256 order
+    simp [DumbContracts.Core.Uint256.le_def, h_inc_val, h_le]
+  have h_dep := deposit_sum_equation s amount addrs
+  have h_wd := withdraw_sum_equation (s := s1) amount h_balance addrs
+  have h_eq :
+      (addrs.map (fun addr => ((withdraw amount).run s1).snd.storageMap 0 addr)).sum
+        + countOccU s.sender addrs * amount
+        = (addrs.map (fun addr => s.storageMap 0 addr)).sum
+          + countOccU s.sender addrs * amount := by
+    calc
+      (addrs.map (fun addr => ((withdraw amount).run s1).snd.storageMap 0 addr)).sum
+          + countOccU s.sender addrs * amount
+          = (addrs.map (fun addr => s1.storageMap 0 addr)).sum := h_wd
+      _ = (addrs.map (fun addr => s.storageMap 0 addr)).sum
+          + countOccU s.sender addrs * amount := h_dep
+  exact DumbContracts.Core.Uint256.add_right_cancel h_eq
 
 /-! ## Summary
 
@@ -310,10 +461,8 @@ Withdraw conservation:
 Transfer conservation:
 11. transfer_sum_equation — new_sum + count(sender)*amt = old_sum + count(to)*amt
 12. transfer_sum_preserved_unique — for unique sender & to: new_sum = old_sum
-13. transfer_sum_bounded — new_sum ≤ old_sum + count(to) * amount
-
 Composition:
-14. deposit_withdraw_sum_cancel — deposit then withdraw preserves sum
+13. deposit_withdraw_sum_cancel — deposit then withdraw preserves sum
 -/
 
 end DumbContracts.Proofs.Ledger.Conservation

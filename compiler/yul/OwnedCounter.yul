@@ -2,8 +2,8 @@ object "OwnedCounter" {
     code {
         let argsOffset := sub(codesize(), 32)
         codecopy(0, argsOffset, 32)
-        let initialOwner := and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)
-        sstore(0, initialOwner)
+        let arg0 := and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)
+        sstore(0, arg0)
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
     }
@@ -13,19 +13,25 @@ object "OwnedCounter" {
             case 0xd09de08a {
                 /* increment() */
                 if iszero(eq(caller(), sload(0))) {
-                    revert(0, 0)
+                    mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
+                    mstore(4, 32)
+                    mstore(36, 9)
+                    mstore(68, 0x4e6f74206f776e65720000000000000000000000000000000000000000000000)
+                    revert(0, 100)
                 }
-                let current := sload(1)
-                sstore(1, add(current, 1))
+                sstore(1, add(sload(1), 1))
                 stop()
             }
             case 0x2baeceb7 {
                 /* decrement() */
                 if iszero(eq(caller(), sload(0))) {
-                    revert(0, 0)
+                    mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
+                    mstore(4, 32)
+                    mstore(36, 9)
+                    mstore(68, 0x4e6f74206f776e65720000000000000000000000000000000000000000000000)
+                    revert(0, 100)
                 }
-                let current := sload(1)
-                sstore(1, sub(current, 1))
+                sstore(1, sub(sload(1), 1))
                 stop()
             }
             case 0xa87d942c {
@@ -40,10 +46,14 @@ object "OwnedCounter" {
             }
             case 0xf2fde38b {
                 /* transferOwnership() */
-                if iszero(eq(caller(), sload(0))) {
-                    revert(0, 0)
-                }
                 let newOwner := and(calldataload(4), 0xffffffffffffffffffffffffffffffffffffffff)
+                if iszero(eq(caller(), sload(0))) {
+                    mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
+                    mstore(4, 32)
+                    mstore(36, 9)
+                    mstore(68, 0x4e6f74206f776e65720000000000000000000000000000000000000000000000)
+                    revert(0, 100)
+                }
                 sstore(0, newOwner)
                 stop()
             }

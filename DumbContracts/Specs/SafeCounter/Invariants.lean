@@ -22,7 +22,10 @@ structure WellFormedState (s : ContractState) : Prop where
 
 /-- Context preserved: operations don't change sender or contract address -/
 def context_preserved (s s' : ContractState) : Prop :=
-  s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Storage isolation: operations on slot 0 don't affect other slots -/
 def storage_isolated (s s' : ContractState) : Prop :=
@@ -30,6 +33,6 @@ def storage_isolated (s s' : ContractState) : Prop :=
 
 /-- Bounds invariant: count is within safe range -/
 def count_in_bounds (s : ContractState) : Prop :=
-  s.storage 0 ≤ MAX_UINT256
+  (s.storage 0 : Nat) ≤ MAX_UINT256
 
 end DumbContracts.Specs.SafeCounter

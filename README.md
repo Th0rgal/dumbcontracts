@@ -112,7 +112,7 @@ To write a verified contract, add files in three places:
 ## Known limitations
 
 - Transfer proofs require `sender != to` (self-transfer overwrites the sender deduction)
-- Uint256 is modeled as `Nat` (no overflow for basic arithmetic)
+- Uint256 is a dedicated 256-bit modular type; `+`, `-`, `*`, `/`, and `%` wrap at `2^256`
 - No multi-contract interaction
 - No reentrancy modeling
 - No Mathlib dependency, so `ring`, `linarith`, etc. are unavailable

@@ -33,6 +33,18 @@ theorem modulus_pos : 0 < modulus := by
   simp [modulus]
   exact h
 
+theorem max_uint256_succ_eq_modulus : MAX_UINT256 + 1 = modulus := by
+  have h2 : (0 : Nat) < (2 : Nat) := by decide
+  have hle : 1 ≤ (2 ^ 256) := by
+    exact Nat.succ_le_of_lt (Nat.pow_pos (a := 2) (n := 256) h2)
+  simpa [MAX_UINT256, modulus, UINT256_MODULUS] using (Nat.sub_add_cancel hle)
+
+theorem val_le_max (a : Uint256) : a.val ≤ MAX_UINT256 := by
+  have hlt : a.val < modulus := a.isLt
+  have hlt' : a.val < MAX_UINT256 + 1 := by
+    simpa [max_uint256_succ_eq_modulus] using hlt
+  exact Nat.lt_succ_iff.mp hlt'
+
 def ofNat (n : Nat) : Uint256 :=
   ⟨n % modulus, Nat.mod_lt _ modulus_pos⟩
 
@@ -44,6 +56,20 @@ instance : Coe Nat Uint256 := ⟨ofNat⟩
 
 @[simp] theorem val_ofNat (n : Nat) : (ofNat n).val = n % modulus := rfl
 @[simp] theorem coe_ofNat (n : Nat) : ((ofNat n : Uint256) : Nat) = n % modulus := rfl
+
+@[simp] theorem val_zero : (0 : Uint256).val = 0 := by
+  change (ofNat 0).val = 0
+  simp [ofNat]
+
+@[simp] theorem val_one : (1 : Uint256).val = 1 := by
+  change (ofNat 1).val = 1
+  have hlt : (1 : Nat) < modulus := by
+    dsimp [modulus, UINT256_MODULUS]
+    decide
+  simp [ofNat, Nat.mod_eq_of_lt hlt]
+@[simp] theorem val_ite {c : Prop} [Decidable c] (t e : Uint256) :
+  (ite c t e).val = ite c t.val e.val := by
+  by_cases c <;> simp [*]
 
 -- Order instances
 instance : LT Uint256 := ⟨fun a b => a.val < b.val⟩
@@ -120,6 +146,10 @@ theorem add_eq_of_lt {a b : Uint256} (h : a.val + b.val < modulus) :
   ((a + b : Uint256) : Nat) = a.val + b.val := by
   simpa [HAdd.hAdd, add, ofNat] using (Nat.mod_eq_of_lt h)
 
+theorem mul_eq_of_lt {a b : Uint256} (h : a.val * b.val < modulus) :
+  ((a * b : Uint256) : Nat) = a.val * b.val := by
+  simpa [HMul.hMul, mul, ofNat] using (Nat.mod_eq_of_lt h)
+
 theorem sub_eq_of_le {a b : Uint256} (h : b.val ≤ a.val) :
   ((a - b : Uint256) : Nat) = a.val - b.val := by
   have hlt : a.val - b.val < modulus := by
@@ -136,6 +166,122 @@ theorem sub_eq_of_le {a b : Uint256} (h : b.val ≤ a.val) :
         apply Subsingleton.elim
       cases this
       rfl
+
+@[simp] theorem zero_add (a : Uint256) : (0 : Uint256) + a = a := by
+  apply ext
+  have hlt : a.val < modulus := a.isLt
+  have hlt' : 0 + a.val < modulus := by simpa using hlt
+  calc
+    ((0 : Uint256) + a).val = (0 + a.val) % modulus := by
+      simp [HAdd.hAdd, add, ofNat]
+    _ = 0 + a.val := by
+      exact Nat.mod_eq_of_lt hlt'
+    _ = a.val := by simp
+
+@[simp] theorem add_zero (a : Uint256) : a + (0 : Uint256) = a := by
+  apply ext
+  have hlt : a.val < modulus := a.isLt
+  have hlt' : a.val + 0 < modulus := by simpa using hlt
+  calc
+    (a + (0 : Uint256)).val = (a.val + 0) % modulus := by
+      simp [HAdd.hAdd, add, ofNat]
+    _ = a.val + 0 := by
+      exact Nat.mod_eq_of_lt hlt'
+    _ = a.val := by simp
+
+@[simp] theorem add_comm (a b : Uint256) : a + b = b + a := by
+  apply ext
+  calc
+    (a + b).val = (a.val + b.val) % modulus := by
+      simp [HAdd.hAdd, add, ofNat]
+    _ = (b.val + a.val) % modulus := by
+      simp [Nat.add_comm]
+    _ = (b + a).val := by
+      simp [HAdd.hAdd, add, ofNat]
+
+@[simp] theorem sub_zero (a : Uint256) : a - (0 : Uint256) = a := by
+  apply ext
+  have hlt : a.val < modulus := a.isLt
+  have hlt' : a.val - 0 < modulus := by simpa using hlt
+  calc
+    (a - (0 : Uint256)).val = (a.val - 0) % modulus := by
+      simp [HSub.hSub, sub]
+    _ = a.val - 0 := by
+      exact Nat.mod_eq_of_lt hlt'
+    _ = a.val := by simp
+
+@[simp] theorem sub_self (a : Uint256) : a - a = 0 := by
+  apply ext
+  calc
+    (a - a).val = (a.val - a.val) % modulus := by
+      simp [HSub.hSub, sub]
+    _ = 0 := by simp
+
+@[simp] theorem zero_mul (a : Uint256) : (0 : Uint256) * a = 0 := by
+  apply ext
+  calc
+    ((0 : Uint256) * a).val = (0 * a.val) % modulus := by
+      simp [HMul.hMul, mul, ofNat]
+    _ = 0 := by simp
+
+@[simp] theorem mul_zero (a : Uint256) : a * (0 : Uint256) = 0 := by
+  apply ext
+  calc
+    (a * (0 : Uint256)).val = (a.val * 0) % modulus := by
+      simp [HMul.hMul, mul, ofNat]
+    _ = 0 := by simp
+
+@[simp] theorem one_mul (a : Uint256) : (1 : Uint256) * a = a := by
+  apply ext
+  have hlt : a.val < modulus := a.isLt
+  have hlt' : 1 * a.val < modulus := by simpa using hlt
+  calc
+    ((1 : Uint256) * a).val = (1 * a.val) % modulus := by
+      simp [HMul.hMul, mul, ofNat]
+    _ = 1 * a.val := by
+      exact Nat.mod_eq_of_lt hlt'
+    _ = a.val := by simp
+
+@[simp] theorem mul_one (a : Uint256) : a * (1 : Uint256) = a := by
+  apply ext
+  have hlt : a.val < modulus := a.isLt
+  have hlt' : a.val * 1 < modulus := by simpa using hlt
+  calc
+    (a * (1 : Uint256)).val = (a.val * 1) % modulus := by
+      simp [HMul.hMul, mul, ofNat]
+    _ = a.val * 1 := by
+      exact Nat.mod_eq_of_lt hlt'
+    _ = a.val := by simp
+
+@[simp] theorem mul_comm (a b : Uint256) : a * b = b * a := by
+  apply ext
+  calc
+    (a * b).val = (a.val * b.val) % modulus := by
+      simp [HMul.hMul, mul, ofNat]
+    _ = (b.val * a.val) % modulus := by
+      simp [Nat.mul_comm]
+    _ = (b * a).val := by
+      simp [HMul.hMul, mul, ofNat]
+
+@[simp] theorem div_one (a : Uint256) : a / (1 : Uint256) = a := by
+  apply ext
+  have hlt : a.val < modulus := a.isLt
+  have hlt' : a.val / 1 < modulus := by simpa using hlt
+  calc
+    (a / (1 : Uint256)).val = (a.val / 1) % modulus := by
+      simp [HDiv.hDiv, div, ofNat]
+    _ = a.val / 1 := by
+      exact Nat.mod_eq_of_lt hlt'
+    _ = a.val := by simp
+
+@[simp] theorem zero_div (a : Uint256) : (0 : Uint256) / a = 0 := by
+  apply ext
+  by_cases h : a.val = 0
+  · simp [HDiv.hDiv, div, h]
+  · calc
+      ((0 : Uint256) / a).val = (0 / a.val) % modulus := by
+        simp [HDiv.hDiv, div, h, ofNat]
+      _ = 0 := by simp
 
 theorem sub_add_cancel_of_lt {a b : Uint256} (ha : a.val < modulus) (hb : b.val < modulus) :
   (a + b - b) = a := by
@@ -197,16 +343,35 @@ theorem sub_add_cancel_of_lt {a b : Uint256} (ha : a.val < modulus) (hb : b.val 
             _ = a + b - m := hmod
           exact hbnot this
         -- Overflow: wrap-around branch.
+        let aU : Uint256 := ⟨a, ha'⟩
+        let bU : Uint256 := ⟨b, hb'⟩
         have hma : a ≤ m := Nat.le_of_lt ha''
-        show (sub (add ⟨a, ha'⟩ ⟨b, hb'⟩) ⟨b, hb'⟩).val = a
-        simp only [add, sub, ofNat, val_ofNat, if_neg hbnot']
-        calc (m - (b - (a + b) % m)) % m
-          _ = (m - (b - (a + b - m))) % m := by rw [hmod]
-          _ = (m - (m - a)) % m := by rw [hdiff]
+        have hsub : m - (m - a) = a := by
+          have hle' : m - a ≤ m := Nat.sub_le _ _
+          exact (Nat.sub_eq_iff_eq_add hle').2 (by
+            have h1 : m - a + a = m := Nat.sub_add_cancel hma
+            simpa [Nat.add_comm] using h1.symm)
+        have hval' : (aU + bU - bU).val = (m - (b - (a + b) % m)) % m := by
+          have hgt : b > (a + b) % m := by
+            exact Nat.lt_of_not_ge hbnot'
+          have hgt' : bU.val > (add aU bU).val := by
+            simpa [aU, bU, add, ofNat] using hgt
+          calc
+            (aU + bU - bU).val = (sub (add aU bU) bU).val := rfl
+            _ = (m - (bU.val - (add aU bU).val)) % m := by
+                simp [sub_val_of_gt, hgt']
+            _ = (m - (b - (a + b) % m)) % m := by
+                simp [aU, bU, add, ofNat]
+        calc
+          (aU + bU - bU).val = (m - (b - (a + b) % m)) % m := hval'
+          _ = (m - (b - (a + b - m))) % m := by
+                  simp [hmod]
+          _ = (m - (m - a)) % m := by
+                  simp [hdiff]
           _ = a % m := by
-            have : m - (m - a) = a := Nat.sub_sub_self hma
-            rw [this]
-          _ = a := Nat.mod_eq_of_lt ha''
+                  simp [hsub]
+          _ = a := by
+                  exact Nat.mod_eq_of_lt ha''
 
 theorem sub_add_cancel (a b : Uint256) : (a + b - b) = a :=
   sub_add_cancel_of_lt a.isLt b.isLt

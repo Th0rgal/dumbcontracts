@@ -79,6 +79,9 @@ inductive Expr
   | localVar (name : String)  -- Reference to local variable
   | add (a b : Expr)
   | sub (a b : Expr)
+  | mul (a b : Expr)
+  | div (a b : Expr)
+  | mod (a b : Expr)
   | bitAnd (a b : Expr)
   | bitOr (a b : Expr)
   | bitXor (a b : Expr)
@@ -167,6 +170,18 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
       let aExpr ← compileExpr fields a
       let bExpr ← compileExpr fields b
       pure (YulExpr.call "sub" [aExpr, bExpr])
+  | Expr.mul a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "mul" [aExpr, bExpr])
+  | Expr.div a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "div" [aExpr, bExpr])
+  | Expr.mod a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "mod" [aExpr, bExpr])
   | Expr.bitAnd a b => do
       let aExpr ← compileExpr fields a
       let bExpr ← compileExpr fields b

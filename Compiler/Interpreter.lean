@@ -18,6 +18,7 @@ import DumbContracts.Examples.SafeCounter
 import DumbContracts.Examples.Owned
 import DumbContracts.Examples.Ledger
 import DumbContracts.Examples.OwnedCounter
+import DumbContracts.Examples.SimpleToken
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
@@ -500,6 +501,126 @@ def interpretOwnedCounter (tx : Transaction) (state : ContractState) : Execution
     }
 
 /-!
+## SimpleToken Interpreter
+-/
+
+private def exampleSimpleTokenMint (to : Address) (amount : Nat) : Contract Unit :=
+  SimpleToken.mint to amount
+
+private def exampleSimpleTokenTransfer (to : Address) (amount : Nat) : Contract Unit :=
+  SimpleToken.transfer to amount
+
+private def exampleSimpleTokenBalanceOf (addr : Address) : Contract Nat :=
+  SimpleToken.balanceOf addr
+
+private def exampleSimpleTokenGetTotalSupply : Contract Nat :=
+  SimpleToken.getTotalSupply
+
+private def exampleSimpleTokenGetOwner : Contract Address :=
+  SimpleToken.getOwner
+
+def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  match tx.functionName with
+  | "mint" =>
+    match tx.args with
+    | [toNat, amount] =>
+      -- Convert Nat to Address
+      let toAddr := natToAddress toNat
+      let result := exampleSimpleTokenMint toAddr amount |>.run state
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success _ s => ContractResult.success 0 s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      -- Track: storage slot 2 (totalSupply), owner slot 0, mapping for recipient
+      let recipientKey := (1, toAddr)
+      resultToExecutionResult natResult state [2] [0] [recipientKey]
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "transfer" =>
+    match tx.args with
+    | [toNat, amount] =>
+      -- Convert Nat to Address
+      let toAddr := natToAddress toNat
+      let result := exampleSimpleTokenTransfer toAddr amount |>.run state
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success _ s => ContractResult.success 0 s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      -- Track mapping changes for both sender and recipient
+      let senderKey := (1, tx.sender)
+      let recipientKey := (1, toAddr)
+      resultToExecutionResult natResult state [] [] [senderKey, recipientKey]
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "balanceOf" =>
+    match tx.args with
+    | [addrNat] =>
+      -- Convert Nat to Address
+      let addr := natToAddress addrNat
+      let result := exampleSimpleTokenBalanceOf addr |>.run state
+      -- Track mapping for the queried address
+      let addrKey := (1, addr)
+      resultToExecutionResult result state [] [] [addrKey]
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "getTotalSupply" =>
+    match tx.args with
+    | [] =>
+      let result := exampleSimpleTokenGetTotalSupply |>.run state
+      resultToExecutionResult result state [2] [] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "getOwner" =>
+    match tx.args with
+    | [] =>
+      let result := exampleSimpleTokenGetOwner |>.run state
+      -- Convert Address result to Nat for JSON output
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success addr s =>
+          let addrNat := parseHexNat? addr |>.getD 0
+          ContractResult.success addrNat s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      resultToExecutionResult natResult state [] [0] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | _ =>
+    { success := false
+      returnValue := none
+      revertReason := some "Unknown function"
+      storageChanges := []
+      storageAddrChanges := []
+      mappingChanges := []
+    }
+
+/-!
 ## Generic Interpreter Interface
 
 For use by the differential testing harness.
@@ -513,14 +634,7 @@ def interpret (contractType : ContractType) (tx : Transaction) (state : Contract
   | ContractType.owned => interpretOwned tx state
   | ContractType.ledger => interpretLedger tx state
   | ContractType.ownedCounter => interpretOwnedCounter tx state
-  | ContractType.simpleToken =>
-    { success := false
-      returnValue := none
-      revertReason := some "Not implemented"
-      storageChanges := []
-      storageAddrChanges := []
-      mappingChanges := []
-    }
+  | ContractType.simpleToken => interpretSimpleToken tx state
 
 /-!
 ## JSON Serialization

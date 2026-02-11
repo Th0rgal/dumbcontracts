@@ -76,7 +76,9 @@ theorem safeGetCount_correct (state : ContractState) (sender : Address) :
     let specResult := interpretSpec safeCounterSpec (safeCounterEdslToSpecStorage state) specTx
     specResult.success = true ∧
     specResult.returnValue = some edslValue := by
-  sorry
+  -- Same pattern as Counter.getCount_correct
+  unfold getCount Contract.runValue safeCounterSpec interpretSpec safeCounterEdslToSpecStorage
+  simp [getStorage, execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, count]
 
 /- Helper Properties -/
 
@@ -84,13 +86,18 @@ theorem safeGetCount_correct (state : ContractState) (sender : Address) :
 theorem safeGetCount_preserves_state (state : ContractState) (sender : Address) :
     let finalState := getCount.runState { state with sender := sender }
     finalState.storage 0 = state.storage 0 := by
-  sorry
+  -- getCount just reads storage, doesn't modify it
+  unfold getCount Contract.runState
+  simp [getStorage, count]
 
 /-- Increment reverts when counter is at MAX_UINT256 -/
 theorem safeIncrement_reverts_at_max (state : ContractState) (sender : Address)
     (h : (state.storage 0).val = DumbContracts.Core.MAX_UINT256) :
     let result := increment.run { state with sender := sender }
     result.isSuccess = false := by
+  -- When count = MAX_UINT256, safeAdd returns none
+  -- requireSomeUint then calls require false, which reverts
+  -- This requires careful expansion of the monadic code
   sorry
 
 /-- Decrement reverts when counter is 0 -/
@@ -98,6 +105,8 @@ theorem safeDecrement_reverts_at_zero (state : ContractState) (sender : Address)
     (h : (state.storage 0).val = 0) :
     let result := decrement.run { state with sender := sender }
     result.isSuccess = false := by
+  -- When count = 0, safeSub 0 1 returns none (since 1 > 0)
+  -- requireSomeUint then calls require false, which reverts
   sorry
 
 /-- Increment succeeds when not at max -/
@@ -105,6 +114,8 @@ theorem safeIncrement_succeeds_below_max (state : ContractState) (sender : Addre
     (h : (state.storage 0).val < DumbContracts.Core.MAX_UINT256) :
     let result := increment.run { state with sender := sender }
     result.isSuccess = true := by
+  -- When count < MAX_UINT256, count + 1 ≤ MAX_UINT256
+  -- So safeAdd returns some value, requireSomeUint succeeds
   sorry
 
 /-- Decrement succeeds when above zero -/
@@ -112,6 +123,7 @@ theorem safeDecrement_succeeds_above_zero (state : ContractState) (sender : Addr
     (h : (state.storage 0).val > 0) :
     let result := decrement.run { state with sender := sender }
     result.isSuccess = true := by
+  -- When count > 0, count ≥ 1, so safeSub succeeds
   sorry
 
 end Compiler.Proofs.SpecCorrectness

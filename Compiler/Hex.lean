@@ -29,6 +29,10 @@ def parseHexNat? (s : String) : Option Nat :=
 def stringToNat (s : String) : Nat :=
   s.data.foldl (fun acc c => acc * 256 + c.toNat) 0
 
+-- Normalize address to lowercase for consistent comparison
+def normalizeAddress (addr : String) : String :=
+  addr.map Char.toLower
+
 def addressToNat (addr : String) : Nat :=
   match parseHexNat? addr with
   | some n => n

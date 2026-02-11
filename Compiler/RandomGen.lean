@@ -43,10 +43,6 @@ def genUint256 (rng : RNG) : RNG × Nat :=
   let (rng', n) := rng.next
   (rng', n % 1000000)  -- Keep values reasonable for testing
 
--- Normalize address to lowercase for consistency with interpreter
-private def normalizeAddress (addr : Address) : Address :=
-  addr.map Char.toLower
-
 -- Convert Address to Nat for calldata args (keeps parity with Interpreter)
 private def addressToNatNormalized (addr : Address) : Nat :=
   addressToNat (normalizeAddress addr)

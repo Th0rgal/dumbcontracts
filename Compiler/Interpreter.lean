@@ -77,10 +77,6 @@ private def revertSelectorWord : Nat :=
 private def revertReturnValue (msg : String) : Nat :=
   if msg.isEmpty then 0 else revertSelectorWord
 
--- Helper: Normalize address to lowercase for consistent comparison
-private def normalizeAddress (addr : Address) : Address :=
-  addr.map Char.toLower
-
 -- Helper: 160-bit address modulus (EVM address size)
 private def addressModulus : Nat :=
   2 ^ 160

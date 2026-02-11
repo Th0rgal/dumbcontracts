@@ -151,7 +151,9 @@ contract DifferentialSimpleStorage is YulTestBase {
             vm.toString(arg0),
             " \"",
             storageState,
-            "\""
+            "\"",
+            " value=0 timestamp=",
+            vm.toString(block.timestamp)
         );
 
         // Call Lean interpreter

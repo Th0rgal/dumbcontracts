@@ -219,7 +219,9 @@ contract DifferentialOwnedCounter is YulTestBase {
             functionName,
             " ",
             vm.toString(sender),
-            bytes(argsStr).length > 0 ? string.concat(" ", argsStr) : ""
+            bytes(argsStr).length > 0 ? string.concat(" ", argsStr) : "",
+            " value=0 timestamp=",
+            vm.toString(block.timestamp)
         );
 
         bytes memory result = vm.ffi(inputs);

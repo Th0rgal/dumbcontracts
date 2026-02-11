@@ -715,6 +715,9 @@ def parseStorage (storageStr : String) : Nat → Uint256 :=
 private def looksLikeStorage (s : String) : Bool :=
   s.data.any (fun c => c == ':' || c == ',')
 
+private def looksLikeConfig (s : String) : Bool :=
+  s.data.any (fun c => c == '=')
+
 private def storageConfigPrefix (s : String) : Option (String × String) :=
   match s.splitOn "=" with
   | [pfx, value] =>
@@ -736,7 +739,7 @@ private def storageConfigPrefix (s : String) : Option (String × String) :=
 private def isStorageConfigArg (s : String) : Bool :=
   match storageConfigPrefix s with
   | some _ => true
-  | none => looksLikeStorage s
+  | none => looksLikeStorage s || looksLikeConfig s
 
 private def parseStorageConfig (s : String) : (String × String) :=
   match storageConfigPrefix s with

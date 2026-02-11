@@ -191,6 +191,7 @@ contract DifferentialOwned is YulTestBase {
             if (bytes(storageState).length > 0) {
                 cmd = string.concat(cmd, " \"", storageState, "\"");
             }
+            cmd = string.concat(cmd, " value=0 timestamp=", vm.toString(block.timestamp));
             string[] memory inputs = new string[](3);
             inputs[0] = "bash";
             inputs[1] = "-c";
@@ -202,6 +203,7 @@ contract DifferentialOwned is YulTestBase {
             if (bytes(storageState).length > 0) {
                 cmd = string.concat(cmd, " \"", storageState, "\"");
             }
+            cmd = string.concat(cmd, " value=0 timestamp=", vm.toString(block.timestamp));
             string[] memory inputs = new string[](3);
             inputs[0] = "bash";
             inputs[1] = "-c";

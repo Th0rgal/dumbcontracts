@@ -201,7 +201,9 @@ contract DifferentialLedger is YulTestBase {
             " ",
             vm.toString(sender),
             " ",
-            argsStr
+            argsStr,
+            " value=0 timestamp=",
+            vm.toString(block.timestamp)
         );
 
         bytes memory result = vm.ffi(inputs);

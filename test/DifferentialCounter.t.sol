@@ -151,7 +151,9 @@ contract DifferentialCounter is YulTestBase {
             vm.toString(sender),
             " ",
             vm.toString(arg0),
-            bytes(storageState).length > 0 ? string.concat(" \"", storageState, "\"") : ""
+            bytes(storageState).length > 0 ? string.concat(" \"", storageState, "\"") : "",
+            " value=0 timestamp=",
+            vm.toString(block.timestamp)
         );
 
         // Call Lean interpreter

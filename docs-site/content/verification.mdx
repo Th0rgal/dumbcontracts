@@ -327,7 +327,7 @@ Transfer proofs require `sender != to` because the implementation writes the rec
 ## Known limitations
 
 1. Transfer proofs require `sender != to` (implementation write ordering)
-2. Uint256 modeled as `Nat` (no overflow for basic arithmetic)
+2. Uint256 is a dedicated 256-bit modular type; `+`, `-`, `*`, `/`, and `%` wrap at `2^256`
 3. No multi-contract interaction
 4. No reentrancy modeling
 5. `supply_bounds_balances` not preserved for lists with duplicates; exact sum equations are proven instead

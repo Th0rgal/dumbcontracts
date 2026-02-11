@@ -27,6 +27,8 @@ structure ContractState where
   storageMap : Nat → Address → Uint256  -- Mapping storage (Address → Uint256)
   sender : Address
   thisAddress : Address
+  msgValue : Uint256
+  blockTimestamp : Uint256
 
 -- Repr instance for ContractState (simplified for readability)
 instance : Repr ContractState where
@@ -174,6 +176,12 @@ def msgSender : Contract Address :=
 def contractAddress : Contract Address :=
   fun state => ContractResult.success state.thisAddress state
 
+def msgValue : Contract Uint256 :=
+  fun state => ContractResult.success state.msgValue state
+
+def blockTimestamp : Contract Uint256 :=
+  fun state => ContractResult.success state.blockTimestamp state
+
 -- Simp lemmas for context accessors
 @[simp] theorem msgSender_run_fst (state : ContractState) :
   (msgSender.run state).fst = state.sender := by rfl
@@ -186,6 +194,18 @@ def contractAddress : Contract Address :=
 
 @[simp] theorem contractAddress_run_snd (state : ContractState) :
   (contractAddress.run state).snd = state := by rfl
+
+@[simp] theorem msgValue_run_fst (state : ContractState) :
+  (msgValue.run state).fst = state.msgValue := by rfl
+
+@[simp] theorem msgValue_run_snd (state : ContractState) :
+  (msgValue.run state).snd = state := by rfl
+
+@[simp] theorem blockTimestamp_run_fst (state : ContractState) :
+  (blockTimestamp.run state).fst = state.blockTimestamp := by rfl
+
+@[simp] theorem blockTimestamp_run_snd (state : ContractState) :
+  (blockTimestamp.run state).snd = state := by rfl
 
 -- Require guard (explicit failure on condition = false)
 def require (condition : Bool) (message : String) : Contract Unit :=

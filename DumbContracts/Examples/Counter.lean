@@ -47,7 +47,9 @@ def exampleUsage : Contract Uint256 := do
   storageAddr := fun _ => "",
   storageMap := fun _ _ => 0,
   sender := "0xAlice",
-  thisAddress := "0xCounter"
+  thisAddress := "0xCounter",
+  msgValue := 0,
+  blockTimestamp := 0
 }).getValue?
 -- Expected output: some 1
 

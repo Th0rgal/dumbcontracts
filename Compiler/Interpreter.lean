@@ -896,6 +896,8 @@ def main (args : List String) : IO Unit := do
       storageMap := storageMapState
       sender := normalizeAddress senderAddr
       thisAddress := "0xContract"
+      msgValue := 0
+      blockTimestamp := 0
     }
     let contractTypeEnum? : Option ContractType := match contractType with
       | "SimpleStorage" => some ContractType.simpleStorage

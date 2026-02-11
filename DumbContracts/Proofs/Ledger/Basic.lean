@@ -47,7 +47,9 @@ private theorem deposit_unfold (s : ContractState) (amount : Uint256) :
         if (slot == 0 && addr == s.sender) = true then EVM.Uint256.add (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [deposit, msgSender, getMapping, setMapping, balances,
     DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
@@ -89,7 +91,9 @@ private theorem withdraw_unfold (s : ContractState) (amount : Uint256)
         if (slot == 0 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [withdraw, msgSender, getMapping, setMapping, balances,
     DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
@@ -138,7 +142,9 @@ private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uin
         else if (slot == 0 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [transfer, msgSender, getMapping, setMapping, balances,
     DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]

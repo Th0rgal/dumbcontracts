@@ -147,7 +147,9 @@ private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256
         if (slot == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [mint, DumbContracts.Examples.SimpleToken.onlyOwner, isOwner,
     Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
     msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
@@ -213,7 +215,9 @@ private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uin
         else if (slot == 1 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 1 s.sender) amount
         else s.storageMap slot addr,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   simp only [transfer, Examples.SimpleToken.balances,
     msgSender, getMapping, setMapping,
     DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,

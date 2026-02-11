@@ -72,7 +72,9 @@ private theorem increment_unfold (s : ContractState)
       storageAddr := s.storageAddr,
       storageMap := s.storageMap,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   have h_safe := safeAdd_some (s.storage 0) 1 h_no_overflow
   simp only [increment, getStorage, setStorage, count, requireSomeUint,
     DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
@@ -124,7 +126,9 @@ private theorem decrement_unfold (s : ContractState)
       storageAddr := s.storageAddr,
       storageMap := s.storageMap,
       sender := s.sender,
-      thisAddress := s.thisAddress } := by
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp } := by
   have h_safe := safeSub_some (s.storage 0) 1 h_no_underflow
   simp only [decrement, getStorage, setStorage, count, requireSomeUint,
     DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,

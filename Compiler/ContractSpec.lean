@@ -74,9 +74,17 @@ inductive Expr
   | storage (field : String)
   | mapping (field : String) (key : Expr)
   | caller
+  | msgValue
+  | blockTimestamp
   | localVar (name : String)  -- Reference to local variable
   | add (a b : Expr)
   | sub (a b : Expr)
+  | bitAnd (a b : Expr)
+  | bitOr (a b : Expr)
+  | bitXor (a b : Expr)
+  | bitNot (a : Expr)
+  | shl (shift value : Expr)
+  | shr (shift value : Expr)
   | eq (a b : Expr)
   | ge (a b : Expr)
   | gt (a b : Expr)  -- Greater than (strict)
@@ -148,6 +156,8 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
         pure (YulExpr.call "sload" [YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr]])
       | none => throw s!"Compilation error: unknown mapping field '{field}'"
   | Expr.caller => pure (YulExpr.call "caller" [])
+  | Expr.msgValue => pure (YulExpr.call "callvalue" [])
+  | Expr.blockTimestamp => pure (YulExpr.call "timestamp" [])
   | Expr.localVar name => pure (YulExpr.ident name)
   | Expr.add a b => do
       let aExpr ← compileExpr fields a
@@ -157,6 +167,29 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
       let aExpr ← compileExpr fields a
       let bExpr ← compileExpr fields b
       pure (YulExpr.call "sub" [aExpr, bExpr])
+  | Expr.bitAnd a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "and" [aExpr, bExpr])
+  | Expr.bitOr a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "or" [aExpr, bExpr])
+  | Expr.bitXor a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "xor" [aExpr, bExpr])
+  | Expr.bitNot a => do
+      let aExpr ← compileExpr fields a
+      pure (YulExpr.call "not" [aExpr])
+  | Expr.shl shift value => do
+      let shiftExpr ← compileExpr fields shift
+      let valueExpr ← compileExpr fields value
+      pure (YulExpr.call "shl" [shiftExpr, valueExpr])
+  | Expr.shr shift value => do
+      let shiftExpr ← compileExpr fields shift
+      let valueExpr ← compileExpr fields value
+      pure (YulExpr.call "shr" [shiftExpr, valueExpr])
   | Expr.eq a b => do
       let aExpr ← compileExpr fields a
       let bExpr ← compileExpr fields b

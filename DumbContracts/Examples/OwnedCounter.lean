@@ -80,7 +80,9 @@ def exampleUsage : Contract (Uint256 × Address) := do
   storageAddr := fun _ => "",
   storageMap := fun _ _ => 0,
   sender := "0xAlice",  -- Alice is the caller
-  thisAddress := "0xContract"
+  thisAddress := "0xContract",
+  msgValue := 0,
+  blockTimestamp := 0
 }).getValue?
 -- Expected output: some (2, "0xBob")
 

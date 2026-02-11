@@ -1,0 +1,11 @@
+{
+  "context_dir_name": "context",
+  "context_root": "/root/context",
+  "mission_context": "/root/context/9ae8b9a3-1876-45fa-8842-471ca3bc5c4e",
+  "mission_id": "9ae8b9a3-1876-45fa-8842-471ca3bc5c4e",
+  "working_dir": "/workspaces/mission-9ae8b9a3",
+  "workspace_id": "1ec51105-2369-4d36-8d8d-f0dbcbde1530",
+  "workspace_name": "dumbcontracts",
+  "workspace_root": "/root/.sandboxed-sh/containers/dumbcontracts",
+  "workspace_type": "container"
+}

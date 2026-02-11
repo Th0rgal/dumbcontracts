@@ -15,6 +15,7 @@ import DumbContracts.Core
 import DumbContracts.Examples.SimpleStorage
 import DumbContracts.Examples.Counter
 import DumbContracts.Examples.SafeCounter
+import DumbContracts.Examples.Owned
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
@@ -217,6 +218,52 @@ def interpretSafeCounter (tx : Transaction) (state : ContractState) : ExecutionR
     }
 
 /-!
+## Owned Interpreter
+-/
+
+private def exampleOwnedTransferOwnership (newOwner : Address) : Contract Unit :=
+  Owned.transferOwnership newOwner
+
+private def exampleOwnedGetOwner : Contract Address :=
+  Owned.getOwner
+
+def interpretOwned (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  match tx.functionName with
+  | "transferOwnership" =>
+    match tx.args with
+    | [newOwnerNat] =>
+      -- Convert Nat to Address (hex string)
+      let newOwnerAddr := "0x" ++ (Nat.toDigits 16 newOwnerNat).asString
+      let result := exampleOwnedTransferOwnership newOwnerAddr |>.run state
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success _ s => ContractResult.success 0 s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      resultToExecutionResult natResult state [] [0] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "getOwner" =>
+    let result := exampleOwnedGetOwner.run state
+    -- Convert Address result to Nat for JSON output
+    let natResult : ContractResult Nat := match result with
+      | ContractResult.success addr s => ContractResult.success (addressToNat addr) s
+      | ContractResult.revert msg s => ContractResult.revert msg s
+    resultToExecutionResult natResult state [] [0] []
+  | _ =>
+    { success := false
+      returnValue := none
+      revertReason := some "Unknown function"
+      storageChanges := []
+      storageAddrChanges := []
+      mappingChanges := []
+    }
+
+/-!
 ## Generic Interpreter Interface
 
 For use by the differential testing harness.
@@ -227,7 +274,7 @@ def interpret (contractType : ContractType) (tx : Transaction) (state : Contract
   | ContractType.simpleStorage => interpretSimpleStorage tx state
   | ContractType.counter => interpretCounter tx state
   | ContractType.safeCounter => interpretSafeCounter tx state
-  | ContractType.owned
+  | ContractType.owned => interpretOwned tx state
   | ContractType.ledger
   | ContractType.ownedCounter
   | ContractType.simpleToken =>
@@ -313,6 +360,7 @@ For use via `lake exe difftest-interpreter`
 
 open Compiler.Interpreter
 open Compiler.DiffTestTypes
+open Compiler.Hex
 open DumbContracts
 
 -- Parse storage state from command line args
@@ -361,8 +409,8 @@ def main (args : List String) : IO Unit := do
     if argStrs.any looksLikeStorage then
       throw <| IO.userError
         "Invalid args: storage string must be last, and only one storage arg is allowed"
-    let argsNat := match parseArgs argStrs with
-      | Except.ok vals => vals
+    let argsNat ← match parseArgs argStrs with
+      | Except.ok vals => pure vals
       | Except.error msg => throw <| IO.userError msg
     let tx : Transaction := {
       sender := senderAddr

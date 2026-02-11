@@ -137,9 +137,12 @@ private def findFieldSlot (fields : List Field) (name : String) : Option Nat :=
 private def isMapping (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any (·.ty == FieldType.mapping)
 
+-- Keep compiler literals aligned with Uint256 semantics (mod 2^256).
+private def uint256Modulus : Nat := 2 ^ 256
+
 -- Compile expression to Yul
 private def compileExpr (fields : List Field) : Expr → Except String YulExpr
-  | Expr.literal n => pure (YulExpr.lit n)
+  | Expr.literal n => pure (YulExpr.lit (n % uint256Modulus))
   | Expr.param name => pure (YulExpr.ident name)
   | Expr.constructorArg idx => pure (YulExpr.ident s!"arg{idx}")  -- Constructor args loaded as argN
   | Expr.storage field =>

@@ -10,6 +10,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Stdlib.Math
+import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.SafeCounter
 import DumbContracts.Specs.SafeCounter.Spec
 import DumbContracts.Specs.SafeCounter.Invariants
@@ -18,6 +19,7 @@ namespace DumbContracts.Proofs.SafeCounter
 
 open DumbContracts
 open DumbContracts.Stdlib.Math
+open DumbContracts.EVM.Uint256
 open DumbContracts.Examples.SafeCounter
 open DumbContracts.Specs.SafeCounter
 
@@ -37,6 +39,15 @@ theorem getCount_preserves_state (s : ContractState) :
   simp [getCount, getStorage, count, Contract.run, ContractResult.snd]
 
 /-! ## Increment Correctness -/
+
+/-- Helper: relate EVM modular add to Nat addition when bounded. -/
+theorem evm_add_eq_of_no_overflow (a b : Uint256) (h : a + b ≤ MAX_UINT256) :
+  add a b = a + b := by
+  have h_le : a + b ≤ (2^256 - 1) := by
+    simpa [DumbContracts.Core.MAX_UINT256] using h
+  have h_lt : a + b < 2^256 := by
+    exact Nat.lt_of_le_of_lt h_le (by simp_arith)
+  simpa using (DumbContracts.EVM.Uint256.add_eq_of_lt h_lt)
 
 /-- Helper: safeAdd succeeds when no overflow -/
 private theorem safeAdd_some (a b : Uint256) (h : a + b ≤ MAX_UINT256) :
@@ -87,7 +98,8 @@ theorem increment_meets_spec (s : ContractState)
   increment_spec s s' := by
   rw [increment_unfold s h_no_overflow]
   simp only [ContractResult.snd, increment_spec]
-  refine ⟨by simp, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨?_, ?_, trivial, trivial, trivial, trivial⟩
+  · simpa [evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
   intro slot h_ne
   simp [beq_iff_eq]
   intro h_eq; exact absurd h_eq h_ne
@@ -95,8 +107,9 @@ theorem increment_meets_spec (s : ContractState)
 theorem increment_adds_one (s : ContractState)
   (h_no_overflow : s.storage 0 + 1 ≤ MAX_UINT256) :
   let s' := ((increment).run s).snd
-  s'.storage 0 = s.storage 0 + 1 := by
-  rw [increment_unfold s h_no_overflow]; simp [ContractResult.snd]
+  s'.storage 0 = add (s.storage 0) 1 := by
+  rw [increment_unfold s h_no_overflow]
+  simp [ContractResult.snd, evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
 
 theorem increment_preserves_other_slots (s : ContractState)
   (h_no_overflow : s.storage 0 + 1 ≤ MAX_UINT256)
@@ -141,7 +154,8 @@ theorem decrement_meets_spec (s : ContractState)
   decrement_spec s s' := by
   rw [decrement_unfold s h_no_underflow]
   simp only [ContractResult.snd, decrement_spec]
-  refine ⟨by simp, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨?_, ?_, trivial, trivial, trivial, trivial⟩
+  · simpa [DumbContracts.EVM.Uint256.sub_eq_of_le h_no_underflow]
   intro slot h_ne
   simp [beq_iff_eq]
   intro h_eq; exact absurd h_eq h_ne
@@ -149,8 +163,9 @@ theorem decrement_meets_spec (s : ContractState)
 theorem decrement_subtracts_one (s : ContractState)
   (h_no_underflow : s.storage 0 ≥ 1) :
   let s' := ((decrement).run s).snd
-  s'.storage 0 = s.storage 0 - 1 := by
-  rw [decrement_unfold s h_no_underflow]; simp [ContractResult.snd]
+  s'.storage 0 = sub (s.storage 0) 1 := by
+  rw [decrement_unfold s h_no_underflow]
+  simp [ContractResult.snd, DumbContracts.EVM.Uint256.sub_eq_of_le h_no_underflow]
 
 theorem decrement_preserves_other_slots (s : ContractState)
   (h_no_underflow : s.storage 0 ≥ 1)
@@ -214,9 +229,10 @@ theorem decrement_preserves_bounds (s : ContractState)
 theorem increment_getCount_correct (s : ContractState)
   (h_no_overflow : s.storage 0 + 1 ≤ MAX_UINT256) :
   let s' := ((increment).run s).snd
-  ((getCount).run s').fst = s.storage 0 + 1 := by
+  ((getCount).run s').fst = add (s.storage 0) 1 := by
   rw [increment_unfold s h_no_overflow]
-  simp [ContractResult.snd, getCount, getStorage, count, Contract.run, ContractResult.fst]
+  simp [ContractResult.snd, getCount, getStorage, count, Contract.run, ContractResult.fst,
+    evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
 
 /-! ## Summary of Proven Properties
 

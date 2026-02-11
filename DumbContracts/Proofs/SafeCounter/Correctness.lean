@@ -9,6 +9,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Stdlib.Math
+import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.SafeCounter
 import DumbContracts.Specs.SafeCounter.Spec
 import DumbContracts.Specs.SafeCounter.Invariants
@@ -18,6 +19,7 @@ namespace DumbContracts.Proofs.SafeCounter.Correctness
 
 open DumbContracts
 open DumbContracts.Stdlib.Math
+open DumbContracts.EVM.Uint256
 open DumbContracts.Examples.SafeCounter
 open DumbContracts.Specs.SafeCounter
 open DumbContracts.Proofs.SafeCounter
@@ -89,13 +91,17 @@ theorem increment_decrement_cancel (s : ContractState)
   let s'' := ((decrement).run s').snd
   s''.storage 0 = s.storage 0 := by
   have h_inc := increment_adds_one s h_no_overflow
+  have h_add : add (s.storage 0) 1 = s.storage 0 + 1 := by
+    exact evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow
   -- After increment, s'.storage 0 = s.storage 0 + 1 ≥ 1
   have h_ge : ((increment).run s).snd.storage 0 ≥ 1 := by
-    rw [h_inc]; simp_arith
+    rw [h_inc, h_add]; simp_arith
   have h_dec := decrement_subtracts_one ((increment).run s).snd h_ge
   calc ((decrement).run ((increment).run s).snd).snd.storage 0
-      = ((increment).run s).snd.storage 0 - 1 := h_dec
-    _ = (s.storage 0 + 1) - 1 := by rw [h_inc]
+      = sub (((increment).run s).snd.storage 0) 1 := h_dec
+    _ = ((increment).run s).snd.storage 0 - 1 := by
+      simpa using (DumbContracts.EVM.Uint256.sub_eq_of_le h_ge)
+    _ = (s.storage 0 + 1) - 1 := by rw [h_inc, h_add]
     _ = s.storage 0 := by simp_arith
 
 /-! ## Composition: decrement → getCount -/
@@ -104,7 +110,7 @@ theorem increment_decrement_cancel (s : ContractState)
 theorem decrement_getCount_correct (s : ContractState)
   (h_no_underflow : s.storage 0 ≥ 1) :
   let s' := ((decrement).run s).snd
-  ((getCount).run s').fst = s.storage 0 - 1 := by
+  ((getCount).run s').fst = sub (s.storage 0) 1 := by
   have h_dec := decrement_subtracts_one s h_no_underflow
   have h_get := getCount_returns_count ((decrement).run s).snd
   simp only [h_dec] at h_get

@@ -10,18 +10,20 @@
 
 import DumbContracts.Core
 import DumbContracts.Stdlib.Math
+import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.SafeCounter
 
 namespace DumbContracts.Specs.SafeCounter
 
 open DumbContracts
 open DumbContracts.Stdlib.Math
+open DumbContracts.EVM.Uint256
 
 /-! ## Operation Specifications -/
 
 /-- increment (when no overflow): count increases by 1, everything else preserved -/
 def increment_spec (s s' : ContractState) : Prop :=
-  s'.storage 0 = s.storage 0 + 1 ∧
+  s'.storage 0 = add (s.storage 0) 1 ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
@@ -30,7 +32,7 @@ def increment_spec (s s' : ContractState) : Prop :=
 
 /-- decrement (when no underflow): count decreases by 1, everything else preserved -/
 def decrement_spec (s s' : ContractState) : Prop :=
-  s'.storage 0 = s.storage 0 - 1 ∧
+  s'.storage 0 = sub (s.storage 0) 1 ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧

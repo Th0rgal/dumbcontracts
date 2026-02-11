@@ -137,6 +137,8 @@ contract DifferentialSimpleStorage is YulTestBase {
         string[] memory inputs = new string[](3);
         inputs[0] = "bash";
         inputs[1] = "-c";
+        // Only pass arg0 for store function, not for retrieve
+        bool needsArg = keccak256(bytes(functionName)) == keccak256(bytes("store"));
         inputs[2] = string.concat(
             "cd \"$(git rev-parse --show-toplevel)\" && export PATH=\"$HOME/.elan/bin:$PATH\" && ",
             "if [ ! -x ./.lake/build/bin/difftest-interpreter ]; then ",
@@ -147,8 +149,7 @@ contract DifferentialSimpleStorage is YulTestBase {
             functionName,
             " ",
             vm.toString(sender),
-            " ",
-            vm.toString(arg0),
+            needsArg ? string.concat(" ", vm.toString(arg0)) : "",
             " \"",
             storageState,
             "\"",

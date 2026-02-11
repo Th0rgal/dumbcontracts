@@ -192,6 +192,38 @@ private def compileRequireFailCond (fields : List Field) : Expr → Except Strin
       let condExpr ← compileExpr fields cond
       pure (YulExpr.call "iszero" [condExpr])
 
+private def bytesFromString (s : String) : List UInt8 :=
+  s.toUTF8.data.toList
+
+private def chunkBytes32 (bs : List UInt8) : List (List UInt8) :=
+  if bs.isEmpty then
+    []
+  else
+    let chunk := bs.take 32
+    chunk :: chunkBytes32 (bs.drop 32)
+
+private def wordFromBytes (bs : List UInt8) : Nat :=
+  let padded := bs ++ List.replicate (32 - bs.length) (0 : UInt8)
+  padded.foldl (fun acc b => acc * 256 + b.toNat) 0
+
+private def revertWithMessage (message : String) : List YulStmt :=
+  let bytes := bytesFromString message
+  let len := bytes.length
+  let paddedLen := ((len + 31) / 32) * 32
+  let selectorShifted : Nat := 0x08c379a0 * (2 ^ 224)
+  let header := [
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorShifted]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit len])
+  ]
+  let dataStmts :=
+    (chunkBytes32 bytes).enum.map fun (idx, chunk) =>
+      let offset := 68 + idx * 32
+      let word := wordFromBytes chunk
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit offset, YulExpr.hex word])
+  let totalSize := 68 + paddedLen
+  header ++ dataStmts ++ [YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit totalSize])]
+
 -- Compile statement to Yul
 private def compileStmt (fields : List Field) : Stmt → Except String (List YulStmt)
   | Stmt.letVar name value =>
@@ -223,9 +255,7 @@ private def compileStmt (fields : List Field) : Stmt → Except String (List Yul
     do
       let failCond ← compileRequireFailCond fields cond
       pure [
-        YulStmt.if_ failCond [
-          YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
-        ]
+        YulStmt.if_ failCond (revertWithMessage message)
       ]
   | Stmt.return value =>
     do

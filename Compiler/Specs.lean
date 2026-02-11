@@ -328,9 +328,6 @@ def simpleTokenSpec : ContractSpec := {
 /-!
 ## SafeCounter Specification (Counter with overflow/underflow checks)
 -/
-
--- We need additional expression types for overflow checking
--- For now, use simplified version without full overflow protection
 def safeCounterSpec : ContractSpec := {
   name := "SafeCounter"
   fields := [

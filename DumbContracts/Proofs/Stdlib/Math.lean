@@ -53,14 +53,30 @@ theorem safeAdd_result_bounded (a b : Uint256) (c : Uint256)
   · have hsum_le : (a : Nat) + (b : Nat) ≤ MAX_UINT256 := Nat.not_lt.mp hsum
     have hlt : (a : Nat) + (b : Nat) < DumbContracts.Core.Uint256.modulus := by
       have hlt' : (a : Nat) + (b : Nat) < MAX_UINT256 + 1 := Nat.lt_succ_of_le hsum_le
-      simpa [DumbContracts.Core.Uint256.max_uint256_succ_eq_modulus] using hlt'
+      calc
+        (a : Nat) + (b : Nat) < MAX_UINT256 + 1 := hlt'
+        _ = DumbContracts.Core.Uint256.modulus := by
+          symm
+          exact DumbContracts.Core.Uint256.max_uint256_succ_eq_modulus
     simp [safeAdd, hsum] at h
-    have hc : a + b = c := by simpa using h
+    have hc : a + b = c := by
+      cases h
+      rfl
     have hle : (c : Nat) ≤ MAX_UINT256 := by
       have hadd : ((a + b : Uint256) : Nat) = (a : Nat) + (b : Nat) :=
         DumbContracts.Core.Uint256.add_eq_of_lt hlt
-      simpa [hc.symm, hadd] using hsum_le
-    simpa using hle
+      have hsum_le' := hsum_le
+      have hcval : (a : Nat) + (b : Nat) = (c : Nat) := by
+        have hcv : ((a + b : Uint256) : Nat) = (c : Nat) := by
+          exact congrArg (fun x => x.val) hc
+        calc
+          (a : Nat) + (b : Nat) = ((a + b : Uint256) : Nat) := by
+            symm
+            exact hadd
+          _ = (c : Nat) := hcv
+      simp [hcval] at hsum_le'
+      exact hsum_le'
+    exact hle
 
 /-! ## safeSub Correctness -/
 
@@ -94,12 +110,14 @@ theorem safeSub_result_le (a b : Uint256) (c : Uint256)
   · simp [safeSub, hlt] at h
   · have hle' : (b : Nat) ≤ (a : Nat) := Nat.not_lt.mp hlt
     simp [safeSub, hlt] at h
-    have hc : a - b = c := by simpa using h
+    have hc : a - b = c := by
+      cases h
+      rfl
     have hle : (c : Nat) ≤ (a : Nat) := by
       have hsub : ((a - b : Uint256) : Nat) = (a : Nat) - (b : Nat) :=
         DumbContracts.Core.Uint256.sub_eq_of_le hle'
       simp [hc.symm, hsub]
-    simpa using hle
+    exact hle
 
 /-! ## safeMul Correctness -/
 
@@ -152,7 +170,8 @@ theorem safeDiv_some (a b : Uint256) (h : b ≠ 0) :
     intro hval
     apply h
     apply DumbContracts.Core.Uint256.ext
-    simpa using hval
+    simp [DumbContracts.Core.Uint256.val_zero]
+    exact hval
   simp [safeDiv, h_not]
 
 /-- safeDiv returns none when divisor is zero. -/
@@ -168,7 +187,8 @@ theorem safeDiv_zero_numerator (b : Uint256) (h : b ≠ 0) :
     intro hval
     apply h
     apply DumbContracts.Core.Uint256.ext
-    simpa using hval
+    simp [DumbContracts.Core.Uint256.val_zero]
+    exact hval
   simp [safeDiv, h_not]
 
 /-- safeDiv by one returns the numerator. -/
@@ -183,7 +203,8 @@ theorem safeDiv_self (a : Uint256) (h : a ≠ 0) :
     intro hzero
     apply h
     apply DumbContracts.Core.Uint256.ext
-    simpa using hzero
+    simp [DumbContracts.Core.Uint256.val_zero]
+    exact hzero
   have hpos : 0 < (a : Nat) := Nat.pos_of_ne_zero h_not
   have hdiv : a / a = (1 : Uint256) := by
     apply DumbContracts.Core.Uint256.ext
@@ -209,14 +230,30 @@ theorem safeMul_result_bounded (a b : Uint256) (c : Uint256)
   · have hprod_le : (a : Nat) * (b : Nat) ≤ MAX_UINT256 := Nat.not_lt.mp hprod
     have hlt : (a : Nat) * (b : Nat) < DumbContracts.Core.Uint256.modulus := by
       have hlt' : (a : Nat) * (b : Nat) < MAX_UINT256 + 1 := Nat.lt_succ_of_le hprod_le
-      simpa [DumbContracts.Core.Uint256.max_uint256_succ_eq_modulus] using hlt'
+      calc
+        (a : Nat) * (b : Nat) < MAX_UINT256 + 1 := hlt'
+        _ = DumbContracts.Core.Uint256.modulus := by
+          symm
+          exact DumbContracts.Core.Uint256.max_uint256_succ_eq_modulus
     simp [safeMul, hprod] at h
-    have hc : a * b = c := by simpa using h
+    have hc : a * b = c := by
+      cases h
+      rfl
     have hle : (c : Nat) ≤ MAX_UINT256 := by
       have hmul : ((a * b : Uint256) : Nat) = (a : Nat) * (b : Nat) :=
         DumbContracts.Core.Uint256.mul_eq_of_lt hlt
-      simpa [hc.symm, hmul] using hprod_le
-    simpa using hle
+      have hprod_le' := hprod_le
+      have hcval : (a : Nat) * (b : Nat) = (c : Nat) := by
+        have hcv : ((a * b : Uint256) : Nat) = (c : Nat) := by
+          exact congrArg (fun x => x.val) hc
+        calc
+          (a : Nat) * (b : Nat) = ((a * b : Uint256) : Nat) := by
+            symm
+            exact hmul
+          _ = (c : Nat) := hcv
+      simp [hcval] at hprod_le'
+      exact hprod_le'
+    exact hle
 
 /-- safeDiv result never exceeds the numerator. -/
 theorem safeDiv_result_le_numerator (a b : Uint256) (c : Uint256)
@@ -224,7 +261,9 @@ theorem safeDiv_result_le_numerator (a b : Uint256) (c : Uint256)
   by_cases hzero : b.val = 0
   · simp [safeDiv, hzero] at h_div
   · simp [safeDiv, hzero] at h_div
-    have hc : a / b = c := by simpa using h_div
+    have hc : a / b = c := by
+      cases h_div
+      rfl
     have hle : (c : Nat) ≤ (a : Nat) := by
       have hdiv : ((a / b : Uint256) : Nat) = (a : Nat) / (b : Nat) := by
         have hdiv_lt : (a : Nat) / (b : Nat) < DumbContracts.Core.Uint256.modulus := by
@@ -235,8 +274,19 @@ theorem safeDiv_result_le_numerator (a b : Uint256) (c : Uint256)
             simp [HDiv.hDiv, DumbContracts.Core.Uint256.div, hzero, DumbContracts.Core.Uint256.ofNat]
           _ = (a : Nat) / (b : Nat) := by
             exact Nat.mod_eq_of_lt hdiv_lt
-      simpa [hc.symm, hdiv] using Nat.div_le_self (a : Nat) (b : Nat)
-    simpa using hle
+      have hdiv_le := Nat.div_le_self (a : Nat) (b : Nat)
+      have hdiv_le' := hdiv_le
+      have hcval : (a : Nat) / (b : Nat) = (c : Nat) := by
+        have hcv : ((a / b : Uint256) : Nat) = (c : Nat) := by
+          exact congrArg (fun x => x.val) hc
+        calc
+          (a : Nat) / (b : Nat) = ((a / b : Uint256) : Nat) := by
+            symm
+            exact hdiv
+          _ = (c : Nat) := hcv
+      simp [hcval] at hdiv_le'
+      exact hdiv_le'
+    exact hle
 
 /-! ## Summary
 

@@ -37,7 +37,9 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
   (∀ slot : Nat, slot ≠ 2 → s'.storage slot = s.storage slot) ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Specification for mint operation (when caller is owner):
     - Increases balance of 'to' address by 'amount'
@@ -53,7 +55,9 @@ def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   (∀ slot : Nat, slot ≠ 1 → ∀ addr : Address, s'.storageMap slot addr = s.storageMap slot addr) ∧
   (∀ slot : Nat, slot ≠ 2 → s'.storage slot = s.storage slot) ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Specification for transfer operation (when sender has sufficient balance):
     - Decreases sender's balance by 'amount'
@@ -73,7 +77,9 @@ def transfer_spec (sender to : Address) (amount : Uint256) (s s' : ContractState
   (∀ slot : Nat, s'.storage slot = s.storage slot) ∧
   (∀ slot : Nat, s'.storageAddr slot = s.storageAddr slot) ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Specification for balanceOf operation:
     - Returns the balance of the given address

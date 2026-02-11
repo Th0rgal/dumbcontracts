@@ -43,11 +43,19 @@ def genUint256 (rng : RNG) : RNG × Nat :=
   let (rng', n) := rng.next
   (rng', n % 1000000)  -- Keep values reasonable for testing
 
+-- Normalize address to lowercase for consistency with interpreter
+private def normalizeAddress (addr : Address) : Address :=
+  addr.map Char.toLower
+
+-- Convert Address to Nat for calldata args (keeps parity with Interpreter)
+private def addressToNatNormalized (addr : Address) : Nat :=
+  addressToNat (normalizeAddress addr)
+
 -- Generate random address (from a small pool for collision testing)
 def genAddress (rng : RNG) : RNG × Address :=
   let (rng', n) := rng.next
-  let addresses := ["0xAlice", "0xBob", "0xCarol", "0xDave", "0xEve"]
-  (rng', addresses.get! (n % addresses.length))
+  let addresses := ["0xalice", "0xbob", "0xcarol", "0xdave", "0xeve"]
+  (rng', normalizeAddress (addresses.get! (n % addresses.length)))
 
 -- Generate random bool
 def genBool (rng : RNG) : RNG × Bool :=
@@ -91,7 +99,7 @@ def genOwnedTx (rng : RNG) : RNG × Transaction :=
     (rng, { sender := sender, functionName := "getOwner", args := [] })
   else
     let (rng, newOwner) := genAddress rng
-    (rng, { sender := sender, functionName := "transferOwnership", args := [addressToNat newOwner] })
+    (rng, { sender := sender, functionName := "transferOwnership", args := [addressToNatNormalized newOwner] })
 
 -- Generate random Ledger transaction
 def genLedgerTx (rng : RNG) : RNG × Transaction :=
@@ -107,10 +115,10 @@ def genLedgerTx (rng : RNG) : RNG × Transaction :=
   | 2 =>
       let (rng, toAddr) := genAddress rng
       let (rng, amount) := genUint256 rng
-      (rng, { sender := sender, functionName := "transfer", args := [addressToNat toAddr, amount] })
+      (rng, { sender := sender, functionName := "transfer", args := [addressToNatNormalized toAddr, amount] })
   | _ =>
       let (rng, addr) := genAddress rng
-      (rng, { sender := sender, functionName := "getBalance", args := [addressToNat addr] })
+      (rng, { sender := sender, functionName := "getBalance", args := [addressToNatNormalized addr] })
 
 -- Generate random OwnedCounter transaction
 def genOwnedCounterTx (rng : RNG) : RNG × Transaction :=
@@ -123,7 +131,7 @@ def genOwnedCounterTx (rng : RNG) : RNG × Transaction :=
   | 3 => (rng, { sender := sender, functionName := "getOwner", args := [] })
   | _ =>
       let (rng, newOwner) := genAddress rng
-      (rng, { sender := sender, functionName := "transferOwnership", args := [addressToNat newOwner] })
+      (rng, { sender := sender, functionName := "transferOwnership", args := [addressToNatNormalized newOwner] })
 
 -- Generate random SimpleToken transaction
 def genSimpleTokenTx (rng : RNG) : RNG × Transaction :=
@@ -133,14 +141,14 @@ def genSimpleTokenTx (rng : RNG) : RNG × Transaction :=
   | 0 =>
       let (rng, toAddr) := genAddress rng
       let (rng, amount) := genUint256 rng
-      (rng, { sender := sender, functionName := "mint", args := [addressToNat toAddr, amount] })
+      (rng, { sender := sender, functionName := "mint", args := [addressToNatNormalized toAddr, amount] })
   | 1 =>
       let (rng, toAddr) := genAddress rng
       let (rng, amount) := genUint256 rng
-      (rng, { sender := sender, functionName := "transfer", args := [addressToNat toAddr, amount] })
+      (rng, { sender := sender, functionName := "transfer", args := [addressToNatNormalized toAddr, amount] })
   | 2 =>
       let (rng, addr) := genAddress rng
-      (rng, { sender := sender, functionName := "balanceOf", args := [addressToNat addr] })
+      (rng, { sender := sender, functionName := "balanceOf", args := [addressToNatNormalized addr] })
   | 3 =>
       (rng, { sender := sender, functionName := "totalSupply", args := [] })
   | _ =>

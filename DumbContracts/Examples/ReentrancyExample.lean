@@ -43,7 +43,12 @@ def setMappingSlot (slot : StorageSlot (Address → Uint256)) (addr : Address) (
     symm
     exact DumbContracts.Core.Uint256.max_uint256_succ_eq_modulus
   -- (MAX + 1) - MAX = 1
-  simpa [h] using (Nat.add_sub_cancel_left DumbContracts.EVM.MAX_UINT256 1)
+  calc
+    DumbContracts.Core.Uint256.modulus - DumbContracts.EVM.MAX_UINT256
+        = (DumbContracts.EVM.MAX_UINT256 + 1) - DumbContracts.EVM.MAX_UINT256 := by
+            simp [h]
+    _ = 1 := by
+            exact Nat.add_sub_cancel_left DumbContracts.EVM.MAX_UINT256 1
 
 /-! ## Vulnerable Bank
 
@@ -102,9 +107,10 @@ theorem vulnerable_attack_exists :
       simp
     have h_neq : (1 : Uint256) ≠ (0 : Uint256) := by decide
     -- After simplification, the invariant reduces to `1 = 0`, which is false.
-    simpa [withdraw, setStorageSlot, setMappingSlot, supplyInvariant, balances, totalSupply,
+    simp [withdraw, setStorageSlot, setMappingSlot, supplyInvariant, balances, totalSupply,
       DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure, Contract.run, ContractResult.snd,
-      ContractResult.fst, h_cond, s, modulus_sub_max] using h_neq
+      ContractResult.fst, h_cond, s, modulus_sub_max]
+    exact h_neq
 
 /-
 UNPROVABLE THEOREM
@@ -163,13 +169,16 @@ theorem withdraw_maintains_supply (amount : Uint256) :
     supplyInvariant s' [s.sender] := by
   intro s h_inv h_bal
   have h_eq : s.storage totalSupply.slot = s.storageMap balances.slot s.sender := by
-    simpa [supplyInvariant] using h_inv
+    simp [supplyInvariant] at h_inv
+    exact h_inv
   have h_cond : decide (s.storageMap balances.slot s.sender ≥ amount) = true := by
     exact decide_eq_true_iff.mpr h_bal
   have h_cond' : amount.val ≤ (s.storageMap balances.slot s.sender).val := by
-    simpa using h_bal
+    exact h_bal
   have h_cond'' : amount.val ≤ (s.storageMap 2 s.sender).val := by
-    simpa [balances] using h_cond'
+    have h_cond'' := h_cond'
+    simp [balances] at h_cond''
+    exact h_cond''
   -- Unfold the effect of withdraw and use the pre-state equality.
   have h_left :
       ((withdraw amount).runState s).storage totalSupply.slot =
@@ -184,13 +193,16 @@ theorem withdraw_maintains_supply (amount : Uint256) :
       sub (s.storageMap balances.slot s.sender) amount := by
     simp [h_eq]
   -- Conclude the invariant for the post-state.
-  simpa [supplyInvariant] using
-    (calc
+  have h_result :
+      ((withdraw amount).runState s).storage totalSupply.slot =
+        ((withdraw amount).runState s).storageMap balances.slot s.sender := by
+    calc
       ((withdraw amount).runState s).storage totalSupply.slot
           = sub (s.storage totalSupply.slot) amount := h_left
       _ = sub (s.storageMap balances.slot s.sender) amount := h_mid
       _ = ((withdraw amount).runState s).storageMap balances.slot s.sender := by
-            symm; exact h_right)
+            symm; exact h_right
+  simp [supplyInvariant, h_result]
 
 /-
 DEPOSIT ALSO MAINTAINS INVARIANT
@@ -203,7 +215,8 @@ theorem deposit_maintains_supply (amount : Uint256) :
     supplyInvariant s' [s.sender] := by
   intro s h_inv
   have h_eq : s.storage totalSupply.slot = s.storageMap balances.slot s.sender := by
-    simpa [supplyInvariant] using h_inv
+    simp [supplyInvariant] at h_inv
+    exact h_inv
   -- Unfold the effect of deposit and use the pre-state equality.
   have h_left :
       ((deposit amount).runState s).storage totalSupply.slot =
@@ -216,13 +229,16 @@ theorem deposit_maintains_supply (amount : Uint256) :
   have h_mid : (s.storage totalSupply.slot) + amount =
       (s.storageMap balances.slot s.sender) + amount := by
     simp [h_eq]
-  simpa [supplyInvariant] using
-    (calc
+  have h_result :
+      ((deposit amount).runState s).storage totalSupply.slot =
+        ((deposit amount).runState s).storageMap balances.slot s.sender := by
+    calc
       ((deposit amount).runState s).storage totalSupply.slot
           = (s.storage totalSupply.slot) + amount := h_left
       _ = (s.storageMap balances.slot s.sender) + amount := h_mid
       _ = ((deposit amount).runState s).storageMap balances.slot s.sender := by
-            symm; exact h_right)
+            symm; exact h_right
+  simp [supplyInvariant, h_result]
 
 end SafeBank
 

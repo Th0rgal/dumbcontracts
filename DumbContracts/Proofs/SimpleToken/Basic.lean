@@ -100,6 +100,10 @@ theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
   · rfl
   constructor
   · rfl
+  constructor
+  · rfl
+  constructor
+  · rfl
   · rfl
 
 theorem constructor_sets_owner (s : ContractState) (initialOwner : Address) :
@@ -361,7 +365,7 @@ theorem constructor_preserves_wellformedness (s : ContractState) (initialOwner :
   WellFormedState s' := by
   have h_spec := constructor_meets_spec s initialOwner
   simp [constructor_spec] at h_spec
-  obtain ⟨h_owner_set, h_supply_set, h_other_addr, h_other_uint, h_map, h_sender, h_this⟩ := h_spec
+  obtain ⟨h_owner_set, h_supply_set, h_other_addr, h_other_uint, h_map, h_sender, h_this, _h_value, _h_time⟩ := h_spec
   constructor
   · exact h_sender ▸ h.sender_nonempty
   · exact h_this ▸ h.contract_nonempty

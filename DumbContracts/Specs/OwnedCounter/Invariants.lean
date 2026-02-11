@@ -29,6 +29,9 @@ def owner_preserves_count (s s' : ContractState) : Prop :=
 
 /-- Context preserved across all operations -/
 def context_preserved (s s' : ContractState) : Prop :=
-  s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 end DumbContracts.Specs.OwnedCounter

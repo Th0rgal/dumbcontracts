@@ -28,7 +28,9 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
   s'.storage = s.storage ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Specification for getOwner operation:
     - Returns the current owner address
@@ -49,7 +51,9 @@ def transferOwnership_spec (newOwner : Address) (s s' : ContractState) : Prop :=
   s'.storage = s.storage ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Specification for isOwner check:
     - Returns true if sender equals current owner

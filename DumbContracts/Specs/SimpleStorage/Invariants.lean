@@ -33,6 +33,9 @@ def map_storage_unchanged (s s' : ContractState) : Prop :=
 
 -- Context preservation: operations don't change sender/address
 def context_preserved (s s' : ContractState) : Prop :=
-  s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 end DumbContracts.Specs.SimpleStorage

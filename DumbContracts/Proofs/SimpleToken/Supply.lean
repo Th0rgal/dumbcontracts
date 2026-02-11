@@ -117,9 +117,13 @@ private theorem map_sum_point_update
               = (1 + countOccU target rest) * delta := by
                   simp [DumbContracts.Core.Uint256.mul_comm]
           _ = delta + countOccU target rest * delta := by
-                  simpa using
-                    (DumbContracts.Core.Uint256.add_mul
-                      (1 : Uint256) (countOccU target rest) delta)
+                  have h_add_mul := DumbContracts.Core.Uint256.add_mul
+                    (1 : Uint256) (countOccU target rest) delta
+                  calc
+                    (1 + countOccU target rest) * delta
+                        = 1 * delta + countOccU target rest * delta := h_add_mul
+                    _ = delta + countOccU target rest * delta := by
+                        simp [DumbContracts.Core.Uint256.one_mul]
           _ = delta + delta * countOccU target rest := by
                   simp [DumbContracts.Core.Uint256.mul_comm]
       rw [h_mul]
@@ -153,8 +157,10 @@ theorem mint_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
   obtain ⟨h_bal_raw, _, h_other, _, _, _, _, _⟩ := h_spec
   have h_bal :
       ((mint to amount).run s).snd.storageMap 1 to = s.storageMap 1 to + amount := by
-    simpa [DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
-      HAdd.hAdd, DumbContracts.Core.Uint256.add_comm] using h_bal_raw
+    have h_bal' := h_bal_raw
+    simp [DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
+      HAdd.hAdd, DumbContracts.Core.Uint256.add_comm] at h_bal'
+    exact h_bal'
   exact map_sum_point_update
     (fun addr => s.storageMap 1 addr)
     (fun addr => ((mint to amount).run s).snd.storageMap 1 addr)
@@ -192,9 +198,13 @@ private theorem map_sum_transfer_eq
                 = (1 + countOccU src rest) * d := by
                   simp [DumbContracts.Core.Uint256.mul_comm]
           _ = d + countOccU src rest * d := by
-                  simpa using
-                    (DumbContracts.Core.Uint256.add_mul
-                      (1 : Uint256) (countOccU src rest) d)
+                  have h_add_mul := DumbContracts.Core.Uint256.add_mul
+                    (1 : Uint256) (countOccU src rest) d
+                  calc
+                    (1 + countOccU src rest) * d
+                        = 1 * d + countOccU src rest * d := h_add_mul
+                    _ = d + countOccU src rest * d := by
+                        simp [DumbContracts.Core.Uint256.one_mul]
           _ = d + d * countOccU src rest := by
                   simp [DumbContracts.Core.Uint256.mul_comm]
       rw [h_mul]
@@ -205,8 +215,10 @@ private theorem map_sum_transfer_eq
       rw [← DumbContracts.Core.Uint256.add_assoc (f src - d) d _]
       rw [h_cancel]
       have h_congr := congrArg (fun x => f src + x) ih
-      simpa [DumbContracts.Core.Uint256.mul_comm,
-        DumbContracts.Core.Uint256.add_assoc] using h_congr
+      have h_congr' := h_congr
+      simp [DumbContracts.Core.Uint256.mul_comm,
+        DumbContracts.Core.Uint256.add_assoc] at h_congr'
+      exact h_congr'
     · by_cases ha_d : a = dst
       · -- a = dst: use rw instead of subst
         simp [ha_d, h_dst]
@@ -218,9 +230,13 @@ private theorem map_sum_transfer_eq
                 = (1 + countOccU dst rest) * d := by
                     simp [DumbContracts.Core.Uint256.mul_comm]
             _ = d + countOccU dst rest * d := by
-                    simpa using
-                      (DumbContracts.Core.Uint256.add_mul
-                        (1 : Uint256) (countOccU dst rest) d)
+                    have h_add_mul := DumbContracts.Core.Uint256.add_mul
+                      (1 : Uint256) (countOccU dst rest) d
+                    calc
+                      (1 + countOccU dst rest) * d
+                          = 1 * d + countOccU dst rest * d := h_add_mul
+                      _ = d + countOccU dst rest * d := by
+                          simp [DumbContracts.Core.Uint256.one_mul]
             _ = d + d * countOccU dst rest := by
                     simp [DumbContracts.Core.Uint256.mul_comm]
         rw [h_mul]
@@ -232,7 +248,9 @@ private theorem map_sum_transfer_eq
         calc
           f dst + (d + ((List.map f' rest).sum + d * countOccU src rest))
               = f dst + (d + ((List.map f rest).sum + d * countOccU dst rest)) := by
-                  simpa [DumbContracts.Core.Uint256.mul_comm] using h_congr
+                  have h_congr' := h_congr
+                  simp [DumbContracts.Core.Uint256.mul_comm] at h_congr'
+                  exact h_congr'
           _ = f dst + ((List.map f rest).sum + (d + d * countOccU dst rest)) := by
                   rw [← DumbContracts.Core.Uint256.add_assoc d (List.map f rest).sum _]
                   rw [DumbContracts.Core.Uint256.add_comm d (List.map f rest).sum]
@@ -241,7 +259,10 @@ private theorem map_sum_transfer_eq
         simp [h_other a ha_s ha_d, countOccU_cons_ne a src rest ha_s, countOccU_cons_ne a dst rest ha_d]
         -- LHS: (f a + (rest.map f').sum) + countOccU src rest * d
         -- RHS: (f a + (rest.map f).sum) + countOccU dst rest * d
-        simpa [DumbContracts.Core.Uint256.add_assoc] using congrArg (fun x => f a + x) ih
+        have h_congr := congrArg (fun x => f a + x) ih
+        have h_congr' := h_congr
+        simp [DumbContracts.Core.Uint256.add_assoc] at h_congr'
+        exact h_congr'
 
 /-- Exact sum conservation equation for transfer:
     new_sum + count(sender, addrs) * amount = old_sum + count(to, addrs) * amount.
@@ -262,11 +283,13 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
   obtain ⟨_, h_sender_bal, h_recip_bal, _, h_other_bal, _, _, _, _, _, _⟩ := h_spec
   have h_sender_bal' :
       ((transfer to amount).run s).snd.storageMap 1 s.sender = s.storageMap 1 s.sender - amount := by
-    simpa using h_sender_bal
+    exact h_sender_bal
   have h_recip_bal' :
       ((transfer to amount).run s).snd.storageMap 1 to = s.storageMap 1 to + amount := by
-    simpa [DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
-      HAdd.hAdd, DumbContracts.Core.Uint256.add_comm] using h_recip_bal
+    have h_recip_bal' := h_recip_bal
+    simp [DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
+      HAdd.hAdd, DumbContracts.Core.Uint256.add_comm] at h_recip_bal'
+    exact h_recip_bal'
   exact map_sum_transfer_eq
     (fun addr => s.storageMap 1 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)

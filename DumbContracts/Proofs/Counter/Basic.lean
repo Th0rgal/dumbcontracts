@@ -63,9 +63,8 @@ theorem setStorage_preserves_map_storage (s : ContractState) (value : Uint256) :
 theorem increment_meets_spec (s : ContractState) :
   let s' := ((increment).run s).snd
   increment_spec s s' := by
-  constructor
+  refine ⟨?_, ?_, rfl, rfl, rfl, rfl, rfl, rfl⟩
   · rfl
-  constructor
   · intro slot h_neq
     simp only [increment, count, getStorage, setStorage, bind, Contract.run, Bind.bind, ContractResult.snd]
     split
@@ -73,13 +72,6 @@ theorem increment_meets_spec (s : ContractState) :
       have : slot = 0 := by simp [beq_iff_eq] at h; exact h
       exact absurd this h_neq
     · rfl
-  constructor
-  · rfl
-  constructor
-  · rfl
-  constructor
-  · rfl
-  · rfl
 
 theorem increment_adds_one (s : ContractState) :
   let s' := ((increment).run s).snd
@@ -93,9 +85,8 @@ theorem increment_adds_one (s : ContractState) :
 theorem decrement_meets_spec (s : ContractState) :
   let s' := ((decrement).run s).snd
   decrement_spec s s' := by
-  constructor
+  refine ⟨?_, ?_, rfl, rfl, rfl, rfl, rfl, rfl⟩
   · rfl
-  constructor
   · intro slot h_neq
     simp only [decrement, count, getStorage, setStorage, bind, Contract.run, Bind.bind, ContractResult.snd]
     split
@@ -103,13 +94,6 @@ theorem decrement_meets_spec (s : ContractState) :
       have : slot = 0 := by simp [beq_iff_eq] at h; exact h
       exact absurd this h_neq
     · rfl
-  constructor
-  · rfl
-  constructor
-  · rfl
-  constructor
-  · rfl
-  · rfl
 
 theorem decrement_subtracts_one (s : ContractState) :
   let s' := ((decrement).run s).snd

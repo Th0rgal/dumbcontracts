@@ -28,7 +28,9 @@ def increment_spec (s s' : ContractState) : Prop :=
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- decrement (when no underflow): count decreases by 1, everything else preserved -/
 def decrement_spec (s s' : ContractState) : Prop :=
@@ -37,7 +39,9 @@ def decrement_spec (s s' : ContractState) : Prop :=
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- getCount: returns current count, no state change -/
 def getCount_spec (result : Uint256) (s : ContractState) : Prop :=

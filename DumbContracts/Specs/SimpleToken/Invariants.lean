@@ -62,7 +62,10 @@ def owner_addr_isolated (s s' : ContractState) (slot : Nat) : Prop :=
 
 /-- Context preservation (sender, contract address unchanged) -/
 def context_preserved (s s' : ContractState) : Prop :=
-  s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- State preserved except for specific modifications -/
 def state_preserved_except (s s' : ContractState)

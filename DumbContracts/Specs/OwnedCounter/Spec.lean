@@ -27,7 +27,9 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
   (∀ slot : Nat, slot ≠ 0 → s'.storageAddr slot = s.storageAddr slot) ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- getCount: returns count from slot 1, no state change -/
 def getCount_spec (result : Uint256) (s : ContractState) : Prop :=
@@ -44,7 +46,9 @@ def increment_spec (s s' : ContractState) : Prop :=
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- decrement (when owner): count decreases by 1, owner unchanged, context preserved -/
 def decrement_spec (s s' : ContractState) : Prop :=
@@ -53,7 +57,9 @@ def decrement_spec (s s' : ContractState) : Prop :=
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- transferOwnership (when owner): changes owner, count unchanged -/
 def transferOwnership_spec (newOwner : Address) (s s' : ContractState) : Prop :=
@@ -62,6 +68,8 @@ def transferOwnership_spec (newOwner : Address) (s s' : ContractState) : Prop :=
   s'.storage = s.storage ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 end DumbContracts.Specs.OwnedCounter

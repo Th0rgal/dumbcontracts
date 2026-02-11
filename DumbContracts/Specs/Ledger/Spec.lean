@@ -25,7 +25,9 @@ def deposit_spec (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storage = s.storage ∧
   s'.storageAddr = s.storageAddr ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- withdraw (when sufficient balance): decreases sender's balance by amount -/
 def withdraw_spec (amount : Uint256) (s s' : ContractState) : Prop :=
@@ -35,7 +37,9 @@ def withdraw_spec (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storage = s.storage ∧
   s'.storageAddr = s.storageAddr ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- transfer (when sufficient balance, sender ≠ to):
     decreases sender balance, increases recipient balance -/
@@ -47,7 +51,9 @@ def transfer_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Pro
   s'.storage = s.storage ∧
   s'.storageAddr = s.storageAddr ∧
   s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- getBalance: returns balance at given address, no state change -/
 def getBalance_spec (addr : Address) (result : Uint256) (s : ContractState) : Prop :=

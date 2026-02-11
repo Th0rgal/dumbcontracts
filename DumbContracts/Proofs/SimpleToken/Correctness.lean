@@ -69,7 +69,7 @@ theorem mint_preserves_wellformedness (s : ContractState) (to : Address) (amount
   WellFormedState s' := by
   have h_spec := mint_meets_spec_when_owner s to amount h_owner
   simp [mint_spec] at h_spec
-  obtain ⟨_, _, _, h_owner_pres, _, _, h_sender_pres, h_this_pres⟩ := h_spec
+  obtain ⟨_, _, _, h_owner_pres, _, _, h_sender_pres, h_this_pres, _h_value, _h_time⟩ := h_spec
   constructor
   · exact h_sender_pres ▸ h.sender_nonempty
   · exact h_this_pres ▸ h.contract_nonempty
@@ -83,7 +83,7 @@ theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (am
   WellFormedState s' := by
   have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
-  obtain ⟨_, _, _, _, _, h_owner_pres, _, _, h_addr_pres, h_sender_pres, h_this_pres⟩ := h_spec
+  obtain ⟨_, _, _, _, _, h_owner_pres, _, _, h_addr_pres, h_sender_pres, h_this_pres, _h_value, _h_time⟩ := h_spec
   constructor
   · exact h_sender_pres ▸ h.sender_nonempty
   · exact h_this_pres ▸ h.contract_nonempty
@@ -102,7 +102,8 @@ theorem mint_preserves_owner (s : ContractState) (to : Address) (amount : Uint25
   s'.storageAddr 0 = s.storageAddr 0 := by
   have h := mint_meets_spec_when_owner s to amount h_owner
   simp [mint_spec] at h
-  exact h.2.2.2.1
+  obtain ⟨_, _, _, h_owner_pres, _, _, _, _, _, _⟩ := h
+  exact h_owner_pres
 
 /-- Transfer does not change the owner address. -/
 theorem transfer_preserves_owner (s : ContractState) (to : Address) (amount : Uint256)
@@ -111,7 +112,7 @@ theorem transfer_preserves_owner (s : ContractState) (to : Address) (amount : Ui
   s'.storageAddr 0 = s.storageAddr 0 := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h
-  obtain ⟨_, _, _, _, _, _, _, _, h_addr, _, _⟩ := h
+  obtain ⟨_, _, _, _, _, _, _, _, h_addr, _, _, _, _⟩ := h
   exact h_addr 0
 
 /-! ## End-to-End Composition

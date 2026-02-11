@@ -33,8 +33,8 @@ theorem increment_state_preserved_except_count (s : ContractState) :
   state_preserved_except_count s s' := by
   have h := increment_meets_spec s
   simp [increment_spec] at h
-  obtain ⟨_, h_slots, h_sender, h_this, h_addr, h_map⟩ := h
-  exact ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, h_sender, h_this⟩
+  obtain ⟨_, h_slots, h_sender, h_this, h_value, h_time, h_addr, h_map⟩ := h
+  exact ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, ⟨h_sender, h_this, h_value, h_time⟩⟩
 
 /-- decrement preserves all state except count. -/
 theorem decrement_state_preserved_except_count (s : ContractState) :
@@ -42,8 +42,8 @@ theorem decrement_state_preserved_except_count (s : ContractState) :
   state_preserved_except_count s s' := by
   have h := decrement_meets_spec s
   simp [decrement_spec] at h
-  obtain ⟨_, h_slots, h_sender, h_this, h_addr, h_map⟩ := h
-  exact ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, h_sender, h_this⟩
+  obtain ⟨_, h_slots, h_sender, h_this, h_value, h_time, h_addr, h_map⟩ := h
+  exact ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, ⟨h_sender, h_this, h_value, h_time⟩⟩
 
 /-- getCount preserves all state (trivially, since it's read-only). -/
 theorem getCount_state_preserved (s : ContractState) :

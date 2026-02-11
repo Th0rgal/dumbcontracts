@@ -59,7 +59,7 @@ theorem deposit_meets_spec (s : ContractState) (amount : Uint256) :
   deposit_spec amount s s' := by
   rw [deposit_unfold]
   simp only [ContractResult.snd, deposit_spec]
-  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
   · intro addr h_ne
     simp [beq_iff_eq]
     intro h_eq; exact absurd h_eq h_ne
@@ -105,7 +105,7 @@ theorem withdraw_meets_spec (s : ContractState) (amount : Uint256)
   withdraw_spec amount s s' := by
   rw [withdraw_unfold s amount h_balance]
   simp only [ContractResult.snd, withdraw_spec]
-  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
   · intro addr h_ne
     simp [beq_iff_eq]
     intro h_eq; exact absurd h_eq h_ne

@@ -94,7 +94,7 @@ theorem increment_meets_spec (s : ContractState)
   increment_spec s s' := by
   rw [increment_unfold s h_no_overflow]
   simp only [ContractResult.snd, increment_spec]
-  refine ⟨?_, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
   · simp [evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
   intro slot h_ne
   simp [beq_iff_eq]
@@ -150,7 +150,7 @@ theorem decrement_meets_spec (s : ContractState)
   decrement_spec s s' := by
   rw [decrement_unfold s h_no_underflow]
   simp only [ContractResult.snd, decrement_spec]
-  refine ⟨?_, ?_, trivial, trivial, trivial, trivial⟩
+  refine ⟨?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
   · simp [HSub.hSub, sub]
   intro slot h_ne
   simp [beq_iff_eq]
@@ -210,7 +210,8 @@ theorem increment_preserves_bounds (s : ContractState)
   count_in_bounds s' := by
   rw [increment_unfold s h_no_overflow]
   simp [ContractResult.snd, count_in_bounds]
-  simpa using (DumbContracts.Core.Uint256.val_le_max (s.storage 0 + 1))
+  have h_bound := DumbContracts.Core.Uint256.val_le_max (s.storage 0 + 1)
+  simpa [DumbContracts.Core.Uint256.add_comm] using h_bound
 
 theorem decrement_preserves_bounds (s : ContractState)
   (_h_bounds : count_in_bounds s)
@@ -219,7 +220,7 @@ theorem decrement_preserves_bounds (s : ContractState)
   count_in_bounds s' := by
   rw [decrement_unfold s h_no_underflow]
   simp [ContractResult.snd, count_in_bounds]
-  simpa using (DumbContracts.Core.Uint256.val_le_max (s.storage 0 - 1))
+  exact DumbContracts.Core.Uint256.val_le_max (s.storage 0 - 1)
 
 /-! ## Composition: increment → getCount -/
 

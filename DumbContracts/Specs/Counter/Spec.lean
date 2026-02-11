@@ -29,6 +29,8 @@ def increment_spec (s s' : ContractState) : Prop :=
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
   s'.sender = s.sender ∧
   s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap
 
@@ -42,6 +44,8 @@ def decrement_spec (s s' : ContractState) : Prop :=
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
   s'.sender = s.sender ∧
   s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap
 

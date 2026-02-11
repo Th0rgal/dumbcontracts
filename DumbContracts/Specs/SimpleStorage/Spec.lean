@@ -19,6 +19,8 @@ def store_spec (value : Uint256) (s s' : ContractState) : Prop :=
   -- Context unchanged
   s'.sender = s.sender ∧
   s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp ∧
   -- Other storage types unchanged
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap

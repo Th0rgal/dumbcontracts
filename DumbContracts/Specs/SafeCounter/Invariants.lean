@@ -22,7 +22,10 @@ structure WellFormedState (s : ContractState) : Prop where
 
 /-- Context preserved: operations don't change sender or contract address -/
 def context_preserved (s s' : ContractState) : Prop :=
-  s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
 
 /-- Storage isolation: operations on slot 0 don't affect other slots -/
 def storage_isolated (s s' : ContractState) : Prop :=

@@ -199,6 +199,11 @@ private def withNoArgs (tx : Transaction) (f : Unit → ExecutionResult) : Execu
   | [] => f ()
   | _ => invalidArgsResult
 
+private def dispatch (tx : Transaction) (cases : List (String × (Unit → ExecutionResult))) : ExecutionResult :=
+  match cases.find? (fun (name, _) => name == tx.functionName) with
+  | some (_, f) => f ()
+  | none => unknownFunctionResult
+
 /-!
 ## Example: SimpleStorage Interpreter
 
@@ -214,15 +219,16 @@ private def exampleSimpleStorageRetrieve : Contract Uint256 :=
 
 -- Interpret SimpleStorage transactions
 def interpretSimpleStorage (tx : Transaction) (state : ContractState) : ExecutionResult :=
-  match tx.functionName with
-  | "store" =>
-    withArgs1 tx (fun value =>
-      runUnit (exampleSimpleStorageStore value) state [0] [] []  -- Check slot 0
+  dispatch tx [
+    ("store", fun _ =>
+      withArgs1 tx (fun value =>
+        runUnit (exampleSimpleStorageStore value) state [0] [] []  -- Check slot 0
+      )
+    ),
+    ("retrieve", fun _ =>
+      runUint exampleSimpleStorageRetrieve state [0] [] []
     )
-  | "retrieve" =>
-    runUint exampleSimpleStorageRetrieve state [0] [] []
-  | _ =>
-    unknownFunctionResult
+  ]
 
 /-!
 ## Counter Interpreter
@@ -238,15 +244,17 @@ private def exampleCounterGetCount : Contract Uint256 :=
   Counter.getCount
 
 def interpretCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
-  match tx.functionName with
-  | "increment" =>
-    runUnit exampleCounterIncrement state [0] [] []
-  | "decrement" =>
-    runUnit exampleCounterDecrement state [0] [] []
-  | "getCount" =>
-    runUint exampleCounterGetCount state [0] [] []
-  | _ =>
-    unknownFunctionResult
+  dispatch tx [
+    ("increment", fun _ =>
+      runUnit exampleCounterIncrement state [0] [] []
+    ),
+    ("decrement", fun _ =>
+      runUnit exampleCounterDecrement state [0] [] []
+    ),
+    ("getCount", fun _ =>
+      runUint exampleCounterGetCount state [0] [] []
+    )
+  ]
 
 /-!
 ## SafeCounter Interpreter
@@ -262,15 +270,17 @@ private def exampleSafeCounterGetCount : Contract Uint256 :=
   SafeCounter.getCount
 
 def interpretSafeCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
-  match tx.functionName with
-  | "increment" =>
-    runUnit exampleSafeCounterIncrement state [0] [] []
-  | "decrement" =>
-    runUnit exampleSafeCounterDecrement state [0] [] []
-  | "getCount" =>
-    runUint exampleSafeCounterGetCount state [0] [] []
-  | _ =>
-    unknownFunctionResult
+  dispatch tx [
+    ("increment", fun _ =>
+      runUnit exampleSafeCounterIncrement state [0] [] []
+    ),
+    ("decrement", fun _ =>
+      runUnit exampleSafeCounterDecrement state [0] [] []
+    ),
+    ("getCount", fun _ =>
+      runUint exampleSafeCounterGetCount state [0] [] []
+    )
+  ]
 
 /-!
 ## Owned Interpreter
@@ -283,17 +293,18 @@ private def exampleOwnedGetOwner : Contract Address :=
   Owned.getOwner
 
 def interpretOwned (tx : Transaction) (state : ContractState) : ExecutionResult :=
-  match tx.functionName with
-  | "transferOwnership" =>
-    withArgs1 tx (fun newOwnerNat =>
-      -- Convert Nat to Address (properly formatted 40-digit hex string)
-      let newOwnerAddr := natToAddress newOwnerNat
-      runUnit (exampleOwnedTransferOwnership newOwnerAddr) state [] [0] []
+  dispatch tx [
+    ("transferOwnership", fun _ =>
+      withArgs1 tx (fun newOwnerNat =>
+        -- Convert Nat to Address (properly formatted 40-digit hex string)
+        let newOwnerAddr := natToAddress newOwnerNat
+        runUnit (exampleOwnedTransferOwnership newOwnerAddr) state [] [0] []
+      )
+    ),
+    ("getOwner", fun _ =>
+      runAddress exampleOwnedGetOwner state [] [0] []
     )
-  | "getOwner" =>
-    runAddress exampleOwnedGetOwner state [] [0] []
-  | _ =>
-    unknownFunctionResult
+  ]
 
 /-!
 ## Ledger Interpreter
@@ -312,38 +323,41 @@ private def exampleLedgerGetBalance (addr : Address) : Contract Uint256 :=
   Ledger.getBalance addr
 
 def interpretLedger (tx : Transaction) (state : ContractState) : ExecutionResult :=
-  match tx.functionName with
-  | "deposit" =>
-    withArgs1 tx (fun amount =>
-      -- Track mapping changes for sender's balance
-      let senderKey := (0, tx.sender)
-      runUnit (exampleLedgerDeposit amount) state [] [] [senderKey]
+  dispatch tx [
+    ("deposit", fun _ =>
+      withArgs1 tx (fun amount =>
+        -- Track mapping changes for sender's balance
+        let senderKey := (0, tx.sender)
+        runUnit (exampleLedgerDeposit amount) state [] [] [senderKey]
+      )
+    ),
+    ("withdraw", fun _ =>
+      withArgs1 tx (fun amount =>
+        -- Track mapping changes for sender's balance
+        let senderKey := (0, tx.sender)
+        runUnit (exampleLedgerWithdraw amount) state [] [] [senderKey]
+      )
+    ),
+    ("transfer", fun _ =>
+      withArgs2 tx (fun toNat amount =>
+        -- Convert Nat to Address (properly formatted 40-digit hex string)
+        let toAddr := natToAddress toNat
+        -- Track mapping changes for both sender and recipient
+        let senderKey := (0, tx.sender)
+        let recipientKey := (0, toAddr)
+        runUnit (exampleLedgerTransfer toAddr amount) state [] [] [senderKey, recipientKey]
+      )
+    ),
+    ("getBalance", fun _ =>
+      withArgs1 tx (fun addrNat =>
+        -- Convert Nat to Address (properly formatted 40-digit hex string)
+        let addr := natToAddress addrNat
+        -- Track mapping for the queried address
+        let addrKey := (0, addr)
+        runUint (exampleLedgerGetBalance addr) state [] [] [addrKey]
+      )
     )
-  | "withdraw" =>
-    withArgs1 tx (fun amount =>
-      -- Track mapping changes for sender's balance
-      let senderKey := (0, tx.sender)
-      runUnit (exampleLedgerWithdraw amount) state [] [] [senderKey]
-    )
-  | "transfer" =>
-    withArgs2 tx (fun toNat amount =>
-      -- Convert Nat to Address (properly formatted 40-digit hex string)
-      let toAddr := natToAddress toNat
-      -- Track mapping changes for both sender and recipient
-      let senderKey := (0, tx.sender)
-      let recipientKey := (0, toAddr)
-      runUnit (exampleLedgerTransfer toAddr amount) state [] [] [senderKey, recipientKey]
-    )
-  | "getBalance" =>
-    withArgs1 tx (fun addrNat =>
-      -- Convert Nat to Address (properly formatted 40-digit hex string)
-      let addr := natToAddress addrNat
-      -- Track mapping for the queried address
-      let addrKey := (0, addr)
-      runUint (exampleLedgerGetBalance addr) state [] [] [addrKey]
-    )
-  | _ =>
-    unknownFunctionResult
+  ]
 
 /-!
 ## OwnedCounter Interpreter
@@ -365,26 +379,30 @@ private def exampleOwnedCounterTransferOwnership (newOwner : Address) : Contract
   OwnedCounter.transferOwnership newOwner
 
 def interpretOwnedCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
-  match tx.functionName with
-  | "increment" =>
-    -- Track both storage slots: 0 (owner address) and 1 (count)
-    runUnit exampleOwnedCounterIncrement state [1] [0] []
-  | "decrement" =>
-    -- Track both storage slots: 0 (owner address) and 1 (count)
-    runUnit exampleOwnedCounterDecrement state [1] [0] []
-  | "getCount" =>
-    runUint exampleOwnedCounterGetCount state [1] [] []
-  | "getOwner" =>
-    runAddress exampleOwnedCounterGetOwner state [] [0] []
-  | "transferOwnership" =>
-    withArgs1 tx (fun newOwnerNat =>
-      -- Convert Nat to Address (properly formatted 40-digit hex string)
-      let newOwnerAddr := natToAddress newOwnerNat
-      -- Track owner address storage slot 0
-      runUnit (exampleOwnedCounterTransferOwnership newOwnerAddr) state [] [0] []
+  dispatch tx [
+    ("increment", fun _ =>
+      -- Track both storage slots: 0 (owner address) and 1 (count)
+      runUnit exampleOwnedCounterIncrement state [1] [0] []
+    ),
+    ("decrement", fun _ =>
+      -- Track both storage slots: 0 (owner address) and 1 (count)
+      runUnit exampleOwnedCounterDecrement state [1] [0] []
+    ),
+    ("getCount", fun _ =>
+      runUint exampleOwnedCounterGetCount state [1] [] []
+    ),
+    ("getOwner", fun _ =>
+      runAddress exampleOwnedCounterGetOwner state [] [0] []
+    ),
+    ("transferOwnership", fun _ =>
+      withArgs1 tx (fun newOwnerNat =>
+        -- Convert Nat to Address (properly formatted 40-digit hex string)
+        let newOwnerAddr := natToAddress newOwnerNat
+        -- Track owner address storage slot 0
+        runUnit (exampleOwnedCounterTransferOwnership newOwnerAddr) state [] [0] []
+      )
     )
-  | _ =>
-    unknownFunctionResult
+  ]
 
 /-!
 ## SimpleToken Interpreter
@@ -406,42 +424,46 @@ private def exampleSimpleTokenGetOwner : Contract Address :=
   SimpleToken.getOwner
 
 def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionResult :=
-  match tx.functionName with
-  | "mint" =>
-    withArgs2 tx (fun toNat amount =>
-      -- Convert Nat to Address
-      let toAddr := natToAddress toNat
-      -- Track: storage slot 2 (totalSupply), owner slot 0, mapping for recipient
-      let recipientKey := (1, toAddr)
-      runUnit (exampleSimpleTokenMint toAddr amount) state [2] [0] [recipientKey]
+  dispatch tx [
+    ("mint", fun _ =>
+      withArgs2 tx (fun toNat amount =>
+        -- Convert Nat to Address
+        let toAddr := natToAddress toNat
+        -- Track: storage slot 2 (totalSupply), owner slot 0, mapping for recipient
+        let recipientKey := (1, toAddr)
+        runUnit (exampleSimpleTokenMint toAddr amount) state [2] [0] [recipientKey]
+      )
+    ),
+    ("transfer", fun _ =>
+      withArgs2 tx (fun toNat amount =>
+        -- Convert Nat to Address
+        let toAddr := natToAddress toNat
+        -- Track mapping changes for both sender and recipient
+        let senderKey := (1, tx.sender)
+        let recipientKey := (1, toAddr)
+        runUnit (exampleSimpleTokenTransfer toAddr amount) state [] [] [senderKey, recipientKey]
+      )
+    ),
+    ("balanceOf", fun _ =>
+      withArgs1 tx (fun addrNat =>
+        -- Convert Nat to Address
+        let addr := natToAddress addrNat
+        -- Track mapping for the queried address
+        let addrKey := (1, addr)
+        runUint (exampleSimpleTokenBalanceOf addr) state [] [] [addrKey]
+      )
+    ),
+    ("totalSupply", fun _ =>
+      withNoArgs tx (fun _ =>
+        runUint exampleSimpleTokenGetTotalSupply state [2] [] []
+      )
+    ),
+    ("owner", fun _ =>
+      withNoArgs tx (fun _ =>
+        runAddress exampleSimpleTokenGetOwner state [] [0] []
+      )
     )
-  | "transfer" =>
-    withArgs2 tx (fun toNat amount =>
-      -- Convert Nat to Address
-      let toAddr := natToAddress toNat
-      -- Track mapping changes for both sender and recipient
-      let senderKey := (1, tx.sender)
-      let recipientKey := (1, toAddr)
-      runUnit (exampleSimpleTokenTransfer toAddr amount) state [] [] [senderKey, recipientKey]
-    )
-  | "balanceOf" =>
-    withArgs1 tx (fun addrNat =>
-      -- Convert Nat to Address
-      let addr := natToAddress addrNat
-      -- Track mapping for the queried address
-      let addrKey := (1, addr)
-      runUint (exampleSimpleTokenBalanceOf addr) state [] [] [addrKey]
-    )
-  | "totalSupply" =>
-    withNoArgs tx (fun _ =>
-      runUint exampleSimpleTokenGetTotalSupply state [2] [] []
-    )
-  | "owner" =>
-    withNoArgs tx (fun _ =>
-      runAddress exampleSimpleTokenGetOwner state [] [0] []
-    )
-  | _ =>
-    unknownFunctionResult
+  ]
 
 /-!
 ## Generic Interpreter Interface

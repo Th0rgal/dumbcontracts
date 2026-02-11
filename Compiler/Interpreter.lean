@@ -332,32 +332,47 @@ def parseStorage (storageStr : String) : Nat → Nat :=
 private def looksLikeStorage (s : String) : Bool :=
   s.data.any (fun c => c == ':' || c == ',')
 
+private def parseArgNat? (s : String) : Option Nat :=
+  match parseHexNat? s with
+  | some n => some n
+  | none => s.toNat?
+
+private def parseArgs (args : List String) : Except String (List Nat) :=
+  let parsed := args.foldl (fun acc s =>
+    match acc, parseArgNat? s with
+    | some acc', some n => some (acc' ++ [n])
+    | _, _ => none
+  ) (some [])
+  match parsed with
+  | some vals => Except.ok vals
+  | none => Except.error "Invalid args: expected decimal or 0x-prefixed hex integers"
+
 def main (args : List String) : IO Unit := do
   match args with
   | contractType :: functionName :: senderAddr :: rest =>
-    let (arg0Opt, storageArgs) : Option String × List String :=
-      match rest with
-      | [] => (none, [])
-      | [one] =>
-          if looksLikeStorage one then
-            (none, [one])
+    let (argStrs, storageOpt) : List String × Option String :=
+      match rest.reverse with
+      | [] => ([], none)
+      | last :: revInit =>
+          if looksLikeStorage last then
+            (revInit.reverse, some last)
           else
-            (some one, [])
-      | arg0 :: more => (some arg0, more)
+            (rest, none)
+    if argStrs.any looksLikeStorage then
+      throw <| IO.userError
+        "Invalid args: storage string must be last, and only one storage arg is allowed"
+    let argsNat := match parseArgs argStrs with
+      | Except.ok vals => vals
+      | Except.error msg => throw <| IO.userError msg
     let tx : Transaction := {
       sender := senderAddr
       functionName := functionName
-      args := match arg0Opt with
-        | some arg0 => [arg0.toNat!]
-        | none => []
+      args := argsNat
     }
-    -- Parse storage from remaining args (format: "slot:value,...")
-    let storageState := match storageArgs with
-      | [s] => parseStorage s
-      | [] => fun _ => 0  -- Default: empty storage
-      | _ =>
-          throw <| IO.userError
-            s!"Invalid storage args: expected a single \"slot:value,...\" string, got {storageArgs.length}"
+    -- Parse storage from optional arg (format: "slot:value,...")
+    let storageState := match storageOpt with
+      | some s => parseStorage s
+      | none => fun _ => 0  -- Default: empty storage
 
     let initialState : ContractState := {
       storage := storageState

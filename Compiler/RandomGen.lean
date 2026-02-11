@@ -146,29 +146,36 @@ def genSafeCounterTx (rng : RNG) : RNG × Transaction :=
   genCounterTx rng
 
 -- Generate random transaction for any contract
-def genTransaction (contractType : ContractType) (rng : RNG) : RNG × Transaction :=
+def genTransaction (contractType : ContractType) (rng : RNG) : Except String (RNG × Transaction) :=
   match contractType with
-  | ContractType.simpleStorage => genSimpleStorageTx rng
-  | ContractType.counter => genCounterTx rng
-  | ContractType.owned => genOwnedTx rng
-  | ContractType.ledger => genLedgerTx rng
-  | ContractType.ownedCounter => genOwnedCounterTx rng
-  | ContractType.simpleToken => genSimpleTokenTx rng
-  | ContractType.safeCounter => genSafeCounterTx rng
+  | ContractType.simpleStorage => Except.ok (genSimpleStorageTx rng)
+  | ContractType.counter => Except.ok (genCounterTx rng)
+  | ContractType.safeCounter => Except.ok (genSafeCounterTx rng)
+  | ContractType.owned
+  | ContractType.ledger
+  | ContractType.ownedCounter
+  | ContractType.simpleToken =>
+      Except.error
+        "Random-gen currently supports only SimpleStorage, Counter, and SafeCounter until the interpreter implements the remaining contracts."
 
 /-!
 ## Generate Test Sequence
 -/
 
 -- Generate N random transactions
-partial def genTransactions (contractType : ContractType) (count : Nat) (rng : RNG) : List Transaction :=
-  if count == 0 then []
+partial def genTransactions (contractType : ContractType) (count : Nat) (rng : RNG) : Except String (List Transaction) :=
+  if count == 0 then
+    Except.ok []
   else
-    let (rng', tx) := genTransaction contractType rng
-    tx :: genTransactions contractType (count - 1) rng'
+    match genTransaction contractType rng with
+    | Except.error msg => Except.error msg
+    | Except.ok (rng', tx) =>
+        match genTransactions contractType (count - 1) rng' with
+        | Except.ok rest => Except.ok (tx :: rest)
+        | Except.error msg => Except.error msg
 
 -- Generate test sequence with a seed
-def genTestSequence (contractType : ContractType) (count : Nat) (seed : Nat) : List Transaction :=
+def genTestSequence (contractType : ContractType) (count : Nat) (seed : Nat) : Except String (List Transaction) :=
   let rng := RNG.init seed
   genTransactions contractType count rng
 
@@ -199,18 +206,21 @@ def main (args : List String) : IO Unit := do
       | _ => none
     match contractTypeEnum? with
     | some contractTypeEnum =>
-      let txs := genTestSequence contractTypeEnum count seed
-      -- Output as JSON array
-      IO.println "["
-      let mut isFirst := true
-      for tx in txs do
-        if !isFirst then IO.println ","
-        let argsStr := String.intercalate "," (tx.args.map toString)
-        let jsonStr := "  {" ++ "\"sender\":\"" ++ tx.sender ++ "\",\"function\":\"" ++ tx.functionName ++ "\",\"args\":[" ++ argsStr ++ "]}"
-        IO.print jsonStr
-        isFirst := false
-      IO.println ""
-      IO.println "]"
+      match genTestSequence contractTypeEnum count seed with
+      | Except.error msg =>
+          throw <| IO.userError msg
+      | Except.ok txs =>
+          -- Output as JSON array
+          IO.println "["
+          let mut isFirst := true
+          for tx in txs do
+            if !isFirst then IO.println ","
+            let argsStr := String.intercalate "," (tx.args.map toString)
+            let jsonStr := "  {" ++ "\"sender\":\"" ++ tx.sender ++ "\",\"function\":\"" ++ tx.functionName ++ "\",\"args\":[" ++ argsStr ++ "]}"
+            IO.print jsonStr
+            isFirst := false
+          IO.println ""
+          IO.println "]"
     | none =>
       throw <| IO.userError
         s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter"

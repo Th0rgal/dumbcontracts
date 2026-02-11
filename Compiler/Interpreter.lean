@@ -542,7 +542,7 @@ def parseStorageAddr (storageStr : String) : Nat → String :=
       match pair.splitOn ":" with
       | [slotStr, addrStr] =>
         match parseArgNat? slotStr with
-        | some slot => acc ++ [(slot, addrStr)]
+        | some slot => acc ++ [(slot, normalizeAddress addrStr)]
         | none => acc
       | _ => acc
   ) []
@@ -559,19 +559,20 @@ def parseStorageMap (storageStr : String) : Nat → String → Nat :=
       match entry.splitOn ":" with
       | [slotStr, key, valStr] =>
         match parseArgNat? slotStr, parseArgNat? valStr with
-        | some slot, some val => acc ++ [(slot, key, val)]
+        | some slot, some val => acc ++ [(slot, normalizeAddress key, val)]
         | _, _ => acc
       | [slotStr, rest] =>
         match rest.splitOn "=" with
         | [key, valStr] =>
           match parseArgNat? slotStr, parseArgNat? valStr with
-          | some slot, some val => acc ++ [(slot, key, val)]
+          | some slot, some val => acc ++ [(slot, normalizeAddress key, val)]
           | _, _ => acc
         | _ => acc
       | _ => acc
   ) []
   fun slot key =>
-    (mapping.find? (fun (s, k, _) => s == slot && k == key)).map (fun (_, _, v) => v) |>.getD 0
+    let keyNorm := normalizeAddress key
+    (mapping.find? (fun (s, k, _) => s == slot && k == keyNorm)).map (fun (_, _, v) => v) |>.getD 0
 
 private def parseArgs (args : List String) : Except String (List Nat) :=
   let parsed := args.foldl (fun acc s =>

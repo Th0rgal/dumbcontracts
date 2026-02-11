@@ -11,7 +11,7 @@ The core went through two phases:
 **Phase 2 (verification)**: Replaced `StateM` with a custom `ContractResult` inductive type (`success | revert`) so that `require` guards could be modeled explicitly. This was necessary to prove properties like "mint reverts when caller is not owner." Core grew to 212 lines, mostly from simp lemmas for proof automation.
 
 Key decisions:
-- `Address := String`, `Uint256 := Nat`. Simpler than bounded types, and Nat's non-negativity is free.
+- `Address := String`, `Uint256` is a dedicated 256-bit modular type to match EVM arithmetic.
 - Storage is modeled as functions (`Nat -> Uint256`), not finite maps. Uninitialized slots return 0, matching Solidity.
 - `require` returns `ContractResult.revert msg s` on failure, preserving the original state.
 - Manual storage slot allocation (slot 0, slot 1, etc). No automatic allocation needed at this scale.
@@ -25,10 +25,10 @@ What didn't work:
 
 ## Arithmetic semantics
 
-Lean `Nat` subtraction saturates at 0 (5 - 10 = 0). Solidity 0.8+ reverts. These are different.
+All core arithmetic is EVM‑compatible. `Uint256` wraps at `2^256`, so `+`, `-`, `*`, `/`, and `%` match EVM behavior by default.
 
-The project handles this two ways:
-- Counter uses bare `+`/`-` (Lean Nat semantics, fast)
+The project handles overflow safety two ways:
+- Counter/Ledger/SimpleToken use bare `+`/`-` (modular arithmetic, EVM‑accurate)
 - SafeCounter uses `safeAdd`/`safeSub` from `Stdlib/Math.lean` which return `Option` and revert on overflow/underflow via `requireSomeUint`
 
 `MAX_UINT256` is defined as `2^256 - 1`. The safe arithmetic functions check against this bound.

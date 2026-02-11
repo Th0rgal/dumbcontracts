@@ -5,7 +5,7 @@ description: Design decisions, iterations, and proof techniques
 
 # Research & Development
 
-**212-line core, built across 7 iterations. Zero sorry, zero axioms.**
+**Compact core, built across 7 iterations. Zero sorry, zero axioms.**
 
 ## Evolution
 
@@ -13,7 +13,7 @@ The project evolved in two phases:
 
 **Phase 1 (Iterations 1-7)**: Built 7 contracts on `StateM ContractState`. Core grew from 58 to 82 lines. Storage types were added incrementally: `Nat -> Uint256` (iteration 1), `Nat -> Address` (iteration 3), `Nat -> Address -> Uint256` for mappings (iteration 6). Each addition was driven by a concrete example that needed it.
 
-**Phase 2 (Verification)**: Replaced `StateM` with custom `ContractResult` type (`success | revert`) to model `require` guards explicitly. This enabled proving properties like "mint reverts when caller is not owner." Core grew to 212 lines, mostly from simp lemmas for proof automation.
+**Phase 2 (Verification)**: Replaced `StateM` with custom `ContractResult` type (`success | revert`) to model `require` guards explicitly. This enabled proving properties like "mint reverts when caller is not owner." Core grew into the low‑200s, mostly from simp lemmas for proof automation and EVM context fields.
 
 ## Iterations
 
@@ -27,12 +27,12 @@ The project evolved in two phases:
 | 6 | Ledger | +13 | Mapping support (`Address -> Uint256`) |
 | 7 | SimpleToken | 0 | Combined patterns: owned + ledger + supply |
 
-Core: 58 → 72 → 82 lines (phase 1), then 82 → 212 lines (phase 2 with verification).
+Core: 58 → 72 → 82 lines (phase 1), then 82 → ~234 lines (phase 2 with verification + EVM context).
 
 ## Design Decisions
 
 **What worked:**
-- `Address := String`, `Uint256 := Nat`. Simpler than bounded types.
+- `Address := String`, `Uint256` is a dedicated 256-bit modular type.
 - Storage as functions (`Nat -> Uint256`), not finite maps. Uninitialized slots return 0.
 - `require` returns `ContractResult.revert msg s`, preserving original state.
 - Manual storage slot allocation (slot 0, 1, 2...). No automatic allocation needed.
@@ -46,13 +46,13 @@ Core: 58 → 72 → 82 lines (phase 1), then 82 → 212 lines (phase 2 with veri
 
 ## Arithmetic Semantics
 
-Lean `Nat` subtraction saturates (5 - 10 = 0). Solidity 0.8+ reverts. These are different.
+All core arithmetic is EVM‑compatible. `Uint256` wraps at `2^256`, so `+`, `-`, `*`, `/`, and `%` match EVM behavior by default.
 
-Solution: Two approaches coexist.
-- **Counter**: Bare `+`/`-` (Lean Nat semantics, fast, proven safe for increment/decrement from zero)
-- **SafeCounter**: `safeAdd`/`safeSub` from `Stdlib/Math.lean` return `Option`, revert on overflow/underflow
+Two approaches coexist for overflow safety:
+- **Counter / Ledger / SimpleToken**: Bare `+`/`-` (modular arithmetic, EVM‑accurate)
+- **SafeCounter**: `safeAdd`/`safeSub` from `Stdlib/Math.lean` return `Option`, reverting on overflow/underflow
 
-`MAX_UINT256 := 2^256 - 1`. Safe arithmetic checks this bound.
+`MAX_UINT256 := 2^256 - 1`. Safe arithmetic checks this bound before returning `some`.
 
 ## Proof Techniques
 

@@ -765,6 +765,10 @@ private def storageConfigPrefix (s : String) : Option (String × String) :=
         some ("addr", value)
       else if normalized == "map" || normalized == "mapping" || normalized == "storagemap" then
         some ("map", value)
+      else if normalized == "value" || normalized == "msgvalue" || normalized == "msg.value" then
+        some ("value", value)
+      else if normalized == "timestamp" || normalized == "blocktimestamp" || normalized == "block.timestamp" then
+        some ("timestamp", value)
       else
         none
   | _ => none
@@ -855,11 +859,13 @@ private def splitTrailingStorageArgs (args : List String) : Except String (List 
     Except.ok (argStrs, configArgs)
 
 private def parseConfigArgs (configArgs : List String) :
-    Except String (Option String × Option String × Option String) :=
-  let rec go (args : List String) (storageOpt addrOpt mapOpt : Option String) :
-      Except String (Option String × Option String × Option String) :=
+    Except String (Option String × Option String × Option String × Option Nat × Option Nat) :=
+  let rec go (args : List String)
+      (storageOpt addrOpt mapOpt : Option String)
+      (valueOpt timestampOpt : Option Nat) :
+      Except String (Option String × Option String × Option String × Option Nat × Option Nat) :=
     match args with
-    | [] => Except.ok (storageOpt, addrOpt, mapOpt)
+    | [] => Except.ok (storageOpt, addrOpt, mapOpt, valueOpt, timestampOpt)
     | s :: rest =>
       let (kind, value) := parseStorageConfig s
       match kind with
@@ -867,19 +873,33 @@ private def parseConfigArgs (configArgs : List String) :
         if storageOpt.isSome then
           Except.error "Multiple storage args provided"
         else
-          go rest (some value) addrOpt mapOpt
+          go rest (some value) addrOpt mapOpt valueOpt timestampOpt
       | "addr" =>
         if addrOpt.isSome then
           Except.error "Multiple address storage args provided"
         else
-          go rest storageOpt (some value) mapOpt
+          go rest storageOpt (some value) mapOpt valueOpt timestampOpt
       | "map" =>
         if mapOpt.isSome then
           Except.error "Multiple mapping storage args provided"
         else
-          go rest storageOpt addrOpt (some value)
-      | _ => Except.error "Invalid storage config prefix"
-  go configArgs none none none
+          go rest storageOpt addrOpt (some value) valueOpt timestampOpt
+      | "value" =>
+        if valueOpt.isSome then
+          Except.error "Multiple msg.value args provided"
+        else
+          match parseArgNat? value with
+          | some n => go rest storageOpt addrOpt mapOpt (some n) timestampOpt
+          | none => Except.error "Invalid msg.value: expected decimal or 0x-prefixed hex integer"
+      | "timestamp" =>
+        if timestampOpt.isSome then
+          Except.error "Multiple block.timestamp args provided"
+        else
+          match parseArgNat? value with
+          | some n => go rest storageOpt addrOpt mapOpt valueOpt (some n)
+          | none => Except.error "Invalid block.timestamp: expected decimal or 0x-prefixed hex integer"
+      | _ => Except.error "Invalid config prefix"
+  go configArgs none none none none none
 
 def main (args : List String) : IO Unit := do
   match args with
@@ -887,7 +907,7 @@ def main (args : List String) : IO Unit := do
     let (argStrs, configArgs) ← match splitTrailingStorageArgs rest with
       | Except.ok vals => pure vals
       | Except.error msg => throw <| IO.userError msg
-    let (storageOpt, addrOpt, mapOpt) ← match parseConfigArgs configArgs with
+    let (storageOpt, addrOpt, mapOpt, valueOpt, timestampOpt) ← match parseConfigArgs configArgs with
       | Except.ok vals => pure vals
       | Except.error msg => throw <| IO.userError msg
     -- Filter out empty strings from args (can happen when storage is empty)
@@ -917,8 +937,8 @@ def main (args : List String) : IO Unit := do
       storageMap := storageMapState
       sender := normalizeAddress senderAddr
       thisAddress := "0xContract"
-      msgValue := 0
-      blockTimestamp := 0
+      msgValue := valueOpt.getD 0
+      blockTimestamp := timestampOpt.getD 0
     }
     let contractTypeEnum? : Option ContractType := match contractType with
       | "SimpleStorage" => some ContractType.simpleStorage
@@ -937,9 +957,10 @@ def main (args : List String) : IO Unit := do
       throw <| IO.userError
         s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter"
   | _ =>
-    IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...]"
+    IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...] [value=...] [timestamp=...]"
     IO.println "Example: difftest-interpreter SimpleStorage store 0xAlice 42"
     IO.println "No-arg example: difftest-interpreter SimpleStorage retrieve 0xAlice"
     IO.println "With storage: difftest-interpreter SimpleStorage retrieve 0xAlice \"0:42\""
     IO.println "With address storage: difftest-interpreter Owned transferOwnership 0xAlice 0xBob addr=\"0:0xAlice\""
     IO.println "With mapping: difftest-interpreter Ledger deposit 0xAlice 10 map=\"0:0xAlice=10\""
+    IO.println "With context: difftest-interpreter Counter increment 0xAlice value=100 timestamp=1700000000"

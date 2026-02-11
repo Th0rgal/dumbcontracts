@@ -170,47 +170,44 @@ contract DifferentialOwned is YulTestBase {
 
         bytes32 functionSig = keccak256(bytes(functionName));
 
+        string memory baseCmd = string.concat(
+            "cd \"$(git rev-parse --show-toplevel)\" && export PATH=\"$HOME/.elan/bin:$PATH\" && ",
+            "if [ ! -x ./.lake/build/bin/difftest-interpreter ]; then ",
+            "mkdir -p .lake/build/bin && lake build difftest-interpreter >/dev/null; ",
+            "fi; ",
+            "./.lake/build/bin/difftest-interpreter",
+            " Owned ",
+            functionName,
+            " ",
+            _addressToString(sender)
+        );
+
         if (functionSig == keccak256(bytes("transferOwnership"))) {
-            // transferOwnership takes one arg (new owner as Nat)
-            string[] memory inputs = new string[](5);
-            inputs[0] = "./out/difftest-interpreter";
-            inputs[1] = "Owned";
-            inputs[2] = functionName;
-            inputs[3] = _addressToString(sender);
-            inputs[4] = _uint256ToString(arg0);
+            string memory cmd = string.concat(
+                baseCmd,
+                " ",
+                _uint256ToString(arg0)
+            );
             if (bytes(storageState).length > 0) {
-                // Add storage arg
-                string[] memory inputsWithStorage = new string[](6);
-                for (uint256 i = 0; i < 5; i++) {
-                    inputsWithStorage[i] = inputs[i];
-                }
-                inputsWithStorage[5] = storageState;
-                bytes memory result = vm.ffi(inputsWithStorage);
-                return string(result);
-            } else {
-                bytes memory result = vm.ffi(inputs);
-                return string(result);
+                cmd = string.concat(cmd, " \"", storageState, "\"");
             }
+            string[] memory inputs = new string[](3);
+            inputs[0] = "bash";
+            inputs[1] = "-c";
+            inputs[2] = cmd;
+            bytes memory result = vm.ffi(inputs);
+            return string(result);
         } else {
-            // getOwner takes no args
-            string[] memory inputs = new string[](4);
-            inputs[0] = "./out/difftest-interpreter";
-            inputs[1] = "Owned";
-            inputs[2] = functionName;
-            inputs[3] = _addressToString(sender);
+            string memory cmd = baseCmd;
             if (bytes(storageState).length > 0) {
-                // Add storage arg
-                string[] memory inputsWithStorage = new string[](5);
-                for (uint256 i = 0; i < 4; i++) {
-                    inputsWithStorage[i] = inputs[i];
-                }
-                inputsWithStorage[4] = storageState;
-                bytes memory result = vm.ffi(inputsWithStorage);
-                return string(result);
-            } else {
-                bytes memory result = vm.ffi(inputs);
-                return string(result);
+                cmd = string.concat(cmd, " \"", storageState, "\"");
             }
+            string[] memory inputs = new string[](3);
+            inputs[0] = "bash";
+            inputs[1] = "-c";
+            inputs[2] = cmd;
+            bytes memory result = vm.ffi(inputs);
+            return string(result);
         }
     }
 

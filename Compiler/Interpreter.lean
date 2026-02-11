@@ -84,20 +84,7 @@ private def natToAddress (n : Nat) : Address :=
 
 -- Helper: Convert hex address string (0x...) to Nat for JSON output
 private def addressToNat (addr : Address) : Nat :=
-  -- Remove "0x" prefix if present
-  let hexStr := if addr.startsWith "0x" then addr.drop 2 else addr
-  -- Parse hex string to Nat
-  hexStr.foldl (fun acc c =>
-    let digit := if c >= '0' && c <= '9' then
-      c.toNat - '0'.toNat
-    else if c >= 'a' && c <= 'f' then
-      c.toNat - 'a'.toNat + 10
-    else if c >= 'A' && c <= 'F' then
-      c.toNat - 'A'.toNat + 10
-    else
-      0
-    acc * 16 + digit
-  ) 0
+  Compiler.Hex.addressToNat (normalizeAddress addr)
 
 -- Helper: Convert ContractResult to ExecutionResult
 def resultToExecutionResult

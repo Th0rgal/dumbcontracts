@@ -47,6 +47,8 @@ private def runKeccak (sigs : List String) : IO (List Nat) := do
   if result.exitCode != 0 then
     throw (IO.userError s!"keccak256.py failed: {result.stderr}")
   let lines := result.stdout.trim.splitOn "\n"
+  if lines.length != sigs.length then
+    throw (IO.userError s!"keccak256.py returned {lines.length} lines for {sigs.length} signatures: {result.stdout}")
   let selectors := lines.map parseSelectorLine
   if selectors.any (·.isNone) then
     throw (IO.userError s!"Failed to parse selector output: {result.stdout}")

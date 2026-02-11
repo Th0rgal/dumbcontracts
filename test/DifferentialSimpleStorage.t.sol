@@ -46,7 +46,6 @@ contract DifferentialSimpleStorage is YulTestBase {
 
         bool evmSuccess;
         bytes memory evmReturnData;
-        uint256 evmStorageBefore = uint256(vm.load(simpleStorage, bytes32(uint256(0))));
 
         if (keccak256(bytes(functionName)) == keccak256(bytes("store"))) {
             (evmSuccess, evmReturnData) = simpleStorage.call(
@@ -66,26 +65,7 @@ contract DifferentialSimpleStorage is YulTestBase {
         // 2. Execute on EDSL interpreter (via vm.ffi)
         // Build storage state string: "slot:value,..." for all non-zero slots
         string memory storageState = _buildStorageString();
-
-        // Build command with storage state (use relative paths for CI compatibility)
-        string[] memory inputs = new string[](3);
-        inputs[0] = "bash";
-        inputs[1] = "-c";
-        inputs[2] = string.concat(
-            "cd \"$(git rev-parse --show-toplevel)\" && export PATH=\"$HOME/.elan/bin:$PATH\" && mkdir -p .lake/build/bin && lake build difftest-interpreter >/dev/null && ./.lake/build/bin/difftest-interpreter SimpleStorage ",
-            functionName,
-            " ",
-            vm.toString(sender),
-            " ",
-            vm.toString(arg0),
-            " \"",
-            storageState,
-            "\""
-        );
-
-        // Call Lean interpreter
-        bytes memory edslResultBytes = vm.ffi(inputs);
-        string memory edslResult = string(edslResultBytes);
+        string memory edslResult = _runInterpreter(functionName, sender, arg0, storageState);
 
         // 3. Parse and compare results
         // The EDSL interpreter returns JSON like:
@@ -146,6 +126,38 @@ contract DifferentialSimpleStorage is YulTestBase {
 
         testsPassed++;
         return true;
+    }
+
+    function _runInterpreter(
+        string memory functionName,
+        address sender,
+        uint256 arg0,
+        string memory storageState
+    ) internal returns (string memory) {
+        // Build command with storage state (use relative paths for CI compatibility)
+        string[] memory inputs = new string[](3);
+        inputs[0] = "bash";
+        inputs[1] = "-c";
+        inputs[2] = string.concat(
+            "cd \"$(git rev-parse --show-toplevel)\" && export PATH=\"$HOME/.elan/bin:$PATH\" && ",
+            "if [ ! -x ./.lake/build/bin/difftest-interpreter ]; then ",
+            "mkdir -p .lake/build/bin && lake build difftest-interpreter >/dev/null; ",
+            "fi; ",
+            "./.lake/build/bin/difftest-interpreter",
+            " SimpleStorage ",
+            functionName,
+            " ",
+            vm.toString(sender),
+            " ",
+            vm.toString(arg0),
+            " \"",
+            storageState,
+            "\""
+        );
+
+        // Call Lean interpreter
+        bytes memory edslResultBytes = vm.ffi(inputs);
+        return string(edslResultBytes);
     }
 
     /**

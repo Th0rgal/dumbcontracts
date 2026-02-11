@@ -127,62 +127,108 @@ private def isMapping (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any (·.ty == FieldType.mapping)
 
 -- Compile expression to Yul
-private def compileExpr (fields : List Field) : Expr → YulExpr
-  | Expr.literal n => YulExpr.lit n
-  | Expr.param name => YulExpr.ident name
-  | Expr.constructorArg idx => YulExpr.ident s!"arg{idx}"  -- Constructor args loaded as argN
+private def compileExpr (fields : List Field) : Expr → Except String YulExpr
+  | Expr.literal n => pure (YulExpr.lit n)
+  | Expr.param name => pure (YulExpr.ident name)
+  | Expr.constructorArg idx => pure (YulExpr.ident s!"arg{idx}")  -- Constructor args loaded as argN
   | Expr.storage field =>
     match findFieldSlot fields field with
-    | some slot => YulExpr.call "sload" [YulExpr.lit slot]
-    | none => panic! s!"Compilation error: unknown storage field '{field}'"
+    | some slot => pure (YulExpr.call "sload" [YulExpr.lit slot])
+    | none => throw s!"Compilation error: unknown storage field '{field}'"
   | Expr.mapping field key =>
     match findFieldSlot fields field with
-    | some slot => YulExpr.call "sload" [YulExpr.call "mappingSlot" [YulExpr.lit slot, compileExpr fields key]]
-    | none => panic! s!"Compilation error: unknown mapping field '{field}'"
-  | Expr.caller => YulExpr.call "caller" []
-  | Expr.localVar name => YulExpr.ident name
-  | Expr.add a b => YulExpr.call "add" [compileExpr fields a, compileExpr fields b]
-  | Expr.sub a b => YulExpr.call "sub" [compileExpr fields a, compileExpr fields b]
-  | Expr.eq a b => YulExpr.call "eq" [compileExpr fields a, compileExpr fields b]
-  | Expr.ge a b => YulExpr.call "iszero" [YulExpr.call "lt" [compileExpr fields a, compileExpr fields b]]
-  | Expr.gt a b => YulExpr.call "gt" [compileExpr fields a, compileExpr fields b]
-  | Expr.lt a b => YulExpr.call "lt" [compileExpr fields a, compileExpr fields b]
-  | Expr.le a b => YulExpr.call "iszero" [YulExpr.call "gt" [compileExpr fields a, compileExpr fields b]]
+    | some slot => do
+      let keyExpr ← compileExpr fields key
+      pure (YulExpr.call "sload" [YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr]])
+    | none => throw s!"Compilation error: unknown mapping field '{field}'"
+  | Expr.caller => pure (YulExpr.call "caller" [])
+  | Expr.localVar name => pure (YulExpr.ident name)
+  | Expr.add a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "add" [aExpr, bExpr])
+  | Expr.sub a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "sub" [aExpr, bExpr])
+  | Expr.eq a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "eq" [aExpr, bExpr])
+  | Expr.ge a b =>
+    do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "iszero" [YulExpr.call "lt" [aExpr, bExpr]])
+  | Expr.gt a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "gt" [aExpr, bExpr])
+  | Expr.lt a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "lt" [aExpr, bExpr])
+  | Expr.le a b =>
+    do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "iszero" [YulExpr.call "gt" [aExpr, bExpr]])
 termination_by e => sizeOf e
 
 -- Compile require condition to a "failure" predicate to avoid double-negation.
-private def compileRequireFailCond (fields : List Field) : Expr → YulExpr
-  | Expr.ge a b => YulExpr.call "lt" [compileExpr fields a, compileExpr fields b]
-  | Expr.le a b => YulExpr.call "gt" [compileExpr fields a, compileExpr fields b]
-  | cond => YulExpr.call "iszero" [compileExpr fields cond]
+private def compileRequireFailCond (fields : List Field) : Expr → Except String YulExpr
+  | Expr.ge a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "lt" [aExpr, bExpr])
+  | Expr.le a b => do
+      let aExpr ← compileExpr fields a
+      let bExpr ← compileExpr fields b
+      pure (YulExpr.call "gt" [aExpr, bExpr])
+  | cond => do
+      let condExpr ← compileExpr fields cond
+      pure (YulExpr.call "iszero" [condExpr])
 
 -- Compile statement to Yul
-private def compileStmt (fields : List Field) : Stmt → List YulStmt
+private def compileStmt (fields : List Field) : Stmt → Except String (List YulStmt)
   | Stmt.letVar name value =>
-    [YulStmt.let_ name (compileExpr fields value)]
+    do
+      let valueExpr ← compileExpr fields value
+      pure [YulStmt.let_ name valueExpr]
   | Stmt.setStorage field value =>
     match findFieldSlot fields field with
-    | some slot => [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, compileExpr fields value])]
-    | none => panic! s!"Compilation error: unknown storage field '{field}' in setStorage"
+    | some slot => do
+        let valueExpr ← compileExpr fields value
+        pure [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueExpr])]
+    | none => throw s!"Compilation error: unknown storage field '{field}' in setStorage"
   | Stmt.setMapping field key value =>
     match findFieldSlot fields field with
-    | some slot =>
-      [ YulStmt.expr (YulExpr.call "sstore" [
-          YulExpr.call "mappingSlot" [YulExpr.lit slot, compileExpr fields key],
-          compileExpr fields value
-        ])
-      ]
-    | none => panic! s!"Compilation error: unknown mapping field '{field}' in setMapping"
+    | some slot => do
+        let keyExpr ← compileExpr fields key
+        let valueExpr ← compileExpr fields value
+        pure [
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr],
+            valueExpr
+          ])
+        ]
+    | none => throw s!"Compilation error: unknown mapping field '{field}' in setMapping"
   | Stmt.require cond message =>
-    [ YulStmt.if_ (compileRequireFailCond fields cond) [
-        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+    do
+      let failCond ← compileRequireFailCond fields cond
+      pure [
+        YulStmt.if_ failCond [
+          YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+        ]
       ]
-    ]
   | Stmt.return value =>
-    [ YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, compileExpr fields value])
-    , YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
-    ]
-  | Stmt.stop => [YulStmt.expr (YulExpr.call "stop" [])]
+    do
+      let valueExpr ← compileExpr fields value
+      pure [
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueExpr]),
+        YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+      ]
+  | Stmt.stop => return [YulStmt.expr (YulExpr.call "stop" [])]
 
 -- Generate parameter loading code (from calldata)
 private def genParamLoads (params : List Param) : List YulStmt :=
@@ -198,11 +244,13 @@ private def genParamLoads (params : List Param) : List YulStmt :=
       ])]
 
 -- Compile function spec to IR function
-private def compileFunctionSpec (fields : List Field) (selector : Nat) (spec : FunctionSpec) : IRFunction :=
+private def compileFunctionSpec (fields : List Field) (selector : Nat) (spec : FunctionSpec) :
+    Except String IRFunction := do
   let paramLoads := genParamLoads spec.params
-  let bodyStmts := spec.body.flatMap (compileStmt fields)
-  let allStmts := paramLoads ++ bodyStmts
-  { name := spec.name
+  let bodyChunks ← spec.body.mapM (compileStmt fields)
+  let allStmts := paramLoads ++ bodyChunks.join
+  return {
+    name := spec.name
     selector := selector
     params := spec.params.map Param.toIRParam
     ret := spec.returnType.map FieldType.toIRType |>.getD IRType.unit
@@ -236,13 +284,14 @@ private def genConstructorArgLoads (params : List Param) : List YulStmt :=
 
 -- Compile deploy code (constructor)
 -- Note: Don't append datacopy/return here - Codegen.deployCode does that
-private def compileConstructor (fields : List Field) (ctor : Option ConstructorSpec) : List YulStmt :=
+private def compileConstructor (fields : List Field) (ctor : Option ConstructorSpec) :
+    Except String (List YulStmt) := do
   match ctor with
-  | none => []
+  | none => return []
   | some spec =>
     let argLoads := genConstructorArgLoads spec.params
-    let body := spec.body.flatMap (compileStmt fields)
-    argLoads ++ body
+    let bodyChunks ← spec.body.mapM (compileStmt fields)
+    return argLoads ++ bodyChunks.join
 
 -- Main compilation function
 -- SAFETY REQUIREMENTS (enforced by #guard in Specs.lean):
@@ -250,16 +299,16 @@ private def compileConstructor (fields : List Field) (ctor : Option ConstructorS
 --   2. selectors[i] matches the Solidity signature of spec.functions[i]
 -- WARNING: Order matters! If selector list is reordered but function list isn't,
 --          functions will be mapped to wrong selectors with no runtime error.
-def compile (spec : ContractSpec) (selectors : List Nat) : IRContract :=
-  -- Validate selector count matches function count
+def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContract := do
   if spec.functions.length != selectors.length then
-    panic! s!"Selector count mismatch for {spec.name}: {selectors.length} selectors for {spec.functions.length} functions"
-  else
-    { name := spec.name
-      deploy := compileConstructor spec.fields spec.constructor
-      functions := spec.functions.zip selectors |>.map fun (fnSpec, sel) =>
-        compileFunctionSpec spec.fields sel fnSpec
-      usesMapping := usesMapping spec.fields
-    }
+    throw s!"Selector count mismatch for {spec.name}: {selectors.length} selectors for {spec.functions.length} functions"
+  let functions ← (spec.functions.zip selectors).mapM fun (fnSpec, sel) =>
+    compileFunctionSpec spec.fields sel fnSpec
+  return {
+    name := spec.name
+    deploy := (← compileConstructor spec.fields spec.constructor)
+    functions := functions
+    usesMapping := usesMapping spec.fields
+  }
 
 end Compiler.ContractSpec

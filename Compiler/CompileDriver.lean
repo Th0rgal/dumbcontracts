@@ -20,10 +20,13 @@ def compileAll (outDir : String) (verbose : Bool := false) : IO Unit := do
   IO.FS.createDirAll outDir
   for spec in Specs.allSpecs do
     let selectors ← computeSelectors spec
-    let contract := compile spec selectors
-    writeContract outDir contract
-    if verbose then
-      IO.println s!"✓ Compiled {contract.name}"
+    match compile spec selectors with
+    | .ok contract =>
+      writeContract outDir contract
+      if verbose then
+        IO.println s!"✓ Compiled {contract.name}"
+    | .error err =>
+      throw (IO.userError err)
   if verbose then
     IO.println ""
     IO.println "Compilation complete!"

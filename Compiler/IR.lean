@@ -29,6 +29,6 @@ structure IRContract where
   deploy : List IRStmt
   functions : List IRFunction
   usesMapping : Bool
-  deriving Repr, Inhabited
+  deriving Repr
 
 end Compiler

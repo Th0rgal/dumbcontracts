@@ -424,70 +424,30 @@ private def exampleOwnedCounterTransferOwnership (newOwner : Address) : Contract
 def interpretOwnedCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
   match tx.functionName with
   | "increment" =>
-    match tx.args with
-    | [] =>
-      let result := exampleOwnedCounterIncrement |>.run state
-      let natResult : ContractResult Nat := match result with
-        | ContractResult.success _ s => ContractResult.success 0 s
-        | ContractResult.revert msg s => ContractResult.revert msg s
-      -- Track both storage slots: 0 (owner address) and 1 (count)
-      resultToExecutionResult natResult state [1] [0] []
-    | _ =>
-      { success := false
-        returnValue := none
-        revertReason := some "Invalid args"
-        storageChanges := []
-        storageAddrChanges := []
-        mappingChanges := []
-      }
+    let result := exampleOwnedCounterIncrement |>.run state
+    let natResult : ContractResult Nat := match result with
+      | ContractResult.success _ s => ContractResult.success 0 s
+      | ContractResult.revert msg s => ContractResult.revert msg s
+    -- Track both storage slots: 0 (owner address) and 1 (count)
+    resultToExecutionResult natResult state [1] [0] []
   | "decrement" =>
-    match tx.args with
-    | [] =>
-      let result := exampleOwnedCounterDecrement |>.run state
-      let natResult : ContractResult Nat := match result with
-        | ContractResult.success _ s => ContractResult.success 0 s
-        | ContractResult.revert msg s => ContractResult.revert msg s
-      -- Track both storage slots: 0 (owner address) and 1 (count)
-      resultToExecutionResult natResult state [1] [0] []
-    | _ =>
-      { success := false
-        returnValue := none
-        revertReason := some "Invalid args"
-        storageChanges := []
-        storageAddrChanges := []
-        mappingChanges := []
-      }
+    let result := exampleOwnedCounterDecrement |>.run state
+    let natResult : ContractResult Nat := match result with
+      | ContractResult.success _ s => ContractResult.success 0 s
+      | ContractResult.revert msg s => ContractResult.revert msg s
+    -- Track both storage slots: 0 (owner address) and 1 (count)
+    resultToExecutionResult natResult state [1] [0] []
   | "getCount" =>
-    match tx.args with
-    | [] =>
-      let result := exampleOwnedCounterGetCount |>.run state
-      resultToExecutionResult (resultToNat result) state [1] [] []
-    | _ =>
-      { success := false
-        returnValue := none
-        revertReason := some "Invalid args"
-        storageChanges := []
-        storageAddrChanges := []
-        mappingChanges := []
-      }
+    let result := exampleOwnedCounterGetCount |>.run state
+    resultToExecutionResult (resultToNat result) state [1] [] []
   | "getOwner" =>
-    match tx.args with
-    | [] =>
-      let result := exampleOwnedCounterGetOwner |>.run state
-      -- Convert Address result to Nat for JSON output
-      let natResult : ContractResult Nat := match result with
-        | ContractResult.success addr s =>
-          ContractResult.success (addressToNat addr) s
-        | ContractResult.revert msg s => ContractResult.revert msg s
-      resultToExecutionResult natResult state [] [0] []
-    | _ =>
-      { success := false
-        returnValue := none
-        revertReason := some "Invalid args"
-        storageChanges := []
-        storageAddrChanges := []
-        mappingChanges := []
-      }
+    let result := exampleOwnedCounterGetOwner |>.run state
+    -- Convert Address result to Nat for JSON output
+    let natResult : ContractResult Nat := match result with
+      | ContractResult.success addr s =>
+        ContractResult.success (addressToNat addr) s
+      | ContractResult.revert msg s => ContractResult.revert msg s
+    resultToExecutionResult natResult state [] [0] []
   | "transferOwnership" =>
     match tx.args with
     | [newOwnerNat] =>

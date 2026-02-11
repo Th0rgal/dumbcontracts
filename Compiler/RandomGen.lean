@@ -52,6 +52,36 @@ def genBool (rng : RNG) : RNG × Bool :=
   let (rng', n) := rng.next
   (rng', n % 2 == 0)
 
+-- Convert Address to Nat for calldata args (keeps parity with Interpreter)
+private def hexCharToNat? (c : Char) : Option Nat :=
+  if ('0' ≤ c ∧ c ≤ '9') then
+    some (c.toNat - '0'.toNat)
+  else if ('a' ≤ c ∧ c ≤ 'f') then
+    some (10 + c.toNat - 'a'.toNat)
+  else if ('A' ≤ c ∧ c ≤ 'F') then
+    some (10 + c.toNat - 'A'.toNat)
+  else
+    none
+
+private def parseHexNat? (s : String) : Option Nat :=
+  let s := if s.startsWith "0x" then s.drop 2 else s
+  if s.isEmpty then
+    none
+  else
+  s.data.foldl (fun acc c =>
+    match acc, hexCharToNat? c with
+    | some n, some d => some (n * 16 + d)
+    | _, _ => none
+  ) (some 0)
+
+private def stringToNat (s : String) : Nat :=
+  s.data.foldl (fun acc c => acc * 256 + c.toNat) 0
+
+private def addressToNat (addr : Address) : Nat :=
+  match parseHexNat? addr with
+  | some n => n
+  | none => stringToNat addr % (2^160)
+
 /-!
 ## Contract-Specific Transaction Generation
 -/
@@ -75,16 +105,82 @@ def genCounterTx (rng : RNG) : RNG × Transaction :=
   | 1 => (rng, { sender := sender, functionName := "decrement", args := [] })
   | _ => (rng, { sender := sender, functionName := "getCount", args := [] })
 
+-- Generate random Owned transaction
+def genOwnedTx (rng : RNG) : RNG × Transaction :=
+  let (rng, sender) := genAddress rng
+  let (rng, choice) := genUint256 rng
+  match choice % 2 with
+  | 0 =>
+      let (rng, newOwner) := genAddress rng
+      (rng, { sender := sender, functionName := "transferOwnership", args := [addressToNat newOwner] })
+  | _ =>
+      (rng, { sender := sender, functionName := "getOwner", args := [] })
+
+-- Generate random Ledger transaction
+def genLedgerTx (rng : RNG) : RNG × Transaction :=
+  let (rng, sender) := genAddress rng
+  let (rng, choice) := genUint256 rng
+  match choice % 4 with
+  | 0 =>
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "deposit", args := [amount] })
+  | 1 =>
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "withdraw", args := [amount] })
+  | 2 =>
+      let (rng, toAddr) := genAddress rng
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "transfer", args := [addressToNat toAddr, amount] })
+  | _ =>
+      let (rng, addr) := genAddress rng
+      (rng, { sender := sender, functionName := "getBalance", args := [addressToNat addr] })
+
+-- Generate random OwnedCounter transaction
+def genOwnedCounterTx (rng : RNG) : RNG × Transaction :=
+  let (rng, sender) := genAddress rng
+  let (rng, choice) := genUint256 rng
+  match choice % 5 with
+  | 0 => (rng, { sender := sender, functionName := "increment", args := [] })
+  | 1 => (rng, { sender := sender, functionName := "decrement", args := [] })
+  | 2 => (rng, { sender := sender, functionName := "getCount", args := [] })
+  | 3 => (rng, { sender := sender, functionName := "getOwner", args := [] })
+  | _ =>
+      let (rng, newOwner) := genAddress rng
+      (rng, { sender := sender, functionName := "transferOwnership", args := [addressToNat newOwner] })
+
+-- Generate random SimpleToken transaction
+def genSimpleTokenTx (rng : RNG) : RNG × Transaction :=
+  let (rng, sender) := genAddress rng
+  let (rng, choice) := genUint256 rng
+  match choice % 5 with
+  | 0 =>
+      let (rng, toAddr) := genAddress rng
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "mint", args := [addressToNat toAddr, amount] })
+  | 1 =>
+      let (rng, toAddr) := genAddress rng
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "transfer", args := [addressToNat toAddr, amount] })
+  | 2 =>
+      let (rng, addr) := genAddress rng
+      (rng, { sender := sender, functionName := "balanceOf", args := [addressToNat addr] })
+  | 3 => (rng, { sender := sender, functionName := "totalSupply", args := [] })
+  | _ => (rng, { sender := sender, functionName := "owner", args := [] })
+
+-- Generate random SafeCounter transaction
+def genSafeCounterTx (rng : RNG) : RNG × Transaction :=
+  genCounterTx rng
+
 -- Generate random transaction for any contract
 def genTransaction (contractType : ContractType) (rng : RNG) : RNG × Transaction :=
   match contractType with
   | ContractType.simpleStorage => genSimpleStorageTx rng
   | ContractType.counter => genCounterTx rng
-  | ContractType.owned => genCounterTx rng  -- TODO: implement
-  | ContractType.ledger => genCounterTx rng  -- TODO: implement
-  | ContractType.ownedCounter => genCounterTx rng  -- TODO: implement
-  | ContractType.simpleToken => genCounterTx rng  -- TODO: implement
-  | ContractType.safeCounter => genCounterTx rng  -- TODO: implement
+  | ContractType.owned => genOwnedTx rng
+  | ContractType.ledger => genLedgerTx rng
+  | ContractType.ownedCounter => genOwnedCounterTx rng
+  | ContractType.simpleToken => genSimpleTokenTx rng
+  | ContractType.safeCounter => genSafeCounterTx rng
 
 /-!
 ## Generate Test Sequence

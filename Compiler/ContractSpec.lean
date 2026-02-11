@@ -136,11 +136,14 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
     | some slot => pure (YulExpr.call "sload" [YulExpr.lit slot])
     | none => throw s!"Compilation error: unknown storage field '{field}'"
   | Expr.mapping field key =>
-    match findFieldSlot fields field with
-    | some slot => do
-      let keyExpr ← compileExpr fields key
-      pure (YulExpr.call "sload" [YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr]])
-    | none => throw s!"Compilation error: unknown mapping field '{field}'"
+    if !isMapping fields field then
+      throw s!"Compilation error: field '{field}' is not a mapping"
+    else
+      match findFieldSlot fields field with
+      | some slot => do
+        let keyExpr ← compileExpr fields key
+        pure (YulExpr.call "sload" [YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr]])
+      | none => throw s!"Compilation error: unknown mapping field '{field}'"
   | Expr.caller => pure (YulExpr.call "caller" [])
   | Expr.localVar name => pure (YulExpr.ident name)
   | Expr.add a b => do
@@ -202,17 +205,20 @@ private def compileStmt (fields : List Field) : Stmt → Except String (List Yul
         pure [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueExpr])]
     | none => throw s!"Compilation error: unknown storage field '{field}' in setStorage"
   | Stmt.setMapping field key value =>
-    match findFieldSlot fields field with
-    | some slot => do
-        let keyExpr ← compileExpr fields key
-        let valueExpr ← compileExpr fields value
-        pure [
-          YulStmt.expr (YulExpr.call "sstore" [
-            YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr],
-            valueExpr
-          ])
-        ]
-    | none => throw s!"Compilation error: unknown mapping field '{field}' in setMapping"
+    if !isMapping fields field then
+      throw s!"Compilation error: field '{field}' is not a mapping"
+    else
+      match findFieldSlot fields field with
+      | some slot => do
+          let keyExpr ← compileExpr fields key
+          let valueExpr ← compileExpr fields value
+          pure [
+            YulStmt.expr (YulExpr.call "sstore" [
+              YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr],
+              valueExpr
+            ])
+          ]
+      | none => throw s!"Compilation error: unknown mapping field '{field}' in setMapping"
   | Stmt.require cond message =>
     do
       let failCond ← compileRequireFailCond fields cond

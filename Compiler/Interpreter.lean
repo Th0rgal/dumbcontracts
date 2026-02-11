@@ -139,6 +139,36 @@ private def unitResultToNat (result : ContractResult Unit) : ContractResult Nat 
   | ContractResult.revert msg finalState =>
     ContractResult.revert msg finalState
 
+private def runUnit
+    (contract : Contract Unit)
+    (state : ContractState)
+    (slotsToCheck : List Nat)
+    (addrSlotsToCheck : List Nat)
+    (mappingKeysToCheck : List (Nat × Address)) : ExecutionResult :=
+  let result := contract.run state
+  resultToExecutionResult (unitResultToNat result) state slotsToCheck addrSlotsToCheck mappingKeysToCheck
+
+private def runUint
+    (contract : Contract Uint256)
+    (state : ContractState)
+    (slotsToCheck : List Nat)
+    (addrSlotsToCheck : List Nat)
+    (mappingKeysToCheck : List (Nat × Address)) : ExecutionResult :=
+  let result := contract.run state
+  resultToExecutionResult (resultToNat result) state slotsToCheck addrSlotsToCheck mappingKeysToCheck
+
+private def runAddress
+    (contract : Contract Address)
+    (state : ContractState)
+    (slotsToCheck : List Nat)
+    (addrSlotsToCheck : List Nat)
+    (mappingKeysToCheck : List (Nat × Address)) : ExecutionResult :=
+  let result := contract.run state
+  let natResult : ContractResult Nat := match result with
+    | ContractResult.success addr s => ContractResult.success (addressToNat addr) s
+    | ContractResult.revert msg s => ContractResult.revert msg s
+  resultToExecutionResult natResult state slotsToCheck addrSlotsToCheck mappingKeysToCheck
+
 private def failureResult (msg : String) : ExecutionResult :=
   { success := false
     returnValue := none
@@ -167,15 +197,11 @@ def interpretSimpleStorage (tx : Transaction) (state : ContractState) : Executio
   | "store" =>
     match tx.args with
     | [value] =>
-      let result := (exampleSimpleStorageStore value).run state
-      -- Convert Unit result to Nat (0 for success)
-      let natResult := unitResultToNat result
-      resultToExecutionResult natResult state [0] [] []  -- Check slot 0
+      runUnit (exampleSimpleStorageStore value) state [0] [] []  -- Check slot 0
     | _ =>
       failureResult "Invalid args"
   | "retrieve" =>
-    let result := exampleSimpleStorageRetrieve.run state
-    resultToExecutionResult (resultToNat result) state [0] [] []
+    runUint exampleSimpleStorageRetrieve state [0] [] []
   | _ =>
     failureResult "Unknown function"
 
@@ -195,16 +221,11 @@ private def exampleCounterGetCount : Contract Uint256 :=
 def interpretCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
   match tx.functionName with
   | "increment" =>
-    let result := exampleCounterIncrement.run state
-    let natResult := unitResultToNat result
-    resultToExecutionResult natResult state [0] [] []
+    runUnit exampleCounterIncrement state [0] [] []
   | "decrement" =>
-    let result := exampleCounterDecrement.run state
-    let natResult := unitResultToNat result
-    resultToExecutionResult natResult state [0] [] []
+    runUnit exampleCounterDecrement state [0] [] []
   | "getCount" =>
-    let result := exampleCounterGetCount.run state
-    resultToExecutionResult (resultToNat result) state [0] [] []
+    runUint exampleCounterGetCount state [0] [] []
   | _ =>
     failureResult "Unknown function"
 
@@ -224,16 +245,11 @@ private def exampleSafeCounterGetCount : Contract Uint256 :=
 def interpretSafeCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
   match tx.functionName with
   | "increment" =>
-    let result := exampleSafeCounterIncrement.run state
-    let natResult := unitResultToNat result
-    resultToExecutionResult natResult state [0] [] []
+    runUnit exampleSafeCounterIncrement state [0] [] []
   | "decrement" =>
-    let result := exampleSafeCounterDecrement.run state
-    let natResult := unitResultToNat result
-    resultToExecutionResult natResult state [0] [] []
+    runUnit exampleSafeCounterDecrement state [0] [] []
   | "getCount" =>
-    let result := exampleSafeCounterGetCount.run state
-    resultToExecutionResult (resultToNat result) state [0] [] []
+    runUint exampleSafeCounterGetCount state [0] [] []
   | _ =>
     failureResult "Unknown function"
 
@@ -254,18 +270,11 @@ def interpretOwned (tx : Transaction) (state : ContractState) : ExecutionResult 
     | [newOwnerNat] =>
       -- Convert Nat to Address (properly formatted 40-digit hex string)
       let newOwnerAddr := natToAddress newOwnerNat
-      let result := exampleOwnedTransferOwnership newOwnerAddr |>.run state
-      let natResult := unitResultToNat result
-      resultToExecutionResult natResult state [] [0] []
+      runUnit (exampleOwnedTransferOwnership newOwnerAddr) state [] [0] []
     | _ =>
       failureResult "Invalid args"
   | "getOwner" =>
-    let result := exampleOwnedGetOwner.run state
-    -- Convert Address result to Nat for JSON output
-    let natResult : ContractResult Nat := match result with
-      | ContractResult.success addr s => ContractResult.success (addressToNat addr) s
-      | ContractResult.revert msg s => ContractResult.revert msg s
-    resultToExecutionResult natResult state [] [0] []
+    runAddress exampleOwnedGetOwner state [] [0] []
   | _ =>
     failureResult "Unknown function"
 
@@ -290,21 +299,17 @@ def interpretLedger (tx : Transaction) (state : ContractState) : ExecutionResult
   | "deposit" =>
     match tx.args with
     | [amount] =>
-      let result := exampleLedgerDeposit amount |>.run state
-      let natResult := unitResultToNat result
       -- Track mapping changes for sender's balance
       let senderKey := (0, tx.sender)
-      resultToExecutionResult natResult state [] [] [senderKey]
+      runUnit (exampleLedgerDeposit amount) state [] [] [senderKey]
     | _ =>
       failureResult "Invalid args"
   | "withdraw" =>
     match tx.args with
     | [amount] =>
-      let result := exampleLedgerWithdraw amount |>.run state
-      let natResult := unitResultToNat result
       -- Track mapping changes for sender's balance
       let senderKey := (0, tx.sender)
-      resultToExecutionResult natResult state [] [] [senderKey]
+      runUnit (exampleLedgerWithdraw amount) state [] [] [senderKey]
     | _ =>
       failureResult "Invalid args"
   | "transfer" =>
@@ -312,12 +317,10 @@ def interpretLedger (tx : Transaction) (state : ContractState) : ExecutionResult
     | [toNat, amount] =>
       -- Convert Nat to Address (properly formatted 40-digit hex string)
       let toAddr := natToAddress toNat
-      let result := exampleLedgerTransfer toAddr amount |>.run state
-      let natResult := unitResultToNat result
       -- Track mapping changes for both sender and recipient
       let senderKey := (0, tx.sender)
       let recipientKey := (0, toAddr)
-      resultToExecutionResult natResult state [] [] [senderKey, recipientKey]
+      runUnit (exampleLedgerTransfer toAddr amount) state [] [] [senderKey, recipientKey]
     | _ =>
       failureResult "Invalid args"
   | "getBalance" =>
@@ -325,10 +328,9 @@ def interpretLedger (tx : Transaction) (state : ContractState) : ExecutionResult
     | [addrNat] =>
       -- Convert Nat to Address (properly formatted 40-digit hex string)
       let addr := natToAddress addrNat
-      let result := exampleLedgerGetBalance addr |>.run state
       -- Track mapping for the queried address
       let addrKey := (0, addr)
-      resultToExecutionResult (resultToNat result) state [] [] [addrKey]
+      runUint (exampleLedgerGetBalance addr) state [] [] [addrKey]
     | _ =>
       failureResult "Invalid args"
   | _ =>
@@ -356,35 +358,22 @@ private def exampleOwnedCounterTransferOwnership (newOwner : Address) : Contract
 def interpretOwnedCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
   match tx.functionName with
   | "increment" =>
-    let result := exampleOwnedCounterIncrement |>.run state
-    let natResult := unitResultToNat result
     -- Track both storage slots: 0 (owner address) and 1 (count)
-    resultToExecutionResult natResult state [1] [0] []
+    runUnit exampleOwnedCounterIncrement state [1] [0] []
   | "decrement" =>
-    let result := exampleOwnedCounterDecrement |>.run state
-    let natResult := unitResultToNat result
     -- Track both storage slots: 0 (owner address) and 1 (count)
-    resultToExecutionResult natResult state [1] [0] []
+    runUnit exampleOwnedCounterDecrement state [1] [0] []
   | "getCount" =>
-    let result := exampleOwnedCounterGetCount |>.run state
-    resultToExecutionResult (resultToNat result) state [1] [] []
+    runUint exampleOwnedCounterGetCount state [1] [] []
   | "getOwner" =>
-    let result := exampleOwnedCounterGetOwner |>.run state
-    -- Convert Address result to Nat for JSON output
-    let natResult : ContractResult Nat := match result with
-      | ContractResult.success addr s =>
-        ContractResult.success (addressToNat addr) s
-      | ContractResult.revert msg s => ContractResult.revert msg s
-    resultToExecutionResult natResult state [] [0] []
+    runAddress exampleOwnedCounterGetOwner state [] [0] []
   | "transferOwnership" =>
     match tx.args with
     | [newOwnerNat] =>
       -- Convert Nat to Address (properly formatted 40-digit hex string)
       let newOwnerAddr := natToAddress newOwnerNat
-      let result := exampleOwnedCounterTransferOwnership newOwnerAddr |>.run state
-      let natResult := unitResultToNat result
       -- Track owner address storage slot 0
-      resultToExecutionResult natResult state [] [0] []
+      runUnit (exampleOwnedCounterTransferOwnership newOwnerAddr) state [] [0] []
     | _ =>
       failureResult "Invalid args"
   | _ =>
@@ -416,11 +405,9 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
     | [toNat, amount] =>
       -- Convert Nat to Address
       let toAddr := natToAddress toNat
-      let result := exampleSimpleTokenMint toAddr amount |>.run state
-      let natResult := unitResultToNat result
       -- Track: storage slot 2 (totalSupply), owner slot 0, mapping for recipient
       let recipientKey := (1, toAddr)
-      resultToExecutionResult natResult state [2] [0] [recipientKey]
+      runUnit (exampleSimpleTokenMint toAddr amount) state [2] [0] [recipientKey]
     | _ =>
       failureResult "Invalid args"
   | "transfer" =>
@@ -428,12 +415,10 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
     | [toNat, amount] =>
       -- Convert Nat to Address
       let toAddr := natToAddress toNat
-      let result := exampleSimpleTokenTransfer toAddr amount |>.run state
-      let natResult := unitResultToNat result
       -- Track mapping changes for both sender and recipient
       let senderKey := (1, tx.sender)
       let recipientKey := (1, toAddr)
-      resultToExecutionResult natResult state [] [] [senderKey, recipientKey]
+      runUnit (exampleSimpleTokenTransfer toAddr amount) state [] [] [senderKey, recipientKey]
     | _ =>
       failureResult "Invalid args"
   | "balanceOf" =>
@@ -441,29 +426,21 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
     | [addrNat] =>
       -- Convert Nat to Address
       let addr := natToAddress addrNat
-      let result := exampleSimpleTokenBalanceOf addr |>.run state
       -- Track mapping for the queried address
       let addrKey := (1, addr)
-      resultToExecutionResult (resultToNat result) state [] [] [addrKey]
+      runUint (exampleSimpleTokenBalanceOf addr) state [] [] [addrKey]
     | _ =>
       failureResult "Invalid args"
   | "totalSupply" =>
     match tx.args with
     | [] =>
-      let result := exampleSimpleTokenGetTotalSupply |>.run state
-      resultToExecutionResult (resultToNat result) state [2] [] []
+      runUint exampleSimpleTokenGetTotalSupply state [2] [] []
     | _ =>
       failureResult "Invalid args"
   | "owner" =>
     match tx.args with
     | [] =>
-      let result := exampleSimpleTokenGetOwner |>.run state
-      -- Convert Address result to Nat for JSON output
-      let natResult : ContractResult Nat := match result with
-        | ContractResult.success addr s =>
-          ContractResult.success (addressToNat addr) s
-        | ContractResult.revert msg s => ContractResult.revert msg s
-      resultToExecutionResult natResult state [] [0] []
+      runAddress exampleSimpleTokenGetOwner state [] [0] []
     | _ =>
       failureResult "Invalid args"
   | _ =>

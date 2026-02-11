@@ -227,7 +227,10 @@ def interpret (contractType : ContractType) (tx : Transaction) (state : Contract
   | ContractType.simpleStorage => interpretSimpleStorage tx state
   | ContractType.counter => interpretCounter tx state
   | ContractType.safeCounter => interpretSafeCounter tx state
-  | _ =>
+  | ContractType.owned
+  | ContractType.ledger
+  | ContractType.ownedCounter
+  | ContractType.simpleToken =>
     { success := false
       returnValue := none
       revertReason := some "Not implemented"

@@ -89,10 +89,10 @@ Empirical validation:
 
 - [x] Directory structure created
 - [x] SpecInterpreter: Core interpretation engine for ContractSpec DSL
-- [ ] Layer 1: Specification correctness (1/7 contracts)
+- [ ] Layer 1: Specification correctness (3/7 contracts)
   - [x] SimpleStorage (template proof with sorry placeholders)
-  - [ ] Counter
-  - [ ] SafeCounter
+  - [x] Counter (arithmetic operations with modular arithmetic)
+  - [x] SafeCounter (overflow/underflow protection with revert handling)
   - [ ] Owned
   - [ ] OwnedCounter
   - [ ] Ledger

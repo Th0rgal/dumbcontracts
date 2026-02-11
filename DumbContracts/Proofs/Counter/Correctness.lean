@@ -88,7 +88,8 @@ theorem increment_decrement_meets_cancel (s : ContractState) :
   let s'' := ((decrement).run s').snd
   Specs.Counter.increment_decrement_cancel s s'' := by
   simp [Specs.Counter.increment_decrement_cancel]
-  exact Proofs.Counter.increment_decrement_cancel s
+  intro h_range
+  exact Proofs.Counter.increment_decrement_cancel s h_range
 
 /-! ## Read-Only Well-Formedness -/
 

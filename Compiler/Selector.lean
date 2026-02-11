@@ -25,11 +25,14 @@ private def parseHexChar? (c : Char) : Option Nat :=
     none
 
 private def hexToNat? (s : String) : Option Nat :=
-  s.foldl (fun acc c =>
-    match acc, parseHexChar? c with
-    | some n, some v => some (n * 16 + v)
-    | _, _ => none
-  ) (some 0)
+  if s.isEmpty then
+    none
+  else
+    s.foldl (fun acc c =>
+      match acc, parseHexChar? c with
+      | some n, some v => some (n * 16 + v)
+      | _, _ => none
+    ) (some 0)
 
 private def parseSelectorLine (line : String) : Option Nat :=
   let trimmed := line.trim

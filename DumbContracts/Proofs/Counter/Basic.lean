@@ -164,10 +164,10 @@ theorem increment_twice_adds_two (s : ContractState) :
       = EVM.Uint256.add (((increment).run s).snd.storage 0) 1 := h2
     _ = EVM.Uint256.add (EVM.Uint256.add (s.storage 0) 1) 1 := by rw [h1]
 
-theorem increment_decrement_cancel (s : ContractState) :
+theorem increment_decrement_cancel (s : ContractState) (h_range : s.storage 0 < 2^256) :
   let s' := ((increment).run s).snd
   let s'' := ((decrement).run s').snd
-  s''.storage 0 = EVM.Uint256.sub (EVM.Uint256.add (s.storage 0) 1) 1 := by
+  s''.storage 0 = s.storage 0 := by
   have h1 : (((increment).run s).snd).storage 0 = EVM.Uint256.add (s.storage 0) 1 := increment_adds_one s
   have h2 : (((decrement).run (((increment).run s).snd)).snd).storage 0 =
       EVM.Uint256.sub (((increment).run s).snd.storage 0) 1 :=
@@ -175,6 +175,10 @@ theorem increment_decrement_cancel (s : ContractState) :
   calc (((decrement).run (((increment).run s).snd)).snd).storage 0
       = EVM.Uint256.sub (((increment).run s).snd.storage 0) 1 := h2
     _ = EVM.Uint256.sub (EVM.Uint256.add (s.storage 0) 1) 1 := by rw [h1]
+    _ = s.storage 0 := by
+      have h_one : (1:Nat) < 2^256 := by
+        simp_arith
+      simpa using (EVM.Uint256.sub_add_cancel_of_lt h_range h_one)
 
 /-! ## State Preservation -/
 

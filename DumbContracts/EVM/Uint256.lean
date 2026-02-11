@@ -55,6 +55,48 @@ def willSubUnderflow (a b : Nat) : Bool :=
   theorem sub_eq_of_le {a b : Nat} (h : b ≤ a) : sub a b = a - b := by
     simp [sub, h]
 
+  /-- Cancellation for modular addition/subtraction on valid uint256 inputs. -/
+  theorem sub_add_cancel_of_lt {a b : Nat} (ha : a < 2^256) (hb : b < 2^256) :
+    sub (add a b) b = a := by
+    let m : Nat := 2^256
+    have ha' : a < m := by simpa [m] using ha
+    have hb' : b < m := by simpa [m] using hb
+    by_cases h : a + b < m
+    · have hb_le : b ≤ a + b := Nat.le_add_left _ _
+      have hmod : (a + b) % m = a + b := Nat.mod_eq_of_lt h
+      simp [add, sub, hmod, hb_le, Nat.add_sub_cancel]
+    · have h_ge : m ≤ a + b := Nat.le_of_not_gt h
+      have hlt_sum : a + b < m + m := Nat.add_lt_add ha' hb'
+      have hlt : a + b - m < m := Nat.sub_lt_left_of_lt_add h_ge hlt_sum
+      have hmod : (a + b) % m = a + b - m := by
+        have hmod' : (a + b) % m = (a + b - m) % m := Nat.mod_eq_sub_mod h_ge
+        have hmod'' : (a + b - m) % m = a + b - m := Nat.mod_eq_of_lt hlt
+        simpa [hmod' , hmod'']
+      have hlt' : a + b < b + m := by
+        have h' : a + b < m + b := Nat.add_lt_add_right ha' b
+        simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h'
+      have hbgt : b > a + b - m := by
+        exact Nat.sub_lt_right_of_lt_add h_ge hlt'
+      have hbnot : ¬ b ≤ a + b - m := Nat.not_le_of_gt hbgt
+      have hle : a + b - m ≤ b := Nat.le_of_lt hbgt
+      have hsum : (m - a) + (a + b - m) = b := by
+        have hma : a ≤ m := Nat.le_of_lt ha'
+        calc
+          (m - a) + (a + b - m)
+              = (m - a) + (a + b) - m := by
+                  symm
+                  exact Nat.add_sub_assoc h_ge (m - a)
+          _ = ((m - a) + a) + b - m := by
+                  simp [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+          _ = m + b - m := by
+                  simp [Nat.sub_add_cancel hma, Nat.add_assoc]
+          _ = b := by
+                  simpa using (Nat.add_sub_cancel_left m b)
+      have hdiff : b - (a + b - m) = m - a := by
+        exact (Nat.sub_eq_iff_eq_add hle).2 hsum.symm
+      -- Use the wrap-around branch to cancel.
+      simp [add, sub, hmod, hbnot, hdiff, Nat.sub_sub_self (Nat.le_of_lt ha')]
+
 end Uint256
 
 end DumbContracts.EVM

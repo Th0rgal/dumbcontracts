@@ -118,22 +118,32 @@ def main (args : List String) : IO Unit := do
   | [contractType, countStr, seedStr] =>
     let count := countStr.toNat!
     let seed := seedStr.toNat!
-    let contractTypeEnum := match contractType with
-      | "SimpleStorage" => ContractType.simpleStorage
-      | "Counter" => ContractType.counter
-      | _ => ContractType.simpleStorage
-    let txs := genTestSequence contractTypeEnum count seed
-    -- Output as JSON array
-    IO.println "["
-    let mut isFirst := true
-    for tx in txs do
-      if !isFirst then IO.println ","
-      let argsStr := String.intercalate "," (tx.args.map toString)
-      let jsonStr := "  {" ++ "\"sender\":\"" ++ tx.sender ++ "\",\"function\":\"" ++ tx.functionName ++ "\",\"args\":[" ++ argsStr ++ "]}"
-      IO.print jsonStr
-      isFirst := false
-    IO.println ""
-    IO.println "]"
+    let contractTypeEnum? : Option ContractType := match contractType with
+      | "SimpleStorage" => some ContractType.simpleStorage
+      | "Counter" => some ContractType.counter
+      | "Owned" => some ContractType.owned
+      | "Ledger" => some ContractType.ledger
+      | "OwnedCounter" => some ContractType.ownedCounter
+      | "SimpleToken" => some ContractType.simpleToken
+      | "SafeCounter" => some ContractType.safeCounter
+      | _ => none
+    match contractTypeEnum? with
+    | some contractTypeEnum =>
+      let txs := genTestSequence contractTypeEnum count seed
+      -- Output as JSON array
+      IO.println "["
+      let mut isFirst := true
+      for tx in txs do
+        if !isFirst then IO.println ","
+        let argsStr := String.intercalate "," (tx.args.map toString)
+        let jsonStr := "  {" ++ "\"sender\":\"" ++ tx.sender ++ "\",\"function\":\"" ++ tx.functionName ++ "\",\"args\":[" ++ argsStr ++ "]}"
+        IO.print jsonStr
+        isFirst := false
+      IO.println ""
+      IO.println "]"
+    | none =>
+      throw <| IO.userError
+        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter"
   | _ =>
     IO.println "Usage: random-gen <contract> <count> <seed>"
     IO.println "Example: random-gen SimpleStorage 100 42"

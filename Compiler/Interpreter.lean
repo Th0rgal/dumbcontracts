@@ -17,6 +17,7 @@ import DumbContracts.Examples.Counter
 import DumbContracts.Examples.SafeCounter
 import DumbContracts.Examples.Owned
 import DumbContracts.Examples.Ledger
+import DumbContracts.Examples.OwnedCounter
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
@@ -383,6 +384,122 @@ def interpretLedger (tx : Transaction) (state : ContractState) : ExecutionResult
     }
 
 /-!
+## OwnedCounter Interpreter
+-/
+
+private def exampleOwnedCounterIncrement : Contract Unit :=
+  OwnedCounter.increment
+
+private def exampleOwnedCounterDecrement : Contract Unit :=
+  OwnedCounter.decrement
+
+private def exampleOwnedCounterGetCount : Contract Nat :=
+  OwnedCounter.getCount
+
+private def exampleOwnedCounterGetOwner : Contract Address :=
+  OwnedCounter.getOwner
+
+private def exampleOwnedCounterTransferOwnership (newOwner : Address) : Contract Unit :=
+  OwnedCounter.transferOwnership newOwner
+
+def interpretOwnedCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  match tx.functionName with
+  | "increment" =>
+    match tx.args with
+    | [] =>
+      let result := exampleOwnedCounterIncrement |>.run state
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success _ s => ContractResult.success 0 s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      -- Track both storage slots: 0 (owner address) and 1 (count)
+      resultToExecutionResult natResult state [1] [0] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "decrement" =>
+    match tx.args with
+    | [] =>
+      let result := exampleOwnedCounterDecrement |>.run state
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success _ s => ContractResult.success 0 s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      -- Track both storage slots: 0 (owner address) and 1 (count)
+      resultToExecutionResult natResult state [1] [0] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "getCount" =>
+    match tx.args with
+    | [] =>
+      let result := exampleOwnedCounterGetCount |>.run state
+      resultToExecutionResult result state [1] [] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "getOwner" =>
+    match tx.args with
+    | [] =>
+      let result := exampleOwnedCounterGetOwner |>.run state
+      -- Convert Address result to Nat for JSON output
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success addr s =>
+          -- Parse address as hex to get Nat representation
+          let addrNat := parseHexNat? addr |>.getD 0
+          ContractResult.success addrNat s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      resultToExecutionResult natResult state [] [0] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | "transferOwnership" =>
+    match tx.args with
+    | [newOwnerNat] =>
+      -- Convert Nat to Address (properly formatted 40-digit hex string)
+      let newOwnerAddr := natToAddress newOwnerNat
+      let result := exampleOwnedCounterTransferOwnership newOwnerAddr |>.run state
+      let natResult : ContractResult Nat := match result with
+        | ContractResult.success _ s => ContractResult.success 0 s
+        | ContractResult.revert msg s => ContractResult.revert msg s
+      -- Track owner address storage slot 0
+      resultToExecutionResult natResult state [] [0] []
+    | _ =>
+      { success := false
+        returnValue := none
+        revertReason := some "Invalid args"
+        storageChanges := []
+        storageAddrChanges := []
+        mappingChanges := []
+      }
+  | _ =>
+    { success := false
+      returnValue := none
+      revertReason := some "Unknown function"
+      storageChanges := []
+      storageAddrChanges := []
+      mappingChanges := []
+    }
+
+/-!
 ## Generic Interpreter Interface
 
 For use by the differential testing harness.
@@ -395,7 +512,7 @@ def interpret (contractType : ContractType) (tx : Transaction) (state : Contract
   | ContractType.safeCounter => interpretSafeCounter tx state
   | ContractType.owned => interpretOwned tx state
   | ContractType.ledger => interpretLedger tx state
-  | ContractType.ownedCounter
+  | ContractType.ownedCounter => interpretOwnedCounter tx state
   | ContractType.simpleToken =>
     { success := false
       returnValue := none

@@ -88,7 +88,15 @@ Empirical validation:
 ## Status
 
 - [x] Directory structure created
-- [ ] Layer 1: Specification correctness (0/7 contracts)
+- [x] SpecInterpreter: Core interpretation engine for ContractSpec DSL
+- [ ] Layer 1: Specification correctness (1/7 contracts)
+  - [x] SimpleStorage (template proof with sorry placeholders)
+  - [ ] Counter
+  - [ ] SafeCounter
+  - [ ] Owned
+  - [ ] OwnedCounter
+  - [ ] Ledger
+  - [ ] SimpleToken
 - [ ] Layer 2: IR generation correctness
 - [ ] Layer 3: Yul codegen correctness
 - [ ] End-to-end theorem

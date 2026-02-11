@@ -7,9 +7,10 @@
 - Proof structures: 7/7 contracts (100%)
 - SimpleStorage: 4/4 theorems proven (100%) ✅
 - Counter: 6/7 theorems proven (86%) ⚠️
-- Total theorems proven: 10/11 core correctness theorems (91%)
+- SafeCounter: 2/8 theorems proven (25%) ⚠️
+- Total theorems proven: 12/19 Phase 1+2 theorems (63%)
 **Build Status:** ✅ All files compile successfully
-**Lines Added:** 1,665 lines across 16 commits
+**Lines Added:** 1,679 lines across 19 commits
 
 ## Completed Work
 
@@ -78,23 +79,29 @@ def edslToSpecStorage (state : ContractState) : SpecStorage :=
 
 ---
 
-#### SafeCounter (117 lines) ✅
+#### SafeCounter (117 lines) ⚠️ 25% Complete
 **Complexity:** ⭐⭐⭐ Complex
 **Patterns:** Overflow/underflow protection with reverts
 
-**Theorems:**
-- `safeIncrement_correct`: Increment with overflow check
-- `safeDecrement_correct`: Decrement with underflow check
-- `safeGetCount_correct`: Getter equivalence
-- `safeIncrement_reverts_at_max`: Revert at MAX_UINT256
-- `safeDecrement_reverts_at_zero`: Revert at 0
-- `safeIncrement_succeeds_below_max`: Success conditions
-- `safeDecrement_succeeds_above_zero`: Success conditions
+**Theorems (2/8 proven):**
+- ⚠️ `safeIncrement_correct`: Increment with overflow check (needs Option bind automation)
+- ⚠️ `safeDecrement_correct`: Decrement with underflow check (needs Option bind automation)
+- ✅ `safeGetCount_correct`: Getter equivalence
+- ✅ `safeGetCount_preserves_state`: Getter doesn't modify storage
+- ⚠️ `safeIncrement_reverts_at_max`: Revert at MAX_UINT256 (monadic revert handling)
+- ⚠️ `safeDecrement_reverts_at_zero`: Revert at 0 (monadic revert handling)
+- ⚠️ `safeIncrement_succeeds_below_max`: Success conditions (Option.some case)
+- ⚠️ `safeDecrement_succeeds_above_zero`: Success conditions (Option.some case)
 
 **New Concepts:**
-- Success/failure case handling
+- Success/failure case handling with Option
 - `isSuccess` boolean checks
 - Boundary condition proofs
+- Monadic code with requireSomeUint
+- safeAdd/safeSub overflow detection
+
+**Technical Challenge:**
+Remaining proofs need automation for do-notation with Option matching and require handling
 
 ---
 
@@ -373,13 +380,13 @@ lake build Compiler.Proofs.Automation
 ### Warning Summary
 - SimpleStorage: 0 sorry warnings ✅
 - Counter: 2 sorry warnings (evalExpr helper + multiple_increments)
-- SafeCounter: 8 sorry warnings
+- SafeCounter: 6 sorry warnings (down from 8, revert/success conditions)
 - Owned: 8 sorry warnings
 - OwnedCounter: 11 sorry warnings
 - Ledger: 10 sorry warnings
 - SimpleToken: 13 sorry warnings
 - Automation: 4 sorry warnings
-- **Total:** 56 sorry placeholders (down from 65, -14%)
+- **Total:** 54 sorry placeholders (down from 65, -17%)
 
 ---
 
@@ -387,13 +394,13 @@ lake build Compiler.Proofs.Automation
 
 | Metric | Value |
 |--------|-------|
-| Total Lines | 1,665 |
+| Total Lines | 1,679 |
 | Proof Files | 7 |
 | Infrastructure Files | 2 |
-| Total Core Theorems | 11 (SimpleStorage + Counter) |
-| Proven Core Theorems | 10 (91%) |
-| Placeholder Theorems | 56 (down from 65) |
-| Commits | 16 |
+| Total Phase 1+2 Theorems | 19 (SimpleStorage + Counter + SafeCounter) |
+| Proven Theorems | 12 (63%) |
+| Placeholder Theorems | 54 (down from 65) |
+| Commits | 19 |
 | Build Status | ✅ Success |
 
 ---
@@ -410,7 +417,7 @@ lake build Compiler.Proofs.Automation
 ### Short Term (1-2 Weeks)
 1. ✅ Complete SimpleStorage proofs (4/4 proven)
 2. ⚠️ Complete Counter proofs (6/7 proven, 1 remaining: multiple_increments)
-3. Begin SafeCounter proofs
+3. ⚠️ Complete SafeCounter proofs (2/8 proven, 6 remaining: need Option bind automation)
 
 ### Medium Term (1-2 Months)
 1. Complete all simple storage proofs (Phase 1)

@@ -132,9 +132,12 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
   | Expr.param name => pure (YulExpr.ident name)
   | Expr.constructorArg idx => pure (YulExpr.ident s!"arg{idx}")  -- Constructor args loaded as argN
   | Expr.storage field =>
-    match findFieldSlot fields field with
-    | some slot => pure (YulExpr.call "sload" [YulExpr.lit slot])
-    | none => throw s!"Compilation error: unknown storage field '{field}'"
+    if isMapping fields field then
+      throw s!"Compilation error: field '{field}' is a mapping; use Expr.mapping"
+    else
+      match findFieldSlot fields field with
+      | some slot => pure (YulExpr.call "sload" [YulExpr.lit slot])
+      | none => throw s!"Compilation error: unknown storage field '{field}'"
   | Expr.mapping field key =>
     if !isMapping fields field then
       throw s!"Compilation error: field '{field}' is not a mapping"
@@ -231,11 +234,14 @@ private def compileStmt (fields : List Field) : Stmt → Except String (List Yul
       let valueExpr ← compileExpr fields value
       pure [YulStmt.let_ name valueExpr]
   | Stmt.setStorage field value =>
-    match findFieldSlot fields field with
-    | some slot => do
-        let valueExpr ← compileExpr fields value
-        pure [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueExpr])]
-    | none => throw s!"Compilation error: unknown storage field '{field}' in setStorage"
+    if isMapping fields field then
+      throw s!"Compilation error: field '{field}' is a mapping; use setMapping"
+    else
+      match findFieldSlot fields field with
+      | some slot => do
+          let valueExpr ← compileExpr fields value
+          pure [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueExpr])]
+      | none => throw s!"Compilation error: unknown storage field '{field}' in setStorage"
   | Stmt.setMapping field key value =>
     if !isMapping fields field then
       throw s!"Compilation error: field '{field}' is not a mapping"

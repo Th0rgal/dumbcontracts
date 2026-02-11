@@ -72,12 +72,7 @@ def extractMappingChanges (before after : ContractState) (keys : List (Nat × Ad
 
 -- Helper: Normalize address to lowercase for consistent comparison
 private def normalizeAddress (addr : Address) : Address :=
-  let lowerChars := addr.data.map fun c =>
-    if c >= 'A' && c <= 'F' then
-      Char.ofNat (c.toNat + 32)  -- Convert A-F to a-f
-    else
-      c
-  String.mk lowerChars
+  addr.map Char.toLower
 
 -- Helper: Convert Nat to properly formatted address (0x + 40 hex digits, lowercase)
 private def natToAddress (n : Nat) : Address :=

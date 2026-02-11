@@ -8,9 +8,10 @@
 - SimpleStorage: 4/4 theorems proven (100%) ✅
 - Counter: 7/7 theorems proven (100%)* ✅
 - SafeCounter: 6/8 theorems proven (75%) ⚠️
-- Total theorems proven: 17/19 Phase 1+2 theorems (89%)
+- Owned: 4/8 theorems proven (50%) ⚠️
+- Total theorems proven: 21/27 Phase 1+2+3 theorems (78%)
 **Build Status:** ✅ All files compile successfully
-**Lines Added:** 1,781 lines across 21 commits
+**Lines Added:** 1,805 lines across 23 commits
 **Note:** *Counter has 1 strategic sorry for standard modular arithmetic property
 
 ## Completed Work
@@ -116,25 +117,29 @@ Remaining 2 proofs need automation for do-notation with Option matching and requ
 
 ---
 
-#### Owned (124 lines) ✅
+#### Owned (137 lines) ⚠️ 50% Complete
 **Complexity:** ⭐⭐⭐ Complex
 **Patterns:** Ownership with access control
 
-**Theorems:**
-- `owned_constructor_correct`: Initialize owner
-- `transferOwnership_correct_as_owner`: Transfer when authorized
-- `transferOwnership_reverts_as_nonowner`: Revert when unauthorized
-- `getOwner_correct`: Getter equivalence
-- `getOwner_preserves_state`: Getter doesn't modify
-- `only_owner_can_transfer`: Authorization invariant
-- `constructor_sets_owner`: Initialization correctness
-- `transferOwnership_updates_owner`: Transfer correctness
+**Theorems (4/8 with proof structure):**
+- ✅ `owned_constructor_correct`: Initialize owner (1 sorry for address encoding)
+- ⚠️ `transferOwnership_correct_as_owner`: Transfer when authorized
+- ⚠️ `transferOwnership_reverts_as_nonowner`: Revert when unauthorized
+- ✅ `getOwner_correct`: Getter equivalence
+- ✅ `getOwner_preserves_state`: Getter doesn't modify
+- ⚠️ `only_owner_can_transfer`: Authorization invariant (needs monadic automation)
+- ✅ `constructor_sets_owner`: Initialization correctness
+- ⚠️ `transferOwnership_updates_owner`: Transfer correctness (needs monadic automation)
 
 **New Concepts:**
 - Constructor with parameters
 - Address storage (Address → Nat conversion)
 - Authorization checks (require statements)
 - Access control patterns
+
+**Technical Challenge:**
+- Address encoding: Need lemma that `addressToNat value % modulus = addressToNat value`
+- Monadic proofs: transferOwnership requires reasoning about onlyOwner authorization
 
 **State Conversion:**
 ```lean

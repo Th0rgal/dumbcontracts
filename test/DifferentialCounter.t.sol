@@ -110,9 +110,8 @@ contract DifferentialCounter is YulTestBase {
         }
 
         // Validate: Storage changes must match
-        uint256 edslStorageChange = _extractStorageChange(edslResult, 0);
-        if (edslStorageChange != type(uint256).max) {
-            // EDSL reported a storage change, update our tracking
+        (bool hasStorageChange, uint256 edslStorageChange) = _extractStorageChange(edslResult, 0);
+        if (hasStorageChange) {
             edslStorage[0] = edslStorageChange;
         }
 
@@ -132,7 +131,7 @@ contract DifferentialCounter is YulTestBase {
     function _runInterpreter(
         string memory functionName,
         address sender,
-        uint256 /* arg0 */,
+        uint256 arg0,
         string memory storageState
     ) internal returns (string memory) {
         // Build command with storage state
@@ -150,7 +149,9 @@ contract DifferentialCounter is YulTestBase {
             functionName,
             " ",
             vm.toString(sender),
-            storageState.length > 0 ? string.concat(" \"", storageState, "\"") : ""
+            " ",
+            vm.toString(arg0),
+            bytes(storageState).length > 0 ? string.concat(" \"", storageState, "\"") : ""
         );
 
         // Call Lean interpreter
@@ -199,11 +200,11 @@ contract DifferentialCounter is YulTestBase {
         return result;
     }
 
-    function _extractStorageChange(string memory json, uint256 slot) internal pure returns (uint256) {
+    function _extractStorageChange(string memory json, uint256 slot) internal pure returns (bool, uint256) {
         bytes memory jsonBytes = bytes(json);
         bytes memory slotPattern = bytes(string.concat("\"slot\":", vm.toString(slot)));
 
-        if (jsonBytes.length < slotPattern.length) return type(uint256).max;
+        if (jsonBytes.length < slotPattern.length) return (false, 0);
         for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
             bool found = true;
             for (uint j = 0; j < slotPattern.length; j++) {
@@ -214,7 +215,7 @@ contract DifferentialCounter is YulTestBase {
             }
             if (found) {
                 bytes memory valuePattern = bytes("\"value\":");
-                if (jsonBytes.length < valuePattern.length) return type(uint256).max;
+                if (jsonBytes.length < valuePattern.length) return (false, 0);
                 for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
                     bool valueFound = true;
                     for (uint l = 0; l < valuePattern.length; l++) {
@@ -233,12 +234,12 @@ contract DifferentialCounter is YulTestBase {
                         for (uint m = 0; m < end - start; m++) {
                             numBytes[m] = jsonBytes[start + m];
                         }
-                        return _stringToUint(string(numBytes));
+                        return (true, _stringToUint(string(numBytes)));
                     }
                 }
             }
         }
-        return type(uint256).max;
+        return (false, 0);
     }
 
     function _buildStorageString() internal view returns (string memory) {

@@ -109,9 +109,8 @@ contract DifferentialSimpleStorage is YulTestBase {
 
         // Validate: Storage changes must match
         // Parse EDSL storage changes from JSON and update tracking
-        uint256 edslStorageChange = _extractStorageChange(edslResult, 0);
-        if (edslStorageChange != type(uint256).max) {
-            // EDSL reported a storage change, update our tracking
+        (bool hasStorageChange, uint256 edslStorageChange) = _extractStorageChange(edslResult, 0);
+        if (hasStorageChange) {
             edslStorage[0] = edslStorageChange;
         }
 
@@ -214,14 +213,14 @@ contract DifferentialSimpleStorage is YulTestBase {
     /**
      * @notice Extract storage change for a specific slot from JSON
      * Parses: "storageChanges":[{"slot":0,"value":42}]
-     * Returns type(uint256).max if slot not found in changes
+     * Returns (false, 0) if slot not found in changes
      */
-    function _extractStorageChange(string memory json, uint256 slot) internal pure returns (uint256) {
+    function _extractStorageChange(string memory json, uint256 slot) internal pure returns (bool, uint256) {
         bytes memory jsonBytes = bytes(json);
         bytes memory slotPattern = bytes(string.concat("\"slot\":", vm.toString(slot)));
 
         // Find the slot pattern
-        if (jsonBytes.length < slotPattern.length) return type(uint256).max;
+        if (jsonBytes.length < slotPattern.length) return (false, 0);
         for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
             bool found = true;
             for (uint j = 0; j < slotPattern.length; j++) {
@@ -234,7 +233,7 @@ contract DifferentialSimpleStorage is YulTestBase {
                 // Found the slot, now find the value after it
                 // Look for "value": pattern
                 bytes memory valuePattern = bytes("\"value\":");
-                if (jsonBytes.length < valuePattern.length) return type(uint256).max;
+                if (jsonBytes.length < valuePattern.length) return (false, 0);
                 for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
                     bool valueFound = true;
                     for (uint l = 0; l < valuePattern.length; l++) {
@@ -254,12 +253,12 @@ contract DifferentialSimpleStorage is YulTestBase {
                         for (uint m = 0; m < end - start; m++) {
                             numBytes[m] = jsonBytes[start + m];
                         }
-                        return _stringToUint(string(numBytes));
+                        return (true, _stringToUint(string(numBytes)));
                     }
                 }
             }
         }
-        return type(uint256).max; // Not found
+        return (false, 0); // Not found
     }
 
     /**

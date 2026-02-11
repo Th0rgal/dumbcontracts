@@ -6,10 +6,12 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.EVM.Uint256
 
 namespace DumbContracts.Specs.SimpleToken
 
 open DumbContracts
+open DumbContracts.EVM.Uint256
 
 /-! ## State Invariants
 
@@ -78,7 +80,7 @@ def transfer_preserves_supply (s s' : ContractState) : Prop :=
 
 /-- Mint increases total supply by exactly the minted amount -/
 def mint_increases_supply (amount : Uint256) (s s' : ContractState) : Prop :=
-  s'.storage 2 = s.storage 2 + amount
+  s'.storage 2 = add (s.storage 2) amount
 
 /-- Access control: only owner can mint
     Note: This requires modeling of the require/onlyOwner guard

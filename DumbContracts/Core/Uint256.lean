@@ -229,8 +229,7 @@ theorem sub_val_of_gt {a b : Uint256} (h : b.val > a.val) :
             simp [HAdd.hAdd, add, ofNat, m]
     _ = ((a.val + b.val) + c.val) % m := by
             -- Normalize through add_mod
-            have h := (Nat.add_mod (a.val + b.val) c.val m).symm
-            simpa [hmod_c] using h
+            simp [Nat.add_mod, hmod_c]
     _ = (a.val + b.val + c.val) % m := by
             simp [Nat.add_assoc]
     _ = (a.val + (b.val + c.val)) % m := by
@@ -317,14 +316,13 @@ theorem sub_val_of_gt {a b : Uint256} (h : b.val > a.val) :
 @[simp] theorem add_mul (a b c : Uint256) : (a + b) * c = a * c + b * c := by
   apply ext
   let m : Nat := modulus
-  have hmod_c : c.val % m = c.val := Nat.mod_eq_of_lt (by simpa [m] using c.isLt)
   calc
     ((a + b) * c).val
         = (((a.val + b.val) % m) * c.val) % m := by
             simp [HMul.hMul, HAdd.hAdd, add, mul, ofNat, m]
     _ = ((a.val + b.val) * c.val) % m := by
             -- drop the inner mod on the left factor
-            simpa [m] using (Nat.mod_mul_mod (a.val + b.val) c.val m)
+            simp [m]
     _ = (a.val * c.val + b.val * c.val) % m := by
             simp [Nat.add_mul, Nat.add_assoc]
     _ = (((a.val * c.val) % m) + ((b.val * c.val) % m)) % m := by

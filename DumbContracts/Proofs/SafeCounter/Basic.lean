@@ -41,7 +41,7 @@ theorem getCount_preserves_state (s : ContractState) :
 /-! ## Increment Correctness -/
 
 /-- Helper: relate EVM modular add to Nat addition when bounded. -/
-theorem evm_add_eq_of_no_overflow (a b : Uint256) (h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
+theorem evm_add_eq_of_no_overflow (a b : Uint256) (_h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
   add a b = a + b := by
   rfl
 
@@ -95,7 +95,7 @@ theorem increment_meets_spec (s : ContractState)
   rw [increment_unfold s h_no_overflow]
   simp only [ContractResult.snd, increment_spec]
   refine ⟨?_, ?_, trivial, trivial, trivial, trivial⟩
-  · simpa [evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
+  · simp [evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
   intro slot h_ne
   simp [beq_iff_eq]
   intro h_eq; exact absurd h_eq h_ne
@@ -213,7 +213,7 @@ theorem increment_preserves_bounds (s : ContractState)
   simpa using (DumbContracts.Core.Uint256.val_le_max (s.storage 0 + 1))
 
 theorem decrement_preserves_bounds (s : ContractState)
-  (h_bounds : count_in_bounds s)
+  (_h_bounds : count_in_bounds s)
   (h_no_underflow : (s.storage 0 : Nat) ≥ 1) :
   let s' := ((decrement).run s).snd
   count_in_bounds s' := by

@@ -98,7 +98,7 @@ theorem safeSub_result_le (a b : Uint256) (c : Uint256)
     have hle : (c : Nat) ≤ (a : Nat) := by
       have hsub : ((a - b : Uint256) : Nat) = (a : Nat) - (b : Nat) :=
         DumbContracts.Core.Uint256.sub_eq_of_le hle'
-      simpa [hc.symm, hsub] using (Nat.sub_le (a : Nat) (b : Nat))
+      simp [hc.symm, hsub]
     simpa using hle
 
 /-! ## safeMul Correctness -/
@@ -196,7 +196,7 @@ theorem safeDiv_self (a : Uint256) (h : a ≠ 0) :
       _ = 1 % DumbContracts.Core.Uint256.modulus := by
         simp [Nat.div_self hpos]
       _ = 1 := by
-        simpa [Nat.mod_eq_of_lt hlt]
+        simp [Nat.mod_eq_of_lt hlt]
   simp [safeDiv, h_not, hdiv]
 
 /-! ## Cross-Operation Properties -/

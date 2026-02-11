@@ -74,7 +74,7 @@ private theorem map_sum_point_update
         calc
           delta * (1 + countOccU target rest)
               = (1 + countOccU target rest) * delta := by
-                  simpa [DumbContracts.Core.Uint256.mul_comm]
+                  simp [DumbContracts.Core.Uint256.mul_comm]
           _ = delta + countOccU target rest * delta := by
                   simpa using
                     (DumbContracts.Core.Uint256.add_mul
@@ -99,8 +99,7 @@ private theorem map_sum_point_update
 private theorem map_sum_point_decrease
   (f f' : Address → Uint256) (target : Address) (delta : Uint256)
   (h_target : f' target = f target - delta)
-  (h_other : ∀ addr, addr ≠ target → f' addr = f addr)
-  (h_bal : f target ≥ delta) :
+  (h_other : ∀ addr, addr ≠ target → f' addr = f addr) :
   ∀ addrs : List Address,
     (addrs.map f').sum + countOccU target addrs * delta = (addrs.map f).sum := by
   intro addrs
@@ -114,7 +113,7 @@ private theorem map_sum_point_decrease
         calc
           delta * (1 + countOccU target rest)
               = (1 + countOccU target rest) * delta := by
-                  simpa [DumbContracts.Core.Uint256.mul_comm]
+                  simp [DumbContracts.Core.Uint256.mul_comm]
           _ = delta + countOccU target rest * delta := by
                   simpa using
                     (DumbContracts.Core.Uint256.add_mul
@@ -147,8 +146,7 @@ private theorem map_sum_transfer_eq
   (h_ne : src ≠ dst)
   (h_src : f' src = f src - d)
   (h_dst : f' dst = f dst + d)
-  (h_other : ∀ addr, addr ≠ src → addr ≠ dst → f' addr = f addr)
-  (h_bal : f src ≥ d) :
+  (h_other : ∀ addr, addr ≠ src → addr ≠ dst → f' addr = f addr) :
   ∀ addrs : List Address,
     (addrs.map f').sum + countOccU src addrs * d
     = (addrs.map f).sum + countOccU dst addrs * d := by
@@ -163,7 +161,7 @@ private theorem map_sum_transfer_eq
         calc
           d * (1 + countOccU src rest)
               = (1 + countOccU src rest) * d := by
-                  simpa [DumbContracts.Core.Uint256.mul_comm]
+                  simp [DumbContracts.Core.Uint256.mul_comm]
           _ = d + countOccU src rest * d := by
                   simpa using
                     (DumbContracts.Core.Uint256.add_mul
@@ -188,7 +186,7 @@ private theorem map_sum_transfer_eq
           calc
             d * (1 + countOccU dst rest)
                 = (1 + countOccU dst rest) * d := by
-                    simpa [DumbContracts.Core.Uint256.mul_comm]
+                    simp [DumbContracts.Core.Uint256.mul_comm]
             _ = d + countOccU dst rest * d := by
                     simpa using
                       (DumbContracts.Core.Uint256.add_mul
@@ -268,7 +266,7 @@ theorem withdraw_sum_equation (s : ContractState) (amount : Uint256)
   exact map_sum_point_decrease
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)
-    s.sender amount h_dec h_other h_balance
+    s.sender amount h_dec h_other
 
 /-- Corollary: for a list where sender appears exactly once, withdraw removes exactly `amount`. -/
 theorem withdraw_sum_singleton_sender (s : ContractState) (amount : Uint256)
@@ -311,7 +309,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)
     s.sender to amount h_ne h_sender_bal' h_recip_bal'
-    (fun addr h1 h2 => h_other_bal addr h1 h2) h_balance
+    (fun addr h1 h2 => h_other_bal addr h1 h2)
 
 /-- Corollary: for NoDup lists where sender and to each appear once,
     the total sum is exactly preserved by transfer. -/
@@ -357,7 +355,7 @@ theorem deposit_withdraw_sum_cancel (s : ContractState) (amount : Uint256)
         DumbContracts.Core.Uint256.add_eq_of_lt h_no_overflow
       simpa [h_inc] using h_add
     -- Convert to Uint256 order
-    simpa [DumbContracts.Core.Uint256.le_def, h_inc_val] using h_le
+    simp [DumbContracts.Core.Uint256.le_def, h_inc_val, h_le]
   have h_dep := deposit_sum_equation s amount addrs
   have h_wd := withdraw_sum_equation (s := s1) amount h_balance addrs
   have h_eq :

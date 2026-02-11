@@ -182,7 +182,7 @@ theorem withdraw_maintains_supply (amount : Uint256) :
   -- Reduce to the same subtraction on both sides.
   have h_mid : sub (s.storage totalSupply.slot) amount =
       sub (s.storageMap balances.slot s.sender) amount := by
-    simpa [h_eq]
+    simp [h_eq]
   -- Conclude the invariant for the post-state.
   simpa [supplyInvariant] using
     (calc
@@ -215,7 +215,7 @@ theorem deposit_maintains_supply (amount : Uint256) :
     simp [Contract.runState, deposit, setStorageSlot, setMappingSlot, balances, totalSupply]
   have h_mid : (s.storage totalSupply.slot) + amount =
       (s.storageMap balances.slot s.sender) + amount := by
-    simpa [h_eq]
+    simp [h_eq]
   simpa [supplyInvariant] using
     (calc
       ((deposit amount).runState s).storage totalSupply.slot

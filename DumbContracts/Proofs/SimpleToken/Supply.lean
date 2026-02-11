@@ -115,7 +115,7 @@ private theorem map_sum_point_update
         calc
           delta * (1 + countOccU target rest)
               = (1 + countOccU target rest) * delta := by
-                  simpa [DumbContracts.Core.Uint256.mul_comm]
+                  simp [DumbContracts.Core.Uint256.mul_comm]
           _ = delta + countOccU target rest * delta := by
                   simpa using
                     (DumbContracts.Core.Uint256.add_mul
@@ -169,8 +169,7 @@ private theorem map_sum_transfer_eq
   (h_ne : src ≠ dst)
   (h_src : f' src = f src - d)
   (h_dst : f' dst = f dst + d)
-  (h_other : ∀ addr, addr ≠ src → addr ≠ dst → f' addr = f addr)
-  (h_bal : f src ≥ d) :
+  (h_other : ∀ addr, addr ≠ src → addr ≠ dst → f' addr = f addr) :
   ∀ addrs : List Address,
     (addrs.map f').sum + countOccU src addrs * d
     = (addrs.map f).sum + countOccU dst addrs * d := by
@@ -189,9 +188,9 @@ private theorem map_sum_transfer_eq
       --     = f src + (rest.map f).sum + countOccU dst rest * d
       have h_mul : d * (1 + countOccU src rest) = d + d * countOccU src rest := by
         calc
-          d * (1 + countOccU src rest)
-              = (1 + countOccU src rest) * d := by
-                  simpa [DumbContracts.Core.Uint256.mul_comm]
+            d * (1 + countOccU src rest)
+                = (1 + countOccU src rest) * d := by
+                  simp [DumbContracts.Core.Uint256.mul_comm]
           _ = d + countOccU src rest * d := by
                   simpa using
                     (DumbContracts.Core.Uint256.add_mul
@@ -217,7 +216,7 @@ private theorem map_sum_transfer_eq
           calc
             d * (1 + countOccU dst rest)
                 = (1 + countOccU dst rest) * d := by
-                    simpa [DumbContracts.Core.Uint256.mul_comm]
+                    simp [DumbContracts.Core.Uint256.mul_comm]
             _ = d + countOccU dst rest * d := by
                     simpa using
                       (DumbContracts.Core.Uint256.add_mul
@@ -272,7 +271,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
     (fun addr => s.storageMap 1 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)
     s.sender to amount h_ne h_sender_bal' h_recip_bal'
-    (fun addr h1 h2 => h_other_bal addr h1 h2) h_balance
+    (fun addr h1 h2 => h_other_bal addr h1 h2)
 
 /-! ## Summary
 

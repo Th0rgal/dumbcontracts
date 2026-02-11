@@ -362,7 +362,7 @@ theorem sub_val_of_gt {a b : Uint256} (h : b.val > a.val) :
         simpa [Nat.add_comm] using h'
       calc
         m - d + b.val
-            = m - d + (a.val + d) := by simpa [hba_eq]
+            = m - d + (a.val + d) := by simp [hba_eq]
         _ = (m - d + d) + a.val := by
             simp [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
         _ = m + a.val := by
@@ -375,7 +375,7 @@ theorem sub_val_of_gt {a b : Uint256} (h : b.val > a.val) :
       _ = ((m - d) + b.val) % m := by
               simp [Nat.mod_eq_of_lt hba]
       _ = (m + a.val) % m := by
-              simpa [hsum]
+              simp [hsum]
       _ = a.val % m := by
               simp [Nat.add_mod_left, Nat.add_comm]
       _ = a.val := by
@@ -498,10 +498,10 @@ theorem add_right_cancel {a b c : Uint256} (h : a + c = b + c) : a = b := by
   calc
     a = a + c - c := by
           symm
-          simpa using (sub_add_cancel a c)
-    _ = b + c - c := by simpa [h]
+          exact (sub_add_cancel a c)
+    _ = b + c - c := by simp [h]
     _ = b := by
-          simpa using (sub_add_cancel b c)
+          exact (sub_add_cancel b c)
 
 end Uint256
 

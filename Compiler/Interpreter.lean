@@ -74,9 +74,14 @@ def extractMappingChanges (before after : ContractState) (keys : List (Nat × Ad
 private def normalizeAddress (addr : Address) : Address :=
   addr.map Char.toLower
 
+-- Helper: 160-bit address modulus (EVM address size)
+private def addressModulus : Nat :=
+  2 ^ 160
+
 -- Helper: Convert Nat to properly formatted address (0x + 40 hex digits, lowercase)
 private def natToAddress (n : Nat) : Address :=
-  let hexDigits := Nat.toDigits 16 n
+  let masked := n % addressModulus
+  let hexDigits := Nat.toDigits 16 masked
   let hexStr := hexDigits.asString
   -- Pad to 40 characters (20 bytes = 40 hex digits)
   let padded := String.mk (List.replicate (40 - hexStr.length) '0') ++ hexStr
@@ -84,7 +89,7 @@ private def natToAddress (n : Nat) : Address :=
 
 -- Helper: Convert hex address string (0x...) to Nat for JSON output
 private def addressToNat (addr : Address) : Nat :=
-  Compiler.Hex.addressToNat (normalizeAddress addr)
+  Compiler.Hex.addressToNat (normalizeAddress addr) % addressModulus
 
 -- Helper: Convert ContractResult to ExecutionResult
 def resultToExecutionResult
@@ -457,9 +462,7 @@ def interpretOwnedCounter (tx : Transaction) (state : ContractState) : Execution
       -- Convert Address result to Nat for JSON output
       let natResult : ContractResult Nat := match result with
         | ContractResult.success addr s =>
-          -- Parse address as hex to get Nat representation
-          let addrNat := parseHexNat? addr |>.getD 0
-          ContractResult.success addrNat s
+          ContractResult.success (addressToNat addr) s
         | ContractResult.revert msg s => ContractResult.revert msg s
       resultToExecutionResult natResult state [] [0] []
     | _ =>
@@ -577,7 +580,7 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
         storageAddrChanges := []
         mappingChanges := []
       }
-  | "getTotalSupply" =>
+  | "totalSupply" =>
     match tx.args with
     | [] =>
       let result := exampleSimpleTokenGetTotalSupply |>.run state
@@ -590,15 +593,14 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
         storageAddrChanges := []
         mappingChanges := []
       }
-  | "getOwner" =>
+  | "owner" =>
     match tx.args with
     | [] =>
       let result := exampleSimpleTokenGetOwner |>.run state
       -- Convert Address result to Nat for JSON output
       let natResult : ContractResult Nat := match result with
         | ContractResult.success addr s =>
-          let addrNat := parseHexNat? addr |>.getD 0
-          ContractResult.success addrNat s
+          ContractResult.success (addressToNat addr) s
         | ContractResult.revert msg s => ContractResult.revert msg s
       resultToExecutionResult natResult state [] [0] []
     | _ =>

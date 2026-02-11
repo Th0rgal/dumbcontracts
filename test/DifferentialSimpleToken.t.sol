@@ -9,7 +9,7 @@ import "./yul/YulTestBase.sol";
  * @notice Differential testing for SimpleToken contract
  *
  * Approach:
- * 1. Generate random transactions (mint, transfer, balanceOf, getTotalSupply, getOwner)
+ * 1. Generate random transactions (mint, transfer, balanceOf, totalSupply, owner)
  * 2. Execute on compiled Yul contract (EVM)
  * 3. Execute on EDSL interpreter (via vm.ffi)
  * 4. Assert identical results (including mappings, owner, and totalSupply)
@@ -77,11 +77,11 @@ contract DifferentialSimpleToken is YulTestBase {
             (evmSuccess, evmReturnData) = simpleToken.call(
                 abi.encodeWithSignature("balanceOf(address)", arg0Addr)
             );
-        } else if (functionSig == keccak256(bytes("getTotalSupply"))) {
+        } else if (functionSig == keccak256(bytes("totalSupply"))) {
             (evmSuccess, evmReturnData) = simpleToken.call(
                 abi.encodeWithSignature("totalSupply()")
             );
-        } else if (functionSig == keccak256(bytes("getOwner"))) {
+        } else if (functionSig == keccak256(bytes("owner"))) {
             (evmSuccess, evmReturnData) = simpleToken.call(
                 abi.encodeWithSignature("owner()")
             );
@@ -93,7 +93,7 @@ contract DifferentialSimpleToken is YulTestBase {
         address evmReturnAddress = address(0);
 
         if (evmReturnData.length > 0) {
-            if (functionSig == keccak256(bytes("getOwner"))) {
+            if (functionSig == keccak256(bytes("owner"))) {
                 evmReturnAddress = abi.decode(evmReturnData, (address));
             } else {
                 evmReturnValue = abi.decode(evmReturnData, (uint256));
@@ -149,7 +149,7 @@ contract DifferentialSimpleToken is YulTestBase {
         }
 
         // Validate: Return values must match
-        if (functionSig == keccak256(bytes("balanceOf")) || functionSig == keccak256(bytes("getTotalSupply"))) {
+        if (functionSig == keccak256(bytes("balanceOf")) || functionSig == keccak256(bytes("totalSupply"))) {
             if (evmReturnValue != edslReturnValue) {
                 console2.log("MISMATCH: Return values differ!");
                 console2.log("  EVM:", evmReturnValue);
@@ -157,7 +157,7 @@ contract DifferentialSimpleToken is YulTestBase {
                 testsFailed++;
                 return false;
             }
-        } else if (functionSig == keccak256(bytes("getOwner"))) {
+        } else if (functionSig == keccak256(bytes("owner"))) {
             if (uint256(uint160(evmReturnAddress)) != edslReturnValue) {
                 console2.log("MISMATCH: Owner addresses differ!");
                 console2.log("  EVM:", evmReturnAddress);
@@ -258,7 +258,7 @@ contract DifferentialSimpleToken is YulTestBase {
                 bytes(storageState).length > 0 ? string.concat(" ", storageState) : ""
             );
         } else {
-            // No args (getTotalSupply, getOwner)
+            // No args (totalSupply, owner)
             argsStr = bytes(storageState).length > 0 ? storageState : "";
         }
 
@@ -693,11 +693,11 @@ contract DifferentialSimpleToken is YulTestBase {
         assertTrue(success1, "BalanceOf failed");
 
         // Get total supply
-        bool success2 = executeDifferentialTest("getTotalSupply", owner, address(0), 0);
+        bool success2 = executeDifferentialTest("totalSupply", owner, address(0), 0);
         assertTrue(success2, "GetTotalSupply failed");
 
         // Get owner
-        bool success3 = executeDifferentialTest("getOwner", owner, address(0), 0);
+        bool success3 = executeDifferentialTest("owner", owner, address(0), 0);
         assertTrue(success3, "GetOwner failed");
     }
 
@@ -744,7 +744,7 @@ contract DifferentialSimpleToken is YulTestBase {
         uint256 rand3 = (rand2 * 1103515245 + 12345) % (2**31);
         uint256 rand4 = (rand3 * 1103515245 + 12345) % (2**31);
 
-        // Choose function (30% mint, 30% transfer, 20% balanceOf, 10% getTotalSupply, 10% getOwner)
+        // Choose function (30% mint, 30% transfer, 20% balanceOf, 10% totalSupply, 10% owner)
         uint256 funcChoice = rand1 % 100;
         if (funcChoice < 30) {
             funcName = "mint";
@@ -753,9 +753,9 @@ contract DifferentialSimpleToken is YulTestBase {
         } else if (funcChoice < 80) {
             funcName = "balanceOf";
         } else if (funcChoice < 90) {
-            funcName = "getTotalSupply";
+            funcName = "totalSupply";
         } else {
-            funcName = "getOwner";
+            funcName = "owner";
         }
 
         // Choose sender (60% owner, 40% random actor)

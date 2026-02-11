@@ -345,7 +345,7 @@ def safeCounterSpec : ContractSpec := {
         -- Overflow check: require (count + 1 > count)
         -- On overflow, MAX_UINT + 1 = 0, which is NOT > MAX_UINT, so this will revert
         Stmt.letVar "count" (Expr.storage "count"),
-        Stmt.require (Expr.gt (Expr.add (Expr.localVar "count") (Expr.literal 1)) (Expr.localVar "count")) "Overflow",
+        Stmt.require (Expr.gt (Expr.add (Expr.localVar "count") (Expr.literal 1)) (Expr.localVar "count")) "Overflow in increment",
         Stmt.setStorage "count" (Expr.add (Expr.localVar "count") (Expr.literal 1)),
         Stmt.stop
       ]
@@ -355,7 +355,7 @@ def safeCounterSpec : ContractSpec := {
       returnType := none
       body := [
         Stmt.letVar "count" (Expr.storage "count"),
-        Stmt.require (Expr.ge (Expr.localVar "count") (Expr.literal 1)) "Underflow",
+        Stmt.require (Expr.ge (Expr.localVar "count") (Expr.literal 1)) "Underflow in decrement",
         Stmt.setStorage "count" (Expr.sub (Expr.localVar "count") (Expr.literal 1)),
         Stmt.stop
       ]

@@ -368,17 +368,86 @@ open DumbContracts
 def parseStorage (storageStr : String) : Nat → Nat :=
   let pairs := storageStr.splitOn ","
   let storageMap := pairs.foldl (fun acc pair =>
-    match pair.splitOn ":" with
-    | [slotStr, valStr] =>
-      match slotStr.toNat?, valStr.toNat? with
-      | some slot, some val => acc ++ [(slot, val)]
-      | _, _ => acc
-    | _ => acc
+    if pair.isEmpty then
+      acc
+    else
+      match pair.splitOn ":" with
+      | [slotStr, valStr] =>
+        match parseArgNat? slotStr, parseArgNat? valStr with
+        | some slot, some val => acc ++ [(slot, val)]
+        | _, _ => acc
+      | _ => acc
   ) []
   fun slot => (storageMap.find? (fun (s, _) => s == slot)).map Prod.snd |>.getD 0
 
 private def looksLikeStorage (s : String) : Bool :=
   s.data.any (fun c => c == ':' || c == ',')
+
+private def storageConfigPrefix (s : String) : Option (String × String) :=
+  match s.splitOn "=" with
+  | [prefix, value] =>
+      let normalized := prefix.toLower
+      if normalized == "storage" then
+        some ("storage", value)
+      else if normalized == "addr" || normalized == "address" || normalized == "storageaddr" then
+        some ("addr", value)
+      else if normalized == "map" || normalized == "mapping" || normalized == "storagemap" then
+        some ("map", value)
+      else
+        none
+  | _ => none
+
+private def isStorageConfigArg (s : String) : Bool :=
+  match storageConfigPrefix s with
+  | some _ => true
+  | none => looksLikeStorage s
+
+private def parseStorageConfig (s : String) : (String × String) :=
+  match storageConfigPrefix s with
+  | some (kind, value) => (kind, value)
+  | none => ("storage", s)
+
+-- Parse address storage from command line args
+-- Format: "slot0:addr0,slot1:addr1,..."
+def parseStorageAddr (storageStr : String) : Nat → String :=
+  let pairs := storageStr.splitOn ","
+  let storageMap := pairs.foldl (fun acc pair =>
+    if pair.isEmpty then
+      acc
+    else
+      match pair.splitOn ":" with
+      | [slotStr, addrStr] =>
+        match parseArgNat? slotStr with
+        | some slot => acc ++ [(slot, addrStr)]
+        | none => acc
+      | _ => acc
+  ) []
+  fun slot => (storageMap.find? (fun (s, _) => s == slot)).map Prod.snd |>.getD ""
+
+-- Parse mapping storage from command line args
+-- Format: "slot0:key0:val0,slot1:key1=val1,..."
+def parseStorageMap (storageStr : String) : Nat → String → Nat :=
+  let entries := storageStr.splitOn ","
+  let mapping := entries.foldl (fun acc entry =>
+    if entry.isEmpty then
+      acc
+    else
+      match entry.splitOn ":" with
+      | [slotStr, key, valStr] =>
+        match parseArgNat? slotStr, parseArgNat? valStr with
+        | some slot, some val => acc ++ [(slot, key, val)]
+        | _, _ => acc
+      | [slotStr, rest] =>
+        match rest.splitOn "=" with
+        | [key, valStr] =>
+          match parseArgNat? slotStr, parseArgNat? valStr with
+          | some slot, some val => acc ++ [(slot, key, val)]
+          | _, _ => acc
+        | _ => acc
+      | _ => acc
+  ) []
+  fun slot key =>
+    (mapping.find? (fun (s, k, _) => s == slot && k == key)).map (fun (_, _, v) => v) |>.getD 0
 
 private def parseArgNat? (s : String) : Option Nat :=
   match parseHexNat? s with
@@ -395,20 +464,60 @@ private def parseArgs (args : List String) : Except String (List Nat) :=
   | some vals => Except.ok vals
   | none => Except.error "Invalid args: expected decimal or 0x-prefixed hex integers"
 
+private def splitTrailingStorageArgs (args : List String) : Except String (List String × List String) :=
+  let rec takeConfigs (rev : List String) (configs : List String) : List String × List String :=
+    match rev with
+    | [] => (configs, [])
+    | x :: xs =>
+      if isStorageConfigArg x then
+        takeConfigs xs (x :: configs)
+      else
+        (configs, rev)
+  let rev := args.reverse
+  let (configRev, argRev) := takeConfigs rev []
+  let configArgs := configRev.reverse
+  let argStrs := argRev.reverse
+  if argStrs.any isStorageConfigArg then
+    Except.error "Invalid args: storage config args must come last"
+  else
+    Except.ok (argStrs, configArgs)
+
+private def parseConfigArgs (configArgs : List String) :
+    Except String (Option String × Option String × Option String) :=
+  let rec go (args : List String) (storageOpt addrOpt mapOpt : Option String) :
+      Except String (Option String × Option String × Option String) :=
+    match args with
+    | [] => Except.ok (storageOpt, addrOpt, mapOpt)
+    | s :: rest =>
+      let (kind, value) := parseStorageConfig s
+      match kind with
+      | "storage" =>
+        if storageOpt.isSome then
+          Except.error "Multiple storage args provided"
+        else
+          go rest (some value) addrOpt mapOpt
+      | "addr" =>
+        if addrOpt.isSome then
+          Except.error "Multiple address storage args provided"
+        else
+          go rest storageOpt (some value) mapOpt
+      | "map" =>
+        if mapOpt.isSome then
+          Except.error "Multiple mapping storage args provided"
+        else
+          go rest storageOpt addrOpt (some value)
+      | _ => Except.error "Invalid storage config prefix"
+  go configArgs none none none
+
 def main (args : List String) : IO Unit := do
   match args with
   | contractType :: functionName :: senderAddr :: rest =>
-    let (argStrs, storageOpt) : List String × Option String :=
-      match rest.reverse with
-      | [] => ([], none)
-      | last :: revInit =>
-          if looksLikeStorage last then
-            (revInit.reverse, some last)
-          else
-            (rest, none)
-    if argStrs.any looksLikeStorage then
-      throw <| IO.userError
-        "Invalid args: storage string must be last, and only one storage arg is allowed"
+    let (argStrs, configArgs) ← match splitTrailingStorageArgs rest with
+      | Except.ok vals => pure vals
+      | Except.error msg => throw <| IO.userError msg
+    let (storageOpt, addrOpt, mapOpt) ← match parseConfigArgs configArgs with
+      | Except.ok vals => pure vals
+      | Except.error msg => throw <| IO.userError msg
     -- Filter out empty strings from args (can happen when storage is empty)
     let nonEmptyArgStrs := argStrs.filter (fun s => !s.isEmpty)
     let argsNat ← match parseArgs nonEmptyArgStrs with
@@ -423,11 +532,17 @@ def main (args : List String) : IO Unit := do
     let storageState := match storageOpt with
       | some s => parseStorage s
       | none => fun _ => 0  -- Default: empty storage
+    let storageAddrState := match addrOpt with
+      | some s => parseStorageAddr s
+      | none => fun _ => "" -- Default: empty address storage
+    let storageMapState := match mapOpt with
+      | some s => parseStorageMap s
+      | none => fun _ _ => 0 -- Default: empty mapping storage
 
     let initialState : ContractState := {
       storage := storageState
-      storageAddr := fun _ => ""
-      storageMap := fun _ _ => 0
+      storageAddr := storageAddrState
+      storageMap := storageMapState
       sender := senderAddr
       thisAddress := "0xContract"
     }
@@ -448,7 +563,9 @@ def main (args : List String) : IO Unit := do
       throw <| IO.userError
         s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter"
   | _ =>
-    IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage]"
+    IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...]"
     IO.println "Example: difftest-interpreter SimpleStorage store 0xAlice 42"
     IO.println "No-arg example: difftest-interpreter SimpleStorage retrieve 0xAlice"
     IO.println "With storage: difftest-interpreter SimpleStorage retrieve 0xAlice \"0:42\""
+    IO.println "With address storage: difftest-interpreter Owned transferOwnership 0xAlice 0xBob addr=\"0:0xAlice\""
+    IO.println "With mapping: difftest-interpreter Ledger deposit 0xAlice 10 map=\"0:0xAlice=10\""

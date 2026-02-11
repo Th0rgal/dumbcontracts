@@ -15,6 +15,7 @@ import Compiler.ContractSpec
 import Compiler.DiffTestTypes
 import Compiler.Hex
 import DumbContracts.Core
+import DumbContracts.Core.Uint256
 
 namespace Compiler.Proofs
 
@@ -22,6 +23,7 @@ open Compiler.ContractSpec
 open Compiler.DiffTestTypes
 open Compiler.Hex
 open DumbContracts
+open DumbContracts.Core.Uint256 (modulus)
 
 /-!
 ## Evaluation Context
@@ -86,9 +88,8 @@ def SpecStorage.setMapping (s : SpecStorage) (baseSlot : Nat) (key : Nat) (value
 
 Evaluate ContractSpec expressions to natural numbers.
 All arithmetic is modular (mod 2^256) to match EVM semantics.
+We use the same modulus as Uint256 to ensure consistency.
 -/
-
-def modulus : Nat := 2 ^ 256
 
 -- Evaluate expression
 -- Takes parameter names from function spec to correctly resolve Expr.param
@@ -96,11 +97,13 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.literal n => n % modulus
   | Expr.param name =>
       -- Look up parameter by name in function parameter list
+      -- Parameters are Nat values that need modular arithmetic like literals
       match paramNames.findIdx? (· == name) with
-      | some idx => ctx.params.getD idx 0
+      | some idx => (ctx.params.getD idx 0) % modulus
       | none => 0  -- Unknown param defaults to 0
   | Expr.constructorArg idx =>
-      ctx.constructorArgs.getD idx 0
+      -- Constructor arguments are Nat values that need modular arithmetic
+      (ctx.constructorArgs.getD idx 0) % modulus
   | Expr.storage fieldName =>
       match fields.findIdx? (·.name == fieldName) with
       | some slot => storage.getSlot slot

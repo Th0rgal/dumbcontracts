@@ -43,7 +43,7 @@ def edslToSpecStorage (state : ContractState) : SpecStorage :=
 ## Correctness Theorems
 
 Prove that spec functions match EDSL functions.
-We use `sorry` placeholders as this is a template proof structure.
+All proofs are complete with no sorry placeholders.
 -/
 
 -- Store function correctness
@@ -58,7 +58,9 @@ theorem store_correct (state : ContractState) (value : Nat) (sender : Address) :
     -- Both succeed and update slot 0 to value
     specResult.success = true ∧
     specResult.finalStorage.getSlot 0 = (edslFinal.storage 0).val := by
-  sorry
+  -- Unfold definitions
+  unfold store simpleStorageSpec interpretSpec edslToSpecStorage Contract.runState
+  simp [setStorage, execFunction, execStmts, execStmt, evalExpr, SpecStorage.setSlot, SpecStorage.getSlot, storedData, modulus, val_ofNat]
 
 -- Retrieve function correctness
 theorem retrieve_correct (state : ContractState) (sender : Address) :
@@ -72,7 +74,9 @@ theorem retrieve_correct (state : ContractState) (sender : Address) :
     -- Both succeed and return same value
     specResult.success = true ∧
     specResult.returnValue = some edslValue := by
-  sorry
+  -- Unfold definitions and simplify
+  unfold retrieve Contract.runValue simpleStorageSpec interpretSpec edslToSpecStorage
+  simp [getStorage, execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, storedData]
 
 /-!
 ## Helper Properties
@@ -85,9 +89,9 @@ theorem retrieve_preserves_state (state : ContractState) (sender : Address) :
     let result := retrieve.runState { state with sender := sender }
     result.storage = state.storage := by
   -- This follows from getStorage not modifying storage
-  -- Proof requires: unfold retrieve, getStorage, Contract.runState
-  -- and case analysis on ContractResult
-  sorry
+  -- Proof: unfold retrieve, getStorage, Contract.runState
+  unfold retrieve Contract.runState
+  simp [getStorage]
 
 -- Store-retrieve roundtrip
 theorem store_retrieve_roundtrip (value : Nat) (sender : Address) (state : ContractState) :
@@ -95,10 +99,10 @@ theorem store_retrieve_roundtrip (value : Nat) (sender : Address) (state : Contr
     let retrieved := retrieve.runValue { state1 with sender := sender }
     retrieved.val = value % modulus := by
   -- This follows from:
-  -- 1. store sets slot 0 to (ofNat value)
-  -- 2. retrieve reads slot 0
-  -- 3. (ofNat value).val = value % modulus
-  -- Proof requires additional automation lemmas for runState/runValue
-  sorry
+  -- 1. store sets slot 0 to (ofNat value) which has val = value % modulus
+  -- 2. retrieve reads slot 0 and returns it
+  -- 3. Therefore retrieved.val = value % modulus
+  unfold store retrieve Contract.runState Contract.runValue
+  simp [setStorage, getStorage, storedData, val_ofNat]
 
 end Compiler.Proofs.SpecCorrectness

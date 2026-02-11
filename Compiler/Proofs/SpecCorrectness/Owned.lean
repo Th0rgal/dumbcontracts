@@ -100,25 +100,32 @@ theorem getOwner_correct (state : ContractState) (sender : Address) :
 theorem getOwner_preserves_state (state : ContractState) (sender : Address) :
     let finalState := getOwner.runState { state with sender := sender }
     finalState.storageAddr 0 = state.storageAddr 0 := by
-  sorry
+  -- getOwner just reads storage, doesn't modify it
+  unfold DumbContracts.Examples.Owned.getOwner Contract.runState
+  simp [getStorageAddr, DumbContracts.Examples.Owned.owner]
 
 /-- Only owner can transfer ownership -/
 theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (sender : Address) :
     let result := (transferOwnership newOwner).run { state with sender := sender }
     result.isSuccess = true → state.storageAddr 0 = sender := by
-  sorry
+  -- If transferOwnership succeeds, then onlyOwner must have passed
+  -- which means sender = state.storageAddr 0
+  sorry -- Monadic unfolding needs automation
 
 /-- Constructor sets initial owner correctly -/
 theorem constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :
     let finalState := (constructor initialOwner).runState { state with sender := sender }
     finalState.storageAddr 0 = initialOwner := by
-  sorry
+  -- Constructor simply sets storage at slot 0 to initialOwner
+  unfold DumbContracts.Examples.Owned.constructor Contract.runState
+  simp [setStorageAddr, DumbContracts.Examples.Owned.owner, DumbContracts.bind]
 
 /-- TransferOwnership updates owner when authorized -/
 theorem transferOwnership_updates_owner (state : ContractState) (newOwner : Address) (sender : Address)
     (h : state.storageAddr 0 = sender) :
     let finalState := (transferOwnership newOwner).runState { state with sender := sender }
     finalState.storageAddr 0 = newOwner := by
-  sorry
+  -- When sender is owner, onlyOwner passes and transferOwnership succeeds
+  sorry -- Monadic unfolding needs automation
 
 end Compiler.Proofs.SpecCorrectness

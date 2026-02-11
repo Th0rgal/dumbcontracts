@@ -78,7 +78,7 @@ All 7 contracts now compile automatically using a declarative specification syst
 - Pre-computed selector table from actual keccak256 results
 - Fallback to hash-based selector for new functions
 
-### 4. `Compiler/MainNew.lean` (27 lines)
+### 4. `Compiler/Main.lean` (27 lines)
 **Purpose**: New compilation entry point using declarative specs
 
 ---

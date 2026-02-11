@@ -51,7 +51,7 @@ Successfully transformed the DumbContracts compiler from a 266-line manual IR tr
 - Type-safe signature generation
 - Extensible for new functions
 
-**4. Compiler/MainNew.lean (27 lines)**
+**4. Compiler/Main.lean (27 lines)**
 - New compilation entry point
 - Iterates through specs
 - Generates Yul for each contract
@@ -383,7 +383,7 @@ From Roadmap Item 1:
 - `Compiler/ContractSpec.lean` (219 lines)
 - `Compiler/Specs.lean` (238 lines)
 - `Compiler/Selector.lean` (75 lines)
-- `Compiler/MainNew.lean` (27 lines)
+- `Compiler/Main.lean` (27 lines)
 
 ### Modified (4 documentation files)
 - `STATUS.md` — Added compilation status section

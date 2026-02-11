@@ -161,7 +161,7 @@ examples/lean/
 - `Compiler/ContractSpec.lean` (219 lines) — Declarative DSL + automatic IR compiler
 - `Compiler/Specs.lean` (238 lines) — All 7 contract specifications
 - `Compiler/Selector.lean` (75 lines) — Function selector computation
-- `Compiler/MainNew.lean` (27 lines) — New compilation entry point
+- `Compiler/Main.lean` (27 lines) — New compilation entry point
 
 **Features**:
 - Automatic storage slot inference (assigned from field order)

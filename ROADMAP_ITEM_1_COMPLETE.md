@@ -53,7 +53,7 @@ All tests pass with new compiler, validating correctness.
 - Pre-computed Solidity-compatible keccak256 selectors
 - Type-safe signature generation
 
-**4. `Compiler/MainNew.lean` (27 lines)**
+**4. `Compiler/Main.lean` (27 lines)**
 - New compilation entry point
 
 ### Key Features Implemented
@@ -292,6 +292,6 @@ The compiler now:
 ---
 
 **Completion Date**: 2026-02-10
-**Implementation**: Compiler/ContractSpec.lean, Compiler/Specs.lean, Compiler/Selector.lean, Compiler/MainNew.lean
+**Implementation**: Compiler/ContractSpec.lean, Compiler/Specs.lean, Compiler/Selector.lean, Compiler/Main.lean
 **Testing**: 252 proofs verified, 76 Foundry tests passing (100%)
 **Code Quality**: Optimized, type-safe, maintainable

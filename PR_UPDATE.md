@@ -34,7 +34,7 @@ This PR delivers **two major roadmap milestones**:
 3. **Compiler/Selector.lean** (75 lines) - Function selectors
    - Solidity keccak256-compatible selector computation
 
-4. **Compiler/MainNew.lean** (27 lines) - New compilation entry point
+4. **Compiler/Main.lean** (27 lines) - New compilation entry point
 
 ---
 
@@ -143,7 +143,7 @@ forge test --match-test testDifferential_Random100 --ffi
 - `Compiler/ContractSpec.lean` - Declarative compilation DSL (219 lines)
 - `Compiler/Specs.lean` - All 7 contract specifications (238 lines)
 - `Compiler/Selector.lean` - Function selector computation (75 lines)
-- `Compiler/MainNew.lean` - New compilation entry point (27 lines)
+- `Compiler/Main.lean` - New compilation entry point (27 lines)
 - `Compiler/Interpreter.lean` - EDSL interpreter (248 lines)
 - `Compiler/RandomGen.lean` - Random transaction generator (134 lines)
 - `test/DifferentialSimpleStorage.t.sol` - Differential test harness (300+ lines)

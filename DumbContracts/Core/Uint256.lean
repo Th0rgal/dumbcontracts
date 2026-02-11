@@ -28,15 +28,15 @@ namespace Uint256
 def modulus : Nat := UINT256_MODULUS
 
 theorem modulus_pos : 0 < modulus := by
-  have h2 : (0 : Nat) < 2 := by decide
-  simpa [modulus] using (Nat.pow_pos h2 256)
+  have h1 : 1 ≤ (2 : Nat) ^ 256 := Nat.one_le_two_pow (n := 256)
+  exact Nat.lt_of_lt_of_le Nat.zero_lt_one (by simpa [modulus] using h1)
 
 def ofNat (n : Nat) : Uint256 :=
   ⟨n % modulus, Nat.mod_lt _ modulus_pos⟩
 
 instance : OfNat Uint256 n := ⟨ofNat n⟩
 instance : Inhabited Uint256 := ⟨ofNat 0⟩
-instance : Repr Uint256 := ⟨fun u => repr u.val⟩
+instance : Repr Uint256 := ⟨fun u _ => repr u.val⟩
 instance : Coe Uint256 Nat := ⟨Uint256.val⟩
 instance : Coe Nat Uint256 := ⟨ofNat⟩
 
@@ -47,9 +47,19 @@ instance : Coe Nat Uint256 := ⟨ofNat⟩
 instance : LT Uint256 := ⟨fun a b => a.val < b.val⟩
 instance : LE Uint256 := ⟨fun a b => a.val ≤ b.val⟩
 instance (a b : Uint256) : Decidable (a < b) := by
-  cases a; cases b; dsimp [LT.lt]; infer_instance
+  cases a with
+  | mk a ha =>
+    cases b with
+    | mk b hb =>
+      change Decidable (a < b)
+      exact inferInstance
 instance (a b : Uint256) : Decidable (a ≤ b) := by
-  cases a; cases b; dsimp [LE.le]; infer_instance
+  cases a with
+  | mk a ha =>
+    cases b with
+    | mk b hb =>
+      change Decidable (a ≤ b)
+      exact inferInstance
 
 @[simp] theorem le_def (a b : Uint256) : (a ≤ b) = (a.val ≤ b.val) := rfl
 @[simp] theorem lt_def (a b : Uint256) : (a < b) = (a.val < b.val) := rfl
@@ -106,22 +116,81 @@ instance : HMod Uint256 Uint256 Uint256 := ⟨mod⟩
 
 theorem add_eq_of_lt {a b : Uint256} (h : a.val + b.val < modulus) :
   ((a + b : Uint256) : Nat) = a.val + b.val := by
-  simp [HAdd.hAdd, add, ofNat, Nat.mod_eq_of_lt h]
+  simpa [HAdd.hAdd, add, ofNat] using (Nat.mod_eq_of_lt h)
 
 theorem sub_eq_of_le {a b : Uint256} (h : b.val ≤ a.val) :
   ((a - b : Uint256) : Nat) = a.val - b.val := by
   have hlt : a.val - b.val < modulus := by
     exact Nat.lt_of_le_of_lt (Nat.sub_le _ _) a.isLt
-  simp [HSub.hSub, sub, h, ofNat, Nat.mod_eq_of_lt hlt]
+  simpa [HSub.hSub, sub, h, ofNat] using (Nat.mod_eq_of_lt hlt)
 
-theorem sub_add_cancel (a b : Uint256) : (a + b - b) = a := by
-  -- Since all values are reduced modulo 2^256, add/sub cancel as expected.
+@[ext] theorem ext {a b : Uint256} (h : a.val = b.val) : a = b := by
   cases a with
   | mk a ha =>
     cases b with
     | mk b hb =>
-      -- Expand definitions and reduce using Nat modular arithmetic.
-      simp [HAdd.hAdd, HSub.hSub, add, sub, ofNat] at *
+      cases h
+      have : ha = hb := by
+        apply Subsingleton.elim
+      cases this
+      rfl
+
+theorem sub_add_cancel_of_lt {a b : Uint256} (ha : a.val < modulus) (hb : b.val < modulus) :
+  (a + b - b) = a := by
+  cases a with
+  | mk a ha' =>
+    cases b with
+    | mk b hb' =>
+      apply ext
+      let m : Nat := modulus
+      have ha'' : a < m := by simpa [m] using ha
+      have hb'' : b < m := by simpa [m] using hb
+      by_cases h : a + b < m
+      · have hb_le : b ≤ a + b := Nat.le_add_left _ _
+        have hmod : (a + b) % m = a + b := Nat.mod_eq_of_lt h
+        have hb_le' : b ≤ (a + b) % m := by
+          simpa [hmod] using hb_le
+        -- No overflow: direct cancellation.
+        simp [HAdd.hAdd, HSub.hSub, add, sub, ofNat, hmod, hb_le', Nat.add_sub_cancel,
+          Nat.mod_eq_of_lt ha'']
+      · have h_ge : m ≤ a + b := Nat.le_of_not_gt h
+        have hlt_sum : a + b < m + m := Nat.add_lt_add ha'' hb''
+        have hlt : a + b - m < m := Nat.sub_lt_left_of_lt_add h_ge hlt_sum
+        have hmod : (a + b) % m = a + b - m := by
+          have hmod' : (a + b) % m = (a + b - m) % m := Nat.mod_eq_sub_mod h_ge
+          have hmod'' : (a + b - m) % m = a + b - m := Nat.mod_eq_of_lt hlt
+          simp [hmod', hmod'']
+        have hlt' : a + b < b + m := by
+          have h' : a + b < m + b := Nat.add_lt_add_right ha'' b
+          simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h'
+        have hbgt : b > a + b - m := by
+          exact Nat.sub_lt_right_of_lt_add h_ge hlt'
+        have hbnot : ¬ b ≤ a + b - m := Nat.not_le_of_gt hbgt
+        have hle : a + b - m ≤ b := Nat.le_of_lt hbgt
+        have hsum : (m - a) + (a + b - m) = b := by
+          have hma : a ≤ m := Nat.le_of_lt ha''
+          calc
+            (m - a) + (a + b - m)
+                = (m - a) + (a + b) - m := by
+                    symm
+                    exact Nat.add_sub_assoc h_ge (m - a)
+            _ = ((m - a) + a) + b - m := by
+                    simp [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+            _ = m + b - m := by
+                    simp [Nat.sub_add_cancel hma, Nat.add_assoc]
+            _ = b := by
+                    simpa using (Nat.add_sub_cancel_left m b)
+        have hdiff : b - (a + b - m) = m - a := by
+          exact (Nat.sub_eq_iff_eq_add hle).2 hsum.symm
+        have hbnot' : ¬ b ≤ (a + b) % m := by
+          simpa [hmod] using hbnot
+        -- Overflow: wrap-around branch.
+        have hma : a ≤ m := Nat.le_of_lt ha''
+        simp [HAdd.hAdd, HSub.hSub, add, sub, ofNat, hmod, hbnot', hdiff,
+          Nat.sub_sub_self hma, Nat.mod_eq_of_lt ha'']
+
+theorem sub_add_cancel (a b : Uint256) : (a + b - b) = a :=
+  sub_add_cancel_of_lt a.isLt b.isLt
 
 end Uint256
 

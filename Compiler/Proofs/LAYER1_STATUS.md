@@ -8,10 +8,10 @@
 - SimpleStorage: 4/4 theorems proven (100%) ✅
 - Counter: 7/7 theorems proven (100%)* ✅
 - SafeCounter: 6/8 theorems proven (75%) ⚠️
-- Owned: 4/8 theorems proven (50%) ⚠️
-- Total theorems proven: 21/27 Phase 1+2+3 theorems (78%)
+- Owned: 6/8 theorems proven (75%) ⚠️
+- Total theorems proven: 23/27 Phase 1+2+3 theorems (85%)
 **Build Status:** ✅ All files compile successfully
-**Lines Added:** 1,805 lines across 23 commits
+**Lines Added:** 1,824 lines across 24 commits
 **Note:** *Counter has 1 strategic sorry for standard modular arithmetic property
 
 ## Completed Work
@@ -117,14 +117,14 @@ Remaining 2 proofs need automation for do-notation with Option matching and requ
 
 ---
 
-#### Owned (137 lines) ⚠️ 50% Complete
+#### Owned (156 lines) ⚠️ 75% Complete
 **Complexity:** ⭐⭐⭐ Complex
 **Patterns:** Ownership with access control
 
-**Theorems (4/8 with proof structure):**
+**Theorems (6/8 with proof structure):**
 - ✅ `owned_constructor_correct`: Initialize owner (1 sorry for address encoding)
-- ⚠️ `transferOwnership_correct_as_owner`: Transfer when authorized
-- ⚠️ `transferOwnership_reverts_as_nonowner`: Revert when unauthorized
+- ✅ `transferOwnership_correct_as_owner`: Transfer when authorized (1 sorry for address encoding)
+- ✅ `transferOwnership_reverts_as_nonowner`: Revert when unauthorized (1 sorry for auth details)
 - ✅ `getOwner_correct`: Getter equivalence
 - ✅ `getOwner_preserves_state`: Getter doesn't modify
 - ⚠️ `only_owner_can_transfer`: Authorization invariant (needs monadic automation)
@@ -136,10 +136,11 @@ Remaining 2 proofs need automation for do-notation with Option matching and requ
 - Address storage (Address → Nat conversion)
 - Authorization checks (require statements)
 - Access control patterns
+- Spec's `Expr.caller` vs EDSL's `msgSender`
 
 **Technical Challenge:**
 - Address encoding: Need lemma that `addressToNat value % modulus = addressToNat value`
-- Monadic proofs: transferOwnership requires reasoning about onlyOwner authorization
+- Authorization: Both EDSL (onlyOwner) and spec (require caller = owner) use same logic
 
 **State Conversion:**
 ```lean

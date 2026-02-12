@@ -158,7 +158,7 @@ def ownedSpec : ContractSpec := {
 **Metrics**:
 - Manual IR eliminated: 266 lines → 0 (-100%)
 - Time to add contract: ~30 min → ~5 min (-83%)
-- Test results: 76/76 Foundry tests pass, 252/252 Lean proofs verify
+- Test results: Foundry tests pass (264/264 as of 2026-02-12), 252/252 Lean proofs verify
 - Code quality: More concise, optimized (expression inlining)
 
 **Features Achieved**:
@@ -172,7 +172,7 @@ def ownedSpec : ContractSpec := {
 ```bash
 lake build dumbcontracts-compiler    # Build compiler
 lake exe dumbcontracts-compiler      # Generate all contracts
-cd compiler/yul && forge test  # 76/76 tests pass
+forge test  # 264/264 tests pass (as of 2026-02-12)
 ```
 
 ### Differential Testing (Completed 2026-02-10)
@@ -206,7 +206,7 @@ cd compiler/yul && forge test  # 76/76 tests pass
 **Test Results**:
 - 100/100 random transactions pass (SimpleStorage)
 - Zero mismatches detected
-- All 80 Foundry tests passing
+- All Foundry tests passing (264/264 as of 2026-02-12)
 - CI: All checks passing
 
 **Usage**:

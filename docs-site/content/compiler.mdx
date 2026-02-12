@@ -273,12 +273,10 @@ lake exe dumbcontracts-compiler
 
 ### Test Compiled Contracts
 ```bash
-cd compiler/yul
-
 # Run all Foundry tests
 forge test
 
-# Expected: 76/76 tests pass
+# Expected: 264/264 tests pass (as of 2026-02-12)
 ```
 
 ### Add New Contract
@@ -321,15 +319,13 @@ $ lake build
 Build completed successfully.
 ```
 
-**Foundry Tests**: 76/76 passing (100%)
+**Foundry Tests**: 264/264 passing (100%, as of 2026-02-12)
 ```bash
-$ cd compiler/yul && forge test
-Ran 14 test suites: 76 tests passed, 0 failed, 0 skipped (76 total tests)
+$ forge test
+Ran 28 test suites in 96.15s (537.47s CPU time): 264 tests passed, 0 failed, 0 skipped (264 total tests)
 ```
 
-**Test Breakdown**:
-- 62 EDSL tests (contracts from `DumbContracts/Examples/`)
-- 14 Yul tests (contracts from declarative specs)
+**Coverage**: Unit, property, and differential tests across EDSL and compiled Yul. See `test/` for suites.
 
 ### Validated Contracts
 
@@ -430,7 +426,7 @@ def ownedSpec : ContractSpec := {
 ### ✅ Item 1: Generic Compilation (Complete)
 - Automatic IR generation from declarative specs
 - All 7 contracts compile without manual IR
-- 76/76 Foundry tests pass
+- 264/264 Foundry tests pass (as of 2026-02-12)
 - **Status**: **COMPLETE** (2026-02-10)
 
 ### 🚧 Item 2: Differential Testing (Next)

@@ -12,21 +12,24 @@ namespace Compiler.Specs.SafeMultisigBase
 
 open Compiler.ContractSpec
 
-/-- Placeholder Safe Multisig base spec. -/
+/-- Placeholder Safe Multisig base spec (storage layout pinned). -/
 def safeMultisigBaseSpec : ContractSpec := {
   name := "SafeMultisigBase"
   fields := [
-    { name := "owner0", ty := FieldType.address },
-    { name := "threshold", ty := FieldType.uint256 }
+    { name := "singleton", ty := FieldType.address },
+    { name := "modules", ty := FieldType.mapping },
+    { name := "owners", ty := FieldType.mapping },
+    { name := "ownerCount", ty := FieldType.uint256 },
+    { name := "threshold", ty := FieldType.uint256 },
+    { name := "nonce", ty := FieldType.uint256 },
+    { name := "deprecatedDomainSeparator", ty := FieldType.uint256 },
+    { name := "signedMessages", ty := FieldType.mapping },
+    { name := "approvedHashes", ty := FieldType.mapping }
   ]
   constructor := some {
-    params := [
-      { name := "initialOwner", ty := ParamType.address },
-      { name := "initialThreshold", ty := ParamType.uint256 }
-    ]
+    params := []
     body := [
-      Stmt.setStorage "owner0" (Expr.constructorArg 0),
-      Stmt.setStorage "threshold" (Expr.constructorArg 1)
+      Stmt.setStorage "threshold" (Expr.literal 1)
     ]
   }
   functions := [

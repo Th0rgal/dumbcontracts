@@ -38,21 +38,19 @@ def upstreamVersionString : String := "1.5.0"
 def upstreamSafeSolSha256 : String :=
   "4b54dce0ad9d9c1264ecd5c146c82b7bc17d24f981bd42525487be3bf6a40366"
 
-/-- Constructor spec: sets owner0 + threshold and preserves all other state. -/
-def constructor_spec (initialOwner : Address) (initialThreshold : Uint256)
-    (s s' : ContractState) : Prop :=
-  s'.storageAddr 0 = initialOwner ∧
-  s'.storage 1 = initialThreshold ∧
-  (∀ slot : Nat, slot ≠ 0 → s'.storageAddr slot = s.storageAddr slot) ∧
-  (∀ slot : Nat, slot ≠ 1 → s'.storage slot = s.storage slot) ∧
+/-- Constructor spec: Safe singleton initializes threshold = 1 and preserves all other state. -/
+def constructor_spec (s s' : ContractState) : Prop :=
+  s'.storage 4 = 1 ∧
+  (∀ slot : Nat, slot ≠ 4 → s'.storage slot = s.storage slot) ∧
+  s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
   s'.thisAddress = s.thisAddress ∧
   s'.msgValue = s.msgValue ∧
   s'.blockTimestamp = s.blockTimestamp
 
-/-- Getter spec: threshold equals current storage slot 1. -/
+/-- Getter spec: threshold equals current storage slot 4. -/
 def getThreshold_spec (result : Uint256) (s : ContractState) : Prop :=
-  result = s.storage 1
+  result = s.storage 4
 
 end DumbContracts.Specs.SafeMultisigBase

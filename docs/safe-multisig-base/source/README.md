@@ -13,6 +13,11 @@ used for the formal proof work in this repo.
 ## Integrity
 - SHA256 (Safe.sol): `4b54dce0ad9d9c1264ecd5c146c82b7bc17d24f981bd42525487be3bf6a40366`
 - Detached hash file: `Safe.sol.sha256`
+- SHA256 (base/OwnerManager.sol): `cb5f04371f1918129d9b175bde7f346376b53cdcc94e67f427bccea6e2659a6a`
+- SHA256 (base/ModuleManager.sol): `db2d5776c421b2613ec3f9881716d7c64c993e1cdd1ad83c213a2c32c1208dd2`
+- SHA256 (base/GuardManager.sol): `7560378f976c2a7dc655db11d387a83f69943bf249cc74faca343bc72de60e73`
+- SHA256 (base/FallbackManager.sol): `fe990479ee73d9f0f602ec1a79f7c34b9fb6875b51d879d5929a3d6344f5e111`
+- SHA256 (common/Singleton.sol): `dd6e1eb6292caa256bcbc953a7f64ec26d3262c4b9e6893e002f0c602ec1985d`
 
 ## Notes
 - This is a verbatim copy of the upstream contract file at the pinned commit.

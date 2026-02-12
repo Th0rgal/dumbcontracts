@@ -6,9 +6,8 @@
   that mirrors the latest Safe base contract from safe-smart-account.
 
   TODO:
-  - Replace placeholder storage layout with actual Safe base storage layout
   - Implement core functions (setup, execTransaction, etc.) in EDSL
-  - Align with Solidity storage slots and ABI encoding rules
+  - Align with Solidity ABI encoding rules
 -/
 
 import DumbContracts.Core
@@ -17,15 +16,18 @@ namespace DumbContracts.Examples.SafeMultisigBase
 
 open DumbContracts
 
--- Placeholder storage layout (will be replaced)
--- Safe base uses multiple owners + threshold; we start with a minimal stub.
-def owner0 : StorageSlot Address := ⟨0⟩
-def threshold : StorageSlot Uint256 := ⟨1⟩
+-- Safe base storage layout (linearized inheritance order).
+-- NOTE: Some mappings use non-Address keys in Solidity; those are documented
+-- in docs/safe-multisig-base/storage-layout.md and will be modeled later.
+def singleton : StorageSlot Address := ⟨0⟩
+def ownerCount : StorageSlot Uint256 := ⟨3⟩
+def threshold : StorageSlot Uint256 := ⟨4⟩
+def nonce : StorageSlot Uint256 := ⟨5⟩
+def deprecatedDomainSeparator : StorageSlot Uint256 := ⟨6⟩
 
-/-- Placeholder constructor: sets owner0 and threshold. -/
-def constructor (initialOwner : Address) (initialThreshold : Uint256) : Contract Unit := do
-  setStorageAddr owner0 initialOwner
-  setStorage threshold initialThreshold
+/-- Placeholder constructor: Safe singleton initializes threshold = 1. -/
+def constructor : Contract Unit := do
+  setStorage threshold 1
 
 /-- Placeholder getter: returns threshold. -/
 def getThreshold : Contract Uint256 := do

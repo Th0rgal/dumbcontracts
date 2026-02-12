@@ -209,6 +209,50 @@ theorem safeSub_some_val (a b : DumbContracts.Core.Uint256) (h : (a : Nat) ≥ (
   have h_not : ¬((b : Nat) > (a : Nat)) := by omega
   simp [h_not]
 
+-- safeAdd returns Some iff no overflow
+theorem safeAdd_some_iff_le (a b : DumbContracts.Core.Uint256) :
+    (DumbContracts.Stdlib.Math.safeAdd a b).isSome ↔
+    (a : Nat) + (b : Nat) ≤ DumbContracts.Stdlib.Math.MAX_UINT256 := by
+  unfold DumbContracts.Stdlib.Math.safeAdd
+  by_cases h : (a : Nat) + (b : Nat) > DumbContracts.Stdlib.Math.MAX_UINT256
+  case pos =>
+    constructor
+    · intro h_some
+      simp [h] at h_some
+    · intro h_le
+      omega
+  case neg =>
+    constructor
+    · intro _
+      omega
+    · intro _
+      simp [h]
+
+-- safeAdd returns None iff overflow
+theorem safeAdd_none_iff_gt (a b : DumbContracts.Core.Uint256) :
+    (DumbContracts.Stdlib.Math.safeAdd a b).isNone ↔
+    (a : Nat) + (b : Nat) > DumbContracts.Stdlib.Math.MAX_UINT256 := by
+  unfold DumbContracts.Stdlib.Math.safeAdd
+  by_cases h : (a : Nat) + (b : Nat) > DumbContracts.Stdlib.Math.MAX_UINT256
+  case pos =>
+    constructor
+    · intro _; exact h
+    · intro _; simp [h]
+  case neg =>
+    constructor
+    · intro h_none
+      simp [h] at h_none
+    · intro h_gt
+      exact absurd h_gt h
+
+-- When safeAdd succeeds, it returns the correct value
+theorem safeAdd_some_val (a b : DumbContracts.Core.Uint256)
+    (h : (a : Nat) + (b : Nat) ≤ DumbContracts.Stdlib.Math.MAX_UINT256) :
+    DumbContracts.Stdlib.Math.safeAdd a b = some (a + b) := by
+  unfold DumbContracts.Stdlib.Math.safeAdd
+  have h_not : ¬((a : Nat) + (b : Nat) > DumbContracts.Stdlib.Math.MAX_UINT256) := by omega
+  simp [h_not]
+
 /-!
 ## Notes on Completing These Proofs
 

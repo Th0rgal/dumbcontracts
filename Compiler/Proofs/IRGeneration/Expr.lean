@@ -210,14 +210,13 @@ To prove the preservation theorem, we need:
 **Current File Status**:
 - Sets up the proof framework ✅
 - Documents the high-level strategy ✅
-- Provides axiomatized theorems for SimpleStorage ✅
-- Ready for actual proof development ⚠️
+- Proves SimpleStorage store/retrieve correctness ✅
+- Ready to extend proofs to additional contracts ⚠️
 
 **Next Steps for Completion**:
-1. Prove SimpleStorage axioms (straightforward, small contract)
-2. Generalize pattern to Counter (arithmetic operations)
-3. Extend to SafeCounter (overflow checks)
-4. Handle more complex contracts (Owned, Ledger, etc.)
+1. Generalize pattern to Counter (arithmetic operations)
+2. Extend to SafeCounter (overflow checks)
+3. Handle more complex contracts (Owned, Ledger, etc.)
 
 **Why This Approach Works**:
 - Uses public API (compile function)

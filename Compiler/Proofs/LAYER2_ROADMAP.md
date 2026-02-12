@@ -1,8 +1,8 @@
 # Layer 2: ContractSpec → IR Code Generation Verification
 
-**Status**: 🚀 **PHASE 2 FRAMEWORK COMPLETE** - Ready for actual proofs
+**Status**: 🚀 **PHASE 2 FRAMEWORK COMPLETE** - Proofs underway
 **Last Updated**: 2026-02-12
-**Completion**: Infrastructure 100%, Phase 2 Framework 100%, Proofs 0%
+**Completion**: Infrastructure 100%, Phase 2 Framework 100%, Proofs ~10% (SimpleStorage)
 
 ## Overview
 
@@ -45,7 +45,7 @@ This layer bridges the gap between high-level declarative specifications and exe
 - More maintainable (doesn't depend on internal implementation)
 
 **Components**:
-- Axiomatized SimpleStorage preservation theorems:
+- Proven SimpleStorage preservation theorems:
   - `simpleStorage_store_correct`: Store function correctness
   - `simpleStorage_retrieve_correct`: Retrieve function correctness
 - General preservation theorem template
@@ -53,7 +53,7 @@ This layer bridges the gap between high-level declarative specifications and exe
 
 **Build Status**: ✅ Compiles with zero errors/warnings
 
-**Next**: Convert axioms to actual proofs (~50 lines estimated)
+**Next**: Generalize proof pattern to Counter and SafeCounter
 
 ---
 

@@ -101,23 +101,24 @@ theorem require_success_implies_cond (cond : Bool) (msg : String) (state : Contr
 
 ---
 
-#### Task 1.4: Boolean Equality for Addresses
+#### Task 1.4: Boolean Equality for Addresses ✅ COMPLETE
 **For**: `Owned.only_owner_can_transfer`
 
-**Needed Lemma**:
+**Status**: ✅ **COMPLETED** (commit 333f693)
+
+**Proven Lemma**:
 ```lean
--- Address beq reflects equality
 theorem address_beq_eq_true_iff_eq (a b : Address) :
     (a == b) = true ↔ a = b
 ```
 
-**Approach**:
-- Since Address is String, use String.beq properties
-- Forward direction: `(a == b) = true → a = b` (from beq definition)
-- Reverse direction: `a = b → (a == b) = true` (reflexivity)
+**Implementation**:
+- Uses `simp only [beq_iff_eq]` from Lean standard library
+- Address is String, leverages String's BEq instance
+- Provides bidirectional equivalence
 
-**Estimated Effort**: 0.5 days
-**File**: `Compiler/Proofs/Automation.lean`
+**Result**: Minimal 3-line proof, zero errors
+**File**: `Compiler/Proofs/Automation.lean` (lines 187-196)
 
 ---
 
@@ -216,14 +217,15 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
 ### Week 1: Automation Infrastructure
 - **Days 1-2**: Task 1.1 (Modular arithmetic wraparound) - PENDING
 - **Day 3**: ~~Task 1.2 (Option.bind automation)~~ → ✅ COMPLETE
-- **Day 4**: ~~Tasks 1.3 + 1.4 (Require and beq lemmas)~~ → Task 1.3 ✅ COMPLETE
-- **Day 5**: Task 1.4 (Boolean equality) + Testing
+- **Day 4**: ~~Tasks 1.3 + 1.4 (Require and beq lemmas)~~ → ✅ BOTH COMPLETE
+- **Day 5**: Testing
 
 ### Progress Update (2026-02-12)
 - ✅ Task 1.2 completed (bind_isSuccess_left)
 - ✅ Task 1.3 completed (require_success_implies_cond)
-- Automation infrastructure 50% complete (2/4 tasks)
-- Remaining: Tasks 1.1, 1.4 (2 tasks)
+- ✅ Task 1.4 completed (address_beq_eq_true_iff_eq)
+- **Automation infrastructure 75% complete (3/4 tasks)**
+- Remaining: Only Task 1.1 (Modular arithmetic)
 
 ### Week 2: Complete Remaining Proofs
 - **Day 1**: Task 2.1 (safeIncrement_correct)

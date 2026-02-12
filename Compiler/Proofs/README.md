@@ -20,6 +20,8 @@ Key entry points:
 
 **Goal**: Prove that manually written ContractSpec specifications accurately represent the verified EDSL contracts.
 
+Layer 1 proofs now live alongside each contract spec in `DumbContracts/Specs/<Name>/Proofs.lean` to match the user-facing workflow (Spec → Impl → Proofs).
+
 **Status**: 27/27 theorems proven across 7 contracts
 
 #### Completed Contracts
@@ -28,47 +30,50 @@ Key entry points:
 - 4/4 theorems proven
 - Demonstrates basic storage operations
 - Pattern: unfold + simp for direct computation
-- **Proofs**: [SpecCorrectness/SimpleStorage.lean](SpecCorrectness/SimpleStorage.lean)
+- **Proofs**: [DumbContracts/Specs/SimpleStorage/Proofs.lean](../../DumbContracts/Specs/SimpleStorage/Proofs.lean)
 
 ##### Counter (100% ✅)
 - 7/7 theorems proven
 - Includes modular arithmetic with wraparound
 - Features structural induction proof for multiple increments
-- **Proofs**: [SpecCorrectness/Counter.lean](SpecCorrectness/Counter.lean)
+- **Proofs**: [DumbContracts/Specs/Counter/Proofs.lean](../../DumbContracts/Specs/Counter/Proofs.lean)
 
 ##### SafeCounter (100% ✅)
 - 8/8 theorems proven
 - Demonstrates overflow/underflow protection with safe arithmetic
-- **Proofs**: [SpecCorrectness/SafeCounter.lean](SpecCorrectness/SafeCounter.lean)
+- **Proofs**: [DumbContracts/Specs/SafeCounter/Proofs.lean](../../DumbContracts/Specs/SafeCounter/Proofs.lean)
 
 ##### Owned (100% ✅)
 - 8/8 theorems proven
 - Demonstrates ownership and access control patterns
-- **Proofs**: [SpecCorrectness/Owned.lean](SpecCorrectness/Owned.lean)
+- **Proofs**: [DumbContracts/Specs/Owned/Proofs.lean](../../DumbContracts/Specs/Owned/Proofs.lean)
 
 ##### OwnedCounter (100% ✅)
 - 4/4 theorems proven
 - Combines ownership checks with counter semantics
-- **Proofs**: [SpecCorrectness/OwnedCounter.lean](SpecCorrectness/OwnedCounter.lean)
+- **Proofs**: [DumbContracts/Specs/OwnedCounter/Proofs.lean](../../DumbContracts/Specs/OwnedCounter/Proofs.lean)
 
 ##### Ledger (100% ✅)
 - 2/2 theorems proven
 - Mapping-based balance operations
-- **Proofs**: [SpecCorrectness/Ledger.lean](SpecCorrectness/Ledger.lean)
+- **Proofs**: [DumbContracts/Specs/Ledger/Proofs.lean](../../DumbContracts/Specs/Ledger/Proofs.lean)
 
 ##### SimpleToken (100% ✅)
 - 2/2 theorems proven
 - Token minting and transfers with balances mapping
-- **Proofs**: [SpecCorrectness/SimpleToken.lean](SpecCorrectness/SimpleToken.lean)
+- **Proofs**: [DumbContracts/Specs/SimpleToken/Proofs.lean](../../DumbContracts/Specs/SimpleToken/Proofs.lean)
 
 ## Quick Start
 
 ```bash
 # Build all Layer 1 proofs
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
+lake build DumbContracts.Specs.SimpleStorage.Proofs
+lake build DumbContracts.Specs.Counter.Proofs
+lake build DumbContracts.Specs.SafeCounter.Proofs
+lake build DumbContracts.Specs.Owned.Proofs
+lake build DumbContracts.Specs.OwnedCounter.Proofs
+lake build DumbContracts.Specs.Ledger.Proofs
+lake build DumbContracts.Specs.SimpleToken.Proofs
 
 # Build infrastructure
 lake build Compiler.Proofs.Automation
@@ -202,6 +207,59 @@ theorem setter_correct (state : ContractState) (value : Uint256) (sender : Addre
 
 **Examples**: SimpleStorage.store_correct
 
+## Generic Layer 1 Schema (What It Would Mean)
+
+There is a clean, generic theorem shape for Layer 1, but it does not remove per-contract work. The idea is to package the common proof skeleton so each contract only supplies contract-specific obligations. In practice, this means turning the current "one file per contract" pattern into a reusable schema that consumes a small bundle of contract-specific lemmas and returns the global correctness theorem.
+
+**Generic statement (informal)**:
+If a contract `C` provides:
+- A state relation `R : ContractState -> SpecStorage -> Prop`
+- A per-function correspondence lemma for each function (constructor + externals)
+- A dispatch bridge that connects EDSL function names to the spec's function table
+- A result relation for error/return behavior (EDSL `Result` vs spec `SpecResult`)
+Then executing `C` in the EDSL and interpreting its `ContractSpec` produce matching results under `R`.
+
+**What the Lean theorem would look like** (sketch):
+```lean
+theorem edsl_spec_sound
+  (spec : ContractSpec)
+  (edsl : Contract)
+  (R : ContractState -> SpecStorage -> Prop)
+  (funcs_ok : forall f, function_equiv edsl spec R f)
+  (dispatch_ok : function_dispatch_equiv edsl spec)
+  (result_ok : result_equiv)
+  (init_ok : R initState initStorage) :
+  results_match R (run_edsl edsl tx initState)
+                  (interpretSpec spec initStorage tx) := by
+  -- proof by cases on function name + use funcs_ok
+  ...
+```
+
+This theorem would be reusable, but it still requires each contract to:
+- Define the relation `R` between its concrete EDSL state and the abstract Spec storage.
+- Prove a lemma per function (constructor and external methods).
+
+## Why We Have Not Done This Yet
+
+We did not add this generic wrapper yet because the per-contract obligations are the hard part, and the payoff is mainly organizational:
+- The proofs still need contract-specific state relations and per-function reasoning.
+- The current proofs already follow the same structure, but inlined per file for clarity.
+- The biggest productivity gains have come from the `Automation` lemmas, not from a wrapper theorem.
+- There is also a design choice about *where* to define the generic interfaces (`function_equiv`, `dispatch_ok`, `result_ok`) so they align with the existing EDSL `Contract.run`/`Contract.runValue` definitions without forcing a refactor.
+
+In short, the generic theorem is feasible, but it does not eliminate any of the contract-specific proof effort. It mostly standardizes the layout.
+
+## Simplest Practical Approach
+
+The simplest path that scales while keeping proofs readable is:
+- Keep layer-1 proofs alongside each contract in `DumbContracts/Specs/<Name>/Proofs.lean`
+- Keep supporting lemmas in `DumbContracts/Specs/<Name>/Proofs/` when a contract needs extra structure
+- Factor the repetitive steps into `Automation.lean` and reuse them
+- Optionally add a thin wrapper theorem later, once we have more complex contracts (like Safe Multisig)
+- If/when we add the wrapper, start by packaging existing patterns rather than changing proofs
+
+This keeps the framework light, avoids a big upfront refactor, and lets us focus on the real bottleneck: proving each contract's behavior matches its spec.
+
 ### Pattern 3: Boundary Conditions with Safe Arithmetic
 
 For functions using `safeAdd`/`safeSub`:
@@ -301,10 +359,13 @@ case neg => -- proof when h is false
 
 ```bash
 # Build specific contract proofs
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
+lake build DumbContracts.Specs.SimpleStorage.Proofs
+lake build DumbContracts.Specs.Counter.Proofs
+lake build DumbContracts.Specs.SafeCounter.Proofs
+lake build DumbContracts.Specs.Owned.Proofs
+lake build DumbContracts.Specs.OwnedCounter.Proofs
+lake build DumbContracts.Specs.Ledger.Proofs
+lake build DumbContracts.Specs.SimpleToken.Proofs
 
 # Build infrastructure
 lake build Compiler.Proofs.Automation

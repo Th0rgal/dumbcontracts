@@ -102,10 +102,10 @@ This PR establishes the foundation for three-layer compiler verification, with L
 - `Automation.lean` (250+ lines) - Reusable proof infrastructure
 
 **Proofs**:
-- `SpecCorrectness/SimpleStorage.lean` (96 lines) - 4/4 proven ✅
-- `SpecCorrectness/Counter.lean` (199 lines) - 7/7 proven ✅
-- `SpecCorrectness/SafeCounter.lean` (165 lines) - 8/8 proven ⚠️
-- `SpecCorrectness/Owned.lean` (160 lines) - 8/8 proven ⚠️
+- `Contracts/SimpleStorage/Proofs.lean` (96 lines) - 4/4 proven ✅
+- `Contracts/Counter/Proofs.lean` (199 lines) - 7/7 proven ✅
+- `Contracts/SafeCounter/Proofs.lean` (165 lines) - 8/8 proven ⚠️
+- `Contracts/Owned/Proofs.lean` (160 lines) - 8/8 proven ⚠️
 - Plus: OwnedCounter, Ledger, SimpleToken (structures only)
 
 ---

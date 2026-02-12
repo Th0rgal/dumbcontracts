@@ -74,17 +74,17 @@ exact absurd h_eq h_neq
 ## Verification structure
 
 Each contract has:
-- `Examples/X.lean` -- implementation
-- `Specs/X/Spec.lean` -- what each operation should do (pre/postconditions)
-- `Specs/X/Invariants.lean` -- state properties that should hold across operations
-- `Proofs/X/Basic.lean` -- spec conformance and basic properties
-- `Proofs/X/Correctness.lean` -- deeper properties (revert proofs, composition, end-to-end)
+- `Contracts/X/Impl.lean` -- implementation
+- `Contracts/X/Spec.lean` -- what each operation should do (pre/postconditions)
+- `Contracts/X/Invariants.lean` -- state properties that should hold across operations
+- `Contracts/X/Proofs.lean` -- spec conformance and end-to-end correctness
+- `Contracts/X/Proofs/*.lean` -- deeper properties (revert proofs, composition, invariants)
 
 Some contracts have additional proof files:
-- `SimpleToken/Supply.lean` -- supply conservation equations
-- `SimpleToken/Isolation.lean` -- storage isolation across slot types
-- `Ledger/Conservation.lean` -- balance conservation equations
-- `OwnedCounter/Isolation.lean` -- cross-pattern storage isolation
+- `Contracts/SimpleToken/Proofs/Supply.lean` -- supply conservation equations
+- `Contracts/SimpleToken/Proofs/Isolation.lean` -- storage isolation across slot types
+- `Contracts/Ledger/Proofs/Conservation.lean` -- balance conservation equations
+- `Contracts/OwnedCounter/Proofs/Isolation.lean` -- cross-pattern storage isolation
 
 Conservation proofs use `List.countOcc` to account for duplicate addresses in address lists. For `NoDup` lists, transfer preserves the exact sum. For general lists, exact equations with `countOcc` multipliers are proven instead.
 

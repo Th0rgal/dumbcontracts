@@ -41,7 +41,7 @@ This session focused on addressing Cursor Bugbot review comments and completing 
 **Verification**:
 ```bash
 ✅ Compiler.Proofs.SpecInterpreter builds successfully
-✅ Compiler.Proofs.SpecCorrectness.SimpleStorage still passes
+✅ Contracts.SimpleStorage.Proofs still passes
 ✅ Compiler.Proofs.IRGeneration.Expr still builds
 ```
 
@@ -153,9 +153,9 @@ $ lake build
 - ✅ `Compiler.Proofs.IRGeneration.IRInterpreter`
 - ✅ `Compiler.Proofs.IRGeneration.Conversions`
 - ✅ `Compiler.Proofs.IRGeneration.Expr`
-- ✅ `Compiler.Proofs.SpecCorrectness.SimpleStorage`
-- ✅ `Compiler.Proofs.SpecCorrectness.Counter`
-- ✅ `Compiler.Proofs.SpecCorrectness.SafeCounter`
+- ✅ `Contracts.SimpleStorage.Proofs`
+- ✅ `Contracts.Counter.Proofs`
+- ✅ `Contracts.SafeCounter.Proofs`
 
 ---
 

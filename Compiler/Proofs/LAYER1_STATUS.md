@@ -273,13 +273,13 @@ The Layer 1 framework is stable and ready to support Layer 2 preservation proofs
 ### Build Commands
 ```bash
 # Build all Layer 1 proofs
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
-lake build Compiler.Proofs.SpecCorrectness.OwnedCounter
-lake build Compiler.Proofs.SpecCorrectness.Ledger
-lake build Compiler.Proofs.SpecCorrectness.SimpleToken
+lake build Contracts.SimpleStorage.Proofs
+lake build Contracts.Counter.Proofs
+lake build Contracts.SafeCounter.Proofs
+lake build Contracts.Owned.Proofs
+lake build Contracts.OwnedCounter.Proofs
+lake build Contracts.Ledger.Proofs
+lake build Contracts.SimpleToken.Proofs
 
 # Build automation
 lake build Compiler.Proofs.Automation
@@ -287,7 +287,7 @@ lake build Compiler.Proofs.Automation
 
 ### Current Build Status
 ✅ **All files build successfully**
-- No sorry warnings in SpecCorrectness
+- No sorry warnings in contract proofs
 - No errors
 - All type-check correctly
 
@@ -300,7 +300,7 @@ lake build Compiler.Proofs.Automation
 - Ledger: 0 sorry warnings ✅
 - SimpleToken: 0 sorry warnings ✅
 - Automation: 0 sorry warnings ✅
-- **Total:** 0 sorry placeholders (SpecCorrectness files only)
+- **Total:** 0 sorry placeholders (Contracts/*/Proofs.lean files only)
 
 ---
 

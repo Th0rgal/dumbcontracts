@@ -312,10 +312,10 @@ have h_val : (a + b).val = (a.val + b.val) % modulus := by
 ### Quick Start
 ```bash
 # Build all proven contracts
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
+lake build Contracts.SimpleStorage.Proofs
+lake build Contracts.Counter.Proofs
+lake build Contracts.SafeCounter.Proofs
+lake build Contracts.Owned.Proofs
 
 # Build infrastructure
 lake build Compiler.Proofs.Automation

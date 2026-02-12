@@ -59,7 +59,7 @@ def mint (to : Address) (amount : Uint256) : Contract Unit := do
   setStorage totalSupply (currentSupply + amount)
 ```
 
-**3. Proof** (`DumbContracts/Proofs/SimpleToken/Basic.lean`)
+**3. Proof** (`DumbContracts/Specs/SimpleToken/Proofs.lean`)
 ```lean
 -- Proof that implementation satisfies specification
 theorem mint_meets_spec (s : ContractState) (to : Address) (amount : Uint256)

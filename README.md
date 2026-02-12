@@ -66,10 +66,10 @@ test/                                # Foundry tests (unit, property, differenti
 
 ## Examples and Proofs
 
-- **Lean examples**: `DumbContracts/Examples/`
-- **Specifications**: `DumbContracts/Specs/`
-- **EDSL proofs**: `DumbContracts/Proofs/`
-- **Compiler proofs**: `Compiler/Proofs/` (Layer 1: Spec correctness, Layer 2: IR, Layer 3: Yul)
+- **Lean examples (EDSL implementations)**: `DumbContracts/Examples/`
+- **Specifications + invariants + Layer 1 proofs**: `DumbContracts/Specs/`
+- **Contract-level proofs (EDSL properties)**: `DumbContracts/Proofs/`
+- **Compiler proofs**: `Compiler/Proofs/` (Layer 1 infra, Layer 2: IR, Layer 3: Yul)
 
 ## Build and Test
 

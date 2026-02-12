@@ -87,6 +87,18 @@ theorem bind_getStorage_setStorage_runState (slot : StorageSlot Uint256) (f : Ui
   unfold DumbContracts.bind getStorage setStorage Contract.runState
   simp
 
+-- Bind success propagation: if bind succeeds, first action succeeded
+theorem bind_isSuccess_left {α β : Type} (m1 : Contract α) (m2 : α → Contract β) (state : ContractState) :
+    ((DumbContracts.bind m1 m2).run state).isSuccess = true →
+    (m1.run state).isSuccess = true := by
+  -- When bind succeeds, the first action must have succeeded
+  -- (if m1 reverts, bind reverts regardless of m2)
+  --
+  -- This lemma is useful for reasoning about authorization patterns like:
+  --   do onlyOwner; actualOperation
+  -- If the overall operation succeeds, then onlyOwner succeeded (didn't revert)
+  sorry  -- TODO: Prove using case analysis on m1.run state
+
 /-!
 ## Address Storage Lemmas
 -/
@@ -158,16 +170,21 @@ These lemmas about SpecStorage operations are currently placeholders.
 They require more sophisticated reasoning about List operations.
 -/
 
--- getSlot from setSlot (same slot) - requires proof
+-- getSlot from setSlot (same slot)
 theorem SpecStorage_getSlot_setSlot_same (storage : SpecStorage) (slot : Nat) (value : Nat) :
     (storage.setSlot slot value).getSlot slot = value := by
-  sorry  -- Requires list reasoning
+  -- After unfolding: List.lookup slot ((slot, value) :: filtered) = some value
+  -- This is immediate since lookup finds (slot, value) at head
+  sorry  -- Requires: simp lemma for List.lookup on cons when key matches
 
--- getSlot from setSlot (different slot) - requires proof
+-- getSlot from setSlot (different slot)
 theorem SpecStorage_getSlot_setSlot_diff (storage : SpecStorage) (slot1 slot2 : Nat) (value : Nat)
     (h : slot1 ≠ slot2) :
     (storage.setSlot slot1 value).getSlot slot2 = storage.getSlot slot2 := by
-  sorry  -- Requires list reasoning
+  -- After unfolding: List.lookup slot2 ((slot1, value) :: filtered)
+  -- Since slot2 ≠ slot1, lookup skips head and searches in filtered list
+  -- Key lemma needed: List.lookup k (List.filter (·.1 ≠ k') xs) = List.lookup k xs when k ≠ k'
+  sorry  -- Requires: lemma about List.lookup and List.filter interaction
 
 -- getMapping from setMapping (same slot and key) - requires proof
 theorem SpecStorage_getMapping_setMapping_same (storage : SpecStorage) (slot : Nat) (key : Nat) (value : Nat) :

@@ -55,8 +55,19 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
   -- EDSL: safeAdd returns Some/None
   -- Spec: require (newCount > count) passes/fails
   --
-  -- Key lemma needed: safeAdd a 1 = Some ↔ (add a 1).val > a.val
-  -- This involves modular arithmetic wraparound reasoning
+  -- Key insight: safeAdd a 1 = Some ↔ a < MAX_UINT256
+  --              (a + 1).val > a.val ↔ no wraparound occurred
+  --
+  -- The challenge is that after unfolding both sides, we need to show:
+  -- 1. safeAdd succeeds ↔ modular addition doesn't wrap (i.e., result > original)
+  -- 2. When both succeed, final storage values match
+  --
+  -- This requires a helper lemma about modular arithmetic:
+  --   (a + 1 mod 2^256) > a ↔ a + 1 ≤ 2^256 - 1
+  --
+  -- Since this involves deep reasoning about Uint256 internals and modular arithmetic,
+  -- and we've already proven the boundary conditions (reverts_at_max, succeeds_below_max),
+  -- we leave this as a strategic sorry for now.
   sorry
 
 /-- The `decrement` function correctly decrements with underflow check -/

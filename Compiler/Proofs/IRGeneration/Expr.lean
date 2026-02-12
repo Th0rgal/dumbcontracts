@@ -545,6 +545,138 @@ theorem counter_getCount_correct (storedValue : Nat) (initialState : ContractSta
       simp
     · simp [h]
 
+/-! ## Owned: Concrete IR -/
+
+def ownedNotOwnerRevert : List YulStmt :=
+  [
+    YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.lit 0,
+      YulExpr.hex 0x08c379a000000000000000000000000000000000000000000000000000000000
+    ]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit 9]),
+    YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.lit 68,
+      YulExpr.hex 0x4e6f74206f776e65720000000000000000000000000000000000000000000000
+    ]),
+    YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 100])
+  ]
+
+def ownedIRContract : IRContract :=
+  { name := "Owned"
+    deploy := [
+      YulStmt.let_ "argsOffset" (YulExpr.call "sub" [YulExpr.call "codesize" [], YulExpr.lit 32]),
+      YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit 32]),
+      YulStmt.let_ "arg0" (YulExpr.call "and" [
+        YulExpr.call "mload" [YulExpr.lit 0],
+        YulExpr.hex ((2^160) - 1)
+      ]),
+      YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "arg0"])
+    ]
+    functions := [
+      { name := "transferOwnership"
+        selector := 0xf2fde38b
+        params := [{ name := "newOwner", ty := IRType.address }]
+        ret := IRType.unit
+        body := [
+          YulStmt.let_ "newOwner" (YulExpr.call "and" [
+            YulExpr.call "calldataload" [YulExpr.lit 4],
+            YulExpr.hex ((2^160) - 1)
+          ]),
+          YulStmt.if_
+            (YulExpr.call "iszero" [
+              YulExpr.call "eq" [
+                YulExpr.call "caller" [],
+                YulExpr.call "sload" [YulExpr.lit 0]
+              ]
+            ])
+            ownedNotOwnerRevert,
+          YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "newOwner"]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "getOwner"
+        selector := 0x893d20e8
+        params := []
+        ret := IRType.address
+        body := [
+          YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.call "sload" [YulExpr.lit 0]]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      }
+    ]
+    usesMapping := false }
+
+@[simp] lemma compile_ownedSpec :
+    compile ownedSpec [0xf2fde38b, 0x893d20e8] = .ok ownedIRContract := by
+  rfl
+
+/-! ## Owned: Function Correctness -/
+
+theorem owned_transferOwnership_correct_as_owner (newOwner : Nat) (initialState : ContractState) :
+  let spec := ownedSpec
+  let irContract := compile spec [0xf2fde38b, 0x893d20e8]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 (addressToNat sender)
+  let tx : Transaction := {
+    sender := sender
+    functionName := "transferOwnership"
+    args := [newOwner]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xf2fde38b
+    args := [newOwner]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    ownedIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+    specStorageToIRState]
+  · intro slot
+    by_cases h : slot = 0
+    · subst h
+      simp
+    · simp [h]
+
+theorem owned_getOwner_correct (storedOwner : Nat) (initialState : ContractState) :
+  let spec := ownedSpec
+  let irContract := compile spec [0xf2fde38b, 0x893d20e8]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedOwner
+  let tx : Transaction := {
+    sender := sender
+    functionName := "getOwner"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x893d20e8
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    ownedIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+    specStorageToIRState]
+  · intro slot
+    by_cases h : slot = 0
+    · subst h
+      simp
+    · simp [h]
+
 /-! ## General Preservation Theorem Template
 
 For any contract, we want to prove:

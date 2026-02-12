@@ -67,7 +67,7 @@ theorem simpleStorage_store_correct (value : Nat) (initialState : ContractState)
   | .ok ir =>
       let irResult := interpretIR ir irTx
       -- Results should match
-      resultsMatch ir.usesMapping irResult specResult initialState
+      resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
   := by
   -- Strategy: This proof requires showing that the compiled IR and the Spec
@@ -115,7 +115,7 @@ axiom simpleStorage_retrieve_correct (initialState : ContractState) :
   match irContract with
   | .ok ir =>
       let irResult := interpretIR ir irTx
-      resultsMatch ir.usesMapping irResult specResult initialState
+      resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
 
 /-! ## General Preservation Theorem Template
@@ -132,10 +132,10 @@ theorem contract_preserves_semantics (spec : ContractSpec) (selectors : List Nat
       match selectorOpt with
       | some selector =>
           let irTx := transactionToIRTransaction tx selector
-          let irState := contractStateToIRState state
+          let irState := contractStateToIRState addrs state
           let irResult := interpretIR ir irTx
           let specResult := interpretSpec spec (contractStateToSpecStorage state) tx
-          resultsMatch ir.usesMapping irResult specResult state
+          resultsMatch ir.usesMapping [] irResult specResult state
       | none => True  -- Function not found, both should fail
   | .error _ => True  -- Compilation failed
 ```

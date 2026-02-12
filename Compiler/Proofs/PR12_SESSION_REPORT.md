@@ -95,9 +95,9 @@ This session focused on addressing Cursor Bugbot review comments and completing 
 - General preservation template:
   ```lean
   theorem contract_preserves_semantics (spec : ContractSpec) (selectors : List Nat)
-      (tx : Transaction) (state : ContractState) :
+      (tx : Transaction) (state : ContractState) (addrs : List Address) :
     match compile spec selectors with
-    | .ok ir => resultsMatch ir.usesMapping (interpretIR ir irTx) (interpretSpec spec tx) state
+    | .ok ir => resultsMatch ir.usesMapping addrs (interpretIR ir irTx) (interpretSpec spec tx) state
     | .error _ => True
   ```
 
@@ -194,10 +194,10 @@ $ lake build
 ### Proof Strategy
 
 **Phase 1: Type Conversions** ✅ COMPLETE
-- addressToNat / natToAddress
-- contractStateToIRState
+- addressToNat + address table (`addressFromNat`)
+- contractStateToIRState (address-scoped)
 - transactionToIRTransaction
-- resultsMatch predicate
+- resultsMatch predicate (mapping scoped to address list)
 
 **Phase 2: Expression Compilation** 🚀 FRAMEWORK COMPLETE
 - End-to-end contract preservation (not individual expressions)

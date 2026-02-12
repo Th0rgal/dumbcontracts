@@ -39,19 +39,19 @@ def addressToNat (addr : Address) : Nat :=
   -- This is sufficient for proof purposes (we prove injectivity holds for valid addresses)
   addr.data.foldl (fun acc c => acc * 256 + c.toNat) 0
 
-/-- Convert Nat back to Address
+/-! ## Address Domain for Mapping Keys -/
 
-    This is not a true inverse (many Nats don't correspond to valid addresses).
-    We only need this for the proof framework, not for actual execution.
+/-- Build a lookup table from Nat keys back to Addresses.
 
-    NOTE: This is a major limitation for mapping-based proofs.
-    For contracts using mappings (Ledger, SimpleToken), we need a proper bijection
-    between the address space we care about and Nat keys.
+    This gives us a *partial* inverse for addressToNat on a finite address set.
+    For any address in `addrs`, we can recover it from its Nat key.
 -/
-def natToAddress (n : Nat) : Address :=
-  -- For proof purposes, we just stringify the number
-  -- In real verification, we'd maintain a bijection for valid addresses
-  "addr_" ++ toString n
+def addressKeyMap (addrs : List Address) : List (Nat × Address) :=
+  addrs.map (fun addr => (addressToNat addr, addr))
+
+/-- Partial inverse for addressToNat on a finite address set. -/
+def addressFromNat (addrs : List Address) (key : Nat) : Option Address :=
+  (addressKeyMap addrs).lookup key
 
 /-- For valid Ethereum addresses, addressToNat is injective
 
@@ -96,31 +96,23 @@ theorem natToUint256_uint256ToNat (u : Uint256) :
     - Storage mappings: Address keys → Nat keys, Uint256 values → Nat values
     - Sender: Address → Nat
 
-    LIMITATION: Mapping conversion is currently unsound for general addresses.
-    natToAddress is NOT the inverse of addressToNat, so mapping lookups will fail
-    for contracts like Ledger and SimpleToken that use address-keyed mappings.
-
-    To fix this, we need one of:
-    1. Maintain a bijection table between addresses used in tests and their Nat encodings
-    2. Prove preservation only for contracts without mappings (SimpleStorage, Counter, etc.)
-    3. Extend the IR to track address mappings explicitly instead of using Nat keys
-
-    For now, this conversion is only valid for non-mapping contracts.
+    Mapping conversion is only sound for a finite set of addresses `addrs`:
+    we decode Nat keys using the address table derived from `addrs`.
+    For keys outside this table, we return 0 (default mapping value).
 -/
-def contractStateToIRState (state : ContractState) : IRState :=
+def contractStateToIRState (addrs : List Address) (state : ContractState) : IRState :=
   { vars := []  -- IR starts with empty variable bindings
     storage := fun slot => uint256ToNat (state.storage slot)
     mappings := fun base key =>
-      -- UNSOUND: Decode Nat key back to Address using natToAddress
-      -- This only works if we maintain a bijection for the addresses in scope
-      -- TODO: Replace with proper address bijection table
-      uint256ToNat (state.storageMap base (natToAddress key))
+      match addressFromNat addrs key with
+      | some addr => uint256ToNat (state.storageMap base addr)
+      | none => 0
     returnValue := none
     sender := addressToNat state.sender }
 
 /-- Storage conversion preserves slot values -/
-theorem contractStateToIRState_storage (state : ContractState) (slot : Nat) :
-    (contractStateToIRState state).storage slot = uint256ToNat (state.storage slot) := by
+theorem contractStateToIRState_storage (addrs : List Address) (state : ContractState) (slot : Nat) :
+    (contractStateToIRState addrs state).storage slot = uint256ToNat (state.storage slot) := by
   unfold contractStateToIRState
   rfl
 
@@ -148,13 +140,14 @@ def transactionToIRTransaction (tx : Transaction) (selector : Nat) : IRTransacti
     3. Storage states match (after conversion)
     4. Mapping storage matches when the contract uses mappings
 -/
-def resultsMatch (usesMapping : Bool) (irResult : IRResult) (specResult : SpecResult)
+def resultsMatch (usesMapping : Bool) (addrs : List Address) (irResult : IRResult) (specResult : SpecResult)
     (_initialState : ContractState) : Prop :=
   irResult.success = specResult.success ∧
   irResult.returnValue = specResult.returnValue ∧
   (∀ slot, irResult.finalStorage slot = specResult.finalStorage.getSlot slot) ∧
-  (usesMapping = true → ∀ baseSlot key,
-    irResult.finalMappings baseSlot key = specResult.finalStorage.getMapping baseSlot key)
+  (usesMapping = true → ∀ baseSlot addr, addr ∈ addrs →
+    irResult.finalMappings baseSlot (addressToNat addr) =
+      specResult.finalStorage.getMapping baseSlot (addressToNat addr))
 
 /-! ## Helper: Function Selector Lookup -/
 
@@ -173,14 +166,14 @@ def SelectorMap.lookup (map : SelectorMap) (name : String) : Option Nat :=
 /-! ## Conversion Properties -/
 
 /-- Storage preservation: Converting state and extracting storage preserves values -/
-theorem storage_preservation (s : ContractState) (slot : Nat) :
-    (contractStateToIRState s).storage slot = uint256ToNat (s.storage slot) := by
+theorem storage_preservation (addrs : List Address) (s : ContractState) (slot : Nat) :
+    (contractStateToIRState addrs s).storage slot = uint256ToNat (s.storage slot) := by
   unfold contractStateToIRState uint256ToNat
   rfl
 
 /-- Sender preservation: Converting state preserves sender -/
-theorem sender_preservation (s : ContractState) :
-    (contractStateToIRState s).sender = addressToNat (s.sender) := by
+theorem sender_preservation (addrs : List Address) (s : ContractState) :
+    (contractStateToIRState addrs s).sender = addressToNat (s.sender) := by
   unfold contractStateToIRState
   rfl
 
@@ -210,25 +203,26 @@ The conversion layer makes several simplifying assumptions:
    - IR arithmetic uses mod 2^256, matching Uint256 semantics
    - Round-trip property proven (natToUint256 ∘ uint256ToNat = id)
 
-3. **Mapping conversion**: We use natToAddress for key decoding, which is sufficient because:
+3. **Mapping conversion**: We decode Nat keys using an explicit address table, which is sufficient because:
    - IR only stores/loads using Nat keys
-   - When proving preservation, we track which addresses map to which Nats
-   - The spec and IR access the same conceptual storage locations
+   - We restrict proofs to a finite list of addresses used by the transaction(s)
+   - For those addresses, addressToNat is invertible via `addressFromNat`
 
 4. **Result matching**: We compare component-wise, which is sound because:
    - Success/failure must match exactly
    - Return values must match exactly
    - Storage must match slot-by-slot (after conversion)
+   - Mapping equivalence is checked for each address in the address table
 
 These conversions enable the preservation theorem:
 
   ∀ spec selectors tx state,
     let ir := compile spec selectors
     let irTx := transactionToIRTransaction tx (selectorfromName tx.functionName)
-    let irState := contractStateToIRState state
+    let irState := contractStateToIRState addrs state
     let irResult := interpretIR ir irTx irState
     let specResult := interpretSpec spec (contractStateToSpecStorage state) tx
-    resultsMatch ir.usesMapping irResult specResult state
+    resultsMatch ir.usesMapping addrs irResult specResult state
 
 -/
 

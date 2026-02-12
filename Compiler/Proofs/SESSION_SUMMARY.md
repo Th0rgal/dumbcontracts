@@ -45,24 +45,29 @@ theorem natToUint256_uint256ToNat (u : Uint256) :
 
 **State Conversion**:
 ```lean
-def contractStateToIRState (state : ContractState) : IRState :=
+def contractStateToIRState (addrs : List Address) (state : ContractState) : IRState :=
   { vars := []
     storage := fun slot => uint256ToNat (state.storage slot)
-    mappings := fun base key => uint256ToNat (state.storageMap base (natToAddress key))
+    mappings := fun base key =>
+      match addressFromNat addrs key with
+      | some addr => uint256ToNat (state.storageMap base addr)
+      | none => 0
     sender := addressToNat state.sender }
 
-theorem storage_preservation : (contractStateToIRState s).storage slot = uint256ToNat (s.storage slot)
-theorem sender_preservation : (contractStateToIRState s).sender = addressToNat s.sender
+theorem storage_preservation : (contractStateToIRState addrs s).storage slot = uint256ToNat (s.storage slot)
+theorem sender_preservation : (contractStateToIRState addrs s).sender = addressToNat s.sender
 ```
 
 **Result Equivalence**:
 ```lean
-def resultsMatch (usesMapping : Bool) (irResult : IRResult) (specResult : SpecResult) : Prop :=
+def resultsMatch (usesMapping : Bool) (addrs : List Address)
+    (irResult : IRResult) (specResult : SpecResult) : Prop :=
   irResult.success = specResult.success ∧
   irResult.returnValue = specResult.returnValue ∧
   (∀ slot, irResult.finalStorage slot = specResult.finalStorage.getSlot slot) ∧
-  (usesMapping = true → ∀ baseSlot key,
-    irResult.finalMappings baseSlot key = specResult.finalStorage.getMapping baseSlot key)
+  (usesMapping = true → ∀ baseSlot addr, addr ∈ addrs →
+    irResult.finalMappings baseSlot (addressToNat addr) =
+      specResult.finalStorage.getMapping baseSlot (addressToNat addr))
 ```
 
 ## Strategic Insights
@@ -225,7 +230,7 @@ For each Expr constructor:
    theorem contract_preserves_semantics (spec : ContractSpec) (selectors : List Nat)
        (tx : Transaction) (state : ContractState) :
      match compile spec selectors with
-     | .ok ir => resultsMatch ir.usesMapping (interpretIR ir irTx) (interpretSpec spec tx) state
+     | .ok ir => resultsMatch ir.usesMapping addrs (interpretIR ir irTx) (interpretSpec spec tx) state
      | .error _ => True
    ```
 

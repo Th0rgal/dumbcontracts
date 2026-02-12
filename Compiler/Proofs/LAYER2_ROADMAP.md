@@ -21,11 +21,11 @@ This layer bridges the gap between high-level declarative specifications and exe
 **File**: `Compiler/Proofs/IRGeneration/Conversions.lean`
 
 **Components**:
-- `addressToNat` / `natToAddress`: Address ↔ Nat conversion
+- `addressToNat` + address table (`addressFromNat`): Address ↔ Nat conversion
 - `uint256ToNat` / `natToUint256`: Uint256 ↔ Nat conversion
 - `contractStateToIRState`: Convert ContractState → IRState
 - `transactionToIRTransaction`: Convert Transaction → IRTransaction
-- `resultsMatch`: Define IR ≡ Spec result equivalence
+- `resultsMatch`: Define IR ≡ Spec result equivalence (mapping scoped to address list)
 - `addressToNat_injective`: Axiom for address encoding uniqueness
 
 **Build Status**: ✅ Compiles with zero errors/warnings
@@ -152,8 +152,8 @@ To prove `interpretIR (compile spec) ≈ interpretSpec spec`, we need:
 1. **Address Encoding**: `Address → Nat` and `Nat → Address`
    ```lean
    def addressToNat : Address → Nat
-   def natToAddress : Nat → Address
-   -- Prove: natToAddress (addressToNat a) = a (for valid addresses)
+   def addressFromNat (addrs : List Address) : Nat → Option Address
+   -- Prove: addressFromNat addrs (addressToNat a) = some a (for a ∈ addrs)
    ```
 
 2. **Uint256 Conversion**: `Uint256 ↔ Nat`
@@ -167,7 +167,10 @@ To prove `interpretIR (compile spec) ≈ interpretSpec spec`, we need:
    def stateToIRState (s : ContractState) : IRState :=
      { vars := []
        storage := fun slot => (s.storage slot).val
-       mappings := fun base key => (s.storageMap base (natToAddress key)).val
+       mappings := fun base key =>
+         match addressFromNat addrs key with
+         | some addr => (s.storageMap base addr).val
+         | none => 0
        sender := addressToNat s.sender }
    ```
 
@@ -181,7 +184,7 @@ To prove `interpretIR (compile spec) ≈ interpretSpec spec`, we need:
 
 5. **Result Equivalence**: Define when `IRResult ≈ SpecInterpreter.Result`
    ```lean
-   def resultsMatch (ir : IRResult) (spec : SpecInterpreter.Result) : Prop :=
+   def resultsMatch (addrs : List Address) (ir : IRResult) (spec : SpecInterpreter.Result) : Prop :=
      ir.success = spec.success ∧
      ir.returnValue = spec.returnValue ∧
      (∀ slot, ir.finalStorage slot = spec.finalStorage.getSlot slot)
@@ -197,7 +200,7 @@ theorem compile_preserves_semantics (spec : ContractSpec) (selectors : List Nat)
     let compiled := compile spec selectors
     let irResult := interpretIR compiled (txToIRTx tx selector)
     let specResult := interpretSpec spec (stateToSpecStorage state) tx
-    resultsMatch irResult specResult := by
+    resultsMatch addrs irResult specResult := by
   -- Proof by structural induction on spec and tx
   sorry
 ```

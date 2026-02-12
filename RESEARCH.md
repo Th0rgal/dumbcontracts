@@ -8,7 +8,7 @@ The core went through two phases:
 
 **Phase 1 (iterations 1-7)**: Built 7 contracts on a `StateM ContractState` monad. Core grew from 58 to 82 lines. Three storage types were added as needed: `Nat -> Uint256` (iteration 1), `Nat -> Address` (iteration 3), `Nat -> Address -> Uint256` for mappings (iteration 6). Each was driven by a concrete example that needed it.
 
-**Phase 2 (verification)**: Replaced `StateM` with a custom `ContractResult` inductive type (`success | revert`) so that `require` guards could be modeled explicitly. This was necessary to prove properties like "mint reverts when caller is not owner." Core grew to 212 lines, mostly from simp lemmas for proof automation.
+**Phase 2 (verification)**: Replaced `StateM` with a custom `ContractResult` inductive type (`success | revert`) so that `require` guards could be modeled explicitly. This was necessary to prove properties like "mint reverts when caller is not owner." Core grew to 234 lines, mostly from simp lemmas for proof automation and EVM context.
 
 Key decisions:
 - `Address := String`, `Uint256` is a dedicated 256-bit modular type to match EVM arithmetic.

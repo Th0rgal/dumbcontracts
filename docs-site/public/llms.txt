@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-212-line Lean 4 EDSL for smart contracts. 252 machine-checked proofs. Zero sorry, zero axioms.
+234-line Lean 4 EDSL for smart contracts. 252 machine-checked proofs. Zero sorry, zero axioms.
 
 **Core**: Models contract state, storage operations, and `require` guards using explicit success/revert result type (`ContractResult`).
 
@@ -13,7 +13,7 @@
 ## Quick Facts
 
 - **Language**: Lean 4.15.0
-- **Core Size**: 212 lines
+- **Core Size**: 234 lines
 - **Contracts**: SimpleStorage, Counter, Owned, SimpleToken, OwnedCounter, Ledger, SafeCounter
 - **Theorems**: 252 proven (100% coverage, no sorry, no axioms)
 - **Build**: `lake build` verifies all proofs

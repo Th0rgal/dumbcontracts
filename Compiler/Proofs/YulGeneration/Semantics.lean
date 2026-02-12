@@ -242,6 +242,7 @@ inductive YulExecTarget
 
 def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
   | fuel, state, .stmts [] => .continue state
+  | fuel, state, .stmt (YulStmt.funcDef _ _ _ _) => .continue state
   | 0, state, _ => .revert state
   | Nat.succ fuel, state, target =>
       match target with

@@ -36,16 +36,34 @@ theorem evalYulExpr_selectorExpr_eq (state : YulState)
 
 /-- Executing runtime code is equivalent to executing the switch body (mapping helper is a no-op). -/
 theorem execYulStmts_runtimeCode_eq :
-    ∀ (contract : IRContract) (state : YulState),
-      execYulStmts state (Compiler.runtimeCode contract) =
-        execYulStmts state [Compiler.buildSwitch contract.functions] := by
-  intro contract state
+    ∀ (contract : IRContract) (state : YulState) (fuel : Nat),
+      execYulStmtsFuel fuel state (Compiler.runtimeCode contract) =
+        execYulStmtsFuel fuel state [Compiler.buildSwitch contract.functions] := by
+  intro contract state fuel
   by_cases h : contract.usesMapping
-  · simp [Compiler.runtimeCode, h]
-  · simp [Compiler.runtimeCode, h]
+  · cases fuel with
+    | zero =>
+        simp [Compiler.runtimeCode, h, execYulStmtsFuel, execYulFuel, mappingSlotFunc]
+    | succ fuel =>
+        cases fuel with
+        | zero =>
+            have hfunc :
+                execYulFuel 0 state (YulExecTarget.stmt mappingSlotFunc) =
+                  YulExecResult.continue state := by
+              unfold mappingSlotFunc
+              simp [execYulFuel]
+            simp [Compiler.runtimeCode, h, execYulStmtsFuel, execYulFuel, mappingSlotFunc, hfunc]
+        | succ fuel =>
+            have hfunc :
+                execYulFuel (Nat.succ fuel) state (YulExecTarget.stmt mappingSlotFunc) =
+                  YulExecResult.continue state := by
+              unfold mappingSlotFunc
+              simp [execYulFuel]
+            simp [Compiler.runtimeCode, h, execYulStmtsFuel, execYulFuel, mappingSlotFunc, hfunc]
+  · simp [Compiler.runtimeCode, h, execYulStmtsFuel]
 
 /-- Switch cases generated from IR functions. -/
-def switchCases (fns : List IRFunction) : List (Nat × List YulStmt) :=
+def switchCases (fns : List IRFunction) : List (Prod Nat (List YulStmt)) :=
   fns.map (fun f =>
     let body := [YulStmt.comment s!"{f.name}()"] ++ f.body
     (f.selector, body)
@@ -56,19 +74,18 @@ def switchCases (fns : List IRFunction) : List (Nat × List YulStmt) :=
       YulStmt.switch selectorExpr (switchCases fns) (some [
         YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
       ]) := by
-  simp [Compiler.buildSwitch, selectorExpr, switchCases]
+  simp [Compiler.buildSwitch, selectorExpr, switchCases, selectorShift]
 
 /-- If the selector matches a case, the switch executes that case body (fueled). -/
-theorem execYulStmtFuel_switch_match :
-    (∀ (state : YulState) (expr : YulExpr) (cases' : List (Nat × List YulStmt))
-        (default : Option (List YulStmt)) (fuel v : Nat) (body : List YulStmt),
-        evalYulExpr state expr = some v →
-        List.find? (fun (c, _) => c = v) cases' = some (v, body) →
-        execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
-          execYulStmtsFuel fuel state body) := by
-  intro state expr cases' default fuel v body hEval hFind
+theorem execYulStmtFuel_switch_match
+    (state : YulState) (expr : YulExpr) (cases' : List (Prod Nat (List YulStmt)))
+    (default : Option (List YulStmt)) (fuel v : Nat) (body : List YulStmt)
+    (hEval : evalYulExpr state expr = some v)
+    (hFind : List.find? (fun (c, _) => c = v) cases' = some (v, body)) :
+    execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
+      execYulStmtsFuel fuel state body := by
   have hFind' :
-      List.find? (fun x : Nat × List YulStmt => decide (x.1 = v)) cases' = some (v, body) := by
+      List.find? (fun x : Prod Nat (List YulStmt) => decide (x.1 = v)) cases' = some (v, body) := by
     simpa using hFind
   simpa using (Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match_semantics
     state expr cases' default fuel v body hEval hFind')
@@ -80,22 +97,22 @@ def execYulStmtFuel_switch_miss_result (state : YulState) (fuel : Nat)
   | some body => execYulStmtsFuel fuel state body
   | none => YulExecResult.continue state
 
-theorem execYulStmtFuel_switch_miss :
-    (∀ (state : YulState) (expr : YulExpr) (cases' : List (Nat × List YulStmt))
-        (default : Option (List YulStmt)) (fuel v : Nat),
-        evalYulExpr state expr = some v →
-        List.find? (fun (c, _) => c = v) cases' = none →
-        execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
-          execYulStmtFuel_switch_miss_result state fuel default) := by
-  intro state expr cases' default fuel v hEval hFind
+theorem execYulStmtFuel_switch_miss
+    (state : YulState) (expr : YulExpr) (cases' : List (Prod Nat (List YulStmt)))
+    (default : Option (List YulStmt)) (fuel v : Nat)
+    (hEval : evalYulExpr state expr = some v)
+    (hFind : List.find? (fun (c, _) => c = v) cases' = none) :
+    execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
+      execYulStmtFuel_switch_miss_result state fuel default := by
   have hFind' :
-      List.find? (fun x : Nat × List YulStmt => decide (x.1 = v)) cases' = none := by
+      List.find? (fun x : Prod Nat (List YulStmt) => decide (x.1 = v)) cases' = none := by
     simpa using hFind
-  simpa [execYulStmtFuel_switch_miss_result] using
-    (Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
-      state expr cases' default fuel v hEval hFind')
+  have h :=
+    Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
+      state expr cases' default fuel v hEval hFind'
+  simpa [execYulStmtFuel_switch_miss_result] using h
 
-/-- Bridge lemma: mapping a found function into switch cases yields the corresponding case. -/
+/- Bridge lemmas for switch-case lookup. -/
 lemma find_switch_case_of_find_function
     (fns : List IRFunction) (sel : Nat) (fn : IRFunction)
     (hFind : fns.find? (fun f => f.selector == sel) = some fn) :
@@ -130,5 +147,6 @@ lemma find_switch_case_of_find_function_none
       · simp [List.find?, hsel] at hFind
         have := ih hFind
         simp [switchCases, List.find?, hsel, this]
+
 
 end Compiler.Proofs.YulGeneration

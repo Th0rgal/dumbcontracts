@@ -58,6 +58,25 @@ def abiFunctionSignatures : List String :=
   , "nonce()"
   , "signedMessages(bytes32)"
   , "approvedHashes(address,bytes32)"
+  , "enableModule(address)"
+  , "disableModule(address,address)"
+  , "execTransactionFromModule(address,uint256,bytes,uint8)"
+  , "execTransactionFromModuleReturnData(address,uint256,bytes,uint8)"
+  , "isModuleEnabled(address)"
+  , "getModulesPaginated(address,uint256)"
+  , "setModuleGuard(address)"
+  , "setGuard(address)"
+  , "addOwnerWithThreshold(address,uint256)"
+  , "removeOwner(address,address,uint256)"
+  , "swapOwner(address,address,address)"
+  , "changeThreshold(uint256)"
+  , "getThreshold()"
+  , "isOwner(address)"
+  , "getOwners()"
+  , "setFallbackHandler(address)"
+  , "getStorageAt(uint256,uint256)"
+  , "simulateAndRevert(address,bytes)"
+  , "isValidSignature(bytes32,bytes)"
   ]
 
 /-- ABI event signatures (ISafe interface only). -/
@@ -67,6 +86,17 @@ def abiEventSignatures : List String :=
   , "SignMsg(bytes32)"
   , "ExecutionFailure(bytes32,uint256)"
   , "ExecutionSuccess(bytes32,uint256)"
+  , "EnabledModule(address)"
+  , "DisabledModule(address)"
+  , "ExecutionFromModuleSuccess(address)"
+  , "ExecutionFromModuleFailure(address)"
+  , "ChangedModuleGuard(address)"
+  , "ChangedGuard(address)"
+  , "AddedOwner(address)"
+  , "RemovedOwner(address)"
+  , "ChangedThreshold(uint256)"
+  , "ChangedFallbackHandler(address)"
+  , "SafeReceived(address,uint256)"
   ]
 
 /-- Constructor spec: Safe singleton initializes threshold = 1 and preserves all other state. -/

@@ -259,13 +259,9 @@ Compared to Layer 1 (EDSL ↔ Spec), Layer 2 has advantages:
 
 ## Next Steps
 
-### Layer 3: IR → Yul (Upcoming)
+### Layer 3: IR → Yul (Complete)
 
-Layer 2 is complete. The next step is to formalize Yul semantics and prove:
-
-1. Expression and statement codegen preserves IR semantics
-2. Function-level preservation theorem for full contracts
-3. End-to-end `interpretYul (generateYul ir) = interpretIR ir`
+Layer 3 is complete. For the current proof inventory and status across layers, see `Compiler/Proofs/README.md`.
 
 ## Estimated Effort
 
@@ -290,8 +286,8 @@ Layer 2 is complete. The next step is to formalize Yul semantics and prove:
 
 Layer 2 provides strategic benefits beyond just completing verification:
 
-1. **De-risk Layer 1**: If IR proves easier to reason about, informs Layer 1 completion
-2. **Incremental Progress**: Can complete Layer 2 while Layer 1 automation develops
+1. **De-risk Layer 1**: IR reasoning clarified and informed the Layer 1 automation approach
+2. **Incremental Progress**: Layer 2 progressed independently while Layer 1 automation was built
 3. **Different Proof Patterns**: May discover techniques applicable to Layer 1
 4. **Validation of Approach**: If Layer 2 succeeds, validates overall architecture
 
@@ -299,4 +295,4 @@ Layer 2 provides strategic benefits beyond just completing verification:
 
 Layer 2 is **complete**. The IR interpreter and conversion layer are validated end-to-end across all 7 contracts, including mapping-heavy Ledger and SimpleToken.
 
-**Recommendation**: Move to Layer 3 (IR → Yul) by defining Yul semantics and proving codegen preservation, reusing the end-to-end proof style where possible.
+**Recommendation**: Keep the Layer 2 proofs green as the compiler evolves, and update `Compiler/Proofs/README.md` when proof status changes.

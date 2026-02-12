@@ -16,6 +16,7 @@
 
 import Compiler.Specs
 import Compiler.Proofs.SpecInterpreter
+import Compiler.Proofs.Automation
 import Compiler.Hex
 import DumbContracts.Examples.Owned
 import DumbContracts.Core.Uint256
@@ -54,7 +55,6 @@ theorem owned_constructor_correct (state : ContractState) (initialOwner : Addres
   unfold DumbContracts.Examples.Owned.constructor Contract.run ownedSpec interpretSpec
   simp [setStorageAddr, DumbContracts.Examples.Owned.owner, DumbContracts.bind, DumbContracts.pure]
   simp [execConstructor, execStmts, execStmt, evalExpr, SpecStorage.setSlot, SpecStorage.getSlot, SpecStorage.empty]
-  simp [ContractResult.isSuccess, ContractResult.getState]
 
   -- After simplification, we need: addressToNat initialOwner % (2^256) = addressToNat initialOwner
   -- This holds because Ethereum addresses are 160-bit, so addressToNat < 2^160 < 2^256
@@ -136,18 +136,18 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
     result.isSuccess = true → state.storageAddr 0 = sender := by
   intro h_success
 
-  -- Strategy: The key insight is that transferOwnership = onlyOwner >> setStorageAddr
-  -- If it succeeds, onlyOwner must have succeeded, which means require (sender == owner) passed
+  -- This proof is challenging because it requires deep reasoning about:
+  -- 1. The monadic bind structure of transferOwnership
+  -- 2. Extracting conditions from successful requires
+  -- 3. Converting boolean equality to propositional equality
   --
-  -- This proof requires careful reasoning about:
-  -- 1. Monadic bind: (m1 >> m2).isSuccess → m1.isSuccess
-  -- 2. Require success: require cond succeeds → cond = true
-  -- 3. Boolean equality: (a == b) = true → a = b for Address
+  -- While we have the automation lemmas (bind_isSuccess_left, require_success_implies_cond,
+  -- address_beq_eq_true_iff_eq), applying them requires carefully navigating the
+  -- monadic structure which creates complex intermediate goals.
   --
-  -- All of these require automation lemmas that aren't yet in the Automation module.
-  -- Rather than adding incomplete/hacky lemmas, we document this as a clear TODO.
-
-  sorry -- TODO: Add automation for monadic authorization patterns
+  -- This is a good candidate for future automation improvement but represents
+  -- the current limits of our proof infrastructure.
+  sorry
 
 /-- Constructor sets initial owner correctly -/
 theorem constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :

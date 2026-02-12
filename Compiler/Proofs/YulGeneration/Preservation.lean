@@ -47,8 +47,15 @@ theorem yulCodegen_preserves_semantics
   cases hFind : contract.functions.find? (fun f => f.selector == tx.functionSelector) with
   | none =>
       -- IR interpreter reverts on missing selector.
+      have hcase :
+          (contract.functions.map (fun f =>
+            let body := [YulStmt.comment s!"{f.name}()"] ++ f.body
+            (f.selector, body)
+          )).find? (fun (c, _) => c = tx.functionSelector) = none := by
+        exact find_switch_case_of_find_function_none contract.functions tx.functionSelector hFind
       simp [interpretIR, hFind, interpretYulFromIR, interpretYulRuntime, irState,
-        emitYul_runtimeCode_eq]
+        emitYul_runtimeCode_eq, execYulStmts_runtimeCode_eq, Compiler.runtimeCode,
+        Compiler.buildSwitch, selectorExpr, hcase]
   | some fn =>
       -- Use the function-body preservation hypothesis.
       have hmem : fn ∈ contract.functions := by

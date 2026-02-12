@@ -64,4 +64,42 @@ theorem decodeMappingSlot_encode (base key : Nat) :
   simp [decodeMappingSlot, encodeMappingSlot, mappingTag, hnot, Nat.add_sub_cancel_left,
     Nat.mul_comm, Nat.mul_add_div hpos, hdiv, Nat.add_comm, Nat.add_mul_mod_self_left, hmod]
 
+@[simp]
+theorem evalYulExpr_sload_mapping_slot (state : YulState) (base key : Nat) :
+    evalYulExpr state
+      (YulExpr.call "sload" [
+        YulExpr.call "mappingSlot" [YulExpr.lit base, YulExpr.lit key]
+      ]) = some (state.mappings base key) := by
+  simp [evalYulExpr, evalYulCall, evalYulExprs]
+
+@[simp]
+theorem evalYulExpr_sload_encoded_mapping (state : YulState) (base key : Nat) :
+    evalYulExpr state
+      (YulExpr.call "sload" [YulExpr.lit (encodeMappingSlot base key)]) =
+      some (state.mappings (base % evmModulus) (key % evmModulus)) := by
+  simp [evalYulExpr, evalYulCall, evalYulExprs, decodeMappingSlot_encode]
+
+@[simp]
+theorem evalYulExpr_sload_storage (state : YulState) (slot : Nat) (h : slot < mappingTag) :
+    evalYulExpr state (YulExpr.call "sload" [YulExpr.lit slot]) =
+      some (state.storage slot) := by
+  simp [evalYulExpr, evalYulCall, evalYulExprs, decodeMappingSlot, h]
+
+theorem execYulStmt_sstore_storage (state : YulState) (slot val : Nat) (h : slot < mappingTag) :
+    execYulStmt state (YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, YulExpr.lit val])) =
+      YulExecResult.continue { state with storage := fun s => if s = slot then val else state.storage s } := by
+  simp [execYulStmt, evalYulExpr, evalYulCall, evalYulExprs, decodeMappingSlot, h]
+
+theorem execYulStmt_sstore_mapping (state : YulState) (base key val : Nat) :
+    execYulStmt state
+      (YulStmt.expr (YulExpr.call "sstore" [
+        YulExpr.call "mappingSlot" [YulExpr.lit base, YulExpr.lit key],
+        YulExpr.lit val
+      ])) =
+      YulExecResult.continue {
+        state with
+        mappings := fun b k => if b = base ∧ k = key then val else state.mappings b k
+      } := by
+  simp [execYulStmt, evalYulExpr, evalYulCall, evalYulExprs]
+
 end Compiler.Proofs.YulGeneration

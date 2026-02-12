@@ -105,6 +105,37 @@ private def runYul (runtimeCode : List YulStmt) (tx : YulTransaction)
   | { success := true, finalMappings, .. } => finalMappings 4 9 = 555
   | _ => false
 
+-- sload from a plain storage slot returns stored value
+#guard
+  let runtime := [
+    YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.lit 123]),
+    YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.lit 0,
+      YulExpr.call "sload" [YulExpr.lit 0]
+    ]),
+    YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+  ]
+  match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
+  | { success := true, returnValue := some 123, .. } => true
+  | _ => false
+
+-- sload from an encoded mapping slot returns mapped value
+#guard
+  let runtime := [
+    YulStmt.expr (YulExpr.call "sstore" [
+      YulExpr.lit (encodeMappingSlot 4 9),
+      YulExpr.lit 321
+    ]),
+    YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.lit 0,
+      YulExpr.call "sload" [YulExpr.lit (encodeMappingSlot 4 9)]
+    ]),
+    YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+  ]
+  match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
+  | { success := true, returnValue := some 321, .. } => true
+  | _ => false
+
 /-! ## IR vs Yul Smoke Tests -/
 
 private def storageWith (slot value : Nat) : Nat → Nat :=

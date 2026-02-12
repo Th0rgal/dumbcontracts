@@ -148,13 +148,14 @@ theorem transferOwnership_correct_as_owner (state : ContractState) (newOwner : A
     -- After unfolding, the spec evaluates: if sender == owner then execute else revert
     -- When h: sender = owner, the spec succeeds
     -- This requires simplifying nested Option.bind chains with evalExpr
-    -- TODO: Add automation for Option.bind simplification in SpecInterpreter
-    sorry
+    simp [ownedSpec, interpretSpec, ownedEdslToSpecStorage, execFunction, execStmts, execStmt,
+      evalExpr, SpecStorage.getSlot, SpecStorage.setSlot, h]
   · -- Part 3: specResult.finalStorage.getSlot 0 = addressToNat newOwner
     -- Similar to Part 2: requires Option.bind chain simplification
     -- When authorized, spec stores newOwner at slot 0
     -- TODO: Add automation for Option.bind simplification in SpecInterpreter
-    sorry
+    simp [ownedSpec, interpretSpec, ownedEdslToSpecStorage, execFunction, execStmts, execStmt,
+      evalExpr, SpecStorage.getSlot, SpecStorage.setSlot, h, addressToNat_mod_eq]
 
 /-- The `transferOwnership` function correctly reverts when called by non-owner -/
 theorem transferOwnership_reverts_as_nonowner (state : ContractState) (newOwner : Address) (sender : Address)
@@ -190,8 +191,20 @@ theorem transferOwnership_reverts_as_nonowner (state : ContractState) (newOwner 
     -- Similar reasoning: spec checks sender == owner, which fails when h: sender ≠ owner
     -- By addressToNat_injective, we know addressToNat sender ≠ addressToNat owner
     -- So the require fails and spec reverts
-    -- TODO: Add automation for Option.bind simplification
-    sorry
+    have h_beq : (addressToNat sender == addressToNat (state.storageAddr 0)) = false := by
+      cases h_eq : (addressToNat sender == addressToNat (state.storageAddr 0))
+      · rfl
+      · -- If the Nat equality test is true, injectivity gives sender = owner, contradicting h
+        exfalso
+        have h_nat : addressToNat sender = addressToNat (state.storageAddr 0) := by
+          -- beq_iff_eq for Nat
+          simpa [beq_iff_eq] using h_eq
+        have h_addr : sender = state.storageAddr 0 :=
+          addressToNat_injective sender (state.storageAddr 0) h_nat
+        exact h h_addr.symm
+    -- Now the require in the spec fails, so success = false
+    simp [ownedSpec, interpretSpec, ownedEdslToSpecStorage, execFunction, execStmts, execStmt,
+      evalExpr, SpecStorage.getSlot, SpecStorage.setSlot, h_beq]
 
 /-- The `getOwner` function correctly retrieves the owner address -/
 theorem getOwner_correct (state : ContractState) (sender : Address) :
@@ -223,13 +236,31 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
     let result := (transferOwnership newOwner).run { state with sender := sender }
     result.isSuccess = true → state.storageAddr 0 = sender := by
   intro h_success
-  -- This follows from the authorization check in transferOwnership
-  -- transferOwnership requires sender == owner (via onlyOwner modifier)
-  -- If the transaction succeeds, the require must have passed
-  -- Therefore sender = owner
-  -- This requires careful extraction of boolean conditions from the monadic bind chain
-  -- TODO: Add automation for extracting require conditions from successful Contract executions
-  sorry
+  -- If transferOwnership succeeds, onlyOwner must have succeeded.
+  dsimp at h_success
+  have h_onlyOwner :
+      ((onlyOwner).run { state with sender := sender }).isSuccess = true := by
+    -- Use bind success propagation from Automation
+    simpa [transferOwnership, Contract.run] using
+      (Automation.bind_isSuccess_left
+        (m1 := onlyOwner)
+        (m2 := fun _ => setStorageAddr owner newOwner)
+        (state := { state with sender := sender })
+        h_success)
+  -- onlyOwner is just a require on isOwner, so success implies the condition holds.
+  have h_require_success :
+      ((require (sender == state.storageAddr 0) "Caller is not the owner").run
+        { state with sender := sender }).isSuccess = true := by
+    simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, DumbContracts.bind, DumbContracts.pure]
+      using h_onlyOwner
+  have h_eq : (sender == state.storageAddr 0) = true :=
+    Automation.require_success_implies_cond
+      (cond := sender == state.storageAddr 0)
+      (msg := "Caller is not the owner")
+      (state := { state with sender := sender })
+      h_require_success
+  -- Convert boolean equality to propositional equality.
+  exact (Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1 h_eq
 
 /-- Constructor sets initial owner correctly -/
 theorem constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :

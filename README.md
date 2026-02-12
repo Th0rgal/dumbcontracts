@@ -78,6 +78,11 @@ test/                                # Foundry tests (unit, property, differenti
 3. Prove the implementation matches the spec in `DumbContracts/Proofs/<Contract>/`.
 4. Use the compiler pipeline to emit Yul and compare against expected output.
 
+## Prerequisites
+
+- Lean toolchain via `elan` (uses `lean-toolchain`)
+- Foundry (`forge`) for Solidity/Yul tests
+
 ## Build and Test
 
 ```bash

@@ -62,9 +62,9 @@ Initial core with `ContractState`, `StorageSlot`, `getStorage`/`setStorage`, `ms
 | 5 (SafeCounter) | 69 | -3 | Cleanup |
 | 6 (Ledger) | 82 | +13 | Mapping storage |
 | 7 (SimpleToken) | 82 | 0 | Nothing needed |
-| 8 (Verification) | 212 | +130 | ContractResult, bind, simp lemmas |
+| 8 (Verification) | 234 | +152 | ContractResult, bind, simp lemmas, EVM context |
 
-4 out of 7 implementation iterations needed no core changes. The jump from 82 to 212 was for verification infrastructure (the `ContractResult` type, custom `bind`, and `@[simp]` lemmas), not new contract primitives.
+4 out of 7 implementation iterations needed no core changes. The jump from 82 to 234 was for verification infrastructure (the `ContractResult` type, custom `bind`, `@[simp]` lemmas, and EVM context), not new contract primitives.
 
 ## Source
 

@@ -21,3 +21,4 @@ lib/
 out/
 cache/
 .sandboxed-sh_context.json
+context

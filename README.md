@@ -4,6 +4,19 @@ A minimal Lean 4 embedded DSL for writing and formally verifying smart contracts
 
 The core is 212 lines of Lean. It models contract state, storage operations, and `require` guards using an explicit success/revert result type. On top of this, 7 example contracts are implemented and verified with 252 machine-checked proofs (no `sorry`, no axioms).
 
+## What's New (PR #12)
+
+**🎉 Compiler Verification Layer 1 Complete!**
+
+All 7 contracts now have **specification correctness proofs**: mathematical proof that the compiler's intermediate representation accurately captures the EDSL behavior.
+
+- ✅ 2,800+ lines of new proofs
+- ✅ SimpleStorage, Counter, SafeCounter, Owned, OwnedCounter, Ledger, SimpleToken
+- ✅ Zero `sorry`, zero axioms
+- ✅ All Lean builds passing
+
+**Next**: Layer 2 (IR generation) and Layer 3 (Yul codegen)
+
 ## Example
 
 ```lean
@@ -30,7 +43,7 @@ theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
 
 Build and verify:
 ```bash
-lake build  # Type-checks all 252 proofs
+lake build  # Type-checks all proofs (252 contract + 7 compiler)
 ```
 
 ## Contracts
@@ -48,28 +61,45 @@ lake build  # Type-checks all 252 proofs
 
 ## What's proven
 
+**Contract Correctness (252 proofs):**
 - **Safety**: Access control (mint reverts for non-owner), no overdrafts (transfer reverts on insufficient balance), overflow protection
 - **Correctness**: Each state-modifying operation matches its specification
 - **Invariants**: WellFormedState preservation, owner stability, storage isolation between slot types
 - **Composition**: Operation sequences produce expected results (mint then balanceOf, deposit then withdraw cancellation, ownership transfer locks out old owner)
 - **Conservation**: Exact sum equations for token mint/transfer and ledger deposit/withdraw/transfer
 
+**Compiler Verification (new!):**
+- ✅ **Layer 1**: EDSL ≡ ContractSpec (7 spec correctness proofs)
+- 🚧 **Layer 2**: ContractSpec → IR preservation (in progress)
+- 🔲 **Layer 3**: IR → Yul codegen (planned)
+
 ## Project structure
 
 ```
-edsl/
-└── DumbContracts/
-    ├── Core.lean           # 212 lines: ContractResult, storage ops, require, simp lemmas
-    └── Stdlib/Math.lean    # Safe arithmetic (safeAdd, safeSub, safeMul, safeDiv)
+DumbContracts/
+├── Core/                      # Core types and 212-line EDSL
+│   ├── State.lean            # ContractState, ContractResult monad
+│   └── Uint256.lean          # Modular 256-bit arithmetic
+├── Stdlib/Math.lean          # Safe arithmetic (safeAdd, safeSub, safeMul, safeDiv)
+├── Examples/                  # 7 verified contract implementations
+├── Specs/                     # Formal specifications (Spec.lean, Invariants.lean)
+└── Proofs/                    # 252 machine-checked correctness proofs
 
-examples/lean/
-└── DumbContracts/
-    ├── Examples/           # 7 contract implementations
-    ├── Specs/              # Formal specifications per contract (Spec.lean, Invariants.lean)
-    └── Proofs/             # Machine-checked proofs per contract (Basic.lean, Correctness.lean, ...)
+Compiler/
+├── ContractSpec.lean          # Declarative intermediate representation
+├── Specs.lean                 # All 7 contract specifications
+├── IR.lean                    # Intermediate representation for codegen
+├── Codegen.lean               # IR → Yul generation
+├── Interpreter.lean           # Reference interpreter (for diff tests)
+└── Proofs/                    # Compiler verification (NEW!)
+    ├── SpecCorrectness/       # Layer 1: EDSL ≡ Spec (7 proofs) ✅
+    ├── IRGeneration/          # Layer 2: Spec → IR 🚧
+    └── YulGeneration/         # Layer 3: IR → Yul 🔲
 
-examples/solidity/          # Solidity reference contracts
-compiler/                   # Lean-to-Yul compiler work area
+examples/solidity/             # Solidity reference contracts
+compiler/yul/                  # Generated Yul output (auto-generated)
+test/                          # 264 Foundry tests (all passing)
+docs-site/                     # Documentation website
 ```
 
 ## Core API
@@ -105,9 +135,27 @@ lake build
 ```
 
 To write a verified contract, add files in three places:
-1. `examples/lean/DumbContracts/Examples/` for the implementation
-2. `examples/lean/DumbContracts/Specs/` for the specification
-3. `examples/lean/DumbContracts/Proofs/` for the proofs
+1. `DumbContracts/Examples/YourContract.lean` for the implementation
+2. `DumbContracts/Specs/YourContract/` for the specifications
+3. `DumbContracts/Proofs/YourContract/` for the proofs
+
+## Compiler & Testing
+
+**Compile contracts to Yul:**
+```bash
+lake exe dumbcontracts-compiler  # Outputs to compiler/yul/
+```
+
+**Run tests:**
+```bash
+forge test  # 264 tests: original + differential + property tests
+```
+
+**Test coverage:**
+- 76 original functionality tests
+- 130 differential tests (70,000+ transactions comparing EDSL vs EVM)
+- 58 property tests (auto-generated from proven theorems)
+- **Zero mismatches** across all differential tests
 
 ## Known limitations
 
@@ -119,8 +167,8 @@ To write a verified contract, add files in three places:
 
 ## Documentation
 
-- [STATUS.md](STATUS.md) - Current verification status
-- [RESEARCH.md](RESEARCH.md) - Design history
+- [AGENTS.md](AGENTS.md) - Project architecture and verification status
+- [Compiler/Proofs/README.md](Compiler/Proofs/README.md) - Detailed compiler verification roadmap
 - [docs-site/](docs-site/) - Documentation website
 
 ## License

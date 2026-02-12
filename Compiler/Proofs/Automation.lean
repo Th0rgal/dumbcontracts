@@ -163,6 +163,22 @@ theorem require_false_isSuccess (cond : Bool) (msg : String) (state : ContractSt
     ((require cond msg).run state).isSuccess = false := by
   simp [require, h]
 
+-- If require succeeds, the condition must have been true (reverse direction)
+theorem require_success_implies_cond (cond : Bool) (msg : String) (state : ContractState) :
+    ((require cond msg).run state).isSuccess = true →
+    cond = true := by
+  intro h_success
+  -- Strategy: case analysis on cond
+  cases cond
+  case false =>
+    -- When cond = false, require returns revert, which has isSuccess = false
+    -- This contradicts h_success
+    unfold require Contract.run at h_success
+    simp [ContractResult.isSuccess] at h_success
+  case true =>
+    -- When cond = true, we're done
+    rfl
+
 /-!
 ## SpecStorage Lemmas
 

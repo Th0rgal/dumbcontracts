@@ -250,6 +250,14 @@ theorem lookup_filter_ne {β : Type} (k k' : Nat) (h : k ≠ k') (xs : List (Nat
                           exact (beq_eq_false_iff_ne.mpr hk)
                         simp [List.lookup, hkfalse]
 
+-- lookup skips head when key is different
+theorem lookup_cons_ne {α β : Type} [BEq α] [LawfulBEq α]
+    (k k' : α) (v : β) (xs : List (α × β)) (h : k ≠ k') :
+    (List.lookup k ((k', v) :: xs)) = List.lookup k xs := by
+  have hfalse : (k == k') = false := by
+    exact (beq_eq_false_iff_ne.mpr h)
+  simp [List.lookup, hfalse]
+
 -- getSlot from setSlot (different slot)
 theorem SpecStorage_getSlot_setSlot_diff (storage : SpecStorage) (slot1 slot2 : Nat) (value : Nat)
     (h : slot1 ≠ slot2) :

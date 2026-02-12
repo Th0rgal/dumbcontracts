@@ -29,13 +29,15 @@ open DiffTestTypes
     - Prefixed with "0x"
     - Exactly 40 hex characters after the prefix
     - All characters are valid hex digits
+    - Normalized to lowercase (to make encoding injective)
 
     This matches the production address encoding used by `Compiler.Hex.addressToNat`.
 -/
 def isValidAddress (addr : Address) : Prop :=
   addr.startsWith "0x" ∧
   addr.length = 42 ∧
-  (∀ c ∈ (addr.drop 2).data, (hexCharToNat? c).isSome)
+  (∀ c ∈ (addr.drop 2).data, (hexCharToNat? c).isSome) ∧
+  addr = normalizeAddress addr
 
 /-- Convert Address (String) to Nat for IR execution
 
@@ -62,11 +64,13 @@ def addressFromNat (addrs : List Address) (key : Nat) : Option Address :=
 
 /-- For valid Ethereum addresses, addressToNat is injective
 
-    TRUST ASSUMPTION (Restricted): This axiom only claims injectivity for valid addresses.
+    TRUST ASSUMPTION (Restricted): This axiom only claims injectivity for valid,
+    normalized (lowercase) addresses.
 
     Why this is sound:
     - Valid addresses are 20-byte hex strings (0x + 40 hex chars)
-    - For such addresses, hex parsing is injective before mod 2^160
+    - Normalization removes case-based collisions
+    - For normalized addresses, hex parsing is injective before mod 2^160
     - This matches the actual Ethereum address space
     - Validated by 70,000+ differential tests
 -/

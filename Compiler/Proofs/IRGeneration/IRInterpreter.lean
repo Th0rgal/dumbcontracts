@@ -59,6 +59,26 @@ def IRState.setVar (s : IRState) (name : String) (value : Nat) : IRState :=
 
 /-! ## IR Expression Evaluation -/
 
+def evmModulus : Nat := 2 ^ 256
+
+/-!
+Mapping slots in Yul are derived via keccak(baseSlot, key). For proofs, we model
+them with a tagged encoding so `sload`/`sstore` can route to `mappings` rather
+than flat `storage`. The tag is `2^256`, which is outside the EVM word range,
+so it cannot collide with real storage slots produced by arithmetic.
+-/
+def mappingTag : Nat := evmModulus
+
+def encodeMappingSlot (baseSlot key : Nat) : Nat :=
+  mappingTag + (baseSlot % evmModulus) * evmModulus + (key % evmModulus)
+
+def decodeMappingSlot (slot : Nat) : Option (Nat × Nat) :=
+  if slot < mappingTag then
+    none
+  else
+    let raw := slot - mappingTag
+    some (raw / evmModulus, raw % evmModulus)
+
 mutual
 
 /-- Evaluate a list of Yul expressions in the IR context -/
@@ -76,16 +96,26 @@ def evalIRExpr (state : IRState) : YulExpr → Option Nat
   | .str _ => none  -- Strings not supported in our IR subset
   | .ident name => state.getVar name
   | .call func args => do
-    let argVals ← evalIRExprs state args
-    match func, argVals with
-    | "add", [a, b] => some ((a + b) % (2^256))  -- EVM modular arithmetic
+    match func, args with
+    | "mappingSlot", [baseExpr, keyExpr] => do
+        let base ← evalIRExpr state baseExpr
+        let key ← evalIRExpr state keyExpr
+        pure (encodeMappingSlot base key)
+    | "sload", [slotExpr] => do
+        let slot ← evalIRExpr state slotExpr
+        match decodeMappingSlot slot with
+        | some (baseSlot, key) => pure (state.mappings baseSlot key)
+        | none => pure (state.storage slot)
+    | _, _ =>
+        let argVals ← evalIRExprs state args
+        match func, argVals with
+        | "add", [a, b] => some ((a + b) % evmModulus)  -- EVM modular arithmetic
     | "sub", [a, b] =>
         -- EVM SUB uses modular two's-complement wrapping, not truncating subtraction
         -- If a >= b: result is a - b
         -- If a < b: result wraps around: 2^256 - (b - a) = 2^256 + a - b
-        let modulus := 2^256
-        some ((modulus + a - b) % modulus)
-    | "mul", [a, b] => some ((a * b) % (2^256))
+        some ((evmModulus + a - b) % evmModulus)
+    | "mul", [a, b] => some ((a * b) % evmModulus)
     | "div", [a, b] => if b = 0 then some 0 else some (a / b)
     | "mod", [a, b] => if b = 0 then some 0 else some (a % b)
     | "lt", [a, b] => some (if a < b then 1 else 0)
@@ -94,7 +124,6 @@ def evalIRExpr (state : IRState) : YulExpr → Option Nat
     | "iszero", [a] => some (if a = 0 then 1 else 0)
     | "and", [a, b] => some (a &&& b)  -- Bitwise AND
     | "or", [a, b] => some (a ||| b)   -- Bitwise OR
-    | "sload", [slot] => some (state.storage slot)
     | "caller", [] => some state.sender
     | "calldataload", [offsetExpr] =>
         -- calldataload retrieves 32-byte word from calldata at given offset.
@@ -149,7 +178,15 @@ def execIRStmt (state : IRState) : YulStmt → IRExecResult
     | .call "sstore" [slotExpr, valExpr] =>
       match evalIRExpr state slotExpr, evalIRExpr state valExpr with
       | some slot, some val =>
-        .continue { state with storage := fun s => if s = slot then val else state.storage s }
+        match decodeMappingSlot slot with
+        | some (baseSlot, key) =>
+            .continue {
+              state with
+              mappings := fun b k =>
+                if b = baseSlot ∧ k = key then val else state.mappings b k
+            }
+        | none =>
+            .continue { state with storage := fun s => if s = slot then val else state.storage s }
       | _, _ => .revert state
     | .call "mstore" [offsetExpr, valExpr] =>
       match evalIRExpr state offsetExpr, evalIRExpr state valExpr with

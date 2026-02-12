@@ -59,7 +59,7 @@ theorem store_preserves_semantics (value : Nat) (initialState : ContractState) :
   let specResult := interpretSpec spec (SpecStorage.empty) tx
   match irContract with
   | .ok ir =>
-      let irResult := interpretIR ir irTx
+      let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
       -- Results should match
       resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
@@ -85,7 +85,7 @@ theorem retrieve_preserves_semantics (initialState : ContractState) :
   let specResult := interpretSpec spec (SpecStorage.empty) tx
   match irContract with
   | .ok ir =>
-      let irResult := interpretIR ir irTx
+      let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
       resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
   :=

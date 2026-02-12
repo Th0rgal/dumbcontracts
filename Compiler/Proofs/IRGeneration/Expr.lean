@@ -65,7 +65,7 @@ theorem simpleStorage_store_correct (value : Nat) (initialState : ContractState)
   let specResult := interpretSpec spec (SpecStorage.empty) tx
   match irContract with
   | .ok ir =>
-      let irResult := interpretIR ir irTx
+      let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
       -- Results should match
       resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
@@ -114,7 +114,7 @@ axiom simpleStorage_retrieve_correct (initialState : ContractState) :
   let specResult := interpretSpec spec (SpecStorage.empty) tx
   match irContract with
   | .ok ir =>
-      let irResult := interpretIR ir irTx
+      let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
       resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
 
@@ -133,7 +133,7 @@ theorem contract_preserves_semantics (spec : ContractSpec) (selectors : List Nat
       | some selector =>
           let irTx := transactionToIRTransaction tx selector
           let irState := contractStateToIRState addrs state
-          let irResult := interpretIR ir irTx
+          let irResult := interpretIR ir irTx irState
           let specResult := interpretSpec spec (contractStateToSpecStorage state) tx
           resultsMatch ir.usesMapping [] irResult specResult state
       | none => True  -- Function not found, both should fail

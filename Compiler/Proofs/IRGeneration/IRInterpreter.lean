@@ -233,12 +233,14 @@ def execIRFunction (fn : IRFunction) (args : List Nat) (initialState : IRState) 
   | .revert s =>
     { success := false
       returnValue := none
-      finalStorage := s.storage
-      finalMappings := s.mappings }
+      -- On revert, storage and mappings roll back to the initial state
+      finalStorage := initialState.storage
+      finalMappings := initialState.mappings }
 
 /-- Interpret an entire IR contract execution -/
-def interpretIR (contract : IRContract) (tx : IRTransaction) : IRResult :=
-  let initialState := IRState.initial tx.sender
+def interpretIR (contract : IRContract) (tx : IRTransaction) (initialState : IRState) : IRResult :=
+  -- Execution sender must come from the transaction (matches SpecInterpreter)
+  let initialState := { initialState with sender := tx.sender }
 
   -- Find matching function by selector
   match contract.functions.find? (·.selector == tx.functionSelector) with

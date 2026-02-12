@@ -73,7 +73,7 @@ def testIRExecution (value : Nat) : IRResult :=
     functionSelector := 0x6057361d
     args := [value]
   }
-  interpretIR ir irTx
+  interpretIR ir irTx (IRState.initial irTx.sender)
 
 -- Can't #eval because IRResult contains functions
 -- But we can prove properties about it
@@ -104,7 +104,7 @@ theorem store_correct_42 :
   let specResult := interpretSpec spec SpecStorage.empty tx
   match irContract with
   | .ok ir =>
-      let irResult := interpretIR ir irTx
+      let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
       irResult.success = true ∧
       specResult.success = true ∧
       irResult.returnValue = none ∧
@@ -135,7 +135,7 @@ theorem store_correct_attempt (value : Nat) :
   let specResult := interpretSpec spec SpecStorage.empty tx
   match irContract with
   | .ok ir =>
-      let irResult := interpretIR ir irTx
+      let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
       irResult.success = specResult.success ∧
       irResult.returnValue = specResult.returnValue ∧
       (∀ slot, irResult.finalStorage slot = specResult.finalStorage.getSlot slot)

@@ -196,8 +196,8 @@ Returns None if execution reverts.
 -- Execution state
 structure ExecState where
   storage : SpecStorage
-  localVars : List (String × Nat)
   returnValue : Option Nat
+  halted : Bool  -- Track if execution should stop (return/stop encountered)
   deriving Repr
 
 -- Execute a single statement
@@ -236,16 +236,20 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
 
   | Stmt.return expr =>
       let value := evalExpr ctx state.storage fields paramNames expr
-      some (ctx, { state with returnValue := some value })
+      some (ctx, { state with returnValue := some value, halted := true })
 
   | Stmt.stop =>
-      some (ctx, state)
+      some (ctx, { state with halted := true })
 
 -- Execute a list of statements sequentially
 -- Thread both context and state through the computation
+-- Stop early if return/stop is encountered (halted = true)
 def execStmts (ctx : EvalContext) (fields : List Field) (paramNames : List String) (state : ExecState) (stmts : List Stmt) :
     Option (EvalContext × ExecState) :=
-  stmts.foldlM (fun (ctx, state) stmt => execStmt ctx fields paramNames state stmt) (ctx, state)
+  stmts.foldlM (fun (ctx, state) stmt =>
+    if state.halted then some (ctx, state)  -- Already halted, skip remaining statements
+    else execStmt ctx fields paramNames state stmt
+  ) (ctx, state)
 
 /-!
 ## Function Execution
@@ -262,8 +266,8 @@ def execFunction (spec : ContractSpec) (funcName : String) (ctx : EvalContext)
       -- Execute function body
       let initialState : ExecState := {
         storage := initialStorage
-        localVars := []
         returnValue := none
+        halted := false
       }
       -- BUG FIX: Pass function parameter names to execStmts
       let paramNames := func.params.map (·.name)
@@ -273,12 +277,12 @@ def execFunction (spec : ContractSpec) (funcName : String) (ctx : EvalContext)
 def execConstructor (spec : ContractSpec) (ctx : EvalContext)
     (initialStorage : SpecStorage) : Option (EvalContext × ExecState) :=
   match spec.constructor with
-  | none => some (ctx, { storage := initialStorage, localVars := [], returnValue := none })
+  | none => some (ctx, { storage := initialStorage, returnValue := none, halted := false })
   | some ctor =>
       let initialState : ExecState := {
         storage := initialStorage
-        localVars := []
         returnValue := none
+        halted := false
       }
       -- Constructor parameters are accessed via Expr.constructorArg
       let paramNames := ctor.params.map (·.name)

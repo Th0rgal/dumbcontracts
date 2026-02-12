@@ -91,13 +91,18 @@ theorem bind_getStorage_setStorage_runState (slot : StorageSlot Uint256) (f : Ui
 theorem bind_isSuccess_left {α β : Type} (m1 : Contract α) (m2 : α → Contract β) (state : ContractState) :
     ((DumbContracts.bind m1 m2).run state).isSuccess = true →
     (m1.run state).isSuccess = true := by
-  -- When bind succeeds, the first action must have succeeded
-  -- (if m1 reverts, bind reverts regardless of m2)
-  --
-  -- This lemma is useful for reasoning about authorization patterns like:
-  --   do onlyOwner; actualOperation
-  -- If the overall operation succeeds, then onlyOwner succeeded (didn't revert)
-  sorry  -- TODO: Prove using case analysis on m1.run state
+  intro h_success
+  -- Strategy: case analysis on m1 state
+  -- Note: Contract.run is just function application, so m1.run state = m1 state
+  cases h_result : m1 state
+  case success val s' =>
+    -- When m1 succeeds, isSuccess is trivially true
+    simp [Contract.run, h_result, ContractResult.isSuccess]
+  case revert msg s' =>
+    -- When m1 reverts, bind also reverts, so isSuccess = false
+    -- This contradicts h_success
+    unfold DumbContracts.bind Contract.run at h_success
+    simp [h_result, ContractResult.isSuccess] at h_success
 
 /-!
 ## Address Storage Lemmas

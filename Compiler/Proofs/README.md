@@ -202,12 +202,14 @@ theorem setter_correct (state : ContractState) (value : Uint256) (sender : Addre
 
 ## Generic Layer 1 Schema (What It Would Mean)
 
-There is a clean, generic theorem shape for Layer 1, but it does not remove per-contract work. The idea is to package the common proof skeleton so each contract only supplies contract-specific obligations.
+There is a clean, generic theorem shape for Layer 1, but it does not remove per-contract work. The idea is to package the common proof skeleton so each contract only supplies contract-specific obligations. In practice, this means turning the current "one file per contract" pattern into a reusable schema that consumes a small bundle of contract-specific lemmas and returns the global correctness theorem.
 
 **Generic statement (informal)**:
 If a contract `C` provides:
 - A state relation `R : ContractState -> SpecStorage -> Prop`
-- A per-function correspondence lemma for each function
+- A per-function correspondence lemma for each function (constructor + externals)
+- A dispatch bridge that connects EDSL function names to the spec's function table
+- A result relation for error/return behavior (EDSL `Result` vs spec `SpecResult`)
 Then executing `C` in the EDSL and interpreting its `ContractSpec` produce matching results under `R`.
 
 **What the Lean theorem would look like** (sketch):
@@ -217,6 +219,8 @@ theorem edsl_spec_sound
   (edsl : Contract)
   (R : ContractState -> SpecStorage -> Prop)
   (funcs_ok : forall f, function_equiv edsl spec R f)
+  (dispatch_ok : function_dispatch_equiv edsl spec)
+  (result_ok : result_equiv)
   (init_ok : R initState initStorage) :
   results_match R (run_edsl edsl tx initState)
                   (interpretSpec spec initStorage tx) := by
@@ -234,6 +238,7 @@ We did not add this generic wrapper yet because the per-contract obligations are
 - The proofs still need contract-specific state relations and per-function reasoning.
 - The current proofs already follow the same structure, but inlined per file for clarity.
 - The biggest productivity gains have come from the `Automation` lemmas, not from a wrapper theorem.
+- There is also a design choice about *where* to define the generic interfaces (`function_equiv`, `dispatch_ok`, `result_ok`) so they align with the existing EDSL `Contract.run`/`Contract.runValue` definitions without forcing a refactor.
 
 In short, the generic theorem is feasible, but it does not eliminate any of the contract-specific proof effort. It mostly standardizes the layout.
 
@@ -243,6 +248,7 @@ The simplest path that scales while keeping proofs readable is:
 - Keep the per-contract proof files in `Compiler/Proofs/SpecCorrectness/*.lean`
 - Factor the repetitive steps into `Automation.lean` and reuse them
 - Optionally add a thin wrapper theorem later, once we have more complex contracts (like Safe Multisig)
+- If/when we add the wrapper, start by packaging existing patterns rather than changing proofs
 
 This keeps the framework light, avoids a big upfront refactor, and lets us focus on the real bottleneck: proving each contract's behavior matches its spec.
 

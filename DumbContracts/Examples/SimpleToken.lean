@@ -91,6 +91,7 @@ def exampleUsage : Contract (Uint256 × Uint256 × Uint256) := do
   storage := fun _ => 0,
   storageAddr := fun _ => "",
   storageMap := fun _ _ => 0,
+  storageMapAddr := fun _ _ => "",
   sender := "0xAlice",
   thisAddress := "0xSimpleToken",
   msgValue := 0,

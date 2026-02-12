@@ -721,11 +721,13 @@ def main (args : List String) : IO Unit := do
     let storageMapState := match mapOpt with
       | some s => parseStorageMap s
       | none => fun _ _ => 0 -- Default: empty mapping storage
+    let storageMapAddrState : Nat → Address → Address := fun _ _ => ""
 
     let initialState : ContractState := {
       storage := storageState
       storageAddr := storageAddrState
       storageMap := storageMapState
+      storageMapAddr := storageMapAddrState
       sender := normalizeAddress senderAddr
       thisAddress := "0xContract"
       msgValue := valueOpt.getD 0

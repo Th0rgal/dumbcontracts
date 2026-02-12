@@ -46,6 +46,7 @@ private theorem deposit_unfold (s : ContractState) (amount : Uint256) :
       storageMap := fun slot addr =>
         if (slot == 0 && addr == s.sender) = true then EVM.Uint256.add (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
+      storageMapAddr := s.storageMapAddr,
       sender := s.sender,
       thisAddress := s.thisAddress,
       msgValue := s.msgValue,
@@ -90,6 +91,7 @@ private theorem withdraw_unfold (s : ContractState) (amount : Uint256)
       storageMap := fun slot addr =>
         if (slot == 0 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
+      storageMapAddr := s.storageMapAddr,
       sender := s.sender,
       thisAddress := s.thisAddress,
       msgValue := s.msgValue,
@@ -141,6 +143,7 @@ private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uin
         if (slot == 0 && addr == to) = true then EVM.Uint256.add (s.storageMap 0 to) amount
         else if (slot == 0 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 0 s.sender) amount
         else s.storageMap slot addr,
+      storageMapAddr := s.storageMapAddr,
       sender := s.sender,
       thisAddress := s.thisAddress,
       msgValue := s.msgValue,

@@ -27,6 +27,7 @@ structure ContractState where
   storage : Nat → Uint256                -- Uint256 storage mapping
   storageAddr : Nat → Address            -- Address storage mapping
   storageMap : Nat → Address → Uint256  -- Mapping storage (Address → Uint256)
+  storageMapAddr : Nat → Address → Address -- Mapping storage (Address → Address)
   sender : Address
   thisAddress : Address
   msgValue : Uint256
@@ -169,6 +170,31 @@ def setMapping (s : StorageSlot (Address → Uint256)) (key : Address) (value : 
     storageMap := fun slot addr =>
       if slot == s.slot && addr == key then value
       else state.storageMap slot addr
+  } := by rfl
+
+-- Mapping operations (Address → Address)
+def getMappingAddr (s : StorageSlot (Address → Address)) (key : Address) : Contract Address :=
+  fun state => ContractResult.success (state.storageMapAddr s.slot key) state
+
+def setMappingAddr (s : StorageSlot (Address → Address)) (key : Address) (value : Address) : Contract Unit :=
+  fun state => ContractResult.success () { state with
+    storageMapAddr := fun slot addr =>
+      if slot == s.slot && addr == key then value
+      else state.storageMapAddr slot addr
+  }
+
+-- Simp lemmas for address mapping operations
+@[simp] theorem getMappingAddr_run_fst (s : StorageSlot (Address → Address)) (key : Address) (state : ContractState) :
+  ((getMappingAddr s key).run state).fst = state.storageMapAddr s.slot key := by rfl
+
+@[simp] theorem getMappingAddr_run_snd (s : StorageSlot (Address → Address)) (key : Address) (state : ContractState) :
+  ((getMappingAddr s key).run state).snd = state := by rfl
+
+@[simp] theorem setMappingAddr_run_snd (s : StorageSlot (Address → Address)) (key : Address) (value : Address) (state : ContractState) :
+  ((setMappingAddr s key value).run state).snd = { state with
+    storageMapAddr := fun slot addr =>
+      if slot == s.slot && addr == key then value
+      else state.storageMapAddr slot addr
   } := by rfl
 
 -- Read-only context accessors

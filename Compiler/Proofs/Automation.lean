@@ -141,6 +141,16 @@ theorem getMapping_runValue (slot : StorageSlot (Address → Uint256)) (key : Ad
     (getMapping slot key).runValue state = state.storageMap slot.slot key := by
   simp [getMapping, Contract.runValue]
 
+-- getMappingAddr preserves state
+theorem getMappingAddr_runState (slot : StorageSlot (Address → Address)) (key : Address) (state : ContractState) :
+    (getMappingAddr slot key).runState state = state := by
+  simp [getMappingAddr, Contract.runState]
+
+-- getMappingAddr returns correct value
+theorem getMappingAddr_runValue (slot : StorageSlot (Address → Address)) (key : Address) (state : ContractState) :
+    (getMappingAddr slot key).runValue state = state.storageMapAddr slot.slot key := by
+  simp [getMappingAddr, Contract.runValue]
+
 /-!
 ## msgSender Lemmas
 -/

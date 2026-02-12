@@ -86,11 +86,11 @@ But `private theorem` isn't accessible from other files. Isolation proofs in sep
 ## Verification Structure
 
 Each contract has:
-- `Examples/X.lean` — Implementation
-- `Specs/X/Spec.lean` — Pre/postconditions for each operation
-- `Specs/X/Invariants.lean` — State properties that should hold
-- `Proofs/X/Basic.lean` — Spec conformance, basic properties
-- `Proofs/X/Correctness.lean` — Revert proofs, composition, end-to-end
+- `DumbContracts/Examples/X.lean` — Implementation
+- `DumbContracts/Specs/X/Spec.lean` — Pre/postconditions for each operation
+- `DumbContracts/Specs/X/Invariants.lean` — State properties that should hold
+- `DumbContracts/Proofs/X/Basic.lean` — Spec conformance, basic properties
+- `DumbContracts/Proofs/X/Correctness.lean` — Revert proofs, composition, end-to-end
 
 Some contracts have additional proof files:
 - `SimpleToken/Supply.lean` — Supply conservation equations

@@ -1011,6 +1011,18 @@ theorem ownedCounter_transferOwnership_correct (storedCount : Nat) (ownerAddr ne
         · subst hslot'
           simp [hslot]
         · simp [hslot, hslot']
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+      specStorageToIRState, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 1
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
 
 /-! ## Ledger: Concrete IR -/
 
@@ -1631,18 +1643,6 @@ theorem simpleToken_owner_correct (storedOwner storedSupply : Nat) (senderAddr :
       · subst hslot'
         simp [hslot]
       · simp [hslot, hslot']
-  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
-      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
-      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
-      specStorageToIRState, h]
-    · intro slot
-      by_cases hslot : slot = 0
-      · subst hslot
-        simp
-      · by_cases hslot' : slot = 1
-        · subst hslot'
-          simp [hslot]
-        · simp [hslot, hslot']
 
 /-! ## General Preservation Theorem Template
 

@@ -361,15 +361,16 @@ None. All Layer 1 proofs compile with zero placeholders.
 
 ## Future Layers
 
-### Layer 2: ContractSpec → IR (Planned)
+### Layer 2: ContractSpec → IR ✅ Complete
 - IR interpreter implementation
-- Expression/statement translation correctness
-- Preservation theorem: `toIR` preserves semantics
+- End-to-end preservation theorems for 7 contracts
+- Conversions and result equivalence formalized
 
-### Layer 3: IR → Yul (Planned)
-- Yul semantics definition
-- Codegen correctness proofs
-- Preservation theorem: `generateYul` preserves semantics
+### Layer 3: IR → Yul (In Progress)
+- ✅ Yul runtime semantics with selector-aware calldata
+- ✅ Mapping slot model shared with IR semantics
+- ⏳ Codegen correctness proofs for `emitYul`
+- ⏳ Preservation theorem: `emitYul` preserves semantics
 
 ### Layer 4: Trust Assumptions
 - Documented: solc compiles Yul → EVM correctly
@@ -378,4 +379,4 @@ None. All Layer 1 proofs compile with zero placeholders.
 
 ---
 
-**Status**: Layer 1 Complete, Layer 2 In Progress | **Last Updated**: 2026-02-12 | **Maintainer**: Verification Team
+**Status**: Layer 1 Complete, Layer 2 Complete, Layer 3 In Progress | **Last Updated**: 2026-02-12 | **Maintainer**: Verification Team

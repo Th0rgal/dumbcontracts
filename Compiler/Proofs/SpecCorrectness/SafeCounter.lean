@@ -60,14 +60,26 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
   -- Both EDSL (safeAdd) and Spec (require newCount > count) succeed iff count < MAX_UINT256
   -- When successful, both store (count + 1).val
   constructor
-  · -- Part 1: Success equivalence
-    sorry  -- TODO: Prove bidirectional implication
-           -- Forward: Use add_one_preserves_order_iff_no_overflow to show
-           --   safeAdd succeeds → count < MAX → require passes
-           -- Backward: Use add_one_preserves_order_iff_no_overflow to show
-           --   require passes → count < MAX → safeAdd succeeds
-  · -- Part 2: Storage equivalence
-    sorry  -- TODO: When both succeed, both store ((state.storage 0) + 1).val
+  · -- Part 1: Success equivalence (both succeed iff count < MAX)
+    -- Use the wraparound lemma as the connecting bridge
+    constructor
+    · -- Forward: EDSL success → Spec success
+      intro h_edsl
+      -- Strategy: show count < MAX, then use wraparound lemma
+      sorry  -- TODO: From EDSL success, derive count < MAX
+             -- Then use wraparound lemma to show spec's require passes
+    · -- Backward: Spec success → EDSL success
+      intro h_spec
+      -- Strategy: from spec success, derive count < MAX, then show EDSL succeeds
+      sorry  -- TODO: From spec success, derive (count+1).val > count.val
+             -- Use wraparound lemma to get count < MAX
+             -- Then show EDSL succeeds
+  · -- Part 2: Storage equivalence when successful
+    intro h_edsl
+    -- Both sides compute (count + 1) and store its .val
+    -- This is straightforward since both use the same arithmetic
+    sorry  -- TODO: Show EDSL and Spec both store ((state.storage 0) + 1).val
+           -- Requires unfolding both sides and showing SpecStorage.setSlot matches
 
 /-- The `decrement` function correctly decrements with underflow check -/
 theorem safeDecrement_correct (state : ContractState) (sender : Address) :

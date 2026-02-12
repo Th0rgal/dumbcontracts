@@ -67,8 +67,7 @@ theorem yulCodegen_preserves_semantics
           (switchCases contract.functions).find? (fun (c, _) => c = tx.functionSelector) = none := by
         exact find_switch_case_of_find_function_none contract.functions tx.functionSelector hFind
       simp [interpretIR, hFind, interpretYulFromIR, interpretYulRuntime, irState,
-        emitYul_runtimeCode_eq, execYulStmts_runtimeCode_eq, Compiler.runtimeCode,
-        Compiler.buildSwitch, selectorExpr, hcase]
+        emitYul_runtimeCode_eq, execYulStmts_runtimeCode_eq, Compiler.runtimeCode, hcase]
   | some fn =>
       -- Use the function-body preservation hypothesis.
       have hmem : fn ∈ contract.functions := by
@@ -77,8 +76,7 @@ theorem yulCodegen_preserves_semantics
       -- Unfold Yul runtime dispatch and reduce the switch.
       -- The runtime code is the switch (mapping helper is a no-op).
       simp [interpretIR, hFind, interpretYulFromIR, interpretYulRuntime, irState,
-        emitYul_runtimeCode_eq, execYulStmts_runtimeCode_eq, Compiler.runtimeCode,
-        Compiler.buildSwitch, selectorExpr] at hmatch ⊢
+        emitYul_runtimeCode_eq, execYulStmts_runtimeCode_eq, Compiler.runtimeCode] at hmatch ⊢
       -- Selector extraction is deterministic.
       -- The switch cases align with `find?` on selectors.
       have hcase :

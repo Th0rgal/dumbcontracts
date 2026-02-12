@@ -51,6 +51,13 @@ def switchCases (fns : List IRFunction) : List (Nat × List YulStmt) :=
     (f.selector, body)
   )
 
+@[simp] theorem buildSwitch_eq (fns : List IRFunction) :
+    Compiler.buildSwitch fns =
+      YulStmt.switch selectorExpr (switchCases fns) (some [
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+      ]) := by
+  simp [Compiler.buildSwitch, selectorExpr, switchCases]
+
 /-- If the selector matches a case, the switch executes that case body (fueled). -/
 theorem execYulStmtFuel_switch_match :
     (∀ (state : YulState) (expr : YulExpr) (cases' : List (Nat × List YulStmt))

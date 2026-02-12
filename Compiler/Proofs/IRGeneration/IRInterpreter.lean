@@ -102,10 +102,16 @@ def evalIRExpr (state : IRState) : YulExpr → Option Nat
         let key ← evalIRExpr state keyExpr
         pure (encodeMappingSlot base key)
     | "sload", [slotExpr] => do
-        let slot ← evalIRExpr state slotExpr
-        match decodeMappingSlot slot with
-        | some (baseSlot, key) => pure (state.mappings baseSlot key)
-        | none => pure (state.storage slot)
+        match slotExpr with
+        | .call "mappingSlot" [baseExpr, keyExpr] => do
+            let base ← evalIRExpr state baseExpr
+            let key ← evalIRExpr state keyExpr
+            pure (state.mappings base key)
+        | _ => do
+            let slot ← evalIRExpr state slotExpr
+            match decodeMappingSlot slot with
+            | some (baseSlot, key) => pure (state.mappings baseSlot key)
+            | none => pure (state.storage slot)
     | _, _ =>
         let argVals ← evalIRExprs state args
         match func, argVals with
@@ -176,18 +182,29 @@ def execIRStmt (state : IRState) : YulStmt → IRExecResult
     -- Expression statements for side effects (like sstore)
     match e with
     | .call "sstore" [slotExpr, valExpr] =>
-      match evalIRExpr state slotExpr, evalIRExpr state valExpr with
-      | some slot, some val =>
-        match decodeMappingSlot slot with
-        | some (baseSlot, key) =>
-            .continue {
-              state with
-              mappings := fun b k =>
-                if b = baseSlot ∧ k = key then val else state.mappings b k
-            }
-        | none =>
-            .continue { state with storage := fun s => if s = slot then val else state.storage s }
-      | _, _ => .revert state
+      match slotExpr with
+      | .call "mappingSlot" [baseExpr, keyExpr] =>
+          match evalIRExpr state baseExpr, evalIRExpr state keyExpr, evalIRExpr state valExpr with
+          | some baseSlot, some key, some val =>
+              .continue {
+                state with
+                mappings := fun b k =>
+                  if b = baseSlot ∧ k = key then val else state.mappings b k
+              }
+          | _, _, _ => .revert state
+      | _ =>
+          match evalIRExpr state slotExpr, evalIRExpr state valExpr with
+          | some slot, some val =>
+            match decodeMappingSlot slot with
+            | some (baseSlot, key) =>
+                .continue {
+                  state with
+                  mappings := fun b k =>
+                    if b = baseSlot ∧ k = key then val else state.mappings b k
+                }
+            | none =>
+                .continue { state with storage := fun s => if s = slot then val else state.storage s }
+          | _, _ => .revert state
     | .call "mstore" [offsetExpr, valExpr] =>
       match evalIRExpr state offsetExpr, evalIRExpr state valExpr with
       | some offset, some val =>

@@ -39,6 +39,11 @@ def isValidAddress (addr : Address) : Prop :=
   (∀ c ∈ (addr.drop 2).data, (hexCharToNat? c).isSome) ∧
   addr = normalizeAddress addr
 
+/-- Valid addresses are already normalized to lowercase. -/
+theorem isValidAddress_normalized {addr : Address} (h : isValidAddress addr) :
+    addr = normalizeAddress addr := by
+  exact h.4
+
 /-- Convert Address (String) to Nat for IR execution
 
     We use the production encoding:

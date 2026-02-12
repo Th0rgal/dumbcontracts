@@ -67,8 +67,11 @@ theorem execYulStmtFuel_switch_match :
         execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
           execYulStmtsFuel fuel state body) := by
   intro state expr cases' default fuel v body hEval hFind
+  have hFind' :
+      List.find? (fun x : Nat × List YulStmt => decide (x.1 = v)) cases' = some (v, body) := by
+    simpa using hFind
   simpa using (Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match_semantics
-    state expr cases' default fuel v body hEval hFind)
+    state expr cases' default fuel v body hEval hFind')
 
 /-- If no selector case matches, the switch executes the default (or continues). -/
 def execYulStmtFuel_switch_miss_result (state : YulState) (fuel : Nat)
@@ -85,9 +88,12 @@ theorem execYulStmtFuel_switch_miss :
         execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
           execYulStmtFuel_switch_miss_result state fuel default) := by
   intro state expr cases' default fuel v hEval hFind
+  have hFind' :
+      List.find? (fun x : Nat × List YulStmt => decide (x.1 = v)) cases' = none := by
+    simpa using hFind
   simpa [execYulStmtFuel_switch_miss_result] using
     (Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
-      state expr cases' default fuel v hEval hFind)
+      state expr cases' default fuel v hEval hFind')
 
 /-- Bridge lemma: mapping a found function into switch cases yields the corresponding case. -/
 lemma find_switch_case_of_find_function

@@ -118,41 +118,98 @@ decreasing_by
 def evalYulCall (state : YulState) (func : String) : List YulExpr → Option Nat
   | args => do
     let argVals ← evalYulExprs state args
-    match func, argVals with
-    | "mappingSlot", [base, key] => some (encodeMappingSlot base key)
-    | "sload", [slot] =>
-        match decodeMappingSlot slot with
-        | some (baseSlot, key) => some (state.mappings baseSlot key)
-        | none => some (state.storage slot)
-    | "add", [a, b] => some ((a + b) % evmModulus)
-    | "sub", [a, b] => some ((evmModulus + a - b) % evmModulus)
-    | "mul", [a, b] => some ((a * b) % evmModulus)
-    | "div", [a, b] => if b = 0 then some 0 else some (a / b)
-    | "mod", [a, b] => if b = 0 then some 0 else some (a % b)
-    | "lt", [a, b] => some (if a < b then 1 else 0)
-    | "gt", [a, b] => some (if a > b then 1 else 0)
-    | "eq", [a, b] => some (if a = b then 1 else 0)
-    | "iszero", [a] => some (if a = 0 then 1 else 0)
-    | "and", [a, b] => some (a &&& b)
-    | "or", [a, b] => some (a ||| b)
-    | "xor", [a, b] => some (Nat.xor a b)
-    | "not", [a] => some (Nat.xor a (evmModulus - 1))
-    | "shl", [shift, value] => some ((value * (2 ^ shift)) % evmModulus)
-    | "shr", [shift, value] => some (value / (2 ^ shift))
-    | "caller", [] => some state.sender
-    | "calldataload", [offset] =>
-        if offset = 0 then
-          some (selectorWord state.selector)
-        else if offset < 4 then
-          some 0
-        else
-          let wordOffset := offset - 4
-          if wordOffset % 32 != 0 then
+    if func = "mappingSlot" then
+      match argVals with
+      | [base, key] => some (encodeMappingSlot base key)
+      | _ => none
+    else if func = "sload" then
+      match argVals with
+      | [slot] =>
+          match decodeMappingSlot slot with
+          | some (baseSlot, key) => some (state.mappings baseSlot key)
+          | none => some (state.storage slot)
+      | _ => none
+    else if func = "add" then
+      match argVals with
+      | [a, b] => some ((a + b) % evmModulus)
+      | _ => none
+    else if func = "sub" then
+      match argVals with
+      | [a, b] => some ((evmModulus + a - b) % evmModulus)
+      | _ => none
+    else if func = "mul" then
+      match argVals with
+      | [a, b] => some ((a * b) % evmModulus)
+      | _ => none
+    else if func = "div" then
+      match argVals with
+      | [a, b] => if b = 0 then some 0 else some (a / b)
+      | _ => none
+    else if func = "mod" then
+      match argVals with
+      | [a, b] => if b = 0 then some 0 else some (a % b)
+      | _ => none
+    else if func = "lt" then
+      match argVals with
+      | [a, b] => some (if a < b then 1 else 0)
+      | _ => none
+    else if func = "gt" then
+      match argVals with
+      | [a, b] => some (if a > b then 1 else 0)
+      | _ => none
+    else if func = "eq" then
+      match argVals with
+      | [a, b] => some (if a = b then 1 else 0)
+      | _ => none
+    else if func = "iszero" then
+      match argVals with
+      | [a] => some (if a = 0 then 1 else 0)
+      | _ => none
+    else if func = "and" then
+      match argVals with
+      | [a, b] => some (a &&& b)
+      | _ => none
+    else if func = "or" then
+      match argVals with
+      | [a, b] => some (a ||| b)
+      | _ => none
+    else if func = "xor" then
+      match argVals with
+      | [a, b] => some (Nat.xor a b)
+      | _ => none
+    else if func = "not" then
+      match argVals with
+      | [a] => some (Nat.xor a (evmModulus - 1))
+      | _ => none
+    else if func = "shl" then
+      match argVals with
+      | [shift, value] => some ((value * (2 ^ shift)) % evmModulus)
+      | _ => none
+    else if func = "shr" then
+      match argVals with
+      | [shift, value] => some (value / (2 ^ shift))
+      | _ => none
+    else if func = "caller" then
+      match argVals with
+      | [] => some state.sender
+      | _ => none
+    else if func = "calldataload" then
+      match argVals with
+      | [offset] =>
+          if offset = 0 then
+            some (selectorWord state.selector)
+          else if offset < 4 then
             some 0
           else
-            let idx := wordOffset / 32
-            some (state.calldata.getD idx 0 % evmModulus)
-    | _, _ => none
+            let wordOffset := offset - 4
+            if wordOffset % 32 != 0 then
+              some 0
+            else
+              let idx := wordOffset / 32
+              some (state.calldata.getD idx 0 % evmModulus)
+      | _ => none
+    else
+      none
 termination_by args => exprsSize args + 1
 decreasing_by
   simp [exprsSize, exprSize]
@@ -179,14 +236,17 @@ inductive YulExecResult
   | revert (state : YulState)
   deriving Nonempty
 
-mutual
+inductive YulExecTarget
+  | stmt (s : YulStmt)
+  | stmts (ss : List YulStmt)
 
-def execYulStmtFuel : Nat → YulState → YulStmt → YulExecResult
-  | fuel, state, stmt =>
-      match fuel with
-      | 0 => .revert state
-      | fuel + 1 =>
-        match stmt with
+def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
+  | fuel, state, .stmts [] => .continue state
+  | 0, state, _ => .revert state
+  | Nat.succ fuel, state, target =>
+      match target with
+      | .stmt stmt =>
+          match stmt with
           | .comment _ => .continue state
           | .let_ name value =>
               match evalYulExpr state value with
@@ -247,38 +307,36 @@ def execYulStmtFuel : Nat → YulState → YulStmt → YulExecResult
                   if v = 0 then
                     .continue state
                   else
-                    execYulStmtsFuel fuel state body
+                    execYulFuel fuel state (.stmts body)
               | none => .revert state
           | .switch expr cases default =>
               match evalYulExpr state expr with
               | some v =>
-                  match cases.find? (fun (c, _) => c = v) with
-                  | some (_, body) => execYulStmtsFuel fuel state body
+                  match cases.find? (fun x => decide (x.fst = v)) with
+                  | some (_, body) => execYulFuel fuel state (.stmts body)
                   | none =>
                       match default with
-                      | some body => execYulStmtsFuel fuel state body
+                      | some body => execYulFuel fuel state (.stmts body)
                       | none => .continue state
               | none => .revert state
-          | .block stmts => execYulStmtsFuel fuel state stmts
+          | .block stmts => execYulFuel fuel state (.stmts stmts)
           | .funcDef _ _ _ _ => .continue state
-termination_by fuel => fuel
+      | .stmts [] => .continue state
+      | .stmts (stmt :: rest) =>
+          match execYulFuel fuel state (.stmt stmt) with
+          | .continue s' => execYulFuel fuel s' (.stmts rest)
+          | .return v s => .return v s
+          | .stop s => .stop s
+          | .revert s => .revert s
+def execYulStmtFuel (fuel : Nat) (state : YulState) (stmt : YulStmt) : YulExecResult :=
+  execYulFuel fuel state (.stmt stmt)
 
-def execYulStmtsFuel : Nat → YulState → List YulStmt → YulExecResult
-  | fuel, state, stmts =>
-      match stmts with
-      | [] => .continue state
-      | stmt :: rest =>
-          match fuel with
-          | 0 => .revert state
-          | fuel + 1 =>
-              match execYulStmtFuel fuel state stmt with
-              | .continue s' => execYulStmtsFuel fuel s' rest
-              | .return v s => .return v s
-              | .stop s => .stop s
-              | .revert s => .revert s
-termination_by fuel => fuel
+def execYulStmtsFuel (fuel : Nat) (state : YulState) (stmts : List YulStmt) : YulExecResult :=
+  execYulFuel fuel state (.stmts stmts)
 
-end
+set_option allowUnsafeReducibility true in
+attribute [reducible] execYulFuel
+
 
 noncomputable def execYulStmt (state : YulState) (stmt : YulStmt) : YulExecResult :=
   execYulStmtFuel (sizeOf stmt + 1) state stmt

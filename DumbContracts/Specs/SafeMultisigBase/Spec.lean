@@ -13,6 +13,21 @@ namespace DumbContracts.Specs.SafeMultisigBase
 open DumbContracts
 open DumbContracts.Examples.SafeMultisigBase
 
+/-- Upstream Safe repo pin (for spec + bytecode parity). -/
+def upstreamRepo : String := "safe-fndn/safe-smart-account"
+
+/-- Upstream release tag targeted for this proof. -/
+def upstreamTag : String := "v1.5.0"
+
+/-- Upstream commit for the pinned Safe base contract. -/
+def upstreamCommit : String := "dc437e8"
+
+/-- Path to the base contract within the upstream repo. -/
+def upstreamSafeSolPath : String := "contracts/Safe.sol"
+
+/-- Base contract name in the upstream repo. -/
+def upstreamBaseContractName : String := "Safe"
+
 /-- Constructor spec: sets owner0 + threshold and preserves all other state. -/
 def constructor_spec (initialOwner : Address) (initialThreshold : Uint256)
     (s s' : ContractState) : Prop :=

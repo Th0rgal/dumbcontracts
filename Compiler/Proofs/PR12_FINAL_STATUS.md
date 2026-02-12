@@ -2,7 +2,7 @@
 
 **Pull Request**: [#12 - Compiler Verification](https://github.com/Th0rgal/dumbcontracts/pull/12)
 **Status**: Ready for Review
-**Completion**: 100% (27/27 theorems proven)
+**Completion**: 100% (61/61 theorems proven)
 **Build Status**: ✅ Zero errors
 **Date**: 2026-02-12
 
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This PR establishes the foundation for three-layer compiler verification, with Layer 1 (EDSL ≡ ContractSpec) fully proven. All infrastructure is in place, all 27 theorems are proven, and the project is ready to proceed to Layer 2.
+This PR establishes the foundation for three-layer compiler verification, with Layer 1 (EDSL ≡ ContractSpec) fully proven. All infrastructure is in place, all 61 theorems are proven, and the project is ready to proceed to Layer 2.
 
 ### Key Achievements ✅
 
@@ -127,7 +127,7 @@ This PR establishes the foundation for three-layer compiler verification, with L
 
 | Category | Count | Percentage |
 |----------|-------|------------|
-| Theorems Proven | 27/27 | 100% |
+| Theorems Proven | 61/61 | 100% |
 | Contracts Complete | 7/7 | 100% |
 | Infrastructure | 1/1 | 100% |
 | Safe Arithmetic | 6/6 | 100% |

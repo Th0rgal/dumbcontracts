@@ -13,7 +13,7 @@ This PR establishes the complete infrastructure for formally verifying the DumbC
 
 ### What's Been Accomplished
 
-✅ **Layer 1 (Spec Correctness)**: 100% complete (27/27 theorems proven)
+✅ **Layer 1 (Spec Correctness)**: 100% complete (61/61 theorems proven)
 ✅ **Layer 2 (IR Generation)**: 100% infrastructure, framework ready for proofs
 ✅ **Bug Fixes**: All Bugbot issues resolved
 ✅ **Build Health**: Zero errors, zero warnings
@@ -31,7 +31,7 @@ This PR establishes the complete infrastructure for formally verifying the DumbC
 
 **Goal**: Prove manually written specs match verified EDSL contracts
 
-**Status**: ✅ 100% Complete (27/27 theorems)
+**Status**: ✅ 100% Complete (61/61 theorems)
 
 | Contract | Theorems | Status | Notes |
 |----------|----------|--------|-------|

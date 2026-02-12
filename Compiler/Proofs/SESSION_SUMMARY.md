@@ -162,7 +162,7 @@ For each Expr constructor:
 ## Cumulative Progress
 
 ### Layer 1: EDSL ≡ ContractSpec
-- **Status**: 100% theorems proven (27/27)
+- **Status**: 100% theorems proven (61/61)
 - **Bottleneck**: Spec interpreter reduction automation
 - **Lines**: ~1,850 lines (proofs + infrastructure)
 

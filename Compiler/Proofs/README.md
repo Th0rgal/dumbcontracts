@@ -20,7 +20,7 @@ Key entry points:
 
 **Goal**: Prove that manually written ContractSpec specifications accurately represent the verified EDSL contracts.
 
-**Status**: 27/27 theorems proven across 7 contracts
+**Status**: 61/61 theorems proven across 7 contracts
 
 #### Completed Contracts
 
@@ -322,9 +322,9 @@ None. All Layer 1 proofs compile with zero placeholders.
 
 | Metric | Value |
 |--------|-------|
-| Layer 1 Progress | 100% (27/27) |
+| Layer 1 Progress | 100% (61/61) |
 | Total Lines | ~1,900 |
-| Proven Theorems | 27 |
+| Proven Theorems | 61 |
 | Automation Lemmas | 20+ |
 | Build Status | ✅ Success |
 | Strategic Sorries | 0 |

@@ -1,6 +1,6 @@
 # Compiler Verification: Final Summary
 
-**Status**: 100% Complete (27/27 theorems proven) + 100% Base Automation ✅
+**Status**: 100% Complete (61/61 theorems proven) + 100% Base Automation ✅
 **Last Updated**: 2026-02-12
 **Pull Request**: [#12](https://github.com/Th0rgal/dumbcontracts/pull/12)
 
@@ -60,7 +60,7 @@ theorem safeSub_some_val: when succeeds, returns a - b
 
 **Impact**: Eliminates repetitive proofs, enables systematic reasoning about safe operations.
 
-### 📊 Proven Theorems (27/27 = 100%) ✅
+### 📊 Proven Theorems (61/61 = 100%) ✅
 
 #### SimpleStorage (4/4 = 100%) ✅
 **Contract**: Basic storage operations (store/retrieve uint256)
@@ -217,8 +217,8 @@ have h_val : (a + b).val = (a.val + b.val) % modulus := by
 
 | Category | Metric | Value |
 |----------|--------|-------|
-| **Layer 1 Progress** | Completion | 100% (27/27) |
-| | Proven Theorems | 27 |
+| **Layer 1 Progress** | Completion | 100% (61/61) |
+| | Proven Theorems | 61 |
 | | Strategic Sorries | 0 |
 | **Infrastructure** | Total Lines | ~1,900 |
 | | Automation Lemmas | 20+ proven |

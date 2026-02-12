@@ -264,7 +264,7 @@ With automation:
 |--------|----------------------|---------------------|
 | **Complexity** | High (monadic EDSL) | Medium (deterministic compile) |
 | **Automation Needed** | Option.bind chains | Interpreter reduction |
-| **Progress** | 100% (27/27 theorems) | 0% (framework only) |
+| **Progress** | 100% (61/61 theorems) | 0% (framework only) |
 | **Blocker** | Option.bind automation | Yul execution automation |
 | **Estimated Effort** | 3-4 weeks | 2-4 weeks (with automation) |
 

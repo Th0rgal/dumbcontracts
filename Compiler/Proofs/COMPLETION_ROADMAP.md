@@ -1,6 +1,6 @@
 # Layer 1 Completion Roadmap
 
-**Current Status**: 100% Complete (27/27 theorems proven)
+**Current Status**: 100% Complete (61/61 theorems proven)
 **Last Updated**: 2026-02-12
 **Target**: 100% Layer 1 completion
 
@@ -19,7 +19,7 @@ Layer 1 (EDSL ≡ ContractSpec) is complete. This document now serves as a compl
 
 ### What Remains
 
-Nothing. All 27 Layer 1 theorems are proven with zero placeholders.
+Nothing. All 61 Layer 1 theorems are proven with zero placeholders.
 
 ## Detailed Completion Plan
 
@@ -282,7 +282,7 @@ tactic authorization_from_success :
 ### Definition of Done
 
 **Layer 1 Complete** when:
-- ✅ All 27 theorems proven (no `sorry`)
+- ✅ All 61 theorems proven (no `sorry`)
 - ✅ All files compile with zero errors
 - ✅ Automation library is complete and documented
 - ✅ All proofs follow established patterns

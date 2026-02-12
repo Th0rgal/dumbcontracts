@@ -12,6 +12,7 @@ used for the formal proof work in this repo.
 
 ## Integrity
 - SHA256 (Safe.sol): `4b54dce0ad9d9c1264ecd5c146c82b7bc17d24f981bd42525487be3bf6a40366`
+- Detached hash file: `Safe.sol.sha256`
 
 ## Notes
 - This is a verbatim copy of the upstream contract file at the pinned commit.

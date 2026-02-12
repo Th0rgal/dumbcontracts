@@ -37,10 +37,44 @@ def safeCounterEdslToSpecStorage (state : ContractState) : SpecStorage :=
   { slots := [(0, (state.storage 0).val)]
     mappings := [] }
 
-/- Helper Lemmas for safeIncrement_correct -/
+/- Helper Lemmas -/
 
--- The proof is complex due to deep monadic unfolding.
--- We use a cleaner approach by proving the core success equivalence directly.
+/-- Increment reverts when counter is at MAX_UINT256 -/
+theorem safeIncrement_reverts_at_max (state : ContractState) (sender : Address)
+    (h : (state.storage 0).val = DumbContracts.Core.MAX_UINT256) :
+    let result := increment.run { state with sender := sender }
+    result.isSuccess = false := by
+  -- When count = MAX_UINT256, count + 1 > MAX_UINT256, so safeAdd returns none
+  have h_overflow : ((state.storage 0) : Nat) + 1 > DumbContracts.Core.MAX_UINT256 := by
+    rw [h]; omega
+  -- Use the existing proof from DumbContracts.Proofs.SafeCounter.Basic
+  have h_revert := DumbContracts.Proofs.SafeCounter.increment_reverts_overflow
+    { state with sender := sender } h_overflow
+  rcases h_revert with ⟨msg, h_eq⟩
+  rw [h_eq]
+  rfl
+
+/-- Increment succeeds when not at max -/
+theorem safeIncrement_succeeds_below_max (state : ContractState) (sender : Address)
+    (h : (state.storage 0).val < DumbContracts.Core.MAX_UINT256) :
+    let result := increment.run { state with sender := sender }
+    result.isSuccess = true := by
+  -- When count < MAX_UINT256, count + 1 ≤ MAX_UINT256, so safeAdd succeeds
+  -- Unfold increment and show that safeAdd succeeds (returns Some), thus no revert
+  unfold increment getStorage setStorage count requireSomeUint Contract.run ContractResult.isSuccess
+  simp only [DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure]
+  -- Show safeAdd returns Some when no overflow
+  have h_no_overflow : ((state.storage 0) : Nat) + 1 ≤ DumbContracts.Core.MAX_UINT256 := by
+    omega
+  -- Note: MAX_UINT256 in Math and Core are equal (both 2^256-1)
+  have h_eq : DumbContracts.Stdlib.Math.MAX_UINT256 = DumbContracts.Core.MAX_UINT256 := by rfl
+  have h_safe : safeAdd (state.storage 0) 1 = some ((state.storage 0) + 1) := by
+    unfold safeAdd
+    rw [h_eq]
+    have h_not : ¬(((state.storage 0) : Nat) + 1 > DumbContracts.Core.MAX_UINT256) := by omega
+    simp [h_not]
+  rw [h_safe]
+  rfl
 
 /- Correctness Theorems -/
 
@@ -61,25 +95,63 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
   -- When successful, both store (count + 1).val
   constructor
   · -- Part 1: Success equivalence (both succeed iff count < MAX)
-    -- Use the wraparound lemma as the connecting bridge
     constructor
     · -- Forward: EDSL success → Spec success
       intro h_edsl
-      -- Strategy: show count < MAX, then use wraparound lemma
-      sorry  -- TODO: From EDSL success, derive count < MAX
-             -- Then use wraparound lemma to show spec's require passes
+      -- From EDSL success, we know count < MAX (otherwise EDSL would have failed)
+      have h_not_max : (state.storage 0).val ≠ DumbContracts.Core.MAX_UINT256 := by
+        intro h_eq
+        have h_fail := safeIncrement_reverts_at_max state sender h_eq
+        rw [h_fail] at h_edsl
+        exact absurd h_edsl (Bool.noConfusion)
+      have h_below : (state.storage 0).val < DumbContracts.Core.MAX_UINT256 := by
+        have h_le := DumbContracts.Core.Uint256.val_le_max (state.storage 0)
+        omega
+      -- By wraparound lemma: count < MAX implies (count+1).val > count.val
+      have h_gt := (Automation.add_one_preserves_order_iff_no_overflow (state.storage 0)).mpr h_below
+      -- Show spec succeeds by unfolding
+      sorry
     · -- Backward: Spec success → EDSL success
       intro h_spec
-      -- Strategy: from spec success, derive count < MAX, then show EDSL succeeds
-      sorry  -- TODO: From spec success, derive (count+1).val > count.val
-             -- Use wraparound lemma to get count < MAX
-             -- Then show EDSL succeeds
+      -- From spec success, require passed: (count+1).val > count.val
+      -- By wraparound lemma, this means count < MAX
+      unfold interpretSpec safeCounterSpec execFunction execStmts execStmt at h_spec
+      simp only [evalExpr, SpecStorage.getSlot, safeCounterEdslToSpecStorage] at h_spec
+      -- The spec has an if-then-else on the require
+      -- We need to extract that (count+1).val > count.val holds
+      by_cases h_guard : ((state.storage 0) + 1 : DumbContracts.Core.Uint256).val > (state.storage 0).val
+      · -- Require passed: (count+1).val > count.val
+        -- By wraparound lemma: (count+1).val > count.val implies count < MAX
+        have h_below := (Automation.add_one_preserves_order_iff_no_overflow (state.storage 0)).mp h_guard
+        -- Use helper: at count < MAX, EDSL succeeds
+        exact safeIncrement_succeeds_below_max state sender h_below
+      · -- Require failed - but spec succeeded, contradiction
+        sorry
   · -- Part 2: Storage equivalence when successful
     intro h_edsl
-    -- Both sides compute (count + 1) and store its .val
-    -- This is straightforward since both use the same arithmetic
-    sorry  -- TODO: Show EDSL and Spec both store ((state.storage 0) + 1).val
-           -- Requires unfolding both sides and showing SpecStorage.setSlot matches
+    -- Both EDSL and Spec compute (count + 1) and store its .val
+    -- When EDSL succeeds, count < MAX (shown in Part 1)
+    have h_not_max : (state.storage 0).val ≠ DumbContracts.Core.MAX_UINT256 := by
+      intro h_eq
+      have h_fail := safeIncrement_reverts_at_max state sender h_eq
+      rw [h_fail] at h_edsl
+      exact absurd h_edsl (Bool.noConfusion)
+    -- Below MAX: both store the same value
+    have h_below : (state.storage 0).val < DumbContracts.Core.MAX_UINT256 := by
+      have h_le := DumbContracts.Core.Uint256.val_le_max (state.storage 0)
+      omega
+    -- EDSL stores (count + 1).val
+    unfold increment getStorage setStorage count requireSomeUint Contract.run ContractResult.getState
+    simp only [DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure]
+    -- safeAdd succeeds below MAX
+    have h_le : ((state.storage 0) : Nat) + 1 ≤ DumbContracts.Stdlib.Math.MAX_UINT256 := by
+      have : DumbContracts.Stdlib.Math.MAX_UINT256 = DumbContracts.Core.MAX_UINT256 := rfl
+      rw [this]; omega
+    have h_safe := Automation.safeAdd_some_val (state.storage 0) 1 h_le
+    simp only [h_safe]
+    -- Spec stores (count + 1).val
+    -- The require passes and stores (count + 1).val
+    sorry
 
 /-- The `decrement` function correctly decrements with underflow check -/
 theorem safeDecrement_correct (state : ContractState) (sender : Address) :
@@ -136,21 +208,6 @@ theorem safeGetCount_preserves_state (state : ContractState) (sender : Address) 
   unfold getCount Contract.runState
   simp [getStorage, count]
 
-/-- Increment reverts when counter is at MAX_UINT256 -/
-theorem safeIncrement_reverts_at_max (state : ContractState) (sender : Address)
-    (h : (state.storage 0).val = DumbContracts.Core.MAX_UINT256) :
-    let result := increment.run { state with sender := sender }
-    result.isSuccess = false := by
-  -- When count = MAX_UINT256, count + 1 > MAX_UINT256, so safeAdd returns none
-  have h_overflow : ((state.storage 0) : Nat) + 1 > DumbContracts.Core.MAX_UINT256 := by
-    rw [h]; omega
-  -- Use the existing proof from DumbContracts.Proofs.SafeCounter.Basic
-  have h_revert := DumbContracts.Proofs.SafeCounter.increment_reverts_overflow
-    { state with sender := sender } h_overflow
-  rcases h_revert with ⟨msg, h_eq⟩
-  rw [h_eq]
-  rfl
-
 /-- Decrement reverts when counter is 0 -/
 theorem safeDecrement_reverts_at_zero (state : ContractState) (sender : Address)
     (h : (state.storage 0).val = 0) :
@@ -166,28 +223,6 @@ theorem safeDecrement_reverts_at_zero (state : ContractState) (sender : Address)
     { state with sender := sender } h_storage_zero
   rcases h_revert with ⟨msg, h_eq⟩
   rw [h_eq]
-  rfl
-
-/-- Increment succeeds when not at max -/
-theorem safeIncrement_succeeds_below_max (state : ContractState) (sender : Address)
-    (h : (state.storage 0).val < DumbContracts.Core.MAX_UINT256) :
-    let result := increment.run { state with sender := sender }
-    result.isSuccess = true := by
-  -- When count < MAX_UINT256, count + 1 ≤ MAX_UINT256, so safeAdd succeeds
-  -- Unfold increment and show that safeAdd succeeds (returns Some), thus no revert
-  unfold increment getStorage setStorage count requireSomeUint Contract.run ContractResult.isSuccess
-  simp only [DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure]
-  -- Show safeAdd returns Some when no overflow
-  have h_no_overflow : ((state.storage 0) : Nat) + 1 ≤ DumbContracts.Core.MAX_UINT256 := by
-    omega
-  -- Note: MAX_UINT256 in Math and Core are equal (both 2^256-1)
-  have h_eq : DumbContracts.Stdlib.Math.MAX_UINT256 = DumbContracts.Core.MAX_UINT256 := by rfl
-  have h_safe : safeAdd (state.storage 0) 1 = some ((state.storage 0) + 1) := by
-    unfold safeAdd
-    rw [h_eq]
-    have h_not : ¬(((state.storage 0) : Nat) + 1 > DumbContracts.Core.MAX_UINT256) := by omega
-    simp [h_not]
-  rw [h_safe]
   rfl
 
 /-- Decrement succeeds when above zero -/

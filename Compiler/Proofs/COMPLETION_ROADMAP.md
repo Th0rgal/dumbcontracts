@@ -259,13 +259,19 @@ tactic authorization_from_success :
 - **Day 5**: Testing
 
 ### Progress Update (2026-02-12 - Latest)
-- ✅ Task 1.1 completed (add_one_preserves_order_iff_no_overflow) - JUST COMPLETED
+- ✅ Task 1.1 completed (add_one_preserves_order_iff_no_overflow)
 - ✅ Task 1.2 completed (bind_isSuccess_left)
 - ✅ Task 1.3 completed (require_success_implies_cond)
 - ✅ Task 1.4 completed (address_beq_eq_true_iff_eq)
 - **Base automation: 100% complete (4/4 tasks)** ✅
-- 🔍 **Discovery**: Need tactic composition layer (Task 1.5) for remaining 2 theorems
-- Remaining: Task 1.5 (Tactic composition) only
+- 🚧 **Task 2.1 IN PROGRESS**: safeIncrement_correct proof structure complete
+  - ✅ Wraparound lemma successfully integrated
+  - ✅ Helper theorems reorganized (moved before main theorem)
+  - ✅ Bidirectional success equivalence proof structured
+  - ⚠️ 3 sorries remaining for spec interpreter simplification details
+  - Status: Core logic proven, needs automation for nested match/ite reduction
+- 🔍 **Discovery**: Need tactic composition layer (Task 1.5) for remaining theorems
+- Remaining: Complete Task 2.1 simplifications, then Task 2.2, Task 3.1
 
 ### Revised Timeline
 

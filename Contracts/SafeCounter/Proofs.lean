@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecCorrectness.SafeCounter
+  Contracts.SafeCounter.Proofs
 
   Prove that safeCounterSpec accurately represents the SafeCounter EDSL.
 
@@ -21,7 +21,7 @@ import DumbContracts.Core.Uint256
 import DumbContracts.Stdlib.Math
 import Contracts.SafeCounter.Proofs.Basic
 
-namespace Compiler.Proofs.SpecCorrectness
+namespace Contracts.SafeCounter.Proofs
 
 open Compiler.ContractSpec
 open Compiler.Specs
@@ -437,4 +437,4 @@ theorem safeGetCount_preserves_state (state : ContractState) (sender : Address) 
   unfold getCount Contract.runState
   simp [getStorage, count]
 
-end Compiler.Proofs.SpecCorrectness
+end Contracts.SafeCounter.Proofs

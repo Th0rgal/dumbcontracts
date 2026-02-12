@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecCorrectness.Owned
+  Contracts.Owned.Proofs
 
   Prove that ownedSpec accurately represents the Owned EDSL.
 
@@ -21,7 +21,7 @@ import Compiler.Hex
 import Contracts.Owned.Impl
 import DumbContracts.Core.Uint256
 
-namespace Compiler.Proofs.SpecCorrectness
+namespace Contracts.Owned.Proofs
 
 open Compiler.ContractSpec
 open Compiler.Specs
@@ -278,4 +278,4 @@ theorem transferOwnership_updates_owner (state : ContractState) (newOwner : Addr
     simp [beq_iff_eq, h]
   simp [h_beq]
 
-end Compiler.Proofs.SpecCorrectness
+end Contracts.Owned.Proofs

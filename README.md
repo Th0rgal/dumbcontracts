@@ -71,8 +71,9 @@ test/                                # Foundry tests (unit, property, differenti
 - `Contracts/<Name>/Impl.lean` — EDSL implementation
 - `Contracts/<Name>/Spec.lean` — human-readable spec
 - `Contracts/<Name>/Invariants.lean` — safety properties
-- `Contracts/<Name>/Proofs/*.lean` — proofs that Impl matches Spec
-- **Compiler proofs**: `Compiler/Proofs/` (Layer 1: Spec correctness, Layer 2: IR, Layer 3: Yul)
+- `Contracts/<Name>/Proofs.lean` — proofs that Impl matches Spec
+- `Contracts/<Name>/Proofs/*.lean` — supporting lemmas for larger proofs
+- **Compiler proofs**: `Compiler/Proofs/` (Layer 2: IR, Layer 3: Yul, Layer 1 infra)
 
 ## Build and Test
 

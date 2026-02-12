@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecCorrectness.OwnedCounter
+  Contracts.OwnedCounter.Proofs
 
   Prove that ownedCounterSpec accurately represents the OwnedCounter EDSL.
 
@@ -22,7 +22,7 @@ import Compiler.Hex
 import Contracts.OwnedCounter.Impl
 import DumbContracts.Core.Uint256
 
-namespace Compiler.Proofs.SpecCorrectness
+namespace Contracts.OwnedCounter.Proofs
 
 open Compiler.ContractSpec
 open Compiler.Specs
@@ -347,4 +347,4 @@ theorem ownedCounter_slots_independent (state : ContractState) (newOwner : Addre
     simp [beq_iff_eq, h]
   simp [h_beq]
 
-end Compiler.Proofs.SpecCorrectness
+end Contracts.OwnedCounter.Proofs

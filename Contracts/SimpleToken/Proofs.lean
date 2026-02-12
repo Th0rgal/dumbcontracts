@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecCorrectness.SimpleToken
+  Contracts.SimpleToken.Proofs
 
   Prove that simpleTokenSpec accurately represents the SimpleToken EDSL.
 
@@ -25,7 +25,7 @@ import Contracts.SimpleToken.Proofs.Basic
 import Contracts.SimpleToken.Proofs.Correctness
 import DumbContracts.Core.Uint256
 
-namespace Compiler.Proofs.SpecCorrectness
+namespace Contracts.SimpleToken.Proofs
 
 open Compiler.ContractSpec
 open Compiler.Specs
@@ -798,4 +798,4 @@ theorem token_transfer_preserves_total_balance (state : ContractState) (to : Add
     _ = (state.storageMap 1 sender).val + (state.storageMap 1 to).val := by
             simp [Nat.sub_add_cancel h2, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
 
-end Compiler.Proofs.SpecCorrectness
+end Contracts.SimpleToken.Proofs

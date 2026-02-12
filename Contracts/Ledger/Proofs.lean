@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecCorrectness.Ledger
+  Contracts.Ledger.Proofs
 
   Prove that ledgerSpec accurately represents the Ledger EDSL.
 
@@ -23,7 +23,7 @@ import Contracts.Ledger.Impl
 import DumbContracts.Core.Uint256
 import Contracts.Ledger.Proofs.Basic
 
-namespace Compiler.Proofs.SpecCorrectness
+namespace Contracts.Ledger.Proofs
 
 open Compiler.ContractSpec
 open Compiler.Specs
@@ -766,4 +766,4 @@ theorem ledger_deposit_isolates_other (state : ContractState) (amount : Nat) (se
   simp [Contract.runState] at h_preserve
   simpa using h_preserve
 
-end Compiler.Proofs.SpecCorrectness
+end Contracts.Ledger.Proofs

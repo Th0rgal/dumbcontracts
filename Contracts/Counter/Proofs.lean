@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecCorrectness.Counter
+  Contracts.Counter.Proofs
 
   Prove that counterSpec accurately represents the Counter EDSL.
 
@@ -18,7 +18,7 @@ import Compiler.Proofs.Automation
 import Contracts.Counter.Impl
 import DumbContracts.Core.Uint256
 
-namespace Compiler.Proofs.SpecCorrectness
+namespace Contracts.Counter.Proofs
 
 open Compiler.ContractSpec
 open Compiler.Specs
@@ -247,4 +247,4 @@ theorem multiple_increments (state : ContractState) (sender : Address) (n : Nat)
     (finalState.storage 0).val = ((state.storage 0).val + n) % modulus := by
   exact applyNIncrements_val state sender n
 
-end Compiler.Proofs.SpecCorrectness
+end Contracts.Counter.Proofs

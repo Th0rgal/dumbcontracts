@@ -20,6 +20,8 @@ Key entry points:
 
 **Goal**: Prove that manually written ContractSpec specifications accurately represent the verified EDSL contracts.
 
+Layer 1 proofs now live alongside each contract in `Contracts/<Name>/Proofs.lean` to match the user-facing workflow (Spec → Impl → Proofs).
+
 **Status**: 27/27 theorems proven across 7 contracts
 
 #### Completed Contracts
@@ -28,47 +30,50 @@ Key entry points:
 - 4/4 theorems proven
 - Demonstrates basic storage operations
 - Pattern: unfold + simp for direct computation
-- **Proofs**: [SpecCorrectness/SimpleStorage.lean](SpecCorrectness/SimpleStorage.lean)
+- **Proofs**: [Contracts/SimpleStorage/Proofs.lean](../../Contracts/SimpleStorage/Proofs.lean)
 
 ##### Counter (100% ✅)
 - 7/7 theorems proven
 - Includes modular arithmetic with wraparound
 - Features structural induction proof for multiple increments
-- **Proofs**: [SpecCorrectness/Counter.lean](SpecCorrectness/Counter.lean)
+- **Proofs**: [Contracts/Counter/Proofs.lean](../../Contracts/Counter/Proofs.lean)
 
 ##### SafeCounter (100% ✅)
 - 8/8 theorems proven
 - Demonstrates overflow/underflow protection with safe arithmetic
-- **Proofs**: [SpecCorrectness/SafeCounter.lean](SpecCorrectness/SafeCounter.lean)
+- **Proofs**: [Contracts/SafeCounter/Proofs.lean](../../Contracts/SafeCounter/Proofs.lean)
 
 ##### Owned (100% ✅)
 - 8/8 theorems proven
 - Demonstrates ownership and access control patterns
-- **Proofs**: [SpecCorrectness/Owned.lean](SpecCorrectness/Owned.lean)
+- **Proofs**: [Contracts/Owned/Proofs.lean](../../Contracts/Owned/Proofs.lean)
 
 ##### OwnedCounter (100% ✅)
 - 4/4 theorems proven
 - Combines ownership checks with counter semantics
-- **Proofs**: [SpecCorrectness/OwnedCounter.lean](SpecCorrectness/OwnedCounter.lean)
+- **Proofs**: [Contracts/OwnedCounter/Proofs.lean](../../Contracts/OwnedCounter/Proofs.lean)
 
 ##### Ledger (100% ✅)
 - 2/2 theorems proven
 - Mapping-based balance operations
-- **Proofs**: [SpecCorrectness/Ledger.lean](SpecCorrectness/Ledger.lean)
+- **Proofs**: [Contracts/Ledger/Proofs.lean](../../Contracts/Ledger/Proofs.lean)
 
 ##### SimpleToken (100% ✅)
 - 2/2 theorems proven
 - Token minting and transfers with balances mapping
-- **Proofs**: [SpecCorrectness/SimpleToken.lean](SpecCorrectness/SimpleToken.lean)
+- **Proofs**: [Contracts/SimpleToken/Proofs.lean](../../Contracts/SimpleToken/Proofs.lean)
 
 ## Quick Start
 
 ```bash
 # Build all Layer 1 proofs
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
+lake build Contracts.SimpleStorage.Proofs
+lake build Contracts.Counter.Proofs
+lake build Contracts.SafeCounter.Proofs
+lake build Contracts.Owned.Proofs
+lake build Contracts.OwnedCounter.Proofs
+lake build Contracts.Ledger.Proofs
+lake build Contracts.SimpleToken.Proofs
 
 # Build infrastructure
 lake build Compiler.Proofs.Automation
@@ -245,8 +250,8 @@ In short, the generic theorem is feasible, but it does not eliminate any of the 
 ## Simplest Practical Approach
 
 The simplest path that scales while keeping proofs readable is:
-- Keep compiler layer-1 proofs in `Compiler/Proofs/SpecCorrectness/*.lean`
-- Keep user-facing contract proofs alongside their contracts in `Contracts/<Name>/Proofs/`
+- Keep layer-1 proofs alongside each contract in `Contracts/<Name>/Proofs.lean`
+- Keep supporting lemmas in `Contracts/<Name>/Proofs/` when a contract needs extra structure
 - Factor the repetitive steps into `Automation.lean` and reuse them
 - Optionally add a thin wrapper theorem later, once we have more complex contracts (like Safe Multisig)
 - If/when we add the wrapper, start by packaging existing patterns rather than changing proofs
@@ -354,10 +359,13 @@ case neg => -- proof when h is false
 
 ```bash
 # Build specific contract proofs
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
+lake build Contracts.SimpleStorage.Proofs
+lake build Contracts.Counter.Proofs
+lake build Contracts.SafeCounter.Proofs
+lake build Contracts.Owned.Proofs
+lake build Contracts.OwnedCounter.Proofs
+lake build Contracts.Ledger.Proofs
+lake build Contracts.SimpleToken.Proofs
 
 # Build infrastructure
 lake build Compiler.Proofs.Automation

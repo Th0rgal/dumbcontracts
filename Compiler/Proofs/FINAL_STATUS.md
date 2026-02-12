@@ -58,7 +58,7 @@ This PR establishes the complete infrastructure for formally verifying the DumbC
 **Files**:
 - `Compiler/Proofs/SpecInterpreter.lean` (310 lines) - Reference interpreter ✅
 - `Compiler/Proofs/Automation.lean` (196 lines) - Helper lemmas ✅
-- `Compiler/Proofs/SpecCorrectness/*.lean` (7 files, ~1200 lines) - Contract proofs
+- `Contracts/*/Proofs.lean` (7 files, ~1200 lines) - Contract proofs
 
 **Next Steps**:
 1. Prove Counter IR preservation using the SimpleStorage template

@@ -86,17 +86,17 @@ But `private theorem` isn't accessible from other files. Isolation proofs in sep
 ## Verification Structure
 
 Each contract has:
-- `Examples/X.lean` — Implementation
-- `Specs/X/Spec.lean` — Pre/postconditions for each operation
-- `Specs/X/Invariants.lean` — State properties that should hold
-- `Proofs/X/Basic.lean` — Spec conformance, basic properties
-- `Proofs/X/Correctness.lean` — Revert proofs, composition, end-to-end
+- `Contracts/X/Impl.lean` — Implementation
+- `Contracts/X/Spec.lean` — Pre/postconditions for each operation
+- `Contracts/X/Invariants.lean` — State properties that should hold
+- `Contracts/X/Proofs.lean` — Spec conformance and end-to-end correctness
+- `Contracts/X/Proofs/*.lean` — Revert proofs, composition, deeper properties
 
 Some contracts have additional proof files:
-- `SimpleToken/Supply.lean` — Supply conservation equations
-- `SimpleToken/Isolation.lean` — Storage isolation across slot types
-- `Ledger/Conservation.lean` — Balance conservation equations
-- `OwnedCounter/Isolation.lean` — Cross-pattern storage isolation
+- `Contracts/SimpleToken/Proofs/Supply.lean` — Supply conservation equations
+- `Contracts/SimpleToken/Proofs/Isolation.lean` — Storage isolation across slot types
+- `Contracts/Ledger/Proofs/Conservation.lean` — Balance conservation equations
+- `Contracts/OwnedCounter/Proofs/Isolation.lean` — Cross-pattern storage isolation
 
 Conservation proofs use `List.countOcc` to account for duplicate addresses. For `NoDup` lists, transfer preserves exact sum. For general lists, exact equations with `countOcc` multipliers are proven.
 

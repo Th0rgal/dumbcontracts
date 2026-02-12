@@ -148,7 +148,7 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
 
 **Dependencies**: Task 1.1
 **Estimated Effort**: 1 day (after automation)
-**File**: `Compiler/Proofs/SpecCorrectness/SafeCounter.lean`
+**File**: `Compiler/Proofs/Contracts/SafeCounter/Proofs.lean`
 
 ---
 
@@ -170,7 +170,7 @@ theorem safeDecrement_correct (state : ContractState) (sender : Address) :
 
 **Dependencies**: Task 1.2
 **Estimated Effort**: 1 day (after automation)
-**File**: `Compiler/Proofs/SpecCorrectness/SafeCounter.lean`
+**File**: `Compiler/Proofs/Contracts/SafeCounter/Proofs.lean`
 
 ---
 
@@ -211,7 +211,7 @@ goals that require sophisticated simplification tactics.
 
 **Dependencies**: Tasks 1.2 ✅, 1.3 ✅, 1.4 ✅, + Tactic Composition
 **Estimated Effort**: 0.5 days (after tactic infrastructure)
-**File**: `Compiler/Proofs/SpecCorrectness/Owned.lean`
+**File**: `Compiler/Proofs/Contracts/Owned/Proofs.lean`
 
 ---
 
@@ -378,7 +378,7 @@ While completing Layer 1, begin:
 
 **Code**:
 - Automation: `Compiler/Proofs/Automation.lean`
-- Proofs: `Compiler/Proofs/SpecCorrectness/*.lean`
+- Proofs: `Contracts/*/Proofs.lean`
 
 **External Resources**:
 - Lean 4 Zulip: [https://leanprover.zulipchat.com/](https://leanprover.zulipchat.com/)

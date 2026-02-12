@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecCorrectness.SimpleStorage
+  Contracts.SimpleStorage.Proofs
 
   Prove that simpleStorageSpec accurately represents the SimpleStorage EDSL.
 
@@ -17,7 +17,7 @@ import Compiler.Proofs.SpecInterpreter
 import Contracts.SimpleStorage.Impl
 import DumbContracts.Core.Uint256
 
-namespace Compiler.Proofs.SpecCorrectness
+namespace Contracts.SimpleStorage.Proofs
 
 open Compiler.ContractSpec
 open Compiler.Specs
@@ -105,4 +105,4 @@ theorem store_retrieve_roundtrip (value : Nat) (sender : Address) (state : Contr
   unfold store retrieve Contract.runState Contract.runValue
   simp [setStorage, getStorage, storedData, val_ofNat]
 
-end Compiler.Proofs.SpecCorrectness
+end Contracts.SimpleStorage.Proofs

@@ -71,6 +71,13 @@ test/                                # Foundry tests (unit, property, differenti
 - **EDSL proofs**: `DumbContracts/Proofs/`
 - **Compiler proofs**: `Compiler/Proofs/` (Layer 1: Spec correctness, Layer 2: IR, Layer 3: Yul)
 
+## Adding a Contract (User Flow)
+
+1. Write the EDSL implementation in `DumbContracts/Examples/<Contract>.lean`.
+2. Write the spec in `DumbContracts/Specs/<Contract>/Spec.lean`.
+3. Prove the implementation matches the spec in `DumbContracts/Proofs/<Contract>/`.
+4. Use the compiler pipeline to emit Yul and compare against expected output.
+
 ## Build and Test
 
 ```bash

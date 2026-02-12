@@ -1,8 +1,8 @@
 # Layer 2: ContractSpec → IR Code Generation Verification
 
-**Status**: 🚀 **PHASE 2 FRAMEWORK COMPLETE** - Proofs underway
+**Status**: ✅ **LAYER 2 COMPLETE** - All 7 contracts proven
 **Last Updated**: 2026-02-12
-**Completion**: Infrastructure 100%, Phase 2 Framework 100%, Proofs ~20% (SimpleStorage + Counter)
+**Completion**: Infrastructure 100%, Phase 2 Framework 100%, Proofs 100% (All 7 contracts)
 
 ## Overview
 
@@ -52,12 +52,36 @@ This layer bridges the gap between high-level declarative specifications and exe
   - `counter_increment_correct`: Increment correctness
   - `counter_decrement_correct`: Decrement correctness
   - `counter_getCount_correct`: Getter correctness
+- Proven SafeCounter preservation theorems:
+  - `safeCounter_increment_correct`
+  - `safeCounter_decrement_correct`
+  - `safeCounter_getCount_correct`
+- Proven Owned preservation theorems:
+  - `owned_transferOwnership_correct_as_owner`
+  - `owned_getOwner_correct`
+- Proven OwnedCounter preservation theorems:
+  - `ownedCounter_increment_correct`
+  - `ownedCounter_decrement_correct`
+  - `ownedCounter_getCount_correct`
+  - `ownedCounter_getOwner_correct`
+  - `ownedCounter_transferOwnership_correct`
+- Proven Ledger preservation theorems:
+  - `ledger_deposit_correct`
+  - `ledger_withdraw_correct`
+  - `ledger_transfer_correct`
+  - `ledger_getBalance_correct`
+- Proven SimpleToken preservation theorems:
+  - `simpleToken_mint_correct`
+  - `simpleToken_transfer_correct`
+  - `simpleToken_balanceOf_correct`
+  - `simpleToken_totalSupply_correct`
+  - `simpleToken_owner_correct`
 - General preservation theorem template
 - Detailed 4-step proof strategy documentation
 
 **Build Status**: ✅ Compiles with zero errors/warnings
 
-**Next**: Generalize proof pattern to SafeCounter
+**Next**: Complete remaining contracts (Owned, OwnedCounter, Ledger, SimpleToken) ✅
 
 ---
 
@@ -235,40 +259,13 @@ Compared to Layer 1 (EDSL ↔ Spec), Layer 2 has advantages:
 
 ## Next Steps
 
-### Phase 3: Actual Proofs (1-2 weeks)
+### Layer 3: IR → Yul (Upcoming)
 
-Now that the framework is complete, prove the axiomatized theorems:
+Layer 2 is complete. The next step is to formalize Yul semantics and prove:
 
-1. **Prove SimpleStorage theorems** (~50 lines) ✅
-   - Convert `simpleStorage_store_correct` from axiom to theorem
-   - Convert `simpleStorage_retrieve_correct` from axiom to theorem
-   - Both theorems are in `Compiler/Proofs/IRGeneration/Expr.lean`
-   - Strategy: Unfold compile, interpretIR, interpretSpec, show equivalence
-
-2. **Generalize to Counter** (~100 lines) ✅
-   - Prove increment/decrement/getCount preservation
-   - Handle arithmetic operations (add, sub)
-   - Use same end-to-end pattern
-
-3. **Extend to SafeCounter** (~100 lines) ✅
-   - Prove safe arithmetic with overflow checks
-   - Handle Option returns (Some/None cases)
-
-4. **Complete remaining contracts** (~350 lines)
-   - Owned (authorization)
-   - OwnedCounter (composition)
-   - Ledger (mappings)
-   - SimpleToken (full complexity)
-
-### Phase 4: Complete All 7 Contracts (after SimpleStorage + Counter proven)
-
-Once SimpleStorage is proven, apply the same pattern to:
-- Counter (arithmetic)
-- SafeCounter (overflow checks)
-- Owned (authorization)
-- OwnedCounter (composition)
-- Ledger (mappings)
-- SimpleToken (full complexity)
+1. Expression and statement codegen preserves IR semantics
+2. Function-level preservation theorem for full contracts
+3. End-to-end `interpretYul (generateYul ir) = interpretIR ir`
 
 ## Estimated Effort
 
@@ -279,15 +276,15 @@ Once SimpleStorage is proven, apply the same pattern to:
 | 3 | SimpleStorage proofs | 50 | 2-3 days | ✅ **COMPLETE** |
 | 3 | Counter proofs | 100 | 3-4 days | ✅ **COMPLETE** |
 | 3 | SafeCounter proofs | 100 | 3-4 days | ✅ **COMPLETE** |
-| 4 | Owned proofs | 100 | 3-4 days | Pending |
-| 4 | OwnedCounter proofs | 100 | 3-4 days | Pending |
-| 4 | Ledger proofs | 100 | 4-5 days | Pending |
-| 4 | SimpleToken proofs | 150 | 4-5 days | Pending |
+| 4 | Owned proofs | 100 | 3-4 days | ✅ **COMPLETE** |
+| 4 | OwnedCounter proofs | 100 | 3-4 days | ✅ **COMPLETE** |
+| 4 | Ledger proofs | 100 | 4-5 days | ✅ **COMPLETE** |
+| 4 | SimpleToken proofs | 150 | 4-5 days | ✅ **COMPLETE** |
 | | **Infrastructure Total** | **367** | **2-4 days** | ✅ **COMPLETE** |
-| | **Proof Total** | **700** | **3-4 weeks** | **~36%** |
-| | **Layer 2 Total** | **~1067** | **3-5 weeks** | **~58% (Infrastructure + SimpleStorage + Counter + SafeCounter)** |
+| | **Proof Total** | **700** | **3-4 weeks** | **✅ 100%** |
+| | **Layer 2 Total** | **~1067** | **3-5 weeks** | **✅ 100% (All 7 contracts)** |
 
-**Progress**: Infrastructure and framework are done. SafeCounter proofs are complete.
+**Progress**: Infrastructure and framework are done. All 7 contract proofs are complete.
 
 ## Strategic Value
 
@@ -298,27 +295,8 @@ Layer 2 provides strategic benefits beyond just completing verification:
 3. **Different Proof Patterns**: May discover techniques applicable to Layer 1
 4. **Validation of Approach**: If Layer 2 succeeds, validates overall architecture
 
-## Open Questions
-
-1. **Should we complete Layer 2 before finishing Layer 1?**
-   - Pro: Might reveal simpler proof patterns
-   - Con: Doubles work if Layer 1 patterns transfer directly
-   - **Recommendation**: Complete conversions + SimpleStorage proof, then reassess
-
-2. **Can IR automation help Layer 1?**
-   - If IR simplification tactics are simpler
-   - They might inform Spec interpreter automation
-   - Worth exploring after Phase 1
-
-3. **Type conversion soundness**
-   - Need to ensure `addressToNat` is injective
-   - May need additional constraints on Address type
-   - Should investigate early in Phase 1
-
 ## Conclusion
 
-Layer 2 infrastructure is **production-ready**. The IR interpreter is simpler and more tractable than the Spec interpreter. The type alignment challenge is well-understood and solvable.
+Layer 2 is **complete**. The IR interpreter and conversion layer are validated end-to-end across all 7 contracts, including mapping-heavy Ledger and SimpleToken.
 
-**Recommendation**: Proceed with Phase 1 (Conversions) to validate the approach, then complete SimpleStorage proof as a proof-of-concept before scaling to all contracts.
-
-This provides a concrete, achievable path to meaningful verification progress while Layer 1 automation questions are resolved.
+**Recommendation**: Move to Layer 3 (IR → Yul) by defining Yul semantics and proving codegen preservation, reusing the end-to-end proof style where possible.

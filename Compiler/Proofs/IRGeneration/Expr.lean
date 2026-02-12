@@ -88,6 +88,24 @@ def simpleStorageIRContract : IRContract :=
   unfold SpecStorage.setSlot SpecStorage.getSlot SpecStorage.empty
   simp [hne]
 
+@[simp] lemma addressToNat_mask (addr : Address) :
+    addressToNat addr &&& (2^160 - 1) = addressToNat addr := by
+  have hpos : 0 < (2^160 : Nat) := by
+    have hbase : 0 < (2 : Nat) := by decide
+    exact pow_pos hbase 160
+  have hlt : addressToNat addr < 2^160 := by
+    unfold addressToNat Compiler.Hex.addressToNat
+    cases h : Compiler.Hex.parseHexNat? addr with
+    | some n =>
+        simp [Compiler.Hex.addressToNat, h, Nat.mod_lt, hpos]
+    | none =>
+        simp [Compiler.Hex.addressToNat, h, Nat.mod_lt, hpos]
+  calc
+    addressToNat addr &&& (2^160 - 1) = addressToNat addr % 2^160 := by
+      simpa using (Nat.and_two_pow_sub_one_eq_mod (addressToNat addr) 160)
+    _ = addressToNat addr := by
+      exact Nat.mod_eq_of_lt hlt
+
 /-! ## SimpleStorage: Store Function Correctness
 
 Theorem: Executing the compiled IR for `store(value)` produces the same result
@@ -303,6 +321,21 @@ def safeCounterUnderflowRevert : List YulStmt :=
     YulStmt.expr (YulExpr.call "mstore" [
       YulExpr.lit 68,
       YulExpr.hex 0x556e646572666c6f7720696e2064656372656d656e7400000000000000000000
+    ]),
+    YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 100])
+  ]
+
+def insufficientBalanceRevert : List YulStmt :=
+  [
+    YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.lit 0,
+      YulExpr.hex 0x08c379a000000000000000000000000000000000000000000000000000000000
+    ]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit 20]),
+    YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.lit 68,
+      YulExpr.hex 0x496e73756666696369656e742062616c616e6365000000000000000000000000
     ]),
     YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 100])
   ]
@@ -676,6 +709,940 @@ theorem owned_getOwner_correct (storedOwner : Nat) (initialState : ContractState
     · subst h
       simp
     · simp [h]
+
+/-! ## OwnedCounter: Concrete IR -/
+
+def ownedCounterIRContract : IRContract :=
+  { name := "OwnedCounter"
+    deploy := [
+      YulStmt.let_ "argsOffset" (YulExpr.call "sub" [YulExpr.call "codesize" [], YulExpr.lit 32]),
+      YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit 32]),
+      YulStmt.let_ "arg0" (YulExpr.call "and" [
+        YulExpr.call "mload" [YulExpr.lit 0],
+        YulExpr.hex ((2^160) - 1)
+      ]),
+      YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "arg0"])
+    ]
+    functions := [
+      { name := "increment"
+        selector := 0xd09de08a
+        params := []
+        ret := IRType.unit
+        body := [
+          YulStmt.if_
+            (YulExpr.call "iszero" [
+              YulExpr.call "eq" [YulExpr.call "caller" [], YulExpr.call "sload" [YulExpr.lit 0]]
+            ])
+            ownedNotOwnerRevert,
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.lit 1,
+            YulExpr.call "add" [YulExpr.call "sload" [YulExpr.lit 1], YulExpr.lit 1]
+          ]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "decrement"
+        selector := 0x2baeceb7
+        params := []
+        ret := IRType.unit
+        body := [
+          YulStmt.if_
+            (YulExpr.call "iszero" [
+              YulExpr.call "eq" [YulExpr.call "caller" [], YulExpr.call "sload" [YulExpr.lit 0]]
+            ])
+            ownedNotOwnerRevert,
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.lit 1,
+            YulExpr.call "sub" [YulExpr.call "sload" [YulExpr.lit 1], YulExpr.lit 1]
+          ]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "getCount"
+        selector := 0xa87d942c
+        params := []
+        ret := IRType.uint256
+        body := [
+          YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.call "sload" [YulExpr.lit 1]]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      },
+      { name := "getOwner"
+        selector := 0x893d20e8
+        params := []
+        ret := IRType.address
+        body := [
+          YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.call "sload" [YulExpr.lit 0]]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      },
+      { name := "transferOwnership"
+        selector := 0xf2fde38b
+        params := [{ name := "newOwner", ty := IRType.address }]
+        ret := IRType.unit
+        body := [
+          YulStmt.let_ "newOwner" (YulExpr.call "and" [
+            YulExpr.call "calldataload" [YulExpr.lit 4],
+            YulExpr.hex ((2^160) - 1)
+          ]),
+          YulStmt.if_
+            (YulExpr.call "iszero" [
+              YulExpr.call "eq" [YulExpr.call "caller" [], YulExpr.call "sload" [YulExpr.lit 0]]
+            ])
+            ownedNotOwnerRevert,
+          YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "newOwner"]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      }
+    ]
+    usesMapping := false }
+
+@[simp] lemma compile_ownedCounterSpec :
+    compile ownedCounterSpec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b] =
+      .ok ownedCounterIRContract := by
+  rfl
+
+/-! ## OwnedCounter: Function Correctness -/
+
+theorem ownedCounter_increment_correct (storedCount : Nat) (ownerAddr : Address) (initialState : ContractState) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "increment"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xd09de08a
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  by_cases h : addressToNat sender = addressToNat ownerAddr
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+      specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 1
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+      specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 1
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+
+theorem ownedCounter_decrement_correct (storedCount : Nat) (ownerAddr : Address) (initialState : ContractState) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "decrement"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x2baeceb7
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  by_cases h : addressToNat sender = addressToNat ownerAddr
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+      specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 1
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+      specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 1
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+
+theorem ownedCounter_getCount_correct (storedCount : Nat) (ownerAddr : Address) (initialState : ContractState) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "getCount"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xa87d942c
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+    specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus]
+  · intro slot
+    by_cases hslot : slot = 0
+    · subst hslot
+      simp
+    · by_cases hslot' : slot = 1
+      · subst hslot'
+        simp [hslot]
+      · simp [hslot, hslot']
+
+theorem ownedCounter_getOwner_correct (storedOwner : Nat) (storedCount : Nat) (initialState : ContractState) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 storedOwner).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "getOwner"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x893d20e8
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+    specStorageToIRState]
+  · intro slot
+    by_cases hslot : slot = 0
+    · subst hslot
+      simp
+    · by_cases hslot' : slot = 1
+      · subst hslot'
+        simp [hslot]
+      · simp [hslot, hslot']
+
+theorem ownedCounter_transferOwnership_correct (storedCount : Nat) (ownerAddr newOwnerAddr : Address)
+    (initialState : ContractState) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "transferOwnership"
+    args := [addressToNat newOwnerAddr]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xf2fde38b
+    args := [addressToNat newOwnerAddr]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  by_cases h : addressToNat sender = addressToNat ownerAddr
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+      specStorageToIRState, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 1
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+
+/-! ## Ledger: Concrete IR -/
+
+def ledgerIRContract : IRContract :=
+  { name := "Ledger"
+    deploy := []
+    functions := [
+      { name := "deposit"
+        selector := 0xb6b55f25
+        params := [{ name := "amount", ty := IRType.uint256 }]
+        ret := IRType.unit
+        body := [
+          YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 4]),
+          YulStmt.let_ "senderBal" (YulExpr.call "sload" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.call "caller" []]
+          ]),
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.call "caller" []],
+            YulExpr.call "add" [YulExpr.ident "senderBal", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "withdraw"
+        selector := 0x2e1a7d4d
+        params := [{ name := "amount", ty := IRType.uint256 }]
+        ret := IRType.unit
+        body := [
+          YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 4]),
+          YulStmt.let_ "senderBal" (YulExpr.call "sload" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.call "caller" []]
+          ]),
+          YulStmt.if_
+            (YulExpr.call "lt" [YulExpr.ident "senderBal", YulExpr.ident "amount"])
+            insufficientBalanceRevert,
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.call "caller" []],
+            YulExpr.call "sub" [YulExpr.ident "senderBal", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "transfer"
+        selector := 0xa9059cbb
+        params := [{ name := "to", ty := IRType.address }, { name := "amount", ty := IRType.uint256 }]
+        ret := IRType.unit
+        body := [
+          YulStmt.let_ "to" (YulExpr.call "and" [
+            YulExpr.call "calldataload" [YulExpr.lit 4],
+            YulExpr.hex ((2^160) - 1)
+          ]),
+          YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 36]),
+          YulStmt.let_ "senderBal" (YulExpr.call "sload" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.call "caller" []]
+          ]),
+          YulStmt.let_ "recipientBal" (YulExpr.call "sload" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.ident "to"]
+          ]),
+          YulStmt.if_
+            (YulExpr.call "lt" [YulExpr.ident "senderBal", YulExpr.ident "amount"])
+            insufficientBalanceRevert,
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.call "caller" []],
+            YulExpr.call "sub" [YulExpr.ident "senderBal", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.ident "to"],
+            YulExpr.call "add" [YulExpr.ident "recipientBal", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "getBalance"
+        selector := 0xf8b2cb4f
+        params := [{ name := "addr", ty := IRType.address }]
+        ret := IRType.uint256
+        body := [
+          YulStmt.let_ "addr" (YulExpr.call "and" [
+            YulExpr.call "calldataload" [YulExpr.lit 4],
+            YulExpr.hex ((2^160) - 1)
+          ]),
+          YulStmt.expr (YulExpr.call "mstore" [
+            YulExpr.lit 0,
+            YulExpr.call "sload" [
+              YulExpr.call "mappingSlot" [YulExpr.lit 0, YulExpr.ident "addr"]
+            ]
+          ]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      }
+    ]
+    usesMapping := true }
+
+@[simp] lemma compile_ledgerSpec :
+    compile ledgerSpec [0xb6b55f25, 0x2e1a7d4d, 0xa9059cbb, 0xf8b2cb4f] = .ok ledgerIRContract := by
+  rfl
+
+/-! ## Ledger: Function Correctness -/
+
+theorem ledger_deposit_correct (senderBal amount : Nat) (senderAddr : Address) (initialState : ContractState) :
+  let spec := ledgerSpec
+  let irContract := compile spec [0xb6b55f25, 0x2e1a7d4d, 0xa9059cbb, 0xf8b2cb4f]
+  let initialStorage : SpecStorage :=
+    SpecStorage.empty.setMapping 0 (addressToNat senderAddr) senderBal
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "deposit"
+    args := [amount]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0xb6b55f25
+    args := [amount]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [senderAddr] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    ledgerIRContract, SpecStorage.empty, SpecStorage.setMapping, SpecStorage.getMapping,
+    specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus]
+  · intro slot
+    simp
+  · intro baseSlot addr haddr
+    simp at haddr
+    subst haddr
+    simp
+
+theorem ledger_withdraw_correct (senderBal amount : Nat) (senderAddr : Address) (initialState : ContractState) :
+  let spec := ledgerSpec
+  let irContract := compile spec [0xb6b55f25, 0x2e1a7d4d, 0xa9059cbb, 0xf8b2cb4f]
+  let initialStorage : SpecStorage :=
+    SpecStorage.empty.setMapping 0 (addressToNat senderAddr) senderBal
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "withdraw"
+    args := [amount]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0x2e1a7d4d
+    args := [amount]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [senderAddr] irResult specResult initialState
+  | .error _ => False
+  := by
+  by_cases h : senderBal < amount
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ledgerIRContract, insufficientBalanceRevert, SpecStorage.empty, SpecStorage.setMapping,
+      SpecStorage.getMapping, specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      simp
+    · intro baseSlot addr haddr
+      simp at haddr
+      subst haddr
+      simp
+  · have hge : senderBal ≥ amount := by
+      exact Nat.not_lt.mp h
+    simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ledgerIRContract, insufficientBalanceRevert, SpecStorage.empty, SpecStorage.setMapping,
+      SpecStorage.getMapping, specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h, hge]
+    · intro slot
+      simp
+    · intro baseSlot addr haddr
+      simp at haddr
+      subst haddr
+      simp
+
+theorem ledger_transfer_correct (senderBal recipientBal amount : Nat)
+    (senderAddr recipientAddr : Address) (initialState : ContractState) :
+  let spec := ledgerSpec
+  let irContract := compile spec [0xb6b55f25, 0x2e1a7d4d, 0xa9059cbb, 0xf8b2cb4f]
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setMapping 0 (addressToNat senderAddr) senderBal)
+      .setMapping 0 (addressToNat recipientAddr) recipientBal
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "transfer"
+    args := [addressToNat recipientAddr, amount]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0xa9059cbb
+    args := [addressToNat recipientAddr, amount]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [senderAddr, recipientAddr] irResult specResult initialState
+  | .error _ => False
+  := by
+  by_cases h : senderBal < amount
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ledgerIRContract, insufficientBalanceRevert, SpecStorage.empty, SpecStorage.setMapping,
+      SpecStorage.getMapping, specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      simp
+    · intro baseSlot addr haddr
+      simp at haddr
+      rcases haddr with rfl | rfl
+      · simp
+      · simp
+  · have hge : senderBal ≥ amount := by
+      exact Nat.not_lt.mp h
+    simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ledgerIRContract, insufficientBalanceRevert, SpecStorage.empty, SpecStorage.setMapping,
+      SpecStorage.getMapping, specStorageToIRState, DumbContracts.Core.Uint256.modulus, evmModulus, h, hge]
+    · intro slot
+      simp
+    · intro baseSlot addr haddr
+      simp at haddr
+      rcases haddr with rfl | rfl
+      · simp
+      · simp
+
+theorem ledger_getBalance_correct (storedBal : Nat) (addr : Address) (senderAddr : Address)
+    (initialState : ContractState) :
+  let spec := ledgerSpec
+  let irContract := compile spec [0xb6b55f25, 0x2e1a7d4d, 0xa9059cbb, 0xf8b2cb4f]
+  let initialStorage : SpecStorage :=
+    SpecStorage.empty.setMapping 0 (addressToNat addr) storedBal
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "getBalance"
+    args := [addressToNat addr]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0xf8b2cb4f
+    args := [addressToNat addr]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [addr] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    ledgerIRContract, SpecStorage.empty, SpecStorage.setMapping, SpecStorage.getMapping,
+    specStorageToIRState]
+  · intro slot
+    simp
+  · intro baseSlot addr' haddr
+    simp at haddr
+    subst haddr
+    simp
+
+/-! ## SimpleToken: Concrete IR -/
+
+def simpleTokenIRContract : IRContract :=
+  { name := "SimpleToken"
+    deploy := [
+      YulStmt.let_ "argsOffset" (YulExpr.call "sub" [YulExpr.call "codesize" [], YulExpr.lit 32]),
+      YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit 32]),
+      YulStmt.let_ "arg0" (YulExpr.call "and" [
+        YulExpr.call "mload" [YulExpr.lit 0],
+        YulExpr.hex ((2^160) - 1)
+      ]),
+      YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "arg0"]),
+      YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 2, YulExpr.lit 0])
+    ]
+    functions := [
+      { name := "mint"
+        selector := 0x40c10f19
+        params := [{ name := "to", ty := IRType.address }, { name := "amount", ty := IRType.uint256 }]
+        ret := IRType.unit
+        body := [
+          YulStmt.let_ "to" (YulExpr.call "and" [
+            YulExpr.call "calldataload" [YulExpr.lit 4],
+            YulExpr.hex ((2^160) - 1)
+          ]),
+          YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 36]),
+          YulStmt.if_
+            (YulExpr.call "iszero" [
+              YulExpr.call "eq" [YulExpr.call "caller" [], YulExpr.call "sload" [YulExpr.lit 0]]
+            ])
+            ownedNotOwnerRevert,
+          YulStmt.let_ "recipientBal" (YulExpr.call "sload" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 1, YulExpr.ident "to"]
+          ]),
+          YulStmt.let_ "supply" (YulExpr.call "sload" [YulExpr.lit 2]),
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 1, YulExpr.ident "to"],
+            YulExpr.call "add" [YulExpr.ident "recipientBal", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.lit 2,
+            YulExpr.call "add" [YulExpr.ident "supply", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "transfer"
+        selector := 0xa9059cbb
+        params := [{ name := "to", ty := IRType.address }, { name := "amount", ty := IRType.uint256 }]
+        ret := IRType.unit
+        body := [
+          YulStmt.let_ "to" (YulExpr.call "and" [
+            YulExpr.call "calldataload" [YulExpr.lit 4],
+            YulExpr.hex ((2^160) - 1)
+          ]),
+          YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 36]),
+          YulStmt.let_ "senderBal" (YulExpr.call "sload" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 1, YulExpr.call "caller" []]
+          ]),
+          YulStmt.let_ "recipientBal" (YulExpr.call "sload" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 1, YulExpr.ident "to"]
+          ]),
+          YulStmt.if_
+            (YulExpr.call "lt" [YulExpr.ident "senderBal", YulExpr.ident "amount"])
+            insufficientBalanceRevert,
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 1, YulExpr.call "caller" []],
+            YulExpr.call "sub" [YulExpr.ident "senderBal", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "sstore" [
+            YulExpr.call "mappingSlot" [YulExpr.lit 1, YulExpr.ident "to"],
+            YulExpr.call "add" [YulExpr.ident "recipientBal", YulExpr.ident "amount"]
+          ]),
+          YulStmt.expr (YulExpr.call "stop" [])
+        ]
+      },
+      { name := "balanceOf"
+        selector := 0x70a08231
+        params := [{ name := "addr", ty := IRType.address }]
+        ret := IRType.uint256
+        body := [
+          YulStmt.let_ "addr" (YulExpr.call "and" [
+            YulExpr.call "calldataload" [YulExpr.lit 4],
+            YulExpr.hex ((2^160) - 1)
+          ]),
+          YulStmt.expr (YulExpr.call "mstore" [
+            YulExpr.lit 0,
+            YulExpr.call "sload" [
+              YulExpr.call "mappingSlot" [YulExpr.lit 1, YulExpr.ident "addr"]
+            ]
+          ]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      },
+      { name := "totalSupply"
+        selector := 0x18160ddd
+        params := []
+        ret := IRType.uint256
+        body := [
+          YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.call "sload" [YulExpr.lit 2]]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      },
+      { name := "owner"
+        selector := 0x8da5cb5b
+        params := []
+        ret := IRType.address
+        body := [
+          YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.call "sload" [YulExpr.lit 0]]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      }
+    ]
+    usesMapping := true }
+
+@[simp] lemma compile_simpleTokenSpec :
+    compile simpleTokenSpec [0x40c10f19, 0xa9059cbb, 0x70a08231, 0x18160ddd, 0x8da5cb5b] =
+      .ok simpleTokenIRContract := by
+  rfl
+
+/-! ## SimpleToken: Function Correctness -/
+
+theorem simpleToken_mint_correct (senderBal totalSupply amount : Nat) (senderAddr toAddr ownerAddr : Address)
+    (initialState : ContractState) :
+  let spec := simpleTokenSpec
+  let irContract := compile spec [0x40c10f19, 0xa9059cbb, 0x70a08231, 0x18160ddd, 0x8da5cb5b]
+  let initialStorage : SpecStorage :=
+    ((SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 2 totalSupply)
+      .setMapping 1 (addressToNat toAddr) senderBal
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "mint"
+    args := [addressToNat toAddr, amount]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0x40c10f19
+    args := [addressToNat toAddr, amount]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [toAddr] irResult specResult initialState
+  | .error _ => False
+  := by
+  by_cases h : addressToNat senderAddr = addressToNat ownerAddr
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      simpleTokenIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.setMapping,
+      SpecStorage.getSlot, SpecStorage.getMapping, specStorageToIRState,
+      DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 2
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+    · intro baseSlot addr haddr
+      simp at haddr
+      subst haddr
+      simp
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      simpleTokenIRContract, ownedNotOwnerRevert, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.setMapping,
+      SpecStorage.getSlot, SpecStorage.getMapping, specStorageToIRState,
+      DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 2
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+    · intro baseSlot addr haddr
+      simp at haddr
+      subst haddr
+      simp
+
+theorem simpleToken_transfer_correct (senderBal recipientBal totalSupply amount : Nat)
+    (senderAddr recipientAddr ownerAddr : Address) (initialState : ContractState) :
+  let spec := simpleTokenSpec
+  let irContract := compile spec [0x40c10f19, 0xa9059cbb, 0x70a08231, 0x18160ddd, 0x8da5cb5b]
+  let initialStorage : SpecStorage :=
+    (((SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 2 totalSupply)
+      .setMapping 1 (addressToNat senderAddr) senderBal)
+      .setMapping 1 (addressToNat recipientAddr) recipientBal
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "transfer"
+    args := [addressToNat recipientAddr, amount]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0xa9059cbb
+    args := [addressToNat recipientAddr, amount]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [senderAddr, recipientAddr] irResult specResult initialState
+  | .error _ => False
+  := by
+  by_cases h : senderBal < amount
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      simpleTokenIRContract, insufficientBalanceRevert, SpecStorage.empty, SpecStorage.setSlot,
+      SpecStorage.setMapping, SpecStorage.getSlot, SpecStorage.getMapping, specStorageToIRState,
+      DumbContracts.Core.Uint256.modulus, evmModulus, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 2
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+    · intro baseSlot addr haddr
+      simp at haddr
+      rcases haddr with rfl | rfl
+      · simp
+      · simp
+  · have hge : senderBal ≥ amount := by
+      exact Nat.not_lt.mp h
+    simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      simpleTokenIRContract, insufficientBalanceRevert, SpecStorage.empty, SpecStorage.setSlot,
+      SpecStorage.setMapping, SpecStorage.getSlot, SpecStorage.getMapping, specStorageToIRState,
+      DumbContracts.Core.Uint256.modulus, evmModulus, h, hge]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 2
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
+    · intro baseSlot addr haddr
+      simp at haddr
+      rcases haddr with rfl | rfl
+      · simp
+      · simp
+
+theorem simpleToken_balanceOf_correct (storedBal totalSupply : Nat) (addr ownerAddr senderAddr : Address)
+    (initialState : ContractState) :
+  let spec := simpleTokenSpec
+  let irContract := compile spec [0x40c10f19, 0xa9059cbb, 0x70a08231, 0x18160ddd, 0x8da5cb5b]
+  let initialStorage : SpecStorage :=
+    ((SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 2 totalSupply)
+      .setMapping 1 (addressToNat addr) storedBal
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "balanceOf"
+    args := [addressToNat addr]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0x70a08231
+    args := [addressToNat addr]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [addr] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    simpleTokenIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.setMapping,
+    SpecStorage.getSlot, SpecStorage.getMapping, specStorageToIRState]
+  · intro slot
+    by_cases hslot : slot = 0
+    · subst hslot
+      simp
+    · by_cases hslot' : slot = 2
+      · subst hslot'
+        simp [hslot]
+      · simp [hslot, hslot']
+  · intro baseSlot addr' haddr
+    simp at haddr
+    subst haddr
+    simp
+
+theorem simpleToken_totalSupply_correct (storedSupply : Nat) (ownerAddr senderAddr : Address)
+    (initialState : ContractState) :
+  let spec := simpleTokenSpec
+  let irContract := compile spec [0x40c10f19, 0xa9059cbb, 0x70a08231, 0x18160ddd, 0x8da5cb5b]
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 2 storedSupply
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "totalSupply"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0x18160ddd
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    simpleTokenIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+    specStorageToIRState]
+  · intro slot
+    by_cases hslot : slot = 0
+    · subst hslot
+      simp
+    · by_cases hslot' : slot = 2
+      · subst hslot'
+        simp [hslot]
+      · simp [hslot, hslot']
+
+theorem simpleToken_owner_correct (storedOwner storedSupply : Nat) (senderAddr : Address)
+    (initialState : ContractState) :
+  let spec := simpleTokenSpec
+  let irContract := compile spec [0x40c10f19, 0xa9059cbb, 0x70a08231, 0x18160ddd, 0x8da5cb5b]
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 storedOwner).setSlot 2 storedSupply
+  let tx : Transaction := {
+    sender := senderAddr
+    functionName := "owner"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat senderAddr
+    functionSelector := 0x8da5cb5b
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage senderAddr)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
+  | .error _ => False
+  := by
+  simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+    interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+    simpleTokenIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+    specStorageToIRState]
+  · intro slot
+    by_cases hslot : slot = 0
+    · subst hslot
+      simp
+    · by_cases hslot' : slot = 2
+      · subst hslot'
+        simp [hslot]
+      · simp [hslot, hslot']
+  · simp [resultsMatch, interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+      interpretIR, execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRExprs,
+      ownedCounterIRContract, SpecStorage.empty, SpecStorage.setSlot, SpecStorage.getSlot,
+      specStorageToIRState, h]
+    · intro slot
+      by_cases hslot : slot = 0
+      · subst hslot
+        simp
+      · by_cases hslot' : slot = 1
+        · subst hslot'
+          simp [hslot]
+        · simp [hslot, hslot']
 
 /-! ## General Preservation Theorem Template
 

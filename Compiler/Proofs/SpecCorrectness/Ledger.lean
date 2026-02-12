@@ -144,7 +144,10 @@ theorem ledger_getBalance_correct (state : ContractState) (addr : Address) (send
 theorem ledger_getBalance_preserves_state (state : ContractState) (addr : Address) (sender : Address) :
     let finalState := (getBalance addr).runState { state with sender := sender }
     ∀ a, finalState.storageMap 0 a = state.storageMap 0 a := by
-  sorry
+  intro a
+  have h := DumbContracts.Proofs.Ledger.getBalance_preserves_state { state with sender := sender } addr
+  -- runState returns the same state for getBalance, so storageMap is unchanged.
+  simpa [Contract.runState] using congrArg (fun s => s.storageMap 0 a) h
 
 /-- Deposit increases balance -/
 theorem ledger_deposit_increases (state : ContractState) (amount : Nat) (sender : Address)
@@ -152,7 +155,25 @@ theorem ledger_deposit_increases (state : ContractState) (amount : Nat) (sender 
     (h2 : (state.storageMap 0 sender).val + amount < DumbContracts.Core.Uint256.modulus) :
     let finalState := (deposit (DumbContracts.Core.Uint256.ofNat amount)).runState { state with sender := sender }
     (finalState.storageMap 0 sender).val = (state.storageMap 0 sender).val + amount := by
-  sorry
+  have h_deposit :=
+    DumbContracts.Proofs.Ledger.deposit_increases_balance { state with sender := sender }
+      (DumbContracts.Core.Uint256.ofNat amount)
+  -- Use non-overflow to relate Uint256.add to Nat addition.
+  have h_add :
+      ((DumbContracts.EVM.Uint256.add (state.storageMap 0 sender)
+        (DumbContracts.Core.Uint256.ofNat amount) : DumbContracts.Core.Uint256) : Nat) =
+        (state.storageMap 0 sender).val + amount := by
+    -- Convert ofNat value to Nat and apply the add_eq_of_lt lemma.
+    have h2' : (state.storageMap 0 sender).val + (DumbContracts.Core.Uint256.ofNat amount).val <
+        DumbContracts.Core.Uint256.modulus := by
+      simpa using h2
+    simpa using DumbContracts.EVM.Uint256.add_eq_of_lt (a := state.storageMap 0 sender)
+      (b := DumbContracts.Core.Uint256.ofNat amount) h2'
+  -- Convert the deposit lemma to Nat equality on the stored value.
+  have h_deposit_val :=
+    congrArg (fun v => (v : Nat)) h_deposit
+  -- Rewrite with the addition lemma and the runState definition.
+  simpa [Contract.runState, h_add] using h_deposit_val
 
 /-- Transfer preserves total balance (sender + recipient) -/
 theorem ledger_transfer_preserves_total (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
@@ -169,6 +190,10 @@ theorem ledger_deposit_isolates_other (state : ContractState) (amount : Nat) (se
     (h : sender ≠ other) :
     let finalState := (deposit (DumbContracts.Core.Uint256.ofNat amount)).runState { state with sender := sender }
     finalState.storageMap 0 other = state.storageMap 0 other := by
-  sorry
+  have h_preserve :=
+    DumbContracts.Proofs.Ledger.deposit_preserves_other_balances { state with sender := sender }
+      (DumbContracts.Core.Uint256.ofNat amount) other h
+  simp [Contract.runState] at h_preserve
+  simpa using h_preserve
 
 end Compiler.Proofs.SpecCorrectness

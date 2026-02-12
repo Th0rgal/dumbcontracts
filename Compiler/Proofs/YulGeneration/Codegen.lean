@@ -14,7 +14,7 @@ open Compiler.Proofs.IRGeneration
 These lemmas capture the core obligations for Yul codegen correctness:
 1. Selector extraction matches the function selector.
 2. Runtime switch dispatch executes the selected function body.
--/-
+-/
 
 /-- Selector expression used by the runtime switch. -/
 def selectorExpr : YulExpr :=
@@ -30,9 +30,9 @@ theorem emitYul_runtimeCode_eq (contract : IRContract) :
 
 /-- Selector extraction via `selectorExpr` yields the 4-byte selector. -/
 @[simp]
-theorem evalYulExpr_selectorExpr (state : YulState) :
-    evalYulExpr state selectorExpr = some (state.selector % selectorModulus) := by
-  simp [selectorExpr]
+theorem evalYulExpr_selectorExpr :
+    ∀ state : YulState, evalYulExpr state selectorExpr = some (state.selector % selectorModulus) := by
+  simpa using Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_semantics
 
 /-- Selector extraction yields the raw selector when it fits in 4 bytes. -/
 @[simp]
@@ -42,34 +42,43 @@ theorem evalYulExpr_selectorExpr_eq (state : YulState)
   simp [evalYulExpr_selectorExpr, Nat.mod_eq_of_lt hselector]
 
 /-- Executing runtime code is equivalent to executing the switch body (mapping helper is a no-op). -/
-theorem execYulStmts_runtimeCode_eq (contract : IRContract) (state : YulState) :
-    execYulStmts state (Compiler.runtimeCode contract) =
-      execYulStmts state [Compiler.buildSwitch contract.functions] := by
+theorem execYulStmts_runtimeCode_eq :
+    ∀ (contract : IRContract) (state : YulState),
+      execYulStmts state (Compiler.runtimeCode contract) =
+        execYulStmts state [Compiler.buildSwitch contract.functions] := by
+  intro contract state
   by_cases h : contract.usesMapping
-  · simp [Compiler.runtimeCode, h, execYulStmts, execYulStmt]
+  · simp [Compiler.runtimeCode, h]
   · simp [Compiler.runtimeCode, h]
 
 /-- If the selector matches a case, the switch executes that case body. -/
-theorem execYulStmt_switch_match
-    (state : YulState) (expr : YulExpr) (cases : List (Nat × List YulStmt))
-    (default : Option (List YulStmt)) (v : Nat) (body : List YulStmt)
-    (hEval : evalYulExpr state expr = some v)
-    (hFind : cases.find? (fun (c, _) => c = v) = some (v, body)) :
-    execYulStmt state (YulStmt.switch expr cases default) =
-      execYulStmts state body := by
-  simp [execYulStmt, hEval, hFind]
+theorem execYulStmt_switch_match :
+    (∀ (state : YulState) (expr : YulExpr) (cases' : List (Nat × List YulStmt))
+        (default : Option (List YulStmt)) (v : Nat) (body : List YulStmt),
+        evalYulExpr state expr = some v →
+        List.find? (fun (c, _) => c = v) cases' = some (v, body) →
+        execYulStmt state (YulStmt.switch expr cases' default) = execYulStmts state body) := by
+  intro state expr cases' default v body hEval hFind
+  simpa using (Compiler.Proofs.YulGeneration.execYulStmt_switch_match_semantics
+    state expr cases' default v body hEval hFind)
 
 /-- If no selector case matches, the switch executes the default (or continues). -/
-theorem execYulStmt_switch_miss
-    (state : YulState) (expr : YulExpr) (cases : List (Nat × List YulStmt))
-    (default : Option (List YulStmt)) (v : Nat)
-    (hEval : evalYulExpr state expr = some v)
-    (hFind : cases.find? (fun (c, _) => c = v) = none) :
-    execYulStmt state (YulStmt.switch expr cases default) =
-      match default with
-      | some body => execYulStmts state body
-      | none => YulExecResult.continue state := by
-  simp [execYulStmt, hEval, hFind]
+def execYulStmt_switch_miss_result (state : YulState) (default : Option (List YulStmt)) :
+    YulExecResult :=
+  match default with
+  | some body => execYulStmts state body
+  | none => YulExecResult.continue state
+
+theorem execYulStmt_switch_miss :
+    (∀ (state : YulState) (expr : YulExpr) (cases' : List (Nat × List YulStmt))
+        (default : Option (List YulStmt)) (v : Nat),
+        evalYulExpr state expr = some v →
+        List.find? (fun (c, _) => c = v) cases' = none →
+        execYulStmt state (YulStmt.switch expr cases' default) = execYulStmt_switch_miss_result state default) := by
+  intro state expr cases' default v hEval hFind
+  simpa [execYulStmt_switch_miss_result] using
+    (Compiler.Proofs.YulGeneration.execYulStmt_switch_miss_semantics
+      state expr cases' default v hEval hFind)
 
 /-- Bridge lemma: mapping a found function into switch cases yields the corresponding case. -/
 lemma find_switch_case_of_find_function

@@ -371,24 +371,18 @@ None. All Layer 1 proofs compile with zero placeholders.
 - [Mathlib Tactics](https://leanprover-community.github.io/mathlib4_docs/tactics.html)
 - [DumbContracts Core](../DumbContracts/Core.lean)
 
-## Future Layers
+## Next Steps
 
-### Layer 2: ContractSpec → IR ✅ Complete
-- IR interpreter implementation
-- End-to-end preservation theorems for 7 contracts
-- Conversions and result equivalence formalized
+### Layer 3: IR → Yul ✅ Complete
+- Yul runtime semantics with selector-aware calldata
+- Mapping slot model shared with IR semantics
+- Codegen correctness proofs for `emitYul`
+- Preservation theorem: `emitYul` preserves semantics
 
-### Layer 3: IR → Yul (In Progress)
-- ✅ Yul runtime semantics with selector-aware calldata
-- ✅ Mapping slot model shared with IR semantics
-- ⏳ Codegen correctness proofs for `emitYul`
-- ⏳ Preservation theorem: `emitYul` preserves semantics
-
-### Layer 4: Trust Assumptions
-- Documented: solc compiles Yul → EVM correctly
-- Validated: 70,000+ differential tests
-- Trusted: Lean 4 kernel, EVM implementations
+### Layer 4: Trust Assumptions (Documented)
+- solc compiles Yul → EVM correctly
+- Lean 4 kernel and EVM implementations are trusted
 
 ---
 
-**Status**: Layer 1 Complete, Layer 2 Complete, Layer 3 In Progress | **Last Updated**: 2026-02-12 | **Maintainer**: Verification Team
+**Status**: Layer 1 Complete, Layer 2 Complete, Layer 3 Complete | **Last Updated**: 2026-02-12 | **Maintainer**: Verification Team

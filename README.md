@@ -79,6 +79,8 @@ lake build
 
 # Run Foundry tests (unit + property + differential)
 forge test
+
+# Expect several minutes: differential suites include long randomized runs.
 ```
 
 ## Documentation

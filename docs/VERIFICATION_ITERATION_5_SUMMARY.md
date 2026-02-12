@@ -188,13 +188,13 @@ $ lake build 2>&1 | grep -c "sorry"
 - `edsl/DumbContracts/Core.lean` — Complete rewrite with ContractResult, zero sorry
 
 ### Examples (7 files)
-- `examples/lean/DumbContracts/Examples/{SimpleStorage,Counter,SafeCounter,Owned,OwnedCounter,Ledger,SimpleToken}.lean`
+- `DumbContracts/Examples/{SimpleStorage,Counter,SafeCounter,Owned,OwnedCounter,Ledger,SimpleToken}.lean`
 
 ### Proofs (4 files)
-- `examples/lean/DumbContracts/Proofs/SimpleStorage/Basic.lean` — 12/12 proven
-- `examples/lean/DumbContracts/Proofs/Counter/Basic.lean` — 19/19 proven
-- `examples/lean/DumbContracts/Proofs/Owned/Basic.lean` — 18/18 proven, zero axioms
-- `examples/lean/DumbContracts/Proofs/SimpleToken/Basic.lean` — 33/33 proven, zero axioms
+- `DumbContracts/Proofs/SimpleStorage/Basic.lean` — 12/12 proven
+- `DumbContracts/Proofs/Counter/Basic.lean` — 19/19 proven
+- `DumbContracts/Proofs/Owned/Basic.lean` — 18/18 proven, zero axioms
+- `DumbContracts/Proofs/SimpleToken/Basic.lean` — 33/33 proven, zero axioms
 
 ## Lessons Learned
 

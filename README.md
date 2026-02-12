@@ -53,9 +53,9 @@ Semantics are defined in Lean here:
 ## Repository Structure
 
 ```
-DumbContracts/                       # EDSL core + stdlib
-examples/lean/DumbContracts/         # Example contracts, specs, proofs
-compiler/                            # Yul fixtures and test outputs
+DumbContracts/                       # EDSL core + stdlib + examples/specs/proofs
+examples/solidity/                   # Solidity/Yul fixtures and test outputs
+compiler/                            # Compiler source + artifacts
 Compiler/                            # Compiler (spec DSL, IR, codegen, selector, Yul AST)
 Compiler/Proofs/                     # Compiler correctness proofs (3 layers)
 scripts/                             # build/test scripts
@@ -67,9 +67,9 @@ test/                                # Foundry tests (unit, property, differenti
 
 ## Examples and Proofs
 
-- **Lean examples**: `examples/lean/DumbContracts/Examples/`
-- **Specifications**: `examples/lean/DumbContracts/Specs/`
-- **EDSL proofs**: `examples/lean/DumbContracts/Proofs/`
+- **Lean examples**: `DumbContracts/Examples/`
+- **Specifications**: `DumbContracts/Specs/`
+- **EDSL proofs**: `DumbContracts/Proofs/`
 - **Compiler proofs**: `Compiler/Proofs/` (Layer 1: Spec correctness, Layer 2: IR, Layer 3: Yul)
 
 ## Build and Test

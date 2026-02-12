@@ -4,6 +4,7 @@
   This file explores the proof in detail to understand what needs to be shown.
 -/
 
+import Compiler.Proofs.IRGeneration.Expr
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.Conversions
 import Compiler.Proofs.SpecInterpreter
@@ -87,7 +88,7 @@ def testIRExecution (value : Nat) : IRResult :=
 /-! ## Step 4: Attempt the proof -/
 
 -- Try a specific instance first to see if the proof is tractable
-theorem store_correct_42 :
+theorem store_correct_42 (initialState : ContractState) :
   let spec := simpleStorageSpec
   let irContract := compile spec [0x6057361d, 0x2e64cec1]
   let sender := "test_sender"
@@ -105,20 +106,12 @@ theorem store_correct_42 :
   match irContract with
   | .ok ir =>
       let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
-      irResult.success = true ∧
-      specResult.success = true ∧
-      irResult.returnValue = none ∧
-      specResult.returnValue = none ∧
-      irResult.finalStorage 0 = 42 ∧
-      specResult.finalStorage.getSlot 0 = 42
+      resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
   := by
-  -- Try to just unfold everything and see what happens
-  unfold simpleStorageSpec compile interpretSpec interpretIR addressToNat
-  simp
-  sorry
+  simpa using (Compiler.Proofs.IRGeneration.simpleStorage_store_correct 42 initialState)
 
-theorem store_correct_attempt (value : Nat) :
+theorem store_correct_attempt (value : Nat) (initialState : ContractState) :
   let spec := simpleStorageSpec
   let irContract := compile spec [0x6057361d, 0x2e64cec1]
   let sender := "test_sender"
@@ -136,14 +129,9 @@ theorem store_correct_attempt (value : Nat) :
   match irContract with
   | .ok ir =>
       let irResult := interpretIR ir irTx (IRState.initial irTx.sender)
-      irResult.success = specResult.success ∧
-      irResult.returnValue = specResult.returnValue ∧
-      (∀ slot, irResult.finalStorage slot = specResult.finalStorage.getSlot slot)
+      resultsMatch ir.usesMapping [] irResult specResult initialState
   | .error _ => False
   := by
-  -- Both sides should compute to concrete values
-  -- Let's try using simp with the definitions
-  simp only [simpleStorageSpec, compile]
-  sorry
+  simpa using (Compiler.Proofs.IRGeneration.simpleStorage_store_correct value initialState)
 
 end Compiler.Proofs.IRGeneration.StoreProof

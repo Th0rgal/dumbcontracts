@@ -30,6 +30,17 @@ def interpretYulBody (fn : IRFunction) (tx : IRTransaction) (state : IRState) : 
   }
   interpretYulRuntime fn.body yulTx state.storage state.mappings
 
+/-- Helper: initial Yul state aligned with the IR transaction/state. -/
+def initialYulState (tx : YulTransaction) (state : IRState) : YulState :=
+  YulState.initial tx state.storage state.mappings
+
+@[simp]
+theorem evalYulExpr_selectorExpr_initial
+    (tx : YulTransaction) (state : IRState)
+    (hselector : tx.functionSelector < selectorModulus) :
+    evalYulExpr (initialYulState tx state) selectorExpr = some tx.functionSelector := by
+  simpa using (evalYulExpr_selectorExpr_eq (initialYulState tx state) hselector)
+
 /-- Main preservation theorem: Yul codegen preserves IR semantics. -/
 theorem yulCodegen_preserves_semantics
     (contract : IRContract) (tx : IRTransaction) (initialState : IRState)
@@ -43,6 +54,11 @@ theorem yulCodegen_preserves_semantics
       (interpretYulFromIR contract tx initialState) := by
   -- Normalize the initial IR state with sender/calldata.
   let irState := { initialState with sender := tx.sender, calldata := tx.args }
+  let yulTx : YulTransaction := {
+    sender := tx.sender
+    functionSelector := tx.functionSelector
+    args := tx.args
+  }
   -- Case split on whether the selector matches a function.
   cases hFind : contract.functions.find? (fun f => f.selector == tx.functionSelector) with
   | none =>
@@ -71,18 +87,9 @@ theorem yulCodegen_preserves_semantics
         exact find_switch_case_of_find_function contract.functions tx.functionSelector fn hFind
       -- Apply switch rule.
       have hsel :
-          evalYulExpr (YulState.initial {
-            sender := tx.sender
-            functionSelector := tx.functionSelector
-            args := tx.args
-          } irState.storage irState.mappings) selectorExpr =
+          evalYulExpr (initialYulState yulTx irState) selectorExpr =
             some tx.functionSelector := by
-        simpa using (evalYulExpr_selectorExpr_eq
-          (YulState.initial {
-            sender := tx.sender
-            functionSelector := tx.functionSelector
-            args := tx.args
-          } irState.storage irState.mappings) hselector)
+        simpa [yulTx] using (evalYulExpr_selectorExpr_initial yulTx irState hselector)
       -- Finish by aligning the switch-selected body with the hypothesis.
       simp [hsel, hcase] at hmatch
       exact hmatch

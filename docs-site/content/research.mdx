@@ -118,15 +118,15 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 
 **Result**: All 7 contracts compile automatically. Zero manual IR. Generated code is more optimized than manual translations.
 
-**Implementation** (561 lines):
-- `Compiler/ContractSpec.lean` (219 lines) — DSL + automatic IR compiler
+**Implementation** (846 lines, as of 2026-02-12):
+- `Compiler/ContractSpec.lean` (413 lines) — DSL + automatic IR compiler
   - Type-safe expression language (literals, storage, mappings, arithmetic, comparisons)
   - Statement DSL (setStorage, setMapping, require, return)
   - Automatic storage slot inference from field order
   - Constructor parameter handling (bytecode argument loading)
-- `Compiler/Specs.lean` (238 lines) — All 7 contract specifications
-- `Compiler/Selector.lean` (75 lines) — Function selector computation (Solidity keccak256)
-- `Compiler/Main.lean` (27 lines) — New compilation entry point
+- `Compiler/Specs.lean` (386 lines) — All 7 contract specifications
+- `Compiler/Selector.lean` (43 lines) — Function selector computation (Solidity keccak256)
+- `Compiler/Main.lean` (4 lines) — New compilation entry point
 
 **Before**:
 ```lean
@@ -183,15 +183,15 @@ forge test  # 264/264 tests pass (as of 2026-02-12)
 
 **Result**: 100 random transactions pass for SimpleStorage contract. Zero mismatches detected. Ready to scale to all contracts.
 
-**Implementation** (252 lines):
-- `Compiler/Interpreter.lean` (198 lines) — EDSL interpreter for differential testing
+**Implementation** (1,396 lines, as of 2026-02-12):
+- `Compiler/Interpreter.lean` (757 lines) — EDSL interpreter for differential testing
   - Executes EDSL contracts on abstract state
   - Returns JSON results for comparison with EVM
   - Supports SimpleStorage and Counter (extensible to all contracts)
-- `Compiler/RandomGen.lean` (52 lines) — Random transaction generator
+- `Compiler/RandomGen.lean` (232 lines) — Random transaction generator
   - Generates random addresses, values, and function calls
   - Contract-specific transaction generation (store/retrieve for SimpleStorage)
-- `test/DifferentialSimpleStorage.t.sol` (300+ lines) — Foundry test harness
+- `test/DifferentialSimpleStorage.t.sol` (407 lines) — Foundry test harness
   - Executes transactions on compiled EVM bytecode
   - Calls EDSL interpreter via `vm.ffi`
   - Compares: success/revert, return values, storage changes

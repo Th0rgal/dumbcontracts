@@ -13,31 +13,31 @@ The DumbContracts compiler transforms high-level, verified contract specificatio
 
 **Pipeline**: EDSL Contract → Declarative Spec → IR → Yul → EVM Bytecode
 
-**Status**: ✅ **Roadmap Item 1 Complete** — Generic Compilation (2026-02-10)
+**Status**: ✅ **Roadmap Item 1 Complete** — Generic compilation with proven Yul codegen preservation (2026-02-12)
 
 ## Trust Model
 
 ### What's Verified (Zero Trust Required)
-- **252 Lean proofs**: All EDSL contract properties formally verified
+- **EDSL + compiler proofs**: Lean theorems for contract specs, IR generation, and Yul codegen
 - **Zero `sorry`, zero axioms**: Complete machine-checked proofs
-- **76 Foundry tests**: All compiled contracts pass functional tests
+- **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean
 
 ### What's Tested (High Confidence)
-- **Compilation correctness**: 76/76 tests pass for all compiled contracts
-- **Output validation**: Generated Yul matches expected semantics
-- **Constructor handling**: Proper bytecode argument loading
-- **Storage layout**: Automatic slot inference validated
+- **Compilation correctness**: Foundry unit and differential tests cover compiled contracts
+- **Output validation**: Generated Yul is exercised against expected runtime behavior
+- **Constructor handling**: Bytecode argument loading is covered in tests
+- **Storage layout**: Automatic slot inference validated by examples
 
 ### What's Assumed (Trust Required)
-- **Yul compiler**: Solidity's Yul → bytecode compilation (industry-standard)
-- **EVM semantics**: Ethereum's execution model matches specification
-- **Function selectors**: Pre-computed keccak256 hashes are correct
+- **Yul compiler**: Solidity's `solc` compiles Yul to bytecode correctly
+- **EVM semantics**: Ethereum's execution model matches the spec used in proofs
+- **Function selectors**: Pre-computed `keccak256` hashes are correct
 
 ### Future: Zero Trust
-**Roadmap Items 2-4** will eliminate all trust assumptions:
-- **Item 2**: Differential testing (70k+ random tests comparing EDSL vs EVM)
-- **Item 3**: Property extraction (252 theorems → on-chain tests)
-- **Item 4**: Compiler verification (formal proof of compilation correctness)
+**Roadmap Items 2-4** aim to reduce remaining trust assumptions further:
+- **Item 2**: Large-scale differential testing (EDSL vs EVM)
+- **Item 3**: Property extraction (theorems → on-chain tests)
+- **Item 4**: Extended compiler verification (bytecode-level links)
 
 ## Example: SimpleStorage
 

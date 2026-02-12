@@ -2,6 +2,18 @@
 
 This directory contains formal verification proofs for the DumbContracts compiler, proving correctness across three layers of compilation.
 
+## Layer Status (Current)
+
+- **Layer 1: EDSL ≡ ContractSpec** — Complete. ContractSpec semantics match the verified EDSL examples.
+- **Layer 2: ContractSpec → IR** — Complete. IR generation preserves ContractSpec semantics.
+- **Layer 3: IR → Yul** — Complete. Yul codegen preserves IR semantics and runtime behavior.
+
+Key entry points:
+
+- Spec semantics: `Compiler/Proofs/SpecInterpreter.lean`
+- IR generation and proofs: `Compiler/Proofs/IRGeneration/`
+- Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
+
 ## Three-Layer Verification Strategy
 
 ### Layer 1: EDSL ≡ ContractSpec (Specification Correctness) ✅ 100% Complete

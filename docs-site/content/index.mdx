@@ -22,7 +22,7 @@ Write smart contracts three times:
 Then compile the verified Lean implementation to EVM bytecode with automatic IR generation.
 
 <Callout type="success">
-**✅ Compilation Milestone**: All contracts now compile automatically from declarative specifications to EVM bytecode. No manual IR writing required. 80/80 Foundry tests pass, including 100 differential tests validating EVM matches EDSL semantics. See [Compiler](/compiler) for details.
+**✅ Compilation Milestone**: All contracts compile automatically from declarative specs to Yul/EVM bytecode. The compiler pipeline and Yul codegen preservation proofs live in `Compiler/Proofs/`. See [Compiler](/compiler) for details.
 </Callout>
 
 ## Why Lean?
@@ -34,7 +34,7 @@ This project uses Lean to:
 - Implement the contracts (executable code)
 - Prove the implementations satisfy the specifications (theorems)
 
-**Current status**: 212 lines of EDSL core, 7 example contracts, 252 machine-checked proofs, automatic compilation to EVM bytecode, differential testing validates compiler correctness. Zero `sorry` (unproven claims), zero axioms (no trusted assumptions), 80/80 Foundry tests passing (including 100 random differential tests).
+**Current status**: A compact EDSL core, 7 example contracts, hundreds of machine-checked proofs across the EDSL and compiler, and automatic compilation to EVM bytecode. Zero `sorry` (unproven claims), zero axioms. Foundry tests include unit, property, and differential checks.
 
 ## The Three-Layer Structure
 

@@ -1,11 +1,17 @@
 ---
 title: Formal Verification
-description: 252 proven theorems across 7 contracts and stdlib
+description: EDSL proofs plus compiler correctness proofs (IR + Yul)
 ---
 
 # Formal Verification
 
-252 theorems proven across 7 contracts and a math stdlib. No `sorry`, no axioms. All proofs are checked by `lake build`.
+The EDSL has 252 proven theorems across 7 contracts and a math stdlib. The compiler is additionally verified with IR and Yul preservation proofs in `Compiler/Proofs/`. No `sorry`, no axioms. All proofs are checked by `lake build`.
+
+## Compiler Proofs (IR + Yul)
+
+- **Spec semantics**: `Compiler/Proofs/SpecInterpreter.lean`
+- **IR generation**: `Compiler/Proofs/IRGeneration/`
+- **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/`
 
 ## Structure
 

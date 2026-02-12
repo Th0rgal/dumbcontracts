@@ -101,8 +101,8 @@ def abiEventSignatures : List String :=
 
 /-- Constructor spec: Safe singleton initializes threshold = 1 and preserves all other state. -/
 def constructor_spec (s s' : ContractState) : Prop :=
-  s'.storage 4 = 1 ∧
-  (∀ slot : Nat, slot ≠ 4 → s'.storage slot = s.storage slot) ∧
+  s'.storage threshold.slot = 1 ∧
+  (∀ slot : Nat, slot ≠ threshold.slot → s'.storage slot = s.storage slot) ∧
   s'.storageAddr = s.storageAddr ∧
   s'.storageMap = s.storageMap ∧
   s'.sender = s.sender ∧
@@ -110,8 +110,8 @@ def constructor_spec (s s' : ContractState) : Prop :=
   s'.msgValue = s.msgValue ∧
   s'.blockTimestamp = s.blockTimestamp
 
-/-- Getter spec: threshold equals current storage slot 4. -/
+/-- Getter spec: threshold equals current storage slot. -/
 def getThreshold_spec (result : Uint256) (s : ContractState) : Prop :=
-  result = s.storage 4
+  result = s.storage threshold.slot
 
 end DumbContracts.Specs.SafeMultisigBase

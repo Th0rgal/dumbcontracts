@@ -19,11 +19,11 @@ open DumbContracts.Examples.SafeMultisigBase
 /-- Convert EDSL ContractState to SpecStorage for SafeMultisigBase (placeholder). -/
 def safeMultisigBaseEdslToSpecStorage (state : ContractState) : SpecStorage :=
   { slots := [
-      (0, addressToNat (state.storageAddr 0)),
-      (3, state.storage 3),
-      (4, state.storage 4),
-      (5, state.storage 5),
-      (6, state.storage 6)
+      (singleton.slot, addressToNat (state.storageAddr singleton.slot)),
+      (ownerCount.slot, state.storage ownerCount.slot),
+      (threshold.slot, state.storage threshold.slot),
+      (nonce.slot, state.storage nonce.slot),
+      (deprecatedDomainSeparator.slot, state.storage deprecatedDomainSeparator.slot)
     ]
     mappings := [] }
 

@@ -64,8 +64,15 @@ def extractStorageAddrChanges (before after : ContractState) (slots : List Nat) 
     if oldVal ≠ newVal then some (slot, newVal) else none
 
 -- Helper: Extract mapping changes from before/after states
+private def dedupeMappingKeys (keys : List (Nat × Address)) : List (Nat × Address) :=
+  let deduped := keys.foldl (fun acc key =>
+    if acc.contains key then acc else key :: acc
+  ) []
+  deduped.reverse
+
 def extractMappingChanges (before after : ContractState) (keys : List (Nat × Address)) : List (Nat × Address × Nat) :=
-  keys.filterMap fun (slot, key) =>
+  let deduped := dedupeMappingKeys keys
+  deduped.filterMap fun (slot, key) =>
     let oldVal := before.storageMap slot key
     let newVal := after.storageMap slot key
     if oldVal ≠ newVal then some (slot, key, newVal) else none

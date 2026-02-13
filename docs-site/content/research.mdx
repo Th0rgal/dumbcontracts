@@ -209,6 +209,7 @@ forge test  # 264/264 tests pass (as of 2026-02-13)
 2. **Test Assertions**: Added `assertTrue` checks to prevent silent test failures.
 3. **Underflow Guards**: Added length guards to JSON parsing to prevent underflow reverts.
 4. **Clang Crash**: Removed `deriving Repr` to fix CI compilation crash (Lean generated overly complex C code).
+5. **Mapping Change De-duplication**: Mapping change keys are de-duplicated before comparison to avoid self-transfer double counting and reduce diff output size.
 
 **Test Results**:
 - 100/100 random transactions pass (SimpleStorage)

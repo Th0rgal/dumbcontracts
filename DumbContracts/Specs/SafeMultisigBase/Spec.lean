@@ -114,6 +114,18 @@ def constructor_spec (s s' : ContractState) : Prop :=
 def getThreshold_spec (result : Uint256) (s : ContractState) : Prop :=
   result = s.storage threshold.slot
 
+/-- Owners linked-list encoding in the owners mapping. -/
+def ownersLinkedList (ownersList : List Address) (s : ContractState) : Prop :=
+  let rec go (prev : Address) (rest : List Address) : Prop :=
+    match rest with
+    | [] => s.storageMap owners.slot prev = encodeAddress ownersSentinel
+    | next :: tail =>
+        s.storageMap owners.slot prev = encodeAddress next ∧
+        go next tail
+  match ownersList with
+  | [] => s.storageMap owners.slot ownersSentinel = encodeAddress ownersSentinel
+  | _ => go ownersSentinel ownersList
+
 /-- Placeholder setup spec: updates ownerCount and threshold, leaves other state unchanged. -/
 def setup_spec (ownersList : List Address) (thresholdValue : Uint256)
     (fallbackHandler : Address)
@@ -128,6 +140,7 @@ def setup_spec (ownersList : List Address) (thresholdValue : Uint256)
     owner ≠ ownersSentinel ∧
     owner ≠ s.thisAddress ∧
     s.storageMap owners.slot owner = 0) ∧
+  ownersLinkedList ownersList s' ∧
   s'.storageMap modules.slot modulesSentinel = encodeAddress modulesSentinel ∧
   (∀ addr : Address, addr ≠ modulesSentinel →
     s'.storageMap modules.slot addr = s.storageMap modules.slot addr) ∧

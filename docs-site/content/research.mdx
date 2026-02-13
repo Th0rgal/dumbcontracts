@@ -248,7 +248,7 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 **C. Scale Differential Testing**:
 - Centralize the “random run” entrypoint so each harness can opt into the same seed/count knobs (avoid copy‑paste and drift).
 - Increase transaction counts from 100 to 10,000+ per contract (keep a quick-run default, allow override for CI).
-- Add adversarial patterns: self-transfer (done), max uint values, boundary overflows.
+- Add adversarial patterns: self-transfer (done), max uint values (done for SimpleStorage/Ledger/SimpleToken), boundary overflows.
 - **Done when**: CI runs a 10,000+ tx suite per contract, and the random harness setup is shared and parameterized across all 7 contracts.
 
 **D. Property Extraction (Proofs → Tests)**:

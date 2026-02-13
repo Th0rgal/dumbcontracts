@@ -87,6 +87,16 @@ abstract contract DiffTestConfig is Test {
         return vm.envOr("DIFFTEST_VERBOSE", false);
     }
 
+    function _edgeUintValues() internal pure returns (uint256[] memory) {
+        uint256[] memory values = new uint256[](5);
+        values[0] = 0;
+        values[1] = 1;
+        values[2] = 2;
+        values[3] = type(uint256).max - 1;
+        values[4] = type(uint256).max;
+        return values;
+    }
+
     function _assertRandomSuccess(bool success, uint256 iteration) internal {
         if (!success) {
             emit log_named_uint("Random test failed at", iteration);

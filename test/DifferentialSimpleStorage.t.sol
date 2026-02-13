@@ -339,6 +339,19 @@ contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig {
     }
 
     /**
+     * @notice Exercise edge values for store to catch overflow-ish cases.
+     */
+    function testDifferential_EdgeValues() public {
+        address sender = address(0xA11CE);
+        uint256[] memory values = _edgeUintValues();
+
+        for (uint256 i = 0; i < values.length; i++) {
+            bool success = executeDifferentialTest("store", sender, values[i]);
+            assertTrue(success, "Edge-value store test failed");
+        }
+    }
+
+    /**
      * @notice Execute N random transactions via random-gen
      */
     function _runRandomDifferentialTests(uint256 startIndex, uint256 count, uint256 seed) internal {

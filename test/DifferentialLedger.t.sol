@@ -475,6 +475,44 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig {
         assertTrue(success, "Insufficient balance test failed");
     }
 
+    /**
+     * @notice Exercise edge amounts for deposit/withdraw/transfer.
+     */
+    function testDifferential_EdgeAmounts() public {
+        address alice = address(0xA11CE);
+        address bob = address(0xB0B);
+        uint256[] memory values = _edgeUintValues();
+
+        bytes32 aliceSlot = keccak256(abi.encode(alice, uint256(0)));
+        bytes32 bobSlot = keccak256(abi.encode(bob, uint256(0)));
+
+        for (uint256 i = 0; i < values.length; i++) {
+            uint256 amount = values[i];
+
+            // Deposit from zero balance.
+            vm.store(ledger, aliceSlot, bytes32(uint256(0)));
+            vm.store(ledger, bobSlot, bytes32(uint256(0)));
+            edslBalances[alice] = 0;
+            edslBalances[bob] = 0;
+            bool successDeposit = executeDifferentialTest("deposit", alice, address(0), amount);
+            assertTrue(successDeposit, "Edge deposit test failed");
+
+            // Withdraw exact balance.
+            vm.store(ledger, aliceSlot, bytes32(amount));
+            edslBalances[alice] = amount;
+            bool successWithdraw = executeDifferentialTest("withdraw", alice, address(0), amount);
+            assertTrue(successWithdraw, "Edge withdraw test failed");
+
+            // Transfer exact balance.
+            vm.store(ledger, aliceSlot, bytes32(amount));
+            vm.store(ledger, bobSlot, bytes32(uint256(0)));
+            edslBalances[alice] = amount;
+            edslBalances[bob] = 0;
+            bool successTransfer = executeDifferentialTest("transfer", alice, bob, amount);
+            assertTrue(successTransfer, "Edge transfer test failed");
+        }
+    }
+
     function testDifferential_Random100() public {
         address[] memory actors = new address[](3);
         actors[0] = address(0xA11CE);

@@ -106,7 +106,7 @@ def resultsMatch (usesMapping : Bool) (addrs : List Address)
 
 **Goal**: Prove expression compilation correctness
 **File**: `Compiler/Proofs/IRGeneration/Expr.lean`
-**Estimated**: 3-4 days
+**Estimated**: a few days
 
 **Approach**:
 ```lean
@@ -123,34 +123,33 @@ For each Expr constructor:
 
 ### Phase 2 Roadmap
 
-1. **Expression Proofs** (200 lines, 3-4 days)
+1. **Expression Proofs** (3-4 days)
    - Literals, storage access, parameters
    - Arithmetic operations (add, sub, mul, div, mod)
    - Comparisons (lt, gt, eq)
    - Compositional correctness
 
-2. **Statement Proofs** (300 lines, 4-5 days)
+2. **Statement Proofs** (4-5 days)
    - letVar, setStorage, require, return
    - Preservation of state updates
    - Control flow correctness
 
-3. **Function Proofs** (200 lines, 3-4 days)
+3. **Function Proofs** (3-4 days)
    - Parameter initialization
    - Body execution
    - Return value handling
 
-4. **Full Preservation** (150 lines, 2-3 days)
+4. **Full Preservation** (2-3 days)
    - Compose expression + statement + function proofs
    - Main theorem: `compile spec selectors` preserves semantics
 
-**Total Phase 2 Estimate**: 850 lines, 2-3 weeks
+**Total Phase 2 Estimate**: 2-3 weeks
 
 ## Session Statistics
 
 | Metric | Value |
 |--------|-------|
 | Session Duration | ~3 hours |
-| Lines Written | 195 (code) + 288 (docs) |
 | Commits | 4 |
 | Build Errors Fixed | ~15 |
 | Theorems Proven | 3 |
@@ -161,15 +160,12 @@ For each Expr constructor:
 ### Layer 1: EDSL ≡ ContractSpec
 - **Status**: 100% theorems proven (27/27)
 - **Bottleneck**: Spec interpreter reduction automation
-- **Lines**: ~1,850 lines (proofs + infrastructure)
 
 ### Layer 2: ContractSpec → IR
 - **Status**: Phase 1 complete (100%), Phase 2 ready
 - **Infrastructure**: IR interpreter + type conversions
-- **Lines**: ~755 lines (infrastructure + docs)
 
 ### Overall Verification Effort
-- **Total Lines**: ~2,600 lines
 - **Contracts Covered**: 7 (SimpleStorage, Counter, SafeCounter, Owned, OwnedCounter, Ledger, SimpleToken)
 - **Automation Lemmas**: 4 proven (wraparound, bind, require, address equality)
 - **Documentation**: Comprehensive roadmaps and status tracking
@@ -184,8 +180,8 @@ For each Expr constructor:
 
 ## Files Created This Session
 
-1. `Compiler/Proofs/IRGeneration/Conversions.lean` (195 lines) ✅
-2. `Compiler/Proofs/IRGeneration/Expr.lean` (172 lines) ✅
+1. `Compiler/Proofs/IRGeneration/Conversions.lean` ✅
+2. `Compiler/Proofs/IRGeneration/Expr.lean` ✅
 3. `Compiler/Proofs/SESSION_SUMMARY.md` (this file)
 
 ## Commits This Session
@@ -212,7 +208,7 @@ For each Expr constructor:
 - Validate full compilation pipeline, not just expression translation
 - More maintainable (doesn't depend on internal implementation details)
 
-### Expr.lean Framework (172 lines)
+### Expr.lean Framework
 
 **Purpose**: Establishes verification framework for ContractSpec → IR preservation
 
@@ -237,10 +233,10 @@ For each Expr constructor:
    - Step 3: Function Equivalence (params, body, return values)
    - Step 4: Contract Equivalence (compose function proofs)
 
-**Estimated Effort**: ~200 lines total for Phase 2
-- SimpleStorage proofs: ~50 lines (2 functions)
-- Counter proofs: ~100 lines (arithmetic)
-- General framework: ~50 lines (reusable)
+**Estimated Effort**: Phase 2 should be small and iterative
+- SimpleStorage proofs (2 functions)
+- Counter proofs (arithmetic)
+- General framework (reusable)
 
 ### Why This Approach Works
 

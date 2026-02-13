@@ -26,11 +26,11 @@ def safeMultisigBaseSpec : ContractSpec := {
     { name := "signedMessages", ty := FieldType.mapping },
     { name := "approvedHashes", ty := FieldType.mapping }
   ]
+  /- Safe proxies perform initialization via `setup`, so the base
+     constructor is intentionally a no-op in this scaffold. -/
   constructor := some {
     params := []
-    body := [
-      Stmt.setStorage "threshold" (Expr.literal 1)
-    ]
+    body := []
   }
   functions := [
     { name := "getThreshold"

@@ -11,14 +11,14 @@
 - Owned: 8/8 theorems proven (100%) ✅
 - Total theorems proven: 27/27 Phase 1+2+3 theorems (100%)
 **Build Status:** ✅ All files compile successfully
-**Lines Added:** ~1,850 lines across 25+ commits
+**Lines Added:** Core proof infrastructure and contract proofs added across the Layer 1 series
 **Note:** All Layer 1 theorems are fully proven with zero `sorry` placeholders
 
 ## Completed Work
 
 ### 1. Core Infrastructure
 
-#### SpecInterpreter (310 lines)
+#### SpecInterpreter
 - ✅ `EvalContext`: Execution environment for specs
 - ✅ `SpecStorage`: Abstract storage representation
 - ✅ `evalExpr`: Expression evaluation with modular arithmetic
@@ -32,7 +32,7 @@
 - Constructor parameter passing
 - Match EDSL modular arithmetic semantics
 
-#### Automation Library (196 lines)
+#### Automation Library
 - ✅ Contract result lemmas (isSuccess, getState)
 - ✅ Basic storage operation lemmas
 - ✅ Address storage operation lemmas
@@ -44,7 +44,7 @@
 
 ### 2. Contract Proof Structures (7/7)
 
-#### SimpleStorage (96 lines) ✅
+#### SimpleStorage ✅
 **Complexity:** ⭐ Simple
 **Patterns:** Basic storage (Uint256)
 
@@ -63,7 +63,7 @@ def edslToSpecStorage (state : ContractState) : SpecStorage :=
 
 ---
 
-#### Counter (199 lines) ✅ 100% Complete
+#### Counter ✅ 100% Complete
 **Complexity:** ⭐⭐ Moderate
 **Patterns:** Arithmetic operations with modular arithmetic
 
@@ -90,7 +90,7 @@ def edslToSpecStorage (state : ContractState) : SpecStorage :=
 
 ---
 
-#### SafeCounter (165 lines) ✅ 100% Complete
+#### SafeCounter ✅ 100% Complete
 **Complexity:** ⭐⭐⭐ Complex
 **Patterns:** Overflow/underflow protection with reverts
 
@@ -116,7 +116,7 @@ def edslToSpecStorage (state : ContractState) : SpecStorage :=
 
 ---
 
-#### Owned (160 lines) ✅ 100% Complete
+#### Owned ✅ 100% Complete
 **Complexity:** ⭐⭐⭐ Complex
 **Patterns:** Ownership with access control
 
@@ -148,7 +148,7 @@ def ownedEdslToSpecStorage (state : ContractState) : SpecStorage :=
 
 ---
 
-#### OwnedCounter (181 lines) ✅
+#### OwnedCounter ✅
 **Complexity:** ⭐⭐⭐⭐ Very Complex
 **Patterns:** Pattern composition (Owned + Counter)
 
@@ -182,7 +182,7 @@ def ownedCounterEdslToSpecStorage (state : ContractState) : SpecStorage :=
 
 ---
 
-#### Ledger (174 lines) ✅
+#### Ledger ✅
 **Complexity:** ⭐⭐⭐⭐ Very Complex
 **Patterns:** Mapping storage (Address → Uint256)
 
@@ -213,7 +213,7 @@ def ledgerEdslToSpecStorageWithAddrs (state : ContractState) (addrs : List Addre
 
 ---
 
-#### SimpleToken (203 lines) ✅
+#### SimpleToken ✅
 **Complexity:** ⭐⭐⭐⭐⭐ Most Complex
 **Patterns:** Full composition (Owned + Ledger + Supply)
 

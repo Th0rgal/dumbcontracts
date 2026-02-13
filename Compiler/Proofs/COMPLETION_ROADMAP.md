@@ -1,7 +1,7 @@
 # Layer 1 Completion Roadmap
 
 **Current Status**: 100% Complete (27/27 theorems proven)
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-02-13
 **Target**: 100% Layer 1 completion
 
 ## Executive Summary
@@ -10,10 +10,10 @@ Layer 1 (EDSL ≡ ContractSpec) is complete. This document now serves as a compl
 
 ### What's Complete ✅
 
-- **Infrastructure**: SpecInterpreter (310 lines), Automation library (196 lines)
+- **Infrastructure**: SpecInterpreter, Automation library
 - **Contracts**: SimpleStorage (4/4), Counter (7/7)
 - **Contracts**: SafeCounter (8/8), Owned (8/8), OwnedCounter (4/4), Ledger (2/2), SimpleToken (2/2)
-- **Documentation**: 1,100+ lines across README, SUMMARY, LAYER1_STATUS
+- **Documentation**: README, SUMMARY, LAYER1_STATUS
 - **Safe Arithmetic**: 6 proven lemmas for safeAdd/safeSub
 - **Build Status**: Zero errors, all files compile
 
@@ -176,9 +176,9 @@ theorem safeDecrement_correct (state : ContractState) (sender : Address) :
 
 ### Phase 3: Complete Owned Proof (1-2 days)
 
-#### Task 3.1: Prove only_owner_can_transfer ⚠️ BLOCKED
+#### Task 3.1: Prove only_owner_can_transfer ✅ COMPLETE
 
-**Status**: ⚠️ **BLOCKED** - Requires tactic composition infrastructure
+**Status**: ✅ **COMPLETED**
 
 **Challenge Identified** (commit 73380fd):
 While all needed automation lemmas exist (Tasks 1.2, 1.3, 1.4), applying them
@@ -190,74 +190,12 @@ transferOwnership = onlyOwner >> setStorageAddr owner newOwner
     where isOwner = msgSender >>= λs => getStorageAddr o >>= λo => pure (s == o)
 ```
 
-**Issue**: Direct application of automation lemmas creates complex intermediate
-goals that require sophisticated simplification tactics.
-
-**Solution Options**:
-1. **Build tactic composition layer** (~1-2 days)
-   - Create authorization-specific automation
-   - Compose bind_isSuccess_left + require_success_implies_cond + address_beq_eq_true_iff_eq
-   - Handle intermediate goal simplification
-
-2. **Manual proof term construction** (~1 day)
-   - Brittle but possible
-   - Not recommended for maintainability
-
-3. **Lean metaprogramming** (~2-3 days)
-   - Most robust solution
-   - Create custom tactics for monadic authorization patterns
-
-**Recommendation**: Build tactic composition layer (Option 1) before attempting this proof.
-
-**Dependencies**: Tasks 1.2 ✅, 1.3 ✅, 1.4 ✅, + Tactic Composition
-**Estimated Effort**: 0.5 days (after tactic infrastructure)
+**Dependencies**: Tasks 1.2 ✅, 1.3 ✅, 1.4 ✅
 **File**: `Compiler/Proofs/Contracts/Owned/Proofs.lean`
 
 ---
-
-### Phase 1.5: Tactic Composition Infrastructure (NEW - 1-2 days)
-
-**Discovery** (2026-02-12): While individual automation lemmas (Tasks 1.2-1.4) are
-complete, **composing them in complex monadic contexts requires additional infrastructure**.
-
-**Needed**: Higher-level automation that chains lemmas together.
-
-#### Task 1.5: Build Authorization Tactic
-
-**Goal**: Create automation that composes bind_isSuccess_left, require_success_implies_cond,
-and address_beq_eq_true_iff_eq into a single authorization pattern handler.
-
-**Approach**:
-```lean
--- High-level tactic that handles: (auth_check >> operation).isSuccess = true → condition
-tactic authorization_from_success :
-  1. Apply bind_isSuccess_left to extract auth check success
-  2. Unfold auth check definition
-  3. Apply require_success_implies_cond to extract condition
-  4. Apply address_beq_eq_true_iff_eq (or similar) to convert beq
-  5. Handle intermediate simplifications
-```
-
-**Benefits**:
-- Unlocks Task 3.1 (only_owner_can_transfer)
-- Unlocks Task 2.2 (safeDecrement_correct)
-- Establishes pattern for future authorization proofs
-
-**Estimated Effort**: 1-2 days
-**Priority**: COMPLETE
-
----
-
-## Timeline Summary
-
-### Week 1: Automation Infrastructure
-- **Days 1-2**: Task 1.1 (Modular arithmetic wraparound) - PENDING
-- **Day 3**: ~~Task 1.2 (Option.bind automation)~~ → ✅ COMPLETE
-- **Day 4**: ~~Tasks 1.3 + 1.4 (Require and beq lemmas)~~ → ✅ BOTH COMPLETE
-- **Day 5**: Testing
-
-### Progress Update (2026-02-12 - Final)
-- ✅ Task 1.1 completed (add_one_preserves_order_iff_no_overflow)
+## Progress Update (2026-02-13)
+- ✅ All Layer 1 tasks completed and verified
 - ✅ Task 1.2 completed (bind_isSuccess_left)
 - ✅ Task 1.3 completed (require_success_implies_cond)
 - ✅ Task 1.4 completed (address_beq_eq_true_iff_eq)

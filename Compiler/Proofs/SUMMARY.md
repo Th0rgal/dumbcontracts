@@ -16,7 +16,7 @@ This document provides a comprehensive summary of the formal verification work f
 
 All foundational components are implemented, tested, and documented:
 
-#### 1. SpecInterpreter (310 lines)
+#### 1. SpecInterpreter (core interpreter)
 **Purpose**: Execution semantics for ContractSpec language
 
 **Components**:
@@ -33,7 +33,7 @@ All foundational components are implemented, tested, and documented:
 - ✅ Require statements with revert
 - ✅ Modular arithmetic (mod 2^256) matching EVM
 
-#### 2. Automation Library (250+ lines)
+#### 2. Automation Library (core helpers)
 **Purpose**: Reusable proof infrastructure
 
 **Safe Arithmetic (6 proven lemmas)**:
@@ -72,7 +72,6 @@ theorem safeSub_some_val: when succeeds, returns a - b
 - ✅ `store_retrieve_roundtrip`: Store-retrieve consistency
 
 **Pattern**: unfold + simp for direct computation  
-**Lines**: 96 lines
 
 #### Counter (7/7 = 100%) ✅
 **Contract**: Increment/decrement with modular arithmetic
@@ -87,7 +86,6 @@ theorem safeSub_some_val: when succeeds, returns a - b
 - ✅ `multiple_increments`: Structural induction proof
 
 **Pattern**: Modular arithmetic + structural induction  
-**Lines**: 199 lines
 
 **Technical Achievement**: Structural induction on recursive function for multi-increment proof.
 
@@ -103,7 +101,6 @@ theorem safeSub_some_val: when succeeds, returns a - b
 - ✅ `safeDecrement_succeeds_above_zero`: Success conditions
 
 **Pattern**: Boundary conditions using safe arithmetic automation  
-**Lines**: 165 lines
 
 #### Owned (8/8 = 100%) ✅
 **Contract**: Ownership and access control
@@ -118,11 +115,10 @@ theorem safeSub_some_val: when succeeds, returns a - b
 - ✅ `transferOwnership_updates_owner`: Transfer correctness
 
 **Pattern**: Authorization checks with access control  
-**Lines**: 160 lines
 
-### 📚 Documentation (1,100+ lines) ✅
+### 📚 Documentation ✅
 
-#### README.md (402 lines)
+#### README.md
 **Complete reference guide** covering:
 
 **Infrastructure**:
@@ -149,7 +145,7 @@ theorem safeSub_some_val: when succeeds, returns a - b
 - Common pitfalls (❌ Don't / ✅ Do)
 - Best practices
 
-#### LAYER1_STATUS.md (465 lines)
+#### LAYER1_STATUS.md
 **Detailed progress tracking** with:
 - Contract-by-contract breakdown
 - Technical challenges documented
@@ -220,9 +216,9 @@ have h_val : (a + b).val = (a.val + b.val) % modulus := by
 | **Layer 1 Progress** | Completion | 100% (27/27) |
 | | Proven Theorems | 27 |
 | | Strategic Sorries | 0 |
-| **Infrastructure** | Total Lines | ~1,900 |
+| **Infrastructure** | Scope | SpecInterpreter + automation + docs |
 | | Automation Lemmas | 20+ proven |
-| | Documentation | 1,100+ lines |
+| | Documentation | Complete |
 | **Quality** | Build Status | ✅ Zero errors |
 | | Test Coverage | All proofs validated |
 | | Code Maintainability | High |
@@ -244,7 +240,7 @@ have h_val : (a + b).val = (a.val + b.val) % modulus := by
 - Prove translation correctness (expressions, statements, functions)
 - Main theorem: `toIR_preserves_semantics`
 
-**Estimated effort**: ~700 lines, 2-3 weeks
+**Estimated effort**: 2-3 weeks (see roadmap)
 
 ### Layer 3: IR → Yul (Planned)
 
@@ -255,7 +251,7 @@ have h_val : (a + b).val = (a.val + b.val) % modulus := by
 - Prove codegen correctness
 - Main theorem: `yulCodegen_preserves_semantics`
 
-**Estimated effort**: ~1,100 lines, 3-4 weeks
+**Estimated effort**: 3-4 weeks (see roadmap)
 
 ### Layer 4: Trust Assumptions (Documented)
 
@@ -264,7 +260,7 @@ have h_val : (a + b).val = (a.val + b.val) % modulus := by
 - **solc**: Yul → EVM compilation
   - Trust assumption documented
   - Empirically validated by 70,000+ differential tests
-- **Lean 4 kernel**: ~10k lines (well-audited)
+- **Lean 4 kernel**: small, audited core
 - **EVM implementations**: Consensus-critical (geth, etc.)
 
 ## Key Insights
@@ -324,7 +320,7 @@ lake build Compiler.Proofs.SpecInterpreter
 
 ### Expected Output
 - ✅ All files compile successfully
-- ⏱️ Build time: ~30 seconds
+- ⏱️ Build time: varies by machine
 
 ### Continuous Validation
 All proofs are automatically validated on every build with zero placeholders.
@@ -335,7 +331,7 @@ This verification work establishes a **production-ready foundation** for proving
 
 ✅ **Complete Infrastructure**: Ready for Layer 2 proofs  
 ✅ **Proven Patterns**: For all contract types  
-✅ **Comprehensive Documentation**: 1,100+ lines of professional docs  
+✅ **Comprehensive Documentation**: complete and maintained docs  
 ✅ **Zero Build Errors**: Clean, tested, maintainable code  
 ✅ **Clear Path Forward**: Layer 2 preservation proofs are next
 

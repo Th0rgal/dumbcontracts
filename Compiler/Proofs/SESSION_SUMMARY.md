@@ -12,15 +12,12 @@ Successfully completed **Layer 2 Phase 1** (Type Conversion Infrastructure) and 
 ## Work Completed
 
 ### 1. Layer 2 Infrastructure (Session 1)
-- **IR Interpreter** (192 lines): `Compiler/Proofs/IRGeneration/IRInterpreter.lean`
-- **Proof Template** (80 lines): `Compiler/Proofs/IRGeneration/SimpleStorage.lean`
-- **Layer 2 Roadmap** (288 lines): `Compiler/Proofs/LAYER2_ROADMAP.md`
+- **IR Interpreter**: `Compiler/Proofs/IRGeneration/IRInterpreter.lean`
+- **Proof Template**: `Compiler/Proofs/IRGeneration/SimpleStorage.lean`
+- **Layer 2 Roadmap**: `Compiler/Proofs/LAYER2_ROADMAP.md`
 
 ### 2. Type Conversions (Session 2) ✅
-- **Conversions Module** (195 lines): `Compiler/Proofs/IRGeneration/Conversions.lean`
-
-**Total Lines This Session**: ~195 lines of proven infrastructure
-**Total Layer 2 Lines**: ~755 lines (infrastructure + documentation)
+- **Conversions Module**: `Compiler/Proofs/IRGeneration/Conversions.lean`
 
 ## Technical Achievements
 
@@ -109,7 +106,7 @@ def resultsMatch (usesMapping : Bool) (addrs : List Address)
 
 **Goal**: Prove expression compilation correctness
 **File**: `Compiler/Proofs/IRGeneration/Expr.lean`
-**Estimated**: 200 lines, 3-4 days
+**Estimated**: 3-4 days
 
 **Approach**:
 ```lean

@@ -241,12 +241,11 @@ forge test --match-contract Differential  # Run 100 random tests
 - **Done when**: every IR instruction has a corresponding Lean equivalence lemma in `Compiler/Proofs/YulGeneration/Equivalence.lean`, each contract has a compiled end-to-end theorem, and the layer builds without TODOs or `admit`s in the Yul generation proofs.
 
 **C. Scale Differential Testing**:
-- Add diff-testing harnesses for all 7 contracts.
-  - Extend `Compiler/RandomGen.lean` with a transaction generator per contract.
-  - Add a `test/Differential<Contract>.t.sol` harness that calls `difftest-interpreter` for that contract.
-- Increase transaction counts from 100 to 10,000+ per contract (keep a quick-run default, allow override for CI). 
+- Current baseline: all 7 contracts have diff-test harnesses in `test/Differential*.t.sol` and random generators in `Compiler/RandomGen.lean`.
+- Centralize the “random run” entrypoint so each harness can opt into the same seed/count knobs (avoid copy‑paste and drift).
+- Increase transaction counts from 100 to 10,000+ per contract (keep a quick-run default, allow override for CI).
 - Add adversarial patterns: self-transfer, max uint values, boundary overflows.
-- **Done when**: each contract has a generator + harness, and a 10,000+ tx run passes in CI.
+- **Done when**: CI runs a 10,000+ tx suite per contract, and the random harness setup is shared and parameterized across all 7 contracts.
 
 **D. Property Extraction (Proofs → Tests)**:
 - Extract statements from Layer 1 proofs and compile them into Foundry invariants.

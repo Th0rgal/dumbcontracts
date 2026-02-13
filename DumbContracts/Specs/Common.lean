@@ -42,6 +42,12 @@ def sameStorageMapContext (s s' : ContractState) : Prop :=
   sameStorageMap s s' ∧
   sameContext s s'
 
+/-- Uint256 storage, address storage, and context are unchanged. -/
+def sameStorageAddrContext (s s' : ContractState) : Prop :=
+  sameStorage s s' ∧
+  sameStorageAddr s s' ∧
+  sameContext s s'
+
 /-- All storage slots except `slot` are unchanged. -/
 def storageUnchangedExcept (slot : Nat) (s s' : ContractState) : Prop :=
   ∀ other : Nat, other ≠ slot → s'.storage other = s.storage other

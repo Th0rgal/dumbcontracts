@@ -66,9 +66,7 @@ def transfer_spec (sender to : Address) (amount : Uint256) (s s' : ContractState
   s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
   storageMapUnchangedExceptKeysAtSlot 1 sender to s s' ∧
   s'.storageAddr 0 = s.storageAddr 0 ∧
-  sameStorage s s' ∧
-  sameStorageAddr s s' ∧
-  sameContext s s'
+  sameStorageAddrContext s s'
 
 /-- Specification for balanceOf operation:
     - Returns the balance of the given address

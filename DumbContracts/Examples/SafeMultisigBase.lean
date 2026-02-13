@@ -90,6 +90,8 @@ def setup (ownersList : List Address) (thresholdValue : Uint256) (to : Address)
     require (decide (owner ≠ zeroAddress)) "owner is zero"
     require (decide (owner ≠ ownersSentinel)) "owner is sentinel"
     require (decide (owner ≠ thisAddr)) "owner is contract"
+    let existing ← getMapping owners owner
+    require (existing = 0) "owner already registered"
 
   let rec initOwners (prev : Address) (rest : List Address) : Contract Unit := do
     match rest with

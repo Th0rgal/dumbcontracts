@@ -121,6 +121,11 @@ def setup_spec (ownersList : List Address) (thresholdValue : Uint256)
   (0 : Uint256) < ownersLen ∧
   (0 : Uint256) < thresholdValue ∧
   thresholdValue ≤ ownersLen ∧
+  (∀ owner ∈ ownersList,
+    owner ≠ zeroAddress ∧
+    owner ≠ ownersSentinel ∧
+    owner ≠ s.thisAddress ∧
+    s.storageMap owners.slot owner = 0) ∧
   s'.storage ownerCount.slot = ownersLen ∧
   s'.storage threshold.slot = thresholdValue ∧
   (∀ slot : Nat, slot ≠ ownerCount.slot ∧ slot ≠ threshold.slot →

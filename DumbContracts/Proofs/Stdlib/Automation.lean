@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.Automation
+  DumbContracts.Proofs.Stdlib.Automation
 
   Helper lemmas and automation for proving specification correctness.
 
@@ -14,12 +14,12 @@ import DumbContracts.Core
 import DumbContracts.Stdlib.Math
 import DumbContracts.EVM.Uint256
 import Compiler.Hex
-import Compiler.Proofs.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
 
-namespace Compiler.Proofs.Automation
+namespace DumbContracts.Proofs.Stdlib.Automation
 
 open DumbContracts
-open Compiler.Proofs
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
 open Compiler.Hex
 
 /-!
@@ -539,4 +539,4 @@ Recommended approach:
 3. Complete mapping-based contract proofs (Ledger, SimpleToken)
 -/
 
-end Compiler.Proofs.Automation
+end DumbContracts.Proofs.Stdlib.Automation

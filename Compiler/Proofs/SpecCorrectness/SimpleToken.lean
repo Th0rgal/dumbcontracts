@@ -17,8 +17,8 @@
 -/
 
 import Compiler.Specs
-import Compiler.Proofs.SpecInterpreter
-import Compiler.Proofs.Automation
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.Automation
 import Compiler.Hex
 import DumbContracts.Examples.SimpleToken
 import DumbContracts.Proofs.SimpleToken.Basic
@@ -29,8 +29,8 @@ namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open Compiler.Proofs
-open Compiler.Proofs.Automation
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
+open DumbContracts.Proofs.Stdlib.Automation
 open Compiler.Hex
 open DumbContracts
 open DumbContracts.Examples.SimpleToken

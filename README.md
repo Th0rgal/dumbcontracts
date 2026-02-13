@@ -33,7 +33,7 @@ theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
 - **Compiler correctness**: IR generation and Yul codegen preserve semantics.
 - **Automation**: Common proof patterns are captured in reusable lemmas.
 
-See `Compiler/Proofs/README.md` for the proof inventory and status across layers.
+See `Compiler/Proofs/README.md` for the proof inventory and layout across layers.
 
 ## Assumptions and Trust Model
 
@@ -46,7 +46,7 @@ These are the remaining trusted components outside Lean:
 Semantics are defined in Lean here:
 
 - EDSL semantics: `DumbContracts/Core.lean`
-- Spec semantics: `Compiler/Proofs/SpecInterpreter.lean`
+- Spec semantics: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
 - IR semantics: `Compiler/Proofs/IRGeneration/IRInterpreter.lean`
 - Yul semantics: `Compiler/Proofs/YulGeneration/Semantics.lean`
 
@@ -86,10 +86,9 @@ forge test
 
 ## Documentation
 
-- `Compiler/Proofs/README.md` — Proof structure and status
+- `Compiler/Proofs/README.md` — Proof structure and navigation
 - `docs-site/` — Documentation website (MDX)
-- `RESEARCH.md` — Project notes and history
-- Milestones and next steps live in `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`
+- Roadmap, milestones, and progress updates: `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`
 
 ## License
 

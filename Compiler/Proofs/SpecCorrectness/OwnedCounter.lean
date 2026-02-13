@@ -16,8 +16,8 @@
 -/
 
 import Compiler.Specs
-import Compiler.Proofs.SpecInterpreter
-import Compiler.Proofs.Automation
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.Automation
 import Compiler.Hex
 import DumbContracts.Examples.OwnedCounter
 import DumbContracts.Proofs.OwnedCounter.Basic
@@ -27,8 +27,8 @@ namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open Compiler.Proofs
-open Compiler.Proofs.Automation
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
+open DumbContracts.Proofs.Stdlib.Automation
 open Compiler.Hex
 open DumbContracts
 open DumbContracts.Examples.OwnedCounter
@@ -352,7 +352,7 @@ theorem ownedCounter_only_owner_modifies (state : ContractState) (sender : Addre
   have h_onlyOwner :
       ((onlyOwner).run { state with sender := sender }).isSuccess = true := by
     simpa [increment, Contract.run] using
-      (Automation.bind_isSuccess_left
+      (DumbContracts.Proofs.Stdlib.Automation.bind_isSuccess_left
         (m1 := onlyOwner)
         (m2 := fun _ =>
           DumbContracts.bind (getStorage count) (fun current =>
@@ -365,12 +365,15 @@ theorem ownedCounter_only_owner_modifies (state : ContractState) (sender : Addre
     simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, DumbContracts.bind, DumbContracts.pure]
       using h_onlyOwner
   have h_eq : (sender == state.storageAddr 0) = true :=
-    Automation.require_success_implies_cond
+    DumbContracts.Proofs.Stdlib.Automation.require_success_implies_cond
       (cond := sender == state.storageAddr 0)
       (msg := "Caller is not the owner")
       (state := { state with sender := sender })
       h_require_success
-  exact (Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1 h_eq |>.symm
+  exact
+    (DumbContracts.Proofs.Stdlib.Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1
+        h_eq
+      |>.symm
 
 /-- Owner and count slots are independent -/
 theorem ownedCounter_slots_independent (state : ContractState) (newOwner : Address) (sender : Address)

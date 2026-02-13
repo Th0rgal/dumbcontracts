@@ -2,66 +2,21 @@
 
 This directory contains formal verification proofs for the DumbContracts compiler, proving correctness across three layers of compilation.
 
-## Layer Status (Current)
+## Verification Layers
 
-- **Layer 1: EDSL ≡ ContractSpec** — Complete. ContractSpec semantics match the verified EDSL examples.
-- **Layer 2: ContractSpec → IR** — Complete. IR generation preserves ContractSpec semantics.
-- **Layer 3: IR → Yul** — Complete. Yul codegen preserves IR semantics and runtime behavior.
+- **Layer 1: EDSL ≡ ContractSpec** — Spec correctness for the user-facing contracts.
+- **Layer 2: ContractSpec → IR** — IR generation preserves spec semantics.
+- **Layer 3: IR → Yul** — Yul codegen preserves IR semantics and runtime behavior.
 
 Key entry points:
 
-- Spec semantics: `Compiler/Proofs/SpecInterpreter.lean`
+- Spec semantics: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
 - IR generation and proofs: `Compiler/Proofs/IRGeneration/`
 - Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
 
-## Three-Layer Verification Strategy
+## Proof Layout
 
-### Layer 1: EDSL ≡ ContractSpec (Specification Correctness) ✅ 100% Complete
-
-**Goal**: Prove that manually written ContractSpec specifications accurately represent the verified EDSL contracts.
-
-Layer 1 proofs now live alongside each contract spec in `DumbContracts/Specs/<Name>/Proofs.lean` to match the user-facing workflow (Spec → Impl → Proofs).
-
-**Status**: 27/27 theorems proven across 7 contracts
-
-#### Completed Contracts
-
-##### SimpleStorage (100% ✅)
-- 4/4 theorems proven
-- Demonstrates basic storage operations
-- Pattern: unfold + simp for direct computation
-- **Proofs**: [DumbContracts/Specs/SimpleStorage/Proofs.lean](../../DumbContracts/Specs/SimpleStorage/Proofs.lean)
-
-##### Counter (100% ✅)
-- 7/7 theorems proven
-- Includes modular arithmetic with wraparound
-- Features structural induction proof for multiple increments
-- **Proofs**: [DumbContracts/Specs/Counter/Proofs.lean](../../DumbContracts/Specs/Counter/Proofs.lean)
-
-##### SafeCounter (100% ✅)
-- 8/8 theorems proven
-- Demonstrates overflow/underflow protection with safe arithmetic
-- **Proofs**: [DumbContracts/Specs/SafeCounter/Proofs.lean](../../DumbContracts/Specs/SafeCounter/Proofs.lean)
-
-##### Owned (100% ✅)
-- 8/8 theorems proven
-- Demonstrates ownership and access control patterns
-- **Proofs**: [DumbContracts/Specs/Owned/Proofs.lean](../../DumbContracts/Specs/Owned/Proofs.lean)
-
-##### OwnedCounter (100% ✅)
-- 4/4 theorems proven
-- Combines ownership checks with counter semantics
-- **Proofs**: [DumbContracts/Specs/OwnedCounter/Proofs.lean](../../DumbContracts/Specs/OwnedCounter/Proofs.lean)
-
-##### Ledger (100% ✅)
-- 2/2 theorems proven
-- Mapping-based balance operations
-- **Proofs**: [DumbContracts/Specs/Ledger/Proofs.lean](../../DumbContracts/Specs/Ledger/Proofs.lean)
-
-##### SimpleToken (100% ✅)
-- 2/2 theorems proven
-- Token minting and transfers with balances mapping
-- **Proofs**: [DumbContracts/Specs/SimpleToken/Proofs.lean](../../DumbContracts/Specs/SimpleToken/Proofs.lean)
+Layer 1 proofs live alongside each contract spec in `DumbContracts/Specs/<Name>/Proofs.lean` to match the user-facing workflow (Spec → Impl → Proofs).
 
 ## Quick Start
 
@@ -76,15 +31,13 @@ lake build DumbContracts.Specs.Ledger.Proofs
 lake build DumbContracts.Specs.SimpleToken.Proofs
 
 # Build infrastructure
-lake build Compiler.Proofs.Automation
-lake build Compiler.Proofs.SpecInterpreter
+lake build DumbContracts.Proofs.Stdlib.Automation
+lake build DumbContracts.Proofs.Stdlib.SpecInterpreter
 ```
-
-**Current Status**: ✅ All files compile successfully
 
 ## Infrastructure Components
 
-### SpecInterpreter ([SpecInterpreter.lean](SpecInterpreter.lean))
+### SpecInterpreter ([SpecInterpreter.lean](../../DumbContracts/Proofs/Stdlib/SpecInterpreter.lean))
 
 Defines the execution semantics for ContractSpec language.
 
@@ -107,7 +60,7 @@ let result := interpretSpec counterSpec storage tx
 -- result.finalStorage.getSlot 0 = 43
 ```
 
-### Automation Library ([Automation.lean](Automation.lean))
+### Automation Library ([Automation.lean](../../DumbContracts/Proofs/Stdlib/Automation.lean))
 
 Provides proven helper lemmas for common proof patterns.
 
@@ -206,59 +159,6 @@ theorem setter_correct (state : ContractState) (value : Uint256) (sender : Addre
 ```
 
 **Examples**: SimpleStorage.store_correct
-
-## Generic Layer 1 Schema (What It Would Mean)
-
-There is a clean, generic theorem shape for Layer 1, but it does not remove per-contract work. The idea is to package the common proof skeleton so each contract only supplies contract-specific obligations. In practice, this means turning the current "one file per contract" pattern into a reusable schema that consumes a small bundle of contract-specific lemmas and returns the global correctness theorem.
-
-**Generic statement (informal)**:
-If a contract `C` provides:
-- A state relation `R : ContractState -> SpecStorage -> Prop`
-- A per-function correspondence lemma for each function (constructor + externals)
-- A dispatch bridge that connects EDSL function names to the spec's function table
-- A result relation for error/return behavior (EDSL `Result` vs spec `SpecResult`)
-Then executing `C` in the EDSL and interpreting its `ContractSpec` produce matching results under `R`.
-
-**What the Lean theorem would look like** (sketch):
-```lean
-theorem edsl_spec_sound
-  (spec : ContractSpec)
-  (edsl : Contract)
-  (R : ContractState -> SpecStorage -> Prop)
-  (funcs_ok : forall f, function_equiv edsl spec R f)
-  (dispatch_ok : function_dispatch_equiv edsl spec)
-  (result_ok : result_equiv)
-  (init_ok : R initState initStorage) :
-  results_match R (run_edsl edsl tx initState)
-                  (interpretSpec spec initStorage tx) := by
-  -- proof by cases on function name + use funcs_ok
-  ...
-```
-
-This theorem would be reusable, but it still requires each contract to:
-- Define the relation `R` between its concrete EDSL state and the abstract Spec storage.
-- Prove a lemma per function (constructor and external methods).
-
-## Why We Have Not Done This Yet
-
-We did not add this generic wrapper yet because the per-contract obligations are the hard part, and the payoff is mainly organizational:
-- The proofs still need contract-specific state relations and per-function reasoning.
-- The current proofs already follow the same structure, but inlined per file for clarity.
-- The biggest productivity gains have come from the `Automation` lemmas, not from a wrapper theorem.
-- There is also a design choice about *where* to define the generic interfaces (`function_equiv`, `dispatch_ok`, `result_ok`) so they align with the existing EDSL `Contract.run`/`Contract.runValue` definitions without forcing a refactor.
-
-In short, the generic theorem is feasible, but it does not eliminate any of the contract-specific proof effort. It mostly standardizes the layout.
-
-## Simplest Practical Approach
-
-The simplest path that scales while keeping proofs readable is:
-- Keep layer-1 proofs alongside each contract in `DumbContracts/Specs/<Name>/Proofs.lean`
-- Keep supporting lemmas in `DumbContracts/Specs/<Name>/Proofs/` when a contract needs extra structure
-- Factor the repetitive steps into `Automation.lean` and reuse them
-- Optionally add a thin wrapper theorem later, once we have more complex contracts (like Safe Multisig)
-- If/when we add the wrapper, start by packaging existing patterns rather than changing proofs
-
-This keeps the framework light, avoids a big upfront refactor, and lets us focus on the real bottleneck: proving each contract's behavior matches its spec.
 
 ### Pattern 3: Boundary Conditions with Safe Arithmetic
 
@@ -368,8 +268,8 @@ lake build DumbContracts.Specs.Ledger.Proofs
 lake build DumbContracts.Specs.SimpleToken.Proofs
 
 # Build infrastructure
-lake build Compiler.Proofs.Automation
-lake build Compiler.Proofs.SpecInterpreter
+lake build DumbContracts.Proofs.Stdlib.Automation
+lake build DumbContracts.Proofs.Stdlib.SpecInterpreter
 
 # Build everything
 lake build
@@ -377,15 +277,13 @@ lake build
 
 ### Expected Warnings
 
-None. All Layer 1 proofs compile with zero placeholders.
+None.
 
 ## Documentation
 
-- Progress tracking lives in the docs site only:
-  - `docs-site/content/research.mdx`
-  - `docs-site/content/research/iterations.mdx`
-- **[SpecInterpreter.lean](SpecInterpreter.lean)** - Spec execution semantics implementation
-- **[Automation.lean](Automation.lean)** - Proof helper lemmas and automation
+- Progress tracking lives in `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`.
+- **[SpecInterpreter.lean](../../DumbContracts/Proofs/Stdlib/SpecInterpreter.lean)** - Spec execution semantics implementation
+- **[Automation.lean](../../DumbContracts/Proofs/Stdlib/Automation.lean)** - Proof helper lemmas and automation
 
 ## Contributing
 
@@ -422,19 +320,4 @@ None. All Layer 1 proofs compile with zero placeholders.
 - [Lean 4 Theorem Proving](https://lean-lang.org/theorem_proving_in_lean4/)
 - [Mathlib Tactics](https://leanprover-community.github.io/mathlib4_docs/tactics.html)
 - [DumbContracts Core](../DumbContracts/Core.lean)
-
-## Next Steps
-
-### Layer 3: IR → Yul ✅ Complete
-- Yul runtime semantics with selector-aware calldata
-- Mapping slot model shared with IR semantics
-- Codegen correctness proofs for `emitYul`
-- Preservation theorem: `emitYul` preserves semantics
-
-### Layer 4: Trust Assumptions (Documented)
-- solc compiles Yul → EVM correctly
-- Lean 4 kernel and EVM implementations are trusted
-
----
-
-**Status**: Layer 1 Complete, Layer 2 Complete, Layer 3 Complete | **Last Updated**: 2026-02-12 | **Maintainer**: Verification Team
+- Roadmap and progress updates: `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`

@@ -15,8 +15,8 @@
 -/
 
 import Compiler.Specs
-import Compiler.Proofs.SpecInterpreter
-import Compiler.Proofs.Automation
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.Automation
 import Compiler.Hex
 import DumbContracts.Examples.Owned
 import DumbContracts.Core.Uint256
@@ -25,8 +25,8 @@ namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open Compiler.Proofs
-open Compiler.Proofs.Automation
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
+open DumbContracts.Proofs.Stdlib.Automation
 open Compiler.Hex
 open DumbContracts
 open DumbContracts.Examples.Owned
@@ -181,7 +181,7 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
       ((onlyOwner).run { state with sender := sender }).isSuccess = true := by
     -- Use bind success propagation from Automation
     simpa [transferOwnership, Contract.run] using
-      (Automation.bind_isSuccess_left
+      (DumbContracts.Proofs.Stdlib.Automation.bind_isSuccess_left
         (m1 := onlyOwner)
         (m2 := fun _ => setStorageAddr owner newOwner)
         (state := { state with sender := sender })
@@ -193,13 +193,16 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
     simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, DumbContracts.bind, DumbContracts.pure]
       using h_onlyOwner
   have h_eq : (sender == state.storageAddr 0) = true :=
-    Automation.require_success_implies_cond
+    DumbContracts.Proofs.Stdlib.Automation.require_success_implies_cond
       (cond := sender == state.storageAddr 0)
       (msg := "Caller is not the owner")
       (state := { state with sender := sender })
       h_require_success
   -- Convert boolean equality to propositional equality.
-  exact (Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1 h_eq |>.symm
+  exact
+    (DumbContracts.Proofs.Stdlib.Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1
+        h_eq
+      |>.symm
 
 /-- Constructor sets initial owner correctly -/
 theorem constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :

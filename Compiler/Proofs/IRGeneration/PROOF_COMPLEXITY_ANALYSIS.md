@@ -156,14 +156,13 @@ Both interpreters thread state through multiple steps:
 Based on similar proofs in formal verification literature and experience with Lean:
 
 ### Manual Proof (No Automation)
-- **Lines**: 150-200 lines of Lean
-- **Time**: 3-5 days for someone experienced with Lean tactics
+- **Time**: Multiple days for someone experienced with Lean tactics
 - **Structure**:
-  - 30 lines: Unfold compile, show it produces specific Yul
-  - 40 lines: Unfold interpretSpec, show it stores value
-  - 50 lines: Unfold interpretIR, show Yul execution stores value
-  - 30 lines: Prove resultsMatch conjuncts
-  - 20 lines: Helper lemmas for storage equality
+  - Unfold `compile`, show it produces the expected Yul
+  - Unfold `interpretSpec`, show it stores the expected value
+  - Unfold `interpretIR`, show the Yul execution stores the same value
+  - Prove `resultsMatch` conjuncts
+  - Add helper lemmas for storage equality
 
 ### With Automation
 - **Automation required**:
@@ -172,8 +171,8 @@ Based on similar proofs in formal verification literature and experience with Le
   3. `storage_ext` tactic: Prove storage function equality
   4. `compile_simp` lemmas: Rewrite rules for compile output
 
-- **Automation development**: 2-3 weeks
-- **Proof with automation**: 20-30 lines per theorem
+- **Automation development**: Multi-week investment
+- **Proof with automation**: Compact proofs per theorem
 - **Payoff**: Reusable for all 7 contracts, worth the investment
 
 ---
@@ -201,12 +200,11 @@ The strategy of proving complete contract preservation (not individual expressio
 ### 3. Automation is Essential
 
 Without automation:
-- Each proof is 150+ lines
-- Error-prone manual case analysis
-- Difficult to maintain
+- Each proof requires extensive manual case analysis
+- Error-prone to maintain
 
 With automation:
-- Proofs are 20-30 lines
+- Proofs are short and readable
 - Automation is reusable
 - Easier to adapt when compiler changes
 
@@ -281,7 +279,7 @@ With automation:
 **What's the value of this exploration?**
 1. ✅ Validated the end-to-end approach is sound
 2. ✅ Identified exact automation needed
-3. ✅ Estimated effort accurately (150+ lines manual vs. 20-30 with automation)
+3. ✅ Estimated effort accurately (manual proof vs. automation-assisted proof)
 4. ✅ Showed compilation is empirically correct
 
 **Recommended next steps**:

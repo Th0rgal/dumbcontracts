@@ -20,7 +20,7 @@ The project evolved in two phases:
 This is the single source of truth for progress, roadmap, and milestone updates.
 
 - **Layer 1 (Spec Correctness)**: Complete for all 7 contracts.
-- **Layer 2 (ContractSpec → IR)**: Infrastructure complete; SimpleStorage + Counter preservation proofs done; generalization in progress.
+- **Layer 2 (ContractSpec → IR)**: Complete for all 7 contracts (per‑function preservation theorems compiled in Lean).
 - **Layer 3 (IR → Yul)**: Not started.
 
 ## Iterations
@@ -235,11 +235,10 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 
 **A. Finish Layer 2 (ContractSpec → IR)**:
 - ✅ SimpleStorage + Counter preservation proofs are pinned and compiling.
-- Generalize the preservation proof to the remaining 5 contracts (Owned, OwnedCounter, SafeCounter, Ledger, SimpleToken).
-- Formalize the conversion relation across types (SpecStorage ↔ IRState) for mappings and address types, not just simple storage slots.
-- Turn the “attempt” file into a real proof path or remove it once the general proof is in place.
-- Use `Compiler/Proofs/IRGeneration/SimpleStorageProof.lean` as the template: replicate the structure, swap in each contract’s state relation, and end with a per-contract preservation lemma.
-- **Done when**: each contract has a Layer 2 preservation theorem that compiles in Lean and `Compiler/Proofs/IRGeneration/StoreProofAttempt.lean` is either replaced by the real proof path or deleted.
+- ✅ Generalized preservation proofs now cover Owned, OwnedCounter, SafeCounter, Ledger, and SimpleToken.
+- ✅ Conversion relations for mappings + address types are exercised in the full suite of Layer 2 proofs.
+- ✅ Removed the exploratory `StoreProofAttempt.lean` once the real proof path was in place.
+- **Done when**: each contract has a Layer 2 preservation theorem that compiles in Lean (met).
 
 **B. Finish Layer 3 (IR → Yul)**:
 - Prove IR op → Yul op equivalence for all IR instructions, not just the high-level theorem statement.

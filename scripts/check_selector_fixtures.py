@@ -17,11 +17,25 @@ FIXTURE = ROOT / "scripts" / "fixtures" / "SelectorFixtures.sol"
 KECCAK = ROOT / "scripts" / "keccak256.py"
 
 SIG_RE = re.compile(r"^([A-Za-z0-9_]+\([^\)]*\))\s*:\s*(0x)?([0-9a-fA-F]{8})$")
+HASH_RE = re.compile(r"^(0x)?([0-9a-fA-F]{8})\s*:\s*([A-Za-z0-9_]+\([^\)]*\))$")
 
 
 def die(msg: str) -> None:
     print(f"error: {msg}", file=sys.stderr)
     raise SystemExit(1)
+
+
+def _strip_param_names(params: str) -> str:
+    if not params.strip():
+        return ""
+    cleaned: list[str] = []
+    skip = {"memory", "calldata", "storage", "payable"}
+    for raw in params.split(","):
+        tokens = [token for token in raw.strip().split() if token and token not in skip]
+        if not tokens:
+            continue
+        cleaned.append(tokens[0])
+    return ",".join(cleaned)
 
 
 def load_fixture_signatures() -> list[str]:
@@ -36,6 +50,7 @@ def load_fixture_signatures() -> list[str]:
         line = line[len("function ") :]
         name = line.split("(", 1)[0].strip()
         params = line.split("(", 1)[1].split(")", 1)[0].strip()
+        params = _strip_param_names(params)
         sigs.append(f"{name}({params})")
     if not sigs:
         die("No function signatures found in fixture")
@@ -54,12 +69,20 @@ def run_solc_hashes() -> dict[str, str]:
     hashes: dict[str, str] = {}
     for line in result.stdout.splitlines():
         line = line.strip()
-        match = SIG_RE.match(line)
-        if not match:
+        if not line or line.endswith(":"):
             continue
-        signature = match.group(1)
-        selector = match.group(3).lower()
-        hashes[signature] = selector
+        match = SIG_RE.match(line)
+        if match:
+            signature = match.group(1)
+            selector = match.group(3).lower()
+            hashes[signature] = selector
+            continue
+        match = HASH_RE.match(line)
+        if match:
+            selector = match.group(2).lower()
+            signature = match.group(3)
+            hashes[signature] = selector
+            continue
     if not hashes:
         die("No selector hashes parsed from solc output")
     return hashes

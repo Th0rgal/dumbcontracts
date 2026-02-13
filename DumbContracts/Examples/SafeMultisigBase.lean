@@ -108,15 +108,23 @@ def setup (ownersList : List Address) (thresholdValue : Uint256) (to : Address)
     let existing ← getMapping owners owner
     require (existing = 0) "owner already registered"
 
+  require (decide ownersList.Nodup) "owners list has duplicates"
+
+  let rec validateOwners (rest : List Address) : Contract Unit := do
+    match rest with
+    | [] => pure ()
+    | next :: tail =>
+        validateOwner next
+        validateOwners tail
+
   let rec initOwners (prev : Address) (rest : List Address) : Contract Unit := do
     match rest with
     | [] => setMapping owners prev (encodeAddress ownersSentinel)
     | next :: tail =>
-        validateOwner next
-        require (decide (next ≠ prev)) "owner duplicate"
         setMapping owners prev (encodeAddress next)
         initOwners next tail
 
+  validateOwners ownersList
   initOwners ownersSentinel ownersList
 
   setMapping modules modulesSentinel (encodeAddress modulesSentinel)

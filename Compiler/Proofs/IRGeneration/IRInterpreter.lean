@@ -118,6 +118,10 @@ partial def evalIRCall (state : IRState) (func : String) : List YulExpr → Opti
       | "iszero", [a] => some (if a = 0 then 1 else 0)
       | "and", [a, b] => some (a &&& b)  -- Bitwise AND
       | "or", [a, b] => some (a ||| b)   -- Bitwise OR
+      | "xor", [a, b] => some (Nat.xor a b)
+      | "not", [a] => some (Nat.xor a (evmModulus - 1))
+      | "shl", [shift, value] => some ((value * (2 ^ shift)) % evmModulus)
+      | "shr", [shift, value] => some (value / (2 ^ shift))
       | "caller", [] => some state.sender
       | "calldataload", [offset] =>
           -- calldataload retrieves 32-byte word from calldata at given offset.

@@ -59,10 +59,6 @@ def tokenEdslToSpecStorageWithAddrs (state : ContractState) (addrs : List Addres
 -- Mapping lookups for two-address lists.
 -- (lookup_senderBal, lookup_recipientBal, lookup_addr_first, lookup_addr_second) are provided by Automation.
 
-@[simp] theorem lookup_total_supply_slot (ownerVal supplyVal : Nat) :
-    (List.lookup 2 [(0, ownerVal), (2, supplyVal)]).getD 0 = supplyVal := by
-  simp
-
 -- (uint256_add_val) is provided by Automation.
 
 /- Correctness Theorems -/
@@ -607,8 +603,11 @@ theorem token_getTotalSupply_correct (state : ContractState) (sender : Address) 
     specResult.success = true ∧
     specResult.returnValue = some edslValue := by
   unfold getTotalSupply Contract.runValue simpleTokenSpec interpretSpec tokenEdslToSpecStorageWithAddrs
+  have h_slot : (List.lookup 2 [(0, addressToNat (state.storageAddr 0)), (2, (state.storage 2).val)]).getD 0
+      = (state.storage 2).val := by
+    simp [lookup_addr_second, (by decide : (0:Nat) ≠ 2)]
   simp [getStorage, execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot,
-    totalSupply, lookup_total_supply_slot]
+    totalSupply, h_slot]
 
 /-- The `getOwner` function correctly retrieves owner -/
 theorem token_getOwner_correct (state : ContractState) (sender : Address) :

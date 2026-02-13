@@ -128,6 +128,7 @@ forge test
 # Optional: scale differential random test counts
 # DIFFTEST_RANDOM_SMALL defaults to 100, DIFFTEST_RANDOM_LARGE defaults to 10000
 # DIFFTEST_RANDOM_COUNT overrides both small/large when set
+# DIFFTEST_SHARD_COUNT/DIFFTEST_SHARD_INDEX split work across shards (seed is offset per shard).
 # Large counts can be expensive; tune these for local runs vs CI.
 # CI runs with DIFFTEST_RANDOM_LARGE=10000 across all differential harnesses.
 DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 forge test

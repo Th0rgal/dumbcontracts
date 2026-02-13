@@ -38,22 +38,6 @@ abstract contract DiffTestConfig is Test {
         return vm.envOr("DIFFTEST_RANDOM_COUNT", uint256(0));
     }
 
-    function _diffRandomSmallCount() internal view returns (uint256) {
-        uint256 overrideCount = _diffRandomOverride();
-        if (overrideCount != 0) {
-            return _diffShardAdjustedCount(overrideCount);
-        }
-        return _diffShardAdjustedCount(vm.envOr("DIFFTEST_RANDOM_SMALL", uint256(100)));
-    }
-
-    function _diffRandomLargeCount() internal view returns (uint256) {
-        uint256 overrideCount = _diffRandomOverride();
-        if (overrideCount != 0) {
-            return _diffShardAdjustedCount(overrideCount);
-        }
-        return _diffShardAdjustedCount(vm.envOr("DIFFTEST_RANDOM_LARGE", uint256(10000)));
-    }
-
     function _diffRandomSmallRange() internal view returns (uint256 start, uint256 count) {
         uint256 overrideCount = _diffRandomOverride();
         uint256 totalCount =
@@ -68,12 +52,12 @@ abstract contract DiffTestConfig is Test {
         return _diffShardRange(totalCount);
     }
 
-    function _diffRandomBaseSeed() internal view returns (uint256) {
+    function _diffRandomSeed() internal view returns (uint256) {
         return vm.envOr("DIFFTEST_RANDOM_SEED", uint256(42));
     }
 
     function _diffRandomSeed() internal view returns (uint256) {
-        uint256 seed = vm.envOr("DIFFTEST_RANDOM_SEED", uint256(42));
+        uint256 seed = _diffRandomSeed();
         uint256 shardIndex = _diffShardIndex();
         uint256 shardCount = _diffShardCount();
         require(shardIndex < shardCount, "DIFFTEST_SHARD_INDEX out of range");

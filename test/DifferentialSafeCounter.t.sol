@@ -333,7 +333,7 @@ contract DifferentialSafeCounter is YulTestBase, DiffTestConfig {
      */
     function testDifferential_Random100() public {
         (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
-        _runRandomDifferentialTests(startIndex, count, _diffRandomBaseSeed());
+        _runRandomDifferentialTests(startIndex, count, _diffRandomSeed());
     }
 
     /**
@@ -341,7 +341,7 @@ contract DifferentialSafeCounter is YulTestBase, DiffTestConfig {
      */
     function testDifferential_Random10000() public {
         (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
-        _runRandomDifferentialTests(startIndex, count, _diffRandomBaseSeed());
+        _runRandomDifferentialTests(startIndex, count, _diffRandomSeed());
     }
 
     /**

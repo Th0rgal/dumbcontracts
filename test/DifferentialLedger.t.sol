@@ -520,7 +520,7 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig {
         actors[2] = address(0xCA501);
 
         (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
-        uint256 seed = _diffRandomBaseSeed();
+        uint256 seed = _diffRandomSeed();
 
         for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
@@ -543,7 +543,7 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig {
         actors[2] = address(0xCA501);
 
         (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
-        uint256 seed = _diffRandomBaseSeed();
+        uint256 seed = _diffRandomSeed();
 
         vm.pauseGasMetering();
         for (uint256 i = 0; i < count; i++) {

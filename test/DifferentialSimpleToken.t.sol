@@ -770,7 +770,7 @@ contract DifferentialSimpleToken is YulTestBase, DiffTestConfig {
         actors[2] = address(0xB0B);
 
         (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
-        uint256 seed = _diffRandomBaseSeed();
+        uint256 seed = _diffRandomSeed();
 
         for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
@@ -793,7 +793,7 @@ contract DifferentialSimpleToken is YulTestBase, DiffTestConfig {
         actors[2] = address(0xB0B);
 
         (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
-        uint256 seed = _diffRandomBaseSeed();
+        uint256 seed = _diffRandomSeed();
 
         vm.pauseGasMetering();
         for (uint256 i = 0; i < count; i++) {

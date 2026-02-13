@@ -11,10 +11,12 @@
 -/
 
 import DumbContracts.Core
+import Compiler.Hex
 
 namespace DumbContracts.Examples.SafeMultisigBase
 
 open DumbContracts
+open Compiler.Hex
 
 -- Safe base storage layout (linearized inheritance order).
 -- NOTE: Some mappings use non-Address keys in Solidity; those are documented
@@ -47,9 +49,27 @@ def fallbackHandlerStorageSlotHex : String :=
 def moduleGuardStorageSlotHex : String :=
   "0xb104e0b93118902c651344349b610029d694cfdec91c589c91ebafbcd0289947"
 
+def guardStorageSlot : Nat :=
+  match parseHexNat? guardStorageSlotHex with
+  | some n => n
+  | none => 0
+def fallbackHandlerStorageSlot : Nat :=
+  match parseHexNat? fallbackHandlerStorageSlotHex with
+  | some n => n
+  | none => 0
+def moduleGuardStorageSlot : Nat :=
+  match parseHexNat? moduleGuardStorageSlotHex with
+  | some n => n
+  | none => 0
+
+def guardStorage : StorageSlot Uint256 := ⟨guardStorageSlot⟩
+def fallbackHandlerStorage : StorageSlot Uint256 := ⟨fallbackHandlerStorageSlot⟩
+def moduleGuardStorage : StorageSlot Uint256 := ⟨moduleGuardStorageSlot⟩
+
 -- Sentinel addresses used by Safe's linked-list owner encoding.
 def zeroAddress : Address := "0x0000000000000000000000000000000000000000"
 def ownersSentinel : Address := "0x0000000000000000000000000000000000000001"
+def modulesSentinel : Address := ownersSentinel
 
 -- Placeholder encoding for storing addresses in Uint256 mapping values.
 opaque encodeAddress : Address → Uint256
@@ -103,7 +123,13 @@ def setup (ownersList : List Address) (thresholdValue : Uint256) (to : Address)
 
   initOwners ownersSentinel ownersList
 
-  -- TODO: initialize modules, fallback handler, and guard.
+  setMapping modules modulesSentinel (encodeAddress modulesSentinel)
+  if decide (fallbackHandler ≠ zeroAddress) then
+    setStorage fallbackHandlerStorage (encodeAddress fallbackHandler)
+  else
+    pure ()
+
+  -- TODO: initialize guard and module guard (dedicated slots).
   -- TODO: handle setup call with `to` and `data`, and payment/refund logic.
   setStorage ownerCount ownersLen
   setStorage threshold thresholdValue

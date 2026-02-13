@@ -116,6 +116,7 @@ def getThreshold_spec (result : Uint256) (s : ContractState) : Prop :=
 
 /-- Placeholder setup spec: updates ownerCount and threshold, leaves other state unchanged. -/
 def setup_spec (ownersList : List Address) (thresholdValue : Uint256)
+    (fallbackHandler : Address)
     (s s' : ContractState) : Prop :=
   let ownersLen : Uint256 := DumbContracts.Core.Uint256.ofNat ownersList.length
   (0 : Uint256) < ownersLen ∧
@@ -126,11 +127,21 @@ def setup_spec (ownersList : List Address) (thresholdValue : Uint256)
     owner ≠ ownersSentinel ∧
     owner ≠ s.thisAddress ∧
     s.storageMap owners.slot owner = 0) ∧
+  s'.storageMap modules.slot modulesSentinel = encodeAddress modulesSentinel ∧
+  (∀ addr : Address, addr ≠ modulesSentinel →
+    s'.storageMap modules.slot addr = s.storageMap modules.slot addr) ∧
+  (if fallbackHandler = zeroAddress then
+    s'.storage fallbackHandlerStorage.slot = s.storage fallbackHandlerStorage.slot
+  else
+    s'.storage fallbackHandlerStorage.slot = encodeAddress fallbackHandler) ∧
   s'.storage ownerCount.slot = ownersLen ∧
   s'.storage threshold.slot = thresholdValue ∧
-  (∀ slot : Nat, slot ≠ ownerCount.slot ∧ slot ≠ threshold.slot →
+  (∀ slot : Nat,
+    slot ≠ ownerCount.slot ∧
+    slot ≠ threshold.slot ∧
+    slot ≠ fallbackHandlerStorage.slot →
     s'.storage slot = s.storage slot) ∧
-  (∀ slot : Nat, slot ≠ owners.slot →
+  (∀ slot : Nat, slot ≠ owners.slot ∧ slot ≠ modules.slot →
     s'.storageMap slot = s.storageMap slot) ∧
   s'.storageAddr = s.storageAddr ∧
   s'.sender = s.sender ∧

@@ -21,7 +21,7 @@ This is the single source of truth for progress, roadmap, and milestone updates.
 
 - **Layer 1 (Spec Correctness)**: Complete for all 7 contracts.
 - **Layer 2 (ContractSpec -> IR)**: Per-function preservation theorems complete for all 7 contracts; contract-level dispatch generalization is underway (SimpleStorage + Counter + Owned done).
-- **Layer 3 (IR -> Yul)**: In progress (core IR/Yul semantics aligned, runtime preservation theorem in place, smoke tests assert revert preservation across IR and Yul, and `YulGeneration/Equivalence.lean` now includes aligned-Yul helpers plus a `calldataload` (offset >= 4) evaluation lemma).
+- **Layer 3 (IR -> Yul)**: In progress (core IR/Yul semantics aligned, runtime preservation theorem in place, smoke tests assert revert preservation across IR and Yul, and `YulGeneration/Equivalence.lean` now includes aligned-Yul helpers plus `calldataload` evaluation lemmas for offset 0, <4, and >=4).
 
 ## Iterations
 
@@ -259,6 +259,7 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 **D. Property Extraction (Proofs -> Tests)**:
 - Extract statements from Layer 1 proofs and compile them into Foundry invariants.
 - Guard the manifest against drift: keep `test/property_manifest.json` synchronized with proofs via `scripts/check_property_manifest_sync.py`.
+  - Property tag parsing now accepts suffixes like `Property 12b: name (fuzz test)` to keep notes in test files without breaking coverage checks.
   - Start with SimpleStorage: extract 3-5 invariants and wire them end-to-end to validate the pipeline before scaling.
   - Create a small "invariant catalog" per contract (plain English + Lean lemma name).
   - Add matching `test/Invariant<Contract>.t.sol` suites that enforce each invariant.

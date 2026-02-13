@@ -43,6 +43,21 @@ theorem evalYulExpr_calldataload_ge4
     exact hnotlt (by decide : 0 < 4)
   simp [evalYulExpr, evalYulCall, evalYulExprs, alignedYulState, YulState.initial, hne, hnotlt]
 
+theorem evalYulExpr_calldataload_zero
+    (tx : IRTransaction) (state : IRState) :
+    evalYulExpr (alignedYulState tx state) (YulExpr.call "calldataload" [YulExpr.lit 0]) =
+      some (selectorWord tx.functionSelector) := by
+  simp [evalYulExpr, evalYulCall, evalYulExprs, alignedYulState, YulState.initial]
+
+theorem evalYulExpr_calldataload_lt4
+    (tx : IRTransaction) (state : IRState) (offset : Nat)
+    (hpos : 0 < offset) (hOffset : offset < 4) :
+    evalYulExpr (alignedYulState tx state) (YulExpr.call "calldataload" [YulExpr.lit offset]) =
+      some 0 := by
+  have hne : offset ≠ 0 := by
+    exact Nat.ne_of_gt hpos
+  simp [evalYulExpr, evalYulCall, evalYulExprs, alignedYulState, YulState.initial, hne, hOffset]
+
 def resultsMatchOn (slots : List Nat) (mappingKeys : List (Nat × Nat))
     (ir : IRResult) (yul : YulResult) : Bool :=
   ir.success == yul.success &&

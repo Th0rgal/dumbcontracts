@@ -17,6 +17,7 @@ import Compiler.Hex
 namespace Compiler.Proofs.IRGeneration
 
 open Compiler
+open Compiler.ContractSpec
 open DumbContracts
 open Compiler.Hex
 open DiffTestTypes

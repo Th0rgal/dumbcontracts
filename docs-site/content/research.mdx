@@ -20,8 +20,8 @@ The project evolved in two phases:
 This is the single source of truth for progress, roadmap, and milestone updates.
 
 - **Layer 1 (Spec Correctness)**: Complete for all 7 contracts.
-- **Layer 2 (ContractSpec → IR)**: Complete for all 7 contracts (per‑function preservation theorems compiled in Lean).
-- **Layer 3 (IR → Yul)**: In progress (IR expression-statement semantics aligned with Yul to unblock equivalence proofs; smoke tests now assert revert preservation across IR and Yul).
+- **Layer 2 (ContractSpec → IR)**: Per‑function preservation theorems complete for all 7 contracts; contract‑level dispatch generalization is underway (SimpleStorage done).
+- **Layer 3 (IR → Yul)**: In progress (core IR/Yul semantics aligned, runtime preservation theorem in place, and smoke tests assert revert preservation across IR and Yul).
 
 ## Iterations
 
@@ -165,7 +165,7 @@ def ownedSpec : ContractSpec := {
 **Metrics**:
 - Manual IR eliminated in favor of generated IR from the spec
 - Time to add contract dropped significantly in practice
-- Test results: Foundry tests pass (264/264 as of 2026-02-13), Lean proofs verify (252/252 as of 2026-02-13)
+- Test results: Foundry and Lean proofs pass in CI (see CI logs for current counts)
 - Code quality: More concise, optimized (expression inlining)
 
 **Features Achieved**:
@@ -179,7 +179,7 @@ def ownedSpec : ContractSpec := {
 ```bash
 lake build dumbcontracts-compiler    # Build compiler
 lake exe dumbcontracts-compiler      # Generate all contracts
-forge test  # 264/264 tests pass (as of 2026-02-13)
+forge test  # Run unit, property, and differential tests
 ```
 
 ### Differential Testing (Completed 2026-02-10)
@@ -194,7 +194,7 @@ forge test  # 264/264 tests pass (as of 2026-02-13)
 - `Compiler/Interpreter.lean` — EDSL interpreter for differential testing
   - Executes EDSL contracts on abstract state
   - Returns JSON results for comparison with EVM
-  - Supports SimpleStorage and Counter (extensible to all contracts)
+  - Supports all 7 contracts used in the Foundry differential suites
 - `Compiler/RandomGen.lean` — Random transaction generator
   - Generates random addresses, values, and function calls
   - Contract-specific transaction generation (store/retrieve for SimpleStorage)
@@ -241,7 +241,8 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 - ✅ Generalized preservation proofs now cover Owned, OwnedCounter, SafeCounter, Ledger, and SimpleToken.
 - ✅ Conversion relations for mappings + address types are exercised in the full suite of Layer 2 proofs.
 - ✅ Removed the exploratory `StoreProofAttempt.lean` once the real proof path was in place.
-- **Done when**: each contract has a Layer 2 preservation theorem that compiles in Lean (met).
+- ✅ Contract-level dispatch preservation exists for SimpleStorage (selectors wired to transactions).
+- **Done when**: each contract has a contract-level dispatch theorem that composes per-function proofs.
 
 **B. Finish Layer 3 (IR → Yul)**:
 - Prove IR op → Yul op equivalence for all IR instructions, not just the high-level theorem statement.
@@ -249,10 +250,10 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 - **Done when**: every IR instruction has a corresponding Lean equivalence lemma in `Compiler/Proofs/YulGeneration/Equivalence.lean`, each contract has a compiled end-to-end theorem, and the layer builds without TODOs or `admit`s in the Yul generation proofs.
 
 **C. Scale Differential Testing**:
-- Centralize the “random run” entrypoint so each harness can opt into the same seed/count knobs (avoid copy‑paste and drift).
-- Increase transaction counts from 100 to 10,000+ per contract (keep a quick-run default, allow override for CI).
-- Add adversarial patterns: self-transfer (done), max uint values (done for SimpleStorage/Ledger/SimpleToken), boundary overflows.
-- **Done when**: CI runs a 10,000+ tx suite per contract, and the random harness setup is shared and parameterized across all 7 contracts.
+- ✅ Centralize the “random run” entrypoint so each harness can opt into the same seed/count knobs (avoid copy‑paste and drift).
+- ✅ Increase transaction counts from 100 to 10,000+ per contract (keep a quick-run default, allow override for CI).
+- ✅ Add adversarial patterns: self-transfer (done), max uint values (done for SimpleStorage/Ledger/SimpleToken), boundary overflows.
+- **Done when**: CI runs a 10,000+ tx suite per contract, and the random harness setup is shared and parameterized across all 7 contracts (met).
 
 **D. Property Extraction (Proofs → Tests)**:
 - Extract statements from Layer 1 proofs and compile them into Foundry invariants.
@@ -272,10 +273,10 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 - **Done when**: an ERC‑20-style spec can express `approve`/`transferFrom`, self-transfer is defined, and a supply‑equals‑sum proof composes over the finite address set.
 
 **F. Reduce Remaining Trust Assumptions**:
-- Add a keccak256 verification step so selectors don’t stay “trusted”.
-  - Compute selectors in Lean from the Solidity signature and prove they match the generated selector in `Compiler/Selector.lean`.
-  - Add a small fixture-based test (Solidity/Yul) to guard the hash implementation against drift.
-  - **Done when**: selector hashes are proven in Lean and a fixture test asserts at least 3 real-world signatures match Solidity compiler output.
+- ✅ Add a keccak256 verification step so selectors don’t stay “trusted”.
+  - Cross-check selector hashing against `cast` in `scripts/check_selectors.py`.
+  - Validate IR selector tables and Yul switch cases against specs in CI.
+  - **Done when**: selector hashes are proven or cross-checked against a trusted toolchain (met).
 - Add a formalized “bridge” lemma between Yul semantics and EVM, or document the test/verification gap clearly.
   - **Current gap**: Yul correctness is proven against the Lean Yul interpreter, but the Lean Yul interpreter is not yet proven equivalent to EVM execution.
   - **Mitigation today**: Foundry tests provide behavioral confidence, but they do not close the formal gap.

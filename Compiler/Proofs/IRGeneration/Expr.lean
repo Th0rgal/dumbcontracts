@@ -113,11 +113,10 @@ Theorem: Executing the compiled IR for `store(value)` produces the same result
 as interpreting the Spec for `store(value)`.
 -/
 
-/-- Store function: IR execution matches Spec execution -/
-theorem simpleStorage_store_correct (value : Nat) :
+/-- Store function: IR execution matches Spec execution (general sender) -/
+theorem simpleStorage_store_correct_with_sender (value : Nat) (sender : Address) :
   let spec := simpleStorageSpec
   let irContract := compile spec [0x6057361d, 0x2e64cec1]  -- store, retrieve selectors
-  let sender := "test_sender"
   let tx : Transaction := {
     sender := sender
     functionName := "store"
@@ -147,13 +146,39 @@ theorem simpleStorage_store_correct (value : Nat) :
       simp
     · simp [h]
 
+-- Backwards-compatible specialization for existing proofs.
+theorem simpleStorage_store_correct (value : Nat) :
+  let spec := simpleStorageSpec
+  let irContract := compile spec [0x6057361d, 0x2e64cec1]  -- store, retrieve selectors
+  let sender := "test_sender"
+  let tx : Transaction := {
+    sender := sender
+    functionName := "store"
+    args := [value]
+  }
+  -- Create IR transaction
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x6057361d  -- store selector
+    args := [value]
+  }
+  -- Execute both sides
+  let specResult := interpretSpec spec (SpecStorage.empty) tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState SpecStorage.empty sender)
+      -- Results should match
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (simpleStorage_store_correct_with_sender value "test_sender")
+
 /-! ## SimpleStorage: Retrieve Function Correctness -/
 
-/-- Retrieve function: IR execution matches Spec execution -/
-theorem simpleStorage_retrieve_correct :
+/-- Retrieve function: IR execution matches Spec execution (general sender) -/
+theorem simpleStorage_retrieve_correct_with_sender (sender : Address) :
   let spec := simpleStorageSpec
   let irContract := compile spec [0x6057361d, 0x2e64cec1]
-  let sender := "test_sender"
   let tx : Transaction := {
     sender := sender
     functionName := "retrieve"
@@ -180,6 +205,31 @@ theorem simpleStorage_retrieve_correct :
     · subst h
       simp
     · simp [h]
+
+-- Backwards-compatible specialization for existing proofs.
+theorem simpleStorage_retrieve_correct :
+  let spec := simpleStorageSpec
+  let irContract := compile spec [0x6057361d, 0x2e64cec1]
+  let sender := "test_sender"
+  let tx : Transaction := {
+    sender := sender
+    functionName := "retrieve"
+    args := []
+  }
+  -- Create IR transaction
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x2e64cec1  -- retrieve selector
+    args := []
+  }
+  let specResult := interpretSpec spec (SpecStorage.empty) tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState SpecStorage.empty sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (simpleStorage_retrieve_correct_with_sender "test_sender")
 
 /-! ## SimpleStorage: Retrieve with Pre-Initialized Storage -/
 
@@ -1693,13 +1743,13 @@ To prove the preservation theorem, we need:
 **Current File Status**:
 - Sets up the proof framework ✅
 - Documents the high-level strategy ✅
-- Proves SimpleStorage store/retrieve correctness ✅
-- Proves Counter increment/decrement/getCount correctness ✅
-- Ready to extend proofs to additional contracts ⚠️
+- Proves SimpleStorage + Counter correctness ✅
+- Proves SafeCounter, Owned, OwnedCounter, Ledger, and SimpleToken correctness ✅
+- Adds general-sender variants for SimpleStorage ✅
 
 **Next Steps for Completion**:
-1. Extend to SafeCounter (overflow checks)
-2. Handle more complex contracts (Owned, Ledger, etc.)
+1. Add contract-level dispatch theorems per contract (see `SimpleStorage.lean`)
+2. Bridge the ContractSpec → IR theorems into automated test extraction
 
 **Why This Approach Works**:
 - Uses public API (compile function)

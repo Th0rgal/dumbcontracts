@@ -133,6 +133,9 @@ DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 fo
 
 # Optional: extract proof theorem names into a test manifest
 python3 scripts/extract_property_manifest.py
+
+# Optional: check that property tests reference real theorems
+python3 scripts/check_property_manifest.py
 ```
 
 ## Documentation

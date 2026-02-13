@@ -123,6 +123,9 @@ jobs:
           chmod +x /usr/local/bin/solc
           solc --version
 
+      - name: Check selector fixtures against solc
+        run: python3 scripts/check_selector_fixtures.py
+
       - name: Run Foundry tests
         env:
           DIFFTEST_RANDOM_SMALL: "100"

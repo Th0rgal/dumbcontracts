@@ -26,6 +26,23 @@ theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
   simp only [h_retrieve, h_store.1]
 ```
 
+## Spec Example (Human-Friendly Rules)
+
+Specs are small, readable rules about what a function must do.
+Here is the SimpleStorage spec from `DumbContracts/Specs/SimpleStorage/Spec.lean`:
+
+```lean
+-- store updates slot 0, keeps everything else unchanged
+def store_spec (value : Uint256) (s s' : ContractState) : Prop :=
+  s'.storage 0 = value ∧
+  storageUnchangedExcept 0 s s' ∧
+  sameAddrMapContext s s'
+
+-- retrieve returns slot 0
+def retrieve_spec (result : Uint256) (s : ContractState) : Prop :=
+  result = s.storage 0
+```
+
 ## What’s Verified
 
 - **EDSL correctness**: Each example contract satisfies its specification in Lean.

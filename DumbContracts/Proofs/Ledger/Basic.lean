@@ -134,8 +134,22 @@ theorem withdraw_reverts_insufficient (s : ContractState) (amount : Uint256)
 
 /-! ## Transfer Correctness -/
 
-/-- Helper: unfold transfer when balance sufficient and sender ≠ to -/
-private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uint256)
+/-- Helper: unfold transfer when balance sufficient and sender == to (no-op). -/
+private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount : Uint256)
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_eq : s.sender = to) :
+  (transfer to amount).run s = ContractResult.success () s := by
+  have h_balance' : amount.val ≤ (s.storageMap 0 to).val := by
+    have h_balance'' : amount ≤ s.storageMap 0 to := by
+      simpa [h_eq] using h_balance
+    simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+  simp [transfer, msgSender, getMapping, setMapping, balances,
+    DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_balance', h_eq, beq_iff_eq]
+
+/-- Helper: unfold transfer when balance sufficient and sender ≠ to. -/
+private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount)
   (h_ne : s.sender ≠ to) :
   (transfer to amount).run s = ContractResult.success ()
@@ -149,45 +163,54 @@ private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uin
       thisAddress := s.thisAddress,
       msgValue := s.msgValue,
       blockTimestamp := s.blockTimestamp } := by
-  simp only [transfer, msgSender, getMapping, setMapping, balances,
+  have h_balance' : amount.val ≤ (s.storageMap 0 s.sender).val := by
+    have h_balance'' : amount ≤ s.storageMap 0 s.sender := by
+      simpa using h_balance
+    simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+  simp [transfer, msgSender, getMapping, setMapping, balances,
     DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  have h_ne' : (s.sender == to) = false := by simp [beq_iff_eq]; exact h_ne
-  simp [h_balance, h_ne']
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_balance', h_ne, beq_iff_eq]
 
 theorem transfer_meets_spec (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount)
-  (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 0 s.sender >= amount) :
   let s' := ((transfer to amount).run s).snd
   transfer_spec to amount s s' := by
-  rw [transfer_unfold s to amount h_balance h_ne]
-  simp only [ContractResult.snd, transfer_spec]
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-  · -- sender balance decreases
-    have h_ne' : (s.sender == to) = false := by
-      simp [beq_iff_eq]; exact h_ne
-    simp [beq_iff_eq, h_ne']
-  · -- recipient balance increases
-    have h_ne' : (to == s.sender) = false := by
-      simp [beq_iff_eq]; exact h_ne.symm
-    simp [beq_iff_eq, h_ne']
-  · -- other balances/slots unchanged
-    refine ⟨?_, ?_⟩
-    · intro addr h_ne_sender h_ne_to
-      simp [beq_iff_eq, h_ne_sender, h_ne_to]
-    · intro slot h_slot addr
-      simp [beq_iff_eq, h_slot]
-  · rfl
-  · rfl
-  · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
+  by_cases h_eq : s.sender = to
+  · rw [transfer_unfold_self s to amount h_balance h_eq]
+    simp only [ContractResult.snd, transfer_spec]
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · simp [h_eq, beq_iff_eq, h_balance]
+    · simp [h_eq, beq_iff_eq]
+    · simp [h_eq, beq_iff_eq, Specs.storageMapUnchangedExceptKeyAtSlot,
+        Specs.storageMapUnchangedExceptKey, Specs.storageMapUnchangedExceptSlot]
+    · simp [Specs.sameStorageAddrContext, Specs.sameStorage, Specs.sameStorageAddr, Specs.sameContext]
+  · rw [transfer_unfold_other s to amount h_balance h_eq]
+    simp only [ContractResult.snd, transfer_spec]
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · have h_ne' : (s.sender == to) = false := by
+        simp [beq_iff_eq]; exact h_eq
+      simp [beq_iff_eq, h_ne', h_balance]
+    · have h_ne' : (s.sender == to) = false := by
+        simp [beq_iff_eq]; exact h_eq
+      simp [beq_iff_eq, h_ne']
+    · have h_ne' : (s.sender == to) = false := by
+        simp [beq_iff_eq]; exact h_eq
+      simp [h_ne']
+      refine ⟨?_, ?_⟩
+      · intro addr h_ne_sender h_ne_to
+        simp [beq_iff_eq, h_ne_sender, h_ne_to]
+      · intro slot h_slot addr
+        simp [beq_iff_eq, h_slot]
+    · simp [Specs.sameStorageAddrContext, Specs.sameStorage, Specs.sameStorageAddr, Specs.sameContext]
 
 theorem transfer_decreases_sender (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount)
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 0 s.sender = EVM.Uint256.sub (s.storageMap 0 s.sender) amount := by
-  have h := transfer_meets_spec s to amount h_balance h_ne
-  simp [transfer_spec] at h
+  have h := transfer_meets_spec s to amount h_balance
+  simp [transfer_spec, h_ne, beq_iff_eq] at h
   exact h.1
 
 theorem transfer_increases_recipient (s : ContractState) (to : Address) (amount : Uint256)
@@ -195,8 +218,8 @@ theorem transfer_increases_recipient (s : ContractState) (to : Address) (amount 
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 0 to = EVM.Uint256.add (s.storageMap 0 to) amount := by
-  have h := transfer_meets_spec s to amount h_balance h_ne
-  simp [transfer_spec] at h
+  have h := transfer_meets_spec s to amount h_balance
+  simp [transfer_spec, h_ne, beq_iff_eq] at h
   exact h.2.1
 
 theorem transfer_reverts_insufficient (s : ContractState) (to : Address) (amount : Uint256)

@@ -202,9 +202,25 @@ private theorem ble_true_of_ge {a b : Nat} (h : a ≥ b) : (b <= a) = true := by
   simp [Nat.ble_eq]
   exact h
 
--- Helper lemma: after unfolding transfer with sufficient balance, we get the concrete result state
-private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount) :
+-- Helper lemma: after unfolding transfer with sufficient balance and self-transfer, state is unchanged
+private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount : Uint256)
+  (h_balance : s.storageMap 1 s.sender ≥ amount)
+  (h_eq : s.sender = to) :
+  (transfer to amount).run s = ContractResult.success () s := by
+  have h_balance' : amount.val ≤ (s.storageMap 1 to).val := by
+    have h_balance'' : amount ≤ s.storageMap 1 to := by
+      simpa [h_eq] using h_balance
+    simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+  simp [transfer, Examples.SimpleToken.balances,
+    msgSender, getMapping, setMapping,
+    DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_balance', h_eq, beq_iff_eq]
+
+-- Helper lemma: after unfolding transfer with sufficient balance and distinct recipient, we get the concrete result state
+private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount : Uint256)
+  (h_balance : s.storageMap 1 s.sender ≥ amount)
+  (h_ne : s.sender ≠ to) :
   (transfer to amount).run s = ContractResult.success ()
     { storage := s.storage,
       storageAddr := s.storageAddr,
@@ -216,46 +232,65 @@ private theorem transfer_unfold (s : ContractState) (to : Address) (amount : Uin
       thisAddress := s.thisAddress,
       msgValue := s.msgValue,
       blockTimestamp := s.blockTimestamp } := by
-  simp only [transfer, Examples.SimpleToken.balances,
+  have h_balance' : amount.val ≤ (s.storageMap 1 s.sender).val := by
+    have h_balance'' : amount ≤ s.storageMap 1 s.sender := by
+      simpa using h_balance
+    simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+  simp [transfer, Examples.SimpleToken.balances,
     msgSender, getMapping, setMapping,
     DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_balance]
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_balance', h_ne, beq_iff_eq]
 
 theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount)
-  (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount) :
   let s' := ((transfer to amount).run s).snd
   transfer_spec s.sender to amount s s' := by
-  have h_unfold := transfer_unfold s to amount h_balance
-  simp only [Contract.run, ContractResult.snd, transfer_spec]
-  rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
-  simp only [ContractResult.snd]
-  refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · -- sender balance decreased: the 'to' branch doesn't match sender
-    have h_ne' : (s.sender == to) = false := by
-      simp [beq_iff_eq]; exact h_ne
-    simp [h_ne']
-  · -- recipient balance increased
-    simp
-  · -- other balances/slots preserved
-    refine ⟨?_, ?_⟩
-    · intro addr h_ne_sender h_ne_to; simp [h_ne_sender, h_ne_to]
-    · intro slot h_neq addr'; simp [h_neq]
-  · -- owner preserved
-    trivial
-  · simp [Specs.sameStorage]
-  · simp [Specs.sameStorageAddr]
-  · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
+  by_cases h_eq : s.sender = to
+  · have h_unfold := transfer_unfold_self s to amount h_balance h_eq
+    simp only [Contract.run, ContractResult.snd, transfer_spec]
+    rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
+    refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_⟩
+    · simp [h_eq, beq_iff_eq]
+    · simp [h_eq, beq_iff_eq]
+    · simp [h_eq, beq_iff_eq, Specs.storageMapUnchangedExceptKeyAtSlot,
+        Specs.storageMapUnchangedExceptKey, Specs.storageMapUnchangedExceptSlot]
+    · rfl
+    · simp [Specs.sameStorageAddrContext, Specs.sameStorage, Specs.sameStorageAddr, Specs.sameContext]
+  · have h_unfold := transfer_unfold_other s to amount h_balance h_eq
+    simp only [Contract.run, ContractResult.snd, transfer_spec]
+    rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
+    simp only [ContractResult.snd]
+    refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_⟩
+    · -- sender balance decreased: the 'to' branch doesn't match sender
+      have h_ne' : (s.sender == to) = false := by
+        simp [beq_iff_eq]; exact h_eq
+      simp [h_ne']
+    · -- recipient balance increased
+      have h_ne' : (s.sender == to) = false := by
+        simp [beq_iff_eq]; exact h_eq
+      simp [h_ne']
+    · -- other balances/slots preserved
+      have h_ne' : (s.sender == to) = false := by
+        simp [beq_iff_eq]; exact h_eq
+      simp [h_ne']
+      refine ⟨?_, ?_⟩
+      · intro addr h_ne_sender h_ne_to; simp [h_ne_sender, h_ne_to]
+      · intro slot h_neq addr'; simp [h_neq]
+    · -- owner preserved
+      trivial
+    · simp [Specs.sameStorageAddrContext, Specs.sameStorage, Specs.sameStorageAddr, Specs.sameContext]
 
 theorem transfer_preserves_supply_when_sufficient (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount)
-  (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount) :
   let s' := ((transfer to amount).run s).snd
   s'.storage 2 = s.storage 2 := by
-  have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
+  have h := transfer_meets_spec_when_sufficient s to amount h_balance
   simp [transfer_spec] at h
-  have h_storage : Specs.sameStorage s ((transfer to amount).run s).snd := h.2.2.2.2.2.1
+  have h_storage : Specs.sameStorage s ((transfer to amount).run s).snd := by
+    by_cases h_eq : s.sender = to
+    · simpa [h_eq] using h.2.2.2.2.2.1
+    · simpa [h_eq] using h.2.2.2.2.2.1
   have h_eq : ((transfer to amount).run s).snd.storage = s.storage := by
     simpa [Specs.sameStorage] using h_storage
   simpa using congrArg (fun f => f 2) h_eq
@@ -265,8 +300,8 @@ theorem transfer_decreases_sender_balance (s : ContractState) (to : Address) (am
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 1 s.sender = EVM.Uint256.sub (s.storageMap 1 s.sender) amount := by
-  have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
-  simp [transfer_spec] at h
+  have h := transfer_meets_spec_when_sufficient s to amount h_balance
+  simp [transfer_spec, h_ne, beq_iff_eq] at h
   exact h.2.1
 
 theorem transfer_increases_recipient_balance (s : ContractState) (to : Address) (amount : Uint256)
@@ -274,9 +309,17 @@ theorem transfer_increases_recipient_balance (s : ContractState) (to : Address) 
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 1 to = EVM.Uint256.add (s.storageMap 1 to) amount := by
-  have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
-  simp [transfer_spec] at h
+  have h := transfer_meets_spec_when_sufficient s to amount h_balance
+  simp [transfer_spec, h_ne, beq_iff_eq] at h
   exact h.2.2.1
+
+theorem transfer_self_preserves_balance (s : ContractState) (amount : Uint256)
+  (h_balance : s.storageMap 1 s.sender ≥ amount) :
+  let s' := ((transfer s.sender amount).run s).snd
+  s'.storageMap 1 s.sender = s.storageMap 1 s.sender := by
+  have h := transfer_meets_spec_when_sufficient s s.sender amount h_balance
+  simp [transfer_spec, beq_iff_eq] at h
+  exact h.2.1
 
 /-! ## Read Operations Correctness -/
 
@@ -386,7 +429,7 @@ theorem getOwner_preserves_wellformedness (s : ContractState) (h : WellFormedSta
 
 /-! ## Documentation
 
-All 33 theorems in this file are fully proven with zero sorry.
+All 34 theorems in this file are fully proven with zero sorry.
 
 Guard-dependent proofs (now complete):
 1. mint_meets_spec_when_owner - ✅ onlyOwner guard fully verified
@@ -396,6 +439,7 @@ Guard-dependent proofs (now complete):
 5. transfer_preserves_supply_when_sufficient - ✅ Derived from transfer_meets_spec
 6. transfer_decreases_sender_balance - ✅ Derived from transfer_meets_spec
 7. transfer_increases_recipient_balance - ✅ Derived from transfer_meets_spec
+8. transfer_self_preserves_balance - ✅ Self-transfer leaves balance unchanged
 
 Proof technique: Full unfolding of do-notation chains through
 bind/pure/Contract.run/ContractResult.snd, with simp [h_owner] or

@@ -30,8 +30,8 @@ theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (am
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   WellFormedState s' := by
-  have h_spec := transfer_meets_spec s to amount h_balance h_ne
-  simp [transfer_spec] at h_spec
+  have h_spec := transfer_meets_spec s to amount h_balance
+  simp [transfer_spec, h_ne, beq_iff_eq] at h_spec
   obtain ⟨_, _, _, _, _, h_ctx⟩ := h_spec
   obtain ⟨h_sender, h_this, _h_value, _h_time⟩ := h_ctx
   constructor
@@ -43,8 +43,8 @@ theorem transfer_preserves_non_mapping (s : ContractState) (to : Address) (amoun
   (h_balance : s.storageMap 0 s.sender >= amount) (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   non_mapping_storage_unchanged s s' := by
-  have h_spec := transfer_meets_spec s to amount h_balance h_ne
-  simp [transfer_spec] at h_spec
+  have h_spec := transfer_meets_spec s to amount h_balance
+  simp [transfer_spec, h_ne, beq_iff_eq] at h_spec
   obtain ⟨_, _, _, h_storage, h_addr, _h_ctx⟩ := h_spec
   simp [non_mapping_storage_unchanged]
   exact ⟨h_storage, h_addr⟩

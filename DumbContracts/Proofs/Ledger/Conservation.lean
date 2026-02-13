@@ -339,8 +339,8 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
       + countOccU s.sender addrs * amount
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum
       + countOccU to addrs * amount := by
-  have h_spec := transfer_meets_spec s to amount h_balance h_ne
-  simp [transfer_spec] at h_spec
+  have h_spec := transfer_meets_spec s to amount h_balance
+  simp [transfer_spec, h_ne, beq_iff_eq] at h_spec
   obtain ⟨h_sender_bal, h_recip_bal, h_other_bal, _, _, _⟩ := h_spec
   have h_sender_bal' :
       ((transfer to amount).run s).snd.storageMap 0 s.sender =

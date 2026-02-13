@@ -109,7 +109,7 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 
 ## Known Limitations
 
-- **Self-transfer**: Transfer theorems require `sender != to`. Self-transfer overwrites sender's deduction with recipient's addition. Could be modeled as identity operation.
+- **Self-transfer**: Modeled as a no-op; transfer theorems no longer require `sender != to`.
 - **Supply = sum of balances**: Requires finite address model. Proven as exact sum equations with `countOcc`, not as global invariant over all addresses.
 - **`ContractResult.fst`**: Returns `default` on revert, requiring `[Inhabited a]`. Proofs using `.fst` always show result is `success` first.
 - **No events, no gas**: EDSL models storage and control flow only.
@@ -244,7 +244,7 @@ forge test --match-contract Differential  # Run 100 random tests
 - Current baseline: all 7 contracts have diff-test harnesses in `test/Differential*.t.sol` and random generators in `Compiler/RandomGen.lean`.
 - Centralize the “random run” entrypoint so each harness can opt into the same seed/count knobs (avoid copy‑paste and drift).
 - Increase transaction counts from 100 to 10,000+ per contract (keep a quick-run default, allow override for CI).
-- Add adversarial patterns: self-transfer, max uint values, boundary overflows.
+- Add adversarial patterns: self-transfer (done), max uint values, boundary overflows.
 - **Done when**: CI runs a 10,000+ tx suite per contract, and the random harness setup is shared and parameterized across all 7 contracts.
 
 **D. Property Extraction (Proofs → Tests)**:
@@ -256,8 +256,7 @@ forge test --match-contract Differential  # Run 100 random tests
 - **Done when**: every Layer 1 proof has a corresponding Foundry invariant and all invariants pass in CI.
 
 **E. Address Known Limitations (Core Modeling)**:
-- Self-transfer semantics: add a precise rule or identity behavior in token/ledger specs.
-  - Decide if `transfer(a, a, x)` is a no-op or a guarded subtraction+addition, and state it explicitly.
+- Self-transfer semantics: modeled as a no-op in token/ledger specs. (Done)
 - Full supply = sum of balances in a finite address model.
   - Introduce a finite address set parameter so proofs can quantify over balances.
 - Nested mappings (needed for allowances / ERC20 approve).
@@ -308,7 +307,7 @@ forge test --match-contract Differential  # Run 100 random tests
 2. Scale differential testing to all 7 contracts (70k+ total tests)
 3. Property extraction (252 theorems → Foundry tests) — Roadmap Item 3
 4. Compiler verification (formal correctness proof) — Roadmap Item 4
-5. Self-transfer handling (special-case or identity operation)
+5. ~~Self-transfer handling (special-case or identity operation)~~ ✅ **Done**
 6. Full `supply = sum(balances)` with finite address set
 7. ERC-20 allowances (needs `Address -> Address -> Uint256` storage)
 8. Gas consumption tracking in `ContractResult`

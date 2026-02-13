@@ -213,7 +213,7 @@ This lets proofs reason about both the success path and the revert path of guard
 | 4 | `transfer_sum_bounded` | `new_sum <= old_sum + count(to) * amount` |
 | 5-9 | Helper lemmas | countOcc, map_sum_point_update, map_sum_transfer_eq |
 
-Transfer proofs require `sender != to` because the implementation writes the recipient balance last, overwriting the sender deduction on self-transfer. Supply conservation uses exact sum equations rather than the `supply_bounds_balances` invariant, which cannot be preserved for lists with duplicate addresses.
+Transfer proofs now handle self-transfer by modeling it as a no-op (preloading balances and applying a zero delta), so `sender != to` is no longer required. Supply conservation still uses exact sum equations rather than the `supply_bounds_balances` invariant, which cannot be preserved for lists with duplicate addresses.
 
 **Isolation:**
 

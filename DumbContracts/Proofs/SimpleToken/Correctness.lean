@@ -79,10 +79,10 @@ theorem mint_preserves_wellformedness (s : ContractState) (to : Address) (amount
 /-- Transfer preserves well-formedness when balance is sufficient.
     Owner, context all remain intact across transfers. -/
 theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (amount : Uint256)
-  (h : WellFormedState s) (h_balance : s.storageMap 1 s.sender ≥ amount) (h_ne : s.sender ≠ to) :
+  (h : WellFormedState s) (h_balance : s.storageMap 1 s.sender ≥ amount) (_h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   WellFormedState s' := by
-  have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
+  have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance
   obtain ⟨_, _, _, _, h_owner_pres, _h_storage, h_addr_pres, h_ctx⟩ := h_spec
   have h_sender_pres := h_ctx.1
   have h_this_pres := h_ctx.2.1
@@ -108,10 +108,10 @@ theorem mint_preserves_owner (s : ContractState) (to : Address) (amount : Uint25
 
 /-- Transfer does not change the owner address. -/
 theorem transfer_preserves_owner (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount) (h_ne : s.sender ≠ to) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount) (_h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   s'.storageAddr 0 = s.storageAddr 0 := by
-  have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
+  have h := transfer_meets_spec_when_sufficient s to amount h_balance
   obtain ⟨_, _, _, _, h_owner_pres, _, _, _h_ctx⟩ := h
   exact h_owner_pres
 

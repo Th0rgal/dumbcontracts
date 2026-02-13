@@ -171,10 +171,14 @@ def ledgerSpec : ContractSpec := {
         Stmt.require
           (Expr.ge (Expr.localVar "senderBal") (Expr.param "amount"))
           "Insufficient balance",
+        -- If caller == to, delta = 0 so both updates become no-ops.
+        Stmt.letVar "sameAddr" (Expr.eq Expr.caller (Expr.param "to")),
+        Stmt.letVar "delta" (Expr.sub (Expr.literal 1) (Expr.localVar "sameAddr")),
+        Stmt.letVar "amountDelta" (Expr.mul (Expr.param "amount") (Expr.localVar "delta")),
         Stmt.setMapping "balances" Expr.caller
-          (Expr.sub (Expr.localVar "senderBal") (Expr.param "amount")),
+          (Expr.sub (Expr.localVar "senderBal") (Expr.localVar "amountDelta")),
         Stmt.setMapping "balances" (Expr.param "to")
-          (Expr.add (Expr.localVar "recipientBal") (Expr.param "amount")),
+          (Expr.add (Expr.localVar "recipientBal") (Expr.localVar "amountDelta")),
         Stmt.stop
       ]
     },
@@ -300,10 +304,14 @@ def simpleTokenSpec : ContractSpec := {
         Stmt.require
           (Expr.ge (Expr.localVar "senderBal") (Expr.param "amount"))
           "Insufficient balance",
+        -- If caller == to, delta = 0 so both updates become no-ops.
+        Stmt.letVar "sameAddr" (Expr.eq Expr.caller (Expr.param "to")),
+        Stmt.letVar "delta" (Expr.sub (Expr.literal 1) (Expr.localVar "sameAddr")),
+        Stmt.letVar "amountDelta" (Expr.mul (Expr.param "amount") (Expr.localVar "delta")),
         Stmt.setMapping "balances" Expr.caller
-          (Expr.sub (Expr.localVar "senderBal") (Expr.param "amount")),
+          (Expr.sub (Expr.localVar "senderBal") (Expr.localVar "amountDelta")),
         Stmt.setMapping "balances" (Expr.param "to")
-          (Expr.add (Expr.localVar "recipientBal") (Expr.param "amount")),
+          (Expr.add (Expr.localVar "recipientBal") (Expr.localVar "amountDelta")),
         Stmt.stop
       ]
     },

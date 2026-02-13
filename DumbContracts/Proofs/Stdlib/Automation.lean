@@ -522,13 +522,13 @@ theorem add_one_preserves_order_iff_no_overflow (a : DumbContracts.Core.Uint256)
 /-!
 ## Notes on Completing These Proofs
 
-To fill in the `sorry` placeholders above, we need:
+To fill in the placeholders above, we need:
 
 1. **List Lemmas**: Lemmas about `List.lookup`, `List.filter`, and their interactions
 2. **SpecStorage Reasoning**: Understanding how the nested list structure works
 3. **Case Analysis**: Systematic case splitting on list operations
 
-The proven lemmas above (without `sorry`) provide the foundation for:
+The proven lemmas above (without placeholders) provide the foundation for:
 - Simple storage proofs (SimpleStorage, Counter)
 - Address storage proofs (Owned, OwnedCounter, SimpleToken)
 - Mapping proofs will require the SpecStorage lemmas to be completed

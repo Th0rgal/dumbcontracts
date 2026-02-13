@@ -41,8 +41,9 @@ def verifierRouter : StorageSlot Uint256 := ⟨4⟩
 
 structure Note where
   npk : Uint256
+  token : Uint256      -- Reordered to match spec
   amount : Uint256
-  token : Uint256
+  deriving Repr
 
 structure Proof where
   -- ZK-SNARK proof components (simplified)
@@ -138,19 +139,16 @@ def deposit (notes : List Note) : Contract Unit := do
 def transact (txn : Transaction) : Contract Unit := do
   -- Verify the merkle root is valid
   let rootValid ← isRootSeen txn.merkleRoot
-  if !rootValid then
-    revert "Invalid merkle root"
+  require rootValid "Invalid merkle root"
 
   -- Check that nullifiers haven't been spent
   for nullifier in txn.nullifierHashes do
     let spent ← isNullifierSpent nullifier
-    if spent then
-      revert "Nullifier already spent"
+    require (!spent) "Nullifier already spent"
 
   -- Verify the ZK proof
   let proofValid ← verifyProof txn
-  if !proofValid then
-    revert "Invalid proof"
+  require proofValid "Invalid proof"
 
   -- Mark nullifiers as spent
   for nullifier in txn.nullifierHashes do

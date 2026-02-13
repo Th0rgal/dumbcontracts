@@ -52,10 +52,6 @@ def tokenEdslToSpecStorageWithAddrs (state : ContractState) (addrs : List Addres
 
 -- Address encoding lemmas are provided by Automation.
 
-@[simp] theorem lookup_recipientBal_supply (supply recipientBal : Nat) :
-    (List.lookup "recipientBal" [("supply", supply), ("recipientBal", recipientBal)]).getD 0 = recipientBal := by
-  simp [List.lookup, List.lookup_cons]
-
 -- Mapping lookups for two-address lists.
 -- (lookup_senderBal, lookup_recipientBal, lookup_addr_first, lookup_addr_second) are provided by Automation.
 
@@ -165,7 +161,7 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
       simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
         simpleTokenSpec, requireOwner, tokenEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
         SpecStorage.setMapping, SpecStorage.setSlot, SpecStorage_getMapping_setMapping_same,
-        addressToNat_mod_eq, lookup_recipientBal_supply, h]
+        addressToNat_mod_eq, h, List.lookup, List.lookup_cons]
     calc
       (let specTx : DiffTestTypes.Transaction := {
         sender := sender

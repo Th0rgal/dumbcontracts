@@ -19,7 +19,10 @@ from typing import Iterable, List
 ROOT = Path(__file__).resolve().parent.parent
 SPEC_FILE = ROOT / "Compiler" / "Specs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
-YUL_DIR = ROOT / "compiler" / "yul"
+YUL_DIRS = [
+    ("yul", ROOT / "compiler" / "yul"),
+    ("yul-new", ROOT / "compiler" / "yul-new"),
+]
 KECCAK = ROOT / "scripts" / "keccak256.py"
 
 PARAM_MAP = {
@@ -186,19 +189,19 @@ def check_compile_lists(specs: List[SpecInfo], compile_lists: List[CompileSelect
     return errors
 
 
-def check_yul_selectors(specs: List[SpecInfo]) -> List[str]:
+def check_yul_selectors(specs: List[SpecInfo], yul_label: str, yul_dir: Path) -> List[str]:
     errors: List[str] = []
     for spec in specs:
-        yul_path = YUL_DIR / f"{spec.contract_name}.yul"
+        yul_path = yul_dir / f"{spec.contract_name}.yul"
         if not yul_path.exists():
-            errors.append(f"Missing Yul output for {spec.contract_name}: {yul_path}")
+            errors.append(f"Missing {yul_label} output for {spec.contract_name}: {yul_path}")
             continue
         yul_text = yul_path.read_text(encoding="utf-8")
         selectors = compute_selectors(spec.signatures)
         for sig, sel in zip(spec.signatures, selectors):
             needle = f"case 0x{sel:08x}"
             if needle not in yul_text:
-                errors.append(f"{spec.contract_name}: selector {needle} missing for {sig}")
+                errors.append(f"{spec.contract_name} ({yul_label}): selector {needle} missing for {sig}")
     return errors
 
 
@@ -225,7 +228,9 @@ def main() -> int:
     errors: List[str] = []
     errors.extend(check_unique_selectors(specs))
     errors.extend(check_compile_lists(specs, compile_lists))
-    errors.extend(check_yul_selectors(specs))
+    for label, yul_dir in YUL_DIRS:
+        if yul_dir.exists():
+            errors.extend(check_yul_selectors(specs, label, yul_dir))
 
     if errors:
         for err in errors:

@@ -140,7 +140,7 @@ python3 scripts/check_property_manifest.py
 # Optional: check that all theorems have property coverage (with exclusions)
 python3 scripts/check_property_coverage.py
 
-# Optional: check selector hashing against specs and generated Yul
+# Optional: check selector hashing against specs and generated Yul (including yul-new if present)
 python3 scripts/check_selectors.py
 ```
 

@@ -249,6 +249,7 @@ DIFFTEST_RANDOM_LARGE=10000 forge test --match-contract Differential
 
 **D. Property Extraction (Proofs → Tests)**:
 - Extract statements from Layer 1 proofs and compile them into Foundry invariants.
+- Guard the manifest against drift: keep `test/property_manifest.json` synchronized with proofs via `scripts/check_property_manifest_sync.py`.
   - Start with SimpleStorage: extract 3–5 invariants and wire them end-to-end to validate the pipeline before scaling.
   - Create a small “invariant catalog” per contract (plain English + Lean lemma name).
   - Add matching `test/Invariant<Contract>.t.sol` suites that enforce each invariant.

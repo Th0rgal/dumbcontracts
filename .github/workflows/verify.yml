@@ -87,6 +87,9 @@ jobs:
       - name: Check property manifest references
         run: python3 scripts/check_property_manifest.py
 
+      - name: Check property manifest sync
+        run: python3 scripts/check_property_manifest_sync.py
+
       - name: Check property coverage
         run: python3 scripts/check_property_coverage.py
 

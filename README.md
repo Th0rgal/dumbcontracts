@@ -138,6 +138,9 @@ python3 scripts/extract_property_manifest.py
 # Optional: check that property tests reference real theorems
 python3 scripts/check_property_manifest.py
 
+# Optional: check that property_manifest.json matches current proofs
+python3 scripts/check_property_manifest_sync.py
+
 # Optional: check that all theorems have property coverage (with exclusions)
 python3 scripts/check_property_coverage.py
 

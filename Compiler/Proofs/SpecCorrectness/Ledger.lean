@@ -33,28 +33,7 @@ open Compiler.Hex
 open DumbContracts
 open DumbContracts.Examples.Ledger
 
-/-!
-## Helper Lemmas for Address Encoding
--/
-
-/-- Ethereum addresses are 160-bit values, so addressToNat is always less than 2^256 -/
-private theorem addressToNat_lt_modulus (addr : Address) :
-    addressToNat addr < addressModulus := by
-  unfold addressToNat
-  split
-  · rename_i n _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-  · rename_i _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-
-/-- addressToNat mod modulus is identity -/
-@[simp] private theorem addressToNat_mod_eq (addr : Address) :
-    addressToNat addr % addressModulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
-
--- Trust assumption: address encoding is injective for valid addresses.
-private axiom addressToNat_injective :
-    ∀ (a b : Address), addressToNat a = addressToNat b → a = b
+-- Address encoding lemmas are provided by Automation.
 
 -- Local variable lookups in the spec interpreter (self-transfer case).
 @[simp] theorem lookup_senderBal_same (v : Nat) :

@@ -50,24 +50,7 @@ def tokenEdslToSpecStorageWithAddrs (state : ContractState) (addrs : List Addres
 ## Helper Lemmas for Address and Uint256 Arithmetic
 -/
 
--- Ethereum addresses are 160-bit values, so addressToNat is always less than 2^256.
-private theorem addressToNat_lt_modulus (addr : Address) :
-    addressToNat addr < addressModulus := by
-  unfold addressToNat
-  split
-  · rename_i n _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-  · rename_i _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-
--- Trust assumption: addressToNat is injective for valid addresses.
-private axiom addressToNat_injective :
-    ∀ (a b : Address), addressToNat a = addressToNat b → a = b
-
--- addressToNat mod modulus is identity.
-@[simp] private theorem addressToNat_mod_eq (addr : Address) :
-    addressToNat addr % addressModulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
+-- Address encoding lemmas are provided by Automation.
 
 @[simp] theorem lookup_recipientBal_supply (supply recipientBal : Nat) :
     (List.lookup "recipientBal" [("supply", supply), ("recipientBal", recipientBal)]).getD 0 = recipientBal := by

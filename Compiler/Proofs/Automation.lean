@@ -13,12 +13,14 @@
 import DumbContracts.Core
 import DumbContracts.Stdlib.Math
 import DumbContracts.EVM.Uint256
+import Compiler.Hex
 import Compiler.Proofs.SpecInterpreter
 
 namespace Compiler.Proofs.Automation
 
 open DumbContracts
 open Compiler.Proofs
+open Compiler.Hex
 
 /-!
 ## Contract Result Lemmas
@@ -127,6 +129,28 @@ theorem setStorageAddr_runState (slot : StorageSlot Address) (value : Address) (
 theorem getStorageAddr_runValue (slot : StorageSlot Address) (state : ContractState) :
     (getStorageAddr slot).runValue state = state.storageAddr slot.slot := by
   simp [getStorageAddr, Contract.runValue]
+
+/-!
+## Address Encoding Lemmas
+-/
+
+-- Ethereum addresses are 160-bit values, so addressToNat is always less than 2^256.
+theorem addressToNat_lt_modulus (addr : Address) :
+    addressToNat addr < addressModulus := by
+  unfold addressToNat
+  split
+  · rename_i n _
+    exact Nat.mod_lt _ (by decide : 2^160 > 0)
+  · rename_i _
+    exact Nat.mod_lt _ (by decide : 2^160 > 0)
+
+@[simp] theorem addressToNat_mod_eq (addr : Address) :
+    addressToNat addr % addressModulus = addressToNat addr := by
+  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
+
+-- Trust assumption: address encoding is injective for valid addresses.
+axiom addressToNat_injective :
+    ∀ (a b : Address), addressToNat a = addressToNat b → a = b
 
 /-!
 ## Mapping Operation Lemmas

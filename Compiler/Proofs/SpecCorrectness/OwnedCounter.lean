@@ -34,32 +34,7 @@ open DumbContracts
 open DumbContracts.Examples.OwnedCounter
 open DumbContracts.Proofs.OwnedCounter
 
-/-!
-## Helper Lemmas for Address Encoding
-
-These mirror the Owned proofs: addressToNat yields a 160-bit value,
-so it is always < 2^256 (Uint256 modulus).
--/
-
-private theorem addressToNat_lt_modulus (addr : Address) :
-    addressToNat addr < addressModulus := by
-  -- addressToNat returns a value modulo 2^160
-  unfold addressToNat
-  split
-  · -- parseHexNat? returned some n
-    rename_i n _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-  · -- parseHexNat? returned none
-    rename_i _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-
-@[simp] private theorem addressToNat_mod_eq (addr : Address) :
-    addressToNat addr % addressModulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
-
--- Trust assumption: address encoding is injective for valid addresses.
-private axiom addressToNat_injective :
-    ∀ (a b : Address), addressToNat a = addressToNat b → a = b
+-- Address encoding lemmas are provided by Automation.
 
 -- Small lookup helper for the owned+count slot layout.
 @[simp] theorem lookup_count_slot (ownerVal countVal : Nat) :

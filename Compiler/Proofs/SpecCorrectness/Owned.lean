@@ -26,6 +26,7 @@ namespace Compiler.Proofs.SpecCorrectness
 open Compiler.ContractSpec
 open Compiler.Specs
 open Compiler.Proofs
+open Compiler.Proofs.Automation
 open Compiler.Hex
 open DumbContracts
 open DumbContracts.Examples.Owned
@@ -37,49 +38,7 @@ def ownedEdslToSpecStorage (state : ContractState) : SpecStorage :=
   { slots := [(0, addressToNat (state.storageAddr 0))]
     mappings := [] }
 
-/-!
-## Helper Lemmas for Address Encoding
-
-These lemmas establish properties of `addressToNat`, which converts Ethereum addresses
-to natural numbers. We make two trust assumptions about address encoding:
-
-1. **Bounds**: Valid Ethereum addresses are 20 bytes (160 bits), so parseHexNat? returns values < 2^160
-2. **Injectivity**: Different addresses map to different natural numbers (proven separately)
-
-These are reasonable assumptions because:
-- Ethereum addresses are standardized as 20-byte hex strings
-- The EVM enforces this format
-- Our differential tests validate this empirically (70,000+ tests)
--/
-
-/-
-Ethereum addresses are 160-bit values, so addressToNat is always less than addressModulus.
-This matches the SpecInterpreter's address handling.
--/
-private theorem addressToNat_lt_modulus (addr : Address) :
-    addressToNat addr < addressModulus := by
-  unfold addressToNat
-  split
-  · rename_i n _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-  · rename_i _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-
-/-- addressToNat is injective for valid Ethereum addresses
-
-    TRUST ASSUMPTION: Different addresses encode to different natural numbers.
-    This holds because:
-    - Ethereum addresses are unique 20-byte identifiers
-    - parseHexNat? is injective on valid hex strings
-    - Validated by 70,000+ differential tests showing address operations work correctly
--/
-private axiom addressToNat_injective :
-    ∀ (a b : Address), addressToNat a = addressToNat b → a = b
-
-/-- addressToNat mod modulus is identity -/
-@[simp] private theorem addressToNat_mod_eq (addr : Address) :
-    addressToNat addr % addressModulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
+-- Address encoding lemmas are provided by Automation.
 
 /- Correctness Theorems -/
 

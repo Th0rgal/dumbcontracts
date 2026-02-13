@@ -83,7 +83,7 @@ This session focused on addressing Cursor Bugbot review comments and completing 
 
 ### Files Created
 
-#### 1. `Compiler/Proofs/IRGeneration/Expr.lean` (172 lines)
+#### 1. `Compiler/Proofs/IRGeneration/Expr.lean`
 
 **Purpose**: Establishes verification framework for ContractSpec → IR preservation
 
@@ -183,13 +183,13 @@ $ lake build
 
 ### Infrastructure Status (100% Complete ✅)
 
-| Component | Status | Lines | Purpose |
-|-----------|--------|-------|---------|
-| IRInterpreter.lean | ✅ Complete | 192 | IR execution semantics |
-| Conversions.lean | ✅ Complete | 195 | Type conversions (Spec ↔ IR) |
-| Expr.lean | ✅ Complete | 172 | Preservation framework |
+| Component | Status | Purpose |
+|-----------|--------|---------|
+| IRInterpreter.lean | ✅ Complete | IR execution semantics |
+| Conversions.lean | ✅ Complete | Type conversions (Spec ↔ IR) |
+| Expr.lean | ✅ Complete | Preservation framework |
 
-**Total Infrastructure**: 559 lines, fully functional
+**Total Infrastructure**: Fully functional
 
 ### Proof Strategy
 
@@ -203,11 +203,11 @@ $ lake build
 - End-to-end contract preservation (not individual expressions)
 - Axiomatized SimpleStorage theorems (to be proven)
 - Template for general preservation theorem
-- Estimated effort: ~200 lines for actual proofs
+- Estimated effort: manageable proofs once the axioms are discharged
 
 **Next Steps**:
-1. Prove SimpleStorage axioms (~50 lines)
-2. Generalize to Counter (~100 lines)
+1. Prove SimpleStorage axioms
+2. Generalize to Counter
 3. Extend to SafeCounter (overflow checks)
 4. Handle complex contracts (Owned, Ledger, etc.)
 

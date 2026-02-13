@@ -145,6 +145,9 @@ python3 scripts/check_property_manifest_sync.py
 # Optional: check that all theorems have property coverage (with exclusions)
 python3 scripts/check_property_coverage.py
 
+# Optional: report missing property tests to prioritize proof → test extraction
+python3 scripts/report_property_gaps.py
+
 # Property tests are discovered via comment tags like:
 # "Property 12a: theorem_name" or "Property: theorem_name" (optional trailing notes in parentheses are allowed).
 

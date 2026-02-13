@@ -16,6 +16,7 @@
 
 import Compiler.Specs
 import Compiler.Proofs.SpecInterpreter
+import Compiler.Proofs.SpecCorrectness.AddressEncoding
 import Compiler.Proofs.Automation
 import Compiler.Hex
 import DumbContracts.Examples.Owned
@@ -40,70 +41,13 @@ def ownedEdslToSpecStorage (state : ContractState) : SpecStorage :=
 /-!
 ## Helper Lemmas for Address Encoding
 
-These lemmas establish properties of `addressToNat`, which converts Ethereum addresses
-to natural numbers. We make two trust assumptions about address encoding:
-
-1. **Bounds**: Valid Ethereum addresses are 20 bytes (160 bits), so parseHexNat? returns values < 2^160
-2. **Injectivity**: Different addresses map to different natural numbers (proven separately)
-
-These are reasonable assumptions because:
-- Ethereum addresses are standardized as 20-byte hex strings
-- The EVM enforces this format
-- Our differential tests validate this empirically (70,000+ tests)
+Shared lemmas live in `Compiler.Proofs.SpecCorrectness.AddressEncoding`.
+We keep the injectivity axiom local to make the trust assumption explicit.
 -/
 
-/-- Ethereum addresses are 160-bit values, so addressToNat is always less than 2^256 -/
-private theorem addressToNat_lt_modulus (addr : Address) :
-    addressToNat addr < DumbContracts.Core.Uint256.modulus := by
-  -- addressToNat either:
-  -- 1. Returns the parsed hex value modulo 2^160
-  -- 2. Returns stringToNat % 2^160
-  -- In either case, the result is < 2^160 < 2^256
-  unfold addressToNat
-  split
-  · -- Case: parseHexNat? returns some n
-    -- We know that 2^160 < 2^256 (modulus)
-    have h_160_lt_mod : (2^160 : Nat) < DumbContracts.Core.Uint256.modulus := by
-      decide
-    rename_i n _
-    have h_mod : n % 2^160 < 2^160 := by
-      exact Nat.mod_lt _ (by decide : 2^160 > 0)
-    exact Nat.lt_trans h_mod h_160_lt_mod
-  · -- Case: parseHexNat? returns none, so we use stringToNat % 2^160
-    rename_i _
-    have h_mod : stringToNat addr % 2^160 < 2^160 := Nat.mod_lt _ (by decide : 2^160 > 0)
-    have h_160_lt_mod : (2^160 : Nat) < DumbContracts.Core.Uint256.modulus := by decide
-    calc stringToNat addr % 2^160 < 2^160 := h_mod
-      _ < DumbContracts.Core.Uint256.modulus := h_160_lt_mod
-
-private theorem addressToNat_lt_addressModulus (addr : Address) :
-    addressToNat addr < addressModulus := by
-  unfold addressToNat addressModulus
-  split
-  · rename_i n _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-  · rename_i _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-
-/-- addressToNat is injective for valid Ethereum addresses
-
-    TRUST ASSUMPTION: Different addresses encode to different natural numbers.
-    This holds because:
-    - Ethereum addresses are unique 20-byte identifiers
-    - parseHexNat? is injective on valid hex strings
-    - Validated by 70,000+ differential tests showing address operations work correctly
--/
+-- TRUST ASSUMPTION: Different addresses encode to different natural numbers.
 private axiom addressToNat_injective :
     ∀ (a b : Address), addressToNat a = addressToNat b → a = b
-
-/-- addressToNat mod modulus is identity -/
-private theorem addressToNat_mod_eq (addr : Address) :
-    addressToNat addr % DumbContracts.Core.Uint256.modulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
-
-private theorem addressToNat_mod_address (addr : Address) :
-    addressToNat addr % addressModulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_addressModulus addr)
 
 /- Correctness Theorems -/
 

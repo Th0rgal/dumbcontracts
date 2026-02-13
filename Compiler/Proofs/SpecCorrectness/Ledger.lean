@@ -17,6 +17,7 @@
 
 import Compiler.Specs
 import Compiler.Proofs.SpecInterpreter
+import Compiler.Proofs.SpecCorrectness.AddressEncoding
 import Compiler.Proofs.Automation
 import Compiler.Hex
 import DumbContracts.Examples.Ledger
@@ -33,62 +34,8 @@ open Compiler.Hex
 open DumbContracts
 open DumbContracts.Examples.Ledger
 
-/-!
-## Helper Lemmas for Address Encoding
--/
-
-/-- Ethereum addresses are 160-bit values, so addressToNat is always less than 2^256 -/
-private theorem addressToNat_lt_modulus (addr : Address) :
-    addressToNat addr < DumbContracts.Core.Uint256.modulus := by
-  unfold addressToNat
-  split
-  · have h_160_lt_mod : (2^160 : Nat) < DumbContracts.Core.Uint256.modulus := by
-      decide
-    rename_i n _
-    have h_mod : n % 2^160 < 2^160 := by
-      exact Nat.mod_lt _ (by decide : 2^160 > 0)
-    exact Nat.lt_trans h_mod h_160_lt_mod
-  · rename_i _
-    have h_mod : stringToNat addr % 2^160 < 2^160 := Nat.mod_lt _ (by decide : 2^160 > 0)
-    have h_160_lt_mod : (2^160 : Nat) < DumbContracts.Core.Uint256.modulus := by decide
-    exact Nat.lt_trans h_mod h_160_lt_mod
-
-private theorem addressToNat_lt_addressModulus (addr : Address) :
-    addressToNat addr < addressModulus := by
-  unfold addressToNat addressModulus
-  split
-  · rename_i n _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-  · rename_i _
-    exact Nat.mod_lt _ (by decide : 2^160 > 0)
-
-/-- addressToNat mod modulus is identity -/
-private theorem addressToNat_mod_eq (addr : Address) :
-    addressToNat addr % DumbContracts.Core.Uint256.modulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
-
-private theorem addressToNat_mod_address (addr : Address) :
-    addressToNat addr % addressModulus = addressToNat addr := by
-  exact Nat.mod_eq_of_lt (addressToNat_lt_addressModulus addr)
-
 private axiom addressToNat_injective :
     ∀ (a b : Address), addressToNat a = addressToNat b → a = b
-
-private theorem uint256_add_val (a : DumbContracts.Core.Uint256) (amount : Nat) :
-    (DumbContracts.EVM.Uint256.add a (DumbContracts.Core.Uint256.ofNat amount)).val =
-      (a.val + amount) % DumbContracts.Core.Uint256.modulus := by
-  cases a with
-  | mk aval a_lt =>
-    let m := DumbContracts.Core.Uint256.modulus
-    have h_mod : aval % m = aval := by
-      exact Nat.mod_eq_of_lt a_lt
-    unfold DumbContracts.EVM.Uint256.add DumbContracts.Core.Uint256.add
-    simp [HAdd.hAdd, DumbContracts.Core.Uint256.add, DumbContracts.Core.Uint256.val_ofNat]
-    have h_add : (aval + amount) % m = (aval % m + amount % m) % m :=
-      Nat.add_mod aval amount m
-    have h_add' : (aval + amount) % m = (aval + amount % m) % m := by
-      simpa [h_mod] using h_add
-    exact h_add'.symm
 
 /- State Conversion -/
 

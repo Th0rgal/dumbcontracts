@@ -49,6 +49,10 @@ abstract contract DiffTestConfig is Test {
         return vm.envOr("DIFFTEST_VERBOSE", false);
     }
 
+    function _lcg(uint256 prng) internal pure returns (uint256) {
+        return (1103515245 * prng + 12345) % (2**31);
+    }
+
     function _edgeUintValues() internal pure returns (uint256[] memory) {
         uint256[] memory values = new uint256[](5);
         values[0] = 0;

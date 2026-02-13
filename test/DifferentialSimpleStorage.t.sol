@@ -422,10 +422,6 @@ contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig {
         return prng;
     }
 
-    function _lcg(uint256 prng) internal pure returns (uint256) {
-        return (1103515245 * prng + 12345) % (2**31);
-    }
-
     /**
      * @notice Convert index to test address
      */

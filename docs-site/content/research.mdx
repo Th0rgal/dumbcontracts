@@ -256,6 +256,9 @@ forge test --match-contract Differential  # Run 100 random tests
   - Compute selectors in Lean from the Solidity signature and prove they match the generated selector in `Compiler/Selector.lean`.
   - Add a small fixture-based test (Solidity/Yul) to guard the hash implementation against drift.
 - Add a formalized “bridge” lemma between Yul semantics and EVM, or document the test/verification gap clearly.
+  - **Current gap**: Yul correctness is proven against the Lean Yul interpreter, but the Lean Yul interpreter is not yet proven equivalent to EVM execution.
+  - **Mitigation today**: Foundry tests provide behavioral confidence, but they do not close the formal gap.
+  - **Completion criterion**: a proof (or mechanized model) that links Yul execution to EVM execution for the supported subset.
 
 **G. Documentation (Optional But Valuable)**:
 - Add a concise “How to add a new contract” guide (Spec → EDSL → Proof → Compiler spec → Tests).

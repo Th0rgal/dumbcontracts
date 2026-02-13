@@ -317,6 +317,21 @@ theorem uint256_sub_val (a : DumbContracts.Core.Uint256) (amount : Nat) :
     simp [DumbContracts.EVM.Uint256.sub, DumbContracts.Core.Uint256.sub, h_not_le,
       DumbContracts.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_lt]
 
+-- Helper: EVM sub (Uint256) matches Nat subtraction when no underflow.
+theorem uint256_sub_val_of_le (a : DumbContracts.Core.Uint256) (amount : Nat)
+    (h : a.val ≥ amount) :
+    (DumbContracts.EVM.Uint256.sub a (DumbContracts.Core.Uint256.ofNat amount)).val =
+      a.val - amount := by
+  have h_amount_lt : amount < DumbContracts.Core.Uint256.modulus := by
+    exact Nat.lt_of_le_of_lt h a.isLt
+  have h_le : (DumbContracts.Core.Uint256.ofNat amount : Nat) ≤ (a : Nat) := by
+    simp [DumbContracts.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt, h]
+  have h_sub : ((DumbContracts.EVM.Uint256.sub a (DumbContracts.Core.Uint256.ofNat amount)
+      : DumbContracts.Core.Uint256) : Nat) = (a : Nat) - (DumbContracts.Core.Uint256.ofNat amount : Nat) := by
+    exact DumbContracts.EVM.Uint256.sub_eq_of_le h_le
+  simp [DumbContracts.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt] at h_sub
+  simpa using h_sub
+
 -- getSlot from setSlot (same slot)
 theorem SpecStorage_getSlot_setSlot_same (storage : SpecStorage) (slot : Nat) (value : Nat) :
     (storage.setSlot slot value).getSlot slot = value := by

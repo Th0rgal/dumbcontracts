@@ -237,6 +237,7 @@ forge test --match-contract Differential  # Run 100 random tests
 **B. Finish Layer 3 (IR → Yul)**:
 - Prove IR op → Yul op equivalence for all IR instructions, not just the high-level theorem statement.
 - Add contract-level end-to-end theorems akin to Layer 2: “interpretIR = interpretYulFromIR” per contract.
+- **Done when**: every IR instruction has a corresponding Lean equivalence lemma in `Compiler/Proofs/YulGeneration/Equivalence.lean`, each contract has a compiled end-to-end theorem, and the layer builds without TODOs or `admit`s in the Yul generation proofs.
 
 **C. Scale Differential Testing**:
 - Add diff-testing harnesses for all 7 contracts.

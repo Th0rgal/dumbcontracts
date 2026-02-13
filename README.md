@@ -145,6 +145,9 @@ python3 scripts/check_property_manifest_sync.py
 # Optional: check that all theorems have property coverage (with exclusions)
 python3 scripts/check_property_coverage.py
 
+# Property tests are discovered via comment tags like:
+# "Property 12: theorem_name" or "Property: theorem_name" (optional suffixes and annotations allowed).
+
 # Optional: check selector hashing against specs and generated Yul (including yul-new if present)
 python3 scripts/check_selectors.py
 ```

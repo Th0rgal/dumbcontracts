@@ -222,6 +222,13 @@ theorem transfer_increases_recipient (s : ContractState) (to : Address) (amount 
   simp [transfer_spec, h_ne, beq_iff_eq] at h
   exact h.2.1
 
+theorem transfer_self_preserves_balance (s : ContractState) (amount : Uint256)
+  (h_balance : s.storageMap 0 s.sender >= amount) :
+  let s' := ((transfer s.sender amount).run s).snd
+  s'.storageMap 0 s.sender = s.storageMap 0 s.sender := by
+  rw [transfer_unfold_self s s.sender amount h_balance rfl]
+  simp [ContractResult.snd]
+
 theorem transfer_reverts_insufficient (s : ContractState) (to : Address) (amount : Uint256)
   (h_insufficient : ¬(s.storageMap 0 s.sender >= amount)) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
@@ -289,20 +296,21 @@ Withdraw (guarded):
 8. withdraw_decreases_balance
 9. withdraw_reverts_insufficient
 
-Transfer (guarded, sender ≠ to):
+Transfer (guarded, including self-transfer):
 10. transfer_meets_spec
 11. transfer_decreases_sender
 12. transfer_increases_recipient
-13. transfer_reverts_insufficient
+13. transfer_self_preserves_balance
+14. transfer_reverts_insufficient
 
 State preservation:
-14. deposit_preserves_non_mapping
-15. withdraw_preserves_non_mapping
-16. deposit_preserves_wellformedness
-17. withdraw_preserves_wellformedness
+15. deposit_preserves_non_mapping
+16. withdraw_preserves_non_mapping
+17. deposit_preserves_wellformedness
+18. withdraw_preserves_wellformedness
 
 Composition:
-18. deposit_getBalance_correct
+19. deposit_getBalance_correct
 -/
 
 end DumbContracts.Proofs.Ledger

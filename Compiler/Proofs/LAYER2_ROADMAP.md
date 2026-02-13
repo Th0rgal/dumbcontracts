@@ -16,7 +16,7 @@ This layer bridges the gap between high-level declarative specifications and exe
 
 ## Completed Work ✅
 
-### Phase 1: Type Conversion Infrastructure (195 lines) ✅
+### Phase 1: Type Conversion Infrastructure ✅
 
 **File**: `Compiler/Proofs/IRGeneration/Conversions.lean`
 
@@ -32,7 +32,7 @@ This layer bridges the gap between high-level declarative specifications and exe
 
 ---
 
-### Phase 2: Expression Compilation Framework (172 lines) ✅
+### Phase 2: Expression Compilation Framework ✅
 
 **File**: `Compiler/Proofs/IRGeneration/Expr.lean`
 
@@ -85,7 +85,7 @@ This layer bridges the gap between high-level declarative specifications and exe
 
 ---
 
-### Infrastructure: IR Interpreter (192 lines) ✅
+### Infrastructure: IR Interpreter ✅
 
 **File**: `Compiler/Proofs/IRGeneration/IRInterpreter.lean`
 

@@ -109,22 +109,22 @@ These power the proofs. Most simple properties can be proven by `simp only [...]
 
 The original core used `StateM ContractState α`. This was simpler but couldn't model `require` failures. Proofs had to assume guards passed (using axioms).
 
-`ContractResult` makes success/failure explicit. Proofs can reason about both paths, and no axioms are needed. The cost is ~130 lines of extra infrastructure (the ContractResult type, custom bind, and simp lemmas).
+`ContractResult` makes success/failure explicit. Proofs can reason about both paths, and no axioms are needed. The cost is a small amount of extra infrastructure (the ContractResult type, custom bind, and simp lemmas).
 
 ## Core growth
 
-| Iteration | Lines | Change | What was added |
-|-----------|-------|--------|----------------|
-| 1 (Bootstrap) | 58 | +58 | Initial core |
-| 2 (Counter) | 58 | 0 | Nothing needed |
-| 3 (Owned) | 72 | +14 | Address storage |
-| 4 (OwnedCounter) | 72 | 0 | Nothing needed |
-| 5 (SafeCounter) | 69 | -3 | Cleanup |
-| 6 (Ledger) | 82 | +13 | Mapping storage |
-| 7 (SimpleToken) | 82 | 0 | Nothing needed |
-| 8 (Verification) | 234 | +152 | ContractResult, bind, simp lemmas, EVM context |
+| Iteration | Focus | What was added |
+|-----------|-------|----------------|
+| 1 (Bootstrap) | Minimal core | Initial core |
+| 2 (Counter) | Counter spec | Nothing needed |
+| 3 (Owned) | Ownership | Address storage |
+| 4 (OwnedCounter) | Ownership + counter | Nothing needed |
+| 5 (SafeCounter) | Guarded ops | Cleanup |
+| 6 (Ledger) | Mapping storage | Mapping storage |
+| 7 (SimpleToken) | Token contract | Nothing needed |
+| 8 (Verification) | Proof support | ContractResult, bind, simp lemmas, EVM context |
 
-4 out of 7 implementation iterations needed no core changes. The jump from 82 to ~234 lines was for verification infrastructure and EVM context, not contract primitives.
+Most implementation iterations needed no core changes. The verification step added proof infrastructure rather than new contract primitives.
 
 ## Type safety
 

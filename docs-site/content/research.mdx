@@ -113,13 +113,13 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 
 ### Generic Compilation (Completed 2026-02-10)
 
-**Problem**: Manual IR translation for each contract (unmaintainable, 266 lines of hand-written code).
+**Problem**: Manual IR translation for each contract (unmaintainable and repetitive).
 
 **Solution**: Declarative contract specification DSL with automatic IR generation.
 
 **Result**: All 7 contracts compile automatically. Zero manual IR. Generated code is more optimized than manual translations.
 
-**Implementation** (846 lines, as of 2026-02-12):
+**Implementation** (as of 2026-02-12):
 - `Compiler/ContractSpec.lean` (413 lines) — DSL + automatic IR compiler
   - Type-safe expression language (literals, storage, mappings, arithmetic, comparisons)
   - Statement DSL (setStorage, setMapping, require, return)

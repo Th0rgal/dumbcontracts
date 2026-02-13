@@ -670,6 +670,19 @@ contract DifferentialSimpleToken is YulTestBase, DiffTestConfig {
         assertTrue(success2, "Transfer failed");
     }
 
+    function testDifferential_SelfTransfer_NoOp() public {
+        address owner = address(this);
+        address alice = address(0xA11CE);
+
+        // Mint to Alice
+        bool success1 = executeDifferentialTest("mint", owner, alice, 500);
+        assertTrue(success1, "Mint failed");
+
+        // Self-transfer should be a no-op (balances + total supply unchanged)
+        bool success2 = executeDifferentialTest("transfer", alice, alice, 200);
+        assertTrue(success2, "Self-transfer failed");
+    }
+
     function testDifferential_AccessControl() public {
         address owner = address(this);
         address alice = address(0xA11CE);

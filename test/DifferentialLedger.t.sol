@@ -438,6 +438,18 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig {
         assertTrue(success2, "Transfer failed");
     }
 
+    function testDifferential_SelfTransfer_NoOp() public {
+        address alice = address(0xA11CE);
+
+        // Alice deposits 100
+        bool success1 = executeDifferentialTest("deposit", alice, address(0), 100);
+        assertTrue(success1, "Deposit failed");
+
+        // Self-transfer should be a no-op (balance unchanged)
+        bool success2 = executeDifferentialTest("transfer", alice, alice, 40);
+        assertTrue(success2, "Self-transfer failed");
+    }
+
     function testDifferential_GetBalance() public {
         address alice = address(0xA11CE);
         address bob = address(0xB0B);

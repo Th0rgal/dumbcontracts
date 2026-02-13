@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.Automation
+  DumbContracts.Proofs.Stdlib.Automation
 
   Helper lemmas and automation for proving specification correctness.
 
@@ -12,12 +12,15 @@
 
 import DumbContracts.Core
 import DumbContracts.Stdlib.Math
-import Compiler.Proofs.SpecInterpreter
+import DumbContracts.EVM.Uint256
+import Compiler.Hex
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
 
-namespace Compiler.Proofs.Automation
+namespace DumbContracts.Proofs.Stdlib.Automation
 
 open DumbContracts
-open Compiler.Proofs
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
+open Compiler.Hex
 
 /-!
 ## Contract Result Lemmas
@@ -128,6 +131,28 @@ theorem getStorageAddr_runValue (slot : StorageSlot Address) (state : ContractSt
   simp [getStorageAddr, Contract.runValue]
 
 /-!
+## Address Encoding Lemmas
+-/
+
+-- Ethereum addresses are 160-bit values, so addressToNat is always less than 2^256.
+theorem addressToNat_lt_modulus (addr : Address) :
+    addressToNat addr < addressModulus := by
+  unfold addressToNat
+  split
+  · rename_i n _
+    exact Nat.mod_lt _ (by decide : 2^160 > 0)
+  · rename_i _
+    exact Nat.mod_lt _ (by decide : 2^160 > 0)
+
+@[simp] theorem addressToNat_mod_eq (addr : Address) :
+    addressToNat addr % addressModulus = addressToNat addr := by
+  exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
+
+-- Trust assumption: address encoding is injective for valid addresses.
+axiom addressToNat_injective :
+    ∀ (a b : Address), addressToNat a = addressToNat b → a = b
+
+/-!
 ## Mapping Operation Lemmas
 -/
 
@@ -140,6 +165,45 @@ theorem getMapping_runState (slot : StorageSlot (Address → Uint256)) (key : Ad
 theorem getMapping_runValue (slot : StorageSlot (Address → Uint256)) (key : Address) (state : ContractState) :
     (getMapping slot key).runValue state = state.storageMap slot.slot key := by
   simp [getMapping, Contract.runValue]
+
+/-!
+## List Lookup Lemmas
+-/
+
+-- Local variable lookups in the spec interpreter.
+@[simp] theorem lookup_senderBal (recipientBal senderBal : Nat) :
+    (List.lookup "senderBal" [("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
+      senderBal := by
+  simp [List.lookup, List.lookup_cons]
+
+@[simp] theorem lookup_recipientBal (recipientBal senderBal : Nat) :
+    (List.lookup "recipientBal" [("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
+      recipientBal := by
+  simp [List.lookup, List.lookup_cons]
+
+-- Mapping lookups for two-address lists.
+@[simp] theorem lookup_addr_first (k1 k2 v1 v2 : Nat) :
+    (List.lookup k1 [(k1, v1), (k2, v2)]).getD 0 = v1 := by
+  simp [List.lookup, List.lookup_cons]
+
+@[simp] theorem lookup_addr_second (k1 k2 v1 v2 : Nat) (h : k1 ≠ k2) :
+    (List.lookup k2 [(k1, v1), (k2, v2)]).getD 0 = v2 := by
+  cases h_eq : (k2 == k1) with
+  | false =>
+      simp [List.lookup, h_eq]
+  | true =>
+      have : k2 = k1 := by
+        exact (beq_iff_eq).1 h_eq
+      exact (False.elim (h this.symm))
+
+-- Slot lookups for the common two-slot layout.
+@[simp] theorem lookup_slot_first (v0 v1 : Nat) :
+    (List.lookup 0 [(0, v0), (1, v1)]).getD 0 = v0 := by
+  simp [List.lookup, List.lookup_cons]
+
+@[simp] theorem lookup_slot_second (v0 v1 : Nat) :
+    (List.lookup 1 [(0, v0), (1, v1)]).getD 0 = v1 := by
+  simp [List.lookup, List.lookup_cons]
 
 /-!
 ## msgSender Lemmas
@@ -201,9 +265,82 @@ theorem address_beq_eq_true_iff_eq (a b : Address) :
 /-!
 ## SpecStorage Lemmas
 
-These lemmas about SpecStorage operations are currently placeholders.
-They require more sophisticated reasoning about List operations.
+Reusable facts about `SpecStorage` updates and lookups.
+These are the small list-reasoning primitives used throughout the
+spec-correctness proofs.
 -/
+
+/-!
+## Uint256 Arithmetic Lemmas
+-/
+
+-- Helper: EVM add (Uint256) matches modular Nat addition.
+theorem uint256_add_val (a : DumbContracts.Core.Uint256) (amount : Nat) :
+    (DumbContracts.EVM.Uint256.add a (DumbContracts.Core.Uint256.ofNat amount)).val =
+      (a.val + amount) % DumbContracts.Core.Uint256.modulus := by
+  cases a with
+  | mk aval hlt =>
+      let m := DumbContracts.Core.Uint256.modulus
+      have h1 :
+          (DumbContracts.EVM.Uint256.add (DumbContracts.Core.Uint256.mk aval hlt)
+                (DumbContracts.Core.Uint256.ofNat amount)).val =
+            (aval + amount % m) % m := by
+        simp [DumbContracts.EVM.Uint256.add, DumbContracts.Core.Uint256.add,
+          DumbContracts.Core.Uint256.val_ofNat, -DumbContracts.Core.Uint256.ofNat_add]
+      calc
+        (DumbContracts.EVM.Uint256.add (DumbContracts.Core.Uint256.mk aval hlt)
+              (DumbContracts.Core.Uint256.ofNat amount)).val
+            = (aval + amount % m) % m := h1
+        _ = (aval + amount) % m := by
+            calc
+              (aval + amount % m) % m
+                  = ((aval % m) + (amount % m)) % m := by
+                      simp [Nat.mod_eq_of_lt hlt]
+              _ = (aval + amount) % m := by
+                      exact (Nat.add_mod _ _ _).symm
+
+-- Helper: EVM sub (Uint256) matches the EDSL modular subtraction formula.
+theorem uint256_sub_val (a : DumbContracts.Core.Uint256) (amount : Nat) :
+    (DumbContracts.EVM.Uint256.sub a (DumbContracts.Core.Uint256.ofNat amount)).val =
+      (if amount % DumbContracts.Core.Uint256.modulus ≤ a.val then
+        a.val - amount % DumbContracts.Core.Uint256.modulus
+      else
+        DumbContracts.Core.Uint256.modulus -
+          (amount % DumbContracts.Core.Uint256.modulus - a.val)) := by
+  let m := DumbContracts.Core.Uint256.modulus
+  have h_amount_lt : amount % m < m := by
+    exact Nat.mod_lt _ DumbContracts.Core.Uint256.modulus_pos
+  by_cases h_le : amount % m ≤ a.val
+  · have h_lt : a.val - amount % m < m := by
+      exact Nat.lt_of_le_of_lt (Nat.sub_le _ _) a.isLt
+    simp [DumbContracts.EVM.Uint256.sub, DumbContracts.Core.Uint256.sub, h_le,
+      DumbContracts.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_lt]
+  · have h_not_le : ¬ amount % m ≤ a.val := h_le
+    have h_pos : 0 < amount % m - a.val := by
+      exact Nat.sub_pos_of_lt (Nat.lt_of_not_ge h_not_le)
+    have h_le_x : amount % m - a.val ≤ m := by
+      exact Nat.le_of_lt (Nat.lt_of_le_of_lt (Nat.sub_le _ _) h_amount_lt)
+    have h_lt_add : m < (amount % m - a.val) + m := by
+      exact Nat.lt_add_of_pos_left h_pos
+    have h_lt : m - (amount % m - a.val) < m := by
+      exact Nat.sub_lt_left_of_lt_add h_le_x h_lt_add
+    simp [DumbContracts.EVM.Uint256.sub, DumbContracts.Core.Uint256.sub, h_not_le,
+      DumbContracts.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_lt]
+
+-- Helper: EVM sub (Uint256) matches Nat subtraction when no underflow.
+theorem uint256_sub_val_of_le (a : DumbContracts.Core.Uint256) (amount : Nat)
+    (h : a.val ≥ amount) :
+    (DumbContracts.EVM.Uint256.sub a (DumbContracts.Core.Uint256.ofNat amount)).val =
+      a.val - amount := by
+  have h_amount_lt : amount < DumbContracts.Core.Uint256.modulus := by
+    exact Nat.lt_of_le_of_lt h a.isLt
+  have h_le : (DumbContracts.Core.Uint256.ofNat amount : Nat) ≤ (a : Nat) := by
+    simp [DumbContracts.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt, h]
+  have h_sub : ((DumbContracts.EVM.Uint256.sub a (DumbContracts.Core.Uint256.ofNat amount)
+      : DumbContracts.Core.Uint256) : Nat) = (a : Nat) - (DumbContracts.Core.Uint256.ofNat amount : Nat) := by
+    exact DumbContracts.EVM.Uint256.sub_eq_of_le h_le
+  simp [DumbContracts.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt] at h_sub
+  simpa using h_sub
 
 -- getSlot from setSlot (same slot)
 theorem SpecStorage_getSlot_setSlot_same (storage : SpecStorage) (slot : Nat) (value : Nat) :
@@ -438,13 +575,13 @@ theorem add_one_preserves_order_iff_no_overflow (a : DumbContracts.Core.Uint256)
 /-!
 ## Notes on Completing These Proofs
 
-To fill in the `sorry` placeholders above, we need:
+To fill in the placeholders above, we need:
 
 1. **List Lemmas**: Lemmas about `List.lookup`, `List.filter`, and their interactions
 2. **SpecStorage Reasoning**: Understanding how the nested list structure works
 3. **Case Analysis**: Systematic case splitting on list operations
 
-The proven lemmas above (without `sorry`) provide the foundation for:
+The proven lemmas above (without placeholders) provide the foundation for:
 - Simple storage proofs (SimpleStorage, Counter)
 - Address storage proofs (Owned, OwnedCounter, SimpleToken)
 - Mapping proofs will require the SpecStorage lemmas to be completed
@@ -455,4 +592,4 @@ Recommended approach:
 3. Complete mapping-based contract proofs (Ledger, SimpleToken)
 -/
 
-end Compiler.Proofs.Automation
+end DumbContracts.Proofs.Stdlib.Automation

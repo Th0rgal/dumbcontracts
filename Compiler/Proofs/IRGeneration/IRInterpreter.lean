@@ -11,7 +11,7 @@
 
 import Compiler.IR
 import Compiler.ContractSpec
-import Compiler.Proofs.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
 import DumbContracts.Core
 
 namespace Compiler.Proofs.IRGeneration

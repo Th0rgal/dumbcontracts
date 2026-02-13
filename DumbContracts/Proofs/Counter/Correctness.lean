@@ -32,18 +32,20 @@ theorem increment_state_preserved_except_count (s : ContractState) :
   let s' := ((increment).run s).snd
   state_preserved_except_count s s' := by
   have h := increment_meets_spec s
-  simp [increment_spec] at h
-  obtain ⟨_, h_slots, h_sender, h_this, h_value, h_time, h_addr, h_map⟩ := h
-  exact ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, ⟨h_sender, h_this, h_value, h_time⟩⟩
+  rcases h with ⟨_, h_slots, h_same⟩
+  rcases h_same with ⟨h_addr, h_map, h_ctx⟩
+  refine ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, ?_⟩
+  simpa [context_preserved, Specs.sameContext] using h_ctx
 
 /-- decrement preserves all state except count. -/
 theorem decrement_state_preserved_except_count (s : ContractState) :
   let s' := ((decrement).run s).snd
   state_preserved_except_count s s' := by
   have h := decrement_meets_spec s
-  simp [decrement_spec] at h
-  obtain ⟨_, h_slots, h_sender, h_this, h_value, h_time, h_addr, h_map⟩ := h
-  exact ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, ⟨h_sender, h_this, h_value, h_time⟩⟩
+  rcases h with ⟨_, h_slots, h_same⟩
+  rcases h_same with ⟨h_addr, h_map, h_ctx⟩
+  refine ⟨fun h_ne => h_slots 0 h_ne, h_addr, h_map, ?_⟩
+  simpa [context_preserved, Specs.sameContext] using h_ctx
 
 /-- getCount preserves all state (trivially, since it's read-only). -/
 theorem getCount_state_preserved (s : ContractState) :

@@ -13,31 +13,30 @@ The DumbContracts compiler transforms high-level, verified contract specificatio
 
 **Pipeline**: EDSL Contract → Declarative Spec → IR → Yul → EVM Bytecode
 
-**Status**: ✅ **Roadmap Item 1 Complete** — Generic Compilation (2026-02-10)
+**Spec sources**:
+- User-facing specs: `DumbContracts/Specs/<Name>/Spec.lean`
+- Compiler specs (for codegen): `Compiler/Specs.lean` (generated/maintained separately)
 
 ## Trust Model
 
 ### What's Verified (Zero Trust Required)
-- **252 Lean proofs**: All EDSL contract properties formally verified
+- **EDSL + compiler proofs**: Lean theorems for contract specs, IR generation, and Yul codegen
 - **Zero `sorry`, zero axioms**: Complete machine-checked proofs
-- **76 Foundry tests**: All compiled contracts pass functional tests
+- **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean
 
 ### What's Tested (High Confidence)
-- **Compilation correctness**: 76/76 tests pass for all compiled contracts
-- **Output validation**: Generated Yul matches expected semantics
-- **Constructor handling**: Proper bytecode argument loading
-- **Storage layout**: Automatic slot inference validated
+- **Compilation correctness**: Foundry unit and differential tests cover compiled contracts
+- **Output validation**: Generated Yul is exercised against expected runtime behavior
+- **Constructor handling**: Bytecode argument loading is covered in tests
+- **Storage layout**: Automatic slot inference validated by examples
 
 ### What's Assumed (Trust Required)
-- **Yul compiler**: Solidity's Yul → bytecode compilation (industry-standard)
-- **EVM semantics**: Ethereum's execution model matches specification
-- **Function selectors**: Pre-computed keccak256 hashes are correct
+- **Yul compiler**: Solidity's `solc` compiles Yul to bytecode correctly
+- **EVM semantics**: Ethereum's execution model matches the spec used in proofs
+- **Function selectors**: Pre-computed `keccak256` hashes are correct
 
-### Future: Zero Trust
-**Roadmap Items 2-4** will eliminate all trust assumptions:
-- **Item 2**: Differential testing (70k+ random tests comparing EDSL vs EVM)
-- **Item 3**: Property extraction (252 theorems → on-chain tests)
-- **Item 4**: Compiler verification (formal proof of compilation correctness)
+### Roadmap
+Roadmap, milestones, and progress updates live in `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`.
 
 ## Example: SimpleStorage
 
@@ -155,7 +154,7 @@ forge create SimpleStorage --from 0x... --private-key ...
 
 ### Modules
 
-**`Compiler/ContractSpec.lean`** (219 lines)
+**`Compiler/ContractSpec.lean`**
 - Declarative contract DSL
 - Expression language: `literal`, `param`, `storage`, `mapping`, `caller`, arithmetic, comparisons
 - Statement language: `setStorage`, `setMapping`, `require`, `return`, `stop`
@@ -163,17 +162,16 @@ forge create SimpleStorage --from 0x... --private-key ...
 - Constructor parameter handling (bytecode argument loading)
 - Storage slot inference (field order → slots 0, 1, 2, ...)
 
-**`Compiler/Specs.lean`** (238 lines)
-- Specifications for all 7 contracts
-- Each contract 20-40 lines (vs 40-60 lines manual IR)
-- High-level, type-safe, maintainable
+**`Compiler/Specs.lean`**
+- Specifications for the example contracts
+- Concise, type-safe, maintainable
 
-**`Compiler/Selector.lean`** (75 lines)
+**`Compiler/Selector.lean`**
 - Function selector computation
 - Pre-computed Solidity keccak256 hashes
 - Type-safe signature generation
 
-**`Compiler/Codegen.lean`** (51 lines)
+**`Compiler/Codegen.lean`**
 - IR → Yul code generation
 - Dispatcher generation (function selector switch)
 - Mapping slot computation helper
@@ -273,12 +271,10 @@ lake exe dumbcontracts-compiler
 
 ### Test Compiled Contracts
 ```bash
-cd compiler/yul
-
 # Run all Foundry tests
 forge test
 
-# Expected: 76/76 tests pass
+# Expected: 264/264 tests pass (as of 2026-02-12)
 ```
 
 ### Add New Contract
@@ -321,19 +317,17 @@ $ lake build
 Build completed successfully.
 ```
 
-**Foundry Tests**: 76/76 passing (100%)
+**Foundry Tests**: 264/264 passing (100%, as of 2026-02-12)
 ```bash
-$ cd compiler/yul && forge test
-Ran 14 test suites: 76 tests passed, 0 failed, 0 skipped (76 total tests)
+$ forge test
+Ran 28 test suites in 96.15s (537.47s CPU time): 264 tests passed, 0 failed, 0 skipped (264 total tests)
 ```
 
-**Test Breakdown**:
-- 62 EDSL tests (contracts from `DumbContracts/Examples/`)
-- 14 Yul tests (contracts from declarative specs)
+**Coverage**: Unit, property, and differential tests across EDSL and compiled Yul. See `test/` for suites.
 
 ### Validated Contracts
 
-All 7 contracts compile and pass tests:
+All current example contracts compile and pass tests (as of Feb 13, 2026):
 - ✅ **SimpleStorage** — Basic storage operations
 - ✅ **Counter** — Arithmetic operations
 - ✅ **Owned** — Access control with constructor args
@@ -345,14 +339,14 @@ All 7 contracts compile and pass tests:
 ## Comparison: Manual vs Automatic
 
 ### Lines of Code
-- **Before**: 266 lines of manual IR for all contracts
-- **After**: 238 lines of declarative specs for all contracts
-- **Reduction**: -100% manual IR, +0% boilerplate
+- **Before**: Manual IR for all contracts (brittle to maintain)
+- **After**: Declarative specs for all contracts (stable, reusable)
+- **Reduction**: Manual IR eliminated
 
 ### Time to Add Contract
-- **Before**: ~30 minutes (write IR, test, debug)
-- **After**: ~5 minutes (write spec, compile)
-- **Improvement**: -83% time
+- **Before**: Manual IR requires more steps (write IR, test, debug)
+- **After**: Declarative specs reduce the setup and iteration work
+- **Improvement**: Faster authoring and less surface for mistakes
 
 ### Code Quality
 - **Before**: Manual Yul construction, error-prone
@@ -361,7 +355,7 @@ All 7 contracts compile and pass tests:
 
 ### Example: Owned Contract
 
-**Before** (manual IR, 42 lines):
+**Before** (manual IR):
 ```lean
 private def ownedContract : IRContract :=
   let deployBody := [
@@ -385,7 +379,7 @@ private def ownedContract : IRContract :=
     usesMapping := false }
 ```
 
-**After** (declarative spec, 28 lines):
+**After** (declarative spec):
 ```lean
 def ownedSpec : ContractSpec := {
   name := "Owned"
@@ -424,33 +418,6 @@ def ownedSpec : ContractSpec := {
 - Type-safe expressions
 - No manual Yul construction
 - Automatic slot/selector management
-
-## Roadmap
-
-### ✅ Item 1: Generic Compilation (Complete)
-- Automatic IR generation from declarative specs
-- All 7 contracts compile without manual IR
-- 76/76 Foundry tests pass
-- **Status**: **COMPLETE** (2026-02-10)
-
-### 🚧 Item 2: Differential Testing (Next)
-- Build EDSL interpreter in Lean
-- Generate random transactions
-- Run 10,000+ tests per contract comparing EDSL vs EVM
-- Target: 70k+ tests with zero mismatches
-- **Status**: **PLANNED**
-
-### 📋 Item 3: Property Extraction
-- Parse 252 proven theorems
-- Generate Foundry property tests
-- Every theorem becomes a passing on-chain test
-- **Status**: **PLANNED**
-
-### 🔬 Item 4: Compiler Verification (Long-term)
-- Formalize EVM execution in Lean
-- Prove compilation preserves semantics
-- Zero trust assumptions
-- **Status**: **RESEARCH PHASE**
 
 ## Links
 

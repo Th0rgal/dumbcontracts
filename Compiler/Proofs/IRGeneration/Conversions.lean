@@ -9,7 +9,7 @@
 -/
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
-import Compiler.Proofs.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
 import DumbContracts.Core
 import Compiler.ContractSpec
 import Compiler.Hex
@@ -20,6 +20,7 @@ open Compiler
 open DumbContracts
 open Compiler.Hex
 open DiffTestTypes
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
 
 /-! ## Address Encoding -/
 

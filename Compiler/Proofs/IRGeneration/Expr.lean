@@ -10,7 +10,7 @@
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.Conversions
-import Compiler.Proofs.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
 import Compiler.ContractSpec
 import Compiler.Specs
 import DumbContracts.Core
@@ -23,6 +23,7 @@ open Compiler.ContractSpec
 open Compiler.Yul
 open DumbContracts
 open DiffTestTypes
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
 
 /-! ## Proof Strategy
 

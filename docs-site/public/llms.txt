@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-212-line Lean 4 EDSL for smart contracts. 252 machine-checked proofs. Zero sorry, zero axioms.
+Lean 4 EDSL for smart contracts with machine-checked proofs. Zero sorry, zero axioms.
 
 **Core**: Models contract state, storage operations, and `require` guards using explicit success/revert result type (`ContractResult`).
 
@@ -13,9 +13,9 @@
 ## Quick Facts
 
 - **Language**: Lean 4.15.0
-- **Core Size**: 212 lines
+- **Core Size**: Small (few hundred lines)
 - **Contracts**: SimpleStorage, Counter, Owned, SimpleToken, OwnedCounter, Ledger, SafeCounter
-- **Theorems**: 252 proven (100% coverage, no sorry, no axioms)
+- **Theorems**: Fully proven (no sorry, no axioms)
 - **Build**: `lake build` verifies all proofs
 - **Repository**: https://github.com/Th0rgal/dumbcontracts
 
@@ -36,16 +36,16 @@ def bind (x : Contract α) (f : α → Contract β) : Contract β :=
 
 ## Theorem Breakdown
 
-| Contract | Theorems | Key Properties |
-|----------|----------|----------------|
-| SimpleStorage | 19 | Store/retrieve roundtrip, state isolation |
-| Counter | 29 | Arithmetic, composition, decrement-at-zero |
-| Owned | 22 | Access control, ownership transfer |
-| SimpleToken | 64 | Mint/transfer, supply conservation, storage isolation |
-| OwnedCounter | 34 | Cross-pattern composition, lockout proofs |
-| Ledger | 40 | Deposit/withdraw/transfer, balance conservation |
-| SafeCounter | 30 | Overflow/underflow revert proofs |
-| Stdlib/Math | 14 | safeMul/safeDiv correctness |
+| Contract | Key Properties |
+|----------|----------------|
+| SimpleStorage | Store/retrieve roundtrip, state isolation |
+| Counter | Arithmetic, composition, decrement-at-zero |
+| Owned | Access control, ownership transfer |
+| SimpleToken | Mint/transfer, supply conservation, storage isolation |
+| OwnedCounter | Cross-pattern composition, lockout proofs |
+| Ledger | Deposit/withdraw/transfer, balance conservation |
+| SafeCounter | Overflow/underflow revert proofs |
+| Stdlib/Math | safeMul/safeDiv correctness |
 
 ## Proof Techniques
 

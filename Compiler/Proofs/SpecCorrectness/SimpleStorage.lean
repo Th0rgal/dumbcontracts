@@ -13,7 +13,7 @@
 -/
 
 import Compiler.Specs
-import Compiler.Proofs.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
 import DumbContracts.Examples.SimpleStorage
 import DumbContracts.Core.Uint256
 
@@ -21,7 +21,7 @@ namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open Compiler.Proofs
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
 open DumbContracts
 open DumbContracts.Examples
 open DumbContracts.Core.Uint256

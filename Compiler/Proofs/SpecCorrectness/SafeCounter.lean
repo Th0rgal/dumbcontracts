@@ -14,8 +14,8 @@
 -/
 
 import Compiler.Specs
-import Compiler.Proofs.SpecInterpreter
-import Compiler.Proofs.Automation
+import DumbContracts.Proofs.Stdlib.SpecInterpreter
+import DumbContracts.Proofs.Stdlib.Automation
 import DumbContracts.Examples.SafeCounter
 import DumbContracts.Core.Uint256
 import DumbContracts.Stdlib.Math
@@ -25,7 +25,7 @@ namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open Compiler.Proofs
+open DumbContracts.Proofs.Stdlib.SpecInterpreter
 open DumbContracts
 open DumbContracts.Examples.SafeCounter
 open DumbContracts.Stdlib.Math
@@ -225,7 +225,9 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
         have h_le := DumbContracts.Core.Uint256.val_le_max (state.storage 0)
         omega
       -- By wraparound lemma: count < MAX implies (count+1).val > count.val
-      have h_gt := (Automation.add_one_preserves_order_iff_no_overflow (state.storage 0)).mpr h_below
+      have h_gt :=
+        (DumbContracts.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
+          (state.storage 0)).mpr h_below
       -- Convert to the Nat-mod form used by the spec interpreter
       have h_gt' :
           ((state.storage 0).val + 1) % DumbContracts.Core.Uint256.modulus > (state.storage 0).val := by
@@ -244,7 +246,9 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
           ((state.storage 0) + 1 : DumbContracts.Core.Uint256).val > (state.storage 0).val := by
         simpa [add_one_val_eq_mod', one_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_guard_mod
       -- By wraparound lemma: (count+1).val > count.val implies count < MAX
-      have h_below := (Automation.add_one_preserves_order_iff_no_overflow (state.storage 0)).mp h_guard'
+      have h_below :=
+        (DumbContracts.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
+          (state.storage 0)).mp h_guard'
       -- Use helper: at count < MAX, EDSL succeeds
       exact safeIncrement_succeeds_below_max state sender h_below
   · -- Part 2: Storage equivalence when successful
@@ -286,7 +290,9 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
     -- Spec stores (count + 1).val
     -- The require passes and stores (count + 1).val
     -- We can use the same guard proof as above
-    have h_gt := (Automation.add_one_preserves_order_iff_no_overflow (state.storage 0)).mpr h_below
+    have h_gt :=
+      (DumbContracts.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
+        (state.storage 0)).mpr h_below
     have h_gt' :
         ((state.storage 0).val + 1) % DumbContracts.Core.Uint256.modulus > (state.storage 0).val := by
       simpa [add_one_val_eq_mod', one_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_gt

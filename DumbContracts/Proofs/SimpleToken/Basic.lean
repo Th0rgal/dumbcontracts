@@ -76,35 +76,29 @@ theorem setMapping_preserves_other_addresses (s : ContractState) (slot_val : Sto
 theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
   let s' := ((constructor initialOwner).run s).snd
   constructor_spec initialOwner s s' := by
-  constructor
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · rfl
-  constructor
   · rfl
-  constructor
   · intro slot h_neq
-    simp only [constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner, Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
+    simp only [constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner,
+      Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
     split
     · next h =>
       have : slot = 0 := by simp [beq_iff_eq] at h; exact h
       exact absurd this h_neq
     · rfl
-  constructor
   · intro slot h_neq
-    simp only [constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner, Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
+    simp only [constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner,
+      Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
     split
     · next h =>
       have : slot = 2 := by simp [beq_iff_eq] at h; exact h
       exact absurd this h_neq
     · rfl
-  constructor
   · rfl
-  constructor
-  · rfl
-  constructor
-  · rfl
-  constructor
-  · rfl
-  · rfl
+  ·
+    simp [Specs.sameContext, constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner,
+      Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
 
 theorem constructor_sets_owner (s : ContractState) (initialOwner : Address) :
   let s' := ((constructor initialOwner).run s).snd
@@ -170,15 +164,15 @@ theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : 
   simp only [Contract.run, ContractResult.snd, mint_spec]
   rw [show (mint to amount) s = (mint to amount).run s from rfl, h_unfold]
   simp only [ContractResult.snd]
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · simp -- balance of 'to' updated
   · simp -- supply updated
-  · intro addr h_neq; simp [h_neq] -- other balances preserved
+  · refine ⟨?_, ?_⟩
+    · intro addr h_neq; simp [h_neq] -- other balances preserved
+    · intro slot h_neq; intro addr; simp [h_neq] -- other mapping slots
   · trivial -- owner preserved
-  · intro slot h_neq; intro addr; simp [h_neq] -- other mapping slots
   · intro slot h_neq; simp [h_neq] -- other uint storage
-  · trivial -- sender preserved
-  · trivial -- thisAddress preserved
+  · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
 
 theorem mint_increases_balance (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0) :
@@ -237,27 +231,22 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
   simp only [Contract.run, ContractResult.snd, transfer_spec]
   rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
   simp only [ContractResult.snd]
-  refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- sender balance decreased: the 'to' branch doesn't match sender
     have h_ne' : (s.sender == to) = false := by
       simp [beq_iff_eq]; exact h_ne
     simp [h_ne']
   · -- recipient balance increased
     simp
-  · -- uint storage preserved
-    trivial
-  · -- other balances preserved
-    intro addr h_ne_sender h_ne_to; simp [h_ne_sender, h_ne_to]
+  · -- other balances/slots preserved
+    refine ⟨?_, ?_⟩
+    · intro addr h_ne_sender h_ne_to; simp [h_ne_sender, h_ne_to]
+    · intro slot h_neq addr'; simp [h_neq]
   · -- owner preserved
     trivial
-  · -- other mapping slots preserved
-    intro slot h_neq addr'; simp [h_neq]
-  · -- uint storage by slot
-    intro slot; trivial
-  · -- addr storage by slot
-    intro slot; trivial
-  · trivial -- sender
-  · trivial -- thisAddress
+  · simp [Specs.sameStorage]
+  · simp [Specs.sameStorageAddr]
+  · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
 
 theorem transfer_preserves_supply_when_sufficient (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount)
@@ -266,7 +255,10 @@ theorem transfer_preserves_supply_when_sufficient (s : ContractState) (to : Addr
   s'.storage 2 = s.storage 2 := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h
-  exact h.2.2.2.1
+  have h_storage : Specs.sameStorage s ((transfer to amount).run s).snd := h.2.2.2.2.2.1
+  have h_eq : ((transfer to amount).run s).snd.storage = s.storage := by
+    simpa [Specs.sameStorage] using h_storage
+  simpa using congrArg (fun f => f 2) h_eq
 
 theorem transfer_decreases_sender_balance (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount)

@@ -1,5 +1,5 @@
 /-
-  Compiler.Proofs.SpecInterpreter: Semantics for ContractSpec DSL
+  DumbContracts.Proofs.Stdlib.SpecInterpreter: Semantics for ContractSpec DSL
 
   This module defines what it *means* to execute a ContractSpec.
   It provides a reference implementation that can be proven equivalent to
@@ -17,7 +17,7 @@ import Compiler.Hex
 import DumbContracts.Core
 import DumbContracts.Core.Uint256
 
-namespace Compiler.Proofs
+namespace DumbContracts.Proofs.Stdlib.SpecInterpreter
 
 open Compiler.ContractSpec
 open Compiler.DiffTestTypes
@@ -366,4 +366,4 @@ def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Tra
           revertReason := none
           finalStorage := finalState.storage }
 
-end Compiler.Proofs
+end DumbContracts.Proofs.Stdlib.SpecInterpreter

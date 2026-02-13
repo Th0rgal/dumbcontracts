@@ -58,14 +58,16 @@ theorem deposit_meets_spec (s : ContractState) (amount : Uint256) :
   let s' := ((deposit amount).run s).snd
   deposit_spec amount s s' := by
   rw [deposit_unfold]
-  simp only [ContractResult.snd, deposit_spec]
-  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
-  · intro addr h_ne
-    simp [beq_iff_eq]
-    intro h_eq; exact absurd h_eq h_ne
-  · intro slot h_ne addr
-    simp [beq_iff_eq]
-    intro h_eq; exact absurd h_eq h_ne
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · simp [ContractResult.snd, beq_iff_eq]
+  · refine ⟨?_, ?_⟩
+    · intro addr h_ne
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
+    · intro slot h_ne addr
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
+  · rfl
+  · rfl
+  · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
 
 theorem deposit_increases_balance (s : ContractState) (amount : Uint256) :
   let s' := ((deposit amount).run s).snd
@@ -104,14 +106,16 @@ theorem withdraw_meets_spec (s : ContractState) (amount : Uint256)
   let s' := ((withdraw amount).run s).snd
   withdraw_spec amount s s' := by
   rw [withdraw_unfold s amount h_balance]
-  simp only [ContractResult.snd, withdraw_spec]
-  refine ⟨by simp, ?_, ?_, trivial, trivial, trivial, trivial, trivial, trivial⟩
-  · intro addr h_ne
-    simp [beq_iff_eq]
-    intro h_eq; exact absurd h_eq h_ne
-  · intro slot h_ne addr
-    simp [beq_iff_eq]
-    intro h_eq; exact absurd h_eq h_ne
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · simp [ContractResult.snd, beq_iff_eq]
+  · refine ⟨?_, ?_⟩
+    · intro addr h_ne
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
+    · intro slot h_ne addr
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
+  · rfl
+  · rfl
+  · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
 
 theorem withdraw_decreases_balance (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
@@ -156,20 +160,26 @@ theorem transfer_meets_spec (s : ContractState) (to : Address) (amount : Uint256
   (h_ne : s.sender ≠ to) :
   let s' := ((transfer to amount).run s).snd
   transfer_spec to amount s s' := by
-  simp only [transfer, msgSender, getMapping, setMapping, balances,
-    DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst, transfer_spec]
-  have h_ne' : (s.sender == to) = false := by simp [beq_iff_eq]; exact h_ne
-  simp [h_balance, h_ne']
-  refine ⟨?_, ?_, ?_⟩
-  · -- case: addr = s.sender = to (contradicts h_ne)
-    intro h_eq; exact absurd h_eq h_ne
-  · -- other balances unchanged
-    intro addr h1 h2
-    simp [show ¬(addr = to) from h2, show ¬(addr = s.sender) from fun h => h1 (h ▸ rfl)]
-  · -- other slots unchanged
-    intro slot h_slot addr
-    simp [show ¬(slot = 0) from h_slot]
+  rw [transfer_unfold s to amount h_balance h_ne]
+  simp only [ContractResult.snd, transfer_spec]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- sender balance decreases
+    have h_ne' : (s.sender == to) = false := by
+      simp [beq_iff_eq]; exact h_ne
+    simp [beq_iff_eq, h_ne']
+  · -- recipient balance increases
+    have h_ne' : (to == s.sender) = false := by
+      simp [beq_iff_eq]; exact h_ne.symm
+    simp [beq_iff_eq, h_ne']
+  · -- other balances/slots unchanged
+    refine ⟨?_, ?_⟩
+    · intro addr h_ne_sender h_ne_to
+      simp [beq_iff_eq, h_ne_sender, h_ne_to]
+    · intro slot h_slot addr
+      simp [beq_iff_eq, h_slot]
+  · rfl
+  · rfl
+  · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
 
 theorem transfer_decreases_sender (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount)

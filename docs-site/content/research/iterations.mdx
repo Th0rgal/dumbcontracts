@@ -5,66 +5,67 @@ description: Development history across 7 iterations
 
 # Iteration Summaries
 
-The project was built in 7 iterations. Each added a contract and, when needed, extended the core.
+The project was built in 8 iterations. The first 7 added contracts and, when needed, extended the core. The 8th focused on verification infrastructure.
+
+This page is the detailed iteration log and the only place for milestone-style progress notes.
 
 ## Iteration 7: SimpleToken
 
 Combined Owned and Ledger patterns into a token contract with owner-controlled minting, public transfers, and supply tracking. No core changes needed.
 
-- Core: 82 lines (unchanged)
-- SimpleToken: ~100 lines
+- Core: unchanged
 
 ## Iteration 6: Mapping Support
 
 Added `storageMap` field to `ContractState` for key-value storage (`Address -> Uint256`). Ledger example demonstrates deposit, withdraw, and transfer with balance guards.
 
-- Core: 69 -> 82 lines (+13)
+- Core: mapping support added
 
 ## Iteration 5: Math Safety Stdlib
 
 Added `Stdlib/Math.lean` with `safeAdd`, `safeSub`, `safeMul`, `safeDiv`. SafeCounter example uses checked arithmetic instead of bare `+`/`-`. Core unchanged.
 
-- Core: 69 lines (unchanged)
-- Stdlib/Math: 63 lines
+- Core: unchanged
+- Stdlib/Math: added safe arithmetic helpers
 
 ## Iteration 4: OwnedCounter
 
 Combined Owned and Counter patterns. Increment/decrement require ownership. No core changes needed.
 
-- Core: 72 lines (unchanged)
+- Core: unchanged
 
 ## Iteration 3: Owned
 
 Added `storageAddr` field to `ContractState` for Address storage. Owned example implements `onlyOwner` guard and `transferOwnership`.
 
-- Core: 58 -> 72 lines (+14)
+- Core: address storage added
 
 ## Iteration 2: Counter
 
 Increment/decrement with read-modify-write pattern. No core changes needed. Raised the question of arithmetic safety (Lean `Nat` subtraction saturates at 0, Solidity 0.8+ reverts).
 
-- Core: 58 lines (unchanged)
+- Core: unchanged
 
 ## Iteration 1: Bootstrap
 
 Initial core with `ContractState`, `StorageSlot`, `getStorage`/`setStorage`, `msgSender`, `require`. SimpleStorage example.
 
-- Core: 58 lines
+- Core: initial core
 
 ## Core growth
 
-| Iteration | Lines | Change | What was added |
-|-----------|-------|--------|----------------|
-| 1 (Bootstrap) | 58 | +58 | Initial core |
-| 2 (Counter) | 58 | 0 | Nothing needed |
-| 3 (Owned) | 72 | +14 | Address storage |
-| 4 (OwnedCounter) | 72 | 0 | Nothing needed |
-| 5 (SafeCounter) | 69 | -3 | Cleanup |
-| 6 (Ledger) | 82 | +13 | Mapping storage |
-| 7 (SimpleToken) | 82 | 0 | Nothing needed |
-| 8 (Verification) | 212 | +130 | ContractResult, bind, simp lemmas |
+| Iteration | Change summary | What was added |
+|-----------|----------------|----------------|
+| 1 (Bootstrap) | New core | ContractState, storage access, msgSender, require |
+| 2 (Counter) | No change | Nothing needed |
+| 3 (Owned) | Extended core | Address storage |
+| 4 (OwnedCounter) | No change | Nothing needed |
+| 5 (SafeCounter) | Cleanup | Safer arithmetic helpers in stdlib |
+| 6 (Ledger) | Extended core | Mapping storage |
+| 7 (SimpleToken) | No change | Nothing needed |
+| 8 (Verification) | Extended core | ContractResult, bind, simp lemmas, EVM context |
 
-4 out of 7 implementation iterations needed no core changes. The jump from 82 to 212 was for verification infrastructure (the `ContractResult` type, custom `bind`, and `@[simp]` lemmas), not new contract primitives.
+4 out of the 7 implementation iterations needed no core changes. The verification iteration added infrastructure for proofs, not new contract primitives.
 
 ## Source
 

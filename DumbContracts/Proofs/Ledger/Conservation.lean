@@ -299,7 +299,7 @@ theorem withdraw_sum_equation (s : ContractState) (amount : Uint256)
     intro addr h_ne
     have h_spec := withdraw_meets_spec s amount h_balance
     simp [withdraw_spec] at h_spec
-    exact h_spec.2.1 addr h_ne
+    exact h_spec.2.1.1 addr h_ne
   exact map_sum_point_decrease
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)
@@ -341,7 +341,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
       + countOccU to addrs * amount := by
   have h_spec := transfer_meets_spec s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
-  obtain ⟨h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _, _⟩ := h_spec
+  obtain ⟨h_sender_bal, h_recip_bal, h_other_bal, _, _, _⟩ := h_spec
   have h_sender_bal' :
       ((transfer to amount).run s).snd.storageMap 0 s.sender =
         s.storageMap 0 s.sender - amount := by
@@ -357,7 +357,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)
     s.sender to amount h_ne h_sender_bal' h_recip_bal'
-    (fun addr h1 h2 => h_other_bal addr h1 h2)
+    (fun addr h1 h2 => h_other_bal.1 addr h1 h2)
 
 /-- Corollary: for NoDup lists where sender and to each appear once,
     the total sum is exactly preserved by transfer. -/

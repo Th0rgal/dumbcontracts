@@ -2,72 +2,42 @@
 
 This directory contains formal verification proofs for the DumbContracts compiler, proving correctness across three layers of compilation.
 
-## Three-Layer Verification Strategy
+## Verification Layers
 
-### Layer 1: EDSL ≡ ContractSpec (Specification Correctness) ✅ 100% Complete
+- **Layer 1: EDSL ≡ ContractSpec** — Spec correctness for the user-facing contracts.
+- **Layer 2: ContractSpec → IR** — IR generation preserves spec semantics.
+- **Layer 3: IR → Yul** — Yul codegen preserves IR semantics and runtime behavior.
 
-**Goal**: Prove that manually written ContractSpec specifications accurately represent the verified EDSL contracts.
+Key entry points:
 
-**Status**: 27/27 theorems proven across 7 contracts
+- Spec semantics: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
+- IR generation and proofs: `Compiler/Proofs/IRGeneration/`
+- Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
 
-#### Completed Contracts
+## Proof Layout
 
-##### SimpleStorage (100% ✅)
-- 4/4 theorems proven
-- Demonstrates basic storage operations
-- Pattern: unfold + simp for direct computation
-- **Proofs**: [SpecCorrectness/SimpleStorage.lean](SpecCorrectness/SimpleStorage.lean)
-
-##### Counter (100% ✅)
-- 7/7 theorems proven
-- Includes modular arithmetic with wraparound
-- Features structural induction proof for multiple increments
-- **Proofs**: [SpecCorrectness/Counter.lean](SpecCorrectness/Counter.lean)
-
-##### SafeCounter (100% ✅)
-- 8/8 theorems proven
-- Demonstrates overflow/underflow protection with safe arithmetic
-- **Proofs**: [SpecCorrectness/SafeCounter.lean](SpecCorrectness/SafeCounter.lean)
-
-##### Owned (100% ✅)
-- 8/8 theorems proven
-- Demonstrates ownership and access control patterns
-- **Proofs**: [SpecCorrectness/Owned.lean](SpecCorrectness/Owned.lean)
-
-##### OwnedCounter (100% ✅)
-- 4/4 theorems proven
-- Combines ownership checks with counter semantics
-- **Proofs**: [SpecCorrectness/OwnedCounter.lean](SpecCorrectness/OwnedCounter.lean)
-
-##### Ledger (100% ✅)
-- 2/2 theorems proven
-- Mapping-based balance operations
-- **Proofs**: [SpecCorrectness/Ledger.lean](SpecCorrectness/Ledger.lean)
-
-##### SimpleToken (100% ✅)
-- 2/2 theorems proven
-- Token minting and transfers with balances mapping
-- **Proofs**: [SpecCorrectness/SimpleToken.lean](SpecCorrectness/SimpleToken.lean)
+Layer 1 proofs live alongside each contract spec in `DumbContracts/Specs/<Name>/Proofs.lean` to match the user-facing workflow (Spec → Impl → Proofs).
 
 ## Quick Start
 
 ```bash
 # Build all Layer 1 proofs
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
+lake build DumbContracts.Specs.SimpleStorage.Proofs
+lake build DumbContracts.Specs.Counter.Proofs
+lake build DumbContracts.Specs.SafeCounter.Proofs
+lake build DumbContracts.Specs.Owned.Proofs
+lake build DumbContracts.Specs.OwnedCounter.Proofs
+lake build DumbContracts.Specs.Ledger.Proofs
+lake build DumbContracts.Specs.SimpleToken.Proofs
 
 # Build infrastructure
-lake build Compiler.Proofs.Automation
-lake build Compiler.Proofs.SpecInterpreter
+lake build DumbContracts.Proofs.Stdlib.Automation
+lake build DumbContracts.Proofs.Stdlib.SpecInterpreter
 ```
-
-**Current Status**: ✅ All files compile successfully
 
 ## Infrastructure Components
 
-### SpecInterpreter ([SpecInterpreter.lean](SpecInterpreter.lean))
+### SpecInterpreter ([SpecInterpreter.lean](../../DumbContracts/Proofs/Stdlib/SpecInterpreter.lean))
 
 Defines the execution semantics for ContractSpec language.
 
@@ -90,7 +60,7 @@ let result := interpretSpec counterSpec storage tx
 -- result.finalStorage.getSlot 0 = 43
 ```
 
-### Automation Library ([Automation.lean](Automation.lean))
+### Automation Library ([Automation.lean](../../DumbContracts/Proofs/Stdlib/Automation.lean))
 
 Provides proven helper lemmas for common proof patterns.
 
@@ -289,14 +259,17 @@ case neg => -- proof when h is false
 
 ```bash
 # Build specific contract proofs
-lake build Compiler.Proofs.SpecCorrectness.SimpleStorage
-lake build Compiler.Proofs.SpecCorrectness.Counter
-lake build Compiler.Proofs.SpecCorrectness.SafeCounter
-lake build Compiler.Proofs.SpecCorrectness.Owned
+lake build DumbContracts.Specs.SimpleStorage.Proofs
+lake build DumbContracts.Specs.Counter.Proofs
+lake build DumbContracts.Specs.SafeCounter.Proofs
+lake build DumbContracts.Specs.Owned.Proofs
+lake build DumbContracts.Specs.OwnedCounter.Proofs
+lake build DumbContracts.Specs.Ledger.Proofs
+lake build DumbContracts.Specs.SimpleToken.Proofs
 
 # Build infrastructure
-lake build Compiler.Proofs.Automation
-lake build Compiler.Proofs.SpecInterpreter
+lake build DumbContracts.Proofs.Stdlib.Automation
+lake build DumbContracts.Proofs.Stdlib.SpecInterpreter
 
 # Build everything
 lake build
@@ -304,24 +277,13 @@ lake build
 
 ### Expected Warnings
 
-None. All Layer 1 proofs compile with zero placeholders.
-
-## Metrics
-
-| Metric | Value |
-|--------|-------|
-| Layer 1 Progress | 100% (27/27) |
-| Total Lines | ~1,900 |
-| Proven Theorems | 27 |
-| Automation Lemmas | 20+ |
-| Build Status | ✅ Success |
-| Strategic Sorries | 0 |
+None.
 
 ## Documentation
 
-- **[LAYER1_STATUS.md](LAYER1_STATUS.md)** - Detailed progress tracking with contract-by-contract breakdown
-- **[SpecInterpreter.lean](SpecInterpreter.lean)** - Spec execution semantics implementation
-- **[Automation.lean](Automation.lean)** - Proof helper lemmas and automation
+- Progress tracking lives in `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`.
+- **[SpecInterpreter.lean](../../DumbContracts/Proofs/Stdlib/SpecInterpreter.lean)** - Spec execution semantics implementation
+- **[Automation.lean](../../DumbContracts/Proofs/Stdlib/Automation.lean)** - Proof helper lemmas and automation
 
 ## Contributing
 
@@ -358,25 +320,4 @@ None. All Layer 1 proofs compile with zero placeholders.
 - [Lean 4 Theorem Proving](https://lean-lang.org/theorem_proving_in_lean4/)
 - [Mathlib Tactics](https://leanprover-community.github.io/mathlib4_docs/tactics.html)
 - [DumbContracts Core](../DumbContracts/Core.lean)
-
-## Future Layers
-
-### Layer 2: ContractSpec → IR ✅ Complete
-- IR interpreter implementation
-- End-to-end preservation theorems for 7 contracts
-- Conversions and result equivalence formalized
-
-### Layer 3: IR → Yul (In Progress)
-- ✅ Yul runtime semantics with selector-aware calldata
-- ✅ Mapping slot model shared with IR semantics
-- ⏳ Codegen correctness proofs for `emitYul`
-- ⏳ Preservation theorem: `emitYul` preserves semantics
-
-### Layer 4: Trust Assumptions
-- Documented: solc compiles Yul → EVM correctly
-- Validated: 70,000+ differential tests
-- Trusted: Lean 4 kernel, EVM implementations
-
----
-
-**Status**: Layer 1 Complete, Layer 2 Complete, Layer 3 In Progress | **Last Updated**: 2026-02-12 | **Maintainer**: Verification Team
+- Roadmap and progress updates: `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`

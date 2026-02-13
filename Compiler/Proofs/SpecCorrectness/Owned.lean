@@ -52,29 +52,18 @@ These are reasonable assumptions because:
 - Our differential tests validate this empirically (70,000+ tests)
 -/
 
-/-- Ethereum addresses are 160-bit values, so addressToNat is always less than 2^256 -/
+/-
+Ethereum addresses are 160-bit values, so addressToNat is always less than addressModulus.
+This matches the SpecInterpreter's address handling.
+-/
 private theorem addressToNat_lt_modulus (addr : Address) :
-    addressToNat addr < DumbContracts.Core.Uint256.modulus := by
-  -- addressToNat either:
-  -- 1. Returns the parsed hex value modulo 2^160
-  -- 2. Returns stringToNat % 2^160
-  -- In either case, the result is < 2^160 < 2^256
+    addressToNat addr < addressModulus := by
   unfold addressToNat
   split
-  · -- Case: parseHexNat? returns some n
-    -- We know that 2^160 < 2^256 (modulus)
-    have h_160_lt_mod : (2^160 : Nat) < DumbContracts.Core.Uint256.modulus := by
-      decide
-    rename_i n _
-    have h_mod : n % 2^160 < 2^160 := by
-      exact Nat.mod_lt _ (by decide : 2^160 > 0)
-    exact lt_trans h_mod h_160_lt_mod
-  · -- Case: parseHexNat? returns none, so we use stringToNat % 2^160
-    rename_i _
-    have h_mod : stringToNat addr % 2^160 < 2^160 := Nat.mod_lt _ (by decide : 2^160 > 0)
-    have h_160_lt_mod : (2^160 : Nat) < DumbContracts.Core.Uint256.modulus := by decide
-    calc stringToNat addr % 2^160 < 2^160 := h_mod
-      _ < DumbContracts.Core.Uint256.modulus := h_160_lt_mod
+  · rename_i n _
+    exact Nat.mod_lt _ (by decide : 2^160 > 0)
+  · rename_i _
+    exact Nat.mod_lt _ (by decide : 2^160 > 0)
 
 /-- addressToNat is injective for valid Ethereum addresses
 
@@ -88,8 +77,8 @@ private axiom addressToNat_injective :
     ∀ (a b : Address), addressToNat a = addressToNat b → a = b
 
 /-- addressToNat mod modulus is identity -/
-private theorem addressToNat_mod_eq (addr : Address) :
-    addressToNat addr % DumbContracts.Core.Uint256.modulus = addressToNat addr := by
+@[simp] private theorem addressToNat_mod_eq (addr : Address) :
+    addressToNat addr % addressModulus = addressToNat addr := by
   exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
 
 /- Correctness Theorems -/
@@ -110,8 +99,7 @@ theorem owned_constructor_correct (state : ContractState) (initialOwner : Addres
   unfold DumbContracts.Examples.Owned.constructor Contract.run ownedSpec interpretSpec
   simp [setStorageAddr, DumbContracts.Examples.Owned.owner, DumbContracts.bind, DumbContracts.pure]
   simp [execConstructor, execStmts, execStmt, evalExpr, SpecStorage.setSlot, SpecStorage.getSlot, SpecStorage.empty]
-  -- Use our lemma: addressToNat % modulus = addressToNat
-  rw [addressToNat_mod_eq]
+  -- addressToNat_mod_eq is a simp lemma now.
 
 /-- The `transferOwnership` function correctly transfers ownership when called by owner -/
 theorem transferOwnership_correct_as_owner (state : ContractState) (newOwner : Address) (sender : Address)
@@ -226,11 +214,10 @@ theorem getOwner_preserves_state (state : ContractState) (sender : Address) :
 
 /-- Only owner can transfer ownership -/
 theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (sender : Address) :
-    let result := (transferOwnership newOwner).run { state with sender := sender }
-    result.isSuccess = true → state.storageAddr 0 = sender := by
+    ((transferOwnership newOwner).run { state with sender := sender }).isSuccess = true →
+    state.storageAddr 0 = sender := by
   intro h_success
   -- If transferOwnership succeeds, onlyOwner must have succeeded.
-  dsimp at h_success
   have h_onlyOwner :
       ((onlyOwner).run { state with sender := sender }).isSuccess = true := by
     -- Use bind success propagation from Automation
@@ -253,7 +240,7 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
       (state := { state with sender := sender })
       h_require_success
   -- Convert boolean equality to propositional equality.
-  exact (Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1 h_eq
+  exact (Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1 h_eq |>.symm
 
 /-- Constructor sets initial owner correctly -/
 theorem constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :

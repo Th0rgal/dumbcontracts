@@ -181,4 +181,14 @@ def setFallbackHandler (handler : Address) : Contract Unit := do
   require (decide (handler ≠ thisAddr)) "handler is Safe"
   setStorage fallbackHandlerStorage (encodeAddress handler)
 
+/-- Placeholder changeThreshold: only callable by the Safe itself. -/
+def changeThreshold (newThreshold : Uint256) : Contract Unit := do
+  let sender ← msgSender
+  let thisAddr ← contractAddress
+  require (decide (sender = thisAddr)) "only self"
+  let ownersLen ← getStorage ownerCount
+  require (newThreshold ≤ ownersLen) "threshold too high"
+  require ((0 : Uint256) < newThreshold) "threshold zero"
+  setStorage threshold newThreshold
+
 end DumbContracts.Examples.SafeMultisigBase

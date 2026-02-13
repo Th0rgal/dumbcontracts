@@ -222,4 +222,18 @@ def setFallbackHandler_spec (handler : Address) (s s' : ContractState) : Prop :=
   s'.msgValue = s.msgValue ∧
   s'.blockTimestamp = s.blockTimestamp
 
+/-- Placeholder changeThreshold spec: only callable by the Safe itself. -/
+def changeThreshold_spec (newThreshold : Uint256) (s s' : ContractState) : Prop :=
+  s.sender = s.thisAddress ∧
+  newThreshold ≤ s.storage ownerCount.slot ∧
+  (0 : Uint256) < newThreshold ∧
+  s'.storage threshold.slot = newThreshold ∧
+  (∀ slot : Nat, slot ≠ threshold.slot → s'.storage slot = s.storage slot) ∧
+  s'.storageMap = s.storageMap ∧
+  s'.storageAddr = s.storageAddr ∧
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
+
 end DumbContracts.Specs.SafeMultisigBase

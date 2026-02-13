@@ -180,6 +180,18 @@ private def checkIRvsYul (ir : IRContract) (tx : IRTransaction) (state : IRState
   let yulResult := interpretYulFromIRFuel ir tx state
   resultsMatchOn slots mappingKeys irResult yulResult
 
+private def revertPreservesState (ir : IRContract) (tx : IRTransaction) (state : IRState)
+    (slots : List Nat) (mappingKeys : List (Nat × Nat)) : Bool :=
+  let irResult := interpretIR ir tx state
+  let yulResult := interpretYulFromIRFuel ir tx state
+  if irResult.success || yulResult.success then
+    false
+  else
+    slots.all (fun slot => irResult.finalStorage slot == state.storage slot) &&
+    slots.all (fun slot => yulResult.finalStorage slot == state.storage slot) &&
+    mappingKeys.all (fun (base, key) => irResult.finalMappings base key == state.mappings base key) &&
+    mappingKeys.all (fun (base, key) => yulResult.finalMappings base key == state.mappings base key)
+
 private def simpleStorageSelectors : List Nat := [0x6057361d, 0x2e64cec1]
 private def counterSelectors : List Nat := [0xd09de08a, 0x2baeceb7, 0xa87d942c]
 private def safeCounterSelectors : List Nat := [0xd09de08a, 0x2baeceb7, 0xa87d942c]
@@ -243,7 +255,8 @@ private def simpleTokenSelectors : List Nat :=
   | .ok ir =>
       let tx : IRTransaction := { sender := 123, functionSelector := 0xf2fde38b, args := [0xCAFE] }
       let state := mkIRState 123 (storageWith 0 0xBEEF) emptyMappings
-      checkIRvsYul ir tx state [0] []
+      checkIRvsYul ir tx state [0] [] &&
+      revertPreservesState ir tx state [0] []
 
 -- Owned.transferOwnership: owner succeeds, storage updated
 #guard
@@ -263,7 +276,8 @@ private def simpleTokenSelectors : List Nat :=
   | .ok ir =>
       let tx : IRTransaction := { sender := 5, functionSelector := 0x2baeceb7, args := [] }
       let state := mkIRState 5 (storageWith 0 0) emptyMappings
-      checkIRvsYul ir tx state [0] []
+      checkIRvsYul ir tx state [0] [] &&
+      revertPreservesState ir tx state [0] []
 
 -- OwnedCounter.increment: owner increments counter in slot 1
 #guard
@@ -297,7 +311,8 @@ private def simpleTokenSelectors : List Nat :=
       let tx : IRTransaction := { sender := sender, functionSelector := 0xa9059cbb, args := [recipient, 5] }
       let state := mkIRState sender emptyStorage (fun b k =>
         if b = 1 ∧ k = sender then 2 else if b = 1 ∧ k = recipient then 7 else 0)
-      checkIRvsYul ir tx state [] [(1, sender), (1, recipient)]
+      checkIRvsYul ir tx state [] [(1, sender), (1, recipient)] &&
+      revertPreservesState ir tx state [] [(1, sender), (1, recipient)]
 
 -- SimpleToken.balanceOf: returns mapping[1][addr] = 42
 #guard
@@ -325,7 +340,8 @@ private def simpleTokenSelectors : List Nat :=
   | .ok ir =>
       let tx : IRTransaction := { sender := 9, functionSelector := 0xDEADBEEF, args := [] }
       let state := mkIRState 9 (storageWith 0 123) (mappingsWith 0 7 42)
-      checkIRvsYul ir tx state [0] [(0, 7)]
+      checkIRvsYul ir tx state [0] [(0, 7)] &&
+      revertPreservesState ir tx state [0] [(0, 7)]
 
 -- Unknown selector with mappings: revert, mappings unchanged
 #guard
@@ -335,6 +351,7 @@ private def simpleTokenSelectors : List Nat :=
       let sender := 0xABCD
       let tx : IRTransaction := { sender := sender, functionSelector := 0xDEADBEEF, args := [1, 2] }
       let state := mkIRState sender emptyStorage (mappingsWith 0 sender 5)
-      checkIRvsYul ir tx state [] [(0, sender)]
+      checkIRvsYul ir tx state [] [(0, sender)] &&
+      revertPreservesState ir tx state [] [(0, sender)]
 
 end Compiler.Proofs.YulGeneration

@@ -9,7 +9,9 @@ Checks:
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -149,7 +151,49 @@ def compute_selectors(signatures: Iterable[str]) -> List[int]:
         selectors.append(int(line, 16))
     if len(selectors) != len(sigs):
         die(f"keccak256.py returned {len(selectors)} selectors for {len(sigs)} signatures")
+    maybe_check_cast_selectors(sigs, selectors)
     return selectors
+
+
+def should_check_cast() -> bool:
+    return os.getenv("CHECK_SELECTORS_CAST", "1") != "0"
+
+
+def cast_available() -> bool:
+    return shutil.which("cast") is not None
+
+
+def compute_selectors_cast(signatures: Iterable[str]) -> List[int]:
+    selectors: List[int] = []
+    for sig in signatures:
+        result = subprocess.run(
+            ["cast", "keccak", sig],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            die(f"cast keccak failed: {result.stderr.strip()}")
+        digest = result.stdout.strip()
+        if not digest.startswith("0x") or len(digest) < 10:
+            die(f"cast keccak returned unexpected output: {digest}")
+        selectors.append(int(digest[:10], 16))
+    return selectors
+
+
+def maybe_check_cast_selectors(signatures: List[str], selectors: List[int]) -> None:
+    if not signatures:
+        return
+    if not cast_available():
+        if should_check_cast():
+            die("CHECK_SELECTORS_CAST=1 but 'cast' was not found in PATH")
+        return
+    cast_selectors = compute_selectors_cast(signatures)
+    if cast_selectors != selectors:
+        die(
+            "cast selector mismatch: expected "
+            f"{format_selectors(selectors)} got {format_selectors(cast_selectors)}"
+        )
 
 
 def extract_compile_selectors(text: str) -> List[CompileSelectors]:

@@ -209,4 +209,17 @@ def setModuleGuard_spec (guard : Address) (s s' : ContractState) : Prop :=
   s'.msgValue = s.msgValue ∧
   s'.blockTimestamp = s.blockTimestamp
 
+/-- Placeholder setFallbackHandler spec: only callable by the Safe itself. -/
+def setFallbackHandler_spec (handler : Address) (s s' : ContractState) : Prop :=
+  s.sender = s.thisAddress ∧
+  handler ≠ s.thisAddress ∧
+  s'.storage fallbackHandlerStorage.slot = encodeAddress handler ∧
+  (∀ slot : Nat, slot ≠ fallbackHandlerStorage.slot → s'.storage slot = s.storage slot) ∧
+  s'.storageMap = s.storageMap ∧
+  s'.storageAddr = s.storageAddr ∧
+  s'.sender = s.sender ∧
+  s'.thisAddress = s.thisAddress ∧
+  s'.msgValue = s.msgValue ∧
+  s'.blockTimestamp = s.blockTimestamp
+
 end DumbContracts.Specs.SafeMultisigBase

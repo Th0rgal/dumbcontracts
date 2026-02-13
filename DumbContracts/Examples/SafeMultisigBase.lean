@@ -173,4 +173,12 @@ def setModuleGuard (guard : Address) : Contract Unit := do
   require (decide (sender = thisAddr)) "only self"
   setStorage moduleGuardStorage (encodeAddress guard)
 
+/-- Placeholder setFallbackHandler: only callable by the Safe itself. -/
+def setFallbackHandler (handler : Address) : Contract Unit := do
+  let sender ← msgSender
+  let thisAddr ← contractAddress
+  require (decide (sender = thisAddr)) "only self"
+  require (decide (handler ≠ thisAddr)) "handler is Safe"
+  setStorage fallbackHandlerStorage (encodeAddress handler)
+
 end DumbContracts.Examples.SafeMultisigBase

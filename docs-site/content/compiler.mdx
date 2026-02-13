@@ -13,7 +13,6 @@ The DumbContracts compiler transforms high-level, verified contract specificatio
 
 **Pipeline**: EDSL Contract → Declarative Spec → IR → Yul → EVM Bytecode
 
-**Status**: ✅ **Roadmap Item 1 Complete** — Generic compilation with proven Yul codegen preservation (2026-02-12)
 
 ## Trust Model
 
@@ -33,11 +32,8 @@ The DumbContracts compiler transforms high-level, verified contract specificatio
 - **EVM semantics**: Ethereum's execution model matches the spec used in proofs
 - **Function selectors**: Pre-computed `keccak256` hashes are correct
 
-### Future: Zero Trust
-**Roadmap Items 2-4** aim to reduce remaining trust assumptions further:
-- **Item 2**: Large-scale differential testing (EDSL vs EVM)
-- **Item 3**: Property extraction (theorems → on-chain tests)
-- **Item 4**: Extended compiler verification (bytecode-level links)
+### Roadmap
+Roadmap, milestones, and progress updates live in `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`.
 
 ## Example: SimpleStorage
 
@@ -419,33 +415,6 @@ def ownedSpec : ContractSpec := {
 - Type-safe expressions
 - No manual Yul construction
 - Automatic slot/selector management
-
-## Roadmap
-
-### ✅ Item 1: Generic Compilation (Complete)
-- Automatic IR generation from declarative specs
-- All 7 contracts compile without manual IR
-- 264/264 Foundry tests pass (as of 2026-02-12)
-- **Status**: **COMPLETE** (2026-02-10)
-
-### 🚧 Item 2: Differential Testing (Next)
-- Build EDSL interpreter in Lean
-- Generate random transactions
-- Run 10,000+ tests per contract comparing EDSL vs EVM
-- Target: 70k+ tests with zero mismatches
-- **Status**: **PLANNED**
-
-### 📋 Item 3: Property Extraction
-- Parse 252 proven theorems
-- Generate Foundry property tests
-- Every theorem becomes a passing on-chain test
-- **Status**: **PLANNED**
-
-### 🔬 Item 4: Compiler Verification (Long-term)
-- Formalize EVM execution in Lean
-- Prove compilation preserves semantics
-- Zero trust assumptions
-- **Status**: **RESEARCH PHASE**
 
 ## Links
 

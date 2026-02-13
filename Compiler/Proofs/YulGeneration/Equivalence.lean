@@ -125,4 +125,11 @@ theorem execYulStmtsFuel_cons
       | .revert s => .revert s := by
   rfl
 
+/-! ## Generic Sequence Equivalence (TODO)
+
+We still need a compositional lemma that lifts `stmt_equiv` to statement
+lists with fuel/length constraints. This will live here once `execIRStmts`
+can be unfolded safely in proof contexts.
+-/
+
 end Compiler.Proofs.YulGeneration

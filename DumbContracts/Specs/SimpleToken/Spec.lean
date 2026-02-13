@@ -48,9 +48,8 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
 def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
   s'.storage 2 = add (s.storage 2) amount ∧
-  storageMapUnchangedExceptKey 1 to s s' ∧
+  storageMapUnchangedExceptKeyAtSlot 1 to s s' ∧
   s'.storageAddr 0 = s.storageAddr 0 ∧
-  storageMapUnchangedExceptSlot 1 s s' ∧
   storageUnchangedExcept 2 s s' ∧
   sameContext s s'
 
@@ -65,9 +64,8 @@ def transfer_spec (sender to : Address) (amount : Uint256) (s s' : ContractState
   s.storageMap 1 sender ≥ amount ∧
   s'.storageMap 1 sender = sub (s.storageMap 1 sender) amount ∧
   s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
-  storageMapUnchangedExceptKeys 1 sender to s s' ∧
+  storageMapUnchangedExceptKeysAtSlot 1 sender to s s' ∧
   s'.storageAddr 0 = s.storageAddr 0 ∧
-  storageMapUnchangedExceptSlot 1 s s' ∧
   sameStorage s s' ∧
   sameStorageAddr s s' ∧
   sameContext s s'

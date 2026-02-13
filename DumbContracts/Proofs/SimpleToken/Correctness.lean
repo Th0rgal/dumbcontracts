@@ -68,7 +68,7 @@ theorem mint_preserves_wellformedness (s : ContractState) (to : Address) (amount
   let s' := ((mint to amount).run s).snd
   WellFormedState s' := by
   have h_spec := mint_meets_spec_when_owner s to amount h_owner
-  obtain ⟨_, _, _, h_owner_pres, _, _, h_ctx⟩ := h_spec
+  obtain ⟨_, _, _, h_owner_pres, _, h_ctx⟩ := h_spec
   have h_sender_pres := h_ctx.1
   have h_this_pres := h_ctx.2.1
   constructor
@@ -83,7 +83,7 @@ theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (am
   let s' := ((transfer to amount).run s).snd
   WellFormedState s' := by
   have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
-  obtain ⟨_, _, _, _, h_owner_pres, _, _h_storage, h_addr_pres, h_ctx⟩ := h_spec
+  obtain ⟨_, _, _, _, h_owner_pres, _h_storage, h_addr_pres, h_ctx⟩ := h_spec
   have h_sender_pres := h_ctx.1
   have h_this_pres := h_ctx.2.1
   constructor
@@ -103,7 +103,7 @@ theorem mint_preserves_owner (s : ContractState) (to : Address) (amount : Uint25
   let s' := ((mint to amount).run s).snd
   s'.storageAddr 0 = s.storageAddr 0 := by
   have h := mint_meets_spec_when_owner s to amount h_owner
-  obtain ⟨_, _, _, h_owner_pres, _, _, _⟩ := h
+  obtain ⟨_, _, _, h_owner_pres, _, _⟩ := h
   exact h_owner_pres
 
 /-- Transfer does not change the owner address. -/
@@ -112,7 +112,7 @@ theorem transfer_preserves_owner (s : ContractState) (to : Address) (amount : Ui
   let s' := ((transfer to amount).run s).snd
   s'.storageAddr 0 = s.storageAddr 0 := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
-  obtain ⟨_, _, _, _, h_owner_pres, _, _, _h_addr, _h_ctx⟩ := h
+  obtain ⟨_, _, _, _, h_owner_pres, _, _, _h_ctx⟩ := h
   exact h_owner_pres
 
 /-! ## End-to-End Composition

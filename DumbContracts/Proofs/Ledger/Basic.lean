@@ -58,12 +58,13 @@ theorem deposit_meets_spec (s : ContractState) (amount : Uint256) :
   let s' := ((deposit amount).run s).snd
   deposit_spec amount s s' := by
   rw [deposit_unfold]
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · simp [ContractResult.snd, beq_iff_eq]
-  · intro addr h_ne
-    simp [ContractResult.snd, beq_iff_eq, h_ne]
-  · intro slot h_ne addr
-    simp [ContractResult.snd, beq_iff_eq, h_ne]
+  · refine ⟨?_, ?_⟩
+    · intro addr h_ne
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
+    · intro slot h_ne addr
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
   · rfl
   · rfl
   · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
@@ -105,12 +106,13 @@ theorem withdraw_meets_spec (s : ContractState) (amount : Uint256)
   let s' := ((withdraw amount).run s).snd
   withdraw_spec amount s s' := by
   rw [withdraw_unfold s amount h_balance]
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · simp [ContractResult.snd, beq_iff_eq]
-  · intro addr h_ne
-    simp [ContractResult.snd, beq_iff_eq, h_ne]
-  · intro slot h_ne addr
-    simp [ContractResult.snd, beq_iff_eq, h_ne]
+  · refine ⟨?_, ?_⟩
+    · intro addr h_ne
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
+    · intro slot h_ne addr
+      simp [ContractResult.snd, beq_iff_eq, h_ne]
   · rfl
   · rfl
   · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
@@ -160,7 +162,7 @@ theorem transfer_meets_spec (s : ContractState) (to : Address) (amount : Uint256
   transfer_spec to amount s s' := by
   rw [transfer_unfold s to amount h_balance h_ne]
   simp only [ContractResult.snd, transfer_spec]
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- sender balance decreases
     have h_ne' : (s.sender == to) = false := by
       simp [beq_iff_eq]; exact h_ne
@@ -169,12 +171,12 @@ theorem transfer_meets_spec (s : ContractState) (to : Address) (amount : Uint256
     have h_ne' : (to == s.sender) = false := by
       simp [beq_iff_eq]; exact h_ne.symm
     simp [beq_iff_eq, h_ne']
-  · -- other balances unchanged
-    intro addr h_ne_sender h_ne_to
-    simp [beq_iff_eq, h_ne_sender, h_ne_to]
-  · -- other slots unchanged
-    intro slot h_slot addr
-    simp [beq_iff_eq, h_slot]
+  · -- other balances/slots unchanged
+    refine ⟨?_, ?_⟩
+    · intro addr h_ne_sender h_ne_to
+      simp [beq_iff_eq, h_ne_sender, h_ne_to]
+    · intro slot h_slot addr
+      simp [beq_iff_eq, h_slot]
   · rfl
   · rfl
   · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩

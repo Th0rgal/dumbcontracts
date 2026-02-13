@@ -154,7 +154,7 @@ theorem mint_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
     = (addrs.map (fun addr => s.storageMap 1 addr)).sum + countOccU to addrs * amount := by
   have h_spec := mint_meets_spec_when_owner s to amount h_owner
   simp [mint_spec] at h_spec
-  obtain ⟨h_bal_raw, _, h_other, _, _, _, _, _⟩ := h_spec
+  obtain ⟨h_bal_raw, _, h_other, _, _, _⟩ := h_spec
   have h_bal :
       ((mint to amount).run s).snd.storageMap 1 to = s.storageMap 1 to + amount := by
     have h_bal' := h_bal_raw
@@ -164,7 +164,7 @@ theorem mint_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
   exact map_sum_point_update
     (fun addr => s.storageMap 1 addr)
     (fun addr => ((mint to amount).run s).snd.storageMap 1 addr)
-    to amount h_bal (fun addr h_ne => h_other addr h_ne)
+    to amount h_bal (fun addr h_ne => h_other.1 addr h_ne)
 
 /-! ## Transfer: Exact Sum Conservation Equation -/
 
@@ -280,7 +280,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
       + countOccU to addrs * amount := by
   have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
-  obtain ⟨_, h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _, _⟩ := h_spec
+  obtain ⟨_, h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _⟩ := h_spec
   have h_sender_bal' :
       ((transfer to amount).run s).snd.storageMap 1 s.sender = s.storageMap 1 s.sender - amount := by
     exact h_sender_bal
@@ -294,7 +294,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
     (fun addr => s.storageMap 1 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)
     s.sender to amount h_ne h_sender_bal' h_recip_bal'
-    (fun addr h1 h2 => h_other_bal addr h1 h2)
+    (fun addr h1 h2 => h_other_bal.1 addr h1 h2)
 
 /-! ## Summary
 

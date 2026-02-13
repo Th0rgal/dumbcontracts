@@ -50,4 +50,14 @@ def storageMapUnchangedExceptKey (slot : Nat) (addr : Address) (s s' : ContractS
 def storageMapUnchangedExceptKeys (slot : Nat) (addr1 addr2 : Address) (s s' : ContractState) : Prop :=
   ∀ other : Address, other ≠ addr1 → other ≠ addr2 → s'.storageMap slot other = s.storageMap slot other
 
+/-- Mapping storage is unchanged except at `slot` for key `addr`. -/
+def storageMapUnchangedExceptKeyAtSlot (slot : Nat) (addr : Address) (s s' : ContractState) : Prop :=
+  storageMapUnchangedExceptKey slot addr s s' ∧
+  storageMapUnchangedExceptSlot slot s s'
+
+/-- Mapping storage is unchanged except at `slot` for keys `addr1` and `addr2`. -/
+def storageMapUnchangedExceptKeysAtSlot (slot : Nat) (addr1 addr2 : Address) (s s' : ContractState) : Prop :=
+  storageMapUnchangedExceptKeys slot addr1 addr2 s s' ∧
+  storageMapUnchangedExceptSlot slot s s'
+
 end DumbContracts.Specs

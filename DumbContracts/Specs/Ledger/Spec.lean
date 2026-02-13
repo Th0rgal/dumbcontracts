@@ -21,8 +21,7 @@ open DumbContracts.EVM.Uint256
 /-- deposit: increases sender's balance by amount -/
 def deposit_spec (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storageMap 0 s.sender = add (s.storageMap 0 s.sender) amount ∧
-  storageMapUnchangedExceptKey 0 s.sender s s' ∧
-  storageMapUnchangedExceptSlot 0 s s' ∧
+  storageMapUnchangedExceptKeyAtSlot 0 s.sender s s' ∧
   sameStorage s s' ∧
   sameStorageAddr s s' ∧
   sameContext s s'
@@ -30,8 +29,7 @@ def deposit_spec (amount : Uint256) (s s' : ContractState) : Prop :=
 /-- withdraw (when sufficient balance): decreases sender's balance by amount -/
 def withdraw_spec (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storageMap 0 s.sender = sub (s.storageMap 0 s.sender) amount ∧
-  storageMapUnchangedExceptKey 0 s.sender s s' ∧
-  storageMapUnchangedExceptSlot 0 s s' ∧
+  storageMapUnchangedExceptKeyAtSlot 0 s.sender s s' ∧
   sameStorage s s' ∧
   sameStorageAddr s s' ∧
   sameContext s s'
@@ -41,8 +39,7 @@ def withdraw_spec (amount : Uint256) (s s' : ContractState) : Prop :=
 def transfer_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storageMap 0 s.sender = sub (s.storageMap 0 s.sender) amount ∧
   s'.storageMap 0 to = add (s.storageMap 0 to) amount ∧
-  storageMapUnchangedExceptKeys 0 s.sender to s s' ∧
-  storageMapUnchangedExceptSlot 0 s s' ∧
+  storageMapUnchangedExceptKeysAtSlot 0 s.sender to s s' ∧
   sameStorage s s' ∧
   sameStorageAddr s s' ∧
   sameContext s s'

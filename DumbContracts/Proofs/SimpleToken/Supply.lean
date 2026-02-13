@@ -57,9 +57,12 @@ theorem constructor_establishes_supply_bounds (s : ContractState) (initialOwner 
   obtain ⟨_, h_supply_zero, _, _, h_map, _, _⟩ := h_spec
   have h_all_zero : ∀ addr, ((constructor initialOwner).run s).snd.storageMap 1 addr = 0 := by
     intro addr; rw [h_map]; exact h_zero addr
-  have h_sum := map_sum_zero_of_all_zero
-    (fun addr => ((constructor initialOwner).run s).snd.storageMap 1 addr) h_all_zero addrs
-  rw [h_sum, h_supply_zero]; exact Nat.zero_le 0
+  have h_sum : sum_balances ((constructor initialOwner).run s).snd addrs = 0 := by
+    simpa [sum_balances] using
+      map_sum_zero_of_all_zero
+        (fun addr => ((constructor initialOwner).run s).snd.storageMap 1 addr) h_all_zero addrs
+  have h_supply_zero' : ((constructor initialOwner).run s).snd.storage 2 = 0 := h_supply_zero
+  simp [h_sum, h_supply_zero']
 
 /-! ## Occurrence Counting -/
 

@@ -9,6 +9,7 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.Specs.Common
 import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.OwnedCounter
 
@@ -23,13 +24,10 @@ open DumbContracts.EVM.Uint256
 /-- Constructor: sets owner, does not touch count slot -/
 def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
   s'.storageAddr 0 = initialOwner ∧
-  s'.storage = s.storage ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storageAddr slot = s.storageAddr slot) ∧
-  s'.storageMap = s.storageMap ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageMap s s' ∧
+  sameContext s s'
 
 /-- getCount: returns count from slot 1, no state change -/
 def getCount_spec (result : Uint256) (s : ContractState) : Prop :=
@@ -43,33 +41,24 @@ def getOwner_spec (result : Address) (s : ContractState) : Prop :=
 def increment_spec (s s' : ContractState) : Prop :=
   s'.storage 1 = add (s.storage 1) 1 ∧
   (∀ slot : Nat, slot ≠ 1 → s'.storage slot = s.storage slot) ∧
-  s'.storageAddr = s.storageAddr ∧
-  s'.storageMap = s.storageMap ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorageAddr s s' ∧
+  sameStorageMap s s' ∧
+  sameContext s s'
 
 /-- decrement (when owner): count decreases by 1, owner unchanged, context preserved -/
 def decrement_spec (s s' : ContractState) : Prop :=
   s'.storage 1 = sub (s.storage 1) 1 ∧
   (∀ slot : Nat, slot ≠ 1 → s'.storage slot = s.storage slot) ∧
-  s'.storageAddr = s.storageAddr ∧
-  s'.storageMap = s.storageMap ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorageAddr s s' ∧
+  sameStorageMap s s' ∧
+  sameContext s s'
 
 /-- transferOwnership (when owner): changes owner, count unchanged -/
 def transferOwnership_spec (newOwner : Address) (s s' : ContractState) : Prop :=
   s'.storageAddr 0 = newOwner ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storageAddr slot = s.storageAddr slot) ∧
-  s'.storage = s.storage ∧
-  s'.storageMap = s.storageMap ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageMap s s' ∧
+  sameContext s s'
 
 end DumbContracts.Specs.OwnedCounter

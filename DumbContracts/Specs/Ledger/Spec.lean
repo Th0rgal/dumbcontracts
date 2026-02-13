@@ -6,6 +6,7 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.Specs.Common
 import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.Ledger
 
@@ -22,24 +23,18 @@ def deposit_spec (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storageMap 0 s.sender = add (s.storageMap 0 s.sender) amount ∧
   (∀ addr : Address, addr ≠ s.sender → s'.storageMap 0 addr = s.storageMap 0 addr) ∧
   (∀ slot : Nat, slot ≠ 0 → ∀ addr, s'.storageMap slot addr = s.storageMap slot addr) ∧
-  s'.storage = s.storage ∧
-  s'.storageAddr = s.storageAddr ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageAddr s s' ∧
+  sameContext s s'
 
 /-- withdraw (when sufficient balance): decreases sender's balance by amount -/
 def withdraw_spec (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storageMap 0 s.sender = sub (s.storageMap 0 s.sender) amount ∧
   (∀ addr : Address, addr ≠ s.sender → s'.storageMap 0 addr = s.storageMap 0 addr) ∧
   (∀ slot : Nat, slot ≠ 0 → ∀ addr, s'.storageMap slot addr = s.storageMap slot addr) ∧
-  s'.storage = s.storage ∧
-  s'.storageAddr = s.storageAddr ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageAddr s s' ∧
+  sameContext s s'
 
 /-- transfer (when sufficient balance, sender ≠ to):
     decreases sender balance, increases recipient balance -/
@@ -48,12 +43,9 @@ def transfer_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Pro
   s'.storageMap 0 to = add (s.storageMap 0 to) amount ∧
   (∀ addr : Address, addr ≠ s.sender → addr ≠ to → s'.storageMap 0 addr = s.storageMap 0 addr) ∧
   (∀ slot : Nat, slot ≠ 0 → ∀ addr, s'.storageMap slot addr = s.storageMap slot addr) ∧
-  s'.storage = s.storage ∧
-  s'.storageAddr = s.storageAddr ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageAddr s s' ∧
+  sameContext s s'
 
 /-- getBalance: returns balance at given address, no state change -/
 def getBalance_spec (addr : Address) (result : Uint256) (s : ContractState) : Prop :=

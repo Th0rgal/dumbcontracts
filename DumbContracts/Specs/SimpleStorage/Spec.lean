@@ -6,6 +6,7 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.Specs.Common
 
 namespace DumbContracts.Specs.SimpleStorage
 
@@ -17,13 +18,10 @@ def store_spec (value : Uint256) (s s' : ContractState) : Prop :=
   -- Other storage slots unchanged
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
   -- Context unchanged
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp ∧
+  sameContext s s' ∧
   -- Other storage types unchanged
-  s'.storageAddr = s.storageAddr ∧
-  s'.storageMap = s.storageMap
+  sameStorageAddr s s' ∧
+  sameStorageMap s s'
 
 -- What retrieve should do: return the value at slot 0
 def retrieve_spec (result : Uint256) (s : ContractState) : Prop :=

@@ -280,7 +280,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
       + countOccU to addrs * amount := by
   have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance h_ne
   simp [transfer_spec] at h_spec
-  obtain ⟨_, h_sender_bal, h_recip_bal, _, h_other_bal, _, _, _, _, _, _⟩ := h_spec
+  obtain ⟨_, h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _, _⟩ := h_spec
   have h_sender_bal' :
       ((transfer to amount).run s).snd.storageMap 1 s.sender = s.storageMap 1 s.sender - amount := by
     exact h_sender_bal

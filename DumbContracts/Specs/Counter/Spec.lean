@@ -5,6 +5,7 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.Specs.Common
 import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.Counter
 
@@ -27,12 +28,9 @@ These define the expected behavior of each Counter operation.
 def increment_spec (s s' : ContractState) : Prop :=
   s'.storage 0 = add (s.storage 0) 1 ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp ∧
-  s'.storageAddr = s.storageAddr ∧
-  s'.storageMap = s.storageMap
+  sameContext s s' ∧
+  sameStorageAddr s s' ∧
+  sameStorageMap s s'
 
 /-- Specification for decrement operation:
     - Decreases the count by exactly 1
@@ -42,12 +40,9 @@ def increment_spec (s s' : ContractState) : Prop :=
 def decrement_spec (s s' : ContractState) : Prop :=
   s'.storage 0 = sub (s.storage 0) 1 ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storage slot = s.storage slot) ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp ∧
-  s'.storageAddr = s.storageAddr ∧
-  s'.storageMap = s.storageMap
+  sameContext s s' ∧
+  sameStorageAddr s s' ∧
+  sameStorageMap s s'
 
 /-- Specification for getCount operation:
     - Returns the current count (value at slot 0)

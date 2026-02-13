@@ -5,6 +5,7 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.Specs.Common
 import DumbContracts.Examples.Owned
 
 namespace DumbContracts.Specs.Owned
@@ -25,12 +26,9 @@ These define the expected behavior of each Owned operation.
 def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
   s'.storageAddr 0 = initialOwner ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storageAddr slot = s.storageAddr slot) ∧
-  s'.storage = s.storage ∧
-  s'.storageMap = s.storageMap ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageMap s s' ∧
+  sameContext s s'
 
 /-- Specification for getOwner operation:
     - Returns the current owner address
@@ -48,12 +46,9 @@ def getOwner_spec (result : Address) (s : ContractState) : Prop :=
 def transferOwnership_spec (newOwner : Address) (s s' : ContractState) : Prop :=
   s'.storageAddr 0 = newOwner ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storageAddr slot = s.storageAddr slot) ∧
-  s'.storage = s.storage ∧
-  s'.storageMap = s.storageMap ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageMap s s' ∧
+  sameContext s s'
 
 /-- Specification for isOwner check:
     - Returns true if sender equals current owner

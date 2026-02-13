@@ -6,6 +6,7 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.Specs.Common
 import DumbContracts.EVM.Uint256
 
 namespace DumbContracts.Specs.SimpleToken
@@ -35,11 +36,8 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
   s'.storage 2 = 0 ∧
   (∀ slot : Nat, slot ≠ 0 → s'.storageAddr slot = s.storageAddr slot) ∧
   (∀ slot : Nat, slot ≠ 2 → s'.storage slot = s.storage slot) ∧
-  s'.storageMap = s.storageMap ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorageMap s s' ∧
+  sameContext s s'
 
 /-- Specification for mint operation (when caller is owner):
     - Increases balance of 'to' address by 'amount'
@@ -54,10 +52,7 @@ def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storageAddr 0 = s.storageAddr 0 ∧
   (∀ slot : Nat, slot ≠ 1 → ∀ addr : Address, s'.storageMap slot addr = s.storageMap slot addr) ∧
   (∀ slot : Nat, slot ≠ 2 → s'.storage slot = s.storage slot) ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameContext s s'
 
 /-- Specification for transfer operation (when sender has sufficient balance):
     - Decreases sender's balance by 'amount'
@@ -70,16 +65,12 @@ def transfer_spec (sender to : Address) (amount : Uint256) (s s' : ContractState
   s.storageMap 1 sender ≥ amount ∧
   s'.storageMap 1 sender = sub (s.storageMap 1 sender) amount ∧
   s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
-  s'.storage 2 = s.storage 2 ∧
   (∀ addr : Address, addr ≠ sender → addr ≠ to → s'.storageMap 1 addr = s.storageMap 1 addr) ∧
   s'.storageAddr 0 = s.storageAddr 0 ∧
   (∀ slot : Nat, slot ≠ 1 → ∀ addr' : Address, s'.storageMap slot addr' = s.storageMap slot addr') ∧
-  (∀ slot : Nat, s'.storage slot = s.storage slot) ∧
-  (∀ slot : Nat, s'.storageAddr slot = s.storageAddr slot) ∧
-  s'.sender = s.sender ∧
-  s'.thisAddress = s.thisAddress ∧
-  s'.msgValue = s.msgValue ∧
-  s'.blockTimestamp = s.blockTimestamp
+  sameStorage s s' ∧
+  sameStorageAddr s s' ∧
+  sameContext s s'
 
 /-- Specification for balanceOf operation:
     - Returns the balance of the given address

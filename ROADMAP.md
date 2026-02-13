@@ -247,8 +247,8 @@ Contracts/                     # User-style contract layout ✅
 └── SimpleToken/
 
 Compiler/
-├── ContractSpec.lean          # Declarative DSL (219 lines) ✅
-├── Specs.lean                 # All 7 contract specs (238 lines) ✅
+├── ContractSpec.lean          # Declarative DSL ✅
+├── Specs.lean                 # All 7 contract specs ✅
 ├── Selector.lean              # Function selector computation ✅
 ├── IR.lean                    # Intermediate representation ✅
 ├── Codegen.lean               # IR → Yul generation ✅

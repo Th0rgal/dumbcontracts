@@ -19,6 +19,13 @@ Example (SimpleStorage):
 - Implementation: `DumbContracts/Examples/SimpleStorage.lean`
 - Proof: `DumbContracts/Specs/SimpleStorage/Proofs.lean`
 
+## Authoring checklist
+
+1. Define behavior in `DumbContracts/Specs/<Name>/Spec.lean`.
+2. Add invariants in `DumbContracts/Specs/<Name>/Invariants.lean` if needed.
+3. Implement the EDSL contract in `DumbContracts/Examples/<Name>.lean`.
+4. Prove spec adherence in `DumbContracts/Specs/<Name>/Proofs.lean` using `DumbContracts/Proofs/Stdlib/` helpers.
+
 ## SimpleStorage
 
 Single storage slot with get/set.
@@ -152,6 +159,8 @@ def transfer (to : Address) (amount : Uint256) : Contract Unit := do
 Proofs cover mint/transfer correctness, supply conservation equations, and storage isolation across all three slot types.
 
 ## Pattern progression
+
+As of 2026-02-13, the example set is:
 
 1. **SimpleStorage**: single slot
 2. **Counter**: arithmetic

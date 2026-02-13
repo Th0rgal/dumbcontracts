@@ -15,6 +15,14 @@ The project evolved in two phases:
 
 **Phase 2 (Verification)**: Replaced `StateM` with custom `ContractResult` type (`success | revert`) to model `require` guards explicitly. This enabled proving properties like "mint reverts when caller is not owner." The core expanded to include proof automation lemmas and EVM context fields.
 
+## Progress and Roadmap (as of 2026-02-13)
+
+This is the single source of truth for progress, roadmap, and milestone updates.
+
+- **Layer 1 (Spec Correctness)**: Complete for all 7 contracts.
+- **Layer 2 (ContractSpec → IR)**: Infrastructure complete; proofs in progress.
+- **Layer 3 (IR → Yul)**: Not started.
+
 ## Iterations
 
 | Iteration | Contract | Core Change | Key Feature |

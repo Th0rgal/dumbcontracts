@@ -379,20 +379,11 @@ lake build
 
 None. All Layer 1 proofs compile with zero placeholders.
 
-## Metrics
-
-| Metric | Value |
-|--------|-------|
-| Layer 1 Progress | 100% (27/27) |
-| Total Lines | ~1,900 |
-| Proven Theorems | 27 |
-| Automation Lemmas | 20+ |
-| Build Status | ✅ Success |
-| Strategic Sorries | 0 |
-
 ## Documentation
 
-- **[LAYER1_STATUS.md](LAYER1_STATUS.md)** - Detailed progress tracking with contract-by-contract breakdown
+- Progress tracking lives in the docs site only:
+  - `docs-site/content/research.mdx`
+  - `docs-site/content/research/iterations.mdx`
 - **[SpecInterpreter.lean](SpecInterpreter.lean)** - Spec execution semantics implementation
 - **[Automation.lean](Automation.lean)** - Proof helper lemmas and automation
 

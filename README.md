@@ -89,7 +89,7 @@ forge test
 - `Compiler/Proofs/README.md` — Proof structure and status
 - `docs-site/` — Documentation website (MDX)
 - `RESEARCH.md` — Project notes and history
-- `ROADMAP.md` — Milestones and next steps
+- Milestones and next steps live in `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`
 
 ## License
 

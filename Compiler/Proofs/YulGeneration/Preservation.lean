@@ -30,6 +30,13 @@ noncomputable def interpretYulBody (fn : IRFunction) (tx : IRTransaction) (state
   }
   interpretYulRuntime fn.body yulTx state.storage state.mappings
 
+@[simp] theorem interpretYulBody_eq_runtime (fn : IRFunction) (tx : IRTransaction) (state : IRState) :
+    interpretYulBody fn tx state =
+      interpretYulRuntime fn.body
+        { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+        state.storage state.mappings := by
+  rfl
+
 /-- Helper: initial Yul state aligned with the IR transaction/state. -/
 def initialYulState (tx : YulTransaction) (state : IRState) : YulState :=
   YulState.initial tx state.storage state.mappings

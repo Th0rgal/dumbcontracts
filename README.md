@@ -127,8 +127,12 @@ forge test
 
 # Optional: scale differential random test counts
 # DIFFTEST_RANDOM_SMALL defaults to 100, DIFFTEST_RANDOM_LARGE defaults to 10000
+# DIFFTEST_RANDOM_COUNT overrides both small/large when set
 # Large counts can be expensive; tune these for local runs vs CI.
 DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 forge test
+
+# Optional: extract proof theorem names into a test manifest
+python3 scripts/extract_property_manifest.py
 ```
 
 ## Documentation

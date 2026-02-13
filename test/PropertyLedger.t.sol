@@ -328,6 +328,23 @@ contract PropertyLedgerTest is YulTestBase {
     }
 
     /**
+     * Property 12b: transfer_self_preserves_balance (fuzz test)
+     * Theorem: Transfer to self preserves sender balance
+     */
+    function testProperty_Transfer_SelfPreservesBalance(address sender, uint256 senderBalance, uint256 amount) public {
+        vm.assume(amount > 0 && amount <= senderBalance);
+        vm.assume(senderBalance <= type(uint256).max / 2);
+
+        setBalance(sender, senderBalance);
+
+        vm.prank(sender);
+        (bool success,) = ledger.call(abi.encodeWithSignature("transfer(address,uint256)", sender, amount));
+        require(success, "transfer failed");
+
+        assertEq(getBalanceFromStorage(sender), senderBalance, "self-transfer should preserve balance");
+    }
+
+    /**
      * Property 13: transfer_reverts_insufficient
      * Theorem: Transfer reverts when sender has insufficient balance
      */

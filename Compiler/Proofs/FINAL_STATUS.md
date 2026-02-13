@@ -44,8 +44,8 @@ This PR establishes the complete infrastructure for formally verifying the DumbC
 | SimpleToken | 2/2 | ✅ 100% | Fully proven |
 
 **Key Achievements**:
-- ✅ Complete SpecInterpreter implementation (310 lines)
-- ✅ Automation library with lemmas for common patterns (196 lines)
+- ✅ Complete SpecInterpreter implementation
+- ✅ Automation library with lemmas for common patterns
 - ✅ All 7 contract proof structures established
 - ✅ State conversion functions for all contracts
 - ✅ SimpleStorage: First fully proven contract (template)
@@ -56,9 +56,9 @@ This PR establishes the complete infrastructure for formally verifying the DumbC
 **Blockers**: None for Layer 1. Proceed to Layer 2 proofs.
 
 **Files**:
-- `Compiler/Proofs/SpecInterpreter.lean` (310 lines) - Reference interpreter ✅
-- `Compiler/Proofs/Automation.lean` (196 lines) - Helper lemmas ✅
-- `Contracts/*/Proofs.lean` (7 files, ~1200 lines) - Contract proofs
+- `Compiler/Proofs/SpecInterpreter.lean` - Reference interpreter ✅
+- `Compiler/Proofs/Automation.lean` - Helper lemmas ✅
+- `Contracts/*/Proofs.lean` - Contract proofs
 
 **Next Steps**:
 1. Prove Counter IR preservation using the SimpleStorage template
@@ -73,13 +73,13 @@ This PR establishes the complete infrastructure for formally verifying the DumbC
 
 **Status**: 🟡 34% Complete (Infrastructure Only)
 
-**Completed Infrastructure** (559 lines total):
+**Completed Infrastructure**:
 
-| Component | Lines | Status | Purpose |
-|-----------|-------|--------|---------|
-| IRInterpreter | 192 | ✅ Complete | IR execution semantics |
-| Conversions | 195 | ✅ Complete | Type conversions (Spec ↔ IR) |
-| Expr Framework | 172 | ✅ Complete | Theorem statements + strategy |
+| Component | Status | Purpose |
+|-----------|--------|---------|
+| IRInterpreter | ✅ Complete | IR execution semantics |
+| Conversions | ✅ Complete | Type conversions (Spec ↔ IR) |
+| Expr Framework | ✅ Complete | Theorem statements + strategy |
 
 **Key Design Decisions**:
 - ✅ End-to-end contract proofs (not compositional expressions)
@@ -90,8 +90,8 @@ This PR establishes the complete infrastructure for formally verifying the DumbC
 **Proof Complexity Analysis**:
 
 Attempted to prove `simpleStorage_store_correct`. Findings:
-- **Manual proof**: 150-200 lines, 3-5 days per theorem
-- **With automation**: 20-30 lines, expected payoff after 3 contracts
+- **Manual proof**: multi-day per theorem
+- **With automation**: short proofs, expected payoff after 3 contracts
 - **Blockers**:
   1. Deep unfolding (~95 definitions)
   2. Mutual recursion in IR interpreter
@@ -105,9 +105,9 @@ Attempted to prove `simpleStorage_store_correct`. Findings:
 - ✅ Automation recommended to scale beyond SimpleStorage
 
 **Files**:
-- `Compiler/Proofs/IRGeneration/IRInterpreter.lean` (192 lines) ✅
-- `Compiler/Proofs/IRGeneration/Conversions.lean` (195 lines) ✅
-- `Compiler/Proofs/IRGeneration/Expr.lean` (172 lines) ✅
+- `Compiler/Proofs/IRGeneration/IRInterpreter.lean` ✅
+- `Compiler/Proofs/IRGeneration/Conversions.lean` ✅
+- `Compiler/Proofs/IRGeneration/Expr.lean` ✅
 - `Compiler/Proofs/IRGeneration/StoreProofAttempt.lean` (exploration) ✅
 - `Compiler/Proofs/IRGeneration/PROOF_COMPLEXITY_ANALYSIS.md` (analysis) ✅
 
@@ -131,7 +131,7 @@ Attempted to prove `simpleStorage_store_correct`. Findings:
 
 **Note**: Layer 3 can proceed after Layer 2 is complete. The IR already uses Yul AST directly, which simplifies this layer.
 
-**Estimated Effort**: ~1100 lines, 3-4 weeks (after automation exists)
+**Estimated Effort**: 3-4 weeks (after automation exists)
 
 ---
 
@@ -146,9 +146,9 @@ Attempted to prove `simpleStorage_store_correct`. Findings:
 
 **Break-even Analysis**:
 - Automation development: 2-3 weeks
-- Proof effort without automation: 150 lines × 34 theorems = ~5100 lines
-- Proof effort with automation: 30 lines × 34 theorems = ~1000 lines
-- **Savings**: ~4000 lines of manual proof work
+- Proof effort without automation: large (multiple theorems × multi-day proofs)
+- Proof effort with automation: much smaller (short proofs per theorem)
+- **Savings**: substantial reduction in manual proof work
 
 **Recommendation**: Invest in automation first.
 
@@ -280,8 +280,8 @@ Attempted to prove `simpleStorage_store_correct`. Findings:
    ```
 
 **Deliverables**:
-- Automation module (~300 lines)
-- Tactic library (~200 lines)
+- Automation module
+- Tactic library
 - Test suite validating tactics work
 - Documentation of tactic usage
 
@@ -299,7 +299,7 @@ Attempted to prove `simpleStorage_store_correct`. Findings:
 6. Ledger: 3 theorems
 7. SimpleToken: 5 theorems
 
-**Total**: ~25 theorems with automation = ~700-900 lines of proofs
+**Total**: ~25 theorems with automation
 
 ---
 
@@ -312,8 +312,8 @@ Attempted to prove `simpleStorage_store_correct`. Findings:
 3. Main preservation theorem
 
 **Deliverables**:
-- Yul semantics (~400 lines)
-- Codegen proofs (~700 lines)
+- Yul semantics
+- Codegen proofs
 - Full end-to-end verification
 
 ---
@@ -396,7 +396,7 @@ The codebase has **zero technical debt**:
 
 This PR establishes a **world-class foundation** for formally verified smart contract compilation:
 
-1. **Complete Infrastructure** (1065 lines)
+1. **Complete Infrastructure**
    - Reference interpreters for Spec and IR
    - Type conversion framework
    - Automation helper library

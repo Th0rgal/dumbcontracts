@@ -6,6 +6,19 @@ namespace Compiler.Proofs.YulGeneration
 
 open Compiler
 open Compiler.Proofs.IRGeneration
+open Compiler.Yul
+
+/-! ## IR ↔ Yul State Alignment -/
+
+def yulStateOfIR (selector : Nat) (state : IRState) : YulState :=
+  { vars := state.vars
+    storage := state.storage
+    mappings := state.mappings
+    memory := state.memory
+    calldata := state.calldata
+    selector := selector
+    returnValue := state.returnValue
+    sender := state.sender }
 
 /-! ## Bridging IR and Yul Semantics
 

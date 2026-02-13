@@ -45,6 +45,10 @@ abstract contract DiffTestConfig is Test {
         return vm.envOr("DIFFTEST_RANDOM_SEED", uint256(42));
     }
 
+    function _diffRandomSeed(string memory label) internal view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(_diffRandomBaseSeed(), _diffShardIndex(), label))) % (2**31);
+    }
+
     function _diffVerbose() internal view returns (bool) {
         return vm.envOr("DIFFTEST_VERBOSE", false);
     }

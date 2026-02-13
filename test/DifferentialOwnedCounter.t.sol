@@ -572,7 +572,7 @@ contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig {
         actors[2] = address(0xB0B);
 
         (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
-        uint256 seed = _diffRandomBaseSeed();
+        uint256 seed = _diffRandomSeed("OwnedCounter");
         for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, uint256 arg) =
@@ -594,7 +594,7 @@ contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig {
         actors[2] = address(0xB0B);
 
         (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
-        uint256 seed = _diffRandomBaseSeed();
+        uint256 seed = _diffRandomSeed("OwnedCounter");
         for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, uint256 arg) =

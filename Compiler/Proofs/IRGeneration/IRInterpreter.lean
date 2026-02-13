@@ -199,7 +199,7 @@ partial def execIRStmt (state : IRState) : YulStmt → IRExecResult
         .continue { state with memory := fun o => if o = offset then val else state.memory o }
       | _, _ => .revert state
     | .call "stop" [] => .stop state
-    | .call "revert" _ => .revert state
+    | .call "revert" [_, _] => .revert state
     | .call "return" [offsetExpr, sizeExpr] =>
       -- Yul return(offset, size) returns memory[offset:offset+size]
       -- For our IR subset focusing on single values, we interpret this as:
@@ -213,7 +213,10 @@ partial def execIRStmt (state : IRState) : YulStmt → IRExecResult
         else
           .return 0 state
       | _, _ => .revert state
-    | _ => .continue state  -- Other expressions are no-ops
+    | _ =>
+      match evalIRExpr state e with
+      | some _ => .continue state
+      | none => .revert state
   | .if_ cond body =>
     match evalIRExpr state cond with
     | some c => if c ≠ 0 then execIRStmts state body else .continue state
@@ -279,7 +282,7 @@ def execIRFunction (fn : IRFunction) (args : List Nat) (initialState : IRState) 
       returnValue := none
       finalStorage := s.storage
       finalMappings := s.mappings }
-  | .revert s =>
+  | .revert _ =>
     { success := false
       returnValue := none
       -- On revert, storage and mappings roll back to the initial state

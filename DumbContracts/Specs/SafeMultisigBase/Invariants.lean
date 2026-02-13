@@ -37,4 +37,45 @@ def safeMultisigBaseInvariant (s : ContractState) : Prop :=
   (0 : Uint256) < thresholdVal s ∧
   thresholdVal s ≤ ownerCountVal s
 
+/-
+  Linked-list owners invariant (Safe OwnerManager):
+  The owners mapping encodes a singly-linked list with a sentinel head.
+  This is a stronger invariant than the baseline checks above.
+
+  NOTE: In Solidity, `owners` maps address -> address. The EDSL models
+  this as `Address -> Uint256`, so we treat the stored value as an encoded
+  address. The encoding function is left opaque for now and will be tied
+  to ABI encoding rules when address modeling lands in the EDSL.
+-/
+
+def zeroAddress : Address := "0x0000000000000000000000000000000000000000"
+def ownersSentinel : Address := "0x0000000000000000000000000000000000000001"
+
+opaque encodeAddress : Address → Uint256
+
+def ownerNextVal (s : ContractState) (owner : Address) : Uint256 :=
+  s.storageMap owners.slot owner
+
+def ownerAddressValid (s : ContractState) (owner : Address) : Prop :=
+  owner ≠ zeroAddress ∧ owner ≠ ownersSentinel ∧ owner ≠ s.thisAddress
+
+def ownersChain (s : ContractState) : Address → List Address → Prop
+  | current, [] => ownerNextVal s current = encodeAddress ownersSentinel
+  | current, next :: rest =>
+      ownerNextVal s current = encodeAddress next ∧ ownersChain s next rest
+
+def ownersListChain (s : ContractState) (ownersList : List Address) : Prop :=
+  match ownersList with
+  | [] => False
+  | head :: tail =>
+      ownerNextVal s ownersSentinel = encodeAddress head ∧
+      ownersChain s head tail
+
+def safeMultisigOwnersLinkedListInvariant (s : ContractState) (ownersList : List Address) : Prop :=
+  ownersList ≠ [] ∧
+  ownersList.Nodup ∧
+  (∀ owner ∈ ownersList, ownerAddressValid s owner) ∧
+  ownerCountVal s = (ownersList.length : Nat) ∧
+  ownersListChain s ownersList
+
 end DumbContracts.Specs.SafeMultisigBase

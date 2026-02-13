@@ -54,26 +54,6 @@ theorem execYulFuel_mappingSlotFunc (fuel : Nat) (state : YulState) :
 by
   cases fuel <;> simp [mappingSlotFunc, execYulFuel]
 
-theorem execYulFuel_stmts_singleton_of_not_funcDef
-    (fuel : Nat) (state : YulState) (stmt : YulStmt)
-    (hstmt : ∀ name args rets body, stmt ≠ YulStmt.funcDef name args rets body) :
-    execYulFuel fuel state (YulExecTarget.stmts [stmt]) =
-      match execYulFuel fuel state (YulExecTarget.stmt stmt) with
-      | YulExecResult.continue s' => execYulFuel fuel s' (YulExecTarget.stmts [])
-      | YulExecResult.return v s => YulExecResult.return v s
-      | YulExecResult.stop s => YulExecResult.stop s
-      | YulExecResult.revert s => YulExecResult.revert s :=
-by
-  cases fuel with
-  | zero =>
-      have hstmt' : execYulFuel 0 state (YulExecTarget.stmt stmt) = YulExecResult.revert state := by
-        cases stmt <;> simp [execYulFuel]
-        · exfalso
-          exact (hstmt _ _ _ _ rfl)
-      simp [execYulFuel, hstmt']
-  | succ fuel =>
-      simp [execYulFuel, hstmt]
-
 theorem buildSwitch_ne_funcDef (fns : List IRFunction) :
     ∀ name args rets body, buildSwitch fns ≠ YulStmt.funcDef name args rets body := by
   intro name args rets body
@@ -81,16 +61,14 @@ theorem buildSwitch_ne_funcDef (fns : List IRFunction) :
 
 theorem execYulFuel_drop_mappingSlotFunc_buildSwitch
     (fuel : Nat) (state : YulState) (fns : List IRFunction) :
-    execYulFuel fuel state (YulExecTarget.stmts [mappingSlotFunc, buildSwitch fns]) =
+    execYulFuel (fuel + 1) state (YulExecTarget.stmts [mappingSlotFunc, buildSwitch fns]) =
       execYulFuel fuel state (YulExecTarget.stmts [buildSwitch fns]) :=
 by
   cases fuel with
-  | zero => rfl
+  | zero =>
+      simp [execYulFuel, execYulFuel_mappingSlotFunc]
   | succ fuel =>
       simp [execYulFuel, execYulFuel_mappingSlotFunc]
-      simpa using
-        (execYulFuel_stmts_singleton_of_not_funcDef
-          fuel state (buildSwitch fns) (buildSwitch_ne_funcDef fns))
 
 theorem execYulStmts_runtimeCode_eq :
     ∀ (contract : IRContract) (state : YulState) (fuel : Nat),
@@ -105,7 +83,7 @@ by
     | succ fuel =>
         simp [Compiler.runtimeCode, h, execYulStmtsFuel]
         simpa using
-          (execYulFuel_drop_mappingSlotFunc_buildSwitch (fuel + 1) state contract.functions)
+          (execYulFuel_drop_mappingSlotFunc_buildSwitch fuel state contract.functions)
   · simp [Compiler.runtimeCode, h, execYulStmtsFuel]
 
 /-- Switch cases generated from IR functions. -/

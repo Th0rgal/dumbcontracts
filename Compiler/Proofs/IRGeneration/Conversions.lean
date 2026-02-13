@@ -214,11 +214,14 @@ structure SelectorMap where
 def SelectorMap.lookup (map : SelectorMap) (name : String) : Option Nat :=
   map.selectors.find? (·.1 == name) |>.map (·.2)
 
-def SelectorMap.fromSpec (spec : ContractSpec) (selectors : List Nat) : Except String SelectorMap := do
-  if spec.functions.length != selectors.length then
-    throw s!"Selector count mismatch for {spec.name}: {selectors.length} selectors for {spec.functions.length} functions"
-  let names := spec.functions.map (fun fn => fn.name)
-  return { selectors := names.zip selectors }
+def SelectorMap.fromSpec (spec : ContractSpec) (selectors : List Nat) : Except String SelectorMap :=
+  match spec with
+  | ⟨specName, _fields, _ctor, functions⟩ =>
+      if functions.length != selectors.length then
+        .error s!"Selector count mismatch for {specName}: {selectors.length} selectors for {functions.length} functions"
+      else
+        let names := functions.map (fun fn => fn.name)
+        .ok { selectors := names.zip selectors }
 
 /-! ## Conversion Properties -/
 

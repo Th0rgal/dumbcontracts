@@ -20,7 +20,7 @@ The project evolved in two phases:
 This is the single source of truth for progress, roadmap, and milestone updates.
 
 - **Layer 1 (Spec Correctness)**: Complete for all 7 contracts.
-- **Layer 2 (ContractSpec → IR)**: Infrastructure complete; proofs in progress.
+- **Layer 2 (ContractSpec → IR)**: Infrastructure complete; SimpleStorage + Counter preservation proofs done; generalization in progress.
 - **Layer 3 (IR → Yul)**: Not started.
 
 ## Iterations
@@ -214,6 +214,7 @@ forge test  # 264/264 tests pass (as of 2026-02-13)
 **Test Results**:
 - 100/100 random transactions pass per contract in default runs
 - 10,000+ random transactions pass per contract in CI (large suite)
+- Large suite is sharded across 8 CI jobs to stay within per-test gas limits
 - Zero mismatches detected
 - All Foundry tests passing (264/264 as of 2026-02-13)
 - CI: All checks passing
@@ -225,12 +226,16 @@ lake exe difftest-interpreter simpleStorage store 0 100  # Run single tx
 forge test --match-contract Differential  # Run default (100) random tests
 # Scale the large suite (used in CI):
 DIFFTEST_RANDOM_LARGE=10000 forge test --match-contract Differential
+# Shard the large suite (CI uses 8 shards):
+DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
+  forge test --match-contract Differential
 ```
 
 **Structured Next Steps (A–G)**:
 
 **A. Finish Layer 2 (ContractSpec → IR)**:
-- Generalize the SimpleStorage preservation proof to all 7 contracts (SimpleStorage, Counter, Owned, OwnedCounter, SafeCounter, Ledger, SimpleToken).
+- ✅ SimpleStorage + Counter preservation proofs are pinned and compiling.
+- Generalize the preservation proof to the remaining 5 contracts (Owned, OwnedCounter, SafeCounter, Ledger, SimpleToken).
 - Formalize the conversion relation across types (SpecStorage ↔ IRState) for mappings and address types, not just simple storage slots.
 - Turn the “attempt” file into a real proof path or remove it once the general proof is in place.
 - Use `Compiler/Proofs/IRGeneration/SimpleStorageProof.lean` as the template: replicate the structure, swap in each contract’s state relation, and end with a per-contract preservation lemma.
@@ -304,15 +309,7 @@ DIFFTEST_RANDOM_LARGE=10000 forge test --match-contract Differential
 
 ## What Could Come Next
 
-1. ~~Differential testing (70k+ random tests)~~ ✅ **Completed** (100 tests for SimpleStorage, ready to scale)
-2. Scale differential testing to all 7 contracts (70k+ total tests)
-3. Property extraction (252 theorems → Foundry tests) — Roadmap Item 3
-4. Compiler verification (formal correctness proof) — Roadmap Item 4
-5. ~~Self-transfer handling (special-case or identity operation)~~ ✅ **Done**
-6. Full `supply = sum(balances)` with finite address set
-7. ERC-20 allowances (needs `Address -> Address -> Uint256` storage)
-8. Gas consumption tracking in `ContractResult`
-9. Cross-contract call modeling
+See **Structured Next Steps (A–G)** above for the single source of truth. The older “next steps” list has been removed to avoid drift and duplication.
 
 ## Detailed Logs
 

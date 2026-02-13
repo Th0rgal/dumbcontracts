@@ -3,7 +3,7 @@
 
   We model EVM mapping slots as tagged values so the interpreters can route
   `sload`/`sstore` to the mapping table instead of flat storage.
--//
+-/
 
 namespace Compiler.Proofs
 

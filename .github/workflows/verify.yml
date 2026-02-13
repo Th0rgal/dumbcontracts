@@ -83,12 +83,6 @@ jobs:
         with:
           version: v1.5.0
 
-      - name: Install solc
-        run: |
-          curl -L https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.33+commit.64118f21 -o /usr/local/bin/solc
-          chmod +x /usr/local/bin/solc
-          solc --version
-
       - name: Run Foundry tests
         env:
           DIFFTEST_RANDOM_SMALL: "100"
@@ -96,7 +90,7 @@ jobs:
           DIFFTEST_RANDOM_SEED: "42"
           DIFFTEST_SHARD_COUNT: "8"
           DIFFTEST_SHARD_INDEX: "${{ matrix.shard_index }}"
-        run: forge test
+        run: forge test --no-compile
 
   foundry-setup:
     runs-on: ubuntu-latest
@@ -127,6 +121,20 @@ jobs:
       - name: Generate Yul
         run: ./.lake/build/bin/dumbcontracts-compiler
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.0
+
+      - name: Install solc
+        run: |
+          curl -L https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.33+commit.64118f21 -o /usr/local/bin/solc
+          chmod +x /usr/local/bin/solc
+          solc --version
+
+      - name: Build Foundry tests
+        run: forge build
+
       - name: Check selector hashing against specs
         run: python3 scripts/check_selectors.py
 
@@ -148,3 +156,5 @@ jobs:
             .lake/build/bin/difftest-interpreter
             compiler/yul
             compiler/yul-new
+            out
+            cache

@@ -219,8 +219,8 @@ forge test  # Run unit, property, and differential tests
 - 10,000+ random transactions pass per contract in CI (large suite)
 - Large suite is sharded across 8 CI jobs to stay within per-test gas limits
 - Zero mismatches detected
-- All Foundry tests passing (264/264 as of 2026-02-13)
-- CI: All checks passing
+- Last verified (2026-02-13): 264/264 Foundry tests passing
+- CI: check GitHub Actions for current status
 
 **Usage**:
 ```bash
@@ -241,7 +241,8 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 - [x] Generalized preservation proofs now cover Owned, OwnedCounter, SafeCounter, Ledger, and SimpleToken.
 - [x] Conversion relations for mappings + address types are exercised in the full suite of Layer 2 proofs.
 - [x] Removed the exploratory `StoreProofAttempt.lean` once the real proof path was in place.
-- [x] Contract-level dispatch preservation exists for SimpleStorage + Counter + Owned (selectors wired to transactions).
+- [x] Contract-level dispatch preservation exists for SimpleStorage + Counter + Owned + SafeCounter + OwnedCounter.
+- [ ] Ledger + SimpleToken dispatch theorems remain.
 - **Done when**: each contract has a contract-level dispatch theorem that composes per-function proofs.
 
 **B. Finish Layer 3 (IR -> Yul)**:

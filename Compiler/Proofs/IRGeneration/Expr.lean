@@ -448,10 +448,9 @@ def safeCounterIRContract : IRContract :=
 
 /-! ## SafeCounter: Function Correctness -/
 
-theorem safeCounter_increment_correct (storedValue : Nat) :
+theorem safeCounter_increment_correct_with_sender (storedValue : Nat) (sender : Address) :
   let spec := safeCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c]
-  let sender := "test_sender"
   let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedValue
   let tx : Transaction := {
     sender := sender
@@ -490,10 +489,34 @@ theorem safeCounter_increment_correct (storedValue : Nat) :
         simp
       · simp [hslot]
 
-theorem safeCounter_decrement_correct (storedValue : Nat) :
+-- Backwards-compatible specialization for existing proofs.
+theorem safeCounter_increment_correct (storedValue : Nat) :
   let spec := safeCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c]
   let sender := "test_sender"
+  let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedValue
+  let tx : Transaction := {
+    sender := sender
+    functionName := "increment"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xd09de08a
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (safeCounter_increment_correct_with_sender storedValue "test_sender")
+
+theorem safeCounter_decrement_correct_with_sender (storedValue : Nat) (sender : Address) :
+  let spec := safeCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c]
   let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedValue
   let tx : Transaction := {
     sender := sender
@@ -534,10 +557,34 @@ theorem safeCounter_decrement_correct (storedValue : Nat) :
         simp
       · simp [hslot]
 
-theorem safeCounter_getCount_correct (storedValue : Nat) :
+-- Backwards-compatible specialization for existing proofs.
+theorem safeCounter_decrement_correct (storedValue : Nat) :
   let spec := safeCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c]
   let sender := "test_sender"
+  let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedValue
+  let tx : Transaction := {
+    sender := sender
+    functionName := "decrement"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x2baeceb7
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (safeCounter_decrement_correct_with_sender storedValue "test_sender")
+
+theorem safeCounter_getCount_correct_with_sender (storedValue : Nat) (sender : Address) :
+  let spec := safeCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c]
   let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedValue
   let tx : Transaction := {
     sender := sender
@@ -565,6 +612,82 @@ theorem safeCounter_getCount_correct (storedValue : Nat) :
     · subst h
       simp
     · simp [h]
+
+-- Backwards-compatible specialization for existing proofs.
+theorem safeCounter_getCount_correct (storedValue : Nat) :
+  let spec := safeCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedValue
+  let tx : Transaction := {
+    sender := sender
+    functionName := "getCount"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xa87d942c
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (safeCounter_getCount_correct_with_sender storedValue "test_sender")
+
+/-! ## SafeCounter: Contract-Level Preservation (Dispatch) -/
+
+theorem safeCounter_contract_preserves_semantics (storedValue : Nat) (tx : Transaction) :
+  let spec := safeCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c]
+  let initialStorage : SpecStorage := SpecStorage.empty.setSlot 0 storedValue
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      match tx.functionName, tx.args with
+      | "increment", [] =>
+          let irTx := transactionToIRTransaction tx 0xd09de08a
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | "decrement", [] =>
+          let irTx := transactionToIRTransaction tx 0x2baeceb7
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | "getCount", [] =>
+          let irTx := transactionToIRTransaction tx 0xa87d942c
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | _, _ => True
+  | .error _ => False
+  := by
+  by_cases hinc : tx.functionName = "increment"
+  · subst hinc
+    cases hargs : tx.args with
+    | nil =>
+        simpa [hargs] using
+          (safeCounter_increment_correct_with_sender storedValue tx.sender)
+    | cons _ _ =>
+        simp [hargs]
+  · by_cases hdec : tx.functionName = "decrement"
+    · subst hdec
+      cases hargs : tx.args with
+      | nil =>
+          simpa [hargs] using
+            (safeCounter_decrement_correct_with_sender storedValue tx.sender)
+      | cons _ _ =>
+          simp [hargs]
+    · by_cases hget : tx.functionName = "getCount"
+      · subst hget
+        cases hargs : tx.args with
+        | nil =>
+            simpa [hargs] using
+              (safeCounter_getCount_correct_with_sender storedValue tx.sender)
+        | cons _ _ =>
+            simp [hargs]
+      · simp [hinc, hdec, hget]
 
 theorem counter_decrement_correct :
   let spec := counterSpec
@@ -855,10 +978,10 @@ def ownedCounterIRContract : IRContract :=
 
 /-! ## OwnedCounter: Function Correctness -/
 
-theorem ownedCounter_increment_correct (storedCount : Nat) (ownerAddr : Address) :
+theorem ownedCounter_increment_correct_with_sender (storedCount : Nat) (ownerAddr : Address)
+    (sender : Address) :
   let spec := ownedCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
-  let sender := "test_sender"
   let initialStorage : SpecStorage :=
     (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
   let tx : Transaction := {
@@ -904,10 +1027,36 @@ theorem ownedCounter_increment_correct (storedCount : Nat) (ownerAddr : Address)
           simp [hslot]
         · simp [hslot, hslot']
 
-theorem ownedCounter_decrement_correct (storedCount : Nat) (ownerAddr : Address) :
+-- Backwards-compatible specialization for existing proofs.
+theorem ownedCounter_increment_correct (storedCount : Nat) (ownerAddr : Address) :
   let spec := ownedCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "increment"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xd09de08a
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (ownedCounter_increment_correct_with_sender storedCount ownerAddr "test_sender")
+
+theorem ownedCounter_decrement_correct_with_sender (storedCount : Nat) (ownerAddr : Address)
+    (sender : Address) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let initialStorage : SpecStorage :=
     (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
   let tx : Transaction := {
@@ -953,10 +1102,36 @@ theorem ownedCounter_decrement_correct (storedCount : Nat) (ownerAddr : Address)
           simp [hslot]
         · simp [hslot, hslot']
 
-theorem ownedCounter_getCount_correct (storedCount : Nat) (ownerAddr : Address) :
+-- Backwards-compatible specialization for existing proofs.
+theorem ownedCounter_decrement_correct (storedCount : Nat) (ownerAddr : Address) :
   let spec := ownedCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "decrement"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x2baeceb7
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (ownedCounter_decrement_correct_with_sender storedCount ownerAddr "test_sender")
+
+theorem ownedCounter_getCount_correct_with_sender (storedCount : Nat) (ownerAddr : Address)
+    (sender : Address) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let initialStorage : SpecStorage :=
     (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
   let tx : Transaction := {
@@ -989,10 +1164,36 @@ theorem ownedCounter_getCount_correct (storedCount : Nat) (ownerAddr : Address) 
         simp [hslot]
       · simp [hslot, hslot']
 
-theorem ownedCounter_getOwner_correct (storedOwner : Nat) (storedCount : Nat) :
+-- Backwards-compatible specialization for existing proofs.
+theorem ownedCounter_getCount_correct (storedCount : Nat) (ownerAddr : Address) :
   let spec := ownedCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "getCount"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xa87d942c
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (ownedCounter_getCount_correct_with_sender storedCount ownerAddr "test_sender")
+
+theorem ownedCounter_getOwner_correct_with_sender (storedOwner : Nat) (storedCount : Nat)
+    (sender : Address) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let initialStorage : SpecStorage :=
     (SpecStorage.empty.setSlot 0 storedOwner).setSlot 1 storedCount
   let tx : Transaction := {
@@ -1025,22 +1226,47 @@ theorem ownedCounter_getOwner_correct (storedOwner : Nat) (storedCount : Nat) :
         simp [hslot]
       · simp [hslot, hslot']
 
-theorem ownedCounter_transferOwnership_correct (storedCount : Nat) (ownerAddr newOwnerAddr : Address)
-    :
+-- Backwards-compatible specialization for existing proofs.
+theorem ownedCounter_getOwner_correct (storedOwner : Nat) (storedCount : Nat) :
   let spec := ownedCounterSpec
   let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 storedOwner).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "getOwner"
+    args := []
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0x893d20e8
+    args := []
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using (ownedCounter_getOwner_correct_with_sender storedOwner storedCount "test_sender")
+
+theorem ownedCounter_transferOwnership_correct_with_sender (storedCount : Nat)
+    (ownerAddr : Address) (newOwnerNat : Nat) (sender : Address) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
   let initialStorage : SpecStorage :=
     (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
   let tx : Transaction := {
     sender := sender
     functionName := "transferOwnership"
-    args := [addressToNat newOwnerAddr]
+    args := [newOwnerNat]
   }
   let irTx : IRTransaction := {
     sender := addressToNat sender
     functionSelector := 0xf2fde38b
-    args := [addressToNat newOwnerAddr]
+    args := [newOwnerNat]
   }
   let specResult := interpretSpec spec initialStorage tx
   match irContract with
@@ -1074,6 +1300,118 @@ theorem ownedCounter_transferOwnership_correct (storedCount : Nat) (ownerAddr ne
         · subst hslot'
           simp [hslot]
         · simp [hslot, hslot']
+
+-- Backwards-compatible specialization for existing proofs.
+theorem ownedCounter_transferOwnership_correct (storedCount : Nat) (ownerAddr newOwnerAddr : Address)
+    :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
+  let sender := "test_sender"
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let tx : Transaction := {
+    sender := sender
+    functionName := "transferOwnership"
+    args := [addressToNat newOwnerAddr]
+  }
+  let irTx : IRTransaction := {
+    sender := addressToNat sender
+    functionSelector := 0xf2fde38b
+    args := [addressToNat newOwnerAddr]
+  }
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      let irResult := interpretIR ir irTx (specStorageToIRState initialStorage sender)
+      resultsMatch ir.usesMapping [] irResult specResult
+  | .error _ => False
+  := by
+  simpa using
+    (ownedCounter_transferOwnership_correct_with_sender
+      storedCount ownerAddr (addressToNat newOwnerAddr) "test_sender")
+
+/-! ## OwnedCounter: Contract-Level Preservation (Dispatch) -/
+
+theorem ownedCounter_contract_preserves_semantics (storedCount : Nat) (ownerAddr : Address)
+    (tx : Transaction) :
+  let spec := ownedCounterSpec
+  let irContract := compile spec [0xd09de08a, 0x2baeceb7, 0xa87d942c, 0x893d20e8, 0xf2fde38b]
+  let initialStorage : SpecStorage :=
+    (SpecStorage.empty.setSlot 0 (addressToNat ownerAddr)).setSlot 1 storedCount
+  let specResult := interpretSpec spec initialStorage tx
+  match irContract with
+  | .ok ir =>
+      match tx.functionName, tx.args with
+      | "increment", [] =>
+          let irTx := transactionToIRTransaction tx 0xd09de08a
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | "decrement", [] =>
+          let irTx := transactionToIRTransaction tx 0x2baeceb7
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | "getCount", [] =>
+          let irTx := transactionToIRTransaction tx 0xa87d942c
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | "getOwner", [] =>
+          let irTx := transactionToIRTransaction tx 0x893d20e8
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | "transferOwnership", [newOwner] =>
+          let irTx := transactionToIRTransaction tx 0xf2fde38b
+          let irResult := interpretIR ir irTx (specStorageToIRState initialStorage tx.sender)
+          resultsMatch ir.usesMapping [] irResult specResult
+      | _, _ => True
+  | .error _ => False
+  := by
+  by_cases hinc : tx.functionName = "increment"
+  · subst hinc
+    cases hargs : tx.args with
+    | nil =>
+        simpa [hargs] using
+          (ownedCounter_increment_correct_with_sender storedCount ownerAddr tx.sender)
+    | cons _ _ =>
+        simp [hargs]
+  · by_cases hdec : tx.functionName = "decrement"
+    · subst hdec
+      cases hargs : tx.args with
+      | nil =>
+          simpa [hargs] using
+            (ownedCounter_decrement_correct_with_sender storedCount ownerAddr tx.sender)
+      | cons _ _ =>
+          simp [hargs]
+    · by_cases hget : tx.functionName = "getCount"
+      · subst hget
+        cases hargs : tx.args with
+        | nil =>
+            simpa [hargs] using
+              (ownedCounter_getCount_correct_with_sender storedCount ownerAddr tx.sender)
+        | cons _ _ =>
+            simp [hargs]
+      · by_cases howner : tx.functionName = "getOwner"
+        · subst howner
+          cases hargs : tx.args with
+          | nil =>
+              simpa [hargs] using
+                (ownedCounter_getOwner_correct_with_sender
+                  (addressToNat ownerAddr) storedCount tx.sender)
+          | cons _ _ =>
+              simp [hargs]
+        · by_cases htransfer : tx.functionName = "transferOwnership"
+          · subst htransfer
+            cases hargs : tx.args with
+            | nil =>
+                simp [hargs]
+            | cons newOwner rest =>
+                cases rest with
+                | nil =>
+                    simpa [hargs] using
+                      (ownedCounter_transferOwnership_correct_with_sender
+                        storedCount ownerAddr newOwner tx.sender)
+                | cons _ _ =>
+                    simp [hargs]
+          · simp [hinc, hdec, hget, howner, htransfer]
 
 /-! ## Ledger: Concrete IR -/
 
@@ -1745,10 +2083,11 @@ To prove the preservation theorem, we need:
 - Documents the high-level strategy ✅
 - Proves SimpleStorage + Counter correctness ✅
 - Proves SafeCounter, Owned, OwnedCounter, Ledger, and SimpleToken correctness ✅
-- Adds general-sender variants for SimpleStorage ✅
+- Adds general-sender variants for SimpleStorage, SafeCounter, and OwnedCounter ✅
+- Adds contract-level dispatch theorems for SafeCounter + OwnedCounter ✅
 
 **Next Steps for Completion**:
-1. Add contract-level dispatch theorems per contract (see `SimpleStorage.lean`)
+1. Add contract-level dispatch theorems for Ledger and SimpleToken
 2. Bridge the ContractSpec → IR theorems into automated test extraction
 
 **Why This Approach Works**:

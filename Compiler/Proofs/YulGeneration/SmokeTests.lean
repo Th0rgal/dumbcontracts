@@ -10,6 +10,7 @@ namespace Compiler.Proofs.YulGeneration
 open Compiler
 open Compiler.ContractSpec
 open Compiler.Proofs.IRGeneration
+open Compiler.Proofs
 open Compiler.Specs
 open Compiler.Yul
 
@@ -163,6 +164,20 @@ private def runYul (runtimeCode : List YulStmt) (tx : YulTransaction)
   ]
   match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
   | { success := true, returnValue := some 321, .. } => true
+  | _ => false
+
+-- sstore on an encoded nested mapping slot routes through mapping-of-mapping base slot
+#guard
+  let runtime := [
+    YulStmt.expr (YulExpr.call "sstore" [
+      YulExpr.lit (encodeNestedMappingSlot 3 4 5),
+      YulExpr.lit 777
+    ])
+  ]
+  match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
+  | { success := true, finalMappings, .. } =>
+      let base := encodeMappingSlot 3 4
+      decide (finalMappings base 5 = 777)
   | _ => false
 
 /-! ## IR vs Yul Smoke Tests -/

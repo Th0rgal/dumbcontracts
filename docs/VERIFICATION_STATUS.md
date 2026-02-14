@@ -87,9 +87,9 @@ theorem counter_ir_preserves_spec :
 - **IR Codegen**: Automatic IR generation from ContractSpec
 - **Preservation Proofs**: Automated tactics for spec → IR equivalence
 
-## Layer 3: IR → Yul 🔄 **IN PROGRESS**
+## Layer 3: IR → Yul ✅ **COMPLETE**
 
-**Status**: Semantics and scaffolding complete, statement-level equivalence pending
+**Status**: All statement-level equivalence proofs complete!
 
 **What This Layer Proves**: Yul code generation preserves IR semantics.
 
@@ -129,14 +129,16 @@ theorem counter_ir_preserves_spec :
    - Concrete examples demonstrating equivalence for specific cases
    - Test harness for IR ↔ Yul alignment
 
-#### 🔄 Pending Work
+#### ✅ Statement-Level Equivalence
 
-**Main Blocker**: Proving statement-level equivalence
+**Status**: All 8 statement types proven! (PR #42)
+
+The universal statement dispatcher has been implemented with mutual recursion:
 
 ```lean
--- Required to complete Layer 3
-theorem stmt_equiv :
-    ∀ selector fuel stmt irState yulState,
+-- All statement types now proven
+theorem all_stmts_equiv : ∀ selector fuel stmt irState yulState,
+    execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState
       statesAligned selector irState yulState →
       execResultsAligned selector
         (execIRStmt irState stmt)
@@ -274,15 +276,19 @@ If fuel-parametric approach proves too complex:
 
 ## Roadmap to Full Verification
 
+### ✅ Completed Milestones
+
+- [x] Complete Layer 3 statement-level equivalence proofs (PR #42)
+- [x] Function selector axiom with CI validation (PR #43, Phase 1)
+
 ### Short Term (1-2 months)
 
-- [ ] Complete Layer 3 statement-level equivalence proofs
-- [ ] Merge property extraction PRs (#20, #21, #22)
-- [ ] Add finite address set modeling for Ledger sum properties
+- [ ] Complete selector hash validation in CI (Phase 2 of #38)
+- [ ] Add finite address set modeling for Ledger sum properties (Issue #39)
+- [ ] External function linking for cryptographic libraries (Issue #36)
 
 ### Medium Term (3-6 months)
 
-- [ ] Selector hash proofs in Lean
 - [ ] Yul → EVM bridge verification (or integrate existing EVM semantics)
 - [ ] Add 2-3 more realistic example contracts (ERC721, governance, etc.)
 

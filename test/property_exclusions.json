@@ -7,13 +7,13 @@
     "setStorage_updates_count"
   ],
   "Ledger": [
-    "deposit_sum_equation",
-    "deposit_sum_singleton_sender",
-    "deposit_withdraw_sum_cancel",
-    "transfer_sum_equation",
-    "transfer_sum_preserved_unique",
-    "withdraw_sum_equation",
-    "withdraw_sum_singleton_sender"
+    "Spec_deposit_sum_equation",
+    "Spec_deposit_sum_singleton_sender",
+    "Spec_deposit_withdraw_sum_cancel",
+    "Spec_transfer_sum_preservation",
+    "Spec_transfer_sum_preserved_unique",
+    "Spec_withdraw_sum_equation",
+    "Spec_withdraw_sum_singleton_sender"
   ],
   "Owned": [
     "isOwner_meets_spec",

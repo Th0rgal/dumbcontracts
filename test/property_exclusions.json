@@ -15,7 +15,10 @@
     "withdraw_sum_equation",
     "withdraw_sum_singleton_sender"
   ],
-  "Owned": [],
+  "Owned": [
+    "isOwner_meets_spec",
+    "isOwner_returns_correct_value"
+  ],
   "OwnedCounter": [
     "constructor_context_preserved",
     "constructor_meets_spec",

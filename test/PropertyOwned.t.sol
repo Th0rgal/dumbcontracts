@@ -155,11 +155,11 @@ contract PropertyOwnedTest is YulTestBase {
     }
 
     /**
-     * Property 12-13: isOwner correctness
-     * Property: isOwner_meets_spec
-     * Property: isOwner_returns_correct_value
-     * Theorem: isOwner returns (sender == owner)
-     * Note: isOwner is internal in the Lean code, tested via transferOwnership
+     * Note: isOwner is an internal helper function in the Lean specification.
+     * It is not directly tested, but its correctness is verified implicitly
+     * through the transferOwnership tests which rely on it.
+     * Properties isOwner_meets_spec and isOwner_returns_correct_value are
+     * excluded from test coverage as they have no standalone theorems.
      */
 
     /**

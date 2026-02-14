@@ -20,7 +20,65 @@ DumbContracts has achieved **92% completion** toward production-ready, fully ver
 
 ---
 
+## 🎯 Three Critical Work Streams
+
+Here's what stands between current state (92%) and full completion (100%):
+
+### 🔴 **Layer 3 Statement Proofs** (THE Critical Path)
+**What**: Prove 9 theorems showing IR → Yul compilation correctness
+**Status**: 0/9 complete (8 statement proofs + 1 composition)
+**Impact**: 92% → 98% (statements) → 100% (composition)
+**Effort**: 2-4 weeks
+**Parallelizable**: Yes! All 8 statement proofs are independent
+
+| # | Statement | Difficulty | Effort | Status |
+|---|-----------|------------|--------|--------|
+| 1 | Variable Assignment | Low | 1h | ⚪ TODO |
+| 2 | Storage Load | Low | 1h | ⚪ TODO |
+| 3 | Storage Store | Low | 1h | ⚪ TODO |
+| 4 | Mapping Load | Medium | 2-4h | ⚪ TODO |
+| 5 | Mapping Store | Medium | 2-4h | ⚪ TODO |
+| 6 | Conditional (if) | Medium-High | 4-8h | ⚪ TODO |
+| 7 | Return | Low | 1-2h | ⚪ TODO |
+| 8 | Revert | Low-Medium | 2-3h | ⚪ TODO |
+| 9 | **Composition** | High | 1-2d | ⚪ TODO |
+
+### 🟡 **Trust Reduction** (3 Components)
+**What**: Eliminate or verify all trusted components
+**Status**: 0/3 complete
+**Impact**: Achieves zero-trust end-to-end verification
+**Effort**: 1-4 months total
+
+| # | Component | Approach | Effort | Status |
+|---|-----------|----------|--------|--------|
+| 1 | Function Selectors | keccak256 axiom + CI | 1-2w | ⚪ TODO |
+| 2 | Yul→EVM Bridge | Integrate KEVM | 1-3m | ⚪ TODO |
+| 3 | EVM Semantics | Strong testing + docs | Ongoing | ⚪ TODO |
+
+### 🟢 **Ledger Sum Properties** (7 Properties)
+**What**: Prove total supply equals sum of all balances
+**Status**: 0/7 complete
+**Impact**: Completes Ledger contract to 100%
+**Effort**: 1-2 weeks
+**Blocker**: Need finite address set modeling first
+
+| # | Property | Description | Status |
+|---|----------|-------------|--------|
+| 1 | `mint_sum_equation` | Mint increases total | ⚪ TODO |
+| 2 | `burn_sum_equation` | Burn decreases total | ⚪ TODO |
+| 3 | `transfer_sum_preservation` | Transfer preserves total | ⚪ TODO |
+| 4 | `totalSupply_equals_sum` | Supply = sum of balances | ⚪ TODO |
+| 5 | `mint_increases_supply` | Mint increases supply | ⚪ TODO |
+| 6 | `burn_decreases_supply` | Burn decreases supply | ⚪ TODO |
+| 7 | `transfer_preserves_supply` | Transfer preserves supply | ⚪ TODO |
+
+**Key Insight**: Layer 3 statement proofs are the highest priority. Once complete, you have end-to-end verified contracts! Trust reduction and ledger properties are polish/completeness work.
+
+---
+
 ## Critical Path: Layer 3 Completion (🔴 Highest Priority)
+
+**Progress**: 92% → 98% (with statement proofs) → 100% (with composition)
 
 ### The Main Blocker
 
@@ -35,9 +93,9 @@ Complete the final verification layer proving **IR → Yul correctness**. This i
 - Fuel-parametric execution models
 - Smoke tests demonstrating equivalence for specific cases
 
-**🔄 Pending Work**:
-- Statement-level equivalence proofs for 6-8 statement types
-- Composition into full function equivalence
+**🔄 Pending Work**: 9 theorems remaining
+- **8 statement-level equivalence proofs** (parallelizable, independent)
+- **1 composition theorem** (depends on all 8 statement proofs)
 
 ### Required Theorems
 
@@ -132,13 +190,17 @@ If the fuel-parametric approach proves too complex:
 
 ## Trust Reduction (🟡 High Priority)
 
-### Goal
+**Goal**: Eliminate all trust assumptions → Zero-trust verification
 
-Eliminate or verify the 3 remaining trusted components:
+### The 3 Remaining Trusted Components
 
-1. **`solc` Yul Compiler** (Yul → EVM bytecode)
-2. **Function Selectors** (keccak256 hash computation)
-3. **EVM Semantics** (assumed to match specification)
+Currently, we trust:
+
+1. **Function Selectors** (keccak256 hash computation) - Not proven in Lean
+2. **`solc` Yul Compiler** (Yul → EVM bytecode) - Compilation unverified
+3. **EVM Semantics** (assumed to match specification) - No formal link
+
+**Impact**: Eliminating these completes end-to-end zero-trust verification EDSL → EVM
 
 ### 1. Function Selector Verification
 
@@ -199,11 +261,20 @@ Eliminate or verify the 3 remaining trusted components:
 
 ### Remaining Addressable Work
 
-#### Ledger Sum Properties (7 exclusions)
+#### Ledger Sum Properties (7 properties)
 
 **Issue**: Properties like `mint_sum_equation` and total supply invariants require proving that the sum of all balances equals total supply.
 
 **Blocker**: Requires finite address set modeling (currently addresses are unbounded).
+
+**The 7 Properties**:
+1. `mint_sum_equation` - Minting increases total by amount
+2. `burn_sum_equation` - Burning decreases total by amount
+3. `transfer_sum_preservation` - Transfers preserve total
+4. `totalSupply_equals_sum` - Total supply equals sum of all balances
+5. `mint_increases_supply` - Minting increases total supply
+6. `burn_decreases_supply` - Burning decreases total supply
+7. `transfer_preserves_supply` - Transfers don't change total supply
 
 **Solution**:
 ```lean
@@ -219,7 +290,7 @@ theorem mint_preserves_supply_sum (s : FiniteAddressSet) :
 
 **Estimated Effort**: 1-2 weeks
 
-**Impact**: Enables proving supply invariants, completes Ledger contract verification
+**Impact**: Enables proving supply invariants, completes Ledger contract verification to 100%
 
 #### Proof-Only Properties (82 exclusions)
 

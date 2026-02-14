@@ -102,9 +102,13 @@ forge test                          # Run all Foundry tests
 
 **Differential Testing (optional scaling):**
 ```bash
-# Defaults: DIFFTEST_RANDOM_SMALL=100, DIFFTEST_RANDOM_LARGE=10000
+# Defaults: DIFFTEST_RANDOM_SMALL=100, DIFFTEST_RANDOM_LARGE=10000, DIFFTEST_RANDOM_SEED=42
 # Override with DIFFTEST_RANDOM_COUNT or scale individually:
 DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 forge test
+
+# Test with multiple seeds to detect flakiness:
+./scripts/test_multiple_seeds.sh              # Test with 7 default seeds
+./scripts/test_multiple_seeds.sh 1 2 3 4 5    # Test with custom seeds
 ```
 
 **Property Coverage Checks:**

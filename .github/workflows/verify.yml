@@ -191,11 +191,73 @@ jobs:
           sudo chmod +x /usr/local/bin/solc
           solc --version
 
-      - name: Run Foundry tests
+      - name: Run Foundry tests with seed 42
         env:
           DIFFTEST_RANDOM_SMALL: "100"
           DIFFTEST_RANDOM_LARGE: "10000"
           DIFFTEST_RANDOM_SEED: "42"
           DIFFTEST_SHARD_COUNT: "8"
           DIFFTEST_SHARD_INDEX: "${{ matrix.shard_index }}"
-        run: forge test
+        run: |
+          echo "Running tests with seed 42 (shard ${{ matrix.shard_index }}/8)"
+          forge test
+
+  # Multi-seed testing to detect flakiness and seed-dependent failures
+  foundry-multi-seed:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false  # Test all seeds even if one fails
+      matrix:
+        seed: [0, 1, 123, 999, 12345, 67890]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download generated Yul
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-yul
+          path: compiler
+
+      - name: Download difftest interpreter
+        uses: actions/download-artifact@v4
+        with:
+          name: difftest-interpreter
+          path: .lake/build/bin
+
+      - name: Make difftest interpreter executable
+        run: |
+          chmod +x .lake/build/bin/difftest-interpreter
+          ls -l .lake/build/bin/difftest-interpreter
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.0
+
+      - name: Install solc
+        run: |
+          sudo curl -L https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.33+commit.64118f21 -o /usr/local/bin/solc
+          sudo chmod +x /usr/local/bin/solc
+          solc --version
+
+      - name: Run tests with seed ${{ matrix.seed }}
+        env:
+          DIFFTEST_RANDOM_SMALL: "100"
+          DIFFTEST_RANDOM_LARGE: "10000"
+          DIFFTEST_RANDOM_SEED: "${{ matrix.seed }}"
+          DIFFTEST_SHARD_COUNT: "1"  # No sharding for multi-seed tests
+          DIFFTEST_SHARD_INDEX: "0"
+        run: |
+          echo "::group::Testing with seed ${{ matrix.seed }}"
+          echo "DIFFTEST_RANDOM_SEED=${{ matrix.seed }}"
+          forge test
+          echo "::endgroup::"
+
+      - name: Report seed-specific failure
+        if: failure()
+        run: |
+          echo "::error::Tests failed with seed ${{ matrix.seed }}"
+          echo "::notice::Reproduce locally: DIFFTEST_RANDOM_SEED=${{ matrix.seed }} forge test"

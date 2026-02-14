@@ -4,6 +4,20 @@ pragma solidity ^0.8.33;
 import "forge-std/Test.sol";
 
 abstract contract DiffTestConfig is Test {
+    /// @notice Report the random seed being used for this test run
+    /// @dev Call this in setUp() to log the seed for reproducibility
+    function _reportRandomSeed() internal view {
+        uint256 seed = _diffRandomBaseSeed();
+        uint256 shardIndex = _diffShardIndex();
+        uint256 shardCount = _diffShardCount();
+
+        if (shardCount > 1) {
+            console.log("DIFFTEST_RANDOM_SEED:", seed, "(shard", shardIndex, "/", shardCount, ")");
+        } else {
+            console.log("DIFFTEST_RANDOM_SEED:", seed);
+        }
+    }
+
     function _diffShardIndex() internal view returns (uint256) {
         return vm.envOr("DIFFTEST_SHARD_INDEX", uint256(0));
     }

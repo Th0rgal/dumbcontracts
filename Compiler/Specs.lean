@@ -341,51 +341,11 @@ def simpleTokenSpec : ContractSpec := {
 
 
 /-!
-## CryptoHash Specification (Demonstrates external function linking)
+## Note: CryptoHash Specification Example
+External function linking is demonstrated via the example libraries in
+`examples/external-libs/` and the CLI usage. A full CryptoHashSpec
+could be added here when ready for production use.
 -/
-
-def cryptoHashSpec : ContractSpec := {
-  name := "CryptoHash"
-  fields := [
-    { name := "lastHash", ty := FieldType.uint256 }
-  ]
-  constructor := none
-  functions := [
-    { name := "storeHashTwo"
-      params := [
-        { name := "a", ty := ParamType.uint256 },
-        { name := "b", ty := ParamType.uint256 }
-      ]
-      returnType := none
-      body := [
-        -- Demonstrates externalCall usage (links to external Poseidon library at compile time)
-        Stmt.letVar "h" (Expr.externalCall "PoseidonT3_hash" [Expr.param "a", Expr.param "b"]),
-        Stmt.setStorage "lastHash" (Expr.localVar "h"),
-        Stmt.stop
-      ]
-    },
-    { name := "storeHashThree"
-      params := [
-        { name := "a", ty := ParamType.uint256 },
-        { name := "b", ty := ParamType.uint256 },
-        { name := "c", ty := ParamType.uint256 }
-      ]
-      returnType := none
-      body := [
-        Stmt.letVar "h" (Expr.externalCall "PoseidonT4_hash" [Expr.param "a", Expr.param "b", Expr.param "c"]),
-        Stmt.setStorage "lastHash" (Expr.localVar "h"),
-        Stmt.stop
-      ]
-    },
-    { name := "getLastHash"
-      params := []
-      returnType := some FieldType.uint256
-      body := [
-        Stmt.return (Expr.storage "lastHash")
-      ]
-    }
-  ]
-}
 
 
 /-!
@@ -444,7 +404,6 @@ def allSpecs : List ContractSpec := [
   ownedCounterSpec,
   simpleTokenSpec,
   safeCounterSpec
-  -- cryptoHashSpec  -- Uncomment when external linking is fully integrated with tests
 ]
 
 end Compiler.Specs

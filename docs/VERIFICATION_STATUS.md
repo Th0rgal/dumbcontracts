@@ -199,19 +199,12 @@ If fuel-parametric approach proves too complex:
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 63% coverage (after pending PRs), 89 remaining exclusions all proof-only
+**Status**: 70% coverage (203/292), 89 remaining exclusions all proof-only
 
-### Current Coverage (Main Branch)
-
-- **Total Properties**: 292
-- **Covered**: 155 (53.1%)
-- **Excluded**: 137 (proof-only)
-- **Missing**: 0
-
-### After Pending PRs (#20, #21)
+### Current Coverage
 
 - **Total Properties**: 292
-- **Covered**: 185 (63.4%)
+- **Covered**: 203 (70%)
 - **Excluded**: 89 (all proof-only)
 - **Missing**: 0
 

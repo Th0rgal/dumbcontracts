@@ -107,38 +107,7 @@ Here's what stands between current state (97%) and full completion (100%):
 
 **Status**: ✅ COMPLETE - All statement proofs now possible!
 
-**What Was Done**:
-- ✅ Implemented `execIRStmtFuel` and `execIRStmtsFuel` as **mutual definitions** (~95 lines)
-- ✅ Mirrors structure of `execYulStmtFuel` from `Semantics.lean`
-- ✅ Handles ALL statement types: comment, let, assign, expr (sstore/sload/return/revert/etc), if, switch, block, funcDef
-- ✅ Fuel parameter ensures termination (total functions, provable in Lean)
-- ✅ Project builds successfully with mutual definitions
-
-**Location**: `Compiler/Proofs/YulGeneration/Equivalence.lean:247-333`
-
-**Key Implementation Details**:
-```lean
-mutual
-  def execIRStmtFuel : Nat → IRState → YulStmt → IRExecResult
-    | 0, state, _ => .revert state  -- Out of fuel
-    | Nat.succ fuel, state, stmt =>
-        match stmt with
-        | .comment _ => .continue state
-        | .let_ name value => ... -- All cases implemented
-        | .if_ cond body => ... -- Calls execIRStmtsFuel
-        | .switch expr cases default => ... -- Calls execIRStmtsFuel
-
-  def execIRStmtsFuel (fuel : Nat) (state : IRState) (stmts : List YulStmt) : IRExecResult :=
-    match stmts with
-    | [] => .continue state
-    | stmt :: rest =>
-        match execIRStmtFuel fuel state stmt with
-        | .continue s' => execIRStmtsFuel fuel s' rest
-        | other => other  -- propagate return/stop/revert
-end
-```
-
-**Impact**: Enabled ALL statement-level proofs!
+Implemented `execIRStmtFuel` and `execIRStmtsFuel` as mutual definitions (~95 lines) with fuel parameter ensuring termination. See `Compiler/Proofs/YulGeneration/Equivalence.lean:247-333`.
 
 ### Required Theorems
 
@@ -157,23 +126,7 @@ theorem stmt_equiv :
 
 ### Statement Equivalence Proofs (7/8 Complete!)
 
-Progress tracked in `Compiler/Proofs/YulGeneration/StatementEquivalence.lean`:
-
-| # | Statement Type | Theorem | Lines | Status | Notes |
-|---|----------------|---------|-------|--------|-------|
-| 1 | Variable Assignment | `assign_equiv` | 27 | ✅ **PROVEN** | No sorries! |
-| 2 | Storage Load | `storageLoad_equiv` | 14 | ✅ **PROVEN** | No sorries! |
-| 3 | Storage Store | `storageStore_equiv` | 12 | ✅ **PROVEN** | No sorries! |
-| 4 | Mapping Load | `mappingLoad_equiv` | 14 | ✅ **PROVEN** | No sorries! |
-| 5 | Mapping Store | `mappingStore_equiv` | 12 | ✅ **PROVEN** | No sorries! |
-| 6 | Return | `return_equiv` | 12 | ✅ **PROVEN** | No sorries! |
-| 7 | Revert | `revert_equiv` | 11 | ✅ **PROVEN** | No sorries! |
-| 8 | Conditional (if) | `conditional_equiv` | 25 | 🔵 **PARTIAL** | 1 sorry in recursive case |
-| 9 | **Composition** | EXISTS at Equivalence.lean:403 | 89 | ✅ **PROVEN** | `execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv` |
-
-**Legend**: ✅ Complete (no sorries) | 🔵 Partial (has sorry) | ⚪ Not started
-
-**Achievement**: 7/8 individual proofs complete! All follow the same clean pattern using the helper axiom.
+**Achievement**: 7/8 individual proofs complete! All follow the same clean pattern using the helper axiom. See `Compiler/Proofs/YulGeneration/StatementEquivalence.lean` for detailed progress.
 
 ### ✅ Composition Theorem (ALREADY PROVEN!)
 
@@ -551,39 +504,7 @@ theorem mint_preserves_supply_sum (s : FiniteAddressSet) :
 
 ## Contributing
 
-### High-Impact Contribution Opportunities
-
-1. **Layer 3 Statement Proofs** (🔴 Critical, Lean expertise required)
-   - **NEW**: We've created skeleton file `StatementEquivalence.lean` with theorem stubs!
-   - Pick a statement type from the progress table (8 theorems + composition)
-   - Study the worked example (variable assignment)
-   - Replace `sorry` with your proof
-   - See: `Compiler/Proofs/YulGeneration/StatementEquivalence.lean`
-   - **Quick Start**:
-     1. Start with low-difficulty proofs (storageLoad, storageStore, return)
-     2. Work up to medium (mappingLoad, mappingStore)
-     3. Tackle conditional (requires recursion/induction)
-     4. Final boss: composition theorem (depends on all others)
-
-2. **Property Test Expansion** (🟢 Low priority, Solidity/Foundry skills)
-   - Add more differential tests for edge cases
-   - Improve property test coverage reporting
-   - See: `test/Property*.t.sol`, `scripts/`
-
-3. **Documentation** (🔵 Medium priority, technical writing)
-   - Tutorial: "Verifying Your First Contract"
-   - Proof patterns guide
-   - Architecture deep-dive
-   - See: `docs/`, `docs-site/`
-
-4. **Example Contracts** (🔵 Medium priority, smart contract expertise)
-   - Implement and verify ERC721, Governance, or AMM
-   - Document verification process
-   - See: `DumbContracts/Examples/`
-
-### Getting Started
-
-See `VERIFICATION_STATUS.md` for current project state and `Compiler/Proofs/README.md` for proof development guide.
+See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines and [`VERIFICATION_STATUS.md`](VERIFICATION_STATUS.md) for current project state.
 
 ---
 

@@ -127,6 +127,27 @@ def collect_theorems(path: Path) -> list[str]:
     return names
 
 
+def extract_manifest_from_proofs() -> dict[str, list[str]]:
+    """Extract theorem names from Lean proof files.
+
+    Returns:
+        Dictionary mapping contract names to sorted, deduplicated lists of theorem names.
+    """
+    if not PROOFS_DIR.exists():
+        raise SystemExit(f"Missing proofs dir: {PROOFS_DIR}")
+    manifest: dict[str, list[str]] = {}
+    for contract_dir in sorted(PROOFS_DIR.iterdir()):
+        if not contract_dir.is_dir():
+            continue
+        contract = contract_dir.name
+        theorems: list[str] = []
+        for lean in sorted(contract_dir.rglob("*.lean")):
+            theorems.extend(collect_theorems(lean))
+        if theorems:
+            manifest[contract] = sorted(dict.fromkeys(theorems))
+    return manifest
+
+
 def die(msg: str) -> None:
     """Print error message and exit with status 1.
 

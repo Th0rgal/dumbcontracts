@@ -5,9 +5,9 @@ description: EDSL proofs plus compiler correctness proofs (IR + Yul)
 
 # Formal Verification
 
-The compiler is additionally verified with IR preservation proofs in `Compiler/Proofs/`. Yul preservation is in progress (semantics + scaffolding exist, full equivalence theorems pending). No `sorry`, no axioms. All proofs are checked by `lake build`.
+The compiler is verified with IR preservation proofs and Yul equivalence proofs in `Compiler/Proofs/`. All three layers are complete — no `sorry`, no axioms. All proofs are checked by `lake build`.
 
-## Snapshot (2026-02-13)
+## Snapshot (2026-02-14)
 
 - EDSL theorems: 252 across 7 contracts and a math stdlib.
 - SimpleStorage: 19 total (Basic 12, Correctness 7).
@@ -23,7 +23,7 @@ The compiler is additionally verified with IR preservation proofs in `Compiler/P
 
 - **Spec semantics**: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
 - **IR generation**: `Compiler/Proofs/IRGeneration/` (complete for all 7 contracts)
-- **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/` (in progress)
+- **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/` (complete — PR #42)
 
 ## Structure
 
@@ -346,9 +346,8 @@ Transfer proofs now handle self-transfer by modeling it as a no-op (preloading b
 
 ## Known limitations
 
-1. Transfer proofs require `sender != to` (implementation write ordering)
-2. Uint256 is a dedicated 256-bit modular type; `+`, `-`, `*`, `/`, and `%` wrap at `2^256`
-3. No multi-contract interaction
-4. No reentrancy modeling
-5. `supply_bounds_balances` not preserved for lists with duplicates; exact sum equations are proven instead
-6. No Mathlib: `set`, `ring`, `linarith` unavailable
+1. Uint256 is a dedicated 256-bit modular type; `+`, `-`, `*`, `/`, and `%` wrap at `2^256`
+2. No multi-contract interaction
+3. No reentrancy modeling
+4. `supply_bounds_balances` not preserved for lists with duplicates; exact sum equations are proven instead
+5. No Mathlib: `set`, `ring`, `linarith` unavailable

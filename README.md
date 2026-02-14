@@ -81,74 +81,49 @@ scripts/                             # build/test scripts
 test/                                # Foundry tests (unit, property, differential)
 ```
 
-## Where Things Live (Spec → Impl → Proof)
+## Adding a Contract
 
-- **User-facing specs**: `DumbContracts/Specs/<Name>/Spec.lean` (+ `Invariants.lean`)
-- **Implementations (EDSL)**: `DumbContracts/Examples/<Name>.lean`
-- **User-facing proofs**: `DumbContracts/Specs/<Name>/Proofs.lean`
-- **Reusable proof infrastructure**: `DumbContracts/Proofs/Stdlib/` (spec interpreter + automation)
-- **Compiler specs (for codegen)**: `Compiler/Specs.lean` (separate from user specs)
-- **Compiler proofs**: `Compiler/Proofs/` (IR generation + Yul preservation)
+**File Layout (Spec → Impl → Proof):**
+1. **Spec**: `DumbContracts/Specs/<Name>/Spec.lean` — Human-readable function specifications
+2. **Invariants**: `DumbContracts/Specs/<Name>/Invariants.lean` — State properties (optional but encouraged)
+3. **Implementation**: `DumbContracts/Examples/<Name>.lean` — EDSL contract code
+4. **EDSL Proofs**: `DumbContracts/Specs/<Name>/Proofs.lean` — Layer 1 correctness proofs
+5. **Compiler Spec**: `Compiler/Specs.lean` — ContractSpec for code generation
+6. **Tests**: `test/Property<Name>.t.sol` + differential tests
 
-## Adding a Contract (Checklist)
+**Common Pitfalls:**
+- Storage slot mismatches between spec, EDSL, and compiler
+- Mapping conversions assuming simple slots instead of typed storage
+- Stale proofs when specs change
 
-1. Write a small, human-readable spec in `DumbContracts/Specs/<Name>/Spec.lean`.
-2. Add invariants in `DumbContracts/Specs/<Name>/Invariants.lean` (optional but encouraged).
-3. Implement the contract in `DumbContracts/Examples/<Name>.lean` using the EDSL.
-4. Prove the implementation meets the spec in `DumbContracts/Specs/<Name>/Proofs.lean`.
-5. Add compiler-level spec glue in `Compiler/Specs.lean` and IR/Yul proofs in `Compiler/Proofs/` if new patterns are introduced.
-6. Add tests in `test/` (unit + property + differential if applicable).
-7. Use `SimpleStorage` as the minimal end-to-end reference for file layout and proof style.
+**Reference**: Use `SimpleStorage` as the minimal end-to-end example.
 
-## Adding a Contract (Common Pitfalls)
-
-- Storage slot mismatches between the spec, EDSL implementation, and compiler spec.
-- Mapping conversions that assume simple storage slots instead of typed storage.
-- Missing proofs when a spec is changed but the EDSL implementation or invariants are not updated.
-
-## Examples and Proofs
-
-- **Lean examples (EDSL implementations)**: `DumbContracts/Examples/`
-- **Specifications + invariants + Layer 1 proofs**: `DumbContracts/Specs/`
-- **Contract-level proofs (EDSL properties)**: `DumbContracts/Proofs/`
-- **Compiler proofs**: `Compiler/Proofs/` (Layer 1 infra, Layer 2: IR, Layer 3: Yul)
+**Infrastructure:**
+- **Proof automation**: `DumbContracts/Proofs/Stdlib/` (SpecInterpreter + automation lemmas)
+- **Compiler proofs**: `Compiler/Proofs/` (Layer 2: IR generation, Layer 3: Yul preservation)
 
 ## Build and Test
 
+**Basic Commands:**
 ```bash
-# Type-check DumbContracts (EDSL + proofs)
-lake build
+lake build                          # Type-check Lean code (EDSL + proofs)
+lake build dumbcontracts-compiler   # Build compiler executable
+forge test                          # Run all Foundry tests
+```
 
-# Build compiler executable
-lake build dumbcontracts-compiler
-
-# Run Foundry tests (unit + property + differential + selector sanity)
-forge test
-
-# Optional: scale differential random test counts
-# DIFFTEST_RANDOM_SMALL defaults to 100, DIFFTEST_RANDOM_LARGE defaults to 10000
-# DIFFTEST_RANDOM_COUNT overrides both small/large when set
-# Large counts can be expensive; tune these for local runs vs CI.
-# CI runs with DIFFTEST_RANDOM_LARGE=10000 across all differential harnesses.
-# CI builds the compiler + difftest interpreter once and shares generated Yul across test shards.
-# CI shards download a prebuilt difftest interpreter artifact and run it directly (must be executable).
-# DIFFTEST_RANDOM_SEED is mixed with shard index + contract label to avoid identical sequences across shards.
+**Differential Testing (optional scaling):**
+```bash
+# Defaults: DIFFTEST_RANDOM_SMALL=100, DIFFTEST_RANDOM_LARGE=10000
+# Override with DIFFTEST_RANDOM_COUNT or scale individually:
 DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 forge test
+```
 
-# Optional: extract proof theorem names into a test manifest
-python3 scripts/extract_property_manifest.py
-
-# Optional: check that property tests reference real theorems
-python3 scripts/check_property_manifest.py
-
-# Optional: check that property_manifest.json matches current proofs
-python3 scripts/check_property_manifest_sync.py
-
-# Optional: check that all theorems have property coverage (with exclusions)
-python3 scripts/check_property_coverage.py
-
-# Optional: check selector hashing against specs and generated Yul (including yul-new if present)
-python3 scripts/check_selectors.py
+**Property Coverage Checks:**
+```bash
+python3 scripts/check_property_manifest.py       # Verify test tags reference real theorems
+python3 scripts/check_property_coverage.py       # Ensure all theorems have tests
+python3 scripts/check_property_manifest_sync.py  # Verify manifest matches proofs
+python3 scripts/check_selectors.py               # Verify keccak256 selector hashing
 ```
 
 ## Documentation

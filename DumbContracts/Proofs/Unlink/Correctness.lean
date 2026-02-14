@@ -39,14 +39,14 @@ We prove each helper preserves state (is "pure" w.r.t. storage).
 -/
 
 -- hashNote is pure: computes a value without modifying state
-theorem hashNote_eq (note : Examples.Unlink.Note) (s : ContractState) :
+theorem hashNote_eq (note : Note) (s : ContractState) :
     Examples.Unlink.hashNote note s =
     ContractResult.success (note.npk + note.token + note.amount) s := by
   unfold Examples.Unlink.hashNote
   simp [DumbContracts.bind, DumbContracts.pure, Bind.bind, Pure.pure, instMonadContract]
 
 -- computeCommitments preserves state and returns a list of the same length
-theorem computeCommitments_spec (notes : List Examples.Unlink.Note) (s : ContractState) :
+theorem computeCommitments_spec (notes : List Note) (s : ContractState) :
     ∃ cs : List Uint256,
       Examples.Unlink.computeCommitments notes s = ContractResult.success cs s ∧
       cs.length = notes.length := by
@@ -62,7 +62,7 @@ theorem computeCommitments_spec (notes : List Examples.Unlink.Note) (s : Contrac
     simp [DumbContracts.pure, Pure.pure, instMonadContract]
 
 -- validateNotes preserves state when all note amounts are positive
-theorem validateNotes_spec (notes : List Examples.Unlink.Note) (s : ContractState)
+theorem validateNotes_spec (notes : List Note) (s : ContractState)
     (h_valid : ∀ note ∈ notes, note.amount > 0) :
     Examples.Unlink.validateNotes notes s = ContractResult.success () s := by
   induction notes with
@@ -81,7 +81,7 @@ When all guards pass, deposit reduces to insertLeaves applied to a
 commitment list of the same length as the input notes.
 -/
 
-theorem deposit_reduces (notes : List Examples.Unlink.Note) (s : ContractState)
+theorem deposit_reduces (notes : List Note) (s : ContractState)
     (h_nonempty : notes.length > 0)
     (h_valid : ∀ note ∈ notes, note.amount > 0) :
     ∃ cs : List Uint256,
@@ -99,9 +99,9 @@ theorem deposit_reduces (notes : List Examples.Unlink.Note) (s : ContractState)
 
 /-! ## deposit_meets_spec
 
-The main correctness theorem. We use deposit_spec' which parametrizes
-by list length to avoid the Note type mismatch between Specs.Unlink.Note
-and Examples.Unlink.Note (both have identical fields, but are distinct types).
+The main correctness theorem. Since the spec and implementation share the
+same Note type (from Types.lean), we prove deposit_spec directly — no
+intermediate wrapper needed.
 
 The no_slot_collision precondition models the fact that nullifier slots
 (2 + hash.val) and root-seen slots (3 + root.val) don't overlap.
@@ -114,23 +114,9 @@ def no_slot_collision (s : ContractState) (n : Nat) : Prop :=
   ∀ nullifier : Uint256,
     2 + nullifier.val ≠ 3 + (s.storage 1 + (Core.Uint256.ofNat n)).val
 
--- deposit_spec parametrized by length (avoids Note type mismatch)
-def deposit_spec' (n : Nat) (s s' : ContractState) : Prop :=
-  currentMerkleRoot s' ≠ currentMerkleRoot s ∧
-  rootSeen s' (currentMerkleRoot s') ∧
-  nextLeafIndex s' = nextLeafIndex s + n ∧
-  (∀ nullifier : Uint256, nullifierSpent s nullifier → nullifierSpent s' nullifier) ∧
-  (∀ r : Uint256, rootSeen s r → rootSeen s' r) ∧
-  Specs.sameContext s s'
-
--- deposit_spec is equivalent to deposit_spec' at notes.length
-theorem deposit_spec_iff {notes : List Specs.Unlink.Note} {s s' : ContractState} :
-    deposit_spec notes s s' ↔ deposit_spec' notes.length s s' := by
-  simp [deposit_spec, deposit_spec']
-
 -- deposit succeeds (doesn't revert) when preconditions hold
 set_option maxRecDepth 2048 in
-theorem deposit_succeeds (notes : List Examples.Unlink.Note) (s : ContractState)
+theorem deposit_succeeds (notes : List Note) (s : ContractState)
     (h_nonempty : notes.length > 0)
     (h_valid : ∀ note ∈ notes, note.amount > 0) :
     ∃ s', (Examples.Unlink.deposit notes).run s = ContractResult.success () s' := by
@@ -149,13 +135,13 @@ theorem deposit_succeeds (notes : List Examples.Unlink.Note) (s : ContractState)
 
 -- THE MAIN THEOREM: deposit implementation satisfies its specification
 set_option maxRecDepth 2048 in
-theorem deposit_meets_spec (notes : List Examples.Unlink.Note) (s : ContractState)
+theorem deposit_meets_spec (notes : List Note) (s : ContractState)
     (h_nonempty : notes.length > 0)
     (h_valid : ∀ note ∈ notes, note.amount > 0)
     (h_no_overflow : (s.storage 1).val + notes.length < Core.Uint256.modulus)
     (h_no_collision : no_slot_collision s notes.length) :
     let s' := ((Examples.Unlink.deposit notes).run s).snd
-    deposit_spec' notes.length s s' := by
+    deposit_spec notes s s' := by
   obtain ⟨cs, h_len, h_eq⟩ := deposit_reduces notes s h_nonempty h_valid
   have h_snd : ((Examples.Unlink.deposit notes).run s).snd =
     ((Examples.Unlink.insertLeaves cs).run s).snd := by rw [h_eq]

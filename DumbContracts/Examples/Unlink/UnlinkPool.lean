@@ -13,10 +13,12 @@
 -/
 
 import DumbContracts.Core
+import DumbContracts.Specs.Unlink.Types
 
 namespace DumbContracts.Examples.Unlink
 
 open DumbContracts
+open DumbContracts.Specs.Unlink (Note)
 
 /-! ## Storage Layout -/
 
@@ -39,11 +41,7 @@ def verifierRouter : StorageSlot Uint256 := ⟨4⟩
 
 /-! ## Data Structures (Simplified for Scaffold) -/
 
-structure Note where
-  npk : Uint256
-  token : Uint256      -- Reordered to match spec
-  amount : Uint256
-  deriving Repr
+-- Note is imported from DumbContracts.Specs.Unlink.Types (shared with spec)
 
 structure Proof where
   -- ZK-SNARK proof components (simplified)

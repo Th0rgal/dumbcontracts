@@ -14,6 +14,7 @@
 import DumbContracts.Core
 import DumbContracts.Specs.Common
 import DumbContracts.Specs.Unlink.Arithmetic
+import DumbContracts.Specs.Unlink.Types
 
 namespace DumbContracts.Specs.Unlink
 
@@ -23,15 +24,7 @@ open DumbContracts.Core.Uint256
 
 /-! ## Type Definitions -/
 
-abbrev Commitment := Uint256
-abbrev NullifierHash := Uint256
-abbrev MerkleRoot := Uint256
-
-structure Note where
-  npk : Uint256
-  token : Uint256
-  amount : Uint256
-  deriving Repr
+-- Note, Commitment, NullifierHash, MerkleRoot imported from Types.lean
 
 -- Spec-level transaction
 -- withdrawalAmount = 0 means no withdrawal; withdrawalCommitment is hash of withdrawal note

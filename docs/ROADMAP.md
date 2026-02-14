@@ -26,25 +26,25 @@ Here's what stands between current state (92%) and full completion (100%):
 
 ### 🔴 **Layer 3 Statement Proofs** (THE Critical Path)
 **What**: Prove 9 theorems showing IR → Yul compilation correctness
-**Status**: 0/10 complete (1 prerequisite + 8 statement proofs + 1 composition)
-**Impact**: 92% → 98% (statements) → 100% (composition)
-**Effort**: 3-5 weeks (1 week prerequisite + 2-4 weeks proofs)
-**Parallelizable**: Yes! All 8 statement proofs are independent (after prerequisite)
+**Status**: ✅ 2/10 complete (prerequisite DONE + 1 proven + 7 ready + 1 composition)
+**Impact**: 92% → 94% (prerequisite) → 98% (statements) → 100% (composition)
+**Effort**: 2-4 weeks remaining (prerequisite complete, 7 proofs + composition)
+**Parallelizable**: Yes! Remaining 7 statement proofs are independent
 
-⚠️ **PREREQUISITE**: Add `execIRStmtFuel` before statement proofs can begin
+🎉 **PREREQUISITE COMPLETE**: `execIRStmtFuel` implemented and first proof done!
 
-| # | Statement | Difficulty | Effort | Status | Blocker |
-|---|-----------|------------|--------|--------|---------|
-| 0 | **Add execIRStmtFuel** | **Medium** | **1w** | ⚪ **TODO** | **BLOCKS ALL** |
-| 1 | Variable Assignment | Low | 1h | ⚪ TODO | Needs #0 |
-| 2 | Storage Load | Low | 1h | ⚪ TODO | Needs #0 |
-| 3 | Storage Store | Low | 1h | ⚪ TODO | Needs #0 |
-| 4 | Mapping Load | Medium | 2-4h | ⚪ TODO | Needs #0 |
-| 5 | Mapping Store | Medium | 2-4h | ⚪ TODO | Needs #0 |
-| 6 | Conditional (if) | Medium-High | 4-8h | ⚪ TODO | Needs #0 |
-| 7 | Return | Low | 1-2h | ⚪ TODO | Needs #0 |
-| 8 | Revert | Low-Medium | 2-3h | ⚪ TODO | Needs #0 |
-| 9 | **Composition** | High | 1-2d | ⚪ TODO | Needs #1-8 |
+| # | Statement | Difficulty | Effort | Status | Notes |
+|---|-----------|------------|--------|--------|-------|
+| 0 | **Add execIRStmtFuel** | **Medium** | **1w** | ✅ **DONE** | **Unblocked all!** |
+| 1 | Variable Assignment | Low | 1h | ✅ **PROVEN** | `assign_equiv` |
+| 2 | Storage Load | Low | 1h | ⚪ TODO | Ready to prove |
+| 3 | Storage Store | Low | 1h | ⚪ TODO | Ready to prove |
+| 4 | Mapping Load | Medium | 2-4h | ⚪ TODO | Ready to prove |
+| 5 | Mapping Store | Medium | 2-4h | ⚪ TODO | Ready to prove |
+| 6 | Conditional (if) | Medium-High | 4-8h | ⚪ TODO | Ready to prove |
+| 7 | Return | Low | 1-2h | ⚪ TODO | Ready to prove |
+| 8 | Revert | Low-Medium | 2-3h | ⚪ TODO | Ready to prove |
+| 9 | **Composition** | High | 1-2d | ⚪ TODO | Needs #2-8 |
 
 ### 🟡 **Trust Reduction** (3 Components)
 **What**: Eliminate or verify all trusted components

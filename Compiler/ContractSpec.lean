@@ -77,6 +77,7 @@ inductive Expr
   | msgValue
   | blockTimestamp
   | localVar (name : String)  -- Reference to local variable
+  | externalCall (name : String) (args : List Expr)  -- External function call (linked at compile time)
   | add (a b : Expr)
   | sub (a b : Expr)
   | mul (a b : Expr)
@@ -140,8 +141,12 @@ private def isMapping (fields : List Field) (name : String) : Bool :=
 -- Keep compiler literals aligned with Uint256 semantics (mod 2^256).
 private def uint256Modulus : Nat := 2 ^ 256
 
--- Compile expression to Yul
-private def compileExpr (fields : List Field) : Expr → Except String YulExpr
+-- Compile expression to Yul (using mutual recursion for lists)
+mutual
+private partial def compileExprList (fields : List Field) (exprs : List Expr) : Except String (List YulExpr) :=
+  exprs.mapM fun e => compileExpr fields e
+
+private partial def compileExpr (fields : List Field) : Expr → Except String YulExpr
   | Expr.literal n => pure (YulExpr.lit (n % uint256Modulus))
   | Expr.param name => pure (YulExpr.ident name)
   | Expr.constructorArg idx => pure (YulExpr.ident s!"arg{idx}")  -- Constructor args loaded as argN
@@ -165,6 +170,9 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
   | Expr.msgValue => pure (YulExpr.call "callvalue" [])
   | Expr.blockTimestamp => pure (YulExpr.call "timestamp" [])
   | Expr.localVar name => pure (YulExpr.ident name)
+  | Expr.externalCall name args => do
+      let argExprs ← compileExprList fields args
+      pure (YulExpr.call name argExprs)
   | Expr.add a b => do
       let aExpr ← compileExpr fields a
       let bExpr ← compileExpr fields b
@@ -230,7 +238,7 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
       let aExpr ← compileExpr fields a
       let bExpr ← compileExpr fields b
       pure (YulExpr.call "iszero" [YulExpr.call "gt" [aExpr, bExpr]])
-termination_by e => sizeOf e
+end
 
 -- Compile require condition to a "failure" predicate to avoid double-negation.
 private def compileRequireFailCond (fields : List Field) : Expr → Except String YulExpr

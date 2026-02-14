@@ -26,8 +26,9 @@ fi
 
 # Fetch existing issues to check for duplicates
 echo "Fetching existing Layer 3 issues..."
-EXISTING_ISSUES=$(gh issue list --repo "$REPO" --label "layer-3" --state all --json title --jq '.[].title')
-echo "Found $(echo "$EXISTING_ISSUES" | grep -c .) existing Layer 3 issues"
+EXISTING_ISSUES=$(gh issue list --repo "$REPO" --label "layer-3" --state all --limit 1000 --json title --jq '.[].title')
+ISSUE_COUNT=$(echo "$EXISTING_ISSUES" | grep -c . || echo "0")
+echo "Found $ISSUE_COUNT existing Layer 3 issues"
 echo ""
 
 # Array of statement proofs to create issues for
@@ -54,8 +55,8 @@ create_issue() {
 
     local title="[Layer 3] Prove ${name,,} statement equivalence"
 
-    # Check if issue already exists
-    if echo "$EXISTING_ISSUES" | grep -qF "$title"; then
+    # Check if issue already exists (exact match)
+    if echo "$EXISTING_ISSUES" | grep -qFx "$title"; then
         echo "⊘ Issue already exists: ${title}"
         echo "  Skipping..."
         echo ""

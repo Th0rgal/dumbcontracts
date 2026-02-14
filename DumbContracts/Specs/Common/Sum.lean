@@ -91,12 +91,12 @@ theorem balancesFinite_preserved_deposit {slot : Nat} (s : ContractState)
   unfold balancesFinite at *
   intro addr' h_notin
   simp at h_notin ⊢
-  split
-  · split
-    · -- addr' = addr, contradiction since addr ∈ knownAddresses after insert
-      sorry
-    · -- addr' ≠ addr, use original hypothesis
-      exact h addr' (by sorry)
-  · exact h addr' h_notin
+  -- This proof requires reasoning about FiniteSet.insert membership
+  -- Key insight: if addr' ∉ (insert addr S), then addr' ∉ S and addr' ≠ addr
+  -- We need to prove that the new storageMap has zero at addr'
+  -- Since addr' is not in the updated knownAddresses, it must not be addr
+  -- Therefore the storageMap check fails and we use the old value
+  -- which is zero by the original hypothesis
+  sorry
 
 end DumbContracts.Specs.Common

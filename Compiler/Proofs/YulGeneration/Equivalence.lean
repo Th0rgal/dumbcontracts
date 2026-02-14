@@ -129,13 +129,121 @@ theorem execYulStmtsFuel_cons
       | .revert s => .revert s := by
   rfl
 
+def execIRStmtsFuel (fuel : Nat) (state : IRState) (stmts : List YulStmt) : IRExecResult :=
+  match stmts with
+  | [] => .continue state
+  | stmt :: rest =>
+      match fuel with
+      | 0 => .revert state
+      | Nat.succ fuel =>
+          match execIRStmt state stmt with
+          | .continue s' => execIRStmtsFuel fuel s' rest
+          | .return v s => .return v s
+          | .stop s => .stop s
+          | .revert s => .revert s
 
-/-! ## Generic Sequence Equivalence (TODO)
 
-We still need a compositional lemma that lifts `stmt_equiv` to statement
-lists with fuel/length constraints. This will live here once `execIRStmts`
-can be unfolded safely in proof contexts.
+/-! ## Generic Sequence Equivalence
+
+This lemma lifts statement-level equivalence to statement lists, parameterized
+by the fuel used for Yul execution. It is intentionally fuel-parametric so
+later proofs can specialize to the compiler-chosen fuel without re-proving the
+composition logic.
 -/
+
+theorem execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
+    (stmt_equiv :
+      ∀ selector fuel stmt irState yulState,
+        statesAligned selector irState yulState →
+        execResultsAligned selector
+          (execIRStmt irState stmt)
+          (execYulStmtFuel fuel yulState stmt)) :
+    ∀ selector fuel stmts irState yulState,
+      statesAligned selector irState yulState →
+      execResultsAligned selector
+        (execIRStmtsFuel fuel irState stmts)
+        (execYulStmtsFuel fuel yulState stmts) := by
+  intro selector fuel stmts irState yulState hAligned
+  revert fuel irState yulState hAligned
+  induction stmts with
+  | nil =>
+      intro fuel irState yulState hAligned
+      simp [execIRStmtsFuel, execYulStmtsFuel_nil, execResultsAligned, hAligned]
+  | cons stmt rest ih =>
+      intro fuel irState yulState hAligned
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsFuel, execYulStmtsFuel, execYulFuel, execResultsAligned, hAligned]
+      | succ fuel =>
+          have hStmt := stmt_equiv selector fuel stmt irState yulState hAligned
+          cases hIR : execIRStmt irState stmt with
+          | «continue» ir' =>
+              cases hYul : execYulStmtFuel fuel yulState stmt with
+              | «continue» y' =>
+                  have hAligned' : statesAligned selector ir' y' := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  have hRest := ih (irState := ir') (yulState := y') (fuel := fuel) hAligned'
+                  simpa [execIRStmtsFuel, execYulStmtsFuel_cons, hIR, hYul] using hRest
+              | «return» v y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «stop» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «revert» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+          | «return» v ir' =>
+              cases hYul : execYulStmtFuel fuel yulState stmt with
+              | «return» v' y' =>
+                  simpa [execIRStmtsFuel, execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
+              | «continue» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «stop» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «revert» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+          | «stop» ir' =>
+              cases hYul : execYulStmtFuel fuel yulState stmt with
+              | «stop» y' =>
+                  simpa [execIRStmtsFuel, execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
+              | «continue» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «return» v y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «revert» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+          | «revert» ir' =>
+              cases hYul : execYulStmtFuel fuel yulState stmt with
+              | «revert» y' =>
+                  simpa [execIRStmtsFuel, execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
+              | «continue» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «return» v y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
+              | «stop» y' =>
+                  have : False := by
+                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                  cases this
 
 
 end Compiler.Proofs.YulGeneration

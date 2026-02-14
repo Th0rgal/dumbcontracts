@@ -53,6 +53,54 @@ jobs:
           fi
           echo "No sorry found — all proofs are complete"
 
+      - name: Check for axioms in proof files
+        run: |
+          echo "Checking for axioms in proof files..."
+
+          # Find all axioms (excluding commented lines)
+          grep -r "axiom " Compiler/Proofs/ --include="*.lean" | grep -v "^--" | grep -v "TRUST ASSUMPTION" | grep -v "This is an axiom" | grep -v "List version" | grep -v "Usage.*axiom" | tee axioms.txt || true
+
+          # Count axioms (look for actual axiom declarations)
+          AXIOM_COUNT=$(grep -c "^[^:]*:axiom " axioms.txt 2>/dev/null || echo 0)
+
+          echo "Found $AXIOM_COUNT axiom declaration(s)"
+
+          if [ "$AXIOM_COUNT" -gt 0 ]; then
+            echo "::warning::Found $AXIOM_COUNT axiom(s) in proof files"
+            cat axioms.txt
+
+            # Check if AXIOMS.md exists
+            if [ ! -f "AXIOMS.md" ]; then
+              echo "::error::AXIOMS.md not found. All axioms must be documented."
+              exit 1
+            fi
+
+            # Verify each axiom is documented in AXIOMS.md
+            echo "Verifying all axioms are documented..."
+
+            # Extract axiom names from grep output
+            AXIOM_NAMES=$(grep "^[^:]*:axiom " axioms.txt | sed 's/.*:axiom \([a-zA-Z0-9_]*\).*/\1/' | sort -u)
+
+            UNDOCUMENTED=""
+            for axiom_name in $AXIOM_NAMES; do
+              if ! grep -q "$axiom_name" AXIOMS.md; then
+                echo "::error::Axiom '$axiom_name' not documented in AXIOMS.md"
+                UNDOCUMENTED="$UNDOCUMENTED $axiom_name"
+              else
+                echo "✓ Axiom '$axiom_name' is documented"
+              fi
+            done
+
+            if [ -n "$UNDOCUMENTED" ]; then
+              echo "::error::Undocumented axioms:$UNDOCUMENTED"
+              exit 1
+            fi
+
+            echo "✓ All $AXIOM_COUNT axioms are documented in AXIOMS.md"
+          else
+            echo "✓ No axioms found in proof files"
+          fi
+
       - name: Build compiler
         run: lake build dumbcontracts-compiler
 

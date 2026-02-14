@@ -37,6 +37,7 @@ Closes #X, addresses #Y
 ```bash
 lake build  # Must pass
 # No new `sorry` without documentation
+# No new `axiom` without documenting in AXIOMS.md
 # Update docs/ROADMAP.md if architectural changes
 ```
 
@@ -66,6 +67,35 @@ Types: `feat` `fix` `proof` `docs` `refactor` `test` `chore`
 **New contracts**: Follow `SimpleStorage` pattern: Spec → Invariants → Implementation → Proofs → Tests
 
 **Compiler changes**: Check [Compiler/Specs.lean](Compiler/Specs.lean), ensure proofs still build
+
+## Adding Axioms
+
+Axioms should be **avoided whenever possible** as they introduce trust assumptions. If you must add an axiom:
+
+1. **Exhaust all alternatives first**:
+   - Can you prove it? (even if difficult)
+   - Can you use a weaker lemma?
+   - Can you refactor to avoid the need?
+
+2. **Document in AXIOMS.md**:
+   - State the axiom clearly
+   - Provide soundness justification
+   - Explain why a proof isn't feasible
+   - Note future work to eliminate axiom
+   - Assess risk level
+
+3. **Add inline comment in source**:
+   ```lean
+   /--
+   AXIOM: Brief explanation
+   See AXIOMS.md for full soundness justification
+   -/
+   axiom my_axiom : ...
+   ```
+
+4. **CI will validate**: The CI workflow automatically detects axioms and ensures they're documented in AXIOMS.md. Undocumented axioms will fail the build.
+
+See [AXIOMS.md](AXIOMS.md) for current axioms and detailed guidelines.
 
 ## Key Files
 

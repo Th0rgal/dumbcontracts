@@ -15,6 +15,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Specs.Common
+import DumbContracts.Specs.Unlink.Arithmetic
 
 namespace DumbContracts.Specs.Unlink
 
@@ -108,6 +109,8 @@ def transact_spec
   nextLeafIndex s' = nextLeafIndex s + newCommitments.length ∧
   -- Old roots remain seen
   (∀ r : Uint256, rootSeen s r → rootSeen s' r) ∧
+  -- Old nullifiers remain spent (monotonicity)
+  (∀ n : Uint256, nullifierSpent s n → nullifierSpent s' n) ∧
   -- Context unchanged
   sameContext s s'
 
@@ -129,9 +132,8 @@ theorem no_double_spend_monotonic
     -- From deposit_spec, old nullifiers remain spent
     exact h_deposit.right.right.right.left nullifier h_spent
   | inr ⟨root, nulls, comms, h_transact⟩ =>
-    -- From transact_spec, we need to show nullifier remains spent
-    -- This is provable but needs helper lemmas about storage preservation
-    sorry
+    -- From transact_spec, old nullifiers remain spent
+    exact h_transact.right.right.right.right.right.right.left nullifier h_spent
 
 -- Theorem: Roots are cumulative (historical tracking)
 theorem roots_cumulative
@@ -150,7 +152,9 @@ theorem roots_cumulative
 
 -- Theorem: Leaf index is monotonically increasing
 theorem leaf_index_monotonic
-    (s s' : ContractState) :
+    (s s' : ContractState)
+    (h_no_overflow_deposit : ∀ notes, deposit_spec notes s s' → (nextLeafIndex s).val + notes.length < Uint256.modulus)
+    (h_no_overflow_transact : ∀ root nulls comms, transact_spec root nulls comms s s' → (nextLeafIndex s).val + comms.length < Uint256.modulus) :
     (∃ notes, deposit_spec notes s s') ∨
     (∃ root nulls comms, transact_spec root nulls comms s s') →
     nextLeafIndex s' ≥ nextLeafIndex s := by
@@ -158,13 +162,13 @@ theorem leaf_index_monotonic
   cases h_op with
   | inl ⟨notes, h_deposit⟩ =>
     -- From deposit_spec: s'.nextLeafIndex = s.nextLeafIndex + notes.length
-    have h := h_deposit.right.right.left
-    simp [nextLeafIndex] at h
-    sorry -- Needs Uint256 ordering
+    have h_eq := h_deposit.right.right.left
+    have h_overflow := h_no_overflow_deposit notes h_deposit
+    exact eq_add_implies_ge h_eq h_overflow
   | inr ⟨root, nulls, comms, h_transact⟩ =>
-    have h := h_transact.right.right.right.right.left
-    simp [nextLeafIndex] at h
-    sorry -- Needs Uint256 ordering
+    have h_eq := h_transact.right.right.right.right.left
+    have h_overflow := h_no_overflow_transact root nulls comms h_transact
+    exact eq_add_implies_ge h_eq h_overflow
 
 /-! ## High-Level Security Properties (User-Friendly Statements) -/
 

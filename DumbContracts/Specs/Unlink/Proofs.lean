@@ -69,18 +69,17 @@ theorem impl_roots_cumulative_deposit
 -- Proof: leaf index increases after deposit (when notes list is non-empty)
 theorem impl_leaf_index_increases
     (s s' : ContractState)
-    (notes : List Note) :
+    (notes : List Note)
+    (h_no_overflow : (nextLeafIndex s).val + notes.length < Uint256.modulus) :
     deposit_spec notes s s' →
     notes.length > 0 →
     nextLeafIndex s' > nextLeafIndex s := by
   intro h_deposit h_nonempty
   -- From deposit_spec: nextLeafIndex s' = nextLeafIndex s + notes.length
   have h_eq := h_deposit.right.right.left
-  -- Need to show: s'.nextLeafIndex > s.nextLeafIndex
-  -- Given: s'.nextLeafIndex = s.nextLeafIndex + notes.length
-  -- And: notes.length > 0
-  -- Assume no overflow (realistic for contract operation)
-  sorry -- Still needs overflow assumption to be complete
+  -- Use arithmetic lemma: a + n > a when n > 0
+  rw [h_eq]
+  exact add_length_gt notes h_nonempty h_no_overflow
 
 /-! ## Helper Lemmas -/
 

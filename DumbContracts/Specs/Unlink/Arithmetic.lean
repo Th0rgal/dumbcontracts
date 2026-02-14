@@ -59,4 +59,23 @@ theorem gt_implies_ne {a b : Uint256} (h : a > b) : a ≠ b := by
   rw [h_eq] at h
   exact gt_irrefl b h
 
+/-! ## Ordering Lemmas -/
+
+-- Lemma: a + n ≥ a (adding any natural number maintains or increases value)
+theorem add_nat_ge {a : Uint256} {n : Nat} (h_no_overflow : a.val + n < modulus) :
+    a + (ofNat n) ≥ a := by
+  simp [LE.le, le_def]
+  have h_add : (a + ofNat n).val = a.val + n := by
+    exact add_eq_of_lt h_no_overflow
+  simp [h_add]
+  exact Nat.le_add_right a.val n
+
+-- Lemma: If a = b + n, then a ≥ b
+theorem eq_add_implies_ge {a b : Uint256} {n : Nat}
+    (h_eq : a = b + (ofNat n))
+    (h_no_overflow : b.val + n < modulus) :
+    a ≥ b := by
+  rw [h_eq]
+  exact add_nat_ge h_no_overflow
+
 end DumbContracts.Specs.Unlink

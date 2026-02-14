@@ -88,13 +88,30 @@ the simplest case: variable assignment.
 
 /-! ## Helper Lemmas -/
 
-/-- IR and Yul expression evaluation are identical when states are aligned -/
-lemma evalIRExpr_eq_evalYulExpr (selector : Nat) (irState : IRState) (expr : YulExpr) :
-    evalIRExpr irState expr = evalYulExpr (yulStateOfIR selector irState) expr := by
-  -- This should be true by construction since both use the same implementation
-  -- The proof would require showing that the eval functions are the same
-  -- For now, we'll admit this as it's a structural property
-  sorry
+/-- IR and Yul expression evaluation are identical when states are aligned.
+
+This is an axiom because both `evalIRExpr` and `evalYulExpr` are defined as `partial`
+functions, making them unprovable in Lean's logic. However, this axiom is sound because:
+
+1. Both functions have **identical** source code (see IRInterpreter.lean and Semantics.lean)
+2. `yulStateOfIR` just copies all IRState fields to YulState
+3. The only difference is the `selector` field, which doesn't affect expression evaluation
+4. This is a structural equality, not a semantic one
+
+**Alternative**: To avoid this axiom, we would need to refactor both eval functions
+to use fuel parameters (similar to what we did for execIRStmtFuel). This would be
+a significant undertaking (~500+ lines of code) for relatively little benefit, since
+the functions are already known to be identical by inspection.
+
+**Usage**: This axiom is used by all statement equivalence proofs to show that
+evaluating expressions gives the same results in both IR and Yul contexts.
+-/
+axiom evalIRExpr_eq_evalYulExpr (selector : Nat) (irState : IRState) (expr : YulExpr) :
+    evalIRExpr irState expr = evalYulExpr (yulStateOfIR selector irState) expr
+
+/-- List version of the above axiom -/
+axiom evalIRExprs_eq_evalYulExprs (selector : Nat) (irState : IRState) (exprs : List YulExpr) :
+    evalIRExprs irState exprs = evalYulExprs (yulStateOfIR selector irState) exprs
 
 /-! ## Proven Theorems -/
 

@@ -54,11 +54,6 @@ theorem execYulFuel_mappingSlotFunc (fuel : Nat) (state : YulState) :
 by
   cases fuel <;> simp [mappingSlotFunc, execYulFuel]
 
-theorem buildSwitch_ne_funcDef (fns : List IRFunction) :
-    ∀ name args rets body, buildSwitch fns ≠ YulStmt.funcDef name args rets body := by
-  intro name args rets body
-  simp [Compiler.buildSwitch]
-
 theorem execYulFuel_drop_mappingSlotFunc_buildSwitch
     (fuel : Nat) (state : YulState) (fns : List IRFunction) :
     execYulFuel (fuel + 1) state (YulExecTarget.stmts [mappingSlotFunc, buildSwitch fns]) =

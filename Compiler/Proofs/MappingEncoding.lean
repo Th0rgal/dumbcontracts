@@ -13,9 +13,16 @@ def evmModulus : Nat := 2 ^ 256
 /-- Tag values above the EVM word range so mapping slots never collide. -/
 def mappingTag : Nat := evmModulus
 
+/-- Preserve tagged base slots for nested mappings; otherwise normalize to EVM word range. -/
+def normalizeMappingBaseSlot (baseSlot : Nat) : Nat :=
+  if baseSlot < mappingTag then
+    baseSlot % evmModulus
+  else
+    baseSlot
+
 /-- Encode a mapping slot (base slot + key) into a tagged word. -/
 def encodeMappingSlot (baseSlot key : Nat) : Nat :=
-  mappingTag + (baseSlot % evmModulus) * evmModulus + (key % evmModulus)
+  mappingTag + (normalizeMappingBaseSlot baseSlot) * evmModulus + (key % evmModulus)
 
 /-- Decode a tagged mapping slot back into (base slot, key). -/
 def decodeMappingSlot (slot : Nat) : Option (Nat × Nat) :=

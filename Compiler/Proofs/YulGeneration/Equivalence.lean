@@ -487,6 +487,31 @@ def execIRFunctionFuel_adequate_goal
   execIRFunctionFuel (sizeOf fn.body + 1) fn args initialState =
     execIRFunction fn args initialState
 
+theorem execIRFunctionFuel_adequate_goal_of_stmts_adequate
+    (fn : IRFunction) (args : List Nat) (initialState : IRState)
+    (hAdequacy :
+      execIRStmtsFuel_adequate_goal
+        (fn.params.zip args |>.foldl
+          (fun s (p, v) => s.setVar p.name v)
+          initialState)
+        fn.body) :
+    execIRFunctionFuel_adequate_goal fn args initialState := by
+  let stateWithParams :=
+    fn.params.zip args |>.foldl
+      (fun s (p, v) => s.setVar p.name v)
+      initialState
+  have hAdequacy' :
+      execIRStmtsFuel (sizeOf fn.body + 1) stateWithParams fn.body =
+        execIRStmts stateWithParams fn.body := by
+    simpa [execIRStmtsFuel_adequate_goal, stateWithParams] using hAdequacy
+  have h :
+      execIRFunctionFuel (sizeOf fn.body + 1) fn args initialState =
+        execIRFunction fn args initialState := by
+    dsimp [execIRFunctionFuel, execIRFunction, stateWithParams]
+    rw [hAdequacy']
+    rfl
+  simpa [execIRFunctionFuel_adequate_goal] using h
+
 theorem ir_yul_function_equiv_from_state_of_fuel_goal
     (fn : IRFunction) (selector : Nat) (args : List Nat) (initialState : IRState)
     (hFuel :

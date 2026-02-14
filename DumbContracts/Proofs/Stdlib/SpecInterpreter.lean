@@ -130,6 +130,11 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.blockTimestamp => ctx.blockTimestamp % modulus
   | Expr.localVar name =>
       ctx.localVars.lookup name |>.getD 0
+  | Expr.externalCall _name _args =>
+      -- External calls are placeholders in the interpreter
+      -- For the spec interpreter, we model external calls as returning 0
+      -- In a full implementation, you would provide external function models
+      0
   | Expr.add a b =>
       let va := evalExpr ctx storage fields paramNames a
       let vb := evalExpr ctx storage fields paramNames b

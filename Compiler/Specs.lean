@@ -341,6 +341,14 @@ def simpleTokenSpec : ContractSpec := {
 
 
 /-!
+## Note: CryptoHash Specification Example
+External function linking is demonstrated via the example libraries in
+`examples/external-libs/` and the CLI usage. A full CryptoHashSpec
+could be added here when ready for production use.
+-/
+
+
+/-!
 ## SafeCounter Specification (Counter with overflow/underflow checks)
 -/
 def safeCounterSpec : ContractSpec := {

@@ -9,4 +9,4 @@ DumbContracts is a Lean 4 project for writing smart contracts in a small EDSL, p
 - Machine-checked compiler proofs for IR generation and Yul codegen in `Compiler/Proofs/`.
 - Solidity/Yul fixtures in `compiler/` and Foundry tests in `test/` (including property and differential tests).
 
-Start with `README.md` for the high-level tour and `Compiler/Proofs/README.md` for proof structure.
+Start with `README.md` for the high-level tour, `Compiler/Proofs/README.md` for proof structure, and `CONTRIBUTING.md` for development conventions.

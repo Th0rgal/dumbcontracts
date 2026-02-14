@@ -59,10 +59,10 @@ theorem deposit_preserves_nullifiers
 theorem roots_preserved_general
     (s s' : ContractState) (root : MerkleRoot) :
     ((∃ notes, deposit_spec notes s s') ∨
-     (∃ r nulls comms, transact_spec r nulls comms s s')) →
+     (∃ r nulls comms wa wc, transact_spec r nulls comms wa wc s s')) →
     rootSeen s root → rootSeen s' root := by
   intro h_op h_seen
-  rcases h_op with ⟨notes, hd⟩ | ⟨r, nulls, comms, ht⟩
+  rcases h_op with ⟨notes, hd⟩ | ⟨r, nulls, comms, wa, wc, ht⟩
   · exact hd.2.2.2.2.1 root h_seen
   · exact ht.2.2.2.2.2.2.1 root h_seen
 
@@ -72,8 +72,9 @@ theorem deposit_changes_root (s s' : ContractState) (notes : List Note) :
 
 theorem transact_changes_root
     (s s' : ContractState) (root : MerkleRoot)
-    (nulls : List NullifierHash) (comms : List Commitment) :
-    transact_spec root nulls comms s s' →
+    (nulls : List NullifierHash) (comms : List Commitment)
+    (wa : Uint256) (wc : Commitment) :
+    transact_spec root nulls comms wa wc s s' →
     currentMerkleRoot s' ≠ currentMerkleRoot s := by
   intro ht; exact ht.2.2.2.1
 
@@ -94,14 +95,14 @@ theorem deposit_increases_leaves_holds
 theorem no_double_spend_property_holds (s : ContractState) :
     no_double_spend_property s := by
   unfold no_double_spend_property
-  intro n s' root nulls comms hs ht h_in
+  intro n s' root nulls comms wa wc hs ht h_in
   exact (ht.2.1 n h_in) hs
 
 theorem commitments_cumulative_holds
     (h_no_overflow_deposit : ∀ s s' notes,
       deposit_spec notes s s' → (nextLeafIndex s).val + notes.length < modulus)
-    (h_no_overflow_transact : ∀ s s' root nulls comms,
-      transact_spec root nulls comms s s' → (nextLeafIndex s).val + comms.length < modulus) :
+    (h_no_overflow_transact : ∀ s s' root nulls comms wa wc,
+      transact_spec root nulls comms wa wc s s' → (nextLeafIndex s).val + comms.length < modulus) :
     commitments_cumulative := by
   unfold commitments_cumulative
   intro s s' h_op
@@ -109,15 +110,15 @@ theorem commitments_cumulative_holds
 
 theorem transact_requires_valid_root_holds : transact_requires_valid_root := by
   unfold transact_requires_valid_root
-  intro s s' root nulls comms ht; exact ht.1
+  intro s s' root nulls comms wa wc ht; exact ht.1
 
 theorem transact_requires_fresh_nullifiers_holds : transact_requires_fresh_nullifiers := by
   unfold transact_requires_fresh_nullifiers
-  intro s s' root nulls comms ht; exact ht.2.1
+  intro s s' root nulls comms wa wc ht; exact ht.2.1
 
 theorem exclusive_withdrawal_holds : exclusive_withdrawal := by
   unfold exclusive_withdrawal
-  intro s nullifier ⟨s', root, comms, ht⟩
+  intro s nullifier ⟨s', root, comms, wa, wc, ht⟩
   have := ht.2.1 nullifier (List.Mem.head _)
   exact this
 
@@ -126,5 +127,10 @@ theorem exclusive_withdrawal_full_holds (txn : Transaction) (s s' : ContractStat
   unfold exclusive_withdrawal_full
   intro ht nullifier h_mem
   exact ⟨ht.2.1 nullifier h_mem, zk_soundness txn s s' ht nullifier h_mem⟩
+
+theorem withdrawal_commitment_coherence_holds : withdrawal_commitment_coherence := by
+  unfold withdrawal_commitment_coherence
+  intro s s' root nulls comms wa wc ht h_wa
+  exact ht.2.2.2.2.2.2.2.2.2 h_wa
 
 end DumbContracts.Specs.Unlink.Proofs

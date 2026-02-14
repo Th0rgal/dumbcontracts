@@ -33,11 +33,14 @@ structure Note where
   amount : Uint256
   deriving Repr
 
--- Spec-level transaction (core fields only; the implementation adds proof/withdrawal fields)
+-- Spec-level transaction
+-- withdrawalAmount = 0 means no withdrawal; withdrawalCommitment is hash of withdrawal note
 structure Transaction where
   merkleRoot : Uint256
   nullifierHashes : List Uint256
   newCommitments : List Uint256
+  withdrawalAmount : Uint256
+  withdrawalCommitment : Commitment
 
 /-! ## Storage Layout -/
 
@@ -94,13 +97,15 @@ def deposit_spec
 /-! ## Transact (Private Transfer) Specification -/
 
 -- transact_spec: observable storage effects of a private transaction
--- Conjuncts (9): root valid, nullifiers fresh, nullifiers spent, root change,
---                new root seen, leaf index, root preservation, nullifier preservation,
---                context preservation
+-- Conjuncts (10): root valid, nullifiers fresh, nullifiers spent, root change,
+--                 new root seen, leaf index, root preservation, nullifier preservation,
+--                 context preservation, withdrawal coherence
 def transact_spec
     (merkleRoot : MerkleRoot)
     (nullifiers : List NullifierHash)
     (newCommitments : List Commitment)
+    (withdrawalAmount : Uint256)
+    (withdrawalCommitment : Commitment)
     (s s' : ContractState) : Prop :=
   rootSeen s merkleRoot ∧
   (∀ n ∈ nullifiers, ¬nullifierSpent s n) ∧
@@ -110,7 +115,8 @@ def transact_spec
   nextLeafIndex s' = nextLeafIndex s + newCommitments.length ∧
   (∀ r : Uint256, rootSeen s r → rootSeen s' r) ∧
   (∀ n : Uint256, nullifierSpent s n → nullifierSpent s' n) ∧
-  sameContext s s'
+  sameContext s s' ∧
+  (withdrawalAmount > 0 → newCommitments.getLast? = some withdrawalCommitment)
 
 /-! ## Core Security Theorems -/
 
@@ -119,10 +125,10 @@ theorem no_double_spend_monotonic
     (s s' : ContractState) (nullifier : NullifierHash) :
     nullifierSpent s nullifier →
     (∃ notes, deposit_spec notes s s') ∨
-    (∃ root nulls comms, transact_spec root nulls comms s s') →
+    (∃ root nulls comms wa wc, transact_spec root nulls comms wa wc s s') →
     nullifierSpent s' nullifier := by
   intro h_spent h_op
-  rcases h_op with ⟨notes, hd⟩ | ⟨root, nulls, comms, ht⟩
+  rcases h_op with ⟨notes, hd⟩ | ⟨root, nulls, comms, wa, wc, ht⟩
   · exact hd.2.2.2.1 nullifier h_spent
   · exact ht.2.2.2.2.2.2.2.1 nullifier h_spent
 
@@ -131,10 +137,10 @@ theorem roots_cumulative
     (s s' : ContractState) (root : MerkleRoot) :
     rootSeen s root →
     (∃ notes, deposit_spec notes s s') ∨
-    (∃ r nulls comms, transact_spec r nulls comms s s') →
+    (∃ r nulls comms wa wc, transact_spec r nulls comms wa wc s s') →
     rootSeen s' root := by
   intro h_seen h_op
-  rcases h_op with ⟨notes, hd⟩ | ⟨r, nulls, comms, ht⟩
+  rcases h_op with ⟨notes, hd⟩ | ⟨r, nulls, comms, wa, wc, ht⟩
   · exact hd.2.2.2.2.1 root h_seen
   · exact ht.2.2.2.2.2.2.1 root h_seen
 
@@ -142,23 +148,24 @@ theorem roots_cumulative
 theorem leaf_index_monotonic
     (s s' : ContractState)
     (h_no_overflow_deposit : ∀ notes, deposit_spec notes s s' → (nextLeafIndex s).val + notes.length < modulus)
-    (h_no_overflow_transact : ∀ root nulls comms, transact_spec root nulls comms s s' → (nextLeafIndex s).val + comms.length < modulus) :
+    (h_no_overflow_transact : ∀ root nulls comms wa wc, transact_spec root nulls comms wa wc s s' → (nextLeafIndex s).val + comms.length < modulus) :
     (∃ notes, deposit_spec notes s s') ∨
-    (∃ root nulls comms, transact_spec root nulls comms s s') →
+    (∃ root nulls comms wa wc, transact_spec root nulls comms wa wc s s') →
     nextLeafIndex s' ≥ nextLeafIndex s := by
   intro h_op
-  rcases h_op with ⟨notes, hd⟩ | ⟨root, nulls, comms, ht⟩
+  rcases h_op with ⟨notes, hd⟩ | ⟨root, nulls, comms, wa, wc, ht⟩
   · exact eq_add_implies_ge hd.2.2.1 (h_no_overflow_deposit notes hd)
-  · exact eq_add_implies_ge ht.2.2.2.2.2.1 (h_no_overflow_transact root nulls comms ht)
+  · exact eq_add_implies_ge ht.2.2.2.2.2.1 (h_no_overflow_transact root nulls comms wa wc ht)
 
 /-! ## High-Level Security Properties -/
 
 -- Once a nullifier is spent, it cannot appear in any future transaction's inputs
 def no_double_spend_property (s : ContractState) : Prop :=
   ∀ (n : NullifierHash) (s' : ContractState)
-    (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment),
+    (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment)
+    (wa : Uint256) (wc : Commitment),
     nullifierSpent s n →
-    transact_spec root nulls comms s s' →
+    transact_spec root nulls comms wa wc s s' →
     n ∉ nulls
 
 -- Deposits increase the leaf count (when non-empty)
@@ -172,26 +179,28 @@ def historical_root_validity : Prop :=
   ∀ (s s' : ContractState) (root : MerkleRoot),
     rootSeen s root →
     (∃ notes, deposit_spec notes s s') ∨
-    (∃ r nulls comms, transact_spec r nulls comms s s') →
+    (∃ r nulls comms wa wc, transact_spec r nulls comms wa wc s s') →
     rootSeen s' root
 
 -- The merkle tree only grows — commitments persist forever
 def commitments_cumulative : Prop :=
   ∀ (s s' : ContractState),
     (∃ notes, deposit_spec notes s s') ∨
-    (∃ r nulls comms, transact_spec r nulls comms s s') →
+    (∃ r nulls comms wa wc, transact_spec r nulls comms wa wc s s') →
     nextLeafIndex s' ≥ nextLeafIndex s
 
 -- Transactions require a previously-seen merkle root
 def transact_requires_valid_root : Prop :=
-  ∀ (s s' : ContractState) (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment),
-    transact_spec root nulls comms s s' →
+  ∀ (s s' : ContractState) (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment)
+    (wa : Uint256) (wc : Commitment),
+    transact_spec root nulls comms wa wc s s' →
     rootSeen s root
 
 -- Transactions can only spend unspent nullifiers
 def transact_requires_fresh_nullifiers : Prop :=
-  ∀ (s s' : ContractState) (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment),
-    transact_spec root nulls comms s s' →
+  ∀ (s s' : ContractState) (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment)
+    (wa : Uint256) (wc : Commitment),
+    transact_spec root nulls comms wa wc s s' →
     ∀ n ∈ nulls, ¬nullifierSpent s n
 
 /-! ## Cryptographic Assumptions
@@ -213,7 +222,8 @@ axiom secretDerivesCommitment : NoteSecret → Commitment → Prop
 -- secrets for each nullifier that correspond to commitments in the tree.
 axiom zk_soundness :
   ∀ (txn : Transaction) (s s' : ContractState),
-    transact_spec txn.merkleRoot txn.nullifierHashes txn.newCommitments s s' →
+    transact_spec txn.merkleRoot txn.nullifierHashes txn.newCommitments
+      txn.withdrawalAmount txn.withdrawalCommitment s s' →
     ∀ nullifier ∈ txn.nullifierHashes,
       ∃ (secret : NoteSecret) (commitment : Commitment),
         secretDerivesNullifier secret nullifier ∧
@@ -231,17 +241,26 @@ axiom nullifier_binding :
 -- Exclusive withdrawal (contract-level): to spend a nullifier, it must be fresh.
 def exclusive_withdrawal : Prop :=
   ∀ (s : ContractState) (nullifier : NullifierHash),
-    (∃ s' root comms, transact_spec root [nullifier] comms s s') →
+    (∃ s' root comms wa wc, transact_spec root [nullifier] comms wa wc s s') →
     ¬nullifierSpent s nullifier
 
 -- Exclusive withdrawal (full): combines contract enforcement with ZK soundness.
 -- "To spend a nullifier, you must know the note secret AND it must be fresh."
 def exclusive_withdrawal_full (txn : Transaction) (s s' : ContractState) : Prop :=
-  transact_spec txn.merkleRoot txn.nullifierHashes txn.newCommitments s s' →
+  transact_spec txn.merkleRoot txn.nullifierHashes txn.newCommitments
+    txn.withdrawalAmount txn.withdrawalCommitment s s' →
   ∀ nullifier ∈ txn.nullifierHashes,
     ¬nullifierSpent s nullifier ∧
     ∃ (secret : NoteSecret) (commitment : Commitment),
       secretDerivesNullifier secret nullifier ∧
       secretDerivesCommitment secret commitment
+
+-- Withdrawal coherence: if a withdrawal is present, its commitment is the last output commitment.
+-- Matches Solidity: hashNote(withdrawal) == newCommitments[newCommitments.length - 1]
+def withdrawal_commitment_coherence : Prop :=
+  ∀ (s s' : ContractState) (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment)
+    (wa : Uint256) (wc : Commitment),
+    transact_spec root nulls comms wa wc s s' →
+    wa > 0 → comms.getLast? = some wc
 
 end DumbContracts.Specs.Unlink

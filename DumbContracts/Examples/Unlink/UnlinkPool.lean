@@ -57,9 +57,7 @@ structure Transaction where
   merkleRoot : Uint256
   nullifierHashes : List Uint256
   newCommitments : List Uint256
-  withdrawalAmount : Uint256
-  withdrawalToken : Uint256
-  withdrawalRecipient : Uint256
+  withdrawal : Note  -- withdrawal note (amount = 0 means no withdrawal)
 
 /-! ## Core Functions (Scaffolded) -/
 
@@ -171,13 +169,16 @@ def transact (txn : Transaction) : Contract Unit := do
   require (txn.nullifierHashes.length ≤ 16) "Too many input notes (max 16)"
   require (txn.newCommitments.length ≤ 16) "Too many output notes (max 16)"
 
-  -- Validate withdrawal parameters if withdrawal is present
-  if txn.withdrawalAmount > 0 then
-    require (txn.withdrawalRecipient ≠ 0) "Invalid withdrawal recipient"
-
   -- Verify the merkle root is valid
   let rootValid ← isRootSeen txn.merkleRoot
   require rootValid "Invalid merkle root"
+
+  -- Verify withdrawal commitment coherence (matching Solidity _verifyTransaction)
+  -- If withdrawal.amount > 0, hashNote(withdrawal) must equal last commitment
+  if txn.withdrawal.amount > 0 then do
+    let withdrawalCommitment ← hashNote txn.withdrawal
+    let lastCommitment := txn.newCommitments.getLast?
+    require (lastCommitment = some withdrawalCommitment) "Withdrawal commitment mismatch"
 
   -- Check that nullifiers haven't been spent
   checkNullifiersUnspent txn.nullifierHashes
@@ -191,10 +192,6 @@ def transact (txn : Transaction) : Contract Unit := do
 
   -- Insert new commitments into merkle tree
   insertLeaves txn.newCommitments
-
-  -- Process withdrawal if present
-  if txn.withdrawalAmount > 0 then
-    DumbContracts.pure ()
 
 /-! ## Initialization -/
 

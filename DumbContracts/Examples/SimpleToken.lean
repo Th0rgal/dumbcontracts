@@ -90,7 +90,7 @@ def exampleUsage : Contract (Uint256 × Uint256 × Uint256) := do
   return (aliceBalance, bobBalance, supply)
 
 -- Evaluate the example
-#eval (exampleUsage.run {
+#eval! (exampleUsage.run {
   storage := fun _ => 0,
   storageAddr := fun _ => "",
   storageMap := fun _ _ => 0,

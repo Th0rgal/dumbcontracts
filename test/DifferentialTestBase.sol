@@ -39,112 +39,120 @@ abstract contract DifferentialTestBase {
 
     /**
      * @notice Extract returnValue from EDSL JSON response
-     * @dev Expects format: {"returnValue":123,...}
+     * @dev Expects format: {"returnValue":"123",...}
+     *      The value is quoted in the JSON output
      */
     function _extractReturnValue(string memory json) internal pure returns (uint256) {
-        bytes memory b = bytes(json);
-        uint256 start = 0;
-        bool foundKey = false;
+        bytes memory jsonBytes = bytes(json);
+        bytes memory searchBytes = bytes("\"returnValue\":\"");
 
-        // Find "returnValue":
-        for (uint i = 0; i + 13 < b.length; i++) {
-            if (
-                b[i] == '"' && b[i + 1] == 'r' && b[i + 2] == 'e' && b[i + 3] == 't'
-                    && b[i + 4] == 'u' && b[i + 5] == 'r' && b[i + 6] == 'n' && b[i + 7] == 'V'
-                    && b[i + 8] == 'a' && b[i + 9] == 'l' && b[i + 10] == 'u' && b[i + 11] == 'e'
-                    && b[i + 12] == '"' && b[i + 13] == ':'
-            ) {
-                start = i + 14;
-                foundKey = true;
-                break;
+        if (jsonBytes.length < searchBytes.length) return 0;
+
+        // Find "returnValue":"
+        for (uint i = 0; i <= jsonBytes.length - searchBytes.length; i++) {
+            bool found = true;
+            for (uint j = 0; j < searchBytes.length; j++) {
+                if (jsonBytes[i + j] != searchBytes[j]) {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) {
+                // Extract the value between the quotes
+                uint start = i + searchBytes.length;
+                uint end = start;
+                while (end < jsonBytes.length && jsonBytes[end] != bytes1('"')) {
+                    end++;
+                }
+                bytes memory numBytes = new bytes(end - start);
+                for (uint k = 0; k < end - start; k++) {
+                    numBytes[k] = jsonBytes[start + k];
+                }
+                return _stringToUint(string(numBytes));
             }
         }
-
-        require(foundKey, "returnValue not found in JSON");
-
-        // Skip whitespace
-        while (start < b.length && (b[start] == ' ' || b[start] == '\t' || b[start] == '\n')) {
-            start++;
-        }
-
-        // Parse number
-        return _extractNumber(json, start);
+        return 0;
     }
 
     /**
      * @notice Extract storage change from EDSL JSON response
-     * @dev Expects format: {"storageChanges":[[slot,value],...]}
+     * @dev Expects format: {"storageChanges":[{"slot":X,"value":Y},...]}
+     *      Storage changes are array of objects, not nested arrays
      */
     function _extractStorageChange(string memory json, uint256 slot)
         internal
         pure
         returns (bool found, uint256 value)
     {
-        bytes memory b = bytes(json);
+        bytes memory jsonBytes = bytes(json);
+        bytes memory slotPattern = bytes(string.concat("\"slot\":", _uintToString(slot)));
 
-        // Find "storageChanges":
-        uint256 arrayStart = 0;
-        for (uint i = 0; i + 17 < b.length; i++) {
-            if (
-                b[i] == '"' && b[i + 1] == 's' && b[i + 2] == 't' && b[i + 3] == 'o'
-                    && b[i + 4] == 'r' && b[i + 5] == 'a' && b[i + 6] == 'g' && b[i + 7] == 'e'
-                    && b[i + 8] == 'C' && b[i + 9] == 'h' && b[i + 10] == 'a' && b[i + 11] == 'n'
-                    && b[i + 12] == 'g' && b[i + 13] == 'e' && b[i + 14] == 's' && b[i + 15] == '"'
-                    && b[i + 16] == ':'
-            ) {
-                arrayStart = i + 17;
-                break;
+        if (jsonBytes.length < slotPattern.length) return (false, 0);
+
+        // Find "slot":X
+        for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
+            bool foundSlot = true;
+            for (uint j = 0; j < slotPattern.length; j++) {
+                if (jsonBytes[i + j] != slotPattern[j]) {
+                    foundSlot = false;
+                    break;
+                }
+            }
+            if (foundSlot) {
+                // Now find "value": in the same object
+                bytes memory valuePattern = bytes("\"value\":");
+                if (jsonBytes.length < valuePattern.length) return (false, 0);
+
+                for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
+                    bool foundValue = true;
+                    for (uint l = 0; l < valuePattern.length; l++) {
+                        if (jsonBytes[k + l] != valuePattern[l]) {
+                            foundValue = false;
+                            break;
+                        }
+                    }
+                    if (foundValue) {
+                        // Extract the numeric value after "value":
+                        uint start = k + valuePattern.length;
+                        uint end = start;
+                        // Parse digits (value is not quoted)
+                        while (end < jsonBytes.length && jsonBytes[end] >= 0x30 && jsonBytes[end] <= 0x39) {
+                            end++;
+                        }
+                        bytes memory numBytes = new bytes(end - start);
+                        for (uint m = 0; m < end - start; m++) {
+                            numBytes[m] = jsonBytes[start + m];
+                        }
+                        return (true, _stringToUint(string(numBytes)));
+                    }
+                }
             }
         }
-
-        if (arrayStart == 0) return (false, 0);
-
-        // Find opening [
-        while (arrayStart < b.length && b[arrayStart] != "[") {
-            arrayStart++;
-        }
-        arrayStart++;
-
-        // Parse array of [slot, value] pairs
-        uint256 pos = arrayStart;
-        while (pos < b.length && b[pos] != "]") {
-            // Skip whitespace
-            while (pos < b.length && (b[pos] == " " || b[pos] == "\t" || b[pos] == "\n")) {
-                pos++;
-            }
-
-            if (b[pos] == "[") {
-                pos++;
-                // Parse slot number
-                uint256 foundSlot = _extractNumber(json, pos);
-
-                // Skip to comma
-                while (pos < b.length && b[pos] != ",") {
-                    pos++;
-                }
-                pos++;
-
-                // Parse value
-                uint256 foundValue = _extractNumber(json, pos);
-
-                if (foundSlot == slot) {
-                    return (true, foundValue);
-                }
-
-                // Skip to end of pair ]
-                while (pos < b.length && b[pos] != "]") {
-                    pos++;
-                }
-                pos++;
-            }
-
-            // Skip comma
-            if (pos < b.length && b[pos] == ",") {
-                pos++;
-            }
-        }
-
         return (false, 0);
+    }
+
+    /**
+     * @notice Convert uint256 to string
+     * @param value The uint256 to convert
+     * @return The string representation
+     */
+    function _uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 
     /**

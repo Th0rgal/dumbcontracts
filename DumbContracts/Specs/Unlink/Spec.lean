@@ -197,6 +197,29 @@ def historical_root_validity : Prop :=
     (∃ r nulls comms, transact_spec r nulls comms s s') →
     rootSeen s' root
 
+-- Property: Commitments are cumulative (never removed)
+-- The merkle tree only grows - commitments persist forever
+def commitments_cumulative : Prop :=
+  ∀ (s s' : ContractState),
+    (∃ notes, deposit_spec notes s s') ∨
+    (∃ r nulls comms, transact_spec r nulls comms s s') →
+    -- Leaf count never decreases
+    nextLeafIndex s' ≥ nextLeafIndex s
+
+-- Property: Transact respects merkle root validity
+-- You can only transact using roots that were actually seen
+def transact_requires_valid_root : Prop :=
+  ∀ (s s' : ContractState) (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment),
+    transact_spec root nulls comms s s' →
+    rootSeen s root
+
+-- Property: Fresh nullifiers only
+-- Transactions can only spend unspent nullifiers
+def transact_requires_fresh_nullifiers : Prop :=
+  ∀ (s s' : ContractState) (root : MerkleRoot) (nulls : List NullifierHash) (comms : List Commitment),
+    transact_spec root nulls comms s s' →
+    ∀ n ∈ nulls, ¬nullifierSpent s n
+
 -- Axiom: Privacy property (depends on cryptographic assumptions)
 -- We cannot prove this in the contract logic - it's a property of the ZK system
 axiom unlinkability :

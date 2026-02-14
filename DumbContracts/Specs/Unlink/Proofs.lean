@@ -189,4 +189,35 @@ theorem no_double_spend_property_holds
   have h_not : ¬nullifierSpent s n := h_not_spent n h_in
   exact h_not h_spent
 
+-- Theorem: Commitments are cumulative (leaf count is monotonic)
+-- **User-friendly**: "The vault keeps growing - deposits are never lost"
+-- **Why it matters**: Proves that commitments persist forever, the system doesn't delete deposits
+theorem commitments_cumulative_holds
+    (h_no_overflow_deposit : ∀ s s' notes, deposit_spec notes s s' → (nextLeafIndex s).val + notes.length < Uint256.modulus)
+    (h_no_overflow_transact : ∀ s s' root nulls comms, transact_spec root nulls comms s s' → (nextLeafIndex s).val + comms.length < Uint256.modulus) :
+    commitments_cumulative := by
+  unfold commitments_cumulative
+  intro s s' h_op
+  exact leaf_index_monotonic s s' (h_no_overflow_deposit s s') (h_no_overflow_transact s s') h_op
+
+-- Theorem: Transact requires valid root
+-- **User-friendly**: "You can only withdraw using proofs from actual vault states"
+-- **Why it matters**: Can't forge transactions with fake merkle roots
+theorem transact_requires_valid_root_holds :
+    transact_requires_valid_root := by
+  unfold transact_requires_valid_root
+  intro s s' root nulls comms h_transact
+  -- From transact_spec, the first condition is: rootSeen s root
+  exact h_transact.left
+
+-- Theorem: Transact requires fresh nullifiers
+-- **User-friendly**: "Transactions can only spend unspent notes"
+-- **Why it matters**: Enforces the "once spent, always spent" rule at transaction time
+theorem transact_requires_fresh_nullifiers_holds :
+    transact_requires_fresh_nullifiers := by
+  unfold transact_requires_fresh_nullifiers
+  intro s s' root nulls comms h_transact
+  -- From transact_spec, the second condition is: ∀ n ∈ nulls, ¬nullifierSpent s n
+  exact h_transact.right.left
+
 end DumbContracts.Specs.Unlink.Proofs

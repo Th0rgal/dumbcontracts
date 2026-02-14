@@ -75,11 +75,13 @@ def main() -> None:
         print_markdown_report(stats, total_properties, total_covered, total_exclusions, overall_coverage)
     elif args.format == "json":
         import json
+        total_missing = total_properties - total_covered - total_exclusions
         report = {
             "overall": {
                 "total": total_properties,
                 "covered": total_covered,
                 "excluded": total_exclusions,
+                "missing": total_missing,
                 "coverage": round(overall_coverage, 2),
             },
             "contracts": {

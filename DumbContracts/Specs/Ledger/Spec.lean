@@ -7,6 +7,7 @@
 
 import DumbContracts.Core
 import DumbContracts.Specs.Common
+import DumbContracts.Specs.Common.Sum
 import DumbContracts.EVM.Uint256
 import DumbContracts.Examples.Ledger
 
@@ -15,6 +16,7 @@ namespace DumbContracts.Specs.Ledger
 open DumbContracts
 open DumbContracts.Examples.Ledger
 open DumbContracts.EVM.Uint256
+open DumbContracts.Specs.Common (sumBalances balancesFinite)
 
 /-! ## Operation Specifications -/
 
@@ -48,5 +50,48 @@ def transfer_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Pro
 /-- getBalance: returns balance at given address, no state change -/
 def getBalance_spec (addr : Address) (result : Uint256) (s : ContractState) : Prop :=
   result = s.storageMap 0 addr
+
+/-! ## Sum Properties
+
+These properties relate the total supply (sum of all balances) across operations.
+They require finite address tracking via knownAddresses field.
+-/
+
+/-- The sum of all balances at slot 0 -/
+def totalBalance (s : ContractState) : Uint256 :=
+  sumBalances 0 (s.knownAddresses 0) s.storageMap
+
+/-- deposit increases total balance by amount -/
+def deposit_sum_equation (amount : Uint256) (s s' : ContractState) : Prop :=
+  totalBalance s' = add (totalBalance s) amount
+
+/-- withdraw decreases total balance by amount -/
+def withdraw_sum_equation (amount : Uint256) (s s' : ContractState) : Prop :=
+  totalBalance s' = sub (totalBalance s) amount
+
+/-- transfer preserves total balance -/
+def transfer_sum_preservation (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
+  totalBalance s' = totalBalance s
+
+/-- Sum of balances for singleton set containing only sender -/
+def deposit_sum_singleton_sender (amount : Uint256) (s s' : ContractState) : Prop :=
+  ∀ addr, addr ≠ s.sender → s.storageMap 0 addr = Uint256.zero →
+    totalBalance s' = s'.storageMap 0 s.sender
+
+/-- Sum preserved for deposit followed by withdraw -/
+def deposit_withdraw_sum_cancel (amount : Uint256) (s s' s'' : ContractState) : Prop :=
+  deposit_sum_equation amount s s' →
+  withdraw_sum_equation amount s' s'' →
+  totalBalance s'' = totalBalance s
+
+/-- Sum of balances for singleton set after withdraw -/
+def withdraw_sum_singleton_sender (amount : Uint256) (s s' : ContractState) : Prop :=
+  ∀ addr, addr ≠ s.sender → s.storageMap 0 addr = Uint256.zero →
+    totalBalance s' = s'.storageMap 0 s.sender
+
+/-- Transfer preserves sum for unique addresses -/
+def transfer_sum_preserved_unique (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
+  s.sender ≠ to →
+  totalBalance s' = totalBalance s
 
 end DumbContracts.Specs.Ledger

@@ -1,27 +1,13 @@
 #!/usr/bin/env python3
+"""Extract theorem names from Lean proof files to generate property manifest."""
+
 import json
-import os
-import re
 from pathlib import Path
 
+from property_utils import PROOFS_DIR, collect_theorems
+
 ROOT = Path(__file__).resolve().parents[1]
-PROOFS_DIR = ROOT / "DumbContracts" / "Proofs"
 OUTPUT = ROOT / "test" / "property_manifest.json"
-
-THEOREM_RE = re.compile(r"^\s*(theorem|lemma)\s+([A-Za-z0-9_']+)")
-
-
-def collect_theorems(path: Path) -> list[str]:
-    names = []
-    try:
-        text = path.read_text(encoding="utf-8")
-    except Exception:
-        return names
-    for line in text.splitlines():
-        m = THEOREM_RE.match(line)
-        if m:
-            names.append(m.group(2))
-    return names
 
 
 def main() -> None:

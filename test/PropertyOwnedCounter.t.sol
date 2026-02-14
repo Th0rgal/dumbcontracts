@@ -377,7 +377,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
         address owner = readStorageAddr(0);
         uint256 count = readStorage(1);
         assertEq(owner, bob, "New owner is valid");
-        assertTrue(count == 0, "Count preserved");
+        assertEq(count, 0, "Count preserved");
     }
 
     /**

@@ -121,11 +121,22 @@ def insertLeaves (commitments : List Uint256) : Contract Unit := do
 
 -- Deposit: Add commitments to the pool
 def deposit (notes : List Note) : Contract Unit := do
-  -- Validate notes
-  -- TODO: Add validation (amount > 0, npk in field, etc.)
+  -- Validate notes list is non-empty
+  require (notes.length > 0) "Cannot deposit empty list of notes"
+
+  -- Validate each note has valid amount
+  for note in notes do
+    require (note.amount > 0) "Note amount must be positive"
+    -- Note: npk and token validation would require field/address bounds checks
+    -- which depend on the specific cryptographic parameters
 
   -- Transfer tokens from sender to contract
   -- TODO: Implement ERC20 transfers and ETH handling
+  -- For each note:
+  --   if note.token == ETH_ADDRESS then
+  --     require msgValue >= note.amount
+  --   else
+  --     ERC20(note.token).transferFrom(msg.sender, address(this), note.amount)
 
   -- Compute commitments
   let mut commitments : List Uint256 := []
@@ -138,9 +149,20 @@ def deposit (notes : List Note) : Contract Unit := do
 
   -- Emit deposit event
   -- TODO: Add event emission
+  -- emit Deposit(commitments, msg.sender)
 
 -- Transact: Process a private transaction with ZK proof
 def transact (txn : Transaction) : Contract Unit := do
+  -- Validate inputs
+  require (txn.nullifierHashes.length > 0) "Must spend at least one note"
+  require (txn.nullifierHashes.length ≤ 16) "Too many input notes (max 16)"
+  require (txn.newCommitments.length ≤ 16) "Too many output notes (max 16)"
+
+  -- Validate withdrawal parameters if withdrawal is present
+  if txn.withdrawalAmount > 0 then
+    require (txn.withdrawalRecipient ≠ 0) "Invalid withdrawal recipient"
+    -- Note: token address validation would require checking it's a valid ERC20 or ETH marker
+
   -- Verify the merkle root is valid
   let rootValid ← isRootSeen txn.merkleRoot
   require rootValid "Invalid merkle root"
@@ -158,17 +180,23 @@ def transact (txn : Transaction) : Contract Unit := do
   for nullifier in txn.nullifierHashes do
     markNullifierSpent nullifier
 
-  -- Insert new commitments
-  insertLeaves txn.newCommitments
+  -- Insert new commitments (if any)
+  if txn.newCommitments.length > 0 then
+    insertLeaves txn.newCommitments
 
   -- Process withdrawal if present
   if txn.withdrawalAmount > 0 then
     -- TODO: Implement token transfer to recipient
-    -- transferOut(txn.withdrawalToken, txn.withdrawalRecipient, txn.withdrawalAmount)
+    -- if txn.withdrawalToken == ETH_ADDRESS then
+    --   (bool success, ) = txn.withdrawalRecipient.call{value: txn.withdrawalAmount}("")
+    --   require(success, "ETH transfer failed")
+    -- else
+    --   ERC20(txn.withdrawalToken).transfer(txn.withdrawalRecipient, txn.withdrawalAmount)
     pure ()
 
   -- Emit transaction event
   -- TODO: Add event emission
+  -- emit Transaction(txn.nullifierHashes, txn.newCommitments, txn.withdrawalAmount)
 
 /-! ## Initialization -/
 

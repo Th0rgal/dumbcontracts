@@ -67,10 +67,26 @@ def currentMerkleRoot (s : ContractState) : MerkleRoot :=
 def nextLeafIndex (s : ContractState) : Uint256 :=
   s.storage NEXT_LEAF_INDEX_SLOT
 
+/-! ## Validation Predicates -/
+
+-- Valid deposit input: non-empty notes list with positive amounts
+def valid_deposit_input (notes : List Note) : Prop :=
+  notes.length > 0 ∧
+  ∀ note ∈ notes, note.amount > 0
+
+-- Valid transact input: bounded nullifier/commitment lists, valid withdrawal params
+def valid_transact_input (nulls : List NullifierHash) (comms : List Commitment)
+    (withdrawalAmount : Uint256) (withdrawalRecipient : Uint256) : Prop :=
+  nulls.length > 0 ∧
+  nulls.length ≤ 16 ∧
+  comms.length ≤ 16 ∧
+  (withdrawalAmount > 0 → withdrawalRecipient ≠ 0)
+
 /-! ## Deposit Specification -/
 
 -- Simplified deposit_spec focusing on observable storage changes
 -- In reality, tokens are transferred via external calls (modeled later)
+-- Precondition: valid_deposit_input notes
 def deposit_spec
     (notes : List Note)
     (s s' : ContractState) : Prop :=
@@ -90,6 +106,8 @@ def deposit_spec
 /-! ## Transact (Private Transfer) Specification -/
 
 -- Simplified transact_spec focusing on nullifier and merkle tree updates
+-- Precondition: valid_transact_input nullifiers newCommitments withdrawalAmount withdrawalRecipient
+-- (withdrawal params not included in this simplified spec)
 def transact_spec
     (merkleRoot : MerkleRoot)
     (nullifiers : List NullifierHash)

@@ -21,6 +21,43 @@ open DumbContracts
 open DumbContracts.Examples.Unlink
 open DumbContracts.Specs.Unlink
 
+/-! ## Input Validation Properties -/
+
+-- Theorem: Valid deposits have positive amounts
+-- **User-friendly**: "You can't deposit zero or negative amounts"
+-- **Why it matters**: Prevents dust/spam deposits and undefined behavior
+theorem valid_deposit_implies_positive_amounts
+    (notes : List Note) :
+    valid_deposit_input notes →
+    ∀ note ∈ notes, note.amount > 0 := by
+  intro h_valid
+  exact h_valid.right
+
+-- Theorem: Valid transacts have non-zero nullifiers
+-- **User-friendly**: "Every transaction must spend at least one note"
+-- **Why it matters**: No-op transactions are rejected
+theorem valid_transact_implies_has_inputs
+    (nulls : List NullifierHash)
+    (comms : List Commitment)
+    (withdrawalAmount withdrawalRecipient : Uint256) :
+    valid_transact_input nulls comms withdrawalAmount withdrawalRecipient →
+    nulls.length > 0 := by
+  intro h_valid
+  exact h_valid.left
+
+-- Theorem: Valid transacts with withdrawals have valid recipients
+-- **User-friendly**: "If you're withdrawing, you must specify where to send the money"
+-- **Why it matters**: Prevents accidental burns/lost funds
+theorem valid_transact_withdrawal_implies_valid_recipient
+    (nulls : List NullifierHash)
+    (comms : List Commitment)
+    (withdrawalAmount withdrawalRecipient : Uint256) :
+    valid_transact_input nulls comms withdrawalAmount withdrawalRecipient →
+    withdrawalAmount > 0 →
+    withdrawalRecipient ≠ 0 := by
+  intro h_valid h_amount
+  exact h_valid.right.right.right h_amount
+
 /-! ## Implementation Correctness Proofs -/
 
 -- Proof: deposit implementation satisfies deposit_spec

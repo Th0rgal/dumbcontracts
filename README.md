@@ -50,7 +50,9 @@ def retrieve_spec (result : Uint256) (s : ContractState) : Prop :=
 - **Compiler correctness**: IR generation is proven; Yul codegen proofs are in progress (semantics + scaffolding in place).
 - **Automation**: Common proof patterns are captured in reusable lemmas.
 
-**Verification Status**: Layers 1-2 complete (100%), Layer 3 in progress. See [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for comprehensive status and roadmap.
+**Verification Status**: Layers 1-2 complete (100%), Layer 3 in progress (92/100 overall). See:
+- [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) - Comprehensive verification status
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) - Roadmap to completion (2-3 months to production-ready)
 
 See `Compiler/Proofs/README.md` for the proof inventory and layout across layers.
 

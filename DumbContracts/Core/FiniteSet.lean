@@ -23,17 +23,17 @@ def empty : FiniteSet α :=
 
 /-- Check if an element is in the set -/
 def mem (a : α) (s : FiniteSet α) : Bool :=
-  a ∈ s.elements
+  s.elements.contains a
 
 instance : Membership α (FiniteSet α) where
-  mem a s := s.mem a
+  mem a s := s.mem a = true
 
 /-- Insert an element into the set (maintains no duplicates) -/
 def insert (a : α) (s : FiniteSet α) : FiniteSet α :=
-  if a ∈ s.elements then
+  if s.elements.contains a then
     s
   else
-    ⟨a :: s.elements, List.nodup_cons.mpr ⟨by simp, s.nodup⟩⟩
+    ⟨a :: s.elements, List.nodup_cons.mpr ⟨fun h => by cases h, s.nodup⟩⟩
 
 /-- Get the size of the set -/
 def card (s : FiniteSet α) : Nat :=
@@ -44,16 +44,17 @@ def sum [Add β] [OfNat β 0] (s : FiniteSet α) (f : α → β) : β :=
   s.elements.foldl (fun acc x => acc + f x) 0
 
 /-- Theorem: inserting an element that's already in the set doesn't change it -/
-theorem insert_of_mem {a : α} {s : FiniteSet α} (h : a ∈ s.elements) :
+theorem insert_of_mem {a : α} {s : FiniteSet α} (h : s.elements.contains a = true) :
     insert a s = s := by
   unfold insert
-  simp [h]
+  rw [h]
+  rfl
 
 /-- Theorem: inserting into empty set creates singleton -/
 theorem insert_empty (a : α) :
     (insert a empty).elements = [a] := by
   unfold insert empty
-  simp
+  rfl
 
 end FiniteSet
 
@@ -79,7 +80,7 @@ def mem (addr : String) (s : FiniteAddressSet) : Bool :=
   s.addresses.mem addr
 
 instance : Membership String FiniteAddressSet where
-  mem := mem
+  mem addr s := mem addr s = true
 
 /-- Get the number of addresses in the set -/
 def card (s : FiniteAddressSet) : Nat :=

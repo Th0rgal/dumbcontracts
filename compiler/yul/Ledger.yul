@@ -45,8 +45,11 @@ object "Ledger" {
                     mstore(68, 0x496e73756666696369656e742062616c616e6365000000000000000000000000)
                     revert(0, 100)
                 }
-                sstore(mappingSlot(0, caller()), sub(senderBal, amount))
-                sstore(mappingSlot(0, to), add(recipientBal, amount))
+                let sameAddr := eq(caller(), to)
+                let delta := sub(1, sameAddr)
+                let amountDelta := mul(amount, delta)
+                sstore(mappingSlot(0, caller()), sub(senderBal, amountDelta))
+                sstore(mappingSlot(0, to), add(recipientBal, amountDelta))
                 stop()
             }
             case 0xf8b2cb4f {

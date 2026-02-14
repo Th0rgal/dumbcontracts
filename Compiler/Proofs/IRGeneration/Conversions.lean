@@ -202,11 +202,6 @@ def resultsMatch (usesMapping : Bool) (addrs : List Address) (irResult : IRResul
 
 /-! ## Helper: Function Selector Lookup -/
 
-/-- Given a ContractSpec and function name, find the corresponding selector
-
-    This is needed to convert Transaction.functionName to IRTransaction.functionSelector.
-    In practice, selectors are provided when compiling the spec.
--/
 structure SelectorMap where
   /-- Map function names to their selectors -/
   selectors : List (String × Nat)

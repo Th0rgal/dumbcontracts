@@ -54,9 +54,12 @@ def transfer (to : Address) (amount : Uint256) : Contract Unit := do
   let senderBalance ← getMapping balances sender
   require (senderBalance >= amount) "Insufficient balance"
 
-  let recipientBalance ← getMapping balances to
-  setMapping balances sender (sub senderBalance amount)
-  setMapping balances to (add recipientBalance amount)
+  if sender == to then
+    pure ()
+  else
+    let recipientBalance ← getMapping balances to
+    setMapping balances sender (sub senderBalance amount)
+    setMapping balances to (add recipientBalance amount)
 
 -- Get balance of an address
 def balanceOf (addr : Address) : Contract Uint256 := do

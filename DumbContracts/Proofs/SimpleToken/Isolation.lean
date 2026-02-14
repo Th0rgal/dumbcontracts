@@ -100,36 +100,78 @@ theorem mint_owner_addr_isolated (s : ContractState) (to : Address) (amount : Ui
 
 /-- Transfer doesn't write any Uint256 slot (supply unchanged). -/
 theorem transfer_supply_storage_isolated (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount) (_h_ne : s.sender ≠ to) (slot : Nat) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount) (slot : Nat) :
   supply_storage_isolated s ((transfer to amount).run s).snd slot := by
   unfold supply_storage_isolated; intro _h_ne_slot
-  simp only [transfer, Examples.SimpleToken.balances,
-    msgSender, getMapping, setMapping,
-    DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_balance]
+  by_cases h_eq : s.sender = to
+  · have h_balance' : amount.val ≤ (s.storageMap 1 to).val := by
+      have h_balance'' : amount ≤ s.storageMap 1 to := by
+        simpa [h_eq] using h_balance
+      simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+    simp [transfer, Examples.SimpleToken.balances,
+      msgSender, getMapping, setMapping,
+      DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+      Contract.run, ContractResult.snd, ContractResult.fst,
+      h_balance', h_eq, beq_iff_eq]
+  · have h_balance' : amount.val ≤ (s.storageMap 1 s.sender).val := by
+      have h_balance'' : amount ≤ s.storageMap 1 s.sender := by
+        simpa using h_balance
+      simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+    simp [transfer, Examples.SimpleToken.balances,
+      msgSender, getMapping, setMapping,
+      DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+      Contract.run, ContractResult.snd, ContractResult.fst,
+      h_balance', h_eq, beq_iff_eq]
 
 /-- Transfer only writes Mapping slot 1. -/
 theorem transfer_balance_mapping_isolated (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount) (_h_ne : s.sender ≠ to) (slot : Nat) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount) (slot : Nat) :
   balance_mapping_isolated s ((transfer to amount).run s).snd slot := by
   unfold balance_mapping_isolated; intro h_ne_slot addr
-  simp only [transfer, Examples.SimpleToken.balances,
-    msgSender, getMapping, setMapping,
-    DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_balance, beq_iff_eq, h_ne_slot]
+  by_cases h_eq : s.sender = to
+  · have h_balance' : amount.val ≤ (s.storageMap 1 to).val := by
+      have h_balance'' : amount ≤ s.storageMap 1 to := by
+        simpa [h_eq] using h_balance
+      simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+    simp [transfer, Examples.SimpleToken.balances,
+      msgSender, getMapping, setMapping,
+      DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+      Contract.run, ContractResult.snd, ContractResult.fst,
+      h_balance', h_eq, beq_iff_eq, h_ne_slot]
+  · have h_balance' : amount.val ≤ (s.storageMap 1 s.sender).val := by
+      have h_balance'' : amount ≤ s.storageMap 1 s.sender := by
+        simpa using h_balance
+      simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+    simp [transfer, Examples.SimpleToken.balances,
+      msgSender, getMapping, setMapping,
+      DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+      Contract.run, ContractResult.snd, ContractResult.fst,
+      h_balance', h_eq, beq_iff_eq, h_ne_slot]
 
 /-- Transfer doesn't write any Address slot (owner unchanged). -/
 theorem transfer_owner_addr_isolated (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 1 s.sender ≥ amount) (_h_ne : s.sender ≠ to) (slot : Nat) :
+  (h_balance : s.storageMap 1 s.sender ≥ amount) (slot : Nat) :
   owner_addr_isolated s ((transfer to amount).run s).snd slot := by
   unfold owner_addr_isolated; intro _h_ne_slot
-  simp only [transfer, Examples.SimpleToken.balances,
-    msgSender, getMapping, setMapping,
-    DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_balance]
+  by_cases h_eq : s.sender = to
+  · have h_balance' : amount.val ≤ (s.storageMap 1 to).val := by
+      have h_balance'' : amount ≤ s.storageMap 1 to := by
+        simpa [h_eq] using h_balance
+      simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+    simp [transfer, Examples.SimpleToken.balances,
+      msgSender, getMapping, setMapping,
+      DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+      Contract.run, ContractResult.snd, ContractResult.fst,
+      h_balance', h_eq, beq_iff_eq]
+  · have h_balance' : amount.val ≤ (s.storageMap 1 s.sender).val := by
+      have h_balance'' : amount ≤ s.storageMap 1 s.sender := by
+        simpa using h_balance
+      simpa [DumbContracts.Core.Uint256.le_def] using h_balance''
+    simp [transfer, Examples.SimpleToken.balances,
+      msgSender, getMapping, setMapping,
+      DumbContracts.require, DumbContracts.pure, DumbContracts.bind, Bind.bind, Pure.pure,
+      Contract.run, ContractResult.snd, ContractResult.fst,
+      h_balance', h_eq, beq_iff_eq]
 
 /-! ## Summary
 
@@ -145,7 +187,7 @@ Mint isolation (when owner):
 5. mint_balance_mapping_isolated — only writes Mapping slot 1
 6. mint_owner_addr_isolated — doesn't write any Address slot
 
-Transfer isolation (when sufficient balance, sender ≠ to):
+Transfer isolation (when sufficient balance):
 7. transfer_supply_storage_isolated — doesn't write any Uint256 slot
 8. transfer_balance_mapping_isolated — only writes Mapping slot 1
 9. transfer_owner_addr_isolated — doesn't write any Address slot

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.33;
 
 import {console2} from "forge-std/Test.sol";
+import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
 
 /**
@@ -16,7 +17,7 @@ import "./yul/YulTestBase.sol";
  *
  * Success: 10,000+ tests with zero mismatches
  */
-contract DifferentialSimpleStorage is YulTestBase {
+contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig {
     // Compiled contract
     address simpleStorage;
 
@@ -325,20 +326,35 @@ contract DifferentialSimpleStorage is YulTestBase {
      * @notice Run 100 random differential tests
      */
     function testDifferential_Random100() public {
-        _runRandomDifferentialTests(100, 42);
+        (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
+        _runRandomDifferentialTests(startIndex, count, _diffRandomSeed("SimpleStorage"));
     }
 
     /**
      * @notice Run 10000 random differential tests (slow)
      */
     function testDifferential_Random10000() public {
-        _runRandomDifferentialTests(10000, 42);
+        (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
+        _runRandomDifferentialTests(startIndex, count, _diffRandomSeed("SimpleStorage"));
+    }
+
+    /**
+     * @notice Exercise edge values for store to catch overflow-ish cases.
+     */
+    function testDifferential_EdgeValues() public {
+        address sender = address(0xA11CE);
+        uint256[] memory values = _edgeUintValues();
+
+        for (uint256 i = 0; i < values.length; i++) {
+            bool success = executeDifferentialTest("store", sender, values[i]);
+            assertTrue(success, "Edge-value store test failed");
+        }
     }
 
     /**
      * @notice Execute N random transactions via random-gen
      */
-    function _runRandomDifferentialTests(uint256 count, uint256 seed) internal {
+    function _runRandomDifferentialTests(uint256 startIndex, uint256 count, uint256 seed) internal {
         // Generate random transactions via Lean random-gen (disabled - use inline PRNG for CI)
         // string[] memory inputs = new string[](3);
         // inputs[0] = "bash";
@@ -361,22 +377,22 @@ contract DifferentialSimpleStorage is YulTestBase {
         // For now, execute a simpler approach: generate them one-by-one inline
         // This avoids complex JSON parsing in Solidity
 
-        uint256 prng = seed;
+        uint256 prng = _skipRandom(seed, startIndex);
         vm.pauseGasMetering();
         for (uint256 i = 0; i < count; i++) {
             // Simple PRNG matching Lean's LCG + generation order
-            prng = (1103515245 * prng + 12345) % (2**31);
+            prng = _lcg(prng);
 
             // Generate address (Lean: genAddress)
             address sender = _indexToAddress(prng % 5);
 
             // Determine function (Lean: genBool)
-            prng = (1103515245 * prng + 12345) % (2**31);
+            prng = _lcg(prng);
             bool isStore = (prng % 2) == 0;
 
             if (isStore) {
                 // Generate value (mostly small with some edge-case coverage)
-                prng = (1103515245 * prng + 12345) % (2**31);
+                prng = _lcg(prng);
                 uint256 value = _coerceRandomUint256(prng, 1000000);
 
                 bool success = executeDifferentialTest("store", sender, value);
@@ -392,6 +408,18 @@ contract DifferentialSimpleStorage is YulTestBase {
         console2.log("Random differential tests completed:", testsPassed);
         console2.log("Failed:", testsFailed);
         assertEq(testsFailed, 0, "Some random tests failed");
+    }
+
+    function _skipRandom(uint256 prng, uint256 iterations) internal pure returns (uint256) {
+        for (uint256 i = 0; i < iterations; i++) {
+            prng = _lcg(prng);
+            prng = _lcg(prng);
+            bool isStore = (prng % 2) == 0;
+            if (isStore) {
+                prng = _lcg(prng);
+            }
+        }
+        return prng;
     }
 
     /**

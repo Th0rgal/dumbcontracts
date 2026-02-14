@@ -8,7 +8,7 @@ import "./yul/YulTestBase.sol";
  * @notice Property-based tests extracted from formally verified Lean theorems
  * @dev Maps theorems from DumbContracts/Proofs/SimpleToken/*.lean to executable tests
  *
- * This file extracts 56 proven theorems into Foundry property tests:
+ * This file extracts 57 proven theorems into Foundry property tests:
  * - Basic properties (constructor, mint, transfer, getters)
  * - Supply conservation (total supply invariant)
  * - Isolation properties (storage independence)
@@ -317,6 +317,26 @@ contract PropertySimpleTokenTest is YulTestBase {
         uint256 bobBalanceAfter = abi.decode(data, (uint256));
 
         assertEq(bobBalanceAfter, bobBalanceBefore + 40, "Recipient balance should increase");
+    }
+
+    /**
+     * Property: transfer_self_preserves_balance
+     * Theorem: transfer(to == sender, amount) leaves sender balance unchanged
+     */
+    function testProperty_Transfer_Self_PreservesBalance() public {
+        vm.prank(owner);
+        (bool success,) = token.call(abi.encodeWithSignature("mint(address,uint256)", alice, 100));
+        require(success);
+
+        vm.prank(alice);
+        (success,) = token.call(abi.encodeWithSignature("transfer(address,uint256)", alice, 40));
+        require(success);
+
+        bytes memory data;
+        (success, data) = token.call(abi.encodeWithSignature("balanceOf(address)", alice));
+        require(success);
+        uint256 balance = abi.decode(data, (uint256));
+        assertEq(balance, 100, "Self-transfer should not change balance");
     }
 
     /**

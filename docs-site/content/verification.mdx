@@ -5,7 +5,7 @@ description: EDSL proofs plus compiler correctness proofs (IR + Yul)
 
 # Formal Verification
 
-The compiler is additionally verified with IR and Yul preservation proofs in `Compiler/Proofs/`. No `sorry`, no axioms. All proofs are checked by `lake build`.
+The compiler is additionally verified with IR preservation proofs in `Compiler/Proofs/`. Yul preservation is in progress (semantics + scaffolding exist, full equivalence theorems pending). No `sorry`, no axioms. All proofs are checked by `lake build`.
 
 ## Snapshot (2026-02-13)
 
@@ -22,8 +22,8 @@ The compiler is additionally verified with IR and Yul preservation proofs in `Co
 ## Compiler Proofs (IR + Yul)
 
 - **Spec semantics**: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
-- **IR generation**: `Compiler/Proofs/IRGeneration/`
-- **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/`
+- **IR generation**: `Compiler/Proofs/IRGeneration/` (complete for all 7 contracts)
+- **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/` (in progress)
 
 ## Structure
 
@@ -213,7 +213,7 @@ This lets proofs reason about both the success path and the revert path of guard
 | 4 | `transfer_sum_bounded` | `new_sum <= old_sum + count(to) * amount` |
 | 5-9 | Helper lemmas | countOcc, map_sum_point_update, map_sum_transfer_eq |
 
-Transfer proofs require `sender != to` because the implementation writes the recipient balance last, overwriting the sender deduction on self-transfer. Supply conservation uses exact sum equations rather than the `supply_bounds_balances` invariant, which cannot be preserved for lists with duplicate addresses.
+Transfer proofs now handle self-transfer by modeling it as a no-op (preloading balances and applying a zero delta), so `sender != to` is no longer required. Supply conservation still uses exact sum equations rather than the `supply_bounds_balances` invariant, which cannot be preserved for lists with duplicate addresses.
 
 **Isolation:**
 

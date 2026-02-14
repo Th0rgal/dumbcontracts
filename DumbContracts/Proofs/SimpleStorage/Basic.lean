@@ -116,4 +116,12 @@ theorem retrieve_preserves_state (s : ContractState) :
   s' = s := by
   simp [retrieve, storedData, getStorage]
 
+-- Theorem: retrieve is idempotent (running twice is the same as once)
+theorem retrieve_twice_idempotent (s : ContractState) :
+  let s' := ((retrieve).run s).snd
+  ((retrieve).run s').snd = s' := by
+  intro s'
+  have h := retrieve_preserves_state s'
+  simpa using h
+
 end DumbContracts.Proofs.SimpleStorage

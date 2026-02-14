@@ -40,6 +40,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 1-2: setStorageAddr/getStorageAddr correctness
      * Theorem: Setting owner updates slot 0, getting owner reads slot 0
+     * Property: constructor_sets_owner
      */
     function testProperty_Constructor_SetsOwner(address initialOwner) public {
         vm.assume(initialOwner != address(0)); // Non-zero owner
@@ -62,6 +63,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 3: setStorageAddr_preserves_other_slots
      * Theorem: Setting owner doesn't affect other address slots
+     * Property: setStorageAddr_preserves_other_slots
      */
     function testProperty_SetOwner_PreservesOtherSlots() public {
         // This property is implicitly verified by other operations
@@ -79,6 +81,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 4-6: Storage type isolation
      * Theorem: Address storage operations don't affect uint/map storage
+     * Property: setStorageAddr_preserves_uint_storage
      */
     function testProperty_TransferOwnership_PreservesStorageIsolation() public {
         address originalOwner = readOwner();
@@ -96,6 +99,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 7-8: constructor correctness
      * Theorem: Constructor sets owner to initialOwner
+     * Property: constructor_meets_spec
      */
     function testProperty_Constructor_SetsInitialOwner() public {
         // Deploy sets initial owner (msg.sender during deployment)
@@ -108,6 +112,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 9-11: getOwner correctness
      * Theorem: getOwner returns storage slot 0 without modifying state
+     * Property: getOwner_meets_spec
      */
     function testProperty_GetOwner_ReadsCorrectValue() public {
         address ownerBefore = readOwner();
@@ -150,6 +155,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 14-15: transferOwnership correctness (when owner)
      * Theorem: Owner can successfully transfer ownership
+     * Property: transferOwnership_meets_spec_when_owner
      */
     function testProperty_TransferOwnership_SucceedsWhenOwner(address newOwner) public {
         vm.assume(newOwner != address(0));
@@ -194,6 +200,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 16: constructor->getOwner composition
      * Theorem: After construction, getOwner returns initialOwner
+     * Property: constructor_getOwner_correct
      */
     function testProperty_Constructor_GetOwner_Composition() public {
         // Deploy new instance
@@ -212,6 +219,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 17-18: Well-formedness preservation
      * Theorem: Operations preserve contract invariants
+     * Property: transferOwnership_preserves_wellformedness
      */
     function testProperty_Operations_PreserveWellFormedness() public {
         address owner1 = readOwner();
@@ -239,6 +247,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 19: transferOwnership_reverts_when_not_owner
      * Theorem: Non-owners cannot transfer ownership (CORE SECURITY PROPERTY)
+     * Property: transferOwnership_reverts_when_not_owner
      */
     function testProperty_TransferOwnership_RevertsWhenNotOwner(address nonOwner) public {
         address currentOwner = readOwner();
@@ -274,6 +283,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 20: transferOwnership_preserves_wellformedness
      * Theorem: Transfer to non-zero address preserves invariants
+     * Property: transferOwnership_preserves_wellformedness
      */
     function testProperty_TransferOwnership_PreservesWellFormedness(address newOwner) public {
         vm.assume(newOwner != address(0));
@@ -296,6 +306,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 21: constructor->transferOwnership->getOwner (full lifecycle)
      * Theorem: Complete ownership lifecycle works correctly
+     * Property: constructor_transferOwnership_getOwner
      */
     function testProperty_FullLifecycle_ConstructorTransferGet() public {
         // Deploy (constructor)
@@ -328,6 +339,7 @@ contract PropertyOwnedTest is YulTestBase {
     /**
      * Property 22: transferred_owner_cannot_act
      * Theorem: After transfer, previous owner loses control (exclusive ownership)
+     * Property: transferred_owner_cannot_act
      */
     function testProperty_PreviousOwner_CannotAct() public {
         address currentOwner = readOwner();

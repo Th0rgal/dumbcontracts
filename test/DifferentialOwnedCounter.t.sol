@@ -2,6 +2,7 @@
 pragma solidity ^0.8.33;
 
 import {console2} from "forge-std/Test.sol";
+import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
 
 /**
@@ -16,7 +17,7 @@ import "./yul/YulTestBase.sol";
  *
  * Success: 100+ tests with zero mismatches
  */
-contract DifferentialOwnedCounter is YulTestBase {
+contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig {
     // Compiled contract
     address ownedCounter;
 
@@ -103,11 +104,14 @@ contract DifferentialOwnedCounter is YulTestBase {
         string memory edslResult = _runInterpreter(functionName, sender, arg0, storageState);
 
         // 3. Parse and compare results
-        console2.log("Function:", functionName);
-        console2.log("EVM success:", evmSuccess);
-        console2.log("EVM storage[1]:", evmStorageAfter);
-        console2.log("EVM owner:", evmOwnerAfter);
-        console2.log("EDSL result:", edslResult);
+        bool verbose = _diffVerbose();
+        if (verbose) {
+            console2.log("Function:", functionName);
+            console2.log("EVM success:", evmSuccess);
+            console2.log("EVM storage[1]:", evmStorageAfter);
+            console2.log("EVM owner:", evmOwnerAfter);
+            console2.log("EDSL result:", edslResult);
+        }
 
         // Parse EDSL result
         bool edslSuccess = contains(edslResult, "\"success\":true");
@@ -567,16 +571,15 @@ contract DifferentialOwnedCounter is YulTestBase {
         actors[1] = address(0xA11CE);
         actors[2] = address(0xB0B);
 
-        // Seed: current block timestamp for reproducibility
-        uint256 seed = block.timestamp;
-
-        for (uint256 i = 0; i < 100; i++) {
+        (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
+        uint256 seed = _diffRandomSeed("OwnedCounter");
+        for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, uint256 arg) =
-                _randomTransaction(seed + i, actors);
+                _randomTransaction(seed + startIndex + i, actors);
 
             bool success = executeDifferentialTest(funcName, sender, arg);
-            assertTrue(success, string.concat("Random test ", vm.toString(i), " failed"));
+            _assertRandomSuccess(success, startIndex + i);
         }
 
         console2.log("Random tests passed:", testsPassed);
@@ -590,16 +593,15 @@ contract DifferentialOwnedCounter is YulTestBase {
         actors[1] = address(0xA11CE);
         actors[2] = address(0xB0B);
 
-        // Seed: current block timestamp for reproducibility
-        uint256 seed = block.timestamp;
-
-        for (uint256 i = 0; i < 1000; i++) {
+        (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
+        uint256 seed = _diffRandomSeed("OwnedCounter");
+        for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, uint256 arg) =
-                _randomTransaction(seed + i, actors);
+                _randomTransaction(seed + startIndex + i, actors);
 
             bool success = executeDifferentialTest(funcName, sender, arg);
-            assertTrue(success, string.concat("Random test ", vm.toString(i), " failed"));
+            _assertRandomSuccess(success, startIndex + i);
         }
 
         console2.log("Random tests passed:", testsPassed);

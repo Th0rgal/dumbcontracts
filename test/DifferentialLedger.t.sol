@@ -2,6 +2,7 @@
 pragma solidity ^0.8.33;
 
 import {console2} from "forge-std/Test.sol";
+import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
 
 /**
@@ -16,7 +17,7 @@ import "./yul/YulTestBase.sol";
  *
  * Success: 100+ tests with zero mismatches
  */
-contract DifferentialLedger is YulTestBase {
+contract DifferentialLedger is YulTestBase, DiffTestConfig {
     // Compiled contract
     address ledger;
 
@@ -437,6 +438,18 @@ contract DifferentialLedger is YulTestBase {
         assertTrue(success2, "Transfer failed");
     }
 
+    function testDifferential_SelfTransfer_NoOp() public {
+        address alice = address(0xA11CE);
+
+        // Alice deposits 100
+        bool success1 = executeDifferentialTest("deposit", alice, address(0), 100);
+        assertTrue(success1, "Deposit failed");
+
+        // Self-transfer should be a no-op (balance unchanged)
+        bool success2 = executeDifferentialTest("transfer", alice, alice, 40);
+        assertTrue(success2, "Self-transfer failed");
+    }
+
     function testDifferential_GetBalance() public {
         address alice = address(0xA11CE);
         address bob = address(0xB0B);
@@ -462,22 +475,60 @@ contract DifferentialLedger is YulTestBase {
         assertTrue(success, "Insufficient balance test failed");
     }
 
+    /**
+     * @notice Exercise edge amounts for deposit/withdraw/transfer.
+     */
+    function testDifferential_EdgeAmounts() public {
+        address alice = address(0xA11CE);
+        address bob = address(0xB0B);
+        uint256[] memory values = _edgeUintValues();
+
+        bytes32 aliceSlot = keccak256(abi.encode(alice, uint256(0)));
+        bytes32 bobSlot = keccak256(abi.encode(bob, uint256(0)));
+
+        for (uint256 i = 0; i < values.length; i++) {
+            uint256 amount = values[i];
+
+            // Deposit from zero balance.
+            vm.store(ledger, aliceSlot, bytes32(uint256(0)));
+            vm.store(ledger, bobSlot, bytes32(uint256(0)));
+            edslBalances[alice] = 0;
+            edslBalances[bob] = 0;
+            bool successDeposit = executeDifferentialTest("deposit", alice, address(0), amount);
+            assertTrue(successDeposit, "Edge deposit test failed");
+
+            // Withdraw exact balance.
+            vm.store(ledger, aliceSlot, bytes32(amount));
+            edslBalances[alice] = amount;
+            bool successWithdraw = executeDifferentialTest("withdraw", alice, address(0), amount);
+            assertTrue(successWithdraw, "Edge withdraw test failed");
+
+            // Transfer exact balance.
+            vm.store(ledger, aliceSlot, bytes32(amount));
+            vm.store(ledger, bobSlot, bytes32(uint256(0)));
+            edslBalances[alice] = amount;
+            edslBalances[bob] = 0;
+            bool successTransfer = executeDifferentialTest("transfer", alice, bob, amount);
+            assertTrue(successTransfer, "Edge transfer test failed");
+        }
+    }
+
     function testDifferential_Random100() public {
         address[] memory actors = new address[](3);
         actors[0] = address(0xA11CE);
         actors[1] = address(0xB0B);
         actors[2] = address(0xCA501);
 
-        // Seed: current block timestamp for reproducibility
-        uint256 seed = block.timestamp;
+        (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
+        uint256 seed = _diffRandomSeed("Ledger");
 
-        for (uint256 i = 0; i < 100; i++) {
+        for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, address recipient, uint256 amount) =
-                _randomTransaction(seed + i, actors);
+                _randomTransaction(seed + startIndex + i, actors);
 
             bool success = executeDifferentialTest(funcName, sender, recipient, amount);
-            assertTrue(success, string.concat("Random test ", vm.toString(i), " failed"));
+            _assertRandomSuccess(success, startIndex + i);
         }
 
         console2.log("Random tests passed:", testsPassed);
@@ -491,17 +542,17 @@ contract DifferentialLedger is YulTestBase {
         actors[1] = address(0xB0B);
         actors[2] = address(0xCA501);
 
-        // Seed: current block timestamp for reproducibility
-        uint256 seed = block.timestamp;
+        (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
+        uint256 seed = _diffRandomSeed("Ledger");
 
         vm.pauseGasMetering();
-        for (uint256 i = 0; i < 1000; i++) {
+        for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, address recipient, uint256 amount) =
-                _randomTransaction(seed + i, actors);
+                _randomTransaction(seed + startIndex + i, actors);
 
             bool success = executeDifferentialTest(funcName, sender, recipient, amount);
-            assertTrue(success, string.concat("Random test ", vm.toString(i), " failed"));
+            _assertRandomSuccess(success, startIndex + i);
         }
         vm.resumeGasMetering();
 

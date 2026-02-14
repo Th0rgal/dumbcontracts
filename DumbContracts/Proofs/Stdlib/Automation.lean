@@ -148,6 +148,10 @@ theorem addressToNat_lt_modulus (addr : Address) :
     addressToNat addr % addressModulus = addressToNat addr := by
   exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
 
+@[simp] theorem addressToNat_beq_self (addr : Address) :
+    (addressToNat addr == addressToNat addr) = true := by
+  simp
+
 -- Trust assumption: address encoding is injective for valid addresses.
 axiom addressToNat_injective :
     ∀ (a b : Address), addressToNat a = addressToNat b → a = b
@@ -179,6 +183,42 @@ theorem getMapping_runValue (slot : StorageSlot (Address → Uint256)) (key : Ad
 @[simp] theorem lookup_recipientBal (recipientBal senderBal : Nat) :
     (List.lookup "recipientBal" [("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
       recipientBal := by
+  simp [List.lookup, List.lookup_cons]
+
+-- Local variable lookups when transfer introduces sameAddr/delta/amountDelta.
+@[simp] theorem lookup_senderBal_with_delta (amountDelta delta sameAddr recipientBal senderBal : Nat) :
+    (List.lookup "senderBal"
+        [("amountDelta", amountDelta), ("delta", delta), ("sameAddr", sameAddr),
+          ("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
+      senderBal := by
+  simp [List.lookup, List.lookup_cons]
+
+@[simp] theorem lookup_recipientBal_with_delta (amountDelta delta sameAddr recipientBal senderBal : Nat) :
+    (List.lookup "recipientBal"
+        [("amountDelta", amountDelta), ("delta", delta), ("sameAddr", sameAddr),
+          ("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
+      recipientBal := by
+  simp [List.lookup, List.lookup_cons]
+
+@[simp] theorem lookup_sameAddr_with_delta (amountDelta delta sameAddr recipientBal senderBal : Nat) :
+    (List.lookup "sameAddr"
+        [("amountDelta", amountDelta), ("delta", delta), ("sameAddr", sameAddr),
+          ("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
+      sameAddr := by
+  simp [List.lookup, List.lookup_cons]
+
+@[simp] theorem lookup_delta_with_delta (amountDelta delta sameAddr recipientBal senderBal : Nat) :
+    (List.lookup "delta"
+        [("amountDelta", amountDelta), ("delta", delta), ("sameAddr", sameAddr),
+          ("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
+      delta := by
+  simp [List.lookup, List.lookup_cons]
+
+@[simp] theorem lookup_amountDelta_with_delta (amountDelta delta sameAddr recipientBal senderBal : Nat) :
+    (List.lookup "amountDelta"
+        [("amountDelta", amountDelta), ("delta", delta), ("sameAddr", sameAddr),
+          ("recipientBal", recipientBal), ("senderBal", senderBal)]).getD 0 =
+      amountDelta := by
   simp [List.lookup, List.lookup_cons]
 
 -- Mapping lookups for two-address lists.

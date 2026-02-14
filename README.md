@@ -1,6 +1,6 @@
 # Dumb Contracts
 
-DumbContracts is a Lean 4 project for writing smart contracts in a tiny EDSL, proving their behavior in Lean, and compiling verified specs to Yul/EVM bytecode. It contains executable semantics, a compiler pipeline, and machine-checked proofs across the EDSL, IR generation, and Yul codegen.
+DumbContracts is a Lean 4 project for writing smart contracts in a tiny EDSL, proving their behavior in Lean, and compiling verified specs to Yul/EVM bytecode. It contains executable semantics, a compiler pipeline, and machine-checked proofs across the EDSL and IR generation, with Yul preservation proofs in progress.
 
 ## Example
 
@@ -47,7 +47,7 @@ def retrieve_spec (result : Uint256) (s : ContractState) : Prop :=
 
 - **EDSL correctness**: Each example contract satisfies its specification in Lean.
 - **Spec semantics**: ContractSpec execution matches the intended DSL behavior.
-- **Compiler correctness**: IR generation and Yul codegen preserve semantics.
+- **Compiler correctness**: IR generation is proven; Yul codegen proofs are in progress (semantics + scaffolding in place).
 - **Automation**: Common proof patterns are captured in reusable lemmas.
 
 See `Compiler/Proofs/README.md` for the proof inventory and layout across layers.
@@ -56,9 +56,9 @@ See `Compiler/Proofs/README.md` for the proof inventory and layout across layers
 
 These are the remaining trusted components outside Lean:
 
-- **`solc` Yul compiler**: The Solidity compiler is trusted to compile Yul to EVM bytecode.
+- **`solc` Yul compiler**: The Solidity compiler is trusted to compile Yul to EVM bytecode (CI now compiles generated Yul as a sanity check).
 - **EVM semantics**: The EVM execution model is assumed to match the specification used in proofs.
-- **Function selectors**: Precomputed `keccak256` hashes in `Compiler/Selector.lean` are assumed correct.
+- **Function selectors**: Precomputed `keccak256` hashes in `Compiler/Selector.lean` are assumed correct (CI checks fixtures against `solc --hashes`).
 
 Semantics are defined in Lean here:
 
@@ -90,6 +90,22 @@ test/                                # Foundry tests (unit, property, differenti
 - **Compiler specs (for codegen)**: `Compiler/Specs.lean` (separate from user specs)
 - **Compiler proofs**: `Compiler/Proofs/` (IR generation + Yul preservation)
 
+## Adding a Contract (Checklist)
+
+1. Write a small, human-readable spec in `DumbContracts/Specs/<Name>/Spec.lean`.
+2. Add invariants in `DumbContracts/Specs/<Name>/Invariants.lean` (optional but encouraged).
+3. Implement the contract in `DumbContracts/Examples/<Name>.lean` using the EDSL.
+4. Prove the implementation meets the spec in `DumbContracts/Specs/<Name>/Proofs.lean`.
+5. Add compiler-level spec glue in `Compiler/Specs.lean` and IR/Yul proofs in `Compiler/Proofs/` if new patterns are introduced.
+6. Add tests in `test/` (unit + property + differential if applicable).
+7. Use `SimpleStorage` as the minimal end-to-end reference for file layout and proof style.
+
+## Adding a Contract (Common Pitfalls)
+
+- Storage slot mismatches between the spec, EDSL implementation, and compiler spec.
+- Mapping conversions that assume simple storage slots instead of typed storage.
+- Missing proofs when a spec is changed but the EDSL implementation or invariants are not updated.
+
 ## Examples and Proofs
 
 - **Lean examples (EDSL implementations)**: `DumbContracts/Examples/`
@@ -106,8 +122,33 @@ lake build
 # Build compiler executable
 lake build dumbcontracts-compiler
 
-# Run Foundry tests (unit + property + differential)
+# Run Foundry tests (unit + property + differential + selector sanity)
 forge test
+
+# Optional: scale differential random test counts
+# DIFFTEST_RANDOM_SMALL defaults to 100, DIFFTEST_RANDOM_LARGE defaults to 10000
+# DIFFTEST_RANDOM_COUNT overrides both small/large when set
+# Large counts can be expensive; tune these for local runs vs CI.
+# CI runs with DIFFTEST_RANDOM_LARGE=10000 across all differential harnesses.
+# CI builds the compiler + difftest interpreter once and shares generated Yul across test shards.
+# CI shards download a prebuilt difftest interpreter artifact and run it directly (must be executable).
+# DIFFTEST_RANDOM_SEED is mixed with shard index + contract label to avoid identical sequences across shards.
+DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 forge test
+
+# Optional: extract proof theorem names into a test manifest
+python3 scripts/extract_property_manifest.py
+
+# Optional: check that property tests reference real theorems
+python3 scripts/check_property_manifest.py
+
+# Optional: check that property_manifest.json matches current proofs
+python3 scripts/check_property_manifest_sync.py
+
+# Optional: check that all theorems have property coverage (with exclusions)
+python3 scripts/check_property_coverage.py
+
+# Optional: check selector hashing against specs and generated Yul (including yul-new if present)
+python3 scripts/check_selectors.py
 ```
 
 ## Documentation

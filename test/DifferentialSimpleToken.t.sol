@@ -2,6 +2,7 @@
 pragma solidity ^0.8.33;
 
 import {console2} from "forge-std/Test.sol";
+import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
 
 /**
@@ -16,7 +17,7 @@ import "./yul/YulTestBase.sol";
  *
  * Success: 100+ tests with zero mismatches
  */
-contract DifferentialSimpleToken is YulTestBase {
+contract DifferentialSimpleToken is YulTestBase, DiffTestConfig {
     // Compiled contract
     address simpleToken;
 
@@ -669,6 +670,19 @@ contract DifferentialSimpleToken is YulTestBase {
         assertTrue(success2, "Transfer failed");
     }
 
+    function testDifferential_SelfTransfer_NoOp() public {
+        address owner = address(this);
+        address alice = address(0xA11CE);
+
+        // Mint to Alice
+        bool success1 = executeDifferentialTest("mint", owner, alice, 500);
+        assertTrue(success1, "Mint failed");
+
+        // Self-transfer should be a no-op (balances + total supply unchanged)
+        bool success2 = executeDifferentialTest("transfer", alice, alice, 200);
+        assertTrue(success2, "Self-transfer failed");
+    }
+
     function testDifferential_AccessControl() public {
         address owner = address(this);
         address alice = address(0xA11CE);
@@ -712,22 +726,59 @@ contract DifferentialSimpleToken is YulTestBase {
         assertTrue(success, "Insufficient balance test failed");
     }
 
+    /**
+     * @notice Exercise edge amounts for mint/transfer.
+     */
+    function testDifferential_EdgeAmounts() public {
+        address owner = address(this);
+        address alice = address(0xA11CE);
+        address bob = address(0xB0B);
+        uint256[] memory values = _edgeUintValues();
+
+        bytes32 ownerSlot = bytes32(uint256(0));
+        bytes32 totalSupplySlot = bytes32(uint256(2));
+        bytes32 aliceSlot = keccak256(abi.encode(alice, uint256(1)));
+        bytes32 bobSlot = keccak256(abi.encode(bob, uint256(1)));
+
+        for (uint256 i = 0; i < values.length; i++) {
+            uint256 amount = values[i];
+
+            // Reset EVM state.
+            vm.store(simpleToken, ownerSlot, bytes32(uint256(uint160(owner))));
+            vm.store(simpleToken, totalSupplySlot, bytes32(uint256(0)));
+            vm.store(simpleToken, aliceSlot, bytes32(uint256(0)));
+            vm.store(simpleToken, bobSlot, bytes32(uint256(0)));
+
+            // Reset EDSL state.
+            edslStorageAddr[0] = owner;
+            edslStorage[2] = 0;
+            edslBalances[alice] = 0;
+            edslBalances[bob] = 0;
+
+            bool successMint = executeDifferentialTest("mint", owner, alice, amount);
+            assertTrue(successMint, "Edge mint test failed");
+
+            bool successTransfer = executeDifferentialTest("transfer", alice, bob, amount);
+            assertTrue(successTransfer, "Edge transfer test failed");
+        }
+    }
+
     function testDifferential_Random100() public {
         address[] memory actors = new address[](3);
         actors[0] = address(this);  // Owner
         actors[1] = address(0xA11CE);
         actors[2] = address(0xB0B);
 
-        // Seed: current block timestamp for reproducibility
-        uint256 seed = block.timestamp;
+        (uint256 startIndex, uint256 count) = _diffRandomSmallRange();
+        uint256 seed = _diffRandomSeed("SimpleToken");
 
-        for (uint256 i = 0; i < 100; i++) {
+        for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, address recipient, uint256 amount) =
-                _randomTransaction(seed + i, actors);
+                _randomTransaction(seed + startIndex + i, actors);
 
             bool success = executeDifferentialTest(funcName, sender, recipient, amount);
-            assertTrue(success, string.concat("Random test ", vm.toString(i), " failed"));
+            _assertRandomSuccess(success, startIndex + i);
         }
 
         console2.log("Random tests passed:", testsPassed);
@@ -741,17 +792,17 @@ contract DifferentialSimpleToken is YulTestBase {
         actors[1] = address(0xA11CE);
         actors[2] = address(0xB0B);
 
-        // Seed: current block timestamp for reproducibility
-        uint256 seed = block.timestamp;
+        (uint256 startIndex, uint256 count) = _diffRandomLargeRange();
+        uint256 seed = _diffRandomSeed("SimpleToken");
 
         vm.pauseGasMetering();
-        for (uint256 i = 0; i < 1000; i++) {
+        for (uint256 i = 0; i < count; i++) {
             // Generate random transaction
             (string memory funcName, address sender, address recipient, uint256 amount) =
-                _randomTransaction(seed + i, actors);
+                _randomTransaction(seed + startIndex + i, actors);
 
             bool success = executeDifferentialTest(funcName, sender, recipient, amount);
-            assertTrue(success, string.concat("Random test ", vm.toString(i), " failed"));
+            _assertRandomSuccess(success, startIndex + i);
         }
         vm.resumeGasMetering();
 

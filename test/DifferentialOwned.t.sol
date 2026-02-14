@@ -2,6 +2,7 @@
 pragma solidity ^0.8.33;
 
 import {console2} from "forge-std/Test.sol";
+import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
 
 /**
@@ -16,7 +17,7 @@ import "./yul/YulTestBase.sol";
  *
  * Success: 100+ tests with zero mismatches
  */
-contract DifferentialOwned is YulTestBase {
+contract DifferentialOwned is YulTestBase, DiffTestConfig {
     // Compiled contract
     address owned;
 
@@ -85,10 +86,13 @@ contract DifferentialOwned is YulTestBase {
         string memory edslResult = _runInterpreter(functionName, sender, arg0, storageState);
 
         // 3. Parse and compare results
-        console2.log("Function:", functionName);
-        console2.log("EVM success:", evmSuccess);
-        console2.log("EVM owner:", evmOwnerAfter);
-        console2.log("EDSL result:", edslResult);
+        bool verbose = _diffVerbose();
+        if (verbose) {
+            console2.log("Function:", functionName);
+            console2.log("EVM success:", evmSuccess);
+            console2.log("EVM owner:", evmOwnerAfter);
+            console2.log("EDSL result:", edslResult);
+        }
 
         // Parse EDSL result
         bool edslSuccess = contains(edslResult, "\"success\":true");
@@ -419,8 +423,8 @@ contract DifferentialOwned is YulTestBase {
      */
     function testDifferential_Random100() public {
         // Deterministic PRNG seed for reproducibility
-        uint256 seed = 12345;
-        uint256 numTransactions = 100;
+        (uint256 startIndex, uint256 numTransactions) = _diffRandomSmallRange();
+        uint256 seed = _diffRandomSeed("Owned");
 
         address[] memory testAddresses = new address[](3);
         testAddresses[0] = address(this);
@@ -429,6 +433,7 @@ contract DifferentialOwned is YulTestBase {
 
         console2.log("Generated", numTransactions, "random transactions");
 
+        seed = _skipRandom(seed, startIndex);
         for (uint256 i = 0; i < numTransactions; i++) {
             seed = _prng(seed);
             uint256 txType = seed % 100;
@@ -443,7 +448,7 @@ contract DifferentialOwned is YulTestBase {
                 arg0 = uint256(uint160(testAddresses[seed % testAddresses.length]));
 
                 bool success = executeDifferentialTest("transferOwnership", sender, arg0);
-                require(success, string(abi.encodePacked("Random test ", _uint256ToString(i), " failed")));
+                _assertRandomSuccess(success, startIndex + i);
             } else {
                 // 40% getOwner
                 seed = _prng(seed);
@@ -451,7 +456,7 @@ contract DifferentialOwned is YulTestBase {
                 arg0 = 0;
 
                 bool success = executeDifferentialTest("getOwner", sender, arg0);
-                require(success, string(abi.encodePacked("Random test ", _uint256ToString(i), " failed")));
+                _assertRandomSuccess(success, startIndex + i);
             }
         }
 
@@ -466,8 +471,8 @@ contract DifferentialOwned is YulTestBase {
      */
     function testDifferential_Random10000() public {
         // Deterministic PRNG seed for reproducibility
-        uint256 seed = 12345;
-        uint256 numTransactions = 1000;
+        (uint256 startIndex, uint256 numTransactions) = _diffRandomLargeRange();
+        uint256 seed = _diffRandomSeed("Owned");
 
         address[] memory testAddresses = new address[](3);
         testAddresses[0] = address(this);
@@ -476,6 +481,7 @@ contract DifferentialOwned is YulTestBase {
 
         console2.log("Generated", numTransactions, "random transactions");
 
+        seed = _skipRandom(seed, startIndex);
         for (uint256 i = 0; i < numTransactions; i++) {
             seed = _prng(seed);
             uint256 txType = seed % 100;
@@ -490,7 +496,7 @@ contract DifferentialOwned is YulTestBase {
                 arg0 = uint256(uint160(testAddresses[seed % testAddresses.length]));
 
                 bool success = executeDifferentialTest("transferOwnership", sender, arg0);
-                require(success, string(abi.encodePacked("Random test ", _uint256ToString(i), " failed")));
+                _assertRandomSuccess(success, startIndex + i);
             } else {
                 // 40% getOwner
                 seed = _prng(seed);
@@ -498,7 +504,7 @@ contract DifferentialOwned is YulTestBase {
                 arg0 = 0;
 
                 bool success = executeDifferentialTest("getOwner", sender, arg0);
-                require(success, string(abi.encodePacked("Random test ", _uint256ToString(i), " failed")));
+                _assertRandomSuccess(success, startIndex + i);
             }
         }
 
@@ -515,6 +521,14 @@ contract DifferentialOwned is YulTestBase {
      */
     function _prng(uint256 seed) internal pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(seed))) % (2**32);
+    }
+
+    function _skipRandom(uint256 seed, uint256 iterations) internal pure returns (uint256) {
+        for (uint256 i = 0; i < iterations; i++) {
+            seed = _prng(seed);
+            seed = _prng(seed);
+        }
+        return seed;
     }
 
     /**

@@ -15,13 +15,23 @@ The project evolved in two phases:
 
 **Phase 2 (Verification)**: Replaced `StateM` with custom `ContractResult` type (`success | revert`) to model `require` guards explicitly. This enabled proving properties like "mint reverts when caller is not owner." The core expanded to include proof automation lemmas and EVM context fields.
 
-## Progress and Roadmap (as of 2026-02-13)
+## Progress and Roadmap (as of 2026-02-14)
 
 This is the single source of truth for progress, roadmap, and milestone updates.
 
 - **Layer 1 (Spec Correctness)**: Complete for all 7 contracts.
-- **Layer 2 (ContractSpec → IR)**: Infrastructure complete; proofs in progress.
-- **Layer 3 (IR → Yul)**: Not started.
+- **Layer 2 (ContractSpec → IR)**: Complete for all 7 contracts (per‑function preservation theorems compiled in Lean).
+- **Layer 3 (IR → Yul)**: In progress (generic equivalence scaffolding + Yul/IR fuel‑unfolding lemmas + local reducibility for `execIRStmt/execIRStmts` inside equivalence proofs + fuel‑bounded IR↔Yul sequence lemma + fuel‑based function equivalence goal + fuel‑bounded function lemma from aligned IR state + explicit fuel‑adequacy goal definitions for IR + adequacy‑lifting lemma from stmt‑level goal to function‑level goal; full contract‑level equivalence theorems not yet proven).
+
+Recent updates:
+- CI now installs `solc` with `sudo` to avoid permission failures on GitHub Actions runners.
+- CI now downloads generated Yul artifacts into `compiler/` so Foundry tests use fresh outputs.
+- Mapping slot encoding restores the defensive `baseSlot % evmModulus` normalization.
+- Documented that stmt‑level fuel adequacy remains blocked due to opaque `execIRStmts` (goal defined, proof not yet available).
+- Added a helper lemma that combines stmt‑level equivalence + function‑level adequacy into a non‑fuel function equivalence result.
+- Scoped `supply_equals_sum` as a private helper until it is actually used in total‑supply proofs (keeps the public invariant surface minimal).
+- Nested mapping encoding now preserves tagged base slots so nested slots round‑trip without losing tags.
+- Removed unused `decodeNestedMappingSlot` helper to reduce dead code.
 
 ## Iterations
 
@@ -42,6 +52,7 @@ This is the single source of truth for progress, roadmap, and milestone updates.
 - Storage as functions (`Nat -> Uint256`), not finite maps. Uninitialized slots return 0.
 - `require` returns `ContractResult.revert msg s`, preserving original state.
 - Manual storage slot allocation (slot 0, 1, 2...). No automatic allocation needed.
+- Selector maps remain explicit per contract (no ContractSpec-derived builder yet).
 - `onlyOwner` is a regular function, not special syntax.
 
 **What didn't work:**
@@ -109,11 +120,11 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 
 ## Known Limitations
 
-- **Self-transfer**: Transfer theorems require `sender != to`. Self-transfer overwrites sender's deduction with recipient's addition. Could be modeled as identity operation.
+- **Self-transfer**: Modeled as a no-op; transfer theorems no longer require `sender != to`.
 - **Supply = sum of balances**: Requires finite address model. Proven as exact sum equations with `countOcc`, not as global invariant over all addresses.
 - **`ContractResult.fst`**: Returns `default` on revert, requiring `[Inhabited a]`. Proofs using `.fst` always show result is `success` first.
 - **No events, no gas**: EDSL models storage and control flow only.
-- **No nested mappings**: Can't express `mapping(address => mapping(address => uint256))` without extending core.
+- **No nested mappings**: Slot encoding helpers and smoke tests exist, but core storage semantics and proofs still lack full nested mapping support (`mapping(address => mapping(address => uint256))`).
 
 ## Compiler Development
 
@@ -188,7 +199,7 @@ forge test  # 264/264 tests pass (as of 2026-02-13)
 
 **Solution**: Random transaction generation + parallel execution on EDSL interpreter and compiled EVM bytecode.
 
-**Result**: 100 random transactions pass for SimpleStorage contract. Zero mismatches detected. Ready to scale to all contracts.
+**Result**: default runs use 100 random transactions per contract, while CI scales the large suite to 10,000+ per contract. Zero mismatches detected so far.
 
 **Implementation** (as of 2026-02-13):
 - `Compiler/Interpreter.lean` — EDSL interpreter for differential testing
@@ -209,9 +220,12 @@ forge test  # 264/264 tests pass (as of 2026-02-13)
 2. **Test Assertions**: Added `assertTrue` checks to prevent silent test failures.
 3. **Underflow Guards**: Added length guards to JSON parsing to prevent underflow reverts.
 4. **Clang Crash**: Removed `deriving Repr` to fix CI compilation crash (Lean generated overly complex C code).
+5. **Mapping Change De-duplication**: Mapping change keys are de-duplicated before comparison to avoid self-transfer double counting and reduce diff output size.
 
 **Test Results**:
-- 100/100 random transactions pass (SimpleStorage)
+- 100/100 random transactions pass per contract in default runs
+- 10,000+ random transactions pass per contract in CI (large suite)
+- Large suite is sharded across 8 CI jobs to stay within per-test gas limits
 - Zero mismatches detected
 - All Foundry tests passing (264/264 as of 2026-02-13)
 - CI: All checks passing
@@ -220,13 +234,53 @@ forge test  # 264/264 tests pass (as of 2026-02-13)
 ```bash
 lake build Compiler.Interpreter           # Build interpreter
 lake exe difftest-interpreter simpleStorage store 0 100  # Run single tx
-forge test --match-contract Differential  # Run 100 random tests
+forge test --match-contract Differential  # Run default (100) random tests
+# Scale the large suite (used in CI):
+DIFFTEST_RANDOM_LARGE=10000 forge test --match-contract Differential
+# Shard the large suite (CI uses 8 shards):
+DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
+  forge test --match-contract Differential
 ```
 
-**Next Steps**:
-- Scale to all 7 contracts (Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter)
-- Increase test count to 10,000+ per contract (70k+ total)
-- Add more sophisticated transaction patterns (sequences, edge cases)
+**Structured Next Steps (A–G)**:
+
+**A. Finish Layer 2 (ContractSpec → IR)**:
+- ✅ SimpleStorage + Counter preservation proofs are pinned and compiling.
+- ✅ Generalized preservation proofs now cover Owned, OwnedCounter, SafeCounter, Ledger, and SimpleToken.
+- ✅ Conversion relations for mappings + address types are exercised in the full suite of Layer 2 proofs.
+- ✅ Removed the exploratory `StoreProofAttempt.lean` once the real proof path was in place.
+- **Done when**: each contract has a Layer 2 preservation theorem that compiles in Lean (met).
+
+**B. Finish Layer 3 (IR → Yul)**:
+- **Layer 3 proof equivalence (IR → Yul) — generic path**
+  - Instruction‑level IR↔Yul equivalence lemmas.
+  - ✅ Fuel‑unfolding lemmas for Yul statement lists (`execYulStmtsFuel_nil/cons`) added in `Compiler/Proofs/YulGeneration/Equivalence.lean`.
+  - ✅ Fuel‑unfolding lemmas for IR statement lists (`execIRStmtsFuel_nil/cons`) added in `Compiler/Proofs/YulGeneration/Equivalence.lean`.
+  - ✅ `execIRStmts` marked reducible for proof unfolding in `Compiler/Proofs/YulGeneration/Equivalence.lean`.
+  - ✅ Fuel‑adequacy goals defined (`execIRStmtsFuel_adequate_goal`, `execIRFunctionFuel_adequate_goal`).
+  - Sequence/program equivalence lemma (composition + state mapping) still needs a clean non‑fuel bridge on the IR side (fuel adequacy). Current blocker: `execIRStmts` unfolding/adequacy proof still open.
+  - Generic function equivalence theorem (parameterized by function + compiler) still needs a non‑fuel bridge.
+  - Contract‑level equivalence is then purely mechanical instantiation (no new proof ideas).
+  - **Done when**: instruction‑level lemmas exist, the generic function theorem compiles, and contracts are instantiated mechanically without new proof ideas.
+
+**C. Scale Differential Testing**:
+- Centralize the “random run” entrypoint so each harness can opt into the same seed/count knobs (avoid copy‑paste and drift).
+- Increase transaction counts from 100 to 10,000+ per contract (keep a quick-run default, allow override for CI).
+- Add adversarial patterns: self-transfer (done), max uint values (done for SimpleStorage/Ledger/SimpleToken), boundary overflows.
+- **Done when**: CI runs a 10,000+ tx suite per contract, and the random harness setup is shared and parameterized across all 7 contracts.
+
+**D. Property Extraction (Proofs → Tests)**:
+- **Remaining**: Reduce 172 exclusions. Add property tests contract‑by‑contract and decide if any Stdlib proofs are “proof‑only.” Keep coverage script green.
+
+**E. Address Known Limitations (Core Modeling)**:
+- ✅ SimpleToken transfer preservation lemmas no longer require `sender ≠ to`, aligning proofs with self-transfer no-op behavior.
+- **Remaining**: Full “supply = sum balances” proof over a finite address set plus tests. Extend storage semantics + proofs for nested mappings to support allowances (`approve`/`transferFrom`). Add explicit self‑transfer property tests across affected contracts.
+
+**F. Reduce Remaining Trust Assumptions**:
+- **Remaining**: Prove selector hashes in Lean (not just CI fixture checks). Add a minimal Yul↔EVM semantic bridge lemma or mechanized model.
+
+**G. Documentation (Optional But Valuable)**:
+- **Remaining**: Add the 1‑page “add a contract” guide and keep roadmap updates in sync with each milestone.
 
 **Trust Model**: 100 random tests provide probabilistic confidence. Formal verification (Item 4) would provide mathematical certainty.
 
@@ -245,15 +299,7 @@ forge test --match-contract Differential  # Run 100 random tests
 
 ## What Could Come Next
 
-1. ~~Differential testing (70k+ random tests)~~ ✅ **Completed** (100 tests for SimpleStorage, ready to scale)
-2. Scale differential testing to all 7 contracts (70k+ total tests)
-3. Property extraction (252 theorems → Foundry tests) — Roadmap Item 3
-4. Compiler verification (formal correctness proof) — Roadmap Item 4
-5. Self-transfer handling (special-case or identity operation)
-6. Full `supply = sum(balances)` with finite address set
-7. ERC-20 allowances (needs `Address -> Address -> Uint256` storage)
-8. Gas consumption tracking in `ContractResult`
-9. Cross-contract call modeling
+See **Structured Next Steps (A–G)** above for the single source of truth. The older “next steps” list has been removed to avoid drift and duplication.
 
 ## Detailed Logs
 

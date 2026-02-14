@@ -56,15 +56,22 @@ def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
 /-- Specification for transfer operation (when sender has sufficient balance):
     - Decreases sender's balance by 'amount'
     - Increases recipient's balance by 'amount'
+    - If sender == recipient, balances are unchanged
     - Preserves total supply
     - Preserves other balances
     - Preserves owner
 -/
 def transfer_spec (sender to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   s.storageMap 1 sender ≥ amount ∧
-  s'.storageMap 1 sender = sub (s.storageMap 1 sender) amount ∧
-  s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
-  storageMapUnchangedExceptKeysAtSlot 1 sender to s s' ∧
+  (if sender == to
+    then s'.storageMap 1 sender = s.storageMap 1 sender
+    else s'.storageMap 1 sender = sub (s.storageMap 1 sender) amount) ∧
+  (if sender == to
+    then s'.storageMap 1 to = s.storageMap 1 to
+    else s'.storageMap 1 to = add (s.storageMap 1 to) amount) ∧
+  (if sender == to
+    then storageMapUnchangedExceptKeyAtSlot 1 sender s s'
+    else storageMapUnchangedExceptKeysAtSlot 1 sender to s s') ∧
   s'.storageAddr 0 = s.storageAddr 0 ∧
   sameStorageAddrContext s s'
 

@@ -50,26 +50,15 @@ def retrieve_spec (result : Uint256) (s : ContractState) : Prop :=
 - **Compiler correctness**: IR generation is proven; Yul codegen proofs are in progress (semantics + scaffolding in place).
 - **Automation**: Common proof patterns are captured in reusable lemmas.
 
-**Verification Status**: Layers 1-2 complete (100%), Layer 3 in progress (92/100 overall). See:
+**Verification Status**: Layers 1-2 complete (100%), Layer 3 in progress (97/100 overall). See:
 - [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) - Comprehensive verification status
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) - Roadmap to completion (2-3 months to production-ready)
 
 See `Compiler/Proofs/README.md` for the proof inventory and layout across layers.
 
-## Assumptions and Trust Model
+## Trust Model
 
-These are the remaining trusted components outside Lean:
-
-- **`solc` Yul compiler**: The Solidity compiler is trusted to compile Yul to EVM bytecode (CI now compiles generated Yul as a sanity check).
-- **EVM semantics**: The EVM execution model is assumed to match the specification used in proofs.
-- **Function selectors**: Precomputed `keccak256` hashes in `Compiler/Selector.lean` are assumed correct (CI checks fixtures against `solc --hashes`).
-
-Semantics are defined in Lean here:
-
-- EDSL semantics: `DumbContracts/Core.lean`
-- Spec semantics: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
-- IR semantics: `Compiler/Proofs/IRGeneration/IRInterpreter.lean`
-- Yul semantics: `Compiler/Proofs/YulGeneration/Semantics.lean`
+See [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for detailed trust assumptions and semantics definitions.
 
 ## Repository Structure
 

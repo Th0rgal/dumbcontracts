@@ -8,32 +8,32 @@
 namespace DumbContracts.Core
 
 /-- A finite set implemented as a list without duplicates -/
-structure FiniteSet (α : Type) [BEq α] where
+structure FiniteSet (α : Type) [BEq α] [DecidableEq α] where
   elements : List α
   nodup : elements.Nodup
   deriving Repr
 
 namespace FiniteSet
 
-variable {α : Type} [BEq α]
+variable {α : Type} [BEq α] [DecidableEq α]
 
 /-- Create an empty finite set -/
 def empty : FiniteSet α :=
   ⟨[], List.nodup_nil⟩
 
 /-- Check if an element is in the set -/
-def mem (a : α) (s : FiniteSet α) : Bool :=
-  s.elements.contains a
+def mem (s : FiniteSet α) (a : α) : Prop :=
+  a ∈ s.elements
 
 instance : Membership α (FiniteSet α) where
-  mem a s := s.mem a = true
+  mem a s := s.mem a
 
 /-- Insert an element into the set (maintains no duplicates) -/
 def insert (a : α) (s : FiniteSet α) : FiniteSet α :=
-  if s.elements.contains a then
+  if h : a ∈ s.elements then
     s
   else
-    ⟨a :: s.elements, List.nodup_cons.mpr ⟨fun h => by cases h, s.nodup⟩⟩
+    ⟨a :: s.elements, List.nodup_cons.mpr ⟨h, s.nodup⟩⟩
 
 /-- Get the size of the set -/
 def card (s : FiniteSet α) : Nat :=
@@ -44,17 +44,16 @@ def sum [Add β] [OfNat β 0] (s : FiniteSet α) (f : α → β) : β :=
   s.elements.foldl (fun acc x => acc + f x) 0
 
 /-- Theorem: inserting an element that's already in the set doesn't change it -/
-theorem insert_of_mem {a : α} {s : FiniteSet α} (h : s.elements.contains a = true) :
+theorem insert_of_mem {a : α} {s : FiniteSet α} (h : a ∈ s.elements) :
     insert a s = s := by
   unfold insert
-  rw [h]
-  rfl
+  simp [dif_pos h]
 
 /-- Theorem: inserting into empty set creates singleton -/
 theorem insert_empty (a : α) :
     (insert a empty).elements = [a] := by
   unfold insert empty
-  rfl
+  simp [dif_neg (List.not_mem_nil a)]
 
 end FiniteSet
 
@@ -76,11 +75,11 @@ def insert (addr : String) (s : FiniteAddressSet) : FiniteAddressSet :=
   ⟨s.addresses.insert addr⟩
 
 /-- Check if an address is in the set -/
-def mem (addr : String) (s : FiniteAddressSet) : Bool :=
+def mem (s : FiniteAddressSet) (addr : String) : Prop :=
   s.addresses.mem addr
 
 instance : Membership String FiniteAddressSet where
-  mem addr s := mem addr s = true
+  mem addr s := s.mem addr
 
 /-- Get the number of addresses in the set -/
 def card (s : FiniteAddressSet) : Nat :=

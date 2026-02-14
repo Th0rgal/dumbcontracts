@@ -246,6 +246,20 @@ def execIRStmtsFuel (fuel : Nat) (state : IRState) (stmts : List YulStmt) : IREx
           | .stop s => .stop s
           | .revert s => .revert s
 
+theorem execIRStmtsFuel_nil (fuel : Nat) (state : IRState) :
+    execIRStmtsFuel fuel state [] = .continue state := by
+  simp [execIRStmtsFuel]
+
+theorem execIRStmtsFuel_cons
+    (fuel : Nat) (state : IRState) (stmt : YulStmt) (rest : List YulStmt) :
+    execIRStmtsFuel (Nat.succ fuel) state (stmt :: rest) =
+      match execIRStmt state stmt with
+      | .continue s' => execIRStmtsFuel fuel s' rest
+      | .return v s => .return v s
+      | .stop s => .stop s
+      | .revert s => .revert s := by
+  rfl
+
 def execIRFunctionFuel (fuel : Nat) (fn : IRFunction) (args : List Nat) (initialState : IRState) :
     IRResult :=
   let stateWithParams := fn.params.zip args |>.foldl

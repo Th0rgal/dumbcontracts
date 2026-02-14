@@ -74,6 +74,50 @@ def resultsMatch (ir : IRResult) (yul : YulResult) : Prop :=
   (∀ slot, ir.finalStorage slot = yul.finalStorage slot) ∧
   (∀ base key, ir.finalMappings base key = yul.finalMappings base key)
 
+def irResultOfExecWithRollback (rollback : IRState) : IRExecResult → IRResult
+  | .continue s =>
+      { success := true
+        returnValue := s.returnValue
+        finalStorage := s.storage
+        finalMappings := s.mappings }
+  | .return v s =>
+      { success := true
+        returnValue := some v
+        finalStorage := s.storage
+        finalMappings := s.mappings }
+  | .stop s =>
+      { success := true
+        returnValue := none
+        finalStorage := s.storage
+        finalMappings := s.mappings }
+  | .revert _ =>
+      { success := false
+        returnValue := none
+        finalStorage := rollback.storage
+        finalMappings := rollback.mappings }
+
+def yulResultOfExecWithRollback (rollback : YulState) : YulExecResult → YulResult
+  | .continue s =>
+      { success := true
+        returnValue := s.returnValue
+        finalStorage := s.storage
+        finalMappings := s.mappings }
+  | .return v s =>
+      { success := true
+        returnValue := some v
+        finalStorage := s.storage
+        finalMappings := s.mappings }
+  | .stop s =>
+      { success := true
+        returnValue := none
+        finalStorage := s.storage
+        finalMappings := s.mappings }
+  | .revert _ =>
+      { success := false
+        returnValue := none
+        finalStorage := rollback.storage
+        finalMappings := rollback.mappings }
+
 /-- Instruction-level equivalence goal: single IR statement matches Yul statement. -/
 def execIRStmt_equiv_execYulStmt_goal
     (selector : Nat) (stmt : YulStmt) (irState : IRState) (yulState : YulState) : Prop :=

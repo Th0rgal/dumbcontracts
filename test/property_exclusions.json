@@ -15,19 +15,7 @@
     "withdraw_sum_equation",
     "withdraw_sum_singleton_sender"
   ],
-  "Owned": [
-    "constructor_preserves_wellformedness",
-    "getOwner_preserves_state",
-    "getOwner_preserves_wellformedness",
-    "getOwner_returns_owner",
-    "getStorageAddr_reads_owner",
-    "isOwner_meets_spec",
-    "isOwner_returns_correct_value",
-    "setStorageAddr_preserves_context",
-    "setStorageAddr_preserves_map_storage",
-    "setStorageAddr_updates_owner",
-    "transferOwnership_changes_owner_when_allowed"
-  ],
+  "Owned": [],
   "OwnedCounter": [
     "constructor_context_preserved",
     "constructor_meets_spec",

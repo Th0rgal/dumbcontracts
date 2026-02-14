@@ -41,6 +41,9 @@ contract PropertyOwnedTest is YulTestBase {
      * Property 1-2: setStorageAddr/getStorageAddr correctness
      * Theorem: Setting owner updates slot 0, getting owner reads slot 0
      * Property: constructor_sets_owner
+     * Property: getStorageAddr_reads_owner
+     * Property: setStorageAddr_updates_owner
+     * Property: constructor_preserves_wellformedness
      */
     function testProperty_Constructor_SetsOwner(address initialOwner) public {
         vm.assume(initialOwner != address(0)); // Non-zero owner
@@ -64,6 +67,8 @@ contract PropertyOwnedTest is YulTestBase {
      * Property 3: setStorageAddr_preserves_other_slots
      * Theorem: Setting owner doesn't affect other address slots
      * Property: setStorageAddr_preserves_other_slots
+     * Property: setStorageAddr_preserves_context
+     * Property: setStorageAddr_preserves_map_storage
      */
     function testProperty_SetOwner_PreservesOtherSlots() public {
         // This property is implicitly verified by other operations
@@ -113,6 +118,9 @@ contract PropertyOwnedTest is YulTestBase {
      * Property 9-11: getOwner correctness
      * Theorem: getOwner returns storage slot 0 without modifying state
      * Property: getOwner_meets_spec
+     * Property: getOwner_returns_owner
+     * Property: getOwner_preserves_state
+     * Property: getOwner_preserves_wellformedness
      */
     function testProperty_GetOwner_ReadsCorrectValue() public {
         address ownerBefore = readOwner();
@@ -148,6 +156,8 @@ contract PropertyOwnedTest is YulTestBase {
 
     /**
      * Property 12-13: isOwner correctness
+     * Property: isOwner_meets_spec
+     * Property: isOwner_returns_correct_value
      * Theorem: isOwner returns (sender == owner)
      * Note: isOwner is internal in the Lean code, tested via transferOwnership
      */
@@ -156,6 +166,7 @@ contract PropertyOwnedTest is YulTestBase {
      * Property 14-15: transferOwnership correctness (when owner)
      * Theorem: Owner can successfully transfer ownership
      * Property: transferOwnership_meets_spec_when_owner
+     * Property: transferOwnership_changes_owner_when_allowed
      */
     function testProperty_TransferOwnership_SucceedsWhenOwner(address newOwner) public {
         vm.assume(newOwner != address(0));

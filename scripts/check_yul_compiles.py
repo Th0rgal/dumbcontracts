@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""Verify that generated Yul files compile with solc.
+
+This check ensures trust in the Yul->EVM compilation step by verifying
+that all generated Yul can be compiled to bytecode by solc.
+"""
+
 from __future__ import annotations
 
 import subprocess

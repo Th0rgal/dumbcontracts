@@ -17,6 +17,13 @@ if ! command -v gh &> /dev/null; then
     exit 1
 fi
 
+# Check if gh is authenticated
+if ! gh auth status &> /dev/null; then
+    echo "Error: GitHub CLI is not authenticated."
+    echo "Run: gh auth login"
+    exit 1
+fi
+
 # Array of statement proofs to create issues for
 declare -a statements=(
     "1:Variable Assignment:assign_equiv:Low:1h:None:70"
@@ -106,13 +113,17 @@ EOF
 
     echo "Creating issue #${num}: ${title}"
 
-    # Create the issue
+    # Create the issue with appropriate labels
+    local labels="layer-3,proof,lean,help-wanted"
+    if [[ "${difficulty,,}" == "low" ]]; then
+        labels="${labels},good-first-issue"
+    fi
+
     gh issue create \
         --repo "$REPO" \
         --title "$title" \
         --body "$body" \
-        --label "layer-3,proof,lean,help-wanted" \
-        ${difficulty,,} == "low" && echo "--label good-first-issue" || echo ""
+        --label "$labels"
 
     echo "✓ Issue created"
     echo ""

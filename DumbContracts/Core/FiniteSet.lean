@@ -3,33 +3,29 @@
 
   This module provides a simple finite set structure to enable
   proving sum properties over contract balances.
+
+  This is a simplified implementation without all the helper theorems.
+  Theorems will be added as needed during proof development.
 -/
 
 namespace DumbContracts.Core
 
 /-- A finite set implemented as a list without duplicates -/
-structure FiniteSet (α : Type) [BEq α] [DecidableEq α] where
+structure FiniteSet (α : Type) where
   elements : List α
   nodup : elements.Nodup
   deriving Repr
 
 namespace FiniteSet
 
-variable {α : Type} [BEq α] [DecidableEq α]
+variable {α : Type}
 
 /-- Create an empty finite set -/
-def empty : FiniteSet α :=
+def empty [BEq α] : FiniteSet α :=
   ⟨[], List.nodup_nil⟩
 
-/-- Check if an element is in the set -/
-def mem (s : FiniteSet α) (a : α) : Prop :=
-  a ∈ s.elements
-
-instance : Membership α (FiniteSet α) where
-  mem a s := s.mem a
-
 /-- Insert an element into the set (maintains no duplicates) -/
-def insert (a : α) (s : FiniteSet α) : FiniteSet α :=
+def insert [BEq α] [DecidableEq α] (a : α) (s : FiniteSet α) : FiniteSet α :=
   if h : a ∈ s.elements then
     s
   else
@@ -43,25 +39,11 @@ def card (s : FiniteSet α) : Nat :=
 def sum [Add β] [OfNat β 0] (s : FiniteSet α) (f : α → β) : β :=
   s.elements.foldl (fun acc x => acc + f x) 0
 
-/-- Theorem: inserting an element that's already in the set doesn't change it -/
-theorem insert_of_mem {a : α} {s : FiniteSet α} (h : a ∈ s.elements) :
-    insert a s = s := by
-  unfold insert
-  simp [dif_pos h]
-
-/-- Theorem: inserting into empty set creates singleton -/
-theorem insert_empty (a : α) :
-    (insert a empty).elements = [a] := by
-  unfold insert empty
-  simp [dif_neg (List.not_mem_nil a)]
-
 end FiniteSet
 
-/-- Finite set of addresses with size bound for Ethereum (2^160 addresses) -/
+/-- Finite set of addresses -/
 structure FiniteAddressSet where
-  addresses : FiniteSet String  -- Address is String
-  -- We don't enforce the 2^160 bound in the type for simplicity
-  -- but it's implicitly guaranteed by EVM constraints
+  addresses : FiniteSet String
   deriving Repr
 
 namespace FiniteAddressSet
@@ -73,13 +55,6 @@ def empty : FiniteAddressSet :=
 /-- Insert an address into the set -/
 def insert (addr : String) (s : FiniteAddressSet) : FiniteAddressSet :=
   ⟨s.addresses.insert addr⟩
-
-/-- Check if an address is in the set -/
-def mem (s : FiniteAddressSet) (addr : String) : Prop :=
-  s.addresses.mem addr
-
-instance : Membership String FiniteAddressSet where
-  mem addr s := s.mem addr
 
 /-- Get the number of addresses in the set -/
 def card (s : FiniteAddressSet) : Nat :=

@@ -458,7 +458,7 @@ contract PropertySimpleTokenTest is YulTestBase {
         address tokenOwner = readStorageAddr(newToken, 0);
         uint256 supply = readStorage(newToken, 2);
 
-        assertTrue(tokenOwner != address(0) || tokenOwner == address(0), "Owner is valid");
+        assertEq(tokenOwner, alice, "Owner is set to initialOwner");
         assertEq(supply, 0, "Supply is 0");
     }
 

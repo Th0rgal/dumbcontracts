@@ -254,7 +254,7 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
   - ✅ Fuel‑unfolding lemmas for IR statement lists (`execIRStmtsFuel_nil/cons`) added in `Compiler/Proofs/YulGeneration/Equivalence.lean`.
   - ✅ `execIRStmts` marked reducible for proof unfolding in `Compiler/Proofs/YulGeneration/Equivalence.lean`.
   - ✅ Fuel‑adequacy goals defined (`execIRStmtsFuel_adequate_goal`, `execIRFunctionFuel_adequate_goal`).
-  - Sequence/program equivalence lemma (composition + state mapping) still needs a clean non‑fuel bridge on the IR side (fuel adequacy).
+  - Sequence/program equivalence lemma (composition + state mapping) still needs a clean non‑fuel bridge on the IR side (fuel adequacy). Current blocker: `execIRStmts` unfolding/adequacy proof still open.
   - Generic function equivalence theorem (parameterized by function + compiler) still needs a non‑fuel bridge.
   - Contract‑level equivalence is then purely mechanical instantiation (no new proof ideas).
   - **Done when**: instruction‑level lemmas exist, the generic function theorem compiles, and contracts are instantiated mechanically without new proof ideas.

@@ -97,7 +97,8 @@ def exampleUsage : Contract (Uint256 × Uint256 × Uint256) := do
   sender := "0xAlice",
   thisAddress := "0xSimpleToken",
   msgValue := 0,
-  blockTimestamp := 0
+  blockTimestamp := 0,
+  knownAddresses := fun _ => Core.FiniteAddressSet.empty
 }).getValue?
 -- Expected output: some (700, 300, 1000) - Alice: 700, Bob: 300, supply: 1000
 

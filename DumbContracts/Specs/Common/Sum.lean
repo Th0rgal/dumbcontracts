@@ -20,7 +20,7 @@ def sumBalances (slot : Nat) (addrs : FiniteAddressSet) (balances : Nat → Addr
 /-- Invariant: only known addresses have non-zero balances -/
 def balancesFinite (slot : Nat) (s : ContractState) : Prop :=
   ∀ addr, addr ∉ (s.knownAddresses slot).addresses.elements →
-    s.storageMap slot addr = Uint256.zero
+    s.storageMap slot addr = 0
 
 /-- Helper: sum is preserved when adding to known address -/
 theorem sumBalances_insert_existing {slot : Nat} {addr : Address} {addrs : FiniteAddressSet}
@@ -34,7 +34,7 @@ theorem sumBalances_insert_existing {slot : Nat} {addr : Address} {addrs : Finit
 theorem sumBalances_insert_new {slot : Nat} {addr : Address} {addrs : FiniteAddressSet}
     {balances : Nat → Address → Uint256} {amount : Uint256}
     (h : addr ∉ addrs.addresses.elements)
-    (h_zero : balances slot addr = Uint256.zero) :
+    (h_zero : balances slot addr = 0) :
     sumBalances slot (addrs.insert addr) (fun s a =>
       if s == slot && a == addr then amount else balances s a) =
     add (sumBalances slot addrs balances) amount := by

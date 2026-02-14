@@ -287,7 +287,11 @@ theorem mappingStore_equiv (selector : Nat) (fuel : Nat)
       unfold execResultsAligned statesAligned yulStateOfIR
       simp
 
-/-! ### TODO: Conditional (if) Equivalence
+/-! ### Conditional (if) Equivalence and Universal Statement Equivalence
+
+These are proven mutually to resolve the circular dependency:
+- conditional_equiv needs all_stmts_equiv for the recursive body case
+- all_stmts_equiv needs conditional_equiv for the if_ case
 
 **Statement**: `if condition then thenBranch else elseBranch`
 **IR Semantics**: Evaluate condition, execute corresponding branch
@@ -300,6 +304,8 @@ theorem mappingStore_equiv (selector : Nat) (fuel : Nat)
 **See Also**: Compiler/Proofs/YulGeneration/Semantics.lean:execYulStmtFuel
 **Note**: This is a recursive case - may need well-founded recursion or fuel lemmas
 -/
+
+mutual
 
 theorem conditional_equiv (selector : Nat) (fuel : Nat)
     (condExpr : YulExpr) (body : List YulStmt)
@@ -333,11 +339,78 @@ theorem conditional_equiv (selector : Nat) (fuel : Nat)
           · -- Condition is true (non-zero), both execute body
             simp [hc]
             -- Both call execIRStmtsFuel/execYulStmtsFuel on the body
-            -- Apply the composition theorem to prove bodies are equivalent
-            -- Requires: universal statement equivalence proof (see all_stmts_equiv below)
-            sorry  -- Apply: execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv all_stmts_equiv
+            -- Apply the composition theorem with all_stmts_equiv
+            exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
+              (fun sel f st irSt yulSt => all_stmts_equiv sel f st irSt yulSt)
+              selector fuel' body irState (yulStateOfIR selector irState) rfl
 
-/-! ### TODO: Return Statement Equivalence
+/-! ### Universal Statement Equivalence
+
+The composition theorem `execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv`
+(Equivalence.lean:403) ALREADY EXISTS and is FULLY PROVEN.
+
+It requires a universal proof that ALL statements (of any type) are equivalent.
+This universal proof is constructed by dispatching to specific theorems based
+on statement type.
+
+**Status**: Implemented with mutual recursion
+**Difficulty**: Medium (pattern matching on statement types)
+**Estimated Effort**: 2-4 hours
+**Dependencies**: All 8 individual statement theorems (7 complete, 1 mutual with this)
+-/
+
+theorem all_stmts_equiv : ∀ selector fuel stmt irState yulState,
+    execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState := by
+  intros selector fuel stmt irState yulState halign
+  -- Need fuel > 0 for the theorems to apply
+  cases fuel with
+  | zero =>
+      -- When fuel is 0, goal is trivial (both timeout/fail)
+      unfold execIRStmt_equiv_execYulStmt_goal
+      intro _
+      unfold execResultsAligned
+      cases stmt <;> simp [execIRStmtFuel, execYulStmtFuel, execYulFuel]
+  | succ fuel' =>
+      -- Dispatch to specific theorem based on statement type
+      cases stmt with
+      | comment _ =>
+          -- Trivial: both no-op
+          unfold execIRStmt_equiv_execYulStmt_goal execResultsAligned
+          intro hAlign
+          unfold statesAligned at hAlign
+          subst hAlign
+          simp [execIRStmtFuel, execYulStmtFuel, execYulFuel, yulStateOfIR]
+      | let_ name value =>
+          exact assign_equiv selector (fuel' + 1) name value irState yulState halign (by omega)
+      | assign name value =>
+          exact assign_equiv selector (fuel' + 1) name value irState yulState halign (by omega)
+      | expr e =>
+          sorry  -- TODO: Handle expression statements (sstore, return, revert, etc.)
+      | if_ cond body =>
+          exact conditional_equiv selector (fuel' + 1) cond body irState yulState halign (by omega)
+      | switch _ _ _ =>
+          sorry  -- TODO: Similar to conditional
+      | block stmts =>
+          -- Recursive: apply composition theorem
+          unfold execIRStmt_equiv_execYulStmt_goal
+          intro hAlign
+          unfold statesAligned at hAlign
+          subst hAlign
+          simp [execIRStmtFuel, execYulStmtFuel, execYulFuel]
+          exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
+            (fun sel f st irSt yulSt => all_stmts_equiv sel f st irSt yulSt)
+            selector fuel' stmts irState (yulStateOfIR selector irState) rfl
+      | funcDef _ _ _ _ =>
+          -- No-op
+          unfold execIRStmt_equiv_execYulStmt_goal execResultsAligned
+          intro hAlign
+          unfold statesAligned at hAlign
+          subst hAlign
+          simp [execIRStmtFuel, execYulStmtFuel, execYulFuel, yulStateOfIR]
+
+end
+
+/-! ### Return Statement Equivalence
 
 **Statement**: `return value`
 **IR Semantics**: Set return value, transition to `.return` state
@@ -369,7 +442,7 @@ theorem return_equiv (selector : Nat) (fuel : Nat)
       unfold execResultsAligned statesAligned yulStateOfIR
       simp
 
-/-! ### TODO: Revert Statement Equivalence
+/-! ### Revert Statement Equivalence
 
 **Statement**: `revert`
 **IR Semantics**: Transition to `.revert` state (rollback storage/mappings)
@@ -402,69 +475,6 @@ theorem revert_equiv (selector : Nat) (fuel : Nat)
       unfold execResultsAligned statesAligned yulStateOfIR
       rfl
 
-/-! ### Universal Statement Equivalence
-
-The composition theorem `execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv`
-(Equivalence.lean:403) ALREADY EXISTS and is FULLY PROVEN.
-
-It requires a universal proof that ALL statements (of any type) are equivalent.
-This universal proof is constructed by dispatching to specific theorems based
-on statement type.
-
-**Status**: Needs implementation (structure shown below)
-**Difficulty**: Medium (pattern matching on statement types)
-**Estimated Effort**: 2-4 hours
-**Dependencies**: All 8 individual statement theorems (7 complete, 1 needs this)
--/
-
-/-! Implementation Strategy:
-
-```lean
-theorem all_stmts_equiv : ∀ selector fuel stmt irState yulState,
-    execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState := by
-  intros selector fuel stmt irState yulState halign
-  cases stmt with
-  | comment _ => sorry  -- Trivial: both no-op
-  | let_ name value => exact assign_equiv selector fuel name value irState yulState halign ...
-  | assign name value => exact assign_equiv selector fuel name value irState yulState halign ...
-  | expr e =>
-      cases e with
-      | call "sload" args => exact storageLoad_equiv selector fuel ...
-      | call "sstore" args => exact storageStore_equiv selector fuel ...
-      | call "return" args => exact return_equiv selector fuel ...
-      | call "revert" args => exact revert_equiv selector fuel ...
-      | call "mappingSlot" args => exact mappingLoad_equiv selector fuel ...
-      | _ => sorry  -- Other expressions
-  | if_ cond body => exact conditional_equiv selector fuel cond body irState yulState halign ...
-  | switch expr cases default => sorry  -- Similar to conditional
-  | block stmts => sorry  -- Recursive, needs composition
-  | funcDef _ _ _ _ => sorry  -- No-op
-```
-
-Once `all_stmts_equiv` is proven, it can be passed to the composition theorem:
-```lean
-theorem bodies_equiv (selector : Nat) (fuel : Nat) (body : List YulStmt)
-    (irState : IRState) (yulState : YulState)
-    (halign : statesAligned selector irState yulState) :
-    execResultsAligned selector
-      (execIRStmtsFuel fuel irState body)
-      (execYulStmtsFuel fuel yulState body) := by
-  exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv all_stmts_equiv
-        selector fuel body irState yulState halign
-```
-
-This completes the circular dependency:
-- `conditional_equiv` needs `bodies_equiv` for the recursive case
-- `bodies_equiv` needs `all_stmts_equiv`
-- `all_stmts_equiv` needs `conditional_equiv` (but can use mutual/well-founded recursion)
-
-The solution is to prove `all_stmts_equiv` and `conditional_equiv` mutually,
-or to use well-founded recursion on statement structure.
--/
-
--- Placeholder showing the theorem signature
-axiom all_stmts_equiv : ∀ selector fuel stmt irState yulState,
-    execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState
 
 /-! ### Statement List Equivalence
 

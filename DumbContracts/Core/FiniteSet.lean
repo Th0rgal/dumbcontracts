@@ -29,7 +29,8 @@ def insert [BEq α] [DecidableEq α] (a : α) (s : FiniteSet α) : FiniteSet α 
   if h : a ∈ s.elements then
     s
   else
-    ⟨a :: s.elements, List.nodup_cons.mpr ⟨h, s.nodup⟩⟩
+    have : ¬(a ∈ s.elements) := h
+    ⟨a :: s.elements, List.nodup_cons.mpr ⟨this, s.nodup⟩⟩
 
 /-- Get the size of the set -/
 def card (s : FiniteSet α) : Nat :=

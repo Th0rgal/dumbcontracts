@@ -4,6 +4,10 @@
 
 This PR addresses issue #39 by implementing the infrastructure and proof structure for the 7 sum properties that were previously unprovable. The work enables proving properties like "total supply = sum of all balances" by leveraging the finite address set abstraction.
 
+## CI Status
+
+✅ **All CI checks passing** - Build successful, all tests passing, no compilation errors.
+
 ## What Has Been Implemented
 
 ### Phase 1: Infrastructure (COMPLETED)
@@ -37,9 +41,6 @@ The infrastructure was already in place before this PR:
    - `totalBalance`: Helper to sum all balances at a storage slot
 
 3. **Sum Property Proofs** (`DumbContracts/Specs/Ledger/SumProofs.lean`)
-   - **COMPLETED PROOFS:**
-     - `deposit_withdraw_sum_cancel`: Deposit followed by withdraw cancels out (FULLY PROVEN)
-
    - **STRUCTURED PROOF SKELETONS (with detailed strategies):**
      - `deposit_sum_equation`: Deposit increases total by amount
      - `deposit_sum_singleton_sender`: Singleton set deposit property
@@ -47,6 +48,7 @@ The infrastructure was already in place before this PR:
      - `withdraw_sum_singleton_sender`: Singleton set withdraw property
      - `transfer_sum_preservation`: Transfer preserves total
      - `transfer_sum_preserved_unique`: Transfer with unique addresses preserves sum
+     - `deposit_withdraw_sum_cancel`: Composition property (with complete proof sketch)
 
 ## Proof Strategy
 

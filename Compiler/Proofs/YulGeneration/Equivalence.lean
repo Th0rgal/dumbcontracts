@@ -463,4 +463,38 @@ theorem ir_yul_function_equiv_fuel_goal_of_stmt_equiv
     (execIRFunctionFuel_equiv_interpretYulBodyFromState_of_stmt_equiv stmt_equiv
       selector fn args initialState)
 
+theorem execIRFunctionFuel_eq_execIRFunction
+    (fn : IRFunction) (args : List Nat) (initialState : IRState)
+    (hFuel :
+      execIRStmtsFuel (sizeOf fn.body + 1)
+        (fn.params.zip args |>.foldl
+          (fun s (p, v) => s.setVar p.name v)
+          initialState)
+        fn.body =
+      execIRStmts
+        (fn.params.zip args |>.foldl
+          (fun s (p, v) => s.setVar p.name v)
+          initialState)
+        fn.body) :
+    execIRFunctionFuel (sizeOf fn.body + 1) fn args initialState =
+      execIRFunction fn args initialState := by
+  dsimp [execIRFunctionFuel, execIRFunction]
+  simp [hFuel]
+  rfl
+
+theorem ir_yul_function_equiv_from_state_of_fuel_goal
+    (fn : IRFunction) (selector : Nat) (args : List Nat) (initialState : IRState)
+    (hFuel :
+      execIRFunctionFuel (sizeOf fn.body + 1) fn args initialState =
+        execIRFunction fn args initialState)
+    (hFuelGoal : ir_yul_function_equiv_fuel_goal fn selector args initialState) :
+    resultsMatch
+      (execIRFunction fn args initialState)
+      (interpretYulBodyFromState fn selector
+        (fn.params.zip args |>.foldl
+          (fun s (p, v) => s.setVar p.name v)
+          initialState)
+        initialState) := by
+  simpa [ir_yul_function_equiv_fuel_goal, hFuel] using hFuelGoal
+
 end Compiler.Proofs.YulGeneration

@@ -54,33 +54,25 @@ theorem stmt_equiv :
 
 **What This Means**: For each IR/Yul statement type, prove that executing it in IR matches executing it in Yul when states are aligned.
 
-### Statement Types to Prove (6-8 lemmas)
+### Statement Types to Prove (8 theorems)
 
-1. **Variable Assignments**
-   ```lean
-   theorem exec_assign_equiv (selector : Nat) (fuel : Nat) :
-       ∀ irState yulState var value,
-         statesAligned selector irState yulState →
-         execResultsAligned selector
-           (execIRStmt irState (assign var value))
-           (execYulStmtFuel fuel yulState (assign var value))
-   ```
+Progress tracked in `Compiler/Proofs/YulGeneration/StatementEquivalence.lean`:
 
-2. **Storage Operations**
-   - `storageLoad` equivalence (prove `sload` matches between IR/Yul)
-   - `storageStore` equivalence (prove `sstore` matches between IR/Yul)
+| # | Statement Type | Theorem | Difficulty | Effort | Status |
+|---|----------------|---------|------------|--------|--------|
+| 1 | Variable Assignment | `assign_equiv` | Low | 1h | ⚪ TODO (example provided) |
+| 2 | Storage Load | `storageLoad_equiv` | Low | 1h | ⚪ TODO |
+| 3 | Storage Store | `storageStore_equiv` | Low | 1h | ⚪ TODO |
+| 4 | Mapping Load | `mappingLoad_equiv` | Medium | 2-4h | ⚪ TODO |
+| 5 | Mapping Store | `mappingStore_equiv` | Medium | 2-4h | ⚪ TODO |
+| 6 | Conditional (if) | `conditional_equiv` | Medium-High | 4-8h | ⚪ TODO |
+| 7 | Return | `return_equiv` | Low | 1-2h | ⚪ TODO |
+| 8 | Revert | `revert_equiv` | Low-Medium | 2-3h | ⚪ TODO |
+| 9 | **Composition** | `stmtList_equiv` | High | 1-2d | ⚪ TODO (depends on 1-8) |
 
-3. **Mapping Operations**
-   - `mappingLoad` equivalence (prove computed slot access matches)
-   - `mappingStore` equivalence (prove mapping writes match)
+**Legend**: ⚪ TODO | 🔵 In Progress | ✅ Complete
 
-4. **Control Flow**
-   - Conditional (`if`) equivalence
-   - Switch statement equivalence (if needed)
-
-5. **Termination**
-   - `return` statement equivalence
-   - `revert` statement equivalence
+**Total Estimated Effort**: 2-4 weeks (12-25 hours of proof work + composition)
 
 ### Composition Strategy
 
@@ -104,11 +96,37 @@ If the fuel-parametric approach proves too complex:
 
 **2-4 weeks** of focused Lean proof work, depending on proof automation quality.
 
-### Files to Modify
+### Implementation Guide
 
-- `Compiler/Proofs/YulGeneration/Equivalence.lean` - Add statement-level lemmas
-- `Compiler/Proofs/YulGeneration/Preservation.lean` - Complete preservation theorem
-- `Compiler/Proofs/YulGeneration/SmokeTests.lean` - Add comprehensive tests
+**NEW**: We've created a skeleton file with theorem stubs and a worked example to help contributors:
+
+📁 **`Compiler/Proofs/YulGeneration/StatementEquivalence.lean`**
+- Contains theorem stubs for all 8 statement types
+- Includes a worked example (variable assignment)
+- Documents proof strategy, difficulty, and dependencies for each theorem
+- Ready for contributors to replace `sorry` with actual proofs
+
+**Getting Started**:
+1. Read the roadmap context (this file)
+2. Open `StatementEquivalence.lean` and pick a theorem stub
+3. Study the worked example to understand the proof pattern
+4. Review IR/Yul semantics in `IRInterpreter.lean` and `Semantics.lean`
+5. Replace `sorry` with your proof
+6. Add smoke tests to verify correctness
+
+**Tracking Progress**:
+- Each statement type has a corresponding GitHub issue (label: `layer-3`)
+- Use `.github/ISSUE_TEMPLATE/layer3-statement-proof.md` to create issues
+- See "Contributing" section below for high-impact opportunities
+
+### Files to Work With
+
+- **Main Work**: `Compiler/Proofs/YulGeneration/StatementEquivalence.lean` - Replace `sorry` stubs
+- **Reference**: `Compiler/Proofs/YulGeneration/Equivalence.lean` - State alignment definitions
+- **Reference**: `Compiler/Proofs/IRGeneration/IRInterpreter.lean` - IR execution semantics
+- **Reference**: `Compiler/Proofs/YulGeneration/Semantics.lean` - Yul execution semantics
+- **Testing**: `Compiler/Proofs/YulGeneration/SmokeTests.lean` - Add tests for proven statements
+- **Final Step**: `Compiler/Proofs/YulGeneration/Preservation.lean` - Already proven modulo statement equivalence
 
 ---
 
@@ -393,9 +411,16 @@ theorem mint_preserves_supply_sum (s : FiniteAddressSet) :
 ### High-Impact Contribution Opportunities
 
 1. **Layer 3 Statement Proofs** (🔴 Critical, Lean expertise required)
-   - Pick a statement type (variable assignment, storage load, etc.)
-   - Prove equivalence between IR and Yul execution
-   - See: `Compiler/Proofs/YulGeneration/Equivalence.lean`
+   - **NEW**: We've created skeleton file `StatementEquivalence.lean` with theorem stubs!
+   - Pick a statement type from the progress table (8 theorems + composition)
+   - Study the worked example (variable assignment)
+   - Replace `sorry` with your proof
+   - See: `Compiler/Proofs/YulGeneration/StatementEquivalence.lean`
+   - **Quick Start**:
+     1. Start with low-difficulty proofs (storageLoad, storageStore, return)
+     2. Work up to medium (mappingLoad, mappingStore)
+     3. Tackle conditional (requires recursion/induction)
+     4. Final boss: composition theorem (depends on all others)
 
 2. **Property Test Expansion** (🟢 Low priority, Solidity/Foundry skills)
    - Add more differential tests for edge cases

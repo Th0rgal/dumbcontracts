@@ -630,8 +630,7 @@ contract PropertySimpleTokenTest is YulTestBase {
      */
     function testProperty_Mint_BalanceMappingIsolated() public {
         // Get charlie's balance before
-        bytes memory data;
-        (bool success, data) = token.call(abi.encodeWithSignature("balanceOf(address)", charlie));
+        (bool success, bytes memory data) = token.call(abi.encodeWithSignature("balanceOf(address)", charlie));
         require(success);
         uint256 charlieBefore = abi.decode(data, (uint256));
 

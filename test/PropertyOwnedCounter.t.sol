@@ -46,7 +46,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
     function testProperty_Constructor_InitializesCountToZero() public {
         address newContract = deployYulWithArgs("OwnedCounter", abi.encode(alice));
         uint256 count = readStorage(newContract, 1);
-        assertEq(count, 0, "Count should be 0 after construction");
+        assertEq(count, 0, "Count should be 0 afterValue construction");
     }
 
     /**
@@ -302,7 +302,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
         require(success);
         uint256 count = abi.decode(data, (uint256));
 
-        assertEq(count, 1, "Count should be 1 after construction + increment");
+        assertEq(count, 1, "Count should be 1 afterValue construction + increment");
     }
 
     /**
@@ -502,8 +502,8 @@ contract PropertyOwnedCounterTest is YulTestBase {
         (bool success,) = ownedCounter.call(abi.encodeWithSignature("increment()"));
         require(success);
 
-        uint256 after = uint256(vm.load(ownedCounter, mappingSlot));
-        assertEq(after, before, "Mapping storage unchanged");
+        uint256 afterValue = uint256(vm.load(ownedCounter, mappingSlot));
+        assertEq(afterValue, before, "Mapping storage unchanged");
     }
 
     /**
@@ -523,8 +523,8 @@ contract PropertyOwnedCounterTest is YulTestBase {
         (success,) = ownedCounter.call(abi.encodeWithSignature("decrement()"));
         require(success);
 
-        uint256 after = uint256(vm.load(ownedCounter, mappingSlot));
-        assertEq(after, before, "Mapping storage unchanged");
+        uint256 afterValue = uint256(vm.load(ownedCounter, mappingSlot));
+        assertEq(afterValue, before, "Mapping storage unchanged");
     }
 
     /**
@@ -539,8 +539,8 @@ contract PropertyOwnedCounterTest is YulTestBase {
         (bool success,) = ownedCounter.call(abi.encodeWithSignature("transferOwnership(address)", bob));
         require(success);
 
-        uint256 after = uint256(vm.load(ownedCounter, mappingSlot));
-        assertEq(after, before, "Mapping storage unchanged");
+        uint256 afterValue = uint256(vm.load(ownedCounter, mappingSlot));
+        assertEq(afterValue, before, "Mapping storage unchanged");
     }
 
     /**
@@ -562,7 +562,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
         // Alice (now non-owner) tries to transfer - should revert
         vm.prank(alice);
         (success,) = ownedCounter.call(abi.encodeWithSignature("transferOwnership(address)", alice));
-        assertFalse(success, "Original owner can't transfer after double transfer");
+        assertFalse(success, "Original owner can't transfer afterValue double transfer");
     }
 
     // Helper function to read address from storage

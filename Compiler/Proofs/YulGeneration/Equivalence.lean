@@ -542,4 +542,24 @@ theorem ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
   · simpa [execIRFunctionFuel_adequate_goal] using hAdequacy
   · exact hFuelGoal
 
+theorem ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
+    (stmt_equiv :
+      ∀ selector fuel stmt irState yulState,
+        execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState)
+    (fn : IRFunction) (selector : Nat) (args : List Nat) (initialState : IRState)
+    (hAdequacy : execIRFunctionFuel_adequate_goal fn args initialState) :
+    resultsMatch
+      (execIRFunction fn args initialState)
+      (interpretYulBodyFromState fn selector
+        (fn.params.zip args |>.foldl
+          (fun s (p, v) => s.setVar p.name v)
+          initialState)
+        initialState) := by
+  have hFuelGoal :=
+    ir_yul_function_equiv_fuel_goal_of_stmt_equiv stmt_equiv
+      selector fn args initialState
+  exact
+    ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
+      fn selector args initialState hAdequacy hFuelGoal
+
 end Compiler.Proofs.YulGeneration

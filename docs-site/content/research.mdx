@@ -260,6 +260,7 @@ DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
 - **Remaining**: Reduce 172 exclusions. Add property tests contract‑by‑contract and decide if any Stdlib proofs are “proof‑only.” Keep coverage script green.
 
 **E. Address Known Limitations (Core Modeling)**:
+- ✅ SimpleToken transfer preservation lemmas no longer require `sender ≠ to`, aligning proofs with self-transfer no-op behavior.
 - **Remaining**: Full “supply = sum balances” proof over a finite address set plus tests. Extend storage semantics + proofs for nested mappings to support allowances (`approve`/`transferFrom`). Add explicit self‑transfer property tests across affected contracts.
 
 **F. Reduce Remaining Trust Assumptions**:

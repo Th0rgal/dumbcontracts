@@ -45,4 +45,51 @@ theorem sumBalances_insert_new {slot : Nat} {addr : Address} {addrs : FiniteAddr
   -- This is complex theorem proving work that requires careful development
   sorry  -- Proof requires foldl lemmas - to be completed in Phase 2
 
+/-- Helper: sum changes when updating balance of existing address -/
+theorem sumBalances_update_existing {slot : Nat} {addr : Address} {addrs : FiniteAddressSet}
+    {balances : Nat → Address → Uint256} {old_amount new_amount : Uint256}
+    (h : addr ∈ addrs.addresses.elements)
+    (h_old : balances slot addr = old_amount) :
+    sumBalances slot addrs (fun s a =>
+      if s == slot && a == addr then new_amount else balances s a) =
+    add (sub (sumBalances slot addrs balances) old_amount) new_amount := by
+  -- Strategy:
+  -- 1. Split the sum into addr and the rest
+  -- 2. Replace old_amount with new_amount for addr
+  -- 3. Recompose using Uint256 arithmetic
+  sorry
+
+/-- Helper: sumBalances equals zero when all balances are zero -/
+theorem sumBalances_zero_of_all_zero {slot : Nat} {addrs : FiniteAddressSet}
+    {balances : Nat → Address → Uint256} :
+    (∀ addr ∈ addrs.addresses.elements, balances slot addr = 0) →
+    sumBalances slot addrs balances = 0 := by
+  intro h
+  unfold sumBalances FiniteSet.sum
+  -- Prove by induction on list that foldl over zeros gives zero
+  -- Need a helper lemma about foldl with zeros
+  sorry
+
+/-- Helper: balancesFinite preserved by setMapping (deposit) -/
+theorem balancesFinite_preserved_deposit {slot : Nat} (s : ContractState)
+    (addr : Address) (amount : Uint256) :
+    balancesFinite slot s →
+    balancesFinite slot { s with
+      storageMap := fun s' a =>
+        if s' == slot && a == addr then amount else s.storageMap s' a,
+      knownAddresses := fun s' =>
+        if s' == slot then (s.knownAddresses s').insert addr
+        else s.knownAddresses s' } := by
+  intro h
+  unfold balancesFinite at *
+  intro addr' h_notin
+  simp at h_notin ⊢
+  -- This proof requires reasoning about FiniteSet.insert membership
+  -- Key insight: if addr' ∉ (insert addr S), then addr' ∉ S and addr' ≠ addr
+  -- We need to prove that the new storageMap has zero at addr'
+  -- Since addr' is not in the updated knownAddresses, it must not be addr
+  -- Therefore the storageMap check fails and we use the old value
+  -- which is zero by the original hypothesis
+  sorry
+
 end DumbContracts.Specs.Common

@@ -1,4 +1,4 @@
-# DumbContracts Roadmap
+# Verity Roadmap
 
 **Goal**: End-to-end verified smart contracts from EDSL to EVM bytecode with minimal trust assumptions.
 
@@ -150,7 +150,7 @@
 **Success Metrics**:
 - 10+ verified contracts in repository
 - Active external contributors
-- Production deployments using DumbContracts verification
+- Production deployments using Verity verification
 
 ---
 

@@ -57,8 +57,8 @@ These components have been formally verified with machine-checked proofs in Lean
 **What is proven**: Contract implementations written in the EDSL correctly implement their formal specifications.
 
 **Files**:
-- `DumbContracts/Specs/*/Proofs.lean` (one per contract)
-- Example: `DumbContracts/Specs/SimpleStorage/Proofs.lean`
+- `Verity/Specs/*/Proofs.lean` (one per contract)
+- Example: `Verity/Specs/SimpleStorage/Proofs.lean`
 
 **Example Theorems**:
 ```lean

@@ -11,21 +11,21 @@
   Success: Identical results → high confidence in compiler correctness
 -/
 
-import DumbContracts.Core
-import DumbContracts.Examples.SimpleStorage
-import DumbContracts.Examples.Counter
-import DumbContracts.Examples.SafeCounter
-import DumbContracts.Examples.Owned
-import DumbContracts.Examples.Ledger
-import DumbContracts.Examples.OwnedCounter
-import DumbContracts.Examples.SimpleToken
+import Verity.Core
+import Verity.Examples.SimpleStorage
+import Verity.Examples.Counter
+import Verity.Examples.SafeCounter
+import Verity.Examples.Owned
+import Verity.Examples.Ledger
+import Verity.Examples.OwnedCounter
+import Verity.Examples.SimpleToken
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
 namespace Compiler.Interpreter
 
-open DumbContracts
-open DumbContracts.Examples
+open Verity
+open Verity.Examples
 open Compiler.DiffTestTypes
 open Compiler.Hex
 
@@ -448,7 +448,7 @@ For use via `lake exe difftest-interpreter`
 open Compiler.Interpreter
 open Compiler.DiffTestTypes
 open Compiler.Hex
-open DumbContracts
+open Verity
 
 private def parseArgNat? (s : String) : Option Nat :=
   match parseHexNat? s with
@@ -651,7 +651,7 @@ def main (args : List String) : IO Unit := do
       thisAddress := "0xContract"
       msgValue := valueOpt.getD 0
       blockTimestamp := timestampOpt.getD 0
-      knownAddresses := fun _ => DumbContracts.Core.FiniteAddressSet.empty
+      knownAddresses := fun _ => Verity.Core.FiniteAddressSet.empty
     }
     let contractTypeEnum? : Option ContractType := match contractType with
       | "SimpleStorage" => some ContractType.simpleStorage

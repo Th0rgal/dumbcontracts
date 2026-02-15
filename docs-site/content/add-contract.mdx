@@ -29,16 +29,16 @@ This creates 6 scaffold files (EDSL, Spec, Invariants, Basic proofs, Correctness
 ## Checklist
 
 1. **Spec**
-   - Define interface and storage in `DumbContracts/Specs/<Name>/Spec.lean`
-   - Add invariants in `DumbContracts/Specs/<Name>/Invariants.lean` (optional)
+   - Define interface and storage in `Verity/Specs/<Name>/Spec.lean`
+   - Add invariants in `Verity/Specs/<Name>/Invariants.lean` (optional)
    - Align function signatures with Solidity types and storage slots
 
 2. **EDSL Implementation**
-   - Implement contract logic in `DumbContracts/Examples/<Name>.lean`
+   - Implement contract logic in `Verity/Examples/<Name>.lean`
    - Reuse helper lemmas for storage updates and mapping reads
 
 3. **Layer 1 Proofs**
-   - Prove correctness in `DumbContracts/Specs/<Name>/Proofs.lean`
+   - Prove correctness in `Verity/Specs/<Name>/Proofs.lean`
    - Each theorem states observable behavior (return values + storage deltas)
 
 4. **Compiler Spec + Layer 2 Proofs**
@@ -58,12 +58,12 @@ This creates 6 scaffold files (EDSL, Spec, Invariants, Basic proofs, Correctness
 ## Expected File Layout
 
 ```
-DumbContracts/Specs/<Name>/
+Verity/Specs/<Name>/
   ├── Spec.lean        # Function specifications
   ├── Invariants.lean  # State invariants (optional)
   └── Proofs.lean      # Layer 1 correctness proofs
 
-DumbContracts/Examples/<Name>.lean     # EDSL implementation
+Verity/Examples/<Name>.lean     # EDSL implementation
 Compiler/Proofs/SpecCorrectness/<Name>.lean  # Layer 2 proofs
 test/Differential<Name>.t.sol          # Differential tests
 test/Property<Name>.t.sol              # Property tests

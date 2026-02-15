@@ -1,13 +1,13 @@
 ---
 title: Proof Debugging Handbook
-description: Practical guide for debugging common proof failures, errors, and roadblocks in DumbContracts development
+description: Practical guide for debugging common proof failures, errors, and roadblocks in Verity development
 ---
 
 # Proof Debugging Handbook
 
 **Purpose**: Get unstuck when proofs fail with practical solutions, not theory.
 
-**Who this is for**: Developers writing proofs in DumbContracts, from beginners to experts encountering unfamiliar errors.
+**Who this is for**: Developers writing proofs in Verity, from beginners to experts encountering unfamiliar errors.
 
 ---
 
@@ -153,7 +153,7 @@ have h' : a + b < MAX + 1 := by omega
 #check (5 : Uint256)  -- Error: failed to synthesize OfNat
 
 -- ✅ WORKS
-import DumbContracts.Core.Uint256
+import Verity.Core.Uint256
 #check (5 : Uint256)  -- Now works
 ```
 
@@ -410,9 +410,9 @@ theorem good_order : getValue state = value := by
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| "unknown identifier 'Uint256'" | Missing import | `import DumbContracts.Core.Uint256` |
-| "unknown identifier 'Contract'" | Missing import | `import DumbContracts.Core` |
-| "unknown identifier 'ContractState'" | Missing import | `import DumbContracts.Core` |
+| "unknown identifier 'Uint256'" | Missing import | `import Verity.Core.Uint256` |
+| "unknown identifier 'Contract'" | Missing import | `import Verity.Core` |
+| "unknown identifier 'ContractState'" | Missing import | `import Verity.Core` |
 | "ambiguous identifier" | Multiple imports | Use fully qualified name |
 
 ### Type Class Errors
@@ -518,7 +518,7 @@ example : (a + 0) = a := rfl  -- Works if definitionally equal
 
 ---
 
-## Real Examples from DumbContracts
+## Real Examples from Verity
 
 ### Example 1: SimpleStorage getValue
 
@@ -591,7 +591,7 @@ If still stuck:
 
 ```lean
 -- Minimal failing example for help requests
-import DumbContracts.Core
+import Verity.Core
 
 -- Context
 def myDefinition : Type := ...
@@ -674,8 +674,8 @@ theorem complex_proof : ... := by
 ## Additional Resources
 
 - **First Contract Tutorial**: [/guides/first-contract](/guides/first-contract) - Start here if new
-- **Code Comment Conventions**: [CONTRIBUTING.md](https://github.com/Th0rgal/dumbcontracts/blob/main/CONTRIBUTING.md) - Style guide
-- **Proof Structure**: [Compiler/Proofs/README.md](https://github.com/Th0rgal/dumbcontracts/blob/main/Compiler/Proofs/README.md) - Architecture
+- **Code Comment Conventions**: [CONTRIBUTING.md](https://github.com/Th0rgal/verity/blob/main/CONTRIBUTING.md) - Style guide
+- **Proof Structure**: [Compiler/Proofs/README.md](https://github.com/Th0rgal/verity/blob/main/Compiler/Proofs/README.md) - Architecture
 - **Lean 4 Manual**: [https://lean-lang.org/lean4/doc/](https://lean-lang.org/lean4/doc/) - Language reference
 - **Lean Zulip**: [https://leanprover.zulipchat.com/](https://leanprover.zulipchat.com/) - Community chat
 

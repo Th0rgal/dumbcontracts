@@ -2,8 +2,8 @@
 """Validate storage layout consistency across EDSL, Spec, and Compiler layers.
 
 Extracts storage slot definitions from:
-1. EDSL layer:     DumbContracts/Examples/*.lean  (StorageSlot definitions)
-2. Spec layer:     DumbContracts/Specs/*/Spec.lean (StorageSlot definitions)
+1. EDSL layer:     Verity/Examples/*.lean  (StorageSlot definitions)
+2. Spec layer:     Verity/Specs/*/Spec.lean (StorageSlot definitions)
 3. Compiler layer: Compiler/Specs.lean            (ContractSpec field lists)
 
 Checks:
@@ -297,7 +297,7 @@ def main():
 
     # 1. Extract EDSL slots from Examples (use filename as contract name)
     edsl_all: dict[str, list[tuple[str, str, int]]] = {}
-    examples_dir = ROOT / "DumbContracts" / "Examples"
+    examples_dir = ROOT / "Verity" / "Examples"
     for lean_file in sorted(examples_dir.glob("*.lean")):
         result = extract_edsl_slots(lean_file)
         # Use filename stem as contract name (more reliable than namespace)
@@ -307,7 +307,7 @@ def main():
 
     # 2. Extract Spec slots (use parent dir name as contract name)
     spec_all: dict[str, list[tuple[str, str, int]]] = {}
-    specs_dir = ROOT / "DumbContracts" / "Specs"
+    specs_dir = ROOT / "Verity" / "Specs"
     for spec_file in sorted(specs_dir.glob("*/Spec.lean")):
         # Contract name comes from parent directory, not filename
         contract_name = spec_file.parent.name

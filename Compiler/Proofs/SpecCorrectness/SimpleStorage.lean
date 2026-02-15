@@ -13,18 +13,18 @@
 -/
 
 import Compiler.Specs
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
-import DumbContracts.Examples.SimpleStorage
-import DumbContracts.Core.Uint256
+import Verity.Proofs.Stdlib.SpecInterpreter
+import Verity.Examples.SimpleStorage
+import Verity.Core.Uint256
 
 namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open DumbContracts.Proofs.Stdlib.SpecInterpreter
-open DumbContracts
-open DumbContracts.Examples
-open DumbContracts.Core.Uint256
+open Verity.Proofs.Stdlib.SpecInterpreter
+open Verity
+open Verity.Examples
+open Verity.Core.Uint256
 
 /-!
 ## State Conversion

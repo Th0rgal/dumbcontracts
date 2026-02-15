@@ -25,7 +25,7 @@ labels: proof, lean, help-wanted
 - [ ] <Property 2>
 
 ## Acceptance Criteria
-- [ ] Infrastructure in `DumbContracts/Proofs/Stdlib/`
+- [ ] Infrastructure in `Verity/Proofs/Stdlib/`
 - [ ] At least one property proven using new infrastructure
 - [ ] docs/ROADMAP.md updated
 - [ ] CI passes
@@ -34,4 +34,4 @@ labels: proof, lean, help-wanted
 
 ## References
 - Roadmap: `docs/ROADMAP.md` - Property Coverage
-- Stdlib: `DumbContracts/Proofs/Stdlib/`
+- Stdlib: `Verity/Proofs/Stdlib/`

@@ -5,13 +5,13 @@
   Uses a simple pseudo-random number generator for reproducibility.
 -/
 
-import DumbContracts.Core
+import Verity.Core
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
 namespace Compiler.RandomGen
 
-open DumbContracts
+open Verity
 open Compiler.DiffTestTypes
 open Compiler.Hex
 

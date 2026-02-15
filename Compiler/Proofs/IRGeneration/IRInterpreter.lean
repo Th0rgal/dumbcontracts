@@ -12,14 +12,14 @@
 import Compiler.IR
 import Compiler.ContractSpec
 import Compiler.Proofs.MappingEncoding
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
-import DumbContracts.Core
+import Verity.Proofs.Stdlib.SpecInterpreter
+import Verity.Core
 
 namespace Compiler.Proofs.IRGeneration
 
 open Compiler
 open Compiler.Yul
-open DumbContracts.Core
+open Verity.Core
 open Compiler.Proofs
 
 /-! ## Execution State for IR -/

@@ -1,18 +1,18 @@
 import Lake
 open Lake DSL
 
-package «dumb-contracts» where
+package «verity» where
   version := v!"0.1.0"
-  -- Cache invalidation: 2026-02-10
+  -- Cache invalidation: 2026-02-15
 
 @[default_target]
-lean_lib «DumbContracts» where
-  globs := #[.andSubmodules `DumbContracts]
+lean_lib «Verity» where
+  globs := #[.andSubmodules `Verity]
 
 lean_lib «Compiler» where
   globs := #[.andSubmodules `Compiler]
 
-lean_exe «dumbcontracts-compiler» where
+lean_exe «verity-compiler» where
   root := `Compiler.Main
 
 lean_exe «difftest-interpreter» where

@@ -30,7 +30,7 @@ def get_manifest_counts() -> tuple[int, int, dict[str, int]]:
 def get_axiom_count() -> int:
     """Count axiom declarations in Lean files."""
     count = 0
-    for d in [ROOT / "Compiler", ROOT / "DumbContracts"]:
+    for d in [ROOT / "Compiler", ROOT / "Verity"]:
         if not d.exists():
             continue
         for lean in d.rglob("*.lean"):
@@ -53,8 +53,8 @@ def get_test_counts() -> tuple[int, int]:
 
 
 def get_core_line_count() -> int:
-    """Count lines in DumbContracts/Core.lean."""
-    core = ROOT / "DumbContracts" / "Core.lean"
+    """Count lines in Verity/Core.lean."""
+    core = ROOT / "Verity" / "Core.lean"
     return len(core.read_text(encoding="utf-8").splitlines())
 
 

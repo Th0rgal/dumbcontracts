@@ -11,7 +11,7 @@ The core is intentionally small. It provides types for contract state, storage o
 
 ```lean
 abbrev Address := String
-abbrev Uint256 := DumbContracts.Core.Uint256
+abbrev Uint256 := Verity.Core.Uint256
 
 structure StorageSlot (α : Type) where
   slot : Nat
@@ -146,4 +146,4 @@ let wrong ← getStorage owner  -- Type error: owner is Address, not Uint256
 
 ## Source
 
-[`DumbContracts/Core.lean`](https://github.com/Th0rgal/dumbcontracts/blob/main/DumbContracts/Core.lean)
+[`Verity/Core.lean`](https://github.com/Th0rgal/verity/blob/main/Verity/Core.lean)

@@ -5,11 +5,11 @@
   Extracted to avoid duplication and resolve conflicting main function issue.
 -/
 
-import DumbContracts.Core
+import Verity.Core
 
 namespace Compiler.DiffTestTypes
 
-open DumbContracts
+open Verity
 
 /-!
 ## Transaction Model

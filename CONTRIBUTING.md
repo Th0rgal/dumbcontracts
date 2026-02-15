@@ -235,7 +235,7 @@ See [AXIOMS.md](AXIOMS.md) for current axioms and detailed guidelines.
 
 ## Key Files
 
-- `DumbContracts/` - EDSL, specs, Layer 1 proofs
+- `Verity/` - EDSL, specs, Layer 1 proofs
 - `Compiler/` - IR, Yul, codegen
 - `Compiler/Proofs/` - Layer 2 & 3 proofs
 - `docs/ROADMAP.md` - Progress tracking

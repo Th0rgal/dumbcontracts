@@ -34,13 +34,13 @@ This project uses Lean to:
 - Implement the contracts (executable code)
 - Prove the implementations satisfy the specifications (theorems)
 
-**Current status**: A compact EDSL core, 9 example contracts, 296 machine-checked theorems across the EDSL and compiler, and automatic compilation to EVM bytecode. 5 documented axioms (see [AXIOMS.md](https://github.com/Th0rgal/dumbcontracts/blob/main/AXIOMS.md)), 12 `sorry` placeholders remaining in Ledger sum proofs ([#65](https://github.com/Th0rgal/dumbcontracts/issues/65)). Foundry tests include unit, property, and differential checks with multi-seed coverage.
+**Current status**: A compact EDSL core, 9 example contracts, 296 machine-checked theorems across the EDSL and compiler, and automatic compilation to EVM bytecode. 5 documented axioms (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)), 12 `sorry` placeholders remaining in Ledger sum proofs ([#65](https://github.com/Th0rgal/verity/issues/65)). Foundry tests include unit, property, and differential checks with multi-seed coverage.
 
 ## The Three-Layer Structure
 
 Each contract has three files:
 
-**1. Specification** (`DumbContracts/Specs/SimpleToken/Spec.lean`)
+**1. Specification** (`Verity/Specs/SimpleToken/Spec.lean`)
 ```lean
 -- What should mint do?
 def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
@@ -48,7 +48,7 @@ def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storage 2 = s.storage 2 + amount                 -- supply increases
 ```
 
-**2. Implementation** (`DumbContracts/Examples/SimpleToken.lean`)
+**2. Implementation** (`Verity/Examples/SimpleToken.lean`)
 ```lean
 -- How to implement mint
 def mint (to : Address) (amount : Uint256) : Contract Unit := do
@@ -59,7 +59,7 @@ def mint (to : Address) (amount : Uint256) : Contract Unit := do
   setStorage totalSupply (currentSupply + amount)
 ```
 
-**3. Proof** (`DumbContracts/Specs/SimpleToken/Proofs.lean`)
+**3. Proof** (`Verity/Specs/SimpleToken/Proofs.lean`)
 ```lean
 -- Proof that implementation satisfies specification
 theorem mint_meets_spec (s : ContractState) (to : Address) (amount : Uint256)
@@ -74,10 +74,10 @@ The Lean compiler verifies every proof. If a proof is wrong, compilation fails.
 
 ## Where things live
 
-- **User-facing specs**: `DumbContracts/Specs/<Name>/Spec.lean` (+ `Invariants.lean`)
-- **Implementations (EDSL)**: `DumbContracts/Examples/<Name>.lean`
-- **User-facing proofs**: `DumbContracts/Specs/<Name>/Proofs.lean`
-- **Reusable proof infrastructure**: `DumbContracts/Proofs/Stdlib/` (spec interpreter + automation)
+- **User-facing specs**: `Verity/Specs/<Name>/Spec.lean` (+ `Invariants.lean`)
+- **Implementations (EDSL)**: `Verity/Examples/<Name>.lean`
+- **User-facing proofs**: `Verity/Specs/<Name>/Proofs.lean`
+- **Reusable proof infrastructure**: `Verity/Proofs/Stdlib/` (spec interpreter + automation)
 - **Compiler specs (for codegen)**: `Compiler/Specs.lean` (separate from user specs)
 - **Compiler proofs**: `Compiler/Proofs/` (IR generation + Yul preservation)
 
@@ -85,10 +85,10 @@ The Lean compiler verifies every proof. If a proof is wrong, compilation fails.
 
 Use `python3 scripts/generate_contract.py <Name>` to scaffold all boilerplate files, then:
 
-1. Write a small, human-readable spec in `DumbContracts/Specs/<Name>/Spec.lean`.
-2. Add any invariants in `DumbContracts/Specs/<Name>/Invariants.lean` (optional but encouraged).
-3. Implement the contract in `DumbContracts/Examples/<Name>.lean` using the EDSL.
-4. Prove the implementation meets the spec in `DumbContracts/Specs/<Name>/Proofs.lean`.
+1. Write a small, human-readable spec in `Verity/Specs/<Name>/Spec.lean`.
+2. Add any invariants in `Verity/Specs/<Name>/Invariants.lean` (optional but encouraged).
+3. Implement the contract in `Verity/Examples/<Name>.lean` using the EDSL.
+4. Prove the implementation meets the spec in `Verity/Specs/<Name>/Proofs.lean`.
 5. Add compiler-level spec glue in `Compiler/Specs.lean` and any IR/Yul proofs in `Compiler/Proofs/` if new patterns are introduced.
 6. Add tests in `test/` (unit + property + differential if applicable).
 
@@ -122,7 +122,7 @@ See [/verification](/verification) for the complete, always-current theorem list
 
 **What's `sorry`?** A placeholder in Lean that says "I'll prove this later." It's how incomplete proofs compile. This project has 12 `sorry` in Ledger sum proofs — all other claims are fully proven.
 
-**What are axioms?** Statements assumed true without proof. This project uses 5 documented axioms for keccak256 hashing, expression evaluation equivalence, and address injectivity — each with soundness justification in [AXIOMS.md](https://github.com/Th0rgal/dumbcontracts/blob/main/AXIOMS.md).
+**What are axioms?** Statements assumed true without proof. This project uses 5 documented axioms for keccak256 hashing, expression evaluation equivalence, and address injectivity — each with soundness justification in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
 
 Example proof technique (simplified):
 ```lean
@@ -149,5 +149,5 @@ theorem store_retrieve : store 42 >> retrieve = pure 42 := by
 
 ## Project Links
 
-- [GitHub Repository](https://github.com/Th0rgal/dumbcontracts) — Source code
-- [Build Status](https://github.com/Th0rgal/dumbcontracts/actions) — CI verification runs
+- [GitHub Repository](https://github.com/Th0rgal/verity) — Source code
+- [Build Status](https://github.com/Th0rgal/verity/actions) — CI verification runs

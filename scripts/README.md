@@ -139,7 +139,7 @@ All verification scripts run automatically in GitHub Actions (`verify.yml`):
 6. Contract file structure validation
 7. Axiom location validation
 8. Documentation count validation
-8. Coverage reports in workflow summary
+9. Coverage reports in workflow summary
 
 ## Adding New Property Tests
 

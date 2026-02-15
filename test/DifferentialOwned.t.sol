@@ -435,7 +435,7 @@ contract DifferentialOwned is YulTestBase, DiffTestConfig {
 
         seed = _skipRandom(seed, startIndex);
         for (uint256 i = 0; i < numTransactions; i++) {
-            seed = _prng(seed);
+            seed = _lcg(seed);
             uint256 txType = seed % 100;
 
             address sender;
@@ -444,14 +444,14 @@ contract DifferentialOwned is YulTestBase, DiffTestConfig {
             if (txType < 60) {
                 // 60% transferOwnership
                 sender = edslStorageAddr[0];  // Current owner
-                seed = _prng(seed);
+                seed = _lcg(seed);
                 arg0 = uint256(uint160(testAddresses[seed % testAddresses.length]));
 
                 bool success = executeDifferentialTest("transferOwnership", sender, arg0);
                 _assertRandomSuccess(success, startIndex + i);
             } else {
                 // 40% getOwner
-                seed = _prng(seed);
+                seed = _lcg(seed);
                 sender = testAddresses[seed % testAddresses.length];
                 arg0 = 0;
 
@@ -483,7 +483,7 @@ contract DifferentialOwned is YulTestBase, DiffTestConfig {
 
         seed = _skipRandom(seed, startIndex);
         for (uint256 i = 0; i < numTransactions; i++) {
-            seed = _prng(seed);
+            seed = _lcg(seed);
             uint256 txType = seed % 100;
 
             address sender;
@@ -492,14 +492,14 @@ contract DifferentialOwned is YulTestBase, DiffTestConfig {
             if (txType < 60) {
                 // 60% transferOwnership
                 sender = edslStorageAddr[0];  // Current owner
-                seed = _prng(seed);
+                seed = _lcg(seed);
                 arg0 = uint256(uint160(testAddresses[seed % testAddresses.length]));
 
                 bool success = executeDifferentialTest("transferOwnership", sender, arg0);
                 _assertRandomSuccess(success, startIndex + i);
             } else {
                 // 40% getOwner
-                seed = _prng(seed);
+                seed = _lcg(seed);
                 sender = testAddresses[seed % testAddresses.length];
                 arg0 = 0;
 
@@ -516,17 +516,10 @@ contract DifferentialOwned is YulTestBase, DiffTestConfig {
 
     // ========== Helper Functions ==========
 
-    /**
-     * @notice Simple PRNG for reproducible random testing
-     */
-    function _prng(uint256 seed) internal pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(seed))) % (2**32);
-    }
-
     function _skipRandom(uint256 seed, uint256 iterations) internal pure returns (uint256) {
         for (uint256 i = 0; i < iterations; i++) {
-            seed = _prng(seed);
-            seed = _prng(seed);
+            seed = _lcg(seed);
+            seed = _lcg(seed);
         }
         return seed;
     }

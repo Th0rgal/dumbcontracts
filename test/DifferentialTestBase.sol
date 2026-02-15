@@ -216,11 +216,8 @@ abstract contract DifferentialTestBase {
      * @dev Used for deterministic random test generation
      */
     function _prng(uint256 seed) internal pure returns (uint256) {
-        // LCG parameters (Glibc-style; DiffTestConfig._lcg uses different constants)
-        uint256 a = 1664525;
-        uint256 c = 1013904223;
-        uint256 m = 2 ** 31;
-        return (a * seed + c) % m;
+        // LCG parameters — matches DiffTestConfig._lcg() for consistency
+        return (1103515245 * seed + 12345) % (2 ** 31);
     }
 
     /**

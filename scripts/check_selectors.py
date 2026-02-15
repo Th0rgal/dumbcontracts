@@ -23,7 +23,6 @@ SPEC_FILE = ROOT / "Compiler" / "Specs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
 YUL_DIRS = [
     ("yul", ROOT / "compiler" / "yul"),
-    ("yul-new", ROOT / "compiler" / "yul-new"),
 ]
 KECCAK = ROOT / "scripts" / "keccak256.py"
 

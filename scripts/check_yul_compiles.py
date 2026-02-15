@@ -14,7 +14,7 @@ from pathlib import Path
 from property_utils import report_errors
 
 ROOT = Path(__file__).resolve().parents[1]
-YUL_DIRS = [ROOT / "compiler" / "yul", ROOT / "compiler" / "yul-new"]
+YUL_DIRS = [ROOT / "compiler" / "yul"]
 
 
 def collect_yul_files() -> list[Path]:
@@ -39,7 +39,7 @@ def run_solc(path: Path) -> tuple[int, str, str]:
 def main() -> None:
     files = collect_yul_files()
     if not files:
-        raise SystemExit("No generated Yul files found in compiler/yul or compiler/yul-new")
+        raise SystemExit("No generated Yul files found in compiler/yul")
 
     failures: list[str] = []
     for path in files:

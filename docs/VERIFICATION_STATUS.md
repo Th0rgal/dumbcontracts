@@ -20,7 +20,7 @@ EVM Bytecode
 
 ## Layer 1: EDSL ≡ ContractSpec ✅ **COMPLETE**
 
-**Status**: All 7 contracts fully verified
+**Status**: All 9 contracts verified (7 with full spec proofs, 2 with inline proofs)
 
 **What This Layer Proves**: User-facing EDSL contracts satisfy their human-readable specifications.
 
@@ -35,7 +35,9 @@ EVM Bytecode
 | OwnedCounter | 45 | ✅ Complete | `DumbContracts/Specs/OwnedCounter/Proofs.lean` |
 | Ledger | 32 | ✅ Complete | `DumbContracts/Specs/Ledger/Proofs.lean` |
 | SimpleToken | 56 | ✅ Complete | `DumbContracts/Specs/SimpleToken/Proofs.lean` |
-| **Total** | **228** | **✅ 100%** | — |
+| CryptoHash | 0 | ⬜ No specs | `DumbContracts/Examples/CryptoHash.lean` |
+| ReentrancyExample | 4 | ✅ Complete | `DumbContracts/Examples/ReentrancyExample.lean` |
+| **Total** | **232** | **✅ 100%** | — |
 
 ### Example Property
 
@@ -56,7 +58,7 @@ theorem increment_adds_one (state : ContractState) :
 
 ## Layer 2: ContractSpec → IR ✅ **COMPLETE**
 
-**Status**: All 7 contracts have IR generation with preservation proofs
+**Status**: All 7 compiled contracts have IR generation with preservation proofs
 
 **What This Layer Proves**: Intermediate representation (IR) generation preserves ContractSpec semantics.
 
@@ -149,12 +151,12 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 70% coverage (203/292), 89 remaining exclusions all proof-only
+**Status**: 70% coverage (207/296), 89 remaining exclusions all proof-only
 
 ### Current Coverage
 
-- **Total Properties**: 292
-- **Covered**: 203 (70%)
+- **Total Properties**: 296
+- **Covered**: 207 (70%)
 - **Excluded**: 89 (all proof-only)
 - **Missing**: 0
 
@@ -163,6 +165,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 | Contract | Coverage | Exclusions | Status |
 |----------|----------|------------|--------|
 | SafeCounter | 100% (25/25) | 0 | ✅ Complete |
+| ReentrancyExample | 100% (4/4) | 0 | ✅ Complete |
 | SimpleStorage | 95% (19/20) | 1 proof-only | ✅ Near-complete |
 | Owned | 91% (20/22) | 2 proof-only | ✅ Near-complete |
 | OwnedCounter | 98% (44/45) | 1 proof-only | ✅ Near-complete |
@@ -195,7 +198,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Coverage
 
-- All 7 contracts have comprehensive differential test suites
+- All 7 compiled contracts have comprehensive differential test suites
 - Property tests extracted from theorems provide additional coverage
 - Edge cases: overflow, underflow, zero values, max values, access control
 
@@ -266,5 +269,5 @@ See `scripts/README.md` for:
 
 ---
 
-**Last Updated**: 2026-02-14
+**Last Updated**: 2026-02-15
 **Status Summary**: Layers 1-3 complete, trust reduction in progress

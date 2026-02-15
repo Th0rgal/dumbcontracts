@@ -111,12 +111,13 @@ DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 fo
 ./scripts/test_multiple_seeds.sh 1 2 3 4 5    # Test with custom seeds
 ```
 
-**Property Coverage Checks:**
+**Validation Checks:**
 ```bash
 python3 scripts/check_property_manifest.py       # Verify test tags reference real theorems
 python3 scripts/check_property_coverage.py       # Ensure all theorems have tests
 python3 scripts/check_property_manifest_sync.py  # Verify manifest matches proofs
 python3 scripts/check_selectors.py               # Verify keccak256 selector hashing
+python3 scripts/check_storage_layout.py          # Verify storage slot consistency across layers
 ```
 
 ## Documentation

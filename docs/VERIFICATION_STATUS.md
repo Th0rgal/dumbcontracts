@@ -1,10 +1,10 @@
 # Verification Status
 
-This document provides a comprehensive overview of the DumbContracts verification architecture, current status, and remaining work.
+This document provides a comprehensive overview of the Verity verification architecture, current status, and remaining work.
 
 ## Overview
 
-DumbContracts implements a **three-layer verification stack** that proves smart contracts correct from specification to EVM bytecode:
+Verity implements a **three-layer verification stack** that proves smart contracts correct from specification to EVM bytecode:
 
 ```
 User Contracts (EDSL)
@@ -28,15 +28,15 @@ EVM Bytecode
 
 | Contract | Properties | Status | Location |
 |----------|------------|--------|----------|
-| SimpleStorage | 20 | ✅ Complete | `DumbContracts/Specs/SimpleStorage/Proofs.lean` |
-| Counter | 28 | ✅ Complete | `DumbContracts/Specs/Counter/Proofs.lean` |
-| SafeCounter | 25 | ✅ Complete | `DumbContracts/Specs/SafeCounter/Proofs.lean` |
-| Owned | 22 | ✅ Complete | `DumbContracts/Specs/Owned/Proofs.lean` |
-| OwnedCounter | 45 | ✅ Complete | `DumbContracts/Specs/OwnedCounter/Proofs.lean` |
-| Ledger | 32 | ✅ Complete | `DumbContracts/Specs/Ledger/Proofs.lean` |
-| SimpleToken | 56 | ✅ Complete | `DumbContracts/Specs/SimpleToken/Proofs.lean` |
-| CryptoHash | 0 | ⬜ No specs | `DumbContracts/Examples/CryptoHash.lean` |
-| ReentrancyExample | 4 | ✅ Complete | `DumbContracts/Examples/ReentrancyExample.lean` |
+| SimpleStorage | 20 | ✅ Complete | `Verity/Specs/SimpleStorage/Proofs.lean` |
+| Counter | 28 | ✅ Complete | `Verity/Specs/Counter/Proofs.lean` |
+| SafeCounter | 25 | ✅ Complete | `Verity/Specs/SafeCounter/Proofs.lean` |
+| Owned | 22 | ✅ Complete | `Verity/Specs/Owned/Proofs.lean` |
+| OwnedCounter | 45 | ✅ Complete | `Verity/Specs/OwnedCounter/Proofs.lean` |
+| Ledger | 32 | ✅ Complete | `Verity/Specs/Ledger/Proofs.lean` |
+| SimpleToken | 56 | ✅ Complete | `Verity/Specs/SimpleToken/Proofs.lean` |
+| CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
+| ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
 | **Total** | **232** | **✅ 100%** | — |
 
 > **Note**: Stdlib (64 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (296 total properties).
@@ -268,7 +268,7 @@ See `scripts/README.md` for:
 - **Compiler Proofs**: `Compiler/Proofs/README.md`
 - **Property Scripts**: `scripts/README.md`
 - **Research Documentation**: `docs-site/content/research.mdx`
-- **GitHub Repository**: https://github.com/Th0rgal/dumbcontracts
+- **GitHub Repository**: https://github.com/Th0rgal/verity
 
 ---
 

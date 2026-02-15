@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "test" / "property_manifest.json"
 EXCLUSIONS = ROOT / "test" / "property_exclusions.json"
 TEST_DIR = ROOT / "test"
-PROOFS_DIR = ROOT / "DumbContracts" / "Proofs"
-EXAMPLES_DIR = ROOT / "DumbContracts" / "Examples"
+PROOFS_DIR = ROOT / "Verity" / "Proofs"
+EXAMPLES_DIR = ROOT / "Verity" / "Examples"
 
 # Regex patterns for extracting property tags from test files
 PROPERTY_WITH_NUM_RE = re.compile(
@@ -131,7 +131,7 @@ def collect_theorems(path: Path) -> list[str]:
 def extract_manifest_from_proofs() -> dict[str, list[str]]:
     """Extract theorem names from Lean proof files.
 
-    Scans DumbContracts/Proofs/ directories and DumbContracts/Examples/ files
+    Scans Verity/Proofs/ directories and Verity/Examples/ files
     that contain inline theorems (e.g., ReentrancyExample).
 
     Returns:

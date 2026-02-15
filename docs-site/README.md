@@ -69,7 +69,7 @@ The site automatically serves markdown to AI agents through:
 
 ### Vercel (Recommended)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Th0rgal/dumbcontracts)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Th0rgal/verity)
 
 1. Connect your GitHub repository
 2. Set build command: `npm run build`

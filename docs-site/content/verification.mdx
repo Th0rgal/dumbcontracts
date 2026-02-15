@@ -7,7 +7,7 @@ description: EDSL proofs plus compiler correctness proofs (IR + Yul)
 
 The compiler is verified with IR preservation proofs and Yul equivalence proofs in `Compiler/Proofs/`. All three layers are complete and checked by `lake build`.
 
-**Status**: 296 theorems across 9 categories. 284 fully proven, 12 `sorry` placeholders in Ledger sum property proofs ([#65](https://github.com/Th0rgal/dumbcontracts/issues/65)). 5 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/dumbcontracts/blob/main/AXIOMS.md).
+**Status**: 296 theorems across 9 categories. 284 fully proven, 12 `sorry` placeholders in Ledger sum property proofs ([#65](https://github.com/Th0rgal/verity/issues/65)). 5 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
 
 ## Snapshot (2026-02-15)
 
@@ -24,7 +24,7 @@ The compiler is verified with IR preservation proofs and Yul equivalence proofs 
 
 ## Compiler Proofs (IR + Yul)
 
-- **Spec semantics**: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
+- **Spec semantics**: `Verity/Proofs/Stdlib/SpecInterpreter.lean`
 - **IR generation**: `Compiler/Proofs/IRGeneration/` (complete for all 7 contracts)
 - **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/` (complete — PR #42)
 
@@ -33,7 +33,7 @@ The compiler is verified with IR preservation proofs and Yul equivalence proofs 
 Each contract has three layers of files:
 
 ```
-DumbContracts/
+Verity/
 ├── Examples/{Contract}.lean      # Implementation
 ├── Specs/{Contract}/
 │   ├── Spec.lean                 # What each operation should do

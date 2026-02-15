@@ -1,9 +1,9 @@
 ---
 title: Adding Your First Contract
-description: Step-by-step tutorial for creating a verified smart contract in DumbContracts
+description: Step-by-step tutorial for creating a verified smart contract in Verity
 ---
 
-# Adding Your First Contract to DumbContracts
+# Adding Your First Contract to Verity
 
 **Time Required**: 2-3 hours for first contract
 **Prerequisites**: Basic familiarity with Lean 4 syntax and smart contract concepts
@@ -12,7 +12,7 @@ This tutorial walks you through creating a complete verified smart contract from
 
 ---
 
-## Overview: The DumbContracts Workflow
+## Overview: The Verity Workflow
 
 Every contract follows this path:
 
@@ -35,15 +35,15 @@ Specification → Implementation → Proofs → Compilation → Testing
 
 ```bash
 # Create spec directory
-mkdir -p DumbContracts/Specs/NameRegistry
+mkdir -p Verity/Specs/NameRegistry
 
 # Create the three required files
-touch DumbContracts/Specs/NameRegistry/Spec.lean
-touch DumbContracts/Specs/NameRegistry/Invariants.lean
-touch DumbContracts/Specs/NameRegistry/Proofs.lean
+touch Verity/Specs/NameRegistry/Spec.lean
+touch Verity/Specs/NameRegistry/Invariants.lean
+touch Verity/Specs/NameRegistry/Proofs.lean
 
 # Create EDSL implementation
-touch DumbContracts/Examples/NameRegistry.lean
+touch Verity/Examples/NameRegistry.lean
 
 # Create compiler proof file
 touch Compiler/Proofs/SpecCorrectness/NameRegistry.lean
@@ -69,7 +69,7 @@ Specifications describe **what** the contract should do, not **how** it does it.
 
 ### 2.1 Create the Spec File
 
-Open `DumbContracts/Specs/NameRegistry/Spec.lean`:
+Open `Verity/Specs/NameRegistry/Spec.lean`:
 
 ```lean
 /-
@@ -78,12 +78,12 @@ Open `DumbContracts/Specs/NameRegistry/Spec.lean`:
   Maps Ethereum addresses to human-readable names.
 -/
 
-import DumbContracts.Core
-import DumbContracts.Specs.Common
+import Verity.Core
+import Verity.Specs.Common
 
-namespace DumbContracts.Specs.NameRegistry
+namespace Verity.Specs.NameRegistry
 
-open DumbContracts
+open Verity
 
 -- What setName should do: store a name for the sender
 def setName_spec (name : String) (s s' : ContractState) : Prop :=
@@ -108,7 +108,7 @@ def setName_getName_roundtrip (name : String) (s : ContractState) : Prop :=
     setName_spec name s s_after_set →
     getName_spec s.sender name s_after_set
 
-end DumbContracts.Specs.NameRegistry
+end Verity.Specs.NameRegistry
 ```
 
 **Key Concepts**:
@@ -119,7 +119,7 @@ end DumbContracts.Specs.NameRegistry
 
 ### 2.2 Create Invariants File
 
-Open `DumbContracts/Specs/NameRegistry/Invariants.lean`:
+Open `Verity/Specs/NameRegistry/Invariants.lean`:
 
 ```lean
 /-
@@ -128,12 +128,12 @@ Open `DumbContracts/Specs/NameRegistry/Invariants.lean`:
   Properties that hold for all valid contract states.
 -/
 
-import DumbContracts.Core
-import DumbContracts.Specs.Common
+import Verity.Core
+import Verity.Specs.Common
 
-namespace DumbContracts.Specs.NameRegistry
+namespace Verity.Specs.NameRegistry
 
-open DumbContracts
+open Verity
 
 -- Basic well-formedness of ContractState
 structure WellFormedState (s : ContractState) : Prop where
@@ -153,7 +153,7 @@ def addr_storage_unchanged (s s' : ContractState) : Prop :=
 -- Context preservation
 abbrev context_preserved := Specs.sameContext
 
-end DumbContracts.Specs.NameRegistry
+end Verity.Specs.NameRegistry
 ```
 
 ---
@@ -164,7 +164,7 @@ Now we implement the contract using the embedded domain-specific language (EDSL)
 
 ### 3.1 Create EDSL Implementation
 
-Open `DumbContracts/Examples/NameRegistry.lean`:
+Open `Verity/Examples/NameRegistry.lean`:
 
 ```lean
 /-
@@ -178,11 +178,11 @@ Open `DumbContracts/Examples/NameRegistry.lean`:
   Pattern: User registry with permanent storage
 -/
 
-import DumbContracts.Core
+import Verity.Core
 
-namespace DumbContracts.Examples.NameRegistry
+namespace Verity.Examples.NameRegistry
 
-open DumbContracts
+open Verity
 
 -- Storage layout: mapping from address to string at slot 0
 def names : MappingSlot Address String := ⟨0⟩
@@ -213,7 +213,7 @@ def exampleUsage : Contract String := do
 }).getValue?
 -- Expected output: some "Alice"
 
-end DumbContracts.Examples.NameRegistry
+end Verity.Examples.NameRegistry
 ```
 
 **Key Concepts**:
@@ -229,7 +229,7 @@ Verify your implementation works:
 
 ```bash
 # This will evaluate the #eval block
-lake build DumbContracts.Examples.NameRegistry
+lake build Verity.Examples.NameRegistry
 ```
 
 If successful, you'll see the expected output in build logs.
@@ -242,7 +242,7 @@ This is where formal verification happens. We prove that our implementation matc
 
 ### 4.1 Create Proof Stub
 
-Open `DumbContracts/Specs/NameRegistry/Proofs.lean`:
+Open `Verity/Specs/NameRegistry/Proofs.lean`:
 
 ```lean
 import Compiler.Proofs.SpecCorrectness.NameRegistry
@@ -294,17 +294,17 @@ Open `Compiler/Proofs/SpecCorrectness/NameRegistry.lean`:
 -/
 
 import Compiler.Specs
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
-import DumbContracts.Examples.NameRegistry
-import DumbContracts.Core.Uint256
+import Verity.Proofs.Stdlib.SpecInterpreter
+import Verity.Examples.NameRegistry
+import Verity.Core.Uint256
 
 namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open DumbContracts.Proofs.Stdlib.SpecInterpreter
-open DumbContracts
-open DumbContracts.Examples.NameRegistry
+open Verity.Proofs.Stdlib.SpecInterpreter
+open Verity
+open Verity.Examples.NameRegistry
 
 /-!
 ## State Conversion
@@ -410,7 +410,7 @@ theorem main_property : ... := by
 lake build
 
 # Check for incomplete proofs
-grep -r "sorry" DumbContracts/Specs/NameRegistry/
+grep -r "sorry" Verity/Specs/NameRegistry/
 ```
 
 **Goal**: Zero `sorry` statements before moving to testing.
@@ -434,10 +434,10 @@ Or just add directly in the file as shown in Phase 4.2.
 
 ```bash
 # Rebuild compiler with your new contract
-lake build dumbcontracts-compiler
+lake build verity-compiler
 
 # Generate Yul code
-./.lake/build/bin/dumbcontracts-compiler
+./.lake/build/bin/verity-compiler
 
 # Check output
 ls compiler/yul/NameRegistry.yul
@@ -661,7 +661,7 @@ lake build
 ./scripts/check_for_sorry.sh
 
 # 3. Yul generates and compiles
-./.lake/build/bin/dumbcontracts-compiler
+./.lake/build/bin/verity-compiler
 python3 scripts/check_yul_compiles.py
 
 # 4. All tests pass
@@ -680,10 +680,10 @@ forge test  # All contracts
 
 ### 7.2 Add to Module Exports
 
-Update `DumbContracts.lean`:
+Update `Verity.lean`:
 
 ```lean
-import DumbContracts.Examples.NameRegistry
+import Verity.Examples.NameRegistry
 ```
 
 Update `Compiler.lean`:
@@ -710,8 +710,8 @@ Add your contract to `docs/VERIFICATION_STATUS.md`:
 
 **Solution**: Check your imports. Make sure you have:
 ```lean
-import DumbContracts.Core
-import DumbContracts.Examples.NameRegistry
+import Verity.Core
+import Verity.Examples.NameRegistry
 import Compiler.Specs
 ```
 
@@ -743,7 +743,7 @@ python3 scripts/check_selectors.py
 
 **Solution**:
 ```bash
-grep -r "sorry" DumbContracts/Specs/YourContract/
+grep -r "sorry" Verity/Specs/YourContract/
 ```
 Replace each `sorry` with actual proof tactics.
 

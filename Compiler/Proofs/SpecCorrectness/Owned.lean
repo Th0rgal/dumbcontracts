@@ -15,21 +15,21 @@
 -/
 
 import Compiler.Specs
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
-import DumbContracts.Proofs.Stdlib.Automation
+import Verity.Proofs.Stdlib.SpecInterpreter
+import Verity.Proofs.Stdlib.Automation
 import Compiler.Hex
-import DumbContracts.Examples.Owned
-import DumbContracts.Core.Uint256
+import Verity.Examples.Owned
+import Verity.Core.Uint256
 
 namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open DumbContracts.Proofs.Stdlib.SpecInterpreter
-open DumbContracts.Proofs.Stdlib.Automation
+open Verity.Proofs.Stdlib.SpecInterpreter
+open Verity.Proofs.Stdlib.Automation
 open Compiler.Hex
-open DumbContracts
-open DumbContracts.Examples.Owned
+open Verity
+open Verity.Examples.Owned
 
 /- State Conversion -/
 
@@ -55,8 +55,8 @@ theorem owned_constructor_correct (state : ContractState) (initialOwner : Addres
     specResult.success = true ∧
     specResult.finalStorage.getSlot 0 = addressToNat (edslResult.getState.storageAddr 0) := by
   -- Constructor sets owner to initialOwner in both EDSL and spec
-  unfold DumbContracts.Examples.Owned.constructor Contract.run ownedSpec interpretSpec
-  simp [setStorageAddr, DumbContracts.Examples.Owned.owner, DumbContracts.bind, DumbContracts.pure]
+  unfold Verity.Examples.Owned.constructor Contract.run ownedSpec interpretSpec
+  simp [setStorageAddr, Verity.Examples.Owned.owner, Verity.bind, Verity.pure]
   simp [execConstructor, execStmts, execStmt, evalExpr, SpecStorage.setSlot, SpecStorage.getSlot, SpecStorage.empty]
   -- addressToNat_mod_eq is a simp lemma now.
 
@@ -76,10 +76,10 @@ theorem transferOwnership_correct_as_owner (state : ContractState) (newOwner : A
   -- When sender is owner, both EDSL and spec succeed
   constructor
   · -- Part 1: edslResult.isSuccess = true
-    unfold DumbContracts.Examples.Owned.transferOwnership Contract.run
-    unfold DumbContracts.Examples.Owned.onlyOwner DumbContracts.Examples.Owned.isOwner
-    unfold msgSender getStorageAddr setStorageAddr DumbContracts.Examples.Owned.owner
-    simp only [DumbContracts.bind, Bind.bind, DumbContracts.require, DumbContracts.pure, Pure.pure]
+    unfold Verity.Examples.Owned.transferOwnership Contract.run
+    unfold Verity.Examples.Owned.onlyOwner Verity.Examples.Owned.isOwner
+    unfold msgSender getStorageAddr setStorageAddr Verity.Examples.Owned.owner
+    simp only [Verity.bind, Bind.bind, Verity.require, Verity.pure, Pure.pure]
     have h_beq : (sender == state.storageAddr 0) = true := by
       rw [beq_iff_eq, h]
     rw [h_beq]
@@ -112,10 +112,10 @@ theorem transferOwnership_reverts_as_nonowner (state : ContractState) (newOwner 
   -- When sender is not owner, both EDSL and spec revert
   constructor
   · -- Part 1: edslResult.isSuccess = false
-    unfold DumbContracts.Examples.Owned.transferOwnership Contract.run
-    unfold DumbContracts.Examples.Owned.onlyOwner DumbContracts.Examples.Owned.isOwner
-    unfold msgSender getStorageAddr setStorageAddr DumbContracts.Examples.Owned.owner
-    simp only [DumbContracts.bind, Bind.bind, DumbContracts.require, DumbContracts.pure, Pure.pure]
+    unfold Verity.Examples.Owned.transferOwnership Contract.run
+    unfold Verity.Examples.Owned.onlyOwner Verity.Examples.Owned.isOwner
+    unfold msgSender getStorageAddr setStorageAddr Verity.Examples.Owned.owner
+    simp only [Verity.bind, Bind.bind, Verity.require, Verity.pure, Pure.pure]
     -- Show that (sender == state.storageAddr 0) = false when sender ≠ state.storageAddr 0
     have h_beq : (sender == state.storageAddr 0) = false := by
       cases h_eq : (sender == state.storageAddr 0)
@@ -158,8 +158,8 @@ theorem getOwner_correct (state : ContractState) (sender : Address) :
     specResult.success = true ∧
     specResult.returnValue = some (addressToNat edslAddr) := by
   -- Same pattern as Counter.getCount_correct and SafeCounter.getCount_correct
-  unfold DumbContracts.Examples.Owned.getOwner Contract.runValue ownedSpec interpretSpec ownedEdslToSpecStorage
-  simp [getStorageAddr, DumbContracts.Examples.Owned.owner, execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot]
+  unfold Verity.Examples.Owned.getOwner Contract.runValue ownedSpec interpretSpec ownedEdslToSpecStorage
+  simp [getStorageAddr, Verity.Examples.Owned.owner, execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot]
 
 /- Helper Properties -/
 
@@ -168,8 +168,8 @@ theorem getOwner_preserves_state (state : ContractState) (sender : Address) :
     let finalState := getOwner.runState { state with sender := sender }
     finalState.storageAddr 0 = state.storageAddr 0 := by
   -- getOwner just reads storage, doesn't modify it
-  unfold DumbContracts.Examples.Owned.getOwner Contract.runState
-  simp [getStorageAddr, DumbContracts.Examples.Owned.owner]
+  unfold Verity.Examples.Owned.getOwner Contract.runState
+  simp [getStorageAddr, Verity.Examples.Owned.owner]
 
 /-- Only owner can transfer ownership -/
 theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (sender : Address) :
@@ -181,7 +181,7 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
       ((onlyOwner).run { state with sender := sender }).isSuccess = true := by
     -- Use bind success propagation from Automation
     simpa [transferOwnership, Contract.run] using
-      (DumbContracts.Proofs.Stdlib.Automation.bind_isSuccess_left
+      (Verity.Proofs.Stdlib.Automation.bind_isSuccess_left
         (m1 := onlyOwner)
         (m2 := fun _ => setStorageAddr owner newOwner)
         (state := { state with sender := sender })
@@ -190,17 +190,17 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
   have h_require_success :
       ((require (sender == state.storageAddr 0) "Caller is not the owner").run
         { state with sender := sender }).isSuccess = true := by
-    simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, DumbContracts.bind, DumbContracts.pure]
+    simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, Verity.bind, Verity.pure]
       using h_onlyOwner
   have h_eq : (sender == state.storageAddr 0) = true :=
-    DumbContracts.Proofs.Stdlib.Automation.require_success_implies_cond
+    Verity.Proofs.Stdlib.Automation.require_success_implies_cond
       (cond := sender == state.storageAddr 0)
       (msg := "Caller is not the owner")
       (state := { state with sender := sender })
       h_require_success
   -- Convert boolean equality to propositional equality.
   exact
-    (DumbContracts.Proofs.Stdlib.Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1
+    (Verity.Proofs.Stdlib.Automation.address_beq_eq_true_iff_eq sender (state.storageAddr 0)).1
         h_eq
       |>.symm
 
@@ -209,18 +209,18 @@ theorem constructor_sets_owner (state : ContractState) (initialOwner : Address) 
     let finalState := (constructor initialOwner).runState { state with sender := sender }
     finalState.storageAddr 0 = initialOwner := by
   -- Constructor simply sets storage at slot 0 to initialOwner
-  unfold DumbContracts.Examples.Owned.constructor Contract.runState
-  simp [setStorageAddr, DumbContracts.Examples.Owned.owner, DumbContracts.bind]
+  unfold Verity.Examples.Owned.constructor Contract.runState
+  simp [setStorageAddr, Verity.Examples.Owned.owner, Verity.bind]
 
 /-- TransferOwnership updates owner when authorized -/
 theorem transferOwnership_updates_owner (state : ContractState) (newOwner : Address) (sender : Address)
     (h : state.storageAddr 0 = sender) :
-    let finalState := (DumbContracts.Examples.Owned.transferOwnership newOwner).runState { state with sender := sender }
+    let finalState := (Verity.Examples.Owned.transferOwnership newOwner).runState { state with sender := sender }
     finalState.storageAddr 0 = newOwner := by
   -- Unfold all definitions
-  unfold DumbContracts.Examples.Owned.transferOwnership DumbContracts.Examples.Owned.onlyOwner DumbContracts.Examples.Owned.isOwner DumbContracts.Examples.Owned.owner
+  unfold Verity.Examples.Owned.transferOwnership Verity.Examples.Owned.onlyOwner Verity.Examples.Owned.isOwner Verity.Examples.Owned.owner
   unfold msgSender getStorageAddr setStorageAddr Contract.runState
-  simp only [DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure, DumbContracts.require]
+  simp only [Verity.bind, Bind.bind, Verity.pure, Pure.pure, Verity.require]
 
   -- The key is that sender == state.storageAddr 0, so the require passes
   have h_beq : (sender == state.storageAddr 0) = true := by

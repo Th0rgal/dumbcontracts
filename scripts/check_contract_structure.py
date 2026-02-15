@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate that all contracts have the expected file structure.
 
-For each contract found in DumbContracts/Examples/, verify that the
+For each contract found in Verity/Examples/, verify that the
 corresponding Spec, Invariants, and Proof files exist. This catches
 incomplete contract additions early.
 
@@ -23,10 +23,10 @@ EXCLUDED_CONTRACTS = {
 
 # Expected files for each contract (relative to ROOT)
 EXPECTED_STRUCTURE = [
-    "DumbContracts/Specs/{name}/Spec.lean",
-    "DumbContracts/Specs/{name}/Invariants.lean",
-    "DumbContracts/Proofs/{name}/Basic.lean",
-    "DumbContracts/Proofs/{name}/Correctness.lean",
+    "Verity/Specs/{name}/Spec.lean",
+    "Verity/Specs/{name}/Invariants.lean",
+    "Verity/Proofs/{name}/Basic.lean",
+    "Verity/Proofs/{name}/Correctness.lean",
 ]
 
 
@@ -36,8 +36,8 @@ def die(msg: str) -> None:
 
 
 def find_contracts() -> list[str]:
-    """Find all contract names from DumbContracts/Examples/."""
-    examples_dir = ROOT / "DumbContracts" / "Examples"
+    """Find all contract names from Verity/Examples/."""
+    examples_dir = ROOT / "Verity" / "Examples"
     if not examples_dir.is_dir():
         die(f"Examples directory not found: {examples_dir}")
 
@@ -60,25 +60,25 @@ def check_contract(name: str) -> list[str]:
 
 def check_all_lean_imports(contracts: list[str]) -> list[str]:
     """Check that All.lean imports all contracts."""
-    all_lean = ROOT / "DumbContracts" / "All.lean"
+    all_lean = ROOT / "Verity" / "All.lean"
     if not all_lean.exists():
-        return [f"DumbContracts/All.lean not found"]
+        return [f"Verity/All.lean not found"]
 
     lines = all_lean.read_text().splitlines()
     missing = []
     for name in contracts:
-        expected_import = f"import DumbContracts.Examples.{name}"
+        expected_import = f"import Verity.Examples.{name}"
         # Use exact line matching to avoid prefix collisions
         # (e.g., "Owned" matching "OwnedCounter")
         if not any(line.strip() == expected_import for line in lines):
-            missing.append(f"DumbContracts/All.lean missing: {expected_import}")
+            missing.append(f"Verity/All.lean missing: {expected_import}")
     return missing
 
 
 def main() -> None:
     contracts = find_contracts()
     if not contracts:
-        die("No contracts found in DumbContracts/Examples/")
+        die("No contracts found in Verity/Examples/")
 
     print(f"Checking {len(contracts)} contracts for complete file structure...")
     print(f"  (Excluding: {', '.join(sorted(EXCLUDED_CONTRACTS))})")

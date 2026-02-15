@@ -9,19 +9,19 @@ description: EDSL to EVM compilation with automatic IR generation
 
 ## Overview
 
-The DumbContracts compiler transforms high-level, verified contract specifications into deployable EVM bytecode. All contracts compile automatically from declarative specifications—no manual IR writing required.
+The Verity compiler transforms high-level, verified contract specifications into deployable EVM bytecode. All contracts compile automatically from declarative specifications—no manual IR writing required.
 
 **Pipeline**: EDSL Contract → Declarative Spec → IR → Yul → EVM Bytecode
 
 **Spec sources**:
-- User-facing specs: `DumbContracts/Specs/<Name>/Spec.lean`
+- User-facing specs: `Verity/Specs/<Name>/Spec.lean`
 - Compiler specs (for codegen): `Compiler/Specs.lean` (generated/maintained separately)
 
 ## Trust Model
 
 ### What's Verified (Zero Trust Required)
 - **EDSL + compiler proofs**: Lean theorems for contract specs, IR generation, and Yul codegen
-- **Machine-checked proofs**: 5 documented axioms (see [AXIOMS.md](https://github.com/Th0rgal/dumbcontracts/blob/main/AXIOMS.md)), 12 sorry in Ledger sum proofs
+- **Machine-checked proofs**: 5 documented axioms (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)), 12 sorry in Ledger sum proofs
 - **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean
 
 ### What's Tested (High Confidence)
@@ -42,7 +42,7 @@ Roadmap, milestones, and progress updates live in `docs-site/content/research.md
 
 ### EDSL Implementation
 ```lean
--- DumbContracts/Examples/SimpleStorage.lean
+-- Verity/Examples/SimpleStorage.lean
 def storedData : StorageSlot Uint256 := ⟨0⟩
 
 def store (value : Uint256) : Contract Unit := do
@@ -257,14 +257,14 @@ Automatic expression inlining reduces bytecode size and gas costs.
 
 ### Compile All Contracts
 ```bash
-cd /path/to/dumbcontracts
+cd /path/to/verity
 export PATH="$HOME/.elan/bin:$PATH"
 
 # Build compiler
-lake build dumbcontracts-compiler
+lake build verity-compiler
 
 # Generate Yul for all contracts
-lake exe dumbcontracts-compiler
+lake exe verity-compiler
 
 # Output: compiler/yul/*.yul
 ```
@@ -299,8 +299,8 @@ def allSpecs := [
 
 2. **Recompile**:
 ```bash
-lake build dumbcontracts-compiler
-lake exe dumbcontracts-compiler
+lake build verity-compiler
+lake exe verity-compiler
 ```
 
 3. **Done!** Contract generated in `compiler/yul/MyContract.yul`
@@ -424,4 +424,4 @@ def ownedSpec : ContractSpec := {
 - [Research & Development](/research) — Design decisions and proof techniques
 - [Examples](/examples) — 9 example contracts
 - [Verification](/verification) — 296 proven theorems
-- [GitHub Repository](https://github.com/Th0rgal/dumbcontracts) — Source code
+- [GitHub Repository](https://github.com/Th0rgal/verity) — Source code

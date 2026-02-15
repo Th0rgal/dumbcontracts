@@ -11,7 +11,7 @@
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.Conversions
 import Compiler.Proofs.IRGeneration.Expr
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
+import Verity.Proofs.Stdlib.SpecInterpreter
 import Compiler.Specs
 import Compiler.ContractSpec
 
@@ -21,7 +21,7 @@ open Compiler
 open Compiler.Specs
 open Compiler.ContractSpec
 open DiffTestTypes
-open DumbContracts.Proofs.Stdlib.SpecInterpreter
+open Verity.Proofs.Stdlib.SpecInterpreter
 
 /-! ## SimpleStorage IR Compilation -/
 

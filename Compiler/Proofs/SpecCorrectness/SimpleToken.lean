@@ -17,24 +17,24 @@
 -/
 
 import Compiler.Specs
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
-import DumbContracts.Proofs.Stdlib.Automation
+import Verity.Proofs.Stdlib.SpecInterpreter
+import Verity.Proofs.Stdlib.Automation
 import Compiler.Hex
-import DumbContracts.Examples.SimpleToken
-import DumbContracts.Proofs.SimpleToken.Basic
-import DumbContracts.Proofs.SimpleToken.Correctness
-import DumbContracts.Core.Uint256
+import Verity.Examples.SimpleToken
+import Verity.Proofs.SimpleToken.Basic
+import Verity.Proofs.SimpleToken.Correctness
+import Verity.Core.Uint256
 
 namespace Compiler.Proofs.SpecCorrectness
 
 open Compiler.ContractSpec
 open Compiler.Specs
-open DumbContracts.Proofs.Stdlib.SpecInterpreter
-open DumbContracts.Proofs.Stdlib.Automation
+open Verity.Proofs.Stdlib.SpecInterpreter
+open Verity.Proofs.Stdlib.Automation
 open Compiler.Hex
-open DumbContracts
-open DumbContracts.Examples.SimpleToken
-open DumbContracts.Proofs.SimpleToken
+open Verity
+open Verity.Examples.SimpleToken
+open Verity.Proofs.SimpleToken
 
 /- State Conversion -/
 
@@ -75,7 +75,7 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
   constructor
   · -- EDSL constructor succeeds
     simp [constructor, Contract.run, ContractResult.isSuccess, setStorageAddr, setStorage,
-      DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Examples.SimpleToken.owner, Examples.SimpleToken.totalSupply]
   constructor
   · -- Spec constructor succeeds
@@ -106,7 +106,7 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
 /-- The `mint` function correctly mints when called by owner -/
 theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
     (h : state.storageAddr 0 = sender) :
-    let edslResult := (mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender }
+    let edslResult := (mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := "mint"
@@ -119,10 +119,10 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
     specResult.finalStorage.getSlot 2 = (edslResult.getState.storage 2).val := by
   constructor
   · -- EDSL success
-    simp [mint, DumbContracts.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
+    simp [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
       msgSender, getStorageAddr, getMapping, setMapping, getStorage, setStorage,
       Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
-      DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       ContractResult.isSuccess, h]
   constructor
   · -- Spec success
@@ -134,20 +134,20 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
   · -- Mapping update matches EDSL
     have h_edsl_map :
         (ContractResult.getState
-          ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+          ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
         ).storageMap 1 to =
-        DumbContracts.EVM.Uint256.add (state.storageMap 1 to)
-          (DumbContracts.Core.Uint256.ofNat amount) := by
+        Verity.EVM.Uint256.add (state.storageMap 1 to)
+          (Verity.Core.Uint256.ofNat amount) := by
       simpa [Contract.run, ContractResult.getState, ContractResult.snd, h] using
         (mint_increases_balance { state with sender := sender } to
-          (DumbContracts.Core.Uint256.ofNat amount) h.symm)
+          (Verity.Core.Uint256.ofNat amount) h.symm)
     have h_edsl_map_val :
         ((ContractResult.getState
-          ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+          ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
         ).storageMap 1 to).val =
-        (DumbContracts.EVM.Uint256.add (state.storageMap 1 to)
-          (DumbContracts.Core.Uint256.ofNat amount)).val := by
-      simpa using congrArg (fun v : DumbContracts.Core.Uint256 => v.val) h_edsl_map
+        (Verity.EVM.Uint256.add (state.storageMap 1 to)
+          (Verity.Core.Uint256.ofNat amount)).val := by
+      simpa using congrArg (fun v : Verity.Core.Uint256 => v.val) h_edsl_map
     have h_spec_val :
         (let specTx : DiffTestTypes.Transaction := {
           sender := sender
@@ -157,7 +157,7 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
         let specResult := interpretSpec simpleTokenSpec
           (tokenEdslToSpecStorageWithAddrs state [to]) specTx;
         specResult.finalStorage.getMapping 1 (addressToNat to)) =
-          ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus := by
+          ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus := by
       simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
         simpleTokenSpec, requireOwner, tokenEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
         SpecStorage.setMapping, SpecStorage.setSlot, SpecStorage_getMapping_setMapping_same,
@@ -171,33 +171,33 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
       let specResult := interpretSpec simpleTokenSpec
         (tokenEdslToSpecStorageWithAddrs state [to]) specTx;
       specResult.finalStorage.getMapping 1 (addressToNat to))
-          = ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus := h_spec_val
-      _ = (DumbContracts.EVM.Uint256.add (state.storageMap 1 to)
-            (DumbContracts.Core.Uint256.ofNat amount)).val := by
+          = ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus := h_spec_val
+      _ = (Verity.EVM.Uint256.add (state.storageMap 1 to)
+            (Verity.Core.Uint256.ofNat amount)).val := by
             symm
             exact uint256_add_val (state.storageMap 1 to) amount
       _ = ((ContractResult.getState
-          ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+          ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
         ).storageMap 1 to).val := by
             symm
             exact h_edsl_map_val
   · -- Total supply update matches EDSL
     have h_edsl_supply :
         (ContractResult.getState
-          ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+          ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
         ).storage 2 =
-        DumbContracts.EVM.Uint256.add (state.storage 2)
-          (DumbContracts.Core.Uint256.ofNat amount) := by
+        Verity.EVM.Uint256.add (state.storage 2)
+          (Verity.Core.Uint256.ofNat amount) := by
       simpa [Contract.run, ContractResult.getState, ContractResult.snd, h] using
         (mint_increases_supply { state with sender := sender } to
-          (DumbContracts.Core.Uint256.ofNat amount) h.symm)
+          (Verity.Core.Uint256.ofNat amount) h.symm)
     have h_edsl_supply_val :
         ((ContractResult.getState
-          ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+          ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
         ).storage 2).val =
-        (DumbContracts.EVM.Uint256.add (state.storage 2)
-          (DumbContracts.Core.Uint256.ofNat amount)).val := by
-      simpa using congrArg (fun v : DumbContracts.Core.Uint256 => v.val) h_edsl_supply
+        (Verity.EVM.Uint256.add (state.storage 2)
+          (Verity.Core.Uint256.ofNat amount)).val := by
+      simpa using congrArg (fun v : Verity.Core.Uint256 => v.val) h_edsl_supply
     have h_spec_val :
         (let specTx : DiffTestTypes.Transaction := {
           sender := sender
@@ -207,7 +207,7 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
         let specResult := interpretSpec simpleTokenSpec
           (tokenEdslToSpecStorageWithAddrs state [to]) specTx;
         specResult.finalStorage.getSlot 2) =
-          ((state.storage 2).val + amount) % DumbContracts.Core.Uint256.modulus := by
+          ((state.storage 2).val + amount) % Verity.Core.Uint256.modulus := by
       simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
         simpleTokenSpec, requireOwner, tokenEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
         SpecStorage.setMapping, SpecStorage.setSlot, SpecStorage_getMapping_setMapping_same,
@@ -221,13 +221,13 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
       let specResult := interpretSpec simpleTokenSpec
         (tokenEdslToSpecStorageWithAddrs state [to]) specTx;
       specResult.finalStorage.getSlot 2)
-          = ((state.storage 2).val + amount) % DumbContracts.Core.Uint256.modulus := h_spec_val
-      _ = (DumbContracts.EVM.Uint256.add (state.storage 2)
-            (DumbContracts.Core.Uint256.ofNat amount)).val := by
+          = ((state.storage 2).val + amount) % Verity.Core.Uint256.modulus := h_spec_val
+      _ = (Verity.EVM.Uint256.add (state.storage 2)
+            (Verity.Core.Uint256.ofNat amount)).val := by
             symm
             exact uint256_add_val (state.storage 2) amount
       _ = ((ContractResult.getState
-          ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+          ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
         ).storage 2).val := by
             symm
             exact h_edsl_supply_val
@@ -235,7 +235,7 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
 /-- The `mint` function correctly reverts when called by non-owner -/
 theorem token_mint_reverts_as_nonowner (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
     (h : state.storageAddr 0 ≠ sender) :
-    let edslResult := (mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender }
+    let edslResult := (mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := "mint"
@@ -253,10 +253,10 @@ theorem token_mint_reverts_as_nonowner (state : ContractState) (to : Address) (a
         have h_addr : sender = state.storageAddr 0 := by
           simpa [beq_iff_eq] using h_eq
         exact h h_addr.symm
-    simp [mint, DumbContracts.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
+    simp [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
       msgSender, getStorageAddr, getMapping, setMapping, getStorage, setStorage,
       Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
-      DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       ContractResult.isSuccess, h_beq]
   · -- Spec reverts due to require failing
     have h_beq : (addressToNat sender == addressToNat (state.storageAddr 0)) = false := by
@@ -276,7 +276,7 @@ theorem token_mint_reverts_as_nonowner (state : ContractState) (to : Address) (a
 /-- The `transfer` function correctly transfers when balance is sufficient -/
 theorem token_transfer_correct_sufficient (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
     (h : (state.storageMap 1 sender).val ≥ amount) :
-    let edslResult := (transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender }
+    let edslResult := (transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := "transfer"
@@ -287,20 +287,20 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
     specResult.success = true ∧
     specResult.finalStorage.getMapping 1 (addressToNat sender) = (edslResult.getState.storageMap 1 sender).val ∧
     specResult.finalStorage.getMapping 1 (addressToNat to) = (edslResult.getState.storageMap 1 to).val := by
-  have h_amount_lt : amount < DumbContracts.Core.Uint256.modulus := by
-    have hlt : (state.storageMap 1 sender).val < DumbContracts.Core.Uint256.modulus := by
+  have h_amount_lt : amount < Verity.Core.Uint256.modulus := by
+    have hlt : (state.storageMap 1 sender).val < Verity.Core.Uint256.modulus := by
       exact (state.storageMap 1 sender).isLt
     exact Nat.lt_of_le_of_lt h hlt
   have h_balance_u :
-      (state.storageMap 1 sender) ≥ DumbContracts.Core.Uint256.ofNat amount := by
-    simp [DumbContracts.Core.Uint256.le_def, DumbContracts.Core.Uint256.val_ofNat,
+      (state.storageMap 1 sender) ≥ Verity.Core.Uint256.ofNat amount := by
+    simp [Verity.Core.Uint256.le_def, Verity.Core.Uint256.val_ofNat,
       Nat.mod_eq_of_lt h_amount_lt, h]
   by_cases h_eq : sender = to
   · subst h_eq
     constructor
     · -- EDSL success
       simp [transfer, msgSender, getMapping, setMapping, balances,
-        DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+        Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
         Contract.run, ContractResult.isSuccess, h_balance_u]
     constructor
     · -- Spec success
@@ -314,10 +314,10 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
     · -- Sender mapping equals EDSL mapping (self-transfer)
       have h_not_lt : ¬ (state.storageMap 1 sender).val < amount := by
         exact Nat.not_lt_of_ge h
-      have h_sender_lt : (state.storageMap 1 sender).val < DumbContracts.Core.Uint256.modulus := by
+      have h_sender_lt : (state.storageMap 1 sender).val < Verity.Core.Uint256.modulus := by
         exact (state.storageMap 1 sender).isLt
-      have h_one_mod : (1 % DumbContracts.Core.Uint256.modulus) = 1 := by
-        have h_lt : (1 : Nat) < DumbContracts.Core.Uint256.modulus := by decide
+      have h_one_mod : (1 % Verity.Core.Uint256.modulus) = 1 := by
+        have h_lt : (1 : Nat) < Verity.Core.Uint256.modulus := by decide
         exact Nat.mod_eq_of_lt h_lt
       have h_eq_nat : (addressToNat sender == addressToNat sender) = true := by
         simp
@@ -341,22 +341,22 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
           lookup_addr_first]
       have h_edsl_val :
           ((ContractResult.getState
-              ((transfer sender (DumbContracts.Core.Uint256.ofNat amount)).run
+              ((transfer sender (Verity.Core.Uint256.ofNat amount)).run
                 { state with sender := sender })
             ).storageMap 1 sender).val =
             (state.storageMap 1 sender).val := by
         simp [transfer, msgSender, getMapping, setMapping, balances,
-          DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+          Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
           Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
-          DumbContracts.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_balance_u, beq_iff_eq]
+          Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_balance_u, beq_iff_eq]
       simpa [h_spec_val] using h_edsl_val.symm
     · -- Recipient mapping equals EDSL mapping (same as sender)
       have h_not_lt : ¬ (state.storageMap 1 sender).val < amount := by
         exact Nat.not_lt_of_ge h
-      have h_sender_lt : (state.storageMap 1 sender).val < DumbContracts.Core.Uint256.modulus := by
+      have h_sender_lt : (state.storageMap 1 sender).val < Verity.Core.Uint256.modulus := by
         exact (state.storageMap 1 sender).isLt
-      have h_one_mod : (1 % DumbContracts.Core.Uint256.modulus) = 1 := by
-        have h_lt : (1 : Nat) < DumbContracts.Core.Uint256.modulus := by decide
+      have h_one_mod : (1 % Verity.Core.Uint256.modulus) = 1 := by
+        have h_lt : (1 : Nat) < Verity.Core.Uint256.modulus := by decide
         exact Nat.mod_eq_of_lt h_lt
       have h_eq_nat : (addressToNat sender == addressToNat sender) = true := by
         simp
@@ -380,14 +380,14 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
           lookup_addr_first]
       have h_edsl_val :
           ((ContractResult.getState
-              ((transfer sender (DumbContracts.Core.Uint256.ofNat amount)).run
+              ((transfer sender (Verity.Core.Uint256.ofNat amount)).run
                 { state with sender := sender })
             ).storageMap 1 sender).val =
             (state.storageMap 1 sender).val := by
         simp [transfer, msgSender, getMapping, setMapping, balances,
-          DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+          Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
           Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
-          DumbContracts.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_balance_u, beq_iff_eq]
+          Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_balance_u, beq_iff_eq]
       simpa [h_spec_val] using h_edsl_val.symm
   · have h_ne : sender ≠ to := h_eq
     have h_addr_ne : addressToNat sender ≠ addressToNat to := by
@@ -399,7 +399,7 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
     constructor
     · -- EDSL success
       simp [transfer, msgSender, getMapping, setMapping, balances,
-        DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+        Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
         Contract.run, ContractResult.isSuccess, h_balance_u, h_ne]
     constructor
     · -- Spec success
@@ -414,8 +414,8 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
     · -- Sender mapping equals EDSL mapping
       have h_not_lt : ¬ (state.storageMap 1 sender).val < amount := by
         exact Nat.not_lt_of_ge h
-      have h_one_mod : (1 % DumbContracts.Core.Uint256.modulus) = 1 := by
-        have h_lt : (1 : Nat) < DumbContracts.Core.Uint256.modulus := by decide
+      have h_one_mod : (1 % Verity.Core.Uint256.modulus) = 1 := by
+        have h_lt : (1 : Nat) < Verity.Core.Uint256.modulus := by decide
         exact Nat.mod_eq_of_lt h_lt
       have h_spec_val :
           (let specTx : DiffTestTypes.Transaction := {
@@ -435,27 +435,27 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
           lookup_senderBal, lookup_recipientBal, lookup_addr_first, lookup_addr_second]
       have h_edsl_state :
           (ContractResult.getState
-              ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+              ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
             ).storageMap 1 sender =
-            DumbContracts.EVM.Uint256.sub (state.storageMap 1 sender)
-              (DumbContracts.Core.Uint256.ofNat amount) := by
+            Verity.EVM.Uint256.sub (state.storageMap 1 sender)
+              (Verity.Core.Uint256.ofNat amount) := by
         simp [transfer, msgSender, getMapping, setMapping, balances,
-          DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+          Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
           Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
           h_balance_u, h_ne]
       have h_edsl_val :
           ((ContractResult.getState
-              ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+              ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
             ).storageMap 1 sender).val =
             (state.storageMap 1 sender).val - amount := by
-        have h_val := congrArg (fun v : DumbContracts.Core.Uint256 => v.val) h_edsl_state
+        have h_val := congrArg (fun v : Verity.Core.Uint256 => v.val) h_edsl_state
         -- Use sub semantics with no underflow
         have h_val' :
             ((ContractResult.getState
-                ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+                ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
               ).storageMap 1 sender).val =
-              (DumbContracts.EVM.Uint256.sub (state.storageMap 1 sender)
-                (DumbContracts.Core.Uint256.ofNat amount)).val := by
+              (Verity.EVM.Uint256.sub (state.storageMap 1 sender)
+                (Verity.Core.Uint256.ofNat amount)).val := by
           simpa using h_val
         simpa [h_val'] using
           (uint256_sub_val_of_le (state.storageMap 1 sender) amount h)
@@ -470,15 +470,15 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
         specResult.finalStorage.getMapping 1 (addressToNat sender))
             = (state.storageMap 1 sender).val - amount := h_spec_val
         _ = ((ContractResult.getState
-              ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+              ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
             ).storageMap 1 sender).val := by
               symm
               exact h_edsl_val
     · -- Recipient mapping equals EDSL mapping
       have h_not_lt : ¬ (state.storageMap 1 sender).val < amount := by
         exact Nat.not_lt_of_ge h
-      have h_one_mod : (1 % DumbContracts.Core.Uint256.modulus) = 1 := by
-        have h_lt : (1 : Nat) < DumbContracts.Core.Uint256.modulus := by decide
+      have h_one_mod : (1 % Verity.Core.Uint256.modulus) = 1 := by
+        have h_lt : (1 : Nat) < Verity.Core.Uint256.modulus := by decide
         exact Nat.mod_eq_of_lt h_lt
       have h_spec_val :
           (let specTx : DiffTestTypes.Transaction := {
@@ -489,7 +489,7 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
           let specResult := interpretSpec simpleTokenSpec
             (tokenEdslToSpecStorageWithAddrs state [sender, to]) specTx;
           specResult.finalStorage.getMapping 1 (addressToNat to)) =
-            ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus := by
+            ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus := by
         simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
           simpleTokenSpec, requireOwner, tokenEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
           SpecStorage.setMapping, SpecStorage.setSlot, SpecStorage_getMapping_setMapping_same,
@@ -497,28 +497,28 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
           lookup_senderBal, lookup_recipientBal, lookup_addr_first, lookup_addr_second]
       have h_edsl_state :
           (ContractResult.getState
-              ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+              ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
             ).storageMap 1 to =
-            DumbContracts.EVM.Uint256.add (state.storageMap 1 to)
-              (DumbContracts.Core.Uint256.ofNat amount) := by
+            Verity.EVM.Uint256.add (state.storageMap 1 to)
+              (Verity.Core.Uint256.ofNat amount) := by
         simp [transfer, msgSender, getMapping, setMapping, balances,
-          DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+          Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
           Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
           h_balance_u, h_ne]
       have h_edsl_val :
           ((ContractResult.getState
-              ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+              ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
             ).storageMap 1 to).val =
-            ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus := by
-        have h_val := congrArg (fun v : DumbContracts.Core.Uint256 => v.val) h_edsl_state
+            ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus := by
+        have h_val := congrArg (fun v : Verity.Core.Uint256 => v.val) h_edsl_state
         calc
           ((ContractResult.getState
-              ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+              ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
             ).storageMap 1 to).val
-              = (DumbContracts.EVM.Uint256.add (state.storageMap 1 to)
-                (DumbContracts.Core.Uint256.ofNat amount)).val := by
+              = (Verity.EVM.Uint256.add (state.storageMap 1 to)
+                (Verity.Core.Uint256.ofNat amount)).val := by
                     simpa using h_val
-          _ = ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus := by
+          _ = ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus := by
                     exact uint256_add_val (state.storageMap 1 to) amount
       calc
         (let specTx : DiffTestTypes.Transaction := {
@@ -529,18 +529,18 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
         let specResult := interpretSpec simpleTokenSpec
           (tokenEdslToSpecStorageWithAddrs state [sender, to]) specTx;
         specResult.finalStorage.getMapping 1 (addressToNat to))
-            = ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus := h_spec_val
+            = ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus := h_spec_val
         _ = ((ContractResult.getState
-              ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+              ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
             ).storageMap 1 to).val := by
               symm
               exact h_edsl_val
 
 /-- The `transfer` function correctly reverts when balance is insufficient -/
 theorem token_transfer_reverts_insufficient (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
-    (h_amount : amount < DumbContracts.Core.Uint256.modulus)
+    (h_amount : amount < Verity.Core.Uint256.modulus)
     (h : (state.storageMap 1 sender).val < amount) :
-    let edslResult := (transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender }
+    let edslResult := (transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := "transfer"
@@ -553,13 +553,13 @@ theorem token_transfer_reverts_insufficient (state : ContractState) (to : Addres
   have h_insufficient : ¬ (amount ≤ (state.storageMap 1 sender).val) := by
     exact Nat.not_le_of_gt h
   have h_insufficient_u :
-      (state.storageMap 1 sender) < DumbContracts.Core.Uint256.ofNat amount := by
-    simpa [DumbContracts.Core.Uint256.lt_def, DumbContracts.Core.Uint256.val_ofNat,
+      (state.storageMap 1 sender) < Verity.Core.Uint256.ofNat amount := by
+    simpa [Verity.Core.Uint256.lt_def, Verity.Core.Uint256.val_ofNat,
       Nat.mod_eq_of_lt h_amount] using h
   constructor
   · obtain ⟨msg, hrun⟩ :=
-      DumbContracts.Proofs.SimpleToken.Correctness.transfer_reverts_insufficient_balance
-        { state with sender := sender } to (DumbContracts.Core.Uint256.ofNat amount) h_insufficient_u
+      Verity.Proofs.SimpleToken.Correctness.transfer_reverts_insufficient_balance
+        { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_insufficient_u
     simp [ContractResult.isSuccess, hrun]
   · -- Spec side: require fails, so interpreter returns success = false.
     by_cases h_eq : sender = to
@@ -652,35 +652,35 @@ theorem token_getters_preserve_state (state : ContractState) (addr : Address) (s
 /-- Mint increases totalSupply by amount -/
 theorem token_mint_increases_supply (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
     (h : state.storageAddr 0 = sender)
-    (h2 : (state.storage 2).val + amount < DumbContracts.Core.Uint256.modulus) :
-    let finalState := (mint to (DumbContracts.Core.Uint256.ofNat amount)).runState { state with sender := sender }
+    (h2 : (state.storage 2).val + amount < Verity.Core.Uint256.modulus) :
+    let finalState := (mint to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }
     (finalState.storage 2).val = (state.storage 2).val + amount := by
   have h_edsl :
       (ContractResult.getState
-        ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+        ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
       ).storage 2 =
-      DumbContracts.EVM.Uint256.add (state.storage 2)
-        (DumbContracts.Core.Uint256.ofNat amount) := by
+      Verity.EVM.Uint256.add (state.storage 2)
+        (Verity.Core.Uint256.ofNat amount) := by
     simpa [Contract.run, ContractResult.getState, ContractResult.snd, h] using
       (mint_increases_supply { state with sender := sender } to
-        (DumbContracts.Core.Uint256.ofNat amount) h.symm)
+        (Verity.Core.Uint256.ofNat amount) h.symm)
   have h_val :
       ((ContractResult.getState
-        ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+        ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
       ).storage 2).val =
-      ((state.storage 2).val + amount) % DumbContracts.Core.Uint256.modulus := by
-    have h_edsl_val := congrArg (fun v : DumbContracts.Core.Uint256 => v.val) h_edsl
+      ((state.storage 2).val + amount) % Verity.Core.Uint256.modulus := by
+    have h_edsl_val := congrArg (fun v : Verity.Core.Uint256 => v.val) h_edsl
     calc
       ((ContractResult.getState
-        ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+        ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
       ).storage 2).val
-          = (DumbContracts.EVM.Uint256.add (state.storage 2)
-            (DumbContracts.Core.Uint256.ofNat amount)).val := by
+          = (Verity.EVM.Uint256.add (state.storage 2)
+            (Verity.Core.Uint256.ofNat amount)).val := by
               simpa using h_edsl_val
-      _ = ((state.storage 2).val + amount) % DumbContracts.Core.Uint256.modulus := by
+      _ = ((state.storage 2).val + amount) % Verity.Core.Uint256.modulus := by
               exact uint256_add_val (state.storage 2) amount
   -- Since sum < modulus, the mod is identity
-  have h_mod : ((state.storage 2).val + amount) % DumbContracts.Core.Uint256.modulus =
+  have h_mod : ((state.storage 2).val + amount) % Verity.Core.Uint256.modulus =
       (state.storage 2).val + amount := by
     exact Nat.mod_eq_of_lt h2
   simpa [Contract.runState, h_mod] using h_val
@@ -688,28 +688,28 @@ theorem token_mint_increases_supply (state : ContractState) (to : Address) (amou
 /-- Transfer preserves totalSupply -/
 theorem token_transfer_preserves_supply (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
     (h : (state.storageMap 1 sender).val ≥ amount) :
-    let finalState := (transfer to (DumbContracts.Core.Uint256.ofNat amount)).runState { state with sender := sender }
+    let finalState := (transfer to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }
     finalState.storage 2 = state.storage 2 := by
-  have h_amount_lt : amount < DumbContracts.Core.Uint256.modulus := by
-    have hlt : (state.storageMap 1 sender).val < DumbContracts.Core.Uint256.modulus := by
+  have h_amount_lt : amount < Verity.Core.Uint256.modulus := by
+    have hlt : (state.storageMap 1 sender).val < Verity.Core.Uint256.modulus := by
       exact (state.storageMap 1 sender).isLt
     exact Nat.lt_of_le_of_lt h hlt
   have h_balance_u :
-      (state.storageMap 1 sender) ≥ DumbContracts.Core.Uint256.ofNat amount := by
-    simp [DumbContracts.Core.Uint256.le_def, DumbContracts.Core.Uint256.val_ofNat,
+      (state.storageMap 1 sender) ≥ Verity.Core.Uint256.ofNat amount := by
+    simp [Verity.Core.Uint256.le_def, Verity.Core.Uint256.val_ofNat,
       Nat.mod_eq_of_lt h_amount_lt, h]
   by_cases h_eq : sender = to
   · subst h_eq
     simp [transfer, msgSender, getMapping, setMapping, balances,
-      DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Contract.runState, h_balance_u, beq_iff_eq]
   · simp [transfer, msgSender, getMapping, setMapping, balances,
-      DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Contract.runState, h_balance_u, h_eq, beq_iff_eq]
 
 /-- Only owner can mint -/
 theorem token_only_owner_mints (state : ContractState) (to : Address) (amount : Nat) (sender : Address) :
-    ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender }).isSuccess = true →
+    ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }).isSuccess = true →
     state.storageAddr 0 = sender := by
   intro h_success
   by_cases h_owner : state.storageAddr 0 = sender
@@ -718,10 +718,10 @@ theorem token_only_owner_mints (state : ContractState) (to : Address) (amount : 
       intro h_eq
       exact h_owner h_eq.symm
     obtain ⟨msg, hrun⟩ :=
-      DumbContracts.Proofs.SimpleToken.Correctness.mint_reverts_when_not_owner
-        { state with sender := sender } to (DumbContracts.Core.Uint256.ofNat amount) h_owner'
+      Verity.Proofs.SimpleToken.Correctness.mint_reverts_when_not_owner
+        { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_owner'
     have h_fail :
-        ((mint to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender }).isSuccess = false := by
+        ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }).isSuccess = false := by
       simp [ContractResult.isSuccess, hrun]
     have h_contra : (true : Bool) = false := by
       simpa using (h_success.symm.trans h_fail)
@@ -731,71 +731,71 @@ theorem token_only_owner_mints (state : ContractState) (to : Address) (amount : 
 theorem token_transfer_preserves_total_balance (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
     (h : sender ≠ to)
     (h2 : (state.storageMap 1 sender).val ≥ amount)
-    (h3 : (state.storageMap 1 to).val + amount < DumbContracts.Core.Uint256.modulus) :
-    let finalState := (transfer to (DumbContracts.Core.Uint256.ofNat amount)).runState { state with sender := sender }
+    (h3 : (state.storageMap 1 to).val + amount < Verity.Core.Uint256.modulus) :
+    let finalState := (transfer to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }
     (finalState.storageMap 1 sender).val + (finalState.storageMap 1 to).val =
     (state.storageMap 1 sender).val + (state.storageMap 1 to).val := by
-  have h_amount_lt : amount < DumbContracts.Core.Uint256.modulus := by
-    have hlt : (state.storageMap 1 sender).val < DumbContracts.Core.Uint256.modulus := by
+  have h_amount_lt : amount < Verity.Core.Uint256.modulus := by
+    have hlt : (state.storageMap 1 sender).val < Verity.Core.Uint256.modulus := by
       exact (state.storageMap 1 sender).isLt
     exact Nat.lt_of_le_of_lt h2 hlt
   have h_balance_u :
-      (state.storageMap 1 sender) ≥ DumbContracts.Core.Uint256.ofNat amount := by
-    simp [DumbContracts.Core.Uint256.le_def, DumbContracts.Core.Uint256.val_ofNat,
+      (state.storageMap 1 sender) ≥ Verity.Core.Uint256.ofNat amount := by
+    simp [Verity.Core.Uint256.le_def, Verity.Core.Uint256.val_ofNat,
       Nat.mod_eq_of_lt h_amount_lt, h2]
   have h_sender_state :
       (ContractResult.getState
-        ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
       ).storageMap 1 sender =
-      DumbContracts.EVM.Uint256.sub (state.storageMap 1 sender)
-        (DumbContracts.Core.Uint256.ofNat amount) := by
+      Verity.EVM.Uint256.sub (state.storageMap 1 sender)
+        (Verity.Core.Uint256.ofNat amount) := by
     simp [transfer, msgSender, getMapping, setMapping, balances,
-      DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
       h_balance_u, h]
   have h_recipient_state :
       (ContractResult.getState
-        ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
       ).storageMap 1 to =
-      DumbContracts.EVM.Uint256.add (state.storageMap 1 to)
-        (DumbContracts.Core.Uint256.ofNat amount) := by
+      Verity.EVM.Uint256.add (state.storageMap 1 to)
+        (Verity.Core.Uint256.ofNat amount) := by
     simp [transfer, msgSender, getMapping, setMapping, balances,
-      DumbContracts.require, DumbContracts.bind, Bind.bind, DumbContracts.pure, Pure.pure,
+      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
       h_balance_u, h]
   have h_sender_val :
       ((ContractResult.getState
-        ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
       ).storageMap 1 sender).val =
       (state.storageMap 1 sender).val - amount := by
-    have h_val := congrArg (fun v : DumbContracts.Core.Uint256 => v.val) h_sender_state
+    have h_val := congrArg (fun v : Verity.Core.Uint256 => v.val) h_sender_state
     have h_val' :
-        (DumbContracts.EVM.Uint256.sub (state.storageMap 1 sender)
-          (DumbContracts.Core.Uint256.ofNat amount)).val =
+        (Verity.EVM.Uint256.sub (state.storageMap 1 sender)
+          (Verity.Core.Uint256.ofNat amount)).val =
         (state.storageMap 1 sender).val - amount := by
       exact uint256_sub_val_of_le (state.storageMap 1 sender) amount h2
     simpa [h_val'] using h_val
   have h_recipient_val :
       ((ContractResult.getState
-        ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
       ).storageMap 1 to).val =
       (state.storageMap 1 to).val + amount := by
-    have h_val := congrArg (fun v : DumbContracts.Core.Uint256 => v.val) h_recipient_state
+    have h_val := congrArg (fun v : Verity.Core.Uint256 => v.val) h_recipient_state
     have h_val' :
-        (DumbContracts.EVM.Uint256.add (state.storageMap 1 to)
-          (DumbContracts.Core.Uint256.ofNat amount)).val =
-        ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus := by
+        (Verity.EVM.Uint256.add (state.storageMap 1 to)
+          (Verity.Core.Uint256.ofNat amount)).val =
+        ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus := by
       exact uint256_add_val (state.storageMap 1 to) amount
-    have h_mod : ((state.storageMap 1 to).val + amount) % DumbContracts.Core.Uint256.modulus =
+    have h_mod : ((state.storageMap 1 to).val + amount) % Verity.Core.Uint256.modulus =
         (state.storageMap 1 to).val + amount := by
       exact Nat.mod_eq_of_lt h3
     simpa [h_val', h_mod] using h_val
   calc
     ((ContractResult.getState
-      ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+      ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
     ).storageMap 1 sender).val +
     ((ContractResult.getState
-      ((transfer to (DumbContracts.Core.Uint256.ofNat amount)).run { state with sender := sender })
+      ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
     ).storageMap 1 to).val
         = (state.storageMap 1 sender).val - amount + ((state.storageMap 1 to).val + amount) := by
             simp [h_sender_val, h_recipient_val]

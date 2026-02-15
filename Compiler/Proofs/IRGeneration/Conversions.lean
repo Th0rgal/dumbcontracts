@@ -9,18 +9,18 @@
 -/
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
-import DumbContracts.Core
+import Verity.Proofs.Stdlib.SpecInterpreter
+import Verity.Core
 import Compiler.ContractSpec
 import Compiler.Hex
 
 namespace Compiler.Proofs.IRGeneration
 
 open Compiler
-open DumbContracts
+open Verity
 open Compiler.Hex
 open DiffTestTypes
-open DumbContracts.Proofs.Stdlib.SpecInterpreter
+open Verity.Proofs.Stdlib.SpecInterpreter
 
 /-! ## Address Encoding -/
 

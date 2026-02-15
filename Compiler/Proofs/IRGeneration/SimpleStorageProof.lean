@@ -7,19 +7,19 @@
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.Conversions
-import DumbContracts.Proofs.Stdlib.SpecInterpreter
+import Verity.Proofs.Stdlib.SpecInterpreter
 import Compiler.ContractSpec
 import Compiler.Specs
-import DumbContracts.Core
+import Verity.Core
 
 namespace Compiler.Proofs.IRGeneration.SimpleStorage
 
 open Compiler
 open Compiler.Specs
 open Compiler.ContractSpec
-open DumbContracts
+open Verity
 open DiffTestTypes
-open DumbContracts.Proofs.Stdlib.SpecInterpreter
+open Verity.Proofs.Stdlib.SpecInterpreter
 
 /-! ## Setup: Compile SimpleStorage
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Generate scaffold files for a new DumbContracts contract.
+"""Generate scaffold files for a new Verity contract.
 
 Creates the complete file structure needed to add a new contract:
-  - EDSL implementation (DumbContracts/Examples/{Name}.lean)
-  - Formal specification (DumbContracts/Specs/{Name}/Spec.lean)
-  - State invariants (DumbContracts/Specs/{Name}/Invariants.lean)
-  - Basic proofs (DumbContracts/Proofs/{Name}/Basic.lean)
-  - Correctness proofs (DumbContracts/Proofs/{Name}/Correctness.lean)
+  - EDSL implementation (Verity/Examples/{Name}.lean)
+  - Formal specification (Verity/Specs/{Name}/Spec.lean)
+  - State invariants (Verity/Specs/{Name}/Invariants.lean)
+  - Basic proofs (Verity/Proofs/{Name}/Basic.lean)
+  - Correctness proofs (Verity/Proofs/{Name}/Correctness.lean)
   - Compiler spec entry (printed to stdout for manual insertion)
   - Property tests (test/Property{Name}.t.sol)
 
@@ -114,16 +114,16 @@ def parse_functions(spec: str, fields: List[Field]) -> List[Function]:
 # ---------------------------------------------------------------------------
 
 def gen_example(cfg: ContractConfig) -> str:
-    """Generate DumbContracts/Examples/{Name}.lean"""
+    """Generate Verity/Examples/{Name}.lean"""
     has_mapping = any(f.is_mapping for f in cfg.fields)
 
-    imports = ["import DumbContracts.Core"]
+    imports = ["import Verity.Core"]
     if has_mapping or len(cfg.fields) > 1:
-        imports.append("import DumbContracts.EVM.Uint256")
+        imports.append("import Verity.EVM.Uint256")
 
-    opens = ["open DumbContracts"]
+    opens = ["open Verity"]
     if has_mapping or len(cfg.fields) > 1:
-        opens.append("open DumbContracts.EVM.Uint256")
+        opens.append("open Verity.EVM.Uint256")
 
     # Storage definitions
     storage_lines = []
@@ -154,7 +154,7 @@ def gen_example(cfg: ContractConfig) -> str:
 
 {chr(10).join(imports)}
 
-namespace DumbContracts.Examples.{cfg.name}
+namespace Verity.Examples.{cfg.name}
 
 {chr(10).join(opens)}
 
@@ -162,12 +162,12 @@ namespace DumbContracts.Examples.{cfg.name}
 {chr(10).join(storage_lines)}
 
 {chr(10).join(func_lines)}
-end DumbContracts.Examples.{cfg.name}
+end Verity.Examples.{cfg.name}
 """
 
 
 def gen_spec(cfg: ContractConfig) -> str:
-    """Generate DumbContracts/Specs/{Name}/Spec.lean"""
+    """Generate Verity/Specs/{Name}/Spec.lean"""
     spec_defs = []
     for fn in cfg.functions:
         spec_defs.append(f"-- What {fn.name} should do")
@@ -183,20 +183,20 @@ def gen_spec(cfg: ContractConfig) -> str:
   should do, separate from how it's implemented.
 -/
 
-import DumbContracts.Core
-import DumbContracts.Specs.Common
+import Verity.Core
+import Verity.Specs.Common
 
-namespace DumbContracts.Specs.{cfg.name}
+namespace Verity.Specs.{cfg.name}
 
-open DumbContracts
+open Verity
 
 {chr(10).join(spec_defs)}
-end DumbContracts.Specs.{cfg.name}
+end Verity.Specs.{cfg.name}
 """
 
 
 def gen_invariants(cfg: ContractConfig) -> str:
-    """Generate DumbContracts/Specs/{Name}/Invariants.lean"""
+    """Generate Verity/Specs/{Name}/Invariants.lean"""
     # Build isolation predicates based on fields
     # Address fields use storageAddr, uint256 fields use storage
     slot_isolation = []
@@ -223,12 +223,12 @@ def gen_invariants(cfg: ContractConfig) -> str:
   ContractState instances used with {cfg.name}.
 -/
 
-import DumbContracts.Core
-import DumbContracts.Specs.Common
+import Verity.Core
+import Verity.Specs.Common
 
-namespace DumbContracts.Specs.{cfg.name}
+namespace Verity.Specs.{cfg.name}
 
-open DumbContracts
+open Verity
 
 -- Basic well-formedness of ContractState
 structure WellFormedState (s : ContractState) : Prop where
@@ -240,12 +240,12 @@ structure WellFormedState (s : ContractState) : Prop where
 -- Context preservation: operations don't change sender/address
 abbrev context_preserved := Specs.sameContext
 
-end DumbContracts.Specs.{cfg.name}
+end Verity.Specs.{cfg.name}
 """
 
 
 def gen_basic_proofs(cfg: ContractConfig) -> str:
-    """Generate DumbContracts/Proofs/{Name}/Basic.lean"""
+    """Generate Verity/Proofs/{Name}/Basic.lean"""
     proof_stubs = []
     for fn in cfg.functions:
         proof_stubs.append(f"-- TODO: Prove {fn.name} meets its specification")
@@ -263,24 +263,24 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
   Status: Scaffold — proofs need implementation.
 -/
 
-import DumbContracts.Core
-import DumbContracts.Examples.{cfg.name}
-import DumbContracts.Specs.{cfg.name}.Spec
-import DumbContracts.Specs.{cfg.name}.Invariants
+import Verity.Core
+import Verity.Examples.{cfg.name}
+import Verity.Specs.{cfg.name}.Spec
+import Verity.Specs.{cfg.name}.Invariants
 
-namespace DumbContracts.Proofs.{cfg.name}
+namespace Verity.Proofs.{cfg.name}
 
-open DumbContracts
-open DumbContracts.Examples.{cfg.name}
-open DumbContracts.Specs.{cfg.name}
+open Verity
+open Verity.Examples.{cfg.name}
+open Verity.Specs.{cfg.name}
 
 {chr(10).join(proof_stubs)}
-end DumbContracts.Proofs.{cfg.name}
+end Verity.Proofs.{cfg.name}
 """
 
 
 def gen_correctness_proofs(cfg: ContractConfig) -> str:
-    """Generate DumbContracts/Proofs/{Name}/Correctness.lean"""
+    """Generate Verity/Proofs/{Name}/Correctness.lean"""
     return f"""/-
   {cfg.name}: Advanced Correctness Proofs
 
@@ -292,23 +292,23 @@ def gen_correctness_proofs(cfg: ContractConfig) -> str:
   Status: Scaffold — proofs need implementation.
 -/
 
-import DumbContracts.Core
-import DumbContracts.Examples.{cfg.name}
-import DumbContracts.Specs.{cfg.name}.Spec
-import DumbContracts.Specs.{cfg.name}.Invariants
-import DumbContracts.Proofs.{cfg.name}.Basic
+import Verity.Core
+import Verity.Examples.{cfg.name}
+import Verity.Specs.{cfg.name}.Spec
+import Verity.Specs.{cfg.name}.Invariants
+import Verity.Proofs.{cfg.name}.Basic
 
-namespace DumbContracts.Proofs.{cfg.name}.Correctness
+namespace Verity.Proofs.{cfg.name}.Correctness
 
-open DumbContracts
-open DumbContracts.Examples.{cfg.name}
-open DumbContracts.Specs.{cfg.name}
-open DumbContracts.Proofs.{cfg.name}
+open Verity
+open Verity.Examples.{cfg.name}
+open Verity.Specs.{cfg.name}
+open Verity.Proofs.{cfg.name}
 
 -- TODO: Add advanced correctness proofs
--- See DumbContracts/Proofs/SimpleStorage/Correctness.lean for reference
+-- See Verity/Proofs/SimpleStorage/Correctness.lean for reference
 
-end DumbContracts.Proofs.{cfg.name}.Correctness
+end Verity.Proofs.{cfg.name}.Correctness
 """
 
 
@@ -341,7 +341,7 @@ import "./yul/YulTestBase.sol";
 /**
  * @title Property{cfg.name}Test
  * @notice Property-based tests extracted from formally verified Lean theorems
- * @dev Maps theorems from DumbContracts/Proofs/{cfg.name}/ to executable tests
+ * @dev Maps theorems from Verity/Proofs/{cfg.name}/ to executable tests
  *
  * This file contains property tests corresponding to proven theorems:
  *
@@ -402,13 +402,13 @@ def {name_lower}Spec : ContractSpec := {{
 
 
 def gen_all_lean_imports(cfg: ContractConfig) -> str:
-    """Generate import lines for DumbContracts/All.lean."""
+    """Generate import lines for Verity/All.lean."""
     return f"""
-import DumbContracts.Examples.{cfg.name}
-import DumbContracts.Specs.{cfg.name}.Spec
-import DumbContracts.Specs.{cfg.name}.Invariants
-import DumbContracts.Proofs.{cfg.name}.Basic
-import DumbContracts.Proofs.{cfg.name}.Correctness"""
+import Verity.Examples.{cfg.name}
+import Verity.Specs.{cfg.name}.Spec
+import Verity.Specs.{cfg.name}.Invariants
+import Verity.Proofs.{cfg.name}.Basic
+import Verity.Proofs.{cfg.name}.Correctness"""
 
 
 # ---------------------------------------------------------------------------
@@ -434,7 +434,7 @@ def write_file(path: Path, content: str, dry_run: bool) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate scaffold files for a new DumbContracts contract.",
+        description="Generate scaffold files for a new Verity contract.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -482,11 +482,11 @@ Examples:
 
     # Generate files
     files = [
-        (ROOT / "DumbContracts" / "Examples" / f"{name}.lean", gen_example(cfg)),
-        (ROOT / "DumbContracts" / "Specs" / name / "Spec.lean", gen_spec(cfg)),
-        (ROOT / "DumbContracts" / "Specs" / name / "Invariants.lean", gen_invariants(cfg)),
-        (ROOT / "DumbContracts" / "Proofs" / name / "Basic.lean", gen_basic_proofs(cfg)),
-        (ROOT / "DumbContracts" / "Proofs" / name / "Correctness.lean", gen_correctness_proofs(cfg)),
+        (ROOT / "Verity" / "Examples" / f"{name}.lean", gen_example(cfg)),
+        (ROOT / "Verity" / "Specs" / name / "Spec.lean", gen_spec(cfg)),
+        (ROOT / "Verity" / "Specs" / name / "Invariants.lean", gen_invariants(cfg)),
+        (ROOT / "Verity" / "Proofs" / name / "Basic.lean", gen_basic_proofs(cfg)),
+        (ROOT / "Verity" / "Proofs" / name / "Correctness.lean", gen_correctness_proofs(cfg)),
         (ROOT / "test" / f"Property{name}.t.sol", gen_property_tests(cfg)),
     ]
 
@@ -501,7 +501,7 @@ Examples:
     print("=" * 60)
     print()
 
-    print("1. Add imports to DumbContracts/All.lean:")
+    print("1. Add imports to Verity/All.lean:")
     print(gen_all_lean_imports(cfg))
     print()
 

@@ -1,6 +1,8 @@
-# Dumb Contracts
+# Verity
 
-DumbContracts is a Lean 4 project for writing smart contracts in a tiny EDSL, proving their behavior in Lean, and compiling verified specs to Yul/EVM bytecode. It contains executable semantics, a compiler pipeline, and machine-checked proofs across the EDSL and IR generation, with Yul preservation proofs across all three verification layers.
+**Verity** (formerly DumbContracts) is a Lean 4 framework enabling developers to write smart contracts in a domain-specific language, formally verify their correctness, and compile them to EVM bytecode.
+
+The philosophy: focus on simple rules - easy to understand and trust for humans - while leaving implementation up to agentic developers. Thanks to formal verification, the code is mathematically guaranteed to match the specs, which don't require any understanding of algorithmics.
 
 ## Example
 
@@ -29,7 +31,7 @@ theorem store_retrieve_correct (s : ContractState) (value : Uint256) :
 ## Spec Example (Human-Friendly Rules)
 
 Specs are small, readable rules about what a function must do.
-Here is the SimpleStorage spec from `DumbContracts/Specs/SimpleStorage/Spec.lean`:
+Here is the SimpleStorage spec from `Verity/Specs/SimpleStorage/Spec.lean`:
 
 ```lean
 -- store updates slot 0, keeps everything else unchanged
@@ -42,6 +44,36 @@ def store_spec (value : Uint256) (s s' : ContractState) : Prop :=
 def retrieve_spec (result : Uint256) (s : ContractState) : Prop :=
   result = s.storage 0
 ```
+
+## Vision: Built for the Agentic Era
+
+Verity enables **separation of concerns** for trustless agentic development:
+
+- **Humans write specs** - Simple, auditable rules (10 lines)
+- **Agents write implementations** - Complex, optimized code (1000 lines)
+- **Math proves correctness** - No trust required
+
+### One Spec, Many Implementations
+
+```lean
+-- Human audits once:
+def transfer_spec : Spec Bool := ...
+
+-- Agents compete on implementations:
+def transfer_v1 : Contract Bool := ... // naive
+def transfer_v2 : Contract Bool := ... // gas-optimized
+def transfer_v3 : Contract Bool := ... // packed storage
+
+// All proven correct:
+theorem v1_correct : semantics transfer_v1 = transfer_spec
+theorem v2_correct : semantics transfer_v2 = transfer_spec
+theorem v3_correct : semantics transfer_v3 = transfer_spec
+```
+
+### Verified Intent Over Trusted Code
+
+- **Traditional**: "Can we trust this code?" (audit 1000 lines)
+- **Verity**: "Can we trust this spec?" (audit 10 lines, math proves the rest)
 
 ## Contracts
 
@@ -71,7 +103,7 @@ See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for detailed trust boundaries
 ## Repository Structure
 
 ```
-DumbContracts/                       # EDSL core + stdlib + examples/specs/proofs
+Verity/                              # EDSL core + stdlib + examples/specs/proofs
 Compiler/                            # Compiler (spec DSL, IR, codegen, selector, Yul AST)
 Compiler/Proofs/                     # Compiler correctness proofs (3 layers)
 compiler/                            # Generated Yul output + fixtures (used in tests/docs)
@@ -91,68 +123,73 @@ python3 scripts/generate_contract.py MyToken --fields "balances:mapping,totalSup
 ```
 
 **File Layout (Spec → Impl → Proof):**
-1. **Spec**: `DumbContracts/Specs/<Name>/Spec.lean` — Human-readable function specifications
-2. **Invariants**: `DumbContracts/Specs/<Name>/Invariants.lean` — State properties (optional but encouraged)
-3. **Implementation**: `DumbContracts/Examples/<Name>.lean` — EDSL contract code
-4. **EDSL Proofs**: `DumbContracts/Specs/<Name>/Proofs.lean` — Layer 1 correctness proofs
+1. **Spec**: `Verity/Specs/<Name>/Spec.lean` — Human-readable function specifications
+2. **Invariants**: `Verity/Specs/<Name>/Invariants.lean` — State properties (optional but encouraged)
+3. **Implementation**: `Verity/Examples/<Name>.lean` — EDSL contract code
+4. **EDSL Proofs**: `Verity/Specs/<Name>/Proofs.lean` — Layer 1 correctness proofs
 5. **Compiler Spec**: `Compiler/Specs.lean` — ContractSpec for code generation
 6. **Tests**: `test/Property<Name>.t.sol` + differential tests
 
-**Documentation Checklist:**
-After adding a contract, update these files to keep counts in sync:
-- `test/property_manifest.json` — Run `python3 scripts/extract_property_manifest.py`
-- Contracts table in this README
-- `docs/VERIFICATION_STATUS.md` — Contract table and coverage stats
-- `docs-site/public/llms.txt` — Quick Facts and theorem breakdown
+**Post-generation**: Fill in spec bodies, implement contract, write proofs, add properties. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-**Common Pitfalls:**
-- Storage slot mismatches between spec, EDSL, and compiler
-- Mapping conversions assuming simple slots instead of typed storage
-- Stale proofs when specs change
+## Building
 
-**Reference**: Use `SimpleStorage` as the minimal end-to-end example (full spec pipeline). Use `ReentrancyExample` as a reference for proof-only contracts (inline theorems, no compiler spec).
-
-**Infrastructure:**
-- **Proof automation**: `DumbContracts/Proofs/Stdlib/` (SpecInterpreter + automation lemmas)
-- **Compiler proofs**: `Compiler/Proofs/` (Layer 2: IR generation, Layer 3: Yul preservation)
-
-## Build and Test
-
-**Basic Commands:**
 ```bash
-lake build                          # Type-check Lean code (EDSL + proofs)
-lake build dumbcontracts-compiler   # Build compiler executable
-forge test                          # Run all Foundry tests
+# Install Lean 4 via elan
+curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
+source ~/.profile
+
+# Build the project
+lake build
+
+# Build the compiler binary
+lake build verity-compiler
+
+# Generate Yul from Lean contracts
+lake exe verity-compiler
+
+# Run Foundry tests (requires foundry)
+forge test
 ```
 
-**Differential Testing (optional scaling):**
-```bash
-# Defaults: DIFFTEST_RANDOM_SMALL=100, DIFFTEST_RANDOM_LARGE=10000, DIFFTEST_RANDOM_SEED=42
-# Override with DIFFTEST_RANDOM_COUNT or scale individually:
-DIFFTEST_RANDOM_SMALL=200 DIFFTEST_RANDOM_LARGE=20000 DIFFTEST_RANDOM_SEED=42 forge test
+## Testing
 
-# Test with multiple seeds to detect flakiness:
-./scripts/test_multiple_seeds.sh              # Test with 7 default seeds
-./scripts/test_multiple_seeds.sh 1 2 3 4 5    # Test with custom seeds
+**Property Testing**: 290 tests across 23 test suites validate EDSL ≡ Yul ≡ EVM execution.
+
+```bash
+# Run property tests
+forge test
+
+# Run with verbosity
+forge test -vvv
+
+# Run specific test file
+forge test --match-path test/PropertyCounter.t.sol
 ```
 
-**Validation Checks:**
-```bash
-python3 scripts/check_property_manifest.py       # Verify test tags reference real theorems
-python3 scripts/check_property_coverage.py       # Ensure all theorems have tests
-python3 scripts/check_property_manifest_sync.py  # Verify manifest matches proofs
-python3 scripts/check_selectors.py               # Verify keccak256 selector hashing
-python3 scripts/check_storage_layout.py          # Verify storage slot consistency across layers
-python3 scripts/check_contract_structure.py      # Verify contract file structure is complete
-python3 scripts/check_doc_counts.py              # Verify documentation counts match codebase
-```
+**Differential Testing**: Tests compare EDSL interpreter output against Solidity-compiled EVM execution to catch compiler bugs.
+
+See [`test/README.md`](test/README.md) for details.
 
 ## Documentation
 
-- `Compiler/Proofs/README.md` — Proof structure and navigation
-- `docs-site/` — Documentation website (MDX)
-- Roadmap, milestones, and progress updates: `docs-site/content/research.mdx` and `docs-site/content/research/iterations.mdx`
+- [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) — What's verified, what's trusted, trust reduction roadmap
+- [`AXIOMS.md`](AXIOMS.md) — All 5 axioms with soundness justifications
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — Coding conventions, workflow, PR guidelines
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — Verification progress, planned features
+- [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) — Per-theorem status
+- [`docs-site/`](docs-site/) — Full documentation site
+
+## Philosophy: "Dumb Contracts"
+
+The name **"dumb contracts"** captures our approach: write contracts so simple they can't be wrong.
+
+- **Simple specs** - No algorithmic knowledge required
+- **Human auditable** - Trust the rules, not the implementation
+- **Mathematically proven** - Correctness guaranteed by Lean
+
+In the agentic era, agents will write most code. Verity ensures their implementations are trustworthy by default.
 
 ## License
 
-MIT
+MIT License - See [LICENSE](LICENSE) file for details.

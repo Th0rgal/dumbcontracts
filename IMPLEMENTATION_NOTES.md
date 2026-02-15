@@ -2,7 +2,7 @@
 
 ## Overview
 
-The 7 sum properties in `DumbContracts/Specs/Ledger/SumProofs.lean` prove invariants like "total supply = sum of all balances" using the finite address set abstraction (`FiniteAddressSet` in `DumbContracts/Core/FiniteSet.lean`).
+The 7 sum properties in `Verity/Specs/Ledger/SumProofs.lean` prove invariants like "total supply = sum of all balances" using the finite address set abstraction (`FiniteAddressSet` in `Verity/Core/FiniteSet.lean`).
 
 ## Proof Approach
 

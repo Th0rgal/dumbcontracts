@@ -38,7 +38,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full conventions.
 | Current progress | docs/ROADMAP.md |
 | Verification details | docs/VERIFICATION_STATUS.md |
 | Proof guide | Compiler/Proofs/README.md |
-| EDSL semantics | DumbContracts/Core.lean |
+| EDSL semantics | Verity/Core.lean |
 | Compiler specs | Compiler/Specs.lean |
 | IR semantics | Compiler/Proofs/IRGeneration/IRInterpreter.lean |
 | Yul semantics | Compiler/Proofs/YulGeneration/Semantics.lean |
@@ -72,7 +72,7 @@ Layer 3 ✅ IR → Yul
 See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed status.
 
 **Directories**:
-- `DumbContracts/` - EDSL, specs, Layer 1 proofs
+- `Verity/` - EDSL, specs, Layer 1 proofs
 - `Compiler/` - IR, Yul, codegen
 - `Compiler/Proofs/` - Layer 2 & 3 proofs
 - `docs/` - Roadmap, verification status
@@ -107,7 +107,7 @@ forge test                           # All tests
 
 - Lean 4: [docs](https://lean-lang.org/documentation/) | [theorem proving](https://lean-lang.org/theorem_proving_in_lean4/)
 - Tactics: [Mathlib reference](https://leanprover-community.github.io/mathlib4_docs/tactics.html)
-- Start here: `DumbContracts/Specs/SimpleStorage/Proofs.lean`
+- Start here: `Verity/Specs/SimpleStorage/Proofs.lean`
 
 ---
 

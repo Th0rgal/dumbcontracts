@@ -10,11 +10,11 @@ Formal verification proofs for the DumbContracts compiler, proving correctness a
 
 Key entry points:
 
-- Spec semantics: `DumbContracts/Proofs/Stdlib/SpecInterpreter.lean`
+- Spec semantics: `Verity/Proofs/Stdlib/SpecInterpreter.lean`
 - IR generation and proofs: `Compiler/Proofs/IRGeneration/`
 - Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
 
-Layer 1 proofs live alongside each contract spec in `DumbContracts/Specs/<Name>/Proofs.lean`.
+Layer 1 proofs live alongside each contract spec in `Verity/Specs/<Name>/Proofs.lean`.
 
 ## Build
 
@@ -27,7 +27,7 @@ Expected warnings: `sorry` from `DumbContracts.Specs.Ledger.SumProofs` and `Dumb
 
 ## Infrastructure
 
-### SpecInterpreter ([SpecInterpreter.lean](../../DumbContracts/Proofs/Stdlib/SpecInterpreter.lean))
+### SpecInterpreter ([SpecInterpreter.lean](../../Verity/Proofs/Stdlib/SpecInterpreter.lean))
 
 Execution semantics for the ContractSpec language.
 
@@ -35,7 +35,7 @@ Execution semantics for the ContractSpec language.
 
 **Key Functions**: `evalExpr` (expression evaluation), `execStmt` (statement execution), `interpretSpec` (top-level interpreter).
 
-### Automation Library ([Automation.lean](../../DumbContracts/Proofs/Stdlib/Automation.lean))
+### Automation Library ([Automation.lean](../../Verity/Proofs/Stdlib/Automation.lean))
 
 Proven helper lemmas for common proof patterns:
 

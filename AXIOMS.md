@@ -1,4 +1,4 @@
-# Axioms in DumbContracts
+# Axioms in Verity
 
 This file documents all axioms used in the verification codebase and their soundness justifications.
 
@@ -13,7 +13,7 @@ Axioms should be **avoided whenever possible** as they introduce trust assumptio
 
 ## Why Axioms Are Sometimes Necessary
 
-Lean's proof assistant requires all functions to be provably terminating. However, some functions in DumbContracts:
+Lean's proof assistant requires all functions to be provably terminating. However, some functions in Verity:
 - Use partial recursion (fuel-based)
 - Have structural equality that's obvious by inspection but hard to formally prove
 - Represent external system behavior (Ethereum addresses)
@@ -178,7 +178,7 @@ axiom keccak256_first_4_bytes (sig : String) : Nat
 
 ### 5. `addressToNat_injective`
 
-**Location**: `DumbContracts/Proofs/Stdlib/Automation.lean:156`
+**Location**: `Verity/Proofs/Stdlib/Automation.lean:156`
 
 **Statement**:
 ```lean
@@ -279,14 +279,14 @@ See `TRUST_ASSUMPTIONS.md` (issue #68) for complete trust model.
 ## CI Validation
 
 The CI workflow (`.github/workflows/verify.yml`) automatically:
-- Detects all axioms in `Compiler/` and `DumbContracts/` directories
+- Detects all axioms in `Compiler/` and `Verity/` directories
 - Fails if any axiom is not documented in this file
 - Reports axiom count in build logs
 
 To check locally:
 ```bash
 # Find all axioms
-grep -rn "^axiom " Compiler/ DumbContracts/ --include="*.lean"
+grep -rn "^axiom " Compiler/ Verity/ --include="*.lean"
 
 # Verify this file documents them all
 cat AXIOMS.md

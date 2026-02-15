@@ -1,8 +1,5 @@
 /-
-  State invariants for SimpleToken
-
-  This file defines properties that should hold in any valid SimpleToken state.
-  These invariants are crucial for proving correctness of token operations.
+  State invariants for SimpleToken contract.
 -/
 
 import DumbContracts.Core
@@ -14,10 +11,7 @@ namespace DumbContracts.Specs.SimpleToken
 open DumbContracts
 open DumbContracts.EVM.Uint256
 
-/-! ## State Invariants
-
-Properties that should always hold in a well-formed SimpleToken state.
--/
+/-! ## State Invariants -/
 
 /-- Basic well-formedness: addresses are non-empty -/
 structure WellFormedState (s : ContractState) : Prop where
@@ -25,9 +19,7 @@ structure WellFormedState (s : ContractState) : Prop where
   contract_nonempty : s.thisAddress ≠ ""
   owner_nonempty : s.storageAddr 0 ≠ ""
 
-/-- All balances are non-negative
-    Note: In our Uint256 model, this is implicit, but we state it for clarity
--/
+/-- All balances are non-negative (implicit in Uint256 model) -/
 def balances_non_negative (s : ContractState) : Prop :=
   ∀ addr : Address, s.storageMap 1 addr ≥ 0
 
@@ -35,20 +27,14 @@ def balances_non_negative (s : ContractState) : Prop :=
 def supply_non_negative (s : ContractState) : Prop :=
   s.storage 2 ≥ 0
 
-/-- Total supply equals sum of all balances
-    Note: This is the key invariant for token correctness.
-    In a finite model, this would be: totalSupply = Σ addr, balance[addr]
-
-    For our infinite address space model, we express this differently:
-    "Any finite subset of addresses has balances that don't exceed total supply"
--/
+/-- Sum balances over a list of addresses -/
 def sum_balances (s : ContractState) (addrs : List Address) : Uint256 :=
   (addrs.map (fun addr => s.storageMap 1 addr)).sum
 
+/-- Total supply bounds all finite subsets of balances -/
 def supply_bounds_balances (s : ContractState) : Prop :=
   ∀ addrs : List Address, sum_balances s addrs ≤ s.storage 2
 
--- Scoped helper for future total-supply proofs.
 private def supply_equals_sum (s : ContractState) (addrs : List Address) : Prop :=
   s.storage 2 = sum_balances s addrs
 
@@ -89,9 +75,7 @@ def transfer_preserves_supply (s s' : ContractState) : Prop :=
 def mint_increases_supply (amount : Uint256) (s s' : ContractState) : Prop :=
   s'.storage 2 = add (s.storage 2) amount
 
-/-- Access control: only owner can mint
-    Note: This requires modeling of the require/onlyOwner guard
--/
+/-- Access control: only owner can mint -/
 def only_owner_can_mint (s : ContractState) : Prop :=
   s.sender = s.storageAddr 0
 

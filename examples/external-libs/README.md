@@ -12,7 +12,7 @@ This directory contains example Yul library files that can be linked with Verity
 Compile a contract with external library linking:
 
 ```bash
-lake exec verity-compiler \
+lake exe verity-compiler \
     --link examples/external-libs/PoseidonT3.yul \
     --link examples/external-libs/PoseidonT4.yul \
     -o compiler/yul

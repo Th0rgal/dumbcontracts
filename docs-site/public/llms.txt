@@ -85,6 +85,22 @@ The GitHub Actions workflow validates:
 - Contract file structure validation
 - Foundry tests pass (8 shards, 7 seeds)
 
+## External Library Linking
+
+Use the Linker to inject production Yul libraries (Poseidon, Groth16, etc.) into compiled contracts. Prove properties against simple placeholders in Lean, then swap in real implementations at compile time.
+
+**Workflow**: EDSL placeholder (addition) → ContractSpec with `Expr.externalCall` → `--link lib.yul` at compile time → Yul with injected library functions.
+
+**Example**: CryptoHash contract demonstrates the full pattern:
+- EDSL: `Verity/Examples/CryptoHash.lean` (placeholder: `add a b`)
+- Spec: `Compiler/Specs.lean` → `cryptoHashSpec` (calls `PoseidonT3_hash`)
+- Library: `examples/external-libs/PoseidonT3.yul`
+- Compile: `lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul --link examples/external-libs/PoseidonT4.yul`
+
+**Validation**: The Linker checks for duplicate names, builtin shadowing, and unresolved external references before injecting.
+
+**Trust model**: Linked libraries are outside the proof boundary. Proofs establish: "If the library behaves like the placeholder, the contract is correct."
+
 ## Documentation URLs
 
 - Main: https://verity.thomasm.ar/
@@ -94,6 +110,7 @@ The GitHub Actions workflow validates:
 - Core: https://verity.thomasm.ar/core
 - Compiler: https://verity.thomasm.ar/compiler
 - Guides: https://verity.thomasm.ar/guides/first-contract
+- Linking Libraries: https://verity.thomasm.ar/guides/linking-libraries
 
 Add `.md` to any URL for raw markdown (saves tokens).
 

@@ -8,6 +8,9 @@ object "SafeCounter" {
             switch shr(224, calldataload(0))
             case 0xd09de08a {
                 /* increment() */
+                if callvalue() {
+                    revert(0, 0)
+                }
                 let count := sload(0)
                 let newCount := add(count, 1)
                 if iszero(gt(newCount, count)) {
@@ -22,6 +25,9 @@ object "SafeCounter" {
             }
             case 0x2baeceb7 {
                 /* decrement() */
+                if callvalue() {
+                    revert(0, 0)
+                }
                 let count := sload(0)
                 if lt(count, 1) {
                     mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
@@ -35,6 +41,9 @@ object "SafeCounter" {
             }
             case 0xa87d942c {
                 /* getCount() */
+                if callvalue() {
+                    revert(0, 0)
+                }
                 mstore(0, sload(0))
                 return(0, 32)
             }

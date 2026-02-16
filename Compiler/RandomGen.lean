@@ -16,30 +16,41 @@ open Compiler.DiffTestTypes
 open Compiler.Hex
 
 /-!
-## Simple PRNG
+## SplitMix64 PRNG
 
-Linear Congruential Generator for reproducible randomness.
+64-bit SplitMix generator for reproducible randomness with good
+distribution properties.  Replaces the previous 31-bit LCG which had
+only 2^31 distinct states and poor high-bit distribution.
+
+Reference: Steele, Lea & Flood, "Fast Splittable Pseudorandom Number
+Generators", OOPSLA 2014.
 -/
 
 structure RNG where
   seed : Nat
   deriving Repr
 
-def RNG.next (rng : RNG) : RNG × Nat :=
-  let a := 1103515245
-  let c := 12345
-  let m := 2^31
-  let newSeed := (a * rng.seed + c) % m
-  ({ seed := newSeed }, newSeed)
+private def mask64 : Nat := 2^64 - 1
 
-def RNG.init (seed : Nat) : RNG := { seed := seed }
+/-- Advance the state by the SplitMix64 golden-gamma increment and
+    mix the result through two xor-shift-multiply rounds. -/
+def RNG.next (rng : RNG) : RNG × Nat :=
+  let s := (rng.seed + 0x9e3779b97f4a7c15) &&& mask64
+  let z := s
+  let z := ((z ^^^ (z >>> 30)) * 0xbf58476d1ce4e5b9) &&& mask64
+  let z := ((z ^^^ (z >>> 27)) * 0x94d049bb133111eb) &&& mask64
+  let z := z ^^^ (z >>> 31)
+  ({ seed := s }, z)
+
+def RNG.init (seed : Nat) : RNG := { seed := seed &&& mask64 }
 
 /-!
 ## Random Value Generation
 
 Values are drawn from a mix of edge cases and bounded random values
 so that differential tests exercise overflow, underflow, and boundary
-conditions alongside typical small-value scenarios.
+conditions alongside typical small-value scenarios.  The generator
+covers the full uint256 range via multiple draws.
 -/
 
 -- Edge-case uint256 values that trigger overflow/underflow/boundary bugs
@@ -47,22 +58,50 @@ private def edgeUint256Values : List Nat :=
   [ 0
   , 1
   , 2
-  , 2^128
-  , 2^255
-  , 2^256 - 2  -- type(uint256).max - 1
-  , 2^256 - 1  -- type(uint256).max
+  , 255                  -- max uint8
+  , 256                  -- 2^8
+  , 2^16 - 1             -- max uint16
+  , 2^128                -- midpoint
+  , 2^128 - 1
+  , 2^255                -- high bit
+  , 2^255 - 1
+  , 2^256 - 2            -- type(uint256).max - 1
+  , 2^256 - 1            -- type(uint256).max
   ]
 
--- Generate random uint256 with edge-case injection.
--- ~7/16 of the time an edge-case value is returned; otherwise a
--- bounded random value is used (range 0..999999).
+/-- Build a full-range 256-bit value from four 64-bit draws. -/
+private def gen256Bits (rng : RNG) : RNG × Nat :=
+  let (rng, a) := rng.next
+  let (rng, b) := rng.next
+  let (rng, c) := rng.next
+  let (rng, d) := rng.next
+  (rng, ((a &&& mask64) <<< 192) + ((b &&& mask64) <<< 128)
+      + ((c &&& mask64) <<< 64) + (d &&& mask64))
+
+/-- Generate random uint256 with mixed distribution.
+    Distribution (by selector mod 32):
+      0..11  → deterministic edge-case value
+      12..19 → small value 0..999_999 (typical amounts)
+      20..23 → medium value 0..2^128 (intermediate range)
+      24..31 → full-range 256-bit value (overflow/wrapping territory) -/
 def genUint256 (rng : RNG) : RNG × Nat :=
-  let (rng', n) := rng.next
-  let selector := n % 16
+  let (rng, n) := rng.next
+  let selector := n % 32
   if selector < edgeUint256Values.length then
-    (rng', edgeUint256Values.get! selector)
+    -- Deterministic edge case
+    (rng, edgeUint256Values.get! selector)
+  else if selector < 20 then
+    -- Small value band
+    let (rng, v) := rng.next
+    (rng, v % 1000000)
+  else if selector < 24 then
+    -- Medium value band (up to 2^128)
+    let (rng, v) := rng.next
+    let (rng, w) := rng.next
+    (rng, ((v &&& mask64) <<< 64) + (w &&& mask64))
   else
-    (rng', n % 1000000)
+    -- Full 256-bit range
+    gen256Bits rng
 
 -- Convert Address to Nat for calldata args (keeps parity with Interpreter)
 private def addressToNatNormalized (addr : Address) : Nat :=

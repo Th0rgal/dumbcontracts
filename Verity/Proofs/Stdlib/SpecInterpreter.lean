@@ -138,6 +138,7 @@ All arithmetic is modular (mod 2^256) to match EVM semantics.
 -/
 
 def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (paramNames : List String) : Expr → Nat
+ termination_by expr => expr
   | Expr.literal n => n % modulus
   | Expr.param name =>
       match paramNames.findIdx? (· == name) with
@@ -503,6 +504,8 @@ namespace Verity.Proofs.Stdlib.SpecInterpreter
 
 def mkExternalFunction (name : String) (fn : List Nat → Nat) : (String × (List Nat → Nat)) :=
   (name, fn)
+
+open Verity.Core.Uint256 (modulus)
 
 def mkPoseidonT3 : (String × (List Nat → Nat)) :=
   mkExternalFunction "PoseidonT3_hash" (fun args =>

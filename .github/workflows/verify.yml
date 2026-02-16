@@ -136,6 +136,9 @@ jobs:
       - name: Generate Yul
         run: ./.lake/build/bin/verity-compiler
 
+      - name: Keccak-256 self-test (validate hash implementation)
+        run: python3 scripts/keccak256.py --self-test
+
       - name: Check selector hashing against specs
         run: python3 scripts/check_selectors.py
 

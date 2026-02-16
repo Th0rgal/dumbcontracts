@@ -198,15 +198,9 @@ def exampleUsage : Contract Uint256 := do
   tip 100
   getBalance "0xAlice"
 
-#eval! (exampleUsage.run {
-  storage := fun _ => 0,
-  storageAddr := fun _ => "",
-  storageMap := fun _ _ => 0,
+#eval! (exampleUsage.run { defaultState with
   sender := "0xAlice",
-  thisAddress := "0xTipJar",
-  msgValue := 0,
-  blockTimestamp := 0,
-  knownAddresses := fun _ => Core.FiniteAddressSet.empty
+  thisAddress := "0xTipJar"
 }).getValue?
 -- Expected output: some 100
 
@@ -218,6 +212,8 @@ end Verity.Examples.TipJar
 | Function | Type | Description |
 |----------|------|-------------|
 | `msgSender` | `Contract Address` | Get transaction sender |
+| `msgValue` | `Contract Uint256` | Get ETH value sent with call |
+| `blockTimestamp` | `Contract Uint256` | Get current block timestamp |
 | `getStorage s` | `Contract Uint256` | Read uint256 slot |
 | `setStorage s val` | `Contract Unit` | Write uint256 slot |
 | `getMapping s key` | `Contract Uint256` | Read mapping entry |
@@ -225,6 +221,12 @@ end Verity.Examples.TipJar
 | `getStorageAddr s` | `Contract Address` | Read address slot |
 | `setStorageAddr s val` | `Contract Unit` | Write address slot |
 | `require cond msg` | `Contract Unit` | Revert if condition is false |
+
+> **Tip**: Use `defaultState` to create a zero-initialized state for testing:
+> ```lean
+> #eval! (myContract.run { defaultState with sender := "0xAlice" }).getValue?
+> ```
+> This avoids spelling out every field and stays valid when new fields are added.
 
 ### 3.2 Test the EDSL Implementation
 

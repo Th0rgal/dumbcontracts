@@ -75,17 +75,9 @@ def exampleUsage : Contract (Uint256 × Address) := do
   let finalOwner ← getOwner
   return (finalCount, finalOwner)
 
-#eval (exampleUsage.run {
-  storage := fun _ => 0,
-  storageAddr := fun _ => "",
-  storageMap := fun _ _ => 0,
-  storageMapUint := fun _ _ => 0,
-  storageMap2 := fun _ _ _ => 0,
+#eval (exampleUsage.run { defaultState with
   sender := "0xAlice",  -- Alice is the caller
-  thisAddress := "0xContract",
-  msgValue := 0,
-  blockTimestamp := 0,
-  knownAddresses := fun _ => Core.FiniteAddressSet.empty
+  thisAddress := "0xContract"
 }).getValue?
 -- Expected output: some (2, "0xBob")
 

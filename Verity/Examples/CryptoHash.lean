@@ -61,17 +61,9 @@ def exampleUsage : Contract Uint256 := do
   getLastHash
 
 -- Evaluate the example
-#eval (exampleUsage.run {
-  storage := fun _ => 0,
-  storageAddr := fun _ => "",
-  storageMap := fun _ _ => 0,
-  storageMapUint := fun _ _ => 0,
-  storageMap2 := fun _ _ _ => 0,
+#eval (exampleUsage.run { defaultState with
   sender := "0xAlice",
-  thisAddress := "0xCryptoHash",
-  msgValue := 0,
-  blockTimestamp := 0,
-  knownAddresses := fun _ => Verity.Core.FiniteAddressSet.empty
+  thisAddress := "0xCryptoHash"
 }).getValue?
 -- Expected output: some 300 (with placeholder hash: 100 + 200)
 

@@ -47,6 +47,20 @@ structure ContractState where
   knownAddresses : Nat → FiniteAddressSet  -- Tracked addresses per storage slot (for sum properties)
   events : List Event := []  -- Emitted events, append-only log (#153)
 
+-- Default zero state — all storage zero, empty addresses, no events.
+-- Use `{ defaultState with sender := "0xAlice" }` to customize individual fields.
+def defaultState : ContractState where
+  storage := fun _ => 0
+  storageAddr := fun _ => ""
+  storageMap := fun _ _ => 0
+  storageMapUint := fun _ _ => 0
+  storageMap2 := fun _ _ _ => 0
+  sender := ""
+  thisAddress := ""
+  msgValue := 0
+  blockTimestamp := 0
+  knownAddresses := fun _ => Core.FiniteAddressSet.empty
+
 -- Repr instance for ContractState (simplified for readability)
 instance : Repr ContractState where
   reprPrec s _ := s!"ContractState(sender={s.sender}, thisAddress={s.thisAddress})"

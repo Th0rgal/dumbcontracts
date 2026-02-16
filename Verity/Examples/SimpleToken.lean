@@ -95,17 +95,9 @@ def exampleUsage : Contract (Uint256 × Uint256 × Uint256) := do
   return (aliceBalance, bobBalance, supply)
 
 -- Evaluate the example
-#eval! (exampleUsage.run {
-  storage := fun _ => 0,
-  storageAddr := fun _ => "",
-  storageMap := fun _ _ => 0,
-  storageMapUint := fun _ _ => 0,
-  storageMap2 := fun _ _ _ => 0,
+#eval! (exampleUsage.run { defaultState with
   sender := "0xAlice",
-  thisAddress := "0xSimpleToken",
-  msgValue := 0,
-  blockTimestamp := 0,
-  knownAddresses := fun _ => Core.FiniteAddressSet.empty
+  thisAddress := "0xSimpleToken"
 }).getValue?
 -- Expected output: some (700, 300, 1000) - Alice: 700, Bob: 300, supply: 1000
 

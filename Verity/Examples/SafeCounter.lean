@@ -44,17 +44,9 @@ def exampleUsage : Contract Uint256 := do
   decrement
   getCount
 
-#eval (exampleUsage.run {
-  storage := fun _ => 0,
-  storageAddr := fun _ => "",
-  storageMap := fun _ _ => 0,
-  storageMapUint := fun _ _ => 0,
-  storageMap2 := fun _ _ _ => 0,
+#eval (exampleUsage.run { defaultState with
   sender := "0xAlice",
-  thisAddress := "0xSafeCounter",
-  msgValue := 0,
-  blockTimestamp := 0,
-  knownAddresses := fun _ => Core.FiniteAddressSet.empty
+  thisAddress := "0xSafeCounter"
 }).getValue?
 -- Expected output: some 1
 

@@ -309,13 +309,17 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
         Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
         Contract.run, ContractResult.isSuccess, h_balance_u, beq_iff_eq]
     constructor
-    · -- Spec success
+    · -- Spec success (self-transfer: amountDelta=0, overflow check trivially passes)
       have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
         exact Nat.not_lt_of_ge h
+      have h_one_mod : (1 % Verity.Core.Uint256.modulus) = 1 := by
+        exact Nat.mod_eq_of_lt (by decide : (1 : Nat) < Verity.Core.Uint256.modulus)
+      have h_eq_nat : (addressToNat sender == addressToNat sender) = true := by simp
       simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
         ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
-        SpecStorage.setMapping, h, h_not_lt, Nat.mod_eq_of_lt h_amount_lt,
-        Nat.mod_eq_of_lt h_sender_lt, h_self_mod_eq, h_self_ge,
+        SpecStorage.setMapping, SpecStorage_getMapping_setMapping_same, h, h_not_lt,
+        Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_sender_lt,
+        addressToNat_mod_eq, h_one_mod, h_eq_nat,
         lookup_senderBal, lookup_recipientBal, lookup_addr_first,
         List.lookup, BEq.beq, beq_iff_eq, decide_eq_true_eq, String.decEq]
     constructor
@@ -408,12 +412,15 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
         Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
         Contract.run, ContractResult.isSuccess, h_balance_u, h_eq, beq_iff_eq]
     constructor
-    · -- Spec success
+    · -- Spec success (different addresses: overflow check uses h_no_overflow)
       have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
         exact Nat.not_lt_of_ge h
+      have h_one_mod : (1 % Verity.Core.Uint256.modulus) = 1 := by
+        exact Nat.mod_eq_of_lt (by decide : (1 : Nat) < Verity.Core.Uint256.modulus)
       simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
         ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
-        SpecStorage.setMapping, h, h_not_lt, Nat.mod_eq_of_lt h_amount_lt, addressToNat_mod_eq,
+        SpecStorage.setMapping, SpecStorage_getMapping_setMapping_same, h, h_not_lt,
+        Nat.mod_eq_of_lt h_amount_lt, addressToNat_mod_eq, h_one_mod,
         h_addr_ne, h_addr_ne', lookup_senderBal, lookup_recipientBal, lookup_addr_first, lookup_addr_second,
         h_overflow_mod_eq, h_overflow_ge,
         List.lookup, BEq.beq, beq_iff_eq, decide_eq_true_eq, String.decEq]

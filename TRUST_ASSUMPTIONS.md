@@ -318,6 +318,7 @@ Library functions are provided via `--link <path.yul>` flags to the compiler CLI
 
 **Future Work**:
 - Issue #71: Integrate EVMYulLean precompiled contracts
+- Issue #172: Model linked library functions in SpecInterpreter for differential testing
 - Formal interface specifications for external calls
 
 ---

@@ -14,6 +14,7 @@
   - If/else branching (#179)
   - Double mappings and uint256-keyed mappings (#154)
   - Event emission recording (#153)
+  - External function calls via externalFunctions parameter (#172)
 
   Known limitations (basic execStmts path):
   - forEach loops are no-ops — use execStmtsFuel for contracts with loops (#179)
@@ -60,6 +61,9 @@ structure EvalContext where
   localVars : List (String × Nat)
   -- Array parameters: name → (length, elements) (#180)
   arrayParams : List (String × (Nat × List Nat))
+  -- External functions: name → (args) → result (#172)
+  -- Allows modeling linked library functions for spec verification
+  externalFunctions : List (String × (List Nat → Nat))
   deriving Repr
 
 /-!
@@ -175,7 +179,11 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.blockTimestamp => ctx.blockTimestamp % modulus
   | Expr.localVar name =>
       ctx.localVars.lookup name |>.getD 0
-  | Expr.externalCall _name _args => 0
+  | Expr.externalCall name args =>
+      let argVals := args.map (evalExpr ctx storage fields paramNames ·)
+      match ctx.externalFunctions.lookup name with
+      | some fn => fn argVals
+      | none => 0
   | Expr.internalCall _functionName _args => 0
   | Expr.arrayLength name =>
       match ctx.arrayParams.lookup name with
@@ -438,7 +446,8 @@ structure SpecResult where
   finalStorage : SpecStorage
   deriving Repr
 
-def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Transaction) : SpecResult :=
+def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Transaction)
+    (externalFunctions : List (String × (List Nat → Nat)) := []) : SpecResult :=
   if tx.functionName == "" then
     let ctx : EvalContext := {
       sender := tx.sender
@@ -450,6 +459,7 @@ def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Tra
       constructorParamTypes := []
       localVars := []
       arrayParams := []
+      externalFunctions := externalFunctions
     }
     match execConstructor spec ctx initialStorage with
     | none =>
@@ -469,6 +479,7 @@ def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Tra
       constructorParamTypes := []
       localVars := []
       arrayParams := []
+      externalFunctions := externalFunctions
     }
     match execFunction spec tx.functionName ctx initialStorage with
     | none =>
@@ -478,5 +489,30 @@ def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Tra
     | some (_, finalState) =>
         { success := true, returnValue := finalState.returnValue,
           revertReason := none, finalStorage := finalState.storage }
+
+end Verity.Proofs.Stdlib.SpecInterpreter
+
+/-!
+## Helper Functions
+
+Helper functions for creating external function models.
+-/
+
+namespace Verity.Proofs.Stdlib.SpecInterpreter
+
+def mkExternalFunction (name : String) (fn : List Nat → Nat) : (String × (List Nat → Nat)) :=
+  (name, fn)
+
+def mkPoseidonT3 : (String × (List Nat → Nat)) :=
+  mkExternalFunction "PoseidonT3_hash" (fun args =>
+    match args with
+    | [a, b] => (a + b) % modulus
+    | _ => 0)
+
+def mkPoseidonT4 : (String × (List Nat → Nat)) :=
+  mkExternalFunction "PoseidonT4_hash" (fun args =>
+    match args with
+    | [a, b, c] => (a + b + c) % modulus
+    | _ => 0)
 
 end Verity.Proofs.Stdlib.SpecInterpreter

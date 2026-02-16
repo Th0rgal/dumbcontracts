@@ -29,6 +29,12 @@ private def writeContract (outDir : String) (contract : IRContract) (libraryPath
     | .error err => throw (IO.userError err)
     | .ok () => pure ()
 
+  -- Validate: library functions don't shadow generated code or builtins
+  if !allLibFunctions.isEmpty then
+    match validateNoNameCollisions yulObj allLibFunctions with
+    | .error err => throw (IO.userError err)
+    | .ok () => pure ()
+
   -- Validate: all external calls in the contract are provided by libraries
   match validateExternalReferences yulObj allLibFunctions with
   | .error err => throw (IO.userError err)

@@ -240,17 +240,37 @@ private def collectFuncDefs (stmts : List YulStmt) : List String :=
 private def collectLibraryFunctions (libs : List LibraryFunction) : List String :=
   libs.map (·.name)
 
--- Validate that no two library functions share the same name
-def validateNoDuplicateNames (libraries : List LibraryFunction) : Except String Unit := do
-  let names := libraries.map (·.name)
-  let rec findDup : List String → List String → Option String
+-- Helper: find the first duplicate in a list
+private def findDuplicate (names : List String) : Option String :=
+  let rec go : List String → List String → Option String
     | [], _ => none
     | n :: rest, seen =>
         if seen.contains n then some n
-        else findDup rest (n :: seen)
-  match findDup names [] with
+        else go rest (n :: seen)
+  go names []
+
+-- Validate that no two library functions share the same name
+def validateNoDuplicateNames (libraries : List LibraryFunction) : Except String Unit := do
+  let names := libraries.map (·.name)
+  match findDuplicate names with
   | some dup => throw s!"Duplicate library function name: {dup}"
   | none => pure ()
+
+-- Validate that library functions don't shadow generated code or builtins.
+-- Catches bugs where a library redefines e.g. `mappingSlot` or a Yul builtin.
+def validateNoNameCollisions (obj : YulObject) (libraries : List LibraryFunction) : Except String Unit := do
+  let allCode := obj.deployCode ++ obj.runtimeCode
+  let localDefs := (collectFuncDefs allCode).eraseDups
+  let libNames := collectLibraryFunctions libraries
+  -- Check library names vs locally-defined functions
+  let localCollisions := libNames.filter fun name => localDefs.contains name
+  if !localCollisions.isEmpty then
+    throw s!"Library function(s) shadow generated code: {String.intercalate ", " localCollisions}"
+  -- Check library names vs Yul builtins
+  let builtinCollisions := libNames.filter fun name => yulBuiltins.contains name
+  if !builtinCollisions.isEmpty then
+    throw s!"Library function(s) shadow Yul builtins: {String.intercalate ", " builtinCollisions}"
+  pure ()
 
 -- Validate that all external calls are provided by libraries
 -- Excludes Yul builtins and locally-defined functions

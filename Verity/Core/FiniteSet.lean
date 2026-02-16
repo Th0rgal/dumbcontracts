@@ -1,11 +1,13 @@
 /-
-  Minimal finite set implementation for address tracking.
+  Finite set implementation for address tracking and sum properties.
 
-  This module provides a simple finite set structure to enable
-  proving sum properties over contract balances.
+  This module provides a finite set structure backed by duplicate-free
+  lists, together with the operations and theorems needed for proving
+  balance-conservation properties (e.g. Ledger sum proofs, issue #65).
 
-  This is a simplified implementation without all the helper theorems.
-  Theorems will be added as needed during proof development.
+  Key operations: empty, insert, remove, contains, union, filter, sum.
+  Key theorems:  insert_of_mem, insert_of_not_mem, mem_elements_insert,
+                 card_insert_of_not_mem, card_insert_of_mem.
 -/
 
 namespace Verity.Core
@@ -31,6 +33,15 @@ def insert [DecidableEq α] (a : α) (s : FiniteSet α) : FiniteSet α :=
   else
     ⟨a :: s.elements, List.nodup_cons.mpr ⟨h, s.nodup⟩⟩
 
+/-- Check if an element is in the set -/
+def contains [DecidableEq α] (a : α) (s : FiniteSet α) : Bool :=
+  s.elements.contains a
+
+/-- Remove an element from the set -/
+def remove [DecidableEq α] (a : α) (s : FiniteSet α) : FiniteSet α :=
+  let filtered := s.elements.filter (fun x => !(x == a))
+  ⟨filtered, List.Nodup.sublist (List.filter_sublist _) s.nodup⟩
+
 /-- Get the size of the set -/
 def card (s : FiniteSet α) : Nat :=
   s.elements.length
@@ -38,6 +49,83 @@ def card (s : FiniteSet α) : Nat :=
 /-- Sum a function over all elements in the set -/
 def sum [Add β] [OfNat β 0] (s : FiniteSet α) (f : α → β) : β :=
   s.elements.foldl (fun acc x => acc + f x) 0
+
+/-- Filter elements satisfying a predicate -/
+def filter (p : α → Bool) (s : FiniteSet α) : FiniteSet α :=
+  ⟨s.elements.filter p, List.Nodup.sublist (List.filter_sublist _) s.nodup⟩
+
+/-- Union of two sets -/
+def union [DecidableEq α] (s₁ s₂ : FiniteSet α) : FiniteSet α :=
+  s₂.elements.foldl (fun acc x => acc.insert x) s₁
+
+/-- Intersection of two sets -/
+def inter [DecidableEq α] (s₁ s₂ : FiniteSet α) : FiniteSet α :=
+  s₁.filter (fun x => s₂.contains x)
+
+/-- Convert to a list (the underlying elements) -/
+def toList (s : FiniteSet α) : List α :=
+  s.elements
+
+/-- Create a finite set from a list (removes duplicates) -/
+def fromList [DecidableEq α] (l : List α) : FiniteSet α :=
+  l.foldl (fun acc x => acc.insert x) empty
+
+/-!
+### Theorems
+
+Core lemmas for reasoning about finite set operations.
+These are directly needed by Ledger sum proofs (#65).
+-/
+
+/-- The empty set has no members in its elements list -/
+@[simp] theorem elements_empty : (empty : FiniteSet α).elements = [] := rfl
+
+/-- Inserting an element already in the set returns the same set -/
+theorem insert_of_mem [DecidableEq α] (a : α) (s : FiniteSet α) (h : a ∈ s.elements) :
+    s.insert a = s := by
+  unfold insert
+  simp [dif_pos h]
+
+/-- Inserting a new element prepends it -/
+theorem insert_of_not_mem [DecidableEq α] (a : α) (s : FiniteSet α) (h : a ∉ s.elements) :
+    (s.insert a).elements = a :: s.elements := by
+  unfold insert
+  simp [dif_neg h]
+
+/-- After inserting, the element is in the elements list -/
+theorem mem_elements_insert_self [DecidableEq α] (a : α) (s : FiniteSet α) :
+    a ∈ (s.insert a).elements := by
+  unfold insert
+  split
+  · assumption
+  · exact List.mem_cons_self a s.elements
+
+/-- Membership in insert: either the new element or an existing one -/
+theorem mem_elements_insert [DecidableEq α] (a b : α) (s : FiniteSet α) :
+    a ∈ (s.insert b).elements ↔ a = b ∨ a ∈ s.elements := by
+  unfold insert
+  split
+  · constructor
+    · intro h; exact Or.inr h
+    · intro h; cases h with
+      | inl heq => subst heq; assumption
+      | inr hmem => exact hmem
+  · simp [List.mem_cons]
+
+/-- Card of empty is 0 -/
+@[simp] theorem card_empty : (empty : FiniteSet α).card = 0 := rfl
+
+/-- Card increases by 1 on fresh insert -/
+theorem card_insert_of_not_mem [DecidableEq α] (a : α) (s : FiniteSet α) (h : a ∉ s.elements) :
+    (s.insert a).card = s.card + 1 := by
+  unfold insert card
+  simp [dif_neg h]
+
+/-- Card is unchanged for duplicate insert -/
+theorem card_insert_of_mem [DecidableEq α] (a : α) (s : FiniteSet α) (h : a ∈ s.elements) :
+    (s.insert a).card = s.card := by
+  unfold insert card
+  simp [dif_pos h]
 
 end FiniteSet
 
@@ -55,6 +143,14 @@ def empty : FiniteAddressSet :=
 /-- Insert an address into the set -/
 def insert (addr : String) (s : FiniteAddressSet) : FiniteAddressSet :=
   ⟨s.addresses.insert addr⟩
+
+/-- Check if an address is in the set -/
+def contains (addr : String) (s : FiniteAddressSet) : Bool :=
+  s.addresses.contains addr
+
+/-- Remove an address from the set -/
+def remove (addr : String) (s : FiniteAddressSet) : FiniteAddressSet :=
+  ⟨s.addresses.remove addr⟩
 
 /-- Get the number of addresses in the set -/
 def card (s : FiniteAddressSet) : Nat :=

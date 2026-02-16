@@ -91,6 +91,18 @@ def snd {α : Type} : ContractResult α → ContractState
   | success _ s => s
   | revert _ s => s
 
+-- Reduction rules for projections applied to constructors.
+-- These ensure that when simp produces `ContractResult.success ...`, further
+-- `.fst`/`.snd` applications are automatically reduced.
+@[simp] theorem fst_success [Inhabited α] (a : α) (s : ContractState) :
+  (ContractResult.success a s).fst = a := by rfl
+
+@[simp] theorem snd_success (a : α) (s : ContractState) :
+  (ContractResult.success a s).snd = s := by rfl
+
+@[simp] theorem snd_revert (msg : String) (s : ContractState) :
+  (ContractResult.revert (α := α) msg s).snd = s := by rfl
+
 end ContractResult
 
 -- The contract monad with explicit success/failure

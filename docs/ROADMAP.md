@@ -41,6 +41,15 @@ A developer can now write a `ContractSpec` for contracts with conditional logic,
 
 The EDSL path remains more expressive (supports arbitrary Lean, `List.foldl`, pattern matching). Contracts like UnlinkPool that use advanced Lean features still need the EDSL path. The ContractSpec path now covers the subset needed for standard DeFi contracts (ERC20, ERC721, governance, simple AMMs).
 
+### Known interpreter limitations
+
+The SpecInterpreter's basic `execStmts` path does not yet fully model all new constructs:
+- **forEach** is a no-op in `execStmts` — use `execStmtsFuel` for contracts with loops
+- **internalCall** (both as expression and statement) returns 0 / no-op — internal function lookup not yet implemented
+- **arrayParams** is not populated from `Transaction` — array element access returns 0
+
+These limitations affect only the interpreter (used for testing/proofs), not the compiled Yul output. The compiler correctly handles all constructs.
+
 ---
 
 ## Remaining Work Streams

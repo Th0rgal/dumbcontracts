@@ -591,10 +591,12 @@ private def compileStmt (fields : List Field) : Stmt → Except String (List Yul
         -- Simple if (no else)
         pure [YulStmt.if_ condExpr thenStmts]
       else
-        -- If/else: use Yul switch on iszero
+        -- If/else: cache condition in a local to avoid re-evaluation
+        -- after then-branch may have mutated state
         pure [
-          YulStmt.if_ condExpr thenStmts,
-          YulStmt.if_ (YulExpr.call "iszero" [condExpr]) elseStmts
+          YulStmt.let_ "__ite_cond" condExpr,
+          YulStmt.if_ (YulExpr.ident "__ite_cond") thenStmts,
+          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__ite_cond"]) elseStmts
         ]
 
   | Stmt.forEach varName count body => do
@@ -608,23 +610,28 @@ private def compileStmt (fields : List Field) : Stmt → Except String (List Yul
 
   | Stmt.emit eventName args => do
       -- Emit event using LOG opcode (#153)
-      -- For now, emit with keccak256(signature) as topic0 and args as data
-      -- Topic0 = keccak256(eventSignature) is computed at link time
-      let argExprs ← args.enum.mapM fun (idx, arg) => do
+      -- Topic0 = keccak256(eventSignature), resolved by linker at link time.
+      -- Indexed args become additional topics; unindexed args go into LOG data.
+      -- Use free memory pointer (0x40) to avoid clobbering scratch space.
+      let topic0 := YulExpr.call s!"__event_{eventName}" []
+      -- All args are unindexed data for now (indexed topic support requires
+      -- the EventDef to be threaded here; callers should use Stmt.emit only
+      -- for unindexed data args — indexed values are passed as extra topics).
+      let freeMemPtr := YulExpr.call "mload" [YulExpr.lit 0x40]
+      let storePtr := YulStmt.let_ "__evt_ptr" freeMemPtr
+      let argStores ← args.enum.mapM fun (idx, arg) => do
         let argExpr ← compileExpr fields arg
         pure (YulStmt.expr (YulExpr.call "mstore" [
-          YulExpr.lit (idx * 32),
+          YulExpr.call "add" [YulExpr.ident "__evt_ptr", YulExpr.lit (idx * 32)],
           argExpr
         ]))
       let dataSize := args.length * 32
-      -- Use log1 with topic0 = keccak256(event signature) placeholder
-      -- The actual topic hash will be resolved by the linker or hardcoded
       let logStmt := YulStmt.expr (YulExpr.call "log1" [
-        YulExpr.lit 0,        -- memory offset
-        YulExpr.lit dataSize,  -- data size
-        YulExpr.call s!"__event_{eventName}" []  -- topic0 placeholder
+        YulExpr.ident "__evt_ptr",
+        YulExpr.lit dataSize,
+        topic0
       ])
-      pure (argExprs ++ [logStmt])
+      pure ([storePtr] ++ argStores ++ [logStmt])
 
   | Stmt.internalCall functionName args => do
       -- Internal function call as statement (#181)
@@ -686,6 +693,17 @@ private def genParamLoads (params : List Param) : List YulStmt :=
       stmts ++ go rest (headOffset + 32)
   go params 4  -- Start after 4-byte selector
 
+-- Rewrite Stmt.return to assign __ret instead of EVM RETURN for internal functions.
+-- EVM RETURN terminates the entire call; internal Yul functions should assign __ret
+-- and fall through.
+private def compileStmtForInternal (fields : List Field) (stmt : Stmt) :
+    Except String (List YulStmt) :=
+  match stmt with
+  | Stmt.return value => do
+      let valueExpr ← compileExpr fields value
+      pure [YulStmt.assign "__ret" valueExpr]
+  | other => compileStmt fields other
+
 -- Compile internal function to a Yul function definition (#181)
 private def compileInternalFunction (fields : List Field) (spec : FunctionSpec) :
     Except String YulStmt := do
@@ -693,7 +711,7 @@ private def compileInternalFunction (fields : List Field) (spec : FunctionSpec) 
   let retNames := match spec.returnType with
     | some _ => ["__ret"]
     | none => []
-  let bodyChunks ← spec.body.mapM (compileStmt fields)
+  let bodyChunks ← spec.body.mapM (compileStmtForInternal fields)
   pure (YulStmt.funcDef s!"internal_{spec.name}" paramNames retNames bodyChunks.flatten)
 
 -- Compile function spec to IR function

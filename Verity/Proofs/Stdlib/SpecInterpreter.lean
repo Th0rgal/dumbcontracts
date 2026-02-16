@@ -11,11 +11,16 @@
   - Easy to understand and verify
 
   Supports:
-  - If/else branching and bounded loops (#179)
-  - Array parameter access (#180)
-  - Internal function calls (#181)
+  - If/else branching (#179)
   - Double mappings and uint256-keyed mappings (#154)
-  - Event emission (#153)
+  - Event emission recording (#153)
+
+  Known limitations (basic execStmts path):
+  - forEach loops are no-ops — use execStmtsFuel for contracts with loops (#179)
+  - Expr.internalCall always returns 0 — internal function lookup not yet implemented (#181)
+  - Stmt.internalCall is a no-op — side effects of internal functions not modeled (#181)
+  - arrayParams is never populated from Transaction — array element access returns 0 (#180)
+  These limitations affect only the interpreter, not the compiled Yul output.
 -/
 
 import Compiler.ContractSpec

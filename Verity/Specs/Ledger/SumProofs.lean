@@ -100,7 +100,16 @@ theorem transfer_sum_preservation (to : Address) (amount : Uint256) (s : Contrac
   unfold Spec_transfer_sum_preservation totalBalance
   unfold Contract.runState
   by_cases h_eq : s.sender = to
-  · sorry
+  · -- Self-transfer: the state is unchanged
+    -- Transfer to self with sufficient balance returns success () s
+    have h_balance' : amount.val ≤ (s.storageMap 0 to).val := by
+      have h_balance'' : amount ≤ s.storageMap 0 to := by
+        simpa [h_eq] using h_balance
+      simpa [Verity.Core.Uint256.le_def] using h_balance''
+    simp [transfer, msgSender, getMapping, setMapping, balances,
+      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
+      Contract.run, ContractResult.snd, ContractResult.fst,
+      h_balance', h_eq, beq_iff_eq]
   · sorry
 
 /-- Transfer with unique addresses preserves total balance.
@@ -130,8 +139,12 @@ theorem deposit_withdraw_sum_cancel (amount : Uint256) (s : ContractState)
     let s' := (deposit amount).runState s
     let s'' := (withdraw amount).runState s'
     Spec_deposit_withdraw_sum_cancel amount s s' s'' := by
-  unfold Spec_deposit_withdraw_sum_cancel
+  simp only [Spec_deposit_withdraw_sum_cancel, Spec_deposit_sum_equation, Spec_withdraw_sum_equation]
   intro h_deposit h_withdraw
-  sorry
+  -- h_deposit : totalBalance (...) = add (totalBalance s) amount
+  -- h_withdraw : totalBalance (...) = sub (totalBalance (...)) amount
+  -- Goal : totalBalance (...) = totalBalance s
+  rw [h_withdraw, h_deposit]
+  exact Core.Uint256.sub_add_cancel (totalBalance s) amount
 
 end Verity.Specs.Ledger.SumProofs

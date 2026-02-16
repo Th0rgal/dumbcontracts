@@ -10,6 +10,7 @@
 
 import Verity.Core
 import Verity.Stdlib.Math
+import Verity.Proofs.Stdlib.Math
 import Verity.EVM.Uint256
 import Verity.Examples.SafeCounter
 import Verity.Specs.SafeCounter.Spec
@@ -19,6 +20,7 @@ namespace Verity.Proofs.SafeCounter
 
 open Verity
 open Verity.Stdlib.Math
+open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none safeSub_some safeSub_none)
 open Verity.EVM.Uint256
 open Verity.Examples.SafeCounter
 open Verity.Specs.SafeCounter
@@ -44,32 +46,6 @@ theorem getCount_preserves_state (s : ContractState) :
 theorem evm_add_eq_of_no_overflow (a b : Uint256) (_h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
   add a b = a + b := by
   rfl
-
-/-- Helper: safeAdd succeeds when no overflow -/
-private theorem safeAdd_some (a b : Uint256) (h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
-  safeAdd a b = some (a + b) := by
-  simp only [safeAdd]
-  have h_not : ¬((a : Nat) + (b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [h_not]
-
-/-- Helper: safeAdd fails on overflow -/
-private theorem safeAdd_none (a b : Uint256) (h : (a : Nat) + (b : Nat) > MAX_UINT256) :
-  safeAdd a b = none := by
-  simp only [safeAdd]
-  simp [h]
-
-/-- Helper: safeSub succeeds when no underflow -/
-private theorem safeSub_some (a b : Uint256) (h : (a : Nat) ≥ (b : Nat)) :
-  safeSub a b = some (a - b) := by
-  simp only [safeSub]
-  have h_not : ¬((b : Nat) > (a : Nat)) := Nat.not_lt.mpr h
-  simp [h_not]
-
-/-- Helper: safeSub fails on underflow -/
-private theorem safeSub_none (a b : Uint256) (h : (b : Nat) > (a : Nat)) :
-  safeSub a b = none := by
-  simp only [safeSub]
-  simp [h]
 
 /-- Helper: unfold increment when no overflow -/
 private theorem increment_unfold (s : ContractState)

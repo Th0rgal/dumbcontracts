@@ -3,7 +3,7 @@
 
   This contract shows:
   - Combining Owned (access control) + Ledger (balances mapping) patterns
-  - Owner-controlled minting
+  - Owner-controlled minting with overflow protection (safeAdd)
   - Public transfer operations with EVM modular arithmetic
   - Total supply tracking
   - Pattern composition with mappings works seamlessly
@@ -13,11 +13,13 @@
 
 import Verity.Core
 import Verity.EVM.Uint256
+import Verity.Stdlib.Math
 
 namespace Verity.Examples.SimpleToken
 
 open Verity
 open Verity.EVM.Uint256
+open Verity.Stdlib.Math
 
 -- Storage layout
 def owner : StorageSlot Address := ⟨0⟩
@@ -40,15 +42,17 @@ def constructor (initialOwner : Address) : Contract Unit := do
   setStorageAddr owner initialOwner
   setStorage totalSupply 0
 
--- Mint tokens to an address (owner-only, with EVM modular arithmetic)
+-- Mint tokens to an address (owner-only, with overflow protection)
 def mint (to : Address) (amount : Uint256) : Contract Unit := do
   onlyOwner
   let currentBalance ← getMapping balances to
-  setMapping balances to (add currentBalance amount)
+  let newBalance ← requireSomeUint (safeAdd currentBalance amount) "Balance overflow"
+  setMapping balances to newBalance
   let currentSupply ← getStorage totalSupply
-  setStorage totalSupply (add currentSupply amount)
+  let newSupply ← requireSomeUint (safeAdd currentSupply amount) "Supply overflow"
+  setStorage totalSupply newSupply
 
--- Transfer tokens from caller to another address (with EVM modular arithmetic)
+-- Transfer tokens from caller to another address (with overflow protection)
 def transfer (to : Address) (amount : Uint256) : Contract Unit := do
   let sender ← msgSender
   let senderBalance ← getMapping balances sender
@@ -58,8 +62,9 @@ def transfer (to : Address) (amount : Uint256) : Contract Unit := do
     pure ()
   else
     let recipientBalance ← getMapping balances to
+    let newRecipientBalance ← requireSomeUint (safeAdd recipientBalance amount) "Recipient balance overflow"
     setMapping balances sender (sub senderBalance amount)
-    setMapping balances to (add recipientBalance amount)
+    setMapping balances to newRecipientBalance
 
 -- Get balance of an address
 def balanceOf (addr : Address) : Contract Uint256 := do

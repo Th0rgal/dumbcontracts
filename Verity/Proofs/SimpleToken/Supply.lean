@@ -17,6 +17,7 @@
 import Verity.Core
 import Verity.Examples.SimpleToken
 import Verity.EVM.Uint256
+import Verity.Stdlib.Math
 import Verity.Specs.SimpleToken.Spec
 import Verity.Specs.SimpleToken.Invariants
 import Verity.Proofs.SimpleToken.Basic
@@ -24,6 +25,7 @@ import Verity.Proofs.SimpleToken.Basic
 namespace Verity.Proofs.SimpleToken.Supply
 
 open Verity
+open Verity.Stdlib.Math (MAX_UINT256)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken hiding owner balances totalSupply
 open Verity.Proofs.SimpleToken
@@ -151,11 +153,13 @@ private theorem map_sum_point_update
     count(to, addrs) * amount. This captures that each occurrence of `to` in
     the list contributes an additional `amount` to the sum. -/
 theorem mint_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((mint to amount).run s).snd.storageMap 1 addr)).sum
     = (addrs.map (fun addr => s.storageMap 1 addr)).sum + countOccU to addrs * amount := by
-  have h_spec := mint_meets_spec_when_owner s to amount h_owner
+  have h_spec := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   simp [mint_spec] at h_spec
   obtain ⟨h_bal_raw, _, h_other, _, _, _⟩ := h_spec
   have h_bal :
@@ -275,13 +279,14 @@ private theorem map_sum_transfer_eq
     `amount`. The equation holds exactly (not just as an inequality). -/
 theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount)
-  (h_ne : s.sender ≠ to) :
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum
       + countOccU s.sender addrs * amount
     = (addrs.map (fun addr => s.storageMap 1 addr)).sum
       + countOccU to addrs * amount := by
-  have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance
+  have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance (fun _ => h_no_overflow)
   simp [transfer_spec, h_ne, beq_iff_eq] at h_spec
   obtain ⟨_, h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _⟩ := h_spec
   have h_sender_bal' :

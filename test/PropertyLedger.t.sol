@@ -8,9 +8,9 @@ import "./yul/YulTestBase.sol";
  * @notice Property-based tests extracted from formally verified Lean theorems
  * @dev Maps theorems from Verity/Proofs/Ledger/*.lean to executable tests
  *
- * This file contains property tests for Ledger's 31 proven theorems:
+ * This file contains property tests for Ledger's 33 proven theorems:
  *
- * Basic.lean (18 theorems):
+ * Basic.lean (19 theorems):
  * 1. getBalance_meets_spec - Read returns correct balance
  * 2. getBalance_returns_balance - Read returns balance value
  * 3. getBalance_preserves_state - Read is read-only
@@ -29,23 +29,25 @@ import "./yul/YulTestBase.sol";
  * 16. deposit_preserves_wellformedness - Deposit maintains invariants
  * 17. withdraw_preserves_wellformedness - Withdraw maintains invariants
  * 18. deposit_getBalance_correct - Deposit->read composition
+ * 19. transfer_reverts_recipient_overflow - Transfer reverts on recipient overflow
  *
  * Correctness.lean (6 theorems):
- * 19. transfer_preserves_wellformedness - Transfer maintains invariants
- * 20. transfer_preserves_non_mapping - Transfer doesn't affect other storage
- * 21. withdraw_getBalance_correct - Withdraw->read composition
- * 22. transfer_getBalance_sender_correct - Transfer->read sender
- * 23. transfer_getBalance_recipient_correct - Transfer->read recipient
- * 24. deposit_withdraw_cancel - Deposit->withdraw cancels
+ * 20. transfer_preserves_wellformedness - Transfer maintains invariants
+ * 21. transfer_preserves_non_mapping - Transfer doesn't affect other storage
+ * 22. withdraw_getBalance_correct - Withdraw->read composition
+ * 23. transfer_getBalance_sender_correct - Transfer->read sender
+ * 24. transfer_getBalance_recipient_correct - Transfer->read recipient
+ * 25. deposit_withdraw_cancel - Deposit->withdraw cancels
  *
  * Conservation.lean (7 theorems) - Balance sum conservation properties:
- * 25. deposit_sum_equation - Deposit increases sum by amount
- * 26. deposit_sum_singleton_sender - Singleton deposit sum increase
- * 27. withdraw_sum_equation - Withdraw decreases sum by amount
- * 28. withdraw_sum_singleton_sender - Singleton withdraw sum decrease
- * 29. transfer_sum_equation - Transfer preserves total sum
- * 30. transfer_sum_preserved_unique - Unique pair sum preservation
- * 31. deposit_withdraw_sum_cancel - Deposit-withdraw returns sum to original
+ * 26. deposit_sum_equation - Deposit increases sum by amount
+ * 27. deposit_sum_singleton_sender - Singleton deposit sum increase
+ * 28. withdraw_sum_equation - Withdraw decreases sum by amount
+ * 29. withdraw_sum_singleton_sender - Singleton withdraw sum decrease
+ * 30. transfer_sum_equation - Transfer preserves total sum
+ * 31. transfer_sum_preserved_unique - Unique pair sum preservation
+ * 32. deposit_withdraw_sum_cancel - Deposit-withdraw returns sum to original
+ * 33. transfer_self_preserves_balance - Self-transfer preserves balance
  */
 contract PropertyLedgerTest is YulTestBase {
     address ledger;
@@ -362,7 +364,24 @@ contract PropertyLedgerTest is YulTestBase {
     }
 
     /**
-     * Property 19: transfer_preserves_wellformedness (fuzz test)
+     * Property 19: transfer_reverts_recipient_overflow
+     * Theorem: Transfer reverts when recipient balance + amount would overflow uint256
+     */
+    function testProperty_Transfer_RevertsRecipientOverflow() public {
+        // Set bob's balance to MAX_UINT256
+        setBalance(bob, type(uint256).max);
+
+        // Give alice some balance
+        setBalance(alice, 1);
+
+        // Alice tries to transfer 1 to bob — bob's balance would overflow
+        vm.prank(alice);
+        (bool success,) = ledger.call(abi.encodeWithSignature("transfer(address,uint256)", bob, 1));
+        assertFalse(success, "Transfer should revert on recipient overflow");
+    }
+
+    /**
+     * Property: transfer_preserves_wellformedness (fuzz test)
      * Theorem: Transfer maintains contract invariants
      */
     function testProperty_Transfer_PreservesWellFormedness(address sender, address recipient, uint256 senderBalance, uint256 amount) public {

@@ -8,11 +8,13 @@
 
 import Verity.Core
 import Verity.EVM.Uint256
+import Verity.Stdlib.Math
 
 namespace Verity.Examples.Ledger
 
 open Verity
 open Verity.EVM.Uint256
+open Verity.Stdlib.Math (safeAdd requireSomeUint)
 
 -- Storage: balances mapping (Address → Uint256)
 def balances : StorageSlot (Address → Uint256) := ⟨0⟩
@@ -30,7 +32,7 @@ def withdraw (amount : Uint256) : Contract Unit := do
   require (currentBalance >= amount) "Insufficient balance"
   setMapping balances sender (sub currentBalance amount)
 
--- Transfer: move balance from caller to another address (with EVM modular arithmetic)
+-- Transfer: move balance from caller to another address (with overflow protection)
 def transfer (to : Address) (amount : Uint256) : Contract Unit := do
   let sender ← msgSender
   let senderBalance ← getMapping balances sender
@@ -40,8 +42,9 @@ def transfer (to : Address) (amount : Uint256) : Contract Unit := do
     pure ()
   else
     let recipientBalance ← getMapping balances to
+    let newRecipientBalance ← requireSomeUint (safeAdd recipientBalance amount) "Recipient balance overflow"
     setMapping balances sender (sub senderBalance amount)
-    setMapping balances to (add recipientBalance amount)
+    setMapping balances to newRecipientBalance
 
 -- Get balance of any address
 def getBalance (addr : Address) : Contract Uint256 := do

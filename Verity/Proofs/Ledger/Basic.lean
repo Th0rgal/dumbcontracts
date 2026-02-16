@@ -4,7 +4,7 @@
   Proves mapping-based balance operations:
   - deposit increases sender balance
   - withdraw decreases sender balance (guarded)
-  - transfer moves between accounts (guarded, sender ≠ to)
+  - transfer moves between accounts (guarded, sender ≠ to, no overflow)
   - getBalance returns correct value
   - All operations preserve non-mapping storage
 -/
@@ -14,12 +14,16 @@ import Verity.Examples.Ledger
 import Verity.EVM.Uint256
 import Verity.Specs.Ledger.Spec
 import Verity.Specs.Ledger.Invariants
+import Verity.Stdlib.Math
+import Verity.Proofs.Stdlib.Math
 
 namespace Verity.Proofs.Ledger
 
 open Verity
 open Verity.Examples.Ledger
 open Verity.Specs.Ledger
+open Verity.Stdlib.Math (safeAdd requireSomeUint MAX_UINT256)
+open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
 
 /-! ## getBalance Correctness -/
 
@@ -154,10 +158,11 @@ private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount 
     Contract.run, ContractResult.snd, ContractResult.fst,
     h_balance', h_eq, beq_iff_eq]
 
-/-- Helper: unfold transfer when balance sufficient and sender ≠ to. -/
+/-- Helper: unfold transfer when balance sufficient, sender ≠ to, and no overflow. -/
 private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount)
-  (h_ne : s.sender ≠ to) :
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow : (s.storageMap 0 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   (transfer to amount).run s = ContractResult.success ()
     { storage := s.storage,
       storageAddr := s.storageAddr,
@@ -170,23 +175,28 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
       msgValue := s.msgValue,
       blockTimestamp := s.blockTimestamp,
       knownAddresses := fun slot =>
-        if slot == 0 then (s.knownAddresses slot).insert s.sender |>.insert to
+        if slot == 0 then ((s.knownAddresses slot).insert s.sender).insert to
         else s.knownAddresses slot } := by
   have h_balance' : amount.val ≤ (s.storageMap 0 s.sender).val := by
     have h_balance'' : amount ≤ s.storageMap 0 s.sender := by
       simpa using h_balance
     simpa [Verity.Core.Uint256.le_def] using h_balance''
-  simp [transfer, msgSender, getMapping, setMapping, balances,
-    Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
+  have h_safe := safeAdd_some (s.storageMap 0 to) amount h_no_overflow
+  simp only [transfer, Examples.Ledger.balances,
+    msgSender, getMapping, setMapping,
+    requireSomeUint,
+    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
-    h_balance', h_ne, beq_iff_eq]
+    h_balance, h_ne, beq_iff_eq, h_safe, ge_iff_le, decide_eq_true_eq,
+    h_balance', ite_true, ite_false, HAdd.hAdd, Add.add]
+  congr 1
+  congr 1
   funext slot
-  split
-  · rfl
-  · rfl
+  split <;> simp [*]
 
 theorem transfer_meets_spec (s : ContractState) (to : Address) (amount : Uint256)
-  (h_balance : s.storageMap 0 s.sender >= amount) :
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_no_overflow : s.sender ≠ to → (s.storageMap 0 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((transfer to amount).run s).snd
   transfer_spec to amount s s' := by
   by_cases h_eq : s.sender = to
@@ -198,7 +208,7 @@ theorem transfer_meets_spec (s : ContractState) (to : Address) (amount : Uint256
     · simp [h_eq, beq_iff_eq, Specs.storageMapUnchangedExceptKeyAtSlot,
         Specs.storageMapUnchangedExceptKey, Specs.storageMapUnchangedExceptSlot]
     · simp [Specs.sameStorageAddrContext, Specs.sameStorage, Specs.sameStorageAddr, Specs.sameContext]
-  · rw [transfer_unfold_other s to amount h_balance h_eq]
+  · rw [transfer_unfold_other s to amount h_balance h_eq (h_no_overflow h_eq)]
     simp only [ContractResult.snd, transfer_spec]
     refine ⟨?_, ?_, ?_, ?_⟩
     · have h_ne' : (s.sender == to) = false := by
@@ -221,25 +231,27 @@ theorem transfer_self_preserves_balance (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
   let s' := ((transfer s.sender amount).run s).snd
   s'.storageMap 0 s.sender = s.storageMap 0 s.sender := by
-  have h := transfer_meets_spec s s.sender amount h_balance
+  have h := transfer_meets_spec s s.sender amount h_balance (fun h => absurd rfl h)
   simp [transfer_spec, beq_iff_eq] at h
   exact h.1
 
 theorem transfer_decreases_sender (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount)
-  (h_ne : s.sender ≠ to) :
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow : (s.storageMap 0 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 0 s.sender = EVM.Uint256.sub (s.storageMap 0 s.sender) amount := by
-  have h := transfer_meets_spec s to amount h_balance
+  have h := transfer_meets_spec s to amount h_balance (fun _ => h_no_overflow)
   simp [transfer_spec, h_ne, beq_iff_eq] at h
   exact h.1
 
 theorem transfer_increases_recipient (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount)
-  (h_ne : s.sender ≠ to) :
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow : (s.storageMap 0 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 0 to = EVM.Uint256.add (s.storageMap 0 to) amount := by
-  have h := transfer_meets_spec s to amount h_balance
+  have h := transfer_meets_spec s to amount h_balance (fun _ => h_no_overflow)
   simp [transfer_spec, h_ne, beq_iff_eq] at h
   exact h.2.1
 
@@ -251,6 +263,24 @@ theorem transfer_reverts_insufficient (s : ContractState) (to : Address) (amount
     Contract.run, ContractResult.snd, ContractResult.fst]
   simp [show (s.storageMap 0 s.sender >= amount) = false from by
     simp [ge_iff_le] at h_insufficient ⊢; omega]
+
+-- Transfer reverts on recipient balance overflow
+theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (amount : Uint256)
+  (h_balance : s.storageMap 0 s.sender >= amount)
+  (h_ne : s.sender ≠ to)
+  (h_overflow : (s.storageMap 0 to : Nat) + (amount : Nat) > MAX_UINT256) :
+  ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
+  have h_balance' : amount.val ≤ (s.storageMap 0 s.sender).val := by
+    have h_balance'' : amount ≤ s.storageMap 0 s.sender := by
+      simpa using h_balance
+    simpa [Verity.Core.Uint256.le_def] using h_balance''
+  have h_none := safeAdd_none (s.storageMap 0 to) amount h_overflow
+  unfold transfer requireSomeUint
+  simp [Examples.Ledger.balances,
+    msgSender, getMapping, setMapping,
+    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_balance', h_ne, beq_iff_eq, h_none]
 
 /-! ## State Preservation -/
 
@@ -310,20 +340,21 @@ Withdraw (guarded):
 8. withdraw_decreases_balance
 9. withdraw_reverts_insufficient
 
-Transfer (guarded, sender ≠ to):
+Transfer (guarded, sender ≠ to, overflow-safe):
 10. transfer_meets_spec
 11. transfer_decreases_sender
 12. transfer_increases_recipient
 13. transfer_reverts_insufficient
+14. transfer_reverts_recipient_overflow
 
 State preservation:
-14. deposit_preserves_non_mapping
-15. withdraw_preserves_non_mapping
-16. deposit_preserves_wellformedness
-17. withdraw_preserves_wellformedness
+15. deposit_preserves_non_mapping
+16. withdraw_preserves_non_mapping
+17. deposit_preserves_wellformedness
+18. withdraw_preserves_wellformedness
 
 Composition:
-18. deposit_getBalance_correct
+19. deposit_getBalance_correct
 -/
 
 end Verity.Proofs.Ledger

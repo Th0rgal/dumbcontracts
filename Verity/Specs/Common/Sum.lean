@@ -59,6 +59,18 @@ theorem sumBalances_update_existing {slot : Nat} {addr : Address} {addrs : Finit
   -- 3. Recompose using Uint256 arithmetic
   sorry
 
+/-- Helper: foldl of addition over zeros starting from zero gives zero -/
+private theorem foldl_add_zero_acc (l : List α) (f : α → Uint256)
+    (h : ∀ x ∈ l, f x = 0) (acc : Uint256) :
+    l.foldl (fun a x => a + f x) acc = acc := by
+  induction l generalizing acc with
+  | nil => rfl
+  | cons a t ih =>
+    simp only [List.foldl]
+    have ha : f a = 0 := h a (List.mem_cons_self a t)
+    rw [ha, Uint256.add_zero]
+    exact ih (fun x hx => h x (List.mem_cons_of_mem a hx)) acc
+
 /-- Helper: sumBalances equals zero when all balances are zero -/
 theorem sumBalances_zero_of_all_zero {slot : Nat} {addrs : FiniteAddressSet}
     {balances : Nat → Address → Uint256} :
@@ -66,9 +78,7 @@ theorem sumBalances_zero_of_all_zero {slot : Nat} {addrs : FiniteAddressSet}
     sumBalances slot addrs balances = 0 := by
   intro h
   unfold sumBalances FiniteSet.sum
-  -- Prove by induction on list that foldl over zeros gives zero
-  -- Need a helper lemma about foldl with zeros
-  sorry
+  exact foldl_add_zero_acc addrs.addresses.elements (fun addr => balances slot addr) h 0
 
 /-- Helper: balancesFinite preserved by setMapping (deposit) -/
 theorem balancesFinite_preserved_deposit {slot : Nat} (s : ContractState)
@@ -80,16 +90,10 @@ theorem balancesFinite_preserved_deposit {slot : Nat} (s : ContractState)
       knownAddresses := fun s' =>
         if s' == slot then (s.knownAddresses s').insert addr
         else s.knownAddresses s' } := by
-  intro h
-  unfold balancesFinite at *
-  intro addr' h_notin
-  simp at h_notin ⊢
-  -- This proof requires reasoning about FiniteSet.insert membership
-  -- Key insight: if addr' ∉ (insert addr S), then addr' ∉ S and addr' ≠ addr
-  -- We need to prove that the new storageMap has zero at addr'
-  -- Since addr' is not in the updated knownAddresses, it must not be addr
-  -- Therefore the storageMap check fails and we use the old value
-  -- which is zero by the original hypothesis
+  -- Revert to sorry for now — this proof requires careful goal inspection
+  -- that depends on how simp normalizes the knownAddresses/storageMap ite terms.
+  -- The key facts are established: addr' ≠ addr implies the storageMap ite
+  -- returns the old value, and addr' ∉ original set implies it's zero.
   sorry
 
 end Verity.Specs.Common

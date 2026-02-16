@@ -130,8 +130,12 @@ theorem deposit_withdraw_sum_cancel (amount : Uint256) (s : ContractState)
     let s' := (deposit amount).runState s
     let s'' := (withdraw amount).runState s'
     Spec_deposit_withdraw_sum_cancel amount s s' s'' := by
-  unfold Spec_deposit_withdraw_sum_cancel
+  simp only [Spec_deposit_withdraw_sum_cancel, Spec_deposit_sum_equation, Spec_withdraw_sum_equation]
   intro h_deposit h_withdraw
-  sorry
+  -- h_deposit : totalBalance (...) = add (totalBalance s) amount
+  -- h_withdraw : totalBalance (...) = sub (totalBalance (...)) amount
+  -- Goal : totalBalance (...) = totalBalance s
+  rw [h_withdraw, h_deposit]
+  exact Core.Uint256.sub_add_cancel (totalBalance s) amount
 
 end Verity.Specs.Ledger.SumProofs

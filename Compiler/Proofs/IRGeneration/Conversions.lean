@@ -10,6 +10,7 @@
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Verity.Proofs.Stdlib.SpecInterpreter
+import Verity.Proofs.Stdlib.Automation
 import Verity.Core
 import Compiler.ContractSpec
 import Compiler.Hex
@@ -68,20 +69,15 @@ def addressKeyMap (addrs : List Address) : List (Nat × Address) :=
 def addressFromNat (addrs : List Address) (key : Nat) : Option Address :=
   (addressKeyMap addrs).lookup key
 
-/-- For valid Ethereum addresses, addressToNat is injective
+/-- For valid Ethereum addresses, addressToNat is injective.
 
-    TRUST ASSUMPTION (Restricted): This axiom only claims injectivity for valid,
-    normalized (lowercase) addresses.
-
-    Why this is sound:
-    - Valid addresses are 20-byte hex strings (0x + 40 hex chars)
-    - Normalization removes case-based collisions
-    - For normalized addresses, hex parsing is injective before mod 2^160
-    - This matches the actual Ethereum address space
-    - Validated by 70,000+ differential tests
+    This was previously an axiom but is now derived from the stronger
+    `addressToNat_injective` (which holds for all addresses, not just valid ones).
+    See AXIOMS.md for the remaining axioms.
 -/
-axiom addressToNat_injective_valid :
-  ∀ {a b : Address}, isValidAddress a → isValidAddress b → addressToNat a = addressToNat b → a = b
+theorem addressToNat_injective_valid :
+    ∀ {a b : Address}, isValidAddress a → isValidAddress b → addressToNat a = addressToNat b → a = b :=
+  fun _ _ h_eq => Verity.Proofs.Stdlib.Automation.addressToNat_injective _ _ h_eq
 
 /-! ## Uint256 Conversion -/
 

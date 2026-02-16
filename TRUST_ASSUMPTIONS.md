@@ -25,7 +25,7 @@ User's Contract Code (EDSL)
 ContractSpec (High-level specification)
     ↓ [Layer 2: FULLY VERIFIED]
 IR (Intermediate representation)
-    ↓ [Layer 3: FULLY VERIFIED, 5 axioms]
+    ↓ [Layer 3: FULLY VERIFIED, 4 axioms]
 Yul (Ethereum intermediate language)
     ↓ [TRUSTED: Solidity compiler]
 EVM Bytecode
@@ -37,12 +37,13 @@ EVM Bytecode
 |-----------|--------|------------|
 | Layer 1 (EDSL → Spec) | ✅ Verified | None |
 | Layer 2 (Spec → IR) | ✅ Verified | None |
-| Layer 3 (IR → Yul) | ✅ Verified (5 axioms) | Very Low |
+| Layer 3 (IR → Yul) | ✅ Verified (4 axioms) | Very Low |
 | Axioms | ⚠️ Documented | Low |
 | Solidity Compiler (solc) | ⚠️ Trusted | Medium |
 | Keccak256 Hashing | ⚠️ Trusted | Low |
 | EVM Semantics | ⚠️ Trusted | Low |
 | Lean 4 Type Checker | ⚠️ Foundational | Very Low |
+| `allowUnsafeReducibility` | ⚠️ Documented | Low |
 
 ---
 
@@ -115,7 +116,7 @@ theorem execStmt_preserves_properties :
 
 ### Layer 3: IR → Yul
 
-**Status**: ✅ **Verified (with 5 axioms)**
+**Status**: ✅ **Verified (with 4 axioms)**
 
 **What is proven**: IR execution is equivalent to Yul execution when states are properly aligned.
 
@@ -138,7 +139,7 @@ theorem storageStore_equiv : ...
 theorem if_equiv : ...
 ```
 
-**Dependencies**: Relies on 5 axioms (see [Axioms](#axioms) section)
+**Dependencies**: Relies on 4 axioms (see [Axioms](#axioms) section)
 
 **What this guarantees**:
 - Yul code correctly implements IR semantics
@@ -310,9 +311,49 @@ These components are **not formally verified** but are trusted based on testing,
 
 ---
 
+### 6. `allowUnsafeReducibility` Usage
+
+**Role**: Allows Lean's `simp` and `rfl` tactics to unfold `partial` function definitions
+
+**Assumption**: The `partial` functions marked as reducible are structurally recursive and terminate in practice.
+
+**Details**:
+Two files use `set_option allowUnsafeReducibility true`:
+
+1. **`Compiler/Proofs/YulGeneration/Semantics.lean:332`**
+   ```lean
+   set_option allowUnsafeReducibility true in
+   attribute [reducible] execYulFuel
+   ```
+   Makes `execYulFuel` unfoldable for proofs about Yul execution semantics.
+
+2. **`Compiler/Proofs/YulGeneration/Equivalence.lean:11`**
+   ```lean
+   set_option allowUnsafeReducibility true in
+   attribute [local reducible] execIRStmt execIRStmts
+   ```
+   Makes `execIRStmt`/`execIRStmts` unfoldable for IR↔Yul equivalence proofs.
+
+**Why This Matters**:
+- `allowUnsafeReducibility` can make the Lean kernel unsound in theory
+- Lean keeps `partial` definitions opaque to prevent reasoning about potentially non-terminating functions
+- This option overrides that safety check, allowing proofs to unfold these definitions
+
+**Risk Assessment**: **Low**
+- The functions are structurally recursive on fuel parameters and always terminate
+- Lean marks them as `partial` only because the termination checker cannot verify the recursion pattern
+- `execYulFuel` is fuel-bounded (guaranteed termination), so reducibility is safe
+- `execIRStmt`/`execIRStmts` are used locally and their termination is validated by 70,000+ differential tests
+
+**Elimination Path**:
+- Same fuel-based refactoring that would eliminate axioms #1 and #2 (`evalIRExpr`/`evalIRExprs`) would also eliminate the need for `allowUnsafeReducibility` on the IR side
+- The Yul side (`execYulFuel`) already uses fuel and could potentially be proven terminating with well-founded recursion
+
+---
+
 ## Axioms
 
-Verity uses **5 axioms** across the verification codebase. All axioms are documented with soundness justifications.
+Verity uses **4 axioms** across the verification codebase. All axioms are documented with soundness justifications.
 
 **See**: [AXIOMS.md](AXIOMS.md) for complete details.
 
@@ -322,7 +363,6 @@ Verity uses **5 axioms** across the verification codebase. All axioms are docume
 |-------|---------|------|------------|
 | `evalIRExpr_eq_evalYulExpr` | Expression evaluation equivalence | Low | Differential tests, code inspection |
 | `evalIRExprs_eq_evalYulExprs` | List version of above | Low | Differential tests, code inspection |
-| `addressToNat_injective_valid` | Ethereum address injectivity | Low | Differential tests, EVM semantics |
 | `keccak256_first_4_bytes` | Function selector computation | Low | CI validation against solc --hashes |
 | `addressToNat_injective` | Address-to-Nat mapping injectivity | Low | EVM address semantics |
 
@@ -414,7 +454,7 @@ Use this checklist when performing security audits of Verity-verified contracts.
 
 2. **Axiom Elimination**
    - Refactor expression evaluation to fuel-based
-   - Removes 2 of 5 axioms
+   - Removes 2 of 4 axioms
    - Effort: ~500 LOC refactoring
 
 3. **Gas Cost Verification** (Issue #80)
@@ -454,7 +494,7 @@ Verity provides **strong formal verification** with a **small trusted computing 
 ⚠️ Solidity compiler (solc) - Validated by 70k+ differential tests
 ⚠️ Keccak256 hashing - Validated against solc
 ⚠️ EVM semantics - Industry standard, billions in TVL
-⚠️ 5 axioms - Low risk, extensively validated (see AXIOMS.md)
+⚠️ 4 axioms - Low risk, extensively validated (see AXIOMS.md)
 
 ### Risk Profile
 - **Overall**: Low to Medium risk

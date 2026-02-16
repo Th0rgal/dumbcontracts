@@ -333,11 +333,66 @@ def simpleTokenSpec : ContractSpec := {
 
 
 /-!
-## Note: CryptoHash Specification Example
-External function linking is demonstrated via the example libraries in
-`examples/external-libs/` and the CLI usage. A full CryptoHashSpec
-could be added here when ready for production use.
+## CryptoHash Specification (External Library Linking Demo)
+
+Demonstrates `Expr.externalCall` for linking external Yul libraries at
+compile time.  The EDSL placeholder in `Verity/Examples/CryptoHash.lean`
+uses simple addition; the ContractSpec below calls the real library
+functions (`PoseidonT3_hash`, `PoseidonT4_hash`) which are injected by
+the Linker when you pass `--link examples/external-libs/PoseidonT3.yul`.
 -/
+
+def cryptoHashSpec : ContractSpec := {
+  name := "CryptoHash"
+  fields := [
+    { name := "lastHash", ty := FieldType.uint256 }
+  ]
+  constructor := none
+  externals := [
+    { name := "PoseidonT3_hash"
+      params := [ParamType.uint256, ParamType.uint256]
+      returnType := some ParamType.uint256
+      axiomNames := ["poseidon_t3_deterministic", "poseidon_t3_collision_resistant"] },
+    { name := "PoseidonT4_hash"
+      params := [ParamType.uint256, ParamType.uint256, ParamType.uint256]
+      returnType := some ParamType.uint256
+      axiomNames := ["poseidon_t4_deterministic", "poseidon_t4_collision_resistant"] }
+  ]
+  functions := [
+    { name := "storeHashTwo"
+      params := [
+        { name := "a", ty := ParamType.uint256 },
+        { name := "b", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        Stmt.letVar "h" (Expr.externalCall "PoseidonT3_hash" [Expr.param "a", Expr.param "b"]),
+        Stmt.setStorage "lastHash" (Expr.localVar "h"),
+        Stmt.stop
+      ]
+    },
+    { name := "storeHashThree"
+      params := [
+        { name := "a", ty := ParamType.uint256 },
+        { name := "b", ty := ParamType.uint256 },
+        { name := "c", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        Stmt.letVar "h" (Expr.externalCall "PoseidonT4_hash" [Expr.param "a", Expr.param "b", Expr.param "c"]),
+        Stmt.setStorage "lastHash" (Expr.localVar "h"),
+        Stmt.stop
+      ]
+    },
+    { name := "getLastHash"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "lastHash")
+      ]
+    }
+  ]
+}
 
 
 /-!

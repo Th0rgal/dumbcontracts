@@ -12,7 +12,7 @@ open Compiler.ContractSpec
 open Compiler.Selector
 open Compiler.Linker
 
-private def writeContract (outDir : String) (contract : IRContract) (libraryPaths : List String) : IO Unit := do
+private def writeContract (outDir : String) (contract : IRContract) (libraryPaths : List String) (verbose : Bool) : IO Unit := do
   let yulObj := emitYul contract
 
   -- Load and link external libraries if provided
@@ -48,8 +48,6 @@ private def writeContract (outDir : String) (contract : IRContract) (libraryPath
 
   let path := s!"{outDir}/{contract.name}.yul"
   IO.FS.writeFile path text
-where
-  verbose := false  -- Can be parameterized later
 
 def compileAll (outDir : String) (verbose : Bool := false) (libraryPaths : List String := []) : IO Unit := do
   IO.FS.createDirAll outDir
@@ -59,11 +57,18 @@ def compileAll (outDir : String) (verbose : Bool := false) (libraryPaths : List 
     if verbose then
       IO.println s!"Loading {libraryPaths.length} external libraries..."
 
-  for spec in Specs.allSpecs do
+  -- When external libraries are provided, also compile CryptoHash (which
+  -- requires linked Poseidon functions).  Without --link the external call
+  -- validation would correctly reject it.
+  let specs :=
+    if libraryPaths.isEmpty then Specs.allSpecs
+    else Specs.allSpecs ++ [Specs.cryptoHashSpec]
+
+  for spec in specs do
     let selectors ← computeSelectors spec
     match compile spec selectors with
     | .ok contract =>
-      writeContract outDir contract libraryPaths
+      writeContract outDir contract libraryPaths verbose
       if verbose then
         IO.println s!"✓ Compiled {contract.name}"
     | .error err =>
@@ -71,4 +76,4 @@ def compileAll (outDir : String) (verbose : Bool := false) (libraryPaths : List 
   if verbose then
     IO.println ""
     IO.println "Compilation complete!"
-    IO.println s!"Generated {Specs.allSpecs.length} contracts in {outDir}"
+    IO.println s!"Generated {specs.length} contracts in {outDir}"

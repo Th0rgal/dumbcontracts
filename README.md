@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/Th0rgal/verity/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/built%20with-Lean%204-blueviolet.svg" alt="Built with Lean 4"></a>
-  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-299-brightgreen.svg" alt="298 Theorems"></a>
+  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-300-brightgreen.svg" alt="300 Theorems"></a>
   <a href="https://github.com/Th0rgal/verity/actions"><img src="https://img.shields.io/github/actions/workflow/status/Th0rgal/verity/verify.yml?label=verify" alt="Verify"></a>
 </p>
 
@@ -52,12 +52,12 @@ One spec can have many competing implementations - naive, gas-optimized, packed 
 | SafeCounter | 25 | Overflow/underflow revert proofs |
 | Owned | 22 | Access control and ownership transfer |
 | OwnedCounter | 45 | Cross-pattern composition, lockout proofs |
-| Ledger | 32 | Deposit/withdraw/transfer with balance conservation |
+| Ledger | 33 | Deposit/withdraw/transfer with balance conservation |
 | SimpleToken | 57 | Mint/transfer, supply conservation, storage isolation |
 | ReentrancyExample | 4 | Reentrancy vulnerability vs safe withdrawal |
 | CryptoHash | - | External cryptographic library linking |
 
-299 theorems across 9 categories. 302 Foundry tests across 23 test suites. 219 covered by property tests (73% coverage, 80 proof-only exclusions). 5 documented axioms, 12 `sorry` in Ledger sum proofs ([#65](https://github.com/Th0rgal/verity/issues/65)).
+300 theorems across 9 categories. 303 Foundry tests across 23 test suites. 220 covered by property tests (73% coverage, 80 proof-only exclusions). 5 documented axioms, 12 `sorry` in Ledger sum proofs ([#65](https://github.com/Th0rgal/verity/issues/65)).
 
 ## What's Verified
 
@@ -94,7 +94,7 @@ forge test
 <details>
 <summary><strong>Testing</strong></summary>
 
-**Property tests** (302 tests) validate EDSL = Yul = EVM execution:
+**Property tests** (303 tests) validate EDSL = Yul = EVM execution:
 
 ```bash
 forge test                                          # run all

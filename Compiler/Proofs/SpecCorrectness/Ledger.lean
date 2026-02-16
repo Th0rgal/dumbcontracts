@@ -406,11 +406,19 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
     have h_addr_ne' : addressToNat to ≠ addressToNat sender := by
       intro h_nat
       exact h_addr_ne h_nat.symm
+    -- Compute safeAdd success for EDSL proof
+    have h_no_overflow_u : (state.storageMap 0 to : Nat) + ((Verity.Core.Uint256.ofNat amount) : Nat) ≤ MAX_UINT256 := by
+      simp [Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt]
+      exact h_no_overflow
+    have h_safe : Verity.Stdlib.Math.safeAdd (state.storageMap 0 to) (Verity.Core.Uint256.ofNat amount) = some (state.storageMap 0 to + Verity.Core.Uint256.ofNat amount) := by
+      simp only [Verity.Stdlib.Math.safeAdd]
+      have h_not : ¬((state.storageMap 0 to : Nat) + ((Verity.Core.Uint256.ofNat amount) : Nat) > MAX_UINT256) := Nat.not_lt.mpr h_no_overflow_u
+      simp [h_not, Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_no_overflow]
     constructor
     · -- EDSL success
-      simp [transfer, msgSender, getMapping, setMapping, balances,
+      simp [transfer, Verity.Stdlib.Math.requireSomeUint, msgSender, getMapping, setMapping, balances,
         Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-        Contract.run, ContractResult.isSuccess, h_balance_u, h_eq, beq_iff_eq]
+        Contract.run, ContractResult.isSuccess, h_balance_u, h_eq, beq_iff_eq, h_safe]
     constructor
     · -- Spec success (different addresses: overflow check uses h_no_overflow)
       have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
@@ -456,7 +464,7 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
               (Verity.Core.Uint256.ofNat amount) := by
         simpa [ContractResult.snd, ContractResult.getState] using
           (Verity.Proofs.Ledger.transfer_decreases_sender
-            { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h_ne)
+            { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h_ne h_no_overflow_u)
       have h_edsl_val :
           ((ContractResult.getState
               ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
@@ -532,7 +540,7 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
               (Verity.Core.Uint256.ofNat amount) := by
         simpa [ContractResult.snd, ContractResult.getState] using
           (Verity.Proofs.Ledger.transfer_increases_recipient
-            { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h_ne)
+            { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h_ne h_no_overflow_u)
       have h_edsl_val :
           ((ContractResult.getState
               ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
@@ -688,20 +696,25 @@ theorem ledger_transfer_preserves_total (state : ContractState) (to : Address) (
       (state.storageMap 0 sender) ≥ Verity.Core.Uint256.ofNat amount := by
     simp [Verity.Core.Uint256.le_def, Verity.Core.Uint256.val_ofNat,
       Nat.mod_eq_of_lt h_amount_lt, h2]
+  have h_no_overflow_u2 : (state.storageMap 0 to : Nat) + ((Verity.Core.Uint256.ofNat amount) : Nat) ≤ MAX_UINT256 := by
+    simp only [Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, MAX_UINT256, Verity.Stdlib.Math.MAX_UINT256]
+    have h_max : Verity.Core.Uint256.modulus = 2 ^ 256 := rfl
+    rw [h_max] at h3
+    omega
   have h_sender :
       ((transfer to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }).storageMap 0 sender =
         Verity.EVM.Uint256.sub (state.storageMap 0 sender)
           (Verity.Core.Uint256.ofNat amount) := by
     simpa [Contract.runState] using
       (Verity.Proofs.Ledger.transfer_decreases_sender
-        { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h)
+        { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h h_no_overflow_u2)
   have h_recipient :
       ((transfer to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }).storageMap 0 to =
         Verity.EVM.Uint256.add (state.storageMap 0 to)
           (Verity.Core.Uint256.ofNat amount) := by
     simpa [Contract.runState] using
       (Verity.Proofs.Ledger.transfer_increases_recipient
-        { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h)
+        { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h h_no_overflow_u2)
   have h_sender_val :
       ((Contract.runState (transfer to (Verity.Core.Uint256.ofNat amount))
           { state with sender := sender }).storageMap 0 sender).val =

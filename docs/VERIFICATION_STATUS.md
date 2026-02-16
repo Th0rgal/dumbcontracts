@@ -33,13 +33,13 @@ EVM Bytecode
 | SafeCounter | 25 | ✅ Complete | `Verity/Specs/SafeCounter/Proofs.lean` |
 | Owned | 22 | ✅ Complete | `Verity/Specs/Owned/Proofs.lean` |
 | OwnedCounter | 45 | ✅ Complete | `Verity/Specs/OwnedCounter/Proofs.lean` |
-| Ledger | 32 | ✅ Complete | `Verity/Specs/Ledger/Proofs.lean` |
+| Ledger | 33 | ✅ Complete | `Verity/Specs/Ledger/Proofs.lean` |
 | SimpleToken | 59 | ✅ Complete | `Verity/Specs/SimpleToken/Proofs.lean` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
-| **Total** | **233** | **✅ 100%** | — |
+| **Total** | **234** | **✅ 100%** | — |
 
-> **Note**: Stdlib (64 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (297 total properties).
+> **Note**: Stdlib (64 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (298 total properties).
 
 ### Example Property
 
@@ -153,12 +153,12 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 73% coverage (219/299), 80 remaining exclusions all proof-only
+**Status**: 73% coverage (220/300), 80 remaining exclusions all proof-only
 
 ### Current Coverage
 
-- **Total Properties**: 299
-- **Covered**: 219 (73%)
+- **Total Properties**: 300
+- **Covered**: 220 (73%)
 - **Excluded**: 80 (all proof-only)
 - **Missing**: 0
 
@@ -173,7 +173,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 | OwnedCounter | 98% (44/45) | 1 proof-only | ✅ Near-complete |
 | SimpleToken | 88% (52/59) | 7 proof-only | ✅ High coverage |
 | Counter | 82% (23/28) | 5 proof-only | ✅ High coverage |
-| Ledger | 100% (32/32) | 0 | ✅ Complete |
+| Ledger | 100% (33/33) | 0 | ✅ Complete |
 | Stdlib | 0% (0/64) | 64 proof-only | — Internal |
 
 ### Exclusion Categories

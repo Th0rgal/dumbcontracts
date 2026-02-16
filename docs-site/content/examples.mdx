@@ -1,6 +1,6 @@
 ---
 title: Example Contracts
-description: Contracts covering storage, arithmetic, access control, mappings, and composition
+description: 9 contracts covering storage, arithmetic, access control, mappings, composition, and security
 ---
 
 # Example Contracts
@@ -158,9 +158,34 @@ def transfer (to : Address) (amount : Uint256) : Contract Unit := do
 
 Proofs cover mint/transfer correctness, supply conservation equations, and storage isolation across all three slot types.
 
-## Pattern progression
+## ReentrancyExample
 
-Snapshot (2026-02-13):
+Two parallel bank contracts — one vulnerable, one safe — demonstrating that reentrancy is a *provable* property, not just a testing concern.
+
+```lean
+-- Vulnerable: external call before state update
+-- Modeled by subtracting totalSupply twice, balance once
+theorem vulnerable_attack_exists :
+  ∃ (s : ContractState),
+    supplyInvariant s ["attacker"] ∧
+    ¬ supplyInvariant (withdraw MAX_UINT256).runState s) ["attacker"]
+
+-- Safe: state update before external call
+-- The supply invariant is universally provable
+theorem withdraw_maintains_supply (amount : Uint256) :
+  ∀ (s : ContractState),
+    supplyInvariant s [s.sender] →
+    s.storageMap balances.slot s.sender ≥ amount →
+    supplyInvariant ((withdraw amount).runState s) [s.sender]
+```
+
+Proofs cover: existential attack witness (vulnerability is provably exploitable), universal safety proof (safe version preserves invariant), and deposit invariant preservation.
+
+## CryptoHash
+
+Unverified example demonstrating external library linking via the [Linker](/compiler#linker). Has no specs or proofs — it exists to show how external Yul helper functions integrate with compiled output.
+
+## Pattern progression
 
 1. **SimpleStorage**: single slot
 2. **Counter**: arithmetic
@@ -169,6 +194,8 @@ Snapshot (2026-02-13):
 5. **OwnedCounter**: composition (Owned + Counter)
 6. **Ledger**: mapping storage
 7. **SimpleToken**: full composition (Owned + Ledger + supply tracking)
+8. **ReentrancyExample**: vulnerability modeling and safety proofs
+9. **CryptoHash**: external library linking (unverified)
 
 ## Source
 

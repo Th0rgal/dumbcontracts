@@ -101,10 +101,89 @@ def selector(sig: str) -> str:
     return "0x" + digest[:4].hex()
 
 
+def self_test() -> bool:
+    """Validate keccak_256 against known Keccak-256 test vectors.
+
+    Vectors sourced from the Keccak team reference implementation and
+    Ethereum's use of keccak256 (which differs from NIST SHA3-256 in
+    padding: Keccak uses 0x01, SHA3 uses 0x06).
+    """
+    # Full 32-byte digest vectors (independently verifiable)
+    full_vectors = [
+        # Empty string — canonical Ethereum keccak256("")
+        # Source: Ethereum Yellow Paper, every Ethereum client
+        (b"",
+         "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+
+        # keccak256("testing") — verified via ethers.js / web3.js
+        (b"testing",
+         "5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02"),
+
+        # keccak256("transfer(address,uint256)") — full hash
+        # Verified: first 4 bytes = 0xa9059cbb (ERC-20 transfer selector)
+        (b"transfer(address,uint256)",
+         "a9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b"),
+
+        # keccak256("balanceOf(address)") — full hash
+        # Verified: first 4 bytes = 0x70a08231 (ERC-20 balanceOf selector)
+        (b"balanceOf(address)",
+         "70a08231b98ef4ca268c9cc3f6b4590e4bfec28280db06bb5d45e689f2a360be"),
+    ]
+
+    # Selector-only vectors (first 4 bytes, verified against solc --hashes)
+    selector_vectors = [
+        (b"totalSupply()",          "18160ddd"),
+        (b"approve(address,uint256)", "095ea7b3"),
+        (b"allowance(address,address)", "dd62ed3e"),
+        (b"transferFrom(address,address,uint256)", "23b872dd"),
+        (b"mint(address,uint256)",  "40c10f19"),
+        (b"store(uint256)",         "6057361d"),
+        (b"retrieve()",             "2e64cec1"),
+        (b"increment()",            "d09de08a"),
+        (b"decrement()",            "2baeceb7"),
+        (b"transferOwnership(address)", "f2fde38b"),
+    ]
+    passed = 0
+    failed = 0
+
+    # Check full 32-byte digests
+    for data, expected in full_vectors:
+        actual = keccak_256(data).hex()
+        if actual == expected:
+            passed += 1
+        else:
+            label = data.decode("utf-8", errors="replace")
+            print(f"FAIL: keccak256(\"{label}\")", file=sys.stderr)
+            print(f"  expected: {expected}", file=sys.stderr)
+            print(f"  actual:   {actual}", file=sys.stderr)
+            failed += 1
+
+    # Check first-4-byte selectors (verified against solc --hashes)
+    for data, expected_sel in selector_vectors:
+        actual_sel = keccak_256(data).hex()[:8]
+        if actual_sel == expected_sel:
+            passed += 1
+        else:
+            sig = data.decode("utf-8")
+            print(f"FAIL: selector(\"{sig}\")", file=sys.stderr)
+            print(f"  expected: 0x{expected_sel}", file=sys.stderr)
+            print(f"  actual:   0x{actual_sel}", file=sys.stderr)
+            failed += 1
+
+    total = passed + failed
+    if failed:
+        print(f"Self-test: {passed}/{total} passed, {failed} FAILED", file=sys.stderr)
+        return False
+    print(f"Self-test: {total}/{total} passed")
+    return True
+
+
 def main() -> int:
     args = sys.argv[1:]
+    if args == ["--self-test"]:
+        return 0 if self_test() else 1
     if not args:
-        print("Usage: keccak256.py <signature> [signature...]", file=sys.stderr)
+        print("Usage: keccak256.py [--self-test | <signature> ...]", file=sys.stderr)
         return 2
     for sig in args:
         print(selector(sig))

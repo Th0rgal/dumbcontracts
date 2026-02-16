@@ -200,25 +200,32 @@ These components are **not formally verified** but are trusted based on testing,
 - **Standard**: EIP-20 function selector specification
 
 **Mitigation Strategies**:
-1. **Cross-Validation**: `scripts/check_selectors.py`
+1. **Self-Test**: `python3 scripts/keccak256.py --self-test`
+   - 14 test vectors: 4 full 32-byte digests + 10 selector-only checks
+   - Full digests verified against Ethereum Yellow Paper and ethers.js
+   - Selector vectors verified against `solc --hashes`
+   - Runs in CI before any dependent script
+
+2. **Cross-Validation**: `scripts/check_selectors.py`
    - Compares Python output against solc-generated selectors
    - Runs in CI on every build
    - Ensures consistency
 
-2. **Fixture Testing**: `scripts/check_selector_fixtures.py`
-   - Tests against known correct selector values
+3. **Fixture Testing**: `scripts/check_selector_fixtures.py`
+   - Tests against known correct selector values via `solc --hashes`
    - Prevents regression
 
 **Risk Assessment**: **Low**
 - Keccak256 is a deterministic algorithm
-- Validated against multiple implementations
-- Extensively tested in CI
+- Validated against multiple independent implementations (solc, ethers.js)
+- 14 test vectors catch round-constant, padding, or rotation bugs
 - Any mismatch would fail differential tests
 
 **Files**:
 - `Compiler/Selectors.lean` - Selector definitions
-- `scripts/keccak256.py` - Implementation
-- `scripts/check_selectors.py` - Validation
+- `scripts/keccak256.py` - Implementation (with `--self-test` mode)
+- `scripts/check_selectors.py` - Cross-validation against specs
+- `scripts/check_selector_fixtures.py` - Cross-validation against solc
 
 ---
 

@@ -15,6 +15,7 @@ import Verity.EVM.Uint256
 import Verity.Specs.Ledger.Spec
 import Verity.Specs.Ledger.Invariants
 import Verity.Stdlib.Math
+import Verity.Proofs.Stdlib.Math
 
 namespace Verity.Proofs.Ledger
 
@@ -22,19 +23,7 @@ open Verity
 open Verity.Examples.Ledger
 open Verity.Specs.Ledger
 open Verity.Stdlib.Math (safeAdd requireSomeUint MAX_UINT256)
-
--- Helper: safeAdd succeeds when no overflow
-private theorem safeAdd_some (a b : Uint256) (h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
-  safeAdd a b = some (a + b) := by
-  simp only [safeAdd]
-  have h_not : ¬((a : Nat) + (b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [h_not]
-
--- Helper: safeAdd fails on overflow
-private theorem safeAdd_none (a b : Uint256) (h : (a : Nat) + (b : Nat) > MAX_UINT256) :
-  safeAdd a b = none := by
-  simp only [safeAdd]
-  simp [h]
+open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
 
 /-! ## getBalance Correctness -/
 

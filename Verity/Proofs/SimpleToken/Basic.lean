@@ -12,6 +12,7 @@
 import Verity.Examples.SimpleToken
 import Verity.EVM.Uint256
 import Verity.Stdlib.Math
+import Verity.Proofs.Stdlib.Math
 import Verity.Specs.SimpleToken.Spec
 import Verity.Specs.SimpleToken.Invariants
 
@@ -19,6 +20,7 @@ namespace Verity.Proofs.SimpleToken
 
 open Verity
 open Verity.Stdlib.Math
+open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken hiding owner balances totalSupply
 
@@ -138,19 +140,6 @@ private abbrev unfold_defs := [``mint, ``transfer,
   ``msgSender, ``getStorageAddr, ``setStorageAddr, ``getStorage, ``setStorage, ``getMapping, ``setMapping,
   ``Verity.require, ``Verity.pure, ``Verity.bind, ``Bind.bind, ``Pure.pure,
   ``Contract.run, ``ContractResult.snd, ``ContractResult.fst]
-
--- Helper: safeAdd succeeds when no overflow
-private theorem safeAdd_some (a b : Uint256) (h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
-  safeAdd a b = some (a + b) := by
-  simp only [safeAdd]
-  have h_not : ¬((a : Nat) + (b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [h_not]
-
--- Helper: safeAdd fails on overflow
-private theorem safeAdd_none (a b : Uint256) (h : (a : Nat) + (b : Nat) > MAX_UINT256) :
-  safeAdd a b = none := by
-  simp only [safeAdd]
-  simp [h]
 
 -- Helper: unfold mint when owner guard passes and no overflow
 private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256)

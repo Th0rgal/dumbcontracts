@@ -481,11 +481,3 @@ def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Tra
           revertReason := none, finalStorage := finalState.storage }
 
 end Verity.Proofs.Stdlib.SpecInterpreter
-
-/-!
-## Helper Functions
-
-Helper functions for creating external function models.
--/
-
-end Verity.Proofs.Stdlib.SpecInterpreter

@@ -42,6 +42,8 @@ EVM Bytecode
 | Solidity Compiler (solc) | ⚠️ Trusted | Medium |
 | Keccak256 Hashing | ⚠️ Trusted | Low |
 | EVM Semantics | ⚠️ Trusted | Low |
+| Address Type Representation | ⚠️ Documented | Low |
+| Arithmetic Semantics (Wrapping) | ⚠️ Documented | Low |
 | Linked Libraries (Linker) | ⚠️ Trusted | Varies |
 | Mapping Slot Collision Freedom | ⚠️ Trusted | Low |
 | Lean 4 Type Checker | ⚠️ Foundational | Very Low |
@@ -291,7 +293,91 @@ These components are **not formally verified** but are trusted based on testing,
 
 ---
 
-### 5. External Library Code (Linker)
+### 5. Address Type Representation
+
+**Role**: Ethereum addresses are represented in Verity
+
+**Assumption**: The `Address` type is defined as a plain `String` (`Verity/Core.lean:19`):
+```lean
+abbrev Address := String
+```
+
+**Details**:
+- **No validation**: Addresses are not validated to be well-formed (20 bytes, hex-encoded)
+- **No normalization**: No EIP-55 checksum enforcement or case normalization
+- **Case-sensitive equality**: String comparison is case-sensitive, while Ethereum addresses are case-insensitive
+
+**Why This Matters**:
+1. **Axiom soundness**: The `addressToNat_injective` axiom (see [AXIOMS.md](AXIOMS.md)) claims address-to-Nat conversion is injective. Since `Address = String`, arbitrary strings (including "", "hello", or case variants) are technically valid values. The axiom is sound only when addresses are properly formed hex strings.
+2. **Proof assumptions**: Proofs assume addresses are well-formed 20-byte hex strings, but this is not enforced by the type system.
+3. **Comparison semantics**: If a proof uses `"0xABC..."` and a test uses `"0xabc..."`, they won't match even though they're the same Ethereum address.
+
+**Mitigation Strategies**:
+1. **Differential testing**: 70,000+ tests use properly-formed addresses, validating the assumption in practice
+2. **Axiom guard**: The `isValidAddress` predicate can be used to enforce well-formedness where needed
+3. **Convention**: Code follows the convention of using properly-formed 40-character hex strings (plus "0x" prefix)
+
+**Risk Assessment**: **Low**
+- The type system doesn't enforce validity, but all production code follows conventions
+- Differential tests catch malformed address issues
+- The `addressToNat_injective` axiom is validated by extensive testing
+
+**Future Work**:
+- Create a validated Address structure with compile-time guarantees (issue #150)
+- Consider using `Fin (2^160)` or `ByteArray` for type-safe address representation
+- Implement EIP-55 checksum validation
+
+---
+
+### 6. Arithmetic Semantics
+
+**Role**: Integer arithmetic operations in Verity's EDSL
+
+**Assumption**: Verity's EDSL uses **wrapping modular arithmetic** (EVM semantics), while Solidity ^0.8.0 uses **checked arithmetic** (reverts on overflow/underflow).
+
+**Details**:
+- **EDSL behavior**: `Uint256.add` and `Uint256.sub` use modular arithmetic (wrap at 2^256):
+  ```lean
+  def add (a b : Uint256) : Uint256 := ⟨(a.val + b.val) % m⟩
+  def sub (a b : Uint256) : Uint256 := ⟨(a.val + m - b.val) % m⟩
+  ```
+- **Solidity ^0.8 behavior**: Arithmetic operations revert on overflow/underflow unless wrapped in `unchecked { }` blocks
+
+**Affected Contracts**:
+| Contract | Lean behavior | Solidity ^0.8 behavior |
+|----------|--------------|----------------------|
+| Counter | `increment()` at MAX_UINT256 wraps to 0 | `count += 1` reverts with overflow |
+| Ledger | `credit()` wraps on overflow | `balances[addr] += amount` reverts |
+| SimpleToken | `transfer()` underflow wraps | `balances[from] -= amount` reverts |
+
+**Why This Matters**:
+1. **Proof coverage**: Proofs about wrap-around behavior verify states that Solidity would never reach (it reverts instead)
+2. **Guard proofs**: Contracts with explicit `require` guards (e.g., `require (balance >= amount)`) correctly prevent underflow in both models
+3. **False confidence risk**: Users may believe proofs cover the same behavior as Solidity contracts
+
+**Mitigation Strategies**:
+1. **Guard patterns**: Contracts like Ledger and SimpleToken use explicit `require` guards that prevent overflow/underflow in both models
+2. **SafeCounter example**: Demonstrates verified checked arithmetic using `safeAdd`/`safeSub` from the standard library
+3. **Documentation**: Contract specs clearly document whether they expect wrapping or checked semantics
+
+**Risk Assessment**: **Low** (for properly guarded contracts)
+- Contracts with explicit guards are correct in both models
+- The SafeCounter example shows how to verify checked arithmetic
+- Differential tests validate EVM-level behavior
+
+**Best Practices**:
+1. **For EVM-level semantics**: Use wrapping arithmetic (matches EVM behavior directly)
+2. **For Solidity-like semantics**: Add explicit `require` guards or use `safeAdd`/`safeSub` helpers
+3. **Document choice**: Clearly state whether your contract expects wrapping or checked semantics
+
+**Future Work**:
+- Add explicit checked arithmetic primitives to the EDSL
+- Document semantic choice in each contract's spec header
+- Consider adding a lint that warns about unchecked arithmetic in contracts targeting Solidity ^0.8
+
+---
+
+### 7. External Library Code (Linker)
 
 **Role**: The [Linker](Compiler/Linker.lean) injects external Yul library functions into compiled contracts at code-generation time, enabling production cryptographic implementations (e.g., Poseidon hash) to replace placeholder stubs.
 
@@ -324,7 +410,7 @@ Library functions are provided via `--link <path.yul>` flags to the compiler CLI
 
 ---
 
-### 6. Lean 4 Type Checker
+### 8. Lean 4 Type Checker
 
 **Role**: Verifies all Lean proofs are correct
 
@@ -345,7 +431,7 @@ Library functions are provided via `--link <path.yul>` flags to the compiler CLI
 
 ---
 
-### 7. `allowUnsafeReducibility` Usage
+### 9. `allowUnsafeReducibility` Usage
 
 **Role**: Allows Lean's `simp` and `rfl` tactics to unfold `partial` function definitions
 

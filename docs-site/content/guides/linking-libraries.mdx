@@ -182,11 +182,176 @@ object "MyLib" {
 
 ---
 
+## Converting Solidity to Yul
+
+If you have an existing Solidity library you want to use with Verity, you need to convert it to pure Yul. Here's how:
+
+### Step 1: Extract the Logic
+
+Take the Solidity function and identify:
+1. Input parameters
+2. Output values
+3. Internal computations
+
+**Solidity example**:
+```solidity
+function safeAdd(uint256 a, uint256 b) internal pure returns (uint256) {
+    uint256 c = a + b;
+    require(c >= a, "overflow");
+    return c;
+}
+```
+
+**Yul equivalent**:
+```yul
+function safeAdd(a, b) -> result {
+    result := add(a, b)
+    // Note: overflow check must be done by caller
+    // Yul's add() wraps like EVM
+}
+```
+
+### Step 2: Handle Special Cases
+
+| Solidity Feature | Yul Approach |
+|-----------------|--------------|
+| `require(cond, msg)` | `if iszero(cond) { revert(0, 0) }` |
+| `return x` | `result := x` (assign to output var) |
+| `mapping` | Use `sload(keccak256(...))` / `sstore(...)` |
+| `memory` arrays | Use `mload` / `mstore` with offsets |
+| `abi.encode` | Manual packing with `shl` / `or` |
+
+### Step 3: Convert Common Patterns
+
+**Conditional logic**:
+```solidity
+// Solidity
+if (a > b) { return a; } else { return b; }
+```
+```yul
+// Yul
+function max(a, b) -> result {
+    switch gt(a, b)
+    case 1 { result := a }
+    default { result := b }
+}
+```
+
+**Loops** (use with caution - gas limits):
+```solidity
+// Solidity
+for (uint i = 0; i < n; i++) { ... }
+```
+```yul
+// Yul
+function loopExample(n) -> result {
+    for { let i := 0 } lt(i, n) { i := add(i, 1) } {
+        // body
+    }
+}
+```
+
+### Complete Example: Math Library
+
+**Solidity** (`MathUtils.sol`):
+```solidity
+library MathUtils {
+    function sqrt(uint256 x) internal pure returns (uint256) {
+        if (x == 0) return 0;
+        uint256 z = (x + 1) / 2;
+        uint256 y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
+        return y;
+    }
+}
+```
+
+**Yul** (`MathUtils.yul`):
+```yul
+// Newton-Raphson integer square root
+function sqrt(x) -> result {
+    if iszero(x) {
+        result := 0
+        leave
+    }
+    // Initial estimate
+    result := div(add(x, 1), 2)
+    let y := x
+    // Iterate until convergence
+    for {} lt(result, y) {} {
+        y := result
+        result := div(add(div(x, result), result), 2)
+    }
+}
+```
+
+**Link it**:
+```bash
+lake exe verity-compiler --link libs/MathUtils.yul -o compiler/yul
+```
+
+### Using solc to Generate Yul
+
+For complex Solidity libraries, you can use `solc --ir` to generate Yul:
+
+```bash
+solc --ir MathUtils.sol
+```
+
+This outputs Yul (in an `object` wrapper). Extract the `function` definitions from the `code` block and place them in a plain `.yul` file.
+
+**Caveats**:
+- Generated Yul may include EVM version-specific opcodes
+- External calls and storage access patterns differ
+- You may need to simplify generated code
+
+---
+
 ## Trust Model
 
 External libraries are **outside the formal verification boundary**. The Linker validates structural properties (no shadowing, all references resolved) but does not verify the library's correctness.
 
 Your proofs establish: *"If the library functions behave like the placeholders, then the contract is correct."*
+
+### Security Considerations
+
+| Risk | Mitigation |
+|------|------------|
+| Library contains bugs | Use audited implementations |
+| Library has malicious code | Review library source before linking |
+| Placeholder ≠ Library behavior | Add end-to-end Foundry tests with linked contract |
+| Library modifies unexpected storage | Audit storage slot usage |
+
+### Limitations
+
+1. **No differential testing**: The `SpecInterpreter` returns 0 for external calls, so linked library behavior isn't validated in property tests (see [issue #172](https://github.com/Th0rgal/verity/issues/172))
+
+2. **Text-level injection**: Libraries are injected as raw text, not merged at the AST level. This means:
+   - No syntax validation of library code
+   - Formal proofs don't cover the linked code
+   - Malformed Yul could break compilation
+
+3. **No signature checking**: The Linker validates names exist but doesn't verify function signatures match
+
+### Best Practices
+
+1. **Use trusted libraries**: Prefer audited cryptographic libraries (e.g., from OpenZeppelin, Aztec)
+
+2. **Add end-to-end tests**: Create Foundry tests that compile with linked libraries and test real behavior:
+   ```bash
+   # Compile with linking
+   lake exe verity-compiler --link libs/Poseidon.yul -o compiler/yul
+   
+   # Test the actual compiled bytecode
+   FOUNDRY_PROFILE=difftest forge test --match-contract MyLinkedContract
+   ```
+
+3. **Document trust assumptions**: If using linked libraries, note this in your contract's documentation
+
+4. **Audit library code**: Read and understand any library code you link
 
 To increase confidence in linked libraries:
 - Use audited, battle-tested implementations

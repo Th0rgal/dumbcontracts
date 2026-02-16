@@ -18,7 +18,8 @@ open Compiler.Hex
 /-!
 ## Simple PRNG
 
-Linear Congruential Generator for reproducible randomness.
+64-bit Linear Congruential Generator (LCG) for reproducible randomness.
+Uses the MMIX constants by Donald Knuth for better statistical properties.
 -/
 
 structure RNG where
@@ -26,9 +27,9 @@ structure RNG where
   deriving Repr
 
 def RNG.next (rng : RNG) : RNG × Nat :=
-  let a := 1103515245
-  let c := 12345
-  let m := 2^31
+  let a := 6364136223846793005
+  let c := 1442695040888963407
+  let m := 2^64
   let newSeed := (a * rng.seed + c) % m
   ({ seed := newSeed }, newSeed)
 
@@ -43,32 +44,48 @@ conditions alongside typical small-value scenarios.
 -/
 
 -- Edge-case uint256 values that trigger overflow/underflow/boundary bugs
+-- Covers: zero, small values, powers of 2, mid-points, and MAX boundaries
 private def edgeUint256Values : List Nat :=
   [ 0
   , 1
   , 2
+  , 3
+  , 10
+  , 100
+  , 1000
+  , 2^64 - 1
+  , 2^64
+  , 2^128 - 1
   , 2^128
+  , 2^192
+  , 2^255 - 1
   , 2^255
-  , 2^256 - 2  -- type(uint256).max - 1
-  , 2^256 - 1  -- type(uint256).max
+  , 2^256 - 3
+  , 2^256 - 2
+  , 2^256 - 1
   ]
 
 -- Generate random uint256 with edge-case injection.
--- ~7/16 of the time an edge-case value is returned; otherwise a
--- bounded random value is used (range 0..999999).
+-- ~50% of the time an edge-case value is returned; otherwise a
+-- random value from the full uint256 range is used (using two
+-- 64-bit samples for broader coverage).
 def genUint256 (rng : RNG) : RNG × Nat :=
   let (rng', n) := rng.next
-  let selector := n % 16
+  let selector := n % 32
   if selector < edgeUint256Values.length then
     (rng', edgeUint256Values.get! selector)
   else
-    (rng', n % 1000000)
+    let (rng'', n2) := rng'.next
+    let combined := (n % 2^128) * 2^128 + (n2 % 2^128)
+    (rng'', combined % 2^256)
 
 -- Convert Address to Nat for calldata args (keeps parity with Interpreter)
 private def addressToNatNormalized (addr : Address) : Nat :=
   addressToNat (normalizeAddress addr)
 
--- Address pool including edge-case addresses (zero address, high address)
+-- Address pool including edge-case addresses (zero address, high address, etc.)
+-- Covers: standard test addresses, zero address, max address, and addresses
+-- that could interact interestingly with storage slots or other addresses.
 private def addressPool : List Address :=
   [ "0xalice"
   , "0xbob"
@@ -78,6 +95,10 @@ private def addressPool : List Address :=
   , "0x0000000000000000000000000000000000000000"  -- zero address
   , "0xffffffffffffffffffffffffffffffffffffffff"  -- max address
   , "0x0000000000000000000000000000000000000001"  -- address(1)
+  , "0x0000000000000000000000000000000000000002"  -- address(2)
+  , "0x00000000000000000000000000000000000000ff"  -- address(255)
+  , "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"  -- recognizable pattern
+  , "0x000000000000000000000000000000000000dead"  -- another pattern
   ]
 
 -- Generate random address from an expanded pool that includes edge cases

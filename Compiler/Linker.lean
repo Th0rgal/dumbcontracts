@@ -36,6 +36,19 @@ private def extractFunctionName (line : String) : Option String :=
   else
     none
 
+-- Extract parameter count from a Yul function definition line
+-- e.g. "function foo(a, b) -> result {" has arity 2
+private def extractFunctionArity (line : String) : Nat :=
+  let trimmed := line.trim
+  -- Find the parameter list between '(' and ')'
+  match trimmed.posOf '(', trimmed.posOf ')' with
+  | openPos, closePos =>
+    if openPos < closePos then
+      let params := (trimmed.extract ⟨openPos.byteIdx + 1⟩ closePos).trim
+      if params.isEmpty then 0
+      else (params.splitOn ",").length
+    else 0
+
 -- Check if a line starts a function definition
 private def isFunctionStart (line : String) : Bool :=
   extractFunctionName line |>.isSome
@@ -94,6 +107,7 @@ where
 
 structure LibraryFunction where
   name : String
+  arity : Nat         -- Number of parameters
   body : List String  -- Raw Yul text lines
   deriving Repr
 
@@ -102,7 +116,10 @@ def parseLibrary (content : String) : List LibraryFunction :=
   let lines := content.splitOn "\n"
   let functions := extractAllFunctions lines
   functions.map fun (name, body) =>
-    { name := name, body := body }
+    let arity := match body.head? with
+      | some firstLine => extractFunctionArity firstLine
+      | none => 0
+    { name := name, arity := arity, body := body }
 
 -- Load library from file path
 def loadLibrary (path : String) : IO (List LibraryFunction) := do
@@ -115,20 +132,21 @@ def loadLibrary (path : String) : IO (List LibraryFunction) := do
 
 -- Inject library function text directly into rendered Yul output
 -- This preserves the exact library code without parsing/re-emitting
-def renderWithLibraries (obj : YulObject) (libraries : List LibraryFunction) : String :=
+-- Returns an error if the runtime code injection site is not found.
+def renderWithLibraries (obj : YulObject) (libraries : List LibraryFunction) : Except String String :=
   -- Render the main object
   let mainYul := Yul.render obj
 
   -- If no libraries, return as-is
   if libraries.isEmpty then
-    mainYul
+    .ok mainYul
   else
     -- Extract the runtime code section and inject libraries
     -- Find the runtime "code {" line and inject library functions after it
     let lines := mainYul.splitOn "\n"
-    let rec insertLibraries (remaining : List String) (acc : List String) (inserted : Bool) (depth : Nat) : List String :=
+    let rec insertLibraries (remaining : List String) (acc : List String) (inserted : Bool) (depth : Nat) : List String × Bool :=
       match remaining with
-      | [] => acc
+      | [] => (acc, inserted)
       | line :: rest =>
           -- Track depth: we want the second "code {" (inside object "runtime")
           let isCodeLine := line.trim.startsWith "code {"
@@ -143,8 +161,11 @@ def renderWithLibraries (obj : YulObject) (libraries : List LibraryFunction) : S
             insertLibraries rest (acc ++ [line] ++ libraryLines) true newDepth
           else
             insertLibraries rest (acc ++ [line]) inserted newDepth
-    let resultLines := insertLibraries lines [] false 0
-    String.intercalate "\n" resultLines
+    let (resultLines, inserted) := insertLibraries lines [] false 0
+    if !inserted then
+      .error s!"Failed to find runtime code injection site in {obj.name}. Library functions could not be linked."
+    else
+      .ok (String.intercalate "\n" resultLines)
 
 /-!
 ## Validation
@@ -277,6 +298,48 @@ def validateNoNameCollisions (obj : YulObject) (libraries : List LibraryFunction
     throw s!"Library function(s) shadow Yul builtins: {String.intercalate ", " builtinCollisions}"
   pure ()
 
+-- Collect all function calls with their argument counts from Yul statements
+mutual
+private def callsWithArityFromExpr : YulExpr → List (String × Nat)
+  | YulExpr.call name args => (name, args.length) :: callsWithArityFromExprs args
+  | YulExpr.lit _ => []
+  | YulExpr.hex _ => []
+  | YulExpr.str _ => []
+  | YulExpr.ident _ => []
+
+private def callsWithArityFromExprs : List YulExpr → List (String × Nat)
+  | [] => []
+  | e :: es => callsWithArityFromExpr e ++ callsWithArityFromExprs es
+
+private def callsWithArityFromStmt : YulStmt → List (String × Nat)
+  | YulStmt.comment _ => []
+  | YulStmt.let_ _ value => callsWithArityFromExpr value
+  | YulStmt.assign _ value => callsWithArityFromExpr value
+  | YulStmt.expr e => callsWithArityFromExpr e
+  | YulStmt.if_ cond body => callsWithArityFromExpr cond ++ callsWithArityFromStmts body
+  | YulStmt.for_ init cond post body =>
+      callsWithArityFromStmts init ++ callsWithArityFromExpr cond ++
+      callsWithArityFromStmts post ++ callsWithArityFromStmts body
+  | YulStmt.switch expr cases defaultCase =>
+      callsWithArityFromExpr expr ++
+      callsWithArityCases cases ++
+      callsWithArityDefault defaultCase
+  | YulStmt.block stmts => callsWithArityFromStmts stmts
+  | YulStmt.funcDef _ _ _ body => callsWithArityFromStmts body
+
+private def callsWithArityFromStmts : List YulStmt → List (String × Nat)
+  | [] => []
+  | s :: ss => callsWithArityFromStmt s ++ callsWithArityFromStmts ss
+
+private def callsWithArityCases : List (Nat × List YulStmt) → List (String × Nat)
+  | [] => []
+  | (_, body) :: rest => callsWithArityFromStmts body ++ callsWithArityCases rest
+
+private def callsWithArityDefault : Option (List YulStmt) → List (String × Nat)
+  | none => []
+  | some body => callsWithArityFromStmts body
+end
+
 -- Validate that all external calls are provided by libraries
 -- Excludes Yul builtins and locally-defined functions
 def validateExternalReferences (obj : YulObject) (libraries : List LibraryFunction) : Except String Unit := do
@@ -287,9 +350,25 @@ def validateExternalReferences (obj : YulObject) (libraries : List LibraryFuncti
   let known := yulBuiltins ++ localDefs ++ providedFunctions
   let missingFunctions := allCalls.filter fun call =>
     !known.contains call
-  if missingFunctions.isEmpty then
-    pure ()
-  else
+  if !missingFunctions.isEmpty then
     throw s!"Unresolved external references: {String.intercalate ", " missingFunctions}"
+  pure ()
+
+-- Validate that library function call sites match library parameter counts.
+-- Catches bugs where a library exports a different arity than the contract expects.
+def validateCallArity (obj : YulObject) (libraries : List LibraryFunction) : Except String Unit := do
+  let allCode := obj.deployCode ++ obj.runtimeCode
+  let callsWithArity := callsWithArityFromStmts allCode
+  let libArityMap := libraries.map fun lib => (lib.name, lib.arity)
+  let mut errors : List String := []
+  for (callName, callArity) in callsWithArity do
+    match libArityMap.lookup callName with
+    | some libArity =>
+      if callArity != libArity then
+        errors := s!"{callName}: called with {callArity} args but library defines {libArity} params" :: errors
+    | none => pure ()  -- Not a library function; skip
+  if !errors.isEmpty then
+    throw s!"Arity mismatch: {String.intercalate "; " errors.eraseDups}"
+  pure ()
 
 end Compiler.Linker

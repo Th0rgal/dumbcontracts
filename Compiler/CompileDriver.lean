@@ -40,11 +40,19 @@ private def writeContract (outDir : String) (contract : IRContract) (libraryPath
   | .error err => throw (IO.userError err)
   | .ok () => pure ()
 
-  let text :=
+  -- Validate: call-site argument counts match library parameter counts
+  if !allLibFunctions.isEmpty then
+    match validateCallArity yulObj allLibFunctions with
+    | .error err => throw (IO.userError err)
+    | .ok () => pure ()
+
+  let text ←
     if allLibFunctions.isEmpty then
-      Yul.render yulObj
+      pure (Yul.render yulObj)
     else
-      renderWithLibraries yulObj allLibFunctions
+      match renderWithLibraries yulObj allLibFunctions with
+      | .error err => throw (IO.userError err)
+      | .ok rendered => pure rendered
 
   let path := s!"{outDir}/{contract.name}.yul"
   IO.FS.writeFile path text

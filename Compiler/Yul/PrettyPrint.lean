@@ -63,9 +63,9 @@ def ppStmt (indent : Nat) : YulStmt → List String
       let postBlock := ppStmts (indent + 1) post
       let bodyLines := ppStmts (indent + 1) body
       let header := indentStr indent ++ "for {"
-      let initFooter := s!"{indentStr indent}}} {ppExpr cond} {{"
-      let postFooter := s!"{indentStr indent}}} {{"
-      let footer := s!"{indentStr indent}}"
+      let initFooter := indentStr indent ++ "} " ++ ppExpr cond ++ " {"
+      let postFooter := indentStr indent ++ "} {"
+      let footer := indentStr indent ++ "}"
       header :: initBlock ++ [initFooter] ++ postBlock ++ [postFooter] ++ bodyLines ++ [footer]
   | YulStmt.switch expr cases defaultCase =>
       let header := indentStr indent ++ "switch " ++ ppExpr expr

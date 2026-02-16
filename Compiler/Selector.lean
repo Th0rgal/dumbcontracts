@@ -10,6 +10,10 @@ open Compiler.Hex
 private def paramTypeToSol : ParamType -> String
   | ParamType.uint256 => "uint256"
   | ParamType.address => "address"
+  | ParamType.bytes32 => "bytes32"
+  | ParamType.array t => paramTypeToSol t ++ "[]"
+  | ParamType.fixedArray t n => paramTypeToSol t ++ "[" ++ toString n ++ "]"
+  | ParamType.bytes => "bytes"
 
 private def functionSignature (fn : FunctionSpec) : String :=
   let params := fn.params.map (fun p => paramTypeToSol p.ty)

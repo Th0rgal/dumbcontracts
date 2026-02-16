@@ -12,6 +12,9 @@ object "Owned" {
             switch shr(224, calldataload(0))
             case 0xf2fde38b {
                 /* transferOwnership() */
+                if callvalue() {
+                    revert(0, 0)
+                }
                 let newOwner := and(calldataload(4), 0xffffffffffffffffffffffffffffffffffffffff)
                 if iszero(eq(caller(), sload(0))) {
                     mstore(0, 0x8c379a000000000000000000000000000000000000000000000000000000000)
@@ -25,6 +28,9 @@ object "Owned" {
             }
             case 0x893d20e8 {
                 /* getOwner() */
+                if callvalue() {
+                    revert(0, 0)
+                }
                 mstore(0, sload(0))
                 return(0, 32)
             }

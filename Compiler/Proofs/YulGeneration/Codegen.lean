@@ -84,7 +84,7 @@ by
 /-- Switch cases generated from IR functions. -/
 def switchCases (fns : List IRFunction) : List (Prod Nat (List YulStmt)) :=
   fns.map (fun f =>
-    let body := [YulStmt.comment s!"{f.name}()"] ++ f.body
+    let body := [YulStmt.comment s!"{f.name}()"] ++ [Compiler.callvalueGuard] ++ f.body
     (f.selector, body)
   )
 
@@ -136,7 +136,7 @@ theorem find_switch_case_of_find_function
     (fns : List IRFunction) (sel : Nat) (fn : IRFunction)
     (hFind : fns.find? (fun f => f.selector == sel) = some fn) :
     (switchCases fns).find? (fun (c, _) => c = sel) =
-      some (fn.selector, [YulStmt.comment s!"{fn.name}()"] ++ fn.body) := by
+      some (fn.selector, [YulStmt.comment s!"{fn.name}()"] ++ [Compiler.callvalueGuard] ++ fn.body) := by
   induction fns with
   | nil =>
       simp at hFind

@@ -25,10 +25,15 @@ def mappingSlotFunc : YulStmt :=
     YulStmt.assign "slot" (YulExpr.call "keccak256" [YulExpr.lit 0, YulExpr.lit 64])
   ]
 
+/-- Revert if ETH is sent to a non-payable function. -/
+def callvalueGuard : YulStmt :=
+  YulStmt.if_ (YulExpr.call "callvalue" [])
+    [YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])]
+
 def buildSwitch (funcs : List IRFunction) : YulStmt :=
   let selectorExpr := YulExpr.call "shr" [YulExpr.lit 224, YulExpr.call "calldataload" [YulExpr.lit 0]]
   let cases := funcs.map (fun fn =>
-    let body := [YulStmt.comment s!"{fn.name}()"] ++ fn.body
+    let body := [YulStmt.comment s!"{fn.name}()"] ++ [callvalueGuard] ++ fn.body
     (fn.selector, body)
   )
   YulStmt.switch selectorExpr cases (some [

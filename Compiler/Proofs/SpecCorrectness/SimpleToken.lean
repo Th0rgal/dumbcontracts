@@ -325,7 +325,8 @@ theorem token_mint_reverts_as_nonowner (state : ContractState) (to : Address) (a
 
 /-- The `transfer` function correctly transfers when balance is sufficient -/
 theorem token_transfer_correct_sufficient (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
-    (h : (state.storageMap 1 sender).val ≥ amount) :
+    (h : (state.storageMap 1 sender).val ≥ amount)
+    (h_no_overflow : sender ≠ to → (state.storageMap 1 to).val + amount ≤ MAX_UINT256) :
     let edslResult := (transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
@@ -446,11 +447,18 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
     have h_addr_ne' : addressToNat to ≠ addressToNat sender := by
       intro h_nat
       exact h_addr_ne h_nat.symm
+    have h_no_overflow_nat : (state.storageMap 1 to).val + amount ≤ MAX_UINT256 :=
+      h_no_overflow h_ne
+    have h_safe : safeAdd (state.storageMap 1 to) (Verity.Core.Uint256.ofNat amount) = some (state.storageMap 1 to + Verity.Core.Uint256.ofNat amount) := by
+      simp only [safeAdd, Verity.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt]
+      simp [Nat.not_lt.mpr h_no_overflow_nat]
     constructor
     · -- EDSL success
       simp [transfer, msgSender, getMapping, setMapping, balances,
+        requireSomeUint, h_safe,
         Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-        Contract.run, ContractResult.isSuccess, h_balance_u, h_ne]
+        Contract.run, ContractResult.isSuccess, ContractResult.snd, ContractResult.fst,
+        h_balance_u, h_ne]
     constructor
     · -- Spec success
       have h_not_lt : ¬ (state.storageMap 1 sender).val < amount := by
@@ -490,6 +498,7 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
             Verity.EVM.Uint256.sub (state.storageMap 1 sender)
               (Verity.Core.Uint256.ofNat amount) := by
         simp [transfer, msgSender, getMapping, setMapping, balances,
+          requireSomeUint, h_safe,
           Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
           Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
           h_balance_u, h_ne]
@@ -551,7 +560,9 @@ theorem token_transfer_correct_sufficient (state : ContractState) (to : Address)
             ).storageMap 1 to =
             Verity.EVM.Uint256.add (state.storageMap 1 to)
               (Verity.Core.Uint256.ofNat amount) := by
+        show _ = state.storageMap 1 to + Verity.Core.Uint256.ofNat amount
         simp [transfer, msgSender, getMapping, setMapping, balances,
+          requireSomeUint, h_safe,
           Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
           Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
           h_balance_u, h_ne]
@@ -772,9 +783,17 @@ theorem token_transfer_preserves_supply (state : ContractState) (to : Address) (
     simp [transfer, msgSender, getMapping, setMapping, balances,
       Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Contract.runState, h_balance_u, beq_iff_eq]
-  · simp [transfer, msgSender, getMapping, setMapping, balances,
-      Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-      Contract.runState, h_balance_u, h_eq, beq_iff_eq]
+  · cases h_cases : safeAdd (state.storageMap 1 to) (Verity.Core.Uint256.ofNat amount) with
+    | none =>
+      simp [transfer, msgSender, getMapping, setMapping, balances, requireSomeUint, h_cases,
+        Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
+        Contract.run, Contract.runState, ContractResult.snd, ContractResult.fst,
+        h_balance_u, h_eq, beq_iff_eq]
+    | some val =>
+      simp [transfer, msgSender, getMapping, setMapping, balances, requireSomeUint, h_cases,
+        Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
+        Contract.run, Contract.runState, ContractResult.snd, ContractResult.fst,
+        h_balance_u, h_eq, beq_iff_eq]
 
 /-- Only owner can mint -/
 theorem token_only_owner_mints (state : ContractState) (to : Address) (amount : Nat) (sender : Address) :
@@ -812,6 +831,12 @@ theorem token_transfer_preserves_total_balance (state : ContractState) (to : Add
       (state.storageMap 1 sender) ≥ Verity.Core.Uint256.ofNat amount := by
     simp [Verity.Core.Uint256.le_def, Verity.Core.Uint256.val_ofNat,
       Nat.mod_eq_of_lt h_amount_lt, h2]
+  have h_no_overflow_nat : (state.storageMap 1 to).val + amount ≤ MAX_UINT256 := by
+    have : MAX_UINT256 + 1 = Verity.Core.Uint256.modulus := Verity.Core.Uint256.max_uint256_succ_eq_modulus
+    omega
+  have h_safe : safeAdd (state.storageMap 1 to) (Verity.Core.Uint256.ofNat amount) = some (state.storageMap 1 to + Verity.Core.Uint256.ofNat amount) := by
+    simp only [safeAdd, Verity.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt]
+    simp [Nat.not_lt.mpr h_no_overflow_nat]
   have h_sender_state :
       (ContractResult.getState
         ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
@@ -819,6 +844,7 @@ theorem token_transfer_preserves_total_balance (state : ContractState) (to : Add
       Verity.EVM.Uint256.sub (state.storageMap 1 sender)
         (Verity.Core.Uint256.ofNat amount) := by
     simp [transfer, msgSender, getMapping, setMapping, balances,
+      requireSomeUint, h_safe,
       Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
       h_balance_u, h]
@@ -828,7 +854,9 @@ theorem token_transfer_preserves_total_balance (state : ContractState) (to : Add
       ).storageMap 1 to =
       Verity.EVM.Uint256.add (state.storageMap 1 to)
         (Verity.Core.Uint256.ofNat amount) := by
+    show _ = state.storageMap 1 to + Verity.Core.Uint256.ofNat amount
     simp [transfer, msgSender, getMapping, setMapping, balances,
+      requireSomeUint, h_safe,
       Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
       h_balance_u, h]

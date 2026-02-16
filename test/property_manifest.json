@@ -243,6 +243,7 @@
     "transfer_preserves_supply_when_sufficient",
     "transfer_preserves_wellformedness",
     "transfer_reverts_insufficient_balance",
+    "transfer_reverts_recipient_overflow",
     "transfer_self_preserves_balance",
     "transfer_sum_equation",
     "transfer_supply_storage_isolated",

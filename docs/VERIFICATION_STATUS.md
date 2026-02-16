@@ -34,12 +34,12 @@ EVM Bytecode
 | Owned | 22 | ✅ Complete | `Verity/Specs/Owned/Proofs.lean` |
 | OwnedCounter | 45 | ✅ Complete | `Verity/Specs/OwnedCounter/Proofs.lean` |
 | Ledger | 32 | ✅ Complete | `Verity/Specs/Ledger/Proofs.lean` |
-| SimpleToken | 56 | ✅ Complete | `Verity/Specs/SimpleToken/Proofs.lean` |
+| SimpleToken | 57 | ✅ Complete | `Verity/Specs/SimpleToken/Proofs.lean` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
-| **Total** | **232** | **✅ 100%** | — |
+| **Total** | **233** | **✅ 100%** | — |
 
-> **Note**: Stdlib (64 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (296 total properties).
+> **Note**: Stdlib (64 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (297 total properties).
 
 ### Example Property
 
@@ -171,7 +171,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 | SimpleStorage | 95% (19/20) | 1 proof-only | ✅ Near-complete |
 | Owned | 91% (20/22) | 2 proof-only | ✅ Near-complete |
 | OwnedCounter | 98% (44/45) | 1 proof-only | ✅ Near-complete |
-| SimpleToken | 88% (49/56) | 7 proof-only | ✅ High coverage |
+| SimpleToken | 86% (49/57) | 8 proof-only | ✅ High coverage |
 | Counter | 82% (23/28) | 5 proof-only | ✅ High coverage |
 | Ledger | 100% (32/32) | 0 | ✅ Complete |
 | Stdlib | 0% (0/64) | 64 proof-only | — Internal |

@@ -279,13 +279,14 @@ private theorem map_sum_transfer_eq
     `amount`. The equation holds exactly (not just as an inequality). -/
 theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount)
-  (h_ne : s.sender ≠ to) :
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   ∀ addrs : List Address,
     (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum
       + countOccU s.sender addrs * amount
     = (addrs.map (fun addr => s.storageMap 1 addr)).sum
       + countOccU to addrs * amount := by
-  have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance
+  have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance (fun _ => h_no_overflow)
   simp [transfer_spec, h_ne, beq_iff_eq] at h_spec
   obtain ⟨_, h_sender_bal, h_recip_bal, h_other_bal, _, _, _, _⟩ := h_spec
   have h_sender_bal' :

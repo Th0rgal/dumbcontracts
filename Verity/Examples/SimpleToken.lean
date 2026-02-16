@@ -52,7 +52,7 @@ def mint (to : Address) (amount : Uint256) : Contract Unit := do
   let newSupply ← requireSomeUint (safeAdd currentSupply amount) "Supply overflow"
   setStorage totalSupply newSupply
 
--- Transfer tokens from caller to another address (with EVM modular arithmetic)
+-- Transfer tokens from caller to another address (with overflow protection)
 def transfer (to : Address) (amount : Uint256) : Contract Unit := do
   let sender ← msgSender
   let senderBalance ← getMapping balances sender
@@ -62,8 +62,9 @@ def transfer (to : Address) (amount : Uint256) : Contract Unit := do
     pure ()
   else
     let recipientBalance ← getMapping balances to
+    let newRecipientBalance ← requireSomeUint (safeAdd recipientBalance amount) "Recipient balance overflow"
     setMapping balances sender (sub senderBalance amount)
-    setMapping balances to (add recipientBalance amount)
+    setMapping balances to newRecipientBalance
 
 -- Get balance of an address
 def balanceOf (addr : Address) : Contract Uint256 := do

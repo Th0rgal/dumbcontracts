@@ -63,8 +63,9 @@ structure EvalContext where
   arrayParams : List (String × (Nat × List Nat))
   -- External functions: name → (args) → result (#172)
   -- Allows modeling linked library functions for spec verification
+  -- Note: Cannot derive Repr for this structure because List Nat → Nat has no Repr instance
   externalFunctions : List (String × (List Nat → Nat))
-  deriving Repr
+
 
 /-!
 ## Storage State
@@ -180,7 +181,7 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.localVar name =>
       ctx.localVars.lookup name |>.getD 0
   | Expr.externalCall name args =>
-      let argVals := args.map (evalExpr ctx storage fields paramNames ·)
+      let argVals := args.map (fun e => evalExpr ctx storage fields paramNames e)
       match ctx.externalFunctions.lookup name with
       | some fn => fn argVals
       | none => 0

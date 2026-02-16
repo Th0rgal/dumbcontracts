@@ -11,12 +11,14 @@
 
 import Verity.Examples.SimpleToken
 import Verity.EVM.Uint256
+import Verity.Stdlib.Math
 import Verity.Specs.SimpleToken.Spec
 import Verity.Specs.SimpleToken.Invariants
 
 namespace Verity.Proofs.SimpleToken
 
 open Verity
+open Verity.Stdlib.Math
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken hiding owner balances totalSupply
 
@@ -116,9 +118,11 @@ theorem constructor_sets_supply_zero (s : ContractState) (initialOwner : Address
 
 /-! ## Mint Correctness
 
-These proofs show that when the caller is the current owner,
-mint correctly updates balances and total supply. With ContractResult,
-the onlyOwner guard is fully modeled and all proofs are complete.
+These proofs show that when the caller is the current owner and
+no overflow occurs, mint correctly updates balances and total supply.
+With ContractResult, the onlyOwner guard and overflow checks via
+safeAdd/requireSomeUint are fully modeled. The mint operation reverts
+on overflow, matching Solidity ^0.8 checked arithmetic semantics.
 -/
 
 -- Helper: isOwner returns true when sender is owner
@@ -135,9 +139,24 @@ private abbrev unfold_defs := [``mint, ``transfer,
   ``Verity.require, ``Verity.pure, ``Verity.bind, ``Bind.bind, ``Pure.pure,
   ``Contract.run, ``ContractResult.snd, ``ContractResult.fst]
 
--- Helper: unfold mint when owner guard passes
+-- Helper: safeAdd succeeds when no overflow
+private theorem safeAdd_some (a b : Uint256) (h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
+  safeAdd a b = some (a + b) := by
+  simp only [safeAdd]
+  have h_not : ¬((a : Nat) + (b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
+  simp [h_not]
+
+-- Helper: safeAdd fails on overflow
+private theorem safeAdd_none (a b : Uint256) (h : (a : Nat) + (b : Nat) > MAX_UINT256) :
+  safeAdd a b = none := by
+  simp only [safeAdd]
+  simp [h]
+
+-- Helper: unfold mint when owner guard passes and no overflow
 private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   (mint to amount).run s = ContractResult.success ()
     { storage := fun slot => if (slot == 2) = true then EVM.Uint256.add (s.storage 2) amount else s.storage slot,
       storageAddr := s.storageAddr,
@@ -151,19 +170,34 @@ private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256
       knownAddresses := fun slot =>
         if slot == 1 then (s.knownAddresses slot).insert to
         else s.knownAddresses slot } := by
+  have h_safe_bal := safeAdd_some (s.storageMap 1 to) amount h_no_bal_overflow
+  have h_safe_sup := safeAdd_some (s.storage 2) amount h_no_sup_overflow
   simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner,
     Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
     msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_owner, beq_self_eq_true, ite_true]
+  -- Now requireSomeUint is still folded; unfold and rewrite safeAdd results one at a time
+  unfold requireSomeUint
+  rw [h_safe_bal]
+  -- Reduce the outer match on (some ...) to expose the inner safeAdd
+  simp only [Verity.pure, Pure.pure, Verity.bind, Bind.bind,
     Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_owner]
+  rw [h_safe_sup]
+  simp only [Verity.pure, Pure.pure, Verity.bind, Bind.bind,
+    Contract.run, ContractResult.snd, ContractResult.fst]
+  -- Remaining: HAdd.hAdd = EVM.Uint256.add (definitional) and sender = storageAddr 0
+  simp only [HAdd.hAdd, Add.add, h_owner]
 
--- Mint correctness when caller is owner
+-- Mint correctness when caller is owner and no overflow
 theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   mint_spec to amount s s' := by
-  have h_unfold := mint_unfold s to amount h_owner
+  have h_unfold := mint_unfold s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   simp only [Contract.run, ContractResult.snd, mint_spec]
   rw [show (mint to amount) s = (mint to amount).run s from rfl, h_unfold]
   simp only [ContractResult.snd]
@@ -178,20 +212,53 @@ theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : 
   · exact ⟨rfl, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
 
 theorem mint_increases_balance (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   s'.storageMap 1 to = EVM.Uint256.add (s.storageMap 1 to) amount := by
-  have h := mint_meets_spec_when_owner s to amount h_owner
+  have h := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   simp [mint_spec] at h
   exact h.1
 
 theorem mint_increases_supply (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   s'.storage 2 = EVM.Uint256.add (s.storage 2) amount := by
-  have h := mint_meets_spec_when_owner s to amount h_owner
+  have h := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   simp [mint_spec] at h
   exact h.2.1
+
+-- Mint reverts on balance overflow
+theorem mint_reverts_balance_overflow (s : ContractState) (to : Address) (amount : Uint256)
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) > MAX_UINT256) :
+  ∃ msg, (mint to amount).run s = ContractResult.revert msg s := by
+  have h_none := safeAdd_none (s.storageMap 1 to) amount h_overflow
+  unfold mint Verity.Examples.SimpleToken.onlyOwner isOwner requireSomeUint
+  simp [Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+    msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
+    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_none, h_owner]
+
+-- Mint reverts on supply overflow (even if balance doesn't overflow)
+theorem mint_reverts_supply_overflow (s : ContractState) (to : Address) (amount : Uint256)
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_overflow : (s.storage 2 : Nat) + (amount : Nat) > MAX_UINT256) :
+  ∃ msg s', (mint to amount).run s = ContractResult.revert msg s' := by
+  have h_safe_bal := safeAdd_some (s.storageMap 1 to) amount h_no_bal_overflow
+  have h_none := safeAdd_none (s.storage 2) amount h_overflow
+  unfold mint Verity.Examples.SimpleToken.onlyOwner isOwner requireSomeUint
+  simp only [Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+    msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
+    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    h_safe_bal, h_none, h_owner, beq_self_eq_true, ite_true]
+  exact ⟨_, _, rfl⟩
 
 /-! ## Transfer Correctness
 
@@ -440,22 +507,25 @@ theorem getOwner_preserves_wellformedness (s : ContractState) (h : WellFormedSta
 
 /-! ## Documentation
 
-All 34 theorems in this file are fully proven with zero sorry.
+All 36 theorems in this file are fully proven with zero sorry.
 
 Guard-dependent proofs (now complete):
-1. mint_meets_spec_when_owner - ✅ onlyOwner guard fully verified
+1. mint_meets_spec_when_owner - ✅ onlyOwner + overflow guards fully verified
 2. mint_increases_balance - ✅ Derived from mint_meets_spec
 3. mint_increases_supply - ✅ Derived from mint_meets_spec
-4. transfer_meets_spec_when_sufficient - ✅ balance guard fully verified
-5. transfer_preserves_supply_when_sufficient - ✅ Derived from transfer_meets_spec
-6. transfer_decreases_sender_balance - ✅ Derived from transfer_meets_spec
-7. transfer_increases_recipient_balance - ✅ Derived from transfer_meets_spec
-8. transfer_self_preserves_balance - ✅ Self-transfer leaves balance unchanged
+4. mint_reverts_balance_overflow - ✅ Reverts when balance would overflow
+5. mint_reverts_supply_overflow - ✅ Reverts when supply would overflow
+6. transfer_meets_spec_when_sufficient - ✅ balance guard fully verified
+7. transfer_preserves_supply_when_sufficient - ✅ Derived from transfer_meets_spec
+8. transfer_decreases_sender_balance - ✅ Derived from transfer_meets_spec
+9. transfer_increases_recipient_balance - ✅ Derived from transfer_meets_spec
+10. transfer_self_preserves_balance - ✅ Self-transfer leaves balance unchanged
 
 Proof technique: Full unfolding of do-notation chains through
 bind/pure/Contract.run/ContractResult.snd, with simp [h_owner] or
 simp [h_balance] to resolve the guard condition, then refine for
-each conjunct of the spec.
+each conjunct of the spec. Overflow checks use safeAdd/requireSomeUint
+with safeAdd_some/safeAdd_none helpers to resolve the Option matching.
 -/
 
 end Verity.Proofs.SimpleToken

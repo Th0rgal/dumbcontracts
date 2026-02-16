@@ -12,6 +12,7 @@
 
 import Verity.Examples.SimpleToken
 import Verity.EVM.Uint256
+import Verity.Stdlib.Math
 import Verity.Specs.SimpleToken.Spec
 import Verity.Specs.SimpleToken.Invariants
 import Verity.Proofs.SimpleToken.Basic
@@ -19,6 +20,7 @@ import Verity.Proofs.SimpleToken.Basic
 namespace Verity.Proofs.SimpleToken.Correctness
 
 open Verity
+open Verity.Stdlib.Math (MAX_UINT256)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken hiding owner balances totalSupply
 open Verity.Proofs.SimpleToken
@@ -61,13 +63,15 @@ These prove that WellFormedState is preserved by all state-modifying operations.
 Combined with Basic.lean's proofs for constructor/reads, this gives full coverage.
 -/
 
-/-- Mint preserves well-formedness when caller is owner.
+/-- Mint preserves well-formedness when caller is owner and no overflow.
     The owner address stays non-empty, context is preserved. -/
 theorem mint_preserves_wellformedness (s : ContractState) (to : Address) (amount : Uint256)
-  (h : WellFormedState s) (h_owner : s.sender = s.storageAddr 0) :
+  (h : WellFormedState s) (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   WellFormedState s' := by
-  have h_spec := mint_meets_spec_when_owner s to amount h_owner
+  have h_spec := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   obtain ⟨_, _, _, h_owner_pres, _, h_ctx⟩ := h_spec
   have h_sender_pres := h_ctx.1
   have h_this_pres := h_ctx.2.1
@@ -99,10 +103,12 @@ never change it. This is a critical access control property.
 
 /-- Mint does not change the owner address. -/
 theorem mint_preserves_owner (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   s'.storageAddr 0 = s.storageAddr 0 := by
-  have h := mint_meets_spec_when_owner s to amount h_owner
+  have h := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   obtain ⟨_, _, _, h_owner_pres, _, _⟩ := h
   exact h_owner_pres
 
@@ -123,19 +129,23 @@ They combine state-modifying operations with read operations.
 
 /-- After minting, balanceOf returns the increased balance. -/
 theorem mint_then_balanceOf_correct (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   ((balanceOf to).run s').fst = EVM.Uint256.add (s.storageMap 1 to) amount := by
   show ((balanceOf to).run ((mint to amount).run s).snd).fst = _
-  rw [balanceOf_returns_balance, mint_increases_balance s to amount h_owner]
+  rw [balanceOf_returns_balance, mint_increases_balance s to amount h_owner h_no_bal_overflow h_no_sup_overflow]
 
 /-- After minting, getTotalSupply returns the increased supply. -/
 theorem mint_then_getTotalSupply_correct (s : ContractState) (to : Address) (amount : Uint256)
-  (h_owner : s.sender = s.storageAddr 0) :
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   ((getTotalSupply).run s').fst = EVM.Uint256.add (s.storage 2) amount := by
   show ((getTotalSupply).run ((mint to amount).run s).snd).fst = _
-  rw [getTotalSupply_returns_supply, mint_increases_supply s to amount h_owner]
+  rw [getTotalSupply_returns_supply, mint_increases_supply s to amount h_owner h_no_bal_overflow h_no_sup_overflow]
 
 /-- After transfer, sender's balance is decreased by the transfer amount. -/
 theorem transfer_then_balanceOf_sender_correct (s : ContractState) (to : Address) (amount : Uint256)

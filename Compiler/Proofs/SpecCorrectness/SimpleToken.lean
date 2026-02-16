@@ -21,6 +21,7 @@ import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
 import Compiler.Hex
 import Verity.Examples.SimpleToken
+import Verity.Stdlib.Math
 import Verity.Proofs.SimpleToken.Basic
 import Verity.Proofs.SimpleToken.Correctness
 import Verity.Core.Uint256
@@ -33,6 +34,7 @@ open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation
 open Compiler.Hex
 open Verity
+open Verity.Stdlib.Math (MAX_UINT256 safeAdd requireSomeUint)
 open Verity.Examples.SimpleToken
 open Verity.Proofs.SimpleToken
 
@@ -103,9 +105,11 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
     simp [interpretSpec, execConstructor, execStmts, execStmt, evalExpr,
       simpleTokenSpec, requireOwner, SpecStorage.setSlot, SpecStorage.getSlot, SpecStorage.empty, h_supply]
 
-/-- The `mint` function correctly mints when called by owner -/
+/-- The `mint` function correctly mints when called by owner and no overflow -/
 theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
-    (h : state.storageAddr 0 = sender) :
+    (h : state.storageAddr 0 = sender)
+    (h_no_bal_overflow : (state.storageMap 1 to : Nat) + amount ≤ MAX_UINT256)
+    (h_no_sup_overflow : (state.storage 2 : Nat) + amount ≤ MAX_UINT256) :
     let edslResult := (mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
@@ -117,13 +121,33 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
     specResult.success = true ∧
     specResult.finalStorage.getMapping 1 (addressToNat to) = (edslResult.getState.storageMap 1 to).val ∧
     specResult.finalStorage.getSlot 2 = (edslResult.getState.storage 2).val := by
+  -- Convert Nat overflow hypotheses to Uint256 safeAdd results
+  have h_amount_lt : amount < Verity.Core.Uint256.modulus := by
+    calc amount ≤ (state.storageMap 1 to : Nat) + amount := Nat.le_add_left ..
+      _ ≤ MAX_UINT256 := h_no_bal_overflow
+      _ < Verity.Core.Uint256.modulus := by
+          rw [← Verity.Core.Uint256.max_uint256_succ_eq_modulus]; exact Nat.lt_succ_of_le (Nat.le_refl _)
+  have h_bal_safe : safeAdd (state.storageMap 1 to) (Verity.Core.Uint256.ofNat amount) = some (state.storageMap 1 to + Verity.Core.Uint256.ofNat amount) := by
+    simp only [safeAdd, Verity.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt]
+    simp [Nat.not_lt.mpr h_no_bal_overflow]
+  have h_sup_safe : safeAdd (state.storage 2) (Verity.Core.Uint256.ofNat amount) = some (state.storage 2 + Verity.Core.Uint256.ofNat amount) := by
+    simp only [safeAdd, Verity.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt]
+    simp [Nat.not_lt.mpr h_no_sup_overflow]
   constructor
   · -- EDSL success
-    simp [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
+    simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
       msgSender, getStorageAddr, getMapping, setMapping, getStorage, setStorage,
       Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
       Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-      ContractResult.isSuccess, h]
+      ContractResult.isSuccess, ContractResult.snd, ContractResult.fst,
+      h, beq_self_eq_true, ite_true]
+    unfold requireSomeUint
+    rw [h_bal_safe]
+    simp only [Verity.pure, Pure.pure, Verity.bind, Bind.bind,
+      Contract.run, ContractResult.snd, ContractResult.fst]
+    rw [h_sup_safe]
+    simp [Verity.pure, Pure.pure, Verity.bind, Bind.bind,
+      Contract.run, ContractResult.snd, ContractResult.fst, ContractResult.isSuccess]
   constructor
   · -- Spec success
     simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
@@ -138,9 +162,27 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
         ).storageMap 1 to =
         Verity.EVM.Uint256.add (state.storageMap 1 to)
           (Verity.Core.Uint256.ofNat amount) := by
+      have h_bal_of : (({ state with sender := sender } : ContractState).storageMap 1 to : Nat) + ((Verity.Core.Uint256.ofNat amount : Uint256) : Nat) ≤ MAX_UINT256 := by
+        simp [Verity.Core.Uint256.coe_ofNat]
+        have h_amount_lt : amount < Verity.Core.Uint256.modulus := by
+          calc amount ≤ (state.storageMap 1 to : Nat) + amount := Nat.le_add_left ..
+            _ ≤ MAX_UINT256 := h_no_bal_overflow
+            _ < Verity.Core.Uint256.modulus := by
+                rw [← Verity.Core.Uint256.max_uint256_succ_eq_modulus]; exact Nat.lt_succ_of_le (Nat.le_refl _)
+        rw [Nat.mod_eq_of_lt h_amount_lt]
+        exact h_no_bal_overflow
+      have h_sup_of : (({ state with sender := sender } : ContractState).storage 2 : Nat) + ((Verity.Core.Uint256.ofNat amount : Uint256) : Nat) ≤ MAX_UINT256 := by
+        simp [Verity.Core.Uint256.coe_ofNat]
+        have h_amount_lt : amount < Verity.Core.Uint256.modulus := by
+          calc amount ≤ (state.storage 2 : Nat) + amount := Nat.le_add_left ..
+            _ ≤ MAX_UINT256 := h_no_sup_overflow
+            _ < Verity.Core.Uint256.modulus := by
+                rw [← Verity.Core.Uint256.max_uint256_succ_eq_modulus]; exact Nat.lt_succ_of_le (Nat.le_refl _)
+        rw [Nat.mod_eq_of_lt h_amount_lt]
+        exact h_no_sup_overflow
       simpa [Contract.run, ContractResult.getState, ContractResult.snd, h] using
         (mint_increases_balance { state with sender := sender } to
-          (Verity.Core.Uint256.ofNat amount) h.symm)
+          (Verity.Core.Uint256.ofNat amount) h.symm h_bal_of h_sup_of)
     have h_edsl_map_val :
         ((ContractResult.getState
           ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
@@ -182,6 +224,14 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
             symm
             exact h_edsl_map_val
   · -- Total supply update matches EDSL
+    have h_bal_of' : (({ state with sender := sender } : ContractState).storageMap 1 to : Nat) + ((Verity.Core.Uint256.ofNat amount : Uint256) : Nat) ≤ MAX_UINT256 := by
+      simp [Verity.Core.Uint256.coe_ofNat]
+      rw [Nat.mod_eq_of_lt h_amount_lt]
+      exact h_no_bal_overflow
+    have h_sup_of' : (({ state with sender := sender } : ContractState).storage 2 : Nat) + ((Verity.Core.Uint256.ofNat amount : Uint256) : Nat) ≤ MAX_UINT256 := by
+      simp [Verity.Core.Uint256.coe_ofNat]
+      rw [Nat.mod_eq_of_lt h_amount_lt]
+      exact h_no_sup_overflow
     have h_edsl_supply :
         (ContractResult.getState
           ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
@@ -190,7 +240,7 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
           (Verity.Core.Uint256.ofNat amount) := by
       simpa [Contract.run, ContractResult.getState, ContractResult.snd, h] using
         (mint_increases_supply { state with sender := sender } to
-          (Verity.Core.Uint256.ofNat amount) h.symm)
+          (Verity.Core.Uint256.ofNat amount) h.symm h_bal_of' h_sup_of')
     have h_edsl_supply_val :
         ((ContractResult.getState
           ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
@@ -652,9 +702,28 @@ theorem token_getters_preserve_state (state : ContractState) (addr : Address) (s
 /-- Mint increases totalSupply by amount -/
 theorem token_mint_increases_supply (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
     (h : state.storageAddr 0 = sender)
-    (h2 : (state.storage 2).val + amount < Verity.Core.Uint256.modulus) :
+    (h2 : (state.storage 2).val + amount < Verity.Core.Uint256.modulus)
+    (h_no_bal_overflow : (state.storageMap 1 to : Nat) + amount ≤ MAX_UINT256) :
     let finalState := (mint to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }
     (finalState.storage 2).val = (state.storage 2).val + amount := by
+  have h_bal_of : (({ state with sender := sender } : ContractState).storageMap 1 to : Nat) + ((Verity.Core.Uint256.ofNat amount : Uint256) : Nat) ≤ MAX_UINT256 := by
+    simp [Verity.Core.Uint256.coe_ofNat]
+    have h_amount_lt : amount < Verity.Core.Uint256.modulus := by
+      calc amount ≤ (state.storageMap 1 to : Nat) + amount := Nat.le_add_left ..
+        _ ≤ MAX_UINT256 := h_no_bal_overflow
+        _ < Verity.Core.Uint256.modulus := by
+            rw [← Verity.Core.Uint256.max_uint256_succ_eq_modulus]; exact Nat.lt_succ_of_le (Nat.le_refl _)
+    rw [Nat.mod_eq_of_lt h_amount_lt]
+    exact h_no_bal_overflow
+  have h_sup_of : (({ state with sender := sender } : ContractState).storage 2 : Nat) + ((Verity.Core.Uint256.ofNat amount : Uint256) : Nat) ≤ MAX_UINT256 := by
+    simp [Verity.Core.Uint256.coe_ofNat]
+    have h_amount_lt : amount < Verity.Core.Uint256.modulus :=
+      Nat.lt_of_le_of_lt (Nat.le_add_left amount (state.storage 2).val) h2
+    rw [Nat.mod_eq_of_lt h_amount_lt]
+    have : (state.storage 2).val + amount ≤ MAX_UINT256 := Nat.lt_succ_iff.mp (by
+      calc (state.storage 2).val + amount < Verity.Core.Uint256.modulus := h2
+        _ = MAX_UINT256 + 1 := Verity.Core.Uint256.max_uint256_succ_eq_modulus.symm)
+    exact this
   have h_edsl :
       (ContractResult.getState
         ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
@@ -663,7 +732,7 @@ theorem token_mint_increases_supply (state : ContractState) (to : Address) (amou
         (Verity.Core.Uint256.ofNat amount) := by
     simpa [Contract.run, ContractResult.getState, ContractResult.snd, h] using
       (mint_increases_supply { state with sender := sender } to
-        (Verity.Core.Uint256.ofNat amount) h.symm)
+        (Verity.Core.Uint256.ofNat amount) h.symm h_bal_of h_sup_of)
   have h_val :
       ((ContractResult.getState
         ((mint to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })

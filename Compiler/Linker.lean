@@ -128,7 +128,15 @@ def loadLibrary (path : String) : IO (List LibraryFunction) := do
 
 /-!
 ## Linking
+
+**Note**: Library functions are injected at text level, not AST level.
+This is a known limitation (see issue #173). The formal proofs do not
+cover linked library code - this is a trust assumption documented in
+`TRUST_ASSUMPTIONS.md`.
 -/
+
+-- Indentation level for library functions in runtime code (3 levels × 4 spaces = 12 spaces)
+private def libraryIndent : String := "            "
 
 -- Inject library function text directly into rendered Yul output
 -- This preserves the exact library code without parsing/re-emitting
@@ -154,10 +162,10 @@ def renderWithLibraries (obj : YulObject) (libraries : List LibraryFunction) : E
           if !inserted && newDepth == 2 && isCodeLine then
             -- Found the runtime code section, insert libraries after this line
             let libraryLines := libraries.flatMap fun fn =>
-              -- Add proper indentation (3 levels = 12 spaces for runtime code functions)
+              -- Add proper indentation for runtime code functions
               fn.body.map fun bodyLine =>
                 if bodyLine.trim.isEmpty then bodyLine
-                else "            " ++ bodyLine
+                else libraryIndent ++ bodyLine
             insertLibraries rest (acc ++ [line] ++ libraryLines) true newDepth
           else
             insertLibraries rest (acc ++ [line]) inserted newDepth

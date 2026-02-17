@@ -69,7 +69,7 @@ jobs:
       - name: Check for sorry
         run: |
           # Count sorry across all Lean files (matching both 'sorry' and '· sorry')
-          EXPECTED_SORRY=12  # Tracked in issue #65 (Ledger sum proofs)
+          EXPECTED_SORRY=6  # Tracked in issue #65 (Ledger sum proofs)
           ACTUAL_SORRY=$(grep -rn "sorry" Verity/ Compiler/ --include="*.lean" \
             | grep -v "^--" | grep -v "zero sorry" | grep -v "Summary" \
             | grep -v "SORRY" | grep -v "sorry_count" | grep -v "sorry placeholder" \

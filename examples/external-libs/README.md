@@ -21,9 +21,9 @@ function myHash(a, b) -> result {
 
 ### Step 2: Add the external call in `Compiler/Specs.lean`
 
-Find your contract spec and add:
+Find your contract spec and add (`Expr.param` takes the parameter **name** as a string, matching the `name` field in your function's `params` list):
 ```lean
-Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 ```
 
 ### Step 3: Compile with linking
@@ -89,7 +89,7 @@ def myHash (a b : Uint256) : Contract Uint256 := do
 In `Compiler/Specs.lean`, reference the library function:
 
 ```lean
-Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 ```
 
 ### 4. Compile with Linking

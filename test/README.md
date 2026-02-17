@@ -33,8 +33,11 @@ Basic contract behavior validation without formal property mapping.
 ## Running Tests
 
 ```bash
-# All tests
+# All tests (unit + property tests only)
 forge test
+
+# All tests INCLUDING differential and Yul tests (requires FFI)
+FOUNDRY_PROFILE=difftest forge test
 
 # Single contract
 forge test --match-path test/PropertyCounter.t.sol
@@ -48,6 +51,8 @@ forge test -vvv
 # Multi-seed testing (detects flakiness)
 bash scripts/test_multiple_seeds.sh
 ```
+
+> **Note**: Plain `forge test` skips differential and Yul tests because FFI is disabled in the default profile. Use `FOUNDRY_PROFILE=difftest` to run the full test suite including tests that shell out to `lake exe difftest-interpreter`.
 
 ## Test Organization
 

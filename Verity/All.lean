@@ -79,7 +79,6 @@ import Verity.Proofs.OwnedCounter.Isolation
 import Verity.Specs.Ledger.Spec
 import Verity.Specs.Ledger.Invariants
 import Verity.Specs.Ledger.Proofs
-import Verity.Specs.Ledger.SumProofs
 import Verity.Proofs.Ledger.Basic
 import Verity.Proofs.Ledger.Correctness
 import Verity.Proofs.Ledger.Conservation

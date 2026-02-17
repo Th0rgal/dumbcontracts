@@ -2,7 +2,7 @@
 
 ## Overview
 
-The 7 sum properties in `Verity/Specs/Ledger/SumProofs.lean` prove invariants like "total supply = sum of all balances" using the finite address set abstraction (`FiniteAddressSet` in `Verity/Core/FiniteSet.lean`).
+The 7 sum properties in `Verity/Proofs/Ledger/Conservation.lean` prove invariants like "total supply = sum of all balances" using `List.countOcc` for exact sum equations.
 
 ## Proof Approach
 

@@ -12,7 +12,8 @@ description: How to use external Yul libraries (Poseidon, Groth16, etc.) with ve
 
 ```bash
 # 1. Write your Yul library (plain functions, no object wrapper)
-echo 'function myHash(a, b) -> result { result := add(xor(a, b), 0x42) }' > libs/MyHash.yul
+mkdir -p examples/external-libs
+echo 'function myHash(a, b) -> result { result := add(xor(a, b), 0x42) }' > examples/external-libs/MyHash.yul
 
 # 2. Use a placeholder in your Lean EDSL (for proofs)
 def myHash (a b : Uint256) : Contract Uint256 := return add a b
@@ -21,7 +22,7 @@ def myHash (a b : Uint256) : Contract Uint256 := return add a b
 Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 # 4. Compile with linking
-lake exe verity-compiler --link libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
 ```
 
 Your proofs verify the contract logic (using placeholders). Real implementations are injected at compile time.
@@ -41,7 +42,7 @@ Your proofs verify the contract logic (using placeholders). Real implementations
 Create a file with plain Yul function definitions (no `object` wrapper):
 
 ```yul
-// libs/MyHash.yul
+// examples/external-libs/MyHash.yul
 function myHash(a, b) -> result {
     // Your implementation here
     result := add(xor(a, b), 0x42)
@@ -75,7 +76,7 @@ The compiler generates a Yul `myHash(a, b)` call that will be resolved by the li
 ### 4. Compile with `--link`
 
 ```bash
-lake exe verity-compiler --link libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
 ```
 
 The compiler validates that:
@@ -89,7 +90,7 @@ If validation fails, you get a clear error message:
 Unresolved external references: myHash
 ```
 
-This means you forgot to pass `--link libs/MyHash.yul`.
+This means you forgot to pass `--link examples/external-libs/MyHash.yul`.
 
 ---
 
@@ -245,7 +246,7 @@ If your verified contract works with placeholders but fails with linked librarie
 
 ```bash
 # Generate Yul output to see how external calls are rendered
-lake exe verity-compiler --link libs/MyLib.yul -o compiler/yul -v
+lake exe verity-compiler --link examples/external-libs/MyLib.yul -o compiler/yul -v
 
 # Check the generated Yul in compiler/yul/
 cat compiler/yul/*.yul
@@ -273,12 +274,12 @@ Options:
 lake exe verity-compiler
 
 # Compile with one library
-lake exe verity-compiler --link libs/Poseidon.yul
+lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul
 
 # Compile with multiple libraries, verbose output
 lake exe verity-compiler \
-    --link libs/PoseidonT3.yul \
-    --link libs/PoseidonT4.yul \
-    --link libs/Groth16.yul \
+    --link examples/external-libs/PoseidonT3.yul \
+    --link examples/external-libs/PoseidonT4.yul \
+    --link examples/external-libs/Groth16.yul \
     -v -o output/
 ```

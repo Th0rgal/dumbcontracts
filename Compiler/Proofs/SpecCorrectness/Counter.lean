@@ -57,8 +57,7 @@ private theorem evalExpr_decrement_eq (state : ContractState) (sender : Address)
         constructorArgs := [],
         constructorParamTypes := [],
         localVars := [],
-        arrayParams := [],
-        externalFunctions := [] }
+        arrayParams := [] }
       { slots := [(0, (state.storage 0).val)], mappings := [], mappings2 := [], events := [] }
       [{ name := "count", ty := FieldType.uint256 }]
       []

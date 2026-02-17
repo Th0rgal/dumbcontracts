@@ -21,6 +21,8 @@ structure StorageSlot (α : Type) where
 
 `Uint256` is a dedicated 256-bit modular integer type, so `+`, `-`, `*`, `/`, and `%` wrap exactly like the EVM.
 
+> **Note**: This matches EVM wrapping semantics, not Solidity's default checked arithmetic (^0.8). Use `require` guards to match Solidity behavior. See [TRUST_ASSUMPTIONS.md](https://github.com/Th0rgal/verity/blob/main/TRUST_ASSUMPTIONS.md#8-arithmetic-semantics-wrapping-vs-checked) for details.
+
 ## ContractState
 
 ```lean

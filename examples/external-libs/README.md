@@ -7,16 +7,61 @@ This directory contains example Yul library files that can be linked with Verity
 - **PoseidonT3.yul**: Placeholder Poseidon hash function for 2 inputs
 - **PoseidonT4.yul**: Placeholder Poseidon hash function for 3 inputs (1 input + padding)
 
-## Quick Usage
+## TL;DR - 5 Minute Quickstart
 
-Compile a contract with external library linking:
+Want to add a cryptographic hash function to your contract? Here's the minimum you need:
+
+### Step 1: Create your Yul library (`libs/MyHash.yul`)
+
+```yul
+function myHash(a, b) -> result {
+    result := add(xor(a, b), 0x42)
+}
+```
+
+### Step 2: Add the external call in `Compiler/Specs.lean`
+
+Find your contract spec and add:
+```lean
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+```
+
+### Step 3: Compile with linking
 
 ```bash
-lake exe verity-compiler \
-    --link examples/external-libs/PoseidonT3.yul \
-    --link examples/external-libs/PoseidonT4.yul \
-    -o compiler/yul
+lake exe verity-compiler --link libs/MyHash.yul -o compiler/yul
 ```
+
+That's it! The compiler validates your library and injects it into the generated Yul.
+
+## Why use external libraries?
+
+| Use Case | Example |
+|----------|---------|
+| Cryptographic primitives | Poseidon, SHA256, Keccak |
+| Complex math | Elliptic curve operations |
+| Gas optimization | Hand-optimized Yul implementations |
+| Reuse audited code | Battle-tested libraries |
+
+The key benefit: **prove with simple placeholders, deploy with real code**.
+
+## Quick Reference
+
+**CLI Options:**
+```bash
+--link <path>      # Link external Yul library (use multiple times for multiple libs)
+-o <dir>           # Output directory (default: compiler/yul)
+-v, --verbose      # Verbose output
+```
+
+**Error Solutions:**
+
+| Error | Solution |
+|-------|----------|
+| `Unresolved external references: myFunc` | Add `--link libs/MyFunc.yul` to your command |
+| `Arity mismatch` | Check parameter count in `Expr.externalCall` matches Yul function |
+| `Function shadows Yul builtin` | Rename your function (e.g., `myAdd` instead of `add`) |
+| `Duplicate function names` | Each library must have unique function names |
 
 ## Step-by-Step Example
 

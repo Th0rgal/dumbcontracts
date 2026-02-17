@@ -60,7 +60,12 @@ One spec can have many competing implementations - naive, gas-optimized, packed 
 
 ### Using External Libraries (Linker)
 
-Verity supports linking external Yul libraries (e.g., cryptographic libraries) to your verified contracts:
+Verity supports linking external Yul libraries (e.g., cryptographic libraries) to your verified contracts. Prove your contract logic with simple placeholders, then swap in production implementations at compile time.
+
+**The pattern:**
+1. Write a simple Lean placeholder (e.g., `add a b` for a hash function)
+2. Add an `externalCall` in your ContractSpec 
+3. Link your production Yul library at compile time
 
 ```bash
 # Compile with external libraries
@@ -70,7 +75,20 @@ lake exe verity-compiler \
     -o compiler/yul
 ```
 
-This lets you prove contract logic with simple placeholders, then swap in production cryptographic implementations at compile time. See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a step-by-step guide.
+**Minimal example:**
+
+```lean
+-- 1. Lean placeholder (for proofs)
+def myHash (a b : Uint256) : Contract Uint256 := do
+  return (a + b)  -- simple placeholder
+
+-- 2. ContractSpec calls the real library
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+
+-- 3. Compile with: lake exe verity-compiler --link libs/MyHash.yul
+```
+
+See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a step-by-step guide and [`docs-site/content/guides/linking-libraries.mdx`](docs-site/content/guides/linking-libraries.mdx) for the full documentation.
 
 300 theorems across 9 categories. 352 Foundry tests across 25 test suites. 220 covered by property tests (73% coverage, 80 proof-only exclusions). 5 documented axioms, 6 `sorry` in Ledger sum proofs ([#65](https://github.com/Th0rgal/verity/issues/65)).
 

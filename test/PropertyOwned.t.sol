@@ -278,13 +278,13 @@ contract PropertyOwnedTest is YulTestBase {
     function testProperty_TransferOwnership_RevertsForSpecificNonOwner() public {
         address currentOwner = readOwner();
 
-        // Try as ALICE (not owner)
-        vm.prank(ALICE);
+        // Try as BOB (not owner — owner is ALICE from setUp)
+        vm.prank(BOB);
         (bool success,) = owned.call(
-            abi.encodeWithSignature("transferOwnership(address)", ALICE)
+            abi.encodeWithSignature("transferOwnership(address)", BOB)
         );
 
-        assertFalse(success, "ALICE cannot transfer ownership");
+        assertFalse(success, "BOB cannot transfer ownership");
         assertEq(readOwner(), currentOwner, "Owner unchanged");
     }
 

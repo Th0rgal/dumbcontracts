@@ -453,9 +453,10 @@ abbrev Address := String
 
 **Details**:
 
-Two axioms depend on address injectivity:
+One axiom depends on address injectivity:
 - `addressToNat_injective` (Automation.lean): Claims `addressToNat a = addressToNat b → a = b`
-- `addressToNat_injective_valid` (Conversions.lean): Same but requires `isValidAddress` pre-condition
+
+Note: `addressToNat_injective_valid` (Conversions.lean) was previously an axiom but is now a derived theorem that requires an `isValidAddress` pre-condition.
 
 Since `Address = String`, any string can be used as an address. The axiom `addressToNat_injective` (without validity check) is technically unsound for arbitrary strings — `addressToNat "0xFF"` might equal `addressToNat "0xff"` while the strings are different.
 

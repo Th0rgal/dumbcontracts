@@ -62,7 +62,7 @@ Example output:
    Covered:    52 ( 88.1%)
    Excluded:     7 (proof-only)
 
-Overall: 72.1% coverage (220/305 properties)
+Overall: 69% coverage (220/319 properties)
 ```
 
 ### Property Exclusions
@@ -168,4 +168,4 @@ To add test coverage for a proven theorem:
   - Text/Markdown/JSON output formats
   - Per-contract and overall statistics
   - CI integration with GitHub workflow summaries
-  - Coverage improved from 53.1% (155/292) to 72.1% (220/305) — all testable properties covered
+  - Coverage improved from 53.1% (155/292) to 69% (220/319) — all testable properties covered

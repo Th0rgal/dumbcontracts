@@ -504,6 +504,55 @@ def main() -> None:
         )
     )
 
+    # Check theorem counts in getting-started.mdx
+    getting_started = ROOT / "docs-site" / "content" / "getting-started.mdx"
+    errors.extend(
+        check_file(
+            getting_started,
+            [
+                (
+                    "theorem count",
+                    re.compile(r"verifies all (\d+) theorems"),
+                    str(total_theorems),
+                ),
+            ],
+        )
+    )
+
+    # Check theorem count in index.mdx
+    index_mdx = ROOT / "docs-site" / "content" / "index.mdx"
+    errors.extend(
+        check_file(
+            index_mdx,
+            [
+                (
+                    "theorem count",
+                    re.compile(r"(\d+) machine-checked theorems"),
+                    str(total_theorems),
+                ),
+            ],
+        )
+    )
+
+    # Check theorem count in research.mdx header
+    errors.extend(
+        check_file(
+            research_mdx,
+            [
+                (
+                    "theorem count in header",
+                    re.compile(r"(\d+) theorems, all fully proven"),
+                    str(total_theorems),
+                ),
+                (
+                    "theorem count in metrics",
+                    re.compile(r"(\d+) theorems as of"),
+                    str(total_theorems),
+                ),
+            ],
+        )
+    )
+
     # Check core size claims
     core_mdx = ROOT / "docs-site" / "content" / "core.mdx"
     errors.extend(
@@ -518,7 +567,6 @@ def main() -> None:
             ],
         )
     )
-    index_mdx = ROOT / "docs-site" / "content" / "index.mdx"
     errors.extend(
         check_file(
             index_mdx,

@@ -194,6 +194,18 @@ contract CalldataSizeGuardTest is YulTestBase {
         assertTrue(_callRaw(ownedCounter, abi.encodeWithSignature("increment()")), "4 bytes should succeed");
     }
 
+    function testCalldataSize_OwnedCounter_Decrement_TooShort() public {
+        assertFalse(_callRaw(ownedCounter, hex"2baece"), "3 bytes should revert");
+    }
+
+    function testCalldataSize_OwnedCounter_Decrement_Exact() public {
+        // First increment so decrement doesn't underflow
+        vm.prank(alice);
+        _callRaw(ownedCounter, abi.encodeWithSignature("increment()"));
+        vm.prank(alice);
+        assertTrue(_callRaw(ownedCounter, abi.encodeWithSignature("decrement()")), "4 bytes should succeed");
+    }
+
     function testCalldataSize_OwnedCounter_GetCount_TooShort() public {
         assertFalse(_callRaw(ownedCounter, hex"a87d94"), "3 bytes should revert");
     }

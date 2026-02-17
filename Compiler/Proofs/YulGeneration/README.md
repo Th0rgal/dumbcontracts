@@ -23,7 +23,7 @@ This directory contains the verification proofs for Layer 3 (IR → Yul) of the 
 - **`StatementEquivalence.lean`** - Statement-level equivalence proofs
   - All 8 statement types proven (assign, storage load/store, mapping load/store, conditional, return, revert)
   - Universal dispatcher (`all_stmts_equiv`) via mutual recursion with `conditional_equiv`
-  - Statement list composition (`stmtList_equiv`) via the composition theorem
+  - Statement list composition via `execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv` in Equivalence.lean
 
 - **`Codegen.lean`** - Yul code generation helper lemmas
   - Switch case generation and selector mapping
@@ -32,14 +32,14 @@ This directory contains the verification proofs for Layer 3 (IR → Yul) of the 
 
 - **`SmokeTests.lean`** - Concrete examples demonstrating equivalence
 
-## Axioms
+## Expression Equivalence Theorems
 
-Two expression evaluation axioms in `StatementEquivalence.lean`:
+Two expression evaluation theorems in `StatementEquivalence.lean`, proven by mutual structural induction:
 
 1. `evalIRExpr_eq_evalYulExpr` - IR and Yul expression evaluation are identical when states are aligned
 2. `evalIRExprs_eq_evalYulExprs` - List version of the above
 
-These are sound because both eval functions have identical source code and `yulStateOfIR` copies all fields (including `selector`). Both handle `calldataload(0)` identically via `selectorWord(state.selector)`. The axiom exists because `evalIRExpr` is `partial` (opaque to Lean's kernel) while `evalYulExpr` is total. Eliminating the axiom requires only refactoring the IR evaluator to use fuel parameters (~300 lines).
+These were previously axioms but were eliminated by making the IR interpreter total (PR #241). The proof works because both eval functions have identical structure and `yulStateOfIR` copies all fields (including `selector`).
 
 ## References
 

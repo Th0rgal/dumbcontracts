@@ -30,44 +30,27 @@ namespace Verity.Specs
 
   ```lean
   -- Define your invariant
-  class MyContractInvariant (s : ContractState) : Prop where
+  structure MyContractInvariant (s : ContractState) : Prop where
     wellFormed : WellFormedState s
     totalSupplyBounded : s.storage 0 ≤ MAX_UINT256
 
   -- Prove constructor establishes invariant
-  instance constructorEstablishesInvariant :
-    ConstructorEstablishesInvariant MyContractInvariant where
-    constructor_invariant := by sorry
+  theorem constructor_establishes : MyContractInvariant defaultState := ...
 
-  -- Prove each function preserves invariant
-  instance transferPreservesInvariant (to : Address) (amount : Uint256) :
-    PreservesInvariant MyContractInvariant (transfer to amount) where
-    preservation := by sorry
+  -- Prove each function preserves invariant  
+  theorem transfer_preserves {s : ContractState} (h : MyContractInvariant s)
+    (to : Address) (amount : Uint256) :
+    MyContractInvariant ((transfer to amount).run s).snd := ...
 
-  -- Get theorem for any transaction sequence
-  #check invariant_holds_for_all_transactions
+  -- Use the main theorem
+  theorem all_transactions_preserve_invariant 
+    (s₀ : ContractState) (h₀ : MyContractInvariant s₀)
+    (txs : List (Contract Unit)) :
+    MyContractInvariant (executeAll txs s₀) := ...
   ```
 -/
 
 open Verity
-
-/-- Typeclass for inductive invariants.
-  
-  An inductive invariant I(s) holds if:
-  1. Base case: constructor establishes I
-  2. Inductive step: ∀s, I(s) → after any public function f, I(s')
-
-  Then by induction, I holds for any sequence of transactions.
--/
-class InductiveInvariant (I : ContractState → Prop) : Type where
-  /-- The invariant holds after constructor initialization. -/
-  constructor_establishes : I defaultState
-  /-- Each public function preserves the invariant. -/
-  preserves : ∀ {s : ContractState}, I s → ∀ (f : Contract Unit), preservesInvariant I f s
-
-/-- Evidence that a function preserves an invariant. -/
-class PreservesInvariant (I : ContractState → Prop) (f : Contract Unit) (s : ContractState) where
-  preservation : I s → I (f.run s).snd
 
 /-- Execute a list of transactions and return the final state. -/
 def executeAll (txs : List (Contract Unit)) (s₀ : ContractState) : ContractState :=
@@ -78,38 +61,30 @@ def executeAll (txs : List (Contract Unit)) (s₀ : ContractState) : ContractSta
 /-- Main theorem: invariant holds for any transaction sequence.
   
   If:
-  1. I is an inductive invariant (base case + preservation for each function)
-  2. Initial state s₀ satisfies I
+  1. The invariant holds for the initial state
+  2. Each transaction in the list preserves the invariant
   
-  Then for any transaction list txs, the final state after executing txs satisfies I.
+  Then the invariant holds after executing all transactions.
 -/
 theorem invariant_holds_for_all_transactions 
     (I : ContractState → Prop) 
-    [InductiveInvariant I]
     (s₀ : ContractState) 
     (h_init : I s₀)
-    (txs : List (Contract Unit)) :
+    (txs : List (Contract Unit))
+    (h_preserves : ∀ (s : ContractState) (f : Contract Unit), I s → I (f.run s).snd) :
     I (executeAll txs s₀) :=
   by
     induction txs with
     | nil => exact h_init
     | cons f rest ih =>
-      have : PreservesInvariant I f s₀ := InductiveInvariant.preserves
-      have : I ((f.run s₀).snd) := Preserveservation.preservation h_init
+      have : I ((f.run s₀).snd) := h_preserves s₀ f h_init
       exact ih this
 
-/-- Shorthand for proving preservation when the function always succeeds.
+/-- Variant: prove invariant holds for all successful transaction sequences.
   
-  If a function never reverts and always transforms state in an invariant-preserving
-  way, use this for simpler proofs.
+  Useful when some functions can revert - we only care about paths where
+  all transactions succeed.
 -/
-class AlwaysSucceedsAndPreserves (I : ContractState → Prop) (f : Contract Unit) (s : ContractState) extends PreservesInvariant I f s where
-  /-- The contract executes successfully (no revert). -/
-  success : (f.run s).fst.isSuccess = true
-  /-- State transformation preserves invariant. -/
-  state_preserve : I ((f.run s).snd)
-
-/-- Execute a list of transactions, collecting all results. -/
 def executeAllWithResults (txs : List (Contract Unit)) (s₀ : ContractState) : List (ContractState × Bool) :=
   match txs with
   | [] => []
@@ -118,28 +93,26 @@ def executeAllWithResults (txs : List (Contract Unit)) (s₀ : ContractState) : 
       let success := match result.fst with | .success _ _ => true | .revert _ _ => false
       (result.snd, success) :: executeAllWithResults rest result.snd
 
-/-- Variant: prove invariant holds for all successful transaction sequences.
-  
-  Useful when some functions can revert - we only care about paths where
-  all transactions succeed.
--/
+/-- Helper to check if all transactions in a sequence succeeded. -/
+def allSuccessful (results : List (ContractState × Bool)) : Bool :=
+  results.all fun (_, success) => success
+
 theorem invariant_holds_for_successful_transactions
     (I : ContractState → Prop)
-    [InductiveInvariant I]
     (s₀ : ContractState)
     (h_init : I s₀)
     (txs : List (Contract Unit))
-    (h_all_success : ∀ s, (executeAllWithResults txs s).all (·.2 = true)) :
+    (h_preserves : ∀ (s : ContractState) (f : Contract Unit), I s → I (f.run s).snd)
+    (h_all_success : allSuccessful (executeAllWithResults txs s₀) = true) :
     I (executeAll txs s₀) :=
   by
     induction txs generalizing s₀ with
     | nil => exact h_init
     | cons f rest ih =>
-      have : PreservesInvariant I f s₀ := InductiveInvariant.preserves
-      have h_success : (f.run s₀).fst.isSuccess = true := by
-        simp [executeAllWithResults] at h_all_success
-        exact h_all_success.symm
-      have : I ((f.run s₀).snd) := PreservesInvariant.preservation h_init
+      have : I ((f.run s₀).snd) := h_preserves s₀ f h_init
+      have h_succ : (f.run s₀).fst.isSuccess = true := by
+        simp [executeAllWithResults, allSuccessful] at h_all_success
+        exact h_all_success
       exact ih this
 
 end Verity.Specs

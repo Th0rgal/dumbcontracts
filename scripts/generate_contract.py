@@ -154,11 +154,24 @@ def gen_example(cfg: ContractConfig) -> str:
     # We require the prefix to be followed by an uppercase letter (camelCase
     # boundary) so that e.g. "hash" does not match "has" and "issue" does
     # not match "is".
+    # Match getter names to field types: getOwner → owner → address field.
+    addr_field_names = {f.name.lower() for f in cfg.fields if f.ty == "address"}
     func_lines = []
     for fn in cfg.functions:
         is_getter = _is_getter_name(fn.name)
-        ret_type = "Contract Uint256" if is_getter else "Contract Unit"
-        ret_val = "pure 0" if is_getter else "pure ()"
+        if is_getter:
+            # Extract the field name from the getter (e.g., getOwner → owner)
+            suffix = fn.name[3:]  # strip "get"/"is" prefix (always 3+ chars)
+            suffix_lower = suffix[0].lower() + suffix[1:] if suffix else ""
+            if suffix_lower in addr_field_names:
+                ret_type = "Contract Address"
+                ret_val = 'pure ""'
+            else:
+                ret_type = "Contract Uint256"
+                ret_val = "pure 0"
+        else:
+            ret_type = "Contract Unit"
+            ret_val = "pure ()"
         func_lines.append(f"-- TODO: Implement {fn.name}")
         func_lines.append(f"def {fn.name} : {ret_type} := do")
         func_lines.append(f"  {ret_val}")

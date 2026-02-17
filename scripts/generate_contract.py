@@ -5,7 +5,7 @@ Creates the complete file structure needed to add a new contract:
   - EDSL implementation (Verity/Examples/{Name}.lean)
   - Formal specification (Verity/Specs/{Name}/Spec.lean)
   - State invariants (Verity/Specs/{Name}/Invariants.lean)
-  - Layer 1 proof re-export (Verity/Specs/{Name}/Proofs.lean)
+  - Layer 2 proof re-export (Verity/Specs/{Name}/Proofs.lean)
   - Basic proofs (Verity/Proofs/{Name}/Basic.lean)
   - Correctness proofs (Verity/Proofs/{Name}/Correctness.lean)
   - Compiler spec entry (printed to stdout for manual insertion)
@@ -275,7 +275,7 @@ end Verity.Specs.{cfg.name}
 
 
 def gen_spec_proofs(cfg: ContractConfig) -> str:
-    """Generate Verity/Specs/{Name}/Proofs.lean — Layer 1 proof re-export.
+    """Generate Verity/Specs/{Name}/Proofs.lean — Layer 2 proof re-export.
 
     Every existing contract (SimpleStorage, Counter, Owned, etc.) has this file.
     It re-exports the SpecCorrectness proof so that downstream users have a
@@ -289,7 +289,7 @@ def gen_spec_proofs(cfg: ContractConfig) -> str:
 -- import Compiler.Proofs.SpecCorrectness.{cfg.name}
 
 /-
-  Layer 1 proof re-export.
+  Layer 2 proof re-export.
   This keeps the user-facing path stable while reusing the core proof module.
 
   Once you have written the SpecCorrectness proof for {cfg.name}, uncomment

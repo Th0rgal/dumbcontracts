@@ -14,7 +14,7 @@ Key entry points:
 - IR generation and proofs: `Compiler/Proofs/IRGeneration/`
 - Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
 
-Layer 1 proofs live alongside each contract spec in `Verity/Specs/<Name>/Proofs.lean`.
+Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The re-export shim at `Verity/Specs/<Name>/Proofs.lean` imports Layer 2 proofs from `Compiler/Proofs/SpecCorrectness/<Name>.lean`.
 
 ## Build
 

@@ -5,6 +5,7 @@ Creates the complete file structure needed to add a new contract:
   - EDSL implementation (Verity/Examples/{Name}.lean)
   - Formal specification (Verity/Specs/{Name}/Spec.lean)
   - State invariants (Verity/Specs/{Name}/Invariants.lean)
+  - Layer 1 proof re-export (Verity/Specs/{Name}/Proofs.lean)
   - Basic proofs (Verity/Proofs/{Name}/Basic.lean)
   - Correctness proofs (Verity/Proofs/{Name}/Correctness.lean)
   - Compiler spec entry (printed to stdout for manual insertion)
@@ -113,6 +114,19 @@ def parse_functions(spec: str, fields: List[Field]) -> List[Function]:
 # Template generators
 # ---------------------------------------------------------------------------
 
+def _is_getter_name(name: str) -> bool:
+    """Return True if *name* looks like a getter (camelCase: getX, isX, hasX).
+
+    The prefix must be followed by an uppercase letter so that names like
+    ``hash`` (starts with "has") or ``issue`` (starts with "is") are not
+    misclassified.
+    """
+    for prefix in ("get", "is", "has"):
+        if name.startswith(prefix) and len(name) > len(prefix) and name[len(prefix)].isupper():
+            return True
+    return False
+
+
 def gen_example(cfg: ContractConfig) -> str:
     """Generate Verity/Examples/{Name}.lean"""
     has_mapping = any(f.is_mapping for f in cfg.fields)
@@ -135,12 +149,18 @@ def gen_example(cfg: ContractConfig) -> str:
         else:
             storage_lines.append(f"def {f.name} : StorageSlot Uint256 := ⟨{i}⟩")
 
-    # Function stubs
+    # Function stubs — detect getters to use the correct return type.
+    # We require the prefix to be followed by an uppercase letter (camelCase
+    # boundary) so that e.g. "hash" does not match "has" and "issue" does
+    # not match "is".
     func_lines = []
     for fn in cfg.functions:
+        is_getter = _is_getter_name(fn.name)
+        ret_type = "Contract Uint256" if is_getter else "Contract Unit"
+        ret_val = "pure 0" if is_getter else "pure ()"
         func_lines.append(f"-- TODO: Implement {fn.name}")
-        func_lines.append(f"def {fn.name} : Contract Unit := do")
-        func_lines.append(f"  pure ()")
+        func_lines.append(f"def {fn.name} : {ret_type} := do")
+        func_lines.append(f"  {ret_val}")
         func_lines.append("")
 
     return f"""/-
@@ -244,6 +264,30 @@ end Verity.Specs.{cfg.name}
 """
 
 
+def gen_spec_proofs(cfg: ContractConfig) -> str:
+    """Generate Verity/Specs/{Name}/Proofs.lean — Layer 1 proof re-export.
+
+    Every existing contract (SimpleStorage, Counter, Owned, etc.) has this file.
+    It re-exports the SpecCorrectness proof so that downstream users have a
+    stable path under Verity.Specs.{Name}.Proofs.
+
+    For a newly scaffolded contract the SpecCorrectness module does not exist
+    yet, so we emit a commented-out import with a TODO instead of a bare
+    import that would break ``lake build``.
+    """
+    return f"""-- TODO: Uncomment once Compiler/Proofs/SpecCorrectness/{cfg.name}.lean exists
+-- import Compiler.Proofs.SpecCorrectness.{cfg.name}
+
+/-
+  Layer 1 proof re-export.
+  This keeps the user-facing path stable while reusing the core proof module.
+
+  Once you have written the SpecCorrectness proof for {cfg.name}, uncomment
+  the import above so that `import Verity.Specs.{cfg.name}.Proofs` pulls it in.
+-/
+"""
+
+
 def gen_basic_proofs(cfg: ContractConfig) -> str:
     """Generate Verity/Proofs/{Name}/Basic.lean"""
     proof_stubs = []
@@ -319,12 +363,7 @@ def gen_property_tests(cfg: ContractConfig) -> str:
     test_functions = []
     for i, fn in enumerate(cfg.functions):
         camel = fn.name[0].upper() + fn.name[1:]
-        # Detect if this looks like a getter (starts with get/is/has or has "balance"/"count")
-        is_getter = (
-            fn.name.startswith("get")
-            or fn.name.startswith("is")
-            or fn.name.startswith("has")
-        )
+        is_getter = _is_getter_name(fn.name)
         test_functions.append(
             _gen_single_test(cfg, fn, camel, i, is_getter)
         )
@@ -415,11 +454,13 @@ def _gen_single_test(
         require(success, "{fn.name} call failed");
 
         // Verify the operation's effect on storage.
-        // Adapt these assertions to match {fn.name}'s specification:
+        // TODO: Replace this with assertions matching {fn.name}'s specification.
+        // For example, if {fn.name} increments slot 0:
+        //   assertEq(readStorage(0), slot0Before + 1, "should increment");
         uint256 slot0After = readStorage(0);
         assertTrue(
-            slot0After != slot0Before || slot0Before == slot0After,
-            "{fn.name}_meets_spec: verify storage change matches spec"
+            slot0After != slot0Before,
+            "{fn.name}_meets_spec: storage should change"
         );
     }}
 """
@@ -504,6 +545,7 @@ def gen_all_lean_imports(cfg: ContractConfig) -> str:
 import Verity.Examples.{cfg.name}
 import Verity.Specs.{cfg.name}.Spec
 import Verity.Specs.{cfg.name}.Invariants
+import Verity.Specs.{cfg.name}.Proofs
 import Verity.Proofs.{cfg.name}.Basic
 import Verity.Proofs.{cfg.name}.Correctness"""
 
@@ -582,6 +624,7 @@ Examples:
         (ROOT / "Verity" / "Examples" / f"{name}.lean", gen_example(cfg)),
         (ROOT / "Verity" / "Specs" / name / "Spec.lean", gen_spec(cfg)),
         (ROOT / "Verity" / "Specs" / name / "Invariants.lean", gen_invariants(cfg)),
+        (ROOT / "Verity" / "Specs" / name / "Proofs.lean", gen_spec_proofs(cfg)),
         (ROOT / "Verity" / "Proofs" / name / "Basic.lean", gen_basic_proofs(cfg)),
         (ROOT / "Verity" / "Proofs" / name / "Correctness.lean", gen_correctness_proofs(cfg)),
         (ROOT / "test" / f"Property{name}.t.sol", gen_property_tests(cfg)),
@@ -602,11 +645,16 @@ Examples:
     print(gen_all_lean_imports(cfg))
     print()
 
+    name_lower = cfg.name[0].lower() + cfg.name[1:]
     print("2. Add compiler spec to Compiler/Specs.lean:")
     print(gen_compiler_spec(cfg))
     print()
 
-    print("3. Run validation:")
+    print(f"3. Register in allSpecs (Compiler/Specs.lean):")
+    print(f"   Find 'def allSpecs' and add '{name_lower}Spec' to the list.")
+    print()
+
+    print("4. Run validation:")
     print("   lake build")
     print(f"   forge test --match-contract Property{name}")
     print("   python3 scripts/check_property_coverage.py")

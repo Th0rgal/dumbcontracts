@@ -1,10 +1,11 @@
 export default {
   index: 'Home',
-  verification: 'Formal Verification',
-  research: 'Research',
+  'getting-started': 'Getting Started',
   examples: 'Example Contracts',
+  core: 'Core Architecture',
   guides: 'Guides',
   'add-contract': 'Add a Contract',
-  core: 'Core Architecture',
   compiler: 'Compiler',
+  verification: 'Formal Verification',
+  research: 'Research',
 };

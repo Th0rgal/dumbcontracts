@@ -57,7 +57,7 @@ if [ ${#FAILED_SEEDS[@]} -gt 0 ]; then
     echo ""
     echo "To reproduce a failure:"
     for failed_seed in "${FAILED_SEEDS[@]}"; do
-        echo "  DIFFTEST_RANDOM_SEED=$failed_seed forge test -vv"
+        echo "  FOUNDRY_PROFILE=difftest DIFFTEST_RANDOM_SEED=$failed_seed forge test --no-match-test \"Random10000\" -vv"
     done
     exit 1
 else

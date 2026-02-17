@@ -25,6 +25,7 @@ EXCLUDED_CONTRACTS = {
 EXPECTED_STRUCTURE = [
     "Verity/Specs/{name}/Spec.lean",
     "Verity/Specs/{name}/Invariants.lean",
+    "Verity/Specs/{name}/Proofs.lean",
     "Verity/Proofs/{name}/Basic.lean",
     "Verity/Proofs/{name}/Correctness.lean",
 ]

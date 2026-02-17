@@ -79,7 +79,7 @@ theorem increment_correct (state : ContractState) :
     finalState.storage countSlot = add (state.storage countSlot) 1
 ```
 
-**Coverage**: 220 properties tested across 9 contracts (73% coverage, 300 total theorems)
+**Coverage**: 220 properties tested across 9 contracts (73% coverage, 305 total theorems)
 
 **What this guarantees**:
 - Contract behavior matches specification

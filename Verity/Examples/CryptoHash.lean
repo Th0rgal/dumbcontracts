@@ -25,19 +25,21 @@ In the EDSL, we use a simple placeholder (addition) for the hash function.
 This allows us to prove properties about the contract logic without dealing
 with complex cryptographic primitives.
 
-At compile time, this will be replaced with a call to an external Poseidon
-hash implementation via the @[extern] attribute (to be added in future).
+At compile time, the real Poseidon hash is linked via `Expr.externalCall` in
+the ContractSpec and the `--link` CLI flag. See `Compiler/Specs.lean` for the
+ContractSpec that references `PoseidonT3_hash`/`PoseidonT4_hash`, and
+`examples/external-libs/` for the Yul library files.
 
 For now, we demonstrate the pattern with a simple addition-based placeholder.
 -/
 
 -- Placeholder hash: just add the inputs (for proving)
--- In production: @[extern "PoseidonT3_hash"] would replace this
+-- In production: linked via `lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul`
 def hashTwo (a b : Uint256) : Contract Uint256 := do
   return add a b
 
 -- Placeholder hash for three inputs
--- In production: @[extern "PoseidonT4_hash"]
+-- In production: linked via `lake exe verity-compiler --link examples/external-libs/PoseidonT4.yul`
 def hashThree (a b c : Uint256) : Contract Uint256 := do
   return add (add a b) c
 

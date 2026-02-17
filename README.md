@@ -116,7 +116,7 @@ def myHash (a b : Uint256) : Contract Uint256 := do
   return (a + b)  -- simple placeholder
 
 -- 2. ContractSpec calls the real library
-Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 -- 3. Compile with: lake exe verity-compiler --link libs/MyHash.yul
 ```
@@ -209,7 +209,7 @@ def hash (a b : Uint256) : Contract Uint256 := do
 
 2. **Add external call** in `Compiler/Specs.lean`:
 ```lean
-Stmt.letVar "h" (Expr.externalCall "poseidonHash" [Expr.param 0, Expr.param 1])
+Stmt.letVar "h" (Expr.externalCall "poseidonHash" [Expr.param "a", Expr.param "b"])
 ```
 
 3. **Compile with linking**:

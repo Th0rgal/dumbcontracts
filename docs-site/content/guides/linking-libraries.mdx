@@ -18,7 +18,7 @@ echo 'function myHash(a, b) -> result { result := add(xor(a, b), 0x42) }' > libs
 def myHash (a b : Uint256) : Contract Uint256 := return add a b
 
 # 3. Reference it in your ContractSpec
-Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 # 4. Compile with linking
 lake exe verity-compiler --link libs/MyHash.yul -o compiler/yul
@@ -65,10 +65,12 @@ In `Compiler/Specs.lean`, use `Expr.externalCall` to reference the library funct
 
 ```lean
 -- Inside your contract spec's function body:
-Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 ```
 
-The compiler generates a Yul `myHash(arg0, arg1)` call that will be resolved by the linked library.
+> **Important**: `Expr.param` takes the parameter **name** as a string — it must match the `name` field in your function's `params` list. For example, if your function declares `{ name := "a", ty := ParamType.uint256 }`, use `Expr.param "a"`.
+
+The compiler generates a Yul `myHash(a, b)` call that will be resolved by the linked library.
 
 ### 4. Compile with `--link`
 

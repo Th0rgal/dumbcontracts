@@ -122,6 +122,24 @@ def storageMapUnchangedExceptKeysAtSlot (slot : Nat) (addr1 addr2 : Address) (s 
   storageMapUnchangedExceptKeys slot addr1 addr2 s s' ∧
   storageMapUnchangedExceptSlot slot s s'
 
+/-- Everything except uint256-keyed mapping storage is unchanged.
+    Use for operations that only modify `storageMapUint` entries. -/
+def sameExceptStorageMapUint (s s' : ContractState) : Prop :=
+  sameStorage s s' ∧
+  sameStorageAddr s s' ∧
+  sameStorageMap s s' ∧
+  sameStorageMap2 s s' ∧
+  sameContext s s'
+
+/-- Everything except double mapping storage is unchanged.
+    Use for operations that only modify `storageMap2` entries. -/
+def sameExceptStorageMap2 (s s' : ContractState) : Prop :=
+  sameStorage s s' ∧
+  sameStorageAddr s s' ∧
+  sameStorageMap s s' ∧
+  sameStorageMapUint s s' ∧
+  sameContext s s'
+
 /-- All uint256-keyed mapping slots except `slot` are unchanged. -/
 def storageMapUintUnchangedExceptSlot (slot : Nat) (s s' : ContractState) : Prop :=
   ∀ other : Nat, other ≠ slot → ∀ key : Uint256, s'.storageMapUint other key = s.storageMapUint other key

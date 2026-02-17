@@ -173,7 +173,7 @@ def ownedSpec : ContractSpec := {
 **Metrics**:
 - Manual IR eliminated in favor of generated IR from the spec
 - Time to add contract dropped significantly in practice
-- Test results: Foundry tests pass (352 as of 2026-02-16), Lean proofs verify (305 theorems as of 2026-02-16)
+- Test results: Foundry tests pass (361 as of 2026-02-17), Lean proofs verify (305 theorems as of 2026-02-16)
 - Code quality: More concise, optimized (expression inlining)
 
 **Features Achieved**:
@@ -224,7 +224,7 @@ FOUNDRY_PROFILE=difftest forge test  # 352/352 tests pass (as of 2026-02-17)
 - 10,000+ random transactions pass per contract in CI (large suite)
 - Large suite is sharded across 8 CI jobs to stay within per-test gas limits
 - Zero mismatches detected
-- All Foundry tests passing (352 as of 2026-02-16)
+- All Foundry tests passing (361 as of 2026-02-17)
 - CI: All checks passing
 
 **Usage**:

@@ -182,6 +182,56 @@ contract CalldataSizeGuardTest is YulTestBase {
     }
 
     //═══════════════════════════════════════════════════════════════════════════
+    // OwnedCounter: 0-param functions + 1-param transferOwnership
+    //═══════════════════════════════════════════════════════════════════════════
+
+    function testCalldataSize_OwnedCounter_Increment_TooShort() public {
+        assertFalse(_callRaw(ownedCounter, hex"d09de0"), "3 bytes should revert");
+    }
+
+    function testCalldataSize_OwnedCounter_Increment_Exact() public {
+        vm.prank(alice);
+        assertTrue(_callRaw(ownedCounter, abi.encodeWithSignature("increment()")), "4 bytes should succeed");
+    }
+
+    function testCalldataSize_OwnedCounter_Decrement_TooShort() public {
+        assertFalse(_callRaw(ownedCounter, hex"2baece"), "3 bytes should revert");
+    }
+
+    function testCalldataSize_OwnedCounter_Decrement_Exact() public {
+        // First increment so decrement doesn't underflow
+        vm.prank(alice);
+        _callRaw(ownedCounter, abi.encodeWithSignature("increment()"));
+        vm.prank(alice);
+        assertTrue(_callRaw(ownedCounter, abi.encodeWithSignature("decrement()")), "4 bytes should succeed");
+    }
+
+    function testCalldataSize_OwnedCounter_GetCount_TooShort() public {
+        assertFalse(_callRaw(ownedCounter, hex"a87d94"), "3 bytes should revert");
+    }
+
+    function testCalldataSize_OwnedCounter_GetCount_Exact() public {
+        assertTrue(_callRaw(ownedCounter, abi.encodeWithSignature("getCount()")), "4 bytes should succeed");
+    }
+
+    function testCalldataSize_OwnedCounter_GetOwner_Exact() public {
+        assertTrue(_callRaw(ownedCounter, abi.encodeWithSignature("getOwner()")), "4 bytes should succeed");
+    }
+
+    function testCalldataSize_OwnedCounter_TransferOwnership_SelectorOnly() public {
+        vm.prank(alice);
+        assertFalse(_callRaw(ownedCounter, hex"f2fde38b"), "4 bytes should revert for 1-param function");
+    }
+
+    function testCalldataSize_OwnedCounter_TransferOwnership_Exact() public {
+        vm.prank(alice);
+        assertTrue(
+            _callRaw(ownedCounter, abi.encodeWithSignature("transferOwnership(address)", bob)),
+            "36 bytes should succeed"
+        );
+    }
+
+    //═══════════════════════════════════════════════════════════════════════════
     // Empty calldata: should revert for all contracts (hits default case)
     //═══════════════════════════════════════════════════════════════════════════
 

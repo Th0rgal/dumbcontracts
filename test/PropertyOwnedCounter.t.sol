@@ -46,7 +46,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
     function testProperty_Constructor_InitializesCountToZero() public {
         address newContract = deployYulWithArgs("OwnedCounter", abi.encode(alice));
         uint256 count = readStorage(newContract, 1);
-        assertEq(count, 0, "Count should be 0 afterValue construction");
+        assertEq(count, 0, "Count should be 0 after construction");
     }
 
     /**
@@ -302,7 +302,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
         require(success);
         uint256 count = abi.decode(data, (uint256));
 
-        assertEq(count, 1, "Count should be 1 afterValue construction + increment");
+        assertEq(count, 1, "Count should be 1 after construction + increment");
     }
 
     /**
@@ -562,7 +562,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
         // Alice (now non-owner) tries to transfer - should revert
         vm.prank(alice);
         (success,) = ownedCounter.call(abi.encodeWithSignature("transferOwnership(address)", alice));
-        assertFalse(success, "Original owner can't transfer afterValue double transfer");
+        assertFalse(success, "Original owner can't transfer after double transfer");
     }
 
     // Helper function to read address from storage

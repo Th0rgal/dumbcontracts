@@ -224,19 +224,19 @@ contract CallValueGuardTest is YulTestBase {
         assertFalse(reverted, "balanceOf with value should revert");
     }
 
-    function testCallValueGuard_SimpleToken_GetTotalSupply() public {
+    function testCallValueGuard_SimpleToken_TotalSupply() public {
         vm.prank(alice);
         (bool reverted,) = simpleToken.call{value: 1 wei}(
-            abi.encodeWithSignature("getTotalSupply()")
+            abi.encodeWithSignature("totalSupply()")
         );
-        assertFalse(reverted, "getTotalSupply with value should revert");
+        assertFalse(reverted, "totalSupply with value should revert");
     }
 
-    function testCallValueGuard_SimpleToken_GetOwner() public {
+    function testCallValueGuard_SimpleToken_Owner() public {
         vm.prank(alice);
         (bool reverted,) = simpleToken.call{value: 1 wei}(
-            abi.encodeWithSignature("getOwner()")
+            abi.encodeWithSignature("owner()")
         );
-        assertFalse(reverted, "token getOwner with value should revert");
+        assertFalse(reverted, "token owner with value should revert");
     }
 }

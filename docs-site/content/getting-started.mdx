@@ -9,7 +9,16 @@ This guide walks you through setting up a development environment for Verity, bu
 | [elan](https://github.com/leanprover/elan) | Lean toolchain manager | Building everything |
 | [Foundry](https://book.getfoundry.sh/getting-started/installation) | Solidity testing framework | Running property tests |
 | Python 3.8+ | Scripts | Scaffold generator, CI scripts |
-| `solc` 0.8.33+ | Solidity compiler | Differential tests only |
+| [`solc`](https://docs.soliditylang.org/en/latest/installing-solidity.html) 0.8.33+ | Solidity compiler | Differential tests only |
+
+> **Installing `solc`**: Foundry does not ship `solc`. Install it separately via [`solc-select`](https://github.com/crytic/solc-select):
+> ```bash
+> pip3 install solc-select
+> solc-select install 0.8.33
+> solc-select use 0.8.33
+> solc --version
+> ```
+> On macOS you can also use `brew install solidity`. The project requires version 0.8.33+.
 
 ## 1. Install Lean 4
 
@@ -46,7 +55,7 @@ cd verity
 lake build                # Downloads dependencies and verifies all 305 theorems
 ```
 
-The first build downloads Mathlib and compiles everything — expect **5–15 minutes** depending on your machine. Subsequent builds are incremental and much faster.
+The first build downloads Mathlib and compiles everything — expect **20–45 minutes** on first run (Mathlib is large). Subsequent builds are incremental and much faster (seconds to minutes).
 
 ## 4. Run the test suite
 
@@ -90,7 +99,7 @@ lake exe verity-compiler          # Output in compiler/yul/
 For contracts that use external libraries (e.g., Poseidon hash):
 
 ```bash
-lake exe verity-compiler --link libs/PoseidonT3.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul -o compiler/yul
 ```
 
 See the [Linking Libraries guide](/guides/linking-libraries) for details.

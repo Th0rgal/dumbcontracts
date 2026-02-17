@@ -51,7 +51,7 @@ python3 scripts/generate_contract.py TipJar \
 This creates all required files:
 - `Verity/Specs/TipJar/Spec.lean` — formal specification
 - `Verity/Specs/TipJar/Invariants.lean` — state invariants
-- `Verity/Specs/TipJar/Proofs.lean` — Layer 2 proof re-export
+- `Verity/Specs/TipJar/Proofs.lean` — Layer 1 proof re-export
 - `Verity/Examples/TipJar.lean` — EDSL implementation
 - `Verity/Proofs/TipJar/Basic.lean` — basic correctness proofs (EDSL matches spec)
 - `Verity/Proofs/TipJar/Correctness.lean` — advanced correctness proofs
@@ -386,29 +386,20 @@ def tipJarSpec : ContractSpec := {
 }
 ```
 
-### 5.2 Compute Function Selectors
+### 5.2 Register Your Contract
 
-Solidity function selectors are the first 4 bytes of `keccak256("functionName(paramTypes)")`. Verity computes them automatically at compile time using `scripts/keccak256.py`:
-
-```bash
-# Compute selectors for your functions
-python3 scripts/keccak256.py "tip(uint256)" "getBalance(address)"
-# Output: two hex values like 0xd3e5769a 0xf8b2cb4f
-```
-
-Register your contract in the `allSpecs` list:
+Add your contract to the `allSpecs` list in `Compiler/Specs.lean`:
 
 ```lean
--- Add to allSpecs list in Compiler/Specs.lean
 def allSpecs : List ContractSpec := [
   -- ... existing contracts ...,
   tipJarSpec
 ]
 ```
 
-Function selectors are computed automatically by `computeSelectors` during compilation — you do not need to list them manually. The compiler derives selectors from your function signatures using keccak256.
+Function selectors (the first 4 bytes of `keccak256("functionName(paramTypes)")`) are computed automatically by `computeSelectors` during compilation — you do not need to list them manually.
 
-> **Tip**: Run `python3 scripts/check_selectors.py` to verify that the auto-computed selectors match `solc --hashes` output.
+> **Tip**: Run `python3 scripts/check_selectors.py` to verify that the auto-computed selectors match `solc --hashes` output. You can also compute selectors manually with `python3 scripts/keccak256.py "tip(uint256)" "getBalance(address)"`.
 
 ### 5.3 Generate Yul Code
 

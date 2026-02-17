@@ -291,18 +291,15 @@ theorem only_slot_k_changed :
   simp [setStorage, hneq]
 ```
 
-### runState Composition
+### Sequential Operations
 
 **Problem**: Multiple storage updates in sequence.
 
-**Pattern**: Use runState_bind
+**Pattern**: Unfold bind and simp with `Contract.run`
 ```lean
 theorem multi_update_proof :
     (do setStorage slot1 val1; setStorage slot2 val2).runState state = finalState := by
-  rw [runState_bind]           -- Separate first operation
-  simp [setStorage]             -- Simplify first update
-  rw [runState_bind]            -- Separate second operation
-  simp [setStorage]              -- Simplify second update
+  simp [bind, setStorage, Contract.run, ContractResult.snd]
   ext slot                      -- Prove storage equality
   by_cases h1 : slot = slot1
   · simp [h1]
@@ -520,19 +517,19 @@ example : (a + 0) = a := rfl  -- Works if definitionally equal
 
 ## Real Examples from Verity
 
-### Example 1: SimpleStorage getValue
+### Example 1: SimpleStorage retrieve
 
-**Goal**: Prove getValue returns stored value
+**Goal**: Prove retrieve returns stored value
 ```lean
-theorem getValue_correct (state : ContractState) :
-    (getValue.run state).fst = state.storage valueSlot := by
-  unfold getValue Contract.run        -- Expand definitions
-  simp [getStorage, valueSlot]         -- Simplify storage access
+theorem retrieve_correct (state : ContractState) :
+    (retrieve.run state).fst = state.storage storedData := by
+  unfold retrieve Contract.run        -- Expand definitions
+  simp [getStorage, storedData]        -- Simplify storage access
   -- Result: rfl (definitionally equal)
 ```
 
 **Key insights**:
-- Unfold `getValue` first to expose `getStorage`
+- Unfold `retrieve` first to expose `getStorage`
 - `simp` handles storage function application
 - Result is definitionally equal (rfl)
 

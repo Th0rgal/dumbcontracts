@@ -119,7 +119,7 @@ python3 scripts/generate_contract.py MyToken \
 python3 scripts/generate_contract.py MyContract --dry-run
 ```
 
-Creates 6 files: EDSL implementation, Spec, Invariants, Basic proofs, Correctness proofs, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
+Creates 7 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
 
 ## Utilities
 

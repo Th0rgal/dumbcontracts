@@ -23,7 +23,7 @@ lake build                                      # Build everything
 lake build Verity.Specs.SimpleStorage.Proofs    # Build one contract's proofs
 ```
 
-Expected warnings: `sorry` from `Verity.Specs.Ledger.SumProofs` (6 sum property proofs, Issue #65). `Verity.Specs.Common.Sum` is fully proven.
+All proofs complete — no `sorry` warnings expected.
 
 ## Infrastructure
 

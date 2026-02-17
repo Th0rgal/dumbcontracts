@@ -17,7 +17,7 @@ Lean 4 EDSL for writing smart contracts with machine-checked proofs. Three-layer
 - **Language**: Lean 4.15.0
 - **Core Size**: 429 lines
 - **Verified Contracts**: SimpleStorage, Counter, Owned, SimpleToken, OwnedCounter, Ledger, SafeCounter, ReentrancyExample (+ CryptoHash as unverified linker demo)
-- **Theorems**: 305 across 9 categories (299 fully proven, 6 `sorry` placeholders in Ledger sum proofs)
+- **Theorems**: 305 across 9 categories (305 fully proven, 0 `sorry` placeholders)
 - **Axioms**: 2 documented axioms (see AXIOMS.md) — keccak256, address injectivity
 - **Tests**: 361 Foundry tests, multi-seed differential testing (7 seeds), 8-shard parallel CI
 - **Build**: `lake build` verifies all proofs
@@ -75,7 +75,7 @@ def bind (x : Contract α) (f : α → Contract β) : Contract β :=
 
 The GitHub Actions workflow validates:
 - All Lean proofs compile (`lake build`)
-- No `sorry` in proof files (except documented Sum.lean/SumProofs.lean)
+- No `sorry` in any proof files (all proofs complete)
 - All axioms documented in AXIOMS.md
 - Property manifest in sync with Lean proofs
 - All manifest theorems have tests (or documented exclusions)
@@ -126,7 +126,7 @@ See TRUST_ASSUMPTIONS.md for full analysis. Key trust boundaries:
 
 ## Known Limitations
 
-- 6 `sorry` placeholders in Ledger sum property proofs (issue #65)
+- All proofs complete — Ledger sum properties proven in Conservation.lean (issue #65 resolved)
 - No gas modeling
 - Self-transfer handled via delta-zero pattern (not separate logic)
 
@@ -136,8 +136,7 @@ The ContractSpec DSL supports: if/else branching (`Stmt.ite`), bounded loops (`S
 
 ## What's Next
 
-1. Complete Ledger sum proofs (#65)
-2. EVMYulLean UInt256 integration (#67)
-3. ERC-20 standard token (#69)
-4. Storage layout formalization (#84)
-5. Gas cost modeling (#80)
+1. EVMYulLean UInt256 integration (#67)
+2. ERC-20 standard token (#69)
+3. Storage layout formalization (#84)
+4. Gas cost modeling (#80)

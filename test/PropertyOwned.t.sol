@@ -32,7 +32,7 @@ contract PropertyOwnedTest is YulTestBase {
     address constant CAROL = address(0xCA801);
 
     function setUp() public {
-        // Deploy Owned from Yul with constructor arg (initialOwner = ALICE)
+        // Deploy Owned from Yul with ALICE as initial owner
         owned = deployYulWithArgs("Owned", abi.encode(ALICE));
         require(owned != address(0), "Deploy failed");
     }
@@ -51,13 +51,13 @@ contract PropertyOwnedTest is YulTestBase {
         // Deploy new instance with specific owner
         address newOwned = deployYulWithArgs("Owned", abi.encode(initialOwner));
 
-        // Verify constructor set the owner correctly
+        // Verify constructor set the owner to the provided address
         (, bytes memory data) = newOwned.staticcall(
             abi.encodeWithSignature("getOwner()")
         );
         address currentOwner = abi.decode(data, (address));
 
-        assertEq(currentOwner, initialOwner, "Constructor should set owner to initialOwner");
+        assertEq(currentOwner, initialOwner, "Constructor sets owner to initialOwner");
     }
 
     /**
@@ -104,10 +104,10 @@ contract PropertyOwnedTest is YulTestBase {
      * Property: constructor_meets_spec
      */
     function testProperty_Constructor_SetsInitialOwner() public {
-        // setUp deployed with ALICE as constructor arg
+        // setUp deployed with ALICE as owner
         address currentOwner = readOwner();
 
-        // Owner should be ALICE (set by constructor)
+        // Owner should be exactly ALICE
         assertEq(currentOwner, ALICE, "Constructor sets owner to ALICE");
     }
 
@@ -220,7 +220,7 @@ contract PropertyOwnedTest is YulTestBase {
         );
         address result = abi.decode(data, (address));
 
-        // Assert: Owner matches constructor arg
+        // Assert: Constructor->getOwner returns the exact initialOwner
         assertEq(result, BOB, "Constructor->getOwner returns initialOwner");
     }
 
@@ -317,15 +317,15 @@ contract PropertyOwnedTest is YulTestBase {
      * Property: constructor_transferOwnership_getOwner
      */
     function testProperty_FullLifecycle_ConstructorTransferGet() public {
-        // Deploy (constructor) with ALICE as initial owner
-        address newOwned = deployYulWithArgs("Owned", abi.encode(ALICE));
+        // Deploy (constructor) with BOB as owner
+        address newOwned = deployYulWithArgs("Owned", abi.encode(BOB));
 
         // Get initial owner
         (, bytes memory data1) = newOwned.staticcall(
             abi.encodeWithSignature("getOwner()")
         );
         address initialOwner = abi.decode(data1, (address));
-        assertEq(initialOwner, ALICE, "Initial owner is ALICE");
+        assertEq(initialOwner, BOB, "Initial owner is BOB");
 
         // Transfer ownership to CAROL
         vm.prank(initialOwner);

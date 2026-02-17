@@ -123,7 +123,7 @@ Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
 
 See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a step-by-step guide and [`docs-site/content/guides/linking-libraries.mdx`](docs-site/content/guides/linking-libraries.mdx) for the full documentation.
 
-305 theorems across 9 categories. 361 Foundry tests across 25 test suites. 220 covered by property tests (72% coverage, 85 proof-only exclusions). 2 documented axioms, 6 `sorry` in Ledger sum proofs ([#65](https://github.com/Th0rgal/verity/issues/65)).
+305 theorems across 9 categories, all fully proven. 361 Foundry tests across 25 test suites. 220 covered by property tests (72% coverage, 85 proof-only exclusions). 2 documented axioms. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
 
 ## What's Verified
 

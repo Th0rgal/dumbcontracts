@@ -65,6 +65,8 @@ def bind (ma : Contract α) (f : α → Contract β) : Contract β :=
 
 This gives do-notation with automatic failure propagation. A failed `require` stops the whole chain.
 
+> **Limitations**: The EDSL models contract logic with infinite gas — gas costs are not modeled. Verified properties hold in this abstract model but may not hold on-chain where gas limits exist. Large loops or storage-heavy operations could exceed block gas limits. See [Issue #174](https://github.com/Th0rgal/verity/issues/174) for details on gas modeling roadmap.
+
 ## Storage operations
 
 ```lean

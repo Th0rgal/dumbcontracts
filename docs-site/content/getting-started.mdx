@@ -1,0 +1,103 @@
+# Getting Started
+
+This guide walks you through setting up a development environment for Verity, building the project, and running your first verification.
+
+## Prerequisites
+
+| Tool | Purpose | Required for |
+|------|---------|-------------|
+| [elan](https://github.com/leanprover/elan) | Lean toolchain manager | Building everything |
+| [Foundry](https://book.getfoundry.sh/getting-started/installation) | Solidity testing framework | Running property tests |
+| Python 3.8+ | Scripts | Scaffold generator, CI scripts |
+| `solc` 0.8.33+ | Solidity compiler | Differential tests only |
+
+## 1. Install Lean 4
+
+[elan](https://github.com/leanprover/elan) manages Lean toolchains (like `rustup` for Rust). The project pins its toolchain in `lean-toolchain`.
+
+```bash
+curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
+```
+
+Follow the prompts, then **reload your shell**:
+
+```bash
+source ~/.elan/env    # or open a new terminal
+lean --version        # should print leanprover/lean4:v4.15.0 (or whatever lean-toolchain pins)
+```
+
+> **Tip**: If `source ~/.elan/env` does not work, check `~/.profile` or `~/.bashrc` for the elan path entry.
+
+## 2. Install Foundry
+
+[Foundry](https://book.getfoundry.sh/) provides `forge` for compiling and testing Solidity contracts. The project uses it for property-based differential tests.
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+forge --version
+```
+
+## 3. Clone and build
+
+```bash
+git clone https://github.com/Th0rgal/verity.git
+cd verity
+lake build                # Downloads dependencies and verifies all 305 theorems
+```
+
+The first build downloads Mathlib and compiles everything — expect **5–15 minutes** depending on your machine. Subsequent builds are incremental and much faster.
+
+## 4. Run the test suite
+
+```bash
+# Property tests (no FFI needed)
+forge test
+
+# Differential tests (compares EDSL interpreter output against compiled Yul on EVM)
+FOUNDRY_PROFILE=difftest forge test
+```
+
+The `difftest` profile enables `vm.ffi()` calls so that Foundry can invoke the Lean-based interpreter. This requires `lake build` to have completed successfully.
+
+## 5. Generate your first contract
+
+```bash
+python3 scripts/generate_contract.py TipJar --fields "balance:uint256,owner:address" --functions "deposit,withdraw,getBalance"
+```
+
+This creates all the scaffold files you need:
+
+| File | Purpose |
+|------|---------|
+| `Verity/Examples/TipJar.lean` | EDSL implementation |
+| `Verity/Specs/TipJar/Spec.lean` | Formal specification |
+| `Verity/Specs/TipJar/Invariants.lean` | State invariants |
+| `Verity/Specs/TipJar/Proofs.lean` | Layer 1 proof re-export |
+| `Verity/Proofs/TipJar/Basic.lean` | Basic correctness proofs |
+| `Verity/Proofs/TipJar/Correctness.lean` | Advanced proofs |
+| `test/PropertyTipJar.t.sol` | Solidity property tests |
+
+Follow the printed instructions to register the contract in `Verity/All.lean` and `Compiler/Specs.lean`, then see the [First Contract tutorial](/guides/first-contract) for a full walkthrough.
+
+## 6. Compile to Yul/EVM
+
+```bash
+lake build verity-compiler
+lake exe verity-compiler          # Output in compiler/yul/
+```
+
+For contracts that use external libraries (e.g., Poseidon hash):
+
+```bash
+lake exe verity-compiler --link libs/PoseidonT3.yul -o compiler/yul
+```
+
+See the [Linking Libraries guide](/guides/linking-libraries) for details.
+
+## What to read next
+
+1. **[Example Contracts](/examples)** — Progressive examples from single-slot storage to token transfers
+2. **[Core Architecture](/core)** — The Contract monad, state model, and design decisions
+3. **[First Contract tutorial](/guides/first-contract)** — Hands-on guide building a TipJar from scratch
+4. **[Compiler reference](/compiler)** — Full ContractSpec DSL documentation

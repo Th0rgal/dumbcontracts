@@ -5,7 +5,7 @@ This directory contains example Yul library files that can be linked with Verity
 ## Files
 
 - **PoseidonT3.yul**: Placeholder Poseidon hash function for 2 inputs
-- **PoseidonT4.yul**: Placeidon hash function for 3 inputs (1 input + padding)
+- **PoseidonT4.yul**: Placeholder Poseidon hash function for 3 inputs (1 input + padding)
 
 ## Quick Usage
 
@@ -18,9 +18,44 @@ lake exe verity-compiler \
     -o compiler/yul
 ```
 
+## Step-by-Step Example
+
+### 1. Create Your Library (e.g., `libs/MyHash.yul`)
+
+```yul
+// Simple hash function for demonstration
+function myHash(a, b) -> result {
+    result := add(xor(a, b), 0x42)
+}
+```
+
+### 2. Use Placeholder in Your Contract
+
+In your EDSL contract, define a placeholder:
+
+```lean
+-- Placeholder: models the hash as addition (for proving)
+def myHash (a b : Uint256) : Contract Uint256 := do
+  return add a b
+```
+
+### 3. Add External Call to ContractSpec
+
+In `Compiler/Specs.lean`, reference the library function:
+
+```lean
+Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param 0, Expr.param 1])
+```
+
+### 4. Compile with Linking
+
+```bash
+lake exe verity-compiler --link libs/MyHash.yul -o compiler/yul
+```
+
 ## Complete Guide
 
-For a comprehensive guide on using external libraries, see the [Linking External Libraries](https://verity.dev/guides/linking-libraries) documentation.
+For a comprehensive guide on using external libraries, see the [Linking External Libraries](../docs-site/content/guides/linking-libraries.mdx) documentation.
 
 The guide covers:
 - Writing library files
@@ -29,15 +64,53 @@ The guide covers:
 - Validation and error handling
 - Trust model considerations
 
-## Note
+## Common Pitfalls
 
-These are **placeholder implementations** for demonstration purposes. In production, you would use:
+### 1. Object Wrappers Not Supported
 
-1. Real Poseidon hash implementations from audited libraries
-2. Groth16 verification functions from audited zk-SNARK libraries
-3. Other cryptographic primitives from trusted sources
+```yul
+// Bad: object wrapper will cause parsing errors
+object "MyLib" {
+    function foo(x) -> y { y := add(x, 1) }
+}
 
-The key benefit is that you can prove properties about your contract logic using simple placeholders in Lean, then link with production-grade cryptographic implementations at compile time.
+// Good: plain function definitions
+function foo(x) -> y { y := add(x, 1) }
+```
+
+### 2. Function Name Mismatch
+
+The function name in your `.yul` file must exactly match what's called in your ContractSpec:
+
+```yul
+// In MyHash.yul
+function myHash(a, b) -> result { ... }  // Name is "myHash"
+```
+
+```lean
+-- In Specs.lean - must match exactly
+Expr.externalCall "myHash" [...]  -- Must be "myHash", not "MyHash" or "my_hash"
+```
+
+### 3. Parameter Count Mismatch
+
+If your Yul function expects 2 parameters but you call it with 3, you'll get an arity error:
+
+```
+Arity mismatch: myHash called with 3 args but library defines 2 params
+```
+
+### 4. Shadowing Builtins
+
+Don't use names that conflict with Yul builtins:
+
+```yul
+// Bad: "add" is a Yul builtin
+function add(a, b) -> result { result := a }
+
+// Good: unique names
+function myAdd(a, b) -> result { result := a }
+```
 
 ## Validation
 
@@ -56,10 +129,26 @@ Library function(s) shadow Yul builtins: add
 Arity mismatch: myFunc called with 2 args but library defines 3 params
 ```
 
+## Production Use
+
+These are **placeholder implementations** for demonstration purposes. In production, use:
+
+1. Real Poseidon hash implementations from audited libraries (e.g., [HorizenLabs](https://github.com/HorizenLabs/poseidon))
+2. Groth16 verification functions from audited zk-SNARK libraries
+3. Other cryptographic primitives from trusted sources
+
+The key benefit: prove properties about contract logic using simple placeholders, then link production-grade implementations at compile time.
+
 ## Trust Model
 
 External libraries are **outside the formal verification boundary**. Your Lean proofs verify the contract logic against placeholders. You must:
 
 1. Use audited, battle-tested library implementations
 2. Add Foundry tests that exercise linked contracts end-to-end
-3. Document the trust assumption (see [TRUST_ASSUMPTIONS.md](https://github.com/Th0rgal/verity/blob/main/TRUST_ASSUMPTIONS.md#5-external-library-code-linker))
+3. Document the trust assumption (see [TRUST_ASSUMPTIONS.md](../TRUST_ASSUMPTIONS.md#5-external-library-code-linker))
+
+## Related Files
+
+- [CryptoHash Example](../Verity/Examples/CryptoHash.lean) - Shows placeholder usage
+- [Linker Module](../Compiler/Linker.lean) - Full linker implementation
+- [ContractSpec](../Compiler/ContractSpec.lean) - External call syntax

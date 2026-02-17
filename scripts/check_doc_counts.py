@@ -3,8 +3,8 @@
 
 Validates counts in README.md, test/README.md, docs/VERIFICATION_STATUS.md,
 docs/ROADMAP.md, TRUST_ASSUMPTIONS.md, docs-site llms.txt, compiler.mdx,
-verification.mdx, core.mdx, and index.mdx against the actual property
-manifest and codebase.
+verification.mdx, research.mdx, core.mdx, and index.mdx against the actual
+property manifest and codebase.
 
 Usage:
     python3 scripts/check_doc_counts.py
@@ -440,6 +440,21 @@ def main() -> None:
             str(count),
         ))
     errors.extend(check_file(verification_mdx, verification_checks))
+
+    # Check research.mdx
+    research_mdx = ROOT / "docs-site" / "content" / "research.mdx"
+    errors.extend(
+        check_file(
+            research_mdx,
+            [
+                (
+                    "test count in forge test comment",
+                    re.compile(r"forge test\s+#\s*(\d+)/\d+ tests pass"),
+                    str(test_count),
+                ),
+            ],
+        )
+    )
 
     # Check core size claims
     core_mdx = ROOT / "docs-site" / "content" / "core.mdx"

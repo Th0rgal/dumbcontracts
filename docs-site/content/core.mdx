@@ -27,16 +27,22 @@ structure StorageSlot (α : Type) where
 
 ```lean
 structure ContractState where
-  storage : Nat → Uint256                -- Uint256 storage
-  storageAddr : Nat → Address            -- Address storage
-  storageMap : Nat → Address → Uint256  -- Mapping storage
+  storage : Nat → Uint256                         -- Uint256 storage
+  storageAddr : Nat → Address                      -- Address storage
+  storageMap : Nat → Address → Uint256            -- Mapping storage (address-keyed)
+  storageMapUint : Nat → Uint256 → Uint256        -- Mapping storage (uint256-keyed)
+  storageMap2 : Nat → Address → Address → Uint256 -- Double mapping storage
   sender : Address
   thisAddress : Address
   msgValue : Uint256
   blockTimestamp : Uint256
+  knownAddresses : Nat → FiniteAddressSet          -- Tracked addresses per slot
+  events : List Event := []                        -- Emitted events (append-only)
 ```
 
-Three independent storage spaces: Uint256 slots, Address slots, and Mapping slots. Each is indexed by a natural number (the slot). The state also carries the sender address, the contract's own address, and the EVM context fields `msg.value` and `block.timestamp`.
+Five independent storage spaces: `storage` for Uint256 values, `storageAddr` for addresses, `storageMap` for address-keyed mappings (e.g., `balances[owner]`), `storageMapUint` for uint256-keyed mappings, and `storageMap2` for double mappings (e.g., `allowances[owner][spender]`). Each is indexed by a natural number (the slot).
+
+The state also carries: the `sender` address, the contract's own `thisAddress`, EVM context fields (`msgValue`, `blockTimestamp`), `knownAddresses` for tracking which addresses have been seen per slot (used in conservation proofs), and an append-only `events` log.
 
 ## ContractResult
 

@@ -572,12 +572,10 @@ def myContractSpec : ContractSpec := {
   functions := [/* ... */]
 }
 
-def myContractSelectors : List Nat := [0x..., 0x...]
-
--- Add to allSpecs
-def allSpecs := [
+-- Add to allSpecs (selectors are auto-computed from function signatures)
+def allSpecs : List ContractSpec := [
   /* ... */,
-  (myContractSpec, myContractSelectors)
+  myContractSpec
 ]
 ```
 

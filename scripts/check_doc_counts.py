@@ -222,6 +222,11 @@ def main() -> None:
                     re.compile(r"(\d+) `sorry` placeholders"),
                     str(sorry_count),
                 ),
+                (
+                    "core line count",
+                    re.compile(r"\*\*Core Size\*\*: (\d+) lines"),
+                    str(core_lines),
+                ),
             ],
         )
     )

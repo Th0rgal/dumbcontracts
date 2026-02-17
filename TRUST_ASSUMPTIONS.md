@@ -348,41 +348,35 @@ Library functions are provided via `--link <path.yul>` flags to the compiler CLI
 
 ### 7. `allowUnsafeReducibility` Usage
 
-**Role**: Allows Lean's `simp` and `rfl` tactics to unfold `partial` function definitions
+**Role**: Allows Lean's `simp` and `rfl` tactics to unfold function definitions that Lean's termination checker cannot verify
 
-**Assumption**: The `partial` functions marked as reducible are structurally recursive and terminate in practice.
+**Assumption**: The function marked as reducible is structurally recursive on a fuel parameter and terminates in practice.
 
 **Details**:
-Two files use `set_option allowUnsafeReducibility true`:
+One file uses `set_option allowUnsafeReducibility true`:
 
-1. **`Compiler/Proofs/YulGeneration/Semantics.lean:332`**
+1. **`Compiler/Proofs/YulGeneration/Semantics.lean:349`**
    ```lean
    set_option allowUnsafeReducibility true in
    attribute [reducible] execYulFuel
    ```
    Makes `execYulFuel` unfoldable for proofs about Yul execution semantics.
 
-2. **`Compiler/Proofs/YulGeneration/Equivalence.lean:11`**
-   ```lean
-   set_option allowUnsafeReducibility true in
-   attribute [local reducible] execIRStmt execIRStmts
-   ```
-   Makes `execIRStmt`/`execIRStmts` unfoldable for IR↔Yul equivalence proofs.
+**Previously**, `Compiler/Proofs/YulGeneration/Equivalence.lean` also used `allowUnsafeReducibility` for `execIRStmt`/`execIRStmts`. This was **eliminated** by making the IR interpreter total (PR #241).
 
 **Why This Matters**:
 - `allowUnsafeReducibility` can make the Lean kernel unsound in theory
-- Lean keeps `partial` definitions opaque to prevent reasoning about potentially non-terminating functions
+- Lean keeps certain definitions opaque to prevent reasoning about potentially non-terminating functions
 - This option overrides that safety check, allowing proofs to unfold these definitions
 
 **Risk Assessment**: **Low**
-- The functions are structurally recursive on fuel parameters and always terminate
-- Lean marks them as `partial` only because the termination checker cannot verify the recursion pattern
 - `execYulFuel` is fuel-bounded (guaranteed termination), so reducibility is safe
-- `execIRStmt`/`execIRStmts` are used locally and their termination is validated by 70,000+ differential tests
+- Lean cannot verify the recursion pattern due to the `for_` loop case, which passes the same fuel but a structurally different statement
+- Validated by 70,000+ differential tests
 
 **Elimination Path**:
-- The IR interpreter is now total, so `evalIRExpr`/`evalIRExprs` axioms have been eliminated. The `allowUnsafeReducibility` on the IR side may also be removable
-- The Yul side (`execYulFuel`) already uses fuel and could potentially be proven terminating with well-founded recursion
+- The IR side has already been eliminated (PR #241)
+- The Yul side (`execYulFuel`) could potentially be proven terminating with a well-founded measure on `(fuel, stmtSize target)`, but the `for_` loop case makes this non-trivial
 
 ---
 
@@ -682,10 +676,10 @@ Use this checklist when performing security audits of Verity-verified contracts.
    - Proves Yul semantics ≡ Bytecode execution
    - Effort: 3-4 months
 
-2. **Axiom Elimination**
-   - IR interpreter refactored to be total (expressions + statements now axiom-free)
-   - Removed — IR interpreter is now total (evalIRExpr, evalIRExprs, execIRStmtsFuel eliminated)
-   - Status: Completed
+2. **Further Axiom Elimination**
+   - 3 of 5 axioms already eliminated (PR #241: evalIRExpr, evalIRExprs, execIRStmtsFuel adequacy)
+   - Remaining: formalize hex string parsing for `addressToNat_injective`
+   - Remaining: prove `keccak256_first_4_bytes` via a Lean keccak256 implementation
 
 3. **Gas Cost Verification** (Issue #80)
    - Formally verify gas bounds

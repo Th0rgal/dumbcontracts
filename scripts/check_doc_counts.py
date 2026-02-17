@@ -252,6 +252,41 @@ def main() -> None:
         )
     )
 
+    # Check test/README.md
+    test_readme = ROOT / "test" / "README.md"
+    errors.extend(
+        check_file(
+            test_readme,
+            [
+                (
+                    "covered count",
+                    re.compile(r"(\d+)/\d+ theorems tested"),
+                    str(covered_count),
+                ),
+                (
+                    "theorem count",
+                    re.compile(r"\d+/(\d+) theorems tested"),
+                    str(total_theorems),
+                ),
+                (
+                    "coverage percentage",
+                    re.compile(r"theorems tested \((\d+)%\)"),
+                    str(coverage_pct),
+                ),
+                (
+                    "exclusion count",
+                    re.compile(r"(\d+) proof-only exclusions"),
+                    str(exclusion_count),
+                ),
+                (
+                    "property test count in tree",
+                    re.compile(r"Property tests \((\d+) tests\)"),
+                    str(covered_count),
+                ),
+            ],
+        )
+    )
+
     # Check core size claims
     core_mdx = ROOT / "docs-site" / "content" / "core.mdx"
     errors.extend(

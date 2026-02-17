@@ -16,7 +16,7 @@ function testProperty_StoreRetrieve() public {
 }
 ```
 
-**Coverage**: 207/296 theorems tested (70%), 89 proof-only exclusions documented in `property_exclusions.json`.
+**Coverage**: 220/305 theorems tested (72%), 85 proof-only exclusions documented in `property_exclusions.json`.
 
 ### Differential Tests
 **Pattern**: `Differential<Contract>.t.sol`
@@ -53,7 +53,7 @@ bash scripts/test_multiple_seeds.sh
 
 ```
 test/
-├── Property*.t.sol          # Property tests (207 tests)
+├── Property*.t.sol          # Property tests (220 tests)
 ├── Differential*.t.sol      # Differential tests
 ├── Unit*.t.sol              # Unit tests
 ├── DifferentialTestBase.sol # Shared differential test utilities

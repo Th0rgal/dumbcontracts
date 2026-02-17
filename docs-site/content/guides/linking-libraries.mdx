@@ -101,8 +101,15 @@ Verity includes a working example in [`Verity/Examples/CryptoHash.lean`](https:/
 def hashTwo (a b : Uint256) : Contract Uint256 := do
   return add a b
 
+def hashThree (a b c : Uint256) : Contract Uint256 := do
+  return add (add a b) c
+
 def storeHashTwo (a b : Uint256) : Contract Unit := do
-  let h <- hashTwo a b
+  let h ← hashTwo a b
+  setStorage lastHash h
+
+def storeHashThree (a b c : Uint256) : Contract Unit := do
+  let h ← hashThree a b c
   setStorage lastHash h
 ```
 

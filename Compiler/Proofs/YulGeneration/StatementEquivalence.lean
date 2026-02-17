@@ -441,24 +441,4 @@ theorem revert_equiv (selector : Nat) (fuel : Nat)
       rfl
 
 
-/-! ### Statement List Equivalence
-
-NOTE: This theorem is REDUNDANT. The composition theorem already exists at
-Equivalence.lean:403 (`execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv`).
-
-With `all_stmts_equiv` proven, statement list equivalence follows directly
-by applying the composition theorem.
--/
-
--- This theorem is redundant - use execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv instead
-theorem stmtList_equiv (selector : Nat) (fuel : Nat) (stmts : List YulStmt)
-    (irState : IRState) (yulState : YulState)
-    (halign : statesAligned selector irState yulState) :
-    execResultsAligned selector
-      (execIRStmtsFuel fuel irState stmts)
-      (execYulStmtsFuel fuel yulState stmts) := by
-  -- Just apply the existing composition theorem with all_stmts_equiv
-  exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv all_stmts_equiv
-        selector fuel stmts irState yulState halign
-
 end Compiler.Proofs.YulGeneration

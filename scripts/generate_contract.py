@@ -151,19 +151,25 @@ def gen_example(cfg: ContractConfig) -> str:
         storage_lines.append(f"def {f.name} : {f.storage_kind} := ⟨{i}⟩")
 
     # Function stubs — detect getters to use the correct return type.
-    # We require the prefix to be followed by an uppercase letter (camelCase
-    # boundary) so that e.g. "hash" does not match "has" and "issue" does
-    # not match "is".
     # Match getter names to field types: getOwner → owner → address field.
+    # "is"-prefix getters return Bool (e.g., isOwner → Contract Bool).
     addr_field_names = {f.name.lower() for f in cfg.fields if f.ty == "address"}
     func_lines = []
     for fn in cfg.functions:
-        is_getter = _is_getter_name(fn.name)
-        if is_getter:
-            # Extract the field name from the getter (e.g., getOwner → owner)
-            suffix = fn.name[3:]  # strip "get"/"is" prefix (always 3+ chars)
-            suffix_lower = suffix[0].lower() + suffix[1:] if suffix else ""
-            if suffix_lower in addr_field_names:
+        # Determine which getter prefix matched (if any)
+        matched_prefix = next(
+            (p for p in ("get", "is", "has")
+             if fn.name.startswith(p)
+             and len(fn.name) > len(p)
+             and fn.name[len(p)].isupper()),
+            None,
+        )
+        if matched_prefix is not None:
+            suffix = fn.name[len(matched_prefix):]
+            if matched_prefix == "is":
+                ret_type = "Contract Bool"
+                ret_val = "pure false"
+            elif suffix.lower() in addr_field_names:
                 ret_type = "Contract Address"
                 ret_val = 'pure ""'
             else:

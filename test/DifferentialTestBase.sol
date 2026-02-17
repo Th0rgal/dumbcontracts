@@ -39,8 +39,8 @@ abstract contract DifferentialTestBase {
 
     /**
      * @notice Extract returnValue from EDSL JSON response
-     * @dev Expects format: {"returnValue":"123",...}
-     *      The value is quoted in the JSON output
+     * @dev Expects format: {"returnValue":"123",...} or {"returnValue":"0x..."}
+     *      The value is quoted in the JSON output. Handles both decimal and hex.
      */
     function _extractReturnValue(string memory json) internal pure returns (uint256) {
         bytes memory jsonBytes = bytes(json);
@@ -48,7 +48,6 @@ abstract contract DifferentialTestBase {
 
         if (jsonBytes.length < searchBytes.length) return 0;
 
-        // Find "returnValue":"
         for (uint i = 0; i <= jsonBytes.length - searchBytes.length; i++) {
             bool found = true;
             for (uint j = 0; j < searchBytes.length; j++) {
@@ -58,7 +57,6 @@ abstract contract DifferentialTestBase {
                 }
             }
             if (found) {
-                // Extract the value between the quotes
                 uint start = i + searchBytes.length;
                 uint end = start;
                 while (end < jsonBytes.length && jsonBytes[end] != bytes1('"')) {
@@ -67,6 +65,11 @@ abstract contract DifferentialTestBase {
                 bytes memory numBytes = new bytes(end - start);
                 for (uint k = 0; k < end - start; k++) {
                     numBytes[k] = jsonBytes[start + k];
+                }
+                // Handle hex addresses (0x prefix)
+                if (numBytes.length >= 2 && numBytes[0] == '0' &&
+                    (numBytes[1] == 'x' || numBytes[1] == 'X')) {
+                    return _parseHexAddress(string(numBytes));
                 }
                 return _stringToUint(string(numBytes));
             }
@@ -132,6 +135,72 @@ abstract contract DifferentialTestBase {
     }
 
     /**
+     * @notice Extract address storage change from EDSL JSON storageAddrChanges
+     * @dev Expects format: {"storageAddrChanges":[{"slot":X,"value":"0x..."},...]}
+     */
+    function _extractStorageAddrChange(string memory json, uint256 slot)
+        internal
+        pure
+        returns (bool, uint256)
+    {
+        if (!contains(json, "\"storageAddrChanges\"")) {
+            return (false, 0);
+        }
+
+        bytes memory jsonBytes = bytes(json);
+        bytes memory slotPattern = bytes(string.concat("\"slot\":", _uintToString(slot)));
+
+        if (jsonBytes.length < slotPattern.length) return (false, 0);
+        for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
+            bool foundSlot = true;
+            for (uint j = 0; j < slotPattern.length; j++) {
+                if (jsonBytes[i + j] != slotPattern[j]) {
+                    foundSlot = false;
+                    break;
+                }
+            }
+            if (foundSlot) {
+                bytes memory valuePattern = bytes("\"value\":");
+                if (jsonBytes.length < valuePattern.length) return (false, 0);
+                for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
+                    bool foundValue = true;
+                    for (uint l = 0; l < valuePattern.length; l++) {
+                        if (jsonBytes[k + l] != valuePattern[l]) {
+                            foundValue = false;
+                            break;
+                        }
+                    }
+                    if (foundValue) {
+                        uint start = k + valuePattern.length;
+                        // Skip optional quote
+                        if (start < jsonBytes.length && jsonBytes[start] == '"') {
+                            start++;
+                        }
+                        uint end = start;
+                        while (end < jsonBytes.length &&
+                               jsonBytes[end] != '"' &&
+                               jsonBytes[end] != ',' &&
+                               jsonBytes[end] != '}') {
+                            end++;
+                        }
+                        bytes memory valueBytes = new bytes(end - start);
+                        for (uint m = 0; m < end - start; m++) {
+                            valueBytes[m] = jsonBytes[start + m];
+                        }
+                        string memory valueStr = string(valueBytes);
+                        if (valueBytes.length >= 2 && valueBytes[0] == '0' &&
+                            (valueBytes[1] == 'x' || valueBytes[1] == 'X')) {
+                            return (true, _parseHexAddress(valueStr));
+                        }
+                        return (true, _stringToUint(valueStr));
+                    }
+                }
+            }
+        }
+        return (false, 0);
+    }
+
+    /**
      * @notice Convert uint256 to string
      * @param value The uint256 to convert
      * @return The string representation
@@ -158,7 +227,7 @@ abstract contract DifferentialTestBase {
     /**
      * @notice Parse a number from JSON starting at given index
      */
-    function _extractNumber(string memory json, uint256 startIdx) internal pure returns (uint256) {
+    function _extractNumber(string memory json, uint256 startIdx) internal pure virtual returns (uint256) {
         bytes memory b = bytes(json);
         uint256 result = 0;
         uint256 i = startIdx;
@@ -214,7 +283,7 @@ abstract contract DifferentialTestBase {
     /**
      * @notice Convert index to deterministic address
      */
-    function _indexToAddress(uint256 index) internal pure returns (address) {
+    function _indexToAddress(uint256 index) internal pure virtual returns (address) {
         return address(uint160(uint256(keccak256(abi.encodePacked("addr", index)))));
     }
 

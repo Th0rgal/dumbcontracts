@@ -4,6 +4,7 @@ pragma solidity ^0.8.33;
 import {console2} from "forge-std/Test.sol";
 import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
+import "./DifferentialTestBase.sol";
 
 /**
  * @title DifferentialOwnedCounter
@@ -17,13 +18,9 @@ import "./yul/YulTestBase.sol";
  *
  * Success: 100+ tests with zero mismatches
  */
-contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig {
+contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig, DifferentialTestBase {
     // Compiled contract
     address ownedCounter;
-
-    // Test counters
-    uint256 public testsPassed;
-    uint256 public testsFailed;
 
     // Storage state tracking for EDSL interpreter
     mapping(uint256 => uint256) edslStorage;      // Slot 1: count
@@ -226,199 +223,6 @@ contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig {
         return string(result);
     }
 
-    function _extractStorageAddrChange(string memory json, uint256 slot) internal pure returns (bool, uint256) {
-        bytes memory jsonBytes = bytes(json);
-        bytes memory slotPattern = bytes(string.concat("\"slot\":", vm.toString(slot)));
-
-        // Look for the slot in storageAddrChanges
-        if (!contains(json, "\"storageAddrChanges\"")) {
-            return (false, 0);
-        }
-
-        if (jsonBytes.length < slotPattern.length) return (false, 0);
-        for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < slotPattern.length; j++) {
-                if (jsonBytes[i + j] != slotPattern[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                bytes memory valuePattern = bytes("\"value\":");
-                if (jsonBytes.length < valuePattern.length) return (false, 0);
-                for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
-                    bool valueFound = true;
-                    for (uint l = 0; l < valuePattern.length; l++) {
-                        if (jsonBytes[k + l] != valuePattern[l]) {
-                            valueFound = false;
-                            break;
-                        }
-                    }
-                    if (valueFound) {
-                        // Extract value (can be decimal number or hex address)
-                        uint start = k + valuePattern.length;
-                        // Skip quote if present
-                        if (start < jsonBytes.length && jsonBytes[start] == '"') {
-                            start++;
-                        }
-
-                        // Find end of value (ends with quote, comma, or brace)
-                        uint end = start;
-                        while (end < jsonBytes.length &&
-                               jsonBytes[end] != '"' &&
-                               jsonBytes[end] != ',' &&
-                               jsonBytes[end] != '}') {
-                            end++;
-                        }
-
-                        bytes memory valueBytes = new bytes(end - start);
-                        for (uint m = 0; m < end - start; m++) {
-                            valueBytes[m] = jsonBytes[start + m];
-                        }
-
-                        // Parse value (try hex first, then decimal)
-                        string memory valueStr = string(valueBytes);
-                        uint256 addrNat;
-
-                        // Check if it starts with 0x (hex)
-                        if (valueBytes.length >= 2 && valueBytes[0] == '0' &&
-                            (valueBytes[1] == 'x' || valueBytes[1] == 'X')) {
-                            addrNat = _parseHexAddress(valueStr);
-                        } else {
-                            // Parse as decimal
-                            addrNat = _stringToUint(valueStr);
-                        }
-
-                        return (true, addrNat);
-                    }
-                }
-            }
-        }
-        return (false, 0);
-    }
-
-    function _parseHexAddress(string memory hexStr) internal pure returns (uint256) {
-        bytes memory b = bytes(hexStr);
-        uint256 result = 0;
-
-        // Skip "0x" prefix if present
-        uint start = 0;
-        if (b.length >= 2 && b[0] == '0' && (b[1] == 'x' || b[1] == 'X')) {
-            start = 2;
-        }
-
-        for (uint i = start; i < b.length; i++) {
-            result = result * 16;
-            uint8 c = uint8(b[i]);
-            if (c >= 48 && c <= 57) {
-                result += c - 48;  // 0-9
-            } else if (c >= 65 && c <= 70) {
-                result += c - 55;  // A-F
-            } else if (c >= 97 && c <= 102) {
-                result += c - 87;  // a-f
-            }
-        }
-
-        return result;
-    }
-
-    function _extractReturnValue(string memory json) internal pure returns (uint256) {
-        bytes memory jsonBytes = bytes(json);
-        bytes memory searchBytes = bytes("\"returnValue\":\"");
-
-        if (jsonBytes.length < searchBytes.length) return 0;
-        for (uint i = 0; i <= jsonBytes.length - searchBytes.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < searchBytes.length; j++) {
-                if (jsonBytes[i + j] != searchBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                uint start = i + searchBytes.length;
-                uint end = start;
-
-                // Check if it's a hex address (starts with 0x)
-                bool isHexAddr = false;
-                if (end + 1 < jsonBytes.length && jsonBytes[end] == '0' &&
-                    (jsonBytes[end+1] == 'x' || jsonBytes[end+1] == 'X')) {
-                    isHexAddr = true;
-                }
-
-                while (end < jsonBytes.length && jsonBytes[end] != bytes1('"')) {
-                    end++;
-                }
-                bytes memory numBytes = new bytes(end - start);
-                for (uint k = 0; k < end - start; k++) {
-                    numBytes[k] = jsonBytes[start + k];
-                }
-
-                if (isHexAddr) {
-                    return _parseHexAddress(string(numBytes));
-                } else {
-                    return _stringToUint(string(numBytes));
-                }
-            }
-        }
-        return 0;
-    }
-
-    function _stringToUint(string memory s) internal pure returns (uint256) {
-        bytes memory b = bytes(s);
-        uint256 result = 0;
-        for (uint i = 0; i < b.length; i++) {
-            uint8 c = uint8(b[i]);
-            if (c >= 48 && c <= 57) {
-                unchecked { result = result * 10 + (c - 48); }
-            }
-        }
-        return result;
-    }
-
-    function _extractStorageChange(string memory json, uint256 slot) internal pure returns (bool, uint256) {
-        bytes memory jsonBytes = bytes(json);
-        bytes memory slotPattern = bytes(string.concat("\"slot\":", vm.toString(slot)));
-
-        if (jsonBytes.length < slotPattern.length) return (false, 0);
-        for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < slotPattern.length; j++) {
-                if (jsonBytes[i + j] != slotPattern[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                bytes memory valuePattern = bytes("\"value\":");
-                if (jsonBytes.length < valuePattern.length) return (false, 0);
-                for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
-                    bool valueFound = true;
-                    for (uint l = 0; l < valuePattern.length; l++) {
-                        if (jsonBytes[k + l] != valuePattern[l]) {
-                            valueFound = false;
-                            break;
-                        }
-                    }
-                    if (valueFound) {
-                        uint start = k + valuePattern.length;
-                        uint end = start;
-                        while (end < jsonBytes.length && jsonBytes[end] >= 0x30 && jsonBytes[end] <= 0x39) {
-                            end++;
-                        }
-                        bytes memory numBytes = new bytes(end - start);
-                        for (uint m = 0; m < end - start; m++) {
-                            numBytes[m] = jsonBytes[start + m];
-                        }
-                        return (true, _stringToUint(string(numBytes)));
-                    }
-                }
-            }
-        }
-        return (false, 0);
-    }
-
     function _buildStorageString() internal view returns (string memory) {
         // Build storage string: addr="slot:value" "slot:value"
         string memory result = "";
@@ -448,39 +252,6 @@ contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig {
         }
 
         return result;
-    }
-
-    function _toLowerCase(string memory str) internal pure returns (string memory) {
-        bytes memory bStr = bytes(str);
-        bytes memory bLower = new bytes(bStr.length);
-        for (uint i = 0; i < bStr.length; i++) {
-            // Convert A-F to a-f
-            if (bStr[i] >= 0x41 && bStr[i] <= 0x46) {
-                bLower[i] = bytes1(uint8(bStr[i]) + 32);
-            } else {
-                bLower[i] = bStr[i];
-            }
-        }
-        return string(bLower);
-    }
-
-    function contains(string memory str, string memory substr) internal pure returns (bool) {
-        bytes memory strBytes = bytes(str);
-        bytes memory substrBytes = bytes(substr);
-
-        if (substrBytes.length > strBytes.length) return false;
-
-        for (uint i = 0; i <= strBytes.length - substrBytes.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < substrBytes.length; j++) {
-                if (strBytes[i + j] != substrBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) return true;
-        }
-        return false;
     }
 
     // ============ Test Cases ============

@@ -4,6 +4,7 @@ pragma solidity ^0.8.33;
 import {console2} from "forge-std/Test.sol";
 import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
+import "./DifferentialTestBase.sol";
 
 /**
  * @title DifferentialLedger
@@ -17,13 +18,9 @@ import "./yul/YulTestBase.sol";
  *
  * Success: 100+ tests with zero mismatches
  */
-contract DifferentialLedger is YulTestBase, DiffTestConfig {
+contract DifferentialLedger is YulTestBase, DiffTestConfig, DifferentialTestBase {
     // Compiled contract
     address ledger;
-
-    // Test counters
-    uint256 public testsPassed;
-    uint256 public testsFailed;
 
     // Mapping state tracking for EDSL interpreter (slot 0: address => balance)
     mapping(address => uint256) edslBalances;
@@ -246,20 +243,6 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig {
         return result;
     }
 
-    function _toLowerCase(string memory str) internal pure returns (string memory) {
-        bytes memory bStr = bytes(str);
-        bytes memory bLower = new bytes(bStr.length);
-        for (uint i = 0; i < bStr.length; i++) {
-            // Convert A-F to a-f
-            if (bStr[i] >= 0x41 && bStr[i] <= 0x46) {
-                bLower[i] = bytes1(uint8(bStr[i]) + 32);
-            } else {
-                bLower[i] = bStr[i];
-            }
-        }
-        return string(bLower);
-    }
-
     function _updateEDSLMappingStorage(string memory edslResult, address sender, address other) internal {
         // Parse mappingChanges from EDSL result
         // Format: "mappingChanges":[{"slot":0,"key":"0x...","value":123},...]
@@ -323,67 +306,7 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig {
         return 0;
     }
 
-    function contains(string memory str, string memory substr) internal pure returns (bool) {
-        bytes memory strBytes = bytes(str);
-        bytes memory substrBytes = bytes(substr);
-
-        if (substrBytes.length > strBytes.length) return false;
-
-        for (uint i = 0; i <= strBytes.length - substrBytes.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < substrBytes.length; j++) {
-                if (strBytes[i + j] != substrBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) return true;
-        }
-        return false;
-    }
-
-    function _extractReturnValue(string memory json) internal pure returns (uint256) {
-        bytes memory jsonBytes = bytes(json);
-        bytes memory searchBytes = bytes("\"returnValue\":\"");
-
-        if (jsonBytes.length < searchBytes.length) return 0;
-        for (uint i = 0; i <= jsonBytes.length - searchBytes.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < searchBytes.length; j++) {
-                if (jsonBytes[i + j] != searchBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                uint start = i + searchBytes.length;
-                uint end = start;
-                while (end < jsonBytes.length && jsonBytes[end] != bytes1('"')) {
-                    end++;
-                }
-                bytes memory numBytes = new bytes(end - start);
-                for (uint k = 0; k < end - start; k++) {
-                    numBytes[k] = jsonBytes[start + k];
-                }
-                return _stringToUint(string(numBytes));
-            }
-        }
-        return 0;
-    }
-
-    function _stringToUint(string memory s) internal pure returns (uint256) {
-        bytes memory b = bytes(s);
-        uint256 result = 0;
-        for (uint i = 0; i < b.length; i++) {
-            uint8 c = uint8(b[i]);
-            if (c >= 48 && c <= 57) {
-                unchecked { result = result * 10 + (c - 48); }
-            }
-        }
-        return result;
-    }
-
-    function _extractNumber(string memory json, uint256 startIdx) internal pure returns (uint256) {
+    function _extractNumber(string memory json, uint256 startIdx) internal pure override returns (uint256) {
         bytes memory jsonBytes = bytes(json);
         uint256 result = 0;
         bool foundDigit = false;

@@ -4,26 +4,15 @@ pragma solidity ^0.8.33;
 import {console2} from "forge-std/Test.sol";
 import "./DiffTestConfig.sol";
 import "./yul/YulTestBase.sol";
+import "./DifferentialTestBase.sol";
 
 /**
  * @title DifferentialSimpleStorage
  * @notice Differential testing for SimpleStorage contract
- *
- * Approach:
- * 1. Generate random transactions
- * 2. Execute on compiled Yul contract (EVM)
- * 3. Execute on EDSL interpreter (via vm.ffi)
- * 4. Assert identical results
- *
- * Success: 10,000+ tests with zero mismatches
  */
-contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig {
+contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig, DifferentialTestBase {
     // Compiled contract
     address simpleStorage;
-
-    // Test counter
-    uint256 public testsPassed;
-    uint256 public testsFailed;
 
     // Storage state tracking for EDSL interpreter
     mapping(uint256 => uint256) edslStorage;
@@ -164,108 +153,6 @@ contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig {
     }
 
     /**
-     * @notice Extract returnValue from JSON
-     * Parses: "returnValue":"42" or "returnValue":null
-     */
-    function _extractReturnValue(string memory json) internal pure returns (uint256) {
-        bytes memory jsonBytes = bytes(json);
-        bytes memory searchBytes = bytes("\"returnValue\":\"");
-
-        // Find "returnValue":"
-        if (jsonBytes.length < searchBytes.length) return 0;
-        for (uint i = 0; i <= jsonBytes.length - searchBytes.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < searchBytes.length; j++) {
-                if (jsonBytes[i + j] != searchBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                // Extract number until next quote
-                uint start = i + searchBytes.length;
-                uint end = start;
-                while (end < jsonBytes.length && jsonBytes[end] != bytes1('"')) {
-                    end++;
-                }
-                // Convert to uint
-                bytes memory numBytes = new bytes(end - start);
-                for (uint k = 0; k < end - start; k++) {
-                    numBytes[k] = jsonBytes[start + k];
-                }
-                return _stringToUint(string(numBytes));
-            }
-        }
-        return 0; // Default if not found or null
-    }
-
-    /**
-     * @notice Convert string to uint
-     */
-    function _stringToUint(string memory s) internal pure returns (uint256) {
-        bytes memory b = bytes(s);
-        uint256 result = 0;
-        for (uint i = 0; i < b.length; i++) {
-            uint8 c = uint8(b[i]);
-            if (c >= 48 && c <= 57) {
-                unchecked { result = result * 10 + (c - 48); }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * @notice Extract storage change for a specific slot from JSON
-     * Parses: "storageChanges":[{"slot":0,"value":42}]
-     * Returns (false, 0) if slot not found in changes
-     */
-    function _extractStorageChange(string memory json, uint256 slot) internal pure returns (bool, uint256) {
-        bytes memory jsonBytes = bytes(json);
-        bytes memory slotPattern = bytes(string.concat("\"slot\":", vm.toString(slot)));
-
-        // Find the slot pattern
-        if (jsonBytes.length < slotPattern.length) return (false, 0);
-        for (uint i = 0; i <= jsonBytes.length - slotPattern.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < slotPattern.length; j++) {
-                if (jsonBytes[i + j] != slotPattern[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                // Found the slot, now find the value after it
-                // Look for "value": pattern
-                bytes memory valuePattern = bytes("\"value\":");
-                if (jsonBytes.length < valuePattern.length) return (false, 0);
-                for (uint k = i; k <= jsonBytes.length - valuePattern.length; k++) {
-                    bool valueFound = true;
-                    for (uint l = 0; l < valuePattern.length; l++) {
-                        if (jsonBytes[k + l] != valuePattern[l]) {
-                            valueFound = false;
-                            break;
-                        }
-                    }
-                    if (valueFound) {
-                        // Extract the number after "value":
-                        uint start = k + valuePattern.length;
-                        uint end = start;
-                        while (end < jsonBytes.length && jsonBytes[end] >= 0x30 && jsonBytes[end] <= 0x39) {
-                            end++;
-                        }
-                        bytes memory numBytes = new bytes(end - start);
-                        for (uint m = 0; m < end - start; m++) {
-                            numBytes[m] = jsonBytes[start + m];
-                        }
-                        return (true, _stringToUint(string(numBytes)));
-                    }
-                }
-            }
-        }
-        return (false, 0); // Not found
-    }
-
-    /**
      * @notice Build storage state string for EDSL interpreter
      * Format: "slot:value,slot:value,..."
      */
@@ -276,28 +163,6 @@ contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig {
             return "";
         }
         return string.concat("0:", vm.toString(val));
-    }
-
-    /**
-     * @notice Simple string contains check
-     */
-    function contains(string memory str, string memory substr) internal pure returns (bool) {
-        bytes memory strBytes = bytes(str);
-        bytes memory substrBytes = bytes(substr);
-
-        if (substrBytes.length > strBytes.length) return false;
-
-        for (uint i = 0; i <= strBytes.length - substrBytes.length; i++) {
-            bool found = true;
-            for (uint j = 0; j < substrBytes.length; j++) {
-                if (strBytes[i + j] != substrBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) return true;
-        }
-        return false;
     }
 
     /**
@@ -405,7 +270,7 @@ contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig {
     /**
      * @notice Convert index to test address
      */
-    function _indexToAddress(uint256 index) internal pure returns (address) {
+    function _indexToAddress(uint256 index) internal pure override returns (address) {
         if (index == 0) return address(0xA11CE);
         if (index == 1) return address(0xB0B);
         if (index == 2) return address(0xCA401);

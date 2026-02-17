@@ -90,6 +90,11 @@
     "setStorage_runState",
     "uint256_add_val",
     "uint256_sub_val",
-    "uint256_sub_val_of_le"
+    "uint256_sub_val_of_le",
+    "getMapping2_runState",
+    "getMapping2_runValue",
+    "getMappingUint_runState",
+    "getMappingUint_runValue",
+    "setMapping_getMapping_same"
   ]
 }

@@ -636,7 +636,7 @@ Verity provides **strong formal verification** with a **small trusted computing 
 ✅ Contract implementations match specifications (Layer 1)
 ✅ Specifications preserved through compilation (Layer 2)
 ✅ IR semantics equivalent to Yul semantics (Layer 3)
-✅ 300 theorems across 9 contracts (220 covered by property tests)
+✅ 305 theorems across 9 contracts (220 covered by property tests)
 
 ### What is Trusted (Validated but Not Proven)
 ⚠️ Solidity compiler (solc) - Validated by 70k+ differential tests

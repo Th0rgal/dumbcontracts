@@ -32,8 +32,8 @@ contract PropertyOwnedTest is YulTestBase {
     address constant CAROL = address(0xCA801);
 
     function setUp() public {
-        // Deploy Owned from Yul
-        owned = deployYul("Owned");
+        // Deploy Owned from Yul with constructor arg (initialOwner = ALICE)
+        owned = deployYulWithArgs("Owned", abi.encode(ALICE));
         require(owned != address(0), "Deploy failed");
     }
 
@@ -49,18 +49,15 @@ contract PropertyOwnedTest is YulTestBase {
         vm.assume(initialOwner != address(0)); // Non-zero owner
 
         // Deploy new instance with specific owner
-        address newOwned = deployYul("Owned");
+        address newOwned = deployYulWithArgs("Owned", abi.encode(initialOwner));
 
-        // Constructor is called during deployment, but we need to call it explicitly
-        // Actually, the Yul contract doesn't have a constructor in bytecode
-        // Let's test the current owner state
+        // Verify constructor set the owner correctly
         (, bytes memory data) = newOwned.staticcall(
             abi.encodeWithSignature("getOwner()")
         );
         address currentOwner = abi.decode(data, (address));
 
-        // The contract should have an owner set
-        assertTrue(currentOwner != address(0), "Owner should be set");
+        assertEq(currentOwner, initialOwner, "Constructor should set owner to initialOwner");
     }
 
     /**
@@ -107,11 +104,11 @@ contract PropertyOwnedTest is YulTestBase {
      * Property: constructor_meets_spec
      */
     function testProperty_Constructor_SetsInitialOwner() public {
-        // Deploy sets initial owner (msg.sender during deployment)
+        // setUp deployed with ALICE as constructor arg
         address currentOwner = readOwner();
 
-        // Owner should be non-zero (deployment sets it)
-        assertTrue(currentOwner != address(0), "Constructor sets owner");
+        // Owner should be ALICE (set by constructor)
+        assertEq(currentOwner, ALICE, "Constructor sets owner to ALICE");
     }
 
     /**
@@ -214,8 +211,8 @@ contract PropertyOwnedTest is YulTestBase {
      * Property: constructor_getOwner_correct
      */
     function testProperty_Constructor_GetOwner_Composition() public {
-        // Deploy new instance
-        address newOwned = deployYul("Owned");
+        // Deploy new instance with BOB as owner
+        address newOwned = deployYulWithArgs("Owned", abi.encode(BOB));
 
         // Get owner
         (, bytes memory data) = newOwned.staticcall(
@@ -223,8 +220,8 @@ contract PropertyOwnedTest is YulTestBase {
         );
         address result = abi.decode(data, (address));
 
-        // Assert: Owner is set (non-zero)
-        assertTrue(result != address(0), "Constructor->getOwner returns owner");
+        // Assert: Owner matches constructor arg
+        assertEq(result, BOB, "Constructor->getOwner returns initialOwner");
     }
 
     /**
@@ -236,10 +233,10 @@ contract PropertyOwnedTest is YulTestBase {
         address owner1 = readOwner();
         assertTrue(owner1 != address(0), "Initial owner non-zero");
 
-        // Transfer ownership
+        // Transfer ownership to BOB
         vm.prank(owner1);
         (bool success,) = owned.call(
-            abi.encodeWithSignature("transferOwnership(address)", ALICE)
+            abi.encodeWithSignature("transferOwnership(address)", BOB)
         );
         require(success);
 
@@ -320,15 +317,15 @@ contract PropertyOwnedTest is YulTestBase {
      * Property: constructor_transferOwnership_getOwner
      */
     function testProperty_FullLifecycle_ConstructorTransferGet() public {
-        // Deploy (constructor)
-        address newOwned = deployYul("Owned");
+        // Deploy (constructor) with ALICE as initial owner
+        address newOwned = deployYulWithArgs("Owned", abi.encode(ALICE));
 
         // Get initial owner
         (, bytes memory data1) = newOwned.staticcall(
             abi.encodeWithSignature("getOwner()")
         );
         address initialOwner = abi.decode(data1, (address));
-        assertTrue(initialOwner != address(0), "Initial owner set");
+        assertEq(initialOwner, ALICE, "Initial owner is ALICE");
 
         // Transfer ownership to CAROL
         vm.prank(initialOwner);
@@ -355,23 +352,23 @@ contract PropertyOwnedTest is YulTestBase {
     function testProperty_PreviousOwner_CannotAct() public {
         address currentOwner = readOwner();
 
-        // Transfer to ALICE
+        // Transfer to BOB
         vm.prank(currentOwner);
         (bool success,) = owned.call(
-            abi.encodeWithSignature("transferOwnership(address)", ALICE)
+            abi.encodeWithSignature("transferOwnership(address)", BOB)
         );
         require(success);
-        assertEq(readOwner(), ALICE, "ALICE is new owner");
+        assertEq(readOwner(), BOB, "BOB is new owner");
 
-        // Previous owner tries to transfer again
+        // Previous owner (ALICE) tries to transfer again
         vm.prank(currentOwner);
         (success,) = owned.call(
-            abi.encodeWithSignature("transferOwnership(address)", BOB)
+            abi.encodeWithSignature("transferOwnership(address)", CAROL)
         );
 
         // Assert: Previous owner cannot act
         assertFalse(success, "Previous owner cannot transfer");
-        assertEq(readOwner(), ALICE, "Owner still ALICE");
+        assertEq(readOwner(), BOB, "Owner still BOB");
     }
 
     function testProperty_ExclusiveOwnership_ChainedTransfer() public {

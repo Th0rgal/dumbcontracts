@@ -12,21 +12,21 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import re
 import sys
 from pathlib import Path
+
+from property_utils import collect_covered, load_exclusions, load_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def get_manifest_counts() -> tuple[int, int, dict[str, int]]:
     """Return (total_theorems, num_categories, per_contract_counts)."""
-    manifest = ROOT / "test" / "property_manifest.json"
-    data = json.loads(manifest.read_text(encoding="utf-8"))
-    per_contract = {k: len(v) for k, v in data.items()}
+    manifest = load_manifest()
+    per_contract = {k: len(v) for k, v in manifest.items()}
     total = sum(per_contract.values())
-    return total, len(data), per_contract
+    return total, len(manifest), per_contract
 
 
 def _count_lean_lines(pattern: str) -> int:
@@ -72,11 +72,8 @@ def get_sorry_count() -> int:
 
 def get_exclusion_count() -> int:
     """Count total property exclusions from property_exclusions.json."""
-    exclusions = ROOT / "test" / "property_exclusions.json"
-    if not exclusions.exists():
-        return 0
-    data = json.loads(exclusions.read_text(encoding="utf-8"))
-    return sum(len(v) for v in data.values())
+    exclusions = load_exclusions()
+    return sum(len(v) for v in exclusions.values())
 
 
 def get_covered_count(total_theorems: int) -> tuple[int, int]:
@@ -84,9 +81,6 @@ def get_covered_count(total_theorems: int) -> tuple[int, int]:
 
     Returns (covered_count, coverage_percent).
     """
-    sys.path.insert(0, str(ROOT / "scripts"))
-    from property_utils import collect_covered
-
     covered = collect_covered()
     covered_count = sum(len(v) for v in covered.values())
     pct = round(covered_count * 100 / total_theorems) if total_theorems else 0
@@ -120,9 +114,7 @@ def check_verification_theorem_names(path: Path) -> list[str]:
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8")
-    manifest = json.loads(
-        (ROOT / "test" / "property_manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = load_manifest()
     errors: list[str] = []
 
     # Map verification.mdx section headers to manifest contract names

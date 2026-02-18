@@ -493,16 +493,20 @@ def eventSignature (event : EventDef) : String :=
   let paramTypes := event.params.map fun p => paramTypeToSolidityString p.ty
   event.name ++ "(" ++ String.intercalate "," paramTypes ++ ")"
 
--- Compile statement to Yul (using mutual recursion for lists)
+-- Compile statement to Yul (using mutual recursion for lists).
+-- When isInternal=true, Stmt.return compiles to `__ret := value` (for internal Yul functions)
+-- instead of EVM RETURN which terminates the entire call.
 mutual
-def compileStmtList (fields : List Field) : List Stmt → Except String (List YulStmt)
+def compileStmtList (fields : List Field) (isInternal : Bool := false) :
+    List Stmt → Except String (List YulStmt)
   | [] => pure []
   | s :: ss => do
-      let head ← compileStmt fields s
-      let tail ← compileStmtList fields ss
+      let head ← compileStmt fields isInternal s
+      let tail ← compileStmtList fields isInternal ss
       pure (head ++ tail)
 
-def compileStmt (fields : List Field) : Stmt → Except String (List YulStmt)
+def compileStmt (fields : List Field) (isInternal : Bool := false) :
+    Stmt → Except String (List YulStmt)
   | Stmt.letVar name value =>
     do
       let valueExpr ← compileExpr fields value
@@ -576,17 +580,20 @@ def compileStmt (fields : List Field) : Stmt → Except String (List YulStmt)
   | Stmt.return value =>
     do
       let valueExpr ← compileExpr fields value
-      pure [
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueExpr]),
-        YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
-      ]
+      if isInternal then
+        pure [YulStmt.assign "__ret" valueExpr]
+      else
+        pure [
+          YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueExpr]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
   | Stmt.stop => return [YulStmt.expr (YulExpr.call "stop" [])]
 
   | Stmt.ite cond thenBranch elseBranch => do
       -- If/else: compile to Yul if + negated if (#179)
       let condExpr ← compileExpr fields cond
-      let thenStmts ← compileStmtList fields thenBranch
-      let elseStmts ← compileStmtList fields elseBranch
+      let thenStmts ← compileStmtList fields isInternal thenBranch
+      let elseStmts ← compileStmtList fields isInternal elseBranch
       if elseBranch.isEmpty then
         -- Simple if (no else)
         pure [YulStmt.if_ condExpr thenStmts]
@@ -603,7 +610,7 @@ def compileStmt (fields : List Field) : Stmt → Except String (List YulStmt)
   | Stmt.forEach varName count body => do
       -- Bounded loop: for { let i := 0 } lt(i, count) { i := add(i, 1) } { body } (#179)
       let countExpr ← compileExpr fields count
-      let bodyStmts ← compileStmtList fields body
+      let bodyStmts ← compileStmtList fields isInternal body
       let initStmts := [YulStmt.let_ varName (YulExpr.lit 0)]
       let condExpr := YulExpr.call "lt" [YulExpr.ident varName, countExpr]
       let postStmts := [YulStmt.assign varName (YulExpr.call "add" [YulExpr.ident varName, YulExpr.lit 1])]
@@ -703,47 +710,6 @@ def genParamLoads (params : List Param) : List YulStmt :=
       stmts ++ go rest (headOffset + paramHeadSize param.ty)
   go params 4  -- Start after 4-byte selector
 
--- Rewrite Stmt.return to assign __ret instead of EVM RETURN for internal functions.
--- EVM RETURN terminates the entire call; internal Yul functions should assign __ret
--- and fall through. This must be recursive to handle returns nested inside ite/forEach.
-mutual
-def compileStmtForInternalList (fields : List Field) : List Stmt → Except String (List YulStmt)
-  | [] => pure []
-  | s :: ss => do
-      let head ← compileStmtForInternal fields s
-      let tail ← compileStmtForInternalList fields ss
-      pure (head ++ tail)
-
-def compileStmtForInternal (fields : List Field) (stmt : Stmt) :
-    Except String (List YulStmt) :=
-  match stmt with
-  | Stmt.return value => do
-      let valueExpr ← compileExpr fields value
-      pure [YulStmt.assign "__ret" valueExpr]
-  | Stmt.ite cond thenBranch elseBranch => do
-      -- Recursively rewrite returns in both branches
-      let condExpr ← compileExpr fields cond
-      let thenStmts ← compileStmtForInternalList fields thenBranch
-      let elseStmts ← compileStmtForInternalList fields elseBranch
-      if elseBranch.isEmpty then
-        pure [YulStmt.if_ condExpr thenStmts]
-      else
-        pure [YulStmt.block [
-          YulStmt.let_ "__ite_cond" condExpr,
-          YulStmt.if_ (YulExpr.ident "__ite_cond") thenStmts,
-          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__ite_cond"]) elseStmts
-        ]]
-  | Stmt.forEach varName count body => do
-      -- Recursively rewrite returns in loop body
-      let countExpr ← compileExpr fields count
-      let bodyStmts ← compileStmtForInternalList fields body
-      let initStmts := [YulStmt.let_ varName (YulExpr.lit 0)]
-      let condExpr := YulExpr.call "lt" [YulExpr.ident varName, countExpr]
-      let postStmts := [YulStmt.assign varName (YulExpr.call "add" [YulExpr.ident varName, YulExpr.lit 1])]
-      pure [YulStmt.for_ initStmts condExpr postStmts bodyStmts]
-  | other => compileStmt fields other
-end
-
 -- Compile internal function to a Yul function definition (#181)
 def compileInternalFunction (fields : List Field) (spec : FunctionSpec) :
     Except String YulStmt := do
@@ -751,7 +717,7 @@ def compileInternalFunction (fields : List Field) (spec : FunctionSpec) :
   let retNames := match spec.returnType with
     | some _ => ["__ret"]
     | none => []
-  let bodyStmts ← compileStmtForInternalList fields spec.body
+  let bodyStmts ← compileStmtList fields (isInternal := true) spec.body
   pure (YulStmt.funcDef s!"internal_{spec.name}" paramNames retNames bodyStmts)
 
 -- Compile function spec to IR function

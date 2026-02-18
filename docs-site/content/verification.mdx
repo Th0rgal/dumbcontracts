@@ -25,7 +25,8 @@ The compiler is verified with IR preservation proofs and Yul equivalence proofs 
 ## Compiler Proofs (IR + Yul)
 
 - **Spec semantics**: `Verity/Proofs/Stdlib/SpecInterpreter.lean`
-- **IR generation**: `Compiler/Proofs/IRGeneration/` (complete for all 7 contracts)
+- **Spec correctness**: `Compiler/Proofs/SpecCorrectness/` (complete for all 7 contracts — proves each ContractSpec matches its EDSL)
+- **IR generation**: `Compiler/Proofs/IRGeneration/` (infrastructure + per-contract proofs for Counter, SimpleStorage)
 - **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/` (complete — PR #42)
 
 ## Structure

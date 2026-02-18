@@ -70,8 +70,8 @@ def transferOwnershipAST : Stmt :=
 /-!
 ## Equivalence Proofs
 
-Standalone functions use `rfl`. Owner-gated functions use `bind_assoc`
-and `bind_pure` to flatten the nested `bind` from `onlyOwner`/`isOwner`.
+Standalone functions use `rfl`. Owner-gated functions use `Contract.bind_assoc`
+and `Contract.bind_pure_left` to flatten the nested `bind` from `onlyOwner`/`isOwner`.
 -/
 
 theorem constructor_equiv (initialOwner : Address) :

@@ -3,19 +3,15 @@
 
 from __future__ import annotations
 
-import sys
-
-from property_utils import extract_manifest_from_proofs, load_manifest
+from property_utils import extract_manifest_from_proofs, load_manifest, report_errors
 
 
 def main() -> None:
     expected = extract_manifest_from_proofs()
-    # Convert loaded manifest to list format for comparison
     actual = {k: sorted(v) for k, v in load_manifest().items()}
 
     problems: list[str] = []
-    all_contracts = sorted(set(expected.keys()) | set(actual.keys()))
-    for contract in all_contracts:
+    for contract in sorted(set(expected.keys()) | set(actual.keys())):
         exp = expected.get(contract, [])
         act = actual.get(contract, [])
         if not exp and act:
@@ -24,23 +20,14 @@ def main() -> None:
         if exp and not act:
             problems.append(f"{contract}: missing manifest entries (run extract_property_manifest.py)")
             continue
-        exp_set = set(exp)
-        act_set = set(act)
-        missing = sorted(exp_set - act_set)
-        extra = sorted(act_set - exp_set)
+        missing = sorted(set(exp) - set(act))
+        extra = sorted(set(act) - set(exp))
         if missing:
             problems.append(f"{contract}: missing {len(missing)} theorem(s) in manifest: {', '.join(missing)}")
         if extra:
             problems.append(f"{contract}: {len(extra)} extra theorem(s) in manifest: {', '.join(extra)}")
 
-    if problems:
-        print("Property manifest is out of sync with proofs:", file=sys.stderr)
-        for problem in problems:
-            print(f"  - {problem}", file=sys.stderr)
-        print("", file=sys.stderr)
-        print("Run: python3 scripts/extract_property_manifest.py", file=sys.stderr)
-        raise SystemExit(1)
-
+    report_errors(problems, "Property manifest out of sync (run extract_property_manifest.py)")
     print("Property manifest sync check passed.")
 
 

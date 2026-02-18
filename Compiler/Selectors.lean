@@ -21,8 +21,6 @@ on manual selector computation.
 - Trust Assumptions: TRUST_ASSUMPTIONS.md
 -/
 
-import Compiler.Hex
-
 namespace Compiler
 
 /-! ## Keccak256 Axiom
@@ -41,45 +39,5 @@ However, it is validated by CI against solc's --hashes output.
 **Example**: keccak256("transfer(address,uint256)")[:4] = 0xa9059cbb
 -/
 axiom keccak256_first_4_bytes (sig : String) : Nat
-
-/-! ## Common Function Selectors
-
-Standard ERC-20 and common contract function selectors.
-All values are validated against solc output in CI.
--/
-
-/-- ERC-20: transfer(address,uint256) -/
-noncomputable def transfer_selector : Nat := keccak256_first_4_bytes "transfer(address,uint256)"
-
-/-- ERC-20: approve(address,uint256) -/
-noncomputable def approve_selector : Nat := keccak256_first_4_bytes "approve(address,uint256)"
-
-/-- ERC-20: transferFrom(address,address,uint256) -/
-noncomputable def transferFrom_selector : Nat := keccak256_first_4_bytes "transferFrom(address,address,uint256)"
-
-/-- ERC-20: balanceOf(address) -/
-noncomputable def balanceOf_selector : Nat := keccak256_first_4_bytes "balanceOf(address)"
-
-/-- ERC-20: allowance(address,address) -/
-noncomputable def allowance_selector : Nat := keccak256_first_4_bytes "allowance(address,address)"
-
-/-- Counter example: increment() -/
-noncomputable def increment_selector : Nat := keccak256_first_4_bytes "increment()"
-
-/-- Counter example: decrement() -/
-noncomputable def decrement_selector : Nat := keccak256_first_4_bytes "decrement()"
-
-/-- Counter example: get() -/
-noncomputable def get_selector : Nat := keccak256_first_4_bytes "get()"
-
-/-- Storage example: set(uint256) -/
-noncomputable def set_selector : Nat := keccak256_first_4_bytes "set(uint256)"
-
-/-- Ownership: transferOwnership(address) -/
-noncomputable def transferOwnership_selector : Nat := keccak256_first_4_bytes "transferOwnership(address)"
-
-/-- Convert selector to hex string for comparison with solc output -/
-def selector_to_hex (selector : Nat) : String :=
-  Hex.natToHex selector 8
 
 end Compiler

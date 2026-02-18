@@ -650,6 +650,21 @@ def paramHeadSize : ParamType → Nat
   | ParamType.fixedArray _ n => n * 32
   | _ => 32
 
+-- Generate calldata loads for a dynamic parameter (array or bytes).
+private def genDynamicParamLoads (name : String) (headOffset : Nat) : List YulStmt :=
+  let offsetLoad := YulStmt.let_ s!"{name}_offset"
+    (YulExpr.call "calldataload" [YulExpr.lit headOffset])
+  let lengthLoad := YulStmt.let_ s!"{name}_length"
+    (YulExpr.call "calldataload" [
+      YulExpr.call "add" [YulExpr.lit 4, YulExpr.ident s!"{name}_offset"]
+    ])
+  let dataOffsetLoad := YulStmt.let_ s!"{name}_data_offset"
+    (YulExpr.call "add" [
+      YulExpr.call "add" [YulExpr.lit 4, YulExpr.ident s!"{name}_offset"],
+      YulExpr.lit 32
+    ])
+  [offsetLoad, lengthLoad, dataOffsetLoad]
+
 -- Generate parameter loading code (from calldata)
 def genParamLoads (params : List Param) : List YulStmt :=
   let rec go (paramList : List Param) (headOffset : Nat) : List YulStmt :=
@@ -667,22 +682,7 @@ def genParamLoads (params : List Param) : List YulStmt :=
         | ParamType.bytes32 =>
           [YulStmt.let_ param.name (YulExpr.call "calldataload" [YulExpr.lit headOffset])]
         | ParamType.array _ =>
-          -- Dynamic array: head contains offset to array data
-          -- offset is relative to start of params (byte 4)
-          let offsetLoad := YulStmt.let_ s!"{param.name}_offset"
-            (YulExpr.call "calldataload" [YulExpr.lit headOffset])
-          -- Length at offset + 4
-          let lengthLoad := YulStmt.let_ s!"{param.name}_length"
-            (YulExpr.call "calldataload" [
-              YulExpr.call "add" [YulExpr.lit 4, YulExpr.ident s!"{param.name}_offset"]
-            ])
-          -- Data starts at offset + 4 + 32
-          let dataOffsetLoad := YulStmt.let_ s!"{param.name}_data_offset"
-            (YulExpr.call "add" [
-              YulExpr.call "add" [YulExpr.lit 4, YulExpr.ident s!"{param.name}_offset"],
-              YulExpr.lit 32
-            ])
-          [offsetLoad, lengthLoad, dataOffsetLoad]
+          genDynamicParamLoads param.name headOffset
         | ParamType.fixedArray _ n =>
           -- Fixed arrays are inline in calldata: load first element at headOffset,
           -- remaining elements at headOffset + 32, headOffset + 64, etc.
@@ -694,19 +694,7 @@ def genParamLoads (params : List Param) : List YulStmt :=
               YulStmt.let_ s!"{param.name}_{i + 1}" (YulExpr.call "calldataload" [YulExpr.lit (headOffset + (i + 1) * 32)])
             firstElem ++ restElems
         | ParamType.bytes =>
-          -- Dynamic bytes: same encoding as dynamic array
-          let offsetLoad := YulStmt.let_ s!"{param.name}_offset"
-            (YulExpr.call "calldataload" [YulExpr.lit headOffset])
-          let lengthLoad := YulStmt.let_ s!"{param.name}_length"
-            (YulExpr.call "calldataload" [
-              YulExpr.call "add" [YulExpr.lit 4, YulExpr.ident s!"{param.name}_offset"]
-            ])
-          let dataOffsetLoad := YulStmt.let_ s!"{param.name}_data_offset"
-            (YulExpr.call "add" [
-              YulExpr.call "add" [YulExpr.lit 4, YulExpr.ident s!"{param.name}_offset"],
-              YulExpr.lit 32
-            ])
-          [offsetLoad, lengthLoad, dataOffsetLoad]
+          genDynamicParamLoads param.name headOffset
       stmts ++ go rest (headOffset + paramHeadSize param.ty)
   go params 4  -- Start after 4-byte selector
 
@@ -736,9 +724,7 @@ def compileFunctionSpec (fields : List Field) (selector : Nat) (spec : FunctionS
 
 -- Check if contract uses mappings
 def usesMapping (fields : List Field) : Bool :=
-  fields.any fun f => f.ty == FieldType.mapping || match f.ty with
-    | FieldType.mappingTyped _ => true
-    | _ => false
+  fields.any fun f => isMapping fields f.name
 
 -- Generate constructor argument loading code (from end of bytecode)
 def genConstructorArgLoads (params : List Param) : List YulStmt :=

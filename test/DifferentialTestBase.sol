@@ -314,6 +314,53 @@ abstract contract DifferentialTestBase {
     }
 
     /**
+     * @notice Shell preamble for invoking the difftest interpreter
+     */
+    function _interpreterPreamble() internal pure returns (string memory) {
+        return string.concat(
+            "cd \"$(git rev-parse --show-toplevel)\" && export PATH=\"$HOME/.elan/bin:$PATH\" && ",
+            "if [ ! -x ./.lake/build/bin/difftest-interpreter ]; then ",
+            "mkdir -p .lake/build/bin && lake build difftest-interpreter >/dev/null; ",
+            "fi; ",
+            "./.lake/build/bin/difftest-interpreter"
+        );
+    }
+
+    /**
+     * @notice Extract a mapping value for a given address key from EDSL JSON
+     * @param keyStr The address as a hex string (e.g. "0xABCD...")
+     */
+    function _extractMappingValue(string memory json, string memory keyStr) internal pure returns (uint256) {
+        bytes memory jsonBytes = bytes(json);
+        bytes memory keyBytes = bytes(keyStr);
+        bytes memory keyBytesLower = bytes(_toLowerCase(keyStr));
+
+        for (uint i = 0; i < jsonBytes.length - keyBytes.length; i++) {
+            bool found = true;
+            bool foundLower = true;
+            for (uint j = 0; j < keyBytes.length; j++) {
+                if (jsonBytes[i + j] != keyBytes[j]) {
+                    found = false;
+                }
+                if (jsonBytes[i + j] != keyBytesLower[j]) {
+                    foundLower = false;
+                }
+            }
+            if (found || foundLower) {
+                for (uint k = i + keyBytes.length; k < jsonBytes.length - 7; k++) {
+                    if (jsonBytes[k] == '"' && jsonBytes[k+1] == 'v' &&
+                        jsonBytes[k+2] == 'a' && jsonBytes[k+3] == 'l' &&
+                        jsonBytes[k+4] == 'u' && jsonBytes[k+5] == 'e' &&
+                        jsonBytes[k+6] == '"' && jsonBytes[k+7] == ':') {
+                        return _extractNumber(json, k + 8);
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
+    /**
      * @notice Parse hex address string to uint256
      */
     function _parseHexAddress(string memory hexStr) internal pure returns (uint256) {

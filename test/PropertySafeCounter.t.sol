@@ -452,7 +452,7 @@ contract PropertySafeCounterTest is YulTestBase {
     //═══════════════════════════════════════════════════════════════════════════
 
     function readStorage(uint256 slot) internal view returns (uint256) {
-        return uint256(vm.load(safeCounter, bytes32(slot)));
+        return readStorage(safeCounter, slot);
     }
 
     function writeStorage(uint256 slot, uint256 value) internal {

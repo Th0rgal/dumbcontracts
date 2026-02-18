@@ -154,11 +154,6 @@ def denoteUint (env : String → Uint256) (envAddr : String → Address) : Stmt 
 
   | .ret e => Verity.pure (denoteVal env e)
 
-  -- Bind then return: common getter pattern `do let x ← getStorage s; return x`
-  -- which desugars to just `getStorage s`
-  | .bindUint _name (.storage slot) (.ret (.var _retName)) =>
-      getStorage ⟨slot⟩
-
   | .bindUint name (.storage slot) rest =>
       Verity.bind (getStorage ⟨slot⟩) fun val =>
         denoteUint (fun s => if s == name then val else env s) envAddr rest
@@ -185,10 +180,6 @@ def denoteUint (env : String → Uint256) (envAddr : String → Address) : Stmt 
 def denoteAddress (env : String → Uint256) (envAddr : String → Address) : Stmt → Contract Address
 
   | .retAddr (.varAddr name) => Verity.pure (envAddr name)
-
-  -- Common pattern: `do getStorageAddr s`
-  | .bindAddr _name (.storageAddr slot) (.retAddr (.varAddr _retName)) =>
-      getStorageAddr ⟨slot⟩
 
   | .bindAddr name (.storageAddr slot) rest =>
       Verity.bind (getStorageAddr ⟨slot⟩) fun addr =>

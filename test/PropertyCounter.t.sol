@@ -278,6 +278,6 @@ contract PropertyCounterTest is YulTestBase {
 
     // Helper function to read storage
     function readStorage(uint256 slot) internal view returns (uint256) {
-        return uint256(vm.load(counter, bytes32(slot)));
+        return readStorage(counter, slot);
     }
 }

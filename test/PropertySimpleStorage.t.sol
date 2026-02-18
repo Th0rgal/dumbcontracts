@@ -342,6 +342,6 @@ contract PropertySimpleStorageTest is YulTestBase {
 
     // Helper function to read storage
     function readStorage(uint256 slot) internal view returns (uint256) {
-        return uint256(vm.load(simpleStorage, bytes32(slot)));
+        return readStorage(simpleStorage, slot);
     }
 }

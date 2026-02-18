@@ -868,21 +868,11 @@ contract PropertySimpleTokenTest is YulTestBase {
         return abi.decode(data, (uint256));
     }
 
-    // Helper functions
     function readStorageAddr(uint256 slot) internal view returns (address) {
         return readStorageAddr(token, slot);
     }
 
-    function readStorageAddr(address target, uint256 slot) internal view returns (address) {
-        bytes32 value = vm.load(target, bytes32(slot));
-        return address(uint160(uint256(value)));
-    }
-
     function readStorage(uint256 slot) internal view returns (uint256) {
-        return uint256(vm.load(token, bytes32(slot)));
-    }
-
-    function readStorage(address target, uint256 slot) internal view returns (uint256) {
-        return uint256(vm.load(target, bytes32(slot)));
+        return readStorage(token, slot);
     }
 }

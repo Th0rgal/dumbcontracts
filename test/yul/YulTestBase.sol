@@ -91,4 +91,12 @@ abstract contract YulTestBase is Test {
     function _isWhitespace(bytes1 c) private pure returns (bool) {
         return c == 0x20 || c == 0x0a || c == 0x0d || c == 0x09;
     }
+
+    function readStorage(address target, uint256 slot) internal view returns (uint256) {
+        return uint256(vm.load(target, bytes32(slot)));
+    }
+
+    function readStorageAddr(address target, uint256 slot) internal view returns (address) {
+        return address(uint160(uint256(vm.load(target, bytes32(slot)))));
+    }
 }

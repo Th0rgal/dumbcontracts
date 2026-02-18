@@ -28,9 +28,8 @@ import Verity.AST.Owned
 import Verity.AST.OwnedCounter
 import Verity.AST.SimpleToken
 
--- Common specifications & invariants
+-- Common specifications
 import Verity.Specs.Common
-import Verity.Specs.Common.Invariants
 import Verity.Specs.Common.Sum
 
 -- Proof automation & stdlib proofs

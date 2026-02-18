@@ -45,11 +45,6 @@ theorem sub_add_cancel (a b : Verity.Core.Uint256) :
   sub (add a b) b = a :=
   Verity.Core.Uint256.sub_add_cancel a b
 
-theorem sub_add_cancel_of_lt {a b : Verity.Core.Uint256}
-  (_ha : (a : Nat) < 2^256) (_hb : (b : Nat) < 2^256) :
-  sub (add a b) b = a :=
-  Verity.Core.Uint256.sub_add_cancel a b
-
 end Uint256
 
 end Verity.EVM

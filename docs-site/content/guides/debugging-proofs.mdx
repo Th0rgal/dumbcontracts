@@ -361,8 +361,9 @@ theorem two_updates (s : ContractState) :
 
 ```lean
 -- Pattern: Operation succeeds when authorized
-theorem authorized_succeeds (h : state.owner = sender) :
-    (operation sender).isSuccess = true := by
+theorem authorized_succeeds (state : ContractState) (sender : Address)
+    (h : state.storageAddr owner.slot = sender) :
+    ((operation sender).run state).isSuccess = true := by
   unfold operation onlyOwner require
   simp [h]  -- Simplifies sender = owner check
   -- Prove rest of operation

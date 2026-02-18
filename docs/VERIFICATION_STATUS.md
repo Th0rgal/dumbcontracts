@@ -18,6 +18,30 @@ Yul (EVM Assembly)
 EVM Bytecode
 ```
 
+## Unified AST (Issue #364) ✅ **COMPLETE** (all 7 contracts)
+
+**Status**: All 7 compilable contracts migrated with equivalence proofs (27 theorems, zero `sorry`)
+
+**What This Achieves**: A single deep embedding (`Verity.AST`) maps 1:1 to EDSL primitives. The denotation function (`Verity.Denote`) interprets AST → Contract monad such that `denote ast = edsl_fn` holds by `rfl` (definitional equality). For contracts with helper composition (e.g., `onlyOwner`), `bind_assoc` flattens nested binds before `rfl` closes the goal.
+
+### Migrated Contracts
+
+| Contract | Functions | Theorems | Proof Strategy | Location |
+|----------|-----------|----------|----------------|----------|
+| SimpleStorage | store, retrieve | 2 | `rfl` | `Verity/AST/SimpleStorage.lean` |
+| Counter | increment, decrement, getCount | 3 | `rfl` | `Verity/AST/Counter.lean` |
+| SafeCounter | increment, decrement, getCount | 3 | `rfl` | `Verity/AST/SafeCounter.lean` |
+| Ledger | deposit, withdraw, transfer, getBalance | 4 | `rfl` | `Verity/AST/Ledger.lean` |
+| Owned | constructor, transferOwnership, getOwner | 3 | `rfl` + `bind_assoc` | `Verity/AST/Owned.lean` |
+| OwnedCounter | constructor, increment, decrement, getCount, getOwner, transferOwnership | 6 | `rfl` + `bind_assoc` | `Verity/AST/OwnedCounter.lean` |
+| SimpleToken | constructor, mint, transfer, balanceOf, getTotalSupply, getOwner | 6 | `rfl` + `bind_assoc` | `Verity/AST/SimpleToken.lean` |
+
+### Key Files
+
+- `Verity/AST.lean` — Unified `Expr` / `Stmt` inductive types
+- `Verity/Denote.lean` — AST → Contract monad denotation (monad laws in `Verity/Core.lean`)
+- `Verity/AST/*.lean` — Per-contract AST definitions and equivalence proofs
+
 ## Layer 1: EDSL ≡ ContractSpec ✅ **COMPLETE**
 
 **Status**: 8 contracts verified (7 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
@@ -270,5 +294,5 @@ See `scripts/README.md` for:
 
 ---
 
-**Last Updated**: 2026-02-17
-**Status Summary**: Layers 1-3 complete, trust reduction in progress
+**Last Updated**: 2026-02-18
+**Status Summary**: Layers 1-3 complete, trust reduction in progress, unified AST complete — all 7 contracts migrated (Issue #364)

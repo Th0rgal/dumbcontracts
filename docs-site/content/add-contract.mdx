@@ -20,6 +20,9 @@ python3 scripts/generate_contract.py MyToken --fields "balances:mapping,totalSup
 # Contract with typed function signatures
 python3 scripts/generate_contract.py MyToken --fields "balances:mapping" --functions "deposit(uint256),withdraw(uint256),getBalance(address)"
 
+# Contract with uint256-keyed mapping
+python3 scripts/generate_contract.py MyRegistry --fields "data:mapping(uint256)" --functions "store(uint256,uint256),get(uint256)"
+
 # Preview without creating files
 python3 scripts/generate_contract.py MyContract --dry-run
 ```

@@ -15,6 +15,7 @@ Usage:
     python3 scripts/generate_contract.py MyContract
     python3 scripts/generate_contract.py MyContract --fields "value:uint256,owner:address"
     python3 scripts/generate_contract.py MyContract --fields "balances:mapping" --functions "deposit(uint256),withdraw(uint256),transfer(address,uint256),getBalance(address)"
+    python3 scripts/generate_contract.py MyContract --fields "data:mapping(uint256)" --functions "store(uint256,uint256),get(uint256)"
     python3 scripts/generate_contract.py MyContract --dry-run
 """
 
@@ -36,7 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 @dataclass
 class Field:
     name: str
-    ty: str  # "uint256", "address", "mapping"
+    ty: str  # "uint256", "address", "mapping", "mapping_uint"
 
     @property
     def lean_type(self) -> str:
@@ -46,11 +47,13 @@ class Field:
             return "Address"
         if self.ty == "mapping":
             return "Address → Uint256"
+        if self.ty == "mapping_uint":
+            return "Uint256 → Uint256"
         return "Uint256"
 
     @property
     def is_mapping(self) -> bool:
-        return self.ty == "mapping"
+        return self.ty in ("mapping", "mapping_uint")
 
     @property
     def storage_kind(self) -> str:
@@ -58,7 +61,23 @@ class Field:
             return "StorageSlot Address"
         if self.ty == "mapping":
             return "StorageSlot (Address → Uint256)"
+        if self.ty == "mapping_uint":
+            return "StorageSlot (Uint256 → Uint256)"
         return "StorageSlot Uint256"
+
+    @property
+    def compiler_field_type(self) -> str:
+        """FieldType variant for Compiler/Specs.lean."""
+        if self.ty == "mapping_uint":
+            return "FieldType.mappingTyped (.simple .uint256)"
+        return f"FieldType.{self.ty}"
+
+    @property
+    def display_type(self) -> str:
+        """Human-readable type name for output messages."""
+        if self.ty == "mapping_uint":
+            return "mapping(uint256)"
+        return self.ty
 
 
 @dataclass
@@ -103,8 +122,32 @@ class ContractConfig:
 # Parsers
 # ---------------------------------------------------------------------------
 
+def _normalize_field_type(ty: str) -> str:
+    """Normalize a field type string to an internal type name.
+
+    Supported types:
+      ``uint256``                → ``"uint256"``
+      ``address``                → ``"address"``
+      ``mapping``                → ``"mapping"``  (Address → Uint256)
+      ``mapping(address)``       → ``"mapping"``  (Address → Uint256)
+      ``mapping(uint256)``       → ``"mapping_uint"`` (Uint256 → Uint256)
+    """
+    ty = ty.strip().lower()
+    if ty in ("uint256", "address"):
+        return ty
+    if ty == "mapping" or ty == "mapping(address)":
+        return "mapping"
+    if ty == "mapping(uint256)":
+        return "mapping_uint"
+    return ""  # unknown
+
+
 def parse_fields(spec: str) -> List[Field]:
-    """Parse 'name:type,name:type,...' into Field list."""
+    """Parse 'name:type,name:type,...' into Field list.
+
+    Supported field types: ``uint256``, ``address``, ``mapping``,
+    ``mapping(address)`` (same as ``mapping``), ``mapping(uint256)``.
+    """
     if not spec:
         return [Field("storedData", "uint256")]
     fields = []
@@ -113,14 +156,14 @@ def parse_fields(spec: str) -> List[Field]:
         if not part:
             continue
         if ":" in part:
-            name, ty = part.split(":", 1)
+            name, ty_raw = part.split(":", 1)
             name = name.strip()
-            ty = ty.strip().lower()
             if not name:
                 print("Error: Field name cannot be empty (got ':<type>')", file=sys.stderr)
                 sys.exit(1)
-            if ty not in ("uint256", "address", "mapping"):
-                print(f"Warning: Unknown type '{ty}', defaulting to uint256", file=sys.stderr)
+            ty = _normalize_field_type(ty_raw)
+            if not ty:
+                print(f"Warning: Unknown type '{ty_raw.strip()}', defaulting to uint256", file=sys.stderr)
                 ty = "uint256"
             fields.append(Field(name, ty))
         else:
@@ -292,7 +335,7 @@ def gen_example(cfg: ContractConfig) -> str:
   {cfg.name}: Contract Implementation
 
   This contract demonstrates:
-  - {', '.join(f.name + ' (' + f.ty + ')' for f in cfg.fields)}
+  - {', '.join(f.name + ' (' + f.display_type + ')' for f in cfg.fields)}
 
   TODO: Add contract description
 -/
@@ -675,17 +718,24 @@ def _gen_test_helpers(cfg: ContractConfig) -> str:
         mapping_fields = [f for f in cfg.fields if f.is_mapping]
         for f in mapping_fields:
             slot_idx = cfg.fields.index(f)
+            # Key type depends on mapping variant
+            if f.ty == "mapping_uint":
+                key_type = "uint256"
+                key_name = "key"
+            else:
+                key_type = "address"
+                key_name = "addr"
             helpers.append(f"""
     /// @notice Read mapping entry for {f.name} (slot {slot_idx})
     /// @dev Solidity mapping layout: keccak256(abi.encode(key, baseSlot))
-    function get{f.name[0].upper()}{f.name[1:]}FromStorage(address addr) internal view returns (uint256) {{
-        bytes32 slot = keccak256(abi.encode(addr, uint256({slot_idx})));
+    function get{f.name[0].upper()}{f.name[1:]}FromStorage({key_type} {key_name}) internal view returns (uint256) {{
+        bytes32 slot = keccak256(abi.encode({key_name}, uint256({slot_idx})));
         return uint256(vm.load(target, slot));
     }}
 
     /// @notice Write mapping entry for {f.name} (slot {slot_idx}) — for test setup
-    function set{f.name[0].upper()}{f.name[1:]}InStorage(address addr, uint256 amount) internal {{
-        bytes32 slot = keccak256(abi.encode(addr, uint256({slot_idx})));
+    function set{f.name[0].upper()}{f.name[1:]}InStorage({key_type} {key_name}, uint256 amount) internal {{
+        bytes32 slot = keccak256(abi.encode({key_name}, uint256({slot_idx})));
         vm.store(target, slot, bytes32(amount));
     }}""")
 
@@ -695,7 +745,7 @@ def _gen_test_helpers(cfg: ContractConfig) -> str:
 def gen_compiler_spec(cfg: ContractConfig) -> str:
     """Generate Compiler/Specs.lean entry (printed for manual insertion)."""
     fields_str = ",\n    ".join(
-        f'{{ name := "{f.name}", ty := FieldType.{f.ty} }}'
+        f'{{ name := "{f.name}", ty := {f.compiler_field_type} }}'
         for f in cfg.fields
     )
 
@@ -797,7 +847,7 @@ Examples:
     parser.add_argument(
         "--fields",
         default="",
-        help="Storage fields as 'name:type,...' where type is uint256|address|mapping (default: storedData:uint256)",
+        help="Storage fields as 'name:type,...' where type is uint256|address|mapping|mapping(uint256) (default: storedData:uint256)",
     )
     parser.add_argument(
         "--functions",
@@ -828,7 +878,7 @@ Examples:
     cfg = ContractConfig(name=name, fields=fields, functions=functions)
 
     print(f"Generating scaffold for contract: {cfg.name}")
-    print(f"  Fields: {', '.join(f'{f.name}:{f.ty}' for f in cfg.fields)}")
+    print(f"  Fields: {', '.join(f'{f.name}:{f.display_type}' for f in cfg.fields)}")
     def _fn_repr(fn: Function) -> str:
         if fn.params:
             return f"{fn.name}({','.join(p.ty for p in fn.params)})"

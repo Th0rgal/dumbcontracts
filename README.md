@@ -187,7 +187,7 @@ This scaffolds the full file layout:
 1. **Implementation** - `Verity/Examples/<Name>.lean`
 2. **Spec** - `Verity/Specs/<Name>/Spec.lean`
 3. **Invariants** - `Verity/Specs/<Name>/Invariants.lean`
-4. **Spec Proofs** - `Verity/Specs/<Name>/Proofs.lean`
+4. **Layer 2 Proof Re-export** - `Verity/Specs/<Name>/Proofs.lean`
 5. **Basic Proofs** - `Verity/Proofs/<Name>/Basic.lean`
 6. **Correctness Proofs** - `Verity/Proofs/<Name>/Correctness.lean`
 7. **Tests** - `test/Property<Name>.t.sol`

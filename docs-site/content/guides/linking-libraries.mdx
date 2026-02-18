@@ -21,8 +21,16 @@ echo 'function myHash(a, b) -> result { result := add(xor(a, b), 0x42) }' > exam
 def myHash (a b : Uint256) : Contract Uint256 := return add a b
 ```
 
-**Step 3** — Reference it in your ContractSpec:
+**Step 3** — Declare the external function and reference it in your ContractSpec:
 ```lean
+-- In your ContractSpec definition:
+externals := [
+  { name := "myHash"
+    params := [ParamType.uint256, ParamType.uint256]
+    returnType := some ParamType.uint256
+    axiomNames := [] }
+]
+-- In a function body:
 Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 ```
 
@@ -66,18 +74,39 @@ def myHash (a b : Uint256) : Contract Uint256 := do
   return add a b
 ```
 
-### 3. Add the external call to your ContractSpec
+### 3. Declare externals and add the call to your ContractSpec
 
-In `Compiler/Specs.lean`, use `Expr.externalCall` to reference the library function:
+In `Compiler/Specs.lean`, first declare the external function in the `externals` field of your ContractSpec, then use `Expr.externalCall` in the function body:
 
 ```lean
--- Inside your contract spec's function body:
-Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
+def myContractSpec : ContractSpec := {
+  name := "MyContract"
+  fields := [...]
+  constructor := none
+  -- Declare external functions used by this contract
+  externals := [
+    { name := "myHash"
+      params := [ParamType.uint256, ParamType.uint256]
+      returnType := some ParamType.uint256
+      axiomNames := [] }  -- Add axiom names if modeling trust assumptions
+  ]
+  functions := [
+    { name := "storeHash"
+      params := [...]
+      returnType := none
+      body := [
+        -- Call the external function
+        Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"]),
+        ...
+      ]
+    }
+  ]
+}
 ```
 
-> **Important**: `Expr.param` takes the parameter **name** as a string — it must match the `name` field in your function's `params` list. For example, if your function declares `{ name := "a", ty := ParamType.uint256 }`, use `Expr.param "a"`.
+> **Important**: The `externals` field is required. Without it, the linker will not inject library functions into this contract's Yul output, even if `--link` is passed. See `cryptoHashSpec` in `Compiler/Specs.lean` for a complete example.
 
-The compiler generates a Yul `myHash(a, b)` call that will be resolved by the linked library.
+> **Tip**: `Expr.param` takes the parameter **name** as a string — it must match the `name` field in your function's `params` list. For example, if your function declares `{ name := "a", ty := ParamType.uint256 }`, use `Expr.param "a"`.
 
 ### 4. Compile with `--link`
 

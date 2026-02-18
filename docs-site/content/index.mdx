@@ -59,7 +59,7 @@ def mint (to : Address) (amount : Uint256) : Contract Unit := do
   setStorage totalSupply (currentSupply + amount)
 ```
 
-**3. Proof** (`Verity/Specs/SimpleToken/Proofs.lean`)
+**3. Proof** (`Verity/Proofs/SimpleToken/Basic.lean`)
 ```lean
 -- Proof that implementation satisfies specification
 theorem mint_meets_spec (s : ContractState) (to : Address) (amount : Uint256)
@@ -76,7 +76,8 @@ The Lean compiler verifies every proof. If a proof is wrong, compilation fails.
 
 - **User-facing specs**: `Verity/Specs/<Name>/Spec.lean` (+ `Invariants.lean`)
 - **Implementations (EDSL)**: `Verity/Examples/<Name>.lean`
-- **User-facing proofs**: `Verity/Specs/<Name>/Proofs.lean`
+- **Layer 1 proofs (EDSL correctness)**: `Verity/Proofs/<Name>/Basic.lean` + `Correctness.lean`
+- **Layer 2 proof re-export**: `Verity/Specs/<Name>/Proofs.lean` (imports from `Compiler/Proofs/SpecCorrectness/`)
 - **Reusable proof infrastructure**: `Verity/Proofs/Stdlib/` (spec interpreter + automation)
 - **Compiler specs (for codegen)**: `Compiler/Specs.lean` (separate from user specs)
 - **Compiler proofs**: `Compiler/Proofs/` (IR generation + Yul preservation)
@@ -88,7 +89,7 @@ Use `python3 scripts/generate_contract.py <Name>` to scaffold all boilerplate fi
 1. Write a small, human-readable spec in `Verity/Specs/<Name>/Spec.lean`.
 2. Add any invariants in `Verity/Specs/<Name>/Invariants.lean` (optional but encouraged).
 3. Implement the contract in `Verity/Examples/<Name>.lean` using the EDSL.
-4. Prove the implementation meets the spec in `Verity/Specs/<Name>/Proofs.lean`.
+4. Prove the implementation meets the spec in `Verity/Proofs/<Name>/Basic.lean`.
 5. Add compiler-level spec glue in `Compiler/Specs.lean` and any IR/Yul proofs in `Compiler/Proofs/` if new patterns are introduced.
 6. Add tests in `test/` (unit + property + differential if applicable).
 

@@ -85,7 +85,7 @@ python3 scripts/report_property_coverage.py
 
 ## Adding Property Tests
 
-1. Prove theorem in `Verity/Specs/<Contract>/Proofs.lean`
+1. Prove theorem in `Verity/Proofs/<Contract>/Basic.lean`
 2. Add test in `test/Property<Contract>.t.sol` with tag:
    ```solidity
    /// Property: theorem_name

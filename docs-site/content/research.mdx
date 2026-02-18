@@ -102,9 +102,9 @@ Each contract has:
 - `Verity/Examples/X.lean` — Implementation
 - `Verity/Specs/X/Spec.lean` — Pre/postconditions for each operation
 - `Verity/Specs/X/Invariants.lean` — State properties that should hold
-- `Verity/Specs/X/Proofs.lean` — Layer 1: Spec correctness vs EDSL
-- `Verity/Proofs/X/Basic.lean` — Spec conformance, basic properties
-- `Verity/Proofs/X/Correctness.lean` — Revert proofs, composition, end-to-end
+- `Verity/Proofs/X/Basic.lean` — Layer 1: Spec conformance, basic properties
+- `Verity/Proofs/X/Correctness.lean` — Layer 1: Revert proofs, composition, end-to-end
+- `Verity/Specs/X/Proofs.lean` — Layer 2 re-export (imports from `Compiler/Proofs/SpecCorrectness/`)
 
 Some contracts have additional proof files:
 - `Verity/Proofs/SimpleToken/Supply.lean` — Supply conservation equations

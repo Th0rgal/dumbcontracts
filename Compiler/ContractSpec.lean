@@ -105,12 +105,6 @@ def ParamType.toIRType : ParamType → IRType
   | fixedArray _ _ => IRType.uint256
   | bytes => IRType.uint256
 
--- Check if a param type is dynamic (requires offset-based ABI decoding)
-def ParamType.isDynamic : ParamType → Bool
-  | array _ => true
-  | bytes => true
-  | _ => false
-
 def Param.toIRParam (p : Param) : IRParam :=
   { name := p.name, ty := p.ty.toIRType }
 
@@ -488,11 +482,6 @@ def paramTypeToSolidityString : ParamType → String
   | ParamType.fixedArray t n => paramTypeToSolidityString t ++ "[" ++ toString n ++ "]"
   | ParamType.bytes => "bytes"
 
--- Build the Solidity-style event signature string
-def eventSignature (event : EventDef) : String :=
-  let paramTypes := event.params.map fun p => paramTypeToSolidityString p.ty
-  event.name ++ "(" ++ String.intercalate "," paramTypes ++ ")"
-
 -- Compile statement to Yul (using mutual recursion for lists).
 -- When isInternal=true, Stmt.return compiles to `__ret := value` (for internal Yul functions)
 -- instead of EVM RETURN which terminates the entire call.
@@ -618,7 +607,7 @@ def compileStmt (fields : List Field) (isInternal : Bool := false) :
 
   | Stmt.emit eventName args => do
       -- Emit event using LOG1 opcode (#153)
-      -- Topic0 = keccak256(eventSignature), resolved by linker at link time.
+      -- Topic0 = keccak256(event signature), resolved by linker at link time.
       -- All args are stored in LOG data (indexed topics not yet implemented).
       -- Use free memory pointer (0x40) to avoid clobbering scratch space.
       -- Wrapped in block { } so __evt_ptr doesn't collide with other emit statements.

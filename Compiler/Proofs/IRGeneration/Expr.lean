@@ -1,11 +1,13 @@
 /-
-  Expression Compilation Correctness (High-Level Approach)
+  Expression Compilation Correctness
 
-  Since compileExpr is private in ContractSpec, we prove properties about the
-  overall compilation and execution pipeline rather than individual expressions.
+  The compilation functions (compileExpr, compileStmt, etc.) in ContractSpec are
+  now public, enabling structural induction proofs over Expr/Stmt constructors.
+  See issue #358 for the roadmap toward a universal compile_preserves_semantics
+  theorem.
 
-  Strategy: Prove that for simple contracts like SimpleStorage, the compiled IR
-  produces the same results as the Spec interpreter.
+  This file retains the concrete-IR approach for SimpleStorage as a reference
+  and baseline. New generic proofs should go in dedicated files.
 -/
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
@@ -27,18 +29,17 @@ open Verity.Proofs.Stdlib.SpecInterpreter
 
 /-! ## Proof Strategy
 
-Instead of proving expression compilation directly (since compileExpr is private),
-we prove end-to-end correctness for complete contracts.
+Now that compileExpr/compileStmt are public, two proof approaches are available:
 
-For SimpleStorage:
-1. Compile spec to IR: `compile simpleStorageSpec selectors`
-2. Show IR execution matches Spec execution for store/retrieve functions
-3. Use this as a template for other contracts
+1. **Concrete-IR approach** (used below): Pin the compiled IR for a specific
+   contract, prove `compile spec selectors = .ok concreteIR` by `rfl`, then
+   prove function-level correctness by `simp`-unfolding both sides.
 
-This approach:
-- Works with the actual API (public `compile` function)
-- Validates the full pipeline (not just expressions)
-- Is more maintainable (doesn't depend on internal implementation)
+2. **Structural induction** (enabled by #358 Step 1): Prove correctness by
+   induction over `Expr`/`Stmt` constructors. This yields a universal theorem
+   covering all contracts — see issue #358 for the full roadmap.
+
+This file uses approach (1) for SimpleStorage as a baseline.
 -/
 
 /-! ## Concrete IR for SimpleStorage

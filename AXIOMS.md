@@ -25,7 +25,7 @@ In these cases, we use axioms with strong soundness arguments.
 
 ### 1. `keccak256_first_4_bytes`
 
-**Location**: `Compiler/Selectors.lean:43`
+**Location**: `Compiler/Selectors.lean:41`
 
 **Statement**:
 ```lean

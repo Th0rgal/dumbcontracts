@@ -234,7 +234,15 @@ def gen_example(cfg: ContractConfig) -> str:
     has_mapping = any(f.is_mapping for f in cfg.fields)
     has_uint256 = any(f.ty == "uint256" for f in cfg.fields)
     has_uint256_param = any(p.ty == "uint256" for fn in cfg.functions for p in fn.params)
-    needs_uint256 = has_mapping or has_uint256 or has_uint256_param
+    # Non-address getters return Contract Uint256, so they need the import
+    addr_field_names_lower = {f.name.lower() for f in cfg.fields if f.ty == "address"}
+    has_uint256_getter = any(
+        _getter_prefix(fn.name) is not None
+        and _getter_prefix(fn.name) not in ("is", "has")
+        and fn.name[len(_getter_prefix(fn.name)):].lower() not in addr_field_names_lower
+        for fn in cfg.functions
+    )
+    needs_uint256 = has_mapping or has_uint256 or has_uint256_param or has_uint256_getter
 
     imports = ["import Verity.Core"]
     if needs_uint256:
@@ -329,9 +337,10 @@ def gen_spec(cfg: ContractConfig) -> str:
 
     imports = ["import Verity.Core", "import Verity.Specs.Common"]
     opens = ["open Verity"]
-    # Almost all specs need Uint256 for add/sub in postconditions
+    # Getter specs use (result : Uint256), so any getter needs the import
+    has_getter = any(_getter_prefix(fn.name) is not None for fn in cfg.functions)
     has_uint256_param = any(p.ty == "uint256" for fn in cfg.functions for p in fn.params)
-    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param:
+    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param or has_getter:
         imports.append("import Verity.EVM.Uint256")
         opens.append("open Verity.EVM.Uint256")
 
@@ -471,7 +480,8 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
         f"open Verity.Specs.{cfg.name}",
     ]
     has_uint256_param = any(p.ty == "uint256" for fn in cfg.functions for p in fn.params)
-    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param:
+    has_getter = any(_getter_prefix(fn.name) is not None for fn in cfg.functions)
+    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param or has_getter:
         imports.insert(1, "import Verity.EVM.Uint256")
         opens.append("open Verity.EVM.Uint256")
 

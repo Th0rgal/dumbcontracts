@@ -311,11 +311,4 @@ contract DifferentialCounter is YulTestBase, DiffTestConfig, DifferentialTestBas
         assertEq(testsFailed, 0, "Some random tests failed");
     }
 
-    function _skipRandom(uint256 prng, uint256 iterations) internal pure returns (uint256) {
-        for (uint256 i = 0; i < iterations; i++) {
-            prng = _lcg(prng);
-            prng = _lcg(prng);
-        }
-        return prng;
-    }
 }

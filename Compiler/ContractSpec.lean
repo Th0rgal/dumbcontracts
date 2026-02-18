@@ -610,9 +610,9 @@ private def compileStmt (fields : List Field) : Stmt → Except String (List Yul
       pure [YulStmt.for_ initStmts condExpr postStmts bodyStmts]
 
   | Stmt.emit eventName args => do
-      -- Emit event using LOG opcode (#153)
+      -- Emit event using LOG1 opcode (#153)
       -- Topic0 = keccak256(eventSignature), resolved by linker at link time.
-      -- Indexed args become additional topics; unindexed args go into LOG data.
+      -- All args are stored in LOG data (indexed topics not yet implemented).
       -- Use free memory pointer (0x40) to avoid clobbering scratch space.
       -- Wrapped in block { } so __evt_ptr doesn't collide with other emit statements.
       let topic0 := YulExpr.call s!"__event_{eventName}" []

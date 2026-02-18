@@ -72,6 +72,14 @@ abstract contract DiffTestConfig is Test {
         return (1103515245 * prng + 12345) % (2**31);
     }
 
+    function _skipRandom(uint256 prng, uint256 iterations) internal pure virtual returns (uint256) {
+        for (uint256 i = 0; i < iterations; i++) {
+            prng = _lcg(prng);
+            prng = _lcg(prng);
+        }
+        return prng;
+    }
+
     function _edgeUintValues() internal pure returns (uint256[] memory) {
         uint256[] memory values = new uint256[](7);
         values[0] = 0;

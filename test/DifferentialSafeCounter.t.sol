@@ -298,14 +298,6 @@ contract DifferentialSafeCounter is YulTestBase, DiffTestConfig, DifferentialTes
         assertEq(testsFailed, 0, "Some random tests failed");
     }
 
-    function _skipRandom(uint256 prng, uint256 iterations) internal pure returns (uint256) {
-        for (uint256 i = 0; i < iterations; i++) {
-            prng = _lcg(prng);
-            prng = _lcg(prng);
-        }
-        return prng;
-    }
-
     function _indexToAddress(uint256 index) internal pure override returns (address) {
         if (index == 0) return address(0xA11CE);
         if (index == 1) return address(0xB0B);

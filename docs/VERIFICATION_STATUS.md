@@ -28,13 +28,13 @@ EVM Bytecode
 
 | Contract | Properties | Status | Location |
 |----------|------------|--------|----------|
-| SimpleStorage | 20 | ✅ Complete | `Verity/Specs/SimpleStorage/Proofs.lean` |
-| Counter | 28 | ✅ Complete | `Verity/Specs/Counter/Proofs.lean` |
-| SafeCounter | 25 | ✅ Complete | `Verity/Specs/SafeCounter/Proofs.lean` |
-| Owned | 22 | ✅ Complete | `Verity/Specs/Owned/Proofs.lean` |
-| OwnedCounter | 45 | ✅ Complete | `Verity/Specs/OwnedCounter/Proofs.lean` |
-| Ledger | 33 | ✅ Complete | `Verity/Specs/Ledger/Proofs.lean` |
-| SimpleToken | 59 | ✅ Complete | `Verity/Specs/SimpleToken/Proofs.lean` |
+| SimpleStorage | 20 | ✅ Complete | `Verity/Proofs/SimpleStorage/` |
+| Counter | 28 | ✅ Complete | `Verity/Proofs/Counter/` |
+| SafeCounter | 25 | ✅ Complete | `Verity/Proofs/SafeCounter/` |
+| Owned | 22 | ✅ Complete | `Verity/Proofs/Owned/` |
+| OwnedCounter | 45 | ✅ Complete | `Verity/Proofs/OwnedCounter/` |
+| Ledger | 33 | ✅ Complete | `Verity/Proofs/Ledger/` |
+| SimpleToken | 59 | ✅ Complete | `Verity/Proofs/SimpleToken/` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
 | **Total** | **236** | **✅ 100%** | — |

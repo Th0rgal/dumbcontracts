@@ -107,7 +107,7 @@ FOUNDRY_PROFILE=difftest forge test  # All tests (FFI needed for property/differ
 
 - Lean 4: [docs](https://lean-lang.org/documentation/) | [theorem proving](https://lean-lang.org/theorem_proving_in_lean4/)
 - Tactics: [Mathlib reference](https://leanprover-community.github.io/mathlib4_docs/tactics.html)
-- Start here: `Verity/Specs/SimpleStorage/Proofs.lean`
+- Start here: `Verity/Proofs/SimpleStorage/Basic.lean` (Layer 1 proofs)
 
 ---
 

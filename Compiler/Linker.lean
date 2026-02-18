@@ -197,51 +197,6 @@ private def yulBuiltins : List String :=
    "return", "revert", "selfdestruct", "invalid", "stop",
    "datasize", "dataoffset", "datacopy"]
 
--- Collect all function calls from Yul statements
-mutual
-private def callsFromExpr : YulExpr → List String
-  | YulExpr.call name args => name :: callsFromExprs args
-  | YulExpr.lit _ => []
-  | YulExpr.hex _ => []
-  | YulExpr.str _ => []
-  | YulExpr.ident _ => []
-
-private def callsFromExprs : List YulExpr → List String
-  | [] => []
-  | e :: es => callsFromExpr e ++ callsFromExprs es
-
-private def callsFromStmt : YulStmt → List String
-  | YulStmt.comment _ => []
-  | YulStmt.let_ _ value => callsFromExpr value
-  | YulStmt.assign _ value => callsFromExpr value
-  | YulStmt.expr e => callsFromExpr e
-  | YulStmt.if_ cond body => callsFromExpr cond ++ callsFromStmts body
-  | YulStmt.for_ init cond post body =>
-      callsFromStmts init ++ callsFromExpr cond ++
-      callsFromStmts post ++ callsFromStmts body
-  | YulStmt.switch expr cases defaultCase =>
-      callsFromExpr expr ++
-      callsFromCases cases ++
-      callsFromDefault defaultCase
-  | YulStmt.block stmts => callsFromStmts stmts
-  | YulStmt.funcDef _ _ _ body => callsFromStmts body
-
-private def callsFromStmts : List YulStmt → List String
-  | [] => []
-  | s :: ss => callsFromStmt s ++ callsFromStmts ss
-
-private def callsFromCases : List (Nat × List YulStmt) → List String
-  | [] => []
-  | (_, body) :: rest => callsFromStmts body ++ callsFromCases rest
-
-private def callsFromDefault : Option (List YulStmt) → List String
-  | none => []
-  | some body => callsFromStmts body
-end
-
-private def collectAllCalls (stmts : List YulStmt) : List String :=
-  callsFromStmts stmts
-
 -- Collect all function definitions from Yul statements
 mutual
 private def defsFromStmt : YulStmt → List String
@@ -306,7 +261,8 @@ def validateNoNameCollisions (obj : YulObject) (libraries : List LibraryFunction
     throw s!"Library function(s) shadow Yul builtins: {String.intercalate ", " builtinCollisions}"
   pure ()
 
--- Collect all function calls with their argument counts from Yul statements
+-- Collect all function calls (with argument counts) from Yul statements.
+-- Also used to derive plain call names via .map Prod.fst.
 mutual
 private def callsWithArityFromExpr : YulExpr → List (String × Nat)
   | YulExpr.call name args => (name, args.length) :: callsWithArityFromExprs args
@@ -352,7 +308,7 @@ end
 -- Excludes Yul builtins and locally-defined functions
 def validateExternalReferences (obj : YulObject) (libraries : List LibraryFunction) : Except String Unit := do
   let allCode := obj.deployCode ++ obj.runtimeCode
-  let allCalls := (collectAllCalls allCode).eraseDups
+  let allCalls := (callsWithArityFromStmts allCode |>.map Prod.fst).eraseDups
   let localDefs := (collectFuncDefs allCode).eraseDups
   let providedFunctions := collectLibraryFunctions libraries
   let known := yulBuiltins ++ localDefs ++ providedFunctions

@@ -212,6 +212,12 @@ jobs:
       - name: Generate Yul
         run: ./.lake/build/bin/verity-compiler
 
+      - name: Generate Yul with linked libraries (CryptoHash)
+        run: |
+          ./.lake/build/bin/verity-compiler \
+            --link examples/external-libs/PoseidonT3.yul \
+            --link examples/external-libs/PoseidonT4.yul
+
       - name: Keccak-256 self-test (validate hash implementation)
         run: python3 scripts/keccak256.py --self-test
 

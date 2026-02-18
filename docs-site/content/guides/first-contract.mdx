@@ -688,6 +688,8 @@ import Verity.Proofs.TipJar.Correctness
 
 > **Tip**: The scaffold generator prints these exact lines when you run it — copy them directly.
 
+> **Optional: Unified AST bridge.** For additional trust reduction, define per-function ASTs in `Verity/AST/TipJar.lean` and prove `denote ast = edsl_fn`. See `Verity/AST/SimpleStorage.lean` for the simplest example. This step is not required but creates a machine-checked link between the deep embedding and the EDSL. See [Add a Contract](/add-contract) step 4 for details.
+
 ---
 
 ## Common Troubleshooting

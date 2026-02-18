@@ -9,6 +9,20 @@
   holds by `rfl` (definitional equality) when the AST was derived from
   the same contract logic.
 
+  ## Auditor's checklist
+
+  To verify the bridge is sound, check:
+  1. Each `Stmt` constructor's denotation calls the matching EDSL primitive
+     (e.g., `.sstore slot val rest` → `setStorage ⟨slot⟩ ...`)
+  2. Terminal patterns (`.sstore ... .stop`) emit the primitive directly
+     without `bind ... pure`, matching do-block desugaring
+  3. Environment extension (`fun s => if s == name then val else env s`)
+     mirrors Lean's `let name ← ...` binding
+  4. Per-contract `_equiv` theorems in `Verity/AST/*.lean` are `rfl` or
+     use only `bind_assoc`/`bind_pure_left` — no domain-specific axioms
+
+  ## How `rfl` works
+
   All definitions referenced here (`bind`, `pure`, `getStorage`, etc.)
   are transparent `def`s, so Lean's kernel can unfold both sides to the
   same normal form.

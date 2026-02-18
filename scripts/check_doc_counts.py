@@ -5,7 +5,8 @@ Validates counts in README.md, test/README.md, docs/VERIFICATION_STATUS.md,
 docs/ROADMAP.md, TRUST_ASSUMPTIONS.md, docs-site llms.txt, compiler.mdx,
 verification.mdx, research.mdx, core.mdx, examples.mdx, index.mdx,
 getting-started.mdx, and layout.tsx against the actual property manifest
-and codebase. Also validates theorem counts in Property*.t.sol file headers.
+and codebase. Also validates theorem counts in Property*.t.sol file headers
+and AST equivalence theorem counts in Verity/AST/*.lean.
 
 Usage:
     python3 scripts/check_doc_counts.py
@@ -87,6 +88,17 @@ def get_contract_count() -> int:
     """Count example contracts in Verity/Examples/."""
     examples_dir = ROOT / "Verity" / "Examples"
     return len(list(examples_dir.glob("*.lean")))
+
+
+def get_ast_equiv_count() -> int:
+    """Count public theorems in Verity/AST/*.lean (equivalence proofs)."""
+    ast_dir = ROOT / "Verity" / "AST"
+    count = 0
+    for lean in ast_dir.glob("*.lean"):
+        text = lean.read_text(encoding="utf-8")
+        # Count public theorem declarations (not private)
+        count += len(re.findall(r"^theorem\s+", text, re.MULTILINE))
+    return count
 
 
 def get_diff_test_total() -> int:
@@ -237,6 +249,7 @@ def main() -> None:
     contract_count = get_contract_count()
     property_fn_count = get_property_test_function_count()
     diff_test_total = get_diff_test_total()
+    ast_equiv_count = get_ast_equiv_count()
 
     errors: list[str] = []
 
@@ -549,6 +562,11 @@ def main() -> None:
                     re.compile(r"Scaled to (\d+,\d+)\+"),
                     f"{diff_test_total:,}",
                 ),
+                (
+                    "AST equiv theorem count",
+                    re.compile(r"equivalence proofs \((\d+) theorems"),
+                    str(ast_equiv_count),
+                ),
             ],
         )
     )
@@ -573,6 +591,11 @@ def main() -> None:
                     "total in coverage",
                     re.compile(r"Property Testing\*\*: \d+% coverage \(\d+/(\d+)\)"),
                     str(total_theorems),
+                ),
+                (
+                    "AST equiv theorem count",
+                    re.compile(r"equivalence proofs \((\d+) theorems"),
+                    str(ast_equiv_count),
                 ),
             ],
         )
@@ -605,6 +628,11 @@ def main() -> None:
             "Stdlib count",
             re.compile(r"Stdlib: (\d+) theorems"),
             str(stdlib_count),
+        ),
+        (
+            "AST equiv theorem count",
+            re.compile(r"\((\d+) public \+"),
+            str(ast_equiv_count),
         ),
     ]
     # Add per-contract total checks
@@ -765,7 +793,8 @@ def main() -> None:
             f"{test_count} tests, {suite_count} suites, "
             f"{sorry_count} sorry, {proven_count} proven, "
             f"{covered_count} covered ({coverage_pct}%), "
-            f"{exclusion_count} exclusions",
+            f"{exclusion_count} exclusions, "
+            f"{ast_equiv_count} AST equiv theorems",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -774,7 +803,8 @@ def main() -> None:
         f"Documentation count check passed "
         f"({total_theorems} theorems, {num_categories} categories, "
         f"{axiom_count} axioms, {test_count} tests, {suite_count} suites, "
-        f"{sorry_count} sorry, {covered_count}/{total_theorems} covered)."
+        f"{sorry_count} sorry, {covered_count}/{total_theorems} covered, "
+        f"{ast_equiv_count} AST equiv)."
     )
 
 

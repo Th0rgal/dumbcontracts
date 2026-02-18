@@ -242,36 +242,36 @@ Automatically compile a ContractSpec to IRContract.
 -/
 
 -- Helper: Find field slot number
-private def findFieldSlot (fields : List Field) (name : String) : Option Nat :=
+def findFieldSlot (fields : List Field) (name : String) : Option Nat :=
   fields.findIdx? (·.name == name)
 
 -- Helper: Is field a mapping? (legacy or typed)
-private def isMapping (fields : List Field) (name : String) : Bool :=
+def isMapping (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any fun f =>
     f.ty == FieldType.mapping || match f.ty with
     | FieldType.mappingTyped _ => true
     | _ => false
 
 -- Helper: Is field a double mapping?
-private def isMapping2 (fields : List Field) (name : String) : Bool :=
+def isMapping2 (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any fun f =>
     match f.ty with
     | FieldType.mappingTyped (MappingType.nested _ _) => true
     | _ => false
 
 -- Keep compiler literals aligned with Uint256 semantics (mod 2^256).
-private def uint256Modulus : Nat := 2 ^ 256
+def uint256Modulus : Nat := 2 ^ 256
 
 -- Compile expression to Yul (using mutual recursion for lists)
 mutual
-private def compileExprList (fields : List Field) : List Expr → Except String (List YulExpr)
+def compileExprList (fields : List Field) : List Expr → Except String (List YulExpr)
   | [] => pure []
   | e :: es => do
       let head ← compileExpr fields e
       let tail ← compileExprList fields es
       pure (head :: tail)
 
-private def compileExpr (fields : List Field) : Expr → Except String YulExpr
+def compileExpr (fields : List Field) : Expr → Except String YulExpr
   | Expr.literal n => pure (YulExpr.lit (n % uint256Modulus))
   | Expr.param name => pure (YulExpr.ident name)
   | Expr.constructorArg idx => pure (YulExpr.ident s!"arg{idx}")  -- Constructor args loaded as argN
@@ -420,7 +420,7 @@ private def compileExpr (fields : List Field) : Expr → Except String YulExpr
 end
 
 -- Compile require condition to a "failure" predicate to avoid double-negation.
-private def compileRequireFailCond (fields : List Field) : Expr → Except String YulExpr
+def compileRequireFailCond (fields : List Field) : Expr → Except String YulExpr
   | Expr.ge a b => do
       let aExpr ← compileExpr fields a
       let bExpr ← compileExpr fields b
@@ -433,10 +433,10 @@ private def compileRequireFailCond (fields : List Field) : Expr → Except Strin
       let condExpr ← compileExpr fields cond
       pure (YulExpr.call "iszero" [condExpr])
 
-private def bytesFromString (s : String) : List UInt8 :=
+def bytesFromString (s : String) : List UInt8 :=
   s.toUTF8.data.toList
 
-private def chunkBytes32 (bs : List UInt8) : List (List UInt8) :=
+def chunkBytes32 (bs : List UInt8) : List (List UInt8) :=
   if bs.isEmpty then
     []
   else
@@ -449,11 +449,11 @@ decreasing_by
   | nil => simp at *
   | cons head tail => simp [List.length_drop]; omega
 
-private def wordFromBytes (bs : List UInt8) : Nat :=
+def wordFromBytes (bs : List UInt8) : Nat :=
   let padded := bs ++ List.replicate (32 - bs.length) (0 : UInt8)
   padded.foldl (fun acc b => acc * 256 + b.toNat) 0
 
-private def revertWithMessage (message : String) : List YulStmt :=
+def revertWithMessage (message : String) : List YulStmt :=
   let bytes := bytesFromString message
   let len := bytes.length
   let paddedLen := ((len + 31) / 32) * 32
@@ -495,14 +495,14 @@ def eventSignature (event : EventDef) : String :=
 
 -- Compile statement to Yul (using mutual recursion for lists)
 mutual
-private def compileStmtList (fields : List Field) : List Stmt → Except String (List YulStmt)
+def compileStmtList (fields : List Field) : List Stmt → Except String (List YulStmt)
   | [] => pure []
   | s :: ss => do
       let head ← compileStmt fields s
       let tail ← compileStmtList fields ss
       pure (head ++ tail)
 
-private def compileStmt (fields : List Field) : Stmt → Except String (List YulStmt)
+def compileStmt (fields : List Field) : Stmt → Except String (List YulStmt)
   | Stmt.letVar name value =>
     do
       let valueExpr ← compileExpr fields value
@@ -639,12 +639,12 @@ private def compileStmt (fields : List Field) : Stmt → Except String (List Yul
 end
 
 -- ABI head size: fixed arrays occupy n*32 bytes inline; everything else is 32 bytes.
-private def paramHeadSize : ParamType → Nat
+def paramHeadSize : ParamType → Nat
   | ParamType.fixedArray _ n => n * 32
   | _ => 32
 
 -- Generate parameter loading code (from calldata)
-private def genParamLoads (params : List Param) : List YulStmt :=
+def genParamLoads (params : List Param) : List YulStmt :=
   let rec go (paramList : List Param) (headOffset : Nat) : List YulStmt :=
     match paramList with
     | [] => []
@@ -707,14 +707,14 @@ private def genParamLoads (params : List Param) : List YulStmt :=
 -- EVM RETURN terminates the entire call; internal Yul functions should assign __ret
 -- and fall through. This must be recursive to handle returns nested inside ite/forEach.
 mutual
-private def compileStmtForInternalList (fields : List Field) : List Stmt → Except String (List YulStmt)
+def compileStmtForInternalList (fields : List Field) : List Stmt → Except String (List YulStmt)
   | [] => pure []
   | s :: ss => do
       let head ← compileStmtForInternal fields s
       let tail ← compileStmtForInternalList fields ss
       pure (head ++ tail)
 
-private def compileStmtForInternal (fields : List Field) (stmt : Stmt) :
+def compileStmtForInternal (fields : List Field) (stmt : Stmt) :
     Except String (List YulStmt) :=
   match stmt with
   | Stmt.return value => do
@@ -745,7 +745,7 @@ private def compileStmtForInternal (fields : List Field) (stmt : Stmt) :
 end
 
 -- Compile internal function to a Yul function definition (#181)
-private def compileInternalFunction (fields : List Field) (spec : FunctionSpec) :
+def compileInternalFunction (fields : List Field) (spec : FunctionSpec) :
     Except String YulStmt := do
   let paramNames := spec.params.map (·.name)
   let retNames := match spec.returnType with
@@ -755,7 +755,7 @@ private def compileInternalFunction (fields : List Field) (spec : FunctionSpec) 
   pure (YulStmt.funcDef s!"internal_{spec.name}" paramNames retNames bodyStmts)
 
 -- Compile function spec to IR function
-private def compileFunctionSpec (fields : List Field) (selector : Nat) (spec : FunctionSpec) :
+def compileFunctionSpec (fields : List Field) (selector : Nat) (spec : FunctionSpec) :
     Except String IRFunction := do
   let paramLoads := genParamLoads spec.params
   let bodyChunks ← spec.body.mapM (compileStmt fields)
@@ -769,13 +769,13 @@ private def compileFunctionSpec (fields : List Field) (selector : Nat) (spec : F
   }
 
 -- Check if contract uses mappings
-private def usesMapping (fields : List Field) : Bool :=
+def usesMapping (fields : List Field) : Bool :=
   fields.any fun f => f.ty == FieldType.mapping || match f.ty with
     | FieldType.mappingTyped _ => true
     | _ => false
 
 -- Generate constructor argument loading code (from end of bytecode)
-private def genConstructorArgLoads (params : List Param) : List YulStmt :=
+def genConstructorArgLoads (params : List Param) : List YulStmt :=
   if params.isEmpty then []
   else
     let totalBytes := params.length * 32
@@ -800,7 +800,7 @@ private def genConstructorArgLoads (params : List Param) : List YulStmt :=
 
 -- Compile deploy code (constructor)
 -- Note: Don't append datacopy/return here - Codegen.deployCode does that
-private def compileConstructor (fields : List Field) (ctor : Option ConstructorSpec) :
+def compileConstructor (fields : List Field) (ctor : Option ConstructorSpec) :
     Except String (List YulStmt) := do
   match ctor with
   | none => return []
@@ -815,7 +815,7 @@ private def compileConstructor (fields : List Field) (ctor : Option ConstructorS
 --   2. selectors[i] matches the Solidity signature of spec.functions[i]
 -- WARNING: Order matters! If selector list is reordered but function list isn't,
 --          functions will be mapped to wrong selectors with no runtime error.
-private def firstDuplicateSelector (selectors : List Nat) : Option Nat :=
+def firstDuplicateSelector (selectors : List Nat) : Option Nat :=
   let rec go (seen : List Nat) : List Nat → Option Nat
     | [] => none
     | sel :: rest =>
@@ -825,7 +825,7 @@ private def firstDuplicateSelector (selectors : List Nat) : Option Nat :=
         go (sel :: seen) rest
   go [] selectors
 
-private def selectorNames (spec : ContractSpec) (selectors : List Nat) (sel : Nat) : List String :=
+def selectorNames (spec : ContractSpec) (selectors : List Nat) (sel : Nat) : List String :=
   let externalFns := spec.functions.filter (!·.isInternal)
   (externalFns.zip selectors).foldl (fun acc (fn, s) =>
     if s == sel then acc ++ [fn.name] else acc

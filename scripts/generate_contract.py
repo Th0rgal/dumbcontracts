@@ -216,7 +216,8 @@ def gen_spec(cfg: ContractConfig) -> str:
 
     imports = ["import Verity.Core", "import Verity.Specs.Common"]
     opens = ["open Verity"]
-    if has_mapping:
+    # Almost all specs need Uint256 for add/sub in postconditions
+    if has_mapping or any(f.ty == "uint256" for f in cfg.fields):
         imports.append("import Verity.EVM.Uint256")
         opens.append("open Verity.EVM.Uint256")
 
@@ -317,10 +318,19 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
 
     proof_stubs = []
     for fn in cfg.functions:
+        is_getter = _getter_prefix(fn.name) is not None
         proof_stubs.append(f"-- TODO: Prove {fn.name} meets its specification")
-        proof_stubs.append(f"theorem {fn.name}_meets_spec (s : ContractState) :")
-        proof_stubs.append(f"  let s' := (({fn.name}).run s).snd")
-        proof_stubs.append(f"  {fn.name}_spec s s' := by")
+        if is_getter:
+            # Getter pattern: extract return value with .fst (see retrieve_meets_spec)
+            proof_stubs.append(f"theorem {fn.name}_meets_spec (s : ContractState) :")
+            proof_stubs.append(f"  let result := (({fn.name}).run s).fst")
+            proof_stubs.append(f"  {fn.name}_spec result s := by")
+        else:
+            # Mutator pattern: extract output state with .snd (see store_meets_spec)
+            # TODO: add function parameters manually (e.g., (value : Uint256))
+            proof_stubs.append(f"theorem {fn.name}_meets_spec (s : ContractState) :")
+            proof_stubs.append(f"  let s' := (({fn.name}).run s).snd")
+            proof_stubs.append(f"  {fn.name}_spec s s' := by")
         proof_stubs.append(f"  sorry  -- TODO: replace with proof (see debugging-proofs guide)")
         proof_stubs.append("")
 
@@ -335,7 +345,7 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
         f"open Verity.Examples.{cfg.name}",
         f"open Verity.Specs.{cfg.name}",
     ]
-    if has_mapping:
+    if has_mapping or any(f.ty == "uint256" for f in cfg.fields):
         imports.insert(1, "import Verity.EVM.Uint256")
         opens.append("open Verity.EVM.Uint256")
 

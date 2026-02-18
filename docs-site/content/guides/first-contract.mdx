@@ -622,7 +622,7 @@ contract PropertyTipJarTest is YulTestBase {
 ```
 
 **Key patterns to understand**:
-- `deployYul("TipJar")` compiles and deploys your `compiler/yul/TipJar.yul` contract
+- `deployYul("TipJar")` deploys your pre-generated `compiler/yul/TipJar.yul` contract (via `solc` assembly through `vm.ffi`)
 - `vm.prank(sender)` sets `msg.sender` for the next call (Foundry cheatcode)
 - `vm.load`/`vm.store` read/write raw storage slots (for assertions and test setup)
 - Mapping slot formula: `keccak256(abi.encode(key, baseSlot))` — this is the standard Solidity storage layout

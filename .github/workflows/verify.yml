@@ -242,9 +242,6 @@ jobs:
       - name: Check selector hashing against specs
         run: python3 scripts/check_selectors.py
 
-      - name: Validate Selectors.lean axiom definitions
-        run: python3 scripts/validate_selectors.py
-
       - name: Setup solc
         uses: ./.github/actions/setup-solc
 

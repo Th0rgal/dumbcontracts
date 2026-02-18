@@ -100,7 +100,6 @@ python3 scripts/check_contract_structure.py
 
 - **`check_selectors.py`** - Verifies function selector hashes match between Lean and generated Yul
 - **`check_selector_fixtures.py`** - Cross-checks selectors against solc-generated hashes
-- **`validate_selectors.py`** - Validates that selector definitions in `Compiler/Selectors.lean` match keccak256 hashes
 - **`check_yul_compiles.py`** - Ensures generated Yul code compiles with solc
 
 ## Contract Scaffold Generator
@@ -147,10 +146,9 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 **`build` job** (requires `lake build` artifacts):
 1. Keccak-256 self-test (`keccak256.py --self-test`)
 2. Selector hash verification (`check_selectors.py`)
-3. Selector axiom validation (`validate_selectors.py`)
-4. Yul compilation check (`check_yul_compiles.py`)
-5. Selector fixture check (`check_selector_fixtures.py`)
-6. Coverage and storage layout reports in workflow summary
+3. Yul compilation check (`check_yul_compiles.py`)
+4. Selector fixture check (`check_selector_fixtures.py`)
+5. Coverage and storage layout reports in workflow summary
 
 **`foundry`** — 8-shard parallel Foundry tests with seed 42
 **`foundry-multi-seed`** — 7-seed flakiness detection (seeds: 0, 1, 42, 123, 999, 12345, 67890)

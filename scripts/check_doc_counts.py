@@ -89,6 +89,13 @@ def get_contract_count() -> int:
     return len(list(examples_dir.glob("*.lean")))
 
 
+def get_diff_test_total() -> int:
+    """Compute total differential tests (10,000 per contract × number of contracts)."""
+    test_dir = ROOT / "test"
+    diff_count = len(list(test_dir.glob("Differential*.t.sol")))
+    return diff_count * 10_000
+
+
 def get_exclusion_count() -> int:
     """Count total property exclusions from property_exclusions.json."""
     exclusions = ROOT / "test" / "property_exclusions.json"
@@ -229,6 +236,7 @@ def main() -> None:
     non_stdlib_total = total_theorems - stdlib_count
     contract_count = get_contract_count()
     property_fn_count = get_property_test_function_count()
+    diff_test_total = get_diff_test_total()
 
     errors: list[str] = []
 
@@ -535,6 +543,11 @@ def main() -> None:
                     "sorry count",
                     re.compile(r"(\d+) `sorry` remaining"),
                     str(sorry_count),
+                ),
+                (
+                    "differential test total",
+                    re.compile(r"Scaled to (\d+,\d+)\+"),
+                    f"{diff_test_total:,}",
                 ),
             ],
         )

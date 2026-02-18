@@ -187,7 +187,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Differential Testing ✅ **PRODUCTION READY**
 
-**Status**: Scaled to 10,000+ tests with 8-shard parallelization
+**Status**: Scaled to 70,000+ tests (10,000 per contract × 7 contracts) with 8-shard parallelization
 
 ### Features
 

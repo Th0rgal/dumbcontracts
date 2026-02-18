@@ -272,17 +272,34 @@ def _getter_prefix(name: str) -> str | None:
     return None
 
 
+def _getter_return_type(fn: Function, fields: List[Field]) -> str:
+    """Determine the Lean return type for a getter function.
+
+    Returns ``"Bool"`` for ``is``/``has``-prefix getters,
+    ``"Address"`` for ``get``-prefix getters whose suffix matches an address
+    field, and ``"Uint256"`` otherwise.
+    """
+    prefix = _getter_prefix(fn.name)
+    if prefix is None:
+        return "Uint256"  # not a getter, but safe fallback
+    if prefix in ("is", "has"):
+        return "Bool"
+    # get-prefix: check if suffix matches an address field
+    suffix = fn.name[len(prefix):]
+    addr_field_names = {f.name.lower() for f in fields if f.ty == "address"}
+    if suffix.lower() in addr_field_names:
+        return "Address"
+    return "Uint256"
+
+
 def gen_example(cfg: ContractConfig) -> str:
     """Generate Verity/Examples/{Name}.lean"""
     has_mapping = any(f.is_mapping for f in cfg.fields)
     has_uint256 = any(f.ty == "uint256" for f in cfg.fields)
     has_uint256_param = any(p.ty == "uint256" for fn in cfg.functions for p in fn.params)
-    # Non-address getters return Contract Uint256, so they need the import
-    addr_field_names_lower = {f.name.lower() for f in cfg.fields if f.ty == "address"}
     has_uint256_getter = any(
         _getter_prefix(fn.name) is not None
-        and _getter_prefix(fn.name) not in ("is", "has")
-        and fn.name[len(_getter_prefix(fn.name)):].lower() not in addr_field_names_lower
+        and _getter_return_type(fn, cfg.fields) == "Uint256"
         for fn in cfg.functions
     )
     needs_uint256 = has_mapping or has_uint256 or has_uint256_param or has_uint256_getter
@@ -365,9 +382,10 @@ def gen_spec(cfg: ContractConfig) -> str:
         lean_params = " ".join(f"({p.name} : {p.lean_type})" for p in fn.params)
         spec_defs.append(f"-- What {fn.name} should do")
         if is_getter:
-            # Getter spec: result-based (see getBalance_spec, retrieve_spec)
+            # Getter spec: result-based (see getOwner_spec, isOwner_spec, getBalance_spec)
+            ret_type = _getter_return_type(fn, cfg.fields)
             param_part = f" {lean_params}" if lean_params else ""
-            spec_defs.append(f"def {fn.name}_spec{param_part} (result : Uint256) (s : ContractState) : Prop :=")
+            spec_defs.append(f"def {fn.name}_spec{param_part} (result : {ret_type}) (s : ContractState) : Prop :=")
             spec_defs.append(f"  -- TODO: Define what the return value should be")
             spec_defs.append(f"  True")
         else:
@@ -380,10 +398,14 @@ def gen_spec(cfg: ContractConfig) -> str:
 
     imports = ["import Verity.Core", "import Verity.Specs.Common"]
     opens = ["open Verity"]
-    # Getter specs use (result : Uint256), so any getter needs the import
-    has_getter = any(_getter_prefix(fn.name) is not None for fn in cfg.functions)
+    # Only need Uint256 import if a getter actually returns Uint256 (not Address/Bool)
+    has_uint256_getter = any(
+        _getter_prefix(fn.name) is not None
+        and _getter_return_type(fn, cfg.fields) == "Uint256"
+        for fn in cfg.functions
+    )
     has_uint256_param = any(p.ty == "uint256" for fn in cfg.functions for p in fn.params)
-    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param or has_getter:
+    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param or has_uint256_getter:
         imports.append("import Verity.EVM.Uint256")
         opens.append("open Verity.EVM.Uint256")
 
@@ -523,8 +545,12 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
         f"open Verity.Specs.{cfg.name}",
     ]
     has_uint256_param = any(p.ty == "uint256" for fn in cfg.functions for p in fn.params)
-    has_getter = any(_getter_prefix(fn.name) is not None for fn in cfg.functions)
-    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param or has_getter:
+    has_uint256_getter = any(
+        _getter_prefix(fn.name) is not None
+        and _getter_return_type(fn, cfg.fields) == "Uint256"
+        for fn in cfg.functions
+    )
+    if has_mapping or any(f.ty == "uint256" for f in cfg.fields) or has_uint256_param or has_uint256_getter:
         imports.insert(1, "import Verity.EVM.Uint256")
         opens.append("open Verity.EVM.Uint256")
 
@@ -763,9 +789,14 @@ def gen_compiler_spec(cfg: ContractConfig) -> str:
             params_str = "[]"
         if is_getter:
             # Getter: return a storage value (see getCount, getOwner, getBalance)
+            ret_type = _getter_return_type(fn, cfg.fields)
+            if ret_type == "Address":
+                compiler_ret = "FieldType.address"
+            else:
+                compiler_ret = "FieldType.uint256"  # Bool maps to uint256 at EVM level
             func_strs.append(f"""    {{ name := "{fn.name}"
       params := {params_str}
-      returnType := some FieldType.uint256  -- TODO: adjust type (e.g. address)
+      returnType := some {compiler_ret}
       body := [
         Stmt.return (Expr.storage "{cfg.fields[0].name if cfg.fields else 'field'}")  -- TODO: match actual field
       ]

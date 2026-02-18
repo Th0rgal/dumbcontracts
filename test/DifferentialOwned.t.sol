@@ -263,13 +263,4 @@ contract DifferentialOwned is YulTestBase, DiffTestConfig, DifferentialTestBase 
         _runRandomOwnershipTests(startIndex, numTransactions, _diffRandomSeed("Owned"));
     }
 
-    // ========== Helper Functions ==========
-
-    function _skipRandom(uint256 seed, uint256 iterations) internal pure returns (uint256) {
-        for (uint256 i = 0; i < iterations; i++) {
-            seed = _lcg(seed);
-            seed = _lcg(seed);
-        }
-        return seed;
-    }
 }

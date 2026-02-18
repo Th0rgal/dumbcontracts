@@ -444,7 +444,7 @@ uint256 x = type(uint256).max + 1;  // reverts with overflow
 
 ### 9. Address Type: String Without Validation
 
-**Role**: Ethereum addresses are represented as plain `String` throughout the codebase (`Verity/Core.lean:19`):
+**Role**: Ethereum addresses are represented as plain `String` throughout the codebase (`Verity/Core.lean:16`):
 
 ```lean
 abbrev Address := String

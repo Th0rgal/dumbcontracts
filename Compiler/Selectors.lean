@@ -18,7 +18,7 @@ on manual selector computation.
 ## References
 
 - Solidity ABI Spec: https://docs.soliditylang.org/en/latest/abi-spec.html#function-selector
-- Trust Assumptions: docs/ROADMAP.md
+- Trust Assumptions: TRUST_ASSUMPTIONS.md
 -/
 
 import Compiler.Hex

@@ -254,7 +254,7 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig, DifferentialTestBase
         // Note: EDSL may use different case than Solidity addresses, so check both
         string memory senderAddrStr = _toLowerCase(vm.toString(sender));
         if (contains(edslResult, senderAddrStr) || contains(edslResult, vm.toString(sender))) {
-            uint256 senderValue = _extractMappingValue(edslResult, sender);
+            uint256 senderValue = _extractMappingValue(edslResult, vm.toString(sender));
             edslBalances[sender] = senderValue;
         }
 
@@ -262,47 +262,10 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig, DifferentialTestBase
         if (other != address(0)) {
             string memory otherAddrStr = _toLowerCase(vm.toString(other));
             if (contains(edslResult, otherAddrStr) || contains(edslResult, vm.toString(other))) {
-                uint256 otherValue = _extractMappingValue(edslResult, other);
+                uint256 otherValue = _extractMappingValue(edslResult, vm.toString(other));
                 edslBalances[other] = otherValue;
             }
         }
-    }
-
-    function _extractMappingValue(string memory json, address key) internal pure returns (uint256) {
-        // Simple parser: find "key":"0x..." pattern and extract the following "value":number
-        bytes memory jsonBytes = bytes(json);
-        // Try both original and lowercase versions of the address
-        bytes memory keyBytes = bytes(vm.toString(key));
-        bytes memory keyBytesLower = bytes(_toLowerCase(vm.toString(key)));
-
-        // Find the key in the JSON (try both cases)
-        for (uint i = 0; i < jsonBytes.length - keyBytes.length; i++) {
-            bool found = true;
-            bool foundLower = true;
-            for (uint j = 0; j < keyBytes.length; j++) {
-                if (jsonBytes[i + j] != keyBytes[j]) {
-                    found = false;
-                }
-                if (jsonBytes[i + j] != keyBytesLower[j]) {
-                    foundLower = false;
-                }
-            }
-            if (found || foundLower) {
-                // Found key, now find the value
-                // Look for "value": after the key
-                for (uint k = i + keyBytes.length; k < jsonBytes.length - 7; k++) {
-                    if (jsonBytes[k] == '"' && jsonBytes[k+1] == 'v' &&
-                        jsonBytes[k+2] == 'a' && jsonBytes[k+3] == 'l' &&
-                        jsonBytes[k+4] == 'u' && jsonBytes[k+5] == 'e' &&
-                        jsonBytes[k+6] == '"' && jsonBytes[k+7] == ':') {
-                        // Extract number after "value":
-                        return _extractNumber(json, k + 8);
-                    }
-                }
-            }
-        }
-
-        return 0;
     }
 
     // ============ Test Cases ============

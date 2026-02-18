@@ -77,7 +77,7 @@ axiom addressToNat_injective :
 - [ ] Formalize hex string parsing in Lean (substantial effort)
 - [ ] Prove injectivity from first principles
 - [ ] Consider using verified hex parsing library
-- [ ] Issue tracking: #82
+- [ ] Issue tracking: #253
 
 ---
 

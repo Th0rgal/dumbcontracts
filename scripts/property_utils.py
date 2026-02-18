@@ -27,8 +27,23 @@ FILE_RE = re.compile(r"^Property(.+)\.t\.sol$")
 
 # Regex pattern for extracting theorems from Lean files
 THEOREM_RE = re.compile(r"^\s*(theorem|lemma)\s+([A-Za-z0-9_']+)")
+NAME_RE = re.compile(r"^[A-Za-z0-9_']+$")
 
-def _load_contract_sets(path: Path, *, missing_ok: bool, label: str) -> dict[str, set[str]]:
+
+def _find_duplicates(items: list[str]) -> list[str]:
+    """Return a sorted list of duplicate items in insertion order."""
+    seen: set[str] = set()
+    dupes: set[str] = set()
+    for item in items:
+        if item in seen:
+            dupes.add(item)
+        seen.add(item)
+    return sorted(dupes)
+
+
+def _load_contract_sets(
+    path: Path, *, missing_ok: bool, label: str
+) -> dict[str, set[str]]:
     """Load a JSON mapping of contract names to lists of theorem names."""
     if not path.exists():
         if missing_ok:
@@ -46,6 +61,16 @@ def _load_contract_sets(path: Path, *, missing_ok: bool, label: str) -> dict[str
         if not isinstance(names, list) or any(not isinstance(name, str) for name in names):
             errors.append(f"{label} for {contract} must be a list of strings.")
             continue
+        duplicates = _find_duplicates(names)
+        if duplicates:
+            errors.append(
+                f"{label} for {contract} has duplicate names: {', '.join(duplicates)}"
+            )
+        invalid = [name for name in names if not NAME_RE.match(name)]
+        if invalid:
+            errors.append(
+                f"{label} for {contract} has invalid theorem names: {', '.join(invalid)}"
+            )
         result[contract] = set(names)
     report_errors(errors, f"{label} schema errors")
     return result

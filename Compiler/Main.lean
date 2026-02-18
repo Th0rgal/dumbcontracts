@@ -29,7 +29,7 @@ private def parseArgs (args : List String) : IO (String × List String × Bool) 
         IO.println "  -h                 Short form of --help"
         IO.println ""
         IO.println "Example:"
-        IO.println "  verity-compiler --link libs/Poseidon.yul --link libs/Groth16.yul -o out/"
+        IO.println "  verity-compiler --link examples/external-libs/PoseidonT3.yul -o compiler/yul"
         throw (IO.userError "help")
     | "--link" :: path :: rest =>
         go rest outDir (path :: libs) verbose

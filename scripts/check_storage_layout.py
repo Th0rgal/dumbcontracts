@@ -28,8 +28,10 @@ STORAGE_SLOT_RE = re.compile(
 
 # Regex for Compiler fields list entries:
 #   { name := "<name>", ty := FieldType.<type> }
+#   { name := "<name>", ty := FieldType.mappingTyped (.simple .address) }
+#   { name := "<name>", ty := FieldType.mappingTyped (.nested .address .address) }
 COMPILER_FIELD_RE = re.compile(
-    r'\{\s*name\s*:=\s*"(\w+)"\s*,\s*ty\s*:=\s*FieldType\.(\w+)\s*\}'
+    r'\{\s*name\s*:=\s*"(\w+)"\s*,\s*ty\s*:=\s*FieldType\.([\w.() ]+?)\s*\}'
 )
 
 # Regex for ContractSpec name:
@@ -114,14 +116,29 @@ def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int
 
 def normalize_type(ty: str) -> str:
     """Normalize type names for comparison across layers."""
-    ty = ty.strip("()").strip()
+    raw = ty.strip()
+    # Strip balanced outer parentheses for EDSL types like "(Address → Uint256)"
+    stripped = raw
+    if stripped.startswith("(") and stripped.endswith(")"):
+        stripped = stripped[1:-1].strip()
     mapping = {
+        # EDSL types (from StorageSlot definitions)
         "Uint256": "uint256",
         "Address": "address",
         "Address → Uint256": "mapping",
-        "(Address → Uint256)": "mapping",
+        "Uint256 → Uint256": "mapping_uint",
+        "Address → Address → Uint256": "mapping2",
+        # Compiler types (from FieldType variants)
+        "mapping": "mapping",
+        "mappingTyped (.simple .address)": "mapping",
+        "mappingTyped (.simple .uint256)": "mapping_uint",
+        "mappingTyped (.nested .address .address)": "mapping2",
+        "mappingTyped (.nested .address .uint256)": "mapping2",
+        "mappingTyped (.nested .uint256 .address)": "mapping2",
+        "mappingTyped (.nested .uint256 .uint256)": "mapping2",
     }
-    return mapping.get(ty, ty.lower())
+    # Try raw first (for Compiler types like "mappingTyped (...)"), then stripped
+    return mapping.get(raw, mapping.get(stripped, stripped.lower()))
 
 
 def check_intra_collisions(

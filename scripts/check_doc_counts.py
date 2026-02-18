@@ -141,8 +141,15 @@ def check_verification_theorem_names(
         # Extract backtick-quoted theorem names from table rows
         theorem_pat = re.compile(r"^\|\s*\d+\s*\|\s*`([^`]+)`", re.MULTILINE)
         manifest_names = set(manifest[contract])
+        seen_names: set[str] = set()
         for m in theorem_pat.finditer(section_text):
             name = m.group(1)
+            if name in seen_names:
+                errors.append(
+                    f"verification.mdx: `{name}` duplicated in {section_name} table"
+                )
+                continue
+            seen_names.add(name)
             if name not in manifest_names:
                 errors.append(
                     f"verification.mdx: `{name}` in {section_name} table "

@@ -28,6 +28,28 @@ FILE_RE = re.compile(r"^Property(.+)\.t\.sol$")
 # Regex pattern for extracting theorems from Lean files
 THEOREM_RE = re.compile(r"^\s*(theorem|lemma)\s+([A-Za-z0-9_']+)")
 
+def _load_contract_sets(path: Path, *, missing_ok: bool, label: str) -> dict[str, set[str]]:
+    """Load a JSON mapping of contract names to lists of theorem names."""
+    if not path.exists():
+        if missing_ok:
+            return {}
+        raise SystemExit(f"Missing {label}: {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        die(f"{label} must be a JSON object mapping contract names to lists.")
+    errors: list[str] = []
+    result: dict[str, set[str]] = {}
+    for contract, names in data.items():
+        if not isinstance(contract, str):
+            errors.append(f"{label} has non-string contract key: {contract!r}")
+            continue
+        if not isinstance(names, list) or any(not isinstance(name, str) for name in names):
+            errors.append(f"{label} for {contract} must be a list of strings.")
+            continue
+        result[contract] = set(names)
+    report_errors(errors, f"{label} schema errors")
+    return result
+
 
 def load_manifest() -> dict[str, set[str]]:
     """Load property manifest from JSON file.
@@ -38,13 +60,7 @@ def load_manifest() -> dict[str, set[str]]:
     Raises:
         SystemExit: If manifest file does not exist.
     """
-    if not MANIFEST.exists():
-        raise SystemExit(f"Missing property manifest: {MANIFEST}")
-    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    manifest: dict[str, set[str]] = {}
-    for contract, names in data.items():
-        manifest[contract] = set(names)
-    return manifest
+    return _load_contract_sets(MANIFEST, missing_ok=False, label="property manifest")
 
 
 def load_exclusions() -> dict[str, set[str]]:
@@ -54,13 +70,7 @@ def load_exclusions() -> dict[str, set[str]]:
         Dictionary mapping contract names to sets of excluded theorem names.
         Returns empty dict if exclusions file does not exist.
     """
-    if not EXCLUSIONS.exists():
-        return {}
-    data = json.loads(EXCLUSIONS.read_text(encoding="utf-8"))
-    exclusions: dict[str, set[str]] = {}
-    for contract, names in data.items():
-        exclusions[contract] = set(names)
-    return exclusions
+    return _load_contract_sets(EXCLUSIONS, missing_ok=True, label="property exclusions")
 
 
 def extract_property_names(path: Path) -> list[str]:

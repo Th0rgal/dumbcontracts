@@ -962,8 +962,7 @@ Examples:
 
     print(f"3. Register in allSpecs (Compiler/Specs.lean):")
     print(f"   Find 'def allSpecs' and add '{name_lower}Spec' to the list.")
-    print(f"   Also add selectors for each function in Compiler/Selectors.lean")
-    print(f"   (see existing selectors for the pattern using keccak256_first_4_bytes).")
+    print(f"   Selectors are computed automatically by computeSelectors during compilation.")
     print()
 
     print(f"4. Create differential tests (not scaffolded):")

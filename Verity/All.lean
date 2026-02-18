@@ -17,6 +17,13 @@ import Verity.Core.FiniteSet
 import Verity.EVM.Uint256
 import Verity.Stdlib.Math
 
+-- Unified AST & Denotation (issue #364)
+import Verity.AST
+import Verity.Denote
+import Verity.AST.SimpleStorage
+import Verity.AST.Counter
+import Verity.AST.SafeCounter
+
 -- Common specifications & invariants
 import Verity.Specs.Common
 import Verity.Specs.Common.Invariants

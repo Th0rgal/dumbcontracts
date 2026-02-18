@@ -79,7 +79,7 @@ test/Property<Name>.t.sol              # Property tests
 ## Common Pitfalls
 
 - **Storage slot mismatches** between spec, EDSL, and compiler
-- **Missing selector updates** in `Compiler/Specs.lean` when adding functions
+- **Missing function entries** in `Compiler/Specs.lean` (selectors are auto-computed from function signatures)
 - **Mapping conversions** not mirrored between spec and proofs
 - **Property tag drift** — test tags must match lemma names exactly
 

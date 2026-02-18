@@ -3,8 +3,8 @@
 
 Validates counts in README.md, test/README.md, docs/VERIFICATION_STATUS.md,
 docs/ROADMAP.md, TRUST_ASSUMPTIONS.md, docs-site llms.txt, compiler.mdx,
-verification.mdx, research.mdx, core.mdx, and index.mdx against the actual
-property manifest and codebase.
+verification.mdx, research.mdx, core.mdx, examples.mdx, and index.mdx
+against the actual property manifest and codebase.
 
 Usage:
     python3 scripts/check_doc_counts.py
@@ -70,6 +70,12 @@ def get_core_line_count() -> int:
 def get_sorry_count() -> int:
     """Count sorry statements in Lean proof files."""
     return _count_lean_lines(r"^\s*(·\s*)?sorry\b")
+
+
+def get_contract_count() -> int:
+    """Count example contracts in Verity/Examples/."""
+    examples_dir = ROOT / "Verity" / "Examples"
+    return len(list(examples_dir.glob("*.lean")))
 
 
 def get_exclusion_count() -> int:
@@ -186,6 +192,7 @@ def main() -> None:
     proven_count = total_theorems - sorry_count
     stdlib_count = per_contract.get("Stdlib", 0)
     non_stdlib_total = total_theorems - stdlib_count
+    contract_count = get_contract_count()
 
     errors: list[str] = []
 
@@ -319,6 +326,26 @@ def main() -> None:
                     "test suite count",
                     re.compile(r"Ran (\d+) test suites:"),
                     str(suite_count),
+                ),
+                (
+                    "example contract count",
+                    re.compile(r"(\d+) example contracts"),
+                    str(contract_count),
+                ),
+            ],
+        )
+    )
+
+    # Check examples.mdx
+    examples_mdx = ROOT / "docs-site" / "content" / "examples.mdx"
+    errors.extend(
+        check_file(
+            examples_mdx,
+            [
+                (
+                    "contract count in description",
+                    re.compile(r"(\d+) contracts covering"),
+                    str(contract_count),
                 ),
             ],
         )

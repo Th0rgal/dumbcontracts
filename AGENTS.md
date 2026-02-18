@@ -19,7 +19,7 @@ Quick reference for AI agents. Humans: see [README.md](README.md).
 
 **Format**: `[Category] Brief description` - use templates in `.github/ISSUE_TEMPLATE/`
 
-**Categories**: `[Layer 3]` `[Trust Reduction]` `[Property Coverage]` `[Compiler Enhancement]` `[Documentation]` `[Infrastructure]`
+**Categories**: `[Trust Reduction]` `[Property Coverage]` `[Compiler Enhancement]` `[Documentation]` `[Infrastructure]`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full conventions.
 

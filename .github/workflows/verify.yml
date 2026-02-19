@@ -159,6 +159,11 @@ jobs:
           LEAN_NUM_THREADS: 2
         run: lake build
 
+      - name: Run AST pipeline regression modules
+        env:
+          LEAN_NUM_THREADS: 2
+        run: lake build Compiler.ASTCompileTest Compiler.ASTDriverTest
+
       - name: Check for sorry
         run: |
           # Count sorry across all Lean files (matching both 'sorry' and '· sorry')

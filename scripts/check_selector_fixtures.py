@@ -20,6 +20,9 @@ FUNCTION_START_RE = re.compile(r"\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 SELECTOR_VISIBILITY_RE = re.compile(r"\b(external|public)\b")
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 ARRAY_SUFFIX_RE = re.compile(r"(\[[0-9]*\]\s*)+$")
+CONTRACT_LIKE_DECL_RE = re.compile(r"\b(?:contract|interface|library)\s+([A-Za-z_][A-Za-z0-9_]*)\b")
+ENUM_DECL_RE = re.compile(r"\benum\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{")
+UDVT_DECL_RE = re.compile(r"\btype\s+([A-Za-z_][A-Za-z0-9_]*)\s+is\s+([^;]+);")
 
 
 def _split_top_level_commas(params: str) -> list[str]:
@@ -40,7 +43,41 @@ def _split_top_level_commas(params: str) -> list[str]:
     return items
 
 
-def _canonical_param_type(raw: str) -> str:
+def _split_array_suffix(text: str) -> tuple[str, str]:
+    suffix_match = ARRAY_SUFFIX_RE.search(text)
+    if not suffix_match or suffix_match.end() != len(text):
+        return text, ""
+    base = text[: suffix_match.start()].strip()
+    suffix = re.sub(r"\s+", "", suffix_match.group(0))
+    return base, suffix
+
+
+def _canonical_base_type(text: str, user_aliases: dict[str, str]) -> str:
+    if text == "uint":
+        return "uint256"
+    if text == "int":
+        return "int256"
+    if text == "fixed":
+        return "fixed128x18"
+    if text == "ufixed":
+        return "ufixed128x18"
+    if text.startswith("tuple("):
+        return text
+
+    current = text
+    seen: set[str] = set()
+    while current not in seen:
+        seen.add(current)
+        alias = user_aliases.get(current)
+        if alias is None and "." in current:
+            alias = user_aliases.get(current.split(".")[-1])
+        if alias is None:
+            break
+        current = alias
+    return current
+
+
+def _canonical_param_type(raw: str, user_aliases: dict[str, str]) -> str:
     # Remove data location and mutability keywords from declarations.
     text = re.sub(r"\b(memory|calldata|storage|payable)\b", " ", raw)
     text = re.sub(r"\s+", " ", text).strip()
@@ -51,16 +88,14 @@ def _canonical_param_type(raw: str) -> str:
 
     # Solidity function types are selector-encoded as `function`,
     # regardless of their full internal signature.
+    text = re.sub(r"\s*([\[\]\(\),])\s*", r"\1", text)
+
     if text.startswith("function"):
-        suffix_match = ARRAY_SUFFIX_RE.search(text)
-        suffix = ""
-        if suffix_match:
-            suffix = re.sub(r"\s+", "", suffix_match.group(0))
+        _, suffix = _split_array_suffix(text)
         return f"function{suffix}"
 
-    # Normalize spaces around tuple/array punctuation.
-    text = re.sub(r"\s*([\[\]\(\),])\s*", r"\1", text)
-    return text
+    base, suffix = _split_array_suffix(text)
+    return f"{_canonical_base_type(base, user_aliases)}{suffix}"
 
 
 def _drop_trailing_param_name(text: str) -> str:
@@ -87,15 +122,35 @@ def _drop_trailing_param_name(text: str) -> str:
     return text
 
 
-def _strip_param_names(params: str) -> str:
+def _strip_param_names(params: str, user_aliases: dict[str, str]) -> str:
     if not params.strip():
         return ""
     cleaned: list[str] = []
     for raw in _split_top_level_commas(params):
-        canonical = _canonical_param_type(raw)
+        canonical = _canonical_param_type(raw, user_aliases)
         if canonical:
             cleaned.append(canonical)
     return ",".join(cleaned)
+
+
+def _collect_user_defined_type_aliases(text: str) -> dict[str, str]:
+    aliases: dict[str, str] = {}
+    for match in CONTRACT_LIKE_DECL_RE.finditer(text):
+        aliases[match.group(1)] = "address"
+    for match in ENUM_DECL_RE.finditer(text):
+        aliases[match.group(1)] = "uint8"
+
+    udvt: list[tuple[str, str]] = []
+    for match in UDVT_DECL_RE.finditer(text):
+        name = match.group(1)
+        underlying = re.sub(r"\s+", "", match.group(2))
+        udvt.append((name, underlying))
+
+    # Resolve UDVT aliases after collecting all declarations.
+    for _ in range(4):
+        for name, underlying in udvt:
+            aliases[name] = _canonical_base_type(underlying, aliases)
+    return aliases
 
 
 def _strip_solidity_comments_and_strings(text: str) -> str:
@@ -221,9 +276,10 @@ def load_fixture_signatures() -> list[str]:
     if not FIXTURE.exists():
         die(f"Missing fixture file: {FIXTURE}")
     text = _strip_solidity_comments_and_strings(FIXTURE.read_text(encoding="utf-8"))
+    aliases = _collect_user_defined_type_aliases(text)
     sigs: list[str] = []
     for name, params in _iter_function_signatures(text):
-        params = _strip_param_names(params)
+        params = _strip_param_names(params, aliases)
         sigs.append(f"{name}({params})")
     if not sigs:
         die("No function signatures found in fixture")

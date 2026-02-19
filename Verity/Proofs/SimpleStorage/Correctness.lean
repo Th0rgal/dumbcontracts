@@ -42,29 +42,22 @@ Prove that store satisfies each invariant from Invariants.lean individually.
 theorem store_preserves_storage_isolated (s : ContractState) (value : Uint256) (slot : Nat) :
   let s' := ((store value).run s).snd
   storage_isolated s s' slot := by
-  simp [storage_isolated]
-  intro h_ne
-  have h := store_meets_spec s value
-  simp [store_spec] at h
-  exact h.2.1 slot h_ne
+  simp [storage_isolated]; intro h_ne
+  have h := store_meets_spec s value; simp [store_spec] at h; exact h.2.1 slot h_ne
 
 /-- store preserves address storage. -/
 theorem store_preserves_addr_storage (s : ContractState) (value : Uint256) :
   let s' := ((store value).run s).snd
   addr_storage_unchanged s s' := by
   simp [addr_storage_unchanged]
-  have h := store_meets_spec s value
-  simp [store_spec] at h
-  exact h.2.2.1
+  have h := store_meets_spec s value; simp [store_spec] at h; exact h.2.2.1
 
 /-- store preserves mapping storage. -/
 theorem store_preserves_map_storage (s : ContractState) (value : Uint256) :
   let s' := ((store value).run s).snd
   map_storage_unchanged s s' := by
   simp [map_storage_unchanged]
-  have h := store_meets_spec s value
-  simp [store_spec] at h
-  exact h.2.2.2.1
+  have h := store_meets_spec s value; simp [store_spec] at h; exact h.2.2.2.1
 
 /-- store preserves context (sender, thisAddress). -/
 theorem store_preserves_context (s : ContractState) (value : Uint256) :

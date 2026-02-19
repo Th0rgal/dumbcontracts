@@ -107,16 +107,12 @@ theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
 theorem constructor_sets_owner (s : ContractState) (initialOwner : Address) :
   let s' := ((constructor initialOwner).run s).snd
   s'.storageAddr 0 = initialOwner := by
-  have h := constructor_meets_spec s initialOwner
-  simp [constructor_spec] at h
-  exact h.1
+  have h := constructor_meets_spec s initialOwner; simp [constructor_spec] at h; exact h.1
 
 theorem constructor_sets_supply_zero (s : ContractState) (initialOwner : Address) :
   let s' := ((constructor initialOwner).run s).snd
   s'.storage 2 = 0 := by
-  have h := constructor_meets_spec s initialOwner
-  simp [constructor_spec] at h
-  exact h.2.1
+  have h := constructor_meets_spec s initialOwner; simp [constructor_spec] at h; exact h.2.1
 
 /-! ## Mint Correctness
 
@@ -202,8 +198,7 @@ theorem mint_increases_balance (s : ContractState) (to : Address) (amount : Uint
   let s' := ((mint to amount).run s).snd
   s'.storageMap 1 to = EVM.Uint256.add (s.storageMap 1 to) amount := by
   have h := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
-  simp [mint_spec] at h
-  exact h.1
+  simp [mint_spec] at h; exact h.1
 
 theorem mint_increases_supply (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0)
@@ -212,8 +207,7 @@ theorem mint_increases_supply (s : ContractState) (to : Address) (amount : Uint2
   let s' := ((mint to amount).run s).snd
   s'.storage 2 = EVM.Uint256.add (s.storage 2) amount := by
   have h := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
-  simp [mint_spec] at h
-  exact h.2.1
+  simp [mint_spec] at h; exact h.2.1
 
 -- Mint reverts on balance overflow
 theorem mint_reverts_balance_overflow (s : ContractState) (to : Address) (amount : Uint256)
@@ -353,8 +347,7 @@ theorem transfer_decreases_sender_balance (s : ContractState) (to : Address) (am
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 1 s.sender = EVM.Uint256.sub (s.storageMap 1 s.sender) amount := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance (fun _ => h_no_overflow)
-  simp [transfer_spec, h_ne, beq_iff_eq] at h
-  exact h.2.1
+  simp [transfer_spec, h_ne, beq_iff_eq] at h; exact h.2.1
 
 theorem transfer_increases_recipient_balance (s : ContractState) (to : Address) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount)
@@ -363,16 +356,14 @@ theorem transfer_increases_recipient_balance (s : ContractState) (to : Address) 
   let s' := ((transfer to amount).run s).snd
   s'.storageMap 1 to = EVM.Uint256.add (s.storageMap 1 to) amount := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance (fun _ => h_no_overflow)
-  simp [transfer_spec, h_ne, beq_iff_eq] at h
-  exact h.2.2.1
+  simp [transfer_spec, h_ne, beq_iff_eq] at h; exact h.2.2.1
 
 theorem transfer_self_preserves_balance (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 1 s.sender ≥ amount) :
   let s' := ((transfer s.sender amount).run s).snd
   s'.storageMap 1 s.sender = s.storageMap 1 s.sender := by
   have h := transfer_meets_spec_when_sufficient s s.sender amount h_balance (fun h => absurd rfl h)
-  simp [transfer_spec, beq_iff_eq] at h
-  exact h.2.1
+  simp [transfer_spec, beq_iff_eq] at h; exact h.2.1
 
 -- Transfer reverts on recipient balance overflow
 theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (amount : Uint256)
@@ -398,9 +389,7 @@ theorem balanceOf_meets_spec (s : ContractState) (addr : Address) :
 theorem balanceOf_returns_balance (s : ContractState) (addr : Address) :
   let result := ((balanceOf addr).run s).fst
   result = s.storageMap 1 addr := by
-  have h := balanceOf_meets_spec s addr
-  simp [balanceOf_spec] at h
-  exact h
+  simpa [balanceOf_spec] using balanceOf_meets_spec s addr
 
 theorem balanceOf_preserves_state (s : ContractState) (addr : Address) :
   let s' := ((balanceOf addr).run s).snd
@@ -415,9 +404,7 @@ theorem getTotalSupply_meets_spec (s : ContractState) :
 theorem getTotalSupply_returns_supply (s : ContractState) :
   let result := ((getTotalSupply).run s).fst
   result = s.storage 2 := by
-  have h := getTotalSupply_meets_spec s
-  simp [getTotalSupply_spec] at h
-  exact h
+  simpa [getTotalSupply_spec] using getTotalSupply_meets_spec s
 
 theorem getTotalSupply_preserves_state (s : ContractState) :
   let s' := ((getTotalSupply).run s).snd
@@ -432,9 +419,7 @@ theorem getOwner_meets_spec (s : ContractState) :
 theorem getOwner_returns_owner (s : ContractState) :
   let result := ((getOwner).run s).fst
   result = s.storageAddr 0 := by
-  have h := getOwner_meets_spec s
-  simp [getOwner_spec] at h
-  exact h
+  simpa [getOwner_spec] using getOwner_meets_spec s
 
 theorem getOwner_preserves_state (s : ContractState) :
   let s' := ((getOwner).run s).snd

@@ -18,27 +18,22 @@ open Verity.Stdlib.Math
 /-- safeAdd returns the sum when no overflow occurs. -/
 theorem safeAdd_some (a b : Uint256) (h : (a : Nat) + (b : Nat) ≤ MAX_UINT256) :
   safeAdd a b = some (a + b) := by
-  simp only [safeAdd]
-  have h_not : ¬((a : Nat) + (b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [h_not]
+  simp [safeAdd, Nat.not_lt.mpr h]
 
 /-- safeAdd returns none on overflow. -/
 theorem safeAdd_none (a b : Uint256) (h : (a : Nat) + (b : Nat) > MAX_UINT256) :
   safeAdd a b = none := by
-  simp only [safeAdd]
-  simp [h]
+  simp [safeAdd, h]
 
 /-- safeAdd with zero on the left returns the other operand (when within bounds). -/
 theorem safeAdd_zero_left (b : Uint256) (h : (b : Nat) ≤ MAX_UINT256) :
   safeAdd 0 b = some b := by
-  have h_not : ¬((b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [safeAdd, h_not]
+  simp [safeAdd, Nat.not_lt.mpr h]
 
 /-- safeAdd with zero on the right returns the other operand (when within bounds). -/
 theorem safeAdd_zero_right (a : Uint256) (h : (a : Nat) ≤ MAX_UINT256) :
   safeAdd a 0 = some a := by
-  have h_not : ¬((a : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [safeAdd, h_not]
+  simp [safeAdd, Nat.not_lt.mpr h]
 
 /-- safeAdd is commutative. -/
 theorem safeAdd_comm (a b : Uint256) :
@@ -55,15 +50,12 @@ theorem safeAdd_result_bounded (a b : Uint256) (c : Uint256)
 /-- safeSub returns the difference when no underflow occurs. -/
 theorem safeSub_some (a b : Uint256) (h : (a : Nat) ≥ (b : Nat)) :
   safeSub a b = some (a - b) := by
-  simp only [safeSub]
-  have h_not : ¬((b : Nat) > (a : Nat)) := Nat.not_lt.mpr h
-  simp [h_not]
+  simp [safeSub, Nat.not_lt.mpr h]
 
 /-- safeSub returns none on underflow. -/
 theorem safeSub_none (a b : Uint256) (h : (b : Nat) > (a : Nat)) :
   safeSub a b = none := by
-  simp only [safeSub]
-  simp [h]
+  simp [safeSub, h]
 
 /-- safeSub of zero from any value is always safe. -/
 theorem safeSub_zero (a : Uint256) :
@@ -92,15 +84,12 @@ theorem safeSub_result_le (a b : Uint256) (c : Uint256)
 /-- safeMul returns the product when no overflow occurs. -/
 theorem safeMul_some (a b : Uint256) (h : (a : Nat) * (b : Nat) ≤ MAX_UINT256) :
   safeMul a b = some (a * b) := by
-  simp only [safeMul]
-  have h_not : ¬((a : Nat) * (b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [h_not]
+  simp [safeMul, Nat.not_lt.mpr h]
 
 /-- safeMul returns none on overflow. -/
 theorem safeMul_none (a b : Uint256) (h : (a : Nat) * (b : Nat) > MAX_UINT256) :
   safeMul a b = none := by
-  simp only [safeMul]
-  simp [h]
+  simp [safeMul, h]
 
 /-- safeMul of zero is always safe and returns zero. -/
 theorem safeMul_zero_left (b : Uint256) :
@@ -115,14 +104,12 @@ theorem safeMul_zero_right (a : Uint256) :
 /-- safeMul of one returns the other operand (when within bounds). -/
 theorem safeMul_one_left (b : Uint256) (h : (b : Nat) ≤ MAX_UINT256) :
   safeMul 1 b = some b := by
-  have h_not : ¬((b : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [safeMul, h_not]
+  simp [safeMul, Nat.not_lt.mpr h]
 
 /-- safeMul of one returns the other operand (when within bounds). -/
 theorem safeMul_one_right (a : Uint256) (h : (a : Nat) ≤ MAX_UINT256) :
   safeMul a 1 = some a := by
-  have h_not : ¬((a : Nat) > MAX_UINT256) := Nat.not_lt.mpr h
-  simp [safeMul, h_not]
+  simp [safeMul, Nat.not_lt.mpr h]
 
 /-- safeMul is commutative. -/
 theorem safeMul_comm (a b : Uint256) :
@@ -140,8 +127,7 @@ theorem safeDiv_some (a b : Uint256) (h : b ≠ 0) :
 /-- safeDiv returns none when divisor is zero. -/
 theorem safeDiv_none (a : Uint256) :
   safeDiv a 0 = none := by
-  simp only [safeDiv]
-  simp
+  simp [safeDiv]
 
 /-- safeDiv of zero always returns zero (when divisor is nonzero). -/
 theorem safeDiv_zero_numerator (b : Uint256) (h : b ≠ 0) :

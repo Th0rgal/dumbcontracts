@@ -68,10 +68,81 @@ def _strip_param_names(params: str) -> str:
     return ",".join(cleaned)
 
 
+def _strip_solidity_comments_and_strings(text: str) -> str:
+    """Strip comments and strings while preserving newlines."""
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    in_line_comment = False
+    in_block_comment = False
+    quote: str | None = None
+
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+
+        if in_line_comment:
+            if ch == "\n":
+                in_line_comment = False
+                out.append("\n")
+            else:
+                out.append(" ")
+            i += 1
+            continue
+
+        if in_block_comment:
+            if ch == "*" and nxt == "/":
+                out.extend([" ", " "])
+                i += 2
+                in_block_comment = False
+            elif ch == "\n":
+                out.append("\n")
+                i += 1
+            else:
+                out.append(" ")
+                i += 1
+            continue
+
+        if quote is not None:
+            if ch == "\\" and i + 1 < n:
+                out.extend([" ", " "])
+                i += 2
+                continue
+            if ch == quote:
+                out.append(" ")
+                quote = None
+                i += 1
+                continue
+            out.append("\n" if ch == "\n" else " ")
+            i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            out.extend([" ", " "])
+            i += 2
+            in_line_comment = True
+            continue
+        if ch == "/" and nxt == "*":
+            out.extend([" ", " "])
+            i += 2
+            in_block_comment = True
+            continue
+        if ch in {'"', "'"}:
+            out.append(" ")
+            quote = ch
+            i += 1
+            continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
 def load_fixture_signatures() -> list[str]:
     if not FIXTURE.exists():
         die(f"Missing fixture file: {FIXTURE}")
-    text = FIXTURE.read_text(encoding="utf-8")
+    text = _strip_solidity_comments_and_strings(FIXTURE.read_text(encoding="utf-8"))
     sigs: list[str] = []
     for match in FUNCTION_RE.finditer(text):
         name = match.group(1)

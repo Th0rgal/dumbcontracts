@@ -33,7 +33,7 @@ def card (s : FiniteSet α) : Nat :=
   s.elements.length
 
 /-- Membership predicate for finite sets. -/
-def mem (a : α) (s : FiniteSet α) : Prop :=
+def mem (s : FiniteSet α) (a : α) : Prop :=
   a ∈ s.elements
 
 instance : Membership α (FiniteSet α) where
@@ -100,7 +100,10 @@ theorem mem_elements_insert [DecidableEq α] (a b : α) (s : FiniteSet α) :
 @[simp] theorem mem_remove [DecidableEq α] (a b : α) (s : FiniteSet α) :
     a ∈ (s.remove b).elements ↔ a ∈ s.elements ∧ a ≠ b := by
   unfold remove
-  simpa [and_left_comm, and_assoc, eq_comm] using List.mem_erase_iff
+  by_cases h : a = b
+  · subst h
+    simp
+  · simp [h, and_comm, and_left_comm, and_assoc]
 
 /-- Removed element is no longer a member. -/
 @[simp] theorem not_mem_remove_self [DecidableEq α] (a : α) (s : FiniteSet α) :
@@ -141,7 +144,7 @@ def card (s : FiniteAddressSet) : Nat :=
   s.addresses.card
 
 /-- Address membership proposition. -/
-def mem (addr : Address) (s : FiniteAddressSet) : Prop :=
+def mem (s : FiniteAddressSet) (addr : Address) : Prop :=
   addr ∈ s.addresses
 
 instance : Membership Address FiniteAddressSet where

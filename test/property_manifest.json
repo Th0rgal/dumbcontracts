@@ -105,6 +105,7 @@
     "decrement_preserves_wellformedness",
     "decrement_reverts_when_not_owner",
     "decrement_subtracts_one_when_owner",
+    "decrement_unfold",
     "getCount_context_preserved",
     "getCount_meets_spec",
     "getCount_preserves_state",
@@ -122,6 +123,7 @@
     "increment_preserves_wellformedness",
     "increment_reverts_when_not_owner",
     "increment_survives_transfer",
+    "increment_unfold",
     "isOwner_correct",
     "transferOwnership_changes_owner",
     "transferOwnership_context_preserved",
@@ -131,6 +133,7 @@
     "transferOwnership_preserves_map_storage",
     "transferOwnership_preserves_wellformedness",
     "transferOwnership_reverts_when_not_owner",
+    "transferOwnership_unfold",
     "transfer_then_decrement_reverts",
     "transfer_then_increment_reverts",
     "transfer_then_transfer_reverts"

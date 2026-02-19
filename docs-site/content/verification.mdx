@@ -7,16 +7,16 @@ description: EDSL proofs plus compiler correctness proofs (IR + Yul)
 
 The compiler is verified with IR preservation proofs and Yul equivalence proofs in `Compiler/Proofs/`. All three layers are complete and checked by `lake build`.
 
-**Status**: 366 theorems across 9 categories, all fully proven. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)). 2 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
+**Status**: 369 theorems across 9 categories, all fully proven. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)). 2 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
 
 ## Snapshot (2026-02-17)
 
-- EDSL theorems: 366 across 9 categories (7 contracts + ReentrancyExample + Stdlib).
+- EDSL theorems: 369 across 9 categories (7 contracts + ReentrancyExample + Stdlib).
 - SimpleStorage: 20 total (Basic 13, Correctness 7).
 - Counter: 28 total (Basic 19, Correctness 10; 1 shared between Basic and Correctness).
 - Owned: 22 total (Basic 18, Correctness 4).
 - SimpleToken: 59 total (Basic 37, Correctness 10, Supply 3, Isolation 9).
-- OwnedCounter: 45 total (Basic 26, Correctness 5, Isolation 14).
+- OwnedCounter: 48 total (Basic 29, Correctness 5, Isolation 14).
 - Ledger: 33 total (Basic 20, Correctness 6, Conservation 7 — all proven).
 - SafeCounter: 25 total (Basic 17, Correctness 8).
 - ReentrancyExample: 4 total (inline proofs: vulnerability existence, supply invariant).
@@ -301,6 +301,9 @@ Transfer proofs now handle self-transfer by modeling it as a no-op (preloading b
 | 24 | `increment_preserves_wellformedness` | Increment preserves well-formedness |
 | 25 | `decrement_preserves_wellformedness` | Decrement preserves well-formedness |
 | 26 | `constructor_increment_getCount` | Constructor then increment then getCount |
+| 27 | `increment_unfold` | Unfold increment under owner guard |
+| 28 | `decrement_unfold` | Unfold decrement under owner guard |
+| 29 | `transferOwnership_unfold` | Unfold transferOwnership under owner guard |
 
 **Correctness:**
 

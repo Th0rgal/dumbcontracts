@@ -278,11 +278,18 @@ def validate_contract_coverage(
     allowed_missing: set[str],
 ) -> list[str]:
     failures: list[str] = []
-    foundry_all = set(foundry_runtime).union(foundry_deploy)
-    for contract in sorted(set(static_bounds).difference(foundry_all).difference(allowed_missing)):
+    static_contracts = set(static_bounds).difference(allowed_missing)
+    runtime_contracts = set(foundry_runtime)
+    deploy_contracts = set(foundry_deploy)
+    for contract in sorted(static_contracts.difference(runtime_contracts)):
         failures.append(
-            f"{contract}: present in static gas report but missing in Foundry gas report "
-            "(no runtime/deploy measurements found)"
+            f"{contract}: present in static gas report but missing runtime measurement "
+            "(no Foundry function rows parsed for this contract)"
+        )
+    for contract in sorted(static_contracts.difference(deploy_contracts)):
+        failures.append(
+            f"{contract}: present in static gas report but missing deployment measurement "
+            "(no Foundry deployment row parsed for this contract)"
         )
     return failures
 

@@ -11,7 +11,10 @@
     "isOwner_returns_correct_value"
   ],
   "OwnedCounter": [
-    "isOwner_correct"
+    "decrement_unfold",
+    "increment_unfold",
+    "isOwner_correct",
+    "transferOwnership_unfold"
   ],
   "SimpleStorage": [
     "store_preserves_wellformedness"

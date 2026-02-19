@@ -73,6 +73,32 @@ theorem setMapping_preserves_other_slot (slot1 : StorageSlot (Address → Uint25
   have h_slot : (slot2 == slot1.slot) = false := beq_eq_false_iff_ne.mpr (Ne.symm h)
   simp [h_slot]
 
+/-- setMapping updates knownAddresses at the target slot by inserting the key. -/
+theorem setMapping_knownAddresses_same_slot (slot : StorageSlot (Address → Uint256))
+    (key : Address) (value : Uint256) (state : ContractState) :
+    ((setMapping slot key value).runState state).knownAddresses slot.slot =
+      (state.knownAddresses slot.slot).insert key := by
+  simp [setMapping, Contract.runState]
+
+/-- setMapping preserves knownAddresses for all non-target slots. -/
+theorem setMapping_knownAddresses_other_slot (slot : StorageSlot (Address → Uint256))
+    (slot' : Nat) (key : Address) (value : Uint256) (state : ContractState)
+    (h : slot' ≠ slot.slot) :
+    ((setMapping slot key value).runState state).knownAddresses slot' =
+      state.knownAddresses slot' := by
+  by_cases h_eq : slot' = slot.slot
+  · exact (h h_eq).elim
+  · have h_slot : (slot' == slot.slot) = false := beq_eq_false_iff_ne.mpr h_eq
+    simp [setMapping, Contract.runState, h_slot, h_eq]
+
+/-- Membership characterization at target slot after setMapping. -/
+theorem setMapping_knownAddresses_mem_iff (slot : StorageSlot (Address → Uint256))
+    (key addr : Address) (value : Uint256) (state : ContractState) :
+    addr ∈ (((setMapping slot key value).runState state).knownAddresses slot.slot).addresses.elements ↔
+      addr = key ∨ addr ∈ (state.knownAddresses slot.slot).addresses.elements := by
+  simp [setMapping, Contract.runState, Verity.Core.FiniteAddressSet.insert,
+    Verity.Core.FiniteSet.mem_elements_insert]
+
 /-!
 ## Uint256-Keyed Mapping Lemmas (Uint256 → Uint256)
 -/

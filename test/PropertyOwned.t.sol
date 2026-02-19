@@ -8,22 +8,23 @@ import "./yul/YulTestBase.sol";
  * @notice Property-based tests extracted from formally verified Lean theorems
  * @dev Maps theorems from Verity/Proofs/Owned/ to executable tests
  *
- * This file contains property tests corresponding to 22 proven theorems:
+ * This file contains property tests corresponding to 23 proven theorems:
  *
- * From Basic.lean (18 theorems):
+ * From Basic.lean (19 theorems):
  * 1-6. Address storage operations (setStorageAddr/getStorageAddr)
  * 7-8. constructor correctness
  * 9-11. getOwner correctness
  * 12-13. isOwner correctness
  * 14-15. transferOwnership correctness (when owner)
- * 16. constructor->getOwner composition
- * 17-18. Well-formedness preservation
+ * 16. transferOwnership_unfold (unfold lemma for transferOwnership)
+ * 17. constructor->getOwner composition
+ * 18-19. Well-formedness preservation
  *
  * From Correctness.lean (4 theorems):
- * 19. transferOwnership_reverts_when_not_owner (core security)
- * 20. transferOwnership_preserves_wellformedness
- * 21. constructor->transferOwnership->getOwner (full lifecycle)
- * 22. transferred_owner_cannot_act (exclusive transfer)
+ * 20. transferOwnership_reverts_when_not_owner (core security)
+ * 21. transferOwnership_preserves_wellformedness
+ * 22. constructor->transferOwnership->getOwner (full lifecycle)
+ * 23. transferred_owner_cannot_act (exclusive transfer)
  */
 contract PropertyOwnedTest is YulTestBase {
     address owned;

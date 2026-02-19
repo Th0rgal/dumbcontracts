@@ -121,19 +121,34 @@ The key insight: with ContractResult, require/onlyOwner behavior
 is fully modeled and can be unfolded in proofs.
 -/
 
+/-- Helper: unfold transferOwnership when caller is owner -/
+theorem transferOwnership_unfold (s : ContractState) (newOwner : Address)
+  (h_owner : s.sender = s.storageAddr 0) :
+  (transferOwnership newOwner).run s = ContractResult.success ()
+    { storage := s.storage,
+      storageAddr := fun slot => if (slot == 0) = true then newOwner else s.storageAddr slot,
+      storageMap := s.storageMap,
+      storageMapUint := s.storageMapUint,
+      storageMap2 := s.storageMap2,
+      sender := s.sender,
+      thisAddress := s.thisAddress,
+      msgValue := s.msgValue,
+      blockTimestamp := s.blockTimestamp,
+      knownAddresses := s.knownAddresses,
+      events := s.events } := by
+  simp only [transferOwnership, onlyOwner, isOwner, owner,
+    msgSender, getStorageAddr, setStorageAddr,
+    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+    Contract.run, ContractResult.snd, ContractResult.fst]
+  simp [h_owner]
+
 theorem transferOwnership_meets_spec_when_owner (s : ContractState) (newOwner : Address)
   (h_is_owner : s.sender = s.storageAddr 0) :
   let s' := ((transferOwnership newOwner).run s).snd
   transferOwnership_spec newOwner s s' := by
-  -- Unfold the full execution: transferOwnership → onlyOwner → isOwner → require → setStorageAddr
-  simp only [transferOwnership, onlyOwner, isOwner, owner,
-    msgSender, getStorageAddr, setStorageAddr,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst,
-    transferOwnership_spec]
-  -- After unfolding, the guard condition is (s.sender == s.storageAddr 0)
-  -- Since h_is_owner tells us s.sender = s.storageAddr 0, the guard passes
-  simp [h_is_owner, Specs.sameStorageMapContext, Specs.sameStorage, Specs.sameStorageMap, Specs.sameContext]
+  rw [transferOwnership_unfold s newOwner h_is_owner]
+  simp [transferOwnership_spec, ContractResult.snd, Specs.sameStorageMapContext,
+    Specs.sameStorage, Specs.sameStorageMap, Specs.sameContext]
   intro slot h_neq
   simp [beq_iff_eq, h_neq]
 
@@ -141,9 +156,8 @@ theorem transferOwnership_changes_owner_when_allowed (s : ContractState) (newOwn
   (h_is_owner : s.sender = s.storageAddr 0) :
   let s' := ((transferOwnership newOwner).run s).snd
   s'.storageAddr 0 = newOwner := by
-  have h := transferOwnership_meets_spec_when_owner s newOwner h_is_owner
-  simp [transferOwnership_spec] at h
-  exact h.1
+  rw [transferOwnership_unfold s newOwner h_is_owner]
+  simp [ContractResult.snd]
 
 /-! ## Composition Properties -/
 

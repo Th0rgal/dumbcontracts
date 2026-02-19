@@ -55,15 +55,15 @@ EVM Bytecode
 | SimpleStorage | 20 | ✅ Complete | `Verity/Proofs/SimpleStorage/` |
 | Counter | 28 | ✅ Complete | `Verity/Proofs/Counter/` |
 | SafeCounter | 25 | ✅ Complete | `Verity/Proofs/SafeCounter/` |
-| Owned | 22 | ✅ Complete | `Verity/Proofs/Owned/` |
+| Owned | 23 | ✅ Complete | `Verity/Proofs/Owned/` |
 | OwnedCounter | 48 | ✅ Complete | `Verity/Proofs/OwnedCounter/` |
 | Ledger | 33 | ✅ Complete | `Verity/Proofs/Ledger/` |
 | SimpleToken | 59 | ✅ Complete | `Verity/Proofs/SimpleToken/` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
-| **Total** | **239** | **✅ 100%** | — |
+| **Total** | **240** | **✅ 100%** | — |
 
-> **Note**: Stdlib (130 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (369 total properties).
+> **Note**: Stdlib (130 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (370 total properties).
 
 ### Example Property
 
@@ -177,13 +177,13 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 60% coverage (220/369), 149 remaining exclusions all proof-only
+**Status**: 59% coverage (220/370), 150 remaining exclusions all proof-only
 
 ### Current Coverage
 
-- **Total Properties**: 369
-- **Covered**: 220 (60%)
-- **Excluded**: 149 (all proof-only)
+- **Total Properties**: 370
+- **Covered**: 220 (59%)
+- **Excluded**: 150 (all proof-only)
 - **Missing**: 0
 
 ### Coverage by Contract
@@ -193,7 +193,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 | SafeCounter | 100% (25/25) | 0 | ✅ Complete |
 | ReentrancyExample | 100% (4/4) | 0 | ✅ Complete |
 | SimpleStorage | 95% (19/20) | 1 proof-only | ✅ Near-complete |
-| Owned | 91% (20/22) | 2 proof-only | ✅ Near-complete |
+| Owned | 87% (20/23) | 3 proof-only | ✅ Near-complete |
 | OwnedCounter | 92% (44/48) | 4 proof-only | ✅ Near-complete |
 | SimpleToken | 88% (52/59) | 7 proof-only | ✅ High coverage |
 | Counter | 82% (23/28) | 5 proof-only | ✅ High coverage |
@@ -202,7 +202,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Exclusion Categories
 
-**Proof-Only Properties (149 exclusions)**: Internal proof machinery that cannot be tested in Foundry
+**Proof-Only Properties (150 exclusions)**: Internal proof machinery that cannot be tested in Foundry
 - Storage helpers: `setStorage_*`, `getStorage_*`, `setMapping_*`, `getMapping_*`
 - Internal helpers: `isOwner_*` functions tested implicitly
 - Low-level operations used only in proofs

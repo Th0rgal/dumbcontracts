@@ -8,7 +8,8 @@
   ],
   "Owned": [
     "isOwner_meets_spec",
-    "isOwner_returns_correct_value"
+    "isOwner_returns_correct_value",
+    "transferOwnership_unfold"
   ],
   "OwnedCounter": [
     "decrement_unfold",

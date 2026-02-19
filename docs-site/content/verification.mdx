@@ -7,14 +7,14 @@ description: EDSL proofs plus compiler correctness proofs (IR + Yul)
 
 The compiler is verified with IR preservation proofs and Yul equivalence proofs in `Compiler/Proofs/`. All three layers are complete and checked by `lake build`.
 
-**Status**: 369 theorems across 9 categories, all fully proven. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)). 2 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
+**Status**: 370 theorems across 9 categories, all fully proven. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)). 2 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
 
 ## Snapshot (2026-02-17)
 
-- EDSL theorems: 369 across 9 categories (7 contracts + ReentrancyExample + Stdlib).
+- EDSL theorems: 370 across 9 categories (7 contracts + ReentrancyExample + Stdlib).
 - SimpleStorage: 20 total (Basic 13, Correctness 7).
 - Counter: 28 total (Basic 19, Correctness 10; 1 shared between Basic and Correctness).
-- Owned: 22 total (Basic 18, Correctness 4).
+- Owned: 23 total (Basic 19, Correctness 4).
 - SimpleToken: 59 total (Basic 37, Correctness 10, Supply 3, Isolation 9).
 - OwnedCounter: 48 total (Basic 29, Correctness 5, Isolation 14).
 - Ledger: 33 total (Basic 20, Correctness 6, Conservation 7 — all proven).
@@ -173,9 +173,10 @@ This lets proofs reason about both the success path and the revert path of guard
 | 13 | `isOwner_returns_correct_value` | isOwner returns correct boolean |
 | 14 | `transferOwnership_meets_spec_when_owner` | Owner transfer satisfies spec |
 | 15 | `transferOwnership_changes_owner_when_allowed` | Owner successfully changed |
-| 16 | `constructor_getOwner_correct` | Constructor then getOwner equals sender |
-| 17 | `constructor_preserves_wellformedness` | Well-formedness maintained |
-| 18 | `getOwner_preserves_wellformedness` | getOwner preserves well-formedness |
+| 16 | `transferOwnership_unfold` | Unfold lemma for transferOwnership when owner |
+| 17 | `constructor_getOwner_correct` | Constructor then getOwner equals sender |
+| 18 | `constructor_preserves_wellformedness` | Well-formedness maintained |
+| 19 | `getOwner_preserves_wellformedness` | getOwner preserves well-formedness |
 
 **Correctness:**
 

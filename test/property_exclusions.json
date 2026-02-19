@@ -24,10 +24,12 @@
     "getMapping_reads_balance",
     "getStorageAddr_reads_owner",
     "getStorage_reads_supply",
+    "mint_sum_singleton_to",
     "setMapping_preserves_other_addresses",
     "setMapping_updates_balance",
     "setStorageAddr_updates_owner",
-    "setStorage_updates_supply"
+    "setStorage_updates_supply",
+    "transfer_sum_preserved_unique"
   ],
   "Stdlib": [
     "SpecStorage_getMapping_setMapping_diff_slot",

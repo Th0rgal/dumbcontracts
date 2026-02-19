@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/Th0rgal/verity/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/built%20with-Lean%204-blueviolet.svg" alt="Built with Lean 4"></a>
-  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-371-brightgreen.svg" alt="371 Theorems"></a>
+  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-373-brightgreen.svg" alt="373 Theorems"></a>
   <a href="https://github.com/Th0rgal/verity/actions"><img src="https://img.shields.io/github/actions/workflow/status/Th0rgal/verity/verify.yml?label=verify" alt="Verify"></a>
 </p>
 
@@ -28,7 +28,7 @@ source ~/.elan/env
 # 2. Clone and build
 git clone https://github.com/Th0rgal/verity.git
 cd verity
-lake build                                    # Verifies all 371 theorems
+lake build                                    # Verifies all 373 theorems
 
 # 3. Generate a new contract
 python3 scripts/generate_contract.py MyContract
@@ -86,7 +86,7 @@ One spec can have many competing implementations - naive, gas-optimized, packed 
 | Owned | 23 | Access control and ownership transfer |
 | OwnedCounter | 48 | Cross-pattern composition, lockout proofs |
 | Ledger | 33 | Deposit/withdraw/transfer with balance conservation |
-| SimpleToken | 59 | Mint/transfer, supply conservation, storage isolation |
+| SimpleToken | 61 | Mint/transfer, supply conservation, storage isolation |
 | ReentrancyExample | 4 | Reentrancy vulnerability vs safe withdrawal |
 
 **Unverified examples**: [CryptoHash](Verity/Examples/CryptoHash.lean) demonstrates external library linking via the [Linker](Compiler/Linker.lean) but has no specs or proofs.
@@ -123,7 +123,7 @@ Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a step-by-step guide and [`docs-site/content/guides/linking-libraries.mdx`](docs-site/content/guides/linking-libraries.mdx) for the full documentation.
 
-371 theorems across 9 categories, all fully proven. 375 Foundry tests across 32 test suites. 220 covered by property tests (59% coverage, 151 proof-only exclusions). 2 documented axioms. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
+373 theorems across 9 categories, all fully proven. 375 Foundry tests across 32 test suites. 220 covered by property tests (59% coverage, 153 proof-only exclusions). 2 documented axioms. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
 
 ## What's Verified
 

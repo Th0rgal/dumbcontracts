@@ -25,7 +25,7 @@ open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSu
 open Verity.Specs.SimpleToken
 open Verity.Proofs.SimpleToken
 open Verity.Proofs.Stdlib.ListSum (countOcc countOccU countOccU_cons_eq countOccU_cons_ne
-  map_sum_point_update map_sum_transfer_eq)
+  map_sum_point_update map_sum_transfer_eq map_sum_point_decrease)
 open Verity.Proofs.Stdlib.Automation (evm_add_eq_hadd)
 
 /-! ## Helper: All-Zero List Sum -/
@@ -87,6 +87,18 @@ theorem mint_sum_equation (s : ContractState) (to : Address) (amount : Uint256)
     (fun addr => ((mint to amount).run s).snd.storageMap 1 addr)
     to amount h_bal h_other.1
 
+/-- Corollary: for a list where `to` appears exactly once, mint adds exactly `amount`. -/
+theorem mint_sum_singleton_to (s : ContractState) (to : Address) (amount : Uint256)
+  (h_owner : s.sender = s.storageAddr 0)
+  (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (addrs : List Address) (h_once : countOcc to addrs = 1) :
+  (addrs.map (fun addr => ((mint to amount).run s).snd.storageMap 1 addr)).sum
+  = (addrs.map (fun addr => s.storageMap 1 addr)).sum + amount := by
+  have h := mint_sum_equation s to amount h_owner h_no_bal_overflow h_no_sup_overflow addrs
+  simp [countOccU, h_once] at h
+  simpa [Verity.Core.Uint256.add_comm] using h
+
 /-- Exact sum conservation equation for transfer:
     new_sum + count(sender, addrs) * amount = old_sum + count(to, addrs) * amount.
 
@@ -114,9 +126,27 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
     s.sender to amount h_ne h_sender_bal h_recip_bal'
     h_other_bal.1
 
+/-- Corollary: for NoDup lists where sender and to each appear once,
+    the total balance sum is exactly preserved by transfer. -/
+theorem transfer_sum_preserved_unique (s : ContractState) (to : Address) (amount : Uint256)
+  (h_balance : s.storageMap 1 s.sender ≥ amount)
+  (h_ne : s.sender ≠ to)
+  (h_no_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
+  (addrs : List Address)
+  (h_sender_once : countOcc s.sender addrs = 1)
+  (h_to_once : countOcc to addrs = 1) :
+  (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum
+  = (addrs.map (fun addr => s.storageMap 1 addr)).sum := by
+  have h := transfer_sum_equation s to amount h_balance h_ne h_no_overflow addrs
+  simp [countOccU, h_sender_once, h_to_once] at h
+  have h' : (addrs.map (fun addr => ((transfer to amount).run s).snd.storageMap 1 addr)).sum + amount =
+      (addrs.map (fun addr => s.storageMap 1 addr)).sum + amount := by
+    simpa [Verity.Core.Uint256.add_comm] using h
+  exact Verity.Core.Uint256.add_right_cancel h'
+
 /-! ## Summary
 
-All 4 theorems fully proven with zero sorry (3 public + 1 private helper).
+All 6 theorems fully proven with zero sorry (5 public + 1 private helper).
 Generic list-sum helpers (countOcc, map_sum_point_update, map_sum_transfer_eq)
 are imported from Verity.Proofs.Stdlib.ListSum.
 
@@ -126,13 +156,13 @@ Helper lemma:
 Supply conservation:
 2. constructor_establishes_supply_bounds — constructor establishes invariant (all lists)
 3. mint_sum_equation — exact sum change: new = old + count(to) * amount
-4. transfer_sum_equation — exact conservation: new + count(sender)*amt = old + count(to)*amt
-Note: supply_bounds_balances as defined in Invariants.lean quantifies over ALL lists
-including duplicates. For a list with address `to` appearing k times, minting increases
-the sum by k*amount but supply by only amount, so the invariant is not preserved when
-k > 1. The exact equations above are the strongest correct statements. For full
-preservation, either restrict to NoDup lists or use a finite address model where
-supply = Σ all balances exactly (see Future Directions in STATUS.md).
+4. mint_sum_singleton_to — for unique to: new_sum = old_sum + amount
+5. transfer_sum_equation — exact conservation: new + count(sender)*amt = old + count(to)*amt
+6. transfer_sum_preserved_unique — for unique sender & to: new_sum = old_sum
+
+NoDup corollaries (4 and 6) give the strongest practical conservation statements:
+when each address appears at most once in the list, mint adds exactly `amount` to
+the balance sum, and transfer preserves it exactly.
 -/
 
 end Verity.Proofs.SimpleToken.Supply

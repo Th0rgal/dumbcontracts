@@ -35,6 +35,12 @@ def parse_args() -> argparse.Namespace:
         help="Foundry --match-path pattern used when collecting gas report.",
     )
     parser.add_argument(
+        "--foundry-report",
+        type=Path,
+        default=None,
+        help="Path to precomputed Foundry gas report output. If omitted, runs `forge test --gas-report`.",
+    )
+    parser.add_argument(
         "--tx-base-gas",
         type=int,
         default=TX_BASE_GAS,
@@ -120,6 +126,13 @@ def run_foundry_gas_report(match_path: str) -> str:
     return run_command(cmd, env=env)
 
 
+def parse_cell_int(raw: str) -> int | None:
+    cleaned = raw.strip().replace(",", "").replace("_", "")
+    if not cleaned or not cleaned.isdigit():
+        return None
+    return int(cleaned)
+
+
 def parse_foundry_report(stdout: str) -> tuple[dict[str, int], dict[str, tuple[int, int]]]:
     contract_header = re.compile(r"\|\s+[^|]*:(?P<name>[A-Za-z0-9_]+)\s+Contract\s*\|")
     observed_runtime: dict[str, int] = {}
@@ -151,20 +164,24 @@ def parse_foundry_report(stdout: str) -> tuple[dict[str, int], dict[str, tuple[i
         if len(cols) < 7:
             continue
 
-        if expect_deploy_row and cols[1].isdigit() and cols[2].isdigit():
-            observed_deploy[current] = (int(cols[1]), int(cols[2]))
+        if expect_deploy_row:
+            deploy_gas = parse_cell_int(cols[1])
+            deploy_size = parse_cell_int(cols[2])
+            if deploy_gas is not None and deploy_size is not None:
+                observed_deploy[current] = (deploy_gas, deploy_size)
+                expect_deploy_row = False
+                continue
             expect_deploy_row = False
-            continue
 
         fn_name = cols[1]
         if not fn_name or fn_name in {"Function Name", "Deployment Cost"}:
             continue
 
         max_col = cols[5]
-        if not max_col.isdigit():
+        max_gas = parse_cell_int(max_col)
+        if max_gas is None:
             continue
 
-        max_gas = int(max_col)
         if max_gas > observed_runtime[current]:
             observed_runtime[current] = max_gas
 
@@ -239,7 +256,10 @@ def main() -> int:
     args = parse_args()
     try:
         static_bounds = load_static_bounds(args.static_report)
-        foundry_stdout = run_foundry_gas_report(args.match_path)
+        if args.foundry_report is None:
+            foundry_stdout = run_foundry_gas_report(args.match_path)
+        else:
+            foundry_stdout = args.foundry_report.read_text(encoding="utf-8")
         foundry_runtime, foundry_deploy = parse_foundry_report(foundry_stdout)
         allowed_missing = set(args.allow_missing_contract)
         failures = validate_runtime_bounds(static_bounds, foundry_runtime, args.tx_base_gas)

@@ -252,21 +252,18 @@ theorem ownedCounter_only_owner_modifies (state : ContractState) (sender : Addre
     (increment.run { state with sender := sender }).isSuccess = true →
     state.storageAddr 0 = sender := by
   intro h_success
-  have h_onlyOwner :
-      ((onlyOwner).run { state with sender := sender }).isSuccess = true := by
-    simpa [increment, Contract.run] using
-      (Verity.Proofs.Stdlib.Automation.bind_isSuccess_left
+  have h_require_success :
+      ((require (sender == state.storageAddr 0) "Caller is not the owner").run
+        { state with sender := sender }).isSuccess = true := by
+    simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, Verity.bind, Verity.pure,
+      increment] using
+      Verity.Proofs.Stdlib.Automation.bind_isSuccess_left
         (m1 := onlyOwner)
         (m2 := fun _ =>
           Verity.bind (getStorage count) (fun current =>
             setStorage count (Verity.EVM.Uint256.add current 1)))
         (state := { state with sender := sender })
-        h_success)
-  have h_require_success :
-      ((require (sender == state.storageAddr 0) "Caller is not the owner").run
-        { state with sender := sender }).isSuccess = true := by
-    simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, Verity.bind, Verity.pure]
-      using h_onlyOwner
+        h_success
   exact (require_beq_success_implies_eq sender (state.storageAddr 0)
     "Caller is not the owner" _ h_require_success).symm
 

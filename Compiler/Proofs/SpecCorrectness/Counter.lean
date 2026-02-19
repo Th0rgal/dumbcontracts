@@ -56,28 +56,22 @@ private theorem evalExpr_decrement_eq (state : ContractState) (sender : Address)
       ((Expr.storage "count").sub (Expr.literal 1)) =
     (sub (state.storage 0) 1).val := by
   -- Both evalExpr and Uint256.sub use the same conditional on val >= 1.
-  have h1lt : (1 : Nat) < modulus := by
-    dsimp [modulus, Verity.Core.UINT256_MODULUS]
-    decide
-  have h1mod : (1 % modulus) = (1 : Nat) := Nat.mod_eq_of_lt h1lt
+  have h1mod : (1 % modulus) = (1 : Nat) := Nat.mod_eq_of_lt (by dsimp [modulus, Verity.Core.UINT256_MODULUS]; decide)
   have hidx :
       (List.findIdx? (fun f : Field => f.name == "count")
           (([{ name := "count", ty := FieldType.uint256 }] : List Field))) = some 0 := by
     simp [List.findIdx?]
   by_cases h : (state.storage 0).val ≥ 1
   · -- No underflow: both sides are val - 1.
-    have hle : (1 : Verity.Core.Uint256).val ≤ (state.storage 0).val := by
-      simpa using h
     have h_sub : (sub (state.storage 0) 1).val = (state.storage 0).val - 1 := by
-      simpa using (Verity.EVM.Uint256.sub_eq_of_le (a := state.storage 0) (b := (1 : Verity.Core.Uint256)) hle)
+      simpa using Verity.EVM.Uint256.sub_eq_of_le (a := state.storage 0) (b := (1 : Verity.Core.Uint256)) (by simpa using h)
     -- Reduce evalExpr to the same expression
     simp [evalExpr, SpecStorage.getSlot, List.lookup, hidx, h1mod, h, h_sub]  -- result matches
   · -- Underflow case: val = 0, so result is modulus - 1 on both sides.
     have h0 : (state.storage 0).val = 0 := Nat.lt_one_iff.mp (Nat.lt_of_not_ge h)
-    have hgt : (1 : Verity.Core.Uint256).val > (state.storage 0).val := by simp [h0]
     have h_sub : (sub (state.storage 0) 1).val =
         (modulus - ((1 : Verity.Core.Uint256).val - (state.storage 0).val)) % modulus := by
-      simpa using (Verity.Core.Uint256.sub_val_of_gt (a := state.storage 0) (b := (1 : Verity.Core.Uint256)) hgt)
+      simpa using Verity.Core.Uint256.sub_val_of_gt (a := state.storage 0) (b := (1 : Verity.Core.Uint256)) (by simp [h0])
     have h_mod : (modulus - (1 - (state.storage 0).val)) % modulus =
         modulus - (1 - (state.storage 0).val) := by
       apply Nat.mod_eq_of_lt

@@ -350,9 +350,7 @@ theorem transfer_preserves_supply_when_sufficient (s : ContractState) (to : Addr
   have h := transfer_meets_spec_when_sufficient s to amount h_balance h_no_overflow
   simp [transfer_spec] at h
   have h_storage : Specs.sameStorage s ((transfer to amount).run s).snd := by
-    by_cases h_eq : s.sender = to
-    · simpa [h_eq] using h.2.2.2.2.2.1
-    · simpa [h_eq] using h.2.2.2.2.2.1
+    exact h.2.2.2.2.2.1
   have h_eq : ((transfer to amount).run s).snd.storage = s.storage := by
     simpa [Specs.sameStorage] using h_storage
   simpa using congrArg (fun f => f 2) h_eq

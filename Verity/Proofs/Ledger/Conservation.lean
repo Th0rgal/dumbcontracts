@@ -74,11 +74,7 @@ theorem withdraw_sum_equation (s : ContractState) (amount : Uint256)
     (addrs.map (fun addr => ((withdraw amount).run s).snd.storageMap 0 addr)).sum
       + countOccU s.sender addrs * amount
     = (addrs.map (fun addr => s.storageMap 0 addr)).sum := by
-  have h_dec_raw := withdraw_decreases_balance s amount h_balance
-  have h_dec :
-      ((withdraw amount).run s).snd.storageMap 0 s.sender =
-        s.storageMap 0 s.sender - amount := by
-    exact h_dec_raw
+  have h_dec := withdraw_decreases_balance s amount h_balance
   have h_other : ∀ addr, addr ≠ s.sender →
     ((withdraw amount).run s).snd.storageMap 0 addr = s.storageMap 0 addr := by
     intro addr h_ne
@@ -128,10 +124,6 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
   have h_spec := transfer_meets_spec s to amount h_balance (fun _ => h_no_overflow)
   simp [transfer_spec, h_ne, beq_iff_eq] at h_spec
   obtain ⟨h_sender_bal, h_recip_bal, h_other_bal, _, _, _⟩ := h_spec
-  have h_sender_bal' :
-      ((transfer to amount).run s).snd.storageMap 0 s.sender =
-        s.storageMap 0 s.sender - amount := by
-    exact h_sender_bal
   have h_recip_bal' :
       ((transfer to amount).run s).snd.storageMap 0 to =
         s.storageMap 0 to + amount := by
@@ -140,7 +132,7 @@ theorem transfer_sum_equation (s : ContractState) (to : Address) (amount : Uint2
   exact map_sum_transfer_eq
     (fun addr => s.storageMap 0 addr)
     (fun addr => ((transfer to amount).run s).snd.storageMap 0 addr)
-    s.sender to amount h_ne h_sender_bal' h_recip_bal'
+    s.sender to amount h_ne h_sender_bal h_recip_bal'
     (fun addr h1 h2 => h_other_bal.1 addr h1 h2)
 
 /-- Corollary: for NoDup lists where sender and to each appear once,

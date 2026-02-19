@@ -73,22 +73,15 @@ private theorem evalExpr_decrement_eq (state : ContractState) (sender : Address)
     -- Reduce evalExpr to the same expression
     simp [evalExpr, SpecStorage.getSlot, List.lookup, hidx, h1mod, h, h_sub]  -- result matches
   · -- Underflow case: val = 0, so result is modulus - 1 on both sides.
-    have hlt : (state.storage 0).val < 1 := Nat.lt_of_not_ge h
-    have h0 : (state.storage 0).val = 0 := by
-      exact (Nat.lt_one_iff.mp hlt)
-    have hgt : (1 : Verity.Core.Uint256).val > (state.storage 0).val := by
-      simp [h0]
+    have h0 : (state.storage 0).val = 0 := Nat.lt_one_iff.mp (Nat.lt_of_not_ge h)
+    have hgt : (1 : Verity.Core.Uint256).val > (state.storage 0).val := by simp [h0]
     have h_sub : (sub (state.storage 0) 1).val =
         (modulus - ((1 : Verity.Core.Uint256).val - (state.storage 0).val)) % modulus := by
       simpa using (Verity.Core.Uint256.sub_val_of_gt (a := state.storage 0) (b := (1 : Verity.Core.Uint256)) hgt)
-    have hlt_mod : modulus - (1 - (state.storage 0).val) < modulus := by
-      -- With val = 0, this is modulus - 1 < modulus.
-      have hle : (1 : Nat) ≤ modulus := Nat.succ_le_of_lt Verity.Core.Uint256.modulus_pos
-      have hpos : 0 < (1 : Nat) := by decide
-      simpa [h0] using (Nat.sub_lt_of_pos_le hpos hle)
     have h_mod : (modulus - (1 - (state.storage 0).val)) % modulus =
         modulus - (1 - (state.storage 0).val) := by
-      exact Nat.mod_eq_of_lt hlt_mod
+      apply Nat.mod_eq_of_lt
+      simpa [h0] using Nat.sub_lt_of_pos_le Nat.one_pos (Nat.succ_le_of_lt Verity.Core.Uint256.modulus_pos)
     simp [evalExpr, SpecStorage.getSlot, List.lookup, hidx, h1mod, h, h0, h_sub, h_mod]
 
 /- Correctness Theorems -/

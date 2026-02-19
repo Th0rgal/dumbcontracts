@@ -103,11 +103,8 @@ theorem store_preserves_wellformedness (s : ContractState) (value : Uint256)
   (h : WellFormedState s) :
   let s' := ((store value).run s).snd
   WellFormedState s' := by
-  constructor
-  · simp [store, storedData]
-    exact h.sender_nonempty
-  · simp [store, storedData]
-    exact h.contract_nonempty
+  simp only [store, storedData, setStorage, Contract.run, ContractResult.snd]
+  exact ⟨h.sender_nonempty, h.contract_nonempty⟩
 
 -- Theorem: retrieve preserves state (read-only operation)
 theorem retrieve_preserves_state (s : ContractState) :

@@ -171,18 +171,14 @@ theorem increment_decrement_cancel (s : ContractState) :
 theorem increment_preserves_wellformedness (s : ContractState) (h : WellFormedState s) :
   let s' := ((increment).run s).snd
   WellFormedState s' := by
-  have h_spec := increment_meets_spec s
-  rcases h_spec with ⟨_, _, h_same⟩
-  rcases h_same with ⟨_, _, h_ctx⟩
-  exact ⟨h_ctx.1 ▸ h.sender_nonempty, h_ctx.2.1 ▸ h.contract_nonempty⟩
+  simp only [increment, count, getStorage, setStorage, bind, Contract.run, Bind.bind, ContractResult.snd]
+  exact ⟨h.sender_nonempty, h.contract_nonempty⟩
 
 theorem decrement_preserves_wellformedness (s : ContractState) (h : WellFormedState s) :
   let s' := ((decrement).run s).snd
   WellFormedState s' := by
-  have h_spec := decrement_meets_spec s
-  rcases h_spec with ⟨_, _, h_same⟩
-  rcases h_same with ⟨_, _, h_ctx⟩
-  exact ⟨h_ctx.1 ▸ h.sender_nonempty, h_ctx.2.1 ▸ h.contract_nonempty⟩
+  simp only [decrement, count, getStorage, setStorage, bind, Contract.run, Bind.bind, ContractResult.snd]
+  exact ⟨h.sender_nonempty, h.contract_nonempty⟩
 
 theorem getCount_preserves_state (s : ContractState) :
   let s' := ((getCount).run s).snd

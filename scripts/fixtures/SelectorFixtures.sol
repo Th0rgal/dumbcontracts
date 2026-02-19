@@ -49,4 +49,10 @@ contract SelectorFixtures {
         }
         return blob.length;
     }
+
+    function callWithCallback(
+        function(uint256) external returns (uint256) cb
+    ) external pure returns (bool) {
+        return cb.address != address(0);
+    }
 }

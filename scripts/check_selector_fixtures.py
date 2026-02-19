@@ -20,6 +20,8 @@ FUNCTION_RE = re.compile(
     r"\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*(?:external|public|internal|private)\b",
     re.DOTALL,
 )
+IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+ARRAY_SUFFIX_RE = re.compile(r"(\[[0-9]*\]\s*)+$")
 
 
 def _split_top_level_commas(params: str) -> list[str]:
@@ -47,13 +49,43 @@ def _canonical_param_type(raw: str) -> str:
     if not text:
         return ""
 
-    parts = text.split(" ")
-    if len(parts) > 1:
-        # Drop trailing parameter name.
-        text = " ".join(parts[:-1])
+    text = _drop_trailing_param_name(text)
+
+    # Solidity function types are selector-encoded as `function`,
+    # regardless of their full internal signature.
+    if text.startswith("function"):
+        suffix_match = ARRAY_SUFFIX_RE.search(text)
+        suffix = ""
+        if suffix_match:
+            suffix = re.sub(r"\s+", "", suffix_match.group(0))
+        return f"function{suffix}"
 
     # Normalize spaces around tuple/array punctuation.
     text = re.sub(r"\s*([\[\]\(\),])\s*", r"\1", text)
+    return text
+
+
+def _drop_trailing_param_name(text: str) -> str:
+    paren_depth = 0
+    bracket_depth = 0
+    last_space = -1
+    for idx, ch in enumerate(text):
+        if ch == "(":
+            paren_depth += 1
+        elif ch == ")":
+            paren_depth = max(0, paren_depth - 1)
+        elif ch == "[":
+            bracket_depth += 1
+        elif ch == "]":
+            bracket_depth = max(0, bracket_depth - 1)
+        elif ch == " " and paren_depth == 0 and bracket_depth == 0:
+            last_space = idx
+    if last_space == -1:
+        return text
+
+    tail = text[last_space + 1 :].strip()
+    if IDENT_RE.fullmatch(tail):
+        return text[:last_space].rstrip()
     return text
 
 

@@ -286,8 +286,8 @@ theorem ownedCounter_only_owner_modifies (state : ContractState) (sender : Addre
             setStorage count (Verity.EVM.Uint256.add current 1)))
         (state := { state with sender := sender })
         h_success
-  exact (require_beq_success_implies_eq sender (state.storageAddr 0)
-    "Caller is not the owner" _ h_require_success).symm
+  exact (require_beq_isSuccess_true_iff_eq sender (state.storageAddr 0)
+    "Caller is not the owner" _).1 h_require_success |>.symm
 
 /-- Owner and count slots are independent -/
 theorem ownedCounter_slots_independent (state : ContractState) (newOwner : Address) (sender : Address)

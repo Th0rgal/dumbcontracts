@@ -145,8 +145,8 @@ theorem owned_only_owner_can_transfer (state : ContractState) (newOwner : Addres
         (m2 := fun _ => setStorageAddr owner newOwner)
         (state := { state with sender := sender })
         h_success
-  exact (require_beq_success_implies_eq sender (state.storageAddr 0)
-    "Caller is not the owner" _ h_require_success).symm
+  exact (require_beq_isSuccess_true_iff_eq sender (state.storageAddr 0)
+    "Caller is not the owner" _).1 h_require_success |>.symm
 
 /-- Constructor sets initial owner correctly -/
 theorem owned_constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :

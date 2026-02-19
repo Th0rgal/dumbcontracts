@@ -19,3 +19,6 @@ lean_exe «difftest-interpreter» where
 
 lean_exe «random-gen» where
   root := `Compiler.RandomGen
+
+lean_exe «gas-report» where
+  root := `Compiler.Gas.Report

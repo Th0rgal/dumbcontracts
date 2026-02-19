@@ -15,7 +15,20 @@ from __future__ import annotations
 
 import re
 
-from property_utils import ROOT, die, report_errors
+from property_utils import ROOT, report_errors, strip_lean_comments
+
+STRING_RE = re.compile(r'"(?:\\.|[^"\\])*"')
+SORRY_RE = re.compile(r"\bsorry\b")
+
+
+def scrub_lean_code(text: str) -> str:
+    """Remove comments and string literal contents from Lean source text."""
+    return STRING_RE.sub('""', strip_lean_comments(text))
+
+
+def line_starts_with_command(line: str, cmd: str) -> bool:
+    stripped = line.lstrip()
+    return stripped == cmd or stripped.startswith(cmd + " ")
 
 
 def main() -> None:
@@ -27,12 +40,10 @@ def main() -> None:
     for proof_dir in proof_dirs:
         for lean_file in proof_dir.rglob("*.lean"):
             rel = lean_file.relative_to(ROOT)
-            for i, line in enumerate(lean_file.read_text().splitlines(), 1):
-                stripped = line.lstrip()
-                if stripped.startswith("--"):
-                    continue
+            scrubbed_lines = scrub_lean_code(lean_file.read_text(encoding="utf-8")).splitlines()
+            for i, line in enumerate(scrubbed_lines, 1):
                 for cmd in debug_commands:
-                    if stripped.startswith(cmd + " ") or stripped == cmd:
+                    if line_starts_with_command(line, cmd):
                         errors.append(
                             f"{rel}:{i}: found {cmd} in proof file "
                             f"(debug command that slows builds)"
@@ -46,8 +57,9 @@ def main() -> None:
         if ".lake" in str(lean_file):
             continue
         rel = lean_file.relative_to(ROOT)
-        for i, line in enumerate(lean_file.read_text().splitlines(), 1):
-            if "allowUnsafeReducibility" in line and not line.lstrip().startswith("--"):
+        scrubbed_lines = scrub_lean_code(lean_file.read_text(encoding="utf-8")).splitlines()
+        for i, line in enumerate(scrubbed_lines, 1):
+            if "allowUnsafeReducibility" in line:
                 unsafe_count += 1
                 unsafe_locations.append(f"{rel}:{i}")
 
@@ -58,44 +70,14 @@ def main() -> None:
         )
 
     # Check 3: No sorry in any Lean file (global proof completeness)
-    # Track block comment nesting to skip /- ... -/ and /-! ... -/ comments.
-    sorry_re = re.compile(r"\bsorry\b")
     sorry_count = 0
     for lean_file in ROOT.rglob("*.lean"):
         if ".lake" in str(lean_file):
             continue
         rel = lean_file.relative_to(ROOT)
-        block_depth = 0
-        for i, line in enumerate(lean_file.read_text().splitlines(), 1):
-            # Update block comment depth
-            j = 0
-            code_parts: list[str] = []
-            line_len = len(line)
-            while j < line_len:
-                if block_depth > 0:
-                    if j + 1 < line_len and line[j] == "-" and line[j + 1] == "/":
-                        block_depth -= 1
-                        j += 2
-                    elif j + 1 < line_len and line[j] == "/" and line[j + 1] == "-":
-                        block_depth += 1
-                        j += 2
-                    else:
-                        j += 1
-                else:
-                    if j + 1 < line_len and line[j] == "/" and line[j + 1] == "-":
-                        block_depth += 1
-                        j += 2
-                    else:
-                        code_parts.append(line[j])
-                        j += 1
-            code = "".join(code_parts)
-            # Skip line comments
-            comment_idx = code.find("--")
-            if comment_idx >= 0:
-                code = code[:comment_idx]
-            # Remove string literals
-            code = re.sub(r'"[^"]*"', '', code)
-            if sorry_re.search(code):
+        scrubbed_lines = scrub_lean_code(lean_file.read_text(encoding="utf-8")).splitlines()
+        for i, line in enumerate(scrubbed_lines, 1):
+            if SORRY_RE.search(line):
                 sorry_count += 1
                 errors.append(f"{rel}:{i}: found sorry (incomplete proof)")
 
@@ -109,11 +91,9 @@ def main() -> None:
             # Smoke tests legitimately use native_decide for string comparisons
             if "SmokeTest" in lean_file.name:
                 continue
-            for i, line in enumerate(lean_file.read_text().splitlines(), 1):
-                stripped = line.lstrip()
-                if stripped.startswith("--"):
-                    continue
-                if "native_decide" in stripped:
+            scrubbed_lines = scrub_lean_code(lean_file.read_text(encoding="utf-8")).splitlines()
+            for i, line in enumerate(scrubbed_lines, 1):
+                if "native_decide" in line:
                     native_decide_count += 1
                     errors.append(
                         f"{rel}:{i}: found native_decide in proof file "

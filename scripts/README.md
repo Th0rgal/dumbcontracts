@@ -104,7 +104,7 @@ python3 scripts/check_contract_structure.py
 - **`check_yul_compiles.py`** - Ensures generated Yul code compiles with solc and can compare bytecode parity between directories
 - **`check_gas_report.py`** - Validates `lake exe gas-report` output shape, arithmetic consistency of totals, and monotonicity under more conservative static analysis settings
 - **`check_gas_model_coverage.py`** - Verifies that every call emitted in `compiler/yul/*.yul` has an explicit cost branch in `Compiler/Gas/StaticAnalysis.lean` (prevents silent fallback to unknown-call costs)
-- **`check_gas_calibration.py`** - Compares static runtime bounds (`lake exe gas-report`) against Foundry `--gas-report` measurements for `test/yul/*.t.sol`, requiring static bounds + transaction base gas to dominate observed max call gas
+- **`check_gas_calibration.py`** - Compares static bounds (`lake exe gas-report`) against Foundry `--gas-report` measurements for `test/yul/*.t.sol`, requiring runtime bounds + transaction base gas to dominate observed max call gas and deploy bounds + creation/code-deposit overhead to dominate deployment gas
 
 ```bash
 # Default: check compiler/yul
@@ -169,7 +169,7 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 6. Save static gas report artifact (`gas-report-static.tsv`)
 7. Coverage and storage layout reports in workflow summary
 
-**`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report
+**`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42
 **`foundry-multi-seed`** — 7-seed flakiness detection (seeds: 0, 1, 42, 123, 999, 12345, 67890)
 

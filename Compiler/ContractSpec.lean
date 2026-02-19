@@ -205,6 +205,7 @@ inductive Stmt
   | returnValues (values : List Expr)  -- ABI-encode multiple static return words
   | returnArray (name : String)        -- ABI-encode dynamic uint256[] parameter loaded from calldata
   | returnBytes (name : String)        -- ABI-encode dynamic bytes parameter loaded from calldata
+  | returnStorageWords (name : String) -- ABI-encode dynamic uint256[] from sload over a dynamic word-array parameter
   | stop
   | ite (cond : Expr) (thenBranch : List Stmt) (elseBranch : List Stmt)  -- If/else (#179)
   | forEach (varName : String) (count : Expr) (body : List Stmt)  -- Bounded loop (#179)
@@ -650,6 +651,30 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         YulStmt.expr (YulExpr.call "calldatacopy" [YulExpr.lit 64, dataOffset, lenIdent]),
         YulStmt.expr (YulExpr.call "mstore" [tailOffset, YulExpr.lit 0]),
         YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.call "add" [YulExpr.lit 64, paddedLen]])
+      ]
+  | Stmt.returnStorageWords name => do
+      let lenIdent := YulExpr.ident s!"{name}_length"
+      let dataOffset := YulExpr.ident s!"{name}_data_offset"
+      pure [
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.lit 32]),
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 32, lenIdent]),
+        YulStmt.for_
+          [YulStmt.let_ "__i" (YulExpr.lit 0)]
+          (YulExpr.call "lt" [YulExpr.ident "__i", lenIdent])
+          [YulStmt.assign "__i" (YulExpr.call "add" [YulExpr.ident "__i", YulExpr.lit 1])]
+          [
+            YulStmt.let_ "__slot" (YulExpr.call "calldataload" [
+              YulExpr.call "add" [dataOffset, YulExpr.call "mul" [YulExpr.ident "__i", YulExpr.lit 32]]
+            ]),
+            YulStmt.expr (YulExpr.call "mstore" [
+              YulExpr.call "add" [YulExpr.lit 64, YulExpr.call "mul" [YulExpr.ident "__i", YulExpr.lit 32]],
+              YulExpr.call "sload" [YulExpr.ident "__slot"]
+            ])
+          ],
+        YulStmt.expr (YulExpr.call "return" [
+          YulExpr.lit 0,
+          YulExpr.call "add" [YulExpr.lit 64, YulExpr.call "mul" [lenIdent, YulExpr.lit 32]]
+        ])
       ]
 end
 

@@ -139,19 +139,16 @@ theorem only_owner_can_transfer (state : ContractState) (newOwner : Address) (se
     ((transferOwnership newOwner).run { state with sender := sender }).isSuccess = true →
     state.storageAddr 0 = sender := by
   intro h_success
-  have h_onlyOwner :
-      ((onlyOwner).run { state with sender := sender }).isSuccess = true := by
-    simpa [transferOwnership, Contract.run] using
-      (Verity.Proofs.Stdlib.Automation.bind_isSuccess_left
-        (m1 := onlyOwner)
-        (m2 := fun _ => setStorageAddr owner newOwner)
-        (state := { state with sender := sender })
-        h_success)
   have h_require_success :
       ((require (sender == state.storageAddr 0) "Caller is not the owner").run
         { state with sender := sender }).isSuccess = true := by
-    simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, Verity.bind, Verity.pure]
-      using h_onlyOwner
+    simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, Verity.bind, Verity.pure,
+      transferOwnership] using
+      Verity.Proofs.Stdlib.Automation.bind_isSuccess_left
+        (m1 := onlyOwner)
+        (m2 := fun _ => setStorageAddr owner newOwner)
+        (state := { state with sender := sender })
+        h_success
   exact (require_beq_success_implies_eq sender (state.storageAddr 0)
     "Caller is not the owner" _ h_require_success).symm
 

@@ -45,11 +45,7 @@ theorem transferOwnership_preserves_wellformedness (s : ContractState) (newOwner
   (h : WellFormedState s) (h_owner : s.sender = s.storageAddr 0) (h_new : newOwner ≠ "") :
   let s' := ((transferOwnership newOwner).run s).snd
   WellFormedState s' := by
-  simp only [transferOwnership, onlyOwner, isOwner, owner,
-    msgSender, getStorageAddr, setStorageAddr,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_owner]
+  rw [transferOwnership_unfold s newOwner h_owner]; simp [ContractResult.snd]
   exact ⟨h_owner ▸ h.sender_nonempty, h.contract_nonempty, h_new⟩
 
 /-! ## End-to-End Composition -/
@@ -73,12 +69,10 @@ theorem transferred_owner_cannot_act (s : ContractState) (newOwner : Address)
   (h_owner : s.sender = s.storageAddr 0) (h_ne : s.sender ≠ newOwner) :
   let s' := ((transferOwnership newOwner).run s).snd
   ∃ msg, (transferOwnership "anyone").run s' = ContractResult.revert msg s' := by
-  simp only [transferOwnership, onlyOwner, isOwner, owner,
-    msgSender, getStorageAddr, setStorageAddr,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  have h_ne2 : s.storageAddr 0 ≠ newOwner := h_owner ▸ h_ne
-  simp [h_owner, h_ne2]
+  have h_ne' : ((transferOwnership newOwner).run s).snd.sender ≠
+      ((transferOwnership newOwner).run s).snd.storageAddr 0 := by
+    rw [transferOwnership_unfold s newOwner h_owner]; simp [ContractResult.snd, h_ne]
+  exact transferOwnership_reverts_when_not_owner _ _ h_ne'
 
 /-! ## Summary
 

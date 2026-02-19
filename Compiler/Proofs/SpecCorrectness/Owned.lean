@@ -19,7 +19,6 @@ import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
 import Compiler.Hex
 import Verity.Examples.Owned
-import Verity.Core.Uint256
 
 namespace Compiler.Proofs.SpecCorrectness
 

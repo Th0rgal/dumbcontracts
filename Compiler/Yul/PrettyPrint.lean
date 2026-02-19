@@ -33,8 +33,7 @@ def ppExpr : YulExpr → String
   | str s => "\"" ++ s ++ "\""
   | ident name => name
   | call func args =>
-      let rendered := ppExprs args |>.intersperse ", " |>.foldl (· ++ ·) ""
-      s!"{func}({rendered})"
+      s!"{func}({", ".intercalate (ppExprs args)})"
 
 def ppExprs : List YulExpr → List String
   | [] => []
@@ -81,11 +80,11 @@ def ppStmt (indent : Nat) : YulStmt → List String
       let footer := s!"{indentStr indent}}"
       header :: bodyLines ++ [footer]
   | YulStmt.funcDef name params rets body =>
-      let paramsStr := params.intersperse ", " |>.foldl (· ++ ·) ""
+      let paramsStr := ", ".intercalate params
       let retsStr :=
         match rets with
         | [] => ""
-        | _ => " -> " ++ (rets.intersperse ", " |>.foldl (· ++ ·) "")
+        | _ => " -> " ++ ", ".intercalate rets
       let header := indentStr indent ++ "function " ++ name ++ "(" ++ paramsStr ++ ")" ++ retsStr ++ " {"
       let bodyLines := ppStmts (indent + 1) body
       let footer := s!"{indentStr indent}}"
@@ -121,6 +120,6 @@ private def ppObject (obj : YulObject) : List String :=
     ++ [footer]
 
 def render (obj : YulObject) : String :=
-  (ppObject obj).intersperse "\n" |>.foldl (· ++ ·) ""
+  "\n".intercalate (ppObject obj)
 
 end Compiler.Yul

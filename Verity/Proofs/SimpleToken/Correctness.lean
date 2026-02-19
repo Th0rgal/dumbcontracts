@@ -22,7 +22,7 @@ namespace Verity.Proofs.SimpleToken.Correctness
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256 safeAdd requireSomeUint)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
-open Verity.Specs.SimpleToken hiding owner balances totalSupply
+open Verity.Specs.SimpleToken
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 open Verity.Proofs.SimpleToken
 

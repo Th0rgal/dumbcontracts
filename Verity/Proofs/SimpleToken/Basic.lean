@@ -24,7 +24,7 @@ open Verity.Stdlib.Math
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne uint256_ge_val_le wf_of_state_eq)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
-open Verity.Specs.SimpleToken hiding owner balances totalSupply
+open Verity.Specs.SimpleToken
 
 /-! ## Basic Lemmas for Storage Operations -/
 

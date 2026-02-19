@@ -260,9 +260,7 @@ theorem constructor_preserves_wellformedness (s : ContractState) (initialOwner :
   have h_spec := constructor_meets_spec s initialOwner
   rcases h_spec with ⟨h_set, _h_other_addr, h_same⟩
   rcases h_same with ⟨_h_storage, _h_map, h_ctx⟩
-  have h_sender := h_ctx.1
-  have h_this := h_ctx.2.1
-  exact ⟨h_sender ▸ h.sender_nonempty, h_this ▸ h.contract_nonempty, h_set ▸ h_owner⟩
+  exact ⟨h_ctx.1 ▸ h.sender_nonempty, h_ctx.2.1 ▸ h.contract_nonempty, h_set ▸ h_owner⟩
 
 theorem increment_preserves_wellformedness (s : ContractState)
   (h : WellFormedState s) (h_owner : s.sender = s.storageAddr 0) :

@@ -20,10 +20,35 @@ runs:
       shell: bash
       run: chmod +x .lake/build/bin/difftest-interpreter
 
-    - name: Install Foundry
-      uses: foundry-rs/foundry-toolchain@v1
-      with:
-        version: v1.5.0
+    - name: Install Foundry (retry on transient download errors)
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        curl -fsSL https://foundry.paradigm.xyz | bash
+        export PATH="$HOME/.foundry/bin:$PATH"
+
+        max_attempts=3
+        attempt=1
+        until foundryup --install 1.5.0; do
+          if [ "$attempt" -ge "$max_attempts" ]; then
+            echo "foundryup failed after ${max_attempts} attempts"
+            exit 1
+          fi
+          sleep_seconds=$((attempt * 5))
+          echo "foundryup attempt ${attempt} failed, retrying in ${sleep_seconds}s"
+          sleep "$sleep_seconds"
+          attempt=$((attempt + 1))
+        done
+
+    - name: Verify Foundry tools
+      shell: bash
+      run: |
+        set -euo pipefail
+        export PATH="$HOME/.foundry/bin:$PATH"
+        forge --version
+        cast --version
+        anvil --version
 
     - name: Setup solc
       uses: ./.github/actions/setup-solc

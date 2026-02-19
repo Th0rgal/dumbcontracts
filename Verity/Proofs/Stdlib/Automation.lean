@@ -41,20 +41,20 @@ open Compiler.Hex
 -- Lemmas for isSuccess
 @[simp]
 theorem isSuccess_success {α : Type} (a : α) (s : ContractState) :
-    (ContractResult.success a s).isSuccess = true := by rfl
+    (ContractResult.success a s).isSuccess = true := rfl
 
 @[simp]
 theorem isSuccess_revert {α : Type} (msg : String) (s : ContractState) :
-    (ContractResult.revert msg s : ContractResult α).isSuccess = false := by rfl
+    (ContractResult.revert msg s : ContractResult α).isSuccess = false := rfl
 
 -- Lemmas for getState
 @[simp]
 theorem getState_success {α : Type} (a : α) (s : ContractState) :
-    (ContractResult.success a s).getState = s := by rfl
+    (ContractResult.success a s).getState = s := rfl
 
 @[simp]
 theorem getState_revert {α : Type} (msg : String) (s : ContractState) :
-    (ContractResult.revert msg s : ContractResult α).getState = s := by rfl
+    (ContractResult.revert msg s : ContractResult α).getState = s := rfl
 
 /-!
 ## Basic Storage Operation Lemmas

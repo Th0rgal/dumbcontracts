@@ -24,10 +24,10 @@ open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 
 private theorem onlyOwner_reverts (s : ContractState) (h : s.sender ≠ s.storageAddr 0) :
     onlyOwner s = ContractResult.revert "Caller is not the owner" s := by
-  simp only [onlyOwner, isOwner, owner, msgSender, getStorageAddr,
+  simp [onlyOwner, isOwner, owner, msgSender, getStorageAddr,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    ContractResult.snd, ContractResult.fst]
-  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h]
+    ContractResult.snd, ContractResult.fst,
+    address_beq_false_of_ne s.sender (s.storageAddr 0) h]
 
 private theorem guarded_reverts (f : Unit → Contract α) (s : ContractState)
     (h : s.sender ≠ s.storageAddr 0) :
@@ -107,11 +107,10 @@ theorem increment_unfold (s : ContractState)
       blockTimestamp := s.blockTimestamp,
       knownAddresses := s.knownAddresses,
       events := s.events } := by
-  simp only [increment, onlyOwner, isOwner, owner, count,
+  simp [increment, onlyOwner, isOwner, owner, count,
     msgSender, getStorageAddr, getStorage, setStorage,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_owner]
+    Contract.run, ContractResult.snd, ContractResult.fst, h_owner]
 
 theorem increment_meets_spec_when_owner (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
@@ -152,11 +151,10 @@ theorem decrement_unfold (s : ContractState)
       blockTimestamp := s.blockTimestamp,
       knownAddresses := s.knownAddresses,
       events := s.events } := by
-  simp only [decrement, onlyOwner, isOwner, owner, count,
+  simp [decrement, onlyOwner, isOwner, owner, count,
     msgSender, getStorageAddr, getStorage, setStorage,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_owner]
+    Contract.run, ContractResult.snd, ContractResult.fst, h_owner]
 
 theorem decrement_meets_spec_when_owner (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
@@ -196,11 +194,10 @@ theorem transferOwnership_unfold (s : ContractState) (newOwner : Address)
       blockTimestamp := s.blockTimestamp,
       knownAddresses := s.knownAddresses,
       events := s.events } := by
-  simp only [transferOwnership, onlyOwner, isOwner, owner,
+  simp [transferOwnership, onlyOwner, isOwner, owner,
     msgSender, getStorageAddr, setStorageAddr,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_owner]
+    Contract.run, ContractResult.snd, ContractResult.fst, h_owner]
 
 theorem transferOwnership_meets_spec_when_owner (s : ContractState) (newOwner : Address)
   (h_owner : s.sender = s.storageAddr 0) :

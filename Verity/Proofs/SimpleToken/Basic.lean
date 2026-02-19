@@ -13,6 +13,7 @@ import Verity.Examples.SimpleToken
 import Verity.EVM.Uint256
 import Verity.Stdlib.Math
 import Verity.Proofs.Stdlib.Math
+import Verity.Proofs.Stdlib.Automation
 import Verity.Specs.SimpleToken.Spec
 import Verity.Specs.SimpleToken.Invariants
 
@@ -21,6 +22,7 @@ namespace Verity.Proofs.SimpleToken
 open Verity
 open Verity.Stdlib.Math
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
+open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken hiding owner balances totalSupply
 
@@ -346,16 +348,13 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
     simp only [ContractResult.snd]
     refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_⟩
     · -- sender balance decreased: the 'to' branch doesn't match sender
-      have h_ne' : (s.sender == to) = false := by
-        simp [beq_iff_eq]; exact h_eq
+      have h_ne' := address_beq_false_of_ne s.sender to h_eq
       simp [h_ne']
     · -- recipient balance increased
-      have h_ne' : (s.sender == to) = false := by
-        simp [beq_iff_eq]; exact h_eq
+      have h_ne' := address_beq_false_of_ne s.sender to h_eq
       simp [h_ne']
     · -- other balances/slots preserved
-      have h_ne' : (s.sender == to) = false := by
-        simp [beq_iff_eq]; exact h_eq
+      have h_ne' := address_beq_false_of_ne s.sender to h_eq
       simp [h_ne']
       refine ⟨?_, ?_⟩
       · intro addr h_ne_sender h_ne_to; simp [h_ne_sender, h_ne_to]

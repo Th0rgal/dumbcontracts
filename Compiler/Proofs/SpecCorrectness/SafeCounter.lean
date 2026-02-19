@@ -29,6 +29,7 @@ open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity
 open Verity.Examples.SafeCounter
 open Verity.Stdlib.Math
+open Verity.Proofs.Stdlib.Automation
 
 /- State Conversion -/
 
@@ -54,17 +55,6 @@ private theorem lookup_count_single (count : Nat) :
     (List.lookup "count" [("count", count)]).getD 0 = count := by
   simp [List.lookup]
 
-private theorem one_modulus :
-    (1 : Nat) % Verity.Core.Uint256.modulus = 1 := by
-  have h : (1 : Nat) < Verity.Core.Uint256.modulus := by
-    decide
-  exact Nat.mod_eq_of_lt h
-
-private theorem add_one_val_eq_mod (a : Verity.Core.Uint256) :
-    (a + 1).val =
-      ((a.val + (1 % Verity.Core.Uint256.modulus)) % Verity.Core.Uint256.modulus) := by
-  rfl
-
 private theorem add_one_val_eq_mod' (a : Verity.Core.Uint256) :
     (Verity.Core.Uint256.add a 1).val =
       ((a.val + 1) % Verity.Core.Uint256.modulus) := by
@@ -86,13 +76,13 @@ private theorem increment_spec_success_iff (state : ContractState) (sender : Add
       exact Nat.not_lt_of_ge h_le
     simp [interpretSpec, safeCounterSpec, safeCounterEdslToSpecStorage,
       execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, SpecStorage.setSlot,
-      lookup_count_newcount, lookup_newcount, List.lookup, one_modulus, h_le, h_not_gt]
+      lookup_count_newcount, lookup_newcount, List.lookup, one_mod_modulus, h_le, h_not_gt]
   · have h_gt :
         ((state.storage 0).val + 1) % Verity.Core.Uint256.modulus > (state.storage 0).val := by
       exact Nat.lt_of_not_ge h_le
     simp [interpretSpec, safeCounterSpec, safeCounterEdslToSpecStorage,
       execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, SpecStorage.setSlot,
-      lookup_count_newcount, lookup_newcount, List.lookup, one_modulus, h_le, h_gt]
+      lookup_count_newcount, lookup_newcount, List.lookup, one_mod_modulus, h_le, h_gt]
 
 private theorem increment_spec_storage (state : ContractState) (sender : Address)
     (h_gt : ((state.storage 0).val + 1) % Verity.Core.Uint256.modulus > (state.storage 0).val) :
@@ -109,7 +99,7 @@ private theorem increment_spec_storage (state : ContractState) (sender : Address
     exact Nat.not_le_of_gt h_gt
   simp [interpretSpec, safeCounterSpec, safeCounterEdslToSpecStorage,
     execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, SpecStorage.setSlot,
-    lookup_count_newcount, lookup_newcount, List.lookup, one_modulus, h_not_le]
+    lookup_count_newcount, lookup_newcount, List.lookup, one_mod_modulus, h_not_le]
 
 private theorem decrement_spec_success_iff (state : ContractState) (sender : Address) :
     let specTx : DiffTestTypes.Transaction := {
@@ -123,21 +113,21 @@ private theorem decrement_spec_success_iff (state : ContractState) (sender : Add
   · have h_not_lt : ¬(state.storage 0).val < 1 := by
       exact Nat.not_lt_of_ge h_ge
     have h_not_lt' : ¬(state.storage 0).val < 1 % Verity.Core.Uint256.modulus := by
-      simpa [one_modulus] using h_not_lt
+      simpa [one_mod_modulus] using h_not_lt
     have h_ne : (state.storage 0).val ≠ 0 := by
       omega
     simp [interpretSpec, safeCounterSpec, safeCounterEdslToSpecStorage,
       execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, SpecStorage.setSlot,
-      lookup_count_single, List.lookup, one_modulus, h_not_lt', h_ge, h_ne]
+      lookup_count_single, List.lookup, one_mod_modulus, h_not_lt', h_ge, h_ne]
   · have h_lt : (state.storage 0).val < 1 := by
       exact Nat.lt_of_not_ge h_ge
     have h_lt' : (state.storage 0).val < 1 % Verity.Core.Uint256.modulus := by
-      simpa [one_modulus] using h_lt
+      simpa [one_mod_modulus] using h_lt
     have h_zero : (state.storage 0).val = 0 := by
       omega
     simp [interpretSpec, safeCounterSpec, safeCounterEdslToSpecStorage,
       execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, SpecStorage.setSlot,
-      lookup_count_single, List.lookup, one_modulus, h_lt', h_ge, h_zero]
+      lookup_count_single, List.lookup, one_mod_modulus, h_lt', h_ge, h_zero]
 
 private theorem decrement_spec_storage (state : ContractState) (sender : Address)
     (h_ge : (state.storage 0).val ≥ 1) :
@@ -151,12 +141,12 @@ private theorem decrement_spec_storage (state : ContractState) (sender : Address
   have h_not_lt : ¬(state.storage 0).val < 1 := by
     exact Nat.not_lt_of_ge h_ge
   have h_not_lt' : ¬(state.storage 0).val < 1 % Verity.Core.Uint256.modulus := by
-    simpa [one_modulus] using h_not_lt
+    simpa [one_mod_modulus] using h_not_lt
   have h_ne : (state.storage 0).val ≠ 0 := by
     omega
   simp [interpretSpec, safeCounterSpec, safeCounterEdslToSpecStorage,
     execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot, SpecStorage.setSlot,
-    lookup_count_single, List.lookup, one_modulus, h_not_lt', h_ge, h_ne]
+    lookup_count_single, List.lookup, one_mod_modulus, h_not_lt', h_ge, h_ne]
 
 /-- Increment reverts when counter is at MAX_UINT256 -/
 theorem safeIncrement_reverts_at_max (state : ContractState) (sender : Address)
@@ -228,12 +218,12 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
         omega
       -- By wraparound lemma: count < MAX implies (count+1).val > count.val
       have h_gt :=
-        (Verity.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
+        (add_one_preserves_order_iff_no_overflow
           (state.storage 0)).mpr h_below
       -- Convert to the Nat-mod form used by the spec interpreter
       have h_gt' :
           ((state.storage 0).val + 1) % Verity.Core.Uint256.modulus > (state.storage 0).val := by
-        simpa [add_one_val_eq_mod', one_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_gt
+        simpa [add_one_val_eq_mod', one_mod_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_gt
       -- Show spec succeeds by unfolding (require passes)
       exact (increment_spec_success_iff state sender).mpr h_gt'
     · -- Backward: Spec success → EDSL success
@@ -246,10 +236,10 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
       -- Convert back to the Uint256 form
       have h_guard' :
           ((state.storage 0) + 1 : Verity.Core.Uint256).val > (state.storage 0).val := by
-        simpa [add_one_val_eq_mod', one_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_guard_mod
+        simpa [add_one_val_eq_mod', one_mod_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_guard_mod
       -- By wraparound lemma: (count+1).val > count.val implies count < MAX
       have h_below :=
-        (Verity.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
+        (add_one_preserves_order_iff_no_overflow
           (state.storage 0)).mp h_guard'
       -- Use helper: at count < MAX, EDSL succeeds
       exact safeIncrement_succeeds_below_max state sender h_below
@@ -293,11 +283,11 @@ theorem safeIncrement_correct (state : ContractState) (sender : Address) :
     -- The require passes and stores (count + 1).val
     -- We can use the same guard proof as above
     have h_gt :=
-      (Verity.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
+      (add_one_preserves_order_iff_no_overflow
         (state.storage 0)).mpr h_below
     have h_gt' :
         ((state.storage 0).val + 1) % Verity.Core.Uint256.modulus > (state.storage 0).val := by
-      simpa [add_one_val_eq_mod', one_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_gt
+      simpa [add_one_val_eq_mod', one_mod_modulus, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_gt
     -- Unfold spec interpreter to compute finalStorage.getSlot 0
     -- The require passes, so storage is updated to newCount
     -- Combine with the EDSL storage computation
@@ -388,7 +378,7 @@ theorem safeDecrement_correct (state : ContractState) (sender : Address) :
         have h_edsl_storage_mod :
             ((ContractResult.getState (decrement.run s)).storage 0).val =
               ((state.storage 0).val - 1) % Verity.Core.Uint256.modulus := by
-          simpa [Verity.Core.Uint256.sub, one_modulus, h_ge] using h_edsl_storage
+          simpa [Verity.Core.Uint256.sub, one_mod_modulus, h_ge] using h_edsl_storage
         have h_lt_mod : (state.storage 0).val - 1 < Verity.Core.Uint256.modulus := by
           have h_lt : (state.storage 0).val < Verity.Core.Uint256.modulus :=
             (state.storage 0).isLt

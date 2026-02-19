@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
+type Wad is uint256;
+
+enum Stage {
+    Init,
+    Done
+}
+
+contract Recipient {}
+
 contract SelectorFixtures {
     // Parser guard: this commented signature must not be treated as real.
     // function commentedOut(uint256 x) external pure returns (uint256) { return x; }
@@ -54,6 +63,20 @@ contract SelectorFixtures {
         function(uint256) external returns (uint256) cb
     ) external pure returns (bool) {
         return cb.address != address(0);
+    }
+
+    function canonicalAliases(
+        Recipient recipient,
+        Wad amount,
+        Stage stage,
+        uint count,
+        int delta
+    ) external pure returns (bool) {
+        return recipient != Recipient(address(0))
+            || Wad.unwrap(amount) > 0
+            || uint8(stage) > 0
+            || count > 0
+            || delta > 0;
     }
 
     function delayedVisibility(uint256 amount)

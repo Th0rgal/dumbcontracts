@@ -137,17 +137,6 @@ private def compileConstructor (ctor : Option ASTConstructorSpec) : Except Strin
 Fail fast on malformed AST specs before any code generation work.
 -/
 
-private def findDuplicate (xs : List String) : Option String :=
-  let rec go (remaining seen : List String) : Option String :=
-    match remaining with
-    | [] => none
-    | x :: rest =>
-      if seen.contains x then
-        some x
-      else
-        go rest (x :: seen)
-  go xs []
-
 private def ensureNonEmpty (kind name : String) : Except String Unit := do
   if name.trim.isEmpty then
     throw s!"{kind} name cannot be empty"

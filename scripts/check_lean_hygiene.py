@@ -22,7 +22,7 @@ def main() -> None:
     errors: list[str] = []
 
     # Check 1: No #eval in proof files
-    proof_dirs = [ROOT / "Compiler" / "Proofs"]
+    proof_dirs = [ROOT / "Compiler" / "Proofs", ROOT / "Verity" / "Proofs"]
     for proof_dir in proof_dirs:
         for lean_file in proof_dir.rglob("*.lean"):
             rel = lean_file.relative_to(ROOT)

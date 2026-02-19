@@ -16,6 +16,7 @@ import Verity.Specs.Ledger.Spec
 import Verity.Specs.Ledger.Invariants
 import Verity.Stdlib.Math
 import Verity.Proofs.Stdlib.Math
+import Verity.Proofs.Stdlib.Automation
 
 namespace Verity.Proofs.Ledger
 
@@ -24,6 +25,7 @@ open Verity.Examples.Ledger
 open Verity.Specs.Ledger
 open Verity.Stdlib.Math (safeAdd requireSomeUint MAX_UINT256)
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
+open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 
 /-! ## getBalance Correctness -/
 
@@ -220,14 +222,11 @@ theorem transfer_meets_spec (s : ContractState) (to : Address) (amount : Uint256
   · rw [transfer_unfold_other s to amount h_balance h_eq (h_no_overflow h_eq)]
     simp only [ContractResult.snd, transfer_spec]
     refine ⟨?_, ?_, ?_, ?_⟩
-    · have h_ne' : (s.sender == to) = false := by
-        simp [beq_iff_eq]; exact h_eq
+    · have h_ne' := address_beq_false_of_ne s.sender to h_eq
       simp [beq_iff_eq, h_ne', h_balance]
-    · have h_ne' : (s.sender == to) = false := by
-        simp [beq_iff_eq]; exact h_eq
+    · have h_ne' := address_beq_false_of_ne s.sender to h_eq
       simp [beq_iff_eq, h_ne']
-    · have h_ne' : (s.sender == to) = false := by
-        simp [beq_iff_eq]; exact h_eq
+    · have h_ne' := address_beq_false_of_ne s.sender to h_eq
       simp [h_ne']
       refine ⟨?_, ?_⟩
       · intro addr h_ne_sender h_ne_to

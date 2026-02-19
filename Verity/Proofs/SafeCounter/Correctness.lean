@@ -14,6 +14,7 @@ import Verity.Examples.SafeCounter
 import Verity.Specs.SafeCounter.Spec
 import Verity.Specs.SafeCounter.Invariants
 import Verity.Proofs.SafeCounter.Basic
+import Verity.Proofs.Stdlib.Automation
 
 namespace Verity.Proofs.SafeCounter.Correctness
 
@@ -23,6 +24,7 @@ open Verity.EVM.Uint256
 open Verity.Examples.SafeCounter
 open Verity.Specs.SafeCounter
 open Verity.Proofs.SafeCounter
+open Verity.Proofs.Stdlib.Automation
 
 /-! ## Standalone Invariant Proofs
 
@@ -96,14 +98,9 @@ theorem increment_decrement_cancel (s : ContractState)
   -- After increment, s'.storage 0 = s.storage 0 + 1 ≥ 1
   have h_ge : ((increment).run s).snd.storage 0 ≥ 1 := by
     rw [h_inc, h_add]
-    have h_max_lt : MAX_UINT256 < Verity.Core.Uint256.modulus := by
-      have h_succ : MAX_UINT256 < MAX_UINT256 + 1 := Nat.lt_succ_self _
-      have h_eq : MAX_UINT256 + 1 = Verity.Core.Uint256.modulus :=
-        Verity.Core.Uint256.max_uint256_succ_eq_modulus
-      simpa [h_eq] using h_succ
     have h_sum_lt :
-        (s.storage 0 : Nat) + 1 < Verity.Core.Uint256.modulus := by
-      exact Nat.lt_of_le_of_lt h_no_overflow h_max_lt
+        (s.storage 0 : Nat) + 1 < Verity.Core.Uint256.modulus :=
+      lt_modulus_of_le_max_uint256 _ h_no_overflow
     have h_val :
         ((s.storage 0 + 1 : Uint256) : Nat) = (s.storage 0 : Nat) + 1 := by
       exact Verity.Core.Uint256.add_eq_of_lt h_sum_lt

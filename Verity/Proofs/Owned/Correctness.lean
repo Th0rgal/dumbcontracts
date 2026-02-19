@@ -27,11 +27,11 @@ The fundamental access control property: non-owners cannot transfer ownership.
 theorem transferOwnership_reverts_when_not_owner (s : ContractState) (newOwner : Address)
   (h_not_owner : s.sender ≠ s.storageAddr 0) :
   ∃ msg, (transferOwnership newOwner).run s = ContractResult.revert msg s := by
-  simp only [transferOwnership, onlyOwner, isOwner, owner,
+  simp [transferOwnership, onlyOwner, isOwner, owner,
     msgSender, getStorageAddr, setStorageAddr,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
+    Contract.run, ContractResult.snd, ContractResult.fst,
+    address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
 /-! ## Invariant Preservation -/
 
@@ -53,11 +53,10 @@ theorem constructor_transferOwnership_getOwner (s : ContractState) (initialOwner
   let s1 := ((constructor initialOwner).run s).snd
   let s2 := ((transferOwnership newOwner).run s1).snd
   ((getOwner).run s2).fst = newOwner := by
-  simp only [constructor, transferOwnership, onlyOwner, isOwner, owner, getOwner,
+  simp [constructor, transferOwnership, onlyOwner, isOwner, owner, getOwner,
     msgSender, getStorageAddr, setStorageAddr,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_sender]
+    Contract.run, ContractResult.snd, ContractResult.fst, h_sender]
 
 /-- After ownership transfer, the previous owner can no longer transfer.
     Proves that ownership is truly transferred, not just copied. -/

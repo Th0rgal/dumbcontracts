@@ -128,11 +128,10 @@ theorem transferOwnership_unfold (s : ContractState) (newOwner : Address)
       blockTimestamp := s.blockTimestamp,
       knownAddresses := s.knownAddresses,
       events := s.events } := by
-  simp only [transferOwnership, onlyOwner, isOwner, owner,
+  simp [transferOwnership, onlyOwner, isOwner, owner,
     msgSender, getStorageAddr, setStorageAddr,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [h_owner]
+    Contract.run, ContractResult.snd, ContractResult.fst, h_owner]
 
 theorem transferOwnership_meets_spec_when_owner (s : ContractState) (newOwner : Address)
   (h_is_owner : s.sender = s.storageAddr 0) :

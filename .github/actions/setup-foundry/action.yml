@@ -26,11 +26,13 @@ runs:
         set -euo pipefail
 
         curl -fsSL https://foundry.paradigm.xyz | bash
-        export PATH="$HOME/.foundry/bin:$PATH"
+        FOUNDRY_BIN="$HOME/.foundry/bin"
+        export PATH="${FOUNDRY_BIN}:$PATH"
+        echo "${FOUNDRY_BIN}" >> "$GITHUB_PATH"
 
         max_attempts=3
         attempt=1
-        until foundryup --install 1.5.0; do
+        until "${FOUNDRY_BIN}/foundryup" --install 1.5.0; do
           if [ "$attempt" -ge "$max_attempts" ]; then
             echo "foundryup failed after ${max_attempts} attempts"
             exit 1

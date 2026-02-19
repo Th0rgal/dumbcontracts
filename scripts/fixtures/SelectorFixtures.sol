@@ -10,6 +10,17 @@ enum Stage {
 
 contract Recipient {}
 
+struct LedgerEntry {
+    uint256 amount;
+    Stage stage;
+    Recipient recipient;
+}
+
+struct Envelope {
+    LedgerEntry entry;
+    Wad total;
+}
+
 contract SelectorFixtures {
     // Parser guard: this commented signature must not be treated as real.
     // function commentedOut(uint256 x) external pure returns (uint256) { return x; }
@@ -72,11 +83,19 @@ contract SelectorFixtures {
         uint count,
         int delta
     ) external pure returns (bool) {
-        return recipient != Recipient(address(0))
+        return address(recipient) != address(0)
             || Wad.unwrap(amount) > 0
             || uint8(stage) > 0
             || count > 0
             || delta > 0;
+    }
+
+    function canonicalStructs(Envelope calldata env, LedgerEntry[] calldata entries)
+        external
+        pure
+        returns (bool)
+    {
+        return Wad.unwrap(env.total) > 0 || entries.length > 0;
     }
 
     function delayedVisibility(uint256 amount)

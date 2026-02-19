@@ -14,15 +14,15 @@ from keccak256 import selector as compute_selector
 from property_utils import ROOT, die, report_errors
 FIXTURE = ROOT / "scripts" / "fixtures" / "SelectorFixtures.sol"
 
-SIG_RE = re.compile(r"^([A-Za-z0-9_]+\([^\)]*\))\s*:\s*(0x)?([0-9a-fA-F]{8})$")
-HASH_RE = re.compile(r"^(0x)?([0-9a-fA-F]{8})\s*:\s*([A-Za-z0-9_]+\([^\)]*\))$")
 FUNCTION_START_RE = re.compile(r"\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 SELECTOR_VISIBILITY_RE = re.compile(r"\b(external|public)\b")
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 ARRAY_SUFFIX_RE = re.compile(r"(\[[0-9]*\]\s*)+$")
+SELECTOR_RE = re.compile(r"^(0x)?([0-9a-fA-F]{8})$")
 CONTRACT_LIKE_DECL_RE = re.compile(r"\b(?:contract|interface|library)\s+([A-Za-z_][A-Za-z0-9_]*)\b")
 ENUM_DECL_RE = re.compile(r"\benum\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{")
 UDVT_DECL_RE = re.compile(r"\btype\s+([A-Za-z_][A-Za-z0-9_]*)\s+is\s+([^;]+);")
+STRUCT_DECL_RE = re.compile(r"\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{")
 
 
 def _split_top_level_commas(params: str) -> list[str]:
@@ -38,6 +38,34 @@ def _split_top_level_commas(params: str) -> list[str]:
             items.append(params[start:i].strip())
             start = i + 1
     tail = params[start:].strip()
+    if tail:
+        items.append(tail)
+    return items
+
+
+def _split_top_level_semicolons(text: str) -> list[str]:
+    items: list[str] = []
+    paren_depth = 0
+    bracket_depth = 0
+    brace_depth = 0
+    start = 0
+    for i, ch in enumerate(text):
+        if ch == "(":
+            paren_depth += 1
+        elif ch == ")":
+            paren_depth = max(0, paren_depth - 1)
+        elif ch == "[":
+            bracket_depth += 1
+        elif ch == "]":
+            bracket_depth = max(0, bracket_depth - 1)
+        elif ch == "{":
+            brace_depth += 1
+        elif ch == "}":
+            brace_depth = max(0, brace_depth - 1)
+        elif ch == ";" and paren_depth == 0 and bracket_depth == 0 and brace_depth == 0:
+            items.append(text[start:i].strip())
+            start = i + 1
+    tail = text[start:].strip()
     if tail:
         items.append(tail)
     return items
@@ -62,6 +90,8 @@ def _canonical_base_type(text: str, user_aliases: dict[str, str]) -> str:
     if text == "ufixed":
         return "ufixed128x18"
     if text.startswith("tuple("):
+        return text
+    if text.startswith("(") and text.endswith(")"):
         return text
 
     current = text
@@ -150,6 +180,13 @@ def _collect_user_defined_type_aliases(text: str) -> dict[str, str]:
     for _ in range(4):
         for name, underlying in udvt:
             aliases[name] = _canonical_base_type(underlying, aliases)
+
+    struct_fields = _collect_struct_field_types(text)
+    # Resolve nested struct aliases after primitives/enums/contracts/UDVTs.
+    for _ in range(len(struct_fields) + 2):
+        for name, fields in struct_fields.items():
+            canonical_fields = [_canonical_param_type(field, aliases) for field in fields]
+            aliases[name] = f"({','.join(canonical_fields)})"
     return aliases
 
 
@@ -237,6 +274,37 @@ def _find_matching_paren(text: str, open_index: int) -> int:
     return -1
 
 
+def _find_matching_brace(text: str, open_index: int) -> int:
+    depth = 0
+    for idx in range(open_index, len(text)):
+        ch = text[idx]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return idx
+    return -1
+
+
+def _collect_struct_field_types(text: str) -> dict[str, list[str]]:
+    structs: dict[str, list[str]] = {}
+    for match in STRUCT_DECL_RE.finditer(text):
+        name = match.group(1)
+        open_brace = match.end() - 1
+        close_brace = _find_matching_brace(text, open_brace)
+        if close_brace == -1:
+            continue
+        body = text[open_brace + 1 : close_brace]
+        fields: list[str] = []
+        for decl in _split_top_level_semicolons(body):
+            field_type = _drop_trailing_param_name(re.sub(r"\s+", " ", decl).strip())
+            if field_type:
+                fields.append(field_type)
+        structs[name] = fields
+    return structs
+
+
 def _find_header_end(text: str, start: int) -> int:
     depth = 0
     for idx in range(start, len(text)):
@@ -286,6 +354,23 @@ def load_fixture_signatures() -> list[str]:
     return sigs
 
 
+def _parse_selector_fixture_line(line: str) -> tuple[str, str] | None:
+    if ":" not in line:
+        return None
+    left, right = [part.strip() for part in line.split(":", 1)]
+    if not left or not right:
+        return None
+
+    left_selector = SELECTOR_RE.fullmatch(left)
+    right_selector = SELECTOR_RE.fullmatch(right)
+
+    if left_selector and "(" in right and right.endswith(")"):
+        return right, left_selector.group(2).lower()
+    if right_selector and "(" in left and left.endswith(")"):
+        return left, right_selector.group(2).lower()
+    return None
+
+
 def run_solc_hashes() -> dict[str, str]:
     result = subprocess.run(
         ["solc", "--hashes", str(FIXTURE)],
@@ -300,16 +385,9 @@ def run_solc_hashes() -> dict[str, str]:
         line = line.strip()
         if not line or line.endswith(":"):
             continue
-        match = SIG_RE.match(line)
-        if match:
-            signature = match.group(1)
-            selector = match.group(3).lower()
-            hashes[signature] = selector
-            continue
-        match = HASH_RE.match(line)
-        if match:
-            selector = match.group(2).lower()
-            signature = match.group(3)
+        parsed = _parse_selector_fixture_line(line)
+        if parsed is not None:
+            signature, selector = parsed
             hashes[signature] = selector
             continue
     if not hashes:

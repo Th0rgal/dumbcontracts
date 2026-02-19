@@ -583,7 +583,8 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
           YulExpr.call "add" [YulExpr.ident "__evt_ptr", YulExpr.lit (idx * 32)],
           YulExpr.hex (wordFromBytes chunk)
         ])
-      let topic0 := YulExpr.call "keccak256" [YulExpr.ident "__evt_ptr", YulExpr.lit sigBytes.length]
+      let topic0Expr := YulExpr.call "keccak256" [YulExpr.ident "__evt_ptr", YulExpr.lit sigBytes.length]
+      let topic0Store := YulStmt.let_ "__evt_topic0" topic0Expr
       let unindexedStores ← unindexed.enum.mapM fun (idx, (p, argExpr)) => do
         let storedExpr :=
           match p.ty with
@@ -596,7 +597,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         ]))
       let dataSize := unindexed.length * 32
       let topicExprs :=
-        [topic0] ++ indexed.map (fun (p, argExpr) =>
+        [YulExpr.ident "__evt_topic0"] ++ indexed.map (fun (p, argExpr) =>
           match p.ty with
           | ParamType.address => YulExpr.call "and" [argExpr, YulExpr.hex ((2^160) - 1)]
           | ParamType.bool => yulToBool argExpr
@@ -609,7 +610,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         | _ => "log4"
       let logArgs := [YulExpr.ident "__evt_ptr", YulExpr.lit dataSize] ++ topicExprs
       let logStmt := YulStmt.expr (YulExpr.call logFn logArgs)
-      pure [YulStmt.block ([storePtr] ++ sigStores ++ unindexedStores ++ [logStmt])]
+      pure [YulStmt.block ([storePtr] ++ sigStores ++ [topic0Store] ++ unindexedStores ++ [logStmt])]
 
   | Stmt.internalCall functionName args => do
       -- Internal function call as statement (#181)

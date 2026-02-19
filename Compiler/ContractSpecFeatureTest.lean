@@ -90,6 +90,7 @@ private def featureSpec : ContractSpec := {
       assertContains "indexed event log opcode" rendered ["log2("]
       assertContains "indexed bool topic normalization" rendered ["iszero(iszero(2))"]
       assertContains "event topic hashing uses free memory pointer" rendered ["keccak256(__evt_ptr,"]
+      assertContains "event topic hash cached before data writes" rendered ["let __evt_topic0 := keccak256(__evt_ptr,", "log2(__evt_ptr, 32, __evt_topic0"]
       assertContains "dynamic array ABI return" rendered ["calldatacopy(64"]
 
 end Compiler.ContractSpecFeatureTest

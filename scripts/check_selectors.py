@@ -15,11 +15,11 @@ from pathlib import Path
 from typing import Iterable, List
 
 from keccak256 import selector as keccak_selector
-from property_utils import ROOT, die, report_errors
+from property_utils import ROOT, YUL_DIR, die, report_errors
 SPEC_FILE = ROOT / "Compiler" / "Specs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
 YUL_DIRS = [
-    ("yul", ROOT / "compiler" / "yul"),
+    ("yul", YUL_DIR),
 ]
 
 SIMPLE_PARAM_MAP = {

@@ -10,8 +10,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from property_utils import ROOT, report_errors
-YUL_DIRS = [ROOT / "compiler" / "yul"]
+from property_utils import ROOT, YUL_DIR, report_errors
+YUL_DIRS = [YUL_DIR]
 
 
 def collect_yul_files() -> list[Path]:

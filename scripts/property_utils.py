@@ -15,6 +15,7 @@ EXCLUSIONS = ROOT / "test" / "property_exclusions.json"
 TEST_DIR = ROOT / "test"
 PROOFS_DIR = ROOT / "Verity" / "Proofs"
 EXAMPLES_DIR = ROOT / "Verity" / "Examples"
+YUL_DIR = ROOT / "compiler" / "yul"
 
 # Regex patterns for extracting property tags from test files
 PROPERTY_WITH_NUM_RE = re.compile(

@@ -636,6 +636,10 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       ]
 end
 
+private def isScalarParamType : ParamType → Bool
+  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => true
+  | _ => false
+
 -- Conservative dynamic-type check for top-level ABI parameters.
 -- Supports static tuples/fixed arrays of scalar elements inline in calldata head.
 def isDynamicParamType : ParamType → Bool
@@ -645,15 +649,9 @@ def isDynamicParamType : ParamType → Bool
   | ParamType.bytes32 => false
   | ParamType.array _ => true
   | ParamType.bytes => true
-  | ParamType.fixedArray elemTy _ =>
-      match elemTy with
-      | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => false
-      | _ => true
+  | ParamType.fixedArray elemTy _ => !isScalarParamType elemTy
   | ParamType.tuple elemTys =>
-      elemTys.any fun ty =>
-        match ty with
-        | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => false
-        | _ => true
+      elemTys.any (fun ty => !isScalarParamType ty)
 
 -- ABI head size for top-level parameters.
 -- Static tuples/fixed arrays of scalars are inlined in the head; dynamic values use a 32-byte offset word.
@@ -682,8 +680,8 @@ private def genDynamicParamLoads (name : String) (headOffset : Nat) : List YulSt
     ])
   [offsetLoad, lengthLoad, dataOffsetLoad]
 
--- Generate calldata loads for static tuple members, exposing them as:
---   tupleName_0, tupleName_1, ... (recursively for nested static tuples/arrays)
+-- Generate calldata loads for static scalar tuple members, exposing them as:
+--   tupleName_0, tupleName_1, ...
 private def genStaticTupleLoads (tupleName : String) (elemTypes : List ParamType) (headOffset : Nat) :
     List YulStmt :=
   let rec go (tys : List ParamType) (idx : Nat) (offset : Nat) : List YulStmt :=

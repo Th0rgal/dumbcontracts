@@ -62,6 +62,51 @@ SPEC_MAPPING_UINT_SLOT_RE = re.compile(r"\bs'?\.(?:storageMapUint)\s+(\d+)\b")
 SPEC_MAPPING2_SLOT_RE = re.compile(r"\bs'?\.(?:storageMap2)\s+(\d+)\b")
 
 
+def strip_lean_comments(text: str) -> str:
+    """Strip Lean line/block comments while preserving line structure."""
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    block_depth = 0
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+
+        # Start of nested block comment: /- ... -/
+        if ch == "/" and nxt == "-":
+            block_depth += 1
+            out.extend("  ")
+            i += 2
+            continue
+
+        # End of nested block comment.
+        if block_depth > 0 and ch == "-" and nxt == "/":
+            block_depth -= 1
+            out.extend("  ")
+            i += 2
+            continue
+
+        # Inside block comment: preserve newlines, blank everything else.
+        if block_depth > 0:
+            out.append("\n" if ch == "\n" else " ")
+            i += 1
+            continue
+
+        # Line comment: -- ... (to end of line).
+        if ch == "-" and nxt == "-":
+            out.extend("  ")
+            i += 2
+            while i < n and text[i] != "\n":
+                out.append(" ")
+                i += 1
+            continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
 def find_matching(text: str, start: int, open_ch: str, close_ch: str) -> int:
     """Return index of matching close delimiter starting at `start`."""
     depth = 0
@@ -93,7 +138,7 @@ def extract_edsl_slots(filepath: Path) -> dict[str, list[tuple[str, str, int]]]:
 
     Returns dict mapping namespace/contract to list of (name, type, slot_number).
     """
-    content = filepath.read_text()
+    content = strip_lean_comments(filepath.read_text())
     namespace = filepath.stem  # fallback to filename
     for m in NAMESPACE_RE.finditer(content):
         # Use the last component of the namespace
@@ -116,7 +161,7 @@ def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int
     Fields get automatic slot assignment based on list order (index-based).
     Returns dict mapping contract name to list of (name, type, slot_number).
     """
-    content = filepath.read_text()
+    content = strip_lean_comments(filepath.read_text())
     specs: dict[str, list[tuple[str, str, int]]] = {}
 
     spec_header_pattern = re.compile(
@@ -156,7 +201,7 @@ def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int
 
 def extract_compiler_externals(filepath: Path) -> dict[str, bool]:
     """Extract whether each ContractSpec has non-empty externals."""
-    content = filepath.read_text()
+    content = strip_lean_comments(filepath.read_text())
     externals: dict[str, bool] = {}
 
     spec_header_pattern = re.compile(
@@ -190,7 +235,7 @@ def extract_ast_contract_names(filepath: Path) -> set[str]:
     if not filepath.exists():
         return set()
 
-    content = filepath.read_text()
+    content = strip_lean_comments(filepath.read_text())
     names: set[str] = set()
     spec_header_pattern = re.compile(
         r"def\s+\w+Spec\s*:\s*ASTContractSpec\s*:=\s*\{"
@@ -233,7 +278,7 @@ def extract_ast_slots(
       - list of (name, type, slot_number) where name is synthetic "slot<N>"
       - list of consistency errors found inside the AST file itself
     """
-    content = filepath.read_text()
+    content = strip_lean_comments(filepath.read_text())
     contract = filepath.stem
 
     by_slot: dict[int, set[str]] = {}
@@ -266,7 +311,7 @@ def extract_spec_slots(
       - list of (name, type, slot_number) where name is synthetic "slot<N>"
       - list of consistency errors found inside the spec file itself
     """
-    content = filepath.read_text()
+    content = strip_lean_comments(filepath.read_text())
     contract = filepath.parent.name
 
     by_slot: dict[int, set[str]] = {}

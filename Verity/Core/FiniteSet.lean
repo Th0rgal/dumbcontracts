@@ -108,7 +108,8 @@ theorem mem_elements_insert [DecidableEq α] (a b : α) (s : FiniteSet α) :
 /-- Removed element is no longer a member. -/
 @[simp] theorem not_mem_remove_self [DecidableEq α] (a : α) (s : FiniteSet α) :
     a ∉ (s.remove a).elements := by
-  simp [mem_remove]
+  intro h_mem
+  exact (mem_remove a a s).1 h_mem |>.2 rfl
 
 /-- `contains` reflects propositional membership. -/
 @[simp] theorem contains_eq_true [DecidableEq α] (a : α) (s : FiniteSet α) :
@@ -173,7 +174,8 @@ def contains (addr : Address) (s : FiniteAddressSet) : Bool :=
 
 @[simp] theorem mem_remove (a b : Address) (s : FiniteAddressSet) :
     a ∈ s.remove b ↔ a ∈ s ∧ a ≠ b := by
-  simpa [FiniteAddressSet.mem] using FiniteSet.mem_remove a b s.addresses
+  change a ∈ (s.addresses.remove b).elements ↔ a ∈ s.addresses.elements ∧ a ≠ b
+  exact FiniteSet.mem_remove a b s.addresses
 
 @[simp] theorem contains_eq_true (addr : Address) (s : FiniteAddressSet) :
     s.contains addr = true ↔ addr ∈ s := by

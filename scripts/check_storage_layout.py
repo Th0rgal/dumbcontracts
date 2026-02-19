@@ -76,6 +76,18 @@ def find_matching(text: str, start: int, open_ch: str, close_ch: str) -> int:
     return -1
 
 
+def iter_braced_blocks(text: str, header_pattern: re.Pattern[str]) -> list[str]:
+    """Return braced block bodies following header matches in source text."""
+    blocks: list[str] = []
+    for match in header_pattern.finditer(text):
+        body_start = match.end() - 1  # points at opening "{"
+        body_end = find_matching(text, body_start, "{", "}")
+        if body_end == -1:
+            continue
+        blocks.append(text[body_start + 1 : body_end])
+    return blocks
+
+
 def extract_edsl_slots(filepath: Path) -> dict[str, list[tuple[str, str, int]]]:
     """Extract StorageSlot definitions from a Lean file.
 
@@ -107,15 +119,10 @@ def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int
     content = filepath.read_text()
     specs: dict[str, list[tuple[str, str, int]]] = {}
 
-    # Split by spec definition
-    # Pattern: def <specName> : ContractSpec := {
-    spec_pattern = re.compile(
-        r"def\s+\w+\s*:\s*ContractSpec\s*:=\s*\{(.*?)\n\}",
-        re.DOTALL,
+    spec_header_pattern = re.compile(
+        r"def\s+\w+\s*:\s*ContractSpec\s*:=\s*\{"
     )
-
-    for spec_match in spec_pattern.finditer(content):
-        block = spec_match.group(1)
+    for block in iter_braced_blocks(content, spec_header_pattern):
 
         # Extract contract name
         name_match = SPEC_NAME_RE.search(block)
@@ -152,13 +159,10 @@ def extract_compiler_externals(filepath: Path) -> dict[str, bool]:
     content = filepath.read_text()
     externals: dict[str, bool] = {}
 
-    spec_pattern = re.compile(
-        r"def\s+\w+\s*:\s*ContractSpec\s*:=\s*\{(.*?)\n\}",
-        re.DOTALL,
+    spec_header_pattern = re.compile(
+        r"def\s+\w+\s*:\s*ContractSpec\s*:=\s*\{"
     )
-
-    for spec_match in spec_pattern.finditer(content):
-        block = spec_match.group(1)
+    for block in iter_braced_blocks(content, spec_header_pattern):
         name_match = SPEC_NAME_RE.search(block)
         if not name_match:
             continue
@@ -188,12 +192,10 @@ def extract_ast_contract_names(filepath: Path) -> set[str]:
 
     content = filepath.read_text()
     names: set[str] = set()
-    spec_pattern = re.compile(
-        r"def\s+\w+Spec\s*:\s*ASTContractSpec\s*:=\s*\{(.*?)\n\}",
-        re.DOTALL,
+    spec_header_pattern = re.compile(
+        r"def\s+\w+Spec\s*:\s*ASTContractSpec\s*:=\s*\{"
     )
-    for spec_match in spec_pattern.finditer(content):
-        block = spec_match.group(1)
+    for block in iter_braced_blocks(content, spec_header_pattern):
         name_match = SPEC_NAME_RE.search(block)
         if name_match:
             names.add(name_match.group(1))

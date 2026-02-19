@@ -276,6 +276,9 @@ jobs:
       - name: Check static gas report invariants
         run: python3 scripts/check_gas_report.py
 
+      - name: Save static gas report snapshot
+        run: lake exe gas-report > gas-report-static.tsv
+
       - name: Generate property coverage report
         run: python3 scripts/report_property_coverage.py --format=markdown >> $GITHUB_STEP_SUMMARY
 
@@ -293,6 +296,35 @@ jobs:
         with:
           name: difftest-interpreter
           path: .lake/build/bin/difftest-interpreter
+
+      - name: Upload static gas report
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-gas-report
+          path: gas-report-static.tsv
+
+  foundry-gas-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [changes, build]
+    if: needs.changes.outputs.code == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download static gas report
+        uses: actions/download-artifact@v4
+        with:
+          name: static-gas-report
+
+      - name: Setup Foundry environment
+        uses: ./.github/actions/setup-foundry
+
+      - name: Check static-vs-foundry gas calibration
+        env:
+          FOUNDRY_PROFILE: difftest
+        run: python3 scripts/check_gas_calibration.py --static-report gas-report-static.tsv
 
   foundry:
     runs-on: ubuntu-latest

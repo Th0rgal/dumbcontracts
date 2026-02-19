@@ -95,6 +95,10 @@ private def natToAddress (n : Nat) : Address :=
 private def addressToNat (addr : Address) : Nat :=
   addr.val
 
+-- Helper: Convert Address to hex string for JSON output (matches Foundry's vm.toString(address))
+private def addressToHexString (addr : Address) : String :=
+  Compiler.Hex.natToHex addr.val 40
+
 -- Helper: Convert ContractResult to ExecutionResult
 def resultToExecutionResult
     (result : ContractResult Nat)
@@ -414,7 +418,7 @@ def ExecutionResult.toJSON (r : ExecutionResult) : String :=
   ) "["
   let addrChangesStr := addrChangesStr ++ "]"
   let mappingChangesStr := r.mappingChanges.foldl (fun acc (slot, key, val) =>
-    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"key\":\"" ++ toString key.val ++ "\",\"value\":" ++ toString val ++ "}"
+    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"key\":\"" ++ addressToHexString key ++ "\",\"value\":" ++ toString val ++ "}"
   ) "["
   let mappingChangesStr := mappingChangesStr ++ "]"
   "{\"success\":" ++ successStr

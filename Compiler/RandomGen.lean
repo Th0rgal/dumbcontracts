@@ -306,7 +306,8 @@ def main (args : List String) : IO Unit := do
           for tx in txs do
             if !isFirst then IO.println ","
             let argsStr := String.intercalate "," (tx.args.map toString)
-            let jsonStr := "  {" ++ "\"sender\":\"" ++ toString tx.sender.val ++ "\",\"function\":\"" ++ tx.functionName ++ "\",\"args\":[" ++ argsStr ++ "],\"msgValue\":" ++ toString tx.msgValue ++ ",\"blockTimestamp\":" ++ toString tx.blockTimestamp ++ "}"
+            let senderHex := Compiler.Hex.natToHex tx.sender.val 40
+            let jsonStr := "  {" ++ "\"sender\":\"" ++ senderHex ++ "\",\"function\":\"" ++ tx.functionName ++ "\",\"args\":[" ++ argsStr ++ "],\"msgValue\":" ++ toString tx.msgValue ++ ",\"blockTimestamp\":" ++ toString tx.blockTimestamp ++ "}"
             IO.print jsonStr
             isFirst := false
           IO.println ""

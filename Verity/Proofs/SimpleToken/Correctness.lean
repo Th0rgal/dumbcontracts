@@ -23,6 +23,7 @@ open Verity
 open Verity.Stdlib.Math (MAX_UINT256 safeAdd requireSomeUint)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken
+open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 open Verity.Proofs.SimpleToken
 
 /-! ## Guard Revert Proofs
@@ -41,9 +42,7 @@ theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount :
     msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
-  have h : (s.sender == s.storageAddr 0) = false := by
-    simp [beq_iff_eq]; exact h_not_owner
-  simp [h]
+  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
 /-- Transfer reverts when sender has insufficient balance.
     Safety property: no overdrafts possible. -/

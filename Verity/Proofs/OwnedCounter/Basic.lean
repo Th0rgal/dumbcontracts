@@ -14,12 +14,14 @@ import Verity.Examples.OwnedCounter
 import Verity.EVM.Uint256
 import Verity.Specs.OwnedCounter.Spec
 import Verity.Specs.OwnedCounter.Invariants
+import Verity.Proofs.Stdlib.Automation
 
 namespace Verity.Proofs.OwnedCounter
 
 open Verity
 open Verity.Examples.OwnedCounter
 open Verity.Specs.OwnedCounter
+open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 
 /-! ## Constructor Correctness -/
 
@@ -124,9 +126,7 @@ theorem increment_reverts_when_not_owner (s : ContractState)
     msgSender, getStorageAddr, getStorage, setStorage,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
-  have h : (s.sender == s.storageAddr 0) = false := by
-    simp [beq_iff_eq]; exact h_not_owner
-  simp [h]
+  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
 /-! ## Decrement Correctness (Owner-Guarded) -/
 
@@ -175,9 +175,7 @@ theorem decrement_reverts_when_not_owner (s : ContractState)
     msgSender, getStorageAddr, getStorage, setStorage,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
-  have h : (s.sender == s.storageAddr 0) = false := by
-    simp [beq_iff_eq]; exact h_not_owner
-  simp [h]
+  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
 /-! ## TransferOwnership Correctness (Owner-Guarded) -/
 
@@ -225,9 +223,7 @@ theorem transferOwnership_reverts_when_not_owner (s : ContractState) (newOwner :
     msgSender, getStorageAddr, setStorageAddr,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
-  have h : (s.sender == s.storageAddr 0) = false := by
-    simp [beq_iff_eq]; exact h_not_owner
-  simp [h]
+  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
 /-! ## Composition Properties — The Key Results
 

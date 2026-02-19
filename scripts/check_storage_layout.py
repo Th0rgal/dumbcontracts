@@ -18,7 +18,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+from property_utils import ROOT
 
 # Regex for EDSL/Spec StorageSlot definitions:
 #   def <name> : StorageSlot <type> := ⟨<slot>⟩

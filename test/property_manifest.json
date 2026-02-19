@@ -375,6 +375,7 @@
     "setStorage_preserves_thisAddress",
     "setStorage_runState",
     "uint256_add_val",
+    "uint256_ge_val_le",
     "uint256_sub_val",
     "uint256_sub_val_of_le",
     "wf_of_state_eq"

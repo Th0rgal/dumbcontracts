@@ -36,6 +36,7 @@
     "addressToNat_ne_of_ne",
     "address_beq_eq_true_iff_eq",
     "address_beq_false_of_ne",
+    "amount_lt_modulus_of_val_ge",
     "bind_getStorage_setStorage_runState",
     "bind_isSuccess_left",
     "countOccU_cons_eq",
@@ -150,6 +151,7 @@
     "setStorage_runState",
     "uint256_add_val",
     "uint256_ge_val_le",
+    "uint256_ofNat_le_of_val_ge",
     "uint256_sub_val",
     "uint256_sub_val_of_le",
     "wf_of_state_eq"

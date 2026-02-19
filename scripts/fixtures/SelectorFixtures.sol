@@ -2,6 +2,14 @@
 pragma solidity ^0.8.33;
 
 contract SelectorFixtures {
+    // Parser guard: this commented signature must not be treated as real.
+    // function commentedOut(uint256 x) external pure returns (uint256) { return x; }
+    /*
+      function alsoCommented(address who) external returns (bool) {
+          return who != address(0);
+      }
+    */
+
     function balanceOf(address account) external view returns (uint256) {
         return account == address(0) ? 0 : 1;
     }
@@ -34,6 +42,11 @@ contract SelectorFixtures {
     }
 
     function submit(bytes calldata blob) external pure returns (uint256) {
+        string memory debugText =
+            "function looksLikeSignature(bytes32 x) external pure returns (uint256)";
+        if (bytes(debugText).length == 0) {
+            return 0;
+        }
         return blob.length;
     }
 }

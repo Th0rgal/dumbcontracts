@@ -58,12 +58,12 @@ EVM Bytecode
 | Owned | 23 | ✅ Complete | `Verity/Proofs/Owned/` |
 | OwnedCounter | 48 | ✅ Complete | `Verity/Proofs/OwnedCounter/` |
 | Ledger | 33 | ✅ Complete | `Verity/Proofs/Ledger/` |
-| SimpleToken | 59 | ✅ Complete | `Verity/Proofs/SimpleToken/` |
+| SimpleToken | 61 | ✅ Complete | `Verity/Proofs/SimpleToken/` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
-| **Total** | **240** | **✅ 100%** | — |
+| **Total** | **242** | **✅ 100%** | — |
 
-> **Note**: Stdlib (131 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (371 total properties).
+> **Note**: Stdlib (131 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (373 total properties).
 
 ### Example Property
 
@@ -177,13 +177,13 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 59% coverage (220/371), 151 remaining exclusions all proof-only
+**Status**: 59% coverage (220/373), 153 remaining exclusions all proof-only
 
 ### Current Coverage
 
-- **Total Properties**: 371
+- **Total Properties**: 373
 - **Covered**: 220 (59%)
-- **Excluded**: 151 (all proof-only)
+- **Excluded**: 153 (all proof-only)
 - **Missing**: 0
 
 ### Coverage by Contract
@@ -195,14 +195,14 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 | SimpleStorage | 95% (19/20) | 1 proof-only | ✅ Near-complete |
 | Owned | 87% (20/23) | 3 proof-only | ✅ Near-complete |
 | OwnedCounter | 92% (44/48) | 4 proof-only | ✅ Near-complete |
-| SimpleToken | 88% (52/59) | 7 proof-only | ✅ High coverage |
+| SimpleToken | 85% (52/61) | 9 proof-only | ✅ High coverage |
 | Counter | 82% (23/28) | 5 proof-only | ✅ High coverage |
 | Ledger | 100% (33/33) | 0 | ✅ Complete |
 | Stdlib | 0% (0/131) | 131 proof-only | — Internal |
 
 ### Exclusion Categories
 
-**Proof-Only Properties (151 exclusions)**: Internal proof machinery that cannot be tested in Foundry
+**Proof-Only Properties (153 exclusions)**: Internal proof machinery that cannot be tested in Foundry
 - Storage helpers: `setStorage_*`, `getStorage_*`, `setMapping_*`, `getMapping_*`
 - Internal helpers: `isOwner_*` functions tested implicitly
 - Low-level operations used only in proofs

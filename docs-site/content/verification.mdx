@@ -7,15 +7,15 @@ description: EDSL proofs plus compiler correctness proofs (IR + Yul)
 
 The compiler is verified with IR preservation proofs and Yul equivalence proofs in `Compiler/Proofs/`. All three layers are complete and checked by `lake build`.
 
-**Status**: 371 theorems across 9 categories, all fully proven. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)). 2 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
+**Status**: 373 theorems across 9 categories, all fully proven. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)). 2 axioms documented in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
 
 ## Snapshot (2026-02-17)
 
-- EDSL theorems: 371 across 9 categories (7 contracts + ReentrancyExample + Stdlib).
+- EDSL theorems: 373 across 9 categories (7 contracts + ReentrancyExample + Stdlib).
 - SimpleStorage: 20 total (Basic 13, Correctness 7).
 - Counter: 28 total (Basic 19, Correctness 10; 1 shared between Basic and Correctness).
 - Owned: 23 total (Basic 19, Correctness 4).
-- SimpleToken: 59 total (Basic 37, Correctness 10, Supply 3, Isolation 9).
+- SimpleToken: 61 total (Basic 37, Correctness 10, Supply 5, Isolation 9).
 - OwnedCounter: 48 total (Basic 29, Correctness 5, Isolation 14).
 - Ledger: 33 total (Basic 20, Correctness 6, Conservation 7 — all proven).
 - SafeCounter: 25 total (Basic 17, Correctness 8).
@@ -253,6 +253,8 @@ This lets proofs reason about both the success path and the revert path of guard
 | 1 | `constructor_establishes_supply_bounds` | Constructor establishes supply invariant |
 | 2 | `mint_sum_equation` | `new_sum = old_sum + count(to) * amount` |
 | 3 | `transfer_sum_equation` | `new_sum + count(sender)*amt = old_sum + count(to)*amt` |
+| 4 | `mint_sum_singleton_to` | Mint sum equation for singleton recipient list |
+| 5 | `transfer_sum_preserved_unique` | For unique sender & to: `new_sum = old_sum` |
 
 Transfer proofs now handle self-transfer by modeling it as a no-op (preloading balances and applying a zero delta), so `sender != to` is no longer required. Supply conservation still uses exact sum equations rather than the `supply_bounds_balances` invariant, which cannot be preserved for lists with duplicate addresses.
 

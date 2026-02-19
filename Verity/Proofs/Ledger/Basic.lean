@@ -152,11 +152,10 @@ private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount 
   (h_balance : s.storageMap 0 s.sender >= amount)
   (h_eq : s.sender = to) :
   (transfer to amount).run s = ContractResult.success () s := by
-  have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
   simp [transfer, msgSender, getMapping, setMapping, balances,
     Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
-    h_balance', h_eq, beq_iff_eq]
+    uint256_ge_val_le (h_eq ▸ h_balance), h_eq, beq_iff_eq]
 
 /-- Helper: unfold transfer when balance sufficient, sender ≠ to, and no overflow. -/
 private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount : Uint256)
@@ -180,15 +179,13 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
         if slot == 0 then ((s.knownAddresses slot).insert s.sender).insert to
         else s.knownAddresses slot,
       events := s.events } := by
-  have h_balance' := uint256_ge_val_le h_balance
-  have h_safe := safeAdd_some (s.storageMap 0 to) amount h_no_overflow
   simp only [transfer, Examples.Ledger.balances,
     msgSender, getMapping, setMapping,
     requireSomeUint,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
-    h_balance, h_ne, beq_iff_eq, h_safe, ge_iff_le, decide_eq_true_eq,
-    h_balance', ite_true, ite_false, HAdd.hAdd, Add.add]
+    h_balance, h_ne, beq_iff_eq, safeAdd_some (s.storageMap 0 to) amount h_no_overflow, ge_iff_le,
+    decide_eq_true_eq, uint256_ge_val_le h_balance, ite_true, ite_false, HAdd.hAdd, Add.add]
   congr 1
   congr 1
   funext slot
@@ -265,14 +262,13 @@ theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (
   (h_ne : s.sender ≠ to)
   (h_overflow : (s.storageMap 0 to : Nat) + (amount : Nat) > MAX_UINT256) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
-  have h_balance' := uint256_ge_val_le h_balance
-  have h_none := safeAdd_none (s.storageMap 0 to) amount h_overflow
   unfold transfer requireSomeUint
   simp [Examples.Ledger.balances,
     msgSender, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
-    h_balance', h_ne, beq_iff_eq, h_none]
+    uint256_ge_val_le h_balance, h_ne, beq_iff_eq,
+    safeAdd_none (s.storageMap 0 to) amount h_overflow]
 
 /-! ## State Preservation -/
 

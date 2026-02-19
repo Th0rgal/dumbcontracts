@@ -99,6 +99,49 @@ private def compileConstructor (ctor : Option ASTConstructorSpec) : List YulStmt
     genConstructorArgLoads spec.params ++ compileStmt spec.body
 
 /-!
+## AST Spec Validation
+
+Fail fast on malformed AST specs before any code generation work.
+-/
+
+private def findDuplicate (xs : List String) : Option String :=
+  let rec go (remaining seen : List String) : Option String :=
+    match remaining with
+    | [] => none
+    | x :: rest =>
+      if seen.contains x then
+        some x
+      else
+        go rest (x :: seen)
+  go xs []
+
+private def ensureNonEmpty (kind name : String) : Except String Unit := do
+  if name.trim.isEmpty then
+    throw s!"{kind} name cannot be empty"
+
+private def validateParamNames (kind : String) (params : List Param) : Except String Unit := do
+  for param in params do
+    ensureNonEmpty s!"{kind} parameter" param.name
+  match findDuplicate (params.map (·.name)) with
+  | some dup => throw s!"Duplicate {kind} parameter name: {dup}"
+  | none => pure ()
+
+private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
+  ensureNonEmpty "Contract" spec.name
+
+  for fn in spec.functions do
+    ensureNonEmpty s!"Function in {spec.name}" fn.name
+    validateParamNames s!"function {fn.name}" fn.params
+
+  match spec.constructor with
+  | some ctor => validateParamNames s!"constructor of {spec.name}" ctor.params
+  | none => pure ()
+
+  match findDuplicate (spec.functions.map (·.name)) with
+  | some dup => throw s!"Duplicate function name in {spec.name}: {dup}"
+  | none => pure ()
+
+/-!
 ## Function Compilation
 
 For each external function:
@@ -185,6 +228,7 @@ def compileAllAST (outDir : String) (verbose : Bool := false) (libraryPaths : Li
     IO.println ""
 
   for spec in ASTSpecs.allSpecs do
+    orThrow (validateSpec spec)
     let selectors ← computeSelectors spec
     match compileSpec spec selectors with
     | .ok contract =>

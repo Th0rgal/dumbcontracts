@@ -226,8 +226,8 @@ end
 private def collectLibraryFunctions (libs : List LibraryFunction) : List String :=
   libs.map (·.name)
 
--- Helper: find the first duplicate in a list
-private def findDuplicate (names : List String) : Option String :=
+/-- Returns the first duplicate string in traversal order, if any. -/
+def findDuplicate (names : List String) : Option String :=
   let rec go : List String → List String → Option String
     | [], _ => none
     | n :: rest, seen =>

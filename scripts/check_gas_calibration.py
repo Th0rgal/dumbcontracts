@@ -52,6 +52,15 @@ def parse_args() -> argparse.Namespace:
         default=CODE_DEPOSIT_GAS_PER_BYTE,
         help="Gas charged per deployed runtime bytecode byte.",
     )
+    parser.add_argument(
+        "--allow-missing-contract",
+        action="append",
+        default=[],
+        help=(
+            "Contract allowed to exist in static report but be absent from Foundry gas report. "
+            "Can be repeated."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -210,12 +219,29 @@ def validate_deploy_bounds(
     return failures
 
 
+def validate_contract_coverage(
+    static_bounds: dict[str, tuple[int, int]],
+    foundry_runtime: dict[str, int],
+    foundry_deploy: dict[str, tuple[int, int]],
+    allowed_missing: set[str],
+) -> list[str]:
+    failures: list[str] = []
+    foundry_all = set(foundry_runtime).union(foundry_deploy)
+    for contract in sorted(set(static_bounds).difference(foundry_all).difference(allowed_missing)):
+        failures.append(
+            f"{contract}: present in static gas report but missing in Foundry gas report "
+            "(no runtime/deploy measurements found)"
+        )
+    return failures
+
+
 def main() -> int:
     args = parse_args()
     try:
         static_bounds = load_static_bounds(args.static_report)
         foundry_stdout = run_foundry_gas_report(args.match_path)
         foundry_runtime, foundry_deploy = parse_foundry_report(foundry_stdout)
+        allowed_missing = set(args.allow_missing_contract)
         failures = validate_runtime_bounds(static_bounds, foundry_runtime, args.tx_base_gas)
         failures.extend(
             validate_deploy_bounds(
@@ -223,6 +249,14 @@ def main() -> int:
                 foundry_deploy,
                 args.create_tx_base_gas,
                 args.code_deposit_gas_per_byte,
+            )
+        )
+        failures.extend(
+            validate_contract_coverage(
+                static_bounds,
+                foundry_runtime,
+                foundry_deploy,
+                allowed_missing,
             )
         )
     except Exception as exc:  # pragma: no cover - CI entrypoint
@@ -240,6 +274,7 @@ def main() -> int:
     print(
         "OK: static bounds dominate Foundry gas "
         f"(runtime contracts={len(runtime_overlap)}, deploy contracts={len(deploy_overlap)}, "
+        f"static contracts={len(static_bounds)}, "
         f"tx_base_gas={args.tx_base_gas}, create_tx_base_gas={args.create_tx_base_gas}, "
         f"code_deposit_gas_per_byte={args.code_deposit_gas_per_byte})"
     )

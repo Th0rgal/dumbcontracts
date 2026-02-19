@@ -766,6 +766,21 @@ theorem lt_modulus_of_le_max_uint256 (n : Nat)
 theorem uint256_ge_val_le {a b : Verity.Core.Uint256} (h : a ≥ b) : b.val ≤ a.val := by
   simpa [Verity.Core.Uint256.le_def] using h
 
+/-- `amount < modulus` when `bal.val ≥ amount` (amount fits in a Uint256 because balance does).
+    Eliminates the repeated 3-line pattern:
+    `have hlt := bal.isLt; exact Nat.lt_of_le_of_lt h hlt` -/
+theorem amount_lt_modulus_of_val_ge (bal : Verity.Core.Uint256) (amount : Nat)
+    (h : bal.val ≥ amount) : amount < Verity.Core.Uint256.modulus :=
+  Nat.lt_of_le_of_lt h bal.isLt
+
+/-- `bal ≥ ofNat amount` when `bal.val ≥ amount` (lift Nat comparison to Uint256).
+    Eliminates the repeated 3-line `simp [le_def, val_ofNat, mod_eq_of_lt ...]` block. -/
+theorem uint256_ofNat_le_of_val_ge (bal : Verity.Core.Uint256) (amount : Nat)
+    (h : bal.val ≥ amount) : bal ≥ Verity.Core.Uint256.ofNat amount := by
+  have h_lt := amount_lt_modulus_of_val_ge bal amount h
+  simp [Verity.Core.Uint256.le_def, Verity.Core.Uint256.val_ofNat,
+    Nat.mod_eq_of_lt h_lt, h]
+
 -- All lemmas in this file are fully proven with zero sorry (1 axiom: addressToNat_injective).
 
 end Verity.Proofs.Stdlib.Automation

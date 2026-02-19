@@ -945,6 +945,27 @@ theorem require_beq_success_implies_eq (a b : Address) (msg : String)
     a = b :=
   (address_beq_eq_true_iff_eq a b).1 (require_success_implies_cond (cond := a == b) (msg := msg) (state := s) h)
 
+/-- `require (a == b) msg` succeeds exactly when `a = b`. -/
+theorem require_beq_isSuccess_true_iff_eq (a b : Address) (msg : String) (s : ContractState) :
+    ((Verity.require (a == b) msg).run s).isSuccess = true ↔ a = b := by
+  constructor
+  · intro h
+    exact require_beq_success_implies_eq a b msg s h
+  · intro h_eq
+    subst h_eq
+    simp [Verity.require]
+
+/-- `require (a == b) msg` fails exactly when `a ≠ b`. -/
+theorem require_beq_isSuccess_false_iff_ne (a b : Address) (msg : String) (s : ContractState) :
+    ((Verity.require (a == b) msg).run s).isSuccess = false ↔ a ≠ b := by
+  constructor
+  · intro h_false h_eq
+    subst h_eq
+    simp [Verity.require] at h_false
+  · intro h_ne
+    have h_beq_false : (a == b) = false := address_beq_false_of_ne a b h_ne
+    simp [Verity.require, h_beq_false]
+
 -- All lemmas in this file are fully proven with zero sorry, zero axioms.
 
 end Verity.Proofs.Stdlib.Automation

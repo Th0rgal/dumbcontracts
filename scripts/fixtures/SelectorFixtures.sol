@@ -55,4 +55,13 @@ contract SelectorFixtures {
     ) external pure returns (bool) {
         return cb.address != address(0);
     }
+
+    function delayedVisibility(uint256 amount)
+        virtual
+        public
+        pure
+        returns (uint256)
+    {
+        return amount;
+    }
 }

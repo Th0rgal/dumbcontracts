@@ -16,10 +16,8 @@ FIXTURE = ROOT / "scripts" / "fixtures" / "SelectorFixtures.sol"
 
 SIG_RE = re.compile(r"^([A-Za-z0-9_]+\([^\)]*\))\s*:\s*(0x)?([0-9a-fA-F]{8})$")
 HASH_RE = re.compile(r"^(0x)?([0-9a-fA-F]{8})\s*:\s*([A-Za-z0-9_]+\([^\)]*\))$")
-FUNCTION_RE = re.compile(
-    r"\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*(?:external|public|internal|private)\b",
-    re.DOTALL,
-)
+FUNCTION_START_RE = re.compile(r"\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+VISIBILITY_RE = re.compile(r"\b(external|public|internal|private)\b")
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 ARRAY_SUFFIX_RE = re.compile(r"(\[[0-9]*\]\s*)+$")
 
@@ -171,14 +169,59 @@ def _strip_solidity_comments_and_strings(text: str) -> str:
     return "".join(out)
 
 
+def _find_matching_paren(text: str, open_index: int) -> int:
+    depth = 0
+    for idx in range(open_index, len(text)):
+        ch = text[idx]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return idx
+    return -1
+
+
+def _find_header_end(text: str, start: int) -> int:
+    depth = 0
+    for idx in range(start, len(text)):
+        ch = text[idx]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        elif depth == 0 and ch in "{;":
+            return idx
+    return -1
+
+
+def _iter_function_signatures(text: str) -> list[tuple[str, str]]:
+    signatures: list[tuple[str, str]] = []
+    for match in FUNCTION_START_RE.finditer(text):
+        name = match.group(1)
+        open_paren = match.end() - 1
+        close_paren = _find_matching_paren(text, open_paren)
+        if close_paren == -1:
+            continue
+        header_end = _find_header_end(text, close_paren + 1)
+        if header_end == -1:
+            continue
+
+        suffix = text[close_paren + 1 : header_end]
+        if not VISIBILITY_RE.search(suffix):
+            continue
+
+        params = text[open_paren + 1 : close_paren].strip()
+        signatures.append((name, params))
+    return signatures
+
+
 def load_fixture_signatures() -> list[str]:
     if not FIXTURE.exists():
         die(f"Missing fixture file: {FIXTURE}")
     text = _strip_solidity_comments_and_strings(FIXTURE.read_text(encoding="utf-8"))
     sigs: list[str] = []
-    for match in FUNCTION_RE.finditer(text):
-        name = match.group(1)
-        params = match.group(2).strip()
+    for name, params in _iter_function_signatures(text):
         params = _strip_param_names(params)
         sigs.append(f"{name}({params})")
     if not sigs:

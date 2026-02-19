@@ -23,6 +23,20 @@ open Verity.Examples.OwnedCounter
 open Verity.Specs.OwnedCounter
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 
+/-! ## Owner Guard -/
+
+private theorem onlyOwner_reverts (s : ContractState) (h : s.sender ≠ s.storageAddr 0) :
+    onlyOwner s = ContractResult.revert "Caller is not the owner" s := by
+  simp only [onlyOwner, isOwner, owner, msgSender, getStorageAddr,
+    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+    ContractResult.snd, ContractResult.fst]
+  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h]
+
+private theorem guarded_reverts (f : Unit → Contract α) (s : ContractState)
+    (h : s.sender ≠ s.storageAddr 0) :
+    ∃ msg, (Verity.bind onlyOwner f).run s = ContractResult.revert msg s :=
+  ⟨"Caller is not the owner", by simp [Verity.bind, Contract.run, onlyOwner_reverts s h]⟩
+
 /-! ## Constructor Correctness -/
 
 theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
@@ -122,11 +136,7 @@ theorem increment_adds_one_when_owner (s : ContractState)
 theorem increment_reverts_when_not_owner (s : ContractState)
   (h_not_owner : s.sender ≠ s.storageAddr 0) :
   ∃ msg, increment.run s = ContractResult.revert msg s := by
-  simp only [increment, onlyOwner, isOwner, owner, count,
-    msgSender, getStorageAddr, getStorage, setStorage,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
+  unfold increment; exact guarded_reverts _ s h_not_owner
 
 /-! ## Decrement Correctness (Owner-Guarded) -/
 
@@ -171,11 +181,7 @@ theorem decrement_subtracts_one_when_owner (s : ContractState)
 theorem decrement_reverts_when_not_owner (s : ContractState)
   (h_not_owner : s.sender ≠ s.storageAddr 0) :
   ∃ msg, decrement.run s = ContractResult.revert msg s := by
-  simp only [decrement, onlyOwner, isOwner, owner, count,
-    msgSender, getStorageAddr, getStorage, setStorage,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
+  unfold decrement; exact guarded_reverts _ s h_not_owner
 
 /-! ## TransferOwnership Correctness (Owner-Guarded) -/
 
@@ -219,11 +225,7 @@ theorem transferOwnership_changes_owner (s : ContractState) (newOwner : Address)
 theorem transferOwnership_reverts_when_not_owner (s : ContractState) (newOwner : Address)
   (h_not_owner : s.sender ≠ s.storageAddr 0) :
   ∃ msg, (transferOwnership newOwner).run s = ContractResult.revert msg s := by
-  simp only [transferOwnership, onlyOwner, isOwner, owner,
-    msgSender, getStorageAddr, setStorageAddr,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
-  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
+  unfold transferOwnership; exact guarded_reverts _ s h_not_owner
 
 /-! ## Composition Properties — The Key Results
 

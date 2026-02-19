@@ -103,7 +103,7 @@ python3 scripts/check_contract_structure.py
 - **`check_selector_fixtures.py`** - Cross-checks selectors against solc-generated hashes; fixture signature extraction is comment/string-aware so commented examples/debug strings cannot create false selector expectations, scans full function headers (so visibility can appear after modifiers like `virtual`), includes only `public`/`external` selectors (matching `solc --hashes`), canonicalizes ABI-sensitive param forms (`function(...)`, `uint/int` aliases, user-defined `contract`/`enum`/`type` aliases, and struct params into canonical tuple signatures), parses both `solc --hashes` output layouts robustly (including nested tuple signatures), and enforces reverse completeness (every `solc --hashes` signature must be present in extracted fixtures)
 - **`check_yul_compiles.py`** - Ensures generated Yul code compiles with solc and can compare bytecode parity between directories
 - **`check_gas_report.py`** - Validates `lake exe gas-report` output shape, arithmetic consistency of totals, and monotonicity under more conservative static analysis settings
-- **`check_gas_model_coverage.py`** - Verifies that every call emitted in `compiler/yul/*.yul` has an explicit cost branch in `Compiler/Gas/StaticAnalysis.lean` (prevents silent fallback to unknown-call costs)
+- **`check_gas_model_coverage.py`** - Verifies that every call emitted in generated Yul has an explicit cost branch in `Compiler/Gas/StaticAnalysis.lean` (prevents silent fallback to unknown-call costs)
 - **`check_gas_calibration.py`** - Compares static bounds (`lake exe gas-report`) against Foundry `--gas-report` measurements for `test/yul/*.t.sol`, requiring runtime bounds + transaction base gas to dominate observed max call gas and deploy bounds + creation/code-deposit overhead to dominate deployment gas
 
 ```bash
@@ -115,6 +115,11 @@ python3 scripts/check_yul_compiles.py \
   --dir compiler/yul \
   --dir compiler/yul-ast \
   --compare-dirs compiler/yul compiler/yul-ast
+
+# Check static gas model coverage against legacy + AST Yul outputs
+python3 scripts/check_gas_model_coverage.py \
+  --dir compiler/yul \
+  --dir compiler/yul-ast
 ```
 
 ## Contract Scaffold Generator
@@ -164,10 +169,11 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 1. Keccak-256 self-test (`keccak256.py --self-test`)
 2. Selector hash verification (`check_selectors.py`)
 3. Yul compilation check (`check_yul_compiles.py`)
-4. Selector fixture check (`check_selector_fixtures.py`)
-5. Static gas report invariants (`check_gas_report.py`)
-6. Save static gas report artifact (`gas-report-static.tsv`)
-7. Coverage and storage layout reports in workflow summary
+4. Static gas model coverage on generated Yul (legacy + AST) (`check_gas_model_coverage.py`)
+5. Selector fixture check (`check_selector_fixtures.py`)
+6. Static gas report invariants (`check_gas_report.py`)
+7. Save static gas report artifact (`gas-report-static.tsv`)
+8. Coverage and storage layout reports in workflow summary
 
 **`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42

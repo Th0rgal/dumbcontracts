@@ -410,12 +410,13 @@ At compile time we use a placeholder; CI validates the selector matches solc out
 -/
 
 -- Map ParamType to its Solidity type string (used for event and function signatures)
-def paramTypeToSolidityString : ParamType → String
+partial def paramTypeToSolidityString : ParamType → String
   | ParamType.uint256 => "uint256"
   | ParamType.address => "address"
   | ParamType.bool => "bool"
   | ParamType.bytes32 => "bytes32"
-  | ParamType.tuple _ => "tuple"
+  | ParamType.tuple ts =>
+      "(" ++ String.intercalate "," (ts.map paramTypeToSolidityString) ++ ")"
   | ParamType.array t => paramTypeToSolidityString t ++ "[]"
   | ParamType.fixedArray t n => paramTypeToSolidityString t ++ "[" ++ toString n ++ "]"
   | ParamType.bytes => "bytes"
@@ -685,7 +686,7 @@ def genParamLoads (params : List Param) : List YulStmt :=
   go params 4  -- Start after 4-byte selector
 
 -- Compile internal function to a Yul function definition (#181)
-def compileInternalFunction (fields : List Field) (spec : FunctionSpec) :
+def compileInternalFunction (fields : List Field) (events : List EventDef) (spec : FunctionSpec) :
     Except String YulStmt := do
   let returns := functionReturns spec
   if returns.length > 1 then
@@ -695,7 +696,7 @@ def compileInternalFunction (fields : List Field) (spec : FunctionSpec) :
     | [_] => ["__ret"]
     | [] => []
     | _ => []
-  let bodyStmts ← compileStmtList fields [] (isInternal := true) spec.body
+  let bodyStmts ← compileStmtList fields events (isInternal := true) spec.body
   pure (YulStmt.funcDef s!"internal_{spec.name}" paramNames retNames bodyStmts)
 
 -- Compile function spec to IR function
@@ -789,7 +790,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   let functions ← (externalFns.zip selectors).mapM fun (fnSpec, sel) =>
     compileFunctionSpec spec.fields spec.events sel fnSpec
   -- Compile internal functions as Yul function definitions (#181)
-  let internalFuncDefs ← internalFns.mapM (compileInternalFunction spec.fields)
+  let internalFuncDefs ← internalFns.mapM (compileInternalFunction spec.fields spec.events)
   return {
     name := spec.name
     deploy := (← compileConstructor spec.fields spec.constructor)

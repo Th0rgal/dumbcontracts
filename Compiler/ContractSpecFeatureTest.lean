@@ -119,12 +119,18 @@ private def featureSpec : ContractSpec := {
       returnType := none
       returns := [ParamType.bytes]
       body := [Stmt.returnBytes "data"]
+    },
+    { name := "extSloadsLike"
+      params := [{ name := "slots", ty := ParamType.array ParamType.bytes32 }]
+      returnType := none
+      returns := [ParamType.array ParamType.uint256]
+      body := [Stmt.returnStorageWords "slots"]
     }
   ]
 }
 
 #eval! do
-  match compile featureSpec [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] with
+  match compile featureSpec [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] with
   | .error err =>
       throw (IO.userError s!"✗ feature spec compile failed: {err}")
   | .ok ir =>
@@ -141,5 +147,6 @@ private def featureSpec : ContractSpec := {
       assertContains "nested static tuple decode head offsets" rendered ["let u_0_0 := calldataload(4)", "let u_0_1 := calldataload(36)", "let u_1_0 := and(calldataload(68)", "let u_1_1 := iszero(iszero(calldataload(100)))", "let u_2 := calldataload(132)", "let y := calldataload(164)"]
       assertContains "fixed array of static tuples decode offsets" rendered ["let fa_0_0 := calldataload(4)", "let fa_0_1 := iszero(iszero(calldataload(36)))", "let fa_1_0 := calldataload(68)", "let fa_1_1 := iszero(iszero(calldataload(100)))", "let q := calldataload(132)"]
       assertContains "dynamic bytes ABI return" rendered ["calldatacopy(64, data_data_offset, data_length)", "mstore(add(64, data_length), 0)", "return(0, add(64, and(add(data_length, 31), not(31))))"]
+      assertContains "storage-word array return ABI" rendered ["let __slot := calldataload(add(slots_data_offset, mul(__i, 32)))", "mstore(add(64, mul(__i, 32)), sload(__slot))", "return(0, add(64, mul(slots_length, 32)))"]
 
 end Compiler.ContractSpecFeatureTest

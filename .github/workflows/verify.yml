@@ -239,6 +239,9 @@ jobs:
             --link examples/external-libs/PoseidonT3.yul \
             --link examples/external-libs/PoseidonT4.yul
 
+      - name: Generate Yul (unified AST path)
+        run: ./.lake/build/bin/verity-compiler --ast --output compiler/yul-ast
+
       - name: Keccak-256 self-test (validate hash implementation)
         run: python3 scripts/keccak256.py --self-test
 
@@ -250,6 +253,22 @@ jobs:
 
       - name: Compile generated Yul with solc
         run: python3 scripts/check_yul_compiles.py
+
+      - name: Compile AST-generated Yul with solc
+        run: |
+          shopt -s nullglob
+          ast_files=(compiler/yul-ast/*.yul)
+          if [ "${#ast_files[@]}" -eq 0 ]; then
+            echo "::error::No AST-generated Yul files found in compiler/yul-ast"
+            exit 1
+          fi
+
+          for file in "${ast_files[@]}"; do
+            echo "Compiling $file"
+            solc --strict-assembly --bin "$file" >/dev/null
+          done
+
+          echo "✓ AST Yul->EVM compilation check passed (${#ast_files[@]} files)."
 
       - name: Check selector fixtures against solc
         run: python3 scripts/check_selector_fixtures.py

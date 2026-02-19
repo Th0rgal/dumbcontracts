@@ -10,7 +10,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from property_utils import ROOT, YUL_DIR, report_errors
+from property_utils import YUL_DIR, report_errors
 YUL_DIRS = [YUL_DIR]
 
 

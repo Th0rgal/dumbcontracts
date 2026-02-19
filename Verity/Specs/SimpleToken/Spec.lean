@@ -11,12 +11,6 @@ namespace Verity.Specs.SimpleToken
 open Verity
 open Verity.EVM.Uint256
 
-/-! ## Storage Slot Definitions -/
-
-def owner : StorageSlot Address := ⟨0⟩
-def balances : StorageSlot (Address → Uint256) := ⟨1⟩
-def totalSupply : StorageSlot Uint256 := ⟨2⟩
-
 /-! ## Operation Specifications -/
 
 /-- Constructor: sets owner and initializes total supply to 0 -/

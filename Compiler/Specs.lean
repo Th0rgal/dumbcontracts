@@ -18,6 +18,13 @@ open Compiler.ContractSpec
 def requireOwner : Stmt :=
   Stmt.require (Expr.eq Expr.caller (Expr.storage "owner")) "Not owner"
 
+@[reducible] def ownerConstructor : ConstructorSpec := {
+  params := [{ name := "initialOwner", ty := ParamType.address }]
+  body := [
+    Stmt.setStorage "owner" (Expr.constructorArg 0)
+  ]
+}
+
 /-- Transfer body for mapping-based balance contracts.
     Handles self-transfer safely by computing a zero delta when caller == to. -/
 @[reducible] def transferBody (mappingName : String) : List Stmt := [
@@ -117,12 +124,7 @@ def ownedSpec : ContractSpec := {
   fields := [
     { name := "owner", ty := FieldType.address }
   ]
-  constructor := some {
-    params := [{ name := "initialOwner", ty := ParamType.address }]
-    body := [
-      Stmt.setStorage "owner" (Expr.constructorArg 0)
-    ]
-  }
+  constructor := some ownerConstructor
   functions := [
     { name := "transferOwnership"
       params := [{ name := "newOwner", ty := ParamType.address }]
@@ -207,12 +209,7 @@ def ownedCounterSpec : ContractSpec := {
     { name := "owner", ty := FieldType.address },
     { name := "count", ty := FieldType.uint256 }
   ]
-  constructor := some {
-    params := [{ name := "initialOwner", ty := ParamType.address }]
-    body := [
-      Stmt.setStorage "owner" (Expr.constructorArg 0)
-    ]
-  }
+  constructor := some ownerConstructor
   functions := [
     { name := "increment"
       params := []

@@ -150,6 +150,7 @@ theorem ledger_withdraw_correct_sufficient (state : ContractState) (amount : Nat
       (edslResult.getState.storageMap 0 sender).val := by
   have h_amount_lt := amount_lt_modulus_of_val_ge (state.storageMap 0 sender) amount h
   have h_balance_u := uint256_ofNat_le_of_val_ge (state.storageMap 0 sender) amount h
+  have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := Nat.not_lt_of_ge h
   constructor
   · -- EDSL success
     simp [withdraw, msgSender, getMapping, setMapping, balances,
@@ -157,14 +158,10 @@ theorem ledger_withdraw_correct_sufficient (state : ContractState) (amount : Nat
       Contract.run, ContractResult.isSuccess, h_balance_u]
   constructor
   · -- Spec success
-    have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-      exact Nat.not_lt_of_ge h
     simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
       ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
       SpecStorage.setMapping, h, h_not_lt, Nat.mod_eq_of_lt h_amount_lt]
   · -- Spec mapping equals EDSL mapping
-    have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-      exact Nat.not_lt_of_ge h
     have h_spec_val :
         (let specTx : DiffTestTypes.Transaction := {
           sender := sender
@@ -300,82 +297,45 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
       simp [transfer, msgSender, getMapping, setMapping, balances,
         Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
         Contract.run, ContractResult.isSuccess, h_balance_u, beq_iff_eq]
+    have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := Nat.not_lt_of_ge h
+    have h_eq_nat : (addressToNat sender == addressToNat sender) = true := by simp
     constructor
     · -- Spec success (self-transfer: amountDelta=0, overflow check trivially passes)
-      have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-        exact Nat.not_lt_of_ge h
-      have h_eq_nat : (addressToNat sender == addressToNat sender) = true := by simp
       simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
         ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
         SpecStorage.setMapping, SpecStorage_getMapping_setMapping_same, h, h_not_lt,
         Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_sender_lt,
         h_eq_nat,
         List.lookup, BEq.beq, beq_iff_eq, decide_eq_true_eq, String.decEq]
-    constructor
-    · -- Spec sender mapping equals EDSL sender mapping (self-transfer case)
-      have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-        exact Nat.not_lt_of_ge h
-      have h_eq_nat : (addressToNat sender == addressToNat sender) = true := by
-        simp
-      have h_spec_val :
-          (let specTx : DiffTestTypes.Transaction := {
-            sender := sender
-            functionName := "transfer"
-            args := [addressToNat sender, amount]
-          };
-          let specResult :=
-            interpretSpec ledgerSpec (ledgerEdslToSpecStorageWithAddrs state [sender, sender]) specTx;
-          specResult.finalStorage.getMapping 0 (addressToNat sender)) =
-            (state.storageMap 0 sender).val := by
-        simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
-          ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
-          SpecStorage.setMapping, SpecStorage_getMapping_setMapping_same, h, h_not_lt,
-          Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_sender_lt,
-          h_eq_nat, h_self_mod_eq, h_self_ge,
-          List.lookup, BEq.beq, beq_iff_eq, decide_eq_true_eq, String.decEq]
-      have h_edsl_val :
-          ((ContractResult.getState
-              ((transfer sender (Verity.Core.Uint256.ofNat amount)).run
-                { state with sender := sender })
-            ).storageMap 0 sender).val =
-            (state.storageMap 0 sender).val := by
-        simp [transfer, msgSender, getMapping, setMapping, balances,
-          Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-          Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
-          Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_balance_u, beq_iff_eq]
-      simpa [h_spec_val] using h_edsl_val.symm
-    · -- Spec recipient mapping equals EDSL recipient mapping (same as sender)
-      have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-        exact Nat.not_lt_of_ge h
-      have h_eq_nat : (addressToNat sender == addressToNat sender) = true := by
-        simp
-      have h_spec_val :
-          (let specTx : DiffTestTypes.Transaction := {
-            sender := sender
-            functionName := "transfer"
-            args := [addressToNat sender, amount]
-          };
-          let specResult :=
-            interpretSpec ledgerSpec (ledgerEdslToSpecStorageWithAddrs state [sender, sender]) specTx;
-          specResult.finalStorage.getMapping 0 (addressToNat sender)) =
-            (state.storageMap 0 sender).val := by
-        simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
-          ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
-          SpecStorage.setMapping, SpecStorage_getMapping_setMapping_same, h, h_not_lt,
-          Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_sender_lt,
-          h_eq_nat, h_self_mod_eq, h_self_ge,
-          List.lookup, BEq.beq, beq_iff_eq, decide_eq_true_eq, String.decEq]
-      have h_edsl_val :
-          ((ContractResult.getState
-              ((transfer sender (Verity.Core.Uint256.ofNat amount)).run
-                { state with sender := sender })
-            ).storageMap 0 sender).val =
-            (state.storageMap 0 sender).val := by
-        simp [transfer, msgSender, getMapping, setMapping, balances,
-          Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-          Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
-          Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_balance_u, beq_iff_eq]
-      simpa [h_spec_val] using h_edsl_val.symm
+    -- Both sender and recipient are the same address in self-transfer
+    have h_spec_val :
+        (let specTx : DiffTestTypes.Transaction := {
+          sender := sender
+          functionName := "transfer"
+          args := [addressToNat sender, amount]
+        };
+        let specResult :=
+          interpretSpec ledgerSpec (ledgerEdslToSpecStorageWithAddrs state [sender, sender]) specTx;
+        specResult.finalStorage.getMapping 0 (addressToNat sender)) =
+          (state.storageMap 0 sender).val := by
+      simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
+        ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
+        SpecStorage.setMapping, SpecStorage_getMapping_setMapping_same, h, h_not_lt,
+        Nat.mod_eq_of_lt h_amount_lt, Nat.mod_eq_of_lt h_sender_lt,
+        h_eq_nat, h_self_mod_eq, h_self_ge,
+        List.lookup, BEq.beq, beq_iff_eq, decide_eq_true_eq, String.decEq]
+    have h_edsl_val :
+        ((ContractResult.getState
+            ((transfer sender (Verity.Core.Uint256.ofNat amount)).run
+              { state with sender := sender })
+          ).storageMap 0 sender).val =
+          (state.storageMap 0 sender).val := by
+      simp [transfer, msgSender, getMapping, setMapping, balances,
+        Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
+        Contract.run, ContractResult.getState, ContractResult.snd, ContractResult.fst,
+        Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_balance_u, beq_iff_eq]
+    exact ⟨by simpa [h_spec_val] using h_edsl_val.symm,
+           by simpa [h_spec_val] using h_edsl_val.symm⟩
   · have h_ne : sender ≠ to := h_eq
     have h_addr_ne : addressToNat sender ≠ addressToNat to :=
       addressToNat_ne_of_ne sender to h_ne
@@ -389,6 +349,7 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
       simp only [Verity.Stdlib.Math.safeAdd]
       have h_not : ¬((state.storageMap 0 to : Nat) + ((Verity.Core.Uint256.ofNat amount) : Nat) > MAX_UINT256) := Nat.not_lt.mpr h_no_overflow_u
       simp [h_not, Verity.Core.Uint256.val_ofNat, Nat.mod_eq_of_lt h_amount_lt, h_no_overflow]
+    have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := Nat.not_lt_of_ge h
     constructor
     · -- EDSL success
       simp [transfer, Verity.Stdlib.Math.requireSomeUint, msgSender, getMapping, setMapping, balances,
@@ -396,8 +357,6 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
         Contract.run, ContractResult.isSuccess, h_balance_u, h_eq, beq_iff_eq, h_safe]
     constructor
     · -- Spec success (different addresses: overflow check uses h_no_overflow)
-      have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-        exact Nat.not_lt_of_ge h
       simp [interpretSpec, execFunction, execStmts, execStmt, evalExpr,
         ledgerSpec, ledgerEdslToSpecStorageWithAddrs, SpecStorage.getMapping, SpecStorage.getSlot,
         SpecStorage.setMapping, SpecStorage_getMapping_setMapping_same, h, h_not_lt,
@@ -407,8 +366,6 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
         List.lookup, BEq.beq, beq_iff_eq, decide_eq_true_eq, String.decEq]
     constructor
     · -- Spec sender mapping equals EDSL sender mapping
-      have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-        exact Nat.not_lt_of_ge h
       have h_spec_val :
           (let specTx : DiffTestTypes.Transaction := {
             sender := sender
@@ -479,8 +436,6 @@ theorem ledger_transfer_correct_sufficient (state : ContractState) (to : Address
               symm
               exact h_edsl_val
     · -- Spec recipient mapping equals EDSL recipient mapping
-      have h_not_lt : ¬ (state.storageMap 0 sender).val < amount := by
-        exact Nat.not_lt_of_ge h
       have h_spec_val :
           (let specTx : DiffTestTypes.Transaction := {
             sender := sender

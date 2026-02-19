@@ -7,8 +7,6 @@
   due to require behavior not being fully modeled in the EDSL.
 -/
 
-import Verity.Core
-import Verity.Examples.Owned
 import Verity.Specs.Owned.Spec
 import Verity.Specs.Owned.Invariants
 import Verity.Proofs.Stdlib.Automation

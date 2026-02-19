@@ -6,7 +6,6 @@
   Status: Complete — all 13 proofs proven with zero axioms and zero sorry.
 -/
 
-import Verity.Core
 import Verity.Examples.SimpleStorage
 import Verity.Specs.SimpleStorage.Spec
 import Verity.Specs.SimpleStorage.Invariants

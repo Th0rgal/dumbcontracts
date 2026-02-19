@@ -2,7 +2,6 @@
   Formal specifications for Ledger operations.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 import Verity.Specs.Common.Sum
 import Verity.EVM.Uint256

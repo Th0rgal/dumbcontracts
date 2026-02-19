@@ -1,6 +1,5 @@
 import Std
 import Compiler.Specs
-import Compiler.ContractSpec
 import Compiler.Selector
 import Compiler.Codegen
 import Compiler.Yul.PrettyPrint

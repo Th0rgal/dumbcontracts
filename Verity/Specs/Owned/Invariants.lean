@@ -4,7 +4,6 @@
   Defines properties that should always hold, regardless of operations.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 
 namespace Verity.Specs.Owned

@@ -5,7 +5,6 @@
   owner operations don't touch count, and count operations don't touch owner.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 
 namespace Verity.Specs.OwnedCounter

@@ -2,7 +2,6 @@
   State invariants for Ledger contract.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 
 namespace Verity.Specs.Ledger

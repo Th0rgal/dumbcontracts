@@ -2,7 +2,6 @@
   Formal specifications for SafeCounter operations.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 import Verity.Stdlib.Math
 import Verity.EVM.Uint256

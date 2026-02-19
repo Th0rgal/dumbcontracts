@@ -10,8 +10,6 @@
 -/
 
 import Verity.Examples.SimpleToken
-import Verity.EVM.Uint256
-import Verity.Stdlib.Math
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
 import Verity.Specs.SimpleToken.Spec

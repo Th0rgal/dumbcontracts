@@ -9,9 +9,6 @@
   - State preservation and well-formedness
 -/
 
-import Verity.Core
-import Verity.Examples.OwnedCounter
-import Verity.EVM.Uint256
 import Verity.Specs.OwnedCounter.Spec
 import Verity.Specs.OwnedCounter.Invariants
 import Verity.Proofs.Stdlib.Automation

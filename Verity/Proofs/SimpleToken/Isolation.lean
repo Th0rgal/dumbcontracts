@@ -23,6 +23,7 @@ open Verity
 open Verity.Stdlib.Math (safeAdd requireSomeUint)
 open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken hiding owner balances totalSupply
+open Verity.Proofs.Stdlib.Automation (uint256_ge_val_le)
 open Verity.Proofs.SimpleToken
 
 /-! ## Constructor Isolation -/
@@ -127,10 +128,7 @@ theorem transfer_supply_storage_isolated (s : ContractState) (to : Address) (amo
   supply_storage_isolated s ((transfer to amount).run s).snd slot := by
   unfold supply_storage_isolated; intro _h_ne_slot
   by_cases h_eq : s.sender = to
-  · have h_balance' : amount.val ≤ (s.storageMap 1 to).val := by
-      have h_balance'' : amount ≤ s.storageMap 1 to := by
-        simpa [h_eq] using h_balance
-      simpa [Verity.Core.Uint256.le_def] using h_balance''
+  · have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
     simp [transfer, Examples.SimpleToken.balances,
       msgSender, getMapping, setMapping,
       Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
@@ -152,10 +150,7 @@ theorem transfer_balance_mapping_isolated (s : ContractState) (to : Address) (am
   balance_mapping_isolated s ((transfer to amount).run s).snd slot := by
   unfold balance_mapping_isolated; intro h_ne_slot addr
   by_cases h_eq : s.sender = to
-  · have h_balance' : amount.val ≤ (s.storageMap 1 to).val := by
-      have h_balance'' : amount ≤ s.storageMap 1 to := by
-        simpa [h_eq] using h_balance
-      simpa [Verity.Core.Uint256.le_def] using h_balance''
+  · have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
     simp [transfer, Examples.SimpleToken.balances,
       msgSender, getMapping, setMapping,
       Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
@@ -177,10 +172,7 @@ theorem transfer_owner_addr_isolated (s : ContractState) (to : Address) (amount 
   owner_addr_isolated s ((transfer to amount).run s).snd slot := by
   unfold owner_addr_isolated; intro _h_ne_slot
   by_cases h_eq : s.sender = to
-  · have h_balance' : amount.val ≤ (s.storageMap 1 to).val := by
-      have h_balance'' : amount ≤ s.storageMap 1 to := by
-        simpa [h_eq] using h_balance
-      simpa [Verity.Core.Uint256.le_def] using h_balance''
+  · have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
     simp [transfer, Examples.SimpleToken.balances,
       msgSender, getMapping, setMapping,
       Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,

@@ -760,6 +760,12 @@ theorem lt_modulus_of_le_max_uint256 (n : Nat)
     n < Verity.Core.Uint256.modulus :=
   Nat.lt_of_le_of_lt h max_uint256_lt_modulus
 
+/-- Convert `a ≥ b` on Uint256 to `b.val ≤ a.val` on Nat.
+    Eliminates the repeated 3-4 line pattern found in transfer proofs:
+    `have h' : b.val ≤ a.val := by have h'' : b ≤ a := ...; simpa [Uint256.le_def] using h''` -/
+theorem uint256_ge_val_le {a b : Verity.Core.Uint256} (h : a ≥ b) : b.val ≤ a.val := by
+  simpa [Verity.Core.Uint256.le_def] using h
+
 -- All lemmas in this file are fully proven with zero sorry (1 axiom: addressToNat_injective).
 
 end Verity.Proofs.Stdlib.Automation

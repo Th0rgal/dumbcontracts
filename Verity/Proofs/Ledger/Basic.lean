@@ -25,7 +25,7 @@ open Verity.Examples.Ledger
 open Verity.Specs.Ledger
 open Verity.Stdlib.Math (safeAdd requireSomeUint MAX_UINT256)
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
-open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
+open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne uint256_ge_val_le)
 
 /-! ## getBalance Correctness -/
 
@@ -157,10 +157,7 @@ private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount 
   (h_balance : s.storageMap 0 s.sender >= amount)
   (h_eq : s.sender = to) :
   (transfer to amount).run s = ContractResult.success () s := by
-  have h_balance' : amount.val ≤ (s.storageMap 0 to).val := by
-    have h_balance'' : amount ≤ s.storageMap 0 to := by
-      simpa [h_eq] using h_balance
-    simpa [Verity.Core.Uint256.le_def] using h_balance''
+  have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
   simp [transfer, msgSender, getMapping, setMapping, balances,
     Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
@@ -188,10 +185,7 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
         if slot == 0 then ((s.knownAddresses slot).insert s.sender).insert to
         else s.knownAddresses slot,
       events := s.events } := by
-  have h_balance' : amount.val ≤ (s.storageMap 0 s.sender).val := by
-    have h_balance'' : amount ≤ s.storageMap 0 s.sender := by
-      simpa using h_balance
-    simpa [Verity.Core.Uint256.le_def] using h_balance''
+  have h_balance' := uint256_ge_val_le h_balance
   have h_safe := safeAdd_some (s.storageMap 0 to) amount h_no_overflow
   simp only [transfer, Examples.Ledger.balances,
     msgSender, getMapping, setMapping,
@@ -278,10 +272,7 @@ theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (
   (h_ne : s.sender ≠ to)
   (h_overflow : (s.storageMap 0 to : Nat) + (amount : Nat) > MAX_UINT256) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
-  have h_balance' : amount.val ≤ (s.storageMap 0 s.sender).val := by
-    have h_balance'' : amount ≤ s.storageMap 0 s.sender := by
-      simpa using h_balance
-    simpa [Verity.Core.Uint256.le_def] using h_balance''
+  have h_balance' := uint256_ge_val_le h_balance
   have h_none := safeAdd_none (s.storageMap 0 to) amount h_overflow
   unfold transfer requireSomeUint
   simp [Examples.Ledger.balances,

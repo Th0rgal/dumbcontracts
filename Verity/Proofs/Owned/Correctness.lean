@@ -18,6 +18,7 @@ namespace Verity.Proofs.Owned.Correctness
 open Verity
 open Verity.Examples.Owned
 open Verity.Specs.Owned
+open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 open Verity.Proofs.Owned
 
 /-! ## Guard Revert Proof
@@ -34,9 +35,7 @@ theorem transferOwnership_reverts_when_not_owner (s : ContractState) (newOwner :
     msgSender, getStorageAddr, setStorageAddr,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
-  have h : (s.sender == s.storageAddr 0) = false := by
-    simp [beq_iff_eq]; exact h_not_owner
-  simp [h]
+  simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
 /-! ## Invariant Preservation -/
 

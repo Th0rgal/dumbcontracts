@@ -75,9 +75,7 @@ theorem increment_meets_spec (s : ContractState) :
 theorem increment_adds_one (s : ContractState) :
   let s' := ((increment).run s).snd
   s'.storage 0 = EVM.Uint256.add (s.storage 0) 1 := by
-  have h := increment_meets_spec s
-  simp [increment_spec] at h
-  exact h.1
+  have h := increment_meets_spec s; simp [increment_spec] at h; exact h.1
 
 /-! ## decrement Correctness -/
 
@@ -99,9 +97,7 @@ theorem decrement_meets_spec (s : ContractState) :
 theorem decrement_subtracts_one (s : ContractState) :
   let s' := ((decrement).run s).snd
   s'.storage 0 = EVM.Uint256.sub (s.storage 0) 1 := by
-  have h := decrement_meets_spec s
-  simp [decrement_spec] at h
-  exact h.1
+  have h := decrement_meets_spec s; simp [decrement_spec] at h; exact h.1
 
 /-! ## getCount Correctness -/
 
@@ -113,9 +109,7 @@ theorem getCount_meets_spec (s : ContractState) :
 theorem getCount_reads_count_value (s : ContractState) :
   let result := ((getCount).run s).fst
   result = s.storage 0 := by
-  have h := getCount_meets_spec s
-  simp [getCount_spec] at h
-  exact h
+  simpa [getCount_spec] using getCount_meets_spec s
 
 /-! ## Composition Properties -/
 
@@ -124,18 +118,14 @@ theorem increment_getCount_correct (s : ContractState) :
   let result := ((getCount).run s').fst
   result = EVM.Uint256.add (s.storage 0) 1 := by
   have h_inc := increment_adds_one s
-  have h_get := getCount_reads_count_value (((increment).run s).snd)
-  simp only [h_inc] at h_get
-  exact h_get
+  simpa only [h_inc] using getCount_reads_count_value (((increment).run s).snd)
 
 theorem decrement_getCount_correct (s : ContractState) :
   let s' := ((decrement).run s).snd
   let result := ((getCount).run s').fst
   result = EVM.Uint256.sub (s.storage 0) 1 := by
   have h_dec := decrement_subtracts_one s
-  have h_get := getCount_reads_count_value (((decrement).run s).snd)
-  simp only [h_dec] at h_get
-  exact h_get
+  simpa only [h_dec] using getCount_reads_count_value (((decrement).run s).snd)
 
 theorem increment_twice_adds_two (s : ContractState) :
   let s' := ((increment).run s).snd

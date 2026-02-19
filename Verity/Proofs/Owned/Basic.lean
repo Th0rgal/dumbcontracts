@@ -73,9 +73,7 @@ theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
 theorem constructor_sets_owner (s : ContractState) (initialOwner : Address) :
   let s' := ((constructor initialOwner).run s).snd
   s'.storageAddr 0 = initialOwner := by
-  have h := constructor_meets_spec s initialOwner
-  simp [constructor_spec] at h
-  exact h.1
+  have h := constructor_meets_spec s initialOwner; simp [constructor_spec] at h; exact h.1
 
 /-! ## getOwner Correctness -/
 
@@ -87,9 +85,7 @@ theorem getOwner_meets_spec (s : ContractState) :
 theorem getOwner_returns_owner (s : ContractState) :
   let result := ((getOwner).run s).fst
   result = s.storageAddr 0 := by
-  have h := getOwner_meets_spec s
-  simp [getOwner_spec] at h
-  exact h
+  simpa [getOwner_spec] using getOwner_meets_spec s
 
 theorem getOwner_preserves_state (s : ContractState) :
   let s' := ((getOwner).run s).snd
@@ -107,9 +103,7 @@ theorem isOwner_meets_spec (s : ContractState) :
 theorem isOwner_returns_correct_value (s : ContractState) :
   let result := ((isOwner).run s).fst
   result = (s.sender == s.storageAddr 0) := by
-  have h := isOwner_meets_spec s
-  simp [isOwner_spec] at h
-  exact h
+  simpa [isOwner_spec] using isOwner_meets_spec s
 
 /-! ## transferOwnership Correctness
 
@@ -164,9 +158,7 @@ theorem constructor_getOwner_correct (s : ContractState) (initialOwner : Address
   let result := ((getOwner).run s').fst
   result = initialOwner := by
   have h_constr := constructor_sets_owner s initialOwner
-  have h_get := getOwner_returns_owner (((constructor initialOwner).run s).snd)
-  simp only [h_constr] at h_get
-  exact h_get
+  simpa only [h_constr] using getOwner_returns_owner (((constructor initialOwner).run s).snd)
 
 /-! ## State Preservation -/
 

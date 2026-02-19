@@ -31,8 +31,7 @@ theorem increment_preserves_context (s : ContractState)
   (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256) :
   let s' := ((increment).run s).snd
   context_preserved s s' := by
-  have h := increment_meets_spec s h_no_overflow
-  simp [increment_spec] at h
+  have h := increment_meets_spec s h_no_overflow; simp [increment_spec] at h
   exact ⟨h.2.2.2.2.1, h.2.2.2.2.2⟩
 
 /-- decrement preserves context (sender, thisAddress). -/
@@ -40,8 +39,7 @@ theorem decrement_preserves_context (s : ContractState)
   (h_no_underflow : s.storage 0 ≥ 1) :
   let s' := ((decrement).run s).snd
   context_preserved s s' := by
-  have h := decrement_meets_spec s h_no_underflow
-  simp [decrement_spec] at h
+  have h := decrement_meets_spec s h_no_underflow; simp [decrement_spec] at h
   exact ⟨h.2.2.2.2.1, h.2.2.2.2.2⟩
 
 /-- increment preserves storage isolation. -/
@@ -49,8 +47,7 @@ theorem increment_preserves_storage_isolated (s : ContractState)
   (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256) :
   let s' := ((increment).run s).snd
   storage_isolated s s' := by
-  simp [storage_isolated]
-  intro slot h_ne
+  simp [storage_isolated]; intro slot h_ne
   exact increment_preserves_other_slots s h_no_overflow slot h_ne
 
 /-- decrement preserves storage isolation. -/
@@ -58,8 +55,7 @@ theorem decrement_preserves_storage_isolated (s : ContractState)
   (h_no_underflow : s.storage 0 ≥ 1) :
   let s' := ((decrement).run s).snd
   storage_isolated s s' := by
-  simp [storage_isolated]
-  intro slot h_ne
+  simp [storage_isolated]; intro slot h_ne
   exact decrement_preserves_other_slots s h_no_underflow slot h_ne
 
 /-- getCount preserves context (trivially, read-only). -/
@@ -103,9 +99,7 @@ theorem decrement_getCount_correct (s : ContractState)
   let s' := ((decrement).run s).snd
   ((getCount).run s').fst = sub (s.storage 0) 1 := by
   have h_dec := decrement_subtracts_one s h_no_underflow
-  have h_get := getCount_returns_count ((decrement).run s).snd
-  simp only [h_dec] at h_get
-  exact h_get
+  simpa only [h_dec] using getCount_returns_count ((decrement).run s).snd
 
 /-! ## Summary
 

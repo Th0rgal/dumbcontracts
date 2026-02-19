@@ -90,13 +90,13 @@ def snd {α : Type} : ContractResult α → ContractState
 -- These ensure that when simp produces `ContractResult.success ...`, further
 -- `.fst`/`.snd` applications are automatically reduced.
 @[simp] theorem fst_success [Inhabited α] (a : α) (s : ContractState) :
-  (ContractResult.success a s).fst = a := by rfl
+  (ContractResult.success a s).fst = a := rfl
 
 @[simp] theorem snd_success (a : α) (s : ContractState) :
-  (ContractResult.success a s).snd = s := by rfl
+  (ContractResult.success a s).snd = s := rfl
 
 @[simp] theorem snd_revert (msg : String) (s : ContractState) :
-  (ContractResult.revert (α := α) msg s).snd = s := by rfl
+  (ContractResult.revert (α := α) msg s).snd = s := rfl
 
 end ContractResult
 
@@ -117,7 +117,7 @@ def Contract.run {α : Type} (c : Contract α) (s : ContractState) : ContractRes
   c s
 
 @[simp] theorem pure_run (a : α) (state : ContractState) :
-  (pure a : Contract α).run state = ContractResult.success a state := by rfl
+  (pure a : Contract α).run state = ContractResult.success a state := rfl
 
 -- Helper: check if result is success
 def ContractResult.isSuccess {α : Type} : ContractResult α → Bool
@@ -160,12 +160,12 @@ def setStorage (s : StorageSlot Uint256) (value : Uint256) : Contract Unit :=
   }
 
 @[simp] theorem getStorage_run (s : StorageSlot Uint256) (state : ContractState) :
-  (getStorage s).run state = ContractResult.success (state.storage s.slot) state := by rfl
+  (getStorage s).run state = ContractResult.success (state.storage s.slot) state := rfl
 
 @[simp] theorem setStorage_run (s : StorageSlot Uint256) (value : Uint256) (state : ContractState) :
   (setStorage s value).run state = ContractResult.success () { state with
     storage := fun slot => if slot == s.slot then value else state.storage slot
-  } := by rfl
+  } := rfl
 
 -- Storage operations for Address
 def getStorageAddr (s : StorageSlot Address) : Contract Address :=
@@ -177,12 +177,12 @@ def setStorageAddr (s : StorageSlot Address) (value : Address) : Contract Unit :
   }
 
 @[simp] theorem getStorageAddr_run (s : StorageSlot Address) (state : ContractState) :
-  (getStorageAddr s).run state = ContractResult.success (state.storageAddr s.slot) state := by rfl
+  (getStorageAddr s).run state = ContractResult.success (state.storageAddr s.slot) state := rfl
 
 @[simp] theorem setStorageAddr_run (s : StorageSlot Address) (value : Address) (state : ContractState) :
   (setStorageAddr s value).run state = ContractResult.success () { state with
     storageAddr := fun slot => if slot == s.slot then value else state.storageAddr slot
-  } := by rfl
+  } := rfl
 
 -- Mapping operations (Address → Uint256)
 def getMapping (s : StorageSlot (Address → Uint256)) (key : Address) : Contract Uint256 :=
@@ -201,7 +201,7 @@ def setMapping (s : StorageSlot (Address → Uint256)) (key : Address) (value : 
   }
 
 @[simp] theorem getMapping_run (s : StorageSlot (Address → Uint256)) (key : Address) (state : ContractState) :
-  (getMapping s key).run state = ContractResult.success (state.storageMap s.slot key) state := by rfl
+  (getMapping s key).run state = ContractResult.success (state.storageMap s.slot key) state := rfl
 
 @[simp] theorem setMapping_run (s : StorageSlot (Address → Uint256)) (key : Address) (value : Uint256) (state : ContractState) :
   (setMapping s key value).run state = ContractResult.success () { state with
@@ -213,7 +213,7 @@ def setMapping (s : StorageSlot (Address → Uint256)) (key : Address) (value : 
         (state.knownAddresses slot).insert key
       else
         state.knownAddresses slot
-  } := by rfl
+  } := rfl
 
 -- Double mapping operations (Address → Address → Uint256) (#154)
 def getMapping2 (s : StorageSlot (Address → Address → Uint256)) (key1 key2 : Address) : Contract Uint256 :=
@@ -228,14 +228,14 @@ def setMapping2 (s : StorageSlot (Address → Address → Uint256)) (key1 key2 :
 
 -- Full-result simp lemmas for double mappings
 @[simp] theorem getMapping2_run (s : StorageSlot (Address → Address → Uint256)) (key1 key2 : Address) (state : ContractState) :
-  (getMapping2 s key1 key2).run state = ContractResult.success (state.storageMap2 s.slot key1 key2) state := by rfl
+  (getMapping2 s key1 key2).run state = ContractResult.success (state.storageMap2 s.slot key1 key2) state := rfl
 
 @[simp] theorem setMapping2_run (s : StorageSlot (Address → Address → Uint256)) (key1 key2 : Address) (value : Uint256) (state : ContractState) :
   (setMapping2 s key1 key2 value).run state = ContractResult.success () { state with
     storageMap2 := fun slot addr1 addr2 =>
       if slot == s.slot && addr1 == key1 && addr2 == key2 then value
       else state.storageMap2 slot addr1 addr2
-  } := by rfl
+  } := rfl
 
 -- Uint256-keyed mapping operations (#154)
 def getMappingUint (s : StorageSlot (Uint256 → Uint256)) (key : Uint256) : Contract Uint256 :=
@@ -250,14 +250,14 @@ def setMappingUint (s : StorageSlot (Uint256 → Uint256)) (key : Uint256) (valu
 
 -- Full-result simp lemmas for uint mappings
 @[simp] theorem getMappingUint_run (s : StorageSlot (Uint256 → Uint256)) (key : Uint256) (state : ContractState) :
-  (getMappingUint s key).run state = ContractResult.success (state.storageMapUint s.slot key) state := by rfl
+  (getMappingUint s key).run state = ContractResult.success (state.storageMapUint s.slot key) state := rfl
 
 @[simp] theorem setMappingUint_run (s : StorageSlot (Uint256 → Uint256)) (key : Uint256) (value : Uint256) (state : ContractState) :
   (setMappingUint s key value).run state = ContractResult.success () { state with
     storageMapUint := fun slot k =>
       if slot == s.slot && k == key then value
       else state.storageMapUint slot k
-  } := by rfl
+  } := rfl
 
 -- Event emission (#153)
 def emitEvent (name : String) (args : List Uint256) (indexedArgs : List Uint256 := []) : Contract Unit :=
@@ -268,7 +268,7 @@ def emitEvent (name : String) (args : List Uint256) (indexedArgs : List Uint256 
 @[simp] theorem emitEvent_run (name : String) (args : List Uint256) (indexedArgs : List Uint256) (state : ContractState) :
   (emitEvent name args indexedArgs).run state = ContractResult.success () { state with
     events := state.events ++ [{ name := name, args := args, indexedArgs := indexedArgs }]
-  } := by rfl
+  } := rfl
 
 -- Read-only context accessors
 def msgSender : Contract Address :=
@@ -284,16 +284,16 @@ def blockTimestamp : Contract Uint256 :=
   fun state => ContractResult.success state.blockTimestamp state
 
 @[simp] theorem msgSender_run (state : ContractState) :
-  msgSender.run state = ContractResult.success state.sender state := by rfl
+  msgSender.run state = ContractResult.success state.sender state := rfl
 
 @[simp] theorem contractAddress_run (state : ContractState) :
-  contractAddress.run state = ContractResult.success state.thisAddress state := by rfl
+  contractAddress.run state = ContractResult.success state.thisAddress state := rfl
 
 @[simp] theorem msgValue_run (state : ContractState) :
-  msgValue.run state = ContractResult.success state.msgValue state := by rfl
+  msgValue.run state = ContractResult.success state.msgValue state := rfl
 
 @[simp] theorem blockTimestamp_run (state : ContractState) :
-  blockTimestamp.run state = ContractResult.success state.blockTimestamp state := by rfl
+  blockTimestamp.run state = ContractResult.success state.blockTimestamp state := rfl
 
 -- Require guard (explicit failure on condition = false)
 def require (condition : Bool) (message : String) : Contract Unit :=
@@ -303,10 +303,10 @@ def require (condition : Bool) (message : String) : Contract Unit :=
 
 -- Simp lemmas for require
 @[simp] theorem require_true (msg : String) (s : ContractState) :
-  (require true msg).run s = ContractResult.success () s := by rfl
+  (require true msg).run s = ContractResult.success () s := rfl
 
 @[simp] theorem require_false (msg : String) (s : ContractState) :
-  (require false msg).run s = ContractResult.revert msg s := by rfl
+  (require false msg).run s = ContractResult.revert msg s := rfl
 
 theorem require_succeeds (cond : Bool) (msg : String) (s : ContractState) :
   cond = true → (require cond msg).run s = ContractResult.success () s := by
@@ -327,7 +327,7 @@ This eliminates a trust assumption noted in issue #146.
 
 -- Left identity: bind (pure a) f = f a
 @[simp] theorem Contract.bind_pure_left (a : α) (f : α → Contract β) :
-    bind (pure a) f = f a := by rfl
+    bind (pure a) f = f a := rfl
 
 -- Right identity: bind m pure = m
 @[simp] theorem Contract.bind_pure_right (m : Contract α) :

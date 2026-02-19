@@ -102,19 +102,13 @@ theorem map_sum_point_decrease
       rw [Verity.Core.Uint256.add_assoc delta (List.map f' rest).sum _]
       rw [← Verity.Core.Uint256.add_assoc (f target - delta) delta _]
       rw [h_cancel]
-      have h_congr := congrArg (fun x => f target + x) ih
-      have h_congr' := h_congr
-      simp [Verity.Core.Uint256.mul_comm,
-        Verity.Core.Uint256.add_assoc] at h_congr'
-      exact h_congr'
+      simpa [Verity.Core.Uint256.mul_comm,
+        Verity.Core.Uint256.add_assoc] using congrArg (fun x => f target + x) ih
     · simp [h, h_other a h, countOccU_cons_ne a target rest h]
-      have h_congr := congrArg (fun x => f a + x) ih
-      have h_congr' := h_congr
-      simp [Verity.Core.Uint256.mul_comm,
+      simpa [Verity.Core.Uint256.mul_comm,
         Verity.Core.Uint256.add_assoc,
         Verity.Core.Uint256.add_left_comm,
-        Verity.Core.Uint256.add_comm] at h_congr'
-      exact h_congr'
+        Verity.Core.Uint256.add_comm] using congrArg (fun x => f a + x) ih
 
 /-! ## Generic List Sum Lemma: Transfer (Two-Point Update) -/
 
@@ -143,11 +137,8 @@ theorem map_sum_transfer_eq
       rw [Verity.Core.Uint256.add_assoc d (List.map f' rest).sum _]
       rw [← Verity.Core.Uint256.add_assoc (f src - d) d _]
       rw [h_cancel]
-      have h_congr := congrArg (fun x => f src + x) ih
-      have h_congr' := h_congr
-      simp [Verity.Core.Uint256.mul_comm,
-        Verity.Core.Uint256.add_assoc] at h_congr'
-      exact h_congr'
+      simpa [Verity.Core.Uint256.mul_comm,
+        Verity.Core.Uint256.add_assoc] using congrArg (fun x => f src + x) ih
     · by_cases ha_d : a = dst
       · simp [ha_d, h_dst]
         have h_ne_sym : dst ≠ src := Ne.symm h_ne
@@ -156,21 +147,15 @@ theorem map_sum_transfer_eq
         rw [← Verity.Core.Uint256.add_assoc d (f dst) _]
         rw [Verity.Core.Uint256.add_comm d (f dst)]
         rw [Verity.Core.Uint256.add_assoc (f dst) d _]
-        have h_congr := congrArg (fun x => f dst + (d + x)) ih
         calc
           f dst + (d + ((List.map f' rest).sum + d * countOccU src rest))
               = f dst + (d + ((List.map f rest).sum + d * countOccU dst rest)) := by
-                  have h_congr' := h_congr
-                  simp [Verity.Core.Uint256.mul_comm] at h_congr'
-                  exact h_congr'
+                  simpa [Verity.Core.Uint256.mul_comm] using congrArg (fun x => f dst + (d + x)) ih
           _ = f dst + ((List.map f rest).sum + (d + d * countOccU dst rest)) := by
                   rw [← Verity.Core.Uint256.add_assoc d (List.map f rest).sum _]
                   rw [Verity.Core.Uint256.add_comm d (List.map f rest).sum]
                   rw [← Verity.Core.Uint256.add_assoc (List.map f rest).sum d _]
       · simp [h_other a ha_s ha_d, countOccU_cons_ne a src rest ha_s, countOccU_cons_ne a dst rest ha_d]
-        have h_congr := congrArg (fun x => f a + x) ih
-        have h_congr' := h_congr
-        simp [Verity.Core.Uint256.add_assoc] at h_congr'
-        exact h_congr'
+        simpa [Verity.Core.Uint256.add_assoc] using congrArg (fun x => f a + x) ih
 
 end Verity.Proofs.Stdlib.ListSum

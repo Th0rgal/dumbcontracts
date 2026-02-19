@@ -174,7 +174,7 @@ theorem safeIncrement_succeeds_below_max (state : ContractState) (sender : Addre
   have h_no_overflow : ((state.storage 0) : Nat) + 1 ≤ Verity.Core.MAX_UINT256 := by
     omega
   -- Note: MAX_UINT256 in Math and Core are equal (both 2^256-1)
-  have h_eq : Verity.Stdlib.Math.MAX_UINT256 = Verity.Core.MAX_UINT256 := by rfl
+  have h_eq : Verity.Stdlib.Math.MAX_UINT256 = Verity.Core.MAX_UINT256 := rfl
   have h_safe : safeAdd (state.storage 0) 1 = some ((state.storage 0) + 1) := by
     unfold safeAdd
     rw [h_eq]

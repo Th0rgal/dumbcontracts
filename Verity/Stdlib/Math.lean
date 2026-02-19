@@ -62,9 +62,9 @@ def requireSomeUint (opt : Option Uint256) (message : String) : Contract Uint256
 
 -- Full-result simp lemmas for requireSomeUint
 @[simp] theorem requireSomeUint_some (v : Uint256) (msg : String) (s : ContractState) :
-  (requireSomeUint (some v) msg).run s = ContractResult.success v s := by rfl
+  (requireSomeUint (some v) msg).run s = ContractResult.success v s := rfl
 
 @[simp] theorem requireSomeUint_none (msg : String) (s : ContractState) :
-  (requireSomeUint none msg).run s = ContractResult.revert msg s := by rfl
+  (requireSomeUint none msg).run s = ContractResult.revert msg s := rfl
 
 end Verity.Stdlib.Math

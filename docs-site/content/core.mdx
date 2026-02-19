@@ -154,13 +154,13 @@ Every storage operation, context accessor, and event function has a full-result 
 ```lean
 -- Full-result form (preferred for new proofs):
 @[simp] theorem getStorage_run (s : StorageSlot Uint256) (state : ContractState) :
-  (getStorage s).run state = ContractResult.success (state.storage s.slot) state := by rfl
+  (getStorage s).run state = ContractResult.success (state.storage s.slot) state := rfl
 
 @[simp] theorem require_true (msg : String) (s : ContractState) :
-  (require true msg).run s = ContractResult.success () s := by rfl
+  (require true msg).run s = ContractResult.success () s := rfl
 
 @[simp] theorem require_false (msg : String) (s : ContractState) :
-  (require false msg).run s = ContractResult.revert msg s := by rfl
+  (require false msg).run s = ContractResult.revert msg s := rfl
 ```
 
 Legacy `_fst`/`_snd` projection lemmas also exist but the full-result forms above are preferred — they prove success, value, and state in one shot. Most simple properties can be proven by `simp only [...]` with the right set of definitions.

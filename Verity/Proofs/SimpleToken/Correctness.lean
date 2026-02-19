@@ -48,8 +48,7 @@ theorem transfer_reverts_insufficient_balance (s : ContractState) (to : Address)
     msgSender, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst]
-  have h_not_ge : ¬(s.storageMap 1 s.sender ≥ amount) := Nat.not_le.mpr h_insufficient
-  simp [h_not_ge]
+  simp [show ¬(s.storageMap 1 s.sender ≥ amount) from Nat.not_le.mpr h_insufficient]
 
 /-! ## Invariant Preservation
 
@@ -67,12 +66,7 @@ theorem mint_preserves_wellformedness (s : ContractState) (to : Address) (amount
   WellFormedState s' := by
   have h_spec := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   obtain ⟨_, _, _, h_owner_pres, _, h_ctx⟩ := h_spec
-  have h_sender_pres := h_ctx.1
-  have h_this_pres := h_ctx.2.1
-  constructor
-  · exact h_sender_pres ▸ h.sender_nonempty
-  · exact h_this_pres ▸ h.contract_nonempty
-  · exact h_owner_pres ▸ h.owner_nonempty
+  exact ⟨h_ctx.1 ▸ h.sender_nonempty, h_ctx.2.1 ▸ h.contract_nonempty, h_owner_pres ▸ h.owner_nonempty⟩
 
 /-- Transfer preserves well-formedness when balance is sufficient and no overflow.
     Owner, context all remain intact across transfers. -/
@@ -83,12 +77,7 @@ theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (am
   WellFormedState s' := by
   have h_spec := transfer_meets_spec_when_sufficient s to amount h_balance h_no_overflow
   obtain ⟨_, _, _, _, h_owner_pres, _h_storage, _h_addr_pres, h_ctx⟩ := h_spec
-  have h_sender_pres := h_ctx.1
-  have h_this_pres := h_ctx.2.1
-  constructor
-  · exact h_sender_pres ▸ h.sender_nonempty
-  · exact h_this_pres ▸ h.contract_nonempty
-  · exact h_owner_pres ▸ h.owner_nonempty
+  exact ⟨h_ctx.1 ▸ h.sender_nonempty, h_ctx.2.1 ▸ h.contract_nonempty, h_owner_pres ▸ h.owner_nonempty⟩
 
 /-! ## Owner Stability
 
@@ -103,8 +92,8 @@ theorem mint_preserves_owner (s : ContractState) (to : Address) (amount : Uint25
   (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((mint to amount).run s).snd
   s'.storageAddr 0 = s.storageAddr 0 := by
-  have h := mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
-  obtain ⟨_, _, _, h_owner_pres, _, _⟩ := h
+  obtain ⟨_, _, _, h_owner_pres, _, _⟩ :=
+    mint_meets_spec_when_owner s to amount h_owner h_no_bal_overflow h_no_sup_overflow
   exact h_owner_pres
 
 /-- Transfer does not change the owner address. -/
@@ -113,8 +102,8 @@ theorem transfer_preserves_owner (s : ContractState) (to : Address) (amount : Ui
   (h_no_overflow : s.sender ≠ to → (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   let s' := ((transfer to amount).run s).snd
   s'.storageAddr 0 = s.storageAddr 0 := by
-  have h := transfer_meets_spec_when_sufficient s to amount h_balance h_no_overflow
-  obtain ⟨_, _, _, _, h_owner_pres, _⟩ := h
+  obtain ⟨_, _, _, _, h_owner_pres, _⟩ :=
+    transfer_meets_spec_when_sufficient s to amount h_balance h_no_overflow
   exact h_owner_pres
 
 /-! ## End-to-End Composition

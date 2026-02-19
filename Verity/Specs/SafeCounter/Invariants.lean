@@ -5,7 +5,6 @@
   The key invariant is that the count stays within [0, MAX_UINT256].
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 import Verity.Stdlib.Math
 

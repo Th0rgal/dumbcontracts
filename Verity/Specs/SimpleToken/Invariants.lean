@@ -2,7 +2,6 @@
   State invariants for SimpleToken contract.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 import Verity.EVM.Uint256
 

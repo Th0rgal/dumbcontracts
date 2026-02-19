@@ -9,10 +9,7 @@
 -/
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
-import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
-import Verity.Core
-import Compiler.ContractSpec
 import Compiler.Hex
 
 namespace Compiler.Proofs.IRGeneration

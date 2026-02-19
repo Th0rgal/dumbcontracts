@@ -11,7 +11,6 @@
   Success: Identical results → high confidence in compiler correctness
 -/
 
-import Verity.Core
 import Verity.Examples.SimpleStorage
 import Verity.Examples.Counter
 import Verity.Examples.SafeCounter

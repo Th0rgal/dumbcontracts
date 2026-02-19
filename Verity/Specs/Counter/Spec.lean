@@ -2,7 +2,6 @@
   Formal specifications for Counter operations.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 import Verity.EVM.Uint256
 import Verity.Examples.Counter

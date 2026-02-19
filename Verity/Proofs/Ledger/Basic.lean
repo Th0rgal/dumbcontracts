@@ -9,12 +9,8 @@
   - All operations preserve non-mapping storage
 -/
 
-import Verity.Core
-import Verity.Examples.Ledger
-import Verity.EVM.Uint256
 import Verity.Specs.Ledger.Spec
 import Verity.Specs.Ledger.Invariants
-import Verity.Stdlib.Math
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
 

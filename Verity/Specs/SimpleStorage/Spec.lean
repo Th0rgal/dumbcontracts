@@ -2,7 +2,6 @@
   Formal specifications for SimpleStorage operations.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 
 namespace Verity.Specs.SimpleStorage

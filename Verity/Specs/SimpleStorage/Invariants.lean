@@ -2,7 +2,6 @@
   State invariants for SimpleStorage contract.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 
 namespace Verity.Specs.SimpleStorage

@@ -8,11 +8,7 @@
   - State preservation and well-formedness
 -/
 
-import Verity.Core
-import Verity.Stdlib.Math
 import Verity.Proofs.Stdlib.Math
-import Verity.EVM.Uint256
-import Verity.Examples.SafeCounter
 import Verity.Specs.SafeCounter.Spec
 import Verity.Specs.SafeCounter.Invariants
 

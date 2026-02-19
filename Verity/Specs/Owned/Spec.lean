@@ -2,7 +2,6 @@
   Formal specifications for Owned operations.
 -/
 
-import Verity.Core
 import Verity.Specs.Common
 import Verity.Examples.Owned
 

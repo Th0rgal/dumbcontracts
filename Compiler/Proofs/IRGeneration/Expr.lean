@@ -11,10 +11,7 @@
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.Conversions
-import Verity.Proofs.Stdlib.SpecInterpreter
-import Compiler.ContractSpec
 import Compiler.Specs
-import Verity.Core
 
 namespace Compiler.Proofs.IRGeneration
 

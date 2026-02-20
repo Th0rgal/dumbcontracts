@@ -101,16 +101,14 @@ private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256
   simp only [mint, onlyOwner, isOwner, owner, balances, totalSupply,
     msgSender, getStorageAddr, getStorage, getMapping, setMapping, setStorage,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst,
+    Contract.run,
     h_owner, beq_self_eq_true, ite_true]
   unfold requireSomeUint
   rw [h_safe_bal]
-  simp only [Verity.pure, Pure.pure, Verity.bind, Bind.bind,
-    getStorage, Contract.run, ContractResult.snd, ContractResult.fst]
+  simp only [Verity.pure, Pure.pure, Bind.bind]
   rw [h_safe_sup]
-  simp only [Verity.pure, Pure.pure, Verity.bind, Bind.bind,
-    setMapping, setStorage, Contract.run, ContractResult.snd, ContractResult.fst]
-  simp only [HAdd.hAdd, Add.add, h_owner]
+  simp only [Verity.pure]
+  simp only [HAdd.hAdd, h_owner]
 
 /-- `mint` satisfies `mint_spec` under owner and no-overflow preconditions. -/
 theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : Uint256)
@@ -122,15 +120,15 @@ theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : 
   simp only [Contract.runState, mint_spec]
   rw [show (mint to amount) s = (mint to amount).run s from rfl, h_unfold]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · simp [mint_spec, ContractResult.snd, beq_iff_eq]
-  · simp [mint_spec, ContractResult.snd, beq_iff_eq]
+  · simp
+  · simp
   · refine ⟨?_, ?_⟩
     · intro addr h_ne
-      simp [mint_spec, ContractResult.snd, beq_iff_eq, h_ne]
+      simp [h_ne]
     · intro slot h_ne addr
-      simp [mint_spec, ContractResult.snd, beq_iff_eq, h_ne]
+      simp [h_ne]
   · intro slot h_ne
-    simp [mint_spec, ContractResult.snd, h_ne]
+    simp [h_ne]
   · rfl
   · rfl
   · exact Specs.sameContext_rfl _
@@ -159,10 +157,9 @@ private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount 
     (h_eq : s.sender = to) :
     (transfer to amount).run s = ContractResult.success () s := by
   have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
-  simp [transfer, balances, msgSender, getMapping, setMapping,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst,
-    h_balance', h_eq, beq_iff_eq]
+  simp [transfer, balances, msgSender, getMapping,
+    Verity.require, Verity.pure, Verity.bind, Bind.bind,
+    Contract.run, h_balance', h_eq]
 
 /-- Helper: unfold `transfer` on the successful non-self path with no overflow. -/
 private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount : Uint256)
@@ -190,9 +187,8 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
   have h_safe := safeAdd_some (s.storageMap 2 to) amount h_no_overflow
   simp only [transfer, balances, msgSender, getMapping, setMapping, requireSomeUint,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst,
-    h_balance, h_ne, beq_iff_eq, h_safe, ge_iff_le, decide_eq_true_eq,
-    h_balance', ite_true, ite_false, HAdd.hAdd, Add.add]
+    Contract.run, h_balance, h_ne, beq_iff_eq, h_safe, decide_eq_true_eq,
+    ite_true, ite_false, HAdd.hAdd]
   congr 1
   congr 1
   funext slot
@@ -208,9 +204,9 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
     simp only [Contract.runState, transfer_spec]
     rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
     refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · simp [h_eq, beq_iff_eq]
-    · simp [h_eq, beq_iff_eq]
-    · simp [h_eq, beq_iff_eq, Specs.storageMapUnchangedExceptKeyAtSlot,
+    · simp [h_eq]
+    · simp [h_eq]
+    · simp [h_eq, Specs.storageMapUnchangedExceptKeyAtSlot,
         Specs.storageMapUnchangedExceptKey, Specs.storageMapUnchangedExceptSlot]
     · trivial
     · trivial
@@ -219,7 +215,6 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
   · have h_unfold := transfer_unfold_other s to amount h_balance h_eq (h_no_overflow h_eq)
     simp only [Contract.runState, transfer_spec]
     rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
-    simp only [ContractResult.snd]
     have h_ne' := address_beq_false_of_ne s.sender to h_eq
     refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp [h_ne']

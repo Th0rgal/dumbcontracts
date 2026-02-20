@@ -83,7 +83,6 @@ Mapping slots in Yul are derived via keccak(baseSlot, key). IR proof semantics
 call through the `MappingSlot` abstraction; the current backend is tagged
 encoding so `sload`/`sstore` can route to `mappings` instead of flat storage.
 -/
-abbrev encodeMappingSlot := Compiler.Proofs.abstractMappingSlot
 
 open Compiler.Proofs.YulGeneration in
 mutual
@@ -109,15 +108,15 @@ Total: uses `exprsSize args + 1` for termination. Evaluating args decreases the 
 
 NOTE: This function always evaluates all arguments via `evalIRExprs` before dispatching,
 matching the structure of `evalYulCall` in Semantics.lean. For `sload`, mapping slot
-routing uses `decodeMappingSlot` on the evaluated slot value (not pattern-matching on
-the argument expression). This makes the function structurally identical to the Yul
-version, enabling direct equivalence proofs without axioms. -/
+routing uses `Compiler.Proofs.abstractDecodeMappingSlot` on the evaluated slot value
+(not pattern-matching on the argument expression). This makes the function structurally
+identical to the Yul version, enabling direct equivalence proofs without axioms. -/
 def evalIRCall (state : IRState) (func : String) : List YulExpr → Option Nat
   | args => do
     let argVals ← evalIRExprs state args
     if func = "mappingSlot" then
       match argVals with
-      | [base, key] => some (encodeMappingSlot base key)
+      | [base, key] => some (Compiler.Proofs.abstractMappingSlot base key)
       | _ => none
     else if func = "sload" then
       match argVals with

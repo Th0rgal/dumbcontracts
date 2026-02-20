@@ -37,7 +37,6 @@ Mapping slots in Yul are derived via keccak(baseSlot, key). Proof semantics call
 through the `MappingSlot` abstraction; the current backend is tagged encoding so
 `sload`/`sstore` can route to `mappings` rather than flat `storage`.
 -/
-abbrev encodeMappingSlot := Compiler.Proofs.abstractMappingSlot
 
 /-! ## Execution State -/
 
@@ -110,7 +109,7 @@ def evalYulCall (state : YulState) (func : String) : List YulExpr → Option Nat
     let argVals ← evalYulExprs state args
     if func = "mappingSlot" then
       match argVals with
-      | [base, key] => some (encodeMappingSlot base key)
+      | [base, key] => some (Compiler.Proofs.abstractMappingSlot base key)
       | _ => none
     else if func = "sload" then
       match argVals with

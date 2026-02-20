@@ -178,7 +178,7 @@ These components are **not formally verified** but are trusted based on testing,
    - Reproducible builds
 
 3. **CI Validation**:
-   - `scripts/check_yul_compiles.py` - Ensures Yul compiles without errors
+   - `scripts/check_yul_compiles.py` - Ensures Yul compiles without errors and enforces legacy-vs-AST bytecode parity
    - `scripts/check_selector_fixtures.py` - Validates function selectors
 
 **Risk Assessment**: **Medium**

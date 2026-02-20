@@ -176,7 +176,7 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 **`build` job** (requires `lake build` artifacts):
 1. Keccak-256 self-test (`keccak256.py --self-test`)
 2. Selector hash verification (`check_selectors.py`)
-3. Yul compilation check (`check_yul_compiles.py`)
+3. Yul compilation + legacy/AST bytecode parity check (`check_yul_compiles.py`)
 4. Static gas model coverage on generated Yul (legacy + AST) (`check_gas_model_coverage.py`)
 5. Selector fixture check (`check_selector_fixtures.py`)
 6. Static gas report invariants (`check_gas_report.py`)

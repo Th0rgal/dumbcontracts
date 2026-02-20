@@ -22,38 +22,38 @@ theorem setStorage_updates_count (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := count
   let s' := ((setStorage slot value).run s).snd
   s'.storage 0 = value := by
-  simp [setStorage, count]
+  simp [count]
 
 theorem getStorage_reads_count (s : ContractState) :
   let slot : StorageSlot Uint256 := count
   let result := ((getStorage slot).run s).fst
   result = s.storage 0 := by
-  simp [getStorage, count]
+  simp [count]
 
 theorem setStorage_preserves_other_slots (s : ContractState) (value : Uint256) (slot_num : Nat)
   (h : slot_num ≠ 0) :
   let slot : StorageSlot Uint256 := count
   let s' := ((setStorage slot value).run s).snd
   s'.storage slot_num = s.storage slot_num := by
-  simp [setStorage, count, h]
+  simp [count, h]
 
 theorem setStorage_preserves_context (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := count
   let s' := ((setStorage slot value).run s).snd
   s'.sender = s.sender ∧ s'.thisAddress = s.thisAddress := by
-  simp [setStorage, count]
+  simp [count]
 
 theorem setStorage_preserves_addr_storage (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := count
   let s' := ((setStorage slot value).run s).snd
   s'.storageAddr = s.storageAddr := by
-  simp [setStorage, count]
+  simp [count]
 
 theorem setStorage_preserves_map_storage (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := count
   let s' := ((setStorage slot value).run s).snd
   s'.storageMap = s.storageMap := by
-  simp [setStorage, count]
+  simp [count]
 
 /-! ## increment Correctness -/
 
@@ -170,6 +170,6 @@ theorem decrement_preserves_wellformedness (s : ContractState) (h : WellFormedSt
 theorem getCount_preserves_state (s : ContractState) :
   let s' := ((getCount).run s).snd
   s' = s := by
-  simp [getCount, getStorage]
+  simp [getCount]
 
 end Verity.Proofs.Counter

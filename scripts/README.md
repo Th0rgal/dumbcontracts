@@ -82,6 +82,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_yul_builtin_boundary.py`** - Enforces a centralized Yul builtin semantics boundary: runtime interpreters must import `Compiler/Proofs/YulGeneration/Builtins.lean`, call `evalBuiltinCall`, and avoid inline builtin dispatch branches (`func = "add"`, `func = "sload"`, etc.)
 - **`check_evmyullean_capability_boundary.py`** - Enforces the current `#294` EVMYulLean overlap capability matrix in `Compiler/Proofs/YulGeneration/Builtins.lean`: allows only the explicit overlap builtin set plus Verity helper `mappingSlot`, and blocks known unsupported builtins (`create`, `create2`, `extcodesize`, `extcodecopy`, `extcodehash`) from silently entering the migration seam
 - **`generate_evmyullean_capability_report.py`** - Deterministically generates `artifacts/evmyullean_capability_report.json` from `Compiler/Proofs/YulGeneration/Builtins.lean` and `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanAdapter.lean`, including explicit `unsupported_adapter_nodes` for unimplemented adapter lowering branches; supports `--check` mode for CI freshness gating
+- **`generate_evmyullean_adapter_report.py`** - Deterministically generates `artifacts/evmyullean_adapter_report.json` with constructor-level lowering coverage (`supported`/`partial`/`gap`) for `lowerExpr` and `lowerStmt` plus explicit adapter-gap reasons and runtime-seam status (`stub-none` vs `implemented`); supports `--check` mode for CI freshness gating
 - **`check_doc_counts.py`** - Validates theorem, axiom, test, suite, coverage, and contract counts across 14 documentation files (README, llms.txt, compiler.mdx, verification.mdx, research.mdx, index.mdx, core.mdx, examples.mdx, getting-started.mdx, TRUST_ASSUMPTIONS, VERIFICATION_STATUS, ROADMAP, test/README, layout.tsx), theorem-name completeness in verification.mdx tables, and proven-theorem counts in Property*.t.sol file headers
 - **`generate_verification_status.py`** - Deterministically generates `artifacts/verification_status.json` (theorem/test/axiom/sorry/toolchain metrics) and supports `--check` mode for CI freshness gating
 - **`check_solc_pin.py`** - Enforces pinned solc consistency across CI/tooling/docs: `verify.yml` (`SOLC_VERSION`, `SOLC_URL`, `SOLC_SHA256`), `foundry.toml` (`solc_version`), `setup-solc` action URL/SHA usage, and `TRUST_ASSUMPTIONS.md` pinned version line
@@ -112,6 +113,7 @@ python3 scripts/check_contract_structure.py
 
 # Regenerate capability artifact after builtin-boundary updates
 python3 scripts/generate_evmyullean_capability_report.py
+python3 scripts/generate_evmyullean_adapter_report.py
 ```
 
 ## Selector & Yul Scripts
@@ -185,8 +187,9 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 10. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
 11. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
 12. EVMYulLean capability report freshness (`generate_evmyullean_capability_report.py --check`)
-13. Lean hygiene (`check_lean_hygiene.py`)
-14. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+13. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+14. Lean hygiene (`check_lean_hygiene.py`)
+15. Static gas model builtin coverage (`check_gas_model_coverage.py`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Keccak-256 self-test (`keccak256.py --self-test`)

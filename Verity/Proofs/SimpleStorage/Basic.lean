@@ -22,14 +22,14 @@ theorem setStorage_updates_slot (s : ContractState) (value : Uint256) :
   let s' := ((setStorage slot value).run s).snd
   s'.storage 0 = value := by
   -- Unfold definitions
-  simp [setStorage]
+  simp
 
 -- Lemma: getStorage reads from the correct slot
 theorem getStorage_reads_slot (s : ContractState) :
   let slot : StorageSlot Uint256 := ⟨0⟩
   let result := ((getStorage slot).run s).fst
   result = s.storage 0 := by
-  simp [getStorage]
+  simp
 
 -- Lemma: setStorage preserves other slots
 theorem setStorage_preserves_other_slots (s : ContractState) (value : Uint256) (n : Nat)
@@ -37,34 +37,34 @@ theorem setStorage_preserves_other_slots (s : ContractState) (value : Uint256) (
   let slot : StorageSlot Uint256 := ⟨0⟩
   let s' := ((setStorage slot value).run s).snd
   s'.storage n = s.storage n := by
-  simp [setStorage, h]
+  simp [h]
 
 -- Lemma: setStorage preserves context (sender, thisAddress)
 theorem setStorage_preserves_sender (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := ⟨0⟩
   let s' := ((setStorage slot value).run s).snd
   s'.sender = s.sender := by
-  simp [setStorage]
+  simp
 
 theorem setStorage_preserves_address (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := ⟨0⟩
   let s' := ((setStorage slot value).run s).snd
   s'.thisAddress = s.thisAddress := by
-  simp [setStorage]
+  simp
 
 -- Lemma: setStorage preserves address storage
 theorem setStorage_preserves_addr_storage (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := ⟨0⟩
   let s' := ((setStorage slot value).run s).snd
   s'.storageAddr = s.storageAddr := by
-  simp [setStorage]
+  simp
 
 -- Lemma: setStorage preserves mapping storage
 theorem setStorage_preserves_map_storage (s : ContractState) (value : Uint256) :
   let slot : StorageSlot Uint256 := ⟨0⟩
   let s' := ((setStorage slot value).run s).snd
   s'.storageMap = s.storageMap := by
-  simp [setStorage]
+  simp
 
 -- Main theorem: store meets its specification
 theorem store_meets_spec (s : ContractState) (value : Uint256) :
@@ -73,7 +73,7 @@ theorem store_meets_spec (s : ContractState) (value : Uint256) :
   simp [store, storedData, store_spec, Specs.sameAddrMapContext,
     Specs.sameContext, Specs.sameStorageAddr, Specs.sameStorageMap]
   intro slot h_neq
-  simp [setStorage, storedData, h_neq]
+  simp [h_neq]
 
 -- Main theorem: retrieve meets its specification
 theorem retrieve_meets_spec (s : ContractState) :
@@ -109,7 +109,7 @@ theorem store_preserves_wellformedness (s : ContractState) (value : Uint256)
 theorem retrieve_preserves_state (s : ContractState) :
   let s' := ((retrieve).run s).snd
   s' = s := by
-  simp [retrieve, storedData, getStorage]
+  simp [retrieve, storedData]
 
 -- Theorem: retrieve is idempotent (running twice is the same as once)
 theorem retrieve_twice_idempotent (s : ContractState) :

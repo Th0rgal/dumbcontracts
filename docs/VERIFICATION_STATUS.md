@@ -61,9 +61,9 @@ EVM Bytecode
 | SimpleToken | 61 | ✅ Complete | `Verity/Proofs/SimpleToken/` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
-| **Total** | **264** | **✅ 100%** | — |
+| **Total** | **267** | **✅ 100%** | — |
 
-> **Note**: Stdlib (159 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (423 total properties).
+> **Note**: Stdlib (159 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (426 total properties).
 
 ### Example Property
 
@@ -177,11 +177,11 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 57% coverage (242/423), 181 remaining exclusions all proof-only
+**Status**: 58% coverage (245/426), 181 remaining exclusions all proof-only
 
 ### Current Coverage
 
-- **Total Properties**: 423
+- **Total Properties**: 426
 - **Covered**: 220 (55%)
 - **Excluded**: 181 (all proof-only)
 - **Missing**: 0

@@ -273,10 +273,12 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
               | .call "mappingSlot" [baseExpr, keyExpr] =>
                   match evalIRExpr state baseExpr, evalIRExpr state keyExpr, evalIRExpr state valExpr with
                   | some baseSlot, some key, some val =>
+                      let updated := Compiler.Proofs.abstractStoreMappingEntry
+                        state.storage state.mappings baseSlot key val
                       .continue {
                         state with
-                        mappings := fun b k =>
-                          if b = baseSlot ∧ k = key then val else state.mappings b k
+                        storage := updated.1
+                        mappings := updated.2
                       }
                   | _, _, _ => .revert state
               | _ =>

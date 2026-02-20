@@ -252,10 +252,12 @@ def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
                   | .call "mappingSlot" [baseExpr, keyExpr] =>
                       match evalYulExpr state baseExpr, evalYulExpr state keyExpr, evalYulExpr state valExpr with
                       | some baseSlot, some key, some val =>
+                          let updated := Compiler.Proofs.abstractStoreMappingEntry
+                            state.storage state.mappings baseSlot key val
                           .continue {
                             state with
-                            mappings := fun b k =>
-                              if b = baseSlot ∧ k = key then val else state.mappings b k
+                            storage := updated.1
+                            mappings := updated.2
                           }
                       | _, _, _ => .revert state
                   | _ =>

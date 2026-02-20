@@ -28,6 +28,7 @@ IMPORT_MAPPING_SLOT_RE = re.compile(r"^\s*import\s+Compiler\.Proofs\.MappingSlot
 ABSTRACT_SLOT_REF_RE = re.compile(r"Compiler\.Proofs\.abstractMappingSlot")
 ABSTRACT_LOAD_REF_RE = re.compile(r"Compiler\.Proofs\.abstractLoadStorageOrMapping")
 ABSTRACT_STORE_REF_RE = re.compile(r"Compiler\.Proofs\.abstractStoreStorageOrMapping")
+ABSTRACT_STORE_ENTRY_REF_RE = re.compile(r"Compiler\.Proofs\.abstractStoreMappingEntry")
 DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE = re.compile(
     r"Compiler\.Proofs\.(?:mappingTag|encodeMappingSlot|decodeMappingSlot|encodeNestedMappingSlot|normalizeMappingBaseSlot)"
 )
@@ -61,6 +62,9 @@ def main() -> int:
 
         if not ABSTRACT_STORE_REF_RE.search(text):
             errors.append(f"{rel}: missing reference to Compiler.Proofs.abstractStoreStorageOrMapping")
+
+        if not ABSTRACT_STORE_ENTRY_REF_RE.search(text):
+            errors.append(f"{rel}: missing reference to Compiler.Proofs.abstractStoreMappingEntry")
 
         if DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE.search(text):
             errors.append(

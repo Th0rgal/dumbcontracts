@@ -25,6 +25,19 @@ def abstractDecodeMappingSlot (slot : Nat) : Option (Nat × Nat) :=
 def abstractNestedMappingSlot (baseSlot key1 key2 : Nat) : Nat :=
   abstractMappingSlot (abstractMappingSlot baseSlot key1) key2
 
+/-- Read a mapping entry directly from base slot and key. -/
+def abstractLoadMappingEntry
+    (mappings : Nat → Nat → Nat)
+    (baseSlot key : Nat) : Nat :=
+  mappings baseSlot key
+
+/-- Write a mapping entry directly from base slot and key. -/
+def abstractStoreMappingEntry
+    (storage : Nat → Nat)
+    (mappings : Nat → Nat → Nat)
+    (baseSlot key value : Nat) : (Nat → Nat) × (Nat → Nat → Nat) :=
+  (storage, fun b k => if b = baseSlot ∧ k = key then value else mappings b k)
+
 /-- Read through the active mapping-slot backend from split storage/mapping tables. -/
 def abstractLoadStorageOrMapping
     (storage : Nat → Nat)
@@ -57,6 +70,18 @@ def abstractStoreStorageOrMapping
 @[simp] theorem abstractNestedMappingSlot_eq_encodeNested (baseSlot key1 key2 : Nat) :
     abstractNestedMappingSlot baseSlot key1 key2 = encodeNestedMappingSlot baseSlot key1 key2 := by
   simp [abstractNestedMappingSlot, encodeNestedMappingSlot]
+
+@[simp] theorem abstractLoadMappingEntry_eq
+    (mappings : Nat → Nat → Nat)
+    (baseSlot key : Nat) :
+    abstractLoadMappingEntry mappings baseSlot key = mappings baseSlot key := rfl
+
+@[simp] theorem abstractStoreMappingEntry_eq
+    (storage : Nat → Nat)
+    (mappings : Nat → Nat → Nat)
+    (baseSlot key value : Nat) :
+    abstractStoreMappingEntry storage mappings baseSlot key value =
+      (storage, fun b k => if b = baseSlot ∧ k = key then value else mappings b k) := rfl
 
 @[simp] theorem abstractLoadStorageOrMapping_eq
     (storage : Nat → Nat)

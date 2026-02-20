@@ -5,36 +5,41 @@ import "forge-std/Test.sol";
 
 contract SelectorSanityTest is Test {
     function testYulSelectorsMatchAbi() public {
-        _assertSelector("compiler/yul/Counter.yul", "increment()");
-        _assertSelector("compiler/yul/Counter.yul", "decrement()");
-        _assertSelector("compiler/yul/Counter.yul", "getCount()");
+        _assertSelector(_yulPath("Counter"), "increment()");
+        _assertSelector(_yulPath("Counter"), "decrement()");
+        _assertSelector(_yulPath("Counter"), "getCount()");
 
-        _assertSelector("compiler/yul/SafeCounter.yul", "increment()");
-        _assertSelector("compiler/yul/SafeCounter.yul", "decrement()");
-        _assertSelector("compiler/yul/SafeCounter.yul", "getCount()");
+        _assertSelector(_yulPath("SafeCounter"), "increment()");
+        _assertSelector(_yulPath("SafeCounter"), "decrement()");
+        _assertSelector(_yulPath("SafeCounter"), "getCount()");
 
-        _assertSelector("compiler/yul/SimpleStorage.yul", "store(uint256)");
-        _assertSelector("compiler/yul/SimpleStorage.yul", "retrieve()");
+        _assertSelector(_yulPath("SimpleStorage"), "store(uint256)");
+        _assertSelector(_yulPath("SimpleStorage"), "retrieve()");
 
-        _assertSelector("compiler/yul/Owned.yul", "transferOwnership(address)");
-        _assertSelector("compiler/yul/Owned.yul", "getOwner()");
+        _assertSelector(_yulPath("Owned"), "transferOwnership(address)");
+        _assertSelector(_yulPath("Owned"), "getOwner()");
 
-        _assertSelector("compiler/yul/OwnedCounter.yul", "increment()");
-        _assertSelector("compiler/yul/OwnedCounter.yul", "decrement()");
-        _assertSelector("compiler/yul/OwnedCounter.yul", "getCount()");
-        _assertSelector("compiler/yul/OwnedCounter.yul", "getOwner()");
-        _assertSelector("compiler/yul/OwnedCounter.yul", "transferOwnership(address)");
+        _assertSelector(_yulPath("OwnedCounter"), "increment()");
+        _assertSelector(_yulPath("OwnedCounter"), "decrement()");
+        _assertSelector(_yulPath("OwnedCounter"), "getCount()");
+        _assertSelector(_yulPath("OwnedCounter"), "getOwner()");
+        _assertSelector(_yulPath("OwnedCounter"), "transferOwnership(address)");
 
-        _assertSelector("compiler/yul/Ledger.yul", "deposit(uint256)");
-        _assertSelector("compiler/yul/Ledger.yul", "withdraw(uint256)");
-        _assertSelector("compiler/yul/Ledger.yul", "transfer(address,uint256)");
-        _assertSelector("compiler/yul/Ledger.yul", "getBalance(address)");
+        _assertSelector(_yulPath("Ledger"), "deposit(uint256)");
+        _assertSelector(_yulPath("Ledger"), "withdraw(uint256)");
+        _assertSelector(_yulPath("Ledger"), "transfer(address,uint256)");
+        _assertSelector(_yulPath("Ledger"), "getBalance(address)");
 
-        _assertSelector("compiler/yul/SimpleToken.yul", "mint(address,uint256)");
-        _assertSelector("compiler/yul/SimpleToken.yul", "transfer(address,uint256)");
-        _assertSelector("compiler/yul/SimpleToken.yul", "balanceOf(address)");
-        _assertSelector("compiler/yul/SimpleToken.yul", "totalSupply()");
-        _assertSelector("compiler/yul/SimpleToken.yul", "owner()");
+        _assertSelector(_yulPath("SimpleToken"), "mint(address,uint256)");
+        _assertSelector(_yulPath("SimpleToken"), "transfer(address,uint256)");
+        _assertSelector(_yulPath("SimpleToken"), "balanceOf(address)");
+        _assertSelector(_yulPath("SimpleToken"), "totalSupply()");
+        _assertSelector(_yulPath("SimpleToken"), "owner()");
+    }
+
+    function _yulPath(string memory contractName) internal view returns (string memory) {
+        string memory yulDir = vm.envOr("DIFFTEST_YUL_DIR", string("compiler/yul"));
+        return string.concat(yulDir, "/", contractName, ".yul");
     }
 
     function _assertSelector(string memory path, string memory signature) internal {

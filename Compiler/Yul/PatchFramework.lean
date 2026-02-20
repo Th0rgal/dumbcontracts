@@ -18,6 +18,10 @@ structure ExprPatchRule where
   priority : Nat
   applyExpr : YulExpr → Option YulExpr
 
+/-- Fail-closed metadata guard: a runnable rule must carry audit/proof linkage. -/
+def ExprPatchRule.isAuditable (rule : ExprPatchRule) : Bool :=
+  !rule.patchName.isEmpty && !rule.proofId.isEmpty && !rule.sideConditions.isEmpty
+
 /-- Deterministic patch pass settings. -/
 structure PatchPassConfig where
   enabled : Bool := true
@@ -179,7 +183,8 @@ def runExprPatchPass
     { patched := stmts, iterations := 0, manifest := [] }
   else
     let orderedRules :=
-      orderRulesByPriority (rules.filter (fun rule => rule.passPhase == config.passPhase))
+      orderRulesByPriority (rules.filter (fun rule =>
+        rule.passPhase == config.passPhase && rule.isAuditable))
     let (patched, iterations, hits) := runPatchPassLoop config.maxIterations orderedRules stmts 0 []
     { patched := patched
       iterations := iterations

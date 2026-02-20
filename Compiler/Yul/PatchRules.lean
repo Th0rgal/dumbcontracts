@@ -74,4 +74,25 @@ example :
         "Compiler.Proofs.YulGeneration.PatchRulesProofs.or_zero_right_preserves")] := by
   native_decide
 
+/-- Smoke test: fail-closed metadata gate skips non-auditable rules. -/
+example :
+    let unsafeRule : ExprPatchRule :=
+      { patchName := "unsafe-without-proof"
+        pattern := "or(x, 0)"
+        rewrite := "x"
+        sideConditions := []
+        proofId := ""
+        passPhase := .postCodegen
+        priority := 999
+        applyExpr := fun expr =>
+          match expr with
+          | .call "or" [lhs, .lit 0] => some lhs
+          | _ => none }
+    let stmt : YulStmt := .expr (.call "or" [.ident "x", .lit 0])
+    let report := runExprPatchPass { enabled := true, maxIterations := 1 } [unsafeRule] [stmt]
+    (match report.patched, report.iterations, report.manifest with
+    | [.expr (.call "or" [.ident "x", .lit 0])], 0, [] => true
+    | _, _, _ => false) = true := by
+  native_decide
+
 end Compiler.Yul

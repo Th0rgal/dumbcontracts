@@ -9,7 +9,10 @@ solc_version = "0.8.33"
 via_ir = true
 optimizer = true
 optimizer_runs = 200
-fs_permissions = [{ access = "read", path = "./compiler/yul" }]
+fs_permissions = [
+  { access = "read", path = "./compiler/yul" },
+  { access = "read", path = "./compiler/yul-patched" }
+]
 
 # Testing profile: enables FFI for vm.ffi() calls (solc compilation, difftest-interpreter).
 # Required by: Differential*, Property*, CallValueGuard, CalldataSizeGuard, and Yul tests.

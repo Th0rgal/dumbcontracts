@@ -441,12 +441,19 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Download generated Yul
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-yul
+          path: compiler/yul
+
       - name: Setup Foundry environment
         uses: ./.github/actions/setup-foundry
 
       - name: Run Foundry tests with seed 42
         env:
           FOUNDRY_PROFILE: difftest
+          DIFFTEST_YUL_DIR: "compiler/yul"
           DIFFTEST_RANDOM_SMALL: "100"
           DIFFTEST_RANDOM_LARGE: "10000"
           DIFFTEST_RANDOM_SEED: "42"
@@ -455,6 +462,40 @@ jobs:
         run: |
           echo "Running tests with seed 42 (shard ${{ matrix.shard_index }}/8)"
           forge test
+
+  # Smoke gate for patch-enabled Yul on differential/property harness.
+  foundry-patched:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [changes, build]
+    if: needs.changes.outputs.code == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download patched Yul
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-yul-patched
+          path: compiler/yul-patched
+
+      - name: Setup Foundry environment
+        uses: ./.github/actions/setup-foundry
+
+      - name: Run Foundry patched-Yul smoke tests
+        env:
+          FOUNDRY_PROFILE: difftest
+          DIFFTEST_YUL_DIR: "compiler/yul-patched"
+          DIFFTEST_RANDOM_SMALL: "100"
+          DIFFTEST_RANDOM_LARGE: "10000"
+          DIFFTEST_RANDOM_SEED: "42"
+          DIFFTEST_SHARD_COUNT: "1"
+          DIFFTEST_SHARD_INDEX: "0"
+        run: |
+          echo "Running patched-Yul smoke tests with seed 42"
+          # Keep runtime bounded; full 10k random sweeps are already covered by baseline shards.
+          forge test --no-match-test "Random10000"
 
   # Multi-seed testing to detect flakiness and seed-dependent failures
   foundry-multi-seed:
@@ -471,12 +512,19 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Download generated Yul
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-yul
+          path: compiler/yul
+
       - name: Setup Foundry environment
         uses: ./.github/actions/setup-foundry
 
       - name: Run tests with seed ${{ matrix.seed }}
         env:
           FOUNDRY_PROFILE: difftest
+          DIFFTEST_YUL_DIR: "compiler/yul"
           DIFFTEST_RANDOM_SMALL: "100"
           DIFFTEST_RANDOM_LARGE: "10000"
           DIFFTEST_RANDOM_SEED: "${{ matrix.seed }}"

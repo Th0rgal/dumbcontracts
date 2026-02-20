@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 
 abstract contract YulTestBase is Test {
+    function _yulDir() internal view returns (string memory) {
+        return vm.envOr("DIFFTEST_YUL_DIR", string("compiler/yul"));
+    }
+
     // Edge-case values matching Lean's edgeUint256Values and DiffTestConfig._edgeUintValues():
     //   [0, 1, 2, 2^128, 2^255, 2^256-2, 2^256-1]
     // Selectors 0-6 return these edge values (~7/16 probability);
@@ -46,12 +50,12 @@ abstract contract YulTestBase is Test {
     }
 
     function deployYul(string memory name) internal returns (address) {
-        string memory path = string.concat("compiler/yul/", name, ".yul");
+        string memory path = string.concat(_yulDir(), "/", name, ".yul");
         return _deploy(_compileYul(path));
     }
 
     function deployYulWithArgs(string memory name, bytes memory args) internal returns (address) {
-        string memory path = string.concat("compiler/yul/", name, ".yul");
+        string memory path = string.concat(_yulDir(), "/", name, ".yul");
         bytes memory initCode = bytes.concat(_compileYul(path), args);
         return _deploy(initCode);
     }

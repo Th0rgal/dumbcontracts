@@ -14,45 +14,18 @@ import re
 import sys
 from pathlib import Path
 
+from evmyullean_capability import (
+    BUILTINS_FILE,
+    EVMYULLEAN_OVERLAP_BUILTINS,
+    EVMYULLEAN_UNSUPPORTED_BUILTINS,
+    VERITY_HELPER_BUILTINS,
+    extract_found_builtins,
+)
 from property_utils import ROOT
 
-BUILTINS_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Builtins.lean"
 ADAPTER_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Backends" / "EvmYulLeanAdapter.lean"
 DEFAULT_OUTPUT = ROOT / "artifacts" / "evmyullean_capability_report.json"
 DEFAULT_UNSUPPORTED_OUTPUT = ROOT / "artifacts" / "evmyullean_unsupported_nodes.json"
-
-BUILTIN_NAME_RE = re.compile(r'func\s*=\s*"([^"]+)"')
-
-EVMYULLEAN_OVERLAP_BUILTINS = {
-    "add",
-    "and",
-    "calldataload",
-    "caller",
-    "div",
-    "eq",
-    "gt",
-    "iszero",
-    "lt",
-    "mod",
-    "mul",
-    "not",
-    "or",
-    "shl",
-    "shr",
-    "sload",
-    "sub",
-    "xor",
-}
-
-VERITY_HELPER_BUILTINS = {"mappingSlot"}
-
-EVMYULLEAN_UNSUPPORTED_BUILTINS = {
-    "create",
-    "create2",
-    "extcodecopy",
-    "extcodehash",
-    "extcodesize",
-}
 
 
 def extract_adapter_gaps() -> list[dict[str, str]]:
@@ -82,8 +55,7 @@ def build_report() -> dict[str, object]:
     if not BUILTINS_FILE.exists():
         raise FileNotFoundError(f"Missing builtins file: {BUILTINS_FILE.relative_to(ROOT)}")
 
-    text = BUILTINS_FILE.read_text(encoding="utf-8")
-    found = sorted(set(BUILTIN_NAME_RE.findall(text)))
+    found = sorted(extract_found_builtins(BUILTINS_FILE))
     found_set = set(found)
     allowed_set = EVMYULLEAN_OVERLAP_BUILTINS | VERITY_HELPER_BUILTINS
 

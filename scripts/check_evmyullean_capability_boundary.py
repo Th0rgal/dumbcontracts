@@ -9,50 +9,16 @@ operations.
 
 from __future__ import annotations
 
-import re
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-BUILTINS_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Builtins.lean"
-
-BUILTIN_NAME_RE = re.compile(r'func\s*=\s*"([^"]+)"')
-
-# Builtins currently modeled as part of the overlap subset for planned
-# EVMYulLean-backed semantics.
-EVMYULLEAN_OVERLAP_BUILTINS = {
-    "add",
-    "and",
-    "calldataload",
-    "caller",
-    "div",
-    "eq",
-    "gt",
-    "iszero",
-    "lt",
-    "mod",
-    "mul",
-    "not",
-    "or",
-    "shl",
-    "shr",
-    "sload",
-    "sub",
-    "xor",
-}
-
-# Verity-level helper kept outside upstream Yul builtin set.
-VERITY_HELPER_BUILTINS = {"mappingSlot"}
-
-# Explicitly unsupported in the planned EVMYulLean-backed path (per #294
-# research notes). Presence here in Builtins.lean should block CI.
-EVMYULLEAN_UNSUPPORTED_BUILTINS = {
-    "create",
-    "create2",
-    "extcodecopy",
-    "extcodehash",
-    "extcodesize",
-}
+from evmyullean_capability import (
+    BUILTINS_FILE,
+    EVMYULLEAN_OVERLAP_BUILTINS,
+    EVMYULLEAN_UNSUPPORTED_BUILTINS,
+    VERITY_HELPER_BUILTINS,
+    extract_found_builtins,
+)
+from property_utils import ROOT
 
 
 def main() -> int:
@@ -63,8 +29,7 @@ def main() -> int:
         )
         return 1
 
-    text = BUILTINS_FILE.read_text(encoding="utf-8")
-    found = set(BUILTIN_NAME_RE.findall(text))
+    found = extract_found_builtins(BUILTINS_FILE)
 
     allowed = EVMYULLEAN_OVERLAP_BUILTINS | VERITY_HELPER_BUILTINS
 

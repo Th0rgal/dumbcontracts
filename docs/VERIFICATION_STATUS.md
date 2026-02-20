@@ -295,6 +295,8 @@ Implemented:
   - explicit evaluator-law proof obligations for each shipped patch rule
 - `Compiler.emitYulWithOptions`
   - opt-in patch execution via `YulEmitOptions.patchConfig`
+- `Compiler.emitYulWithOptionsReport`
+  - emits `(YulObject × PatchPassReport)` so manifest + iteration metadata are available for CI/tooling
 
 Current diagnostic coverage in compiler:
 - Non-payable external functions and constructors now emit a runtime `msg.value == 0` guard, while explicit `isPayable := true` enables `Expr.msgValue` usage.

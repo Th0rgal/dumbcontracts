@@ -38,6 +38,7 @@ Current P1 foundation coverage (Issue #582):
 - Initial patch pack in `Compiler/Yul/PatchRules.lean` with explicit metadata (`pattern`, `rewrite`, `side_conditions`, `proof_id`, `pass_phase`, `priority`)
 - Proof hooks + preservation theorems in `Compiler/Proofs/YulGeneration/PatchRulesProofs.lean`
 - Opt-in compiler path via `Compiler.emitYulWithOptions` (`YulEmitOptions.patchConfig`)
+- Report-capable compiler path via `Compiler.emitYulWithOptionsReport` to surface patch manifest/iteration metadata to CI and tooling
 
 Execution policy:
 1. Do not start patch-pack expansion in `#583` before `#582` proof hooks are merged.

@@ -44,4 +44,13 @@ theorem erc20_mint_spec_correct (s : ContractState) (to : Address) (amount : Uin
   simpa using Verity.Proofs.ERC20.mint_meets_spec_when_owner
     s to amount h_owner h_no_bal_overflow h_no_sup_overflow
 
+/-- Spec/EDSL agreement for `transfer` under balance and overflow preconditions. -/
+theorem erc20_transfer_spec_correct (s : ContractState) (to : Address) (amount : Uint256)
+    (h_balance : s.storageMap 2 s.sender ≥ amount)
+    (h_no_overflow : s.sender ≠ to →
+      (s.storageMap 2 to : Nat) + (amount : Nat) ≤ Verity.Stdlib.Math.MAX_UINT256) :
+    transfer_spec s.sender to amount s ((transfer to amount).runState s) := by
+  simpa using Verity.Proofs.ERC20.transfer_meets_spec_when_sufficient
+    s to amount h_balance h_no_overflow
+
 end Compiler.Proofs.SpecCorrectness

@@ -670,6 +670,93 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected indexed tuple event param usage to fail compilation")
 
 #eval! do
+  let internalVoidReturnSpec : ContractSpec := {
+    name := "InternalVoidReturnRejected"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badInternal"
+        params := []
+        returnType := none
+        isInternal := true
+        body := [Stmt.return (Expr.literal 1)]
+      }
+    ]
+  }
+  match compile internalVoidReturnSpec [] with
+  | .error err =>
+      if !contains err "uses Stmt.return but declares no return values" then
+        throw (IO.userError s!"✗ internal void return diagnostic mismatch: {err}")
+      IO.println "✓ internal void return validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected internal void Stmt.return usage to fail compilation")
+
+#eval! do
+  let internalReturnValuesSpec : ContractSpec := {
+    name := "InternalReturnValuesUnsupported"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badInternalReturnValues"
+        params := []
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [Stmt.returnValues [Expr.literal 1]]
+      }
+    ]
+  }
+  match compile internalReturnValuesSpec [] with
+  | .error err =>
+      if !(contains err "cannot use Stmt.returnValues yet" && contains err "Issue #625") then
+        throw (IO.userError s!"✗ internal returnValues diagnostic mismatch: {err}")
+      IO.println "✓ internal returnValues unsupported diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected internal Stmt.returnValues usage to fail compilation")
+
+#eval! do
+  let multiReturnWithSingleReturnStmtSpec : ContractSpec := {
+    name := "MultiReturnWithSingleStmtRejected"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badExternal"
+        params := []
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
+        body := [Stmt.return (Expr.literal 1)]
+      }
+    ]
+  }
+  match compile multiReturnWithSingleReturnStmtSpec [1] with
+  | .error err =>
+      if !contains err "declares multiple return values; use Stmt.returnValues" then
+        throw (IO.userError s!"✗ single-return stmt on multi-return function diagnostic mismatch: {err}")
+      IO.println "✓ multi-return Stmt.return validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected single-value return statement on multi-return function to fail compilation")
+
+#eval! do
+  let returnValuesArityMismatchSpec : ContractSpec := {
+    name := "ReturnValuesArityMismatch"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badArity"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.returnValues [Expr.literal 1, Expr.literal 2]]
+      }
+    ]
+  }
+  match compile returnValuesArityMismatchSpec [1] with
+  | .error err =>
+      if !contains err "returnValues count mismatch: expected 1, got 2" then
+        throw (IO.userError s!"✗ returnValues arity diagnostic mismatch: {err}")
+      IO.println "✓ returnValues arity validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected returnValues arity mismatch to fail compilation")
+
+#eval! do
   let fallbackSpec : ContractSpec := {
     name := "FallbackSupported"
     fields := []

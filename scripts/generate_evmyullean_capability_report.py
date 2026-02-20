@@ -19,6 +19,7 @@ from property_utils import ROOT
 BUILTINS_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Builtins.lean"
 ADAPTER_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Backends" / "EvmYulLeanAdapter.lean"
 DEFAULT_OUTPUT = ROOT / "artifacts" / "evmyullean_capability_report.json"
+DEFAULT_UNSUPPORTED_OUTPUT = ROOT / "artifacts" / "evmyullean_unsupported_nodes.json"
 
 BUILTIN_NAME_RE = re.compile(r'func\s*=\s*"([^"]+)"')
 
@@ -111,6 +112,16 @@ def write_report(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 
 
+def build_unsupported_nodes_report(payload: dict[str, object]) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "source_report": str(DEFAULT_OUTPUT.relative_to(ROOT)),
+        "adapter_file": payload["adapter_file"],
+        "nodes": payload["unsupported_adapter_nodes"],
+        "count": len(payload["unsupported_adapter_nodes"]),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -124,10 +135,18 @@ def main() -> int:
         action="store_true",
         help="Fail if output artifact is missing or stale",
     )
+    parser.add_argument(
+        "--unsupported-output",
+        type=Path,
+        default=DEFAULT_UNSUPPORTED_OUTPUT,
+        help="Unsupported-node artifact path (default: artifacts/evmyullean_unsupported_nodes.json)",
+    )
     args = parser.parse_args()
 
     payload = build_report()
     rendered = json.dumps(payload, sort_keys=True, indent=2) + "\n"
+    unsupported_payload = build_unsupported_nodes_report(payload)
+    unsupported_rendered = json.dumps(unsupported_payload, sort_keys=True, indent=2) + "\n"
 
     if args.check:
         if not args.output.exists():
@@ -141,11 +160,25 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
+        if not args.unsupported_output.exists():
+            print(f"Missing unsupported-node artifact: {args.unsupported_output}", file=sys.stderr)
+            return 1
+        existing_unsupported = args.unsupported_output.read_text(encoding="utf-8")
+        if existing_unsupported != unsupported_rendered:
+            print(
+                "EVMYulLean unsupported-node report is stale. Regenerate with:\n"
+                "  python3 scripts/generate_evmyullean_capability_report.py",
+                file=sys.stderr,
+            )
+            return 1
         print(f"EVMYulLean capability report is up to date: {args.output}")
+        print(f"EVMYulLean unsupported-node report is up to date: {args.unsupported_output}")
         return 0
 
     write_report(args.output, payload)
+    write_report(args.unsupported_output, unsupported_payload)
     print(f"Wrote EVMYulLean capability report: {args.output}")
+    print(f"Wrote EVMYulLean unsupported-node report: {args.unsupported_output}")
     return 0
 
 

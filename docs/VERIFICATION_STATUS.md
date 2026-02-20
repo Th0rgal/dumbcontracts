@@ -254,7 +254,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 - [x] Complete Layer 3 statement-level equivalence proofs (PR #42)
 - [x] Function selector axiom with CI validation (PR #43, #46)
 - [x] External function linking for cryptographic libraries (PR #49)
-- [x] Deterministic EVMYulLean seam artifacts in CI (`evmyullean_capability_report.json`, `evmyullean_adapter_report.json`)
+- [x] Deterministic EVMYulLean seam artifacts in CI (`evmyullean_capability_report.json`, `evmyullean_unsupported_nodes.json`, `evmyullean_adapter_report.json`)
 
 ## Solidity Interop Support Matrix (Issue #586)
 

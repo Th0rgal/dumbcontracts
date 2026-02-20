@@ -133,7 +133,7 @@ jobs:
       - name: Check EVMYulLean capability boundary
         run: python3 scripts/check_evmyullean_capability_boundary.py
 
-      - name: Check EVMYulLean capability report freshness
+      - name: Check EVMYulLean capability + unsupported-node report freshness
         run: python3 scripts/generate_evmyullean_capability_report.py --check
 
       - name: Check EVMYulLean adapter report freshness

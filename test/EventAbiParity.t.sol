@@ -26,6 +26,9 @@ contract EventAbiParityEmitter {
     event CompositeEvent(bytes32 indexed id, DynamicTupleParity payload, uint256[] values, bytes note);
     event IndexedBytes(bytes indexed payload);
     event IndexedStaticTuple(StaticTupleParity indexed payload);
+    event IndexedStaticFixedArray(uint256[2] indexed payload);
+    event UnindexedStaticTuple(StaticTupleParity payload);
+    event UnindexedStaticFixedArray(uint256[2] payload);
 
     function emitCreateMarket(bytes32 id, MarketParamsParity calldata market) external {
         emit CreateMarket(id, market);
@@ -46,6 +49,18 @@ contract EventAbiParityEmitter {
 
     function emitIndexedStaticTuple(StaticTupleParity calldata payload) external {
         emit IndexedStaticTuple(payload);
+    }
+
+    function emitIndexedStaticFixedArray(uint256[2] calldata payload) external {
+        emit IndexedStaticFixedArray(payload);
+    }
+
+    function emitUnindexedStaticTuple(StaticTupleParity calldata payload) external {
+        emit UnindexedStaticTuple(payload);
+    }
+
+    function emitUnindexedStaticFixedArray(uint256[2] calldata payload) external {
+        emit UnindexedStaticFixedArray(payload);
     }
 }
 
@@ -139,5 +154,59 @@ contract EventAbiParityTest is Test {
 
         assertEq(logs[0].topics[0], expectedTopic0);
         assertEq(logs[0].topics[1], expectedTopic1);
+    }
+
+    function testIndexedStaticFixedArrayTopicUsesAbiEncodedArrayHash() public {
+        uint256[2] memory payload = [uint256(777), uint256(888)];
+
+        vm.recordLogs();
+        emitter.emitIndexedStaticFixedArray(payload);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 2);
+
+        bytes32 expectedTopic0 = keccak256(bytes("IndexedStaticFixedArray(uint256[2])"));
+        bytes32 expectedTopic1 = keccak256(abi.encode(payload));
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].topics[1], expectedTopic1);
+    }
+
+    function testUnindexedStaticTupleDataUsesInPlaceEncoding() public {
+        StaticTupleParity memory payload = StaticTupleParity({
+            amount: 321,
+            recipient: address(0x1234)
+        });
+
+        vm.recordLogs();
+        emitter.emitUnindexedStaticTuple(payload);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 1);
+
+        bytes32 expectedTopic0 = keccak256(bytes("UnindexedStaticTuple((uint256,address))"));
+        bytes memory expectedData = abi.encode(payload.amount, payload.recipient);
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].data, expectedData);
+    }
+
+    function testUnindexedStaticFixedArrayDataUsesInPlaceEncoding() public {
+        uint256[2] memory payload = [uint256(111), uint256(222)];
+
+        vm.recordLogs();
+        emitter.emitUnindexedStaticFixedArray(payload);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 1);
+
+        bytes32 expectedTopic0 = keccak256(bytes("UnindexedStaticFixedArray(uint256[2])"));
+        bytes memory expectedData = abi.encode(payload);
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].data, expectedData);
     }
 }

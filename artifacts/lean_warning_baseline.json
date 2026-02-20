@@ -1,0 +1,11 @@
+{
+  "by_file": {
+    "Compiler/Proofs/SpecCorrectness/SimpleToken.lean": 150,
+    "Verity/Proofs/SimpleToken/Basic.lean": 62
+  },
+  "by_message": {
+    "This simp argument is unused:": 212
+  },
+  "schema_version": 1,
+  "total_warnings": 212
+}

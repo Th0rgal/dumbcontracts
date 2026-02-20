@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""Enforce Lean warning non-regression against a checked baseline artifact.
+
+Usage:
+    python3 scripts/check_lean_warning_regression.py --log lake-build.log
+    python3 scripts/check_lean_warning_regression.py --log lake-build.log --write-baseline artifacts/lean_warning_baseline.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from collections import Counter
+from pathlib import Path
+
+from property_utils import ROOT
+
+WARNING_RE = re.compile(r"^warning:\s+(.+?\.lean):\d+:\d+:\s+(.*)$")
+
+
+def parse_warnings(log_path: Path) -> tuple[Counter[str], Counter[str]]:
+    by_file: Counter[str] = Counter()
+    by_message: Counter[str] = Counter()
+
+    for raw_line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = WARNING_RE.match(raw_line.strip())
+        if not match:
+            continue
+        file_path, message = match.groups()
+        by_file[file_path] += 1
+        by_message[message.strip()] += 1
+
+    return by_file, by_message
+
+
+def load_baseline(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise FileNotFoundError(f"Baseline file not found: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def normalize_counter_payload(payload: dict[str, int] | None) -> Counter[str]:
+    if payload is None:
+        return Counter()
+    return Counter({k: int(v) for k, v in payload.items()})
+
+
+def render_sorted(counter: Counter[str]) -> dict[str, int]:
+    return {k: counter[k] for k in sorted(counter)}
+
+
+def write_baseline(path: Path, by_file: Counter[str], by_message: Counter[str]) -> None:
+    payload = {
+        "schema_version": 1,
+        "total_warnings": int(sum(by_file.values())),
+        "by_file": render_sorted(by_file),
+        "by_message": render_sorted(by_message),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def compare_against_baseline(
+    baseline_path: Path,
+    observed_by_file: Counter[str],
+    observed_by_message: Counter[str],
+) -> list[str]:
+    errors: list[str] = []
+    baseline = load_baseline(baseline_path)
+
+    baseline_total = int(baseline.get("total_warnings", 0))
+    baseline_by_file = normalize_counter_payload(baseline.get("by_file"))  # type: ignore[arg-type]
+    baseline_by_message = normalize_counter_payload(baseline.get("by_message"))  # type: ignore[arg-type]
+
+    observed_total = int(sum(observed_by_file.values()))
+    if observed_total > baseline_total:
+        errors.append(
+            f"Total Lean warnings regressed: observed {observed_total}, baseline {baseline_total}"
+        )
+
+    for file_path, observed_count in sorted(observed_by_file.items()):
+        baseline_count = baseline_by_file.get(file_path, 0)
+        if observed_count > baseline_count:
+            errors.append(
+                f"Warning count regressed in {file_path}: observed {observed_count}, "
+                f"baseline {baseline_count}"
+            )
+
+    for message, observed_count in sorted(observed_by_message.items()):
+        baseline_count = baseline_by_message.get(message, 0)
+        if observed_count > baseline_count:
+            errors.append(
+                f"Warning type regressed ({message}): observed {observed_count}, "
+                f"baseline {baseline_count}"
+            )
+
+    return errors
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--log", required=True, type=Path, help="Path to lake build output log")
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=ROOT / "artifacts" / "lean_warning_baseline.json",
+        help="Baseline warning artifact to compare against",
+    )
+    parser.add_argument(
+        "--write-baseline",
+        type=Path,
+        help="Write baseline artifact from current log and exit",
+    )
+    args = parser.parse_args()
+
+    by_file, by_message = parse_warnings(args.log)
+
+    if args.write_baseline is not None:
+        write_baseline(args.write_baseline, by_file, by_message)
+        print(f"Wrote Lean warning baseline to {args.write_baseline}")
+        return
+
+    errors = compare_against_baseline(args.baseline, by_file, by_message)
+    total = int(sum(by_file.values()))
+    print(f"Lean warnings observed: {total}")
+    if errors:
+        print("\nLean warning non-regression check failed:", file=sys.stderr)
+        for err in errors:
+            print(f"- {err}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Lean warning non-regression check passed against {args.baseline}")
+
+
+if __name__ == "__main__":
+    main()

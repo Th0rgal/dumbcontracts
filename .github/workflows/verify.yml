@@ -175,7 +175,12 @@ jobs:
       - name: Build and verify all proofs
         env:
           LEAN_NUM_THREADS: 2
-        run: lake build
+        run: |
+          set -o pipefail
+          lake build 2>&1 | tee lake-build.log
+
+      - name: Check Lean warning non-regression
+        run: python3 scripts/check_lean_warning_regression.py --log lake-build.log
 
       - name: Run AST pipeline regression modules
         env:

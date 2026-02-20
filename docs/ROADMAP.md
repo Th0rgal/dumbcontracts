@@ -31,8 +31,9 @@ This tracker is the execution order for migration-oriented compiler work. Later 
 Execution policy:
 1. Do not start patch-pack expansion in `#583` before `#582` proof hooks are merged.
 2. Treat `#584` as a release gate for ongoing compiler work after initial warning cleanup lands.
-3. Treat `#585` docs generation as authoritative source for public metrics before broader docs expansion.
-4. Keep issue bodies and this section synchronized when scope/order changes.
+3. Enforce Lean warning non-regression via `artifacts/lean_warning_baseline.json` + CI check (`scripts/check_lean_warning_regression.py`) until warning count reaches zero.
+4. Treat `#585` docs generation as authoritative source for public metrics before broader docs expansion.
+5. Keep issue bodies and this section synchronized when scope/order changes.
 
 ---
 

@@ -87,6 +87,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_axiom_locations.py`** - Validates that AXIOMS.md line number references match actual axiom locations in source files
 - **`check_contract_structure.py`** - Validates all contracts in Examples/ have complete file structure (Spec, Invariants, Basic proofs, Correctness proofs)
 - **`check_lean_hygiene.py`** - Validates proof hygiene (`#eval/#check/#print/#reduce`, `native_decide`, `sorry`) and exactly 1 `allowUnsafeReducibility`; parsing is comment/string-aware (including Lean raw strings) via shared Lean lexer utilities
+- **`check_lean_warning_regression.py`** - Enforces Lean warning non-regression from `lake build` output against `artifacts/lean_warning_baseline.json` (allows warning reduction, blocks warning increases by total/file/message)
 
 ```bash
 # Run locally before submitting documentation changes
@@ -95,6 +96,12 @@ python3 scripts/check_doc_counts.py
 
 # Run locally after modifying storage slots or adding contracts
 python3 scripts/check_storage_layout.py
+
+# After a lake build, enforce warning non-regression
+python3 scripts/check_lean_warning_regression.py --log lake-build.log
+
+# After intentionally reducing warning baseline, refresh artifact
+python3 scripts/check_lean_warning_regression.py --log lake-build.log --write-baseline artifacts/lean_warning_baseline.json
 
 # Run locally after adding/removing theorems
 python3 scripts/check_property_manifest_sync.py
@@ -178,13 +185,14 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 
 **`build` job** (requires `lake build` artifacts):
 1. Keccak-256 self-test (`keccak256.py --self-test`)
-2. Selector hash verification (`check_selectors.py`)
-3. Yul compilation + legacy/AST diff-baseline check (`check_yul_compiles.py`)
-4. Static gas model coverage on generated Yul (legacy + AST) (`check_gas_model_coverage.py`)
-5. Selector fixture check (`check_selector_fixtures.py`)
-6. Static gas report invariants (`check_gas_report.py`)
-7. Save static gas report artifact (`gas-report-static.tsv`)
-8. Coverage and storage layout reports in workflow summary
+2. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
+3. Selector hash verification (`check_selectors.py`)
+4. Yul compilation + legacy/AST diff-baseline check (`check_yul_compiles.py`)
+5. Static gas model coverage on generated Yul (legacy + AST) (`check_gas_model_coverage.py`)
+6. Selector fixture check (`check_selector_fixtures.py`)
+7. Static gas report invariants (`check_gas_report.py`)
+8. Save static gas report artifact (`gas-report-static.tsv`)
+9. Coverage and storage layout reports in workflow summary
 
 **`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42

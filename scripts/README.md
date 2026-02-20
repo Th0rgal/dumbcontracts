@@ -137,9 +137,10 @@ python3 scripts/check_yul_compiles.py \
   --compare-dirs compiler/yul compiler/yul-ast \
   --allow-compare-diff-file scripts/fixtures/yul_ast_bytecode_diffs.allowlist
 
-# Check static gas model coverage against legacy + AST Yul outputs
+# Check static gas model coverage against legacy + patched + AST Yul outputs
 python3 scripts/check_gas_model_coverage.py \
   --dir compiler/yul \
+  --dir compiler/yul-patched \
   --dir compiler/yul-ast
 
 # Check patch-enabled static gas deltas (median/p90 non-regression + configurable improvement floor)
@@ -202,8 +203,8 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 1. Keccak-256 self-test (`keccak256.py --self-test`)
 2. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
 3. Selector hash verification (`check_selectors.py`)
-4. Yul compilation + legacy/AST diff-baseline check (`check_yul_compiles.py`)
-5. Static gas model coverage on generated Yul (legacy + AST) (`check_gas_model_coverage.py`)
+4. Yul compilation (legacy + patched + AST) + legacy/AST diff-baseline check (`check_yul_compiles.py`)
+5. Static gas model coverage on generated Yul (legacy + patched + AST) (`check_gas_model_coverage.py`)
 6. Selector fixture check (`check_selector_fixtures.py`)
 7. Static gas report invariants (`check_gas_report.py`)
 8. Save baseline + patch-enabled static gas report artifacts (`gas-report-static.tsv`, `gas-report-static-patched.tsv`)

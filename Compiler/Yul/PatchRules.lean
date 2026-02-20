@@ -72,15 +72,150 @@ def andZeroRightRule : ExprPatchRule :=
       | .call "and" [_lhs, .lit 0] => some (.lit 0)
       | _ => none }
 
+/-- `add(x, 0) -> x` -/
+def addZeroRightRule : ExprPatchRule :=
+  { patchName := "add-zero-right"
+    pattern := "add(x, 0)"
+    rewrite := "x"
+    sideConditions := ["second argument is literal zero"]
+    proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.add_zero_right_preserves"
+    passPhase := .postCodegen
+    priority := 75
+    applyExpr := fun expr =>
+      match expr with
+      | .call "add" [lhs, .lit 0] => some lhs
+      | _ => none }
+
+/-- `add(0, x) -> x` -/
+def addZeroLeftRule : ExprPatchRule :=
+  { patchName := "add-zero-left"
+    pattern := "add(0, x)"
+    rewrite := "x"
+    sideConditions := ["first argument is literal zero"]
+    proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.add_zero_left_preserves"
+    passPhase := .postCodegen
+    priority := 74
+    applyExpr := fun expr =>
+      match expr with
+      | .call "add" [.lit 0, rhs] => some rhs
+      | _ => none }
+
+/-- `sub(x, 0) -> x` -/
+def subZeroRightRule : ExprPatchRule :=
+  { patchName := "sub-zero-right"
+    pattern := "sub(x, 0)"
+    rewrite := "x"
+    sideConditions := ["second argument is literal zero"]
+    proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.sub_zero_right_preserves"
+    passPhase := .postCodegen
+    priority := 73
+    applyExpr := fun expr =>
+      match expr with
+      | .call "sub" [lhs, .lit 0] => some lhs
+      | _ => none }
+
+/-- `mul(x, 1) -> x` -/
+def mulOneRightRule : ExprPatchRule :=
+  { patchName := "mul-one-right"
+    pattern := "mul(x, 1)"
+    rewrite := "x"
+    sideConditions := ["second argument is literal one"]
+    proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.mul_one_right_preserves"
+    passPhase := .postCodegen
+    priority := 72
+    applyExpr := fun expr =>
+      match expr with
+      | .call "mul" [lhs, .lit 1] => some lhs
+      | _ => none }
+
+/-- `mul(1, x) -> x` -/
+def mulOneLeftRule : ExprPatchRule :=
+  { patchName := "mul-one-left"
+    pattern := "mul(1, x)"
+    rewrite := "x"
+    sideConditions := ["first argument is literal one"]
+    proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.mul_one_left_preserves"
+    passPhase := .postCodegen
+    priority := 71
+    applyExpr := fun expr =>
+      match expr with
+      | .call "mul" [.lit 1, rhs] => some rhs
+      | _ => none }
+
+/-- `div(x, 1) -> x` -/
+def divOneRightRule : ExprPatchRule :=
+  { patchName := "div-one-right"
+    pattern := "div(x, 1)"
+    rewrite := "x"
+    sideConditions := ["second argument is literal one"]
+    proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.div_one_right_preserves"
+    passPhase := .postCodegen
+    priority := 70
+    applyExpr := fun expr =>
+      match expr with
+      | .call "div" [lhs, .lit 1] => some lhs
+      | _ => none }
+
+/-- `mod(x, 1) -> 0` -/
+def modOneRightRule : ExprPatchRule :=
+  { patchName := "mod-one-right"
+    pattern := "mod(x, 1)"
+    rewrite := "0"
+    sideConditions := ["second argument is literal one"]
+    proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.mod_one_right_preserves"
+    passPhase := .postCodegen
+    priority := 69
+    applyExpr := fun expr =>
+      match expr with
+      | .call "mod" [_lhs, .lit 1] => some (.lit 0)
+      | _ => none }
+
 /-- Initial deterministic, proven-safe expression patch pack (Issue #583 expansion). -/
 def foundationExprPatchPack : List ExprPatchRule :=
-  [orZeroRightRule, orZeroLeftRule, xorZeroRightRule, xorZeroLeftRule, andZeroRightRule]
+  [ orZeroRightRule
+  , orZeroLeftRule
+  , xorZeroRightRule
+  , xorZeroLeftRule
+  , andZeroRightRule
+  , addZeroRightRule
+  , addZeroLeftRule
+  , subZeroRightRule
+  , mulOneRightRule
+  , mulOneLeftRule
+  , divOneRightRule
+  , modOneRightRule
+  ]
 
 /-- Smoke test: higher-priority rule wins deterministically. -/
 example :
-    (let rules := orderRulesByPriority [andZeroRightRule, xorZeroLeftRule, xorZeroRightRule, orZeroRightRule, orZeroLeftRule]
+    (let rules := orderRulesByPriority
+      [ modOneRightRule
+      , addZeroLeftRule
+      , andZeroRightRule
+      , xorZeroLeftRule
+      , mulOneRightRule
+      , xorZeroRightRule
+      , orZeroRightRule
+      , divOneRightRule
+      , addZeroRightRule
+      , mulOneLeftRule
+      , subZeroRightRule
+      , orZeroLeftRule
+      ]
      rules.map (fun r => r.patchName)) =
-    ["or-zero-right", "or-zero-left", "xor-zero-right", "xor-zero-left", "and-zero-right"] := by
+    [ "or-zero-right"
+    , "or-zero-left"
+    , "xor-zero-right"
+    , "xor-zero-left"
+    , "and-zero-right"
+    , "add-zero-right"
+    , "add-zero-left"
+    , "sub-zero-right"
+    , "mul-one-right"
+    , "mul-one-left"
+    , "div-one-right"
+    , "mod-one-right"
+    ] := by
   native_decide
 
 /-- Smoke test: one rewrite pass catches nested expression occurrences. -/
@@ -114,6 +249,33 @@ example :
 /-- Smoke test: `and(x, 0)` rewrites to `0`. -/
 example :
     let stmt : YulStmt := .expr (.call "and" [.ident "x", .lit 0])
+    let report := runExprPatchPass { enabled := true, maxIterations := 1 } foundationExprPatchPack [stmt]
+    (match report.patched with
+    | [.expr (.lit 0)] => true
+    | _ => false) = true := by
+  native_decide
+
+/-- Smoke test: `sub(x, 0)` rewrites to `x`. -/
+example :
+    let stmt : YulStmt := .expr (.call "sub" [.ident "x", .lit 0])
+    let report := runExprPatchPass { enabled := true, maxIterations := 1 } foundationExprPatchPack [stmt]
+    (match report.patched with
+    | [.expr (.ident "x")] => true
+    | _ => false) = true := by
+  native_decide
+
+/-- Smoke test: `mul(1, x)` rewrites to `x`. -/
+example :
+    let stmt : YulStmt := .expr (.call "mul" [.lit 1, .ident "x"])
+    let report := runExprPatchPass { enabled := true, maxIterations := 1 } foundationExprPatchPack [stmt]
+    (match report.patched with
+    | [.expr (.ident "x")] => true
+    | _ => false) = true := by
+  native_decide
+
+/-- Smoke test: `mod(x, 1)` rewrites to `0`. -/
+example :
+    let stmt : YulStmt := .expr (.call "mod" [.ident "x", .lit 1])
     let report := runExprPatchPass { enabled := true, maxIterations := 1 } foundationExprPatchPack [stmt]
     (match report.patched with
     | [.expr (.lit 0)] => true

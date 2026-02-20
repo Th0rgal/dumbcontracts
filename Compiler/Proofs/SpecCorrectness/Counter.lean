@@ -76,7 +76,7 @@ private theorem evalExpr_decrement_eq (state : ContractState) (sender : Address)
         modulus - (1 - (state.storage 0).val) := by
       apply Nat.mod_eq_of_lt
       simpa [h0] using Nat.sub_lt_of_pos_le Nat.one_pos (Nat.succ_le_of_lt Verity.Core.Uint256.modulus_pos)
-    simp [evalExpr, SpecStorage.getSlot, List.lookup, hidx, h1mod, h, h0, h_sub, h_mod]
+    simp [evalExpr, SpecStorage.getSlot, List.lookup, hidx, h1mod, h0, h_sub]
 
 /- Correctness Theorems -/
 
@@ -92,8 +92,8 @@ theorem counter_increment_correct (state : ContractState) (sender : Address) :
     specResult.success = true ∧
     specResult.finalStorage.getSlot 0 = (edslFinal.storage 0).val := by
   unfold increment counterSpec interpretSpec counterEdslToSpecStorage Contract.runState
-  simp [getStorage, setStorage, add, count, execFunction, execStmts, execStmt, evalExpr,
-    SpecStorage.setSlot, SpecStorage.getSlot, modulus, val_ofNat]
+  simp [add, count, execFunction, execStmts, execStmt, evalExpr,
+    SpecStorage.setSlot, SpecStorage.getSlot, modulus]
   rfl
 
 /-- The `decrement` function correctly decrements the counter with modular arithmetic -/
@@ -145,7 +145,7 @@ theorem counter_increment_decrement_roundtrip (state : ContractState) (sender : 
     let afterInc := increment.runState { state with sender := sender }
     let afterDec := decrement.runState { afterInc with sender := sender }
     afterDec.storage 0 = state.storage 0 := by
-  simp [increment, decrement, Contract.runState, getStorage, setStorage, count, Verity.bind]
+  simp [increment, decrement, Contract.runState, count]
   -- We have: sub (add (state.storage 0) 1) 1 = state.storage 0
   -- This is exactly the sub_add_cancel theorem
   exact Verity.EVM.Uint256.sub_add_cancel (state.storage 0) 1
@@ -156,7 +156,7 @@ theorem counter_decrement_increment_roundtrip (state : ContractState) (sender : 
     let afterDec := decrement.runState { state with sender := sender }
     let afterInc := increment.runState { afterDec with sender := sender }
     afterInc.storage 0 = state.storage 0 := by
-  simp [decrement, increment, Contract.runState, getStorage, setStorage, count, Verity.bind]
+  simp [decrement, increment, Contract.runState, count]
   -- We have: add (sub (state.storage 0) 1) 1 = state.storage 0
   -- This is exactly sub_add_cancel_left in infix notation: (a - b) + b = a
   exact Verity.Core.Uint256.sub_add_cancel_left (state.storage 0) 1

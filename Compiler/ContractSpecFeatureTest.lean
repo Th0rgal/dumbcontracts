@@ -873,7 +873,8 @@ private def featureSpec : ContractSpec := {
   }
   match compile indexedDynamicArrayEventSpec [1] with
   | .error err =>
-      if !(contains err "indexed dynamic event param 'payload' in event 'BadIndexedDynamicArray' is not supported yet" &&
+      if !(contains err "indexed param 'payload' has dynamic composite type" &&
+          contains err "BadIndexedDynamicArray" &&
           contains err "Issue #586") then
         throw (IO.userError s!"✗ indexed dynamic array event diagnostic mismatch: {err}")
       IO.println "✓ indexed dynamic array event diagnostic"

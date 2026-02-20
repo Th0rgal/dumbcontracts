@@ -6,7 +6,7 @@
   balance-conservation properties (e.g. Ledger sum proofs, issue #65).
 
   Key operations: empty, insert, remove, member, sum.
-  Key types: FiniteSet α, FiniteAddressSet.
+  Key types: FiniteSet α, FiniteAddressSet, FiniteNatSet.
   Key theorems: insert_of_not_mem, mem_elements_insert, sum_empty.
 -/
 
@@ -168,5 +168,60 @@ def contains (addr : Address) (s : FiniteAddressSet) : Bool :=
     FiniteSet.contains_eq_false addr s.addresses
 
 end FiniteAddressSet
+
+/-- Finite set of natural numbers. -/
+structure FiniteNatSet where
+  nats : FiniteSet Nat
+  deriving Repr
+
+namespace FiniteNatSet
+
+/-- Create an empty nat set. -/
+def empty : FiniteNatSet :=
+  ⟨FiniteSet.empty⟩
+
+/-- Number of tracked nat values. -/
+def card (s : FiniteNatSet) : Nat :=
+  s.nats.card
+
+/-- Nat membership proposition. -/
+def mem (s : FiniteNatSet) (n : Nat) : Prop :=
+  n ∈ s.nats
+
+instance : Membership Nat FiniteNatSet where
+  mem := mem
+
+/-- Insert a nat into the set. -/
+def insert (n : Nat) (s : FiniteNatSet) : FiniteNatSet :=
+  ⟨s.nats.insert n⟩
+
+/-- Remove a nat from the set. -/
+def remove (n : Nat) (s : FiniteNatSet) : FiniteNatSet :=
+  ⟨s.nats.remove n⟩
+
+/-- Boolean nat membership test. -/
+def contains (n : Nat) (s : FiniteNatSet) : Bool :=
+  s.nats.contains n
+
+@[simp] theorem card_empty : (empty : FiniteNatSet).card = 0 := rfl
+
+@[simp] theorem mem_def (n : Nat) (s : FiniteNatSet) :
+    n ∈ s ↔ n ∈ s.nats.elements := Iff.rfl
+
+@[simp] theorem mem_insert (a b : Nat) (s : FiniteNatSet) :
+    a ∈ s.insert b ↔ a = b ∨ a ∈ s := by
+  simpa [FiniteNatSet.mem] using FiniteSet.mem_elements_insert a b s.nats
+
+@[simp] theorem contains_eq_true (n : Nat) (s : FiniteNatSet) :
+    s.contains n = true ↔ n ∈ s := by
+  simpa [FiniteNatSet.mem, FiniteNatSet.contains] using
+    FiniteSet.contains_eq_true n s.nats
+
+@[simp] theorem contains_eq_false (n : Nat) (s : FiniteNatSet) :
+    s.contains n = false ↔ n ∉ s := by
+  simpa [FiniteNatSet.mem, FiniteNatSet.contains] using
+    FiniteSet.contains_eq_false n s.nats
+
+end FiniteNatSet
 
 end Verity.Core

@@ -374,6 +374,10 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       -- instead of silently producing wrong results. Use execStmtsFuel for
       -- contracts with internal calls.
       none
+  | Stmt.internalCallAssign _names _functionName _args =>
+      -- Multi-value internal-call bindings are only modeled in compiler/codegen.
+      -- The basic interpreter does not model tuple return values.
+      none
 
 -- Execute a list of statements sequentially
 -- Thread both context and state through the computation
@@ -457,6 +461,9 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
                   | some (_, calleeResult) =>
                       -- Propagate only storage and events; restore caller's halted/return state
                       some (ctx, { state with storage := calleeResult.storage })
+          | Stmt.internalCallAssign _names _functionName _args =>
+              -- Fuel-based interpreter does not model tuple-valued internal call bindings yet.
+              none
           | other => execStmt ctx fields paramNames externalFns state other
         match result with
         | none => none

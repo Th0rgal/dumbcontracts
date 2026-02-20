@@ -44,6 +44,8 @@ def ppStmt (indent : Nat) : YulStmt → List String
       [s!"{indentStr indent}/* {text} */"]
   | YulStmt.let_ name value =>
       [s!"{indentStr indent}let {name} := {ppExpr value}"]
+  | YulStmt.letMany names value =>
+      [s!"{indentStr indent}let {", ".intercalate names} := {ppExpr value}"]
   | YulStmt.assign name value =>
       [s!"{indentStr indent}{name} := {ppExpr value}"]
   | YulStmt.expr e =>

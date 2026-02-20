@@ -32,6 +32,7 @@ ABSTRACT_STORE_ENTRY_REF_RE = re.compile(r"Compiler\.Proofs\.abstractStoreMappin
 DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE = re.compile(
     r"Compiler\.Proofs\.(?:mappingTag|encodeMappingSlot|decodeMappingSlot|encodeNestedMappingSlot|normalizeMappingBaseSlot)"
 )
+LEGACY_ALIAS_SYMBOL_RE = re.compile(r"\b(?:mappingTag|encodeMappingSlot|decodeMappingSlot)\b")
 
 
 def main() -> int:
@@ -70,6 +71,12 @@ def main() -> int:
             errors.append(
                 f"{rel}: direct reference to MappingEncoding symbol is disallowed; "
                 "use MappingSlot abstraction symbols instead"
+            )
+
+        if LEGACY_ALIAS_SYMBOL_RE.search(text):
+            errors.append(
+                f"{rel}: legacy mapping symbol names (mappingTag/encodeMappingSlot/decodeMappingSlot) "
+                "are disallowed; use abstractMapping* names directly"
             )
 
     if errors:

@@ -48,7 +48,7 @@ private theorem mul_one_add (x n : Uint256) : x * (1 + n) = x + x * n := by
     _ = x + n * x := by
             have := Verity.Core.Uint256.add_mul (1 : Uint256) n x
             calc (1 + n) * x = 1 * x + n * x := this
-              _ = x + n * x := by simp [Verity.Core.Uint256.one_mul]
+              _ = x + n * x := by simp
     _ = x + x * n := by simp [Verity.Core.Uint256.mul_comm]
 
 /-! ## Generic List Sum Lemma: Point Update -/
@@ -76,7 +76,7 @@ theorem map_sum_point_update
       rw [← Verity.Core.Uint256.add_assoc delta (List.map f rest).sum _]
       rw [Verity.Core.Uint256.add_comm delta (List.map f rest).sum]
       rw [Verity.Core.Uint256.add_assoc (List.map f rest).sum delta _]
-    · simp [h, h_other a h, countOccU_cons_ne a target rest h]
+    · simp [h_other a h, countOccU_cons_ne a target rest h]
 
 /-! ## Generic List Sum Lemma: Point Decrease -/
 
@@ -104,7 +104,7 @@ theorem map_sum_point_decrease
       rw [h_cancel]
       simpa [Verity.Core.Uint256.mul_comm,
         Verity.Core.Uint256.add_assoc] using congrArg (fun x => f target + x) ih
-    · simp [h, h_other a h, countOccU_cons_ne a target rest h]
+    · simp [h_other a h, countOccU_cons_ne a target rest h]
       simpa [Verity.Core.Uint256.mul_comm,
         Verity.Core.Uint256.add_assoc,
         Verity.Core.Uint256.add_left_comm,

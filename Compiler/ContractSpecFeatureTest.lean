@@ -391,7 +391,7 @@ private def featureSpec : ContractSpec := {
 
 #eval! do
   let fallbackSpec : ContractSpec := {
-    name := "FallbackUnsupported"
+    name := "FallbackSupported"
     fields := []
     constructor := none
     functions := [
@@ -402,19 +402,16 @@ private def featureSpec : ContractSpec := {
       }
     ]
   }
-  match compile fallbackSpec [1] with
+  match compile fallbackSpec [] with
   | .error err =>
-      if !(contains err "unsupported Solidity interop entrypoint modeling" &&
-          contains err "function 'fallback'" &&
-          contains err "Issue #586") then
-        throw (IO.userError s!"✗ fallback diagnostic mismatch: {err}")
-      IO.println "✓ fallback entrypoint diagnostic"
-  | .ok _ =>
-      throw (IO.userError "✗ expected fallback entrypoint modeling to fail compilation")
+      throw (IO.userError s!"✗ expected fallback entrypoint modeling to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "fallback default branch emission" rendered ["default {", "/* fallback() */", "stop()"]
 
 #eval! do
   let receiveSpec : ContractSpec := {
-    name := "ReceiveUnsupported"
+    name := "ReceiveSupported"
     fields := []
     constructor := none
     functions := [
@@ -426,14 +423,62 @@ private def featureSpec : ContractSpec := {
       }
     ]
   }
-  match compile receiveSpec [1] with
+  match compile receiveSpec [] with
   | .error err =>
-      if !(contains err "unsupported Solidity interop entrypoint modeling" &&
-          contains err "function 'receive'" &&
-          contains err "Issue #586") then
-        throw (IO.userError s!"✗ receive diagnostic mismatch: {err}")
-      IO.println "✓ receive entrypoint diagnostic"
+      throw (IO.userError s!"✗ expected receive entrypoint modeling to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "receive empty-calldata dispatch branch" rendered
+        ["let __is_empty_calldata := eq(calldatasize(), 0)", "if __is_empty_calldata {", "/* receive() */", "stop()"]
+      assertContains "receive missing fallback reverts for non-empty calldata" rendered
+        ["if iszero(__is_empty_calldata) {", "revert(0, 0)"]
+
+#eval! do
+  let receiveFallbackSpec : ContractSpec := {
+    name := "ReceiveFallbackSupported"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "receive"
+        params := []
+        returnType := none
+        isPayable := true
+        body := [Stmt.stop]
+      },
+      { name := "fallback"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile receiveFallbackSpec [] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected receive+fallback entrypoint modeling to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "receive+fallback split dispatch" rendered
+        ["if __is_empty_calldata {", "/* receive() */", "if iszero(__is_empty_calldata) {", "/* fallback() */"]
+
+#eval! do
+  let receiveNotPayableSpec : ContractSpec := {
+    name := "ReceiveNotPayableRejected"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "receive"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile receiveNotPayableSpec [] with
+  | .error err =>
+      if !(contains err "function 'receive' must be payable" && contains err "Issue #586") then
+        throw (IO.userError s!"✗ receive payable diagnostic mismatch: {err}")
+      IO.println "✓ receive payable validation"
   | .ok _ =>
-      throw (IO.userError "✗ expected receive entrypoint modeling to fail compilation")
+      throw (IO.userError "✗ expected non-payable receive entrypoint to fail compilation")
 
 end Compiler.ContractSpecFeatureTest

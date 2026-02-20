@@ -281,9 +281,9 @@ Diagnostics policy for unsupported constructs:
 
 Current diagnostic coverage in compiler:
 - Non-payable external functions and constructors now emit a runtime `msg.value == 0` guard, while explicit `isPayable := true` enables `Expr.msgValue` usage.
+- `fallback` and `receive` are now modeled as first-class entrypoints in dispatch (empty-calldata routing to `receive`, unmatched selector routing to `fallback`) with compile-time shape checks (`receive` must be payable, both must be parameterless and non-returning).
 - Low-level call-style names (`call`, `staticcall`, `delegatecall`, `callcode`) now fail with explicit guidance to use verified linked wrappers.
 - Additional interop builtins (`create`, `create2`, `extcodesize`, `extcodecopy`, `extcodehash`) now fail with explicit migration guidance instead of generic external-call handling.
-- Reserved Solidity entrypoint names (`fallback`, `receive`) now fail with explicit guidance when modeled as regular ContractSpec functions.
 - Unsupported low-level/interop builtin checks are enforced in constructor bodies and function bodies.
 - All interop diagnostics include an `Issue #586` reference for scope tracking.
 

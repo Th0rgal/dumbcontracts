@@ -30,6 +30,7 @@ This tracker is the execution order for migration-oriented compiler work. Later 
 
 Current P0 baseline artifact coverage:
 - `artifacts/evmyullean_capability_report.json` tracks builtin overlap boundaries and explicit unsupported adapter nodes.
+- `artifacts/evmyullean_unsupported_nodes.json` provides a dedicated machine-readable unsupported-node list for adapter-lowering gaps.
 - `artifacts/evmyullean_adapter_report.json` tracks adapter AST-lowering coverage (`supported`/`partial`/`gap`) and runtime seam status.
 
 Execution policy:

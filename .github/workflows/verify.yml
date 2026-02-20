@@ -124,6 +124,9 @@ jobs:
       - name: Check Yul builtin abstraction boundary
         run: python3 scripts/check_yul_builtin_boundary.py
 
+      - name: Check EVMYulLean capability boundary
+        run: python3 scripts/check_evmyullean_capability_boundary.py
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20

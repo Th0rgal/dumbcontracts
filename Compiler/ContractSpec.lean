@@ -537,8 +537,67 @@ private partial def validateStmtParamReferences (fnName : String) (params : List
       body.forM (validateStmtParamReferences fnName params)
   | _ => pure ()
 
+private partial def validateReturnShapesInStmt (fnName : String)
+    (expectedReturns : List ParamType) (isInternal : Bool) : Stmt → Except String Unit
+  | Stmt.return _ =>
+      if isInternal then
+        match expectedReturns with
+        | [_] => pure ()
+        | [] =>
+            throw s!"Compilation error: function '{fnName}' uses Stmt.return but declares no return values"
+        | _ =>
+            throw s!"Compilation error: function '{fnName}' uses Stmt.return but declares multiple return values; use Stmt.returnValues"
+      else if expectedReturns.length > 1 then
+        throw s!"Compilation error: function '{fnName}' uses Stmt.return but declares multiple return values; use Stmt.returnValues"
+      else
+        pure ()
+  | Stmt.returnValues values =>
+      if isInternal then
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnValues yet (Issue #625)."
+      else if !expectedReturns.isEmpty && values.length != expectedReturns.length then
+        throw s!"Compilation error: function '{fnName}' returnValues count mismatch: expected {expectedReturns.length}, got {values.length}"
+      else
+        pure ()
+  | Stmt.returnArray _ =>
+      if isInternal then
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnArray; only Stmt.return is supported for single-word internal returns (Issue #625)."
+      else if expectedReturns == [ParamType.array ParamType.uint256] then
+        pure ()
+      else
+        throw s!"Compilation error: function '{fnName}' uses Stmt.returnArray but declared returns are {repr expectedReturns}"
+  | Stmt.returnBytes _ =>
+      if isInternal then
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnBytes; only Stmt.return is supported for single-word internal returns (Issue #625)."
+      else if expectedReturns == [ParamType.bytes] then
+        pure ()
+      else
+        throw s!"Compilation error: function '{fnName}' uses Stmt.returnBytes but declared returns are {repr expectedReturns}"
+  | Stmt.returnStorageWords _ =>
+      if isInternal then
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnStorageWords; only Stmt.return is supported for single-word internal returns (Issue #625)."
+      else if expectedReturns == [ParamType.array ParamType.uint256] then
+        pure ()
+      else
+        throw s!"Compilation error: function '{fnName}' uses Stmt.returnStorageWords but declared returns are {repr expectedReturns}"
+  | Stmt.ite _ thenBranch elseBranch => do
+      thenBranch.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
+      elseBranch.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
+  | Stmt.forEach _ _ body =>
+      body.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
+  | _ => pure ()
+
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
-  let _ ← functionReturns spec
+  let returns ← functionReturns spec
+  if spec.isInternal && returns.length > 1 then
+    throw s!"Compilation error: internal function '{spec.name}' multi-return declarations are not supported yet (Issue #625)."
+  let expectedReturns :=
+    if spec.isInternal then
+      match returns with
+      | [_] => returns
+      | _ => []
+    else
+      returns
+  spec.body.forM (validateReturnShapesInStmt spec.name expectedReturns spec.isInternal)
   spec.body.forM (validateStmtParamReferences spec.name spec.params)
 
 private def issue586Ref : String :=
@@ -1227,8 +1286,6 @@ def compileInternalFunction (fields : List Field) (events : List EventDef) (erro
     Except String YulStmt := do
   validateFunctionSpec spec
   let returns ← functionReturns spec
-  if returns.length > 1 then
-    throw s!"Compilation error: internal function '{spec.name}' cannot return multiple values yet"
   let paramNames := spec.params.map (·.name)
   let retNames := match returns with
     | [_] => ["__ret"]

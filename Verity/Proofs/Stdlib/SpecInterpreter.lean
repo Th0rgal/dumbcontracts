@@ -151,14 +151,14 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       match paramNames.findIdx? (· == name) with
       | some idx =>
           let raw := ctx.params.getD idx 0
-          match ctx.paramTypes.get? idx with
+          match ctx.paramTypes[idx]? with
           | some ParamType.address => raw % addressModulus
           | some ParamType.bool => if raw % modulus == 0 then 0 else 1
           | _ => raw % modulus
       | none => 0
   | Expr.constructorArg idx =>
       let raw := ctx.constructorArgs.getD idx 0
-      match ctx.constructorParamTypes.get? idx with
+      match ctx.constructorParamTypes[idx]? with
       | some ParamType.address => raw % addressModulus
       | some ParamType.bool => if raw % modulus == 0 then 0 else 1
       | _ => raw % modulus

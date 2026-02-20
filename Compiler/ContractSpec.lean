@@ -379,7 +379,7 @@ decreasing_by
   simp_wf
   cases bs with
   | nil => simp at *
-  | cons head tail => simp [List.length_drop]; omega
+  | cons head tail => simp; omega
 
 def wordFromBytes (bs : List UInt8) : Nat :=
   let padded := bs ++ List.replicate (32 - bs.length) (0 : UInt8)
@@ -396,7 +396,7 @@ def revertWithMessage (message : String) : List YulStmt :=
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit len])
   ]
   let dataStmts :=
-    (chunkBytes32 bytes).enum.map fun (idx, chunk) =>
+    (chunkBytes32 bytes).zipIdx.map fun (chunk, idx) =>
       let offset := 68 + idx * 32
       let word := wordFromBytes chunk
       YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit offset, YulExpr.hex word])
@@ -580,14 +580,14 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let sigBytes := bytesFromString sig
       let freeMemPtr := YulExpr.call "mload" [YulExpr.lit 0x40]
       let storePtr := YulStmt.let_ "__evt_ptr" freeMemPtr
-      let sigStores := (chunkBytes32 sigBytes).enum.map fun (idx, chunk) =>
+      let sigStores := (chunkBytes32 sigBytes).zipIdx.map fun (chunk, idx) =>
         YulStmt.expr (YulExpr.call "mstore" [
           YulExpr.call "add" [YulExpr.ident "__evt_ptr", YulExpr.lit (idx * 32)],
           YulExpr.hex (wordFromBytes chunk)
         ])
       let topic0Expr := YulExpr.call "keccak256" [YulExpr.ident "__evt_ptr", YulExpr.lit sigBytes.length]
       let topic0Store := YulStmt.let_ "__evt_topic0" topic0Expr
-      let unindexedStores ← unindexed.enum.mapM fun (idx, (p, argExpr)) => do
+      let unindexedStores ← unindexed.zipIdx.mapM fun ((p, argExpr), idx) => do
         let storedExpr :=
           match p.ty with
           | ParamType.address => YulExpr.call "and" [argExpr, YulExpr.hex ((2^160) - 1)]
@@ -623,7 +623,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         pure [YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 0])]
       else
         let compiled ← compileExprList fields values
-        let stores := (compiled.enum.map fun (idx, valueExpr) =>
+        let stores := (compiled.zipIdx.map fun (valueExpr, idx) =>
           YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit (idx * 32), valueExpr]))
         pure (stores ++ [YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit (values.length * 32)])])
   | Stmt.returnArray name => do
@@ -849,7 +849,7 @@ def genConstructorArgLoads (params : List Param) : List YulStmt :=
       YulStmt.let_ "argsOffset" (YulExpr.call "sub" [YulExpr.call "codesize" [], YulExpr.lit totalBytes]),
       YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit totalBytes])
     ]
-    let loadArgs := params.enum.flatMap fun (idx, param) =>
+    let loadArgs := params.zipIdx.flatMap fun (param, idx) =>
       let offset := idx * 32
       match param.ty with
       | ParamType.address =>

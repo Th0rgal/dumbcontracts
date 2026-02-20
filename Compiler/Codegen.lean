@@ -10,6 +10,11 @@ open Yul
 structure YulEmitOptions where
   patchConfig : Yul.PatchPassConfig := { enabled := false }
 
+/-- Runtime emission output plus patch audit report for tool/CI consumption. -/
+structure RuntimeEmitReport where
+  runtimeCode : List YulStmt
+  patchReport : Yul.PatchPassReport
+
 private def yulDatacopy : YulStmt :=
   YulStmt.expr (YulExpr.call "datacopy" [
     YulExpr.lit 0,
@@ -87,10 +92,14 @@ def runtimeCode (contract : IRContract) : List YulStmt :=
   let internals := contract.internalFunctions
   mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
 
-def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
+/-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
+def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
   let base := runtimeCode contract
   let patchReport := Yul.runExprPatchPass options.patchConfig Yul.foundationExprPatchPack base
-  patchReport.patched
+  { runtimeCode := patchReport.patched, patchReport := patchReport }
+
+def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
+  (runtimeCodeWithOptionsReport contract options).runtimeCode
 
 private def deployCode (contract : IRContract) : List YulStmt :=
   let valueGuard := if contract.constructorPayable then [] else [callvalueGuard]
@@ -105,5 +114,14 @@ def emitYulWithOptions (contract : IRContract) (options : YulEmitOptions) : YulO
   { name := contract.name
     deployCode := deployCode contract
     runtimeCode := runtimeCodeWithOptions contract options }
+
+/-- Emit Yul and preserve patch-pass audit details for downstream reporting. -/
+def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) :
+    YulObject × Yul.PatchPassReport :=
+  let runtimeReport := runtimeCodeWithOptionsReport contract options
+  ({ name := contract.name
+     deployCode := deployCode contract
+     runtimeCode := runtimeReport.runtimeCode },
+   runtimeReport.patchReport)
 
 end Compiler

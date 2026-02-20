@@ -347,7 +347,7 @@ theorem sub_val_of_gt {a b : Uint256} (h : b.val > a.val) :
             -- drop the inner mod on the left factor
             simp [m]
     _ = (a.val * c.val + b.val * c.val) % m := by
-            simp [Nat.add_mul, Nat.add_assoc]
+            simp [Nat.add_mul]
     _ = (((a.val * c.val) % m) + ((b.val * c.val) % m)) % m := by
             -- expand with add_mod
             exact (Nat.add_mod (a.val * c.val) (b.val * c.val) m)
@@ -390,20 +390,20 @@ theorem sub_val_of_gt {a b : Uint256} (h : b.val > a.val) :
         m - d + b.val
             = m - d + (a.val + d) := by simp [hba_eq]
         _ = (m - d + d) + a.val := by
-            simp [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+            simp [Nat.add_assoc, Nat.add_comm]
         _ = m + a.val := by
             have hle : d ≤ m := Nat.le_of_lt hba
-            simp [Nat.sub_add_cancel hle, Nat.add_assoc]
+            simp [Nat.sub_add_cancel hle]
     calc
       ((a - b) + b).val
           = (((m - d) % m) + b.val) % m := by
               simp [HAdd.hAdd, HSub.hSub, sub, add, ofNat, m, h, d]
       _ = ((m - d) + b.val) % m := by
-              simp [Nat.mod_eq_of_lt hba]
+              simp
       _ = (m + a.val) % m := by
               simp [hsum]
       _ = a.val % m := by
-              simp [Nat.add_mod_left, Nat.add_comm]
+              simp [Nat.add_mod_left]
       _ = a.val := by
               exact Nat.mod_eq_of_lt (by
                 simp [m]
@@ -474,7 +474,7 @@ theorem sub_add_cancel_of_lt {a b : Uint256} (ha : a.val < modulus) (hb : b.val 
           calc
             a + b < m + b := h'
             _ = b + m := by
-              simp [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+              simp [Nat.add_comm]
         have hbgt : b > a + b - m := by
           exact Nat.sub_lt_right_of_lt_add h_ge hlt'
         have hbnot : ¬ b ≤ a + b - m := Nat.not_le_of_gt hbgt
@@ -489,7 +489,7 @@ theorem sub_add_cancel_of_lt {a b : Uint256} (ha : a.val < modulus) (hb : b.val 
             _ = ((m - a) + a) + b - m := by
                     simp [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
             _ = m + b - m := by
-                    simp [Nat.sub_add_cancel hma, Nat.add_assoc]
+                    simp [Nat.sub_add_cancel hma]
             _ = b := by
                     exact Nat.add_sub_cancel_left m b
         have hdiff : b - (a + b - m) = m - a := by
@@ -511,7 +511,7 @@ theorem sub_add_cancel_of_lt {a b : Uint256} (ha : a.val < modulus) (hb : b.val 
             calc
               m = m - a + a := h1.symm
               _ = a + (m - a) := by
-                simp [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc])
+                simp [Nat.add_comm])
         have hval' : (aU + bU - bU).val = (m - (b - (a + b) % m)) % m := by
           have hgt : b > (a + b) % m := by
             exact Nat.lt_of_not_ge hbnot'

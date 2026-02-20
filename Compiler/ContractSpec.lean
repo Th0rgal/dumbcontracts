@@ -218,6 +218,7 @@ inductive Stmt
   | forEach (varName : String) (count : Expr) (body : List Stmt)  -- Bounded loop (#179)
   | emit (eventName : String) (args : List Expr)  -- Emit event (#153)
   | internalCall (functionName : String) (args : List Expr)  -- Internal call as statement (#181)
+  | internalCallAssign (names : List String) (functionName : String) (args : List Expr)
   deriving Repr
 
 structure FunctionSpec where
@@ -552,29 +553,29 @@ private partial def validateReturnShapesInStmt (fnName : String)
       else
         pure ()
   | Stmt.returnValues values =>
-      if isInternal then
-        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnValues yet (Issue #625)."
-      else if !expectedReturns.isEmpty && values.length != expectedReturns.length then
+      if expectedReturns.isEmpty then
+        throw s!"Compilation error: function '{fnName}' uses Stmt.returnValues but declares no return values"
+      else if values.length != expectedReturns.length then
         throw s!"Compilation error: function '{fnName}' returnValues count mismatch: expected {expectedReturns.length}, got {values.length}"
       else
         pure ()
   | Stmt.returnArray _ =>
       if isInternal then
-        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnArray; only Stmt.return is supported for single-word internal returns (Issue #625)."
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnArray; only static returns via Stmt.return/Stmt.returnValues are supported (Issue #625)."
       else if expectedReturns == [ParamType.array ParamType.uint256] then
         pure ()
       else
         throw s!"Compilation error: function '{fnName}' uses Stmt.returnArray but declared returns are {repr expectedReturns}"
   | Stmt.returnBytes _ =>
       if isInternal then
-        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnBytes; only Stmt.return is supported for single-word internal returns (Issue #625)."
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnBytes; only static returns via Stmt.return/Stmt.returnValues are supported (Issue #625)."
       else if expectedReturns == [ParamType.bytes] then
         pure ()
       else
         throw s!"Compilation error: function '{fnName}' uses Stmt.returnBytes but declared returns are {repr expectedReturns}"
   | Stmt.returnStorageWords _ =>
       if isInternal then
-        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnStorageWords; only Stmt.return is supported for single-word internal returns (Issue #625)."
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnStorageWords; only static returns via Stmt.return/Stmt.returnValues are supported (Issue #625)."
       else if expectedReturns == [ParamType.array ParamType.uint256] then
         pure ()
       else
@@ -588,16 +589,7 @@ private partial def validateReturnShapesInStmt (fnName : String)
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   let returns ← functionReturns spec
-  if spec.isInternal && returns.length > 1 then
-    throw s!"Compilation error: internal function '{spec.name}' multi-return declarations are not supported yet (Issue #625)."
-  let expectedReturns :=
-    if spec.isInternal then
-      match returns with
-      | [_] => returns
-      | _ => []
-    else
-      returns
-  spec.body.forM (validateReturnShapesInStmt spec.name expectedReturns spec.isInternal)
+  spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   spec.body.forM (validateStmtParamReferences spec.name spec.params)
 
 private def issue586Ref : String :=
@@ -762,6 +754,8 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       args.forM (validateInteropExpr context)
   | Stmt.internalCall _ args =>
       args.forM (validateInteropExpr context)
+  | Stmt.internalCallAssign _ _ args =>
+      args.forM (validateInteropExpr context)
   | Stmt.returnValues values =>
       values.forM (validateInteropExpr context)
   | _ =>
@@ -793,6 +787,102 @@ private def validateSpecialEntrypointSpec (spec : FunctionSpec) : Except String 
       throw s!"Compilation error: function '{spec.name}' must not return values ({issue586Ref})"
     if spec.name == "receive" && !spec.isPayable then
       throw s!"Compilation error: function 'receive' must be payable ({issue586Ref})"
+
+private def issue625Ref : String :=
+  "Issue #625 (internal function multi-return support)"
+
+private def findInternalFunctionByName (functions : List FunctionSpec)
+    (callerName calleeName : String) : Except String FunctionSpec := do
+  let candidates := functions.filter (fun fn => fn.isInternal && fn.name == calleeName)
+  match candidates with
+  | [fn] => pure fn
+  | [] =>
+      throw s!"Compilation error: function '{callerName}' references unknown internal function '{calleeName}' ({issue625Ref})."
+  | _ =>
+      throw s!"Compilation error: function '{callerName}' references ambiguous internal function '{calleeName}' ({issue625Ref})."
+
+private partial def validateInternalCallShapesInExpr
+    (functions : List FunctionSpec) (callerName : String) : Expr → Except String Unit
+  | Expr.internalCall calleeName args => do
+      args.forM (validateInternalCallShapesInExpr functions callerName)
+      let callee ← findInternalFunctionByName functions callerName calleeName
+      if args.length != callee.params.length then
+        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
+      let returns ← functionReturns callee
+      if returns.length != 1 then
+        throw s!"Compilation error: function '{callerName}' uses Expr.internalCall '{calleeName}' but callee returns {returns.length} values; use Stmt.internalCallAssign for multi-return calls ({issue625Ref})."
+  | Expr.mapping _ key =>
+      validateInternalCallShapesInExpr functions callerName key
+  | Expr.mapping2 _ key1 key2 => do
+      validateInternalCallShapesInExpr functions callerName key1
+      validateInternalCallShapesInExpr functions callerName key2
+  | Expr.mappingUint _ key =>
+      validateInternalCallShapesInExpr functions callerName key
+  | Expr.arrayElement _ index =>
+      validateInternalCallShapesInExpr functions callerName index
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b => do
+      validateInternalCallShapesInExpr functions callerName a
+      validateInternalCallShapesInExpr functions callerName b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      validateInternalCallShapesInExpr functions callerName a
+  | _ =>
+      pure ()
+
+private partial def validateInternalCallShapesInStmt
+    (functions : List FunctionSpec) (callerName : String) : Stmt → Except String Unit
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      validateInternalCallShapesInExpr functions callerName value
+  | Stmt.requireError cond _ args => do
+      validateInternalCallShapesInExpr functions callerName cond
+      args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.revertError _ args =>
+      args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+      validateInternalCallShapesInExpr functions callerName key
+      validateInternalCallShapesInExpr functions callerName value
+  | Stmt.setMapping2 _ key1 key2 value => do
+      validateInternalCallShapesInExpr functions callerName key1
+      validateInternalCallShapesInExpr functions callerName key2
+      validateInternalCallShapesInExpr functions callerName value
+  | Stmt.ite cond thenBranch elseBranch => do
+      validateInternalCallShapesInExpr functions callerName cond
+      thenBranch.forM (validateInternalCallShapesInStmt functions callerName)
+      elseBranch.forM (validateInternalCallShapesInStmt functions callerName)
+  | Stmt.forEach _ count body => do
+      validateInternalCallShapesInExpr functions callerName count
+      body.forM (validateInternalCallShapesInStmt functions callerName)
+  | Stmt.emit _ args =>
+      args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.returnValues values =>
+      values.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.internalCall calleeName args => do
+      args.forM (validateInternalCallShapesInExpr functions callerName)
+      let callee ← findInternalFunctionByName functions callerName calleeName
+      if args.length != callee.params.length then
+        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
+      let returns ← functionReturns callee
+      if !returns.isEmpty then
+        throw s!"Compilation error: function '{callerName}' uses Stmt.internalCall '{calleeName}' but callee returns {returns.length} values; use Expr.internalCall for single-return or Stmt.internalCallAssign for multi-return calls ({issue625Ref})."
+  | Stmt.internalCallAssign names calleeName args => do
+      if names.isEmpty then
+        throw s!"Compilation error: function '{callerName}' uses Stmt.internalCallAssign with no target variables ({issue625Ref})."
+      args.forM (validateInternalCallShapesInExpr functions callerName)
+      let callee ← findInternalFunctionByName functions callerName calleeName
+      if args.length != callee.params.length then
+        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
+      let returns ← functionReturns callee
+      if returns.length != names.length then
+        throw s!"Compilation error: function '{callerName}' binds {names.length} values from internal function '{calleeName}', but callee returns {returns.length} ({issue625Ref})."
+  | _ =>
+      pure ()
+
+private def validateInternalCallShapesInFunction (functions : List FunctionSpec)
+    (spec : FunctionSpec) : Except String Unit := do
+  spec.body.forM (validateInternalCallShapesInStmt functions spec.name)
 
 private def compileMappingSlotWrite (fields : List Field) (field : String)
     (keyExpr valueExpr : YulExpr) (label : String) : Except String (List YulStmt) :=
@@ -898,17 +988,19 @@ mutual
 def compileStmtList (fields : List Field) (events : List EventDef := [])
     (errors : List ErrorDef := [])
     (dynamicSource : DynamicDataSource := .calldata)
+    (internalRetNames : List String := [])
     (isInternal : Bool := false) :
     List Stmt → Except String (List YulStmt)
   | [] => pure []
   | s :: ss => do
-      let head ← compileStmt fields events errors dynamicSource isInternal s
-      let tail ← compileStmtList fields events errors dynamicSource isInternal ss
+      let head ← compileStmt fields events errors dynamicSource internalRetNames isInternal s
+      let tail ← compileStmtList fields events errors dynamicSource internalRetNames isInternal ss
       pure (head ++ tail)
 
 def compileStmt (fields : List Field) (events : List EventDef := [])
     (errors : List ErrorDef := [])
     (dynamicSource : DynamicDataSource := .calldata)
+    (internalRetNames : List String := [])
     (isInternal : Bool := false) :
     Stmt → Except String (List YulStmt)
   | Stmt.letVar name value => do
@@ -976,7 +1068,9 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
     do
       let valueExpr ← compileExpr fields dynamicSource value
       if isInternal then
-        pure [YulStmt.assign "__ret" valueExpr]
+        match internalRetNames with
+        | retName :: _ => pure [YulStmt.assign retName valueExpr]
+        | [] => throw s!"Compilation error: internal return target is missing"
       else
         pure [
           YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueExpr]),
@@ -987,8 +1081,8 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
   | Stmt.ite cond thenBranch elseBranch => do
       -- If/else: compile to Yul if + negated if (#179)
       let condExpr ← compileExpr fields dynamicSource cond
-      let thenStmts ← compileStmtList fields events errors dynamicSource isInternal thenBranch
-      let elseStmts ← compileStmtList fields events errors dynamicSource isInternal elseBranch
+      let thenStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal thenBranch
+      let elseStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal elseBranch
       if elseBranch.isEmpty then
         -- Simple if (no else)
         pure [YulStmt.if_ condExpr thenStmts]
@@ -1005,7 +1099,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
   | Stmt.forEach varName count body => do
       -- Bounded loop: for { let i := 0 } lt(i, count) { i := add(i, 1) } { body } (#179)
       let countExpr ← compileExpr fields dynamicSource count
-      let bodyStmts ← compileStmtList fields events errors dynamicSource isInternal body
+      let bodyStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal body
       let initStmts := [YulStmt.let_ varName (YulExpr.lit 0)]
       let condExpr := YulExpr.call "lt" [YulExpr.ident varName, countExpr]
       let postStmts := [YulStmt.assign varName (YulExpr.call "add" [YulExpr.ident varName, YulExpr.lit 1])]
@@ -1093,8 +1187,18 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       -- Internal function call as statement (#181)
       let argExprs ← compileExprList fields dynamicSource args
       pure [YulStmt.expr (YulExpr.call s!"internal_{functionName}" argExprs)]
+  | Stmt.internalCallAssign names functionName args => do
+      let argExprs ← compileExprList fields dynamicSource args
+      pure [YulStmt.letMany names (YulExpr.call s!"internal_{functionName}" argExprs)]
   | Stmt.returnValues values => do
-      if values.isEmpty then
+      if isInternal then
+        if values.length != internalRetNames.length then
+          throw s!"Compilation error: internal return arity mismatch: expected {internalRetNames.length}, got {values.length}"
+        else
+          let compiled ← compileExprList fields dynamicSource values
+          pure ((internalRetNames.zip compiled).map fun (name, valueExpr) =>
+            YulStmt.assign name valueExpr)
+      else if values.isEmpty then
         pure [YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 0])]
       else
         let compiled ← compileExprList fields dynamicSource values
@@ -1287,12 +1391,9 @@ def compileInternalFunction (fields : List Field) (events : List EventDef) (erro
   validateFunctionSpec spec
   let returns ← functionReturns spec
   let paramNames := spec.params.map (·.name)
-  let retNames := match returns with
-    | [_] => ["__ret"]
-    | [] => []
-    | _ => []
+  let retNames := returns.zipIdx.map (fun (_, idx) => s!"__ret{idx}")
   let bodyStmts ← compileStmtList fields events errors
-    (dynamicSource := .calldata) (isInternal := true) spec.body
+    (dynamicSource := .calldata) (internalRetNames := retNames) (isInternal := true) spec.body
   pure (YulStmt.funcDef s!"internal_{spec.name}" paramNames retNames bodyStmts)
 
 -- Compile function spec to IR function
@@ -1428,6 +1529,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     validateSpecialEntrypointSpec fn
     validateEventArgShapesInFunction fn spec.events
     validateCustomErrorArgShapesInFunction fn spec.errors
+    validateInternalCallShapesInFunction spec.functions fn
   validateConstructorSpec spec.constructor
   validateInteropConstructorSpec spec.constructor
   for ext in spec.externals do

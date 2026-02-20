@@ -275,6 +275,7 @@ private def callsWithArityFromExprs : List YulExpr → List (String × Nat)
 private def callsWithArityFromStmt : YulStmt → List (String × Nat)
   | YulStmt.comment _ => []
   | YulStmt.let_ _ value => callsWithArityFromExpr value
+  | YulStmt.letMany _ value => callsWithArityFromExpr value
   | YulStmt.assign _ value => callsWithArityFromExpr value
   | YulStmt.expr e => callsWithArityFromExpr e
   | YulStmt.if_ cond body => callsWithArityFromExpr cond ++ callsWithArityFromStmts body

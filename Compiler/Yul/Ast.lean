@@ -11,6 +11,7 @@ inductive YulExpr
 inductive YulStmt
   | comment (text : String)
   | let_ (name : String) (value : YulExpr)
+  | letMany (names : List String) (value : YulExpr)
   | assign (name : String) (value : YulExpr)
   | expr (e : YulExpr)
   | if_ (cond : YulExpr) (body : List YulStmt)

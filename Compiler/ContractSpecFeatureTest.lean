@@ -692,26 +692,107 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected internal void Stmt.return usage to fail compilation")
 
 #eval! do
-  let internalReturnValuesSpec : ContractSpec := {
-    name := "InternalReturnValuesUnsupported"
+  let internalMultiReturnSpec : ContractSpec := {
+    name := "InternalMultiReturnSupported"
     fields := []
     constructor := none
     functions := [
-      { name := "badInternalReturnValues"
-        params := []
-        returnType := some FieldType.uint256
+      { name := "pair"
+        params := [
+          { name := "left", ty := ParamType.uint256 },
+          { name := "right", ty := ParamType.uint256 }
+        ]
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
         isInternal := true
-        body := [Stmt.returnValues [Expr.literal 1]]
+        body := [Stmt.returnValues [Expr.param "left", Expr.param "right"]]
+      },
+      { name := "project"
+        params := [
+          { name := "left", ty := ParamType.uint256 },
+          { name := "right", ty := ParamType.uint256 }
+        ]
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
+        body := [
+          Stmt.internalCallAssign ["a", "b"] "pair" [Expr.param "left", Expr.param "right"],
+          Stmt.returnValues [Expr.localVar "a", Expr.localVar "b"]
+        ]
       }
     ]
   }
-  match compile internalReturnValuesSpec [] with
+  match compile internalMultiReturnSpec [1] with
   | .error err =>
-      if !(contains err "cannot use Stmt.returnValues yet" && contains err "Issue #625") then
-        throw (IO.userError s!"✗ internal returnValues diagnostic mismatch: {err}")
-      IO.println "✓ internal returnValues unsupported diagnostic"
+      throw (IO.userError s!"✗ expected internal multi-return support to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "internal multi-return codegen" rendered
+        ["function internal_pair(left, right) -> __ret0, __ret1",
+         "__ret0 := left",
+         "__ret1 := right",
+         "let a, b := internal_pair(left, right)",
+         "return(0, 64)"]
+
+#eval! do
+  let exprInternalCallMultiReturnSpec : ContractSpec := {
+    name := "ExprInternalCallMultiReturnRejected"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "pair"
+        params := []
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
+        isInternal := true
+        body := [Stmt.returnValues [Expr.literal 1, Expr.literal 2]]
+      },
+      { name := "badExprUse"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.internalCall "pair" [])]
+      }
+    ]
+  }
+  match compile exprInternalCallMultiReturnSpec [1] with
+  | .error err =>
+      if !(contains err "uses Expr.internalCall 'pair' but callee returns 2 values" &&
+          contains err "Issue #625") then
+        throw (IO.userError s!"✗ expr internalCall multi-return diagnostic mismatch: {err}")
+      IO.println "✓ expr internalCall multi-return diagnostic"
   | .ok _ =>
-      throw (IO.userError "✗ expected internal Stmt.returnValues usage to fail compilation")
+      throw (IO.userError "✗ expected Expr.internalCall on multi-return internal function to fail compilation")
+
+#eval! do
+  let internalCallAssignArityMismatchSpec : ContractSpec := {
+    name := "InternalCallAssignArityMismatch"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "pair"
+        params := []
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
+        isInternal := true
+        body := [Stmt.returnValues [Expr.literal 1, Expr.literal 2]]
+      },
+      { name := "badBind"
+        params := []
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.internalCallAssign ["onlyOne"] "pair" [],
+          Stmt.return (Expr.localVar "onlyOne")
+        ]
+      }
+    ]
+  }
+  match compile internalCallAssignArityMismatchSpec [1] with
+  | .error err =>
+      if !(contains err "binds 1 values from internal function 'pair', but callee returns 2" &&
+          contains err "Issue #625") then
+        throw (IO.userError s!"✗ internalCallAssign arity diagnostic mismatch: {err}")
+      IO.println "✓ internalCallAssign arity diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected internalCallAssign arity mismatch to fail compilation")
 
 #eval! do
   let multiReturnWithSingleReturnStmtSpec : ContractSpec := {

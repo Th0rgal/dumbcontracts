@@ -94,6 +94,9 @@ private def rewriteStmtOnce (orderedRules : List ExprPatchRule) : YulStmt → (Y
   | .let_ name value =>
       let (value', hits) := rewriteExprOnce orderedRules value
       (.let_ name value', hits)
+  | .letMany names value =>
+      let (value', hits) := rewriteExprOnce orderedRules value
+      (.letMany names value', hits)
   | .assign name value =>
       let (value', hits) := rewriteExprOnce orderedRules value
       (.assign name value', hits)

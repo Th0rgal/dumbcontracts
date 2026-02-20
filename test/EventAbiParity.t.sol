@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.33;
+
+import "forge-std/Test.sol";
+
+struct MarketParamsParity {
+    address loanToken;
+    address collateralToken;
+    address oracle;
+    address irm;
+    uint256 lltv;
+}
+
+struct DynamicTupleParity {
+    uint256 amount;
+    bytes payload;
+}
+
+struct StaticTupleParity {
+    uint256 amount;
+    address recipient;
+}
+
+contract EventAbiParityEmitter {
+    event CreateMarket(bytes32 indexed id, MarketParamsParity market);
+    event CompositeEvent(bytes32 indexed id, DynamicTupleParity payload, uint256[] values, bytes note);
+    event IndexedBytes(bytes indexed payload);
+    event IndexedStaticTuple(StaticTupleParity indexed payload);
+
+    function emitCreateMarket(bytes32 id, MarketParamsParity calldata market) external {
+        emit CreateMarket(id, market);
+    }
+
+    function emitCompositeEvent(
+        bytes32 id,
+        DynamicTupleParity calldata payload,
+        uint256[] calldata values,
+        bytes calldata note
+    ) external {
+        emit CompositeEvent(id, payload, values, note);
+    }
+
+    function emitIndexedBytes(bytes calldata payload) external {
+        emit IndexedBytes(payload);
+    }
+
+    function emitIndexedStaticTuple(StaticTupleParity calldata payload) external {
+        emit IndexedStaticTuple(payload);
+    }
+}
+
+contract EventAbiParityTest is Test {
+    EventAbiParityEmitter internal emitter;
+
+    function setUp() public {
+        emitter = new EventAbiParityEmitter();
+    }
+
+    function testTopic0MatchesCreateMarketTupleSignature() public {
+        bytes32 id = keccak256("market-id");
+        MarketParamsParity memory market = MarketParamsParity({
+            loanToken: address(0x1),
+            collateralToken: address(0x2),
+            oracle: address(0x3),
+            irm: address(0x4),
+            lltv: 940_000_000_000_000_000
+        });
+
+        vm.recordLogs();
+        emitter.emitCreateMarket(id, market);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 2);
+
+        bytes32 expectedTopic0 = keccak256(
+            bytes("CreateMarket(bytes32,(address,address,address,address,uint256))")
+        );
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].topics[1], id);
+    }
+
+    function testTopic0MatchesCompositeDynamicTupleSignature() public {
+        bytes32 id = keccak256("composite-id");
+        DynamicTupleParity memory payload = DynamicTupleParity({amount: 7, payload: hex"11223344"});
+        uint256[] memory values = new uint256[](2);
+        values[0] = 10;
+        values[1] = 20;
+        bytes memory note = hex"aabbcc";
+
+        vm.recordLogs();
+        emitter.emitCompositeEvent(id, payload, values, note);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 2);
+
+        bytes32 expectedTopic0 = keccak256(
+            bytes("CompositeEvent(bytes32,(uint256,bytes),uint256[],bytes)")
+        );
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].topics[1], id);
+    }
+
+    function testIndexedBytesTopicHashesRawPayload() public {
+        bytes memory payload = hex"deadbeefcafebabe";
+
+        vm.recordLogs();
+        emitter.emitIndexedBytes(payload);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 2);
+
+        bytes32 expectedTopic0 = keccak256(bytes("IndexedBytes(bytes)"));
+        bytes32 expectedTopic1 = keccak256(payload);
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].topics[1], expectedTopic1);
+    }
+
+    function testIndexedStaticTupleTopicUsesAbiEncodedTupleHash() public {
+        StaticTupleParity memory payload = StaticTupleParity({
+            amount: 123,
+            recipient: address(0xBEEF)
+        });
+
+        vm.recordLogs();
+        emitter.emitIndexedStaticTuple(payload);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 2);
+
+        bytes32 expectedTopic0 = keccak256(bytes("IndexedStaticTuple((uint256,address))"));
+        bytes32 expectedTopic1 = keccak256(abi.encode(payload.amount, payload.recipient));
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].topics[1], expectedTopic1);
+    }
+}

@@ -583,6 +583,48 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected extcodehash usage to fail compilation")
 
 #eval! do
+  let returnDataSizeSpec : ContractSpec := {
+    name := "ReturnDataSizeUnsupported"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "probe"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "returndatasize" [])]
+      }
+    ]
+  }
+  match compile returnDataSizeSpec [1] with
+  | .error err =>
+      if !(contains err "unsupported interop builtin call 'returndatasize'" && contains err "Issue #586") then
+        throw (IO.userError s!"✗ returndatasize diagnostic mismatch: {err}")
+      IO.println "✓ returndatasize unsupported diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected returndatasize usage to fail compilation")
+
+#eval! do
+  let returnDataCopySpec : ContractSpec := {
+    name := "ReturnDataCopyUnsupported"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "probe"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "returndatacopy" [])]
+      }
+    ]
+  }
+  match compile returnDataCopySpec [1] with
+  | .error err =>
+      if !(contains err "unsupported interop builtin call 'returndatacopy'" && contains err "Issue #586") then
+        throw (IO.userError s!"✗ returndatacopy diagnostic mismatch: {err}")
+      IO.println "✓ returndatacopy unsupported diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected returndatacopy usage to fail compilation")
+
+#eval! do
   let externalCreate2Spec : ContractSpec := {
     name := "ExternalCreate2Unsupported"
     fields := []

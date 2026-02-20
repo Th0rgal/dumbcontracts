@@ -58,6 +58,14 @@ def union [DecidableEq α] (s t : FiniteSet α) : FiniteSet α :=
 def inter [DecidableEq α] (s t : FiniteSet α) : FiniteSet α :=
   ⟨s.elements.filter (fun x => decide (x ∈ t.elements)), s.nodup.filter _⟩
 
+/-- Set difference (`s \\ t`): elements in `s` that are not in `t`. -/
+def diff [DecidableEq α] (s t : FiniteSet α) : FiniteSet α :=
+  ⟨s.elements.filter (fun x => decide (x ∉ t.elements)), s.nodup.filter _⟩
+
+/-- Symmetric difference: elements in exactly one of the two sets. -/
+def symmDiff [DecidableEq α] (s t : FiniteSet α) : FiniteSet α :=
+  union (diff s t) (diff t s)
+
 /-- Propositional subset relation. -/
 def subset (s t : FiniteSet α) : Prop :=
   ∀ x, x ∈ s → x ∈ t
@@ -117,6 +125,11 @@ theorem mem_elements_insert [DecidableEq α] (a b : α) (s : FiniteSet α) :
     a ∈ (s.inter t).elements ↔ a ∈ s.elements ∧ a ∈ t.elements := by
   simp [FiniteSet.inter, and_left_comm, and_assoc, FiniteSet.mem]
 
+/-- Membership in set difference is left-membership without right-membership. -/
+@[simp] theorem mem_elements_diff [DecidableEq α] (a : α) (s t : FiniteSet α) :
+    a ∈ (s.diff t).elements ↔ a ∈ s.elements ∧ a ∉ t.elements := by
+  simp [FiniteSet.diff, and_left_comm, and_assoc, FiniteSet.mem]
+
 /-- `contains` reflects propositional membership. -/
 @[simp] theorem contains_eq_true [DecidableEq α] (a : α) (s : FiniteSet α) :
     s.contains a = true ↔ a ∈ s := by
@@ -173,6 +186,14 @@ def union (s t : FiniteAddressSet) : FiniteAddressSet :=
 def inter (s t : FiniteAddressSet) : FiniteAddressSet :=
   ⟨s.addresses.inter t.addresses⟩
 
+/-- Difference of two address sets. -/
+def diff (s t : FiniteAddressSet) : FiniteAddressSet :=
+  ⟨s.addresses.diff t.addresses⟩
+
+/-- Symmetric difference of two address sets. -/
+def symmDiff (s t : FiniteAddressSet) : FiniteAddressSet :=
+  ⟨s.addresses.symmDiff t.addresses⟩
+
 /-- Propositional subset relation. -/
 def subset (s t : FiniteAddressSet) : Prop :=
   s.addresses.subset t.addresses
@@ -208,6 +229,11 @@ def contains (addr : Address) (s : FiniteAddressSet) : Bool :=
     a ∈ s.inter t ↔ a ∈ s ∧ a ∈ t := by
   simpa [FiniteAddressSet.mem, FiniteAddressSet.inter] using
     (FiniteSet.mem_elements_inter a s.addresses t.addresses)
+
+@[simp] theorem mem_diff (a : Address) (s t : FiniteAddressSet) :
+    a ∈ s.diff t ↔ a ∈ s ∧ a ∉ t := by
+  simpa [FiniteAddressSet.mem, FiniteAddressSet.diff] using
+    (FiniteSet.mem_elements_diff a s.addresses t.addresses)
 
 end FiniteAddressSet
 
@@ -249,6 +275,14 @@ def union (s t : FiniteNatSet) : FiniteNatSet :=
 def inter (s t : FiniteNatSet) : FiniteNatSet :=
   ⟨s.nats.inter t.nats⟩
 
+/-- Difference of two nat sets. -/
+def diff (s t : FiniteNatSet) : FiniteNatSet :=
+  ⟨s.nats.diff t.nats⟩
+
+/-- Symmetric difference of two nat sets. -/
+def symmDiff (s t : FiniteNatSet) : FiniteNatSet :=
+  ⟨s.nats.symmDiff t.nats⟩
+
 /-- Propositional subset relation. -/
 def subset (s t : FiniteNatSet) : Prop :=
   s.nats.subset t.nats
@@ -284,6 +318,11 @@ def contains (n : Nat) (s : FiniteNatSet) : Bool :=
     a ∈ s.inter t ↔ a ∈ s ∧ a ∈ t := by
   simpa [FiniteNatSet.mem, FiniteNatSet.inter] using
     (FiniteSet.mem_elements_inter a s.nats t.nats)
+
+@[simp] theorem mem_diff (a : Nat) (s t : FiniteNatSet) :
+    a ∈ s.diff t ↔ a ∈ s ∧ a ∉ t := by
+  simpa [FiniteNatSet.mem, FiniteNatSet.diff] using
+    (FiniteSet.mem_elements_diff a s.nats t.nats)
 
 end FiniteNatSet
 

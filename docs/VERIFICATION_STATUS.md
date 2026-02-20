@@ -255,6 +255,29 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 - [x] Function selector axiom with CI validation (PR #43, #46)
 - [x] External function linking for cryptographic libraries (PR #49)
 
+## Solidity Interop Support Matrix (Issue #586)
+
+This matrix tracks migration-critical Solidity interoperability features and current implementation status.
+
+Status legend:
+- `supported`: usable end-to-end
+- `partial`: implemented with functional limits or incomplete proof/test coverage
+- `unsupported`: not implemented as a first-class feature
+
+| Feature | Spec support | Codegen support | Proof status | Test status | Current status |
+|---|---|---|---|---|---|
+| Custom errors + typed revert payloads | unsupported | unsupported | n/a | n/a | unsupported |
+| Low-level calls (`call` / `staticcall` / `delegatecall`) with returndata | unsupported | unsupported | n/a | n/a | unsupported |
+| `fallback` / `receive` / payable entrypoint modeling | unsupported | unsupported | n/a | n/a | unsupported |
+| Event ABI parity for indexed dynamic/tuple payloads | partial | partial | partial | partial | partial |
+| Storage layout controls (packing + explicit slots) | partial | partial | partial | partial | partial |
+| ABI JSON artifact generation | unsupported | unsupported | n/a | n/a | unsupported |
+
+Diagnostics policy for unsupported constructs:
+1. Report the exact unsupported construct at compile time.
+2. Suggest the nearest supported migration pattern.
+3. Link to the owning tracking issue.
+
 ### Short Term (1-2 months)
 
 - [x] Add finite address set modeling for Ledger sum properties (Issue #39, closed)

@@ -35,6 +35,29 @@ Execution policy:
 4. Treat `#585` docs generation as authoritative source for public metrics before broader docs expansion.
 5. Keep issue bodies and this section synchronized when scope/order changes.
 
+### Solidity Interop Profile (Issue #586)
+
+Interop priority is based on migration friction observed in the Morpho integration path.
+
+Status legend:
+- `supported`: available end-to-end for migration use
+- `partial`: usable with limits or missing proof/diagnostics coverage
+- `unsupported`: no first-class support yet
+
+| Priority | Feature | Spec support | Codegen support | Proof status | Test status | Current status |
+|---|---|---|---|---|---|---|
+| 1 | Custom errors + typed revert payloads | unsupported | unsupported | n/a | n/a | unsupported |
+| 2 | Low-level calls (`call`/`staticcall`/`delegatecall`) + returndata handling | unsupported | unsupported | n/a | n/a | unsupported |
+| 3 | `fallback` / `receive` / payable entrypoint modeling | unsupported | unsupported | n/a | n/a | unsupported |
+| 4 | Full event ABI parity (indexed dynamic + tuple hashing) | partial | partial | partial | partial | partial |
+| 5 | Storage layout controls (packed fields + explicit slot mapping) | partial | partial | partial | partial | partial |
+| 6 | ABI JSON artifact generation | unsupported | unsupported | n/a | n/a | unsupported |
+
+Delivery policy for unsupported features:
+1. Compiler diagnostics must identify the exact unsupported construct.
+2. Error text must suggest the nearest currently-supported pattern.
+3. Error text must include the tracking issue reference.
+
 ---
 
 ## Lessons from UnlinkPool (#185)

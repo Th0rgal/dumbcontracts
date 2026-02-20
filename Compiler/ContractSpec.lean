@@ -511,11 +511,8 @@ private def isInteropBuiltinCallName (name : String) : Bool :=
   (isLowLevelCallName name) ||
     ["create", "create2", "extcodesize", "extcodecopy", "extcodehash"].contains name
 
-private def isUnsupportedInteropEntrypointName (name : String) : Bool :=
+private def isInteropEntrypointName (name : String) : Bool :=
   ["fallback", "receive"].contains name
-
-private def unsupportedEntrypointModelingError (name : String) : Except String Unit :=
-  throw s!"Compilation error: function '{name}' uses unsupported Solidity interop entrypoint modeling ({issue586Ref}). Model this behavior with an explicit external function selector and guard logic until first-class fallback/receive support lands."
 
 private def lowLevelCallUnsupportedError (context : String) (name : String) : Except String Unit :=
   throw s!"Compilation error: {context} uses unsupported low-level call '{name}' ({issue586Ref}). Use a verified linked external function wrapper instead of raw call/staticcall/delegatecall."
@@ -584,8 +581,6 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       pure ()
 
 private def validateInteropFunctionSpec (spec : FunctionSpec) : Except String Unit := do
-  if isUnsupportedInteropEntrypointName spec.name then
-    unsupportedEntrypointModelingError spec.name
   spec.body.forM (validateInteropStmt s!"function '{spec.name}'")
 
 private def validateInteropExternalSpec (spec : ExternalFunction) : Except String Unit := do
@@ -597,6 +592,20 @@ private def validateInteropConstructorSpec (ctor : Option ConstructorSpec) : Exc
   | none => pure ()
   | some spec =>
       spec.body.forM (validateInteropStmt "constructor")
+
+private def validateSpecialEntrypointSpec (spec : FunctionSpec) : Except String Unit := do
+  if !isInteropEntrypointName spec.name then
+    pure ()
+  else
+    if spec.isInternal then
+      throw s!"Compilation error: function '{spec.name}' cannot be marked internal ({issue586Ref})"
+    if !spec.params.isEmpty then
+      throw s!"Compilation error: function '{spec.name}' must not declare parameters ({issue586Ref})"
+    let returns ← functionReturns spec
+    if !returns.isEmpty then
+      throw s!"Compilation error: function '{spec.name}' must not return values ({issue586Ref})"
+    if spec.name == "receive" && !spec.isPayable then
+      throw s!"Compilation error: function 'receive' must be payable ({issue586Ref})"
 
 private def compileMappingSlotWrite (fields : List Field) (field : String)
     (keyExpr valueExpr : YulExpr) (label : String) : Except String (List YulStmt) :=
@@ -989,6 +998,21 @@ def compileFunctionSpec (fields : List Field) (events : List EventDef) (selector
     body := allStmts
   }
 
+private def compileSpecialEntrypoint (fields : List Field) (events : List EventDef) (spec : FunctionSpec) :
+    Except String IREntrypoint := do
+  let bodyChunks ← spec.body.mapM (compileStmt fields events)
+  pure {
+    payable := spec.isPayable
+    body := bodyChunks.flatten
+  }
+
+private def pickUniqueFunctionByName (name : String) (funcs : List FunctionSpec) :
+    Except String (Option FunctionSpec) :=
+  match funcs.filter (·.name == name) with
+  | [] => pure none
+  | [single] => pure (some single)
+  | _ => throw s!"Compilation error: multiple '{name}' entrypoints are not allowed ({issue586Ref})"
+
 -- Check if contract uses mappings
 def usesMapping (fields : List Field) : Bool :=
   fields.any fun f => isMapping fields f.name
@@ -1043,21 +1067,24 @@ def firstDuplicateSelector (selectors : List Nat) : Option Nat :=
   go [] selectors
 
 def selectorNames (spec : ContractSpec) (selectors : List Nat) (sel : Nat) : List String :=
-  let externalFns := spec.functions.filter (!·.isInternal)
+  let externalFns := spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)
   (externalFns.zip selectors).foldl (fun acc (fn, s) =>
     if s == sel then acc ++ [fn.name] else acc
   ) []
 
 def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContract := do
-  let externalFns := spec.functions.filter (!·.isInternal)
+  let externalFns := spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)
   let internalFns := spec.functions.filter (·.isInternal)
   for fn in spec.functions do
     validateFunctionSpec fn
     validateInteropFunctionSpec fn
+    validateSpecialEntrypointSpec fn
   validateInteropConstructorSpec spec.constructor
   for ext in spec.externals do
     let _ ← externalFunctionReturns ext
     validateInteropExternalSpec ext
+  let fallbackSpec ← pickUniqueFunctionByName "fallback" spec.functions
+  let receiveSpec ← pickUniqueFunctionByName "receive" spec.functions
   if externalFns.length != selectors.length then
     throw s!"Selector count mismatch for {spec.name}: {selectors.length} selectors for {externalFns.length} external functions"
   match firstDuplicateSelector selectors with
@@ -1070,11 +1097,15 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     compileFunctionSpec spec.fields spec.events sel fnSpec
   -- Compile internal functions as Yul function definitions (#181)
   let internalFuncDefs ← internalFns.mapM (compileInternalFunction spec.fields spec.events)
+  let fallbackEntrypoint ← fallbackSpec.mapM (compileSpecialEntrypoint spec.fields spec.events)
+  let receiveEntrypoint ← receiveSpec.mapM (compileSpecialEntrypoint spec.fields spec.events)
   return {
     name := spec.name
     deploy := (← compileConstructor spec.fields spec.constructor)
     constructorPayable := spec.constructor.map (·.isPayable) |>.getD false
     functions := functions
+    fallbackEntrypoint := fallbackEntrypoint
+    receiveEntrypoint := receiveEntrypoint
     usesMapping := usesMapping spec.fields
     internalFunctions := internalFuncDefs
   }

@@ -89,7 +89,7 @@ theorem setMapping_knownAddresses_other_slot (slot : StorageSlot (Address → Ui
   by_cases h_eq : slot' = slot.slot
   · exact (h h_eq).elim
   · have h_slot : (slot' == slot.slot) = false := beq_eq_false_iff_ne.mpr h_eq
-    simp [setMapping, Contract.runState, h_slot, h_eq]
+    simp [setMapping, Contract.runState, h_eq]
 
 /-- Membership characterization at target slot after setMapping. -/
 theorem setMapping_knownAddresses_mem_iff (slot : StorageSlot (Address → Uint256))
@@ -140,43 +140,43 @@ theorem setMappingUint_getMappingUint_diff (slot : StorageSlot (Uint256 → Uint
 theorem setMappingUint_preserves_storage (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.storage = state.storage := by
-  simp [setMappingUint]
+  simp
 
 /-- setMappingUint preserves address storage. -/
 theorem setMappingUint_preserves_storageAddr (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.storageAddr = state.storageAddr := by
-  simp [setMappingUint]
+  simp
 
 /-- setMappingUint preserves address-keyed mapping storage. -/
 theorem setMappingUint_preserves_storageMap (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.storageMap = state.storageMap := by
-  simp [setMappingUint]
+  simp
 
 /-- setMappingUint preserves double mapping storage. -/
 theorem setMappingUint_preserves_storageMap2 (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.storageMap2 = state.storageMap2 := by
-  simp [setMappingUint]
+  simp
 
 /-- setMappingUint preserves sender. -/
 theorem setMappingUint_preserves_sender (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.sender = state.sender := by
-  simp [setMappingUint]
+  simp
 
 /-- setMappingUint preserves contract address. -/
 theorem setMappingUint_preserves_thisAddress (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.thisAddress = state.thisAddress := by
-  simp [setMappingUint]
+  simp
 
 /-- setMappingUint preserves known addresses. -/
 theorem setMappingUint_preserves_knownAddresses (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.knownAddresses = state.knownAddresses := by
-  simp [setMappingUint]
+  simp
 
 /-!
 ## Double Mapping Lemmas (Address → Address → Uint256)
@@ -228,43 +228,43 @@ theorem setMapping2_getMapping2_diff_key2 (slot : StorageSlot (Address → Addre
 theorem setMapping2_preserves_storage (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.storage = state.storage := by
-  simp [setMapping2]
+  simp
 
 /-- setMapping2 preserves address storage. -/
 theorem setMapping2_preserves_storageAddr (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.storageAddr = state.storageAddr := by
-  simp [setMapping2]
+  simp
 
 /-- setMapping2 preserves address-keyed mapping storage. -/
 theorem setMapping2_preserves_storageMap (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.storageMap = state.storageMap := by
-  simp [setMapping2]
+  simp
 
 /-- setMapping2 preserves uint256-keyed mapping storage. -/
 theorem setMapping2_preserves_storageMapUint (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.storageMapUint = state.storageMapUint := by
-  simp [setMapping2]
+  simp
 
 /-- setMapping2 preserves sender. -/
 theorem setMapping2_preserves_sender (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.sender = state.sender := by
-  simp [setMapping2]
+  simp
 
 /-- setMapping2 preserves contract address. -/
 theorem setMapping2_preserves_thisAddress (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.thisAddress = state.thisAddress := by
-  simp [setMapping2]
+  simp
 
 /-- setMapping2 preserves known addresses. -/
 theorem setMapping2_preserves_knownAddresses (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.knownAddresses = state.knownAddresses := by
-  simp [setMapping2]
+  simp
 
 /-!
 ## msgValue / blockTimestamp / knownAddresses Preservation for Extended Mapping Types
@@ -274,25 +274,25 @@ theorem setMapping2_preserves_knownAddresses (slot : StorageSlot (Address → Ad
 theorem setMappingUint_preserves_msgValue (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.msgValue = state.msgValue := by
-  simp [setMappingUint]
+  simp
 
 /-- setMappingUint preserves blockTimestamp. -/
 theorem setMappingUint_preserves_blockTimestamp (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.blockTimestamp = state.blockTimestamp := by
-  simp [setMappingUint]
+  simp
 
 /-- setMapping2 preserves msgValue. -/
 theorem setMapping2_preserves_msgValue (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.msgValue = state.msgValue := by
-  simp [setMapping2]
+  simp
 
 /-- setMapping2 preserves blockTimestamp. -/
 theorem setMapping2_preserves_blockTimestamp (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.blockTimestamp = state.blockTimestamp := by
-  simp [setMapping2]
+  simp
 
 /-!
 ## Cross-Type Preservation: setMapping vs other storage types
@@ -302,13 +302,13 @@ theorem setMapping2_preserves_blockTimestamp (slot : StorageSlot (Address → Ad
 theorem setMapping_preserves_storageMapUint (slot : StorageSlot (Address → Uint256))
     (key : Address) (value : Uint256) (state : ContractState) :
     ((setMapping slot key value).run state).snd.storageMapUint = state.storageMapUint := by
-  simp [setMapping]
+  simp
 
 /-- setMapping preserves double mapping storage. -/
 theorem setMapping_preserves_storageMap2 (slot : StorageSlot (Address → Uint256))
     (key : Address) (value : Uint256) (state : ContractState) :
     ((setMapping slot key value).run state).snd.storageMap2 = state.storageMap2 := by
-  simp [setMapping]
+  simp
 
 /-!
 ## Cross-Type Preservation: setStorage vs additional mapping types
@@ -318,25 +318,25 @@ theorem setMapping_preserves_storageMap2 (slot : StorageSlot (Address → Uint25
 theorem setStorage_preserves_storageMapUint (slot : StorageSlot Uint256)
     (value : Uint256) (state : ContractState) :
     ((setStorage slot value).run state).snd.storageMapUint = state.storageMapUint := by
-  simp [setStorage]
+  simp
 
 /-- setStorage preserves double mapping storage. -/
 theorem setStorage_preserves_storageMap2 (slot : StorageSlot Uint256)
     (value : Uint256) (state : ContractState) :
     ((setStorage slot value).run state).snd.storageMap2 = state.storageMap2 := by
-  simp [setStorage]
+  simp
 
 /-- setStorageAddr preserves uint256-keyed mapping storage. -/
 theorem setStorageAddr_preserves_storageMapUint (slot : StorageSlot Address)
     (value : Address) (state : ContractState) :
     ((setStorageAddr slot value).run state).snd.storageMapUint = state.storageMapUint := by
-  simp [setStorageAddr]
+  simp
 
 /-- setStorageAddr preserves double mapping storage. -/
 theorem setStorageAddr_preserves_storageMap2 (slot : StorageSlot Address)
     (value : Address) (state : ContractState) :
     ((setStorageAddr slot value).run state).snd.storageMap2 = state.storageMap2 := by
-  simp [setStorageAddr]
+  simp
 
 /-!
 ## Event Preservation for Extended Mapping Types
@@ -348,12 +348,12 @@ Mapping mutations never touch the `events` append-only log.
 theorem setMappingUint_preserves_events (slot : StorageSlot (Uint256 → Uint256))
     (key : Uint256) (value : Uint256) (state : ContractState) :
     ((setMappingUint slot key value).run state).snd.events = state.events := by
-  simp [setMappingUint]
+  simp
 
 /-- setMapping2 preserves the event log. -/
 theorem setMapping2_preserves_events (slot : StorageSlot (Address → Address → Uint256))
     (key1 key2 : Address) (value : Uint256) (state : ContractState) :
     ((setMapping2 slot key1 key2 value).run state).snd.events = state.events := by
-  simp [setMapping2]
+  simp
 
 end Verity.Proofs.Stdlib.MappingAutomation

@@ -92,7 +92,7 @@ theorem deposit_withdraw_cancel (s : ContractState) (amount : Uint256)
   have h_inc := deposit_increases_balance s amount
   have h_sender : s1.sender = s.sender := by
     simp [s1, deposit, msgSender, getMapping, setMapping, balances,
-      Verity.bind, Bind.bind, Verity.pure, Pure.pure,
+      Verity.bind, Bind.bind,
       Contract.run, ContractResult.snd]
   have h_balance' : s1.storageMap 0 s.sender ≥ amount := by
     simpa [s1, h_inc] using h_balance

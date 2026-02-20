@@ -118,9 +118,7 @@ theorem vulnerable_attack_exists :
       simp
     have h_neq : (1 : Uint256) ≠ (0 : Uint256) := by decide
     -- After simplification, the invariant reduces to `1 = 0`, which is false.
-    simp [withdraw, setStorageSlot, setMappingSlot, supplyInvariant, balances, totalSupply,
-      Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run, ContractResult.snd,
-      ContractResult.fst, h_cond, s, modulus_sub_max]
+    simp [supplyInvariant, balances, totalSupply, s]
     exact h_neq
 
 /-
@@ -194,11 +192,11 @@ theorem withdraw_maintains_supply (amount : Uint256) :
   have h_left :
       ((withdraw amount).runState s).storage totalSupply.slot =
         sub (s.storage totalSupply.slot) amount := by
-    simp [Contract.runState, withdraw, setStorageSlot, setMappingSlot, balances, totalSupply, h_cond, h_cond'']
+    simp [Contract.runState, withdraw, setStorageSlot, setMappingSlot, balances, totalSupply, h_cond'']
   have h_right :
       ((withdraw amount).runState s).storageMap balances.slot s.sender =
         sub (s.storageMap balances.slot s.sender) amount := by
-    simp [Contract.runState, withdraw, setStorageSlot, setMappingSlot, balances, totalSupply, h_cond, h_cond'']
+    simp [Contract.runState, withdraw, setStorageSlot, setMappingSlot, balances, totalSupply, h_cond'']
   -- Reduce to the same subtraction on both sides.
   have h_mid : sub (s.storage totalSupply.slot) amount =
       sub (s.storageMap balances.slot s.sender) amount := by

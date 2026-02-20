@@ -149,11 +149,11 @@ theorem mem_elements_insert [DecidableEq α] (a b : α) (s : FiniteSet α) :
   · intro h
     intro x hx
     have hAll := List.all_eq_true.mp h
-    exact (decide_eq_true_iff.mp (hAll x hx))
+    exact (FiniteSet.mem_def x t).2 (decide_eq_true_iff.mp (hAll x hx))
   · intro h
     apply List.all_eq_true.mpr
     intro x hx
-    exact decide_eq_true_iff.mpr (h x hx)
+    exact decide_eq_true_iff.mpr ((FiniteSet.mem_def x t).1 (h x ((FiniteSet.mem_def x s).2 hx)))
 
 /-- `isSubset = false` iff propositional subset does not hold. -/
 @[simp] theorem isSubset_eq_false [DecidableEq α] (s t : FiniteSet α) :

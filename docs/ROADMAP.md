@@ -28,6 +28,10 @@ This tracker is the execution order for migration-oriented compiler work. Later 
 | P1 | Proven optimization foundation | [#582](https://github.com/Th0rgal/verity/issues/582), [#583](https://github.com/Th0rgal/verity/issues/583), [#584](https://github.com/Th0rgal/verity/issues/584) | blocked by #581 | Proven patch framework + initial patch pack + warning non-regression gate |
 | P2 | Interop + verification docs hardening | [#585](https://github.com/Th0rgal/verity/issues/585), [#586](https://github.com/Th0rgal/verity/issues/586) | blocked by P0/P1 outputs | Generated verification artifact consumed by docs + published interop support profile |
 
+Current P0 baseline artifact coverage:
+- `artifacts/evmyullean_capability_report.json` tracks builtin overlap boundaries and explicit unsupported adapter nodes.
+- `artifacts/evmyullean_adapter_report.json` tracks adapter AST-lowering coverage (`supported`/`partial`/`gap`) and runtime seam status.
+
 Execution policy:
 1. Do not start patch-pack expansion in `#583` before `#582` proof hooks are merged.
 2. Treat `#584` as a release gate for ongoing compiler work after initial warning cleanup lands.

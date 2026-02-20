@@ -34,9 +34,9 @@ theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount :
   ∃ msg, (mint to amount).run s = ContractResult.revert msg s := by
   simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner,
     Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
-    msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
+    msgSender, getStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
+    Contract.run]
   simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
 /-- Transfer reverts when sender has insufficient balance.
@@ -45,9 +45,9 @@ theorem transfer_reverts_insufficient_balance (s : ContractState) (to : Address)
   (h_insufficient : s.storageMap 1 s.sender < amount) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
   simp only [transfer, Examples.SimpleToken.balances,
-    msgSender, getMapping, setMapping,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-    Contract.run, ContractResult.snd, ContractResult.fst]
+    msgSender, getMapping,
+    Verity.require, Verity.bind, Bind.bind,
+    Contract.run]
   simp [show ¬(s.storageMap 1 s.sender ≥ amount) from Nat.not_le.mpr h_insufficient]
 
 /-! ## Invariant Preservation

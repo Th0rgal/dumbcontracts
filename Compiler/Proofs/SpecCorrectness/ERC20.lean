@@ -7,6 +7,7 @@
 import Verity.Specs.ERC20.Spec
 import Verity.Examples.ERC20
 import Verity.Proofs.ERC20.Basic
+import Verity.Stdlib.Math
 
 namespace Compiler.Proofs.SpecCorrectness
 
@@ -33,5 +34,14 @@ theorem erc20_getOwner_spec_correct (s : ContractState) :
 theorem erc20_approve_spec_correct (s : ContractState) (spender : Address) (amount : Uint256) :
     approve_spec s.sender spender amount s ((approve spender amount).runState s) := by
   simpa using Verity.Proofs.ERC20.approve_meets_spec s spender amount
+
+/-- Spec/EDSL agreement for `mint` under owner and no-overflow preconditions. -/
+theorem erc20_mint_spec_correct (s : ContractState) (to : Address) (amount : Uint256)
+    (h_owner : s.sender = s.storageAddr 0)
+    (h_no_bal_overflow : (s.storageMap 2 to : Nat) + (amount : Nat) ≤ Verity.Stdlib.Math.MAX_UINT256)
+    (h_no_sup_overflow : (s.storage 1 : Nat) + (amount : Nat) ≤ Verity.Stdlib.Math.MAX_UINT256) :
+    mint_spec to amount s ((mint to amount).runState s) := by
+  simpa using Verity.Proofs.ERC20.mint_meets_spec_when_owner
+    s to amount h_owner h_no_bal_overflow h_no_sup_overflow
 
 end Compiler.Proofs.SpecCorrectness

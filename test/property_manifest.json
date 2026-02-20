@@ -40,6 +40,9 @@
     "getOwner_meets_spec",
     "getOwner_preserves_state",
     "getTotalSupply_preserves_state",
+    "mint_increases_balance_when_owner",
+    "mint_increases_supply_when_owner",
+    "mint_meets_spec_when_owner",
     "totalSupply_meets_spec"
   ],
   "ERC721": [

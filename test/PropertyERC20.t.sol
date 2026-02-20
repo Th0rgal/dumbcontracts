@@ -15,6 +15,9 @@ contract PropertyERC20Test is Test {
     /// Property 9: getTotalSupply_preserves_state
     /// Property 10: getOwner_preserves_state
     /// Property 11: approve_is_balance_neutral_holds
+    /// Property 12: mint_meets_spec_when_owner
+    /// Property 13: mint_increases_balance_when_owner
+    /// Property 14: mint_increases_supply_when_owner
     function testProperty_ERC20_ScaffoldExists() public pure {
         assertTrue(true);
     }

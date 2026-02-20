@@ -78,6 +78,7 @@ These CI-critical scripts validate cross-layer consistency:
 
 - **`check_property_manifest_sync.py`** - Ensures `property_manifest.json` stays in sync with actual Lean theorems (detects added/removed theorems)
 - **`check_storage_layout.py`** - Validates storage slot consistency across EDSL, Spec, Compiler, and AST layers; strips Lean comments/docstrings with a shared string-aware parser (so `--` and `/- -/` inside string literals are preserved), detects intra-contract slot collisions, derives Spec slot usage from `Verity/Specs/*/Spec.lean` literal state accesses, enforces Spec↔EDSL slot/type parity for compiled non-external contracts, enforces ASTSpec coverage for non-external compiler specs, and checks AST-vs-Compiler slot/type drift
+- **`check_mapping_slot_boundary.py`** - Enforces the mapping-slot abstraction boundary for proof interpreters: only `Compiler/Proofs/MappingSlot.lean` may import `MappingEncoding`, and runtime interpreters must reference `abstractMappingSlot`/`abstractDecodeMappingSlot`
 - **`check_doc_counts.py`** - Validates theorem, axiom, test, suite, coverage, and contract counts across 14 documentation files (README, llms.txt, compiler.mdx, verification.mdx, research.mdx, index.mdx, core.mdx, examples.mdx, getting-started.mdx, TRUST_ASSUMPTIONS, VERIFICATION_STATUS, ROADMAP, test/README, layout.tsx), theorem-name completeness in verification.mdx tables, and proven-theorem counts in Property*.t.sol file headers
 - **`check_axiom_locations.py`** - Validates that AXIOMS.md line number references match actual axiom locations in source files
 - **`check_contract_structure.py`** - Validates all contracts in Examples/ have complete file structure (Spec, Invariants, Basic proofs, Correctness proofs)
@@ -162,8 +163,9 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 5. Documentation count validation (`check_doc_counts.py`)
 6. Property manifest sync (`check_property_manifest_sync.py`)
 7. Storage layout consistency (`check_storage_layout.py`)
-8. Lean hygiene (`check_lean_hygiene.py`)
-9. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+8. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+9. Lean hygiene (`check_lean_hygiene.py`)
+10. Static gas model builtin coverage (`check_gas_model_coverage.py`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Keccak-256 self-test (`keccak256.py --self-test`)

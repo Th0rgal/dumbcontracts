@@ -31,6 +31,15 @@ def parse_args() -> argparse.Namespace:
         metavar=("DIR_A", "DIR_B"),
         help="Compare compiled bytecode parity by filename between two Yul directories.",
     )
+    parser.add_argument(
+        "--allow-compare-diff-file",
+        type=str,
+        help=(
+            "Optional allowlist for known compare diffs. "
+            "Format: one entry per line as "
+            "'mismatch:<file>', 'missing_in_a:<file>', or 'missing_in_b:<file>'."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -77,6 +86,35 @@ def index_by_filename(files: list[Path], root: Path) -> dict[str, Path]:
     return {path.relative_to(root).name: path for path in files}
 
 
+def load_allowed_compare_diffs(path: str | None) -> set[tuple[str, str]]:
+    if path is None:
+        return set()
+
+    allow_path = resolve_dir(path)
+    if not allow_path.exists():
+        raise SystemExit(f"Allowlist file not found: {allow_path}")
+
+    allowed: set[tuple[str, str]] = set()
+    for raw_line in allow_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if ":" not in line:
+            raise SystemExit(
+                f"Invalid allowlist entry '{line}' in {allow_path}; expected '<kind>:<file>'"
+            )
+        kind, name = line.split(":", 1)
+        kind = kind.strip()
+        name = name.strip()
+        if kind not in {"mismatch", "missing_in_a", "missing_in_b"} or not name:
+            raise SystemExit(
+                f"Invalid allowlist entry '{line}' in {allow_path}; "
+                "kind must be mismatch|missing_in_a|missing_in_b"
+            )
+        allowed.add((kind, name))
+    return allowed
+
+
 def main() -> None:
     args = parse_args()
     yul_dirs = [resolve_dir(d) for d in (args.dirs or [str(YUL_DIR)])]
@@ -99,6 +137,8 @@ def main() -> None:
         bytecode_by_file[path] = bytecode
 
     if args.compare_dirs is not None:
+        allowed_diffs = load_allowed_compare_diffs(args.allow_compare_diff_file)
+        seen_diffs: set[tuple[str, str]] = set()
         dir_a = resolve_dir(args.compare_dirs[0])
         dir_b = resolve_dir(args.compare_dirs[1])
         files_a = sorted(dir_a.glob("*.yul"))
@@ -111,9 +151,17 @@ def main() -> None:
         only_a = sorted(names_a - names_b)
         only_b = sorted(names_b - names_a)
         if only_a:
-            failures.append(f"{dir_b} missing files present in {dir_a}: {', '.join(only_a)}")
+            for name in only_a:
+                diff = ("missing_in_b", name)
+                seen_diffs.add(diff)
+                if diff not in allowed_diffs:
+                    failures.append(f"{dir_b} missing file present in {dir_a}: {name}")
         if only_b:
-            failures.append(f"{dir_a} missing files present in {dir_b}: {', '.join(only_b)}")
+            for name in only_b:
+                diff = ("missing_in_a", name)
+                seen_diffs.add(diff)
+                if diff not in allowed_diffs:
+                    failures.append(f"{dir_a} missing file present in {dir_b}: {name}")
 
         for name in sorted(names_a & names_b):
             path_a = by_name_a[name]
@@ -123,7 +171,18 @@ def main() -> None:
             if bytecode_a is None or bytecode_b is None:
                 continue
             if bytecode_a != bytecode_b:
-                failures.append(f"Bytecode mismatch for {name}: {path_a} vs {path_b}")
+                diff = ("mismatch", name)
+                seen_diffs.add(diff)
+                if diff not in allowed_diffs:
+                    failures.append(f"Bytecode mismatch for {name}: {path_a} vs {path_b}")
+
+        stale_allowed = sorted(allowed_diffs - seen_diffs)
+        if stale_allowed:
+            stale_rendered = ", ".join(f"{kind}:{name}" for kind, name in stale_allowed)
+            failures.append(
+                "Allowlist contains stale compare diffs no longer present: "
+                f"{stale_rendered}"
+            )
 
     report_errors(failures, "Yul->EVM compilation failed")
 

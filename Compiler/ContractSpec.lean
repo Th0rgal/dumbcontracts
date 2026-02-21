@@ -193,8 +193,8 @@ inductive Expr
   | gt (a b : Expr)  -- Greater than (strict)
   | lt (a b : Expr)
   | le (a b : Expr)  -- Less than or equal
-  | logicalAnd (a b : Expr)  -- Short-circuit logical AND
-  | logicalOr (a b : Expr)   -- Short-circuit logical OR
+  | logicalAnd (a b : Expr)  -- Logical AND (both operands always evaluated)
+  | logicalOr (a b : Expr)   -- Logical OR  (both operands always evaluated)
   | logicalNot (a : Expr)    -- Logical NOT
   deriving Repr
 

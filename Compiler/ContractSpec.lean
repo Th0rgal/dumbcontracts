@@ -1354,7 +1354,7 @@ private partial def compileUnindexedAbiEncode
                 ]
               else
                 [YulStmt.let_ elemSrcName (YulExpr.call "add" [srcBase, YulExpr.lit headOffset])]
-            let (encStmts, encLen) ←
+            let encStmts ←
               if eventIsDynamicType elemTy then do
                 let storeOffset := YulStmt.expr (YulExpr.call "mstore" [
                   YulExpr.call "add" [dstBase, YulExpr.lit headOffset],
@@ -1369,14 +1369,14 @@ private partial def compileUnindexedAbiEncode
                   YulStmt.let_ elemDstName (YulExpr.call "add" [dstBase, YulExpr.ident tailLenName])
                 ] ++ innerStmts ++ [
                   YulStmt.assign tailLenName (YulExpr.call "add" [YulExpr.ident tailLenName, innerLen])
-                ], YulExpr.lit 0)
+                ])
               else do
                 let (innerStmts, _) ←
                   compileUnindexedAbiEncode dynamicSource elemTy
                     (YulExpr.ident elemSrcName)
                     (YulExpr.call "add" [dstBase, YulExpr.lit headOffset])
                     s!"{stem}_m{elemIdx}"
-                pure (innerStmts, YulExpr.lit 0)
+                pure innerStmts
             let restStmts ← goMembers rest (elemIdx + 1) (headOffset + eventHeadWordSize elemTy)
             pure (srcStmts ++ encStmts ++ restStmts)
       let memberStmts ← goMembers elemTys 0 0

@@ -19,7 +19,7 @@ def toHex (n : Nat) : String :=
     termination_by x
     decreasing_by
       simp_wf
-      simp [Nat.beq_eq] at *
+      simp at *
       exact Nat.div_lt_self (by omega) (by omega)
     String.mk (loop n [])
 
@@ -30,7 +30,7 @@ mutual
 def ppExpr : YulExpr → String
   | lit n => toString n
   | hex n => "0x" ++ toHex n
-  | str s => "\"" ++ s.replace "\\" "\\\\" |>.replace "\"" "\\\"" ++ "\""
+  | str s => "\"" ++ (s.replace "\\" "\\\\").replace "\"" "\\\"" ++ "\""
   | ident name => name
   | call func args =>
       s!"{func}({", ".intercalate (ppExprs args)})"

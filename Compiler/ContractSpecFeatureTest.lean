@@ -1600,6 +1600,40 @@ private def featureSpec : ContractSpec := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
+  let indexedDynamicBytesArrayEventSpec : ContractSpec := {
+    name := "IndexedDynamicBytesArrayEventSupported"
+    fields := []
+    constructor := none
+    events := [
+      { name := "IndexedDynamicBytesArray"
+        params := [
+          { name := "payload", ty := ParamType.array ParamType.bytes, kind := EventParamKind.indexed }
+        ]
+      }
+    ]
+    functions := [
+      { name := "emitArray"
+        params := [{ name := "payload", ty := ParamType.array ParamType.bytes }]
+        returnType := none
+        body := [Stmt.emit "IndexedDynamicBytesArray" [Expr.param "payload"], Stmt.stop]
+      }
+    ]
+  }
+  match compile indexedDynamicBytesArrayEventSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected indexed dynamic bytes array event support to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "indexed dynamic bytes array topic hashing" rendered
+        ["let __evt_arg0_tail_len := 0",
+         "let __evt_arg0_elem_offset := calldataload(add(payload_data_offset, mul(__evt_arg0_i, 32)))",
+         "let __evt_arg0_elem_len := calldataload(__evt_arg0_elem_len_pos)",
+         "calldatacopy(__evt_arg0_elem_dst, __evt_arg0_elem_data, __evt_arg0_elem_len)",
+         "let __evt_arg0_elem_padded := and(add(__evt_arg0_elem_len, 31), not(31))",
+         "let __evt_topic1 := keccak256(__evt_ptr, __evt_arg0_tail_len)",
+         "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
+
+#eval! do
   let indexedDynamicStaticFixedArrayEventSpec : ContractSpec := {
     name := "IndexedDynamicStaticFixedArrayEventSupported"
     fields := []

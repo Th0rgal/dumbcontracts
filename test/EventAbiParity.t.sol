@@ -33,6 +33,7 @@ contract EventAbiParityEmitter {
     event IndexedDynamicAddressArray(address[] indexed payload);
     event IndexedDynamicBoolArray(bool[] indexed payload);
     event IndexedDynamicBytes32Array(bytes32[] indexed payload);
+    event IndexedDynamicBytesArray(bytes[] indexed payload);
     event UnindexedDynamicStaticTupleArray(StaticTupleParity[] payload);
     event UnindexedDynamicUintArray(uint256[] payload);
     event UnindexedDynamicAddressArray(address[] payload);
@@ -91,6 +92,10 @@ contract EventAbiParityEmitter {
         emit IndexedDynamicBytes32Array(payload);
     }
 
+    function emitIndexedDynamicBytesArray(bytes[] calldata payload) external {
+        emit IndexedDynamicBytesArray(payload);
+    }
+
     function emitUnindexedDynamicStaticTupleArray(StaticTupleParity[] calldata payload) external {
         emit UnindexedDynamicStaticTupleArray(payload);
     }
@@ -129,6 +134,18 @@ contract EventAbiParityTest is Test {
 
     function setUp() public {
         emitter = new EventAbiParityEmitter();
+    }
+
+    function _indexedBytesArrayInPlace(bytes[] memory payload) internal pure returns (bytes memory out) {
+        for (uint256 i = 0; i < payload.length; i++) {
+            bytes memory elem = payload[i];
+            uint256 paddedLen = (elem.length + 31) & ~uint256(31);
+            bytes memory padded = new bytes(paddedLen);
+            for (uint256 j = 0; j < elem.length; j++) {
+                padded[j] = elem[j];
+            }
+            out = bytes.concat(out, padded);
+        }
     }
 
     function testTopic0MatchesCreateMarketTupleSignature() public {
@@ -340,6 +357,27 @@ contract EventAbiParityTest is Test {
 
         bytes32 expectedTopic0 = keccak256(bytes("IndexedDynamicBytes32Array(bytes32[])"));
         bytes32 expectedTopic1 = keccak256(abi.encode(payload[0], payload[1], payload[2]));
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].topics[1], expectedTopic1);
+    }
+
+    function testIndexedDynamicBytesArrayTopicUsesInPlaceElementEncoding() public {
+        bytes[] memory payload = new bytes[](3);
+        payload[0] = hex"11";
+        payload[1] = hex"2233";
+        payload[2] =
+            hex"445566778899aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabb";
+
+        vm.recordLogs();
+        emitter.emitIndexedDynamicBytesArray(payload);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 2);
+
+        bytes32 expectedTopic0 = keccak256(bytes("IndexedDynamicBytesArray(bytes[])"));
+        bytes32 expectedTopic1 = keccak256(_indexedBytesArrayInPlace(payload));
 
         assertEq(logs[0].topics[0], expectedTopic0);
         assertEq(logs[0].topics[1], expectedTopic1);

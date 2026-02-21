@@ -1403,9 +1403,13 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
                                 YulStmt.let_ elemDstName (YulExpr.call "add" [
                                   YulExpr.call "add" [YulExpr.ident dstName, YulExpr.lit 32],
                                   YulExpr.ident tailLenName
+                                ]),
+                                YulStmt.expr (YulExpr.call "mstore" [
+                                  YulExpr.ident elemDstName,
+                                  YulExpr.ident elemLenName
                                 ])
                               ] ++ dynamicCopyData dynamicSource
-                                (YulExpr.ident elemDstName)
+                                (YulExpr.call "add" [YulExpr.ident elemDstName, YulExpr.lit 32])
                                 (YulExpr.ident elemDataName)
                                 (YulExpr.ident elemLenName) ++ [
                                 YulStmt.let_ elemPaddedName (YulExpr.call "and" [
@@ -1413,12 +1417,15 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
                                   YulExpr.call "not" [YulExpr.lit 31]
                                 ]),
                                 YulStmt.expr (YulExpr.call "mstore" [
-                                  YulExpr.call "add" [YulExpr.ident elemDstName, YulExpr.ident elemLenName],
+                                  YulExpr.call "add" [
+                                    YulExpr.call "add" [YulExpr.ident elemDstName, YulExpr.lit 32],
+                                    YulExpr.ident elemLenName
+                                  ],
                                   YulExpr.lit 0
                                 ]),
                                 YulStmt.assign tailLenName (YulExpr.call "add" [
                                   YulExpr.ident tailLenName,
-                                  YulExpr.ident elemPaddedName
+                                  YulExpr.call "add" [YulExpr.lit 32, YulExpr.ident elemPaddedName]
                                 ])
                               ]),
                             YulStmt.assign "__evt_data_tail" (YulExpr.call "add" [

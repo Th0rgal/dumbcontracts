@@ -1315,8 +1315,9 @@ private def featureSpec : ContractSpec := {
       assertContains "unindexed dynamic bytes array event encoding" rendered
         ["let __evt_data_tail := 32",
          "let __evt_arg0_head_len := mul(__evt_arg0_len, 32)",
+         "mstore(__evt_arg0_elem_dst, __evt_arg0_elem_len)",
          "mstore(add(add(__evt_arg0_dst, 32), mul(__evt_arg0_i, 32)), __evt_arg0_tail_len)",
-         "calldatacopy(__evt_arg0_elem_dst, __evt_arg0_elem_data, __evt_arg0_elem_len)",
+         "calldatacopy(add(__evt_arg0_elem_dst, 32), __evt_arg0_elem_data, __evt_arg0_elem_len)",
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do

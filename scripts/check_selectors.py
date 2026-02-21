@@ -91,6 +91,16 @@ def has_nonempty_externals(spec_block: str) -> bool:
     return bool(spec_block[list_start + 1 : list_end].strip())
 
 
+# Special entrypoint names that are NOT dispatched by selector.
+# Must match `isInteropEntrypointName` in ContractSpec.lean.
+_SPECIAL_ENTRYPOINTS = {"fallback", "receive"}
+
+
+def _is_internal_function(fn_block: str) -> bool:
+    """Return True if the function block has isInternal := true."""
+    return bool(re.search(r"isInternal\s*:=\s*true", fn_block))
+
+
 def extract_functions(spec_block: str) -> List[str]:
     fn_match = re.search(r"functions\s*:=\s*\[", spec_block)
     if not fn_match:
@@ -112,6 +122,11 @@ def extract_functions(spec_block: str) -> List[str]:
             if not name_match:
                 die("Function block missing name")
             fn_name = name_match.group(1)
+            # Skip internal functions and special entrypoints (fallback/receive)
+            # to match Selector.computeSelectors and ContractSpec.compile filtering.
+            if _is_internal_function(fn_block) or fn_name in _SPECIAL_ENTRYPOINTS:
+                idx = end + 1
+                continue
             params = extract_param_types(fn_block)
             sigs.append(f"{fn_name}({','.join(params)})")
             idx = end + 1

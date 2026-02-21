@@ -82,6 +82,8 @@ EDSL uses **wrapping** `mod 2^256` arithmetic. Solidity uses **checked** arithme
 | Raw text linker injection | Libraries are inherently outside the proof boundary; semantic validation would require a Yul verifier |
 | Shared `isInteropEntrypointName` | Single definition filters fallback/receive consistently across Selector, ABI, and ContractSpec.compile |
 | Shared `isDynamicParamType`/`paramHeadSize` | Single definitions used by both event encoding and calldata parameter loading; eliminates divergence risk |
+| Shared `fieldTypeToParamType` | ABI.lean reuses ContractSpec's canonical definition instead of maintaining a private copy; eliminates FieldType→ParamType divergence |
+| Non-short-circuit `logicalAnd`/`logicalOr` | Compiled to EVM bitwise `and`/`or` — both operands always evaluated. Simpler codegen; no side-effecting expressions in current DSL |
 
 ## Known risks
 
@@ -89,6 +91,7 @@ EDSL uses **wrapping** `mod 2^256` arithmetic. Solidity uses **checked** arithme
 2. **Linked library correctness**: No semantic validation. Mitigation: name/arity checks, explicit trust boundary documentation.
 3. **No gas bounds**: Unbounded loops could exhaust gas. Mitigation: gas calibration tests, manual review.
 4. **Wrapping overflow**: No automatic overflow protection. Mitigation: explicit `require` guards per contract.
+5. **Non-short-circuit logic ops**: `Expr.logicalAnd`/`logicalOr` always evaluate both operands. Safe today (no side-effecting sub-expressions), but must be revisited if low-level calls (#622) are added to `Expr`.
 
 ## External dependencies
 

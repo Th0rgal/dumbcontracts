@@ -33,11 +33,7 @@ private partial def abiTypeString : ParamType → String
   | .array t => abiTypeString t ++ "[]"
   | .fixedArray t n => abiTypeString t ++ "[" ++ toString n ++ "]"
 
-private def fieldTypeToOutputType : FieldType → ParamType
-  | .uint256 => .uint256
-  | .address => .address
-  | .mappingTyped _ => .uint256
-
+-- Uses `fieldTypeToParamType` from ContractSpec (shared, not duplicated).
 -- Uses `isInteropEntrypointName` from ContractSpec for consistent filtering.
 
 private def functionOutputs (fn : FunctionSpec) : List ParamType :=
@@ -45,7 +41,7 @@ private def functionOutputs (fn : FunctionSpec) : List ParamType :=
     fn.returns
   else
     match fn.returnType with
-    | some ty => [fieldTypeToOutputType ty]
+    | some ty => [fieldTypeToParamType ty]
     | none => []
 
 mutual

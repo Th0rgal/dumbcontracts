@@ -26,6 +26,7 @@ contract EventAbiParityEmitter {
     event CompositeEvent(bytes32 indexed id, DynamicTupleParity payload, uint256[] values, bytes note);
     event IndexedBytes(bytes indexed payload);
     event IndexedStaticTuple(StaticTupleParity indexed payload);
+    event IndexedDynamicTuple(DynamicTupleParity indexed payload);
     event IndexedStaticFixedArray(uint256[2] indexed payload);
     event IndexedDynamicStaticTupleArray(StaticTupleParity[] indexed payload);
     event IndexedDynamicStaticFixedArray(address[2][] indexed payload);
@@ -63,6 +64,10 @@ contract EventAbiParityEmitter {
 
     function emitIndexedStaticTuple(StaticTupleParity calldata payload) external {
         emit IndexedStaticTuple(payload);
+    }
+
+    function emitIndexedDynamicTuple(DynamicTupleParity calldata payload) external {
+        emit IndexedDynamicTuple(payload);
     }
 
     function emitIndexedStaticFixedArray(uint256[2] calldata payload) external {
@@ -153,6 +158,19 @@ contract EventAbiParityTest is Test {
         }
     }
 
+    function _indexedDynamicTupleInPlace(DynamicTupleParity memory payload)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        uint256 paddedLen = (payload.payload.length + 31) & ~uint256(31);
+        bytes memory padded = new bytes(paddedLen);
+        for (uint256 i = 0; i < payload.payload.length; i++) {
+            padded[i] = payload.payload[i];
+        }
+        return bytes.concat(abi.encode(payload.amount), padded);
+    }
+
     function testTopic0MatchesCreateMarketTupleSignature() public {
         bytes32 id = keccak256("market-id");
         MarketParamsParity memory market = MarketParamsParity({
@@ -233,6 +251,26 @@ contract EventAbiParityTest is Test {
 
         bytes32 expectedTopic0 = keccak256(bytes("IndexedStaticTuple((uint256,address))"));
         bytes32 expectedTopic1 = keccak256(abi.encode(payload.amount, payload.recipient));
+
+        assertEq(logs[0].topics[0], expectedTopic0);
+        assertEq(logs[0].topics[1], expectedTopic1);
+    }
+
+    function testIndexedDynamicTupleTopicUsesInPlaceEncoding() public {
+        DynamicTupleParity memory payload = DynamicTupleParity({
+            amount: 7,
+            payload: hex"11223344556677"
+        });
+
+        vm.recordLogs();
+        emitter.emitIndexedDynamicTuple(payload);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 2);
+
+        bytes32 expectedTopic0 = keccak256(bytes("IndexedDynamicTuple((uint256,bytes))"));
+        bytes32 expectedTopic1 = keccak256(_indexedDynamicTupleInPlace(payload));
 
         assertEq(logs[0].topics[0], expectedTopic0);
         assertEq(logs[0].topics[1], expectedTopic1);

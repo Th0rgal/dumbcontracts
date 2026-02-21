@@ -1504,7 +1504,7 @@ private def featureSpec : ContractSpec := {
 
 #eval! do
   let indexedDynamicTupleEventSpec : ContractSpec := {
-    name := "IndexedDynamicTupleEventUnsupported"
+    name := "IndexedDynamicTupleEventSupported"
     fields := []
     constructor := none
     events := [
@@ -1524,12 +1524,16 @@ private def featureSpec : ContractSpec := {
   }
   match compile indexedDynamicTupleEventSpec [1] with
   | .error err =>
-      if !(contains err "indexed param 'payload' has dynamic composite type" &&
-          contains err "Issue #586") then
-        throw (IO.userError s!"✗ indexed dynamic tuple event diagnostic mismatch: {err}")
-      IO.println "✓ indexed dynamic tuple event diagnostic"
-  | .ok _ =>
-      throw (IO.userError "✗ expected indexed dynamic tuple event param usage to fail compilation")
+      throw (IO.userError s!"✗ expected indexed dynamic tuple event support to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "indexed dynamic tuple topic hashing" rendered
+        ["let __evt_arg0_indexed_tuple_out_len := 0",
+         "let __evt_arg0_indexed_tuple_elem_rel_1 := calldataload(add(add(4, payload_offset), 32))",
+         "let __evt_arg0_indexed_tuple_elem_1_len := calldataload(__evt_arg0_indexed_tuple_elem_src_1)",
+         "calldatacopy(__evt_arg0_indexed_tuple_elem_dst_1, add(__evt_arg0_indexed_tuple_elem_src_1, 32), __evt_arg0_indexed_tuple_elem_1_len)",
+         "let __evt_topic1 := keccak256(__evt_ptr, __evt_arg0_indexed_tuple_out_len)",
+         "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
   let indexedDynamicArrayEventSpec : ContractSpec := {

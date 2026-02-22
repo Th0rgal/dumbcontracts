@@ -260,6 +260,92 @@ private def featureSpec : ContractSpec := {
       assertContains "non-payable function emits msg.value guard" rendered ["if callvalue()"]
 
 #eval! do
+  let lowLevelPrimitivesSpec : ContractSpec := {
+    name := "LowLevelPrimitives"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "doCall"
+        params := [
+          { name := "target", ty := ParamType.address },
+          { name := "inOffset", ty := ParamType.uint256 },
+          { name := "inSize", ty := ParamType.uint256 },
+          { name := "outOffset", ty := ParamType.uint256 },
+          { name := "outSize", ty := ParamType.uint256 }
+        ]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "ok" (Expr.call
+            (Expr.literal 50000)
+            (Expr.param "target")
+            (Expr.literal 0)
+            (Expr.param "inOffset")
+            (Expr.param "inSize")
+            (Expr.param "outOffset")
+            (Expr.param "outSize")),
+          Stmt.return (Expr.localVar "ok")
+        ]
+      },
+      { name := "doStatic"
+        params := [
+          { name := "target", ty := ParamType.address },
+          { name := "inOffset", ty := ParamType.uint256 },
+          { name := "inSize", ty := ParamType.uint256 },
+          { name := "outOffset", ty := ParamType.uint256 },
+          { name := "outSize", ty := ParamType.uint256 }
+        ]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.return (Expr.staticcall
+            (Expr.literal 50000)
+            (Expr.param "target")
+            (Expr.param "inOffset")
+            (Expr.param "inSize")
+            (Expr.param "outOffset")
+            (Expr.param "outSize"))
+        ]
+      },
+      { name := "doDelegate"
+        params := [
+          { name := "target", ty := ParamType.address },
+          { name := "inOffset", ty := ParamType.uint256 },
+          { name := "inSize", ty := ParamType.uint256 },
+          { name := "outOffset", ty := ParamType.uint256 },
+          { name := "outSize", ty := ParamType.uint256 }
+        ]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.return (Expr.delegatecall
+            (Expr.literal 50000)
+            (Expr.param "target")
+            (Expr.param "inOffset")
+            (Expr.param "inSize")
+            (Expr.param "outOffset")
+            (Expr.param "outSize"))
+        ]
+      },
+      { name := "bubble"
+        params := []
+        returnType := none
+        body := [
+          Stmt.letVar "rd" Expr.returndataSize,
+          Stmt.returndataCopy (Expr.literal 0) (Expr.literal 0) (Expr.localVar "rd"),
+          Stmt.revertReturndata
+        ]
+      }
+    ]
+  }
+  match compile lowLevelPrimitivesSpec [1, 2, 3, 4] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected first-class low-level primitives to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "first-class call lowering" rendered ["call(50000, target, 0, inOffset, inSize, outOffset, outSize)"]
+      assertContains "first-class staticcall lowering" rendered ["staticcall(50000, target, inOffset, inSize, outOffset, outSize)"]
+      assertContains "first-class delegatecall lowering" rendered ["delegatecall(50000, target, inOffset, inSize, outOffset, outSize)"]
+      assertContains "first-class returndata primitives lowering" rendered ["let rd := returndatasize()", "returndatacopy(0, 0, rd)", "let __returndata_size := returndatasize()", "revert(0, __returndata_size)"]
+
+#eval! do
   let lowLevelCallSpec : ContractSpec := {
     name := "LowLevelCallUnsupported"
     fields := []

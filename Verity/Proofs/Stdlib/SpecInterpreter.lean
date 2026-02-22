@@ -182,6 +182,18 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.caller => ctx.sender.val
   | Expr.msgValue => ctx.msgValue % modulus
   | Expr.blockTimestamp => ctx.blockTimestamp % modulus
+  | Expr.call _gas _target _value _inOffset _inSize _outOffset _outSize =>
+      -- Low-level call semantics are not modeled in the scalar SpecInterpreter yet.
+      0
+  | Expr.staticcall _gas _target _inOffset _inSize _outOffset _outSize =>
+      -- Low-level call semantics are not modeled in the scalar SpecInterpreter yet.
+      0
+  | Expr.delegatecall _gas _target _inOffset _inSize _outOffset _outSize =>
+      -- Low-level call semantics are not modeled in the scalar SpecInterpreter yet.
+      0
+  | Expr.returndataSize =>
+      -- Returndata buffers are not modeled in the scalar SpecInterpreter yet.
+      0
   | Expr.localVar name =>
       ctx.localVars.lookup name |>.getD 0
   | Expr.externalCall name args =>
@@ -346,6 +358,13 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       -- The spec interpreter models scalar returnValue only.
       -- Dynamic array return encoding/storage reads are codegen concerns.
       some (ctx, { state with returnValue := none, halted := true })
+
+  | Stmt.returndataCopy _destOffset _sourceOffset _size =>
+      -- Returndata memory effects are not modeled in the scalar SpecInterpreter.
+      some (ctx, state)
+
+  | Stmt.revertReturndata =>
+      none
 
   | Stmt.stop =>
       some (ctx, { state with halted := true })

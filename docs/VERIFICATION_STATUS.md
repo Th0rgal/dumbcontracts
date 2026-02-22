@@ -268,7 +268,7 @@ Status legend:
 | Feature | Spec support | Codegen support | Proof status | Test status | Current status |
 |---|---|---|---|---|---|
 | Custom errors + typed revert payloads | partial | partial | n/a | partial | partial |
-| Low-level calls (`call` / `staticcall` / `delegatecall`) with returndata | unsupported | unsupported | n/a | n/a | unsupported |
+| Low-level calls (`call` / `staticcall` / `delegatecall`) with returndata | partial | partial | n/a | partial | partial |
 | `fallback` / `receive` / payable entrypoint modeling | partial | partial | n/a | partial | partial |
 | Event ABI parity for indexed dynamic/tuple payloads | supported | supported | supported | supported | supported |
 | Storage layout controls (packing + explicit slots) | partial | partial | partial | partial | partial |
@@ -309,7 +309,9 @@ Current diagnostic coverage in compiler:
 - Non-payable external functions and constructors now emit a runtime `msg.value == 0` guard, while explicit `isPayable := true` enables `Expr.msgValue` usage.
 - Custom errors are now first-class declarations (`errors`) with `Stmt.requireError`/`Stmt.revertError` emission for static payload types (`uint256`, `address`, `bool`, `bytes32`) plus `bytes` payloads when sourced from direct bytes parameters. Other dynamic custom error payloads still fail with explicit guidance.
 - `fallback` and `receive` are now modeled as first-class entrypoints in dispatch (empty-calldata routing to `receive`, unmatched selector routing to `fallback`) with compile-time shape checks (`receive` must be payable, both must be parameterless and non-returning).
-- Low-level call-style names (`call`, `staticcall`, `delegatecall`, `callcode`) now fail with explicit guidance to use verified linked wrappers.
+- `ContractSpec` now provides first-class low-level call expressions (`Expr.call`, `Expr.staticcall`, `Expr.delegatecall`) with explicit gas/target/value/input/output operands and deterministic direct lowering to Yul call opcodes.
+- `ContractSpec` now provides first-class returndata primitives (`Expr.returndataSize`, `Stmt.returndataCopy`, `Stmt.revertReturndata`) so revert-data bubbling can be expressed without raw interop builtin calls.
+- Raw interop builtin call names via `Expr.externalCall` (including low-level call-style names like `callcode`) remain fail-fast rejected with issue-linked diagnostics.
 - Additional interop builtins (`create`, `create2`, `extcodesize`, `extcodecopy`, `extcodehash`) now fail with explicit migration guidance instead of generic external-call handling.
 - Indexed `bytes` event params emit ABI-style hashed topics (`keccak256(payload)`), indexed static tuple/fixed-array params emit ABI-style hashed topics over canonical static in-place encoding, indexed dynamic arrays (including arrays with dynamic element payloads) hash canonical in-place ABI preimages, and indexed dynamic tuple/fixed-array composite params hash recursive in-place ABI encodings.
 - Event emission now fails fast on `Expr.param` type mismatches against declared event parameter types (including indexed/unindexed bytes arg-shape checks), supports unindexed static and dynamic composite tuple/fixed-array payload encoding from direct parameters with recursive ABI head/tail encoding.

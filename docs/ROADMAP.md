@@ -63,7 +63,7 @@ Status legend:
 | Priority | Feature | Spec support | Codegen support | Proof status | Test status | Current status |
 |---|---|---|---|---|---|---|
 | 1 | Custom errors + typed revert payloads | partial | partial | n/a | partial | partial |
-| 2 | Low-level calls (`call`/`staticcall`/`delegatecall`) + returndata handling | unsupported | unsupported | n/a | n/a | unsupported |
+| 2 | Low-level calls (`call`/`staticcall`/`delegatecall`) + returndata handling | partial | partial | n/a | partial | partial |
 | 3 | `fallback` / `receive` / payable entrypoint modeling | partial | partial | n/a | partial | partial |
 | 4 | Full event ABI parity (indexed dynamic + tuple hashing) | supported | supported | supported | supported | supported |
 | 5 | Storage layout controls (packed fields + explicit slot mapping) | partial | partial | partial | partial | partial |
@@ -76,6 +76,11 @@ Recent progress for storage layout controls (`#623`):
 - `ContractSpec` now supports slot remap policies (`slotAliasRanges := [{ sourceStart := a, sourceEnd := b, targetStart := c }, ...]`) so compatibility windows like `8..11 -> 20..23` can be declared once and applied automatically to canonical field writes.
 - `ContractSpec` now supports declarative reserved storage slot ranges (`reservedSlotRanges := [{ start := a, end_ := b }, ...]`) with compile-time overlap checks and fail-fast diagnostics when field canonical/alias write slots intersect reserved intervals.
 - `ContractSpec.Field` now supports packed subfield placement (`packedBits := some { offset := o, width := w }`) so multiple fields can share a slot with disjoint bit ranges; codegen performs masked read-modify-write updates and masked reads directly from layout metadata.
+
+Recent progress for low-level calls + returndata handling (`#622`):
+- `ContractSpec.Expr` now supports first-class low-level call primitives (`call`, `staticcall`, `delegatecall`) with explicit gas/value/target/input/output operands and deterministic Yul lowering.
+- `ContractSpec.Expr.returndataSize`, `Stmt.returndataCopy`, and `Stmt.revertReturndata` now provide first-class returndata access and revert-data forwarding without raw Yul builtin injection.
+- Raw `Expr.externalCall` interop names for low-level/builtin opcodes remain fail-fast rejected, preserving explicit migration diagnostics while the first-class surface continues to expand.
 
 Delivery policy for unsupported features:
 1. Compiler diagnostics must identify the exact unsupported construct.

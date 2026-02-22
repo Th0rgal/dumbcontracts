@@ -204,6 +204,17 @@ inductive Expr
   | caller
   | msgValue
   | blockTimestamp
+  /-- First-class low-level `call(gas, target, value, inOffset, inSize, outOffset, outSize)`.
+      Returns the EVM success bit (0/1). -/
+  | call (gas target value inOffset inSize outOffset outSize : Expr)
+  /-- First-class low-level `staticcall(gas, target, inOffset, inSize, outOffset, outSize)`.
+      Returns the EVM success bit (0/1). -/
+  | staticcall (gas target inOffset inSize outOffset outSize : Expr)
+  /-- First-class low-level `delegatecall(gas, target, inOffset, inSize, outOffset, outSize)`.
+      Returns the EVM success bit (0/1). -/
+  | delegatecall (gas target inOffset inSize outOffset outSize : Expr)
+  /-- Size in bytes of returndata from the most recent external call frame. -/
+  | returndataSize
   | localVar (name : String)  -- Reference to local variable
   | externalCall (name : String) (args : List Expr)  -- External function call (linked at compile time)
   | internalCall (functionName : String) (args : List Expr)  -- Internal function call (#181)
@@ -245,6 +256,10 @@ inductive Stmt
   | returnArray (name : String)        -- ABI-encode dynamic uint256[] parameter loaded from calldata
   | returnBytes (name : String)        -- ABI-encode dynamic bytes parameter loaded from calldata
   | returnStorageWords (name : String) -- ABI-encode dynamic uint256[] from sload over a dynamic word-array parameter
+  /-- First-class `returndatacopy(destOffset, sourceOffset, size)` statement. -/
+  | returndataCopy (destOffset sourceOffset size : Expr)
+  /-- Forward current returndata as revert payload (`returndatacopy` + `revert`). -/
+  | revertReturndata
   | stop
   | ite (cond : Expr) (thenBranch : List Stmt) (elseBranch : List Stmt)  -- If/else (#179)
   | forEach (varName : String) (count : Expr) (body : List Stmt)  -- Bounded loop (#179)
@@ -480,6 +495,35 @@ def compileExpr (fields : List Field)
   | Expr.caller => pure (YulExpr.call "caller" [])
   | Expr.msgValue => pure (YulExpr.call "callvalue" [])
   | Expr.blockTimestamp => pure (YulExpr.call "timestamp" [])
+  | Expr.call gas target value inOffset inSize outOffset outSize => do
+      pure (YulExpr.call "call" [
+        ← compileExpr fields dynamicSource gas,
+        ← compileExpr fields dynamicSource target,
+        ← compileExpr fields dynamicSource value,
+        ← compileExpr fields dynamicSource inOffset,
+        ← compileExpr fields dynamicSource inSize,
+        ← compileExpr fields dynamicSource outOffset,
+        ← compileExpr fields dynamicSource outSize
+      ])
+  | Expr.staticcall gas target inOffset inSize outOffset outSize => do
+      pure (YulExpr.call "staticcall" [
+        ← compileExpr fields dynamicSource gas,
+        ← compileExpr fields dynamicSource target,
+        ← compileExpr fields dynamicSource inOffset,
+        ← compileExpr fields dynamicSource inSize,
+        ← compileExpr fields dynamicSource outOffset,
+        ← compileExpr fields dynamicSource outSize
+      ])
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize => do
+      pure (YulExpr.call "delegatecall" [
+        ← compileExpr fields dynamicSource gas,
+        ← compileExpr fields dynamicSource target,
+        ← compileExpr fields dynamicSource inOffset,
+        ← compileExpr fields dynamicSource inSize,
+        ← compileExpr fields dynamicSource outOffset,
+        ← compileExpr fields dynamicSource outSize
+      ])
+  | Expr.returndataSize => pure (YulExpr.call "returndatasize" [])
   | Expr.localVar name => pure (YulExpr.ident name)
   | Expr.externalCall name args => do
       let argExprs ← compileExprList fields dynamicSource args
@@ -1176,6 +1220,30 @@ private def unsupportedInteropCallError (context : String) (name : String) : Exc
 private partial def validateInteropExpr (context : String) : Expr → Except String Unit
   | Expr.msgValue =>
       pure ()
+  | Expr.call gas target value inOffset inSize outOffset outSize => do
+      validateInteropExpr context gas
+      validateInteropExpr context target
+      validateInteropExpr context value
+      validateInteropExpr context inOffset
+      validateInteropExpr context inSize
+      validateInteropExpr context outOffset
+      validateInteropExpr context outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize => do
+      validateInteropExpr context gas
+      validateInteropExpr context target
+      validateInteropExpr context inOffset
+      validateInteropExpr context inSize
+      validateInteropExpr context outOffset
+      validateInteropExpr context outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize => do
+      validateInteropExpr context gas
+      validateInteropExpr context target
+      validateInteropExpr context inOffset
+      validateInteropExpr context inSize
+      validateInteropExpr context outOffset
+      validateInteropExpr context outSize
+  | Expr.returndataSize =>
+      pure ()
   | Expr.externalCall name args => do
       if isInteropBuiltinCallName name then
         unsupportedInteropCallError context name
@@ -1209,6 +1277,12 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       args.forM (validateInteropExpr context)
   | Stmt.revertError _ args =>
       args.forM (validateInteropExpr context)
+  | Stmt.returndataCopy destOffset sourceOffset size => do
+      validateInteropExpr context destOffset
+      validateInteropExpr context sourceOffset
+      validateInteropExpr context size
+  | Stmt.revertReturndata =>
+      pure ()
   | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
       validateInteropExpr context key
       validateInteropExpr context value
@@ -1284,6 +1358,28 @@ private partial def validateInternalCallShapesInExpr
       let returns ← functionReturns callee
       if returns.length != 1 then
         throw s!"Compilation error: function '{callerName}' uses Expr.internalCall '{calleeName}' but callee returns {returns.length} values; use Stmt.internalCallAssign for multi-return calls ({issue625Ref})."
+  | Expr.call gas target value inOffset inSize outOffset outSize => do
+      validateInternalCallShapesInExpr functions callerName gas
+      validateInternalCallShapesInExpr functions callerName target
+      validateInternalCallShapesInExpr functions callerName value
+      validateInternalCallShapesInExpr functions callerName inOffset
+      validateInternalCallShapesInExpr functions callerName inSize
+      validateInternalCallShapesInExpr functions callerName outOffset
+      validateInternalCallShapesInExpr functions callerName outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize => do
+      validateInternalCallShapesInExpr functions callerName gas
+      validateInternalCallShapesInExpr functions callerName target
+      validateInternalCallShapesInExpr functions callerName inOffset
+      validateInternalCallShapesInExpr functions callerName inSize
+      validateInternalCallShapesInExpr functions callerName outOffset
+      validateInternalCallShapesInExpr functions callerName outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize => do
+      validateInternalCallShapesInExpr functions callerName gas
+      validateInternalCallShapesInExpr functions callerName target
+      validateInternalCallShapesInExpr functions callerName inOffset
+      validateInternalCallShapesInExpr functions callerName inSize
+      validateInternalCallShapesInExpr functions callerName outOffset
+      validateInternalCallShapesInExpr functions callerName outSize
   | Expr.mapping _ key =>
       validateInternalCallShapesInExpr functions callerName key
   | Expr.mapping2 _ key1 key2 => do
@@ -1314,6 +1410,12 @@ private partial def validateInternalCallShapesInStmt
       args.forM (validateInternalCallShapesInExpr functions callerName)
   | Stmt.revertError _ args =>
       args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.returndataCopy destOffset sourceOffset size => do
+      validateInternalCallShapesInExpr functions callerName destOffset
+      validateInternalCallShapesInExpr functions callerName sourceOffset
+      validateInternalCallShapesInExpr functions callerName size
+  | Stmt.revertReturndata =>
+      pure ()
   | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
       validateInternalCallShapesInExpr functions callerName key
       validateInternalCallShapesInExpr functions callerName value
@@ -2442,6 +2544,25 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
           YulExpr.call "add" [YulExpr.lit 64, YulExpr.call "mul" [lenIdent, YulExpr.lit 32]]
         ])
       ]
+  | Stmt.returndataCopy destOffset sourceOffset size => do
+      pure [YulStmt.expr (YulExpr.call "returndatacopy" [
+        ← compileExpr fields dynamicSource destOffset,
+        ← compileExpr fields dynamicSource sourceOffset,
+        ← compileExpr fields dynamicSource size
+      ])]
+  | Stmt.revertReturndata =>
+      pure [YulStmt.block [
+        YulStmt.let_ "__returndata_size" (YulExpr.call "returndatasize" []),
+        YulStmt.expr (YulExpr.call "returndatacopy" [
+          YulExpr.lit 0,
+          YulExpr.lit 0,
+          YulExpr.ident "__returndata_size"
+        ]),
+        YulStmt.expr (YulExpr.call "revert" [
+          YulExpr.lit 0,
+          YulExpr.ident "__returndata_size"
+        ])
+      ]]
 end
 
 private def isScalarParamType : ParamType → Bool

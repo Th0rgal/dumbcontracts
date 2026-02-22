@@ -52,6 +52,10 @@ private def uniqueSelectors (spec : ASTContractSpec) : List Nat :=
     let rendered := renderDeploy ir.deploy
     assertContains "Owned.deploy has constructor side effects" rendered ["sstore(0, initialOwner)"]
     assertNotContains "Owned.deploy strips constructor stop()" rendered ["stop()"]
+    if ir.constructorPayable then
+      throw (IO.userError "✗ Owned constructor should be non-payable by default")
+    else
+      IO.println "✓ Owned constructor defaults to non-payable"
 
 #eval! do
   match compileSpec simpleTokenSpec (uniqueSelectors simpleTokenSpec) with
@@ -213,5 +217,132 @@ private def badContractIdentifierSpec : ASTContractSpec := {
      "\"outputs\": [{\"name\": \"\", \"type\": \"address\"}]",
      "\"name\": \"totalSupply\"",
      "\"outputs\": [{\"name\": \"\", \"type\": \"uint256\"}]"]
+
+private def payableFnSpec : ASTContractSpec := {
+  name := "PayableFnSpec"
+  functions := [
+    { name := "deposit"
+      params := []
+      returnType := .unit
+      isPayable := true
+      body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec payableFnSpec [0] with
+  | .error err =>
+    throw (IO.userError s!"✗ payable function compile failed: {err}")
+  | .ok ir =>
+    match ir.functions with
+    | [fn] =>
+      if !fn.payable then
+        throw (IO.userError "✗ payable function should set IRFunction.payable")
+      else
+        IO.println "✓ AST function payability lowers to IR dispatch metadata"
+    | _ =>
+      throw (IO.userError "✗ expected exactly one function in payableFnSpec")
+
+private def payableCtorSpec : ASTContractSpec := {
+  name := "PayableCtorSpec"
+  constructor := some {
+    params := []
+    isPayable := true
+    body := Stmt.stop
+  }
+  functions := []
+}
+
+#eval! do
+  match compileSpec payableCtorSpec [] with
+  | .error err =>
+    throw (IO.userError s!"✗ payable constructor compile failed: {err}")
+  | .ok ir =>
+    if !ir.constructorPayable then
+      throw (IO.userError "✗ payable constructor should set IRContract.constructorPayable")
+    else
+      IO.println "✓ AST constructor payability lowers to IR deployment metadata"
+
+private def abiMutabilitySpec : ASTContractSpec := {
+  name := "AbiMutabilitySpec"
+  constructor := some {
+    params := []
+    isPayable := true
+    body := Stmt.stop
+  }
+  functions := [
+    { name := "deposit"
+      params := []
+      returnType := .unit
+      isPayable := true
+      body := Stmt.stop },
+    { name := "viewCount"
+      params := []
+      returnType := .uint256
+      isView := true
+      body := Stmt.ret (Expr.lit 1) },
+    { name := "pureCount"
+      params := []
+      returnType := .uint256
+      isPure := true
+      body := Stmt.ret (Expr.lit 1) }
+  ]
+}
+
+#eval! do
+  let rendered := emitASTContractABIJson abiMutabilitySpec
+  assertContains "AST ABI includes payable/view/pure mutability markers" rendered
+    ["\"type\": \"constructor\"",
+     "\"stateMutability\": \"payable\"",
+     "\"name\": \"deposit\"",
+     "\"stateMutability\": \"payable\"",
+     "\"name\": \"viewCount\"",
+     "\"stateMutability\": \"view\"",
+     "\"name\": \"pureCount\"",
+     "\"stateMutability\": \"pure\""]
+
+private def invalidMutabilitySpecPayableView : ASTContractSpec := {
+  name := "InvalidMutabilitySpecPayableView"
+  functions := [
+    { name := "bad"
+      params := []
+      returnType := .unit
+      isPayable := true
+      isView := true
+      body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidMutabilitySpecPayableView [0] with
+  | .error err =>
+    if contains err "cannot be both payable and view/pure" then
+      IO.println "✓ Invalid payable+view mutability rejected in compileSpec"
+    else
+      throw (IO.userError s!"✗ unexpected payable+view mutability error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected payable+view mutability to be rejected")
+
+private def invalidMutabilitySpecViewPure : ASTContractSpec := {
+  name := "InvalidMutabilitySpecViewPure"
+  functions := [
+    { name := "bad"
+      params := []
+      returnType := .unit
+      isView := true
+      isPure := true
+      body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidMutabilitySpecViewPure [0] with
+  | .error err =>
+    if contains err "cannot be both view and pure" then
+      IO.println "✓ Invalid view+pure mutability rejected in compileSpec"
+    else
+      throw (IO.userError s!"✗ unexpected view+pure mutability error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected view+pure mutability to be rejected")
 
 end Compiler.ASTDriverTest

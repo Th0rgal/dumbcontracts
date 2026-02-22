@@ -7,6 +7,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 # Path constants
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,7 +42,7 @@ def load_manifest() -> dict[str, set[str]]:
     """
     if not MANIFEST.exists():
         raise SystemExit(f"Missing property manifest: {MANIFEST}")
-    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    data = _load_contract_name_lists(MANIFEST)
     manifest: dict[str, set[str]] = {}
     for contract, names in data.items():
         manifest[contract] = set(names)
@@ -57,11 +58,44 @@ def load_exclusions() -> dict[str, set[str]]:
     """
     if not EXCLUSIONS.exists():
         return {}
-    data = json.loads(EXCLUSIONS.read_text(encoding="utf-8"))
+    data = _load_contract_name_lists(EXCLUSIONS)
     exclusions: dict[str, set[str]] = {}
     for contract, names in data.items():
         exclusions[contract] = set(names)
     return exclusions
+
+
+def _load_contract_name_lists(path: Path) -> dict[str, list[str]]:
+    """Load and validate a `{contract: [name, ...]}` JSON object."""
+    try:
+        raw: Any = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Invalid JSON in {path}: {exc}") from exc
+
+    if not isinstance(raw, dict):
+        raise SystemExit(
+            f"Invalid schema in {path}: expected top-level object "
+            "mapping contract names to string arrays."
+        )
+
+    validated: dict[str, list[str]] = {}
+    for contract, names in raw.items():
+        if not isinstance(contract, str) or not contract:
+            raise SystemExit(
+                f"Invalid schema in {path}: contract key {contract!r} must be a non-empty string."
+            )
+        if not isinstance(names, list):
+            raise SystemExit(
+                f"Invalid schema in {path}: value for {contract!r} must be an array of strings."
+            )
+        for name in names:
+            if not isinstance(name, str) or not name:
+                raise SystemExit(
+                    f"Invalid schema in {path}: entry {name!r} in {contract!r} must be a non-empty string."
+                )
+        validated[contract] = names
+
+    return validated
 
 
 def extract_property_names(path: Path) -> list[str]:

@@ -436,13 +436,17 @@ def wordFromBytes (bs : List UInt8) : Nat :=
   let padded := bs ++ List.replicate (32 - bs.length) (0 : UInt8)
   padded.foldl (fun acc b => acc * 256 + b.toNat) 0
 
+/-- The 4-byte selector for `Error(string)` (keccak256("Error(string)")[0:4]),
+    left-shifted to fill a 32-byte EVM word.  This is 0x08c379a0 << 224.
+    Used in `revertWithMessage` (compiler) and concrete IR proofs. -/
+def errorStringSelectorWord : Nat := 0x08c379a0 * (2 ^ 224)
+
 def revertWithMessage (message : String) : List YulStmt :=
   let bytes := bytesFromString message
   let len := bytes.length
   let paddedLen := ((len + 31) / 32) * 32
-  let selectorShifted : Nat := 0x08c379a0 * (2 ^ 224)
   let header := [
-    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorShifted]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex errorStringSelectorWord]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit len])
   ]

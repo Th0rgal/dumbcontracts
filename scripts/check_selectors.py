@@ -8,6 +8,7 @@ Checks:
 4) ASTSpecs function signatures -> keccak selectors match for yul-ast output.
 5) Cross-check: shared contracts have identical signatures in both spec sets.
 6) No function name uses the reserved ``internal_`` prefix (Yul namespace collision).
+7) Error(string) selector constant sync between ContractSpec and Interpreter.
 """
 
 from __future__ import annotations
@@ -22,6 +23,8 @@ from property_utils import ROOT, YUL_DIR, die, report_errors, strip_lean_comment
 SPEC_FILE = ROOT / "Compiler" / "Specs.lean"
 AST_SPEC_FILE = ROOT / "Compiler" / "ASTSpecs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
+CONTRACT_SPEC_FILE = ROOT / "Compiler" / "ContractSpec.lean"
+INTERPRETER_FILE = ROOT / "Compiler" / "Interpreter.lean"
 YUL_DIR_LEGACY = ("yul", YUL_DIR)
 YUL_DIR_AST = ("yul-ast", ROOT / "compiler" / "yul-ast")
 
@@ -454,6 +457,63 @@ def format_selectors(selectors: List[int]) -> str:
     return "[" + ", ".join(f"0x{sel:08x}" for sel in selectors) + "]"
 
 
+# ---------------------------------------------------------------------------
+# Error(string) selector constant sync
+# ---------------------------------------------------------------------------
+
+# Canonical value: keccak256("Error(string)")[0:4] left-shifted to 32-byte word.
+_ERROR_STRING_SELECTOR_SHIFTED: int = 0x08c379a0 * (2**224)
+
+_CANONICAL_RE = re.compile(
+    r"def\s+errorStringSelectorWord\s*:\s*Nat\s*:=\s*(0x[0-9a-fA-F]+)\s*\*\s*\(2\s*\^\s*224\)"
+)
+_INTERPRETER_RE = re.compile(
+    r"def\s+revertSelectorWord\s*:\s*Nat\s*:=\s*\n?\s*(\d+)"
+)
+
+
+def check_error_selector_sync() -> List[str]:
+    """Verify the Error(string) selector constant is consistent across files.
+
+    Checks that:
+    - ContractSpec.errorStringSelectorWord matches the expected value
+    - Interpreter.revertSelectorWord (private copy) matches the canonical value
+    """
+    errors: List[str] = []
+
+    if not CONTRACT_SPEC_FILE.exists():
+        errors.append(f"Missing {CONTRACT_SPEC_FILE}")
+        return errors
+
+    spec_text = CONTRACT_SPEC_FILE.read_text(encoding="utf-8")
+    m = _CANONICAL_RE.search(spec_text)
+    if not m:
+        errors.append(
+            "ContractSpec.lean: missing errorStringSelectorWord definition"
+        )
+    else:
+        canonical = int(m.group(1), 16) * (2**224)
+        if canonical != _ERROR_STRING_SELECTOR_SHIFTED:
+            errors.append(
+                f"ContractSpec.errorStringSelectorWord: expected "
+                f"0x{_ERROR_STRING_SELECTOR_SHIFTED:064x}, got 0x{canonical:064x}"
+            )
+
+    if INTERPRETER_FILE.exists():
+        interp_text = INTERPRETER_FILE.read_text(encoding="utf-8")
+        m2 = _INTERPRETER_RE.search(interp_text)
+        if m2:
+            interp_val = int(m2.group(1))
+            if interp_val != _ERROR_STRING_SELECTOR_SHIFTED:
+                errors.append(
+                    f"Interpreter.revertSelectorWord: value {interp_val} does not "
+                    f"match canonical errorStringSelectorWord "
+                    f"({_ERROR_STRING_SELECTOR_SHIFTED})"
+                )
+
+    return errors
+
+
 def main() -> None:
     if not SPEC_FILE.exists():
         die(f"Missing specs file: {SPEC_FILE}")
@@ -497,6 +557,9 @@ def main() -> None:
     # Cross-check: shared contracts must have identical signatures.
     if ast_specs:
         errors.extend(check_ast_vs_legacy_signatures(specs, ast_specs))
+
+    # Validate Error(string) selector constant consistency.
+    errors.extend(check_error_selector_sync())
 
     report_errors(errors, "Selector checks failed")
     print("Selector checks passed.")

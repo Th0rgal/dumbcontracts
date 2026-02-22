@@ -77,6 +77,8 @@ def extractMappingChanges (before after : ContractState) (keys : List (Nat × Ad
     if oldVal ≠ newVal then some (slot, key, newVal) else none
 
 -- EVM revert data for Error(string) uses selector 0x08c379a0 in the first 32 bytes.
+-- Canonical definition: Compiler.ContractSpec.errorStringSelectorWord
+-- Duplicated here to avoid importing ContractSpec into the interpreter.
 private def revertSelectorWord : Nat :=
   3963877391197344453575983046348115674221700746820753546331534351508065746944
 

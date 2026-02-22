@@ -272,7 +272,7 @@ def safeCounterOverflowRevert : List YulStmt :=
   [
     YulStmt.expr (YulExpr.call "mstore" [
       YulExpr.lit 0,
-      YulExpr.hex 0x08c379a000000000000000000000000000000000000000000000000000000000
+      YulExpr.hex errorStringSelectorWord
     ]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit 21]),
@@ -287,7 +287,7 @@ def safeCounterUnderflowRevert : List YulStmt :=
   [
     YulStmt.expr (YulExpr.call "mstore" [
       YulExpr.lit 0,
-      YulExpr.hex 0x08c379a000000000000000000000000000000000000000000000000000000000
+      YulExpr.hex errorStringSelectorWord
     ]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit 22]),
@@ -302,7 +302,7 @@ def insufficientBalanceRevert : List YulStmt :=
   [
     YulStmt.expr (YulExpr.call "mstore" [
       YulExpr.lit 0,
-      YulExpr.hex 0x08c379a000000000000000000000000000000000000000000000000000000000
+      YulExpr.hex errorStringSelectorWord
     ]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit 20]),
@@ -529,7 +529,7 @@ def ownedNotOwnerRevert : List YulStmt :=
   [
     YulStmt.expr (YulExpr.call "mstore" [
       YulExpr.lit 0,
-      YulExpr.hex 0x08c379a000000000000000000000000000000000000000000000000000000000
+      YulExpr.hex errorStringSelectorWord
     ]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, YulExpr.lit 32]),
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, YulExpr.lit 9]),

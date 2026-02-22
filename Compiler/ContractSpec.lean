@@ -278,6 +278,10 @@ structure FunctionSpec where
   returns : List ParamType := []  -- preferred ABI return model; falls back to returnType when empty
   /-- Whether this entrypoint accepts non-zero msg.value. -/
   isPayable : Bool := false
+  /-- Whether this entrypoint is ABI-marked as `view` (read-only intent). -/
+  isView : Bool := false
+  /-- Whether this entrypoint is ABI-marked as `pure` (no state/environment reads intent). -/
+  isPure : Bool := false
   body : List Stmt
   /-- Whether this is an internal-only function (not exposed via selector dispatch) -/
   isInternal : Bool := false
@@ -689,6 +693,12 @@ def functionReturns (spec : FunctionSpec) : Except String (List ParamType) :=
 def externalFunctionReturns (spec : ExternalFunction) : Except String (List ParamType) :=
   resolveReturns s!"external declaration '{spec.name}'" spec.returnType spec.returns
 
+def functionStateMutability (spec : FunctionSpec) : String :=
+  if spec.isPure then "pure"
+  else if spec.isView then "view"
+  else if spec.isPayable then "payable"
+  else "nonpayable"
+
 private def findParamType (params : List Param) (name : String) : Option ParamType :=
   (params.find? (fun p => p.name == name)).map (·.ty)
 
@@ -780,6 +790,10 @@ private partial def validateReturnShapesInStmt (fnName : String)
   | _ => pure ()
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
+  if spec.isPayable && (spec.isView || spec.isPure) then
+    throw s!"Compilation error: function '{spec.name}' cannot be both payable and view/pure (Issue #586 (Solidity interop profile))"
+  if spec.isView && spec.isPure then
+    throw s!"Compilation error: function '{spec.name}' cannot be both view and pure; use exactly one mutability marker (Issue #586 (Solidity interop profile))"
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   spec.body.forM (validateStmtParamReferences spec.name spec.params)
@@ -1354,6 +1368,8 @@ private def validateSpecialEntrypointSpec (spec : FunctionSpec) : Except String 
       throw s!"Compilation error: function '{spec.name}' must not return values ({issue586Ref})"
     if spec.name == "receive" && !spec.isPayable then
       throw s!"Compilation error: function 'receive' must be payable ({issue586Ref})"
+    if spec.isView || spec.isPure then
+      throw s!"Compilation error: function '{spec.name}' cannot be marked view/pure ({issue586Ref})"
 
 private def issue625Ref : String :=
   "Issue #625 (internal function multi-return support)"

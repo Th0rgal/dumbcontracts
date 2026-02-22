@@ -2674,4 +2674,49 @@ private def featureSpec : ContractSpec := {
   | .ok _ =>
       throw (IO.userError "✗ expected overlapping reserved slot ranges to fail compilation")
 
+#eval! do
+  let invalidMutabilitySpec : ContractSpec := {
+    name := "InvalidMutabilitySpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badPayableView"
+        params := []
+        returnType := some FieldType.uint256
+        isPayable := true
+        isView := true
+        body := [Stmt.return (Expr.literal 1)]
+      }
+    ]
+  }
+  match compile invalidMutabilitySpec [1] with
+  | .error err =>
+      if !contains err "cannot be both payable and view/pure" then
+        throw (IO.userError s!"✗ payable+view mutability diagnostic mismatch: {err}")
+      IO.println "✓ payable+view mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected payable+view mutability conflict to fail compilation")
+
+#eval! do
+  let invalidSpecialEntrypointMutabilitySpec : ContractSpec := {
+    name := "InvalidSpecialEntrypointMutabilitySpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "fallback"
+        params := []
+        returnType := none
+        isView := true
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile invalidSpecialEntrypointMutabilitySpec [] with
+  | .error err =>
+      if !contains err "function 'fallback' cannot be marked view/pure" then
+        throw (IO.userError s!"✗ fallback mutability diagnostic mismatch: {err}")
+      IO.println "✓ fallback mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected fallback view/pure mutability conflict to fail compilation")
+
 end Compiler.ContractSpecFeatureTest

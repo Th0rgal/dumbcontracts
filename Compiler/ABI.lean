@@ -72,7 +72,7 @@ end
 private def renderFunctionEntry (fn : FunctionSpec) : String :=
   let inputs := fn.params.map (fun p => renderParam p.name p.ty none)
   let outputs := (functionOutputs fn).map (fun ty => renderParam "" ty none)
-  let stateMutability := if fn.isPayable then "payable" else "nonpayable"
+  let stateMutability := functionStateMutability fn
   "{" ++ joinJsonFields [
     "\"type\": \"function\"",
     s!"\"name\": {jsonString fn.name}",
@@ -117,7 +117,7 @@ private def renderSpecialEntry (fn : FunctionSpec) : Option String :=
   else
     some ("{" ++ joinJsonFields [
       s!"\"type\": {jsonString fn.name}",
-      s!"\"stateMutability\": {jsonString (if fn.isPayable then "payable" else "nonpayable")}"
+      s!"\"stateMutability\": {jsonString (functionStateMutability fn)}"
     ] ++ "}")
 
 def emitContractABIJson (spec : ContractSpec) : String :=

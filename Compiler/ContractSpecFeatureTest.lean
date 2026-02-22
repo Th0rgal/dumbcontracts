@@ -332,10 +332,31 @@ private def featureSpec : ContractSpec := {
           Stmt.returndataCopy (Expr.literal 0) (Expr.literal 0) (Expr.localVar "rd"),
           Stmt.revertReturndata
         ]
+      },
+      { name := "erc20CompatCall"
+        params := [
+          { name := "target", ty := ParamType.address },
+          { name := "inOffset", ty := ParamType.uint256 },
+          { name := "inSize", ty := ParamType.uint256 }
+        ]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "ok" (Expr.call
+            (Expr.literal 50000)
+            (Expr.param "target")
+            (Expr.literal 0)
+            (Expr.param "inOffset")
+            (Expr.param "inSize")
+            (Expr.literal 0)
+            (Expr.literal 32)),
+          Stmt.return (Expr.logicalAnd
+            (Expr.localVar "ok")
+            (Expr.returndataOptionalBoolAt (Expr.literal 0)))
+        ]
       }
     ]
   }
-  match compile lowLevelPrimitivesSpec [1, 2, 3, 4] with
+  match compile lowLevelPrimitivesSpec [1, 2, 3, 4, 5] with
   | .error err =>
       throw (IO.userError s!"✗ expected first-class low-level primitives to compile, got: {err}")
   | .ok ir =>
@@ -344,6 +365,7 @@ private def featureSpec : ContractSpec := {
       assertContains "first-class staticcall lowering" rendered ["staticcall(50000, target, inOffset, inSize, outOffset, outSize)"]
       assertContains "first-class delegatecall lowering" rendered ["delegatecall(50000, target, inOffset, inSize, outOffset, outSize)"]
       assertContains "first-class returndata primitives lowering" rendered ["let rd := returndatasize()", "returndatacopy(0, 0, rd)", "let __returndata_size := returndatasize()", "revert(0, __returndata_size)"]
+      assertContains "optional bool returndata helper lowering" rendered ["eq(returndatasize(), 0)", "eq(returndatasize(), 32)", "eq(mload(0), 1)"]
 
 #eval! do
   let lowLevelCallSpec : ContractSpec := {

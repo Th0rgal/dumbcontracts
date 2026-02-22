@@ -5,18 +5,28 @@ Entry point for security auditors. For full trust boundary analysis, see [TRUST_
 ## Architecture
 
 ```
-EDSL (Verity/)          User-facing contract DSL with formal specs
-    ↓ Layer 1            Proven: spec preserves EDSL semantics
-ContractSpec            Intermediate specification language
-    ↓ Layer 2            Proven: IR preserves spec semantics
-IR                      Flat intermediate representation
-    ↓ Layer 3            Proven: Yul preserves IR semantics (1 axiom)
-Yul AST → text          Pretty-printed, compiled by solc
-    ↓ Trusted            solc (pinned version)
-EVM bytecode
+Proven path (ContractSpec):
+  EDSL (Verity/)          User-facing contract DSL with formal specs
+      ↓ Layer 1            Proven: spec preserves EDSL semantics
+  ContractSpec            Intermediate specification language
+      ↓ Layer 2            Proven: IR preserves spec semantics
+  IR                      Flat intermediate representation
+      ↓ Layer 3            Proven: Yul preserves IR semantics (1 axiom)
+  Yul AST → text          Pretty-printed, compiled by solc
+      ↓ Trusted            solc (pinned version)
+  EVM bytecode
+
+Unproven path (AST):
+  Verity.AST.Stmt         Unified AST (Phase 4 of #364)
+      ↓                    ASTCompile: direct Stmt → YulStmt translation
+  Yul AST → text          Shared Codegen/PrettyPrint/Linker infrastructure
+      ↓ Trusted            solc (pinned version)
+  EVM bytecode
 ```
 
-All three layers are fully verified in Lean 4. Zero `sorry` placeholders. One axiom (`keccak256_first_4_bytes`) — CI-validated against solc output.
+**Two compilation paths exist.** The ContractSpec path is fully verified across three layers. The AST path (`--ast` flag) bypasses ContractSpec/IR and compiles `Verity.AST.Stmt` directly to Yul — it is **not covered by formal proofs**. CI enforces bytecode equivalence where both paths compile the same contract (6 known diffs tracked in `scripts/fixtures/yul_ast_bytecode_diffs.allowlist`).
+
+All three ContractSpec layers are fully verified in Lean 4. Zero `sorry` placeholders. One axiom (`keccak256_first_4_bytes`) — CI-validated against solc output.
 
 ### Key files
 
@@ -27,7 +37,10 @@ All three layers are fully verified in Lean 4. Zero `sorry` placeholders. One ax
 | `Compiler/Yul/PrettyPrint.lean` | Yul AST → text rendering |
 | `Compiler/Linker.lean` | External library injection (outside proof boundary) |
 | `Compiler/Selector.lean` | Function selector computation via keccak256 |
-| `Compiler/Specs.lean` | All contract specifications |
+| `Compiler/Specs.lean` | All contract specifications (ContractSpec path) |
+| `Compiler/ASTDriver.lean` | AST path: orchestration, constructor loading, validation |
+| `Compiler/ASTSpecs.lean` | All contract specifications (AST path) |
+| `Compiler/ASTCompile.lean` | AST path: Stmt → YulStmt direct translation |
 | `Verity/Core.lean` | Core EDSL types and semantics |
 
 ## Trust boundaries
@@ -49,6 +62,7 @@ All three layers are fully verified in Lean 4. Zero `sorry` placeholders. One ax
 | EDSL → Spec | Nothing | Full semantic preservation |
 | Spec → IR | Nothing | Full semantic preservation |
 | IR → Yul | `keccak256_first_4_bytes` axiom | Everything else |
+| AST → Yul (AST path) | ASTCompile correctness | CI bytecode diff baseline only |
 | Yul → EVM | solc correctness | Yul text correctness |
 | Linked libraries | Library code correctness | Name/arity constraints only |
 | Storage slots | Keccak256 collision freedom | Slot derivation logic |
@@ -93,6 +107,7 @@ EDSL uses **wrapping** `mod 2^256` arithmetic. Solidity uses **checked** arithme
 3. **No gas bounds**: Unbounded loops could exhaust gas. Mitigation: gas calibration tests, manual review.
 4. **Wrapping overflow**: No automatic overflow protection. Mitigation: explicit `require` guards per contract.
 5. **Non-short-circuit logic ops**: `Expr.logicalAnd`/`logicalOr` always evaluate both operands. Safe today (no side-effecting sub-expressions), but must be revisited if low-level calls (#622) are added to `Expr`.
+6. **AST path unproven**: `ASTCompile` translates `Verity.AST.Stmt` → `YulStmt` without formal verification. CI tracks a bytecode diff baseline (6 known mismatches) but cannot prove semantic equivalence. The AST path also lacks events, custom errors, internal functions, and `isPayable` support.
 
 ## External dependencies
 
@@ -117,7 +132,7 @@ EDSL uses **wrapping** `mod 2^256` arithmetic. Solidity uses **checked** arithme
 
 30+ scripts enforce consistency between proofs, tests, and documentation. Key checks:
 
-- `check_yul_compiles.py`: All generated Yul compiles with solc; bytecode parity
+- `check_yul_compiles.py`: All generated Yul compiles with solc; legacy/AST bytecode diff baseline
 - `check_selectors.py` / `check_selector_fixtures.py`: Selector cross-validation
 - `check_doc_counts.py`: Theorem/test counts consistent across all docs
 - `check_lean_warning_regression.py`: Zero-warning policy

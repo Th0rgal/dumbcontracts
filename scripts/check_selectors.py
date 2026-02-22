@@ -13,7 +13,7 @@ Checks:
 9) Selector shift constant sync between ContractSpec, Codegen, and Builtins.
 10) Internal function prefix sync between ContractSpec and CI script.
 11) Special entrypoint names sync between ContractSpec and CI script.
-12) No duplicate function names per contract; compile function has the guard.
+12) No duplicate function names per contract; compile has all five duplicate-name guards.
 """
 
 from __future__ import annotations
@@ -683,25 +683,24 @@ def check_special_entrypoints_sync() -> List[str]:
 
 
 def check_compile_duplicate_name_guard() -> List[str]:
-    """Verify that ContractSpec.compile checks for duplicate function names.
+    """Verify that ContractSpec.compile checks for duplicate names across all spec lists.
 
-    Ensures the compile function calls ``firstDuplicateName`` on
-    ``spec.functions`` (not just on ``spec.errors``), preventing regression
-    of the duplicate function name validation.
+    Ensures the compile function calls ``firstDuplicateName`` on all five
+    spec collections: functions, errors, fields, events, and externals.
     """
     errors: List[str] = []
     if not CONTRACT_SPEC_FILE.exists():
         errors.append(f"Missing {CONTRACT_SPEC_FILE}")
         return errors
     text = CONTRACT_SPEC_FILE.read_text(encoding="utf-8")
-    # Look for the duplicate function name check pattern inside compile
-    if not re.search(
-        r"firstDuplicateName\s*\(spec\.functions\.map", text
-    ):
-        errors.append(
-            "ContractSpec.compile: missing duplicate function name check "
-            "(expected firstDuplicateName (spec.functions.map ...))"
-        )
+    for collection in ("functions", "errors", "fields", "events", "externals"):
+        if not re.search(
+            rf"firstDuplicateName\s*\(spec\.{collection}\.map", text
+        ):
+            errors.append(
+                f"ContractSpec.compile: missing duplicate {collection} name check "
+                f"(expected firstDuplicateName (spec.{collection}.map ...))"
+            )
     return errors
 
 

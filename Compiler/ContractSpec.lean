@@ -2439,7 +2439,7 @@ def compileConstructor (fields : List Field) (events : List EventDef) (errors : 
     return argLoads ++ bodyChunks.flatten
 
 -- Main compilation function
--- SAFETY REQUIREMENTS (enforced by #guard in Specs.lean):
+-- SAFETY REQUIREMENTS (enforced at runtime by `compile` and at CI-time by check_selectors.py):
 --   1. selectors.length == spec.functions.length (external functions only)
 --   2. selectors[i] matches the Solidity signature of spec.functions[i]
 -- WARNING: Order matters! If selector list is reordered but function list isn't,
@@ -2504,6 +2504,21 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   match firstDuplicateName (spec.errors.map (·.name)) with
   | some dup =>
       throw s!"Compilation error: duplicate custom error declaration '{dup}'"
+  | none =>
+      pure ()
+  match firstDuplicateName (spec.fields.map (·.name)) with
+  | some dup =>
+      throw s!"Compilation error: duplicate field name '{dup}' in {spec.name}"
+  | none =>
+      pure ()
+  match firstDuplicateName (spec.events.map (·.name)) with
+  | some dup =>
+      throw s!"Compilation error: duplicate event name '{dup}' in {spec.name}"
+  | none =>
+      pure ()
+  match firstDuplicateName (spec.externals.map (·.name)) with
+  | some dup =>
+      throw s!"Compilation error: duplicate external declaration '{dup}' in {spec.name}"
   | none =>
       pure ()
   for err in spec.errors do

@@ -42,6 +42,18 @@ private def abiSpec : ContractSpec := {
       returns := [ParamType.array (ParamType.tuple [ParamType.uint256, ParamType.bool])]
       body := [Stmt.stop]
     },
+    { name := "totalSupply"
+      params := []
+      returnType := some FieldType.uint256
+      isView := true
+      body := [Stmt.return (Expr.literal 1)]
+    },
+    { name := "version"
+      params := []
+      returnType := some FieldType.uint256
+      isPure := true
+      body := [Stmt.return (Expr.literal 1)]
+    },
     { name := "fallback"
       params := []
       returnType := none
@@ -82,6 +94,7 @@ private def abiSpec : ContractSpec := {
   assertContains "function entry" rendered ["\"type\": \"function\"", "\"name\": \"setTuple\""]
   assertContains "tuple components" rendered ["\"type\": \"tuple\"", "\"components\": [{\"name\": \"\", \"type\": \"address\"}, {\"name\": \"\", \"type\": \"uint256\"}]"]
   assertContains "tuple array components" rendered ["\"type\": \"tuple[]\"", "\"outputs\": [{\"name\": \"\", \"type\": \"tuple[]\", \"components\": [{\"name\": \"\", \"type\": \"uint256\"}, {\"name\": \"\", \"type\": \"bool\"}]}]"]
+  assertContains "state mutability view/pure" rendered ["\"name\": \"totalSupply\"", "\"stateMutability\": \"view\"", "\"name\": \"version\"", "\"stateMutability\": \"pure\""]
   assertContains "event indexed metadata" rendered ["\"type\": \"event\"", "\"indexed\": true", "\"indexed\": false"]
   assertContains "error entry" rendered ["\"type\": \"error\"", "\"name\": \"BadThing\""]
   assertContains "special entrypoints" rendered ["\"type\": \"fallback\"", "\"type\": \"receive\""]

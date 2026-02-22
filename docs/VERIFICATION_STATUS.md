@@ -324,6 +324,7 @@ Current diagnostic coverage in compiler:
 - Contract specs now support declarative reserved slot intervals (`reservedSlotRanges`) with compile-time diagnostics for invalid/overlapping ranges and for field canonical/alias write slots that overlap reserved intervals (Issue #623).
 - Storage fields now support packed subfield metadata (`Field.packedBits`) with masked read and read-modify-write lowering, compile-time bit-range validation, and overlap diagnostics that permit shared slots only when packed ranges are disjoint (Issue #623).
 - `verity-compiler` now supports deterministic ABI artifact emission in ContractSpec mode via `--abi-output <dir>` and writes one `<Contract>.abi.json` per compiled spec, including `view`/`pure` `stateMutability` metadata when declared in `ContractSpec.FunctionSpec`.
+- `verity-compiler` now supports deterministic ABI artifact emission in unified AST mode via `--ast --abi-output <dir>`, using an AST→ABI bridge that emits one `<Contract>.abi.json` per AST spec with constructor/function signatures and typed outputs.
 - All interop diagnostics include an `Issue #586` reference for scope tracking.
 
 ### Short Term (1-2 months)

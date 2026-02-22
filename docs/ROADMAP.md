@@ -91,6 +91,7 @@ Recent progress for custom errors (`#586`):
 Recent progress for ABI JSON artifact generation (`#688`):
 - `verity-compiler --ast --abi-output <dir>` now emits one `<Contract>.abi.json` file per unified AST spec, using an AST→ABI bridge that reuses the shared ABI renderer.
 - The previous AST-mode CLI rejection for `--abi-output` has been removed, so ContractSpec and AST compilation paths now have parity for ABI artifact emission.
+- AST specs now support explicit mutability metadata (`isPayable`, `isView`, `isPure`) that propagates to both runtime payability guards and ABI JSON `stateMutability`, with compile-time validation for invalid combinations.
 
 Delivery policy for unsupported features:
 1. Compiler diagnostics must identify the exact unsupported construct.

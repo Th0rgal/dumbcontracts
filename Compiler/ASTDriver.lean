@@ -66,7 +66,7 @@ def astSpecToContractSpecForABI (spec : ASTContractSpec) : Compiler.ContractSpec
   let ctor :=
     spec.constructor.map (fun c =>
       { params := c.params
-        isPayable := false
+        isPayable := c.isPayable
         body := [] })
   let fns :=
     spec.functions.map (fun f =>
@@ -74,6 +74,9 @@ def astSpecToContractSpecForABI (spec : ASTContractSpec) : Compiler.ContractSpec
         params := f.params
         returnType := none
         returns := astReturnTypeToOutputs f.returnType
+        isPayable := f.isPayable
+        isView := f.isView
+        isPure := f.isPure
         body := [] })
   { name := spec.name
     fields := []
@@ -208,6 +211,10 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
     ensureNonEmpty s!"Function in {spec.name}" fn.name
     ensureValidIdentifier s!"Function in {spec.name}" fn.name
     validateParamNames s!"function {fn.name}" fn.params
+    if fn.isPayable && (fn.isView || fn.isPure) then
+      throw s!"Function '{fn.name}' in {spec.name} cannot be both payable and view/pure"
+    if fn.isView && fn.isPure then
+      throw s!"Function '{fn.name}' in {spec.name} cannot be both view and pure"
 
   match spec.constructor with
   | some ctor => validateParamNames s!"constructor of {spec.name}" ctor.params
@@ -253,6 +260,7 @@ private def compileFunction (selector : Nat) (fn : ASTFunctionSpec) : IRFunction
       | .uint256 => IRType.uint256
       | .address => IRType.address
       | .unit => IRType.unit
+    payable := fn.isPayable
     body := paramLoads ++ bodyStmts }
 
 /-!
@@ -273,6 +281,7 @@ def compileSpec (spec : ASTContractSpec) (selectors : List Nat) : Except String 
   return {
     name := spec.name
     deploy := (← compileConstructor spec.constructor)
+    constructorPayable := spec.constructor.map (·.isPayable) |>.getD false
     functions := functions
     usesMapping := spec.usesMapping
   }

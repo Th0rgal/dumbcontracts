@@ -48,6 +48,12 @@ structure ASTFunctionSpec where
   params : List Param
   /-- Return type. -/
   returnType : ASTReturnType
+  /-- Whether ETH value is accepted for this function. -/
+  isPayable : Bool := false
+  /-- ABI mutability marker (`view`). -/
+  isView : Bool := false
+  /-- ABI mutability marker (`pure`). -/
+  isPure : Bool := false
   /-- Function body as a unified AST statement. -/
   body : Stmt
   deriving Repr
@@ -55,6 +61,8 @@ structure ASTFunctionSpec where
 structure ASTConstructorSpec where
   /-- Constructor parameters (loaded from end of bytecode). -/
   params : List Param
+  /-- Whether ETH value is accepted during deployment. -/
+  isPayable : Bool := false
   /-- Constructor body as a unified AST statement. -/
   body : Stmt
   deriving Repr

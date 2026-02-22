@@ -92,6 +92,15 @@ structure ReservedSlotRange where
   end_ : Nat
   deriving Repr, BEq
 
+structure SlotAliasRange where
+  /-- Inclusive start slot for canonical source slots. -/
+  sourceStart : Nat
+  /-- Inclusive end slot for canonical source slots. -/
+  sourceEnd : Nat
+  /-- Alias slot corresponding to sourceStart (sourceStart + i maps to targetStart + i). -/
+  targetStart : Nat
+  deriving Repr, BEq
+
 /-!
 ### Parameter Types (#180)
 
@@ -269,6 +278,10 @@ structure ContractSpec where
   /-- Storage slots reserved for compatibility policy; compiler rejects field
       canonical/alias write slots that overlap these intervals. -/
   reservedSlotRanges : List ReservedSlotRange := []
+  /-- Slot remap policy for compatibility mirror writes.
+      Any field whose canonical slot is in a source interval also mirrors writes
+      to the corresponding target slot with the same relative offset. -/
+  slotAliasRanges : List SlotAliasRange := []
   constructor : Option ConstructorSpec  -- Deploy-time initialization with params
   functions : List FunctionSpec
   events : List EventDef := []  -- Event definitions (#153)
@@ -2666,6 +2679,36 @@ private def firstDuplicateName (names : List String) : Option String :=
         go (n :: seen) rest
   go [] names
 
+private def dedupNatPreserve (xs : List Nat) : List Nat :=
+  let rec go (seen : List Nat) : List Nat → List Nat
+    | [] => []
+    | x :: rest =>
+        if seen.contains x then
+          go seen rest
+        else
+          x :: go (x :: seen) rest
+  go [] xs
+
+private def slotAliasForSource (sourceSlot : Nat) (range : SlotAliasRange) : Option Nat :=
+  if range.sourceStart <= sourceSlot && sourceSlot <= range.sourceEnd then
+    some (range.targetStart + (sourceSlot - range.sourceStart))
+  else
+    none
+
+private def derivedAliasSlotsForSource (sourceSlot : Nat) (ranges : List SlotAliasRange) : List Nat :=
+  dedupNatPreserve (ranges.filterMap (slotAliasForSource sourceSlot))
+
+private def applySlotAliasRanges (fields : List Field) (ranges : List SlotAliasRange) : List Field :=
+  let rec go (remaining : List Field) (idx : Nat) : List Field :=
+    match remaining with
+    | [] => []
+    | f :: rest =>
+        let sourceSlot := f.slot.getD idx
+        let derivedAliases := derivedAliasSlotsForSource sourceSlot ranges
+        let mergedAliases := dedupNatPreserve (f.aliasSlots ++ derivedAliases)
+        ({ f with aliasSlots := mergedAliases } :: go rest (idx + 1))
+  go fields 0
+
 private def slotInReservedRange (slot : Nat) (range : ReservedSlotRange) : Bool :=
   range.start <= slot && slot <= range.end_
 
@@ -2688,6 +2731,29 @@ private def firstReservedRangeOverlap (ranges : List ReservedSlotRange) :
     | [] => none
     | current :: rest =>
         match rest.zipIdx.find? (fun (other, _) => rangesOverlap current other) with
+        | some (other, innerOffset) => some (outerIdx, current, outerIdx + innerOffset + 1, other)
+        | none => goOuter rest (outerIdx + 1)
+  goOuter ranges 0
+
+private def firstInvalidSlotAliasRange (ranges : List SlotAliasRange) :
+    Option (Nat × SlotAliasRange) :=
+  ranges.zipIdx.findSome? fun (range, idx) =>
+    if range.sourceEnd < range.sourceStart then
+      some (idx, range)
+    else
+      none
+
+private def slotAliasSourcesOverlap (a b : SlotAliasRange) : Bool :=
+  a.sourceStart <= b.sourceEnd && b.sourceStart <= a.sourceEnd
+
+private def firstSlotAliasSourceOverlap (ranges : List SlotAliasRange) :
+    Option (Nat × SlotAliasRange × Nat × SlotAliasRange) :=
+  let rec goOuter (remaining : List SlotAliasRange) (outerIdx : Nat) :
+      Option (Nat × SlotAliasRange × Nat × SlotAliasRange) :=
+    match remaining with
+    | [] => none
+    | current :: rest =>
+        match rest.zipIdx.find? (fun (other, _) => slotAliasSourcesOverlap current other) with
         | some (other, innerOffset) => some (outerIdx, current, outerIdx + innerOffset + 1, other)
         | none => goOuter rest (outerIdx + 1)
   goOuter ranges 0
@@ -2762,6 +2828,17 @@ private def validateErrorDef (err : ErrorDef) : Except String Unit := do
       throw s!"Compilation error: custom error '{err.name}' uses unsupported dynamic parameter type {repr ty} ({issue586Ref}). Use uint256/address/bool/bytes32/bytes parameters."
 
 def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContract := do
+  match firstInvalidSlotAliasRange spec.slotAliasRanges with
+  | some (idx, range) =>
+      throw s!"Compilation error: slotAliasRanges[{idx}] has invalid source interval {range.sourceStart}..{range.sourceEnd} in {spec.name} ({issue623Ref}). slotAliasRanges require sourceStart <= sourceEnd."
+  | none =>
+      pure ()
+  match firstSlotAliasSourceOverlap spec.slotAliasRanges with
+  | some (idxA, a, idxB, b) =>
+      throw s!"Compilation error: slotAliasRanges[{idxA}]={a.sourceStart}..{a.sourceEnd} and slotAliasRanges[{idxB}]={b.sourceStart}..{b.sourceEnd} overlap in source slots in {spec.name} ({issue623Ref}). Ensure slotAliasRanges source intervals are disjoint."
+  | none =>
+      pure ()
+  let fields := applySlotAliasRanges spec.fields spec.slotAliasRanges
   let externalFns := spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)
   let internalFns := spec.functions.filter (·.isInternal)
   for fn in spec.functions do
@@ -2807,7 +2884,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
       throw s!"Compilation error: field '{fieldName}' is a mapping and cannot declare packedBits in {spec.name} ({issue623Ref}). Packed subfields are only supported for value-word fields."
   | none =>
       pure ()
-  match firstFieldWriteSlotConflict spec.fields with
+  match firstFieldWriteSlotConflict fields with
   | some (slot, existingField, conflictingField) =>
       throw s!"Compilation error: storage slot {slot} has overlapping write ranges for '{existingField}' and '{conflictingField}' in {spec.name} ({issue623Ref}). Ensure full-slot writes are unique and packed bit ranges are disjoint per slot."
   | none =>
@@ -2822,7 +2899,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
       throw s!"Compilation error: reserved slot ranges reservedSlotRanges[{idxA}]={a.start}..{a.end_} and reservedSlotRanges[{idxB}]={b.start}..{b.end_} overlap in {spec.name} ({issue623Ref}). Ensure reserved ranges are disjoint."
   | none =>
       pure ()
-  match firstReservedSlotWriteConflict spec.fields spec.reservedSlotRanges with
+  match firstReservedSlotWriteConflict fields spec.reservedSlotRanges with
   | some (slot, ownerName, rangeIdx, range) =>
       throw s!"Compilation error: field write slot {slot} ('{ownerName}') overlaps reservedSlotRanges[{rangeIdx}]={range.start}..{range.end_} in {spec.name} ({issue623Ref}). Adjust field slot/aliasSlots or reservedSlotRanges."
   | none =>
@@ -2850,19 +2927,19 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
       throw s!"Selector collision in {spec.name}: {dup} assigned to {nameStr}"
   | none => pure ()
   let functions ← (externalFns.zip selectors).mapM fun (fnSpec, sel) =>
-    compileFunctionSpec spec.fields spec.events spec.errors sel fnSpec
+    compileFunctionSpec fields spec.events spec.errors sel fnSpec
   -- Compile internal functions as Yul function definitions (#181)
-  let internalFuncDefs ← internalFns.mapM (compileInternalFunction spec.fields spec.events spec.errors)
-  let fallbackEntrypoint ← fallbackSpec.mapM (compileSpecialEntrypoint spec.fields spec.events spec.errors)
-  let receiveEntrypoint ← receiveSpec.mapM (compileSpecialEntrypoint spec.fields spec.events spec.errors)
+  let internalFuncDefs ← internalFns.mapM (compileInternalFunction fields spec.events spec.errors)
+  let fallbackEntrypoint ← fallbackSpec.mapM (compileSpecialEntrypoint fields spec.events spec.errors)
+  let receiveEntrypoint ← receiveSpec.mapM (compileSpecialEntrypoint fields spec.events spec.errors)
   return {
     name := spec.name
-    deploy := (← compileConstructor spec.fields spec.events spec.errors spec.constructor)
+    deploy := (← compileConstructor fields spec.events spec.errors spec.constructor)
     constructorPayable := spec.constructor.map (·.isPayable) |>.getD false
     functions := functions
     fallbackEntrypoint := fallbackEntrypoint
     receiveEntrypoint := receiveEntrypoint
-    usesMapping := usesMapping spec.fields
+    usesMapping := usesMapping fields
     internalFunctions := internalFuncDefs
   }
 

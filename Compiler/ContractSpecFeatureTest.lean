@@ -1274,8 +1274,8 @@ private def featureSpec : ContractSpec := {
       let rendered := Yul.render (emitYul ir)
       assertContains "bytes custom error ABI encoding" rendered
         ["mstore(4, __err_tail)",
-         "let __err_arg0_len := payload_length",
-         "calldatacopy(add(__err_arg0_dst, 32), payload_data_offset, __err_arg0_len)",
+         "let __err_arg0_len := calldataload(add(4, payload_offset))",
+         "calldatacopy(add(__err_arg0_dst, 32), add(add(4, payload_offset), 32), __err_arg0_len)",
          "let __err_arg0_padded := and(add(__err_arg0_len, 31), not(31))",
          "revert(0, add(4, __err_tail))"]
 
@@ -1299,11 +1299,68 @@ private def featureSpec : ContractSpec := {
   }
   match compile bytesCustomErrorArgShapeSpec [1] with
   | .error err =>
-      if !(contains err "expects bytes arg to reference a bytes parameter" && contains err "Issue #586") then
+      if !(contains err "expects Compiler.ContractSpec.ParamType.bytes arg to reference a matching parameter" && contains err "Issue #586") then
         throw (IO.userError s!"✗ bytes custom error arg-shape diagnostic mismatch: {err}")
       IO.println "✓ bytes custom error arg-shape diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected invalid bytes custom error arg shape to fail compilation")
+
+#eval! do
+  let tupleCustomErrorSpec : ContractSpec := {
+    name := "TupleCustomErrorSupported"
+    fields := []
+    constructor := none
+    errors := [
+      { name := "TupleErr"
+        params := [ParamType.tuple [ParamType.uint256, ParamType.address]]
+      }
+    ]
+    functions := [
+      { name := "bad"
+        params := [{ name := "payload", ty := ParamType.tuple [ParamType.uint256, ParamType.address] }]
+        returnType := none
+        body := [Stmt.revertError "TupleErr" [Expr.param "payload"]]
+      }
+    ]
+  }
+  match compile tupleCustomErrorSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected tuple custom error support to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "tuple custom error ABI encoding" rendered
+        ["mstore(4, payload_0)",
+         "mstore(36, and(payload_1,",
+         "revert(0, add(4, __err_tail))"]
+
+#eval! do
+  let arrayCustomErrorSpec : ContractSpec := {
+    name := "ArrayCustomErrorSupported"
+    fields := []
+    constructor := none
+    errors := [
+      { name := "ArrayErr"
+        params := [ParamType.array ParamType.uint256]
+      }
+    ]
+    functions := [
+      { name := "bad"
+        params := [{ name := "values", ty := ParamType.array ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.revertError "ArrayErr" [Expr.param "values"]]
+      }
+    ]
+  }
+  match compile arrayCustomErrorSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected dynamic array custom error support to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "dynamic array custom error ABI encoding" rendered
+        ["mstore(4, __err_tail)",
+         "let __err_arg0_arr_len :=",
+         "let __err_arg0_arr_byte_len := mul(__err_arg0_arr_len, 32)",
+         "revert(0, add(4, __err_tail))"]
 
 #eval! do
   let unindexedBytesEventSpec : ContractSpec := {

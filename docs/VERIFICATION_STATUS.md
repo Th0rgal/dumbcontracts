@@ -307,7 +307,7 @@ Implemented:
 
 Current diagnostic coverage in compiler:
 - Non-payable external functions and constructors now emit a runtime `msg.value == 0` guard, while explicit `isPayable := true` enables `Expr.msgValue` usage.
-- Custom errors are now first-class declarations (`errors`) with `Stmt.requireError`/`Stmt.revertError` emission for static payload types (`uint256`, `address`, `bool`, `bytes32`) plus `bytes` payloads when sourced from direct bytes parameters. Other dynamic custom error payloads still fail with explicit guidance.
+- Custom errors are now first-class declarations (`errors`) with `Stmt.requireError`/`Stmt.revertError` ABI payload emission for scalar payloads (`uint256`, `address`, `bool`, `bytes32`) and direct-parameter composite/dynamic payloads (`bytes`, tuple, fixed-array, array; including nested dynamic composites). Composite/dynamic args still fail fast with explicit guidance when not sourced from direct `Expr.param` references.
 - `fallback` and `receive` are now modeled as first-class entrypoints in dispatch (empty-calldata routing to `receive`, unmatched selector routing to `fallback`) with compile-time shape checks (`receive` must be payable, both must be parameterless and non-returning).
 - `ContractSpec` now provides first-class low-level call expressions (`Expr.call`, `Expr.staticcall`, `Expr.delegatecall`) with explicit gas/target/value/input/output operands and deterministic direct lowering to Yul call opcodes.
 - `ContractSpec` now provides first-class returndata primitives (`Expr.returndataSize`, `Stmt.returndataCopy`, `Stmt.revertReturndata`) so revert-data bubbling can be expressed without raw interop builtin calls.

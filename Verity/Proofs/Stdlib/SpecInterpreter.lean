@@ -194,6 +194,9 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.returndataSize =>
       -- Returndata buffers are not modeled in the scalar SpecInterpreter yet.
       0
+  | Expr.returndataOptionalBoolAt _outOffset =>
+      -- Returndata buffers are not modeled in the scalar SpecInterpreter yet.
+      0
   | Expr.localVar name =>
       ctx.localVars.lookup name |>.getD 0
   | Expr.externalCall name args =>

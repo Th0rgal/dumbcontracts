@@ -215,6 +215,9 @@ inductive Expr
   | delegatecall (gas target inOffset inSize outOffset outSize : Expr)
   /-- Size in bytes of returndata from the most recent external call frame. -/
   | returndataSize
+  /-- ERC20-style optional bool return helper:
+      true iff `returndatasize() == 0 || (returndatasize() == 32 && mload(outOffset) == 1)`. -/
+  | returndataOptionalBoolAt (outOffset : Expr)
   | localVar (name : String)  -- Reference to local variable
   | externalCall (name : String) (args : List Expr)  -- External function call (linked at compile time)
   | internalCall (functionName : String) (args : List Expr)  -- Internal function call (#181)
@@ -524,6 +527,16 @@ def compileExpr (fields : List Field)
         ← compileExpr fields dynamicSource outSize
       ])
   | Expr.returndataSize => pure (YulExpr.call "returndatasize" [])
+  | Expr.returndataOptionalBoolAt outOffset => do
+      let outOffsetExpr ← compileExpr fields dynamicSource outOffset
+      let rdSize := YulExpr.call "returndatasize" []
+      pure (YulExpr.call "or" [
+        YulExpr.call "eq" [rdSize, YulExpr.lit 0],
+        YulExpr.call "and" [
+          YulExpr.call "eq" [rdSize, YulExpr.lit 32],
+          YulExpr.call "eq" [YulExpr.call "mload" [outOffsetExpr], YulExpr.lit 1]
+        ]
+      ])
   | Expr.localVar name => pure (YulExpr.ident name)
   | Expr.externalCall name args => do
       let argExprs ← compileExprList fields dynamicSource args
@@ -1244,6 +1257,8 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
       validateInteropExpr context outSize
   | Expr.returndataSize =>
       pure ()
+  | Expr.returndataOptionalBoolAt outOffset =>
+      validateInteropExpr context outOffset
   | Expr.externalCall name args => do
       if isInteropBuiltinCallName name then
         unsupportedInteropCallError context name
@@ -1380,6 +1395,8 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName inSize
       validateInternalCallShapesInExpr functions callerName outOffset
       validateInternalCallShapesInExpr functions callerName outSize
+  | Expr.returndataOptionalBoolAt outOffset =>
+      validateInternalCallShapesInExpr functions callerName outOffset
   | Expr.mapping _ key =>
       validateInternalCallShapesInExpr functions callerName key
   | Expr.mapping2 _ key1 key2 => do

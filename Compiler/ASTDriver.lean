@@ -26,7 +26,7 @@ open Compiler
 open Compiler.Yul
 open Compiler.ASTSpecs
 open Compiler.ASTCompile (compileStmt)
-open Compiler.ContractSpec (ParamType Param genParamLoads paramTypeToSolidityString)
+open Compiler.ContractSpec (ParamType Param genParamLoads paramTypeToSolidityString addressMask)
 open Compiler.Linker
 open Compiler.Hex
 open Compiler.Selector (runKeccak)
@@ -78,7 +78,7 @@ private def genConstructorArgLoads (params : List Param) : List YulStmt :=
       match param.ty with
       | ParamType.address =>
         [YulStmt.let_ param.name (YulExpr.call "and" [
-          load, YulExpr.hex ((2^160) - 1)
+          load, YulExpr.hex addressMask
         ])]
       | ParamType.bool =>
         [YulStmt.let_ param.name (YulExpr.call "iszero" [

@@ -86,6 +86,8 @@ private def revertReturnValue (msg : String) : Nat :=
   if msg.isEmpty then 0 else revertSelectorWord
 
 -- Helper: 160-bit address modulus (EVM address size)
+-- Canonical mask: Compiler.ContractSpec.addressMask ((2^160) - 1)
+-- Duplicated here as modulus (2^160) to avoid importing ContractSpec.
 private def addressModulus : Nat :=
   2 ^ 160
 

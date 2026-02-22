@@ -547,7 +547,7 @@ def ownedIRContract : IRContract :=
       YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit 32]),
       YulStmt.let_ "arg0" (YulExpr.call "and" [
         YulExpr.call "mload" [YulExpr.lit 0],
-        YulExpr.hex ((2^160) - 1)
+        YulExpr.hex addressMask
       ]),
       YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "arg0"])
     ]
@@ -559,7 +559,7 @@ def ownedIRContract : IRContract :=
         body := [
           YulStmt.let_ "newOwner" (YulExpr.call "and" [
             YulExpr.call "calldataload" [YulExpr.lit 4],
-            YulExpr.hex ((2^160) - 1)
+            YulExpr.hex addressMask
           ]),
           YulStmt.if_
             (YulExpr.call "iszero" [
@@ -656,7 +656,7 @@ def ownedCounterIRContract : IRContract :=
       YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit 32]),
       YulStmt.let_ "arg0" (YulExpr.call "and" [
         YulExpr.call "mload" [YulExpr.lit 0],
-        YulExpr.hex ((2^160) - 1)
+        YulExpr.hex addressMask
       ]),
       YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "arg0"])
     ]
@@ -720,7 +720,7 @@ def ownedCounterIRContract : IRContract :=
         body := [
           YulStmt.let_ "newOwner" (YulExpr.call "and" [
             YulExpr.call "calldataload" [YulExpr.lit 4],
-            YulExpr.hex ((2^160) - 1)
+            YulExpr.hex addressMask
           ]),
           YulStmt.if_
             (YulExpr.call "iszero" [
@@ -953,7 +953,7 @@ def ledgerIRContract : IRContract :=
         body := [
           YulStmt.let_ "to" (YulExpr.call "and" [
             YulExpr.call "calldataload" [YulExpr.lit 4],
-            YulExpr.hex ((2^160) - 1)
+            YulExpr.hex addressMask
           ]),
           YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 36]),
           YulStmt.let_ "senderBal" (YulExpr.call "sload" [
@@ -983,7 +983,7 @@ def ledgerIRContract : IRContract :=
         body := [
           YulStmt.let_ "addr" (YulExpr.call "and" [
             YulExpr.call "calldataload" [YulExpr.lit 4],
-            YulExpr.hex ((2^160) - 1)
+            YulExpr.hex addressMask
           ]),
           YulStmt.expr (YulExpr.call "mstore" [
             YulExpr.lit 0,
@@ -1149,7 +1149,7 @@ def simpleTokenIRContract : IRContract :=
       YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit 32]),
       YulStmt.let_ "arg0" (YulExpr.call "and" [
         YulExpr.call "mload" [YulExpr.lit 0],
-        YulExpr.hex ((2^160) - 1)
+        YulExpr.hex addressMask
       ]),
       YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 0, YulExpr.ident "arg0"]),
       YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit 2, YulExpr.lit 0])
@@ -1162,7 +1162,7 @@ def simpleTokenIRContract : IRContract :=
         body := [
           YulStmt.let_ "to" (YulExpr.call "and" [
             YulExpr.call "calldataload" [YulExpr.lit 4],
-            YulExpr.hex ((2^160) - 1)
+            YulExpr.hex addressMask
           ]),
           YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 36]),
           YulStmt.if_
@@ -1192,7 +1192,7 @@ def simpleTokenIRContract : IRContract :=
         body := [
           YulStmt.let_ "to" (YulExpr.call "and" [
             YulExpr.call "calldataload" [YulExpr.lit 4],
-            YulExpr.hex ((2^160) - 1)
+            YulExpr.hex addressMask
           ]),
           YulStmt.let_ "amount" (YulExpr.call "calldataload" [YulExpr.lit 36]),
           YulStmt.let_ "senderBal" (YulExpr.call "sload" [
@@ -1222,7 +1222,7 @@ def simpleTokenIRContract : IRContract :=
         body := [
           YulStmt.let_ "addr" (YulExpr.call "and" [
             YulExpr.call "calldataload" [YulExpr.lit 4],
-            YulExpr.hex ((2^160) - 1)
+            YulExpr.hex addressMask
           ]),
           YulStmt.expr (YulExpr.call "mstore" [
             YulExpr.lit 0,

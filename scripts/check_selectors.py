@@ -9,11 +9,13 @@ Checks:
 5) Cross-check: shared contracts have identical signatures in both spec sets.
 6) No function name uses the reserved ``internal_`` prefix (Yul namespace collision).
 7) Error(string) selector constant sync between ContractSpec and Interpreter.
+8) Address mask constant sync between ContractSpec and Interpreter.
 """
 
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Iterator, List, Tuple
@@ -514,6 +516,51 @@ def check_error_selector_sync() -> List[str]:
     return errors
 
 
+# ---------------------------------------------------------------------------
+# Address mask constant sync
+# ---------------------------------------------------------------------------
+
+_ADDRESS_MASK: int = (2**160) - 1
+
+_ADDRESS_MASK_RE = re.compile(
+    r"def\s+addressMask\s*:\s*Nat\s*:=\s*\(2\s*\^\s*160\)\s*-\s*1"
+)
+_ADDRESS_MODULUS_RE = re.compile(
+    r"def\s+addressModulus\s*:\s*Nat\s*:=\s*\n?\s*2\s*\^\s*160"
+)
+
+
+def check_address_mask_sync() -> List[str]:
+    """Verify the address mask/modulus constants are consistent across files.
+
+    Checks that:
+    - ContractSpec.addressMask exists (canonical definition)
+    - Interpreter.addressModulus == 2^160 (matches addressMask + 1)
+    """
+    errors: List[str] = []
+
+    if not CONTRACT_SPEC_FILE.exists():
+        errors.append(f"Missing {CONTRACT_SPEC_FILE}")
+        return errors
+
+    spec_text = CONTRACT_SPEC_FILE.read_text(encoding="utf-8")
+    if not _ADDRESS_MASK_RE.search(spec_text):
+        errors.append(
+            "ContractSpec.lean: missing addressMask definition "
+            "(expected: def addressMask : Nat := (2 ^ 160) - 1)"
+        )
+
+    if INTERPRETER_FILE.exists():
+        interp_text = INTERPRETER_FILE.read_text(encoding="utf-8")
+        if not _ADDRESS_MODULUS_RE.search(interp_text):
+            errors.append(
+                "Interpreter.lean: missing or changed addressModulus definition "
+                "(expected: def addressModulus : Nat := 2 ^ 160)"
+            )
+
+    return errors
+
+
 def main() -> None:
     if not SPEC_FILE.exists():
         die(f"Missing specs file: {SPEC_FILE}")
@@ -546,10 +593,18 @@ def main() -> None:
     if yul_dir.exists():
         errors.extend(check_yul_selectors(specs, yul_label, yul_dir))
 
-    # Validate yul-ast/ against AST specs (or fall back to ContractSpec).
+    # Validate yul-ast/ against AST specs (fall back to ContractSpec with warning).
     ast_label, ast_dir = YUL_DIR_AST
     if ast_dir.exists():
-        ast_check_specs = ast_specs if ast_specs else specs
+        if ast_specs:
+            ast_check_specs = ast_specs
+        else:
+            print(
+                "WARNING: ASTSpecs.lean missing/empty; validating yul-ast/ "
+                "against ContractSpec specs instead",
+                file=sys.stderr,
+            )
+            ast_check_specs = specs
         errors.extend(check_yul_selectors(ast_check_specs, ast_label, ast_dir))
         errors.extend(check_unique_selectors(ast_specs))
         errors.extend(check_reserved_prefix_collisions(ast_specs))
@@ -560,6 +615,9 @@ def main() -> None:
 
     # Validate Error(string) selector constant consistency.
     errors.extend(check_error_selector_sync())
+
+    # Validate address mask constant consistency.
+    errors.extend(check_address_mask_sync())
 
     report_errors(errors, "Selector checks failed")
     print("Selector checks passed.")

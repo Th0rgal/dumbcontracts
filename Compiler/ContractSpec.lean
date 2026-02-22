@@ -441,6 +441,11 @@ def wordFromBytes (bs : List UInt8) : Nat :=
     Used in `revertWithMessage` (compiler) and concrete IR proofs. -/
 def errorStringSelectorWord : Nat := 0x08c379a0 * (2 ^ 224)
 
+/-- 160-bit address mask used to normalize EVM addresses (bitwise AND).
+    EVM addresses are 20 bytes; calldataload reads a full 32-byte word,
+    so the upper 96 bits must be cleared. -/
+def addressMask : Nat := (2 ^ 160) - 1
+
 def revertWithMessage (message : String) : List YulStmt :=
   let bytes := bytesFromString message
   let len := bytes.length
@@ -825,7 +830,7 @@ private def validateEventArgShapesInFunction (spec : FunctionSpec) (events : Lis
 
 private def normalizeEventWord (ty : ParamType) (expr : YulExpr) : YulExpr :=
   match ty with
-  | ParamType.address => YulExpr.call "and" [expr, YulExpr.hex ((2^160) - 1)]
+  | ParamType.address => YulExpr.call "and" [expr, YulExpr.hex addressMask]
   | ParamType.bool => yulToBool expr
   | _ => expr
 
@@ -1257,7 +1262,7 @@ private def encodeStaticCustomErrorArg (errorName : String) (ty : ParamType) (ar
   | ParamType.uint256 | ParamType.bytes32 =>
       pure argExpr
   | ParamType.address =>
-      pure (YulExpr.call "and" [argExpr, YulExpr.hex ((2^160) - 1)])
+      pure (YulExpr.call "and" [argExpr, YulExpr.hex addressMask])
   | ParamType.bool =>
       pure (yulToBool argExpr)
   | _ =>
@@ -2134,7 +2139,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
               | _ =>
                   throw s!"Compilation error: indexed static composite event param '{p.name}' in event '{eventName}' currently requires direct parameter reference ({issue586Ref})."
         | ParamType.address =>
-            pure ([], YulExpr.call "and" [argExpr, YulExpr.hex ((2^160) - 1)])
+            pure ([], YulExpr.call "and" [argExpr, YulExpr.hex addressMask])
         | ParamType.bool =>
             pure ([], yulToBool argExpr)
         | _ =>
@@ -2258,7 +2263,7 @@ private def genScalarLoad
   | ParamType.address =>
       [YulStmt.let_ name (YulExpr.call "and" [
         load,
-        YulExpr.hex ((2^160) - 1)
+        YulExpr.hex addressMask
       ])]
   | ParamType.bool =>
       [YulStmt.let_ name (YulExpr.call "iszero" [YulExpr.call "iszero" [

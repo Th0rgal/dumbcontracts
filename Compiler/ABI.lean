@@ -109,8 +109,8 @@ private def renderConstructorEntry (ctor : ConstructorSpec) : String :=
 
 /-- Render an ABI entry for a special entrypoint (fallback/receive).
     Uses `isInteropEntrypointName` so this stays in sync with selector filtering.
-    The caller (`emitContractABIJson`) already filters to `isInteropEntrypointName`
-    entries, so this always returns `some` for valid input. -/
+    Returns `some` for special entrypoints, `none` otherwise (defensive guard
+    even though the caller pre-filters via `isInteropEntrypointName`). -/
 private def renderSpecialEntry (fn : FunctionSpec) : Option String :=
   if !isInteropEntrypointName fn.name then
     none

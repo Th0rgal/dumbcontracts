@@ -201,4 +201,17 @@ private def badContractIdentifierSpec : ASTContractSpec := {
   | .ok _ =>
     throw (IO.userError "✗ expected invalid contract identifier to be rejected")
 
+#eval! do
+  let rendered := emitASTContractABIJson simpleTokenSpec
+  assertContains "AST ABI includes constructor and function entries" rendered
+    ["\"type\": \"constructor\"",
+     "\"name\": \"mint\"",
+     "\"name\": \"transfer\"",
+     "\"name\": \"balanceOf\""]
+  assertContains "AST ABI includes typed returns" rendered
+    ["\"name\": \"owner\"",
+     "\"outputs\": [{\"name\": \"\", \"type\": \"address\"}]",
+     "\"name\": \"totalSupply\"",
+     "\"outputs\": [{\"name\": \"\", \"type\": \"uint256\"}]"]
+
 end Compiler.ASTDriverTest

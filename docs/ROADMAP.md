@@ -88,6 +88,10 @@ Recent progress for custom errors (`#586`):
 - `Stmt.requireError` / `Stmt.revertError` now support ABI encoding for tuple/fixed-array/array/bytes payloads (including nested dynamic composites) when arguments are direct `Expr.param` references.
 - Static scalar payload args remain expression-friendly (`uint256`, `address`, `bool`, `bytes32`), while composite/dynamic payload args fail fast with issue-linked diagnostics when not provided as direct parameter references.
 
+Recent progress for ABI JSON artifact generation (`#688`):
+- `verity-compiler --ast --abi-output <dir>` now emits one `<Contract>.abi.json` file per unified AST spec, using an AST→ABI bridge that reuses the shared ABI renderer.
+- The previous AST-mode CLI rejection for `--abi-output` has been removed, so ContractSpec and AST compilation paths now have parity for ABI artifact emission.
+
 Delivery policy for unsupported features:
 1. Compiler diagnostics must identify the exact unsupported construct.
 2. Error text must suggest the nearest currently-supported pattern.

@@ -19,6 +19,7 @@ import Compiler.Yul.PrettyPrint
 import Compiler.Linker
 import Compiler.Selector
 import Compiler.Hex
+import Compiler.ABI
 
 namespace Compiler.ASTDriver
 
@@ -30,6 +31,7 @@ open Compiler.ContractSpec (ParamType Param genParamLoads paramTypeToSolidityStr
 open Compiler.Linker
 open Compiler.Hex
 open Compiler.Selector (runKeccak)
+open Compiler.ABI
 
 /-!
 ## Selector Computation
@@ -52,6 +54,38 @@ def computeSelectors (spec : ASTContractSpec) : IO (List Nat) := do
   let sigs := spec.functions.map functionSignature
   runKeccak sigs
 
+private def astReturnTypeToOutputs : ASTReturnType → List ParamType
+  | .uint256 => [ParamType.uint256]
+  | .address => [ParamType.address]
+  | .unit => []
+
+/-- Build a minimal ContractSpec view of an AST spec for ABI rendering.
+    Body/storage metadata is intentionally omitted because ABI emission needs
+    only constructor + external function signatures and return types. -/
+def astSpecToContractSpecForABI (spec : ASTContractSpec) : Compiler.ContractSpec.ContractSpec :=
+  let ctor :=
+    spec.constructor.map (fun c =>
+      { params := c.params
+        isPayable := false
+        body := [] })
+  let fns :=
+    spec.functions.map (fun f =>
+      { name := f.name
+        params := f.params
+        returnType := none
+        returns := astReturnTypeToOutputs f.returnType
+        body := [] })
+  { name := spec.name
+    fields := []
+    constructor := ctor
+    functions := fns
+    events := []
+    errors := []
+    externals := [] }
+
+def emitASTContractABIJson (spec : ASTContractSpec) : String :=
+  Compiler.ABI.emitContractABIJson (astSpecToContractSpecForABI spec)
+
 /-!
 ## Constructor Compilation
 
@@ -72,7 +106,7 @@ private def genConstructorArgLoads (params : List Param) : List YulStmt :=
       YulStmt.expr (YulExpr.call "codecopy" [
         YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.lit totalBytes])
     ]
-    let loadArgs := params.enum.flatMap fun (idx, param) =>
+    let loadArgs := params.zipIdx.flatMap fun (param, idx) =>
       let offset := idx * 32
       let load := YulExpr.call "mload" [YulExpr.lit offset]
       match param.ty with
@@ -309,8 +343,12 @@ def compileAllASTWithOptions
     (verbose : Bool := false)
     (libraryPaths : List String := [])
     (options : YulEmitOptions := {})
-    (patchReportPath : Option String := none) : IO Unit := do
+    (patchReportPath : Option String := none)
+    (abiOutDir : Option String := none) : IO Unit := do
   IO.FS.createDirAll outDir
+  match abiOutDir with
+  | some dir => IO.FS.createDirAll dir
+  | none => pure ()
 
   if verbose then
     IO.println "Using unified AST compilation path"
@@ -320,6 +358,12 @@ def compileAllASTWithOptions
 
   let mut patchRows : List (String × Yul.PatchPassReport) := []
   for spec in ASTSpecs.allSpecs do
+    match abiOutDir with
+    | some dir =>
+        Compiler.ABI.writeContractABIFile dir (astSpecToContractSpecForABI spec)
+        if verbose then
+          IO.println s!"✓ Wrote ABI {dir}/{spec.name}.abi.json"
+    | none => pure ()
     let selectors ← computeSelectors spec
     match compileSpec spec selectors with
     | .ok contract =>
@@ -342,6 +386,6 @@ def compileAllASTWithOptions
     IO.println s!"Generated {ASTSpecs.allSpecs.length} contracts in {outDir}"
 
 def compileAllAST (outDir : String) (verbose : Bool := false) (libraryPaths : List String := []) : IO Unit := do
-  compileAllASTWithOptions outDir verbose libraryPaths {} none
+  compileAllASTWithOptions outDir verbose libraryPaths {} none none
 
 end Compiler.ASTDriver

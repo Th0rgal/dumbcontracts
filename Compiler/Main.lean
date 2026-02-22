@@ -99,9 +99,7 @@ def main (args : List String) : IO Unit := do
       }
     }
     if cfg.useAST then
-      if cfg.abiOutDir.isSome then
-        throw (IO.userError "--abi-output is currently supported only for ContractSpec mode (omit --ast).")
-      Compiler.ASTDriver.compileAllASTWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath
+      Compiler.ASTDriver.compileAllASTWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
     else
       compileAllWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
   catch e =>

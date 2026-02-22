@@ -451,6 +451,11 @@ def addressMask : Nat := (2 ^ 160) - 1
     the selector, and error hashes are left-shifted by 224 bits to pack them. -/
 def selectorShift : Nat := 224
 
+/-- Solidity free memory pointer address (0x40 = 64).
+    By convention, `mload(0x40)` returns the next available memory offset.
+    Used in custom error emission and event encoding to allocate scratch space. -/
+def freeMemoryPointer : Nat := 0x40
+
 def revertWithMessage (message : String) : List YulStmt :=
   let bytes := bytesFromString message
   let len := bytes.length
@@ -1279,7 +1284,7 @@ private def revertWithCustomError (dynamicSource : DynamicDataSource)
   if errorDef.params.length != args.length || sourceArgs.length != args.length then
     throw s!"Compilation error: custom error '{errorDef.name}' expects {errorDef.params.length} args, got {args.length}"
   let sigBytes := bytesFromString (errorSignature errorDef)
-  let storePtr := YulStmt.let_ "__err_ptr" (YulExpr.call "mload" [YulExpr.lit 0x40])
+  let storePtr := YulStmt.let_ "__err_ptr" (YulExpr.call "mload" [YulExpr.lit freeMemoryPointer])
   let sigStores := (chunkBytes32 sigBytes).zipIdx.map fun (chunk, idx) =>
     YulStmt.expr (YulExpr.call "mstore" [
       YulExpr.call "add" [YulExpr.ident "__err_ptr", YulExpr.lit (idx * 32)],
@@ -1721,7 +1726,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         throw s!"Compilation error: event '{eventName}' has {indexed.length} indexed params; max is 3"
       let sig := eventSignature eventDef
       let sigBytes := bytesFromString sig
-      let freeMemPtr := YulExpr.call "mload" [YulExpr.lit 0x40]
+      let freeMemPtr := YulExpr.call "mload" [YulExpr.lit freeMemoryPointer]
       let storePtr := YulStmt.let_ "__evt_ptr" freeMemPtr
       let sigStores := (chunkBytes32 sigBytes).zipIdx.map fun (chunk, idx) =>
         YulStmt.expr (YulExpr.call "mstore" [
@@ -2439,7 +2444,7 @@ def compileConstructor (fields : List Field) (events : List EventDef) (errors : 
     return argLoads ++ bodyChunks.flatten
 
 -- Main compilation function
--- SAFETY REQUIREMENTS (enforced by #guard in Specs.lean):
+-- SAFETY REQUIREMENTS (enforced at runtime by `compile` and at CI-time by check_selectors.py):
 --   1. selectors.length == spec.functions.length (external functions only)
 --   2. selectors[i] matches the Solidity signature of spec.functions[i]
 -- WARNING: Order matters! If selector list is reordered but function list isn't,
@@ -2504,6 +2509,21 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   match firstDuplicateName (spec.errors.map (·.name)) with
   | some dup =>
       throw s!"Compilation error: duplicate custom error declaration '{dup}'"
+  | none =>
+      pure ()
+  match firstDuplicateName (spec.fields.map (·.name)) with
+  | some dup =>
+      throw s!"Compilation error: duplicate field name '{dup}' in {spec.name}"
+  | none =>
+      pure ()
+  match firstDuplicateName (spec.events.map (·.name)) with
+  | some dup =>
+      throw s!"Compilation error: duplicate event name '{dup}' in {spec.name}"
+  | none =>
+      pure ()
+  match firstDuplicateName (spec.externals.map (·.name)) with
+  | some dup =>
+      throw s!"Compilation error: duplicate external declaration '{dup}' in {spec.name}"
   | none =>
       pure ()
   for err in spec.errors do

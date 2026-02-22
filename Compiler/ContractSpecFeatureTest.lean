@@ -2199,6 +2199,107 @@ private def featureSpec : ContractSpec := {
         ["mappingSlot(9, __compat_key)", "mappingSlot(21, __compat_key)"]
 
 #eval! do
+  let slotAliasRangeMirrorWriteSpec : ContractSpec := {
+    name := "SlotAliasRangeMirrorWriteSpec"
+    fields := [
+      { name := "a", ty := FieldType.uint256, slot := some 8 },
+      { name := "balances", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9 }
+    ]
+    slotAliasRanges := [{ sourceStart := 8, sourceEnd := 11, targetStart := 20 }]
+    constructor := none
+    functions := [
+      { name := "setA"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStorage "a" (Expr.param "x"), Stmt.stop]
+      },
+      { name := "setBal"
+        params := [{ name := "who", ty := ParamType.address }, { name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setMapping "balances" (Expr.param "who") (Expr.param "x"), Stmt.stop]
+      }
+    ]
+  }
+  match compile slotAliasRangeMirrorWriteSpec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ slot alias range mirror-write compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "slotAliasRanges mirror setStorage writes" rendered
+        ["sstore(8, __compat_value)", "sstore(20, __compat_value)"]
+      assertContains "slotAliasRanges mirror setMapping writes" rendered
+        ["mappingSlot(9, __compat_key)", "mappingSlot(21, __compat_key)"]
+
+#eval! do
+  let invalidSlotAliasRangeSpec : ContractSpec := {
+    name := "InvalidSlotAliasRangeSpec"
+    fields := [{ name := "x", ty := FieldType.uint256, slot := some 8 }]
+    slotAliasRanges := [{ sourceStart := 11, sourceEnd := 8, targetStart := 20 }]
+    constructor := none
+    functions := [
+      { name := "noop"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile invalidSlotAliasRangeSpec [1] with
+  | .error err =>
+      if !(contains err "slotAliasRanges[0] has invalid source interval 11..8" && contains err "Issue #623") then
+        throw (IO.userError s!"✗ invalid slotAliasRanges diagnostic mismatch: {err}")
+      IO.println "✓ invalid slotAliasRanges diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected invalid slotAliasRanges to fail compilation")
+
+#eval! do
+  let overlappingSlotAliasSourceSpec : ContractSpec := {
+    name := "OverlappingSlotAliasSourceSpec"
+    fields := [{ name := "x", ty := FieldType.uint256, slot := some 8 }]
+    slotAliasRanges := [
+      { sourceStart := 8, sourceEnd := 11, targetStart := 20 },
+      { sourceStart := 11, sourceEnd := 14, targetStart := 40 }
+    ]
+    constructor := none
+    functions := [
+      { name := "noop"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile overlappingSlotAliasSourceSpec [1] with
+  | .error err =>
+      if !(contains err "slotAliasRanges[0]=8..11 and slotAliasRanges[1]=11..14 overlap in source slots" && contains err "Issue #623") then
+        throw (IO.userError s!"✗ overlapping slotAliasRanges source diagnostic mismatch: {err}")
+      IO.println "✓ overlapping slotAliasRanges source diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected overlapping slotAliasRanges source intervals to fail compilation")
+
+#eval! do
+  let slotAliasTargetConflictSpec : ContractSpec := {
+    name := "SlotAliasTargetConflictSpec"
+    fields := [
+      { name := "x", ty := FieldType.uint256, slot := some 8 },
+      { name := "y", ty := FieldType.uint256, slot := some 9 }
+    ]
+    slotAliasRanges := [
+      { sourceStart := 8, sourceEnd := 8, targetStart := 20 },
+      { sourceStart := 9, sourceEnd := 9, targetStart := 20 }
+    ]
+    constructor := none
+    functions := [{ name := "noop", params := [], returnType := none, body := [Stmt.stop] }]
+  }
+  match compile slotAliasTargetConflictSpec [1] with
+  | .error err =>
+      if !(contains err "storage slot 20 has overlapping write ranges for 'x.aliasSlots[0]' and 'y.aliasSlots[0]'" && contains err "Issue #623") then
+        throw (IO.userError s!"✗ slotAliasRanges target conflict diagnostic mismatch: {err}")
+      IO.println "✓ slotAliasRanges target conflict diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected slotAliasRanges target conflict to fail compilation")
+
+#eval! do
   let packedSubfieldSpec : ContractSpec := {
     name := "PackedSubfieldSpec"
     fields := [

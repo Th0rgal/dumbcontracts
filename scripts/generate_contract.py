@@ -724,19 +724,21 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
 
         proof_stubs.append(f"-- TODO: Prove {fn.name} meets its specification")
         if is_getter:
-            # Getter pattern: extract return value with .fst (see retrieve_meets_spec, getBalance_meets_spec)
+            # Getter pattern: branch on full ContractResult to avoid unsafe .fst extraction on revert.
             theorem_params = f"(s : ContractState) {lean_params}" if lean_params else "(s : ContractState)"
             proof_stubs.append(f"theorem {fn.name}_meets_spec {theorem_params} :")
-            proof_stubs.append(f"  let result := (({fn_call}).run s).fst")
             spec_call = f"{fn.name}_spec {spec_args} result s" if spec_args else f"{fn.name}_spec result s"
-            proof_stubs.append(f"  {spec_call} := by")
+            proof_stubs.append(f"  match ({fn_call}).run s with")
+            proof_stubs.append(f"  | ContractResult.success result _ => {spec_call}")
+            proof_stubs.append("  | ContractResult.revert _ _ => True := by")
         else:
-            # Mutator pattern: extract output state with .snd (see store_meets_spec, deposit_meets_spec)
+            # Mutator pattern: branch on full ContractResult to avoid unsafe .snd extraction on revert.
             theorem_params = f"(s : ContractState) {lean_params}" if lean_params else "(s : ContractState)"
             proof_stubs.append(f"theorem {fn.name}_meets_spec {theorem_params} :")
-            proof_stubs.append(f"  let s' := (({fn_call}).run s).snd")
             spec_call = f"{fn.name}_spec {spec_args} s s'" if spec_args else f"{fn.name}_spec s s'"
-            proof_stubs.append(f"  {spec_call} := by")
+            proof_stubs.append(f"  match ({fn_call}).run s with")
+            proof_stubs.append(f"  | ContractResult.success _ s' => {spec_call}")
+            proof_stubs.append("  | ContractResult.revert _ _ => True := by")
         proof_stubs.append(f"  simp [{fn.name}_spec]")
         proof_stubs.append("")
 

@@ -230,8 +230,15 @@ class GenerateContractBasicProofScaffoldTests(unittest.TestCase):
 
         out = gen_basic_proofs(cfg)
         self.assertNotIn("sorry", out)
+        self.assertNotIn(".fst", out)
+        self.assertNotIn(".snd", out)
         self.assertIn("simp [getStoredValue_spec]", out)
         self.assertIn("simp [setStoredValue_spec]", out)
+        self.assertIn("match (getStoredValue).run s with", out)
+        self.assertIn("| ContractResult.success result _ => getStoredValue_spec result s", out)
+        self.assertIn("| ContractResult.revert _ _ => True := by", out)
+        self.assertIn("match (setStoredValue value).run s with", out)
+        self.assertIn("| ContractResult.success _ s' => setStoredValue_spec value s s'", out)
 
 
 class GenerateContractStructureScaffoldTests(unittest.TestCase):

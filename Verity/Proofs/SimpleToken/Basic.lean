@@ -180,8 +180,9 @@ theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : 
   let s' := ((mint to amount).run s).snd
   mint_spec to amount s s' := by
   have h_unfold := mint_unfold s to amount h_owner h_no_bal_overflow h_no_sup_overflow
+  have h_unfold_apply := Contract.eq_of_run_success h_unfold
   simp only [Contract.run, ContractResult.snd, mint_spec]
-  rw [show (mint to amount) s = (mint to amount).run s from rfl, h_unfold]
+  rw [h_unfold_apply]
   simp only [ContractResult.snd]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · simp -- balance of 'to' updated
@@ -308,8 +309,9 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
   transfer_spec s.sender to amount s s' := by
   by_cases h_eq : s.sender = to
   · have h_unfold := transfer_unfold_self s to amount h_balance h_eq
+    have h_unfold_apply := Contract.eq_of_run_success h_unfold
     simp only [Contract.run, ContractResult.snd, transfer_spec]
-    rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
+    rw [h_unfold_apply]
     refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_⟩
     · simp [h_eq, beq_iff_eq]
     · simp [h_eq, beq_iff_eq]
@@ -318,8 +320,9 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
     · rfl
     · simp [Specs.sameStorageAddrContext, Specs.sameStorage, Specs.sameStorageAddr, Specs.sameContext]
   · have h_unfold := transfer_unfold_other s to amount h_balance h_eq (h_no_overflow h_eq)
+    have h_unfold_apply := Contract.eq_of_run_success h_unfold
     simp only [Contract.run, ContractResult.snd, transfer_spec]
-    rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
+    rw [h_unfold_apply]
     simp only [ContractResult.snd]
     have h_ne' := address_beq_false_of_ne s.sender to h_eq
     refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_⟩

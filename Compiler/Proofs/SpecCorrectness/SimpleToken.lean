@@ -596,7 +596,7 @@ theorem token_mint_increases_supply (state : ContractState) (to : Address) (amou
       ).storage 2).val =
       ((state.storage 2).val + amount) % Verity.Core.Uint256.modulus := by
     simpa [uint256_add_val] using congrArg Verity.Core.Uint256.val h_edsl
-  simpa [Contract.runState, Nat.mod_eq_of_lt h2] using h_val
+  simpa [Contract.runState_eq_snd_run, ContractResult.getState, Nat.mod_eq_of_lt h2] using h_val
 
 /-- Transfer preserves totalSupply -/
 theorem token_transfer_preserves_supply (state : ContractState) (to : Address) (amount : Nat) (sender : Address)
@@ -691,7 +691,7 @@ theorem token_transfer_preserves_total_balance (state : ContractState) (to : Add
       ).storageMap 1 to).val =
       (state.storageMap 1 to).val + amount := by
     simpa [uint256_add_val, Nat.mod_eq_of_lt h3] using congrArg Verity.Core.Uint256.val h_recipient_state
-  calc
+  have h_total :
     ((ContractResult.getState
       ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
     ).storageMap 1 sender).val +
@@ -700,9 +700,26 @@ theorem token_transfer_preserves_total_balance (state : ContractState) (to : Add
     ).storageMap 1 to).val
         = (state.storageMap 1 sender).val - amount + ((state.storageMap 1 to).val + amount) := by
             simp [h_sender_val, h_recipient_val]
-    _ = ((state.storageMap 1 sender).val - amount + amount) + (state.storageMap 1 to).val := by
-            ac_rfl
-    _ = (state.storageMap 1 sender).val + (state.storageMap 1 to).val := by
-            simp [Nat.sub_add_cancel h2, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+  have h_total' :
+      ((ContractResult.getState
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
+      ).storageMap 1 sender).val +
+      ((ContractResult.getState
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
+      ).storageMap 1 to).val =
+      (state.storageMap 1 sender).val + (state.storageMap 1 to).val := by
+    calc
+      ((ContractResult.getState
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
+      ).storageMap 1 sender).val +
+      ((ContractResult.getState
+        ((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender })
+      ).storageMap 1 to).val
+          = (state.storageMap 1 sender).val - amount + ((state.storageMap 1 to).val + amount) := h_total
+      _ = ((state.storageMap 1 sender).val - amount + amount) + (state.storageMap 1 to).val := by
+              ac_rfl
+      _ = (state.storageMap 1 sender).val + (state.storageMap 1 to).val := by
+              simp [Nat.sub_add_cancel h2, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+  simpa [Contract.runState_eq_snd_run, ContractResult.getState] using h_total'
 
 end Compiler.Proofs.SpecCorrectness

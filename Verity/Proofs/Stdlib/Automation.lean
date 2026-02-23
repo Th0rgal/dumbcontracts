@@ -471,7 +471,7 @@ theorem require_success_implies_cond (cond : Bool) (msg : String) (state : Contr
 -- If the guard is true, binding after require is exactly the continuation.
 @[simp] theorem require_bind_true_run (cond : Bool) (msg : String) (k : Unit → Contract α)
     (state : ContractState) (h : cond = true) :
-    (Verity.bind (require cond msg) k).run state = (k ()) state := by
+    (Verity.bind (require cond msg) k).run state = (k ()).run state := by
   subst h
   simp [Verity.bind, require, Contract.run]
 

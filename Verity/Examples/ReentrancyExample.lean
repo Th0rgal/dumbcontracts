@@ -211,7 +211,7 @@ theorem withdraw_maintains_supply (amount : Uint256) :
       _ = sub (s.storageMap balances.slot s.sender) amount := h_mid
       _ = ((withdraw amount).runState s).storageMap balances.slot s.sender := by
             symm; exact h_right
-  simp [supplyInvariant, h_result]
+  simpa [supplyInvariant, Contract.runState_eq_snd_run] using h_result
 
 /-
 DEPOSIT ALSO MAINTAINS INVARIANT
@@ -247,7 +247,7 @@ theorem deposit_maintains_supply (amount : Uint256) :
       _ = (s.storageMap balances.slot s.sender) + amount := h_mid
       _ = ((deposit amount).runState s).storageMap balances.slot s.sender := by
             symm; exact h_right
-  simp [supplyInvariant, h_result]
+  simpa [supplyInvariant, Contract.runState_eq_snd_run] using h_result
 
 end SafeBank
 

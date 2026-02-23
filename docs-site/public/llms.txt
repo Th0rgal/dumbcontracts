@@ -15,7 +15,7 @@ Lean 4 EDSL for writing smart contracts with machine-checked proofs. Three-layer
 ## Quick Facts
 
 - **Language**: Lean 4.15.0
-- **Core Size**: 351 lines
+- **Core Size**: 376 lines
 - **Verified Contracts**: SimpleStorage, Counter, Owned, SimpleToken, OwnedCounter, Ledger, SafeCounter, ReentrancyExample (+ CryptoHash as unverified linker demo)
 - **Theorems**: 431 across 11 categories (431 fully proven, 0 `sorry` placeholders)
 - **Axioms**: 1 documented axiom (see AXIOMS.md) — keccak256_first_4_bytes only

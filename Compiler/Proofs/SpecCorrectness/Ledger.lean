@@ -483,14 +483,14 @@ theorem ledger_transfer_preserves_total (state : ContractState) (to : Address) (
       ((transfer to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }).storageMap 0 sender =
         Verity.EVM.Uint256.sub (state.storageMap 0 sender)
           (Verity.Core.Uint256.ofNat amount) := by
-    simpa [Contract.runState] using
+    simpa [Contract.runState_eq_snd_run] using
       (Verity.Proofs.Ledger.transfer_decreases_sender
         { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h h_no_overflow_u2)
   have h_recipient :
       ((transfer to (Verity.Core.Uint256.ofNat amount)).runState { state with sender := sender }).storageMap 0 to =
         Verity.EVM.Uint256.add (state.storageMap 0 to)
           (Verity.Core.Uint256.ofNat amount) := by
-    simpa [Contract.runState] using
+    simpa [Contract.runState_eq_snd_run] using
       (Verity.Proofs.Ledger.transfer_increases_recipient
         { state with sender := sender } to (Verity.Core.Uint256.ofNat amount) h_balance_u h h_no_overflow_u2)
   have h_sender_val :
@@ -503,13 +503,22 @@ theorem ledger_transfer_preserves_total (state : ContractState) (to : Address) (
           { state with sender := sender }).storageMap 0 to).val =
         (state.storageMap 0 to).val + amount := by
     simpa [uint256_add_val, Nat.mod_eq_of_lt h3] using congrArg Verity.Core.Uint256.val h_recipient
+  have h_sender_val_run :
+      ((((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }).snd).storageMap 0 sender).val =
+        (state.storageMap 0 sender).val - amount := by
+    simpa [Contract.runState_eq_snd_run] using h_sender_val
+  have h_recipient_val_run :
+      ((((transfer to (Verity.Core.Uint256.ofNat amount)).run { state with sender := sender }).snd).storageMap 0 to).val =
+        (state.storageMap 0 to).val + amount := by
+    simpa [Contract.runState_eq_snd_run] using h_recipient_val
   calc
     ((Contract.runState (transfer to (Verity.Core.Uint256.ofNat amount))
       { state with sender := sender }).storageMap 0 sender).val +
       ((Contract.runState (transfer to (Verity.Core.Uint256.ofNat amount))
       { state with sender := sender }).storageMap 0 to).val
         = ((state.storageMap 0 sender).val - amount) + ((state.storageMap 0 to).val + amount) := by
-            simp [h_sender_val, h_recipient_val]
+            simpa [Contract.runState_eq_snd_run] using by
+              simp [h_sender_val_run, h_recipient_val_run]
     _ = ((state.storageMap 0 sender).val - amount + amount) + (state.storageMap 0 to).val := by
             ac_rfl
     _ = (state.storageMap 0 sender).val + (state.storageMap 0 to).val := by

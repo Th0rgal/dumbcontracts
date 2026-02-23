@@ -46,6 +46,12 @@ ACTIVE_BACKEND_FAITHFUL_FALSE_RE = re.compile(
 ABI_ENCODE_MAPPING_SLOT_RE = re.compile(r"def\s+abiEncodeMappingSlot\s*\(")
 SOLIDITY_MAPPING_SLOT_RE = re.compile(r"def\s+solidityMappingSlot\s*\(")
 KECCAK_ROUTING_RE = re.compile(r"\|\s*\.keccak\s*=>\s*solidityMappingSlot\s+baseSlot\s+key")
+KECCAK_LOAD_ENTRY_ROUTING_RE = re.compile(
+    r"def\s+abstractLoadMappingEntry[\s\S]*?\|\s*\.keccak\s*=>\s*storage\s+\(solidityMappingSlot\s+baseSlot\s+key\)"
+)
+KECCAK_STORE_ENTRY_ROUTING_RE = re.compile(
+    r"def\s+abstractStoreMappingEntry[\s\S]*?\|\s*\.keccak\s*=>[\s\S]*?s\s*=\s*solidityMappingSlot\s+baseSlot\s+key[\s\S]*?,\s*mappings\)"
+)
 
 
 def main() -> int:
@@ -80,6 +86,20 @@ def main() -> int:
         errors.append(
             f"{rel}: expected `.keccak` branch of `abstractMappingSlot` "
             "to route through `solidityMappingSlot`"
+        )
+
+    if not KECCAK_LOAD_ENTRY_ROUTING_RE.search(mapping_slot_text):
+        rel = MAPPING_SLOT_FILE.relative_to(ROOT)
+        errors.append(
+            f"{rel}: expected `.keccak` branch of `abstractLoadMappingEntry` "
+            "to read flat storage via `solidityMappingSlot`"
+        )
+
+    if not KECCAK_STORE_ENTRY_ROUTING_RE.search(mapping_slot_text):
+        rel = MAPPING_SLOT_FILE.relative_to(ROOT)
+        errors.append(
+            f"{rel}: expected `.keccak` branch of `abstractStoreMappingEntry` "
+            "to write flat storage via `solidityMappingSlot` while preserving mappings table"
         )
 
     if "activeMappingSlotBackend = .tagged" not in trust_text:

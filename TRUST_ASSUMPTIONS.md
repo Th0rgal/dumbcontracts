@@ -65,7 +65,7 @@ Metrics tracked by repository tooling:
 ### 4. Mapping Slot Modeling Scope (Current Proof Backend)
 
 - Role: proof interpreters currently use a verification-level tagged mapping model (`Compiler/Proofs/MappingSlot.lean`, `activeMappingSlotBackend = .tagged`) rather than keccak-derived flat storage slots.
-- Implementation note: the dormant `.keccak` branch now computes Solidity slots via `solidityMappingSlot := keccak256(abi.encode(key, baseSlot))`, but this is not yet the active proof scope.
+- Implementation note: the dormant `.keccak` branch now computes Solidity slots via `solidityMappingSlot := keccak256(abi.encode(key, baseSlot))`, and backend-aware mapping entry helpers route read/write through flat storage in that branch; this is still not the active proof scope.
 - Status: explicit modeling scope boundary; not yet fully EVM-faithful for mapping slot addressing.
 - Mitigation: strict abstraction-boundary CI (`scripts/check_mapping_slot_boundary.py`) and explicit migration tracking in issue #259.
 

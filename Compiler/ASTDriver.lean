@@ -378,16 +378,16 @@ def compileAllASTWithOptions
 
   let mut patchRows : List (String × Yul.PatchPassReport) := []
   for spec in ASTSpecs.allSpecs do
-    match abiOutDir with
-    | some dir =>
-        Compiler.ABI.writeContractABIFile dir (astSpecToContractSpecForABI spec)
-        if verbose then
-          IO.println s!"✓ Wrote ABI {dir}/{spec.name}.abi.json"
-    | none => pure ()
     let selectors ← computeSelectors spec
     match compileSpec spec selectors with
     | .ok contract =>
       let patchReport ← writeContract outDir contract libraryPaths verbose options
+      match abiOutDir with
+      | some dir =>
+          Compiler.ABI.writeContractABIFile dir (astSpecToContractSpecForABI spec)
+          if verbose then
+            IO.println s!"✓ Wrote ABI {dir}/{spec.name}.abi.json"
+      | none => pure ()
       patchRows := (contract.name, patchReport) :: patchRows
       if verbose then
         IO.println s!"✓ Compiled {contract.name} (AST path)"

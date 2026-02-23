@@ -53,11 +53,56 @@ private def extractFunctionArity (line : String) : Nat :=
 private def isFunctionStart (line : String) : Bool :=
   extractFunctionName line |>.isSome
 
--- Count braces in a line to track nesting depth
-private def countBraces (line : String) : Int :=
-  let opens := line.toList.filter (· == '{') |>.length
-  let closes := line.toList.filter (· == '}') |>.length
-  opens - closes
+-- Stateful scanner used to ignore braces inside comments/strings.
+private structure ScanState where
+  inBlockComment : Bool := false
+  inString : Option Char := none
+  escaped : Bool := false
+  deriving Repr
+
+-- Count braces in a line while ignoring comment and string contexts.
+private def countBracesWithState (state : ScanState) (line : String) : Int × ScanState :=
+  let rec go : Nat → List Char → Int → ScanState → Int × ScanState
+    | 0, _, delta, st =>
+        let st' := { st with escaped := false }
+        (delta, st')
+    | _ + 1, [], delta, st =>
+        let st' := { st with escaped := false }
+        (delta, st')
+    | fuel + 1, c :: cs, delta, st =>
+        if st.inBlockComment then
+          match c, cs with
+          | '*', '/' :: rest => go fuel rest delta { st with inBlockComment := false, escaped := false }
+          | _, _ => go fuel cs delta st
+        else
+          match st.inString with
+          | some quote =>
+              if st.escaped then
+                go fuel cs delta { st with escaped := false }
+              else if c == '\\' then
+                go fuel cs delta { st with escaped := true }
+              else if c == quote then
+                go fuel cs delta { st with inString := none, escaped := false }
+              else
+                go fuel cs delta st
+          | none =>
+              match c, cs with
+              | '/', '/' :: _ =>
+                  -- Line comment: ignore rest of this line.
+                  (delta, st)
+              | '/', '*' :: rest =>
+                  go fuel rest delta { st with inBlockComment := true, escaped := false }
+              | '"', _ =>
+                  go fuel cs delta { st with inString := some '"', escaped := false }
+              | '\'', _ =>
+                  go fuel cs delta { st with inString := some '\'', escaped := false }
+              | '{', _ =>
+                  go fuel cs (delta + 1) st
+              | '}', _ =>
+                  go fuel cs (delta - 1) st
+              | _, _ =>
+                  go fuel cs delta st
+  go line.length line.toList 0 state
 
 -- Extract a complete function definition from lines
 private def extractFunction (lines : List String) : Option (String × List String × List String) :=
@@ -67,18 +112,19 @@ private def extractFunction (lines : List String) : Option (String × List Strin
       match extractFunctionName firstLine with
       | none => none
       | some name =>
-          let rec collectBody (remaining : List String) (acc : List String) (depth : Int) : List String × List String :=
+          let rec collectBody (remaining : List String) (acc : List String) (depth : Int) (state : ScanState) : List String × List String :=
             match remaining with
             | [] => (acc.reverse, [])
             | line :: rest' =>
-                let newDepth := depth + countBraces line
+                let (delta, state') := countBracesWithState state line
+                let newDepth := depth + delta
                 let acc' := line :: acc
                 if newDepth <= 0 then
                   (acc'.reverse, rest')
                 else
-                  collectBody rest' acc' newDepth
-          let initialDepth := countBraces firstLine
-          let (bodyLines, remaining) := collectBody rest [firstLine] initialDepth
+                  collectBody rest' acc' newDepth state'
+          let (initialDelta, initialState) := countBracesWithState {} firstLine
+          let (bodyLines, remaining) := collectBody rest [firstLine] initialDelta initialState
           some (name, bodyLines, remaining)
 
 -- Extract all function definitions from library lines

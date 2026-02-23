@@ -112,6 +112,9 @@ jobs:
       - name: Check Solidity interop matrix sync
         run: python3 scripts/check_interop_matrix_sync.py
 
+      - name: Check verify.yml path filter sync
+        run: python3 scripts/check_verify_paths_sync.py
+
       - name: Check solc pin consistency
         run: python3 scripts/check_solc_pin.py
 

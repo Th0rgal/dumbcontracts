@@ -16,6 +16,7 @@ from generate_contract import (
     Field,
     Function,
     Param,
+    gen_basic_proofs,
     gen_property_tests,
     parse_fields,
     parse_functions,
@@ -142,6 +143,26 @@ class GenerateContractGetterPropertyScaffoldTests(unittest.TestCase):
         out = gen_property_tests(cfg)
         self.assertIn("function testProperty_SetStoredValue_MeetsSpec() public {", out)
         self.assertIn("Property: setStoredValue_meets_spec", out)
+
+
+class GenerateContractBasicProofScaffoldTests(unittest.TestCase):
+    def test_basic_proof_scaffold_has_no_sorry(self) -> None:
+        cfg = ContractConfig(
+            name="Demo",
+            fields=[Field(name="storedValue", ty="uint256")],
+            functions=[
+                Function(name="getStoredValue", params=[]),
+                Function(
+                    name="setStoredValue",
+                    params=[Param(name="value", ty="uint256")],
+                ),
+            ],
+        )
+
+        out = gen_basic_proofs(cfg)
+        self.assertNotIn("sorry", out)
+        self.assertIn("simp [getStoredValue_spec]", out)
+        self.assertIn("simp [setStoredValue_spec]", out)
 
 
 if __name__ == "__main__":

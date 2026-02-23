@@ -129,7 +129,7 @@ See [/verification](/verification) for the complete, always-current theorem list
 
 **What's `sorry`?** A placeholder in Lean that says "I'll prove this later." It's how incomplete proofs compile. This project has 0 `sorry` — all proofs are fully complete.
 
-**What are axioms?** Statements assumed true without proof. This project uses 1 documented axiom for keccak256 hashing, and address injectivity — each with soundness justification in [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).
+**What are axioms?** Statements assumed true without proof. This project uses 1 documented axiom: `keccak256_first_4_bytes` for selector hashing (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)).
 
 Example proof technique (simplified):
 ```lean

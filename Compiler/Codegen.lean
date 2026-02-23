@@ -9,6 +9,9 @@ open Yul
 
 structure YulEmitOptions where
   patchConfig : Yul.PatchPassConfig := { enabled := false }
+  /-- Scratch memory base used by compiler-generated mapping-slot helpers.
+      Default `0` preserves historical behavior (`mstore(0, key); mstore(32, baseSlot)`). -/
+  mappingSlotScratchBase : Nat := 0
 
 /-- Runtime emission output plus patch audit report for tool/CI consumption. -/
 structure RuntimeEmitReport where
@@ -28,12 +31,17 @@ private def yulReturnRuntime : YulStmt :=
     YulExpr.call "datasize" [YulExpr.str "runtime"]
   ])
 
-def mappingSlotFunc : YulStmt :=
+def mappingSlotFuncAt (scratchBase : Nat) : YulStmt :=
+  let keyPtr := scratchBase
+  let slotPtr := scratchBase + 32
   YulStmt.funcDef "mappingSlot" ["baseSlot", "key"] ["slot"] [
-    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.ident "key"]),
-    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 32, YulExpr.ident "baseSlot"]),
-    YulStmt.assign "slot" (YulExpr.call "keccak256" [YulExpr.lit 0, YulExpr.lit 64])
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit keyPtr, YulExpr.ident "key"]),
+    YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit slotPtr, YulExpr.ident "baseSlot"]),
+    YulStmt.assign "slot" (YulExpr.call "keccak256" [YulExpr.lit keyPtr, YulExpr.lit 64])
   ]
+
+def mappingSlotFunc : YulStmt :=
+  mappingSlotFuncAt 0
 
 /-- Revert if ETH is sent to a non-payable function. -/
 def callvalueGuard : YulStmt :=
@@ -100,13 +108,18 @@ def buildSwitch
   ]
 
 def runtimeCode (contract : IRContract) : List YulStmt :=
-  let mapping := if contract.usesMapping then [mappingSlotFunc] else []
+  let mapping := if contract.usesMapping then [mappingSlotFuncAt 0] else []
+  let internals := contract.internalFunctions
+  mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
+
+def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
+  let mapping := if contract.usesMapping then [mappingSlotFuncAt options.mappingSlotScratchBase] else []
   let internals := contract.internalFunctions
   mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
 
 /-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
 def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
-  let base := runtimeCode contract
+  let base := runtimeCodeWithEmitOptions contract options
   let patchReport := Yul.runExprPatchPass options.patchConfig Yul.foundationExprPatchPack base
   { runtimeCode := patchReport.patched, patchReport := patchReport }
 

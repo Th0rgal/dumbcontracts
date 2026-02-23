@@ -307,6 +307,12 @@ Options:
   --link <path>      Link external Yul library (can be used multiple times)
   --output <dir>     Output directory (default: compiler/yul)
   -o <dir>           Short form of --output
+  --abi-output <dir> Output ABI JSON artifacts (<Contract>.abi.json)
+  --ast              Use unified AST compilation path
+  --enable-patches   Enable deterministic Yul patch pass
+  --patch-max-iterations <n>  Max patch-pass fixpoint iterations (default: 2)
+  --patch-report <path>       Write TSV patch coverage report
+  --mapping-slot-scratch-base <n>  Scratch memory base for mappingSlot helper (default: 0)
   --verbose          Enable verbose output
   -v                 Short form of --verbose
   --help             Show help message

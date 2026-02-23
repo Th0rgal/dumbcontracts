@@ -2873,6 +2873,35 @@ private def featureSpec : ContractSpec := {
         ["mappingSlot(9, __compat_key)", "mappingSlot(21, __compat_key)"]
 
 #eval! do
+  let mappingScratchBaseSpec : ContractSpec := {
+    name := "MappingScratchBaseSpec"
+    fields := [
+      { name := "balances", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9 }
+    ]
+    constructor := none
+    functions := [
+      { name := "setBal"
+        params := [{ name := "who", ty := ParamType.address }, { name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setMapping "balances" (Expr.param "who") (Expr.param "x"), Stmt.stop]
+      }
+    ]
+  }
+  match compile mappingScratchBaseSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ mapping scratch base compile failed: {err}")
+  | .ok ir =>
+      let renderedDefault := Yul.render (emitYulWithOptions ir {})
+      assertContains "mappingSlot helper default key scratch address" renderedDefault ["mstore(0, key)"]
+      assertContains "mappingSlot helper default baseSlot scratch address" renderedDefault ["mstore(32, baseSlot)"]
+      assertContains "mappingSlot helper default keccak scratch address" renderedDefault ["keccak256(0, 64)"]
+
+      let renderedCustom := Yul.render (emitYulWithOptions ir { mappingSlotScratchBase := 128 })
+      assertContains "mappingSlot helper custom key scratch address" renderedCustom ["mstore(128, key)"]
+      assertContains "mappingSlot helper custom baseSlot scratch address" renderedCustom ["mstore(160, baseSlot)"]
+      assertContains "mappingSlot helper custom keccak scratch address" renderedCustom ["keccak256(128, 64)"]
+
+#eval! do
   let slotAliasRangeMirrorWriteSpec : ContractSpec := {
     name := "SlotAliasRangeMirrorWriteSpec"
     fields := [

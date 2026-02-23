@@ -2934,6 +2934,37 @@ private def featureSpec : ContractSpec := {
         ["mappingSlot(9, __compat_key)", "mappingSlot(21, __compat_key)"]
 
 #eval! do
+  let mappingWordSpec : ContractSpec := {
+    name := "MappingWordSpec"
+    fields := [
+      { name := "markets", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9, aliasSlots := [21] }
+    ]
+    constructor := none
+    functions := [
+      { name := "loadMember"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mappingWord "markets" (Expr.param "who") 2)]
+      },
+      { name := "setMember"
+        params := [{ name := "who", ty := ParamType.address }, { name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setMappingWord "markets" (Expr.param "who") 2 (Expr.param "x"), Stmt.stop]
+      }
+    ]
+  }
+  match compile mappingWordSpec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ mappingWord compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "mappingWord read lowers to mappingSlot + wordOffset" rendered
+        ["sload(add(mappingSlot(9, who), 2))"]
+      assertContains "setMappingWord mirror writes include canonical and alias slots with offset" rendered
+        ["sstore(add(mappingSlot(9, __compat_key), 2), __compat_value)",
+         "sstore(add(mappingSlot(21, __compat_key), 2), __compat_value)"]
+
+#eval! do
   let invalidSlotAliasRangeSpec : ContractSpec := {
     name := "InvalidSlotAliasRangeSpec"
     fields := [{ name := "x", ty := FieldType.uint256, slot := some 8 }]

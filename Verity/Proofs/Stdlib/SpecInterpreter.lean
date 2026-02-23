@@ -305,6 +305,13 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
           let keyVal := evalExpr ctx storage fields paramNames externalFns key
           storage.getMapping baseSlot keyVal
       | none => 0
+  | Expr.mappingWord fieldName key wordOffset =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
+          let keyVal := evalExpr ctx storage fields paramNames externalFns key
+          storage.getMapping baseSlot ((keyVal + wordOffset) % modulus)
+      | none => 0
   | Expr.mapping2 fieldName key1 key2 =>
       match fields.findIdx? (·.name == fieldName) with
       | some idx =>
@@ -420,7 +427,7 @@ def exprUsesUnsupportedLowLevel : Expr → Bool
   | Expr.delegatecall _ _ _ _ _ _ => true
   | Expr.returndataSize => true
   | Expr.returndataOptionalBoolAt _ => true
-  | Expr.mapping _ key | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingUint _ key =>
       exprUsesUnsupportedLowLevel key
   | Expr.mapping2 _ key1 key2 =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2
@@ -447,7 +454,7 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       exprUsesUnsupportedLowLevel value
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value =>
       exprUsesUnsupportedLowLevel key || exprUsesUnsupportedLowLevel value
   | Stmt.setMapping2 _ key1 key2 value =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2 || exprUsesUnsupportedLowLevel value
@@ -558,6 +565,21 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
               let baseSlot := f.slot.getD idx
               let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
               let key := evalExpr ctx state.storage fields paramNames externalFns keyExpr
+              let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
+              let storage' := writeSlots.foldl (fun acc writeSlot => acc.setMapping writeSlot key value) state.storage
+              some (ctx, { state with storage := storage' })
+      | none => none
+
+  | Stmt.setMappingWord fieldName keyExpr wordOffset valueExpr =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          match fields[idx]? with
+          | none => none
+          | some f =>
+              let baseSlot := f.slot.getD idx
+              let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
+              let keyRaw := evalExpr ctx state.storage fields paramNames externalFns keyExpr
+              let key := (keyRaw + wordOffset) % modulus
               let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
               let storage' := writeSlots.foldl (fun acc writeSlot => acc.setMapping writeSlot key value) state.storage
               some (ctx, { state with storage := storage' })

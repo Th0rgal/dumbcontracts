@@ -200,6 +200,7 @@ inductive Expr
   | constructorArg (index : Nat)  -- Access constructor argument (loaded from bytecode)
   | storage (field : String)
   | mapping (field : String) (key : Expr)
+  | mappingWord (field : String) (key : Expr) (wordOffset : Nat)  -- mappingSlot(base,key) + wordOffset
   | mapping2 (field : String) (key1 key2 : Expr)  -- Double mapping (#154)
   | mappingUint (field : String) (key : Expr)  -- Uint256-keyed mapping (#154)
   | caller
@@ -254,6 +255,7 @@ inductive Stmt
   | assignVar (name : String) (value : Expr)  -- Reassign existing variable
   | setStorage (field : String) (value : Expr)
   | setMapping (field : String) (key : Expr) (value : Expr)
+  | setMappingWord (field : String) (key : Expr) (wordOffset : Nat) (value : Expr)  -- mappingSlot(base,key)+wordOffset write
   | setMapping2 (field : String) (key1 key2 : Expr) (value : Expr)  -- Double mapping write (#154)
   | setMappingUint (field : String) (key : Expr) (value : Expr)  -- Uint256-keyed mapping write (#154)
   | require (cond : Expr) (message : String)
@@ -467,13 +469,15 @@ private def dynamicCopyData (source : DynamicDataSource)
         ])]]
 
 private def compileMappingSlotRead (fields : List Field) (field : String) (keyExpr : YulExpr)
-    (label : String) : Except String YulExpr :=
+    (label : String) (wordOffset : Nat := 0) : Except String YulExpr :=
   if !isMapping fields field then
     throw s!"Compilation error: field '{field}' is not a mapping"
   else
     match findFieldSlot fields field with
     | some slot =>
-      pure (YulExpr.call "sload" [YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr]])
+      let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr]
+      let finalSlot := if wordOffset == 0 then mappingBase else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]
+      pure (YulExpr.call "sload" [finalSlot])
     | none => throw s!"Compilation error: unknown mapping field '{field}' in {label}"
 
 /-- Prefix prepended to internal function names in generated Yul to avoid
@@ -506,6 +510,7 @@ private partial def collectExprNames : Expr → List String
   | Expr.constructorArg _ => []
   | Expr.storage field => [field]
   | Expr.mapping field key => field :: collectExprNames key
+  | Expr.mappingWord field key _ => field :: collectExprNames key
   | Expr.mapping2 field key1 key2 => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.mappingUint field key => field :: collectExprNames key
   | Expr.caller => []
@@ -561,8 +566,9 @@ private partial def collectStmtNames : Stmt → List String
   | Stmt.assignVar name value => name :: collectExprNames value
   | Stmt.setStorage field value => field :: collectExprNames value
   | Stmt.setMapping field key value => field :: collectExprNames key ++ collectExprNames value
+  | Stmt.setMappingWord field key _ value => field :: collectExprNames key ++ collectExprNames value
   | Stmt.setMapping2 field key1 key2 value =>
-      field :: collectExprNames key1 ++ collectExprNames key2 ++ collectExprNames value
+    field :: collectExprNames key1 ++ collectExprNames key2 ++ collectExprNames value
   | Stmt.setMappingUint field key value => field :: collectExprNames key ++ collectExprNames value
   | Stmt.require cond _ => collectExprNames cond
   | Stmt.requireError cond errorName args => errorName :: collectExprNames cond ++ collectExprListNames args
@@ -610,7 +616,7 @@ def compileExpr (fields : List Field)
   | Expr.constructorArg idx => pure (YulExpr.ident s!"arg{idx}")
   | Expr.storage field =>
     if isMapping fields field then
-      throw s!"Compilation error: field '{field}' is a mapping; use Expr.mapping"
+      throw s!"Compilation error: field '{field}' is a mapping; use Expr.mapping or Expr.mappingWord"
     else
       match findFieldWithResolvedSlot fields field with
       | some (f, slot) =>
@@ -625,6 +631,8 @@ def compileExpr (fields : List Field)
       | none => throw s!"Compilation error: unknown storage field '{field}'"
   | Expr.mapping field key => do
       compileMappingSlotRead fields field (← compileExpr fields dynamicSource key) "mapping"
+  | Expr.mappingWord field key wordOffset => do
+      compileMappingSlotRead fields field (← compileExpr fields dynamicSource key) "mappingWord" wordOffset
   | Expr.mapping2 field key1 key2 =>
     if !isMapping2 fields field then
       throw s!"Compilation error: field '{field}' is not a double mapping"
@@ -860,7 +868,7 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
   | Expr.staticcall _ _ _ _ _ _ => true
   | Expr.delegatecall _ _ _ _ _ _ => true
   | Expr.externalCall _ _ | Expr.internalCall _ _ => true
-  | Expr.mapping _ key | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingUint _ key =>
       exprContainsCallLike key
   | Expr.mapping2 _ key1 key2 =>
       exprContainsCallLike key1 || exprContainsCallLike key2
@@ -909,7 +917,7 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike outOffset || exprContainsUnsafeLogicalCallLike outSize
   | Expr.externalCall _ args | Expr.internalCall _ args =>
       args.any exprContainsUnsafeLogicalCallLike
-  | Expr.mapping _ key | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingUint _ key =>
       exprContainsUnsafeLogicalCallLike key
   | Expr.mapping2 _ key1 key2 =>
       exprContainsUnsafeLogicalCallLike key1 || exprContainsUnsafeLogicalCallLike key2
@@ -942,7 +950,7 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike size
   | Stmt.revertReturndata | Stmt.stop =>
       false
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value =>
       exprContainsUnsafeLogicalCallLike key || exprContainsUnsafeLogicalCallLike value
   | Stmt.setMapping2 _ key1 key2 value =>
       exprContainsUnsafeLogicalCallLike key1 ||
@@ -1051,7 +1059,7 @@ private partial def validateScopedExprIdentifiers
       | none =>
           throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayElement"
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount index
-  | Expr.mapping _ key | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingUint _ key =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key
   | Expr.mapping2 _ key1 key2 => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key1
@@ -1119,7 +1127,7 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.setStorage _ value | Stmt.return value | Stmt.require value _ => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
       pure localScope
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
       pure localScope
@@ -1308,6 +1316,7 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.constructorArg _ => false
   | Expr.storage _ => true
   | Expr.mapping _ key => exprReadsStateOrEnv key || true
+  | Expr.mappingWord _ key _ => exprReadsStateOrEnv key || true
   | Expr.mapping2 _ key1 key2 => exprReadsStateOrEnv key1 || exprReadsStateOrEnv key2 || true
   | Expr.mappingUint _ key => exprReadsStateOrEnv key || true
   | Expr.caller => true
@@ -1350,7 +1359,7 @@ private partial def stmtWritesState : Stmt → Bool
       exprWritesState value
   | Stmt.setStorage _ value =>
       exprWritesState value || true
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value =>
       exprWritesState key || exprWritesState value || true
   | Stmt.setMapping2 _ key1 key2 value =>
       exprWritesState key1 || exprWritesState key2 || exprWritesState value || true
@@ -1396,7 +1405,7 @@ where
         exprWritesState a || exprWritesState b
     | Expr.bitNot a | Expr.logicalNot a =>
         exprWritesState a
-    | Expr.mapping _ key | Expr.mappingUint _ key =>
+    | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingUint _ key =>
         exprWritesState key
     | Expr.mapping2 _ key1 key2 =>
         exprWritesState key1 || exprWritesState key2
@@ -1445,7 +1454,7 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       true
   | Stmt.stop =>
       false
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value =>
       exprReadsStateOrEnv key || exprReadsStateOrEnv value || true
   | Stmt.setMapping2 _ key1 key2 value =>
       exprReadsStateOrEnv key1 || exprReadsStateOrEnv key2 || exprReadsStateOrEnv value || true
@@ -1983,6 +1992,7 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
         unsupportedInteropCallError context name
       args.forM (validateInteropExpr context)
   | Expr.mapping _ key => validateInteropExpr context key
+  | Expr.mappingWord _ key _ => validateInteropExpr context key
   | Expr.mapping2 _ key1 key2 => do
       validateInteropExpr context key1
       validateInteropExpr context key2
@@ -2020,7 +2030,7 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       validateInteropExpr context size
   | Stmt.revertReturndata =>
       pure ()
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value => do
       validateInteropExpr context key
       validateInteropExpr context value
   | Stmt.setMapping2 _ key1 key2 value => do
@@ -2163,6 +2173,8 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName outOffset
   | Expr.mapping _ key =>
       validateInternalCallShapesInExpr functions callerName key
+  | Expr.mappingWord _ key _ =>
+      validateInternalCallShapesInExpr functions callerName key
   | Expr.mapping2 _ key1 key2 => do
       validateInternalCallShapesInExpr functions callerName key1
       validateInternalCallShapesInExpr functions callerName key2
@@ -2200,7 +2212,7 @@ private partial def validateInternalCallShapesInStmt
       validateInternalCallShapesInExpr functions callerName size
   | Stmt.revertReturndata =>
       pure ()
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value => do
       validateInternalCallShapesInExpr functions callerName key
       validateInternalCallShapesInExpr functions callerName value
   | Stmt.setMapping2 _ key1 key2 value => do
@@ -2295,6 +2307,8 @@ private partial def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context outOffset
   | Expr.mapping _ key =>
       validateExternalCallTargetsInExpr externals context key
+  | Expr.mappingWord _ key _ =>
+      validateExternalCallTargetsInExpr externals context key
   | Expr.mapping2 _ key1 key2 => do
       validateExternalCallTargetsInExpr externals context key1
       validateExternalCallTargetsInExpr externals context key2
@@ -2334,7 +2348,7 @@ private partial def validateExternalCallTargetsInStmt
       validateExternalCallTargetsInExpr externals context size
   | Stmt.revertReturndata =>
       pure ()
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value => do
       validateExternalCallTargetsInExpr externals context key
       validateExternalCallTargetsInExpr externals context value
   | Stmt.setMapping2 _ key1 key2 value => do
@@ -2371,7 +2385,7 @@ private def validateExternalCallTargetsInConstructor
       spec.body.forM (validateExternalCallTargetsInStmt externals "constructor")
 
 private def compileMappingSlotWrite (fields : List Field) (field : String)
-    (keyExpr valueExpr : YulExpr) (label : String) : Except String (List YulStmt) :=
+    (keyExpr valueExpr : YulExpr) (label : String) (wordOffset : Nat := 0) : Except String (List YulStmt) :=
   if !isMapping fields field then
     throw s!"Compilation error: field '{field}' is not a mapping"
   else
@@ -2381,19 +2395,24 @@ private def compileMappingSlotWrite (fields : List Field) (field : String)
         | [] =>
             throw s!"Compilation error: internal invariant failure: no write slots for mapping field '{field}' in {label}"
         | [slot] =>
+            let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr]
+            let writeSlot := if wordOffset == 0 then mappingBase else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]
             pure [
               YulStmt.expr (YulExpr.call "sstore" [
-                YulExpr.call "mappingSlot" [YulExpr.lit slot, keyExpr],
+                writeSlot,
                 valueExpr
               ])
             ]
         | _ =>
+            let compatSlotExpr := fun (slot : Nat) =>
+              let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, YulExpr.ident "__compat_key"]
+              if wordOffset == 0 then mappingBase else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]
             pure [
               YulStmt.block (
                 [YulStmt.let_ "__compat_key" keyExpr, YulStmt.let_ "__compat_value" valueExpr] ++
                 slots.map (fun slot =>
                   YulStmt.expr (YulExpr.call "sstore" [
-                    YulExpr.call "mappingSlot" [YulExpr.lit slot, YulExpr.ident "__compat_key"],
+                    compatSlotExpr slot,
                     YulExpr.ident "__compat_value"
                   ]))
               )
@@ -2767,7 +2786,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       pure [YulStmt.assign name (← compileExpr fields dynamicSource value)]
   | Stmt.setStorage field value =>
     if isMapping fields field then
-      throw s!"Compilation error: field '{field}' is a mapping; use setMapping"
+      throw s!"Compilation error: field '{field}' is a mapping; use setMapping or setMappingWord"
     else
       match findFieldWithResolvedSlot fields field with
       | some (f, slot) => do
@@ -2841,6 +2860,12 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         (← compileExpr fields dynamicSource key)
         (← compileExpr fields dynamicSource value)
         "setMapping"
+  | Stmt.setMappingWord field key wordOffset value => do
+      compileMappingSlotWrite fields field
+        (← compileExpr fields dynamicSource key)
+        (← compileExpr fields dynamicSource value)
+        "setMappingWord"
+        wordOffset
   | Stmt.setMapping2 field key1 key2 value =>
     if !isMapping2 fields field then
       throw s!"Compilation error: field '{field}' is not a double mapping"
@@ -3678,6 +3703,7 @@ end
 private partial def exprUsesArrayElement : Expr → Bool
   | Expr.arrayElement _ _ => true
   | Expr.mapping _ key => exprUsesArrayElement key
+  | Expr.mappingWord _ key _ => exprUsesArrayElement key
   | Expr.mapping2 _ key1 key2 => exprUsesArrayElement key1 || exprUsesArrayElement key2
   | Expr.mappingUint _ key => exprUsesArrayElement key
   | Expr.call gas target value inOffset inSize outOffset outSize =>
@@ -3720,7 +3746,7 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement offset || exprUsesArrayElement value
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
-  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value =>
       exprUsesArrayElement key || exprUsesArrayElement value
   | Stmt.setMapping2 _ key1 key2 value =>
       exprUsesArrayElement key1 || exprUsesArrayElement key2 || exprUsesArrayElement value

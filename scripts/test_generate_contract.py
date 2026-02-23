@@ -64,5 +64,42 @@ class GenerateContractIdentifierValidationTests(unittest.TestCase):
         self.assertEqual([f.name for f in funcs], ["setStoredData", "getStoredData"])
 
 
+class GenerateContractFunctionSignatureValidationTests(unittest.TestCase):
+    def _assert_parse_functions_error(self, spec: str) -> str:
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            with self.assertRaises(SystemExit) as ctx:
+                parse_functions(spec, [])
+        self.assertEqual(ctx.exception.code, 1)
+        return buf.getvalue()
+
+    def test_rejects_unbalanced_parentheses_in_function_list(self) -> None:
+        err = self._assert_parse_functions_error("foo(uint256)),bar(")
+        self.assertIn("Malformed function list", err)
+        self.assertIn("unexpected ')'", err)
+
+    def test_rejects_unknown_parameter_type(self) -> None:
+        err = self._assert_parse_functions_error("foo(bytes32)")
+        self.assertIn("Unsupported parameter type 'bytes32'", err)
+
+    def test_rejects_extra_closing_parenthesis(self) -> None:
+        err = self._assert_parse_functions_error("foo(uint256))")
+        self.assertIn("unexpected ')'", err)
+
+    def test_rejects_empty_signature_entry(self) -> None:
+        err = self._assert_parse_functions_error("foo(uint256),,bar(address)")
+        self.assertIn("empty signature between commas", err)
+
+    def test_rejects_trailing_comma(self) -> None:
+        err = self._assert_parse_functions_error("foo(uint256),")
+        self.assertIn("empty signature at end of list", err)
+
+    def test_parses_valid_typed_signatures(self) -> None:
+        funcs = parse_functions("transfer(address,uint256),getBalance(address)", [])
+        self.assertEqual([f.name for f in funcs], ["transfer", "getBalance"])
+        self.assertEqual([p.ty for p in funcs[0].params], ["address", "uint256"])
+        self.assertEqual([p.ty for p in funcs[1].params], ["address"])
+
+
 if __name__ == "__main__":
     unittest.main()

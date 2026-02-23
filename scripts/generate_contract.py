@@ -273,22 +273,49 @@ def _parse_single_function(raw: str) -> Function:
       - ``transfer(address,uint256)`` → two params named "addr", "value"
     """
     raw = raw.strip()
+    if not raw:
+        print("Error: Function signature cannot be empty", file=sys.stderr)
+        sys.exit(1)
     if "(" not in raw:
         return Function(name=_validate_identifier(raw, "function"))
 
+    if not raw.endswith(")"):
+        print(
+            f"Error: Malformed function signature '{raw}': expected closing ')' at end",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if raw.count("(") != 1 or raw.count(")") != 1:
+        print(
+            f"Error: Malformed function signature '{raw}': unexpected parentheses",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     paren_idx = raw.index("(")
     name = _validate_identifier(raw[:paren_idx].strip(), "function")
-    params_str = raw[paren_idx + 1:].rstrip(")")
+    params_str = raw[paren_idx + 1:-1]
 
     _PARAM_NAME_COUNTERS.clear()
     params = []
-    for ty_raw in params_str.split(","):
+    if not params_str.strip():
+        return Function(name=name, params=params)
+    for idx, ty_raw in enumerate(params_str.split(","), start=1):
         ty_raw = ty_raw.strip().lower()
         if not ty_raw:
-            continue
+            print(
+                f"Error: Empty parameter type in function signature '{raw}' at position {idx}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         if ty_raw not in ("uint256", "address"):
-            print(f"Warning: Unknown param type '{ty_raw}' in {name}, defaulting to uint256", file=sys.stderr)
-            ty_raw = "uint256"
+            print(
+                f"Error: Unsupported parameter type '{ty_raw}' in function '{name}'. "
+                "Supported types: uint256, address",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         params.append(Param(name=_auto_param_name(ty_raw), ty=ty_raw))
 
     return Function(name=name, params=params)
@@ -313,13 +340,37 @@ def parse_functions(spec: str, fields: List[Field]) -> List[Function]:
                 depth += 1
                 current.append(ch)
             elif ch == ")":
+                if depth == 0:
+                    print(
+                        f"Error: Malformed function list '{spec}': unexpected ')' without matching '('",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
                 depth -= 1
                 current.append(ch)
             elif ch == "," and depth == 0:
+                if not "".join(current).strip():
+                    print(
+                        f"Error: Malformed function list '{spec}': empty signature between commas",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
                 functions.append(_parse_single_function("".join(current)))
                 current = []
             else:
                 current.append(ch)
+        if depth != 0:
+            print(
+                f"Error: Malformed function list '{spec}': unbalanced parentheses",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if not "".join(current).strip():
+            print(
+                f"Error: Malformed function list '{spec}': empty signature at end of list",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         if current:
             functions.append(_parse_single_function("".join(current)))
         return functions

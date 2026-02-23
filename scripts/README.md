@@ -198,6 +198,8 @@ Identifier rules (fail-fast validation):
 - Field names: `[A-Za-z_][A-Za-z0-9_]*`
 - Function names: `[A-Za-z_][A-Za-z0-9_]*`
 - Reserved Lean/Solidity keywords are rejected for generated field/function names
+- `--functions` signatures must be comma-separated and parenthesis-balanced
+- Supported function parameter types are `uint256` and `address` (unknown types are rejected)
 
 ## Utilities
 

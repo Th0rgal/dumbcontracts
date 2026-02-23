@@ -203,8 +203,12 @@ inductive Expr
   | mapping2 (field : String) (key1 key2 : Expr)  -- Double mapping (#154)
   | mappingUint (field : String) (key : Expr)  -- Uint256-keyed mapping (#154)
   | caller
+  | contractAddress
+  | chainid
   | msgValue
   | blockTimestamp
+  | mload (offset : Expr)
+  | keccak256 (offset size : Expr)
   /-- First-class low-level `call(gas, target, value, inOffset, inSize, outOffset, outSize)`.
       Returns the EVM success bit (0/1). -/
   | call (gas target value inOffset inSize outOffset outSize : Expr)
@@ -260,6 +264,7 @@ inductive Stmt
   | returnArray (name : String)        -- ABI-encode dynamic uint256[] parameter loaded from calldata
   | returnBytes (name : String)        -- ABI-encode dynamic bytes parameter loaded from calldata
   | returnStorageWords (name : String) -- ABI-encode dynamic uint256[] from sload over a dynamic word-array parameter
+  | mstore (offset value : Expr)
   /-- First-class `returndatacopy(destOffset, sourceOffset, size)` statement. -/
   | returndataCopy (destOffset sourceOffset size : Expr)
   /-- Forward current returndata as revert payload (`returndatacopy` + `revert`). -/
@@ -504,8 +509,12 @@ private partial def collectExprNames : Expr → List String
   | Expr.mapping2 field key1 key2 => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.mappingUint field key => field :: collectExprNames key
   | Expr.caller => []
+  | Expr.contractAddress => []
+  | Expr.chainid => []
   | Expr.msgValue => []
   | Expr.blockTimestamp => []
+  | Expr.mload offset => collectExprNames offset
+  | Expr.keccak256 offset size => collectExprNames offset ++ collectExprNames size
   | Expr.call gas target value inOffset inSize outOffset outSize =>
       collectExprNames gas ++ collectExprNames target ++ collectExprNames value ++
       collectExprNames inOffset ++ collectExprNames inSize ++
@@ -563,6 +572,7 @@ private partial def collectStmtNames : Stmt → List String
   | Stmt.returnArray name => [name]
   | Stmt.returnBytes name => [name]
   | Stmt.returnStorageWords name => [name]
+  | Stmt.mstore offset value => collectExprNames offset ++ collectExprNames value
   | Stmt.returndataCopy destOffset sourceOffset size =>
       collectExprNames destOffset ++ collectExprNames sourceOffset ++ collectExprNames size
   | Stmt.revertReturndata => []
@@ -629,8 +639,17 @@ def compileExpr (fields : List Field)
   | Expr.mappingUint field key => do
       compileMappingSlotRead fields field (← compileExpr fields dynamicSource key) "mappingUint"
   | Expr.caller => pure (YulExpr.call "caller" [])
+  | Expr.contractAddress => pure (YulExpr.call "address" [])
+  | Expr.chainid => pure (YulExpr.call "chainid" [])
   | Expr.msgValue => pure (YulExpr.call "callvalue" [])
   | Expr.blockTimestamp => pure (YulExpr.call "timestamp" [])
+  | Expr.mload offset => do
+      pure (YulExpr.call "mload" [← compileExpr fields dynamicSource offset])
+  | Expr.keccak256 offset size => do
+      pure (YulExpr.call "keccak256" [
+        ← compileExpr fields dynamicSource offset,
+        ← compileExpr fields dynamicSource size
+      ])
   | Expr.call gas target value inOffset inSize outOffset outSize => do
       pure (YulExpr.call "call" [
         ← compileExpr fields dynamicSource gas,
@@ -876,6 +895,10 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike value || exprContainsUnsafeLogicalCallLike inOffset ||
       exprContainsUnsafeLogicalCallLike inSize || exprContainsUnsafeLogicalCallLike outOffset ||
       exprContainsUnsafeLogicalCallLike outSize
+  | Expr.mload offset =>
+      exprContainsUnsafeLogicalCallLike offset
+  | Expr.keccak256 offset size =>
+      exprContainsUnsafeLogicalCallLike offset || exprContainsUnsafeLogicalCallLike size
   | Expr.staticcall gas target inOffset inSize outOffset outSize =>
       exprContainsUnsafeLogicalCallLike gas || exprContainsUnsafeLogicalCallLike target ||
       exprContainsUnsafeLogicalCallLike inOffset || exprContainsUnsafeLogicalCallLike inSize ||
@@ -911,6 +934,8 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       args.any exprContainsUnsafeLogicalCallLike
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ =>
       false
+  | Stmt.mstore offset value =>
+      exprContainsUnsafeLogicalCallLike offset || exprContainsUnsafeLogicalCallLike value
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprContainsUnsafeLogicalCallLike destOffset ||
       exprContainsUnsafeLogicalCallLike sourceOffset ||
@@ -1053,6 +1078,11 @@ private partial def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount inSize
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount outOffset
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount outSize
+  | Expr.mload offset =>
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
+  | Expr.keccak256 offset size => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount size
   | Expr.returndataOptionalBoolAt outOffset =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount outOffset
   | Expr.externalCall _ args | Expr.internalCall _ args =>
@@ -1104,6 +1134,10 @@ private partial def validateScopedStmtIdentifiers
       pure localScope
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args => do
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      pure localScope
+  | Stmt.mstore offset value => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
       pure localScope
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount destOffset
@@ -1277,8 +1311,12 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.mapping2 _ key1 key2 => exprReadsStateOrEnv key1 || exprReadsStateOrEnv key2 || true
   | Expr.mappingUint _ key => exprReadsStateOrEnv key || true
   | Expr.caller => true
+  | Expr.contractAddress => true
+  | Expr.chainid => true
   | Expr.msgValue => true
   | Expr.blockTimestamp => true
+  | Expr.mload offset => exprReadsStateOrEnv offset
+  | Expr.keccak256 offset size => exprReadsStateOrEnv offset || exprReadsStateOrEnv size
   | Expr.call gas target value inOffset inSize outOffset outSize =>
       exprReadsStateOrEnv gas || exprReadsStateOrEnv target || exprReadsStateOrEnv value ||
       exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
@@ -1332,6 +1370,8 @@ private partial def stmtWritesState : Stmt → Bool
       false
   | Stmt.returnStorageWords _ =>
       false
+  | Stmt.mstore offset value =>
+      exprWritesState offset || exprWritesState value
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprWritesState destOffset || exprWritesState sourceOffset || exprWritesState size
   | Stmt.revertReturndata =>
@@ -1372,6 +1412,10 @@ where
         exprWritesState gas || exprWritesState target ||
         exprWritesState inOffset || exprWritesState inSize ||
         exprWritesState outOffset || exprWritesState outSize || true
+    | Expr.mload offset =>
+        exprWritesState offset
+    | Expr.keccak256 offset size =>
+        exprWritesState offset || exprWritesState size
     | Expr.returndataOptionalBoolAt outOffset =>
         exprWritesState outOffset
     | Expr.externalCall _ args | Expr.internalCall _ args =>
@@ -1393,6 +1437,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       false
   | Stmt.returnStorageWords _ =>
       true
+  | Stmt.mstore offset value =>
+      exprReadsStateOrEnv offset || exprReadsStateOrEnv value
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprReadsStateOrEnv destOffset || exprReadsStateOrEnv sourceOffset || exprReadsStateOrEnv size || true
   | Stmt.revertReturndata =>
@@ -1921,6 +1967,13 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
       validateInteropExpr context inSize
       validateInteropExpr context outOffset
       validateInteropExpr context outSize
+  | Expr.contractAddress | Expr.chainid =>
+      pure ()
+  | Expr.mload offset =>
+      validateInteropExpr context offset
+  | Expr.keccak256 offset size => do
+      validateInteropExpr context offset
+      validateInteropExpr context size
   | Expr.returndataSize =>
       pure ()
   | Expr.returndataOptionalBoolAt outOffset =>
@@ -1958,6 +2011,9 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       args.forM (validateInteropExpr context)
   | Stmt.revertError _ args =>
       args.forM (validateInteropExpr context)
+  | Stmt.mstore offset value => do
+      validateInteropExpr context offset
+      validateInteropExpr context value
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateInteropExpr context destOffset
       validateInteropExpr context sourceOffset
@@ -2098,6 +2154,11 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName inSize
       validateInternalCallShapesInExpr functions callerName outOffset
       validateInternalCallShapesInExpr functions callerName outSize
+  | Expr.mload offset =>
+      validateInternalCallShapesInExpr functions callerName offset
+  | Expr.keccak256 offset size => do
+      validateInternalCallShapesInExpr functions callerName offset
+      validateInternalCallShapesInExpr functions callerName size
   | Expr.returndataOptionalBoolAt outOffset =>
       validateInternalCallShapesInExpr functions callerName outOffset
   | Expr.mapping _ key =>
@@ -2130,6 +2191,9 @@ private partial def validateInternalCallShapesInStmt
       args.forM (validateInternalCallShapesInExpr functions callerName)
   | Stmt.revertError _ args =>
       args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.mstore offset value => do
+      validateInternalCallShapesInExpr functions callerName offset
+      validateInternalCallShapesInExpr functions callerName value
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateInternalCallShapesInExpr functions callerName destOffset
       validateInternalCallShapesInExpr functions callerName sourceOffset
@@ -2222,6 +2286,11 @@ private partial def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context inSize
       validateExternalCallTargetsInExpr externals context outOffset
       validateExternalCallTargetsInExpr externals context outSize
+  | Expr.mload offset =>
+      validateExternalCallTargetsInExpr externals context offset
+  | Expr.keccak256 offset size => do
+      validateExternalCallTargetsInExpr externals context offset
+      validateExternalCallTargetsInExpr externals context size
   | Expr.returndataOptionalBoolAt outOffset =>
       validateExternalCallTargetsInExpr externals context outOffset
   | Expr.mapping _ key =>
@@ -2256,6 +2325,9 @@ private partial def validateExternalCallTargetsInStmt
       args.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.revertError _ args =>
       args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.mstore offset value => do
+      validateExternalCallTargetsInExpr externals context offset
+      validateExternalCallTargetsInExpr externals context value
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateExternalCallTargetsInExpr externals context destOffset
       validateExternalCallTargetsInExpr externals context sourceOffset
@@ -3403,6 +3475,11 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
           YulExpr.call "add" [YulExpr.lit 64, YulExpr.call "mul" [lenIdent, YulExpr.lit 32]]
         ])
       ]
+  | Stmt.mstore offset value => do
+      pure [YulStmt.expr (YulExpr.call "mstore" [
+        ← compileExpr fields dynamicSource offset,
+        ← compileExpr fields dynamicSource value
+      ])]
   | Stmt.returndataCopy destOffset sourceOffset size => do
       pure [YulStmt.expr (YulExpr.call "returndatacopy" [
         ← compileExpr fields dynamicSource destOffset,
@@ -3615,6 +3692,10 @@ private partial def exprUsesArrayElement : Expr → Bool
       exprUsesArrayElement gas || exprUsesArrayElement target ||
       exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
       exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.mload offset =>
+      exprUsesArrayElement offset
+  | Expr.keccak256 offset size =>
+      exprUsesArrayElement offset || exprUsesArrayElement size
   | Expr.returndataOptionalBoolAt outOffset => exprUsesArrayElement outOffset
   | Expr.externalCall _ args | Expr.internalCall _ args =>
       args.any exprUsesArrayElement
@@ -3635,6 +3716,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement cond || args.any exprUsesArrayElement
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
       args.any exprUsesArrayElement
+  | Stmt.mstore offset value =>
+      exprUsesArrayElement offset || exprUsesArrayElement value
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
   | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>

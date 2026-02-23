@@ -11,7 +11,15 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from generate_contract import parse_fields, parse_functions
+from generate_contract import (
+    ContractConfig,
+    Field,
+    Function,
+    Param,
+    gen_property_tests,
+    parse_fields,
+    parse_functions,
+)
 
 
 class GenerateContractIdentifierValidationTests(unittest.TestCase):
@@ -99,6 +107,41 @@ class GenerateContractFunctionSignatureValidationTests(unittest.TestCase):
         self.assertEqual([f.name for f in funcs], ["transfer", "getBalance"])
         self.assertEqual([p.ty for p in funcs[0].params], ["address", "uint256"])
         self.assertEqual([p.ty for p in funcs[1].params], ["address"])
+
+
+class GenerateContractGetterPropertyScaffoldTests(unittest.TestCase):
+    def test_getter_scaffold_is_explicit_todo_placeholder(self) -> None:
+        cfg = ContractConfig(
+            name="Demo",
+            fields=[Field(name="storedValue", ty="uint256")],
+            functions=[Function(name="getStoredValue", params=[])],
+        )
+
+        out = gen_property_tests(cfg)
+        self.assertIn(
+            "function testTODO_GetStoredValue_GetterNeedsSpecAssertions() public {",
+            out,
+        )
+        self.assertIn("Property TODO: getStoredValue_meets_spec", out)
+        self.assertIn("revert(\"TODO: implement getter property assertions\");", out)
+        self.assertNotIn("bytes memory data", out)
+        self.assertNotIn("assertEq(readStorage(0), slot0Before", out)
+
+    def test_non_getter_scaffold_keeps_meets_spec_template(self) -> None:
+        cfg = ContractConfig(
+            name="Demo",
+            fields=[Field(name="storedValue", ty="uint256")],
+            functions=[
+                Function(
+                    name="setStoredValue",
+                    params=[Param(name="value", ty="uint256")],
+                )
+            ],
+        )
+
+        out = gen_property_tests(cfg)
+        self.assertIn("function testProperty_SetStoredValue_MeetsSpec() public {", out)
+        self.assertIn("Property: setStoredValue_meets_spec", out)
 
 
 if __name__ == "__main__":

@@ -92,8 +92,9 @@ contract DifferentialSafeCounter is YulTestBase, DiffTestConfig, DifferentialTes
             return false;
         }
 
-        // Validate: Return values must match
-        if (evmReturnValue != edslReturnValue) {
+        // Validate: Return values must match on successful calls.
+        // Revert payload encodings are compared via success parity, not scalar return value.
+        if (evmSuccess && evmReturnValue != edslReturnValue) {
             console2.log("MISMATCH: Return values differ!");
             console2.log("  EVM:", evmReturnValue);
             console2.log("  EDSL:", edslReturnValue);

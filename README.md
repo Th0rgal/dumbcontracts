@@ -55,7 +55,7 @@ lake exe verity-compiler \
 
 **Run tests:**
 ```bash
-FOUNDRY_PROFILE=difftest forge test           # 403 tests across 35 suites
+FOUNDRY_PROFILE=difftest forge test           # 404 tests across 35 suites
 ```
 
 ---
@@ -157,7 +157,7 @@ Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a step-by-step guide and [`docs-site/content/guides/linking-libraries.mdx`](docs-site/content/guides/linking-libraries.mdx) for the full documentation.
 
-431 theorems across 11 categories, all fully proven. 403 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axioms. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
+431 theorems across 11 categories, all fully proven. 404 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axioms. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
 
 ## What's Verified
 
@@ -195,7 +195,7 @@ FOUNDRY_PROFILE=difftest forge test
 <details>
 <summary><strong>Testing</strong></summary>
 
-**Foundry tests** (403 tests) validate EDSL = Yul = EVM execution:
+**Foundry tests** (404 tests) validate EDSL = Yul = EVM execution:
 
 ```bash
 FOUNDRY_PROFILE=difftest forge test                                          # run all

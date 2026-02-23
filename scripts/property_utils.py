@@ -32,6 +32,15 @@ THEOREM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
 THEOREM_RE = re.compile(r"^\s*(theorem|lemma)\s+([A-Za-z0-9_']+)")
 
 
+def _require_contract_identifier(contract: str, source: Path) -> str:
+    """Validate and return a contract identifier from a filesystem-derived source."""
+    if contract != contract.strip() or not CONTRACT_NAME_RE.fullmatch(contract):
+        raise SystemExit(
+            f"Invalid contract identifier from {source}: {contract!r}"
+        )
+    return contract
+
+
 def load_manifest() -> dict[str, set[str]]:
     """Load property manifest from JSON file.
 
@@ -175,7 +184,7 @@ def collect_covered() -> dict[str, set[str]]:
         match = FILE_RE.match(path.name)
         if not match:
             continue
-        contract = match.group(1)
+        contract = _require_contract_identifier(match.group(1), path)
         covered.setdefault(contract, set()).update(extract_property_names(path))
     return covered
 
@@ -216,11 +225,7 @@ def extract_manifest_from_proofs() -> dict[str, list[str]]:
     for contract_dir in sorted(PROOFS_DIR.iterdir()):
         if not contract_dir.is_dir():
             continue
-        contract = contract_dir.name
-        if contract != contract.strip() or not CONTRACT_NAME_RE.fullmatch(contract):
-            raise SystemExit(
-                f"Invalid contract identifier from proofs directory {contract_dir}: {contract!r}"
-            )
+        contract = _require_contract_identifier(contract_dir.name, contract_dir)
         theorems: list[str] = []
         for lean in sorted(contract_dir.rglob("*.lean")):
             theorems.extend(collect_theorems(lean))
@@ -230,11 +235,7 @@ def extract_manifest_from_proofs() -> dict[str, list[str]]:
     # Also scan Examples/ for contracts with inline theorems (no separate Proofs dir)
     if EXAMPLES_DIR.exists():
         for lean in sorted(EXAMPLES_DIR.glob("*.lean")):
-            contract = lean.stem
-            if contract != contract.strip() or not CONTRACT_NAME_RE.fullmatch(contract):
-                raise SystemExit(
-                    f"Invalid contract identifier from example file {lean}: {contract!r}"
-                )
+            contract = _require_contract_identifier(lean.stem, lean)
             if contract in manifest:
                 continue  # Already found via Proofs/
             theorems = collect_theorems(lean)

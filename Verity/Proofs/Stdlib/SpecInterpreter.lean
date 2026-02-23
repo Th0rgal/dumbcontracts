@@ -183,6 +183,12 @@ private def packedMaskNat (packed : PackedBits) : Nat :=
 private def packedShiftedMaskNat (packed : PackedBits) : Nat :=
   packedMaskNat packed * (2 ^ packed.offset)
 
+private def packedBitsValid (packed : PackedBits) : Bool :=
+  packed.width > 0 &&
+  packed.width <= 256 &&
+  packed.offset < 256 &&
+  packed.offset + packed.width <= 256
+
 def readStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) : Nat :=
   match findFieldWithResolvedSlot fields fieldName with
   | some (field, slot) =>
@@ -312,6 +318,17 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
           let keyVal := evalExpr ctx storage fields paramNames externalFns key
           storage.getMapping baseSlot ((keyVal + wordOffset) % modulus)
       | none => 0
+  | Expr.mappingPackedWord fieldName key wordOffset packed =>
+      if !(packedBitsValid packed) then
+        0
+      else
+        match fields.findIdx? (·.name == fieldName) with
+        | some idx =>
+            let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
+            let keyVal := evalExpr ctx storage fields paramNames externalFns key
+            let word := storage.getMapping baseSlot ((keyVal + wordOffset) % modulus)
+            Nat.land (word >>> packed.offset) (packedMaskNat packed)
+        | none => 0
   | Expr.mapping2 fieldName key1 key2 =>
       match fields.findIdx? (·.name == fieldName) with
       | some idx =>
@@ -427,7 +444,7 @@ def exprUsesUnsupportedLowLevel : Expr → Bool
   | Expr.delegatecall _ _ _ _ _ _ => true
   | Expr.returndataSize => true
   | Expr.returndataOptionalBoolAt _ => true
-  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
       exprUsesUnsupportedLowLevel key
   | Expr.mapping2 _ key1 key2 =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2
@@ -454,7 +471,7 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       exprUsesUnsupportedLowLevel value
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>
       exprUsesUnsupportedLowLevel key || exprUsesUnsupportedLowLevel value
   | Stmt.setMapping2 _ key1 key2 value =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2 || exprUsesUnsupportedLowLevel value
@@ -584,6 +601,32 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
               let storage' := writeSlots.foldl (fun acc writeSlot => acc.setMapping writeSlot key value) state.storage
               some (ctx, { state with storage := storage' })
       | none => none
+
+  | Stmt.setMappingPackedWord fieldName keyExpr wordOffset packed valueExpr =>
+      if !(packedBitsValid packed) then
+        none
+      else
+        match fields.findIdx? (·.name == fieldName) with
+        | some idx =>
+            match fields[idx]? with
+            | none => none
+            | some f =>
+                let baseSlot := f.slot.getD idx
+                let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
+                let keyRaw := evalExpr ctx state.storage fields paramNames externalFns keyExpr
+                let key := (keyRaw + wordOffset) % modulus
+                let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
+                let packedValue := Nat.land value (packedMaskNat packed)
+                let shiftedMask := packedShiftedMaskNat packed
+                let clearedMask := wordMask - shiftedMask
+                let storage' := writeSlots.foldl (fun acc writeSlot =>
+                  let slotWord := acc.getMapping writeSlot key
+                  let slotCleared := Nat.land slotWord clearedMask
+                  let packedWord := packedValue <<< packed.offset
+                  acc.setMapping writeSlot key (Nat.lor slotCleared packedWord)
+                ) state.storage
+                some (ctx, { state with storage := storage' })
+        | none => none
 
   | Stmt.setMapping2 fieldName key1Expr key2Expr valueExpr =>
       match fields.findIdx? (·.name == fieldName) with

@@ -2965,6 +2965,39 @@ private def featureSpec : ContractSpec := {
          "sstore(add(mappingSlot(21, __compat_key), 2), __compat_value)"]
 
 #eval! do
+  let mappingPackedWordSpec : ContractSpec := {
+    name := "MappingPackedWordSpec"
+    fields := [
+      { name := "markets", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9, aliasSlots := [21] }
+    ]
+    constructor := none
+    functions := [
+      { name := "loadMember"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mappingPackedWord "markets" (Expr.param "who") 2 { offset := 8, width := 8 })]
+      },
+      { name := "setMember"
+        params := [{ name := "who", ty := ParamType.address }, { name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setMappingPackedWord "markets" (Expr.param "who") 2 { offset := 8, width := 8 } (Expr.param "x"), Stmt.stop]
+      }
+    ]
+  }
+  match compile mappingPackedWordSpec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ mappingPackedWord compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "mappingPackedWord read lowers to masked mappingSlot + wordOffset" rendered
+        ["and(shr(8, sload(add(mappingSlot(9, who), 2))),"]
+      assertContains "setMappingPackedWord lowers to mapping read-modify-write with alias mirrors" rendered
+        ["let __compat_slot_word := sload(add(mappingSlot(9, __compat_key), 2))",
+         "sstore(add(mappingSlot(9, __compat_key), 2), or(__compat_slot_cleared, shl(8, __compat_packed)))",
+         "let __compat_slot_word := sload(add(mappingSlot(21, __compat_key), 2))",
+         "sstore(add(mappingSlot(21, __compat_key), 2), or(__compat_slot_cleared, shl(8, __compat_packed)))"]
+
+#eval! do
   let invalidSlotAliasRangeSpec : ContractSpec := {
     name := "InvalidSlotAliasRangeSpec"
     fields := [{ name := "x", ty := FieldType.uint256, slot := some 8 }]
@@ -4170,5 +4203,49 @@ private def featureSpec : ContractSpec := {
   if readGResult.returnValue != some 0xab then
     throw (IO.userError s!"✗ readG should read packed byte 0xab, got {readGResult.returnValue}")
   IO.println "✓ SpecInterpreter honors explicit slots, alias mirrors, slotAliasRanges, and packed storage semantics"
+
+#eval! do
+  let mappingPackedLayoutSpec : ContractSpec := {
+    name := "MappingPackedLayoutSpec"
+    fields := [
+      { name := "markets", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9, aliasSlots := [21] }
+    ]
+    constructor := none
+    functions := [
+      { name := "setMember"
+        params := [{ name := "who", ty := ParamType.address }, { name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setMappingPackedWord "markets" (Expr.param "who") 2 { offset := 8, width := 8 } (Expr.param "x"), Stmt.stop]
+      },
+      { name := "getMember"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mappingPackedWord "markets" (Expr.param "who") 2 { offset := 8, width := 8 })]
+      }
+    ]
+  }
+  let key := 0x12345
+  let initialStorage : SpecStorage := {
+    slots := []
+    mappings := [
+      (9, [((key + 2) % (2 ^ 256), 0x112233)]),
+      (21, [((key + 2) % (2 ^ 256), 0x445566)])
+    ]
+    mappings2 := []
+    events := []
+  }
+  let writeTx : Transaction := { sender := 0, functionName := "setMember", args := [key, 0xab] }
+  let writeResult := interpretSpec mappingPackedLayoutSpec initialStorage writeTx
+  if !writeResult.success then
+    throw (IO.userError s!"✗ mapping packed interpreter write reverted: {writeResult.revertReason}")
+  if writeResult.finalStorage.getMapping 9 ((key + 2) % (2 ^ 256)) != 0x11ab33 then
+    throw (IO.userError "✗ mapping packed canonical write mismatch in SpecInterpreter")
+  if writeResult.finalStorage.getMapping 21 ((key + 2) % (2 ^ 256)) != 0x44ab66 then
+    throw (IO.userError "✗ mapping packed alias mirror write mismatch in SpecInterpreter")
+  let readTx : Transaction := { sender := 0, functionName := "getMember", args := [key] }
+  let readResult := interpretSpec mappingPackedLayoutSpec writeResult.finalStorage readTx
+  if readResult.returnValue != some 0xab then
+    throw (IO.userError s!"✗ mapping packed read mismatch in SpecInterpreter: {readResult.returnValue}")
+  IO.println "✓ SpecInterpreter honors packed mapping word read/write semantics with alias mirrors"
 
 end Compiler.ContractSpecFeatureTest

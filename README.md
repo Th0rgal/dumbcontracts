@@ -56,7 +56,13 @@ lake exe verity-compiler \
 
 `--mapping-slot-scratch-base` controls where compiler-generated `mappingSlot` helpers write temporary words before `keccak256`.
 
-For mapping-backed struct layouts, `ContractSpec` now supports `Expr.mappingWord field key wordOffset` and `Stmt.setMappingWord field key wordOffset value`, which lower to `mappingSlot(base,key) + wordOffset`.
+For mapping-backed struct layouts, `ContractSpec` supports:
+- `Expr.mappingWord field key wordOffset`
+- `Stmt.setMappingWord field key wordOffset value`
+- `Expr.mappingPackedWord field key wordOffset { offset, width }`
+- `Stmt.setMappingPackedWord field key wordOffset { offset, width } value`
+
+The `mappingPackedWord` forms perform masked/shifted packed read-modify-write at `mappingSlot(base,key) + wordOffset`.
 
 **Run tests:**
 ```bash

@@ -27,7 +27,7 @@ open Compiler
 open Compiler.Yul
 open Compiler.ASTSpecs
 open Compiler.ASTCompile (compileStmt)
-open Compiler.ContractSpec (ParamType Param genParamLoads paramTypeToSolidityString addressMask)
+open Compiler.ContractSpec (ParamType Param genParamLoads paramTypeToSolidityString addressMask isInteropEntrypointName)
 open Compiler.Linker
 open Compiler.Hex
 open Compiler.Selector (runKeccak)
@@ -39,10 +39,9 @@ open Compiler.ABI
 Computes Solidity selectors for AST functions using the shared
 `Selector.runKeccak` (no duplication of keccak subprocess handling).
 
-Note: ASTFunctionSpec has no `isInternal` or fallback/receive semantics,
-so all functions are treated as external.  If internal/special entrypoints
-are added to the AST path, filtering must be added here (matching
-Selector.computeSelectors for ContractSpec).
+Note: ASTFunctionSpec has no `isInternal` or fallback/receive semantics.
+Reserved Solidity special entrypoint names are rejected during validation,
+so all AST functions are selector-dispatched externals.
 -/
 
 private def functionSignature (fn : ASTFunctionSpec) : String :=
@@ -221,6 +220,8 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
   for fn in spec.functions do
     ensureNonEmpty s!"Function in {spec.name}" fn.name
     ensureValidIdentifier s!"Function in {spec.name}" fn.name
+    if isInteropEntrypointName fn.name then
+      throw s!"Function '{fn.name}' in {spec.name} is reserved for ContractSpec special entrypoints and is unsupported in AST specs"
     validateParamNames s!"function {fn.name}" fn.params
     if fn.isPayable && (fn.isView || fn.isPure) then
       throw s!"Function '{fn.name}' in {spec.name} cannot be both payable and view/pure"

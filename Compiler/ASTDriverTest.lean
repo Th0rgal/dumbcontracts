@@ -210,6 +210,40 @@ private def badParamIdentifierSpec : ASTContractSpec := {
   | .ok _ =>
     throw (IO.userError "✗ expected invalid parameter identifier to be rejected")
 
+private def badFallbackNameSpec : ASTContractSpec := {
+  name := "BadFallbackName"
+  functions := [
+    { name := "fallback", params := [], returnType := .unit, body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec badFallbackNameSpec [0] with
+  | .error err =>
+    if contains err "reserved for ContractSpec special entrypoints" then
+      IO.println "✓ Reserved function name fallback rejected in AST compileSpec"
+    else
+      throw (IO.userError s!"✗ unexpected reserved-name fallback error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected reserved function name fallback to be rejected")
+
+private def badReceiveNameSpec : ASTContractSpec := {
+  name := "BadReceiveName"
+  functions := [
+    { name := "receive", params := [], returnType := .unit, body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec badReceiveNameSpec [0] with
+  | .error err =>
+    if contains err "reserved for ContractSpec special entrypoints" then
+      IO.println "✓ Reserved function name receive rejected in AST compileSpec"
+    else
+      throw (IO.userError s!"✗ unexpected reserved-name receive error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected reserved function name receive to be rejected")
+
 private def badContractIdentifierSpec : ASTContractSpec := {
   name := "0BadContract"
   functions := []

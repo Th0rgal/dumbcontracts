@@ -3875,6 +3875,63 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected external arity mismatch to fail compilation")
 
 #eval! do
+  let externalVoidReturnInExprSpec : ContractSpec := {
+    name := "ExternalVoidReturnInExprSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "known_fn" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256]
+        returnType := none
+        axiomNames := []
+      }
+    ]
+  }
+  match compile externalVoidReturnInExprSpec [1] with
+  | .error err =>
+      if !contains err "uses Expr.externalCall 'known_fn' but spec.externals declares 0 return values" then
+        throw (IO.userError s!"✗ external void-return diagnostic mismatch: {err}")
+      IO.println "✓ external call expression rejects void external declaration"
+  | .ok _ =>
+      throw (IO.userError "✗ expected Expr.externalCall with void declaration to fail compilation")
+
+#eval! do
+  let externalMultiReturnInExprSpec : ContractSpec := {
+    name := "ExternalMultiReturnInExprSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "known_fn" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256]
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
+        axiomNames := []
+      }
+    ]
+  }
+  match compile externalMultiReturnInExprSpec [1] with
+  | .error err =>
+      if !contains err "uses Expr.externalCall 'known_fn' but spec.externals declares 2 return values" then
+        throw (IO.userError s!"✗ external multi-return diagnostic mismatch: {err}")
+      IO.println "✓ external call expression rejects multi-return external declaration"
+  | .ok _ =>
+      throw (IO.userError "✗ expected Expr.externalCall with multi-return declaration to fail compilation")
+
+#eval! do
   let helperNameCollisionSpec : ContractSpec := {
     name := "HelperNameCollisionSpec"
     fields := [{ name := "balances", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address) }]

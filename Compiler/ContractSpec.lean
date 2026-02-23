@@ -23,6 +23,7 @@
 
 import Compiler.IR
 import Compiler.Yul.Ast
+import Compiler.Identifier
 
 namespace Compiler.ContractSpec
 
@@ -3758,7 +3759,35 @@ private def validateEventDef (eventDef : EventDef) : Except String Unit := do
   if indexedCount > 3 then
     throw s!"Compilation error: event '{eventDef.name}' has {indexedCount} indexed params; max is 3"
 
+private def ensureContractIdentifier (kind name : String) : Except String Unit := do
+  match Compiler.ensureValidIdentifier kind name with
+  | .ok _ => pure ()
+  | .error err => throw s!"Compilation error: {err}"
+
+private def validateIdentifierShapes (spec : ContractSpec) : Except String Unit := do
+  ensureContractIdentifier "contract" spec.name
+  for field in spec.fields do
+    ensureContractIdentifier "field" field.name
+  for fn in spec.functions do
+    ensureContractIdentifier "function" fn.name
+    for p in fn.params do
+      ensureContractIdentifier "function parameter" p.name
+  match spec.constructor with
+  | none => pure ()
+  | some ctor =>
+      for p in ctor.params do
+        ensureContractIdentifier "constructor parameter" p.name
+  for eventDef in spec.events do
+    ensureContractIdentifier "event" eventDef.name
+    for p in eventDef.params do
+      ensureContractIdentifier "event parameter" p.name
+  for err in spec.errors do
+    ensureContractIdentifier "custom error" err.name
+  for ext in spec.externals do
+    ensureContractIdentifier "external declaration" ext.name
+
 def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContract := do
+  validateIdentifierShapes spec
   match firstInvalidSlotAliasRange spec.slotAliasRanges with
   | some (idx, range) =>
       throw s!"Compilation error: slotAliasRanges[{idx}] has invalid source interval {range.sourceStart}..{range.sourceEnd} in {spec.name} ({issue623Ref}). slotAliasRanges require sourceStart <= sourceEnd."

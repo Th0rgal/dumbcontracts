@@ -228,6 +228,120 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected invalid returnBytes parameter to fail compilation")
 
 #eval! do
+  let invalidContractIdentifierSpec : ContractSpec := {
+    name := "Bad-Contract"
+    fields := []
+    constructor := none
+    functions := []
+  }
+  match compile invalidContractIdentifierSpec [] with
+  | .error err =>
+      if !contains err "contract name must be a valid identifier: Bad-Contract" then
+        throw (IO.userError s!"✗ contract identifier validation mismatch: {err}")
+      IO.println "✓ contract identifier validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected invalid contract identifier to fail compilation")
+
+#eval! do
+  let invalidFunctionIdentifierSpec : ContractSpec := {
+    name := "InvalidFunctionIdentifier"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bad-fn"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile invalidFunctionIdentifierSpec [1] with
+  | .error err =>
+      if !contains err "function name must be a valid identifier: bad-fn" then
+        throw (IO.userError s!"✗ function identifier validation mismatch: {err}")
+      IO.println "✓ function identifier validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected invalid function identifier to fail compilation")
+
+#eval! do
+  let invalidFieldIdentifierSpec : ContractSpec := {
+    name := "InvalidFieldIdentifier"
+    fields := [{ name := "stored-data", ty := FieldType.uint256 }]
+    constructor := none
+    functions := []
+  }
+  match compile invalidFieldIdentifierSpec [] with
+  | .error err =>
+      if !contains err "field name must be a valid identifier: stored-data" then
+        throw (IO.userError s!"✗ field identifier validation mismatch: {err}")
+      IO.println "✓ field identifier validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected invalid field identifier to fail compilation")
+
+#eval! do
+  let invalidFunctionParamIdentifierSpec : ContractSpec := {
+    name := "InvalidFunctionParamIdentifier"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "store"
+        params := [{ name := "value-1", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile invalidFunctionParamIdentifierSpec [1] with
+  | .error err =>
+      if !contains err "function parameter name must be a valid identifier: value-1" then
+        throw (IO.userError s!"✗ function parameter identifier validation mismatch: {err}")
+      IO.println "✓ function parameter identifier validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected invalid function parameter identifier to fail compilation")
+
+#eval! do
+  let invalidEventIdentifierSpec : ContractSpec := {
+    name := "InvalidEventIdentifier"
+    fields := []
+    constructor := none
+    events := [
+      { name := "Value-Set"
+        params := [{ name := "who", ty := ParamType.address, kind := EventParamKind.indexed }]
+      }
+    ]
+    functions := []
+  }
+  match compile invalidEventIdentifierSpec [] with
+  | .error err =>
+      if !contains err "event name must be a valid identifier: Value-Set" then
+        throw (IO.userError s!"✗ event identifier validation mismatch: {err}")
+      IO.println "✓ event identifier validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected invalid event identifier to fail compilation")
+
+#eval! do
+  let invalidExternalIdentifierSpec : ContractSpec := {
+    name := "InvalidExternalIdentifier"
+    fields := []
+    constructor := none
+    externals := [
+      { name := "hash-two"
+        params := [ParamType.uint256, ParamType.uint256]
+        returns := [ParamType.uint256]
+        axiomNames := ["hash_two_sound"]
+      }
+    ]
+    functions := []
+  }
+  match compile invalidExternalIdentifierSpec [] with
+  | .error err =>
+      if !contains err "external declaration name must be a valid identifier: hash-two" then
+        throw (IO.userError s!"✗ external identifier validation mismatch: {err}")
+      IO.println "✓ external declaration identifier validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected invalid external declaration identifier to fail compilation")
+
+#eval! do
   let payableMsgValueSpec : ContractSpec := {
     name := "PayableMsgValue"
     fields := []

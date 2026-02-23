@@ -2004,6 +2004,18 @@ private partial def validateInternalCallShapesInStmt
   | Stmt.internalCallAssign names calleeName args => do
       if names.isEmpty then
         throw s!"Compilation error: function '{callerName}' uses Stmt.internalCallAssign with no target variables ({issue625Ref})."
+      let rec firstDuplicateTarget (seen : List String) : List String → Option String
+        | [] => none
+        | name :: rest =>
+            if seen.contains name then
+              some name
+            else
+              firstDuplicateTarget (name :: seen) rest
+      match firstDuplicateTarget [] names with
+      | some dup =>
+          throw s!"Compilation error: function '{callerName}' uses Stmt.internalCallAssign with duplicate target '{dup}' ({issue625Ref})."
+      | none =>
+          pure ()
       args.forM (validateInternalCallShapesInExpr functions callerName)
       let callee ← findInternalFunctionByName functions callerName calleeName
       if args.length != callee.params.length then

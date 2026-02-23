@@ -106,7 +106,7 @@ example :
     | _ => false) = true := by
   native_decide
 
--- sstore on mappingSlot updates mappings on success
+-- sstore on mappingSlot updates flat storage at solidityMappingSlot(base,key)
 example :
     (let runtime := [
       YulStmt.expr (YulExpr.call "sstore" [
@@ -114,12 +114,14 @@ example :
         YulExpr.lit 321
       ])
     ]
+    let slot := solidityMappingSlot 4 9
     match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
-    | { success := true, finalMappings, .. } => decide (finalMappings 4 9 = 321)
+    | { success := true, finalStorage, finalMappings, .. } =>
+        decide (finalStorage slot = 321 ∧ finalMappings 4 9 = 0)
     | _ => false) = true := by
   native_decide
 
--- sstore on encoded mapping slot routes through decodeMappingSlot
+-- sstore on tagged-encoded literal now behaves as a plain storage write
 example :
     (let runtime := [
       YulStmt.expr (YulExpr.call "sstore" [
@@ -127,8 +129,10 @@ example :
         YulExpr.lit 555
       ])
     ]
+    let slot := encodeMappingSlot 4 9
     match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
-    | { success := true, finalMappings, .. } => decide (finalMappings 4 9 = 555)
+    | { success := true, finalStorage, finalMappings, .. } =>
+        decide (finalStorage slot = 555 ∧ finalMappings 4 9 = 0)
     | _ => false) = true := by
   native_decide
 
@@ -147,7 +151,7 @@ example :
     | _ => false) = true := by
   native_decide
 
--- sload from an encoded mapping slot returns mapped value
+-- sload from a tagged-encoded literal now reads plain storage at that slot
 example :
     (let runtime := [
       YulStmt.expr (YulExpr.call "sstore" [
@@ -173,10 +177,10 @@ example :
         YulExpr.lit 777
       ])
     ]
+    let slot := encodeNestedMappingSlot 3 4 5
     match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
-    | { success := true, finalMappings, .. } =>
-        let base := encodeMappingSlot 3 4
-        decide (finalMappings base 5 = 777)
+    | { success := true, finalStorage, finalMappings, .. } =>
+        decide (finalStorage slot = 777 ∧ finalMappings (encodeMappingSlot 3 4) 5 = 0)
     | _ => false) = true := by
   native_decide
 

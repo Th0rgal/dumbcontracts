@@ -62,12 +62,12 @@ Metrics tracked by repository tooling:
 - What is enforced: duplicate-name, collision, unresolved reference, and arity checks.
 - What is trusted: semantic correctness of linked Yul code.
 
-### 4. Mapping Slot Modeling Scope (Current Proof Backend)
+### 4. Mapping Slot Derivation and Crypto Assumptions
 
-- Role: proof interpreters currently use a verification-level tagged mapping model (`Compiler/Proofs/MappingSlot.lean`, `activeMappingSlotBackend = .tagged`) rather than keccak-derived flat storage slots.
-- Implementation note: the dormant `.keccak` branch now computes Solidity slots via `solidityMappingSlot := keccak256(abi.encode(key, baseSlot))`, and backend-aware mapping entry helpers route read/write through flat storage in that branch; this is still not the active proof scope.
-- Status: explicit modeling scope boundary; not yet fully EVM-faithful for mapping slot addressing.
-- Mitigation: strict abstraction-boundary CI (`scripts/check_mapping_slot_boundary.py`) and explicit migration tracking in issue #259.
+- Role: proof interpreters derive mapping slots with Solidity-compatible keccak hashing (`Compiler/Proofs/MappingSlot.lean`, `activeMappingSlotBackend = .keccak`), i.e. `solidityMappingSlot(base,key) = keccak256(abi.encode(key, baseSlot))`.
+- Status: mapping addressing is EVM-faithful (flat storage addressing, no tagged slot abstraction in active semantics).
+- Trust boundary: this relies on the external keccak implementation (`ffi.KEC` via EVMYul FFI) and standard collision-resistance assumptions for keccak256 (the same trust class as Solidity/EVM behavior).
+- Mitigation: abstraction-boundary CI (`scripts/check_mapping_slot_boundary.py`), selector/hash cross-check CI, and explicit documentation in `AXIOMS.md`.
 
 ### 5. EVM Semantics and Gas
 

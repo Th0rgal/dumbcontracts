@@ -36,11 +36,33 @@ Selector hashing is modeled as an external cryptographic primitive rather than r
 
 **Risk**: Low.
 
+## Trusted Cryptographic Primitive (Non-Axiom)
+
+### `ffi.KEC` (keccak256 via EVMYul FFI)
+
+**Location**: used by `Compiler/Proofs/MappingSlot.lean` (`solidityMappingSlot`)
+
+**Role**:
+- Computes mapping storage slots as `keccak256(abi.encode(key, baseSlot))`.
+- Aligns proof-level mapping addressing with Solidity/EVM flat storage layout.
+
+**Why this is not listed as a Lean axiom**:
+- It is a runtime external primitive (`@[extern]`-style FFI path), not a logical axiom in Lean's kernel.
+- Trust is operational (correctness of linked crypto implementation), not proof-kernel extensibility.
+
+**Operational trust assumptions**:
+- Keccak implementation correctness in the linked FFI path.
+- Standard collision-resistance assumptions for mapping-slot uniqueness/non-collision, matching Solidity/EVM assumptions.
+
+**Soundness controls**:
+- Mapping-slot abstraction boundary checks in CI.
+- End-to-end proof/runtime regression suites that exercise mapping reads/writes through `mappingSlot`.
+
 ## Eliminated Axioms (Historical)
 
 The repository removed prior axioms related to IR and Yul expression and statement equivalence and address injectivity by making interpreters total and by using a bounded-nat `Address` representation.
 
-These removals reduced the active axiom surface to one item.
+These removals reduced the active Lean axiom surface to one item.
 
 ## Trust Summary
 

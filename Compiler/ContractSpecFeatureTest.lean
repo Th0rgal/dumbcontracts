@@ -3012,6 +3012,73 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected pure function with state read to fail compilation")
 
 #eval! do
+  let pureWritesStateSpec : ContractSpec := {
+    name := "PureWritesStateSpec"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "badPureWrite"
+        params := []
+        returnType := none
+        isPure := true
+        body := [Stmt.setStorage "x" (Expr.literal 1), Stmt.stop]
+      }
+    ]
+  }
+  match compile pureWritesStateSpec [1] with
+  | .error err =>
+      if !contains err "is marked pure but writes state" then
+        throw (IO.userError s!"✗ pure-write mutability diagnostic mismatch: {err}")
+      IO.println "✓ pure-write mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected pure function with state write to fail compilation")
+
+#eval! do
+  let pureReadsEnvSpec : ContractSpec := {
+    name := "PureReadsEnvSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badPureEnvRead"
+        params := []
+        returnType := some FieldType.address
+        isPure := true
+        body := [Stmt.return Expr.caller]
+      }
+    ]
+  }
+  match compile pureReadsEnvSpec [1] with
+  | .error err =>
+      if !contains err "is marked pure but reads state/environment" then
+        throw (IO.userError s!"✗ pure-env-read mutability diagnostic mismatch: {err}")
+      IO.println "✓ pure-env-read mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected pure function with environment read to fail compilation")
+
+#eval! do
+  let invalidExclusiveMutabilitySpec : ContractSpec := {
+    name := "InvalidExclusiveMutabilitySpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badViewPure"
+        params := []
+        returnType := some FieldType.uint256
+        isView := true
+        isPure := true
+        body := [Stmt.return (Expr.literal 1)]
+      }
+    ]
+  }
+  match compile invalidExclusiveMutabilitySpec [1] with
+  | .error err =>
+      if !contains err "cannot be both view and pure" then
+        throw (IO.userError s!"✗ view+pure mutability diagnostic mismatch: {err}")
+      IO.println "✓ view+pure mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected view+pure mutability conflict to fail compilation")
+
+#eval! do
   let duplicateFunctionParamSpec : ContractSpec := {
     name := "DuplicateFunctionParamSpec"
     fields := []

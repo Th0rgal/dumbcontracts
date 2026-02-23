@@ -1,4 +1,3 @@
-import Compiler.Proofs.MappingEncoding
 import EvmYul
 
 namespace Compiler.Proofs
@@ -6,14 +5,11 @@ namespace Compiler.Proofs
 /-!
 Mapping slot abstraction used by proof interpreters.
 
-The active backend is keccak-faithful (`solidityMappingSlot`), while the tagged
-encoding model from `MappingEncoding.lean` is retained only for transitional
-reference and compatibility scaffolding.
+The active backend is keccak-faithful (`solidityMappingSlot`).
 -/
 
 /-- Mapping-slot backend chosen for proof semantics. -/
 inductive MappingSlotBackend where
-  | tagged
   | keccak
   deriving DecidableEq, Repr
 
@@ -25,10 +21,7 @@ Active proof-model backend.
 def activeMappingSlotBackend : MappingSlotBackend := .keccak
 
 /-- Whether the active backend matches EVM keccak-derived slot layout exactly. -/
-def activeMappingSlotBackendIsEvmFaithful : Bool :=
-  match activeMappingSlotBackend with
-  | .tagged => false
-  | .keccak => true
+def activeMappingSlotBackendIsEvmFaithful : Bool := true
 
 /-- ABI-encode `(key, baseSlot)` as two 32-byte words (Solidity mapping convention). -/
 def abiEncodeMappingSlot (baseSlot key : Nat) : ByteArray :=
@@ -41,22 +34,13 @@ def solidityMappingSlot (baseSlot key : Nat) : Nat :=
   EvmYul.fromByteArrayBigEndian (ffi.KEC (abiEncodeMappingSlot baseSlot key))
 
 /-- Active proof-model mapping slot encoding backend. -/
-def abstractMappingSlot (baseSlot key : Nat) : Nat :=
-  match activeMappingSlotBackend with
-  | .tagged => encodeMappingSlot baseSlot key
-  | .keccak => solidityMappingSlot baseSlot key
+def abstractMappingSlot (baseSlot key : Nat) : Nat := solidityMappingSlot baseSlot key
 
 /-- Active proof-model mapping slot tag sentinel (backend-specific). -/
-def abstractMappingTag : Nat :=
-  match activeMappingSlotBackend with
-  | .tagged => mappingTag
-  | .keccak => 0
+def abstractMappingTag : Nat := 0
 
 /-- Active proof-model mapping slot decoder backend. -/
-def abstractDecodeMappingSlot (slot : Nat) : Option (Nat × Nat) :=
-  match activeMappingSlotBackend with
-  | .tagged => decodeMappingSlot slot
-  | .keccak => none
+def abstractDecodeMappingSlot (_slot : Nat) : Option (Nat × Nat) := none
 
 /-- Active proof-model nested mapping slot helper. -/
 def abstractNestedMappingSlot (baseSlot key1 key2 : Nat) : Nat :=
@@ -67,20 +51,15 @@ def abstractLoadMappingEntry
     (storage : Nat → Nat)
     (mappings : Nat → Nat → Nat)
     (baseSlot key : Nat) : Nat :=
-  match activeMappingSlotBackend with
-  | .tagged => mappings baseSlot key
-  | .keccak => storage (solidityMappingSlot baseSlot key)
+  let _ := mappings
+  storage (solidityMappingSlot baseSlot key)
 
 /-- Write a mapping entry directly from base slot and key. -/
 def abstractStoreMappingEntry
     (storage : Nat → Nat)
     (mappings : Nat → Nat → Nat)
     (baseSlot key value : Nat) : (Nat → Nat) × (Nat → Nat → Nat) :=
-  match activeMappingSlotBackend with
-  | .tagged =>
-      (storage, fun b k => if b = baseSlot ∧ k = key then value else mappings b k)
-  | .keccak =>
-      (fun s => if s = solidityMappingSlot baseSlot key then value else storage s, mappings)
+  (fun s => if s = solidityMappingSlot baseSlot key then value else storage s, mappings)
 
 /-- Read through the active mapping-slot backend from split storage/mapping tables. -/
 def abstractLoadStorageOrMapping

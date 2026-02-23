@@ -88,6 +88,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_verify_paths_sync.py`** - Ensures `.github/workflows/verify.yml` keeps `on.push.paths` and `on.pull_request.paths` identical, while validating `jobs.changes.filters.code` remains a duplicate-free subset
 - **`check_verify_checks_docs_sync.py`** - Ensures `.github/workflows/verify.yml` `checks` job python-script command sequence matches the documented `**\`checks\` job**` list in this README
 - **`check_verify_build_docs_sync.py`** - Ensures `.github/workflows/verify.yml` `build` job python-script command sequence matches the documented `**\`build\` job**` list in this README
+- **`check_verify_ci_jobs_docs_sync.py`** - Ensures `.github/workflows/verify.yml` top-level job order matches the CI job summary list in this README (`## CI Integration`)
 - **`generate_verification_status.py`** - Deterministically generates `artifacts/verification_status.json` (theorem/test/axiom/sorry/toolchain metrics) and supports `--check` mode for CI freshness gating
 - **`check_solc_pin.py`** - Enforces pinned solc consistency across CI/tooling/docs: `verify.yml` (`SOLC_VERSION`, `SOLC_URL`, `SOLC_SHA256`), `foundry.toml` (`solc_version`), `setup-solc` action URL/SHA usage, and `TRUST_ASSUMPTIONS.md` pinned version line
 - **`check_axiom_locations.py`** - Validates that AXIOMS.md line number references match actual axiom locations in source files
@@ -103,6 +104,7 @@ python3 scripts/check_interop_matrix_sync.py
 python3 scripts/check_verify_paths_sync.py
 python3 scripts/check_verify_checks_docs_sync.py
 python3 scripts/check_verify_build_docs_sync.py
+python3 scripts/check_verify_ci_jobs_docs_sync.py
 
 # Run locally after modifying storage slots or adding contracts
 python3 scripts/check_storage_layout.py
@@ -188,7 +190,7 @@ Creates 7 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic 
 
 ## CI Integration
 
-Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
+Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 
 **`changes`** — Path filter that gates code-dependent jobs (doc-only PRs skip build/test)
 
@@ -203,17 +205,18 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 8. Verify workflow path-filter sync (`check_verify_paths_sync.py`)
 9. Verify checks/docs sync (`check_verify_checks_docs_sync.py`)
 10. Verify build/docs sync (`check_verify_build_docs_sync.py`)
-11. Solc pin consistency (`check_solc_pin.py`)
-12. Property manifest sync (`check_property_manifest_sync.py`)
-13. Storage layout consistency (`check_storage_layout.py`)
-14. Lean hygiene (`check_lean_hygiene.py`)
-15. Static gas model builtin coverage (`check_gas_model_coverage.py`)
-16. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-17. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-18. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
-19. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-20. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-21. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+11. Verify CI job/docs sync (`check_verify_ci_jobs_docs_sync.py`)
+12. Solc pin consistency (`check_solc_pin.py`)
+13. Property manifest sync (`check_property_manifest_sync.py`)
+14. Storage layout consistency (`check_storage_layout.py`)
+15. Lean hygiene (`check_lean_hygiene.py`)
+16. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+17. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+18. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+19. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
+20. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+21. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+22. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
@@ -229,6 +232,7 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 
 **`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42
+**`foundry-patched`** — Patched-Yul smoke gate on differential/property harness (seed 42, no `Random10000`)
 **`foundry-multi-seed`** — 7-seed flakiness detection (seeds: 0, 1, 42, 123, 999, 12345, 67890)
 
 ## Adding New Property Tests

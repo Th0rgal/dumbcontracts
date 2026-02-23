@@ -121,6 +121,9 @@ jobs:
       - name: Check verify build/docs sync
         run: python3 scripts/check_verify_build_docs_sync.py
 
+      - name: Check verify CI job/docs sync
+        run: python3 scripts/check_verify_ci_jobs_docs_sync.py
+
       - name: Check solc pin consistency
         run: python3 scripts/check_solc_pin.py
 

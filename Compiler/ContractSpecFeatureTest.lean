@@ -2745,6 +2745,51 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected payable+view mutability conflict to fail compilation")
 
 #eval! do
+  let duplicateFunctionParamSpec : ContractSpec := {
+    name := "DuplicateFunctionParamSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "setBoth"
+        params := [
+          { name := "x", ty := ParamType.uint256 },
+          { name := "x", ty := ParamType.address }
+        ]
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile duplicateFunctionParamSpec [1] with
+  | .error err =>
+      if !contains err "duplicate parameter name 'x' in function 'setBoth'" then
+        throw (IO.userError s!"✗ duplicate function param diagnostic mismatch: {err}")
+      IO.println "✓ duplicate function param diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected duplicate function params to fail compilation")
+
+#eval! do
+  let duplicateConstructorParamSpec : ContractSpec := {
+    name := "DuplicateConstructorParamSpec"
+    fields := []
+    constructor := some {
+      params := [
+        { name := "owner", ty := ParamType.address },
+        { name := "owner", ty := ParamType.address }
+      ]
+      body := [Stmt.stop]
+    }
+    functions := [{ name := "noop", params := [], returnType := none, body := [Stmt.stop] }]
+  }
+  match compile duplicateConstructorParamSpec [1] with
+  | .error err =>
+      if !contains err "duplicate parameter name 'owner' in constructor" then
+        throw (IO.userError s!"✗ duplicate constructor param diagnostic mismatch: {err}")
+      IO.println "✓ duplicate constructor param diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected duplicate constructor params to fail compilation")
+
+#eval! do
   let invalidSpecialEntrypointMutabilitySpec : ContractSpec := {
     name := "InvalidSpecialEntrypointMutabilitySpec"
     fields := []

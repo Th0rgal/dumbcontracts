@@ -960,6 +960,10 @@ private partial def validateScopedStmtIdentifiers
     (localScope : List String) : Stmt → Except String (List String)
   | Stmt.letVar name value => do
       validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      if paramScope.contains name then
+        throw s!"Compilation error: {context} declares local variable '{name}' that shadows a parameter"
+      if localScope.contains name then
+        throw s!"Compilation error: {context} redeclares local variable '{name}' in the same scope"
       pure (name :: localScope)
   | Stmt.assignVar name value => do
       if !localScope.contains name then

@@ -76,5 +76,60 @@ class PropertyUtilsContractNameTests(unittest.TestCase):
             self.assertEqual(manifest, {"_Vault": ["theorem_ok"]})
 
 
+class PropertyUtilsPropertyTagTests(unittest.TestCase):
+    def test_extract_property_names_rejects_plain_line_comment_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "PropertyCounter.t.sol"
+            path.write_text(
+                "pragma solidity ^0.8.13;\n"
+                "contract PropertyCounter {\n"
+                "    function test_note_only() public {\n"
+                "        // Property: fake_from_line_comment\n"
+                "    }\n"
+                "}\n",
+                encoding="utf-8",
+            )
+
+            names = property_utils.extract_property_names(path)
+            self.assertEqual(names, [])
+
+    def test_extract_property_names_accepts_structured_doc_tags(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "PropertyCounter.t.sol"
+            path.write_text(
+                "pragma solidity ^0.8.13;\n"
+                "contract PropertyCounter {\n"
+                "    /// Property 1: theorem_indexed\n"
+                "    /// Property: theorem_simple\n"
+                "    /**\n"
+                "     * Property 2: theorem_block_doc\n"
+                "     */\n"
+                "}\n",
+                encoding="utf-8",
+            )
+
+            names = property_utils.extract_property_names(path)
+            self.assertEqual(names, ["theorem_indexed", "theorem_simple", "theorem_block_doc"])
+
+
+class PropertyUtilsTheoremExtractionTests(unittest.TestCase):
+    def test_collect_theorems_ignores_block_and_line_comments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "Spec.lean"
+            path.write_text(
+                "/-\n"
+                " theorem ghost_from_comment : True := by\n"
+                "   trivial\n"
+                "-/\n"
+                "\n"
+                "-- theorem ghost_from_line_comment : True := by\n"
+                "theorem real_theorem : True := by\n"
+                "  trivial\n",
+                encoding="utf-8",
+            )
+
+            names = property_utils.collect_theorems(path)
+            self.assertEqual(names, ["real_theorem"])
+
 if __name__ == "__main__":
     unittest.main()

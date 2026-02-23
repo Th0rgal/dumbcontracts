@@ -200,6 +200,7 @@ Identifier rules (fail-fast validation):
 - Reserved Lean/Solidity keywords are rejected for generated field/function names
 - `--functions` signatures must be comma-separated and parenthesis-balanced
 - Supported function parameter types are `uint256` and `address` (unknown types are rejected)
+- Getter property test scaffolds are emitted as explicit `testTODO_*` placeholders that revert until return-value and non-mutation assertions are implemented
 
 ## Utilities
 

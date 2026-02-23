@@ -2101,6 +2101,37 @@ private def featureSpec : ContractSpec := {
          "return(0, 64)"]
 
 #eval! do
+  let internalReturnNameCollisionSpec : ContractSpec := {
+    name := "InternalReturnNameCollision"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "helper"
+        params := [{ name := "__ret0", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [
+          Stmt.letVar "__ret0_1" (Expr.param "__ret0"),
+          Stmt.return (Expr.localVar "__ret0_1")
+        ]
+      },
+      { name := "entry"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.internalCall "helper" [Expr.param "x"])]
+      }
+    ]
+  }
+  match compile internalReturnNameCollisionSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected internal return name collision to be handled, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "internal return name collision hygiene" rendered
+        ["function internal_helper(__ret0) -> __ret0_2",
+         "__ret0_2 := __ret0_1"]
+
+#eval! do
   let exprInternalCallMultiReturnSpec : ContractSpec := {
     name := "ExprInternalCallMultiReturnRejected"
     fields := []

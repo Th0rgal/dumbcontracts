@@ -2720,6 +2720,46 @@ private def genParamLoadsFrom
 def genParamLoads (params : List Param) : List YulStmt :=
   genParamLoadsFrom (fun pos => YulExpr.call "calldataload" [pos]) 4 4 params
 
+mutual
+private partial def collectStmtBindNames : Stmt → List String
+  | Stmt.letVar name _ => [name]
+  | Stmt.ite _ thenBranch elseBranch =>
+      collectStmtListBindNames thenBranch ++ collectStmtListBindNames elseBranch
+  | Stmt.forEach varName _ body =>
+      varName :: collectStmtListBindNames body
+  | Stmt.internalCallAssign names _ _ => names
+  | _ => []
+
+private partial def collectStmtListBindNames : List Stmt → List String
+  | [] => []
+  | stmt :: rest =>
+      collectStmtBindNames stmt ++ collectStmtListBindNames rest
+end
+
+private def pickFreshInternalRetName (usedNames : List String) (idx : Nat) : String :=
+  let base := s!"__ret{idx}"
+  if !usedNames.contains base then
+    base
+  else
+    let rec go (suffix : Nat) (remaining : Nat) : String :=
+      let candidate := s!"{base}_{suffix}"
+      if !usedNames.contains candidate then
+        candidate
+      else
+        match remaining with
+        | 0 => s!"{base}_fresh"
+        | n + 1 => go (suffix + 1) n
+    go 1 usedNames.length
+
+private def freshInternalRetNames (returns : List ParamType) (usedNames : List String) : List String :=
+  let (_, namesRev) := returns.zipIdx.foldl
+    (fun (acc : List String × List String) (_retTy, idx) =>
+      let (used, names) := acc
+      let fresh := pickFreshInternalRetName used idx
+      (fresh :: used, fresh :: names))
+    (usedNames, [])
+  namesRev.reverse
+
 -- Compile internal function to a Yul function definition (#181)
 def compileInternalFunction (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
     (spec : FunctionSpec) :
@@ -2727,7 +2767,8 @@ def compileInternalFunction (fields : List Field) (events : List EventDef) (erro
   validateFunctionSpec spec
   let returns ← functionReturns spec
   let paramNames := spec.params.map (·.name)
-  let retNames := returns.zipIdx.map (fun (_, idx) => s!"__ret{idx}")
+  let usedNames := paramNames ++ collectStmtListBindNames spec.body
+  let retNames := freshInternalRetNames returns usedNames
   let bodyStmts ← compileStmtList fields events errors
     (dynamicSource := .calldata) (internalRetNames := retNames) (isInternal := true) spec.body
   pure (YulStmt.funcDef (internalFunctionYulName spec.name) paramNames retNames bodyStmts)

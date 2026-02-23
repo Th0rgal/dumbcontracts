@@ -517,6 +517,72 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected low-level call usage to fail compilation")
 
 #eval! do
+  let eagerLogicalCallSpec : ContractSpec := {
+    name := "EagerLogicalCall"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "unsafe"
+        params := [{ name := "target", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.return (Expr.logicalAnd
+            (Expr.literal 0)
+            (Expr.call
+              (Expr.literal 50000)
+              (Expr.param "target")
+              (Expr.literal 0)
+              (Expr.literal 0)
+              (Expr.literal 0)
+              (Expr.literal 0)
+              (Expr.literal 0)))
+        ]
+      }
+    ]
+  }
+  match compile eagerLogicalCallSpec [1] with
+  | .error err =>
+      if !(contains err "Expr.logicalAnd/Expr.logicalOr with call-like operand(s)" &&
+          contains err "Issue #748") then
+        throw (IO.userError s!"✗ logical call operand diagnostic mismatch: {err}")
+      IO.println "✓ logical call operand validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected call-like logical operand to fail compilation")
+
+#eval! do
+  let eagerLogicalExternalSpec : ContractSpec := {
+    name := "EagerLogicalExternal"
+    fields := []
+    constructor := none
+    externals := [
+      { name := "oracle"
+        params := [ParamType.uint256]
+        returns := [ParamType.uint256]
+        axiomNames := []
+      }
+    ]
+    functions := [
+      { name := "unsafe"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.return (Expr.logicalOr
+            (Expr.literal 1)
+            (Expr.externalCall "oracle" [Expr.param "x"]))
+        ]
+      }
+    ]
+  }
+  match compile eagerLogicalExternalSpec [1] with
+  | .error err =>
+      if !(contains err "Expr.logicalAnd/Expr.logicalOr with call-like operand(s)" &&
+          contains err "Issue #748") then
+        throw (IO.userError s!"✗ logical external operand diagnostic mismatch: {err}")
+      IO.println "✓ logical external operand validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected external-call logical operand to fail compilation")
+
+#eval! do
   let staticcallSpec : ContractSpec := {
     name := "StaticcallUnsupported"
     fields := []

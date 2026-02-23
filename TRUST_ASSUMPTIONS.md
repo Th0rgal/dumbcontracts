@@ -62,11 +62,11 @@ Metrics tracked by repository tooling:
 - What is enforced: duplicate-name, collision, unresolved reference, and arity checks.
 - What is trusted: semantic correctness of linked Yul code.
 
-### 4. Mapping Slot Collision Freedom
+### 4. Mapping Slot Modeling Scope (Current Proof Backend)
 
-- Role: mapping slot layout depends on keccak-derived slot addressing.
-- Status: standard Ethereum assumption.
-- Mitigation: consistent layout checks and explicit documentation of this boundary.
+- Role: proof interpreters currently use a verification-level tagged mapping model (`Compiler/Proofs/MappingSlot.lean`, `activeMappingSlotBackend = .tagged`) rather than keccak-derived flat storage slots.
+- Status: explicit modeling scope boundary; not yet fully EVM-faithful for mapping slot addressing.
+- Mitigation: strict abstraction-boundary CI (`scripts/check_mapping_slot_boundary.py`) and explicit migration tracking in issue #259.
 
 ### 5. EVM Semantics and Gas
 

@@ -13,6 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PROOFS_DIR = ROOT / "Compiler" / "Proofs"
+MAPPING_SLOT_FILE = PROOFS_DIR / "MappingSlot.lean"
+TRUST_ASSUMPTIONS_FILE = ROOT / "TRUST_ASSUMPTIONS.md"
 
 ALLOWED_MAPPING_ENCODING_IMPORTERS = {
     PROOFS_DIR / "MappingSlot.lean",
@@ -35,10 +37,43 @@ DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE = re.compile(
     r"Compiler\.Proofs\.(?:mappingTag|encodeMappingSlot|decodeMappingSlot|encodeNestedMappingSlot|normalizeMappingBaseSlot)"
 )
 LEGACY_ALIAS_SYMBOL_RE = re.compile(r"\b(?:mappingTag|encodeMappingSlot|decodeMappingSlot)\b")
+ACTIVE_BACKEND_TAGGED_RE = re.compile(
+    r"def\s+activeMappingSlotBackend\s*:\s*MappingSlotBackend\s*:=\s*\.tagged"
+)
+ACTIVE_BACKEND_FAITHFUL_FALSE_RE = re.compile(
+    r"def\s+activeMappingSlotBackendIsEvmFaithful\s*:\s*Bool\s*:=\s*"
+)
 
 
 def main() -> int:
     errors: list[str] = []
+
+    mapping_slot_text = MAPPING_SLOT_FILE.read_text(encoding="utf-8")
+    trust_text = TRUST_ASSUMPTIONS_FILE.read_text(encoding="utf-8")
+
+    if not ACTIVE_BACKEND_TAGGED_RE.search(mapping_slot_text):
+        rel = MAPPING_SLOT_FILE.relative_to(ROOT)
+        errors.append(
+            f"{rel}: expected explicit active backend marker "
+            "`activeMappingSlotBackend := .tagged`"
+        )
+
+    if not ACTIVE_BACKEND_FAITHFUL_FALSE_RE.search(mapping_slot_text):
+        rel = MAPPING_SLOT_FILE.relative_to(ROOT)
+        errors.append(
+            f"{rel}: expected explicit `activeMappingSlotBackendIsEvmFaithful` marker"
+        )
+
+    if "activeMappingSlotBackend = .tagged" not in trust_text:
+        rel = TRUST_ASSUMPTIONS_FILE.relative_to(ROOT)
+        errors.append(
+            f"{rel}: must document current mapping backend scope "
+            "(`activeMappingSlotBackend = .tagged`)"
+        )
+
+    if "issue #259" not in trust_text:
+        rel = TRUST_ASSUMPTIONS_FILE.relative_to(ROOT)
+        errors.append(f"{rel}: must reference issue #259 for keccak migration tracking")
 
     for lean_file in PROOFS_DIR.rglob("*.lean"):
         text = lean_file.read_text(encoding="utf-8")

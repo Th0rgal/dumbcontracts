@@ -115,7 +115,7 @@ def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : 
 
 private def deployCode (contract : IRContract) : List YulStmt :=
   let valueGuard := if contract.constructorPayable then [] else [callvalueGuard]
-  valueGuard ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
+  valueGuard ++ contract.internalFunctions ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
 
 def emitYul (contract : IRContract) : YulObject :=
   { name := contract.name

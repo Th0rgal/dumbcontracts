@@ -618,9 +618,13 @@ private def featureSpec : ContractSpec := {
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
       assertContains "constructor dynamic read source" rendered
-        ["let firstWord := mload(add(numbers_data_offset, mul(0, 32)))"]
+        ["function __verity_array_element_memory_checked(data_offset, length, index) -> word",
+         "if iszero(lt(index, length)) {",
+         "revert(0, 0)",
+         "let firstWord := __verity_array_element_memory_checked(numbers_data_offset, numbers_length, 0)"]
       assertNotContains "constructor dynamic read source" rendered
-        ["let firstWord := calldataload(add(numbers_data_offset, mul(0, 32)))"]
+        ["let firstWord := calldataload(add(numbers_data_offset, mul(0, 32)))",
+         "let firstWord := mload(add(numbers_data_offset, mul(0, 32)))"]
 
 #eval! do
   let callSpec : ContractSpec := {
@@ -642,6 +646,28 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ call unsupported diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected call usage to fail compilation")
+
+#eval! do
+  let noArrayElementSpec : ContractSpec := {
+    name := "NoArrayElementHelpers"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "value"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.param "x")]
+      }
+    ]
+  }
+  match compile noArrayElementSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected non-array contract to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertNotContains "array helper injection is usage-gated" rendered
+        ["function __verity_array_element_calldata_checked(data_offset, length, index) -> word",
+         "function __verity_array_element_memory_checked(data_offset, length, index) -> word"]
 
 #eval! do
   let balanceSpec : ContractSpec := {

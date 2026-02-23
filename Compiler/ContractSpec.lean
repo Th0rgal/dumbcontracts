@@ -3429,21 +3429,58 @@ private def isScalarParamType : ParamType → Bool
   | _ => false
 
 private def genDynamicParamLoads
-    (loadWord : YulExpr → YulExpr) (baseOffset : Nat) (name : String) (headOffset : Nat) :
+    (loadWord : YulExpr → YulExpr) (sizeExpr : YulExpr) (headSize : Nat)
+    (baseOffset : Nat) (name : String) (ty : ParamType) (headOffset : Nat) :
     List YulStmt :=
   let offsetLoad := YulStmt.let_ s!"{name}_offset"
     (loadWord (YulExpr.lit headOffset))
   let relativeOffset := YulExpr.ident s!"{name}_offset"
-  let absoluteOffset :=
+  let absoluteOffsetExpr :=
     if baseOffset == 0 then
       relativeOffset
     else
       YulExpr.call "add" [YulExpr.lit baseOffset, relativeOffset]
+  let absoluteOffsetName := s!"{name}_abs_offset"
+  let absoluteOffsetLoad := YulStmt.let_ absoluteOffsetName absoluteOffsetExpr
+  let absoluteOffset := YulExpr.ident absoluteOffsetName
+  let offsetBoundsCheck := YulStmt.if_ (YulExpr.call "lt" [relativeOffset, YulExpr.lit headSize]) [
+    YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+  ]
+  let absoluteBoundsCheck := YulStmt.if_ (YulExpr.call "gt" [
+    absoluteOffset,
+    YulExpr.call "sub" [sizeExpr, YulExpr.lit 32]
+  ]) [
+    YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+  ]
   let lengthLoad := YulStmt.let_ s!"{name}_length"
     (loadWord absoluteOffset)
-  let dataOffsetLoad := YulStmt.let_ s!"{name}_data_offset"
+  let tailHeadEndName := s!"{name}_tail_head_end"
+  let tailHeadEndLoad := YulStmt.let_ tailHeadEndName
     (YulExpr.call "add" [absoluteOffset, YulExpr.lit 32])
-  [offsetLoad, lengthLoad, dataOffsetLoad]
+  let tailRemainingName := s!"{name}_tail_remaining"
+  let tailRemainingLoad := YulStmt.let_ tailRemainingName
+    (YulExpr.call "sub" [sizeExpr, YulExpr.ident tailHeadEndName])
+  let lengthBoundsCheck :=
+    match ty with
+    | ParamType.bytes =>
+        [YulStmt.if_ (YulExpr.call "gt" [
+            YulExpr.ident s!"{name}_length",
+            YulExpr.ident tailRemainingName
+          ]) [
+            YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+          ]]
+    | ParamType.array _ =>
+        [YulStmt.if_ (YulExpr.call "gt" [
+            YulExpr.ident s!"{name}_length",
+            YulExpr.call "div" [YulExpr.ident tailRemainingName, YulExpr.lit 32]
+          ]) [
+            YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+          ]]
+    | _ => []
+  let dataOffsetLoad := YulStmt.let_ s!"{name}_data_offset"
+    (YulExpr.ident tailHeadEndName)
+  [offsetLoad, offsetBoundsCheck, absoluteOffsetLoad, absoluteBoundsCheck, lengthLoad, tailHeadEndLoad, tailRemainingLoad]
+    ++ lengthBoundsCheck ++ [dataOffsetLoad]
 
 private def genScalarLoad
     (loadWord : YulExpr → YulExpr) (name : String) (ty : ParamType) (offset : Nat) :
@@ -3497,8 +3534,14 @@ private partial def genStaticTypeLoads
   | _ => []
 
 private def genParamLoadsFrom
-    (loadWord : YulExpr → YulExpr) (headStart : Nat) (baseOffset : Nat) (params : List Param) :
+    (loadWord : YulExpr → YulExpr) (sizeExpr : YulExpr)
+    (headStart : Nat) (baseOffset : Nat) (params : List Param) :
     List YulStmt :=
+  let headSize := (params.map (fun p => paramHeadSize p.ty)).foldl (· + ·) 0
+  let minInputSizeCheck :=
+    YulStmt.if_ (YulExpr.call "lt" [sizeExpr, YulExpr.lit (baseOffset + headSize)]) [
+      YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+    ]
   let rec go (paramList : List Param) (headOffset : Nat) : List YulStmt :=
     match paramList with
     | [] => []
@@ -3508,16 +3551,16 @@ private def genParamLoadsFrom
           genScalarLoad loadWord param.name param.ty headOffset
         | ParamType.tuple elemTypes =>
           if isDynamicParamType param.ty then
-            genDynamicParamLoads loadWord baseOffset param.name headOffset
+            genDynamicParamLoads loadWord sizeExpr headSize baseOffset param.name param.ty headOffset
           else
             genStaticTypeLoads loadWord param.name (ParamType.tuple elemTypes) headOffset
         | ParamType.array _ =>
-          genDynamicParamLoads loadWord baseOffset param.name headOffset
+          genDynamicParamLoads loadWord sizeExpr headSize baseOffset param.name param.ty headOffset
         | ParamType.fixedArray _ n =>
           -- Static fixed arrays are decoded inline recursively (including nested tuple members).
           -- For scalar element arrays we preserve `<name>` as an alias to `<name>_0`.
           if isDynamicParamType param.ty then
-            genDynamicParamLoads loadWord baseOffset param.name headOffset
+            genDynamicParamLoads loadWord sizeExpr headSize baseOffset param.name param.ty headOffset
           else
             let staticLoads := genStaticTypeLoads loadWord param.name param.ty headOffset
             if n == 0 then staticLoads else
@@ -3531,13 +3574,13 @@ private def genParamLoadsFrom
                 | _ => []
               staticLoads ++ firstAlias
         | ParamType.bytes =>
-          genDynamicParamLoads loadWord baseOffset param.name headOffset
+          genDynamicParamLoads loadWord sizeExpr headSize baseOffset param.name param.ty headOffset
       stmts ++ go rest (headOffset + paramHeadSize param.ty)
-  go params headStart
+  minInputSizeCheck :: go params headStart
 
 -- Generate parameter loading code (from calldata)
 def genParamLoads (params : List Param) : List YulStmt :=
-  genParamLoadsFrom (fun pos => YulExpr.call "calldataload" [pos]) 4 4 params
+  genParamLoadsFrom (fun pos => YulExpr.call "calldataload" [pos]) (YulExpr.call "calldatasize" []) 4 4 params
 
 mutual
 private partial def collectStmtBindNames : Stmt → List String
@@ -3714,7 +3757,7 @@ def genConstructorArgLoads (params : List Param) : List YulStmt :=
         (YulExpr.call "sub" [YulExpr.call "codesize" [], YulExpr.ident "argsOffset"]),
       YulStmt.expr (YulExpr.call "codecopy" [YulExpr.lit 0, YulExpr.ident "argsOffset", YulExpr.ident "argsSize"])
     ]
-    let paramLoads := genParamLoadsFrom (fun pos => YulExpr.call "mload" [pos]) 0 0 params
+    let paramLoads := genParamLoadsFrom (fun pos => YulExpr.call "mload" [pos]) (YulExpr.ident "argsSize") 0 0 params
     initcodeArgCopy ++ paramLoads ++ constructorArgAliases params
 
 -- Compile deploy code (constructor)

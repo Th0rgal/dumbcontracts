@@ -175,6 +175,11 @@ private def featureSpec : ContractSpec := {
          "let __abi_bool_word_68 := calldataload(68)",
          "let t_2 := iszero(iszero(__abi_bool_word_68))", "let z := calldataload(100)"]
       assertContains "dynamic tuple keeps offset head word" rendered ["let td_offset := calldataload(4)", "let x := calldataload(36)"]
+      assertContains "dynamic ABI decode offset/length bounds guards" rendered
+        ["if lt(calldatasize(), 68) {", "if lt(arr_offset, 32) {",
+         "if gt(arr_abs_offset, sub(calldatasize(), 32)) {",
+         "if gt(arr_length, div(arr_tail_remaining, 32)) {",
+         "if gt(data_length, data_tail_remaining) {"]
       assertContains "nested static tuple decode head offsets" rendered
         ["let u_0_0 := calldataload(4)", "let u_0_1 := calldataload(36)",
          "let u_1_0 := and(calldataload(68)", "let __abi_bool_word_100 := calldataload(100)",
@@ -755,8 +760,10 @@ private def featureSpec : ContractSpec := {
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
       assertContains "constructor dynamic param decode" rendered
-        ["let payload_offset := mload(0)", "let payload_length := mload(payload_offset)",
-         "let payload_data_offset := add(payload_offset, 32)", "let arg0 := payload_offset"]
+        ["if lt(argsSize, 32) {", "let payload_offset := mload(0)",
+         "let payload_abs_offset := payload_offset",
+         "let payload_length := mload(payload_abs_offset)", "let payload_data_offset := payload_tail_head_end",
+         "let arg0 := payload_offset"]
 
 #eval! do
   let ctorMixedParamSpec : ContractSpec := {
@@ -779,8 +786,8 @@ private def featureSpec : ContractSpec := {
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
       assertContains "constructor mixed param decode" rendered
-        ["let owner := and(mload(0),", "let payload_offset := mload(32)",
-         "let payload_length := mload(payload_offset)", "let arg0 := owner",
+        ["if lt(argsSize, 64) {", "let owner := and(mload(0),", "let payload_offset := mload(32)",
+         "let payload_length := mload(payload_abs_offset)", "let arg0 := owner",
          "let arg1 := payload_offset"]
 
 #eval! do

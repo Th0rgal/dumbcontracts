@@ -58,7 +58,7 @@ bash scripts/test_multiple_seeds.sh
 
 ```
 test/
-├── Property*.t.sol           # Property tests (197 functions, covering 250/401 theorems)
+├── Property*.t.sol           # Property tests (197 functions, covering 250/431 theorems)
 ├── Differential*.t.sol       # Differential tests
 ├── <Contract>.t.sol          # Unit tests (Counter, Ledger, Owned, etc.)
 ├── CallValueGuard.t.sol      # Call value rejection tests

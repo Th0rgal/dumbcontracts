@@ -1923,15 +1923,21 @@ private def issue753Ref : String :=
 private def issue756Ref : String :=
   "Issue #756 (external/helper namespace collisions)"
 
-private def reservedExternalNames : List String :=
-  let mappingHelpers := ["mappingSlot"]
-  let arrayHelpers := [checkedArrayElementCalldataHelperName, checkedArrayElementMemoryHelperName]
+private def reservedExternalNames (mappingHelpersRequired arrayHelpersRequired : Bool) : List String :=
+  let mappingHelpers := if mappingHelpersRequired then ["mappingSlot"] else []
+  let arrayHelpers :=
+    if arrayHelpersRequired then
+      [checkedArrayElementCalldataHelperName, checkedArrayElementMemoryHelperName]
+    else
+      []
   let entrypoints := ["fallback", "receive"]
   (mappingHelpers ++ arrayHelpers ++ entrypoints).eraseDups
 
-private def firstReservedExternalCollision (spec : ContractSpec) : Option String :=
+private def firstReservedExternalCollision
+    (spec : ContractSpec) (mappingHelpersRequired arrayHelpersRequired : Bool) : Option String :=
   (spec.externals.map (·.name)).find? (fun name =>
-    name.startsWith internalFunctionPrefix || reservedExternalNames.contains name)
+    name.startsWith internalFunctionPrefix ||
+      (reservedExternalNames mappingHelpersRequired arrayHelpersRequired).contains name)
 
 private def firstInternalDynamicParam
     (fns : List FunctionSpec) : Option (String × String × ParamType) :=
@@ -3956,7 +3962,9 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
       throw s!"Compilation error: duplicate external declaration '{dup}' in {spec.name}"
   | none =>
       pure ()
-  match firstReservedExternalCollision spec with
+  let mappingHelpersRequired := usesMapping fields
+  let arrayHelpersRequired := contractUsesArrayElement spec
+  match firstReservedExternalCollision spec mappingHelpersRequired arrayHelpersRequired with
   | some name =>
       if name.startsWith internalFunctionPrefix then
         throw s!"Compilation error: external declaration '{name}' uses reserved prefix '{internalFunctionPrefix}' ({issue756Ref})."
@@ -3981,7 +3989,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   -- Compile internal functions as Yul function definitions (#181)
   let internalFuncDefs ← internalFns.mapM (compileInternalFunction fields spec.events spec.errors)
   let arrayElementHelpers :=
-    if contractUsesArrayElement spec then
+    if arrayHelpersRequired then
       [checkedArrayElementCalldataHelper, checkedArrayElementMemoryHelper]
     else
       []
@@ -3994,7 +4002,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     functions := functions
     fallbackEntrypoint := fallbackEntrypoint
     receiveEntrypoint := receiveEntrypoint
-    usesMapping := usesMapping fields
+    usesMapping := mappingHelpersRequired
     internalFunctions := arrayElementHelpers ++ internalFuncDefs
   }
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Ensure proof interpreters depend on the MappingSlot abstraction boundary.
 
-This guard supports issue #259 migration by preventing new direct imports of
-`Compiler.Proofs.MappingEncoding` outside `Compiler/Proofs/MappingSlot.lean`.
+This guard enforces the mapping-slot abstraction boundary and ensures the active
+proof backend remains the keccak-faithful model.
 """
 
 from __future__ import annotations
@@ -37,11 +37,12 @@ DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE = re.compile(
     r"Compiler\.Proofs\.(?:mappingTag|encodeMappingSlot|decodeMappingSlot|encodeNestedMappingSlot|normalizeMappingBaseSlot)"
 )
 LEGACY_ALIAS_SYMBOL_RE = re.compile(r"\b(?:mappingTag|encodeMappingSlot|decodeMappingSlot)\b")
-ACTIVE_BACKEND_TAGGED_RE = re.compile(
-    r"def\s+activeMappingSlotBackend\s*:\s*MappingSlotBackend\s*:=\s*\.tagged"
+ACTIVE_BACKEND_KECCAK_RE = re.compile(
+    r"def\s+activeMappingSlotBackend\s*:\s*MappingSlotBackend\s*:=\s*\.keccak"
 )
-ACTIVE_BACKEND_FAITHFUL_FALSE_RE = re.compile(
+ACTIVE_BACKEND_FAITHFUL_TRUE_RE = re.compile(
     r"def\s+activeMappingSlotBackendIsEvmFaithful\s*:\s*Bool\s*:=\s*"
+    r"(?:true|[\s\S]*?\|\s*\.tagged\s*=>\s*false[\s\S]*?\|\s*\.keccak\s*=>\s*true)"
 )
 ABI_ENCODE_MAPPING_SLOT_RE = re.compile(r"def\s+abiEncodeMappingSlot\s*\(")
 SOLIDITY_MAPPING_SLOT_RE = re.compile(r"def\s+solidityMappingSlot\s*\(")
@@ -60,17 +61,18 @@ def main() -> int:
     mapping_slot_text = MAPPING_SLOT_FILE.read_text(encoding="utf-8")
     trust_text = TRUST_ASSUMPTIONS_FILE.read_text(encoding="utf-8")
 
-    if not ACTIVE_BACKEND_TAGGED_RE.search(mapping_slot_text):
+    if not ACTIVE_BACKEND_KECCAK_RE.search(mapping_slot_text):
         rel = MAPPING_SLOT_FILE.relative_to(ROOT)
         errors.append(
             f"{rel}: expected explicit active backend marker "
-            "`activeMappingSlotBackend := .tagged`"
+            "`activeMappingSlotBackend := .keccak`"
         )
 
-    if not ACTIVE_BACKEND_FAITHFUL_FALSE_RE.search(mapping_slot_text):
+    if not ACTIVE_BACKEND_FAITHFUL_TRUE_RE.search(mapping_slot_text):
         rel = MAPPING_SLOT_FILE.relative_to(ROOT)
         errors.append(
-            f"{rel}: expected explicit `activeMappingSlotBackendIsEvmFaithful` marker"
+            f"{rel}: expected explicit "
+            "`activeMappingSlotBackendIsEvmFaithful` marker proving keccak faithfulness"
         )
 
     if not ABI_ENCODE_MAPPING_SLOT_RE.search(mapping_slot_text):
@@ -102,16 +104,18 @@ def main() -> int:
             "to write flat storage via `solidityMappingSlot` while preserving mappings table"
         )
 
-    if "activeMappingSlotBackend = .tagged" not in trust_text:
+    if "activeMappingSlotBackend = .keccak" not in trust_text:
         rel = TRUST_ASSUMPTIONS_FILE.relative_to(ROOT)
         errors.append(
             f"{rel}: must document current mapping backend scope "
-            "(`activeMappingSlotBackend = .tagged`)"
+            "(`activeMappingSlotBackend = .keccak`)"
         )
 
-    if "issue #259" not in trust_text:
+    if "ffi.KEC" not in trust_text:
         rel = TRUST_ASSUMPTIONS_FILE.relative_to(ROOT)
-        errors.append(f"{rel}: must reference issue #259 for keccak migration tracking")
+        errors.append(
+            f"{rel}: must document external keccak trust boundary (`ffi.KEC`)"
+        )
 
     for lean_file in PROOFS_DIR.rglob("*.lean"):
         text = lean_file.read_text(encoding="utf-8")

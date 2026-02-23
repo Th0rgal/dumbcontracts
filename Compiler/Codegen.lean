@@ -145,9 +145,44 @@ private def profileSortsDispatchCases (profile : BackendProfile) : Bool :=
   | .solidityParityOrdering => true
   | .solidityParity => true
 
+private def profileSortsInternalHelpers (profile : BackendProfile) : Bool :=
+  match profile with
+  | .semantic => false
+  | .solidityParityOrdering => true
+  | .solidityParity => true
+
+private def internalHelperName? (stmt : YulStmt) : Option String :=
+  match stmt with
+  | .funcDef name _ _ _ => some name
+  | _ => none
+
+private def insertHelperByName (entry : String × YulStmt) : List (String × YulStmt) → List (String × YulStmt)
+  | [] => [entry]
+  | head :: tail =>
+      if entry.1 < head.1 then
+        entry :: head :: tail
+      else
+        head :: insertHelperByName entry tail
+
+private def sortInternalHelpersByName (helpers : List YulStmt) : List YulStmt :=
+  let named := helpers.filterMap (fun stmt =>
+    match internalHelperName? stmt with
+    | some name => some (name, stmt)
+    | none => none)
+  if named.length == helpers.length then
+    (named.foldl (fun acc entry => insertHelperByName entry acc) []).map Prod.snd
+  else
+    helpers
+
+private def internalHelpersForProfile (profile : BackendProfile) (helpers : List YulStmt) : List YulStmt :=
+  if profileSortsInternalHelpers profile then
+    sortInternalHelpersByName helpers
+  else
+    helpers
+
 def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
   let mapping := if contract.usesMapping then [mappingSlotFuncAt options.mappingSlotScratchBase] else []
-  let internals := contract.internalFunctions
+  let internals := internalHelpersForProfile options.backendProfile contract.internalFunctions
   let sortCases := profileSortsDispatchCases options.backendProfile
   mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases]
 
@@ -160,9 +195,13 @@ def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptio
 def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
   (runtimeCodeWithOptionsReport contract options).runtimeCode
 
-private def deployCode (contract : IRContract) : List YulStmt :=
+private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile) : List YulStmt :=
   let valueGuard := if contract.constructorPayable then [] else [callvalueGuard]
-  valueGuard ++ contract.internalFunctions ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
+  let internals := internalHelpersForProfile profile contract.internalFunctions
+  valueGuard ++ internals ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
+
+private def deployCode (contract : IRContract) : List YulStmt :=
+  deployCodeWithProfile contract .semantic
 
 def emitYul (contract : IRContract) : YulObject :=
   { name := contract.name
@@ -171,7 +210,7 @@ def emitYul (contract : IRContract) : YulObject :=
 
 def emitYulWithOptions (contract : IRContract) (options : YulEmitOptions) : YulObject :=
   { name := contract.name
-    deployCode := deployCode contract
+    deployCode := deployCodeWithProfile contract options.backendProfile
     runtimeCode := runtimeCodeWithOptions contract options }
 
 /-- Emit Yul and preserve patch-pass audit details for downstream reporting. -/
@@ -179,7 +218,7 @@ def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) 
     YulObject × Yul.PatchPassReport :=
   let runtimeReport := runtimeCodeWithOptionsReport contract options
   ({ name := contract.name
-     deployCode := deployCode contract
+     deployCode := deployCodeWithProfile contract options.backendProfile
      runtimeCode := runtimeReport.runtimeCode },
    runtimeReport.patchReport)
 

@@ -133,6 +133,9 @@ jobs:
       - name: Check verify foundry-patched sync
         run: python3 scripts/check_verify_foundry_patched_sync.py
 
+      - name: Check verify foundry job sync
+        run: python3 scripts/check_verify_foundry_job_sync.py
+
       - name: Check verify foundry-gas-calibration sync
         run: python3 scripts/check_verify_foundry_gas_calibration_sync.py
 

@@ -380,7 +380,8 @@ def compute_selectors(signatures: Iterable[str]) -> List[int]:
 
 def extract_compile_selectors(text: str) -> List[CompileSelectors]:
     items: List[CompileSelectors] = []
-    pattern = re.compile(r"compile\s+(\w+)Spec\s*\[([^\]]+)\]")
+    # Allow empty selector tables (`compile fooSpec []`) as valid Lean syntax.
+    pattern = re.compile(r"compile\s+(\w+)Spec\s*\[([^\]]*)\]")
     for match in pattern.finditer(text):
         def_name = match.group(1) + "Spec"
         raw_list = match.group(2)

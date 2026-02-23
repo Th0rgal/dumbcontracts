@@ -21,6 +21,7 @@ private structure CLIArgs where
   patchEnabled : Bool := false
   patchMaxIterations : Nat := 2
   patchReportPath : Option String := none
+  mappingSlotScratchBase : Nat := 0
 
 private def parseArgs (args : List String) : IO CLIArgs := do
   let rec go (remaining : List String) (cfg : CLIArgs) : IO CLIArgs :=
@@ -40,6 +41,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println "  --enable-patches   Enable deterministic Yul patch pass"
         IO.println "  --patch-max-iterations <n>  Max patch-pass fixpoint iterations (default: 2)"
         IO.println "  --patch-report <path>       Write TSV patch coverage report"
+        IO.println "  --mapping-slot-scratch-base <n>  Scratch memory base for mappingSlot helper (default: 0)"
         IO.println "  --verbose          Enable verbose output"
         IO.println "  -v                 Short form of --verbose"
         IO.println "  --help             Show this help message"
@@ -76,6 +78,12 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         go rest { cfg with patchEnabled := true, patchReportPath := some path }
     | ["--patch-report"] =>
         throw (IO.userError "Missing value for --patch-report")
+    | "--mapping-slot-scratch-base" :: raw :: rest =>
+        match raw.toNat? with
+        | some n => go rest { cfg with mappingSlotScratchBase := n }
+        | none => throw (IO.userError s!"Invalid value for --mapping-slot-scratch-base: {raw}")
+    | ["--mapping-slot-scratch-base"] =>
+        throw (IO.userError "Missing value for --mapping-slot-scratch-base")
     | "--verbose" :: rest | "-v" :: rest =>
         go rest { cfg with verbose := true }
     | unknown :: _ =>
@@ -101,12 +109,14 @@ def main (args : List String) : IO Unit := do
       match cfg.patchReportPath with
       | some path => IO.println s!"Patch report: {path}"
       | none => pure ()
+      IO.println s!"Mapping slot scratch base: {cfg.mappingSlotScratchBase}"
       IO.println ""
     let options : Compiler.YulEmitOptions := {
       patchConfig := {
         enabled := cfg.patchEnabled
         maxIterations := cfg.patchMaxIterations
       }
+      mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }
     if cfg.useAST then
       Compiler.ASTDriver.compileAllASTWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir

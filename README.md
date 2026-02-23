@@ -50,8 +50,11 @@ lake exe verity-compiler \
   --enable-patches \
   --patch-max-iterations 2 \
   --patch-report compiler/patch-report.tsv \
+  --mapping-slot-scratch-base 128 \
   -o compiler/yul-patched
 ```
+
+`--mapping-slot-scratch-base` controls where compiler-generated `mappingSlot` helpers write temporary words before `keccak256`.
 
 **Run tests:**
 ```bash

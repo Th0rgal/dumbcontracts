@@ -66,6 +66,26 @@ private def uniqueSelectors (spec : ASTContractSpec) : List Nat :=
     assertContains "SimpleToken.deploy has constructor side effects" rendered ["sstore(0", "sstore(2"]
     assertNotContains "SimpleToken.deploy strips constructor stop()" rendered ["stop()"]
 
+private def boolCtorSpec : ASTContractSpec := {
+  name := "BoolCtorSpec"
+  constructor := some {
+    params := [{ name := "flag", ty := .bool }]
+    body := Stmt.stop
+  }
+  functions := []
+}
+
+#eval! do
+  match compileSpec boolCtorSpec [] with
+  | .error err =>
+    throw (IO.userError s!"✗ bool constructor compile failed: {err}")
+  | .ok ir =>
+    let rendered := renderDeploy ir.deploy
+    assertContains "AST constructor bool decode enforces strict ABI domain" rendered
+      ["let __abi_ctor_bool_word_0 := mload(0)",
+       "if iszero(or(eq(__abi_ctor_bool_word_0, 0), eq(__abi_ctor_bool_word_0, 1))) {",
+       "let flag := iszero(iszero(__abi_ctor_bool_word_0))"]
+
 private def badConstructorReturnSpec : ASTContractSpec := {
   name := "BadConstructorReturn"
   constructor := some {
@@ -189,6 +209,40 @@ private def badParamIdentifierSpec : ASTContractSpec := {
       throw (IO.userError s!"✗ unexpected invalid-parameter-name error: {err}")
   | .ok _ =>
     throw (IO.userError "✗ expected invalid parameter identifier to be rejected")
+
+private def badFallbackNameSpec : ASTContractSpec := {
+  name := "BadFallbackName"
+  functions := [
+    { name := "fallback", params := [], returnType := .unit, body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec badFallbackNameSpec [0] with
+  | .error err =>
+    if contains err "reserved for ContractSpec special entrypoints" then
+      IO.println "✓ Reserved function name fallback rejected in AST compileSpec"
+    else
+      throw (IO.userError s!"✗ unexpected reserved-name fallback error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected reserved function name fallback to be rejected")
+
+private def badReceiveNameSpec : ASTContractSpec := {
+  name := "BadReceiveName"
+  functions := [
+    { name := "receive", params := [], returnType := .unit, body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec badReceiveNameSpec [0] with
+  | .error err =>
+    if contains err "reserved for ContractSpec special entrypoints" then
+      IO.println "✓ Reserved function name receive rejected in AST compileSpec"
+    else
+      throw (IO.userError s!"✗ unexpected reserved-name receive error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected reserved function name receive to be rejected")
 
 private def badContractIdentifierSpec : ASTContractSpec := {
   name := "0BadContract"
@@ -344,5 +398,104 @@ private def invalidMutabilitySpecViewPure : ASTContractSpec := {
       throw (IO.userError s!"✗ unexpected view+pure mutability error: {err}")
   | .ok _ =>
     throw (IO.userError "✗ expected view+pure mutability to be rejected")
+
+private def invalidViewWritesStateSpec : ASTContractSpec := {
+  name := "InvalidViewWritesStateSpec"
+  functions := [
+    { name := "mutate"
+      params := []
+      returnType := .unit
+      isView := true
+      body := Stmt.sstore 0 (Expr.lit 1) Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidViewWritesStateSpec [0] with
+  | .error err =>
+    if contains err "is marked view but writes state" then
+      IO.println "✓ View mutability rejects state writes in AST body"
+    else
+      throw (IO.userError s!"✗ unexpected view-write mutability error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected view function with state write to be rejected")
+
+private def invalidPureReadsStateSpec : ASTContractSpec := {
+  name := "InvalidPureReadsStateSpec"
+  functions := [
+    { name := "readStorage"
+      params := []
+      returnType := .uint256
+      isPure := true
+      body := Stmt.ret (Expr.storage 0) }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidPureReadsStateSpec [0] with
+  | .error err =>
+    if contains err "is marked pure but reads state/environment" then
+      IO.println "✓ Pure mutability rejects state/environment reads in AST body"
+    else
+      throw (IO.userError s!"✗ unexpected pure-read mutability error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected pure function with state read to be rejected")
+
+private def invalidDeclaredReturnStopsSpec : ASTContractSpec := {
+  name := "InvalidDeclaredReturnStopsSpec"
+  functions := [
+    { name := "getValue"
+      params := []
+      returnType := .uint256
+      body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidDeclaredReturnStopsSpec [0] with
+  | .error err =>
+    if contains err "declares uint256 returnType but terminates with stop" then
+      IO.println "✓ AST compile rejects declared uint256 return with stop termination"
+    else
+      throw (IO.userError s!"✗ unexpected declared-return/stop mismatch error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected declared uint256 return with stop to be rejected")
+
+private def invalidUnitReturnsValueSpec : ASTContractSpec := {
+  name := "InvalidUnitReturnsValueSpec"
+  functions := [
+    { name := "f"
+      params := []
+      returnType := .unit
+      body := Stmt.ret (Expr.lit 1) }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidUnitReturnsValueSpec [0] with
+  | .error err =>
+    if contains err "declares unit returnType but returns a uint256 value" then
+      IO.println "✓ AST compile rejects unit returnType with value return"
+    else
+      throw (IO.userError s!"✗ unexpected unit/value return mismatch error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected unit returnType with value return to be rejected")
+
+private def validAddressReturnShapeSpec : ASTContractSpec := {
+  name := "ValidAddressReturnShapeSpec"
+  functions := [
+    { name := "owner"
+      params := []
+      returnType := .address
+      body := Stmt.retAddr Expr.sender }
+  ]
+}
+
+#eval! do
+  match compileSpec validAddressReturnShapeSpec [0] with
+  | .error err =>
+    throw (IO.userError s!"✗ expected valid address return shape to compile, got: {err}")
+  | .ok _ =>
+    IO.println "✓ AST compile accepts valid address return shape"
 
 end Compiler.ASTDriverTest

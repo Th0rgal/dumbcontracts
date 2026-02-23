@@ -154,17 +154,31 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError s!"✗ feature spec compile failed: {err}")
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
-      assertContains "bool param normalization" rendered ["iszero(iszero(calldataload(4)))"]
+      assertContains "bool param normalization" rendered
+        ["let __abi_bool_word_4 := calldataload(4)",
+         "if iszero(or(eq(__abi_bool_word_4, 0), eq(__abi_bool_word_4, 1))) {",
+         "let flag := iszero(iszero(__abi_bool_word_4))"]
       assertContains "multi-return ABI encoding" rendered ["return(0, 64)"]
       assertContains "indexed event log opcode" rendered ["log2("]
       assertContains "indexed bool topic normalization" rendered ["iszero(iszero(2))"]
       assertContains "event topic hashing uses free memory pointer" rendered ["keccak256(__evt_ptr,"]
       assertContains "event topic hash cached before data writes" rendered ["let __evt_topic0 := keccak256(__evt_ptr,", "log2(__evt_ptr, 32, __evt_topic0"]
       assertContains "dynamic array ABI return" rendered ["calldatacopy(64"]
-      assertContains "static tuple decode head offsets" rendered ["let t_0 := calldataload(4)", "let t_1 := and(calldataload(36)", "let t_2 := iszero(iszero(calldataload(68)))", "let z := calldataload(100)"]
+      assertContains "static tuple decode head offsets" rendered
+        ["let t_0 := calldataload(4)", "let t_1 := and(calldataload(36)",
+         "let __abi_bool_word_68 := calldataload(68)",
+         "let t_2 := iszero(iszero(__abi_bool_word_68))", "let z := calldataload(100)"]
       assertContains "dynamic tuple keeps offset head word" rendered ["let td_offset := calldataload(4)", "let x := calldataload(36)"]
-      assertContains "nested static tuple decode head offsets" rendered ["let u_0_0 := calldataload(4)", "let u_0_1 := calldataload(36)", "let u_1_0 := and(calldataload(68)", "let u_1_1 := iszero(iszero(calldataload(100)))", "let u_2 := calldataload(132)", "let y := calldataload(164)"]
-      assertContains "fixed array of static tuples decode offsets" rendered ["let fa_0_0 := calldataload(4)", "let fa_0_1 := iszero(iszero(calldataload(36)))", "let fa_1_0 := calldataload(68)", "let fa_1_1 := iszero(iszero(calldataload(100)))", "let q := calldataload(132)"]
+      assertContains "nested static tuple decode head offsets" rendered
+        ["let u_0_0 := calldataload(4)", "let u_0_1 := calldataload(36)",
+         "let u_1_0 := and(calldataload(68)", "let __abi_bool_word_100 := calldataload(100)",
+         "let u_1_1 := iszero(iszero(__abi_bool_word_100))", "let u_2 := calldataload(132)",
+         "let y := calldataload(164)"]
+      assertContains "fixed array of static tuples decode offsets" rendered
+        ["let fa_0_0 := calldataload(4)", "let __abi_bool_word_36 := calldataload(36)",
+         "let fa_0_1 := iszero(iszero(__abi_bool_word_36))", "let fa_1_0 := calldataload(68)",
+         "let __abi_bool_word_100 := calldataload(100)",
+         "let fa_1_1 := iszero(iszero(__abi_bool_word_100))", "let q := calldataload(132)"]
       assertContains "dynamic bytes ABI return" rendered ["calldatacopy(64, data_data_offset, data_length)", "mstore(add(64, data_length), 0)", "return(0, add(64, and(add(data_length, 31), not(31))))"]
       assertContains "storage-word array return ABI" rendered ["let __slot := calldataload(add(slots_data_offset, mul(__i, 32)))", "mstore(add(64, mul(__i, 32)), sload(__slot))", "return(0, add(64, mul(slots_length, 32)))"]
       assertContains "custom error revert payload emission" rendered ["let __err_hash := keccak256(__err_ptr,", "mstore(0, __err_selector)", "mstore(4, and(who,", "let __err_tail := 64", "revert(0, add(4, __err_tail))"]
@@ -529,7 +543,9 @@ private def featureSpec : ContractSpec := {
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
       assertContains "constructor bool param normalization" rendered
-        ["let flag := iszero(iszero(mload(0)))", "let arg0 := flag"]
+        ["let __abi_bool_word_0 := mload(0)",
+         "if iszero(or(eq(__abi_bool_word_0, 0), eq(__abi_bool_word_0, 1))) {",
+         "let flag := iszero(iszero(__abi_bool_word_0))", "let arg0 := flag"]
 
 #eval! do
   let ctorDynamicParamSpec : ContractSpec := {
@@ -602,9 +618,13 @@ private def featureSpec : ContractSpec := {
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
       assertContains "constructor dynamic read source" rendered
-        ["let firstWord := mload(add(numbers_data_offset, mul(0, 32)))"]
+        ["function __verity_array_element_memory_checked(data_offset, length, index) -> word",
+         "if iszero(lt(index, length)) {",
+         "revert(0, 0)",
+         "let firstWord := __verity_array_element_memory_checked(numbers_data_offset, numbers_length, 0)"]
       assertNotContains "constructor dynamic read source" rendered
-        ["let firstWord := calldataload(add(numbers_data_offset, mul(0, 32)))"]
+        ["let firstWord := calldataload(add(numbers_data_offset, mul(0, 32)))",
+         "let firstWord := mload(add(numbers_data_offset, mul(0, 32)))"]
 
 #eval! do
   let callSpec : ContractSpec := {
@@ -626,6 +646,28 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ call unsupported diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected call usage to fail compilation")
+
+#eval! do
+  let noArrayElementSpec : ContractSpec := {
+    name := "NoArrayElementHelpers"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "value"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.param "x")]
+      }
+    ]
+  }
+  match compile noArrayElementSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected non-array contract to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertNotContains "array helper injection is usage-gated" rendered
+        ["function __verity_array_element_calldata_checked(data_offset, length, index) -> word",
+         "function __verity_array_element_memory_checked(data_offset, length, index) -> word"]
 
 #eval! do
   let balanceSpec : ContractSpec := {
@@ -2132,6 +2174,39 @@ private def featureSpec : ContractSpec := {
          "__ret0_2 := __ret0_1"]
 
 #eval! do
+  let internalReturnTerminatesSpec : ContractSpec := {
+    name := "InternalReturnTerminates"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "helper"
+        params := []
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [
+          Stmt.return (Expr.literal 1),
+          Stmt.setStorage "x" (Expr.literal 9)
+        ]
+      },
+      { name := "entry"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.internalCall "helper" [])]
+      }
+    ]
+  }
+  match compile internalReturnTerminatesSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected internal return termination lowering to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "internal return termination lowering" rendered
+        ["function internal_helper() -> __ret0",
+         "__ret0 := 1",
+         "leave",
+         "sstore(0, 9)"]
+
+#eval! do
   let exprInternalCallMultiReturnSpec : ContractSpec := {
     name := "ExprInternalCallMultiReturnRejected"
     fields := []
@@ -2305,6 +2380,11 @@ private def featureSpec : ContractSpec := {
       let rendered := Yul.render (emitYul ir)
       assertContains "receive+fallback split dispatch" rendered
         ["if __is_empty_calldata {", "/* receive() */", "if iszero(__is_empty_calldata) {", "/* fallback() */"]
+      assertContains "short-calldata guard before selector dispatch" rendered
+        ["let __has_selector := iszero(lt(calldatasize(), 4))",
+         "if iszero(__has_selector) {",
+         "/* fallback() */",
+         "if __has_selector {"]
 
 #eval! do
   let receiveNotPayableSpec : ContractSpec := {
@@ -2706,6 +2786,69 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected overlapping reserved slot ranges to fail compilation")
 
 #eval! do
+  let undeclaredParamReferenceSpec : ContractSpec := {
+    name := "UndeclaredParamReferenceSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badParam"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.add (Expr.param "x") (Expr.param "typo"))]
+      }
+    ]
+  }
+  match compile undeclaredParamReferenceSpec [1] with
+  | .error err =>
+      if !contains err "function 'badParam' references unknown parameter 'typo'" then
+        throw (IO.userError s!"✗ undeclared parameter diagnostic mismatch: {err}")
+      IO.println "✓ undeclared parameter diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected undeclared Expr.param to fail compilation")
+
+#eval! do
+  let undeclaredLocalReferenceSpec : ContractSpec := {
+    name := "UndeclaredLocalReferenceSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badLocal"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.localVar "neverDeclared")]
+      }
+    ]
+  }
+  match compile undeclaredLocalReferenceSpec [1] with
+  | .error err =>
+      if !contains err "function 'badLocal' references unknown local variable 'neverDeclared'" then
+        throw (IO.userError s!"✗ undeclared local diagnostic mismatch: {err}")
+      IO.println "✓ undeclared local diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected undeclared Expr.localVar to fail compilation")
+
+#eval! do
+  let assignBeforeDeclarationSpec : ContractSpec := {
+    name := "AssignBeforeDeclarationSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badAssign"
+        params := []
+        returnType := none
+        body := [Stmt.assignVar "x" (Expr.literal 1), Stmt.stop]
+      }
+    ]
+  }
+  match compile assignBeforeDeclarationSpec [1] with
+  | .error err =>
+      if !contains err "function 'badAssign' assigns to undeclared local variable 'x'" then
+        throw (IO.userError s!"✗ assign before declaration diagnostic mismatch: {err}")
+      IO.println "✓ assign before declaration diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected assignVar before declaration to fail compilation")
+
+#eval! do
   let invalidMutabilitySpec : ContractSpec := {
     name := "InvalidMutabilitySpec"
     fields := []
@@ -2727,6 +2870,99 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ payable+view mutability diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected payable+view mutability conflict to fail compilation")
+
+#eval! do
+  let duplicateFunctionParamSpec : ContractSpec := {
+    name := "DuplicateFunctionParamSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "setBoth"
+        params := [
+          { name := "x", ty := ParamType.uint256 },
+          { name := "x", ty := ParamType.address }
+        ]
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile duplicateFunctionParamSpec [1] with
+  | .error err =>
+      if !contains err "duplicate parameter name 'x' in function 'setBoth'" then
+        throw (IO.userError s!"✗ duplicate function param diagnostic mismatch: {err}")
+      IO.println "✓ duplicate function param diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected duplicate function params to fail compilation")
+
+#eval! do
+  let duplicateConstructorParamSpec : ContractSpec := {
+    name := "DuplicateConstructorParamSpec"
+    fields := []
+    constructor := some {
+      params := [
+        { name := "owner", ty := ParamType.address },
+        { name := "owner", ty := ParamType.address }
+      ]
+      body := [Stmt.stop]
+    }
+    functions := [{ name := "noop", params := [], returnType := none, body := [Stmt.stop] }]
+  }
+  match compile duplicateConstructorParamSpec [1] with
+  | .error err =>
+      if !contains err "duplicate parameter name 'owner' in constructor" then
+        throw (IO.userError s!"✗ duplicate constructor param diagnostic mismatch: {err}")
+      IO.println "✓ duplicate constructor param diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected duplicate constructor params to fail compilation")
+
+#eval! do
+  let unknownExternalTargetSpec : ContractSpec := {
+    name := "UnknownExternalTargetSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "missing_fn" [])]
+      }
+    ]
+    externals := []
+  }
+  match compile unknownExternalTargetSpec [1] with
+  | .error err =>
+      if !contains err "function 'f' references unknown external call target 'missing_fn'" then
+        throw (IO.userError s!"✗ unknown external target diagnostic mismatch: {err}")
+      IO.println "✓ unknown external target diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected unknown external target to fail compilation")
+
+#eval! do
+  let declaredExternalTargetSpec : ContractSpec := {
+    name := "DeclaredExternalTargetSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "known_fn" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  match compile declaredExternalTargetSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected declared external target to compile, got: {err}")
+  | .ok _ =>
+      IO.println "✓ declared external target accepted"
 
 #eval! do
   let invalidSpecialEntrypointMutabilitySpec : ContractSpec := {

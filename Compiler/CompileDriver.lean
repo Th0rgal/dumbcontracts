@@ -95,18 +95,18 @@ def compileAllWithOptions
 
   let mut patchRows : List (String × Yul.PatchPassReport) := []
   for spec in specs do
-    match abiOutDir with
-    | some dir =>
-        Compiler.ABI.writeContractABIFile dir spec
-        if verbose then
-          IO.println s!"✓ Wrote ABI {dir}/{spec.name}.abi.json"
-    | none => pure ()
     let selectors ← computeSelectors spec
     match compile spec selectors with
     | .ok contract =>
       -- Only pass libraries to contracts that declare external functions
       let contractLibs := if spec.externals.isEmpty then [] else libraryPaths
       let patchReport ← writeContract outDir contract contractLibs verbose options
+      match abiOutDir with
+      | some dir =>
+          Compiler.ABI.writeContractABIFile dir spec
+          if verbose then
+            IO.println s!"✓ Wrote ABI {dir}/{spec.name}.abi.json"
+      | none => pure ()
       patchRows := (contract.name, patchReport) :: patchRows
       if verbose then
         IO.println s!"✓ Compiled {contract.name}"

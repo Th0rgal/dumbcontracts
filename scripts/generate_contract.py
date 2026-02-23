@@ -3,11 +3,13 @@
 
 Creates the complete file structure needed to add a new contract:
   - EDSL implementation (Verity/Examples/{Name}.lean)
+  - Unified AST bridge scaffold (Verity/AST/{Name}.lean)
   - Formal specification (Verity/Specs/{Name}/Spec.lean)
   - State invariants (Verity/Specs/{Name}/Invariants.lean)
   - Layer 2 proof re-export (Verity/Specs/{Name}/Proofs.lean)
   - Basic proofs (Verity/Proofs/{Name}/Basic.lean)
   - Correctness proofs (Verity/Proofs/{Name}/Correctness.lean)
+  - Spec correctness scaffold (Compiler/Proofs/SpecCorrectness/{Name}.lean)
   - Compiler spec entry (printed to stdout for manual insertion)
   - Property tests (test/Property{Name}.t.sol)
 
@@ -22,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -124,6 +127,79 @@ class ContractConfig:
 # Parsers
 # ---------------------------------------------------------------------------
 
+IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+# Minimal keyword denylist spanning Lean + Solidity parser keywords.
+RESERVED_IDENTIFIERS = {
+    "abbrev",
+    "axiom",
+    "by",
+    "class",
+    "constructor",
+    "contract",
+    "def",
+    "do",
+    "else",
+    "end",
+    "enum",
+    "event",
+    "external",
+    "for",
+    "function",
+    "if",
+    "import",
+    "inductive",
+    "in",
+    "interface",
+    "internal",
+    "lemma",
+    "let",
+    "macro",
+    "match",
+    "mutual",
+    "namespace",
+    "opaque",
+    "override",
+    "private",
+    "public",
+    "revert",
+    "return",
+    "set_option",
+    "sorry",
+    "structure",
+    "termination_by",
+    "theorem",
+    "then",
+    "trait",
+    "type",
+    "variable",
+    "where",
+    "while",
+}
+
+
+def _validate_identifier(identifier: str, kind: str) -> str:
+    """Validate a cross-layer identifier used in generated Lean/Solidity code."""
+    if not identifier:
+        print(f"Error: {kind} identifier cannot be empty", file=sys.stderr)
+        sys.exit(1)
+    if not IDENT_RE.fullmatch(identifier):
+        print(
+            f"Error: Invalid {kind} identifier '{identifier}'. "
+            "Expected regex: [A-Za-z_][A-Za-z0-9_]*",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if identifier.lower() in RESERVED_IDENTIFIERS:
+        print(
+            f"Error: Invalid {kind} identifier '{identifier}'. "
+            "Identifier is reserved in Lean/Solidity.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return identifier
+
+
 def _normalize_field_type(ty: str) -> str:
     """Normalize a field type string to an internal type name.
 
@@ -163,13 +239,15 @@ def parse_fields(spec: str) -> List[Field]:
             if not name:
                 print("Error: Field name cannot be empty (got ':<type>')", file=sys.stderr)
                 sys.exit(1)
+            name = _validate_identifier(name, "field")
             ty = _normalize_field_type(ty_raw)
             if not ty:
                 print(f"Warning: Unknown type '{ty_raw.strip()}', defaulting to uint256", file=sys.stderr)
                 ty = "uint256"
             fields.append(Field(name, ty))
         else:
-            fields.append(Field(part.strip(), "uint256"))
+            name = _validate_identifier(part.strip(), "field")
+            fields.append(Field(name, "uint256"))
     return fields
 
 
@@ -197,22 +275,49 @@ def _parse_single_function(raw: str) -> Function:
       - ``transfer(address,uint256)`` → two params named "addr", "value"
     """
     raw = raw.strip()
+    if not raw:
+        print("Error: Function signature cannot be empty", file=sys.stderr)
+        sys.exit(1)
     if "(" not in raw:
-        return Function(name=raw)
+        return Function(name=_validate_identifier(raw, "function"))
+
+    if not raw.endswith(")"):
+        print(
+            f"Error: Malformed function signature '{raw}': expected closing ')' at end",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if raw.count("(") != 1 or raw.count(")") != 1:
+        print(
+            f"Error: Malformed function signature '{raw}': unexpected parentheses",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     paren_idx = raw.index("(")
-    name = raw[:paren_idx].strip()
-    params_str = raw[paren_idx + 1:].rstrip(")")
+    name = _validate_identifier(raw[:paren_idx].strip(), "function")
+    params_str = raw[paren_idx + 1:-1]
 
     _PARAM_NAME_COUNTERS.clear()
     params = []
-    for ty_raw in params_str.split(","):
+    if not params_str.strip():
+        return Function(name=name, params=params)
+    for idx, ty_raw in enumerate(params_str.split(","), start=1):
         ty_raw = ty_raw.strip().lower()
         if not ty_raw:
-            continue
+            print(
+                f"Error: Empty parameter type in function signature '{raw}' at position {idx}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         if ty_raw not in ("uint256", "address"):
-            print(f"Warning: Unknown param type '{ty_raw}' in {name}, defaulting to uint256", file=sys.stderr)
-            ty_raw = "uint256"
+            print(
+                f"Error: Unsupported parameter type '{ty_raw}' in function '{name}'. "
+                "Supported types: uint256, address",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         params.append(Param(name=_auto_param_name(ty_raw), ty=ty_raw))
 
     return Function(name=name, params=params)
@@ -237,16 +342,40 @@ def parse_functions(spec: str, fields: List[Field]) -> List[Function]:
                 depth += 1
                 current.append(ch)
             elif ch == ")":
+                if depth == 0:
+                    print(
+                        f"Error: Malformed function list '{spec}': unexpected ')' without matching '('",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
                 depth -= 1
                 current.append(ch)
             elif ch == "," and depth == 0:
+                if not "".join(current).strip():
+                    print(
+                        f"Error: Malformed function list '{spec}': empty signature between commas",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
                 functions.append(_parse_single_function("".join(current)))
                 current = []
             else:
                 current.append(ch)
+        if depth != 0:
+            print(
+                f"Error: Malformed function list '{spec}': unbalanced parentheses",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if not "".join(current).strip():
+            print(
+                f"Error: Malformed function list '{spec}': empty signature at end of list",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         if current:
             functions.append(_parse_single_function("".join(current)))
-        return [f for f in functions if f.name]
+        return functions
     # Default: generate getter/setter for first field
     if fields:
         f = fields[0]
@@ -511,26 +640,65 @@ end Verity.Specs.{cfg.name}
 
 
 def gen_spec_proofs(cfg: ContractConfig) -> str:
-    """Generate Verity/Specs/{Name}/Proofs.lean — Layer 2 proof re-export.
-
-    Every existing contract (SimpleStorage, Counter, Owned, etc.) has this file.
-    It re-exports the SpecCorrectness proof so that downstream users have a
-    stable path under Verity.Specs.{Name}.Proofs.
-
-    For a newly scaffolded contract the SpecCorrectness module does not exist
-    yet, so we emit a commented-out import with a TODO instead of a bare
-    import that would break ``lake build``.
-    """
-    return f"""-- TODO: Uncomment once Compiler/Proofs/SpecCorrectness/{cfg.name}.lean exists
--- import Compiler.Proofs.SpecCorrectness.{cfg.name}
+    """Generate Verity/Specs/{Name}/Proofs.lean — Layer 2 proof re-export."""
+    return f"""import Compiler.Proofs.SpecCorrectness.{cfg.name}
 
 /-
   Layer 2 proof re-export.
   This keeps the user-facing path stable while reusing the core proof module.
-
-  Once you have written the SpecCorrectness proof for {cfg.name}, uncomment
-  the import above so that `import Verity.Specs.{cfg.name}.Proofs` pulls it in.
 -/
+"""
+
+
+def gen_ast_bridge(cfg: ContractConfig) -> str:
+    """Generate Verity/AST/{Name}.lean scaffold."""
+    return f"""/-
+  Verity.AST.{cfg.name}: Unified AST bridge scaffold
+
+  TODO:
+  - Define per-function AST terms
+  - Prove `denote ast = edsl_function` for each function
+-/
+
+import Verity.Denote
+import Verity.Examples.{cfg.name}
+
+namespace Verity.AST.{cfg.name}
+
+open Verity
+open Verity.AST
+open Verity.Denote
+open Verity.Examples.{cfg.name}
+
+-- TODO: Add AST definitions and equivalence proofs.
+
+end Verity.AST.{cfg.name}
+"""
+
+
+def gen_spec_correctness(cfg: ContractConfig) -> str:
+    """Generate Compiler/Proofs/SpecCorrectness/{Name}.lean scaffold."""
+    return f"""/-
+  Compiler.Proofs.SpecCorrectness.{cfg.name}
+
+  TODO:
+  - Define EDSL->Spec state conversion
+  - Prove each spec function matches EDSL semantics
+-/
+
+import Compiler.Specs
+import Verity.Examples.{cfg.name}
+
+namespace Compiler.Proofs.SpecCorrectness
+
+open Compiler.ContractSpec
+open Compiler.Specs
+open Verity
+open Verity.Examples.{cfg.name}
+
+-- TODO: Add per-function correctness theorems.
+
+end Compiler.Proofs.SpecCorrectness
 """
 
 
@@ -702,23 +870,18 @@ def _gen_single_test(
 
     if is_getter:
         return f"""    //═══════════════════════════════════════════════════════════════════════
-    // Property {idx + 1}: {fn.name}_meets_spec
-    // Theorem: {fn.name}({', '.join(p.solidity_type for p in fn.params)}) meets its formal specification
+    // Property {idx + 1}: TODO_{fn.name}_meets_spec
+    // Getter theorem extraction requires manual return/storage assertions.
     //═══════════════════════════════════════════════════════════════════════
 
-    /// Property: {fn.name}_meets_spec
-    function testProperty_{camel}_MeetsSpec() public {{
-        // Read-only function: verify it returns expected value and
-        // does not modify storage.
-        uint256 slot0Before = readStorage(0);
-
-        (bool success, bytes memory data) = target.call(
-            abi.encodeWithSignature({encode_args})
-        );
-        require(success, "{fn.name} call failed");
-
-        // Storage should be unchanged after a read-only call
-        assertEq(readStorage(0), slot0Before, "{fn.name} should not modify storage");
+    /// Property TODO: {fn.name}_meets_spec
+    function testTODO_{camel}_GetterNeedsSpecAssertions() public {{
+        // TODO: Implement getter-specific checks:
+        // 1) set up deterministic storage,
+        // 2) decode return data from `{fn.name}`,
+        // 3) assert decoded value matches spec/state,
+        // 4) assert no unintended storage mutation (all relevant slots/mappings).
+        revert("TODO: implement getter property assertions");
     }}
 """
     else:
@@ -864,11 +1027,31 @@ def gen_all_lean_imports(cfg: ContractConfig) -> str:
     """Generate import lines for Verity/All.lean."""
     return f"""
 import Verity.Examples.{cfg.name}
+import Verity.AST.{cfg.name}
 import Verity.Specs.{cfg.name}.Spec
 import Verity.Specs.{cfg.name}.Invariants
 import Verity.Specs.{cfg.name}.Proofs
 import Verity.Proofs.{cfg.name}.Basic
 import Verity.Proofs.{cfg.name}.Correctness"""
+
+
+def scaffold_files(cfg: ContractConfig) -> List[tuple[Path, str]]:
+    """Return all scaffold outputs for this contract."""
+    name = cfg.name
+    return [
+        (ROOT / "Verity" / "Examples" / f"{name}.lean", gen_example(cfg)),
+        (ROOT / "Verity" / "AST" / f"{name}.lean", gen_ast_bridge(cfg)),
+        (ROOT / "Verity" / "Specs" / name / "Spec.lean", gen_spec(cfg)),
+        (ROOT / "Verity" / "Specs" / name / "Invariants.lean", gen_invariants(cfg)),
+        (ROOT / "Verity" / "Specs" / name / "Proofs.lean", gen_spec_proofs(cfg)),
+        (ROOT / "Verity" / "Proofs" / name / "Basic.lean", gen_basic_proofs(cfg)),
+        (ROOT / "Verity" / "Proofs" / name / "Correctness.lean", gen_correctness_proofs(cfg)),
+        (
+            ROOT / "Compiler" / "Proofs" / "SpecCorrectness" / f"{name}.lean",
+            gen_spec_correctness(cfg),
+        ),
+        (ROOT / "test" / f"Property{name}.t.sol", gen_property_tests(cfg)),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -908,12 +1091,21 @@ Examples:
     parser.add_argument(
         "--fields",
         default="",
-        help="Storage fields as 'name:type,...' where type is uint256|address|mapping|mapping(uint256) (default: storedData:uint256)",
+        help=(
+            "Storage fields as 'name:type,...' where name matches [A-Za-z_][A-Za-z0-9_]* "
+            "and type is uint256|address|mapping|mapping(uint256) "
+            "(default: storedData:uint256)"
+        ),
     )
     parser.add_argument(
         "--functions",
         default="",
-        help="Function signatures as 'func1(type,...),func2,...' e.g. 'deposit(uint256),transfer(address,uint256),getBalance(address)' (default: auto-generated getter/setter)",
+        help=(
+            "Function signatures as 'func1(type,...),func2,...' where function names "
+            "match [A-Za-z_][A-Za-z0-9_]*; e.g. "
+            "'deposit(uint256),transfer(address,uint256),getBalance(address)' "
+            "(default: auto-generated getter/setter)"
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -948,15 +1140,7 @@ Examples:
     print()
 
     # Generate files
-    files = [
-        (ROOT / "Verity" / "Examples" / f"{name}.lean", gen_example(cfg)),
-        (ROOT / "Verity" / "Specs" / name / "Spec.lean", gen_spec(cfg)),
-        (ROOT / "Verity" / "Specs" / name / "Invariants.lean", gen_invariants(cfg)),
-        (ROOT / "Verity" / "Specs" / name / "Proofs.lean", gen_spec_proofs(cfg)),
-        (ROOT / "Verity" / "Proofs" / name / "Basic.lean", gen_basic_proofs(cfg)),
-        (ROOT / "Verity" / "Proofs" / name / "Correctness.lean", gen_correctness_proofs(cfg)),
-        (ROOT / "test" / f"Property{name}.t.sol", gen_property_tests(cfg)),
-    ]
+    files = scaffold_files(cfg)
 
     print("Files:")
     for path, content in files:

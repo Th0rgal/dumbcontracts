@@ -227,7 +227,7 @@ jobs:
       - name: Run AST pipeline regression modules
         env:
           LEAN_NUM_THREADS: 2
-        run: lake build Compiler.ASTCompileTest Compiler.ASTDriverTest
+        run: lake build Compiler.ASTCompileTest Compiler.ASTDriverTest Compiler.MainTest
 
       - name: Run ContractSpec feature regression module
         env:

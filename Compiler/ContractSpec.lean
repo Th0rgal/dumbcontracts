@@ -222,7 +222,7 @@ inductive Expr
   | externalCall (name : String) (args : List Expr)  -- External function call (linked at compile time)
   | internalCall (functionName : String) (args : List Expr)  -- Internal function call (#181)
   | arrayLength (name : String)  -- Length of a dynamic array parameter (#180)
-  | arrayElement (name : String) (index : Expr)  -- Element of a dynamic array parameter (#180)
+  | arrayElement (name : String) (index : Expr)  -- Checked element access of a dynamic array parameter (revert on out-of-range) (#180)
   | add (a b : Expr)
   | sub (a b : Expr)
   | mul (a b : Expr)
@@ -418,6 +418,33 @@ private def dynamicWordLoad (source : DynamicDataSource) (offset : YulExpr) : Yu
   | .calldata => YulExpr.call "calldataload" [offset]
   | .memory => YulExpr.call "mload" [offset]
 
+private def checkedArrayElementCalldataHelperName : String :=
+  "__verity_array_element_calldata_checked"
+
+private def checkedArrayElementMemoryHelperName : String :=
+  "__verity_array_element_memory_checked"
+
+private def checkedArrayElementHelper (helperName loadOp : String) : YulStmt :=
+  YulStmt.funcDef helperName ["data_offset", "length", "index"] ["word"] [
+    YulStmt.if_ (YulExpr.call "iszero" [
+      YulExpr.call "lt" [YulExpr.ident "index", YulExpr.ident "length"]
+    ]) [
+      YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+    ],
+    YulStmt.assign "word" (YulExpr.call loadOp [
+      YulExpr.call "add" [
+        YulExpr.ident "data_offset",
+        YulExpr.call "mul" [YulExpr.ident "index", YulExpr.lit 32]
+      ]
+    ])
+  ]
+
+private def checkedArrayElementCalldataHelper : YulStmt :=
+  checkedArrayElementHelper checkedArrayElementCalldataHelperName "calldataload"
+
+private def checkedArrayElementMemoryHelper : YulStmt :=
+  checkedArrayElementHelper checkedArrayElementMemoryHelperName "mload"
+
 private def dynamicCopyData (source : DynamicDataSource)
     (destOffset sourceOffset len : YulExpr) : List YulStmt :=
   match source with
@@ -551,10 +578,14 @@ def compileExpr (fields : List Field)
   | Expr.arrayLength name => pure (YulExpr.ident s!"{name}_length")
   | Expr.arrayElement name index => do
       let indexExpr ← compileExpr fields dynamicSource index
-      pure (dynamicWordLoad dynamicSource (YulExpr.call "add" [
+      let helperName := match dynamicSource with
+        | .calldata => checkedArrayElementCalldataHelperName
+        | .memory => checkedArrayElementMemoryHelperName
+      pure (YulExpr.call helperName [
         YulExpr.ident s!"{name}_data_offset",
-        YulExpr.call "mul" [indexExpr, YulExpr.lit 32]
-      ]))
+        YulExpr.ident s!"{name}_length",
+        indexExpr
+      ])
   | Expr.add a b     => return yulBinOp "add" (← compileExpr fields dynamicSource a) (← compileExpr fields dynamicSource b)
   | Expr.sub a b     => return yulBinOp "sub" (← compileExpr fields dynamicSource a) (← compileExpr fields dynamicSource b)
   | Expr.mul a b     => return yulBinOp "mul" (← compileExpr fields dynamicSource a) (← compileExpr fields dynamicSource b)
@@ -702,6 +733,209 @@ def functionStateMutability (spec : FunctionSpec) : String :=
 private def findParamType (params : List Param) (name : String) : Option ParamType :=
   (params.find? (fun p => p.name == name)).map (·.ty)
 
+private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
+  match ty with
+  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+      [name]
+  | ParamType.fixedArray elemTy n =>
+      (List.range n).flatMap (fun i => staticParamBindingNames s!"{name}_{i}" elemTy)
+  | ParamType.tuple elemTys =>
+      let rec go (tys : List ParamType) (idx : Nat) : List String :=
+        match tys with
+        | [] => []
+        | elemTy :: rest =>
+            staticParamBindingNames s!"{name}_{idx}" elemTy ++ go rest (idx + 1)
+      go elemTys 0
+  | _ => []
+
+private def dynamicParamBindingNames (name : String) : List String :=
+  [s!"{name}_offset", s!"{name}_length", s!"{name}_data_offset"]
+
+private partial def isDynamicParamTypeForScope : ParamType → Bool
+  | ParamType.uint256 => false
+  | ParamType.address => false
+  | ParamType.bool => false
+  | ParamType.bytes32 => false
+  | ParamType.array _ => true
+  | ParamType.bytes => true
+  | ParamType.fixedArray elemTy _ => isDynamicParamTypeForScope elemTy
+  | ParamType.tuple elemTys => elemTys.any isDynamicParamTypeForScope
+
+private def isScalarParamTypeForScope : ParamType → Bool
+  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => true
+  | _ => false
+
+private def paramBindingNames (param : Param) : List String :=
+  let names :=
+    if isDynamicParamTypeForScope param.ty then
+      dynamicParamBindingNames param.name ++ [param.name]
+    else
+      match param.ty with
+      | ParamType.fixedArray elemTy n =>
+          let staticNames := staticParamBindingNames param.name param.ty
+          if n == 0 then
+            staticNames
+          else if isScalarParamTypeForScope elemTy then
+            -- Keep `<name>` in scope for backward-compatible scalar fixed-array aliasing.
+            staticNames ++ [param.name]
+          else
+            staticNames
+      | _ =>
+          staticParamBindingNames param.name param.ty
+  if names.contains param.name then names else names ++ [param.name]
+
+private def paramScopeNames (params : List Param) : List String :=
+  params.flatMap paramBindingNames
+
+private def dynamicParamBases (params : List Param) : List String :=
+  (params.filter (fun p => isDynamicParamTypeForScope p.ty)).map (·.name)
+
+private partial def validateScopedExprIdentifiers
+    (context : String) (paramScope : List String) (dynamicParams : List String)
+    (localScope : List String) : Expr → Except String Unit
+  | Expr.param name =>
+      if paramScope.contains name then
+        pure ()
+      else
+        throw s!"Compilation error: {context} references unknown parameter '{name}'"
+  | Expr.localVar name =>
+      if localScope.contains name then
+        pure ()
+      else
+        throw s!"Compilation error: {context} references unknown local variable '{name}'"
+  | Expr.arrayLength name =>
+      if dynamicParams.contains name then
+        pure ()
+      else
+        throw s!"Compilation error: {context} references unknown dynamic parameter '{name}' in Expr.arrayLength"
+  | Expr.arrayElement name index => do
+      if !dynamicParams.contains name then
+        throw s!"Compilation error: {context} references unknown dynamic parameter '{name}' in Expr.arrayElement"
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope index
+  | Expr.mapping _ key | Expr.mappingUint _ key =>
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope key
+  | Expr.mapping2 _ key1 key2 => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope key1
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope key2
+  | Expr.call gas target value inOffset inSize outOffset outSize => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope gas
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope target
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope inOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope inSize
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope gas
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope target
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope inOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope inSize
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope gas
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope target
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope inOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope inSize
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope outSize
+  | Expr.returndataOptionalBoolAt outOffset =>
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
+  | Expr.externalCall _ args | Expr.internalCall _ args =>
+      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope a
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope a
+  | _ => pure ()
+
+mutual
+private partial def validateScopedStmtIdentifiers
+    (context : String) (paramScope : List String) (dynamicParams : List String)
+    (localScope : List String) : Stmt → Except String (List String)
+  | Stmt.letVar name value => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      pure (name :: localScope)
+  | Stmt.assignVar name value => do
+      if !localScope.contains name then
+        throw s!"Compilation error: {context} assigns to undeclared local variable '{name}'"
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      pure localScope
+  | Stmt.setStorage _ value | Stmt.return value | Stmt.require value _ => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      pure localScope
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope key
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      pure localScope
+  | Stmt.setMapping2 _ key1 key2 value => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope key1
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope key2
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      pure localScope
+  | Stmt.requireError cond _ args => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope cond
+      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      pure localScope
+  | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args => do
+      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      pure localScope
+  | Stmt.returndataCopy destOffset sourceOffset size => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope destOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope sourceOffset
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope size
+      pure localScope
+  | Stmt.ite cond thenBranch elseBranch => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope cond
+      let _ ← validateScopedStmtListIdentifiers context paramScope dynamicParams localScope thenBranch
+      let _ ← validateScopedStmtListIdentifiers context paramScope dynamicParams localScope elseBranch
+      pure localScope
+  | Stmt.forEach varName count body => do
+      validateScopedExprIdentifiers context paramScope dynamicParams localScope count
+      let _ ← validateScopedStmtListIdentifiers context paramScope dynamicParams (varName :: localScope) body
+      pure localScope
+  | Stmt.internalCall _ args => do
+      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      pure localScope
+  | Stmt.internalCallAssign names _ args => do
+      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      pure (names.reverse ++ localScope)
+  | _ => pure localScope
+
+private partial def validateScopedStmtListIdentifiers
+    (context : String) (paramScope : List String) (dynamicParams : List String)
+    (localScope : List String) : List Stmt → Except String (List String)
+  | [] => pure localScope
+  | stmt :: rest => do
+      let nextScope ← validateScopedStmtIdentifiers context paramScope dynamicParams localScope stmt
+      validateScopedStmtListIdentifiers context paramScope dynamicParams nextScope rest
+end
+
+private def validateFunctionIdentifierReferences (spec : FunctionSpec) : Except String Unit := do
+  let _ ← validateScopedStmtListIdentifiers
+    s!"function '{spec.name}'"
+    (paramScopeNames spec.params)
+    (dynamicParamBases spec.params)
+    []
+    spec.body
+  pure ()
+
+private def validateConstructorIdentifierReferences (ctor : Option ConstructorSpec) : Except String Unit := do
+  match ctor with
+  | none => pure ()
+  | some spec =>
+      let _ ← validateScopedStmtListIdentifiers
+        "constructor"
+        (paramScopeNames spec.params)
+        (dynamicParamBases spec.params)
+        []
+        spec.body
+      pure ()
+
 private def isStorageWordArrayParam : ParamType → Bool
   | ParamType.array ParamType.bytes32 => true
   | ParamType.array ParamType.uint256 => true
@@ -797,6 +1031,7 @@ private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := d
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   spec.body.forM (validateStmtParamReferences spec.name spec.params)
+  validateFunctionIdentifierReferences spec
 
 private def issue586Ref : String :=
   "Issue #586 (Solidity interop profile)"
@@ -809,6 +1044,7 @@ private def validateConstructorSpec (ctor : Option ConstructorSpec) : Except Str
   | none => pure ()
   | some spec =>
       spec.body.forM (validateStmtParamReferences "constructor" spec.params)
+      validateConstructorIdentifierReferences ctor
 
 private def customErrorRequiresDirectParamRef : ParamType → Bool
   | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => false
@@ -1497,6 +1733,113 @@ private def validateInternalCallShapesInFunction (functions : List FunctionSpec)
     (spec : FunctionSpec) : Except String Unit := do
   spec.body.forM (validateInternalCallShapesInStmt functions spec.name)
 
+private def issue732Ref : String :=
+  "Issue #732 (reject undeclared external call targets)"
+
+private partial def validateExternalCallTargetsInExpr
+    (externals : List ExternalFunction) (context : String) : Expr → Except String Unit
+  | Expr.externalCall name args => do
+      if !(externals.any (fun ext => ext.name == name)) then
+        throw s!"Compilation error: {context} references unknown external call target '{name}' ({issue732Ref}). Declare it in spec.externals."
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Expr.call gas target value inOffset inSize outOffset outSize => do
+      validateExternalCallTargetsInExpr externals context gas
+      validateExternalCallTargetsInExpr externals context target
+      validateExternalCallTargetsInExpr externals context value
+      validateExternalCallTargetsInExpr externals context inOffset
+      validateExternalCallTargetsInExpr externals context inSize
+      validateExternalCallTargetsInExpr externals context outOffset
+      validateExternalCallTargetsInExpr externals context outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize => do
+      validateExternalCallTargetsInExpr externals context gas
+      validateExternalCallTargetsInExpr externals context target
+      validateExternalCallTargetsInExpr externals context inOffset
+      validateExternalCallTargetsInExpr externals context inSize
+      validateExternalCallTargetsInExpr externals context outOffset
+      validateExternalCallTargetsInExpr externals context outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize => do
+      validateExternalCallTargetsInExpr externals context gas
+      validateExternalCallTargetsInExpr externals context target
+      validateExternalCallTargetsInExpr externals context inOffset
+      validateExternalCallTargetsInExpr externals context inSize
+      validateExternalCallTargetsInExpr externals context outOffset
+      validateExternalCallTargetsInExpr externals context outSize
+  | Expr.returndataOptionalBoolAt outOffset =>
+      validateExternalCallTargetsInExpr externals context outOffset
+  | Expr.mapping _ key =>
+      validateExternalCallTargetsInExpr externals context key
+  | Expr.mapping2 _ key1 key2 => do
+      validateExternalCallTargetsInExpr externals context key1
+      validateExternalCallTargetsInExpr externals context key2
+  | Expr.mappingUint _ key =>
+      validateExternalCallTargetsInExpr externals context key
+  | Expr.internalCall _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Expr.arrayElement _ index =>
+      validateExternalCallTargetsInExpr externals context index
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b => do
+      validateExternalCallTargetsInExpr externals context a
+      validateExternalCallTargetsInExpr externals context b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      validateExternalCallTargetsInExpr externals context a
+  | _ =>
+      pure ()
+
+private partial def validateExternalCallTargetsInStmt
+    (externals : List ExternalFunction) (context : String) : Stmt → Except String Unit
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.requireError cond _ args => do
+      validateExternalCallTargetsInExpr externals context cond
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.revertError _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.returndataCopy destOffset sourceOffset size => do
+      validateExternalCallTargetsInExpr externals context destOffset
+      validateExternalCallTargetsInExpr externals context sourceOffset
+      validateExternalCallTargetsInExpr externals context size
+  | Stmt.revertReturndata =>
+      pure ()
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+      validateExternalCallTargetsInExpr externals context key
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.setMapping2 _ key1 key2 value => do
+      validateExternalCallTargetsInExpr externals context key1
+      validateExternalCallTargetsInExpr externals context key2
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.ite cond thenBranch elseBranch => do
+      validateExternalCallTargetsInExpr externals context cond
+      thenBranch.forM (validateExternalCallTargetsInStmt externals context)
+      elseBranch.forM (validateExternalCallTargetsInStmt externals context)
+  | Stmt.forEach _ count body => do
+      validateExternalCallTargetsInExpr externals context count
+      body.forM (validateExternalCallTargetsInStmt externals context)
+  | Stmt.emit _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.internalCall _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.internalCallAssign _ _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.returnValues values =>
+      values.forM (validateExternalCallTargetsInExpr externals context)
+  | _ =>
+      pure ()
+
+private def validateExternalCallTargetsInFunction
+    (externals : List ExternalFunction) (spec : FunctionSpec) : Except String Unit := do
+  spec.body.forM (validateExternalCallTargetsInStmt externals s!"function '{spec.name}'")
+
+private def validateExternalCallTargetsInConstructor
+    (externals : List ExternalFunction) (ctor : Option ConstructorSpec) : Except String Unit := do
+  match ctor with
+  | none => pure ()
+  | some spec =>
+      spec.body.forM (validateExternalCallTargetsInStmt externals "constructor")
+
 private def compileMappingSlotWrite (fields : List Field) (field : String)
     (keyExpr valueExpr : YulExpr) (label : String) : Except String (List YulStmt) :=
   if !isMapping fields field then
@@ -1864,8 +2207,8 @@ private def revertWithCustomError (dynamicSource : DynamicDataSource)
   pure [YulStmt.block ([storePtr] ++ sigStores ++ [hashStmt, selectorStmt, selectorStore, tailInit] ++ argStores.flatten ++ [revertStmt])]
 
 -- Compile statement to Yul (using mutual recursion for lists).
--- When isInternal=true, Stmt.return compiles to `__ret := value` (for internal Yul functions)
--- instead of EVM RETURN which terminates the entire call.
+-- When isInternal=true, Stmt.return compiles to `__ret := value; leave` so internal
+-- function execution terminates immediately without exiting the outer EVM call.
 mutual
 def compileStmtList (fields : List Field) (events : List EventDef := [])
     (errors : List ErrorDef := [])
@@ -2030,7 +2373,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let valueExpr ← compileExpr fields dynamicSource value
       if isInternal then
         match internalRetNames with
-        | retName :: _ => pure [YulStmt.assign retName valueExpr]
+        | retName :: _ => pure [YulStmt.assign retName valueExpr, YulStmt.leave]
         | [] => throw s!"Compilation error: internal return target is missing"
       else
         pure [
@@ -2535,8 +2878,9 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
           throw s!"Compilation error: internal return arity mismatch: expected {internalRetNames.length}, got {values.length}"
         else
           let compiled ← compileExprList fields dynamicSource values
-          pure ((internalRetNames.zip compiled).map fun (name, valueExpr) =>
-            YulStmt.assign name valueExpr)
+          let assigns := (internalRetNames.zip compiled).map fun (name, valueExpr) =>
+            YulStmt.assign name valueExpr
+          pure (assigns ++ [YulStmt.leave])
       else if values.isEmpty then
         pure [YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 0])]
       else
@@ -2652,9 +2996,20 @@ private def genScalarLoad
         YulExpr.hex addressMask
       ])]
   | ParamType.bool =>
-      [YulStmt.let_ name (YulExpr.call "iszero" [YulExpr.call "iszero" [
-        load
-      ]])]
+      let boolWord := s!"__abi_bool_word_{offset}"
+      [ YulStmt.let_ boolWord load
+      , YulStmt.if_ (YulExpr.call "iszero" [
+          YulExpr.call "or" [
+            YulExpr.call "eq" [YulExpr.ident boolWord, YulExpr.lit 0],
+            YulExpr.call "eq" [YulExpr.ident boolWord, YulExpr.lit 1]
+          ]
+        ]) [
+          YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+        ]
+      , YulStmt.let_ name (YulExpr.call "iszero" [YulExpr.call "iszero" [
+          YulExpr.ident boolWord
+        ]])
+      ]
   | _ => []
 
 private partial def genStaticTypeLoads
@@ -2735,6 +3090,67 @@ private partial def collectStmtListBindNames : List Stmt → List String
   | stmt :: rest =>
       collectStmtBindNames stmt ++ collectStmtListBindNames rest
 end
+
+private partial def exprUsesArrayElement : Expr → Bool
+  | Expr.arrayElement _ _ => true
+  | Expr.mapping _ key => exprUsesArrayElement key
+  | Expr.mapping2 _ key1 key2 => exprUsesArrayElement key1 || exprUsesArrayElement key2
+  | Expr.mappingUint _ key => exprUsesArrayElement key
+  | Expr.call gas target value inOffset inSize outOffset outSize =>
+      exprUsesArrayElement gas || exprUsesArrayElement target || exprUsesArrayElement value ||
+      exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
+      exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize =>
+      exprUsesArrayElement gas || exprUsesArrayElement target ||
+      exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
+      exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
+      exprUsesArrayElement gas || exprUsesArrayElement target ||
+      exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
+      exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.returndataOptionalBoolAt outOffset => exprUsesArrayElement outOffset
+  | Expr.externalCall _ args | Expr.internalCall _ args =>
+      args.any exprUsesArrayElement
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b =>
+      exprUsesArrayElement a || exprUsesArrayElement b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      exprUsesArrayElement a
+  | _ => false
+
+private partial def stmtUsesArrayElement : Stmt → Bool
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      exprUsesArrayElement value
+  | Stmt.requireError cond _ args =>
+      exprUsesArrayElement cond || args.any exprUsesArrayElement
+  | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
+      args.any exprUsesArrayElement
+  | Stmt.returndataCopy destOffset sourceOffset size =>
+      exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+      exprUsesArrayElement key || exprUsesArrayElement value
+  | Stmt.setMapping2 _ key1 key2 value =>
+      exprUsesArrayElement key1 || exprUsesArrayElement key2 || exprUsesArrayElement value
+  | Stmt.ite cond thenBranch elseBranch =>
+      exprUsesArrayElement cond || thenBranch.any stmtUsesArrayElement || elseBranch.any stmtUsesArrayElement
+  | Stmt.forEach _ count body =>
+      exprUsesArrayElement count || body.any stmtUsesArrayElement
+  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
+      args.any exprUsesArrayElement
+  | _ => false
+
+private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=
+  fn.body.any stmtUsesArrayElement
+
+private def constructorUsesArrayElement : Option ConstructorSpec → Bool
+  | none => false
+  | some ctor => ctor.body.any stmtUsesArrayElement
+
+private def contractUsesArrayElement (spec : ContractSpec) : Bool :=
+  constructorUsesArrayElement spec.constructor || spec.functions.any functionUsesArrayElement
 
 private def pickFreshInternalRetName (usedNames : List String) (idx : Nat) : String :=
   let base := s!"__ret{idx}"
@@ -2891,6 +3307,22 @@ private def firstDuplicateName (names : List String) : Option String :=
       else
         go (n :: seen) rest
   go [] names
+
+private def firstDuplicateFunctionParamName
+    (fns : List FunctionSpec) : Option (String × String) :=
+  let rec goFns : List FunctionSpec → Option (String × String)
+    | [] => none
+    | fn :: rest =>
+        match firstDuplicateName (fn.params.map (·.name)) with
+        | some dup => some (fn.name, dup)
+        | none => goFns rest
+  goFns fns
+
+private def firstDuplicateConstructorParamName
+    (ctor : Option ConstructorSpec) : Option String :=
+  match ctor with
+  | none => none
+  | some spec => firstDuplicateName (spec.params.map (·.name))
 
 private def dedupNatPreserve (xs : List Nat) : List Nat :=
   let rec go (seen : List Nat) : List Nat → List Nat
@@ -3054,6 +3486,16 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   let fields := applySlotAliasRanges spec.fields spec.slotAliasRanges
   let externalFns := spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)
   let internalFns := spec.functions.filter (·.isInternal)
+  match firstDuplicateFunctionParamName spec.functions with
+  | some (fnName, dup) =>
+      throw s!"Compilation error: duplicate parameter name '{dup}' in function '{fnName}'"
+  | none =>
+      pure ()
+  match firstDuplicateConstructorParamName spec.constructor with
+  | some dup =>
+      throw s!"Compilation error: duplicate parameter name '{dup}' in constructor"
+  | none =>
+      pure ()
   for fn in spec.functions do
     validateFunctionSpec fn
     validateInteropFunctionSpec fn
@@ -3061,8 +3503,10 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     validateEventArgShapesInFunction fn spec.events
     validateCustomErrorArgShapesInFunction fn spec.errors
     validateInternalCallShapesInFunction spec.functions fn
+    validateExternalCallTargetsInFunction spec.externals fn
   validateConstructorSpec spec.constructor
   validateInteropConstructorSpec spec.constructor
+  validateExternalCallTargetsInConstructor spec.externals spec.constructor
   match spec.constructor with
   | none => pure ()
   | some ctor => do
@@ -3143,6 +3587,11 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     compileFunctionSpec fields spec.events spec.errors sel fnSpec
   -- Compile internal functions as Yul function definitions (#181)
   let internalFuncDefs ← internalFns.mapM (compileInternalFunction fields spec.events spec.errors)
+  let arrayElementHelpers :=
+    if contractUsesArrayElement spec then
+      [checkedArrayElementCalldataHelper, checkedArrayElementMemoryHelper]
+    else
+      []
   let fallbackEntrypoint ← fallbackSpec.mapM (compileSpecialEntrypoint fields spec.events spec.errors)
   let receiveEntrypoint ← receiveSpec.mapM (compileSpecialEntrypoint fields spec.events spec.errors)
   return {
@@ -3153,7 +3602,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     fallbackEntrypoint := fallbackEntrypoint
     receiveEntrypoint := receiveEntrypoint
     usesMapping := usesMapping fields
-    internalFunctions := internalFuncDefs
+    internalFunctions := arrayElementHelpers ++ internalFuncDefs
   }
 
 end Compiler.ContractSpec

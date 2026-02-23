@@ -2,21 +2,21 @@
 
 Quick operational guide for AI agents. Human overview: [README.md](README.md).
 
-## Critical Documentation Rule
+## Documentation Safety (Critical)
 
-These files are safety-critical and must stay synchronized with source code:
+The following files are safety-critical and MUST stay synchronized with source code:
 
 - `AUDIT.md`
 - `TRUST_ASSUMPTIONS.md`
 - `AXIOMS.md`
 
-If code changes and these files are not updated in the same change set, trust analysis becomes stale and security assessment is unsafe.
+If code changes and these files are not updated in the same change set, trust boundaries become stale and the system is unsafe to assess correctly.
 
-Mandatory requirements:
+Mandatory rule:
 
-1. Any change affecting architecture, semantics, trust boundaries, assumptions, axioms, CI safety checks, or compilation paths must update these files immediately.
-2. Do not defer these updates to a later PR.
-3. Treat documentation drift in these files as a security issue.
+1. Every source-code change that affects architecture, semantics, trust boundaries, assumptions, axioms, CI safety checks, or compilation paths MUST update these files immediately.
+2. Never defer these updates to a later PR.
+3. Treat stale trust and audit documentation as a security issue.
 
 ## Workflow
 
@@ -63,8 +63,8 @@ Ask before:
 Proceed without approval:
 
 - Read files
-- Create local branches/commits
-- Run builds/tests
+- Create local branches and commits
+- Run builds and tests
 - Create issues
 - Update docs
 

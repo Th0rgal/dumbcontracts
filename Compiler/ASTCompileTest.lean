@@ -178,4 +178,14 @@ private def assertContains (label : String) (rendered : String) (needles : List 
   let rendered := renderStmts (compileStmt Verity.AST.SimpleToken.getOwnerAST)
   assertContains "SimpleToken.getOwner" rendered ["sload(0)", "return(0, 32)"]
 
+/-!
+## Regression: bindBool normalization
+-/
+
+#eval! do
+  let ast : Stmt := .bindBool "b" (.lit 2) (.sstore 0 (.var "b") .stop)
+  let rendered := renderStmts (compileStmt ast)
+  assertContains "bindBool canonicalizes non-zero to 1" rendered
+    ["let b := iszero(iszero(2))", "sstore(0, b)", "stop()"]
+
 end Compiler.ASTCompileTest

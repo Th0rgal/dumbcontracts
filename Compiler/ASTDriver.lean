@@ -27,11 +27,12 @@ open Compiler
 open Compiler.Yul
 open Compiler.ASTSpecs
 open Compiler.ASTCompile (compileStmt)
-open Compiler.ContractSpec (ParamType Param genParamLoads paramTypeToSolidityString addressMask)
+open Compiler.ContractSpec (ParamType Param genParamLoads paramTypeToSolidityString addressMask isInteropEntrypointName)
 open Compiler.Linker
 open Compiler.Hex
 open Compiler.Selector (runKeccak)
 open Compiler.ABI
+open Verity.AST (Expr Stmt)
 
 /-!
 ## Selector Computation
@@ -39,10 +40,9 @@ open Compiler.ABI
 Computes Solidity selectors for AST functions using the shared
 `Selector.runKeccak` (no duplication of keccak subprocess handling).
 
-Note: ASTFunctionSpec has no `isInternal` or fallback/receive semantics,
-so all functions are treated as external.  If internal/special entrypoints
-are added to the AST path, filtering must be added here (matching
-Selector.computeSelectors for ContractSpec).
+Note: ASTFunctionSpec has no `isInternal` or fallback/receive semantics.
+Reserved Solidity special entrypoint names are rejected during validation,
+so all AST functions are selector-dispatched externals.
 -/
 
 private def functionSignature (fn : ASTFunctionSpec) : String :=
@@ -86,9 +86,6 @@ def astSpecToContractSpecForABI (spec : ASTContractSpec) : Compiler.ContractSpec
     errors := []
     externals := [] }
 
-def emitASTContractABIJson (spec : ASTContractSpec) : String :=
-  Compiler.ABI.emitContractABIJson (astSpecToContractSpecForABI spec)
-
 /-!
 ## Constructor Compilation
 
@@ -118,9 +115,20 @@ private def genConstructorArgLoads (params : List Param) : List YulStmt :=
           load, YulExpr.hex addressMask
         ])]
       | ParamType.bool =>
-        [YulStmt.let_ param.name (YulExpr.call "iszero" [
-          YulExpr.call "iszero" [load]
-        ])]
+        let boolWord := s!"__abi_ctor_bool_word_{idx}"
+        [ YulStmt.let_ boolWord load
+        , YulStmt.if_ (YulExpr.call "iszero" [
+            YulExpr.call "or" [
+              YulExpr.call "eq" [YulExpr.ident boolWord, YulExpr.lit 0],
+              YulExpr.call "eq" [YulExpr.ident boolWord, YulExpr.lit 1]
+            ]
+          ]) [
+            YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+          ]
+        , YulStmt.let_ param.name (YulExpr.call "iszero" [
+            YulExpr.call "iszero" [YulExpr.ident boolWord]
+          ])
+        ]
       | _ =>
         [YulStmt.let_ param.name load]
     argsOffset ++ loadArgs
@@ -203,6 +211,91 @@ private def validateParamNames (kind : String) (params : List Param) : Except St
   | some dup => throw s!"Duplicate {kind} parameter name: {dup}"
   | none => pure ()
 
+private def exprReadsStateOrEnv : Expr → Bool
+  | .lit _ => false
+  | .var _ => false
+  | .varAddr _ => false
+  | .storage _ => true
+  | .storageAddr _ => true
+  | .mapping _ _ => true
+  | .sender => true
+  | .add a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .sub a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .mul a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .eqAddr a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .ge a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .gt a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .safeAdd a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .safeSub a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+
+private partial def stmtWritesState : Stmt → Bool
+  | .ret _ => false
+  | .retAddr _ => false
+  | .stop => false
+  | .bindUint _ _ rest => stmtWritesState rest
+  | .bindAddr _ _ rest => stmtWritesState rest
+  | .bindBool _ _ rest => stmtWritesState rest
+  | .letUint _ _ rest => stmtWritesState rest
+  | .sstore _ _ _ => true
+  | .sstoreAddr _ _ _ => true
+  | .mstore _ _ _ _ => true
+  | .require _ _ rest => stmtWritesState rest
+  | .requireSome _ _ _ rest => stmtWritesState rest
+  | .ite _ thenBranch elseBranch => stmtWritesState thenBranch || stmtWritesState elseBranch
+
+private partial def stmtReadsStateOrEnv : Stmt → Bool
+  | .ret expr => exprReadsStateOrEnv expr
+  | .retAddr expr => exprReadsStateOrEnv expr
+  | .stop => false
+  | .bindUint _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .bindAddr _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .bindBool _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .letUint _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .sstore _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .sstoreAddr _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .mstore _ keyExpr valExpr rest =>
+      exprReadsStateOrEnv keyExpr || exprReadsStateOrEnv valExpr || stmtReadsStateOrEnv rest
+  | .require condExpr _ rest => exprReadsStateOrEnv condExpr || stmtReadsStateOrEnv rest
+  | .requireSome _ optExpr _ rest => exprReadsStateOrEnv optExpr || stmtReadsStateOrEnv rest
+  | .ite condExpr thenBranch elseBranch =>
+      exprReadsStateOrEnv condExpr || stmtReadsStateOrEnv thenBranch || stmtReadsStateOrEnv elseBranch
+
+private partial def validateReturnShapeInStmt
+    (contractName : String) (fnName : String) (expected : ASTReturnType) : Stmt → Except String Unit
+  | .ret _ =>
+      match expected with
+      | .uint256 => pure ()
+      | .address =>
+          throw s!"Function '{fnName}' in {contractName} declares address returnType but uses uint256 return statement"
+      | .unit =>
+          throw s!"Function '{fnName}' in {contractName} declares unit returnType but returns a uint256 value"
+  | .retAddr _ =>
+      match expected with
+      | .address => pure ()
+      | .uint256 =>
+          throw s!"Function '{fnName}' in {contractName} declares uint256 returnType but uses address return statement"
+      | .unit =>
+          throw s!"Function '{fnName}' in {contractName} declares unit returnType but returns an address value"
+  | .stop =>
+      match expected with
+      | .unit => pure ()
+      | .uint256 =>
+          throw s!"Function '{fnName}' in {contractName} declares uint256 returnType but terminates with stop"
+      | .address =>
+          throw s!"Function '{fnName}' in {contractName} declares address returnType but terminates with stop"
+  | .bindUint _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .bindAddr _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .bindBool _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .letUint _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .sstore _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .sstoreAddr _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .mstore _ _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .require _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .requireSome _ _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .ite _ thenBranch elseBranch => do
+      validateReturnShapeInStmt contractName fnName expected thenBranch
+      validateReturnShapeInStmt contractName fnName expected elseBranch
+
 private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
   ensureNonEmpty "Contract" spec.name
   ensureValidIdentifier "Contract" spec.name
@@ -210,11 +303,20 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
   for fn in spec.functions do
     ensureNonEmpty s!"Function in {spec.name}" fn.name
     ensureValidIdentifier s!"Function in {spec.name}" fn.name
+    if isInteropEntrypointName fn.name then
+      throw s!"Function '{fn.name}' in {spec.name} is reserved for ContractSpec special entrypoints and is unsupported in AST specs"
     validateParamNames s!"function {fn.name}" fn.params
     if fn.isPayable && (fn.isView || fn.isPure) then
       throw s!"Function '{fn.name}' in {spec.name} cannot be both payable and view/pure"
     if fn.isView && fn.isPure then
       throw s!"Function '{fn.name}' in {spec.name} cannot be both view and pure"
+    if fn.isView && stmtWritesState fn.body then
+      throw s!"Function '{fn.name}' in {spec.name} is marked view but writes state"
+    if fn.isPure && stmtWritesState fn.body then
+      throw s!"Function '{fn.name}' in {spec.name} is marked pure but writes state"
+    if fn.isPure && stmtReadsStateOrEnv fn.body then
+      throw s!"Function '{fn.name}' in {spec.name} is marked pure but reads state/environment"
+    validateReturnShapeInStmt spec.name fn.name fn.returnType fn.body
 
   match spec.constructor with
   | some ctor => validateParamNames s!"constructor of {spec.name}" ctor.params
@@ -223,6 +325,11 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
   match findDuplicate (spec.functions.map (·.name)) with
   | some dup => throw s!"Duplicate function name in {spec.name}: {dup}"
   | none => pure ()
+
+def emitASTContractABIJson (spec : ASTContractSpec) : String :=
+  match validateSpec spec with
+  | .ok () => Compiler.ABI.emitContractABIJson (astSpecToContractSpecForABI spec)
+  | .error err => panic! s!"Invalid AST spec for ABI emission: {err}"
 
 private def validateAllSpecs (specs : List ASTContractSpec) : Except String Unit := do
   match findDuplicate (specs.map (·.name)) with
@@ -367,16 +474,16 @@ def compileAllASTWithOptions
 
   let mut patchRows : List (String × Yul.PatchPassReport) := []
   for spec in ASTSpecs.allSpecs do
-    match abiOutDir with
-    | some dir =>
-        Compiler.ABI.writeContractABIFile dir (astSpecToContractSpecForABI spec)
-        if verbose then
-          IO.println s!"✓ Wrote ABI {dir}/{spec.name}.abi.json"
-    | none => pure ()
     let selectors ← computeSelectors spec
     match compileSpec spec selectors with
     | .ok contract =>
       let patchReport ← writeContract outDir contract libraryPaths verbose options
+      match abiOutDir with
+      | some dir =>
+          Compiler.ABI.writeContractABIFile dir (astSpecToContractSpecForABI spec)
+          if verbose then
+            IO.println s!"✓ Wrote ABI {dir}/{spec.name}.abi.json"
+      | none => pure ()
       patchRows := (contract.name, patchReport) :: patchRows
       if verbose then
         IO.println s!"✓ Compiled {contract.name} (AST path)"

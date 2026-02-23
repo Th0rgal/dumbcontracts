@@ -11,8 +11,7 @@ Verity has two compilation paths:
 1. `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode` (proof-backed path)
 2. `Unified AST (--ast) -> Yul -> solc -> bytecode` (migration path)
 
-Formal semantic guarantees apply to Path 1.
-Path 2 is implemented and tested, but not in the same end-to-end proof chain.
+Formal semantic guarantees apply to Path 1. Path 2 is implemented and tested, but not in the same end-to-end proof chain.
 
 ## Verification Layers (Path 1)
 
@@ -27,7 +26,7 @@ Path 2 is implemented and tested, but not in the same end-to-end proof chain.
 
 - `Verity/`: EDSL contracts and proofs.
 - `Compiler/ContractSpec.lean`: spec validation and lowering.
-- `Compiler/Codegen.lean`: IR -> Yul AST lowering.
+- `Compiler/Codegen.lean`: IR to Yul AST lowering.
 - `Compiler/Yul/PrettyPrint.lean`: Yul text rendering.
 
 ### AST path (`--ast`)
@@ -39,8 +38,8 @@ Path 2 is implemented and tested, but not in the same end-to-end proof chain.
 Current AST status:
 
 - Implemented and tested.
-- Supports mutability metadata (`isPayable`, `isView`, `isPure`) in specs/ABI.
-- Not yet covered by the same Layer 2/3 proof chain as `ContractSpec`.
+- Supports mutability metadata (`isPayable`, `isView`, `isPure`) in specs and ABI.
+- Not yet covered by the same Layer 2 and 3 proof chain as `ContractSpec`.
 
 ## Priority Files for Auditors
 
@@ -68,7 +67,7 @@ Current AST status:
 1. Revert-state modeling gap at high-level semantics: confirm checks-before-effects discipline.
 2. Linked Yul libraries: audit separately as trusted code.
 3. Wrapping arithmetic: verify it is intended or guarded.
-4. AST/ContractSpec drift: review allowlist-backed differences explicitly.
+4. AST and ContractSpec drift: review allowlist-backed differences explicitly.
 
 ## Minimal Audit Checklist
 
@@ -78,9 +77,9 @@ Current AST status:
 4. Run selector, Yul compileability, storage-layout, and doc consistency checks.
 5. If libraries are linked, include them in scope as TCB code.
 
-## Readability Suggestions
+## Writing Suggestions for This File
 
-1. Keep this file as an orientation document, not a proof transcript.
+1. Keep this file as orientation, not a proof transcript.
 2. Use short sections with concrete file references.
 3. Keep all counts script-backed (`check_doc_counts.py`).
-4. Update this file in the same PR as any architecture/trust change.
+4. Update this file in the same PR as any architecture or trust change.

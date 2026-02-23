@@ -103,7 +103,10 @@ def compileStmt : Stmt → List Yul.YulStmt
   | .bindAddr name expr rest =>
       Yul.YulStmt.let_ name (compileExpr expr) :: compileStmt rest
   | .bindBool name expr rest =>
-      Yul.YulStmt.let_ name (compileExpr expr) :: compileStmt rest
+      -- Match denotational semantics: bool bindings are canonicalized to 0/1.
+      Yul.YulStmt.let_ name
+        (Yul.YulExpr.call "iszero" [Yul.YulExpr.call "iszero" [compileExpr expr]])
+        :: compileStmt rest
 
   -- Pure let
   | .letUint name expr rest =>

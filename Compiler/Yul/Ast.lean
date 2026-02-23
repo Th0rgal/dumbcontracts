@@ -14,6 +14,7 @@ inductive YulStmt
   | letMany (names : List String) (value : YulExpr)
   | assign (name : String) (value : YulExpr)
   | expr (e : YulExpr)
+  | leave
   | if_ (cond : YulExpr) (body : List YulStmt)
   | for_ (init : List YulStmt) (cond : YulExpr) (post : List YulStmt) (body : List YulStmt)
   | switch (expr : YulExpr) (cases : List (Nat × List YulStmt)) (default : Option (List YulStmt))

@@ -255,7 +255,7 @@ The ContractSpec DSL provides a complete expression and statement language for s
 | `externalCall "f" args` | Call linked library function | `f(args...)` |
 | `internalCall "f" args` | Call internal contract function | `internal_f(args...)` |
 | `arrayLength "arr"` | Length of dynamic array parameter | `arr_length` |
-| `arrayElement "arr" idx` | Element of dynamic array parameter | `calldataload(arr_data_offset + idx*32)` |
+| `arrayElement "arr" idx` | Checked element of dynamic array parameter (reverts if `idx >= arr_length`) | `__verity_array_element_*_checked(arr_data_offset, arr_length, idx)` |
 | `add a b` | Addition | `add(a, b)` |
 | `sub a b` | Subtraction | `sub(a, b)` |
 | `mul a b` | Multiplication | `mul(a, b)` |

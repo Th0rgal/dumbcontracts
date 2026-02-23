@@ -70,6 +70,8 @@ lake exe verity-compiler --backend-profile solidity-parity-ordering
 lake exe verity-compiler --backend-profile solidity-parity
 ```
 
+Normalization rules, scope levels, and reproducibility guarantees are versioned in [`docs/SOLIDITY_PARITY_PROFILE.md`](docs/SOLIDITY_PARITY_PROFILE.md).
+
 For mapping-backed struct layouts, `ContractSpec` supports:
 - `Expr.mappingWord field key wordOffset`
 - `Stmt.setMappingWord field key wordOffset value`

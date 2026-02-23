@@ -2954,6 +2954,54 @@ private def featureSpec : ContractSpec := {
         renderedParity "case 0x10000000 {" "case 0x30000000 {"
 
 #eval! do
+  let helperOrderingSpec : ContractSpec := {
+    name := "HelperOrderingSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "zebraHelper"
+        params := []
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [Stmt.return (Expr.literal 11)]
+      },
+      { name := "alphaHelper"
+        params := []
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [Stmt.return (Expr.literal 22)]
+      },
+      { name := "entry"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.internalCall "zebraHelper" [])]
+      }
+    ]
+  }
+  match compile helperOrderingSpec [0x10000000] with
+  | .error err =>
+      throw (IO.userError s!"✗ helper ordering compile failed: {err}")
+  | .ok ir =>
+      let renderedDefault := Yul.render (emitYulWithOptions ir {})
+      assertAppearsBefore "default profile preserves source helper order (zebra before alpha)"
+        renderedDefault "function internal_zebraHelper() -> __ret0" "function internal_alphaHelper() -> __ret0"
+
+      let renderedParityOrdering :=
+        Yul.render (emitYulWithOptions ir { backendProfile := .solidityParityOrdering })
+      assertAppearsBefore "solidity-parity-ordering sorts helper declarations lexicographically (alpha before zebra)"
+        renderedParityOrdering "function internal_alphaHelper() -> __ret0" "function internal_zebraHelper() -> __ret0"
+
+      let renderedParity :=
+        Yul.render (emitYulWithOptions ir { backendProfile := .solidityParity })
+      assertAppearsBefore "solidity-parity sorts helper declarations lexicographically (alpha before zebra)"
+        renderedParity "function internal_alphaHelper() -> __ret0" "function internal_zebraHelper() -> __ret0"
+
+      let renderedParityRepeat :=
+        Yul.render (emitYulWithOptions ir { backendProfile := .solidityParity })
+      if renderedParity != renderedParityRepeat then
+        throw (IO.userError "✗ solidity-parity profile should emit deterministic stable output across repeated runs")
+
+#eval! do
   let slotAliasRangeMirrorWriteSpec : ContractSpec := {
     name := "SlotAliasRangeMirrorWriteSpec"
     fields := [

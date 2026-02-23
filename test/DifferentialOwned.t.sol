@@ -55,7 +55,7 @@ contract DifferentialOwned is YulTestBase, DiffTestConfig, DifferentialTestBase 
         address evmOwnerAfter = address(uint160(uint256(vm.load(owned, bytes32(uint256(0))))));
         address evmReturnAddress = address(0);
 
-        if (evmReturnData.length > 0) {
+        if (evmSuccess && evmReturnData.length > 0) {
             if (functionSig == keccak256(bytes("getOwner"))) {
                 evmReturnAddress = abi.decode(evmReturnData, (address));
             }

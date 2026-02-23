@@ -50,7 +50,7 @@ contract DifferentialSimpleStorage is YulTestBase, DiffTestConfig, DifferentialT
         }
 
         uint256 evmStorageAfter = uint256(vm.load(simpleStorage, bytes32(uint256(0))));
-        uint256 evmReturnValue = evmReturnData.length > 0 ? abi.decode(evmReturnData, (uint256)) : 0;
+        uint256 evmReturnValue = evmSuccess && evmReturnData.length > 0 ? abi.decode(evmReturnData, (uint256)) : 0;
 
         // 2. Execute on EDSL interpreter (via vm.ffi)
         // Build storage state string: "slot:value,..." for all non-zero slots

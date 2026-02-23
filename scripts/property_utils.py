@@ -26,6 +26,8 @@ PROPERTY_SIMPLE_RE = re.compile(
     r"Property\s*:\s*([A-Za-z0-9_']+)(?:\s*\(.*\))?\s*$"
 )
 FILE_RE = re.compile(r"^Property(.+)\.t\.sol$")
+CONTRACT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+THEOREM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
 
 # Regex pattern for extracting theorems from Lean files
 THEOREM_RE = re.compile(r"^\s*(theorem|lemma)\s+([A-Za-z0-9_']+)")
@@ -40,13 +42,7 @@ def load_manifest() -> dict[str, set[str]]:
     Raises:
         SystemExit: If manifest file does not exist.
     """
-    if not MANIFEST.exists():
-        raise SystemExit(f"Missing property manifest: {MANIFEST}")
-    data = _load_contract_name_lists(MANIFEST)
-    manifest: dict[str, set[str]] = {}
-    for contract, names in data.items():
-        manifest[contract] = set(names)
-    return manifest
+    return _load_contract_name_sets(MANIFEST, missing_ok=False)
 
 
 def load_exclusions() -> dict[str, set[str]]:
@@ -56,17 +52,16 @@ def load_exclusions() -> dict[str, set[str]]:
         Dictionary mapping contract names to sets of excluded theorem names.
         Returns empty dict if exclusions file does not exist.
     """
-    if not EXCLUSIONS.exists():
-        return {}
-    data = _load_contract_name_lists(EXCLUSIONS)
-    exclusions: dict[str, set[str]] = {}
-    for contract, names in data.items():
-        exclusions[contract] = set(names)
-    return exclusions
+    return _load_contract_name_sets(EXCLUSIONS, missing_ok=True)
 
 
-def _load_contract_name_lists(path: Path) -> dict[str, list[str]]:
+def _load_contract_name_sets(path: Path, *, missing_ok: bool) -> dict[str, set[str]]:
     """Load and validate a `{contract: [name, ...]}` JSON object."""
+    if not path.exists():
+        if missing_ok:
+            return {}
+        raise SystemExit(f"Missing property manifest: {path}")
+
     try:
         raw: Any = json.loads(
             path.read_text(encoding="utf-8"),
@@ -81,11 +76,15 @@ def _load_contract_name_lists(path: Path) -> dict[str, list[str]]:
             "mapping contract names to string arrays."
         )
 
-    validated: dict[str, list[str]] = {}
+    validated: dict[str, set[str]] = {}
     for contract, names in raw.items():
         if not isinstance(contract, str) or not contract:
             raise SystemExit(
                 f"Invalid schema in {path}: contract key {contract!r} must be a non-empty string."
+            )
+        if contract != contract.strip() or not CONTRACT_NAME_RE.fullmatch(contract):
+            raise SystemExit(
+                f"Invalid schema in {path}: contract key {contract!r} must match {CONTRACT_NAME_RE.pattern!r}."
             )
         if not isinstance(names, list):
             raise SystemExit(
@@ -96,12 +95,16 @@ def _load_contract_name_lists(path: Path) -> dict[str, list[str]]:
                 raise SystemExit(
                     f"Invalid schema in {path}: entry {name!r} in {contract!r} must be a non-empty string."
                 )
+            if name != name.strip() or not THEOREM_NAME_RE.fullmatch(name):
+                raise SystemExit(
+                    f"Invalid schema in {path}: entry {name!r} in {contract!r} must match {THEOREM_NAME_RE.pattern!r}."
+                )
         duplicate_names = _find_duplicates(names)
         if duplicate_names:
             raise SystemExit(
                 f"Invalid schema in {path}: value for {contract!r} contains duplicate name(s): {', '.join(duplicate_names)}."
             )
-        validated[contract] = names
+        validated[contract] = set(names)
 
     return validated
 

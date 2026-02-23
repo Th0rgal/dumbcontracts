@@ -2859,6 +2859,71 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected undeclared Expr.localVar to fail compilation")
 
 #eval! do
+  let unknownArrayLengthParamSpec : ContractSpec := {
+    name := "UnknownArrayLengthParamSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badArrayLength"
+        params := [{ name := "arr", ty := ParamType.array ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.arrayLength "typo")]
+      }
+    ]
+  }
+  match compile unknownArrayLengthParamSpec [1] with
+  | .error err =>
+      if !contains err "function 'badArrayLength' references unknown parameter 'typo' in Expr.arrayLength" then
+        throw (IO.userError s!"✗ Expr.arrayLength unknown parameter diagnostic mismatch: {err}")
+      IO.println "✓ Expr.arrayLength unknown parameter diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected Expr.arrayLength unknown parameter to fail compilation")
+
+#eval! do
+  let nonArrayLengthParamSpec : ContractSpec := {
+    name := "NonArrayLengthParamSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badArrayLengthType"
+        params := [{ name := "blob", ty := ParamType.bytes }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.arrayLength "blob")]
+      }
+    ]
+  }
+  match compile nonArrayLengthParamSpec [1] with
+  | .error err =>
+      if !(contains err "function 'badArrayLengthType' Expr.arrayLength 'blob' requires array parameter, got" &&
+          contains err "ParamType.bytes") then
+        throw (IO.userError s!"✗ Expr.arrayLength type diagnostic mismatch: {err}")
+      IO.println "✓ Expr.arrayLength non-array parameter diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected Expr.arrayLength non-array parameter to fail compilation")
+
+#eval! do
+  let nonArrayElementParamSpec : ContractSpec := {
+    name := "NonArrayElementParamSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badArrayElementType"
+        params := [{ name := "blob", ty := ParamType.bytes }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.arrayElement "blob" (Expr.literal 0))]
+      }
+    ]
+  }
+  match compile nonArrayElementParamSpec [1] with
+  | .error err =>
+      if !(contains err "function 'badArrayElementType' Expr.arrayElement 'blob' requires array parameter, got" &&
+          contains err "ParamType.bytes") then
+        throw (IO.userError s!"✗ Expr.arrayElement type diagnostic mismatch: {err}")
+      IO.println "✓ Expr.arrayElement non-array parameter diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected Expr.arrayElement non-array parameter to fail compilation")
+
+#eval! do
   let assignBeforeDeclarationSpec : ContractSpec := {
     name := "AssignBeforeDeclarationSpec"
     fields := []

@@ -892,7 +892,7 @@ private def dynamicParamBases (params : List Param) : List String :=
   (params.filter (fun p => isDynamicParamTypeForScope p.ty)).map (·.name)
 
 private partial def validateScopedExprIdentifiers
-    (context : String) (paramScope : List String) (dynamicParams : List String)
+    (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
     (localScope : List String) : Expr → Except String Unit
   | Expr.param name =>
       if paramScope.contains name then
@@ -905,61 +905,67 @@ private partial def validateScopedExprIdentifiers
       else
         throw s!"Compilation error: {context} references unknown local variable '{name}'"
   | Expr.arrayLength name =>
-      if dynamicParams.contains name then
-        pure ()
-      else
-        throw s!"Compilation error: {context} references unknown dynamic parameter '{name}' in Expr.arrayLength"
+      match findParamType params name with
+      | some (ParamType.array _) => pure ()
+      | some ty =>
+          throw s!"Compilation error: {context} Expr.arrayLength '{name}' requires array parameter, got {repr ty}"
+      | none =>
+          throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayLength"
   | Expr.arrayElement name index => do
-      if !dynamicParams.contains name then
-        throw s!"Compilation error: {context} references unknown dynamic parameter '{name}' in Expr.arrayElement"
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope index
+      match findParamType params name with
+      | some (ParamType.array _) => pure ()
+      | some ty =>
+          throw s!"Compilation error: {context} Expr.arrayElement '{name}' requires array parameter, got {repr ty}"
+      | none =>
+          throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayElement"
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope index
   | Expr.mapping _ key | Expr.mappingUint _ key =>
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope key
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope key
   | Expr.mapping2 _ key1 key2 => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope key1
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope key2
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope key1
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope key2
   | Expr.call gas target value inOffset inSize outOffset outSize => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope gas
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope target
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope inOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope inSize
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope outSize
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope gas
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope target
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope value
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope inOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope inSize
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope outOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope outSize
   | Expr.staticcall gas target inOffset inSize outOffset outSize => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope gas
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope target
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope inOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope inSize
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope outSize
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope gas
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope target
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope inOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope inSize
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope outOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope outSize
   | Expr.delegatecall gas target inOffset inSize outOffset outSize => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope gas
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope target
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope inOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope inSize
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope outSize
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope gas
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope target
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope inOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope inSize
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope outOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope outSize
   | Expr.returndataOptionalBoolAt outOffset =>
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope outOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope outOffset
   | Expr.externalCall _ args | Expr.internalCall _ args =>
-      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope)
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
     Expr.logicalAnd a b | Expr.logicalOr a b => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope a
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope b
   | Expr.bitNot a | Expr.logicalNot a =>
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope a
   | _ => pure ()
 
 mutual
 private partial def validateScopedStmtIdentifiers
-    (context : String) (paramScope : List String) (dynamicParams : List String)
+    (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
     (localScope : List String) : Stmt → Except String (List String)
   | Stmt.letVar name value => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope value
       if paramScope.contains name then
         throw s!"Compilation error: {context} declares local variable '{name}' that shadows a parameter"
       if localScope.contains name then
@@ -968,61 +974,62 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.assignVar name value => do
       if !localScope.contains name then
         throw s!"Compilation error: {context} assigns to undeclared local variable '{name}'"
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope value
       pure localScope
   | Stmt.setStorage _ value | Stmt.return value | Stmt.require value _ => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope value
       pure localScope
   | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope key
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope key
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope value
       pure localScope
   | Stmt.setMapping2 _ key1 key2 value => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope key1
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope key2
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope value
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope key1
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope key2
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope value
       pure localScope
   | Stmt.requireError cond _ args => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope cond
-      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope cond
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope)
       pure localScope
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args => do
-      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope)
       pure localScope
   | Stmt.returndataCopy destOffset sourceOffset size => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope destOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope sourceOffset
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope size
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope destOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope sourceOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope size
       pure localScope
   | Stmt.ite cond thenBranch elseBranch => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope cond
-      let _ ← validateScopedStmtListIdentifiers context paramScope dynamicParams localScope thenBranch
-      let _ ← validateScopedStmtListIdentifiers context paramScope dynamicParams localScope elseBranch
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope cond
+      let _ ← validateScopedStmtListIdentifiers context params paramScope dynamicParams localScope thenBranch
+      let _ ← validateScopedStmtListIdentifiers context params paramScope dynamicParams localScope elseBranch
       pure localScope
   | Stmt.forEach varName count body => do
-      validateScopedExprIdentifiers context paramScope dynamicParams localScope count
-      let _ ← validateScopedStmtListIdentifiers context paramScope dynamicParams (varName :: localScope) body
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope count
+      let _ ← validateScopedStmtListIdentifiers context params paramScope dynamicParams (varName :: localScope) body
       pure localScope
   | Stmt.internalCall _ args => do
-      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope)
       pure localScope
   | Stmt.internalCallAssign names _ args => do
-      args.forM (validateScopedExprIdentifiers context paramScope dynamicParams localScope)
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope)
       pure (names.reverse ++ localScope)
   | _ => pure localScope
 
 private partial def validateScopedStmtListIdentifiers
-    (context : String) (paramScope : List String) (dynamicParams : List String)
+    (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
     (localScope : List String) : List Stmt → Except String (List String)
   | [] => pure localScope
   | stmt :: rest => do
-      let nextScope ← validateScopedStmtIdentifiers context paramScope dynamicParams localScope stmt
-      validateScopedStmtListIdentifiers context paramScope dynamicParams nextScope rest
+      let nextScope ← validateScopedStmtIdentifiers context params paramScope dynamicParams localScope stmt
+      validateScopedStmtListIdentifiers context params paramScope dynamicParams nextScope rest
 end
 
 private def validateFunctionIdentifierReferences (spec : FunctionSpec) : Except String Unit := do
   let _ ← validateScopedStmtListIdentifiers
     s!"function '{spec.name}'"
+    spec.params
     (paramScopeNames spec.params)
     (dynamicParamBases spec.params)
     []
@@ -1035,6 +1042,7 @@ private def validateConstructorIdentifierReferences (ctor : Option ConstructorSp
   | some spec =>
       let _ ← validateScopedStmtListIdentifiers
         "constructor"
+        spec.params
         (paramScopeNames spec.params)
         (dynamicParamBases spec.params)
         []

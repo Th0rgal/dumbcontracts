@@ -28,10 +28,10 @@ FILE_RE = re.compile(r"^Property(.+)\.t\.sol$")
 CONTRACT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 THEOREM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
 
-# Regex pattern for extracting theorem/lemma declarations from Lean files.
-# Accept common declaration prefixes used in the repo (attributes/visibility).
+# Regex pattern for theorem/lemma declarations with optional Lean prefixes.
 THEOREM_RE = re.compile(
-    r"^\s*(?:@\[[^\]]*\]\s*)*(?:(?:private|protected)\s+)*(theorem|lemma)\s+([A-Za-z_][A-Za-z0-9_']*)\b"
+    r"^\s*(?P<attrs>(?:@\[[^\]]*\]\s*)*)(?P<visibility>(?:(?:private|protected)\s+)*)"
+    r"(?P<kind>theorem|lemma)\s+(?P<name>[A-Za-z_][A-Za-z0-9_']*)\b"
 )
 
 
@@ -201,7 +201,21 @@ def collect_covered() -> dict[str, set[str]]:
     return covered
 
 
-def collect_theorems(path: Path) -> list[str]:
+def _is_helper_declaration(attrs: str, visibility: str) -> bool:
+    """Return True for declarations intentionally excluded from manifest coverage.
+
+    The property manifest tracks externally-audited contract properties, not local
+    helper lemmas. We treat `private`/`protected` declarations and declarations
+    tagged with `simp` as helper-only by default.
+    """
+    if visibility.strip():
+        return True
+    # Keep this simple and conservative: if any attribute block mentions simp,
+    # treat the theorem as a helper declaration for manifest purposes.
+    return bool(re.search(r"@\[[^\]]*\bsimp\b[^\]]*\]", attrs))
+
+
+def collect_theorems(path: Path, *, include_helpers: bool = False) -> list[str]:
     """Extract theorem/lemma names from a Lean proof file.
 
     Args:
@@ -209,6 +223,8 @@ def collect_theorems(path: Path) -> list[str]:
 
     Returns:
         List of theorem/lemma names found in the file.
+        By default helper declarations (`private`/`protected` and `@[simp]`)
+        are excluded to preserve property-manifest semantics.
     """
     names: list[str] = []
     try:
@@ -219,7 +235,11 @@ def collect_theorems(path: Path) -> list[str]:
     for line in stripped.splitlines():
         match = THEOREM_RE.match(line)
         if match:
-            names.append(_require_theorem_identifier(match.group(2), path))
+            attrs = match.group("attrs")
+            visibility = match.group("visibility")
+            if not include_helpers and _is_helper_declaration(attrs, visibility):
+                continue
+            names.append(_require_theorem_identifier(match.group("name"), path))
     return names
 
 

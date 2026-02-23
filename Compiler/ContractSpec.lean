@@ -3730,11 +3730,11 @@ def compileConstructor (fields : List Field) (events : List EventDef) (errors : 
     return argLoads ++ bodyChunks
 
 -- Main compilation function
--- SAFETY REQUIREMENTS (enforced at runtime by `compile` and at CI-time by check_selectors.py):
---   1. selectors.length == spec.functions.length (external functions only)
---   2. selectors[i] matches the Solidity signature of spec.functions[i]
+-- NOTE: this is the pure core compiler and does *not* verify canonical
+-- selector/signature correspondence (it only checks count/duplicates).
+-- Use `Compiler.Selector.compileChecked` on caller-provided selector lists.
 -- WARNING: Order matters! If selector list is reordered but function list isn't,
---          functions will be mapped to wrong selectors with no runtime error.
+-- functions will be mapped to wrong selectors with no runtime error.
 def firstDuplicateSelector (selectors : List Nat) : Option Nat :=
   let rec go (seen : List Nat) : List Nat → Option Nat
     | [] => none

@@ -2753,6 +2753,69 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected overlapping reserved slot ranges to fail compilation")
 
 #eval! do
+  let undeclaredParamReferenceSpec : ContractSpec := {
+    name := "UndeclaredParamReferenceSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badParam"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.add (Expr.param "x") (Expr.param "typo"))]
+      }
+    ]
+  }
+  match compile undeclaredParamReferenceSpec [1] with
+  | .error err =>
+      if !contains err "function 'badParam' references unknown parameter 'typo'" then
+        throw (IO.userError s!"✗ undeclared parameter diagnostic mismatch: {err}")
+      IO.println "✓ undeclared parameter diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected undeclared Expr.param to fail compilation")
+
+#eval! do
+  let undeclaredLocalReferenceSpec : ContractSpec := {
+    name := "UndeclaredLocalReferenceSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badLocal"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.localVar "neverDeclared")]
+      }
+    ]
+  }
+  match compile undeclaredLocalReferenceSpec [1] with
+  | .error err =>
+      if !contains err "function 'badLocal' references unknown local variable 'neverDeclared'" then
+        throw (IO.userError s!"✗ undeclared local diagnostic mismatch: {err}")
+      IO.println "✓ undeclared local diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected undeclared Expr.localVar to fail compilation")
+
+#eval! do
+  let assignBeforeDeclarationSpec : ContractSpec := {
+    name := "AssignBeforeDeclarationSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badAssign"
+        params := []
+        returnType := none
+        body := [Stmt.assignVar "x" (Expr.literal 1), Stmt.stop]
+      }
+    ]
+  }
+  match compile assignBeforeDeclarationSpec [1] with
+  | .error err =>
+      if !contains err "function 'badAssign' assigns to undeclared local variable 'x'" then
+        throw (IO.userError s!"✗ assign before declaration diagnostic mismatch: {err}")
+      IO.println "✓ assign before declaration diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected assignVar before declaration to fail compilation")
+
+#eval! do
   let invalidMutabilitySpec : ContractSpec := {
     name := "InvalidMutabilitySpec"
     fields := []

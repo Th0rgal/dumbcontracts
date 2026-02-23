@@ -1,4 +1,5 @@
 import Compiler.ContractSpec
+import Compiler.Selector
 import Compiler.Codegen
 import Compiler.Yul.PrettyPrint
 import Compiler.DiffTestTypes
@@ -8,6 +9,7 @@ namespace Compiler.ContractSpecFeatureTest
 
 open Compiler
 open Compiler.ContractSpec
+open Compiler.Selector
 open Compiler.DiffTestTypes
 open Verity.Proofs.Stdlib.SpecInterpreter
 
@@ -3829,6 +3831,32 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ letVar parameter shadow diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected letVar parameter shadowing to fail compilation")
+
+#eval! do
+  let selSpec : ContractSpec := {
+    name := "SelectorCheckedCompileSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "store"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.stop]
+      },
+      { name := "read"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.literal 1)]
+      }
+    ]
+  }
+  match (← Compiler.Selector.compileChecked selSpec [0, 1]) with
+  | .error err =>
+      if !contains err "Selector mismatch in SelectorCheckedCompileSpec for function 'store'" then
+        throw (IO.userError s!"✗ selector mismatch diagnostic mismatch: {err}")
+      IO.println "✓ compileChecked rejects selector/signature mismatch"
+  | .ok _ =>
+      throw (IO.userError "✗ expected compileChecked to reject mismatched selectors")
 
 #eval! do
   let layoutSpec : ContractSpec := {

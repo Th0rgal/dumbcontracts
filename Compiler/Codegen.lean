@@ -90,7 +90,14 @@ def buildSwitch
     let body := dispatchBody fn.payable s!"{fn.name}()" ([calldatasizeGuard fn.params.length] ++ fn.body)
     (fn.selector, body)
   )
-  YulStmt.switch selectorExpr cases (some (defaultDispatchCase fallback receive))
+  let defaultCase := defaultDispatchCase fallback receive
+  YulStmt.block [
+    YulStmt.let_ "__has_selector"
+      (YulExpr.call "iszero" [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]),
+    YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) defaultCase,
+    YulStmt.if_ (YulExpr.ident "__has_selector")
+      [YulStmt.switch selectorExpr cases (some defaultCase)]
+  ]
 
 def runtimeCode (contract : IRContract) : List YulStmt :=
   let mapping := if contract.usesMapping then [mappingSlotFunc] else []

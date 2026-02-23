@@ -25,7 +25,7 @@ PROPERTY_SIMPLE_RE = re.compile(
     r"Property\s*:\s*([A-Za-z0-9_']+)(?:\s*\(.*\))?\s*$"
 )
 FILE_RE = re.compile(r"^Property(.+)\.t\.sol$")
-CONTRACT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+CONTRACT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 THEOREM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
 
 # Regex pattern for extracting theorems from Lean files

@@ -2299,6 +2299,9 @@ private partial def validateExternalCallTargetsInExpr
       | some ext =>
           if args.length != ext.params.length then
             throw s!"Compilation error: {context} calls external '{name}' with {args.length} args, but spec.externals declares {ext.params.length} ({issue184Ref})."
+          let returns ← externalFunctionReturns ext
+          if returns.length != 1 then
+            throw s!"Compilation error: {context} uses Expr.externalCall '{name}' but spec.externals declares {returns.length} return values; Expr.externalCall requires exactly 1 ({issue184Ref})."
       args.forM (validateExternalCallTargetsInExpr externals context)
   | Expr.call gas target value inOffset inSize outOffset outSize => do
       validateExternalCallTargetsInExpr externals context gas

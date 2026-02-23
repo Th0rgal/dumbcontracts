@@ -32,6 +32,7 @@ open Compiler.Linker
 open Compiler.Hex
 open Compiler.Selector (runKeccak)
 open Compiler.ABI
+open Verity.AST (Expr Stmt)
 
 /-!
 ## Selector Computation
@@ -84,9 +85,6 @@ def astSpecToContractSpecForABI (spec : ASTContractSpec) : Compiler.ContractSpec
     events := []
     errors := []
     externals := [] }
-
-def emitASTContractABIJson (spec : ASTContractSpec) : String :=
-  Compiler.ABI.emitContractABIJson (astSpecToContractSpecForABI spec)
 
 /-!
 ## Constructor Compilation
@@ -213,6 +211,55 @@ private def validateParamNames (kind : String) (params : List Param) : Except St
   | some dup => throw s!"Duplicate {kind} parameter name: {dup}"
   | none => pure ()
 
+private def exprReadsStateOrEnv : Expr → Bool
+  | .lit _ => false
+  | .var _ => false
+  | .varAddr _ => false
+  | .storage _ => true
+  | .storageAddr _ => true
+  | .mapping _ _ => true
+  | .sender => true
+  | .add a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .sub a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .mul a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .eqAddr a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .ge a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .gt a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .safeAdd a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | .safeSub a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
+
+private partial def stmtWritesState : Stmt → Bool
+  | .ret _ => false
+  | .retAddr _ => false
+  | .stop => false
+  | .bindUint _ _ rest => stmtWritesState rest
+  | .bindAddr _ _ rest => stmtWritesState rest
+  | .bindBool _ _ rest => stmtWritesState rest
+  | .letUint _ _ rest => stmtWritesState rest
+  | .sstore _ _ _ => true
+  | .sstoreAddr _ _ _ => true
+  | .mstore _ _ _ _ => true
+  | .require _ _ rest => stmtWritesState rest
+  | .requireSome _ _ _ rest => stmtWritesState rest
+  | .ite _ thenBranch elseBranch => stmtWritesState thenBranch || stmtWritesState elseBranch
+
+private partial def stmtReadsStateOrEnv : Stmt → Bool
+  | .ret expr => exprReadsStateOrEnv expr
+  | .retAddr expr => exprReadsStateOrEnv expr
+  | .stop => false
+  | .bindUint _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .bindAddr _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .bindBool _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .letUint _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .sstore _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .sstoreAddr _ expr rest => exprReadsStateOrEnv expr || stmtReadsStateOrEnv rest
+  | .mstore _ keyExpr valExpr rest =>
+      exprReadsStateOrEnv keyExpr || exprReadsStateOrEnv valExpr || stmtReadsStateOrEnv rest
+  | .require condExpr _ rest => exprReadsStateOrEnv condExpr || stmtReadsStateOrEnv rest
+  | .requireSome _ optExpr _ rest => exprReadsStateOrEnv optExpr || stmtReadsStateOrEnv rest
+  | .ite condExpr thenBranch elseBranch =>
+      exprReadsStateOrEnv condExpr || stmtReadsStateOrEnv thenBranch || stmtReadsStateOrEnv elseBranch
+
 private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
   ensureNonEmpty "Contract" spec.name
   ensureValidIdentifier "Contract" spec.name
@@ -227,6 +274,12 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
       throw s!"Function '{fn.name}' in {spec.name} cannot be both payable and view/pure"
     if fn.isView && fn.isPure then
       throw s!"Function '{fn.name}' in {spec.name} cannot be both view and pure"
+    if fn.isView && stmtWritesState fn.body then
+      throw s!"Function '{fn.name}' in {spec.name} is marked view but writes state"
+    if fn.isPure && stmtWritesState fn.body then
+      throw s!"Function '{fn.name}' in {spec.name} is marked pure but writes state"
+    if fn.isPure && stmtReadsStateOrEnv fn.body then
+      throw s!"Function '{fn.name}' in {spec.name} is marked pure but reads state/environment"
 
   match spec.constructor with
   | some ctor => validateParamNames s!"constructor of {spec.name}" ctor.params
@@ -235,6 +288,11 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
   match findDuplicate (spec.functions.map (·.name)) with
   | some dup => throw s!"Duplicate function name in {spec.name}: {dup}"
   | none => pure ()
+
+def emitASTContractABIJson (spec : ASTContractSpec) : String :=
+  match validateSpec spec with
+  | .ok () => Compiler.ABI.emitContractABIJson (astSpecToContractSpecForABI spec)
+  | .error err => panic! s!"Invalid AST spec for ABI emission: {err}"
 
 private def validateAllSpecs (specs : List ASTContractSpec) : Except String Unit := do
   match findDuplicate (specs.map (·.name)) with

@@ -45,6 +45,7 @@ Metrics tracked by repository tooling:
 ### 1. Solidity Compiler (`solc`)
 
 - Role: compiles Yul to EVM bytecode.
+- **Version**: 0.8.33+commit.64118f21 (pinned)
 - Status: trusted external tool, version pinned in `foundry.toml` (`solc_version = "0.8.33"`).
 - Mitigation: CI enforces pin and Yul compileability checks.
 

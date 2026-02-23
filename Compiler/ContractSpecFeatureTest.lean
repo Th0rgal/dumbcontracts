@@ -2884,6 +2884,54 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected duplicate constructor params to fail compilation")
 
 #eval! do
+  let unknownExternalTargetSpec : ContractSpec := {
+    name := "UnknownExternalTargetSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "missing_fn" [])]
+      }
+    ]
+    externals := []
+  }
+  match compile unknownExternalTargetSpec [1] with
+  | .error err =>
+      if !contains err "function 'f' references unknown external call target 'missing_fn'" then
+        throw (IO.userError s!"✗ unknown external target diagnostic mismatch: {err}")
+      IO.println "✓ unknown external target diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected unknown external target to fail compilation")
+
+#eval! do
+  let declaredExternalTargetSpec : ContractSpec := {
+    name := "DeclaredExternalTargetSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "known_fn" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  match compile declaredExternalTargetSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected declared external target to compile, got: {err}")
+  | .ok _ =>
+      IO.println "✓ declared external target accepted"
+
+#eval! do
   let invalidSpecialEntrypointMutabilitySpec : ContractSpec := {
     name := "InvalidSpecialEntrypointMutabilitySpec"
     fields := []

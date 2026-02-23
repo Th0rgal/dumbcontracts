@@ -2445,6 +2445,34 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected internalCallAssign duplicate target names to fail compilation")
 
 #eval! do
+  let internalDynamicParamRejectedSpec : ContractSpec := {
+    name := "InternalDynamicParamRejected"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "sum"
+        params := [{ name := "arr", ty := ParamType.array ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [Stmt.return (Expr.arrayLength "arr")]
+      },
+      { name := "entry"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.param "x")]
+      }
+    ]
+  }
+  match compile internalDynamicParamRejectedSpec [1] with
+  | .error err =>
+      if !(contains err "internal function 'sum' parameter 'arr' has dynamic type" &&
+          contains err "Issue #753") then
+        throw (IO.userError s!"✗ internal dynamic param diagnostic mismatch: {err}")
+      IO.println "✓ internal dynamic param diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected internal dynamic parameter to fail compilation")
+
+#eval! do
   let multiReturnWithSingleReturnStmtSpec : ContractSpec := {
     name := "MultiReturnWithSingleStmtRejected"
     fields := []

@@ -2413,6 +2413,38 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected internalCallAssign arity mismatch to fail compilation")
 
 #eval! do
+  let internalCallAssignDuplicateTargetSpec : ContractSpec := {
+    name := "InternalCallAssignDuplicateTarget"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "pair"
+        params := []
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
+        isInternal := true
+        body := [Stmt.returnValues [Expr.literal 1, Expr.literal 2]]
+      },
+      { name := "badBind"
+        params := []
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.internalCallAssign ["x", "x"] "pair" [],
+          Stmt.return (Expr.localVar "x")
+        ]
+      }
+    ]
+  }
+  match compile internalCallAssignDuplicateTargetSpec [1] with
+  | .error err =>
+      if !(contains err "uses Stmt.internalCallAssign with duplicate target 'x'" &&
+          contains err "Issue #625") then
+        throw (IO.userError s!"✗ internalCallAssign duplicate-target diagnostic mismatch: {err}")
+      IO.println "✓ internalCallAssign duplicate-target validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected internalCallAssign duplicate target names to fail compilation")
+
+#eval! do
   let multiReturnWithSingleReturnStmtSpec : ContractSpec := {
     name := "MultiReturnWithSingleStmtRejected"
     fields := []

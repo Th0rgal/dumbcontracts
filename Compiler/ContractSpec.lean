@@ -222,7 +222,7 @@ inductive Expr
   | externalCall (name : String) (args : List Expr)  -- External function call (linked at compile time)
   | internalCall (functionName : String) (args : List Expr)  -- Internal function call (#181)
   | arrayLength (name : String)  -- Length of a dynamic array parameter (#180)
-  | arrayElement (name : String) (index : Expr)  -- Element of a dynamic array parameter (#180)
+  | arrayElement (name : String) (index : Expr)  -- Checked element access of a dynamic array parameter (revert on out-of-range) (#180)
   | add (a b : Expr)
   | sub (a b : Expr)
   | mul (a b : Expr)
@@ -418,6 +418,33 @@ private def dynamicWordLoad (source : DynamicDataSource) (offset : YulExpr) : Yu
   | .calldata => YulExpr.call "calldataload" [offset]
   | .memory => YulExpr.call "mload" [offset]
 
+private def checkedArrayElementCalldataHelperName : String :=
+  "__verity_array_element_calldata_checked"
+
+private def checkedArrayElementMemoryHelperName : String :=
+  "__verity_array_element_memory_checked"
+
+private def checkedArrayElementHelper (helperName loadOp : String) : YulStmt :=
+  YulStmt.funcDef helperName ["data_offset", "length", "index"] ["word"] [
+    YulStmt.if_ (YulExpr.call "iszero" [
+      YulExpr.call "lt" [YulExpr.ident "index", YulExpr.ident "length"]
+    ]) [
+      YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+    ],
+    YulStmt.assign "word" (YulExpr.call loadOp [
+      YulExpr.call "add" [
+        YulExpr.ident "data_offset",
+        YulExpr.call "mul" [YulExpr.ident "index", YulExpr.lit 32]
+      ]
+    ])
+  ]
+
+private def checkedArrayElementCalldataHelper : YulStmt :=
+  checkedArrayElementHelper checkedArrayElementCalldataHelperName "calldataload"
+
+private def checkedArrayElementMemoryHelper : YulStmt :=
+  checkedArrayElementHelper checkedArrayElementMemoryHelperName "mload"
+
 private def dynamicCopyData (source : DynamicDataSource)
     (destOffset sourceOffset len : YulExpr) : List YulStmt :=
   match source with
@@ -551,10 +578,14 @@ def compileExpr (fields : List Field)
   | Expr.arrayLength name => pure (YulExpr.ident s!"{name}_length")
   | Expr.arrayElement name index => do
       let indexExpr ← compileExpr fields dynamicSource index
-      pure (dynamicWordLoad dynamicSource (YulExpr.call "add" [
+      let helperName := match dynamicSource with
+        | .calldata => checkedArrayElementCalldataHelperName
+        | .memory => checkedArrayElementMemoryHelperName
+      pure (YulExpr.call helperName [
         YulExpr.ident s!"{name}_data_offset",
-        YulExpr.call "mul" [indexExpr, YulExpr.lit 32]
-      ]))
+        YulExpr.ident s!"{name}_length",
+        indexExpr
+      ])
   | Expr.add a b     => return yulBinOp "add" (← compileExpr fields dynamicSource a) (← compileExpr fields dynamicSource b)
   | Expr.sub a b     => return yulBinOp "sub" (← compileExpr fields dynamicSource a) (← compileExpr fields dynamicSource b)
   | Expr.mul a b     => return yulBinOp "mul" (← compileExpr fields dynamicSource a) (← compileExpr fields dynamicSource b)
@@ -2747,6 +2778,67 @@ private partial def collectStmtListBindNames : List Stmt → List String
       collectStmtBindNames stmt ++ collectStmtListBindNames rest
 end
 
+private partial def exprUsesArrayElement : Expr → Bool
+  | Expr.arrayElement _ _ => true
+  | Expr.mapping _ key => exprUsesArrayElement key
+  | Expr.mapping2 _ key1 key2 => exprUsesArrayElement key1 || exprUsesArrayElement key2
+  | Expr.mappingUint _ key => exprUsesArrayElement key
+  | Expr.call gas target value inOffset inSize outOffset outSize =>
+      exprUsesArrayElement gas || exprUsesArrayElement target || exprUsesArrayElement value ||
+      exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
+      exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize =>
+      exprUsesArrayElement gas || exprUsesArrayElement target ||
+      exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
+      exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
+      exprUsesArrayElement gas || exprUsesArrayElement target ||
+      exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
+      exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.returndataOptionalBoolAt outOffset => exprUsesArrayElement outOffset
+  | Expr.externalCall _ args | Expr.internalCall _ args =>
+      args.any exprUsesArrayElement
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b =>
+      exprUsesArrayElement a || exprUsesArrayElement b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      exprUsesArrayElement a
+  | _ => false
+
+private partial def stmtUsesArrayElement : Stmt → Bool
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      exprUsesArrayElement value
+  | Stmt.requireError cond _ args =>
+      exprUsesArrayElement cond || args.any exprUsesArrayElement
+  | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
+      args.any exprUsesArrayElement
+  | Stmt.returndataCopy destOffset sourceOffset size =>
+      exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+      exprUsesArrayElement key || exprUsesArrayElement value
+  | Stmt.setMapping2 _ key1 key2 value =>
+      exprUsesArrayElement key1 || exprUsesArrayElement key2 || exprUsesArrayElement value
+  | Stmt.ite cond thenBranch elseBranch =>
+      exprUsesArrayElement cond || thenBranch.any stmtUsesArrayElement || elseBranch.any stmtUsesArrayElement
+  | Stmt.forEach _ count body =>
+      exprUsesArrayElement count || body.any stmtUsesArrayElement
+  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
+      args.any exprUsesArrayElement
+  | _ => false
+
+private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=
+  fn.body.any stmtUsesArrayElement
+
+private def constructorUsesArrayElement : Option ConstructorSpec → Bool
+  | none => false
+  | some ctor => ctor.body.any stmtUsesArrayElement
+
+private def contractUsesArrayElement (spec : ContractSpec) : Bool :=
+  constructorUsesArrayElement spec.constructor || spec.functions.any functionUsesArrayElement
+
 private def pickFreshInternalRetName (usedNames : List String) (idx : Nat) : String :=
   let base := s!"__ret{idx}"
   if !usedNames.contains base then
@@ -3180,6 +3272,11 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     compileFunctionSpec fields spec.events spec.errors sel fnSpec
   -- Compile internal functions as Yul function definitions (#181)
   let internalFuncDefs ← internalFns.mapM (compileInternalFunction fields spec.events spec.errors)
+  let arrayElementHelpers :=
+    if contractUsesArrayElement spec then
+      [checkedArrayElementCalldataHelper, checkedArrayElementMemoryHelper]
+    else
+      []
   let fallbackEntrypoint ← fallbackSpec.mapM (compileSpecialEntrypoint fields spec.events spec.errors)
   let receiveEntrypoint ← receiveSpec.mapM (compileSpecialEntrypoint fields spec.events spec.errors)
   return {
@@ -3190,7 +3287,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     fallbackEntrypoint := fallbackEntrypoint
     receiveEntrypoint := receiveEntrypoint
     usesMapping := usesMapping fields
-    internalFunctions := internalFuncDefs
+    internalFunctions := arrayElementHelpers ++ internalFuncDefs
   }
 
 end Compiler.ContractSpec

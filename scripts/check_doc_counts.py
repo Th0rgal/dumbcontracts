@@ -661,6 +661,11 @@ def main() -> None:
                     str(covered_count),
                 ),
                 (
+                    "theorem total in tree coverage",
+                    re.compile(r"covering \d+/(\d+) theorems"),
+                    str(total_theorems),
+                ),
+                (
                     "property test function count",
                     re.compile(r"(\d+) functions, covering"),
                     str(property_fn_count),

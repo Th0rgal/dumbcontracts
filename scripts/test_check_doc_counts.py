@@ -91,6 +91,28 @@ class CheckDocCountsMultiMatchTests(unittest.TestCase):
             ]
             self.assertEqual(check_file(path, checks), [])
 
+    def test_check_file_reports_stale_ratio_denominator(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "README.md"
+            path.write_text(
+                "Property tests (197 functions, covering 250/401 theorems)\n",
+                encoding="utf-8",
+            )
+            checks = [
+                (
+                    "theorem total in tree coverage",
+                    re.compile(r"covering \d+/(\d+) theorems"),
+                    "431",
+                ),
+            ]
+            errors = check_file(path, checks)
+            self.assertEqual(
+                errors,
+                [
+                    "README.md: theorem total in tree coverage occurrence 1 says '401' but expected '431'",
+                ],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

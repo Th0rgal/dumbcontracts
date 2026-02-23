@@ -86,6 +86,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_doc_counts.py`** - Validates theorem, axiom, test, suite, coverage, and contract counts across 14 documentation files (README, llms.txt, compiler.mdx, verification.mdx, research.mdx, index.mdx, core.mdx, examples.mdx, getting-started.mdx, TRUST_ASSUMPTIONS, VERIFICATION_STATUS, ROADMAP, test/README, layout.tsx), theorem-name completeness in verification.mdx tables, and proven-theorem counts in Property*.t.sol file headers
 - **`check_interop_matrix_sync.py`** - Ensures the Solidity interop support matrix in `docs/ROADMAP.md` and `docs/VERIFICATION_STATUS.md` stays synchronized (row coverage + status-column parity)
 - **`check_verify_paths_sync.py`** - Ensures `.github/workflows/verify.yml` keeps `on.push.paths` and `on.pull_request.paths` identical, while validating `jobs.changes.filters.code` remains a duplicate-free subset
+- **`check_verify_checks_docs_sync.py`** - Ensures `.github/workflows/verify.yml` `checks` job python-script command sequence matches the documented `**\`checks\` job**` list in this README
 - **`generate_verification_status.py`** - Deterministically generates `artifacts/verification_status.json` (theorem/test/axiom/sorry/toolchain metrics) and supports `--check` mode for CI freshness gating
 - **`check_solc_pin.py`** - Enforces pinned solc consistency across CI/tooling/docs: `verify.yml` (`SOLC_VERSION`, `SOLC_URL`, `SOLC_SHA256`), `foundry.toml` (`solc_version`), `setup-solc` action URL/SHA usage, and `TRUST_ASSUMPTIONS.md` pinned version line
 - **`check_axiom_locations.py`** - Validates that AXIOMS.md line number references match actual axiom locations in source files
@@ -99,6 +100,7 @@ python3 scripts/generate_verification_status.py
 python3 scripts/check_doc_counts.py
 python3 scripts/check_interop_matrix_sync.py
 python3 scripts/check_verify_paths_sync.py
+python3 scripts/check_verify_checks_docs_sync.py
 
 # Run locally after modifying storage slots or adding contracts
 python3 scripts/check_storage_layout.py
@@ -193,19 +195,22 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 2. Property coverage validation (`check_property_coverage.py`)
 3. Contract file structure validation (`check_contract_structure.py`)
 4. Axiom location validation (`check_axiom_locations.py`)
-5. Documentation count validation (`check_doc_counts.py`)
-6. Solidity interop matrix sync (`check_interop_matrix_sync.py`)
-7. Verify workflow path-filter sync (`check_verify_paths_sync.py`)
-8. Solc pin consistency (`check_solc_pin.py`)
-9. Property manifest sync (`check_property_manifest_sync.py`)
-10. Storage layout consistency (`check_storage_layout.py`)
-11. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-12. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-13. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-14. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-15. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
-16. Lean hygiene (`check_lean_hygiene.py`)
-17. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+5. Verification status artifact freshness (`generate_verification_status.py --check`)
+6. Documentation count validation (`check_doc_counts.py`)
+7. Solidity interop matrix sync (`check_interop_matrix_sync.py`)
+8. Verify workflow path-filter sync (`check_verify_paths_sync.py`)
+9. Verify checks/docs sync (`check_verify_checks_docs_sync.py`)
+10. Solc pin consistency (`check_solc_pin.py`)
+11. Property manifest sync (`check_property_manifest_sync.py`)
+12. Storage layout consistency (`check_storage_layout.py`)
+13. Lean hygiene (`check_lean_hygiene.py`)
+14. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+15. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+16. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+17. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
+18. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+19. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+20. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Keccak-256 self-test (`keccak256.py --self-test`)

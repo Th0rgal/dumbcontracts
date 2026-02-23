@@ -43,6 +43,9 @@ ACTIVE_BACKEND_TAGGED_RE = re.compile(
 ACTIVE_BACKEND_FAITHFUL_FALSE_RE = re.compile(
     r"def\s+activeMappingSlotBackendIsEvmFaithful\s*:\s*Bool\s*:=\s*"
 )
+ABI_ENCODE_MAPPING_SLOT_RE = re.compile(r"def\s+abiEncodeMappingSlot\s*\(")
+SOLIDITY_MAPPING_SLOT_RE = re.compile(r"def\s+solidityMappingSlot\s*\(")
+KECCAK_ROUTING_RE = re.compile(r"\|\s*\.keccak\s*=>\s*solidityMappingSlot\s+baseSlot\s+key")
 
 
 def main() -> int:
@@ -62,6 +65,21 @@ def main() -> int:
         rel = MAPPING_SLOT_FILE.relative_to(ROOT)
         errors.append(
             f"{rel}: expected explicit `activeMappingSlotBackendIsEvmFaithful` marker"
+        )
+
+    if not ABI_ENCODE_MAPPING_SLOT_RE.search(mapping_slot_text):
+        rel = MAPPING_SLOT_FILE.relative_to(ROOT)
+        errors.append(f"{rel}: missing `abiEncodeMappingSlot` helper for keccak backend")
+
+    if not SOLIDITY_MAPPING_SLOT_RE.search(mapping_slot_text):
+        rel = MAPPING_SLOT_FILE.relative_to(ROOT)
+        errors.append(f"{rel}: missing `solidityMappingSlot` helper for keccak backend")
+
+    if not KECCAK_ROUTING_RE.search(mapping_slot_text):
+        rel = MAPPING_SLOT_FILE.relative_to(ROOT)
+        errors.append(
+            f"{rel}: expected `.keccak` branch of `abstractMappingSlot` "
+            "to route through `solidityMappingSlot`"
         )
 
     if "activeMappingSlotBackend = .tagged" not in trust_text:

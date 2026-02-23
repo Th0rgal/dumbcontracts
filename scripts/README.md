@@ -87,6 +87,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_interop_matrix_sync.py`** - Ensures the Solidity interop support matrix in `docs/ROADMAP.md` and `docs/VERIFICATION_STATUS.md` stays synchronized (row coverage + status-column parity)
 - **`check_verify_paths_sync.py`** - Ensures `.github/workflows/verify.yml` keeps `on.push.paths` and `on.pull_request.paths` identical, while validating `jobs.changes.filters.code` remains a duplicate-free subset
 - **`check_verify_checks_docs_sync.py`** - Ensures `.github/workflows/verify.yml` `checks` job python-script command sequence matches the documented `**\`checks\` job**` list in this README
+- **`check_verify_build_docs_sync.py`** - Ensures `.github/workflows/verify.yml` `build` job python-script command sequence matches the documented `**\`build\` job**` list in this README
 - **`generate_verification_status.py`** - Deterministically generates `artifacts/verification_status.json` (theorem/test/axiom/sorry/toolchain metrics) and supports `--check` mode for CI freshness gating
 - **`check_solc_pin.py`** - Enforces pinned solc consistency across CI/tooling/docs: `verify.yml` (`SOLC_VERSION`, `SOLC_URL`, `SOLC_SHA256`), `foundry.toml` (`solc_version`), `setup-solc` action URL/SHA usage, and `TRUST_ASSUMPTIONS.md` pinned version line
 - **`check_axiom_locations.py`** - Validates that AXIOMS.md line number references match actual axiom locations in source files
@@ -101,6 +102,7 @@ python3 scripts/check_doc_counts.py
 python3 scripts/check_interop_matrix_sync.py
 python3 scripts/check_verify_paths_sync.py
 python3 scripts/check_verify_checks_docs_sync.py
+python3 scripts/check_verify_build_docs_sync.py
 
 # Run locally after modifying storage slots or adding contracts
 python3 scripts/check_storage_layout.py
@@ -200,29 +202,30 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 7. Solidity interop matrix sync (`check_interop_matrix_sync.py`)
 8. Verify workflow path-filter sync (`check_verify_paths_sync.py`)
 9. Verify checks/docs sync (`check_verify_checks_docs_sync.py`)
-10. Solc pin consistency (`check_solc_pin.py`)
-11. Property manifest sync (`check_property_manifest_sync.py`)
-12. Storage layout consistency (`check_storage_layout.py`)
-13. Lean hygiene (`check_lean_hygiene.py`)
-14. Static gas model builtin coverage (`check_gas_model_coverage.py`)
-15. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-16. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-17. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
-18. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-19. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-20. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+10. Verify build/docs sync (`check_verify_build_docs_sync.py`)
+11. Solc pin consistency (`check_solc_pin.py`)
+12. Property manifest sync (`check_property_manifest_sync.py`)
+13. Storage layout consistency (`check_storage_layout.py`)
+14. Lean hygiene (`check_lean_hygiene.py`)
+15. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+16. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+17. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+18. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
+19. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+20. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+21. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 
 **`build` job** (requires `lake build` artifacts):
-1. Keccak-256 self-test (`keccak256.py --self-test`)
-2. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
-3. Selector hash verification (`check_selectors.py`)
-4. Yul compilation (legacy + patched + AST) + legacy/AST diff-baseline check (`check_yul_compiles.py`)
-5. Static gas model coverage on generated Yul (legacy + patched + AST) (`check_gas_model_coverage.py`)
+1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
+2. Static gas model coverage on generated Yul (legacy + patched + AST) (`check_gas_model_coverage.py`)
+3. Keccak-256 self-test (`keccak256.py --self-test`)
+4. Selector hash verification (`check_selectors.py`)
+5. Yul compilation (legacy + patched + AST) + legacy/AST diff-baseline check (`check_yul_compiles.py`)
 6. Selector fixture check (`check_selector_fixtures.py`)
 7. Static gas report invariants (`check_gas_report.py`)
 8. Save baseline + patch-enabled static gas report artifacts (`gas-report-static.tsv`, `gas-report-static-patched.tsv`)
 9. Patch gas delta non-regression + measurable improvement gate (`check_patch_gas_delta.py`)
-10. Coverage and storage layout reports in workflow summary
+10. Coverage and storage layout reports in workflow summary (`report_property_coverage.py`, `check_storage_layout.py`)
 
 **`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42

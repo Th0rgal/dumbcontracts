@@ -441,4 +441,61 @@ private def invalidPureReadsStateSpec : ASTContractSpec := {
   | .ok _ =>
     throw (IO.userError "✗ expected pure function with state read to be rejected")
 
+private def invalidDeclaredReturnStopsSpec : ASTContractSpec := {
+  name := "InvalidDeclaredReturnStopsSpec"
+  functions := [
+    { name := "getValue"
+      params := []
+      returnType := .uint256
+      body := Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidDeclaredReturnStopsSpec [0] with
+  | .error err =>
+    if contains err "declares uint256 returnType but terminates with stop" then
+      IO.println "✓ AST compile rejects declared uint256 return with stop termination"
+    else
+      throw (IO.userError s!"✗ unexpected declared-return/stop mismatch error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected declared uint256 return with stop to be rejected")
+
+private def invalidUnitReturnsValueSpec : ASTContractSpec := {
+  name := "InvalidUnitReturnsValueSpec"
+  functions := [
+    { name := "f"
+      params := []
+      returnType := .unit
+      body := Stmt.ret (Expr.lit 1) }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidUnitReturnsValueSpec [0] with
+  | .error err =>
+    if contains err "declares unit returnType but returns a uint256 value" then
+      IO.println "✓ AST compile rejects unit returnType with value return"
+    else
+      throw (IO.userError s!"✗ unexpected unit/value return mismatch error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected unit returnType with value return to be rejected")
+
+private def validAddressReturnShapeSpec : ASTContractSpec := {
+  name := "ValidAddressReturnShapeSpec"
+  functions := [
+    { name := "owner"
+      params := []
+      returnType := .address
+      body := Stmt.retAddr Expr.sender }
+  ]
+}
+
+#eval! do
+  match compileSpec validAddressReturnShapeSpec [0] with
+  | .error err =>
+    throw (IO.userError s!"✗ expected valid address return shape to compile, got: {err}")
+  | .ok _ =>
+    IO.println "✓ AST compile accepts valid address return shape"
+
 end Compiler.ASTDriverTest

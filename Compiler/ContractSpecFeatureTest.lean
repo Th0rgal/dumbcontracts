@@ -2321,6 +2321,11 @@ private def featureSpec : ContractSpec := {
       let rendered := Yul.render (emitYul ir)
       assertContains "receive+fallback split dispatch" rendered
         ["if __is_empty_calldata {", "/* receive() */", "if iszero(__is_empty_calldata) {", "/* fallback() */"]
+      assertContains "short-calldata guard before selector dispatch" rendered
+        ["let __has_selector := iszero(lt(calldatasize(), 4))",
+         "if iszero(__has_selector) {",
+         "/* fallback() */",
+         "if __has_selector {"]
 
 #eval! do
   let receiveNotPayableSpec : ContractSpec := {

@@ -298,7 +298,8 @@ theorem ownedCounter_slots_independent (state : ContractState) (newOwner : Addre
     finalState.storage 1 = state.storage 1 := by
   have h_owner' : ({ state with sender := sender }).sender =
       ({ state with sender := sender }).storageAddr 0 := by simp [h]
-  change ((transferOwnership newOwner).run { state with sender := sender }).snd.storage 1 = state.storage 1
-  rw [transferOwnership_unfold _ _ h_owner']; rfl
+  have h_unfold := transferOwnership_unfold ({ state with sender := sender }) newOwner h_owner'
+  have h_unfold_apply := Contract.eq_of_run_success h_unfold
+  simp [Contract.runState, h_unfold_apply]
 
 end Compiler.Proofs.SpecCorrectness

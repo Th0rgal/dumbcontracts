@@ -77,12 +77,9 @@ def fst {α : Type} [Inhabited α] : ContractResult α → α
   | success a _ => a
   | revert _ _ => default
 
--- WARNING: On revert, returns the state at the point of revert, which may
--- include mutations from operations that executed before the revert.
--- This differs from EVM semantics where REVERT discards all state changes.
--- Contracts MUST follow the checks-before-effects pattern (all `require`
--- guards before any `setStorage`/`setMapping` calls) to ensure the revert
--- state equals the original input state. See issue #254 for details.
+-- On revert, returns the state carried in the `ContractResult`.
+-- When results are produced via `Contract.run`, this is always the original
+-- pre-call snapshot (rollback-by-construction; see issue #254).
 def snd {α : Type} : ContractResult α → ContractState
   | success _ s => s
   | revert _ s => s
@@ -113,9 +110,26 @@ def bind {α β : Type} (ma : Contract α) (f : α → Contract β) : Contract �
     | ContractResult.success a s' => f a s'
     | ContractResult.revert msg s' => ContractResult.revert msg s'
 
--- Convenience: run a Contract and extract result/state
+-- Convenience: run a Contract with EVM-like revert semantics.
+-- Any revert is normalized to the pre-call snapshot `s`.
 def Contract.run {α : Type} (c : Contract α) (s : ContractState) : ContractResult α :=
-  c s
+  match c s with
+  | ContractResult.success a s' => ContractResult.success a s'
+  | ContractResult.revert msg _ => ContractResult.revert msg s
+
+@[simp] theorem Contract.eq_of_run_success {α : Type} {c : Contract α} {s : ContractState}
+    {a : α} {s' : ContractState} (h : c.run s = ContractResult.success a s') :
+    c s = ContractResult.success a s' := by
+  unfold Contract.run at h
+  cases hcs : c s with
+  | success a0 s0 =>
+    simp [hcs] at h
+    rcases h with ⟨ha, hs⟩
+    subst ha
+    subst hs
+    rfl
+  | revert msg s0 =>
+    simp [hcs] at h
 
 @[simp] theorem pure_run (a : α) (state : ContractState) :
   (pure a : Contract α).run state = ContractResult.success a state := rfl
@@ -130,7 +144,7 @@ def ContractResult.getValue? {α : Type} : ContractResult α → Option α
   | success a _ => some a
   | revert _ _ => none
 
--- Helper: extract state from result (see `snd` warning re: revert state).
+-- Helper: extract state from result.
 def ContractResult.getState {α : Type} : ContractResult α → ContractState
   | success _ s => s
   | revert _ s => s
@@ -147,7 +161,12 @@ def runValue {α : Type} [Inhabited α] (c : Contract α) (s : ContractState) : 
 def runState {α : Type} (c : Contract α) (s : ContractState) : ContractState :=
   match c s with
   | ContractResult.success _ s' => s'
-  | ContractResult.revert _ s' => s'
+  | ContractResult.revert _ _ => s
+
+@[simp] theorem runState_eq_snd_run {α : Type} (c : Contract α) (s : ContractState) :
+    c.runState s = (c.run s).snd := by
+  unfold Contract.runState Contract.run ContractResult.snd
+  cases h : c s <;> simp
 
 end Contract
 
@@ -312,6 +331,12 @@ def require (condition : Bool) (message : String) : Contract Unit :=
 theorem require_succeeds (cond : Bool) (msg : String) (s : ContractState) :
   cond = true → (require cond msg).run s = ContractResult.success () s := by
   intro h; subst h; rfl
+
+-- Regression for #254: mutations before a revert do not leak through `run`.
+theorem run_revert_rolls_back_storage (value : Uint256) (s : ContractState) :
+  ((bind (setStorage ⟨0⟩ value) (fun _ => require false "revert")).run s) =
+    ContractResult.revert "revert" s := by
+  rfl
 
 -- Monad instance for do-notation
 instance : Monad Contract where

@@ -117,8 +117,9 @@ theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : 
     (h_no_sup_overflow : (s.storage 1 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
     mint_spec to amount s ((mint to amount).runState s) := by
   have h_unfold := mint_unfold s to amount h_owner h_no_bal_overflow h_no_sup_overflow
+  have h_unfold_apply := Contract.eq_of_run_success h_unfold
   simp only [Contract.runState, mint_spec]
-  rw [show (mint to amount) s = (mint to amount).run s from rfl, h_unfold]
+  rw [h_unfold_apply]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · simp
   · simp
@@ -201,8 +202,9 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
     transfer_spec s.sender to amount s ((transfer to amount).runState s) := by
   by_cases h_eq : s.sender = to
   · have h_unfold := transfer_unfold_self s to amount h_balance h_eq
+    have h_unfold_apply := Contract.eq_of_run_success h_unfold
     simp only [Contract.runState, transfer_spec]
-    rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
+    rw [h_unfold_apply]
     refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp [h_eq]
     · simp [h_eq]
@@ -213,8 +215,9 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
     · rfl
     · exact Specs.sameContext_rfl _
   · have h_unfold := transfer_unfold_other s to amount h_balance h_eq (h_no_overflow h_eq)
+    have h_unfold_apply := Contract.eq_of_run_success h_unfold
     simp only [Contract.runState, transfer_spec]
-    rw [show (transfer to amount) s = (transfer to amount).run s from rfl, h_unfold]
+    rw [h_unfold_apply]
     have h_ne' := address_beq_false_of_ne s.sender to h_eq
     refine ⟨h_balance, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp [h_ne']
@@ -240,7 +243,7 @@ theorem transfer_decreases_sender_balance_when_sufficient
       EVM.Uint256.sub (s.storageMap 2 s.sender) amount := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance (fun _ => h_no_overflow)
   simp [transfer_spec, h_ne, beq_iff_eq] at h
-  exact h.2.1
+  simpa [Contract.runState_eq_snd_run] using h.2.1
 
 /-- On successful non-self transfer, recipient balance increases by `amount`. -/
 theorem transfer_increases_recipient_balance_when_sufficient
@@ -252,6 +255,6 @@ theorem transfer_increases_recipient_balance_when_sufficient
       EVM.Uint256.add (s.storageMap 2 to) amount := by
   have h := transfer_meets_spec_when_sufficient s to amount h_balance (fun _ => h_no_overflow)
   simp [transfer_spec, h_ne, beq_iff_eq] at h
-  exact h.2.2.1
+  simpa [Contract.runState_eq_snd_run] using h.2.2.1
 
 end Verity.Proofs.ERC20

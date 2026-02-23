@@ -163,7 +163,9 @@ theorem owned_transferOwnership_updates_owner (state : ContractState) (newOwner 
     finalState.storageAddr 0 = newOwner := by
   have h_owner' : ({ state with sender := sender }).sender =
       ({ state with sender := sender }).storageAddr 0 := by simp [h]
-  change ((Verity.Examples.Owned.transferOwnership newOwner).run { state with sender := sender }).snd.storageAddr 0 = newOwner
-  rw [Verity.Proofs.Owned.transferOwnership_unfold _ _ h_owner']; rfl
+  have h_unfold :=
+    Verity.Proofs.Owned.transferOwnership_unfold ({ state with sender := sender }) newOwner h_owner'
+  have h_unfold_apply := Contract.eq_of_run_success h_unfold
+  simp [Contract.runState, h_unfold_apply]
 
 end Compiler.Proofs.SpecCorrectness

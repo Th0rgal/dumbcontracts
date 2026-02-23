@@ -135,7 +135,7 @@ def SpecStorage.addEvent (s : SpecStorage) (name : String) (args : List Nat) : S
 
 private def wordMask : Nat := modulus - 1
 
-private def dedupNatPreserve (xs : List Nat) : List Nat :=
+@[simp] def dedupNatPreserve (xs : List Nat) : List Nat :=
   let rec go (seen : List Nat) : List Nat → List Nat
     | [] => []
     | x :: rest =>
@@ -145,28 +145,31 @@ private def dedupNatPreserve (xs : List Nat) : List Nat :=
           x :: go (x :: seen) rest
   go [] xs
 
-private def slotAliasForSource (sourceSlot : Nat) (range : SlotAliasRange) : Option Nat :=
+@[simp] theorem dedupNatPreserve_go_nil_single (x : Nat) :
+    dedupNatPreserve.go [] [x] = [x] := by
+  simp [dedupNatPreserve.go]
+
+@[simp] def slotAliasForSource (sourceSlot : Nat) (range : SlotAliasRange) : Option Nat :=
   if range.sourceStart <= sourceSlot && sourceSlot <= range.sourceEnd then
     some (range.targetStart + (sourceSlot - range.sourceStart))
   else
     none
 
-private def derivedAliasSlotsForSource (sourceSlot : Nat) (ranges : List SlotAliasRange) : List Nat :=
+@[simp] def derivedAliasSlotsForSource (sourceSlot : Nat) (ranges : List SlotAliasRange) : List Nat :=
   dedupNatPreserve (ranges.filterMap (slotAliasForSource sourceSlot))
 
-private def applySlotAliasRanges (fields : List Field) (ranges : List SlotAliasRange) : List Field :=
-  let rec go (remaining : List Field) (idx : Nat) : List Field :=
-    match remaining with
-    | [] => []
-    | f :: rest =>
-        let sourceSlot := f.slot.getD idx
-        let derivedAliases := derivedAliasSlotsForSource sourceSlot ranges
-        let mergedAliases := dedupNatPreserve (f.aliasSlots ++ derivedAliases)
-        ({ f with aliasSlots := mergedAliases } :: go rest (idx + 1))
-  go fields 0
+@[simp] def applySlotAliasRanges (fields : List Field) (ranges : List SlotAliasRange) : List Field :=
+  fields.zipIdx.map fun (f, idx) =>
+    let sourceSlot := f.slot.getD idx
+    let derivedAliases := derivedAliasSlotsForSource sourceSlot ranges
+    let mergedAliases := dedupNatPreserve (f.aliasSlots ++ derivedAliases)
+    { f with aliasSlots := mergedAliases }
 
-private def resolveFields (spec : ContractSpec) : List Field :=
-  applySlotAliasRanges spec.fields spec.slotAliasRanges
+@[simp] def resolveFields (spec : ContractSpec) : List Field :=
+  if spec.slotAliasRanges.isEmpty then
+    spec.fields
+  else
+    applySlotAliasRanges spec.fields spec.slotAliasRanges
 
 private def packedMaskNat (packed : PackedBits) : Nat :=
   if packed.width >= 256 then
@@ -177,17 +180,17 @@ private def packedMaskNat (packed : PackedBits) : Nat :=
 private def packedShiftedMaskNat (packed : PackedBits) : Nat :=
   packedMaskNat packed * (2 ^ packed.offset)
 
-private def readStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) : Nat :=
+def readStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) : Nat :=
   match findFieldWithResolvedSlot fields fieldName with
   | some (field, slot) =>
       let word := storage.getSlot slot
       match field.packedBits with
-      | none => word % modulus
+      | none => word
       | some packed =>
           Nat.land (word >>> packed.offset) (packedMaskNat packed)
   | none => 0
 
-private def writeStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) (rawValue : Nat) :
+def writeStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) (rawValue : Nat) :
     Option SpecStorage :=
   if isMapping fields fieldName then
     none
@@ -196,25 +199,46 @@ private def writeStorageField (storage : SpecStorage) (fields : List Field) (fie
     | none => none
     | some (field, slot) =>
         let writeSlots := dedupNatPreserve (slot :: field.aliasSlots)
-        if writeSlots.isEmpty then
-          none
-        else
-          let value := rawValue % modulus
-          match field.packedBits with
-          | none =>
-              let next := writeSlots.foldl (fun acc writeSlot => acc.setSlot writeSlot value) storage
-              some next
-          | some packed =>
-              let packedValue := Nat.land value (packedMaskNat packed)
-              let shiftedMask := packedShiftedMaskNat packed
-              let clearedMask := wordMask - shiftedMask
-              let next := writeSlots.foldl (fun acc writeSlot =>
-                let slotWord := acc.getSlot writeSlot
-                let slotCleared := Nat.land slotWord clearedMask
-                let packedWord := packedValue <<< packed.offset
-                acc.setSlot writeSlot (Nat.lor slotCleared packedWord)
-              ) storage
-              some next
+        let value := rawValue
+        match field.packedBits with
+        | none =>
+            let next := writeSlots.foldl (fun acc writeSlot => acc.setSlot writeSlot value) storage
+            some next
+        | some packed =>
+            let packedValue := Nat.land value (packedMaskNat packed)
+            let shiftedMask := packedShiftedMaskNat packed
+            let clearedMask := wordMask - shiftedMask
+            let next := writeSlots.foldl (fun acc writeSlot =>
+              let slotWord := acc.getSlot writeSlot
+              let slotCleared := Nat.land slotWord clearedMask
+              let packedWord := packedValue <<< packed.offset
+              acc.setSlot writeSlot (Nat.lor slotCleared packedWord)
+            ) storage
+            some next
+
+@[simp] theorem readStorageField_unpacked
+    (storage : SpecStorage) (fields : List Field) (fieldName : String)
+    (field : Field) (slot : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName = some (field, slot))
+    (hpacked : field.packedBits = none) :
+    readStorageField storage fields fieldName = storage.getSlot slot := by
+  simpa [readStorageField, hfind, hpacked]
+
+@[simp] theorem readStorageField_missing
+    (storage : SpecStorage) (fields : List Field) (fieldName : String)
+    (hfind : findFieldWithResolvedSlot fields fieldName = none) :
+    readStorageField storage fields fieldName = 0 := by
+  simpa [readStorageField, hfind]
+
+@[simp] theorem writeStorageField_unpacked_noAlias
+    (storage : SpecStorage) (fields : List Field) (fieldName : String) (rawValue : Nat)
+    (field : Field) (slot : Nat)
+    (hMap : isMapping fields fieldName = false)
+    (hFind : findFieldWithResolvedSlot fields fieldName = some (field, slot))
+    (hAlias : field.aliasSlots = [])
+    (hPacked : field.packedBits = none) :
+    writeStorageField storage fields fieldName rawValue = some (storage.setSlot slot rawValue) := by
+  simpa [writeStorageField, hMap, hFind, hAlias, hPacked, dedupNatPreserve]
 
 /-!
 ## Expression Evaluation
@@ -246,16 +270,28 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       | some ParamType.bool => if raw % modulus == 0 then 0 else 1
       | _ => raw % modulus
   | Expr.storage fieldName =>
-      readStorageField storage fields fieldName
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          let slot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
+          match fields[idx]? with
+          | some f =>
+              let word := storage.getSlot slot
+              match f.packedBits with
+              | none => word
+              | some packed => Nat.land (word >>> packed.offset) (packedMaskNat packed)
+          | none => 0
+      | none => 0
   | Expr.mapping fieldName key | Expr.mappingUint fieldName key =>
-      match findFieldSlot fields fieldName with
-      | some baseSlot =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
           let keyVal := evalExpr ctx storage fields paramNames externalFns key
           storage.getMapping baseSlot keyVal
       | none => 0
   | Expr.mapping2 fieldName key1 key2 =>
-      match findFieldSlot fields fieldName with
-      | some baseSlot =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
           let key1Val := evalExpr ctx storage fields paramNames externalFns key1
           let key2Val := evalExpr ctx storage fields paramNames externalFns key2
           storage.getMapping2 baseSlot key1Val key2Val
@@ -386,22 +422,45 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
 
   | Stmt.setStorage fieldName expr =>
       let value := evalExpr ctx state.storage fields paramNames externalFns expr
-      match writeStorageField state.storage fields fieldName value with
-      | some storage' => some (ctx, { state with storage := storage' })
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          match fields[idx]? with
+          | none => none
+          | some f =>
+              let slot := f.slot.getD idx
+              let writeSlots := dedupNatPreserve (slot :: f.aliasSlots)
+              let value := value
+              match f.packedBits with
+              | none =>
+                  let storage' := writeSlots.foldl (fun acc writeSlot => acc.setSlot writeSlot value) state.storage
+                  some (ctx, { state with storage := storage' })
+              | some packed =>
+                  let packedValue := Nat.land value (packedMaskNat packed)
+                  let shiftedMask := packedShiftedMaskNat packed
+                  let clearedMask := wordMask - shiftedMask
+                  let storage' := writeSlots.foldl (fun acc writeSlot =>
+                    let slotWord := acc.getSlot writeSlot
+                    let slotCleared := Nat.land slotWord clearedMask
+                    let packedWord := packedValue <<< packed.offset
+                    acc.setSlot writeSlot (Nat.lor slotCleared packedWord)
+                  ) state.storage
+                  some (ctx, { state with storage := storage' })
       | none => none
 
   | Stmt.setMapping fieldName keyExpr valueExpr
   | Stmt.setMappingUint fieldName keyExpr valueExpr =>
-      match findFieldSlot fields fieldName with
-      | some baseSlot =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
           let key := evalExpr ctx state.storage fields paramNames externalFns keyExpr
           let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
           some (ctx, { state with storage := state.storage.setMapping baseSlot key value })
       | none => none
 
   | Stmt.setMapping2 fieldName key1Expr key2Expr valueExpr =>
-      match findFieldSlot fields fieldName with
-      | some baseSlot =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
           let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
           let key2 := evalExpr ctx state.storage fields paramNames externalFns key2Expr
           let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr

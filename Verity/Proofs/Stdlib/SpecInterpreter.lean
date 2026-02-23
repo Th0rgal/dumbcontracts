@@ -241,6 +241,20 @@ def writeStorageField (storage : SpecStorage) (fields : List Field) (fieldName :
   simp [writeStorageField, hMap, hFind, hAlias, hPacked, dedupNatPreserve]
 
 /-!
+## External call model checks
+
+To avoid silently proving against placeholder zeros, function/constructor
+execution fails fast when `spec.externals` declares targets that are missing
+from `externalFns`.
+-/
+
+private def hasExternalModel (externalFns : List (String × (List Nat → Nat))) (name : String) : Bool :=
+  externalFns.any (·.1 == name)
+
+private def specHasUnmodeledExternals (spec : ContractSpec) (externalFns : List (String × (List Nat → Nat))) : Bool :=
+  spec.externals.any (fun ext => !(hasExternalModel externalFns ext.name))
+
+/-!
 ## Expression Evaluation
 
 Evaluate ContractSpec expressions to natural numbers.
@@ -661,30 +675,36 @@ def execFunction (spec : ContractSpec) (funcName : String) (ctx : EvalContext) (
   match spec.functions.find? (·.name == funcName) with
   | none => none
   | some func =>
-      let fields := resolveFields spec
-      let ctx := { ctx with paramTypes := func.params.map (·.ty) }
-      let initialState : ExecState := {
-        storage := initialStorage
-        returnValue := none
-        halted := false
-      }
-      let paramNames := func.params.map (·.name)
-      execStmts ctx fields paramNames externalFns initialState func.body
+      if specHasUnmodeledExternals spec externalFns then
+        none
+      else
+        let fields := resolveFields spec
+        let ctx := { ctx with paramTypes := func.params.map (·.ty) }
+        let initialState : ExecState := {
+          storage := initialStorage
+          returnValue := none
+          halted := false
+        }
+        let paramNames := func.params.map (·.name)
+        execStmts ctx fields paramNames externalFns initialState func.body
 
 def execConstructor (spec : ContractSpec) (ctx : EvalContext) (externalFns : List (String × (List Nat → Nat)))
     (initialStorage : SpecStorage) : Option (EvalContext × ExecState) :=
   match spec.constructor with
   | none => some (ctx, { storage := initialStorage, returnValue := none, halted := false })
   | some ctor =>
-      let fields := resolveFields spec
-      let ctx := { ctx with constructorParamTypes := ctor.params.map (·.ty) }
-      let initialState : ExecState := {
-        storage := initialStorage
-        returnValue := none
-        halted := false
-      }
-      let paramNames := ctor.params.map (·.name)
-      execStmts ctx fields paramNames externalFns initialState ctor.body
+      if specHasUnmodeledExternals spec externalFns then
+        none
+      else
+        let fields := resolveFields spec
+        let ctx := { ctx with constructorParamTypes := ctor.params.map (·.ty) }
+        let initialState : ExecState := {
+          storage := initialStorage
+          returnValue := none
+          halted := false
+        }
+        let paramNames := ctor.params.map (·.name)
+        execStmts ctx fields paramNames externalFns initialState ctor.body
 
 /-- Execute a function using the fuel-based interpreter that supports all features
     including forEach loops and internal function calls. Default fuel of 10000
@@ -695,15 +715,18 @@ def execFunctionFuel (spec : ContractSpec) (funcName : String) (ctx : EvalContex
   match spec.functions.find? (·.name == funcName) with
   | none => none
   | some func =>
-      let fields := resolveFields spec
-      let ctx := { ctx with paramTypes := func.params.map (·.ty) }
-      let initialState : ExecState := {
-        storage := initialStorage
-        returnValue := none
-        halted := false
-      }
-      let paramNames := func.params.map (·.name)
-      execStmtsFuel fuel ctx fields paramNames externalFns spec.functions initialState func.body
+      if specHasUnmodeledExternals spec externalFns then
+        none
+      else
+        let fields := resolveFields spec
+        let ctx := { ctx with paramTypes := func.params.map (·.ty) }
+        let initialState : ExecState := {
+          storage := initialStorage
+          returnValue := none
+          halted := false
+        }
+        let paramNames := func.params.map (·.name)
+        execStmtsFuel fuel ctx fields paramNames externalFns spec.functions initialState func.body
 
 /-- Execute a constructor using the fuel-based interpreter that supports all features
     including forEach loops and internal function calls. Default fuel of 10000
@@ -714,15 +737,18 @@ def execConstructorFuel (spec : ContractSpec) (ctx : EvalContext)
   match spec.constructor with
   | none => some (ctx, { storage := initialStorage, returnValue := none, halted := false })
   | some ctor =>
-      let fields := resolveFields spec
-      let ctx := { ctx with constructorParamTypes := ctor.params.map (·.ty) }
-      let initialState : ExecState := {
-        storage := initialStorage
-        returnValue := none
-        halted := false
-      }
-      let paramNames := ctor.params.map (·.name)
-      execStmtsFuel fuel ctx fields paramNames externalFns spec.functions initialState ctor.body
+      if specHasUnmodeledExternals spec externalFns then
+        none
+      else
+        let fields := resolveFields spec
+        let ctx := { ctx with constructorParamTypes := ctor.params.map (·.ty) }
+        let initialState : ExecState := {
+          storage := initialStorage
+          returnValue := none
+          halted := false
+        }
+        let paramNames := ctor.params.map (·.name)
+        execStmtsFuel fuel ctx fields paramNames externalFns spec.functions initialState ctor.body
 
 /-!
 ## Top-Level Interpreter

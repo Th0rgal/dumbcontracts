@@ -1733,6 +1733,113 @@ private def validateInternalCallShapesInFunction (functions : List FunctionSpec)
     (spec : FunctionSpec) : Except String Unit := do
   spec.body.forM (validateInternalCallShapesInStmt functions spec.name)
 
+private def issue732Ref : String :=
+  "Issue #732 (reject undeclared external call targets)"
+
+private partial def validateExternalCallTargetsInExpr
+    (externals : List ExternalFunction) (context : String) : Expr → Except String Unit
+  | Expr.externalCall name args => do
+      if !(externals.any (fun ext => ext.name == name)) then
+        throw s!"Compilation error: {context} references unknown external call target '{name}' ({issue732Ref}). Declare it in spec.externals."
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Expr.call gas target value inOffset inSize outOffset outSize => do
+      validateExternalCallTargetsInExpr externals context gas
+      validateExternalCallTargetsInExpr externals context target
+      validateExternalCallTargetsInExpr externals context value
+      validateExternalCallTargetsInExpr externals context inOffset
+      validateExternalCallTargetsInExpr externals context inSize
+      validateExternalCallTargetsInExpr externals context outOffset
+      validateExternalCallTargetsInExpr externals context outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize => do
+      validateExternalCallTargetsInExpr externals context gas
+      validateExternalCallTargetsInExpr externals context target
+      validateExternalCallTargetsInExpr externals context inOffset
+      validateExternalCallTargetsInExpr externals context inSize
+      validateExternalCallTargetsInExpr externals context outOffset
+      validateExternalCallTargetsInExpr externals context outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize => do
+      validateExternalCallTargetsInExpr externals context gas
+      validateExternalCallTargetsInExpr externals context target
+      validateExternalCallTargetsInExpr externals context inOffset
+      validateExternalCallTargetsInExpr externals context inSize
+      validateExternalCallTargetsInExpr externals context outOffset
+      validateExternalCallTargetsInExpr externals context outSize
+  | Expr.returndataOptionalBoolAt outOffset =>
+      validateExternalCallTargetsInExpr externals context outOffset
+  | Expr.mapping _ key =>
+      validateExternalCallTargetsInExpr externals context key
+  | Expr.mapping2 _ key1 key2 => do
+      validateExternalCallTargetsInExpr externals context key1
+      validateExternalCallTargetsInExpr externals context key2
+  | Expr.mappingUint _ key =>
+      validateExternalCallTargetsInExpr externals context key
+  | Expr.internalCall _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Expr.arrayElement _ index =>
+      validateExternalCallTargetsInExpr externals context index
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b => do
+      validateExternalCallTargetsInExpr externals context a
+      validateExternalCallTargetsInExpr externals context b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      validateExternalCallTargetsInExpr externals context a
+  | _ =>
+      pure ()
+
+private partial def validateExternalCallTargetsInStmt
+    (externals : List ExternalFunction) (context : String) : Stmt → Except String Unit
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.requireError cond _ args => do
+      validateExternalCallTargetsInExpr externals context cond
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.revertError _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.returndataCopy destOffset sourceOffset size => do
+      validateExternalCallTargetsInExpr externals context destOffset
+      validateExternalCallTargetsInExpr externals context sourceOffset
+      validateExternalCallTargetsInExpr externals context size
+  | Stmt.revertReturndata =>
+      pure ()
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value => do
+      validateExternalCallTargetsInExpr externals context key
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.setMapping2 _ key1 key2 value => do
+      validateExternalCallTargetsInExpr externals context key1
+      validateExternalCallTargetsInExpr externals context key2
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.ite cond thenBranch elseBranch => do
+      validateExternalCallTargetsInExpr externals context cond
+      thenBranch.forM (validateExternalCallTargetsInStmt externals context)
+      elseBranch.forM (validateExternalCallTargetsInStmt externals context)
+  | Stmt.forEach _ count body => do
+      validateExternalCallTargetsInExpr externals context count
+      body.forM (validateExternalCallTargetsInStmt externals context)
+  | Stmt.emit _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.internalCall _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.internalCallAssign _ _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.returnValues values =>
+      values.forM (validateExternalCallTargetsInExpr externals context)
+  | _ =>
+      pure ()
+
+private def validateExternalCallTargetsInFunction
+    (externals : List ExternalFunction) (spec : FunctionSpec) : Except String Unit := do
+  spec.body.forM (validateExternalCallTargetsInStmt externals s!"function '{spec.name}'")
+
+private def validateExternalCallTargetsInConstructor
+    (externals : List ExternalFunction) (ctor : Option ConstructorSpec) : Except String Unit := do
+  match ctor with
+  | none => pure ()
+  | some spec =>
+      spec.body.forM (validateExternalCallTargetsInStmt externals "constructor")
+
 private def compileMappingSlotWrite (fields : List Field) (field : String)
     (keyExpr valueExpr : YulExpr) (label : String) : Except String (List YulStmt) :=
   if !isMapping fields field then
@@ -3395,8 +3502,10 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
     validateEventArgShapesInFunction fn spec.events
     validateCustomErrorArgShapesInFunction fn spec.errors
     validateInternalCallShapesInFunction spec.functions fn
+    validateExternalCallTargetsInFunction spec.externals fn
   validateConstructorSpec spec.constructor
   validateInteropConstructorSpec spec.constructor
+  validateExternalCallTargetsInConstructor spec.externals spec.constructor
   match spec.constructor with
   | none => pure ()
   | some ctor => do

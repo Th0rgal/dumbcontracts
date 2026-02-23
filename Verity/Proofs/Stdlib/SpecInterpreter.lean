@@ -78,11 +78,11 @@ Extended with double-mapping support (#154) and events (#153).
 -/
 
 structure SpecStorage where
-  -- Simple storage slots (field index → value)
+  -- Simple storage slots (resolved slot → value)
   slots : List (Nat × Nat)
-  -- Mapping storage (field index → key → value)
+  -- Mapping storage (resolved base slot → key → value)
   mappings : List (Nat × List (Nat × Nat))
-  -- Double mapping storage (field index → (key1, key2) → value) (#154)
+  -- Double mapping storage (resolved base slot → (key1, key2) → value) (#154)
   mappings2 : List (Nat × List ((Nat × Nat) × Nat))
   -- Emitted events (#153)
   events : List (String × List Nat)
@@ -133,6 +133,89 @@ def SpecStorage.setMapping2 (s : SpecStorage) (baseSlot : Nat) (key1 key2 : Nat)
 def SpecStorage.addEvent (s : SpecStorage) (name : String) (args : List Nat) : SpecStorage :=
   { s with events := s.events ++ [(name, args)] }
 
+private def wordMask : Nat := modulus - 1
+
+private def dedupNatPreserve (xs : List Nat) : List Nat :=
+  let rec go (seen : List Nat) : List Nat → List Nat
+    | [] => []
+    | x :: rest =>
+        if seen.contains x then
+          go seen rest
+        else
+          x :: go (x :: seen) rest
+  go [] xs
+
+private def slotAliasForSource (sourceSlot : Nat) (range : SlotAliasRange) : Option Nat :=
+  if range.sourceStart <= sourceSlot && sourceSlot <= range.sourceEnd then
+    some (range.targetStart + (sourceSlot - range.sourceStart))
+  else
+    none
+
+private def derivedAliasSlotsForSource (sourceSlot : Nat) (ranges : List SlotAliasRange) : List Nat :=
+  dedupNatPreserve (ranges.filterMap (slotAliasForSource sourceSlot))
+
+private def applySlotAliasRanges (fields : List Field) (ranges : List SlotAliasRange) : List Field :=
+  let rec go (remaining : List Field) (idx : Nat) : List Field :=
+    match remaining with
+    | [] => []
+    | f :: rest =>
+        let sourceSlot := f.slot.getD idx
+        let derivedAliases := derivedAliasSlotsForSource sourceSlot ranges
+        let mergedAliases := dedupNatPreserve (f.aliasSlots ++ derivedAliases)
+        ({ f with aliasSlots := mergedAliases } :: go rest (idx + 1))
+  go fields 0
+
+private def resolveFields (spec : ContractSpec) : List Field :=
+  applySlotAliasRanges spec.fields spec.slotAliasRanges
+
+private def packedMaskNat (packed : PackedBits) : Nat :=
+  if packed.width >= 256 then
+    modulus - 1
+  else
+    (2 ^ packed.width) - 1
+
+private def packedShiftedMaskNat (packed : PackedBits) : Nat :=
+  packedMaskNat packed * (2 ^ packed.offset)
+
+private def readStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) : Nat :=
+  match findFieldWithResolvedSlot fields fieldName with
+  | some (field, slot) =>
+      let word := storage.getSlot slot
+      match field.packedBits with
+      | none => word % modulus
+      | some packed =>
+          Nat.land (word >>> packed.offset) (packedMaskNat packed)
+  | none => 0
+
+private def writeStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) (rawValue : Nat) :
+    Option SpecStorage :=
+  if isMapping fields fieldName then
+    none
+  else
+    match findFieldWithResolvedSlot fields fieldName with
+    | none => none
+    | some (field, slot) =>
+        let writeSlots := dedupNatPreserve (slot :: field.aliasSlots)
+        if writeSlots.isEmpty then
+          none
+        else
+          let value := rawValue % modulus
+          match field.packedBits with
+          | none =>
+              let next := writeSlots.foldl (fun acc writeSlot => acc.setSlot writeSlot value) storage
+              some next
+          | some packed =>
+              let packedValue := Nat.land value (packedMaskNat packed)
+              let shiftedMask := packedShiftedMaskNat packed
+              let clearedMask := wordMask - shiftedMask
+              let next := writeSlots.foldl (fun acc writeSlot =>
+                let slotWord := acc.getSlot writeSlot
+                let slotCleared := Nat.land slotWord clearedMask
+                let packedWord := packedValue <<< packed.offset
+                acc.setSlot writeSlot (Nat.lor slotCleared packedWord)
+              ) storage
+              some next
+
 /-!
 ## Expression Evaluation
 
@@ -163,17 +246,15 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       | some ParamType.bool => if raw % modulus == 0 then 0 else 1
       | _ => raw % modulus
   | Expr.storage fieldName =>
-      match fields.findIdx? (·.name == fieldName) with
-      | some slot => storage.getSlot slot
-      | none => 0
+      readStorageField storage fields fieldName
   | Expr.mapping fieldName key | Expr.mappingUint fieldName key =>
-      match fields.findIdx? (·.name == fieldName) with
+      match findFieldSlot fields fieldName with
       | some baseSlot =>
           let keyVal := evalExpr ctx storage fields paramNames externalFns key
           storage.getMapping baseSlot keyVal
       | none => 0
   | Expr.mapping2 fieldName key1 key2 =>
-      match fields.findIdx? (·.name == fieldName) with
+      match findFieldSlot fields fieldName with
       | some baseSlot =>
           let key1Val := evalExpr ctx storage fields paramNames externalFns key1
           let key2Val := evalExpr ctx storage fields paramNames externalFns key2
@@ -304,15 +385,14 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       some ({ ctx with localVars := newVars }, state)
 
   | Stmt.setStorage fieldName expr =>
-      match fields.findIdx? (·.name == fieldName) with
-      | some slot =>
-          let value := evalExpr ctx state.storage fields paramNames externalFns expr
-          some (ctx, { state with storage := state.storage.setSlot slot value })
+      let value := evalExpr ctx state.storage fields paramNames externalFns expr
+      match writeStorageField state.storage fields fieldName value with
+      | some storage' => some (ctx, { state with storage := storage' })
       | none => none
 
   | Stmt.setMapping fieldName keyExpr valueExpr
   | Stmt.setMappingUint fieldName keyExpr valueExpr =>
-      match fields.findIdx? (·.name == fieldName) with
+      match findFieldSlot fields fieldName with
       | some baseSlot =>
           let key := evalExpr ctx state.storage fields paramNames externalFns keyExpr
           let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
@@ -320,7 +400,7 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       | none => none
 
   | Stmt.setMapping2 fieldName key1Expr key2Expr valueExpr =>
-      match fields.findIdx? (·.name == fieldName) with
+      match findFieldSlot fields fieldName with
       | some baseSlot =>
           let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
           let key2 := evalExpr ctx state.storage fields paramNames externalFns key2Expr
@@ -511,6 +591,7 @@ def execFunction (spec : ContractSpec) (funcName : String) (ctx : EvalContext) (
   match spec.functions.find? (·.name == funcName) with
   | none => none
   | some func =>
+      let fields := resolveFields spec
       let ctx := { ctx with paramTypes := func.params.map (·.ty) }
       let initialState : ExecState := {
         storage := initialStorage
@@ -518,13 +599,14 @@ def execFunction (spec : ContractSpec) (funcName : String) (ctx : EvalContext) (
         halted := false
       }
       let paramNames := func.params.map (·.name)
-      execStmts ctx spec.fields paramNames externalFns initialState func.body
+      execStmts ctx fields paramNames externalFns initialState func.body
 
 def execConstructor (spec : ContractSpec) (ctx : EvalContext) (externalFns : List (String × (List Nat → Nat)))
     (initialStorage : SpecStorage) : Option (EvalContext × ExecState) :=
   match spec.constructor with
   | none => some (ctx, { storage := initialStorage, returnValue := none, halted := false })
   | some ctor =>
+      let fields := resolveFields spec
       let ctx := { ctx with constructorParamTypes := ctor.params.map (·.ty) }
       let initialState : ExecState := {
         storage := initialStorage
@@ -532,7 +614,7 @@ def execConstructor (spec : ContractSpec) (ctx : EvalContext) (externalFns : Lis
         halted := false
       }
       let paramNames := ctor.params.map (·.name)
-      execStmts ctx spec.fields paramNames externalFns initialState ctor.body
+      execStmts ctx fields paramNames externalFns initialState ctor.body
 
 /-- Execute a function using the fuel-based interpreter that supports all features
     including forEach loops and internal function calls. Default fuel of 10000
@@ -543,6 +625,7 @@ def execFunctionFuel (spec : ContractSpec) (funcName : String) (ctx : EvalContex
   match spec.functions.find? (·.name == funcName) with
   | none => none
   | some func =>
+      let fields := resolveFields spec
       let ctx := { ctx with paramTypes := func.params.map (·.ty) }
       let initialState : ExecState := {
         storage := initialStorage
@@ -550,7 +633,7 @@ def execFunctionFuel (spec : ContractSpec) (funcName : String) (ctx : EvalContex
         halted := false
       }
       let paramNames := func.params.map (·.name)
-      execStmtsFuel fuel ctx spec.fields paramNames externalFns spec.functions initialState func.body
+      execStmtsFuel fuel ctx fields paramNames externalFns spec.functions initialState func.body
 
 /-- Execute a constructor using the fuel-based interpreter that supports all features
     including forEach loops and internal function calls. Default fuel of 10000
@@ -561,6 +644,7 @@ def execConstructorFuel (spec : ContractSpec) (ctx : EvalContext)
   match spec.constructor with
   | none => some (ctx, { storage := initialStorage, returnValue := none, halted := false })
   | some ctor =>
+      let fields := resolveFields spec
       let ctx := { ctx with constructorParamTypes := ctor.params.map (·.ty) }
       let initialState : ExecState := {
         storage := initialStorage
@@ -568,7 +652,7 @@ def execConstructorFuel (spec : ContractSpec) (ctx : EvalContext)
         halted := false
       }
       let paramNames := ctor.params.map (·.name)
-      execStmtsFuel fuel ctx spec.fields paramNames externalFns spec.functions initialState ctor.body
+      execStmtsFuel fuel ctx fields paramNames externalFns spec.functions initialState ctor.body
 
 /-!
 ## Top-Level Interpreter

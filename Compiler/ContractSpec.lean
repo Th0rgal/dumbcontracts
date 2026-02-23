@@ -1136,11 +1136,159 @@ private partial def validateReturnShapesInStmt (fnName : String)
       body.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
   | _ => pure ()
 
+private partial def exprReadsStateOrEnv : Expr → Bool
+  | Expr.literal _ => false
+  | Expr.param _ => false
+  | Expr.constructorArg _ => false
+  | Expr.storage _ => true
+  | Expr.mapping _ key => exprReadsStateOrEnv key || true
+  | Expr.mapping2 _ key1 key2 => exprReadsStateOrEnv key1 || exprReadsStateOrEnv key2 || true
+  | Expr.mappingUint _ key => exprReadsStateOrEnv key || true
+  | Expr.caller => true
+  | Expr.msgValue => true
+  | Expr.blockTimestamp => true
+  | Expr.call gas target value inOffset inSize outOffset outSize =>
+      exprReadsStateOrEnv gas || exprReadsStateOrEnv target || exprReadsStateOrEnv value ||
+      exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
+      exprReadsStateOrEnv outOffset || exprReadsStateOrEnv outSize || true
+  | Expr.staticcall gas target inOffset inSize outOffset outSize =>
+      exprReadsStateOrEnv gas || exprReadsStateOrEnv target ||
+      exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
+      exprReadsStateOrEnv outOffset || exprReadsStateOrEnv outSize || true
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
+      exprReadsStateOrEnv gas || exprReadsStateOrEnv target ||
+      exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
+      exprReadsStateOrEnv outOffset || exprReadsStateOrEnv outSize || true
+  | Expr.returndataSize => true
+  | Expr.returndataOptionalBoolAt outOffset =>
+      exprReadsStateOrEnv outOffset || true
+  | Expr.localVar _ => false
+  | Expr.externalCall _ args => args.any exprReadsStateOrEnv || true
+  | Expr.internalCall _ args => args.any exprReadsStateOrEnv || true
+  | Expr.arrayLength _ => false
+  | Expr.arrayElement _ index => exprReadsStateOrEnv index
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b =>
+      exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      exprReadsStateOrEnv a
+
+private partial def stmtWritesState : Stmt → Bool
+  | Stmt.letVar _ value | Stmt.assignVar _ value =>
+      exprWritesState value
+  | Stmt.setStorage _ value =>
+      exprWritesState value || true
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+      exprWritesState key || exprWritesState value || true
+  | Stmt.setMapping2 _ key1 key2 value =>
+      exprWritesState key1 || exprWritesState key2 || exprWritesState value || true
+  | Stmt.require cond _ =>
+      exprWritesState cond
+  | Stmt.requireError cond _ args =>
+      exprWritesState cond || args.any exprWritesState
+  | Stmt.revertError _ args =>
+      args.any exprWritesState
+  | Stmt.return value =>
+      exprWritesState value
+  | Stmt.returnValues values =>
+      values.any exprWritesState
+  | Stmt.returnArray _ =>
+      false
+  | Stmt.returnBytes _ =>
+      false
+  | Stmt.returnStorageWords _ =>
+      false
+  | Stmt.returndataCopy destOffset sourceOffset size =>
+      exprWritesState destOffset || exprWritesState sourceOffset || exprWritesState size
+  | Stmt.revertReturndata =>
+      false
+  | Stmt.stop =>
+      false
+  | Stmt.ite cond thenBranch elseBranch =>
+      exprWritesState cond || thenBranch.any stmtWritesState || elseBranch.any stmtWritesState
+  | Stmt.forEach _ count body =>
+      exprWritesState count || body.any stmtWritesState
+  | Stmt.emit _ args =>
+      args.any exprWritesState || true
+  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
+      args.any exprWritesState || true
+where
+  exprWritesState (expr : Expr) : Bool :=
+    match expr with
+    | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+      Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+      Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+      Expr.logicalAnd a b | Expr.logicalOr a b =>
+        exprWritesState a || exprWritesState b
+    | Expr.bitNot a | Expr.logicalNot a =>
+        exprWritesState a
+    | Expr.mapping _ key | Expr.mappingUint _ key =>
+        exprWritesState key
+    | Expr.mapping2 _ key1 key2 =>
+        exprWritesState key1 || exprWritesState key2
+    | Expr.call gas target value inOffset inSize outOffset outSize =>
+        exprWritesState gas || exprWritesState target || exprWritesState value ||
+        exprWritesState inOffset || exprWritesState inSize ||
+        exprWritesState outOffset || exprWritesState outSize || true
+    | Expr.staticcall gas target inOffset inSize outOffset outSize =>
+        exprWritesState gas || exprWritesState target ||
+        exprWritesState inOffset || exprWritesState inSize ||
+        exprWritesState outOffset || exprWritesState outSize
+    | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
+        exprWritesState gas || exprWritesState target ||
+        exprWritesState inOffset || exprWritesState inSize ||
+        exprWritesState outOffset || exprWritesState outSize || true
+    | Expr.returndataOptionalBoolAt outOffset =>
+        exprWritesState outOffset
+    | Expr.externalCall _ args | Expr.internalCall _ args =>
+        args.any exprWritesState || true
+    | Expr.arrayElement _ index =>
+        exprWritesState index
+    | _ =>
+        false
+
+private partial def stmtReadsStateOrEnv : Stmt → Bool
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      exprReadsStateOrEnv value
+  | Stmt.requireError cond _ args =>
+      exprReadsStateOrEnv cond || args.any exprReadsStateOrEnv
+  | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
+      args.any exprReadsStateOrEnv
+  | Stmt.returnArray _ | Stmt.returnBytes _ =>
+      false
+  | Stmt.returnStorageWords _ =>
+      true
+  | Stmt.returndataCopy destOffset sourceOffset size =>
+      exprReadsStateOrEnv destOffset || exprReadsStateOrEnv sourceOffset || exprReadsStateOrEnv size || true
+  | Stmt.revertReturndata =>
+      true
+  | Stmt.stop =>
+      false
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+      exprReadsStateOrEnv key || exprReadsStateOrEnv value || true
+  | Stmt.setMapping2 _ key1 key2 value =>
+      exprReadsStateOrEnv key1 || exprReadsStateOrEnv key2 || exprReadsStateOrEnv value || true
+  | Stmt.ite cond thenBranch elseBranch =>
+      exprReadsStateOrEnv cond || thenBranch.any stmtReadsStateOrEnv || elseBranch.any stmtReadsStateOrEnv
+  | Stmt.forEach _ count body =>
+      exprReadsStateOrEnv count || body.any stmtReadsStateOrEnv
+  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
+      args.any exprReadsStateOrEnv || true
+
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
     throw s!"Compilation error: function '{spec.name}' cannot be both payable and view/pure (Issue #586 (Solidity interop profile))"
   if spec.isView && spec.isPure then
     throw s!"Compilation error: function '{spec.name}' cannot be both view and pure; use exactly one mutability marker (Issue #586 (Solidity interop profile))"
+  if spec.isView && spec.body.any stmtWritesState then
+    throw s!"Compilation error: function '{spec.name}' is marked view but writes state (Issue #734)"
+  if spec.isPure && spec.body.any stmtWritesState then
+    throw s!"Compilation error: function '{spec.name}' is marked pure but writes state (Issue #734)"
+  if spec.isPure && spec.body.any stmtReadsStateOrEnv then
+    throw s!"Compilation error: function '{spec.name}' is marked pure but reads state/environment (Issue #734)"
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   spec.body.forM (validateStmtParamReferences spec.name spec.params)

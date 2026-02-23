@@ -730,7 +730,7 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
             proof_stubs.append(f"  let s' := (({fn_call}).run s).snd")
             spec_call = f"{fn.name}_spec {spec_args} s s'" if spec_args else f"{fn.name}_spec s s'"
             proof_stubs.append(f"  {spec_call} := by")
-        proof_stubs.append(f"  sorry  -- TODO: replace with proof (see debugging-proofs guide)")
+        proof_stubs.append(f"  simp [{fn.name}_spec]")
         proof_stubs.append("")
 
     imports = [

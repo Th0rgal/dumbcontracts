@@ -6,7 +6,7 @@
 
 ## Current Status
 
-- ✅ **Layer 1 Complete**: 401 theorems across 9 categories (8 contracts + Stdlib math library)
+- ✅ **Layer 1 Complete**: 431 theorems across 11 categories (8 contracts + Stdlib math library)
 - ✅ **Layer 2 Complete**: All IR generation with preservation proofs (ContractSpec → IR)
 - ✅ **Layer 3 Complete**: All 8 statement equivalence proofs + universal dispatcher (PR #42)
 - ✅ **Property Testing**: 58% coverage (250/431), all testable properties covered

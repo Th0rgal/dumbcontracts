@@ -7,7 +7,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
 
 # Path constants
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,7 +62,7 @@ def _load_contract_name_sets(path: Path, *, missing_ok: bool) -> dict[str, set[s
         raise SystemExit(f"Missing property manifest: {path}")
 
     try:
-        raw: Any = json.loads(
+        raw: object = json.loads(
             path.read_text(encoding="utf-8"),
             object_pairs_hook=_reject_duplicate_object_keys,
         )
@@ -109,11 +108,11 @@ def _load_contract_name_sets(path: Path, *, missing_ok: bool) -> dict[str, set[s
     return validated
 
 
-def _reject_duplicate_object_keys(pairs: list[tuple[Any, Any]]) -> dict[Any, Any]:
+def _reject_duplicate_object_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
     """Reject JSON objects with duplicate keys."""
-    seen: set[Any] = set()
+    seen: set[str] = set()
     duplicates: list[str] = []
-    out: dict[Any, Any] = {}
+    out: dict[str, object] = {}
     for key, value in pairs:
         if key in seen:
             duplicates.append(repr(key))
@@ -193,8 +192,8 @@ def collect_theorems(path: Path) -> list[str]:
     names: list[str] = []
     try:
         text = path.read_text(encoding="utf-8")
-    except Exception:
-        return names
+    except (OSError, UnicodeDecodeError) as exc:
+        raise SystemExit(f"Cannot read Lean proof file {path}: {exc}") from exc
     for line in text.splitlines():
         match = THEOREM_RE.match(line)
         if match:
@@ -218,6 +217,10 @@ def extract_manifest_from_proofs() -> dict[str, list[str]]:
         if not contract_dir.is_dir():
             continue
         contract = contract_dir.name
+        if contract != contract.strip() or not CONTRACT_NAME_RE.fullmatch(contract):
+            raise SystemExit(
+                f"Invalid contract identifier from proofs directory {contract_dir}: {contract!r}"
+            )
         theorems: list[str] = []
         for lean in sorted(contract_dir.rglob("*.lean")):
             theorems.extend(collect_theorems(lean))
@@ -228,6 +231,10 @@ def extract_manifest_from_proofs() -> dict[str, list[str]]:
     if EXAMPLES_DIR.exists():
         for lean in sorted(EXAMPLES_DIR.glob("*.lean")):
             contract = lean.stem
+            if contract != contract.strip() or not CONTRACT_NAME_RE.fullmatch(contract):
+                raise SystemExit(
+                    f"Invalid contract identifier from example file {lean}: {contract!r}"
+                )
             if contract in manifest:
                 continue  # Already found via Proofs/
             theorems = collect_theorems(lean)

@@ -2,6 +2,22 @@
 
 Quick reference for AI agents. Humans: see [README.md](README.md).
 
+## Documentation Safety (Critical)
+
+The following files are safety-critical and MUST stay synchronized with source code:
+
+- `AUDIT.md`
+- `TRUST_ASSUMPTIONS.md`
+- `AXIOMS.md`
+
+If code changes and these files are not updated in the same change set, trust boundaries become stale and the system is unsafe to assess correctly.
+
+Mandatory rule:
+
+1. Every source-code change that affects architecture, semantics, trust boundaries, assumptions, axioms, CI safety checks, or compilation paths MUST update these files immediately.
+2. Never defer these updates to a later PR.
+3. Treat stale trust/audit documentation as a security issue.
+
 ## Agent Workflow
 
 ### Before Starting
@@ -11,7 +27,7 @@ Quick reference for AI agents. Humans: see [README.md](README.md).
 
 ### When Writing Code
 
-**DO**: Read before editing · Run `lake build` · Follow `[Category]` prefixes · Update docs/ROADMAP.md for arch changes
+**DO**: Read before editing · Run `lake build` · Follow `[Category]` prefixes · Update docs/ROADMAP.md for arch changes · Keep `AUDIT.md`, `TRUST_ASSUMPTIONS.md`, and `AXIOMS.md` in sync with code
 
 **DON'T**: Create files unnecessarily · Add `sorry` without docs · Skip builds · Force-push without approval · Create docs proactively
 

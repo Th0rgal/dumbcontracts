@@ -68,8 +68,11 @@ def load_exclusions() -> dict[str, set[str]]:
 def _load_contract_name_lists(path: Path) -> dict[str, list[str]]:
     """Load and validate a `{contract: [name, ...]}` JSON object."""
     try:
-        raw: Any = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        raw: Any = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_object_keys,
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
         raise SystemExit(f"Invalid JSON in {path}: {exc}") from exc
 
     if not isinstance(raw, dict):
@@ -93,9 +96,42 @@ def _load_contract_name_lists(path: Path) -> dict[str, list[str]]:
                 raise SystemExit(
                     f"Invalid schema in {path}: entry {name!r} in {contract!r} must be a non-empty string."
                 )
+        duplicate_names = _find_duplicates(names)
+        if duplicate_names:
+            raise SystemExit(
+                f"Invalid schema in {path}: value for {contract!r} contains duplicate name(s): {', '.join(duplicate_names)}."
+            )
         validated[contract] = names
 
     return validated
+
+
+def _reject_duplicate_object_keys(pairs: list[tuple[Any, Any]]) -> dict[Any, Any]:
+    """Reject JSON objects with duplicate keys."""
+    seen: set[Any] = set()
+    duplicates: list[str] = []
+    out: dict[Any, Any] = {}
+    for key, value in pairs:
+        if key in seen:
+            duplicates.append(repr(key))
+        else:
+            seen.add(key)
+        out[key] = value
+    if duplicates:
+        raise ValueError(f"duplicate object key(s): {', '.join(sorted(set(duplicates)))}")
+    return out
+
+
+def _find_duplicates(items: list[str]) -> list[str]:
+    """Return sorted duplicate values in insertion-insensitive order."""
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for item in items:
+        if item in seen:
+            duplicates.add(item)
+        else:
+            seen.add(item)
+    return sorted(duplicates)
 
 
 def extract_property_names(path: Path) -> list[str]:

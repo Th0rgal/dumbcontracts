@@ -56,6 +56,20 @@ lake exe verity-compiler \
 
 `--mapping-slot-scratch-base` controls where compiler-generated `mappingSlot` helpers write temporary words before `keccak256`.
 
+**With backend profile (issue #802, opt-in):**
+```bash
+# Default semantic profile
+lake exe verity-compiler --backend-profile semantic
+
+# Solidity-parity ordering only: sort dispatch `case` blocks by selector
+lake exe verity-compiler --backend-profile solidity-parity-ordering
+
+# Full Solidity-parity profile (current MVP):
+# - sort dispatch `case` blocks by selector
+# - enable deterministic patch pass
+lake exe verity-compiler --backend-profile solidity-parity
+```
+
 For mapping-backed struct layouts, `ContractSpec` supports:
 - `Expr.mappingWord field key wordOffset`
 - `Stmt.setMappingWord field key wordOffset value`

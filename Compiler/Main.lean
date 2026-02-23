@@ -18,10 +18,24 @@ private structure CLIArgs where
   libs : List String := []
   verbose : Bool := false
   useAST : Bool := false
+  backendProfile : Compiler.BackendProfile := .semantic
   patchEnabled : Bool := false
   patchMaxIterations : Nat := 2
   patchReportPath : Option String := none
   mappingSlotScratchBase : Nat := 0
+
+private def parseBackendProfile (raw : String) : Option Compiler.BackendProfile :=
+  match raw with
+  | "semantic" => some .semantic
+  | "solidity-parity-ordering" => some .solidityParityOrdering
+  | "solidity-parity" => some .solidityParity
+  | _ => none
+
+private def backendProfileString (profile : Compiler.BackendProfile) : String :=
+  match profile with
+  | .semantic => "semantic"
+  | .solidityParityOrdering => "solidity-parity-ordering"
+  | .solidityParity => "solidity-parity"
 
 private def parseArgs (args : List String) : IO CLIArgs := do
   let rec go (remaining : List String) (cfg : CLIArgs) : IO CLIArgs :=
@@ -38,6 +52,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println "  -o <dir>           Short form of --output"
         IO.println "  --ast              Use unified AST compilation path (#364)"
         IO.println "  --abi-output <dir> Output ABI JSON artifacts (one <Contract>.abi.json per spec)"
+        IO.println "  --backend-profile <semantic|solidity-parity-ordering|solidity-parity>"
         IO.println "  --enable-patches   Enable deterministic Yul patch pass"
         IO.println "  --patch-max-iterations <n>  Max patch-pass fixpoint iterations (default: 2)"
         IO.println "  --patch-report <path>       Write TSV patch coverage report"
@@ -66,6 +81,13 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         throw (IO.userError "Missing value for --abi-output")
     | "--ast" :: rest =>
         go rest { cfg with useAST := true }
+    | "--backend-profile" :: raw :: rest =>
+        match parseBackendProfile raw with
+        | some profile => go rest { cfg with backendProfile := profile }
+        | none =>
+            throw (IO.userError s!"Invalid value for --backend-profile: {raw} (expected semantic, solidity-parity-ordering, or solidity-parity)")
+    | ["--backend-profile"] =>
+        throw (IO.userError "Missing value for --backend-profile")
     | "--enable-patches" :: rest =>
         go rest { cfg with patchEnabled := true }
     | "--patch-max-iterations" :: raw :: rest =>
@@ -97,10 +119,16 @@ def main (args : List String) : IO Unit := do
       IO.println s!"Output directory: {cfg.outDir}"
       if cfg.useAST then
         IO.println "Mode: unified AST compilation"
+      IO.println s!"Backend profile: {backendProfileString cfg.backendProfile}"
       match cfg.abiOutDir with
       | some dir => IO.println s!"ABI output directory: {dir}"
       | none => pure ()
-      if cfg.patchEnabled then
+      let profileForcesPatches :=
+        match cfg.backendProfile with
+        | .solidityParity => true
+        | _ => false
+      let patchEnabled := cfg.patchEnabled || profileForcesPatches
+      if patchEnabled then
         IO.println s!"Patch pass: enabled (max iterations = {cfg.patchMaxIterations})"
       if !cfg.libs.isEmpty then
         IO.println s!"External libraries: {cfg.libs.length}"
@@ -111,9 +139,15 @@ def main (args : List String) : IO Unit := do
       | none => pure ()
       IO.println s!"Mapping slot scratch base: {cfg.mappingSlotScratchBase}"
       IO.println ""
+    let profileForcesPatches :=
+      match cfg.backendProfile with
+      | .solidityParity => true
+      | _ => false
+    let patchEnabled := cfg.patchEnabled || profileForcesPatches
     let options : Compiler.YulEmitOptions := {
+      backendProfile := cfg.backendProfile
       patchConfig := {
-        enabled := cfg.patchEnabled
+        enabled := patchEnabled
         maxIterations := cfg.patchMaxIterations
       }
       mappingSlotScratchBase := cfg.mappingSlotScratchBase

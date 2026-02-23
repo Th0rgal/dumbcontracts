@@ -945,7 +945,13 @@ def gen_compiler_spec(cfg: ContractConfig) -> str:
             elif target:
                 body_expr = f'Expr.storage "{target.name}"'
             else:
-                body_expr = f'Expr.storage "{cfg.fields[0].name if cfg.fields else "field"}"  -- TODO: match actual field'
+                print(
+                    f"Error: Cannot infer target field for getter '{fn.name}'. "
+                    "Rename the getter to match a field (e.g. getTotalSupply → totalSupply) "
+                    "or declare a matching field.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             func_strs.append(f"""    {{ name := "{fn.name}"
       params := {params_str}
       returnType := some {compiler_ret}

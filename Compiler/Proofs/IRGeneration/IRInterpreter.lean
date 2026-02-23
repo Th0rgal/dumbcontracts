@@ -30,6 +30,17 @@ open Compiler.Yul
 open Verity.Core
 open Compiler.Proofs
 
+/-! Size measures for termination proofs. -/
+mutual
+def exprSize : YulExpr → Nat
+  | .call _ args => exprsSize args + 2
+  | _ => 1
+
+def exprsSize : List YulExpr → Nat
+  | [] => 0
+  | e :: es => exprSize e + exprsSize es + 1
+end
+
 /-! ## Execution State for IR -/
 
 structure IRState where
@@ -37,8 +48,6 @@ structure IRState where
   vars : List (String × Nat)
   /-- Storage slots (slot → value) -/
   storage : Nat → Nat
-  /-- Storage mappings (baseSlot → key → value) -/
-  mappings : Nat → Nat → Nat
   /-- Memory words (offset → value) -/
   memory : Nat → Nat
   /-- Calldata words (argument index → value) -/
@@ -55,7 +64,6 @@ structure IRState where
 def IRState.initial (sender : Nat) : IRState :=
   { vars := []
     storage := fun _ => 0
-    mappings := fun _ _ => 0
     memory := fun _ => 0
     calldata := []
     returnValue := none
@@ -84,7 +92,6 @@ semantics call through `MappingSlot`; the active proof backend is `keccak`
 `sstore` follows Solidity's flat keccak-derived storage slots.
 -/
 
-open Compiler.Proofs.YulGeneration in
 mutual
 
 /-- Evaluate a list of Yul expressions in the IR context.
@@ -116,7 +123,7 @@ def evalIRCall (state : IRState) (func : String) : List YulExpr → Option Nat
     let argVals ← evalIRExprs state args
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend
       Compiler.Proofs.YulGeneration.defaultBuiltinBackend
-      state.storage state.mappings state.sender state.selector state.calldata func argVals
+      state.storage state.sender state.selector state.calldata func argVals
 termination_by args => exprsSize args + 1
 decreasing_by
   simp [exprsSize, exprSize]
@@ -167,10 +174,12 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
           match evalIRExpr state value with
           | some v => .continue (state.setVar name v)
           | none => .revert state
+      | .letMany _ _ => .revert state
       | .assign name value =>
           match evalIRExpr state value with
           | some v => .continue (state.setVar name v)
           | none => .revert state
+      | .leave => .continue state
       | .expr e =>
           match e with
           | .call "sstore" [slotExpr, valExpr] =>
@@ -179,22 +188,20 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
                   match evalIRExpr state baseExpr, evalIRExpr state keyExpr, evalIRExpr state valExpr with
                   | some baseSlot, some key, some val =>
                       let updated := Compiler.Proofs.abstractStoreMappingEntry
-                        state.storage state.mappings baseSlot key val
+                        state.storage baseSlot key val
                       .continue {
                         state with
-                        storage := updated.1
-                        mappings := updated.2
+                        storage := updated
                       }
                   | _, _, _ => .revert state
               | _ =>
                   match evalIRExpr state slotExpr, evalIRExpr state valExpr with
                   | some slot, some val =>
                       let updated := Compiler.Proofs.abstractStoreStorageOrMapping
-                        state.storage state.mappings slot val
+                        state.storage slot val
                       .continue {
                         state with
-                        storage := updated.1
-                        mappings := updated.2
+                        storage := updated
                       }
                   | _, _ => .revert state
           | .call "mstore" [offsetExpr, valExpr] =>
@@ -217,13 +224,13 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
           match evalIRExpr state cond with
           | some c => if c ≠ 0 then execIRStmts fuel state body else .continue state
           | none => .revert state
-      | .switch expr cases default =>
+      | .switch expr cases defaultCase =>
           match evalIRExpr state expr with
           | some v =>
             match cases.find? (·.1 == v) with
             | some (_, body) => execIRStmts fuel state body
             | none =>
-              match default with
+              match defaultCase with
               | some body => execIRStmts fuel state body
               | none => .continue state
           | none => .revert state
@@ -280,7 +287,7 @@ structure IRResult where
 /-- Execute an IR function with given arguments.
 Uses `sizeOf fn.body + 1` fuel, which is sufficient for any terminating execution
 of a non-looping function body. -/
-def execIRFunction (fn : IRFunction) (args : List Nat) (initialState : IRState) : IRResult :=
+noncomputable def execIRFunction (fn : IRFunction) (args : List Nat) (initialState : IRState) : IRResult :=
   -- Initialize parameters as variables
   let stateWithParams := fn.params.zip args |>.foldl
     (fun s (p, v) => s.setVar p.name v)
@@ -291,26 +298,26 @@ def execIRFunction (fn : IRFunction) (args : List Nat) (initialState : IRState) 
     { success := true
       returnValue := s.returnValue
       finalStorage := s.storage
-      finalMappings := s.mappings }
+      finalMappings := Compiler.Proofs.storageAsMappings s.storage }
   | .return v s =>
     { success := true
       returnValue := some v
       finalStorage := s.storage
-      finalMappings := s.mappings }
+      finalMappings := Compiler.Proofs.storageAsMappings s.storage }
   | .stop s =>
     { success := true
       returnValue := none
       finalStorage := s.storage
-      finalMappings := s.mappings }
+      finalMappings := Compiler.Proofs.storageAsMappings s.storage }
   | .revert s =>
     { success := false
       returnValue := none
       -- On revert, storage and mappings roll back to the initial state
       finalStorage := initialState.storage
-      finalMappings := initialState.mappings }
+      finalMappings := Compiler.Proofs.storageAsMappings initialState.storage }
 
 /-- Interpret an entire IR contract execution -/
-def interpretIR (contract : IRContract) (tx : IRTransaction) (initialState : IRState) : IRResult :=
+noncomputable def interpretIR (contract : IRContract) (tx : IRTransaction) (initialState : IRState) : IRResult :=
   -- Execution sender and selector come from the transaction (matches SpecInterpreter)
   let initialState := { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }
 
@@ -321,6 +328,6 @@ def interpretIR (contract : IRContract) (tx : IRTransaction) (initialState : IRS
     { success := false
       returnValue := none
       finalStorage := initialState.storage
-      finalMappings := initialState.mappings }
+      finalMappings := Compiler.Proofs.storageAsMappings initialState.storage }
 
 end Compiler.Proofs.IRGeneration

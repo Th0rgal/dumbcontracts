@@ -46,40 +46,33 @@ def abstractDecodeMappingSlot (_slot : Nat) : Option (Nat × Nat) := none
 def abstractNestedMappingSlot (baseSlot key1 key2 : Nat) : Nat :=
   abstractMappingSlot (abstractMappingSlot baseSlot key1) key2
 
+/-- Derived mapping-table view from flat storage. -/
+def storageAsMappings (storage : Nat → Nat) : Nat → Nat → Nat :=
+  fun baseSlot key => storage (solidityMappingSlot baseSlot key)
+
 /-- Read a mapping entry directly from base slot and key. -/
 def abstractLoadMappingEntry
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (baseSlot key : Nat) : Nat :=
-  let _ := mappings
   storage (solidityMappingSlot baseSlot key)
 
 /-- Write a mapping entry directly from base slot and key. -/
 def abstractStoreMappingEntry
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
-    (baseSlot key value : Nat) : (Nat → Nat) × (Nat → Nat → Nat) :=
-  (fun s => if s = solidityMappingSlot baseSlot key then value else storage s, mappings)
+    (baseSlot key value : Nat) : Nat → Nat :=
+  fun s => if s = solidityMappingSlot baseSlot key then value else storage s
 
-/-- Read through the active mapping-slot backend from split storage/mapping tables. -/
+/-- Read through the active mapping-slot backend from flat storage. -/
 def abstractLoadStorageOrMapping
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (slot : Nat) : Nat :=
-  match abstractDecodeMappingSlot slot with
-  | some (baseSlot, key) => mappings baseSlot key
-  | none => storage slot
+  storage slot
 
-/-- Write through the active mapping-slot backend to split storage/mapping tables. -/
+/-- Write through the active mapping-slot backend to flat storage. -/
 def abstractStoreStorageOrMapping
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
-    (slot value : Nat) : (Nat → Nat) × (Nat → Nat → Nat) :=
-  match abstractDecodeMappingSlot slot with
-  | some (baseSlot, key) =>
-      (storage, fun b k => if b = baseSlot ∧ k = key then value else mappings b k)
-  | none =>
-      (fun s => if s = slot then value else storage s, mappings)
+    (slot value : Nat) : Nat → Nat :=
+  fun s => if s = slot then value else storage s
 
 @[simp] theorem abstractMappingSlot_eq_solidity (baseSlot key : Nat) :
     abstractMappingSlot baseSlot key = solidityMappingSlot baseSlot key := rfl
@@ -103,30 +96,24 @@ def abstractStoreStorageOrMapping
 
 @[simp] theorem abstractLoadMappingEntry_eq
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (baseSlot key : Nat) :
-    abstractLoadMappingEntry storage mappings baseSlot key = storage (solidityMappingSlot baseSlot key) := rfl
+    abstractLoadMappingEntry storage baseSlot key = storage (solidityMappingSlot baseSlot key) := rfl
 
 @[simp] theorem abstractStoreMappingEntry_eq
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (baseSlot key value : Nat) :
-    abstractStoreMappingEntry storage mappings baseSlot key value =
-      (fun s => if s = solidityMappingSlot baseSlot key then value else storage s, mappings) := rfl
+    abstractStoreMappingEntry storage baseSlot key value =
+      (fun s => if s = solidityMappingSlot baseSlot key then value else storage s) := rfl
 
 @[simp] theorem abstractLoadStorageOrMapping_eq
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (slot : Nat) :
-    abstractLoadStorageOrMapping storage mappings slot = storage slot := by
-  simp [abstractLoadStorageOrMapping]
+    abstractLoadStorageOrMapping storage slot = storage slot := rfl
 
 @[simp] theorem abstractStoreStorageOrMapping_eq
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (slot value : Nat) :
-    abstractStoreStorageOrMapping storage mappings slot value =
-      (fun s => if s = slot then value else storage s, mappings) := by
-  simp [abstractStoreStorageOrMapping]
+    abstractStoreStorageOrMapping storage slot value =
+      (fun s => if s = slot then value else storage s) := rfl
 
 end Compiler.Proofs

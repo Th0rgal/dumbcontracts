@@ -28,6 +28,8 @@ LEGACY_SYMBOL_FORBIDDEN_FILES = REQUIRED_ABSTRACTION_IMPORTS | {
 }
 
 BUILTINS_FILE = PROOFS_DIR / "YulGeneration" / "Builtins.lean"
+IR_INTERPRETER_FILE = PROOFS_DIR / "IRGeneration" / "IRInterpreter.lean"
+YUL_SEMANTICS_FILE = PROOFS_DIR / "YulGeneration" / "Semantics.lean"
 
 IMPORT_MAPPING_ENCODING_RE = re.compile(r"^\s*import\s+Compiler\.Proofs\.MappingEncoding\s*$", re.MULTILINE)
 IMPORT_MAPPING_SLOT_RE = re.compile(r"^\s*import\s+Compiler\.Proofs\.MappingSlot\s*$", re.MULTILINE)
@@ -35,6 +37,7 @@ ABSTRACT_SLOT_REF_RE = re.compile(r"Compiler\.Proofs\.abstractMappingSlot")
 ABSTRACT_LOAD_REF_RE = re.compile(r"Compiler\.Proofs\.abstractLoadStorageOrMapping")
 ABSTRACT_STORE_REF_RE = re.compile(r"Compiler\.Proofs\.abstractStoreStorageOrMapping")
 ABSTRACT_STORE_ENTRY_REF_RE = re.compile(r"Compiler\.Proofs\.abstractStoreMappingEntry")
+STATE_MAPPINGS_FIELD_RE = re.compile(r"^\s*mappings\s*:\s*Nat\s*→\s*Nat\s*→\s*Nat", re.MULTILINE)
 DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE = re.compile(
     r"Compiler\.Proofs\.(?:mappingTag|encodeMappingSlot|decodeMappingSlot|encodeNestedMappingSlot|normalizeMappingBaseSlot)"
 )
@@ -59,9 +62,8 @@ KECCAK_LOAD_ENTRY_ROUTING_RE = re.compile(
     r"|(?:def\s+abstractLoadMappingEntry[\s\S]*?\|\s*\.keccak\s*=>\s*storage\s+\(solidityMappingSlot\s+baseSlot\s+key\))"
 )
 KECCAK_STORE_ENTRY_ROUTING_RE = re.compile(
-    r"(?:def\s+abstractStoreMappingEntry[\s\S]*?:=\s*\(fun\s+s\s*=>\s*if\s+s\s*=\s*solidityMappingSlot\s+baseSlot\s+key"
-    r"[\s\S]*?,\s*mappings\))"
-    r"|(?:def\s+abstractStoreMappingEntry[\s\S]*?\|\s*\.keccak\s*=>[\s\S]*?s\s*=\s*solidityMappingSlot\s+baseSlot\s+key[\s\S]*?,\s*mappings\))"
+    r"(?:def\s+abstractStoreMappingEntry[\s\S]*?:=\s*fun\s+s\s*=>\s*if\s+s\s*=\s*solidityMappingSlot\s+baseSlot\s+key)"
+    r"|(?:def\s+abstractStoreMappingEntry[\s\S]*?\|\s*\.keccak\s*=>[\s\S]*?s\s*=\s*solidityMappingSlot\s+baseSlot\s+key)"
 )
 
 
@@ -111,7 +113,7 @@ def main() -> int:
         rel = MAPPING_SLOT_FILE.relative_to(ROOT)
         errors.append(
             f"{rel}: expected `abstractStoreMappingEntry` "
-            "to write flat storage via `solidityMappingSlot` while preserving mappings table"
+            "to write flat storage via `solidityMappingSlot`"
         )
 
     if "activeMappingSlotBackend = .keccak" not in trust_text:
@@ -178,6 +180,15 @@ def main() -> int:
 
     if not ABSTRACT_LOAD_REF_RE.search(builtins_text):
         errors.append(f"{builtins_rel}: missing reference to Compiler.Proofs.abstractLoadStorageOrMapping")
+
+    for state_file in (IR_INTERPRETER_FILE, YUL_SEMANTICS_FILE):
+        state_text = state_file.read_text(encoding="utf-8")
+        state_rel = state_file.relative_to(ROOT)
+        if STATE_MAPPINGS_FIELD_RE.search(state_text):
+            errors.append(
+                f"{state_rel}: execution state must not define a separate `mappings` table; "
+                "mapping semantics must flow through flat storage only"
+            )
 
     if errors:
         print("Mapping slot boundary check failed:", file=sys.stderr)

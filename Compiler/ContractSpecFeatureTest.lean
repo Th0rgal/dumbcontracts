@@ -1,11 +1,15 @@
 import Compiler.ContractSpec
 import Compiler.Codegen
 import Compiler.Yul.PrettyPrint
+import Compiler.DiffTestTypes
+import Verity.Proofs.Stdlib.SpecInterpreter
 
 namespace Compiler.ContractSpecFeatureTest
 
 open Compiler
 open Compiler.ContractSpec
+open Compiler.DiffTestTypes
+open Verity.Proofs.Stdlib.SpecInterpreter
 
 private def contains (haystack needle : String) : Bool :=
   let h := haystack.toList
@@ -3825,5 +3829,64 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ letVar parameter shadow diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected letVar parameter shadowing to fail compilation")
+
+#eval! do
+  let layoutSpec : ContractSpec := {
+    name := "LayoutAwareInterpreter"
+    fields := [
+      { name := "f", ty := FieldType.uint256, slot := some 5, aliasSlots := [7] },
+      { name := "g", ty := FieldType.uint256, slot := some 10, packedBits := some { offset := 8, width := 8 }, aliasSlots := [12] },
+      { name := "h", ty := FieldType.uint256 }
+    ]
+    slotAliasRanges := [{ sourceStart := 2, sourceEnd := 2, targetStart := 30 }]
+    constructor := none
+    functions := [
+      { name := "writeAll"
+        params := [
+          { name := "fv", ty := ParamType.uint256 },
+          { name := "gv", ty := ParamType.uint256 },
+          { name := "hv", ty := ParamType.uint256 }
+        ]
+        returnType := none
+        body := [
+          Stmt.setStorage "f" (Expr.param "fv"),
+          Stmt.setStorage "g" (Expr.param "gv"),
+          Stmt.setStorage "h" (Expr.param "hv"),
+          Stmt.stop
+        ]
+      },
+      { name := "readF", params := [], returnType := some FieldType.uint256, body := [Stmt.return (Expr.storage "f")] },
+      { name := "readG", params := [], returnType := some FieldType.uint256, body := [Stmt.return (Expr.storage "g")] }
+    ]
+  }
+  let initialStorage : SpecStorage := {
+    slots := [(10, 0x112233), (12, 0x445566)]
+    mappings := []
+    mappings2 := []
+    events := []
+  }
+  let writeTx : Transaction := {
+    sender := 0
+    functionName := "writeAll"
+    args := [42, 0x1ab, 99]
+  }
+  let writeResult := interpretSpec layoutSpec initialStorage writeTx
+  if !writeResult.success then
+    throw (IO.userError s!"✗ layout-aware interpreter write reverted: {writeResult.revertReason}")
+  if writeResult.finalStorage.getSlot 5 != 42 || writeResult.finalStorage.getSlot 7 != 42 then
+    throw (IO.userError "✗ explicit slot + aliasSlots mirror writes not respected in SpecInterpreter")
+  if writeResult.finalStorage.getSlot 2 != 99 || writeResult.finalStorage.getSlot 30 != 99 then
+    throw (IO.userError "✗ slotAliasRanges-derived mirror write not respected in SpecInterpreter")
+  if writeResult.finalStorage.getSlot 10 != 0x11ab33 || writeResult.finalStorage.getSlot 12 != 0x44ab66 then
+    throw (IO.userError "✗ packed subfield RMW with alias mirrors not respected in SpecInterpreter")
+  let readFTx : Transaction := { sender := 0, functionName := "readF", args := [] }
+  let readFResult := interpretSpec layoutSpec writeResult.finalStorage readFTx
+  if readFResult.returnValue != some 42 then
+    throw (IO.userError s!"✗ readF should read resolved slot 5 value 42, got {readFResult.returnValue}")
+  let readGTx : Transaction := { sender := 0, functionName := "readG", args := [] }
+  let readGResult := interpretSpec layoutSpec writeResult.finalStorage readGTx
+  if readGResult.returnValue != some 0xab then
+    throw (IO.userError s!"✗ readG should read packed byte 0xab, got {readGResult.returnValue}")
+  IO.println "✓ SpecInterpreter honors explicit slots, alias mirrors, slotAliasRanges, and packed storage semantics"
 
 end Compiler.ContractSpecFeatureTest

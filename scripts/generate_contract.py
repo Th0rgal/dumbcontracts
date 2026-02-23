@@ -22,6 +22,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -124,6 +125,79 @@ class ContractConfig:
 # Parsers
 # ---------------------------------------------------------------------------
 
+IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+# Minimal keyword denylist spanning Lean + Solidity parser keywords.
+RESERVED_IDENTIFIERS = {
+    "abbrev",
+    "axiom",
+    "by",
+    "class",
+    "constructor",
+    "contract",
+    "def",
+    "do",
+    "else",
+    "end",
+    "enum",
+    "event",
+    "external",
+    "for",
+    "function",
+    "if",
+    "import",
+    "inductive",
+    "in",
+    "interface",
+    "internal",
+    "lemma",
+    "let",
+    "macro",
+    "match",
+    "mutual",
+    "namespace",
+    "opaque",
+    "override",
+    "private",
+    "public",
+    "revert",
+    "return",
+    "set_option",
+    "sorry",
+    "structure",
+    "termination_by",
+    "theorem",
+    "then",
+    "trait",
+    "type",
+    "variable",
+    "where",
+    "while",
+}
+
+
+def _validate_identifier(identifier: str, kind: str) -> str:
+    """Validate a cross-layer identifier used in generated Lean/Solidity code."""
+    if not identifier:
+        print(f"Error: {kind} identifier cannot be empty", file=sys.stderr)
+        sys.exit(1)
+    if not IDENT_RE.fullmatch(identifier):
+        print(
+            f"Error: Invalid {kind} identifier '{identifier}'. "
+            "Expected regex: [A-Za-z_][A-Za-z0-9_]*",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if identifier.lower() in RESERVED_IDENTIFIERS:
+        print(
+            f"Error: Invalid {kind} identifier '{identifier}'. "
+            "Identifier is reserved in Lean/Solidity.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return identifier
+
+
 def _normalize_field_type(ty: str) -> str:
     """Normalize a field type string to an internal type name.
 
@@ -163,13 +237,15 @@ def parse_fields(spec: str) -> List[Field]:
             if not name:
                 print("Error: Field name cannot be empty (got ':<type>')", file=sys.stderr)
                 sys.exit(1)
+            name = _validate_identifier(name, "field")
             ty = _normalize_field_type(ty_raw)
             if not ty:
                 print(f"Warning: Unknown type '{ty_raw.strip()}', defaulting to uint256", file=sys.stderr)
                 ty = "uint256"
             fields.append(Field(name, ty))
         else:
-            fields.append(Field(part.strip(), "uint256"))
+            name = _validate_identifier(part.strip(), "field")
+            fields.append(Field(name, "uint256"))
     return fields
 
 
@@ -198,10 +274,10 @@ def _parse_single_function(raw: str) -> Function:
     """
     raw = raw.strip()
     if "(" not in raw:
-        return Function(name=raw)
+        return Function(name=_validate_identifier(raw, "function"))
 
     paren_idx = raw.index("(")
-    name = raw[:paren_idx].strip()
+    name = _validate_identifier(raw[:paren_idx].strip(), "function")
     params_str = raw[paren_idx + 1:].rstrip(")")
 
     _PARAM_NAME_COUNTERS.clear()
@@ -246,7 +322,7 @@ def parse_functions(spec: str, fields: List[Field]) -> List[Function]:
                 current.append(ch)
         if current:
             functions.append(_parse_single_function("".join(current)))
-        return [f for f in functions if f.name]
+        return functions
     # Default: generate getter/setter for first field
     if fields:
         f = fields[0]
@@ -908,12 +984,21 @@ Examples:
     parser.add_argument(
         "--fields",
         default="",
-        help="Storage fields as 'name:type,...' where type is uint256|address|mapping|mapping(uint256) (default: storedData:uint256)",
+        help=(
+            "Storage fields as 'name:type,...' where name matches [A-Za-z_][A-Za-z0-9_]* "
+            "and type is uint256|address|mapping|mapping(uint256) "
+            "(default: storedData:uint256)"
+        ),
     )
     parser.add_argument(
         "--functions",
         default="",
-        help="Function signatures as 'func1(type,...),func2,...' e.g. 'deposit(uint256),transfer(address,uint256),getBalance(address)' (default: auto-generated getter/setter)",
+        help=(
+            "Function signatures as 'func1(type,...),func2,...' where function names "
+            "match [A-Za-z_][A-Za-z0-9_]*; e.g. "
+            "'deposit(uint256),transfer(address,uint256),getBalance(address)' "
+            "(default: auto-generated getter/setter)"
+        ),
     )
     parser.add_argument(
         "--dry-run",

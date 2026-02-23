@@ -193,6 +193,12 @@ python3 scripts/generate_contract.py MyContract --dry-run
 
 Creates 7 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
 
+Identifier rules (fail-fast validation):
+- Contract name: PascalCase alphanumeric (existing rule), e.g. `MyToken`
+- Field names: `[A-Za-z_][A-Za-z0-9_]*`
+- Function names: `[A-Za-z_][A-Za-z0-9_]*`
+- Reserved Lean/Solidity keywords are rejected for generated field/function names
+
 ## Utilities
 
 - **`property_utils.py`** - Shared utilities for loading manifests, exclusions, and test coverage

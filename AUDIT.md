@@ -1,139 +1,69 @@
-# Audit Guide
+# AUDIT
 
-Read this file first. It gives the minimum architecture and trust model needed to audit Verity.
+## Architecture & trust boundaries
 
-For formal detail, see [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md) and [AXIOMS.md](AXIOMS.md).
+Components and flow:
+1. `Verity/*` EDSL contracts and logical specs (`Prop`).
+2. `Compiler/ContractSpec.lean` validates and lowers `ContractSpec` to IR.
+3. `Compiler/Codegen.lean` lowers IR to Yul AST.
+4. `Compiler/Yul/PrettyPrint.lean` renders Yul text.
+5. `solc` compiles Yul to EVM bytecode.
+6. Optional migration path: `Verity/AST.lean` + `Compiler/ASTCompile.lean` + `Compiler/ASTDriver.lean` (`--ast`).
 
-## Architecture Overview
+Trust changes:
+1. Lean proofs stop at generated Yul; `solc` correctness is trusted.
+2. Selector hashing includes a documented keccak axiom (see `AXIOMS.md`).
+3. Linked external Yul libraries are trusted TCB code.
+4. CI scripts consume repo/workspace files as untrusted input and must validate format before use.
 
-Verity has two compilation paths:
+## Security model
 
-1. `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode` (proof-backed path)
-2. `Unified AST (--ast) -> Yul -> solc -> bytecode` (migration path)
+Threat assumptions:
+1. Adversary may submit malformed source/contracts/docs/artifacts through PRs.
+2. CI runners execute checks on attacker-controlled branch contents.
+3. Deployers choose whether to use proof-backed path (ContractSpec) or migration path (AST).
 
-Formal semantic guarantees apply to Path 1. Path 2 is implemented and tested, but not in the same end-to-end proof chain.
+Access control and checks:
+1. Solidity runtime access control is contract-specific and tested in Foundry suites under `test/`.
+2. Build/verification gate is deny-by-default: CI fails on invariant drift (selectors, storage layout, docs/proof counts, property coverage, warning regressions).
+3. `scripts/check_lean_warning_regression.py` now rejects malformed baseline schema (`schema_version`, `total_warnings`, `by_file`, `by_message`) and fails on invariant mismatch.
 
-### Terms You Must Separate
+Crypto choices:
+1. Function selectors use keccak256 (Ethereum ABI standard interoperability requirement).
+2. Mapping slot addressing follows standard keccak-based EVM storage scheme.
+3. No custom cryptography is introduced in this repo.
 
-Audits are much easier when these names are not mixed:
+## Design decisions
 
-1. `EDSL` (`Verity/Examples/*`): executable Lean contract code (`Contract α := ContractState -> ContractResult α`).
-2. `Logical spec` (`Verity/Specs/*/Spec.lean`): properties as `Prop`.
-3. `ContractSpec` (`Compiler/ContractSpec.lean`, instances in `Compiler/Specs.lean`): declarative compiler model with function bodies. This is not ABI-only data.
+1. Keep both compiler front-ends (`ContractSpec` and AST) to get differential signals during migration instead of a single failure channel.
+2. Use many small explicit CI check scripts rather than one opaque mega-check; each guard maps to one invariant and one failure reason.
+3. Keep warning-regression baseline as checked JSON artifact for deterministic CI behavior; validate schema strictly to avoid silent acceptance of malformed data.
+4. Prefer generated artifacts and sync checks over handwritten counts/metadata to reduce review-time ambiguity.
 
-`ContractSpec` contains:
-1. Interface metadata (name, params, returns, mutability, events).
-2. Storage field declarations.
-3. Function and constructor bodies (`Expr` and `Stmt`) used by the compiler.
+## Known risks
 
-### Why Path 2 Exists
+1. `solc` is trusted and outside Lean proof scope.
+2. AST path is implemented/tested but not yet in the same end-to-end proof chain as ContractSpec path.
+3. Linked external Yul libraries remain trusted dependencies and must be audited separately.
+4. Gas bounds are engineering checks, not semantic security proofs.
 
-Path 2 is not a replacement for Path 1 today. It exists for controlled migration and cross-checking.
+## External dependencies
 
-Simple reasons:
+1. `solc`: trusted compiler from Yul to EVM bytecode.
+2. Foundry (`forge`/`anvil` tooling): trusted test harness/runtime for Solidity tests.
+3. Lean toolchain (`lake`, Lean compiler): trusted proof checker and build runtime.
+4. Python 3 standard library scripts: trusted CI execution environment; scripts validate untrusted file inputs where used.
 
-1. It is the target architecture for the unification effort (`Compiler/ASTSpecs.lean`, `Compiler/ASTDriver.lean`).
-2. It gives an independent compiler implementation, which helps detect regressions that can hide inside one pipeline.
-3. It keeps migration incremental: contracts can move to unified AST without blocking the verified ContractSpec flow.
+## Attack surface
 
-Where it is used now:
+External input entry points:
+1. CLI/compiler inputs and contract sources (`Verity/*`, `Compiler/*`).
+2. Foundry test inputs, calldata/value fuzzing, and FFI-enabled differential/property test harnesses (`test/*`).
+3. CI/workflow-consumed files and generated artifacts (`artifacts/*.json`, docs tables, manifests, gas reports, logs).
+4. Newly hardened boundary: `artifacts/lean_warning_baseline.json` consumed by `scripts/check_lean_warning_regression.py`.
 
-1. CLI path selection in `Compiler/Main.lean` via `--ast`.
-2. CI generation of AST artifacts into `compiler/yul-ast` (`.github/workflows/verify.yml`).
-3. AST pipeline regression modules: `Compiler/ASTCompileTest.lean`, `Compiler/ASTDriverTest.lean`, `Compiler/MainTest.lean`.
-4. Cross-path checks:
-   - `scripts/check_selectors.py` (selector consistency in `compiler/yul` and `compiler/yul-ast`)
-   - `scripts/check_storage_layout.py` (EDSL/Spec/Compiler/AST slot drift)
-   - `scripts/check_yul_compiles.py --compare-dirs ... --allow-compare-diff-file ...` (compileability plus controlled diff baseline)
-   - `scripts/check_gas_model_coverage.py` on legacy, patched, and AST outputs
-
-When Path 2 is useful during limitations:
-
-1. During feature migration to unified AST, before full proof integration is complete.
-2. When validating that ABI, storage, and dispatch behavior stay aligned across two compiler front-ends.
-3. When investigating whether a bug is in ContractSpec lowering or in later shared Yul/solc stages.
-
-Bug classes Path 2 helps catch:
-
-1. Selector and dispatch table mismatches.
-2. Constructor/deploy path regressions.
-3. ABI mutability metadata drift (`isPayable`, `isView`, `isPure`).
-4. Storage slot/type mismatches between layers.
-5. Yul shape drift that breaks `solc` compileability or violates the known diff allowlist.
-
-Why not keep only Path 1:
-
-1. One path gives one failure signal; two paths provide differential evidence.
-2. Removing Path 2 would reduce migration safety for the unification roadmap.
-3. Several CI guards are designed to detect cross-path drift; those checks lose value without a second concrete pipeline.
-
-## Verification Layers (Path 1)
-
-- Layer 1: EDSL behavior matches `ContractSpec` behavior (proven per contract).
-- Layer 2: `ContractSpec` lowering to IR preserves behavior (proven).
-- Layer 3: IR lowering to Yul preserves behavior (proven, with one documented axiom).
-- `solc`: trusted external compiler.
-
-## Current Code Structure
-
-### ContractSpec path
-
-- `Verity/`: EDSL contracts and proofs.
-- `Compiler/ContractSpec.lean`: spec validation and lowering.
-- `Compiler/Codegen.lean`: IR to Yul AST lowering.
-- `Compiler/Yul/PrettyPrint.lean`: Yul text rendering.
-
-### AST path (`--ast`)
-
-- `Verity/AST.lean`: unified AST.
-- `Compiler/ASTCompile.lean`: AST statement compilation.
-- `Compiler/ASTDriver.lean`: AST pipeline orchestration and ABI generation.
-
-Current AST status:
-
-- Implemented and tested.
-- Supports mutability metadata (`isPayable`, `isView`, `isPure`) in specs and ABI.
-- Not yet covered by the same Layer 2 and 3 proof chain as `ContractSpec`.
-
-## Priority Files for Auditors
-
-- `Compiler/ContractSpec.lean`
-- `Compiler/Selector.lean`
-- `Compiler/Selectors.lean`
-- `Compiler/Linker.lean`
-- `Compiler/ASTDriver.lean`
-- `Compiler/ASTCompile.lean`
-- `Verity/Core.lean`
-- `scripts/check_yul_compiles.py`
-- `scripts/check_selectors.py`
-- `scripts/check_doc_counts.py`
-
-## Trust Boundaries
-
-1. `solc` correctness is trusted.
-2. Keccak selector hashing uses one explicit axiom (cross-checked in CI).
-3. Linked external Yul libraries are trusted for semantics.
-4. Mapping slot collision freedom relies on the standard keccak assumption.
-5. Gas is out of scope for formal semantics.
-
-## Main Audit Risks
-
-1. Revert-state modeling gap at high-level semantics: confirm checks-before-effects discipline.
-2. Linked Yul libraries: audit separately as trusted code.
-3. Wrapping arithmetic: verify it is intended or guarded.
-4. AST and ContractSpec drift: review allowlist-backed differences explicitly.
-
-## Minimal Audit Checklist
-
-1. Confirm which path is used (`ContractSpec`, AST, or both).
-2. Read `AXIOMS.md`; verify the axiom set is minimal and justified.
-3. Read `TRUST_ASSUMPTIONS.md`; confirm deployment assumptions are acceptable.
-4. Run selector, Yul compileability, storage-layout, and doc consistency checks.
-5. If libraries are linked, include them in scope as TCB code.
-
-## Writing Suggestions for This File
-
-1. Keep this file as orientation, not a proof transcript.
-2. Use short sections with concrete file references.
-3. Keep all counts script-backed (`check_doc_counts.py`).
-4. Update this file in the same PR as any architecture or trust change.
+Primary review focus:
+1. Selector/ABI drift (`Compiler/Selector.lean`, `Compiler/Selectors.lean`, `scripts/check_selectors.py`).
+2. Storage slot/type drift across layers (`scripts/check_storage_layout.py`).
+3. Cross-path output drift and Yul compileability (`scripts/check_yul_compiles.py`).
+4. Contract access-control/property behavior (`test/Property*.t.sol`, `test/Differential*.t.sol`).

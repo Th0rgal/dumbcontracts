@@ -38,13 +38,83 @@ def parse_warnings(log_path: Path) -> tuple[Counter[str], Counter[str]]:
 def load_baseline(path: Path) -> dict[str, object]:
     if not path.exists():
         raise FileNotFoundError(f"Baseline file not found: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Baseline payload must be a JSON object")
+    return payload
 
 
-def normalize_counter_payload(payload: dict[str, int] | None) -> Counter[str]:
+def _validate_counter_field(
+    baseline_path: Path,
+    payload: dict[str, object],
+    field_name: str,
+) -> dict[str, int]:
+    raw_counter = payload.get(field_name)
+    if raw_counter is None:
+        return {}
+    if not isinstance(raw_counter, dict):
+        raise ValueError(f"{baseline_path}: '{field_name}' must be an object")
+
+    normalized: dict[str, int] = {}
+    for key, value in raw_counter.items():
+        if not isinstance(key, str):
+            raise ValueError(
+                f"{baseline_path}: '{field_name}' keys must be strings, got {type(key).__name__}"
+            )
+        if not isinstance(value, int):
+            raise ValueError(
+                f"{baseline_path}: '{field_name}[{key}]' must be an integer, got {type(value).__name__}"
+            )
+        if value < 0:
+            raise ValueError(f"{baseline_path}: '{field_name}[{key}]' must be >= 0")
+        normalized[key] = value
+    return normalized
+
+
+def validate_baseline_schema(baseline_path: Path, payload: dict[str, object]) -> dict[str, object]:
+    allowed_keys = {"schema_version", "total_warnings", "by_file", "by_message"}
+    unknown_keys = sorted(set(payload.keys()) - allowed_keys)
+    if unknown_keys:
+        raise ValueError(f"{baseline_path}: unknown keys: {', '.join(unknown_keys)}")
+
+    schema_version = payload.get("schema_version")
+    if schema_version != 1:
+        raise ValueError(f"{baseline_path}: expected schema_version=1, got {schema_version!r}")
+
+    total_warnings = payload.get("total_warnings")
+    if not isinstance(total_warnings, int):
+        raise ValueError(f"{baseline_path}: 'total_warnings' must be an integer")
+    if total_warnings < 0:
+        raise ValueError(f"{baseline_path}: 'total_warnings' must be >= 0")
+
+    by_file = _validate_counter_field(baseline_path, payload, "by_file")
+    by_message = _validate_counter_field(baseline_path, payload, "by_message")
+
+    by_file_total = sum(by_file.values())
+    by_message_total = sum(by_message.values())
+    if by_file_total != total_warnings:
+        raise ValueError(
+            f"{baseline_path}: sum(by_file)={by_file_total} must equal total_warnings={total_warnings}"
+        )
+    if by_message_total != total_warnings:
+        raise ValueError(
+            f"{baseline_path}: sum(by_message)={by_message_total} must equal total_warnings={total_warnings}"
+        )
+
+    return {
+        "schema_version": schema_version,
+        "total_warnings": total_warnings,
+        "by_file": by_file,
+        "by_message": by_message,
+    }
+
+
+def normalize_counter_payload(payload: object | None) -> Counter[str]:
     if payload is None:
         return Counter()
-    return Counter({k: int(v) for k, v in payload.items()})
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected counter payload object, got {type(payload).__name__}")
+    return Counter({str(k): int(v) for k, v in payload.items()})
 
 
 def render_sorted(counter: Counter[str]) -> dict[str, int]:
@@ -68,11 +138,11 @@ def compare_against_baseline(
     observed_by_message: Counter[str],
 ) -> list[str]:
     errors: list[str] = []
-    baseline = load_baseline(baseline_path)
+    baseline = validate_baseline_schema(baseline_path, load_baseline(baseline_path))
 
     baseline_total = int(baseline.get("total_warnings", 0))
-    baseline_by_file = normalize_counter_payload(baseline.get("by_file"))  # type: ignore[arg-type]
-    baseline_by_message = normalize_counter_payload(baseline.get("by_message"))  # type: ignore[arg-type]
+    baseline_by_file = normalize_counter_payload(baseline.get("by_file"))
+    baseline_by_message = normalize_counter_payload(baseline.get("by_message"))
 
     observed_total = int(sum(observed_by_file.values()))
     if observed_total > baseline_total:

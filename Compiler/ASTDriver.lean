@@ -260,6 +260,42 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | .ite condExpr thenBranch elseBranch =>
       exprReadsStateOrEnv condExpr || stmtReadsStateOrEnv thenBranch || stmtReadsStateOrEnv elseBranch
 
+private partial def validateReturnShapeInStmt
+    (contractName : String) (fnName : String) (expected : ASTReturnType) : Stmt → Except String Unit
+  | .ret _ =>
+      match expected with
+      | .uint256 => pure ()
+      | .address =>
+          throw s!"Function '{fnName}' in {contractName} declares address returnType but uses uint256 return statement"
+      | .unit =>
+          throw s!"Function '{fnName}' in {contractName} declares unit returnType but returns a uint256 value"
+  | .retAddr _ =>
+      match expected with
+      | .address => pure ()
+      | .uint256 =>
+          throw s!"Function '{fnName}' in {contractName} declares uint256 returnType but uses address return statement"
+      | .unit =>
+          throw s!"Function '{fnName}' in {contractName} declares unit returnType but returns an address value"
+  | .stop =>
+      match expected with
+      | .unit => pure ()
+      | .uint256 =>
+          throw s!"Function '{fnName}' in {contractName} declares uint256 returnType but terminates with stop"
+      | .address =>
+          throw s!"Function '{fnName}' in {contractName} declares address returnType but terminates with stop"
+  | .bindUint _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .bindAddr _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .bindBool _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .letUint _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .sstore _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .sstoreAddr _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .mstore _ _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .require _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .requireSome _ _ _ rest => validateReturnShapeInStmt contractName fnName expected rest
+  | .ite _ thenBranch elseBranch => do
+      validateReturnShapeInStmt contractName fnName expected thenBranch
+      validateReturnShapeInStmt contractName fnName expected elseBranch
+
 private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
   ensureNonEmpty "Contract" spec.name
   ensureValidIdentifier "Contract" spec.name
@@ -280,6 +316,7 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
       throw s!"Function '{fn.name}' in {spec.name} is marked pure but writes state"
     if fn.isPure && stmtReadsStateOrEnv fn.body then
       throw s!"Function '{fn.name}' in {spec.name} is marked pure but reads state/environment"
+    validateReturnShapeInStmt spec.name fn.name fn.returnType fn.body
 
   match spec.constructor with
   | some ctor => validateParamNames s!"constructor of {spec.name}" ctor.params

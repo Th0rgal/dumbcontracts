@@ -1722,6 +1722,37 @@ private def featureSpec : ContractSpec := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
+  let unusedInvalidIndexedEventSpec : ContractSpec := {
+    name := "UnusedInvalidIndexedEventRejected"
+    fields := []
+    constructor := none
+    events := [
+      { name := "TooManyIndexed"
+        params := [
+          { name := "a", ty := ParamType.uint256, kind := EventParamKind.indexed },
+          { name := "b", ty := ParamType.uint256, kind := EventParamKind.indexed },
+          { name := "c", ty := ParamType.uint256, kind := EventParamKind.indexed },
+          { name := "d", ty := ParamType.uint256, kind := EventParamKind.indexed }
+        ]
+      }
+    ]
+    functions := [
+      { name := "f"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile unusedInvalidIndexedEventSpec [1] with
+  | .error err =>
+      if !(contains err "event 'TooManyIndexed' has 4 indexed params; max is 3") then
+        throw (IO.userError s!"✗ invalid unused event declaration diagnostic mismatch: {err}")
+      IO.println "✓ invalid unused event declaration rejected at compile boundary"
+  | .ok _ =>
+      throw (IO.userError "✗ expected unused invalid event declaration to fail compilation")
+
+#eval! do
   let indexedBytesEventSpec : ContractSpec := {
     name := "IndexedBytesEventSupported"
     fields := []

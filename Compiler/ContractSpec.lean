@@ -3572,6 +3572,13 @@ private def validateErrorDef (err : ErrorDef) : Except String Unit := do
     if !supportedCustomErrorParamType ty then
       throw s!"Compilation error: custom error '{err.name}' uses unsupported dynamic parameter type {repr ty} ({issue586Ref}). Use uint256/address/bool/bytes32/bytes parameters."
 
+private def validateEventDef (eventDef : EventDef) : Except String Unit := do
+  let indexedCount := eventDef.params.foldl
+    (fun acc p => if p.kind == EventParamKind.indexed then acc + 1 else acc)
+    0
+  if indexedCount > 3 then
+    throw s!"Compilation error: event '{eventDef.name}' has {indexedCount} indexed params; max is 3"
+
 def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContract := do
   match firstInvalidSlotAliasRange spec.slotAliasRanges with
   | some (idx, range) =>
@@ -3666,6 +3673,8 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
       throw s!"Compilation error: duplicate event name '{dup}' in {spec.name}"
   | none =>
       pure ()
+  for eventDef in spec.events do
+    validateEventDef eventDef
   match firstDuplicateName (spec.externals.map (·.name)) with
   | some dup =>
       throw s!"Compilation error: duplicate external declaration '{dup}' in {spec.name}"

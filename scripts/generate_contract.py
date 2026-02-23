@@ -829,23 +829,18 @@ def _gen_single_test(
 
     if is_getter:
         return f"""    //═══════════════════════════════════════════════════════════════════════
-    // Property {idx + 1}: {fn.name}_meets_spec
-    // Theorem: {fn.name}({', '.join(p.solidity_type for p in fn.params)}) meets its formal specification
+    // Property {idx + 1}: TODO_{fn.name}_meets_spec
+    // Getter theorem extraction requires manual return/storage assertions.
     //═══════════════════════════════════════════════════════════════════════
 
-    /// Property: {fn.name}_meets_spec
-    function testProperty_{camel}_MeetsSpec() public {{
-        // Read-only function: verify it returns expected value and
-        // does not modify storage.
-        uint256 slot0Before = readStorage(0);
-
-        (bool success, bytes memory data) = target.call(
-            abi.encodeWithSignature({encode_args})
-        );
-        require(success, "{fn.name} call failed");
-
-        // Storage should be unchanged after a read-only call
-        assertEq(readStorage(0), slot0Before, "{fn.name} should not modify storage");
+    /// Property TODO: {fn.name}_meets_spec
+    function testTODO_{camel}_GetterNeedsSpecAssertions() public {{
+        // TODO: Implement getter-specific checks:
+        // 1) set up deterministic storage,
+        // 2) decode return data from `{fn.name}`,
+        // 3) assert decoded value matches spec/state,
+        // 4) assert no unintended storage mutation (all relevant slots/mappings).
+        revert("TODO: implement getter property assertions");
     }}
 """
     else:

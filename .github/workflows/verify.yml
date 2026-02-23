@@ -136,6 +136,9 @@ jobs:
       - name: Check verify foundry-gas-calibration sync
         run: python3 scripts/check_verify_foundry_gas_calibration_sync.py
 
+      - name: Check verify artifact sync
+        run: python3 scripts/check_verify_artifact_sync.py
+
       - name: Check solc pin consistency
         run: python3 scripts/check_solc_pin.py
 

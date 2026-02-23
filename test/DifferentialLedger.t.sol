@@ -68,7 +68,7 @@ contract DifferentialLedger is YulTestBase, DiffTestConfig, DifferentialTestBase
             revert("Unknown function");
         }
 
-        uint256 evmReturnValue = evmReturnData.length > 0 ? abi.decode(evmReturnData, (uint256)) : 0;
+        uint256 evmReturnValue = evmSuccess && evmReturnData.length > 0 ? abi.decode(evmReturnData, (uint256)) : 0;
 
         // Get EVM mapping storage for sender (and recipient for transfer)
         // Important: Mapping storage slot = keccak256(abi.encode(key, slot))

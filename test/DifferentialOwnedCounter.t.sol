@@ -82,7 +82,7 @@ contract DifferentialOwnedCounter is YulTestBase, DiffTestConfig, DifferentialTe
         uint256 evmReturnValue = 0;
         address evmReturnAddress = address(0);
 
-        if (evmReturnData.length > 0) {
+        if (evmSuccess && evmReturnData.length > 0) {
             if (functionSig == keccak256(bytes("getOwner"))) {
                 evmReturnAddress = abi.decode(evmReturnData, (address));
             } else {

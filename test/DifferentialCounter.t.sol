@@ -19,6 +19,8 @@ import "./DifferentialTestBase.sol";
  * Success: 10,000+ tests with zero mismatches
  */
 contract DifferentialCounter is YulTestBase, DiffTestConfig, DifferentialTestBase {
+    error DifferentialHarnessCustomError(uint256 code);
+
     // Compiled contract
     address counter;
 
@@ -63,7 +65,7 @@ contract DifferentialCounter is YulTestBase, DiffTestConfig, DifferentialTestBas
         }
 
         uint256 evmStorageAfter = uint256(vm.load(counter, bytes32(uint256(0))));
-        uint256 evmReturnValue = evmReturnData.length > 0 ? abi.decode(evmReturnData, (uint256)) : 0;
+        uint256 evmReturnValue = evmSuccess && evmReturnData.length > 0 ? abi.decode(evmReturnData, (uint256)) : 0;
 
         // 2. Execute on EDSL interpreter (via vm.ffi)
         string memory storageState = _buildStorageString();
@@ -305,6 +307,18 @@ contract DifferentialCounter is YulTestBase, DiffTestConfig, DifferentialTestBas
         if (_diffVerbose()) console2.log("Random differential tests completed:", testsPassed);
         if (_diffVerbose()) console2.log("Failed:", testsFailed);
         assertEq(testsFailed, 0, "Some random tests failed");
+    }
+
+    function _revertWithCustomError() external pure {
+        revert DifferentialHarnessCustomError(7);
+    }
+
+    function testDifferential_RevertDecodeGuard_CustomError() public {
+        (bool evmSuccess, bytes memory evmReturnData) =
+            address(this).call(abi.encodeWithSignature("_revertWithCustomError()"));
+        assertFalse(evmSuccess, "Expected custom error revert");
+        uint256 decoded = evmSuccess && evmReturnData.length > 0 ? abi.decode(evmReturnData, (uint256)) : 0;
+        assertEq(decoded, 0, "Guarded decode should not parse revert payload");
     }
 
 }

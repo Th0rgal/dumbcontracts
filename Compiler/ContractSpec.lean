@@ -835,6 +835,103 @@ def functionStateMutability (spec : FunctionSpec) : String :=
 private def findParamType (params : List Param) (name : String) : Option ParamType :=
   (params.find? (fun p => p.name == name)).map (·.ty)
 
+private partial def exprContainsCallLike (expr : Expr) : Bool :=
+  match expr with
+  | Expr.call _ _ _ _ _ _ _ => true
+  | Expr.staticcall _ _ _ _ _ _ => true
+  | Expr.delegatecall _ _ _ _ _ _ => true
+  | Expr.externalCall _ _ | Expr.internalCall _ _ => true
+  | Expr.mapping _ key | Expr.mappingUint _ key =>
+      exprContainsCallLike key
+  | Expr.mapping2 _ key1 key2 =>
+      exprContainsCallLike key1 || exprContainsCallLike key2
+  | Expr.arrayElement _ index =>
+      exprContainsCallLike index
+  | Expr.returndataOptionalBoolAt outOffset =>
+      exprContainsCallLike outOffset
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b =>
+      exprContainsCallLike a || exprContainsCallLike b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      exprContainsCallLike a
+  | _ =>
+      false
+
+private def issue748Ref : String :=
+  "Issue #748 (logicalAnd/logicalOr eager evaluation footgun)"
+
+private def validateLogicalOperandPurity (context : String) (a b : Expr) : Except String Unit := do
+  if exprContainsCallLike a || exprContainsCallLike b then
+    throw s!"Compilation error: {context} uses Expr.logicalAnd/Expr.logicalOr with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Move call-like expressions into Stmt.letVar/Stmt.ite before combining booleans."
+
+private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
+  match expr with
+  | Expr.logicalAnd a b | Expr.logicalOr a b =>
+      (exprContainsCallLike a || exprContainsCallLike b) ||
+      exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
+  | Expr.call gas target value inOffset inSize outOffset outSize =>
+      exprContainsUnsafeLogicalCallLike gas || exprContainsUnsafeLogicalCallLike target ||
+      exprContainsUnsafeLogicalCallLike value || exprContainsUnsafeLogicalCallLike inOffset ||
+      exprContainsUnsafeLogicalCallLike inSize || exprContainsUnsafeLogicalCallLike outOffset ||
+      exprContainsUnsafeLogicalCallLike outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize =>
+      exprContainsUnsafeLogicalCallLike gas || exprContainsUnsafeLogicalCallLike target ||
+      exprContainsUnsafeLogicalCallLike inOffset || exprContainsUnsafeLogicalCallLike inSize ||
+      exprContainsUnsafeLogicalCallLike outOffset || exprContainsUnsafeLogicalCallLike outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
+      exprContainsUnsafeLogicalCallLike gas || exprContainsUnsafeLogicalCallLike target ||
+      exprContainsUnsafeLogicalCallLike inOffset || exprContainsUnsafeLogicalCallLike inSize ||
+      exprContainsUnsafeLogicalCallLike outOffset || exprContainsUnsafeLogicalCallLike outSize
+  | Expr.externalCall _ args | Expr.internalCall _ args =>
+      args.any exprContainsUnsafeLogicalCallLike
+  | Expr.mapping _ key | Expr.mappingUint _ key =>
+      exprContainsUnsafeLogicalCallLike key
+  | Expr.mapping2 _ key1 key2 =>
+      exprContainsUnsafeLogicalCallLike key1 || exprContainsUnsafeLogicalCallLike key2
+  | Expr.arrayElement _ index | Expr.returndataOptionalBoolAt index =>
+      exprContainsUnsafeLogicalCallLike index
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b =>
+      exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      exprContainsUnsafeLogicalCallLike a
+  | _ =>
+      false
+
+private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      exprContainsUnsafeLogicalCallLike value
+  | Stmt.requireError cond _ args =>
+      exprContainsUnsafeLogicalCallLike cond || args.any exprContainsUnsafeLogicalCallLike
+  | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
+      args.any exprContainsUnsafeLogicalCallLike
+  | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ =>
+      false
+  | Stmt.returndataCopy destOffset sourceOffset size =>
+      exprContainsUnsafeLogicalCallLike destOffset ||
+      exprContainsUnsafeLogicalCallLike sourceOffset ||
+      exprContainsUnsafeLogicalCallLike size
+  | Stmt.revertReturndata | Stmt.stop =>
+      false
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+      exprContainsUnsafeLogicalCallLike key || exprContainsUnsafeLogicalCallLike value
+  | Stmt.setMapping2 _ key1 key2 value =>
+      exprContainsUnsafeLogicalCallLike key1 ||
+      exprContainsUnsafeLogicalCallLike key2 ||
+      exprContainsUnsafeLogicalCallLike value
+  | Stmt.ite cond thenBranch elseBranch =>
+      exprContainsUnsafeLogicalCallLike cond ||
+      thenBranch.any stmtContainsUnsafeLogicalCallLike ||
+      elseBranch.any stmtContainsUnsafeLogicalCallLike
+  | Stmt.forEach _ count body =>
+      exprContainsUnsafeLogicalCallLike count || body.any stmtContainsUnsafeLogicalCallLike
+  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
+      args.any exprContainsUnsafeLogicalCallLike
+
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
   | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
@@ -962,8 +1059,11 @@ private partial def validateScopedExprIdentifiers
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
-    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b => do
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+  | Expr.logicalAnd a b | Expr.logicalOr a b => do
+      validateLogicalOperandPurity context a b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
   | Expr.bitNot a | Expr.logicalNot a =>
@@ -1321,6 +1421,8 @@ private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := d
     throw s!"Compilation error: function '{spec.name}' is marked pure but writes state (Issue #734)"
   if spec.isPure && spec.body.any stmtReadsStateOrEnv then
     throw s!"Compilation error: function '{spec.name}' is marked pure but reads state/environment (Issue #734)"
+  if spec.body.any stmtContainsUnsafeLogicalCallLike then
+    throw s!"Compilation error: function '{spec.name}' uses Expr.logicalAnd/Expr.logicalOr with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Move call-like expressions into Stmt.letVar/Stmt.ite before combining booleans."
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   if !returns.isEmpty && !stmtListAlwaysReturnsOrReverts spec.body then
@@ -1349,6 +1451,8 @@ private def validateConstructorSpec (ctor : Option ConstructorSpec) : Except Str
   match ctor with
   | none => pure ()
   | some spec =>
+      if spec.body.any stmtContainsUnsafeLogicalCallLike then
+        throw s!"Compilation error: constructor uses Expr.logicalAnd/Expr.logicalOr with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Move call-like expressions into Stmt.letVar/Stmt.ite before combining booleans."
       spec.body.forM validateNoRuntimeReturnsInConstructorStmt
       spec.body.forM (validateStmtParamReferences "constructor" spec.params)
       validateConstructorIdentifierReferences ctor

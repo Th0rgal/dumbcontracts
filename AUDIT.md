@@ -1,88 +1,86 @@
 # Audit Guide
 
-This is the first file to read before auditing Verity. If you want full formal details after this quick pass, read [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md) and [AXIOMS.md](AXIOMS.md).
+Read this file first. It gives the minimum architecture and trust model needed to audit Verity.
 
-## Start Here: What Verity Is
+For formal detail, see [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md) and [AXIOMS.md](AXIOMS.md).
 
-Think of Verity as two roads that both end in EVM bytecode:
+## Architecture Overview
 
-1. `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode` (the formally verified road)
-2. `Unified AST (--ast) -> Yul -> solc -> bytecode` (the migration road, not fully proven end-to-end)
+Verity has two compilation paths:
 
-The first road is where the formal guarantees live.
-The second road is useful and tested, but still relies on testing rather than full proof equivalence.
+1. `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode` (proof-backed path)
+2. `Unified AST (--ast) -> Yul -> solc -> bytecode` (migration path)
 
-## Mental Model (Simple)
+Formal semantic guarantees apply to Path 1.
+Path 2 is implemented and tested, but not in the same end-to-end proof chain.
 
-If you are new to compiler audits, use this model:
+## Verification Layers (Path 1)
 
-- Layer 1: "Did the Lean contract code match the stated contract behavior?" Yes, proven.
-- Layer 2: "Did compiler lowering to IR keep that behavior?" Yes, proven.
-- Layer 3: "Did IR lowering to Yul keep that behavior?" Yes, proven, with one documented axiom.
-- Final step: "Did solc compile Yul correctly?" Trusted external compiler (pinned version).
+- Layer 1: EDSL behavior matches `ContractSpec` behavior (proven).
+- Layer 2: `ContractSpec` lowering to IR preserves behavior (proven).
+- Layer 3: IR lowering to Yul preserves behavior (proven, with one documented axiom).
+- `solc`: trusted external compiler.
 
-That is the core trust boundary story.
+## Current Code Structure
 
-## Current Architecture (What Exists Today)
+### ContractSpec path
 
-### Verified path (`ContractSpec` path)
+- `Verity/`: EDSL contracts and proofs.
+- `Compiler/ContractSpec.lean`: spec validation and lowering.
+- `Compiler/Codegen.lean`: IR -> Yul AST lowering.
+- `Compiler/Yul/PrettyPrint.lean`: Yul text rendering.
 
-- `Verity/` contains EDSL contracts and proofs.
-- `Compiler/ContractSpec.lean` validates and compiles specs.
-- `Compiler/Codegen.lean` lowers IR to Yul AST.
-- `Compiler/Yul/PrettyPrint.lean` renders Yul text.
-- `solc` compiles Yul to bytecode.
+### AST path (`--ast`)
 
-### AST path (`--ast` flag)
+- `Verity/AST.lean`: unified AST.
+- `Compiler/ASTCompile.lean`: AST statement compilation.
+- `Compiler/ASTDriver.lean`: AST pipeline orchestration and ABI generation.
 
-- `Verity/AST.lean` defines the unified AST.
-- `Compiler/ASTCompile.lean` translates AST statements to Yul statements.
-- `Compiler/ASTDriver.lean` orchestrates AST compilation and ABI generation.
+Current AST status:
 
-Important status:
+- Implemented and tested.
+- Supports mutability metadata (`isPayable`, `isView`, `isPure`) in specs/ABI.
+- Not yet covered by the same Layer 2/3 proof chain as `ContractSpec`.
 
-- The AST path is available and tested.
-- It now supports mutability metadata (`isPayable`, `isView`, `isPure`) in specs/ABI.
-- It is still not fully covered by the Layer 2/3 proof chain used by `ContractSpec`.
+## Priority Files for Auditors
 
-## Key Files Auditors Should Read
+- `Compiler/ContractSpec.lean`
+- `Compiler/Selector.lean`
+- `Compiler/Selectors.lean`
+- `Compiler/Linker.lean`
+- `Compiler/ASTDriver.lean`
+- `Compiler/ASTCompile.lean`
+- `Verity/Core.lean`
+- `scripts/check_yul_compiles.py`
+- `scripts/check_selectors.py`
+- `scripts/check_doc_counts.py`
 
-- `Compiler/ContractSpec.lean`: compile-time validation and core lowering logic.
-- `Compiler/Selector.lean` and `Compiler/Selectors.lean`: selector generation and selector axiom surface.
-- `Compiler/Linker.lean`: external Yul library injection (outside proof boundary).
-- `Compiler/ASTDriver.lean` and `Compiler/ASTCompile.lean`: AST pipeline.
-- `Verity/Core.lean`: execution model and semantics assumptions.
-- `scripts/check_yul_compiles.py`: compile and drift checks.
-- `scripts/check_selectors.py`: selector and constant consistency checks.
-- `scripts/check_doc_counts.py`: documentation metric consistency.
+## Trust Boundaries
 
-## Trust Boundaries (Plain Language)
+1. `solc` correctness is trusted.
+2. Keccak selector hashing uses one explicit axiom (cross-checked in CI).
+3. Linked external Yul libraries are trusted for semantics.
+4. Mapping slot collision freedom relies on the standard keccak assumption.
+5. Gas is out of scope for formal semantics.
 
-1. `solc` is trusted.
-2. Keccak selector hashing has one explicit axiom, continuously cross-checked in CI.
-3. External linked Yul libraries are trusted for semantics (only interface-level checks are enforced).
-4. Mapping slot collision freedom relies on the standard Ethereum keccak assumption.
-5. Gas is not formally modeled in proof semantics.
+## Main Audit Risks
 
-## Main Risks to Review
+1. Revert-state modeling gap at high-level semantics: confirm checks-before-effects discipline.
+2. Linked Yul libraries: audit separately as trusted code.
+3. Wrapping arithmetic: verify it is intended or guarded.
+4. AST/ContractSpec drift: review allowlist-backed differences explicitly.
 
-1. Revert-state modeling gap in high-level semantics: verify checks-before-effects discipline in contracts.
-2. External library linkage: audit linked Yul code as separate critical code.
-3. Wrapping arithmetic semantics: verify intentionality or explicit guards where checked behavior is expected.
-4. AST-vs-ContractSpec drift: watch the allowlist-backed diffs and require explicit review for any new drift.
+## Minimal Audit Checklist
 
-## Quick Auditor Checklist
+1. Confirm which path is used (`ContractSpec`, AST, or both).
+2. Read `AXIOMS.md`; verify the axiom set is minimal and justified.
+3. Read `TRUST_ASSUMPTIONS.md`; confirm deployment assumptions are acceptable.
+4. Run selector, Yul compileability, storage-layout, and doc consistency checks.
+5. If libraries are linked, include them in scope as TCB code.
 
-1. Confirm target contract compiles through `ContractSpec` path unless AST path is explicitly required.
-2. Read `AXIOMS.md` and verify current axiom list is minimal and justified.
-3. Read `TRUST_ASSUMPTIONS.md` and confirm all trust boundaries in your deployment are acceptable.
-4. Run CI scripts for selectors, Yul compileability, storage layout, and doc consistency.
-5. If libraries are linked, audit them separately and treat as part of TCB.
+## Readability Suggestions
 
-## How To Keep This Easy and Pleasant (Suggestions)
-
-1. Keep one page, one job: this file is orientation, not exhaustive proof detail.
-2. Use short "story" headings ("Where trust enters", "What can go wrong", "What to check first").
-3. Prefer concrete examples over abstract labels (show one real file per boundary).
-4. Keep numbers script-backed only; avoid hand-maintained metrics unless `check_doc_counts.py` enforces them.
-5. Every architecture change should update this file in the same PR so auditors never read stale boundaries.
+1. Keep this file as an orientation document, not a proof transcript.
+2. Use short sections with concrete file references.
+3. Keep all counts script-backed (`check_doc_counts.py`).
+4. Update this file in the same PR as any architecture/trust change.

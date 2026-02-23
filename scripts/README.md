@@ -84,6 +84,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`generate_evmyullean_capability_report.py`** - Deterministically generates `artifacts/evmyullean_capability_report.json` from `Compiler/Proofs/YulGeneration/Builtins.lean` and `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanAdapter.lean`, and emits `artifacts/evmyullean_unsupported_nodes.json` as a dedicated machine-readable unsupported-node artifact for adapter lowering gaps; supports `--check` mode for CI freshness gating
 - **`generate_evmyullean_adapter_report.py`** - Deterministically generates `artifacts/evmyullean_adapter_report.json` with constructor-level lowering coverage (`supported`/`partial`/`gap`) for `lowerExpr` and `lowerStmt` plus explicit adapter-gap reasons and runtime-seam status (`stub-none` vs `implemented`); supports `--check` mode for CI freshness gating
 - **`check_doc_counts.py`** - Validates theorem, axiom, test, suite, coverage, and contract counts across 14 documentation files (README, llms.txt, compiler.mdx, verification.mdx, research.mdx, index.mdx, core.mdx, examples.mdx, getting-started.mdx, TRUST_ASSUMPTIONS, VERIFICATION_STATUS, ROADMAP, test/README, layout.tsx), theorem-name completeness in verification.mdx tables, and proven-theorem counts in Property*.t.sol file headers
+- **`check_interop_matrix_sync.py`** - Ensures the Solidity interop support matrix in `docs/ROADMAP.md` and `docs/VERIFICATION_STATUS.md` stays synchronized (row coverage + status-column parity)
 - **`generate_verification_status.py`** - Deterministically generates `artifacts/verification_status.json` (theorem/test/axiom/sorry/toolchain metrics) and supports `--check` mode for CI freshness gating
 - **`check_solc_pin.py`** - Enforces pinned solc consistency across CI/tooling/docs: `verify.yml` (`SOLC_VERSION`, `SOLC_URL`, `SOLC_SHA256`), `foundry.toml` (`solc_version`), `setup-solc` action URL/SHA usage, and `TRUST_ASSUMPTIONS.md` pinned version line
 - **`check_axiom_locations.py`** - Validates that AXIOMS.md line number references match actual axiom locations in source files
@@ -95,6 +96,7 @@ These CI-critical scripts validate cross-layer consistency:
 # Run locally before submitting documentation changes
 python3 scripts/generate_verification_status.py
 python3 scripts/check_doc_counts.py
+python3 scripts/check_interop_matrix_sync.py
 
 # Run locally after modifying storage slots or adding contracts
 python3 scripts/check_storage_layout.py
@@ -190,16 +192,17 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 5 jobs:
 3. Contract file structure validation (`check_contract_structure.py`)
 4. Axiom location validation (`check_axiom_locations.py`)
 5. Documentation count validation (`check_doc_counts.py`)
-6. Solc pin consistency (`check_solc_pin.py`)
-7. Property manifest sync (`check_property_manifest_sync.py`)
-8. Storage layout consistency (`check_storage_layout.py`)
-9. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-10. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-11. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-12. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-13. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
-14. Lean hygiene (`check_lean_hygiene.py`)
-15. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+6. Solidity interop matrix sync (`check_interop_matrix_sync.py`)
+7. Solc pin consistency (`check_solc_pin.py`)
+8. Property manifest sync (`check_property_manifest_sync.py`)
+9. Storage layout consistency (`check_storage_layout.py`)
+10. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+11. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+12. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+13. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+14. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+15. Lean hygiene (`check_lean_hygiene.py`)
+16. Static gas model builtin coverage (`check_gas_model_coverage.py`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Keccak-256 self-test (`keccak256.py --self-test`)

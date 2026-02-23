@@ -451,20 +451,31 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
   | Stmt.setMappingUint fieldName keyExpr valueExpr =>
       match fields.findIdx? (·.name == fieldName) with
       | some idx =>
-          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
-          let key := evalExpr ctx state.storage fields paramNames externalFns keyExpr
-          let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
-          some (ctx, { state with storage := state.storage.setMapping baseSlot key value })
+          match fields[idx]? with
+          | none => none
+          | some f =>
+              let baseSlot := f.slot.getD idx
+              let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
+              let key := evalExpr ctx state.storage fields paramNames externalFns keyExpr
+              let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
+              let storage' := writeSlots.foldl (fun acc writeSlot => acc.setMapping writeSlot key value) state.storage
+              some (ctx, { state with storage := storage' })
       | none => none
 
   | Stmt.setMapping2 fieldName key1Expr key2Expr valueExpr =>
       match fields.findIdx? (·.name == fieldName) with
       | some idx =>
-          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
-          let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
-          let key2 := evalExpr ctx state.storage fields paramNames externalFns key2Expr
-          let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
-          some (ctx, { state with storage := state.storage.setMapping2 baseSlot key1 key2 value })
+          match fields[idx]? with
+          | none => none
+          | some f =>
+              let baseSlot := f.slot.getD idx
+              let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
+              let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
+              let key2 := evalExpr ctx state.storage fields paramNames externalFns key2Expr
+              let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
+              let storage' :=
+                writeSlots.foldl (fun acc writeSlot => acc.setMapping2 writeSlot key1 key2 value) state.storage
+              some (ctx, { state with storage := storage' })
       | none => none
 
   | Stmt.require condExpr _message =>

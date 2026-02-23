@@ -14,20 +14,25 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
-import argparse
 from pathlib import Path
 from typing import Any
 
-from property_utils import ROOT, collect_covered
+from property_utils import (
+    ROOT,
+    collect_covered,
+    load_exclusions,
+    load_manifest,
+    strip_lean_comments,
+)
 
 
 def get_manifest_counts() -> tuple[int, int, dict[str, int]]:
     """Return (total_theorems, num_categories, per_contract_counts)."""
-    manifest = ROOT / "test" / "property_manifest.json"
-    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data = load_manifest()
     per_contract = {k: len(v) for k, v in data.items()}
     total = sum(per_contract.values())
     return total, len(data), per_contract
@@ -35,14 +40,15 @@ def get_manifest_counts() -> tuple[int, int, dict[str, int]]:
 
 def _count_lean_lines(pattern: str) -> int:
     """Count lines matching *pattern* across all Lean files in Compiler/ and Verity/."""
+    matcher = re.compile(pattern)
     count = 0
     for d in [ROOT / "Compiler", ROOT / "Verity"]:
         if not d.exists():
             continue
         for lean in d.rglob("*.lean"):
-            text = lean.read_text(encoding="utf-8")
+            text = strip_lean_comments(lean.read_text(encoding="utf-8"))
             for line in text.splitlines():
-                if re.match(pattern, line):
+                if matcher.match(line):
                     count += 1
     return count
 
@@ -110,10 +116,7 @@ def get_diff_test_total() -> int:
 
 def get_exclusion_count() -> int:
     """Count total property exclusions from property_exclusions.json."""
-    exclusions = ROOT / "test" / "property_exclusions.json"
-    if not exclusions.exists():
-        return 0
-    data = json.loads(exclusions.read_text(encoding="utf-8"))
+    data = load_exclusions()
     return sum(len(v) for v in data.values())
 
 
@@ -288,9 +291,7 @@ def check_verification_theorem_names(path: Path) -> list[str]:
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8")
-    manifest = json.loads(
-        (ROOT / "test" / "property_manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = load_manifest()
     errors: list[str] = []
 
     # Map verification.mdx section headers to manifest contract names
@@ -408,6 +409,16 @@ def main() -> None:
                     str(total_theorems),
                 ),
                 (
+                    "README theorem badge value",
+                    re.compile(r"img\.shields\.io/badge/theorems-(\d+)-"),
+                    str(total_theorems),
+                ),
+                (
+                    "README theorem badge alt text",
+                    re.compile(r'alt="(\d+) Theorems"'),
+                    str(total_theorems),
+                ),
+                (
                     "category count",
                     re.compile(r"theorems across (\d+) categor"),
                     str(num_categories),
@@ -456,6 +467,20 @@ def main() -> None:
                     "Foundry test count in Testing section",
                     re.compile(r"Foundry tests.*\((\d+) tests\)"),
                     str(test_count),
+                ),
+                (
+                    "quick-start test count",
+                    re.compile(
+                        r"FOUNDRY_PROFILE=difftest forge test\s+#\s+(\d+) tests across"
+                    ),
+                    str(test_count),
+                ),
+                (
+                    "quick-start suite count",
+                    re.compile(
+                        r"FOUNDRY_PROFILE=difftest forge test\s+#\s+\d+ tests across (\d+) suites"
+                    ),
+                    str(suite_count),
                 ),
             ]
     errors.extend(check_and_maybe_fix(readme, readme_checks, args.fix))
@@ -558,14 +583,34 @@ def main() -> None:
                     str(test_count),
                 ),
                 (
+                    "expected test denominator",
+                    re.compile(r"Expected: \d+/(\d+) tests pass"),
+                    str(test_count),
+                ),
+                (
                     "Foundry test count",
                     re.compile(r"\*\*Foundry Tests\*\*: (\d+)/"),
+                    str(test_count),
+                ),
+                (
+                    "Foundry test denominator",
+                    re.compile(r"\*\*Foundry Tests\*\*: \d+/(\d+)"),
                     str(test_count),
                 ),
                 (
                     "test suite count",
                     re.compile(r"Ran (\d+) test suites:"),
                     str(suite_count),
+                ),
+                (
+                    "tests passed count",
+                    re.compile(r": (\d+) tests passed,"),
+                    str(test_count),
+                ),
+                (
+                    "total tests count",
+                    re.compile(r"\((\d+) total tests\)"),
+                    str(test_count),
                 ),
                 (
                     "example contract count",
@@ -786,6 +831,16 @@ def main() -> None:
                     "AST equiv theorem count",
                     re.compile(r"equivalence proofs \((\d+) theorems"),
                     str(ast_equiv_count),
+                ),
+                (
+                    "Layer 1 theorem count",
+                    re.compile(r"Layer 1 Complete\*\*: (\d+) theorems across"),
+                    str(total_theorems),
+                ),
+                (
+                    "Layer 1 category count",
+                    re.compile(r"Layer 1 Complete\*\*: \d+ theorems across (\d+) categor"),
+                    str(num_categories),
                 ),
             ],
             args.fix,

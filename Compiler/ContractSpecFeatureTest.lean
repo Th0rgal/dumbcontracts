@@ -3866,6 +3866,86 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected compileChecked to reject mismatched selectors")
 
 #eval! do
+  let externalModelSpec : ContractSpec := {
+    name := "ExternalModelSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "known_fn" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  let tx : Transaction := { sender := 0, functionName := "f", args := [41] }
+  let withoutModel := interpretSpec externalModelSpec SpecStorage.empty tx
+  if withoutModel.success then
+    throw (IO.userError "✗ SpecInterpreter should revert when externalFns model is missing")
+  let withModel := interpretSpec externalModelSpec SpecStorage.empty tx
+    [("known_fn", fun args => match args with | [x] => x + 1 | _ => 0)]
+  if withModel.success != true || withModel.returnValue != some 42 then
+    throw (IO.userError "✗ SpecInterpreter externalFns model mismatch")
+  IO.println "✓ SpecInterpreter externalFns model required and applied"
+
+#eval! do
+  let internalExternalSpec : ContractSpec := {
+    name := "InternalExternalSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "g"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [
+          Stmt.letVar "y" (Expr.externalCall "known_fn" [Expr.param "x"]),
+          Stmt.stop
+        ]
+      },
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        body := [
+          Stmt.internalCall "g" [Expr.param "x"],
+          Stmt.stop
+        ]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  let ctx : EvalContext := {
+    sender := 0
+    msgValue := 0
+    blockTimestamp := 0
+    params := [7]
+    paramTypes := []
+    constructorArgs := []
+    constructorParamTypes := []
+    localVars := []
+    arrayParams := []
+  }
+  if (execFunctionFuel internalExternalSpec "f" ctx [] SpecStorage.empty).isSome then
+    throw (IO.userError "✗ execFunctionFuel should revert when internal callee has unmodeled external calls")
+  let modeled := execFunctionFuel internalExternalSpec "f" ctx
+    [("known_fn", fun args => args.head?.getD 0)] SpecStorage.empty
+  if modeled.isNone then
+    throw (IO.userError "✗ execFunctionFuel should succeed when internal callee external model is provided")
+  IO.println "✓ SpecInterpreter fuel path enforces external model in internal calls"
+
+#eval! do
   let layoutSpec : ContractSpec := {
     name := "LayoutAwareInterpreter"
     fields := [

@@ -40,7 +40,9 @@ ABSTRACT_STORE_ENTRY_REF_RE = re.compile(r"Compiler\.Proofs\.abstractStoreMappin
 DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE = re.compile(
     r"Compiler\.Proofs\.(?:mappingTag|encodeMappingSlot|decodeMappingSlot|encodeNestedMappingSlot|normalizeMappingBaseSlot)"
 )
-LEGACY_ALIAS_SYMBOL_RE = re.compile(r"\b(?:mappingTag|encodeMappingSlot|decodeMappingSlot)\b")
+LEGACY_ALIAS_SYMBOL_RE = re.compile(
+    r"\b(?:mappingTag|encodeMappingSlot|decodeMappingSlot|encodeNestedMappingSlot|normalizeMappingBaseSlot)\b"
+)
 ACTIVE_BACKEND_KECCAK_RE = re.compile(
     r"def\s+activeMappingSlotBackend\s*:\s*MappingSlotBackend\s*:=\s*\.keccak"
 )
@@ -156,7 +158,8 @@ def main() -> int:
 
         if LEGACY_ALIAS_SYMBOL_RE.search(text):
             errors.append(
-                f"{rel}: legacy mapping symbol names (mappingTag/encodeMappingSlot/decodeMappingSlot) "
+                f"{rel}: legacy mapping symbol names "
+                "(mappingTag/encodeMappingSlot/decodeMappingSlot/encodeNestedMappingSlot/normalizeMappingBaseSlot) "
                 "are disallowed; use MappingSlot/solidityMappingSlot-based names directly"
             )
 

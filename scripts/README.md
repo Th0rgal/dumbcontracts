@@ -91,6 +91,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_verify_ci_jobs_docs_sync.py`** - Ensures `.github/workflows/verify.yml` top-level job order matches the CI job summary list in this README (`## CI Integration`)
 - **`check_verify_multiseed_sync.py`** - Ensures `foundry-multi-seed` seed lists stay synchronized across `.github/workflows/verify.yml`, `scripts/test_multiple_seeds.sh`, and this README
 - **`check_verify_foundry_shard_sync.py`** - Ensures `foundry` shard settings stay synchronized across `.github/workflows/verify.yml` (`matrix.shard_index`, `DIFFTEST_SHARD_COUNT`, `DIFFTEST_RANDOM_SEED`) and this README summary
+- **`check_verify_foundry_patched_sync.py`** - Ensures `foundry-patched` smoke-test settings stay synchronized across `.github/workflows/verify.yml` and this README summary (seed, single-shard mode, and `--no-match-test "Random10000"`)
 - **`generate_verification_status.py`** - Deterministically generates `artifacts/verification_status.json` (theorem/test/axiom/sorry/toolchain metrics) and supports `--check` mode for CI freshness gating
 - **`check_solc_pin.py`** - Enforces pinned solc consistency across CI/tooling/docs: `verify.yml` (`SOLC_VERSION`, `SOLC_URL`, `SOLC_SHA256`), `foundry.toml` (`solc_version`), `setup-solc` action URL/SHA usage, and `TRUST_ASSUMPTIONS.md` pinned version line
 - **`check_axiom_locations.py`** - Validates that AXIOMS.md line number references match actual axiom locations in source files
@@ -109,6 +110,7 @@ python3 scripts/check_verify_build_docs_sync.py
 python3 scripts/check_verify_ci_jobs_docs_sync.py
 python3 scripts/check_verify_multiseed_sync.py
 python3 scripts/check_verify_foundry_shard_sync.py
+python3 scripts/check_verify_foundry_patched_sync.py
 
 # Run locally after modifying storage slots or adding contracts
 python3 scripts/check_storage_layout.py
@@ -212,17 +214,18 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 11. Verify CI job/docs sync (`check_verify_ci_jobs_docs_sync.py`)
 12. Verify multi-seed sync (`check_verify_multiseed_sync.py`)
 13. Verify foundry shard sync (`check_verify_foundry_shard_sync.py`)
-14. Solc pin consistency (`check_solc_pin.py`)
-15. Property manifest sync (`check_property_manifest_sync.py`)
-16. Storage layout consistency (`check_storage_layout.py`)
-17. Lean hygiene (`check_lean_hygiene.py`)
-18. Static gas model builtin coverage (`check_gas_model_coverage.py`)
-19. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-20. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-21. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
-22. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-23. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-24. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+14. Verify foundry-patched sync (`check_verify_foundry_patched_sync.py`)
+15. Solc pin consistency (`check_solc_pin.py`)
+16. Property manifest sync (`check_property_manifest_sync.py`)
+17. Storage layout consistency (`check_storage_layout.py`)
+18. Lean hygiene (`check_lean_hygiene.py`)
+19. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+20. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+21. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+22. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
+23. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+24. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+25. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
@@ -238,7 +241,7 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 
 **`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42
-**`foundry-patched`** — Patched-Yul smoke gate on differential/property harness (seed 42, no `Random10000`)
+**`foundry-patched`** — Patched-Yul smoke gate on differential/property harness (seed 42, single shard, no `Random10000`)
 **`foundry-multi-seed`** — 7-seed flakiness detection (seeds: 0, 1, 42, 123, 999, 12345, 67890)
 
 ## Adding New Property Tests

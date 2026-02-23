@@ -2859,6 +2859,75 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected undeclared Expr.localVar to fail compilation")
 
 #eval! do
+  let functionConstructorArgSpec : ContractSpec := {
+    name := "FunctionConstructorArgSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badCtorArg"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.constructorArg 0)]
+      }
+    ]
+  }
+  match compile functionConstructorArgSpec [1] with
+  | .error err =>
+      if !contains err "function 'badCtorArg' uses Expr.constructorArg outside constructor scope" then
+        throw (IO.userError s!"✗ function Expr.constructorArg scope diagnostic mismatch: {err}")
+      IO.println "✓ function Expr.constructorArg scope diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected function Expr.constructorArg to fail compilation")
+
+#eval! do
+  let constructorArgOutOfRangeSpec : ContractSpec := {
+    name := "ConstructorArgOutOfRangeSpec"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := some {
+      params := [{ name := "a", ty := ParamType.uint256 }]
+      isPayable := false
+      body := [Stmt.setStorage "x" (Expr.constructorArg 1)]
+    }
+    functions := [
+      { name := "noop"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile constructorArgOutOfRangeSpec [1] with
+  | .error err =>
+      if !contains err "constructor Expr.constructorArg 1 is out of bounds for 1 constructor parameter(s)" then
+        throw (IO.userError s!"✗ constructor Expr.constructorArg bounds diagnostic mismatch: {err}")
+      IO.println "✓ constructor Expr.constructorArg bounds diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected out-of-range constructor Expr.constructorArg to fail compilation")
+
+#eval! do
+  let constructorArgInRangeSpec : ContractSpec := {
+    name := "ConstructorArgInRangeSpec"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := some {
+      params := [{ name := "a", ty := ParamType.uint256 }]
+      isPayable := false
+      body := [Stmt.setStorage "x" (Expr.constructorArg 0)]
+    }
+    functions := [
+      { name := "noop"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile constructorArgInRangeSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected in-range constructor Expr.constructorArg to compile: {err}")
+  | .ok _ =>
+      IO.println "✓ constructor Expr.constructorArg in-range accepted"
+
+#eval! do
   let unknownArrayLengthParamSpec : ContractSpec := {
     name := "UnknownArrayLengthParamSpec"
     fields := []

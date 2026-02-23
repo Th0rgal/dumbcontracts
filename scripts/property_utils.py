@@ -19,17 +19,19 @@ YUL_DIR = ROOT / "compiler" / "yul"
 
 # Regex patterns for extracting property tags from test files
 PROPERTY_WITH_NUM_RE = re.compile(
-    r"Property\s+\d+[A-Za-z]*\s*:\s*([A-Za-z0-9_']+)(?:\s*\(.*\))?\s*$"
+    r"^\s*///\s*Property\s+\d+[A-Za-z]*\s*:\s*([A-Za-z0-9_']+)(?:\s*\(.*\))?\s*$"
 )
 PROPERTY_SIMPLE_RE = re.compile(
-    r"Property\s*:\s*([A-Za-z0-9_']+)(?:\s*\(.*\))?\s*$"
+    r"^\s*///\s*Property\s*:\s*([A-Za-z0-9_']+)(?:\s*\(.*\))?\s*$"
 )
 FILE_RE = re.compile(r"^Property(.+)\.t\.sol$")
 CONTRACT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 THEOREM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
 
 # Regex pattern for extracting theorems from Lean files
-THEOREM_RE = re.compile(r"^\s*(theorem|lemma)\s+([A-Za-z0-9_']+)")
+THEOREM_RE = re.compile(
+    r"^\s*(?:@\[[^\]]+\]\s*)*(?:(?:private|protected)\s+)?(theorem|lemma)\s+([A-Za-z0-9_']+)"
+)
 
 
 def _require_contract_identifier(contract: str, source: Path) -> str:
@@ -212,7 +214,8 @@ def collect_theorems(path: Path) -> list[str]:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
         raise SystemExit(f"Cannot read Lean proof file {path}: {exc}") from exc
-    for line in text.splitlines():
+    stripped = strip_lean_comments(text)
+    for line in stripped.splitlines():
         match = THEOREM_RE.match(line)
         if match:
             names.append(_require_theorem_identifier(match.group(2), path))

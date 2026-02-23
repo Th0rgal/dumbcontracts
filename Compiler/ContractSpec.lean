@@ -1148,6 +1148,26 @@ private partial def validateReturnShapesInStmt (fnName : String)
       body.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
   | _ => pure ()
 
+mutual
+  private partial def stmtListAlwaysReturnsOrReverts : List Stmt → Bool
+    | [] => false
+    | stmt :: rest =>
+        if stmtAlwaysReturnsOrReverts stmt then
+          true
+        else
+          stmtListAlwaysReturnsOrReverts rest
+
+  private partial def stmtAlwaysReturnsOrReverts : Stmt → Bool
+    | Stmt.return _ | Stmt.returnValues _ | Stmt.returnArray _
+    | Stmt.returnBytes _ | Stmt.returnStorageWords _
+    | Stmt.revertError _ _ | Stmt.revertReturndata =>
+        true
+    | Stmt.ite _ thenBranch elseBranch =>
+        stmtListAlwaysReturnsOrReverts thenBranch && stmtListAlwaysReturnsOrReverts elseBranch
+    | _ =>
+        false
+end
+
 private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.literal _ => false
   | Expr.param _ => false
@@ -1303,6 +1323,8 @@ private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := d
     throw s!"Compilation error: function '{spec.name}' is marked pure but reads state/environment (Issue #734)"
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
+  if !returns.isEmpty && !stmtListAlwaysReturnsOrReverts spec.body then
+    throw s!"Compilation error: function '{spec.name}' declares return values but not all control-flow paths end in return/revert (Issue #738)"
   spec.body.forM (validateStmtParamReferences spec.name spec.params)
   validateFunctionIdentifierReferences spec
 

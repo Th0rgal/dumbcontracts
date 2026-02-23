@@ -2488,6 +2488,75 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected returnValues arity mismatch to fail compilation")
 
 #eval! do
+  let missingReturnPathSpec : ContractSpec := {
+    name := "MissingReturnPathRejected"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bad"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile missingReturnPathSpec [1] with
+  | .error err =>
+      if !contains err "not all control-flow paths end in return/revert" then
+        throw (IO.userError s!"✗ missing return-path diagnostic mismatch: {err}")
+      IO.println "✓ missing return-path validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected missing return path on declared-return function to fail compilation")
+
+#eval! do
+  let bothBranchesReturnSpec : ContractSpec := {
+    name := "BothBranchesReturnAccepted"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "ok"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.ite (Expr.eq (Expr.param "x") (Expr.literal 0))
+            [Stmt.return (Expr.literal 1)]
+            [Stmt.return (Expr.literal 2)]
+        ]
+      }
+    ]
+  }
+  match compile bothBranchesReturnSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected both-branches-return function to compile, got: {err}")
+  | .ok _ =>
+      IO.println "✓ both-branches return accepted"
+
+#eval! do
+  let branchMissingReturnSpec : ContractSpec := {
+    name := "BranchMissingReturnRejected"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badBranch"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.ite (Expr.eq (Expr.param "x") (Expr.literal 0))
+            [Stmt.return (Expr.literal 1)]
+            [Stmt.stop]
+        ]
+      }
+    ]
+  }
+  match compile branchMissingReturnSpec [1] with
+  | .error err =>
+      if !contains err "not all control-flow paths end in return/revert" then
+        throw (IO.userError s!"✗ branch missing return diagnostic mismatch: {err}")
+      IO.println "✓ branch missing return-path validation"
+  | .ok _ =>
+      throw (IO.userError "✗ expected branch-missing-return function to fail compilation")
+
+#eval! do
   let fallbackSpec : ContractSpec := {
     name := "FallbackSupported"
     fields := []

@@ -34,13 +34,21 @@ def constructor_spec (initialOwner : Address) (s s' : ContractState) : Prop :=
 def balanceOf_spec (addr : Address) (result : Uint256) (s : ContractState) : Prop :=
   result = s.storageMap 3 addr
 
-/-- ownerOf: returns the decoded owner word for `tokenId` -/
-def ownerOf_spec (tokenId : Uint256) (result : Address) (s : ContractState) : Prop :=
-  result = wordToAddress (s.storageMapUint 4 tokenId)
+/-- ownerOf: reverts when `tokenId` is unminted, otherwise returns token owner -/
+def ownerOf_spec (tokenId : Uint256) (result : ContractResult Address) (s : ContractState) : Prop :=
+  let ownerWord := s.storageMapUint 4 tokenId
+  if ownerWord != 0 then
+    result = ContractResult.success (wordToAddress ownerWord) s
+  else
+    result = ContractResult.revert "Token does not exist" s
 
-/-- getApproved: returns the decoded approval word for `tokenId` -/
-def getApproved_spec (tokenId : Uint256) (result : Address) (s : ContractState) : Prop :=
-  result = wordToAddress (s.storageMapUint 5 tokenId)
+/-- getApproved: reverts when `tokenId` is unminted, otherwise returns approval -/
+def getApproved_spec (tokenId : Uint256) (result : ContractResult Address) (s : ContractState) : Prop :=
+  let ownerWord := s.storageMapUint 4 tokenId
+  if ownerWord != 0 then
+    result = ContractResult.success (wordToAddress (s.storageMapUint 5 tokenId)) s
+  else
+    result = ContractResult.revert "Token does not exist" s
 
 /-- isApprovedForAll: nonzero flag means approved -/
 def isApprovedForAll_spec (ownerAddr operator : Address) (result : Bool) (s : ContractState) : Prop :=

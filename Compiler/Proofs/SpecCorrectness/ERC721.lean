@@ -20,12 +20,12 @@ theorem erc721_balanceOf_spec_correct (s : ContractState) (addr : Address) :
 
 /-- Spec/EDSL agreement for read-only `ownerOf`. -/
 theorem erc721_ownerOf_spec_correct (s : ContractState) (tokenId : Uint256) :
-    ownerOf_spec tokenId ((Verity.Examples.ERC721.ownerOf tokenId).runValue s) s := by
+    ownerOf_spec tokenId ((Verity.Examples.ERC721.ownerOf tokenId).run s) s := by
   simpa using Verity.Proofs.ERC721.ownerOf_meets_spec s tokenId
 
 /-- Spec/EDSL agreement for read-only `getApproved`. -/
 theorem erc721_getApproved_spec_correct (s : ContractState) (tokenId : Uint256) :
-    getApproved_spec tokenId ((Verity.Examples.ERC721.getApproved tokenId).runValue s) s := by
+    getApproved_spec tokenId ((Verity.Examples.ERC721.getApproved tokenId).run s) s := by
   simpa using Verity.Proofs.ERC721.getApproved_meets_spec s tokenId
 
 /-- Spec/EDSL agreement for read-only `isApprovedForAll`. -/

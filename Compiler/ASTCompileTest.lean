@@ -45,6 +45,12 @@ private def assertContains (label : String) (rendered : String) (needles : List 
       throw (IO.userError s!"✗ {label}: expected substring '{needle}' not found in:\n{rendered}")
   IO.println s!"✓ {label}"
 
+private def assertNotContains (label : String) (rendered : String) (needles : List String) : IO Unit := do
+  for needle in needles do
+    if contains rendered needle then
+      throw (IO.userError s!"✗ {label}: unexpected substring '{needle}' found in:\n{rendered}")
+  IO.println s!"✓ {label}"
+
 /-!
 ## SimpleStorage
 -/
@@ -165,6 +171,17 @@ private def assertContains (label : String) (rendered : String) (needles : List 
   let rendered := renderStmts (compileStmt Verity.AST.SimpleToken.transferAST)
   -- "Insufficient balance" is ABI-encoded in revertWithMessage (hex), not plain text
   assertContains "SimpleToken.transfer" rendered ["mappingSlot", "revert(0,", "__ite_cond"]
+
+#eval! do
+  let stmt : Stmt :=
+    Stmt.letUint "__ite_cond" (Expr.lit 7)
+      (Stmt.ite (Expr.lit 1)
+        (Stmt.ret (Expr.var "__ite_cond"))
+        (Stmt.ret (Expr.lit 0)))
+  let rendered := renderStmts (compileStmt stmt)
+  assertContains "Stmt.ite temp avoids local collision" rendered
+    ["let __ite_cond := 7", "let __ite_cond_1 := 1", "mstore(0, __ite_cond)"]
+  assertNotContains "Stmt.ite temp avoids local collision" rendered ["mstore(0, __ite_cond_1)"]
 
 #eval! do
   let rendered := renderStmts (compileStmt Verity.AST.SimpleToken.balanceOfAST)

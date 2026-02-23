@@ -2986,4 +2986,31 @@ private def featureSpec : ContractSpec := {
   | .ok _ =>
       throw (IO.userError "✗ expected fallback view/pure mutability conflict to fail compilation")
 
+#eval! do
+  let iteNameCollisionSpec : ContractSpec := {
+    name := "IteNameCollision"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "__ite_cond" (Expr.literal 7),
+          Stmt.ite (Expr.literal 1)
+            [Stmt.return (Expr.localVar "__ite_cond")]
+            [Stmt.return (Expr.literal 0)]
+        ]
+      }
+    ]
+  }
+  match compile iteNameCollisionSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ ite temp collision regression compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "ite temp avoids local collision" rendered
+        ["let __ite_cond := 7", "let __ite_cond_1 := 1", "mstore(0, __ite_cond)"]
+      assertNotContains "ite temp avoids local collision" rendered ["mstore(0, __ite_cond_1)"]
+
 end Compiler.ContractSpecFeatureTest

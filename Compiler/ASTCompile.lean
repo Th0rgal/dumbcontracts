@@ -27,6 +27,62 @@ namespace Compiler.ASTCompile
 open Verity.AST
 open Compiler.ContractSpec (revertWithMessage uint256Modulus)
 
+private def pickFreshName (base : String) (usedNames : List String) : String :=
+  if !usedNames.contains base then
+    base
+  else
+    let rec go (suffix : Nat) (remaining : Nat) : String :=
+      let candidate := s!"{base}_{suffix}"
+      if !usedNames.contains candidate then
+        candidate
+      else
+        match remaining with
+        | 0 => s!"{base}_fresh"
+        | n + 1 => go (suffix + 1) n
+    go 1 usedNames.length
+
+private partial def collectExprNames : Expr → List String
+  | .lit _ => []
+  | .var name => [name]
+  | .varAddr name => [name]
+  | .storage _ => []
+  | .storageAddr _ => []
+  | .mapping _ key => collectExprNames key
+  | .sender => []
+  | .add a b => collectExprNames a ++ collectExprNames b
+  | .sub a b => collectExprNames a ++ collectExprNames b
+  | .mul a b => collectExprNames a ++ collectExprNames b
+  | .eqAddr a b => collectExprNames a ++ collectExprNames b
+  | .ge a b => collectExprNames a ++ collectExprNames b
+  | .gt a b => collectExprNames a ++ collectExprNames b
+  | .safeAdd a b => collectExprNames a ++ collectExprNames b
+  | .safeSub a b => collectExprNames a ++ collectExprNames b
+
+private partial def collectStmtNames : Stmt → List String
+  | .ret e => collectExprNames e
+  | .retAddr e => collectExprNames e
+  | .stop => []
+  | .bindUint name expr rest =>
+      name :: collectExprNames expr ++ collectStmtNames rest
+  | .bindAddr name expr rest =>
+      name :: collectExprNames expr ++ collectStmtNames rest
+  | .bindBool name expr rest =>
+      name :: collectExprNames expr ++ collectStmtNames rest
+  | .letUint name expr rest =>
+      name :: collectExprNames expr ++ collectStmtNames rest
+  | .sstore _ valExpr rest =>
+      collectExprNames valExpr ++ collectStmtNames rest
+  | .sstoreAddr _ valExpr rest =>
+      collectExprNames valExpr ++ collectStmtNames rest
+  | .mstore _ keyExpr valExpr rest =>
+      collectExprNames keyExpr ++ collectExprNames valExpr ++ collectStmtNames rest
+  | .require condExpr _ rest =>
+      collectExprNames condExpr ++ collectStmtNames rest
+  | .requireSome name optExpr _ rest =>
+      name :: collectExprNames optExpr ++ collectStmtNames rest
+  | .ite condExpr thenBranch elseBranch =>
+      collectExprNames condExpr ++ collectStmtNames thenBranch ++ collectStmtNames elseBranch
+
 /-!
 ## Expression Compilation
 
@@ -84,9 +140,7 @@ Variable binding (`.bindUint`, `.bindAddr`, `.letUint`) compiles to
 `let name := expr` in Yul. Storage writes compile to `sstore`.
 -/
 
-/-- Compile an AST statement to a list of Yul statements.
-    Flattens the continuation-passing style into a sequential list. -/
-def compileStmt : Stmt → List Yul.YulStmt
+private def compileStmtWithScope (inScopeNames : List String) : Stmt → List Yul.YulStmt
   -- Terminals
   | .ret e =>
       [ Yul.YulStmt.expr (Yul.YulExpr.call "mstore" [Yul.YulExpr.lit 0, compileExpr e]),
@@ -99,38 +153,38 @@ def compileStmt : Stmt → List Yul.YulStmt
 
   -- Monadic binds: compile to `let name := expr; rest`
   | .bindUint name expr rest =>
-      Yul.YulStmt.let_ name (compileExpr expr) :: compileStmt rest
+      Yul.YulStmt.let_ name (compileExpr expr) :: compileStmtWithScope (name :: inScopeNames) rest
   | .bindAddr name expr rest =>
-      Yul.YulStmt.let_ name (compileExpr expr) :: compileStmt rest
+      Yul.YulStmt.let_ name (compileExpr expr) :: compileStmtWithScope (name :: inScopeNames) rest
   | .bindBool name expr rest =>
       -- Match denotational semantics: bool bindings are canonicalized to 0/1.
       Yul.YulStmt.let_ name
         (Yul.YulExpr.call "iszero" [Yul.YulExpr.call "iszero" [compileExpr expr]])
-        :: compileStmt rest
+        :: compileStmtWithScope (name :: inScopeNames) rest
 
   -- Pure let
   | .letUint name expr rest =>
-      Yul.YulStmt.let_ name (compileExpr expr) :: compileStmt rest
+      Yul.YulStmt.let_ name (compileExpr expr) :: compileStmtWithScope (name :: inScopeNames) rest
 
   -- Storage writes
   | .sstore slot valExpr rest =>
       Yul.YulStmt.expr (Yul.YulExpr.call "sstore" [
         Yul.YulExpr.lit slot, compileExpr valExpr
-      ]) :: compileStmt rest
+      ]) :: compileStmtWithScope inScopeNames rest
   | .sstoreAddr slot valExpr rest =>
       Yul.YulStmt.expr (Yul.YulExpr.call "sstore" [
         Yul.YulExpr.lit slot, compileExpr valExpr
-      ]) :: compileStmt rest
+      ]) :: compileStmtWithScope inScopeNames rest
   | .mstore slot keyExpr valExpr rest =>
       Yul.YulStmt.expr (Yul.YulExpr.call "sstore" [
         Yul.YulExpr.call "mappingSlot" [Yul.YulExpr.lit slot, compileExpr keyExpr],
         compileExpr valExpr
-      ]) :: compileStmt rest
+      ]) :: compileStmtWithScope inScopeNames rest
 
   -- Require guard
   | .require condExpr msg rest =>
       Yul.YulStmt.if_ (compileFailCond condExpr) (revertWithMessage msg)
-      :: compileStmt rest
+      :: compileStmtWithScope inScopeNames rest
 
   -- RequireSome: bind from Option-returning expression.
   -- In the EDSL, this is `let x ← requireSomeUint (safeAdd a b) msg`.
@@ -144,7 +198,7 @@ def compileStmt : Stmt → List Yul.YulStmt
       [ Yul.YulStmt.let_ name result,
         Yul.YulStmt.if_ (Yul.YulExpr.call "lt" [Yul.YulExpr.ident name, aExpr])
           (revertWithMessage msg) ]
-      ++ compileStmt rest
+      ++ compileStmtWithScope (name :: inScopeNames) rest
   | .requireSome name (.safeSub a b) msg rest =>
       let aExpr := compileExpr a
       let bExpr := compileExpr b
@@ -152,19 +206,26 @@ def compileStmt : Stmt → List Yul.YulStmt
       [ Yul.YulStmt.if_ (Yul.YulExpr.call "lt" [aExpr, bExpr])
           (revertWithMessage msg),
         Yul.YulStmt.let_ name (Yul.YulExpr.call "sub" [aExpr, bExpr]) ]
-      ++ compileStmt rest
+      ++ compileStmtWithScope (name :: inScopeNames) rest
   | .requireSome name _optExpr _msg rest =>
       -- Fallback for other Option expressions (shouldn't occur in practice)
       Yul.YulStmt.let_ name (Yul.YulExpr.lit 0)
-      :: compileStmt rest
+      :: compileStmtWithScope (name :: inScopeNames) rest
 
   -- If-then-else
   | .ite condExpr thenBranch elseBranch =>
+      let usedNames := inScopeNames ++ collectExprNames condExpr ++ collectStmtNames thenBranch ++ collectStmtNames elseBranch
+      let condName := pickFreshName "__ite_cond" usedNames
       [ Yul.YulStmt.block (
-          [ Yul.YulStmt.let_ "__ite_cond" (compileExpr condExpr) ] ++
-          [ Yul.YulStmt.switch (Yul.YulExpr.ident "__ite_cond")
-              [(1, compileStmt thenBranch)]
-              (some (compileStmt elseBranch)) ]
+          [ Yul.YulStmt.let_ condName (compileExpr condExpr) ] ++
+          [ Yul.YulStmt.switch (Yul.YulExpr.ident condName)
+              [(1, compileStmtWithScope inScopeNames thenBranch)]
+              (some (compileStmtWithScope inScopeNames elseBranch)) ]
         ) ]
+
+/-- Compile an AST statement to a list of Yul statements.
+    Flattens the continuation-passing style into a sequential list. -/
+def compileStmt : Stmt → List Yul.YulStmt :=
+  compileStmtWithScope []
 
 end Compiler.ASTCompile

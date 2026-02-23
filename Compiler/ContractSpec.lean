@@ -479,6 +479,107 @@ def internalFunctionPrefix : String := "internal_"
 def internalFunctionYulName (name : String) : String :=
   s!"{internalFunctionPrefix}{name}"
 
+private def pickFreshName (base : String) (usedNames : List String) : String :=
+  if !usedNames.contains base then
+    base
+  else
+    let rec go (suffix : Nat) (remaining : Nat) : String :=
+      let candidate := s!"{base}_{suffix}"
+      if !usedNames.contains candidate then
+        candidate
+      else
+        match remaining with
+        | 0 => s!"{base}_fresh"
+        | n + 1 => go (suffix + 1) n
+    go 1 usedNames.length
+
+mutual
+private partial def collectExprNames : Expr → List String
+  | Expr.literal _ => []
+  | Expr.param name => [name]
+  | Expr.constructorArg _ => []
+  | Expr.storage field => [field]
+  | Expr.mapping field key => field :: collectExprNames key
+  | Expr.mapping2 field key1 key2 => field :: collectExprNames key1 ++ collectExprNames key2
+  | Expr.mappingUint field key => field :: collectExprNames key
+  | Expr.caller => []
+  | Expr.msgValue => []
+  | Expr.blockTimestamp => []
+  | Expr.call gas target value inOffset inSize outOffset outSize =>
+      collectExprNames gas ++ collectExprNames target ++ collectExprNames value ++
+      collectExprNames inOffset ++ collectExprNames inSize ++
+      collectExprNames outOffset ++ collectExprNames outSize
+  | Expr.staticcall gas target inOffset inSize outOffset outSize =>
+      collectExprNames gas ++ collectExprNames target ++ collectExprNames inOffset ++
+      collectExprNames inSize ++ collectExprNames outOffset ++ collectExprNames outSize
+  | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
+      collectExprNames gas ++ collectExprNames target ++ collectExprNames inOffset ++
+      collectExprNames inSize ++ collectExprNames outOffset ++ collectExprNames outSize
+  | Expr.returndataSize => []
+  | Expr.returndataOptionalBoolAt outOffset => collectExprNames outOffset
+  | Expr.localVar name => [name]
+  | Expr.externalCall name args => name :: collectExprListNames args
+  | Expr.internalCall name args => name :: collectExprListNames args
+  | Expr.arrayLength name => [name]
+  | Expr.arrayElement name index => name :: collectExprNames index
+  | Expr.add a b => collectExprNames a ++ collectExprNames b
+  | Expr.sub a b => collectExprNames a ++ collectExprNames b
+  | Expr.mul a b => collectExprNames a ++ collectExprNames b
+  | Expr.div a b => collectExprNames a ++ collectExprNames b
+  | Expr.mod a b => collectExprNames a ++ collectExprNames b
+  | Expr.bitAnd a b => collectExprNames a ++ collectExprNames b
+  | Expr.bitOr a b => collectExprNames a ++ collectExprNames b
+  | Expr.bitXor a b => collectExprNames a ++ collectExprNames b
+  | Expr.bitNot a => collectExprNames a
+  | Expr.shl shift value => collectExprNames shift ++ collectExprNames value
+  | Expr.shr shift value => collectExprNames shift ++ collectExprNames value
+  | Expr.eq a b => collectExprNames a ++ collectExprNames b
+  | Expr.ge a b => collectExprNames a ++ collectExprNames b
+  | Expr.gt a b => collectExprNames a ++ collectExprNames b
+  | Expr.lt a b => collectExprNames a ++ collectExprNames b
+  | Expr.le a b => collectExprNames a ++ collectExprNames b
+  | Expr.logicalAnd a b => collectExprNames a ++ collectExprNames b
+  | Expr.logicalOr a b => collectExprNames a ++ collectExprNames b
+  | Expr.logicalNot a => collectExprNames a
+
+private partial def collectExprListNames : List Expr → List String
+  | [] => []
+  | expr :: rest => collectExprNames expr ++ collectExprListNames rest
+
+private partial def collectStmtNames : Stmt → List String
+  | Stmt.letVar name value => name :: collectExprNames value
+  | Stmt.assignVar name value => name :: collectExprNames value
+  | Stmt.setStorage field value => field :: collectExprNames value
+  | Stmt.setMapping field key value => field :: collectExprNames key ++ collectExprNames value
+  | Stmt.setMapping2 field key1 key2 value =>
+      field :: collectExprNames key1 ++ collectExprNames key2 ++ collectExprNames value
+  | Stmt.setMappingUint field key value => field :: collectExprNames key ++ collectExprNames value
+  | Stmt.require cond _ => collectExprNames cond
+  | Stmt.requireError cond errorName args => errorName :: collectExprNames cond ++ collectExprListNames args
+  | Stmt.revertError errorName args => errorName :: collectExprListNames args
+  | Stmt.return value => collectExprNames value
+  | Stmt.returnValues values => collectExprListNames values
+  | Stmt.returnArray name => [name]
+  | Stmt.returnBytes name => [name]
+  | Stmt.returnStorageWords name => [name]
+  | Stmt.returndataCopy destOffset sourceOffset size =>
+      collectExprNames destOffset ++ collectExprNames sourceOffset ++ collectExprNames size
+  | Stmt.revertReturndata => []
+  | Stmt.stop => []
+  | Stmt.ite cond thenBranch elseBranch =>
+      collectExprNames cond ++ collectStmtListNames thenBranch ++ collectStmtListNames elseBranch
+  | Stmt.forEach varName count body =>
+      varName :: collectExprNames count ++ collectStmtListNames body
+  | Stmt.emit eventName args => eventName :: collectExprListNames args
+  | Stmt.internalCall functionName args => functionName :: collectExprListNames args
+  | Stmt.internalCallAssign names functionName args =>
+      names ++ functionName :: collectExprListNames args
+
+private partial def collectStmtListNames : List Stmt → List String
+  | [] => []
+  | stmt :: rest => collectStmtNames stmt ++ collectStmtListNames rest
+end
+
 -- Compile expression to Yul (using mutual recursion for lists)
 mutual
 def compileExprList (fields : List Field)
@@ -2214,19 +2315,22 @@ def compileStmtList (fields : List Field) (events : List EventDef := [])
     (errors : List ErrorDef := [])
     (dynamicSource : DynamicDataSource := .calldata)
     (internalRetNames : List String := [])
-    (isInternal : Bool := false) :
+    (isInternal : Bool := false)
+    (inScopeNames : List String := []) :
     List Stmt → Except String (List YulStmt)
   | [] => pure []
   | s :: ss => do
-      let head ← compileStmt fields events errors dynamicSource internalRetNames isInternal s
-      let tail ← compileStmtList fields events errors dynamicSource internalRetNames isInternal ss
+      let head ← compileStmt fields events errors dynamicSource internalRetNames isInternal inScopeNames s
+      let nextScopeNames := collectStmtNames s ++ inScopeNames
+      let tail ← compileStmtList fields events errors dynamicSource internalRetNames isInternal nextScopeNames ss
       pure (head ++ tail)
 
 def compileStmt (fields : List Field) (events : List EventDef := [])
     (errors : List ErrorDef := [])
     (dynamicSource : DynamicDataSource := .calldata)
     (internalRetNames : List String := [])
-    (isInternal : Bool := false) :
+    (isInternal : Bool := false)
+    (inScopeNames : List String := []) :
     Stmt → Except String (List YulStmt)
   | Stmt.letVar name value => do
       pure [YulStmt.let_ name (← compileExpr fields dynamicSource value)]
@@ -2385,25 +2489,28 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
   | Stmt.ite cond thenBranch elseBranch => do
       -- If/else: compile to Yul if + negated if (#179)
       let condExpr ← compileExpr fields dynamicSource cond
-      let thenStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal thenBranch
-      let elseStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal elseBranch
+      let thenStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal inScopeNames thenBranch
+      let elseStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal inScopeNames elseBranch
       if elseBranch.isEmpty then
         -- Simple if (no else)
         pure [YulStmt.if_ condExpr thenStmts]
       else
         -- If/else: cache condition in a block-scoped local to avoid re-evaluation
         -- after then-branch may have mutated state.
-        -- Wrapped in block { } so __ite_cond doesn't collide with other ite statements.
+        -- Wrapped in block { } and freshened against names seen in this if/else shape
+        -- so user locals cannot shadow the compiler-generated temp.
+        let iteUsedNames := inScopeNames ++ collectExprNames cond ++ collectStmtListNames thenBranch ++ collectStmtListNames elseBranch
+        let iteCondName := pickFreshName "__ite_cond" iteUsedNames
         pure [YulStmt.block [
-          YulStmt.let_ "__ite_cond" condExpr,
-          YulStmt.if_ (YulExpr.ident "__ite_cond") thenStmts,
-          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__ite_cond"]) elseStmts
+          YulStmt.let_ iteCondName condExpr,
+          YulStmt.if_ (YulExpr.ident iteCondName) thenStmts,
+          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident iteCondName]) elseStmts
         ]]
 
   | Stmt.forEach varName count body => do
       -- Bounded loop: for { let i := 0 } lt(i, count) { i := add(i, 1) } { body } (#179)
       let countExpr ← compileExpr fields dynamicSource count
-      let bodyStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal body
+      let bodyStmts ← compileStmtList fields events errors dynamicSource internalRetNames isInternal (varName :: inScopeNames) body
       let initStmts := [YulStmt.let_ varName (YulExpr.lit 0)]
       let condExpr := YulExpr.call "lt" [YulExpr.ident varName, countExpr]
       let postStmts := [YulStmt.assign varName (YulExpr.call "add" [YulExpr.ident varName, YulExpr.lit 1])]
@@ -3153,19 +3260,7 @@ private def contractUsesArrayElement (spec : ContractSpec) : Bool :=
   constructorUsesArrayElement spec.constructor || spec.functions.any functionUsesArrayElement
 
 private def pickFreshInternalRetName (usedNames : List String) (idx : Nat) : String :=
-  let base := s!"__ret{idx}"
-  if !usedNames.contains base then
-    base
-  else
-    let rec go (suffix : Nat) (remaining : Nat) : String :=
-      let candidate := s!"{base}_{suffix}"
-      if !usedNames.contains candidate then
-        candidate
-      else
-        match remaining with
-        | 0 => s!"{base}_fresh"
-        | n + 1 => go (suffix + 1) n
-    go 1 usedNames.length
+  pickFreshName s!"__ret{idx}" usedNames
 
 private def freshInternalRetNames (returns : List ParamType) (usedNames : List String) : List String :=
   let (_, namesRev) := returns.zipIdx.foldl
@@ -3185,8 +3280,8 @@ def compileInternalFunction (fields : List Field) (events : List EventDef) (erro
   let paramNames := spec.params.map (·.name)
   let usedNames := paramNames ++ collectStmtListBindNames spec.body
   let retNames := freshInternalRetNames returns usedNames
-  let bodyStmts ← compileStmtList fields events errors
-    (dynamicSource := .calldata) (internalRetNames := retNames) (isInternal := true) spec.body
+  let bodyStmts ← compileStmtList fields events errors .calldata retNames true
+    (paramNames ++ retNames) spec.body
   pure (YulStmt.funcDef (internalFunctionYulName spec.name) paramNames retNames bodyStmts)
 
 -- Compile function spec to IR function
@@ -3196,8 +3291,9 @@ def compileFunctionSpec (fields : List Field) (events : List EventDef) (errors :
   validateFunctionSpec spec
   let returns ← functionReturns spec
   let paramLoads := genParamLoads spec.params
-  let bodyChunks ← spec.body.mapM (compileStmt fields events errors)
-  let allStmts := paramLoads ++ bodyChunks.flatten
+  let bodyStmts ← compileStmtList fields events errors .calldata [] false
+    (spec.params.map (·.name)) spec.body
+  let allStmts := paramLoads ++ bodyStmts
   let retType := match returns with
     | [single] => single.toIRType
     | _ => IRType.unit
@@ -3213,10 +3309,10 @@ def compileFunctionSpec (fields : List Field) (events : List EventDef) (errors :
 private def compileSpecialEntrypoint (fields : List Field) (events : List EventDef)
     (errors : List ErrorDef) (spec : FunctionSpec) :
     Except String IREntrypoint := do
-  let bodyChunks ← spec.body.mapM (compileStmt fields events errors)
+  let bodyChunks ← compileStmtList fields events errors .calldata [] false [] spec.body
   pure {
     payable := spec.isPayable
-    body := bodyChunks.flatten
+    body := bodyChunks
   }
 
 private def pickUniqueFunctionByName (name : String) (funcs : List FunctionSpec) :
@@ -3273,8 +3369,8 @@ def compileConstructor (fields : List Field) (events : List EventDef) (errors : 
   | none => return []
   | some spec =>
     let argLoads := genConstructorArgLoads spec.params
-    let bodyChunks ← spec.body.mapM (compileStmt fields events errors .memory)
-    return argLoads ++ bodyChunks.flatten
+    let bodyChunks ← compileStmtList fields events errors .memory [] false [] spec.body
+    return argLoads ++ bodyChunks
 
 -- Main compilation function
 -- SAFETY REQUIREMENTS (enforced at runtime by `compile` and at CI-time by check_selectors.py):

@@ -14,14 +14,14 @@ The formal Layer 1/2/3 guarantees apply to the `ContractSpec` path.
 ## Verification Chain
 
 ```
-User's Contract Code (EDSL)
-    ↓ [Layer 1: FULLY VERIFIED]
-ContractSpec (High-level specification)
-    ↓ [Layer 2: FULLY VERIFIED]
-IR (Intermediate representation)
-    ↓ [Layer 3: FULLY VERIFIED, 1 axioms]
-Yul (Ethereum intermediate language)
-    ↓ [TRUSTED: Solidity compiler]
+EDSL
+  ↓ [Layer 1: FULLY VERIFIED]
+ContractSpec
+  ↓ [Layer 2: FULLY VERIFIED]
+IR
+  ↓ [Layer 3: FULLY VERIFIED, 1 axioms]
+Yul
+  ↓ [trusted external compiler]
 EVM Bytecode
 ```
 
@@ -45,7 +45,7 @@ Metrics tracked by repository tooling:
 ### 1. Solidity Compiler (`solc`)
 
 - Role: compiles Yul to EVM bytecode.
-- **Version**: 0.8.33+commit.64118f21 (pinned)
+- Version: 0.8.33+commit.64118f21 (pinned).
 - Status: trusted external tool, version pinned in `foundry.toml` (`solc_version = "0.8.33"`).
 - Mitigation: CI enforces pin and Yul compileability checks.
 
@@ -60,7 +60,7 @@ Metrics tracked by repository tooling:
 - Role: external functions injected by linker.
 - Status: outside formal semantic proofs.
 - What is enforced: duplicate-name, collision, unresolved reference, and arity checks.
-- What is trusted: actual semantic correctness of linked Yul code.
+- What is trusted: semantic correctness of linked Yul code.
 
 ### 4. Mapping Slot Collision Freedom
 
@@ -99,7 +99,7 @@ AST compilation (`--ast`) is tested and drift-checked, but not yet proven with t
 2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.
-5. Confirm arithmetic/revert assumptions are explicitly acceptable for the target contract.
+5. Confirm arithmetic and revert assumptions are explicitly acceptable for the target contract.
 6. For production readiness, include gas profiling and upper-bound testing.
 
 ## Change Control Requirement

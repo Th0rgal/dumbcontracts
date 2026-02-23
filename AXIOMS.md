@@ -26,19 +26,19 @@ axiom keccak256_first_4_bytes (sig : String) : Nat
 Computes function selectors (`bytes4(keccak256(signature))`) used in ABI dispatch.
 
 **Why this is currently an axiom**:
-Selector hashing is modeled as an external cryptographic primitive rather than reimplemented/proven in Lean.
+Selector hashing is modeled as an external cryptographic primitive rather than reimplemented and proven in Lean.
 
 **Soundness controls**:
 
 - CI cross-checks selectors against `solc --hashes`.
 - CI runs selector fixture checks to detect regressions.
-- Compilation/tests fail if selector consistency drifts.
+- Compilation and tests fail if selector consistency drifts.
 
 **Risk**: Low.
 
 ## Eliminated Axioms (Historical)
 
-The repository has removed prior axioms related to IR/Yul expression and statement equivalence and address injectivity by making interpreters total and by using a bounded-nat `Address` representation.
+The repository removed prior axioms related to IR and Yul expression and statement equivalence and address injectivity by making interpreters total and by using a bounded-nat `Address` representation.
 
 These removals reduced the active axiom surface to one item.
 

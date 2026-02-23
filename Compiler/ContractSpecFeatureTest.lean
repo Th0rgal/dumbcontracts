@@ -3946,6 +3946,68 @@ private def featureSpec : ContractSpec := {
   IO.println "✓ SpecInterpreter fuel path enforces external model in internal calls"
 
 #eval! do
+  let lowLevelSpec : ContractSpec := {
+    name := "LowLevelSpecInterpreterGuard"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.return (Expr.call
+            (Expr.literal 100000)
+            (Expr.literal 0x1234)
+            (Expr.literal 0)
+            (Expr.literal 0)
+            (Expr.literal 0)
+            (Expr.literal 0)
+            (Expr.literal 0))
+        ]
+      }
+    ]
+  }
+  let tx : Transaction := { sender := 0, functionName := "f", args := [] }
+  let result := interpretSpec lowLevelSpec SpecStorage.empty tx
+  if result.success then
+    throw (IO.userError "✗ expected SpecInterpreter to reject unsupported low-level call semantics")
+  if result.revertReason != some "Function 'f' reverted" then
+    throw (IO.userError s!"✗ low-level call revert reason mismatch: {result.revertReason}")
+  IO.println "✓ SpecInterpreter rejects unsupported low-level call semantics"
+
+#eval! do
+  let lowLevelFuelSpec : ContractSpec := {
+    name := "LowLevelFuelInterpreterGuard"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := none
+        body := [
+          Stmt.forEach "i" Expr.returndataSize [Stmt.stop]
+        ]
+      }
+    ]
+  }
+  let ctx : EvalContext := {
+    sender := 0
+    msgValue := 0
+    blockTimestamp := 0
+    params := []
+    paramTypes := []
+    constructorArgs := []
+    constructorParamTypes := []
+    localVars := []
+    arrayParams := []
+  }
+  match execFunctionFuel lowLevelFuelSpec "f" ctx [] SpecStorage.empty with
+  | none =>
+      IO.println "✓ Fuel-based SpecInterpreter rejects unsupported low-level returndata semantics"
+  | some _ =>
+      throw (IO.userError "✗ expected fuel-based SpecInterpreter to reject unsupported low-level returndata semantics")
+
+#eval! do
   let layoutSpec : ContractSpec := {
     name := "LayoutAwareInterpreter"
     fields := [

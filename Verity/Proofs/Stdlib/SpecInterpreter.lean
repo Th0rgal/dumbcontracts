@@ -27,6 +27,9 @@
     `execConstructorFuel`.
 
   Known limitation:
+  - First-class low-level call / returndata primitives are intentionally
+    fail-fast in the scalar interpreter (`execStmt`/`execStmts` and fuel path)
+    because full EVM callframe+returndata semantics are not modeled yet.
   - `Expr.internalCall` always returns 0 in `evalExpr` — the expression evaluator
     does not carry the functions list. Use Stmt.internalCall (which assigns to a
     local variable) instead of Expr.internalCall in contract specs. (#181)
@@ -396,6 +399,72 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       if evalExpr ctx storage fields paramNames externalFns a == 0 then 1 else 0
 end
 
+mutual
+def exprUsesUnsupportedLowLevel : Expr → Bool
+  | Expr.call _ _ _ _ _ _ _ => true
+  | Expr.staticcall _ _ _ _ _ _ => true
+  | Expr.delegatecall _ _ _ _ _ _ => true
+  | Expr.returndataSize => true
+  | Expr.returndataOptionalBoolAt _ => true
+  | Expr.mapping _ key | Expr.mappingUint _ key =>
+      exprUsesUnsupportedLowLevel key
+  | Expr.mapping2 _ key1 key2 =>
+      exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2
+  | Expr.externalCall _ args | Expr.internalCall _ args =>
+      exprListUsesUnsupportedLowLevel args
+  | Expr.arrayElement _ index =>
+      exprUsesUnsupportedLowLevel index
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b =>
+      exprUsesUnsupportedLowLevel a || exprUsesUnsupportedLowLevel b
+  | Expr.bitNot a | Expr.logicalNot a =>
+      exprUsesUnsupportedLowLevel a
+  | _ =>
+      false
+
+def exprListUsesUnsupportedLowLevel : List Expr → Bool
+  | [] => false
+  | e :: es =>
+      exprUsesUnsupportedLowLevel e || exprListUsesUnsupportedLowLevel es
+
+def stmtUsesUnsupportedLowLevel : Stmt → Bool
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
+    Stmt.return value | Stmt.require value _ =>
+      exprUsesUnsupportedLowLevel value
+  | Stmt.setMapping _ key value | Stmt.setMappingUint _ key value =>
+      exprUsesUnsupportedLowLevel key || exprUsesUnsupportedLowLevel value
+  | Stmt.setMapping2 _ key1 key2 value =>
+      exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2 || exprUsesUnsupportedLowLevel value
+  | Stmt.requireError cond _ args =>
+      exprUsesUnsupportedLowLevel cond || exprListUsesUnsupportedLowLevel args
+  | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
+      exprListUsesUnsupportedLowLevel args
+  | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata =>
+      true
+  | Stmt.ite cond thenBranch elseBranch =>
+      exprUsesUnsupportedLowLevel cond ||
+      stmtListUsesUnsupportedLowLevel thenBranch ||
+      stmtListUsesUnsupportedLowLevel elseBranch
+  | Stmt.forEach _ count body =>
+      exprUsesUnsupportedLowLevel count || stmtListUsesUnsupportedLowLevel body
+  | Stmt.internalCall _ args =>
+      exprListUsesUnsupportedLowLevel args
+  | Stmt.internalCallAssign _ _ args =>
+      exprListUsesUnsupportedLowLevel args
+  | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
+      false
+
+def stmtListUsesUnsupportedLowLevel : List Stmt → Bool
+  | [] => false
+  | s :: ss =>
+      stmtUsesUnsupportedLowLevel s || stmtListUsesUnsupportedLowLevel ss
+end
+
+attribute [simp] exprUsesUnsupportedLowLevel exprListUsesUnsupportedLowLevel
+attribute [simp] stmtUsesUnsupportedLowLevel stmtListUsesUnsupportedLowLevel
+
 /-!
 ## Statement Execution
 
@@ -423,7 +492,9 @@ structure ExecState where
 mutual
 def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String) (externalFns : List (String × (List Nat → Nat))) (state : ExecState) (stmt : Stmt) :
     Option (EvalContext × ExecState) :=
-  match stmt with
+  if stmtUsesUnsupportedLowLevel stmt then
+    none
+  else match stmt with
   | Stmt.letVar name expr =>
       let value := evalExpr ctx state.storage fields paramNames externalFns expr
       let newVars := (name, value) :: ctx.localVars.filter (·.1 ≠ name)
@@ -613,16 +684,25 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
         let result := match stmt with
           | Stmt.forEach varName count body =>
               -- Desugar forEach into expanded statements
+              if exprUsesUnsupportedLowLevel count then
+                none
+              else
               let countVal := evalExpr ctx state.storage fields paramNames externalFns count
               let expanded := expandForEach varName countVal body
               execStmtsFuel fuel' ctx fields paramNames externalFns functions state expanded
           | Stmt.ite cond thenBranch elseBranch =>
+              if exprUsesUnsupportedLowLevel cond then
+                none
+              else
               let condVal := evalExpr ctx state.storage fields paramNames externalFns cond
               if condVal ≠ 0 then
                 execStmtsFuel fuel' ctx fields paramNames externalFns functions state thenBranch
               else
                 execStmtsFuel fuel' ctx fields paramNames externalFns functions state elseBranch
           | Stmt.internalCall functionName args =>
+              if args.any exprUsesUnsupportedLowLevel then
+                none
+              else
               -- Look up the internal function and execute its body (#181)
               match functions.find? (·.name == functionName) with
               | none => none  -- Unknown function → revert

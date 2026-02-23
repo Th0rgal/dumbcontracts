@@ -5,7 +5,7 @@ namespace Compiler.Proofs.YulGeneration
 
 open Compiler.Proofs
 
-abbrev evmModulus : Nat := Compiler.Proofs.evmModulus
+abbrev evmModulus : Nat := 2 ^ 256
 
 def selectorModulus : Nat := 2 ^ 32
 

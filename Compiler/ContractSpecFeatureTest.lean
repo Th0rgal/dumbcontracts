@@ -3847,6 +3847,34 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ declared external target accepted"
 
 #eval! do
+  let externalArityMismatchSpec : ContractSpec := {
+    name := "ExternalArityMismatchSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "known_fn" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256, ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  match compile externalArityMismatchSpec [1] with
+  | .error err =>
+      if !contains err "calls external 'known_fn' with 1 args, but spec.externals declares 2" then
+        throw (IO.userError s!"✗ external arity mismatch diagnostic mismatch: {err}")
+      IO.println "✓ external call arity checked against declaration"
+  | .ok _ =>
+      throw (IO.userError "✗ expected external arity mismatch to fail compilation")
+
+#eval! do
   let helperNameCollisionSpec : ContractSpec := {
     name := "HelperNameCollisionSpec"
     fields := [{ name := "balances", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address) }]

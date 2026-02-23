@@ -251,10 +251,10 @@ execution fails fast when `spec.externals` declares targets that are missing
 from `externalFns`.
 -/
 
-private def hasExternalModel (externalFns : List (String × (List Nat → Nat))) (name : String) : Bool :=
+@[simp] private def hasExternalModel (externalFns : List (String × (List Nat → Nat))) (name : String) : Bool :=
   externalFns.any (·.1 == name)
 
-private def specHasUnmodeledExternals (spec : ContractSpec) (externalFns : List (String × (List Nat → Nat))) : Bool :=
+@[simp] private def specHasUnmodeledExternals (spec : ContractSpec) (externalFns : List (String × (List Nat → Nat))) : Bool :=
   spec.externals.any (fun ext => !(hasExternalModel externalFns ext.name))
 
 /-!

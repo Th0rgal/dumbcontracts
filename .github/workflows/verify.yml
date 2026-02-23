@@ -127,6 +127,9 @@ jobs:
       - name: Check verify multi-seed sync
         run: python3 scripts/check_verify_multiseed_sync.py
 
+      - name: Check verify foundry shard sync
+        run: python3 scripts/check_verify_foundry_shard_sync.py
+
       - name: Check solc pin consistency
         run: python3 scripts/check_solc_pin.py
 

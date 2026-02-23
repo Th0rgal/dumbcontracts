@@ -15,6 +15,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
+CHECK_ONLY_PATHS = [
+    "docs/**",
+    "docs-site/**",
+    "AXIOMS.md",
+    "README.md",
+    "TRUST_ASSUMPTIONS.md",
+]
 
 
 def normalize_path(raw: str) -> str:
@@ -84,6 +91,11 @@ def ensure_subset(parent_name: str, parent: list[str], subset_name: str, subset:
     return errors
 
 
+def expected_code_filter_paths(trigger_paths: list[str]) -> list[str]:
+    excluded = set(CHECK_ONLY_PATHS)
+    return [path for path in trigger_paths if path not in excluded]
+
+
 def main() -> int:
     text = VERIFY_YML.read_text(encoding="utf-8")
 
@@ -118,20 +130,36 @@ def main() -> int:
     errors.extend(compare_lists("on.push.paths", push_paths, "on.pull_request.paths", pr_paths))
     errors.extend(ensure_subset("on.push.paths", push_paths, "changes.filter.code", filter_paths))
 
+    missing_exclusions = [path for path in CHECK_ONLY_PATHS if path not in push_paths]
+    if missing_exclusions:
+        errors.append("CHECK_ONLY_PATHS contains entries not present in on.push.paths:")
+        errors.extend([f"  - {m}" for m in missing_exclusions])
+
+    expected_filter_paths = expected_code_filter_paths(push_paths)
+    errors.extend(
+        compare_lists(
+            "on.push.paths minus CHECK_ONLY_PATHS",
+            expected_filter_paths,
+            "changes.filter.code",
+            filter_paths,
+        )
+    )
+
     if errors:
         print("verify.yml path-filter inconsistency detected:", file=sys.stderr)
         for line in errors:
             print(line, file=sys.stderr)
         print(
-            "\nUpdate .github/workflows/verify.yml so push/pull_request lists match and "
-            "changes.filter.code remains a valid subset.",
+            "\nUpdate .github/workflows/verify.yml so push/pull_request lists match, "
+            "then keep changes.filter.code equal to on.push.paths minus CHECK_ONLY_PATHS.",
             file=sys.stderr,
         )
         return 1
 
     print(
         "verify.yml path filters are consistent "
-        f"({len(push_paths)} push/pull_request entries; {len(filter_paths)} changes.filter.code entries)."
+        f"({len(push_paths)} push/pull_request entries; {len(filter_paths)} changes.filter.code entries; "
+        f"{len(CHECK_ONLY_PATHS)} check-only exclusions)."
     )
     return 0
 

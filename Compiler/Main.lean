@@ -52,10 +52,16 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         throw (IO.userError "help")
     | "--link" :: path :: rest =>
         go rest { cfg with libs := path :: cfg.libs }
+    | ["--link"] =>
+        throw (IO.userError "Missing value for --link")
     | "--output" :: dir :: rest | "-o" :: dir :: rest =>
         go rest { cfg with outDir := dir }
+    | ["--output"] | ["-o"] =>
+        throw (IO.userError "Missing value for --output")
     | "--abi-output" :: dir :: rest =>
         go rest { cfg with abiOutDir := some dir }
+    | ["--abi-output"] =>
+        throw (IO.userError "Missing value for --abi-output")
     | "--ast" :: rest =>
         go rest { cfg with useAST := true }
     | "--enable-patches" :: rest =>
@@ -64,8 +70,12 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         match raw.toNat? with
         | some n => go rest { cfg with patchEnabled := true, patchMaxIterations := n }
         | none => throw (IO.userError s!"Invalid value for --patch-max-iterations: {raw}")
+    | ["--patch-max-iterations"] =>
+        throw (IO.userError "Missing value for --patch-max-iterations")
     | "--patch-report" :: path :: rest =>
         go rest { cfg with patchEnabled := true, patchReportPath := some path }
+    | ["--patch-report"] =>
+        throw (IO.userError "Missing value for --patch-report")
     | "--verbose" :: rest | "-v" :: rest =>
         go rest { cfg with verbose := true }
     | unknown :: _ =>

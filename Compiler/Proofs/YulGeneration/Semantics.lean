@@ -25,9 +25,11 @@ def selectorExpr : YulExpr :=
   ]
 
 /-!
-Mapping slots in Yul are derived via keccak(baseSlot, key). Proof semantics call
-through the `MappingSlot` abstraction; the current backend is tagged encoding so
-`sload`/`sstore` can route to `mappings` rather than flat `storage`.
+Runtime Yul mapping slots are derived via `keccak(baseSlot, key)`. Proof
+semantics call through `MappingSlot`; the currently active proof backend is
+`tagged` (see `activeMappingSlotBackend`), so `sload`/`sstore` route to the
+separate `mappings` table rather than flat `storage`. Issue #259 tracks
+migration to a keccak-faithful backend.
 -/
 
 /-! ## Execution State -/

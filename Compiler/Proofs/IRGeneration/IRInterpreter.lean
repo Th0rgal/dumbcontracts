@@ -78,9 +78,11 @@ measures from Semantics.lean are reused.
 -/
 
 /-!
-Mapping slots in Yul are derived via keccak(baseSlot, key). IR proof semantics
-call through the `MappingSlot` abstraction; the current backend is tagged
-encoding so `sload`/`sstore` can route to `mappings` instead of flat storage.
+Runtime Yul mapping slots are derived via `keccak(baseSlot, key)`. IR proof
+semantics call through `MappingSlot`; the currently active proof backend is
+`tagged` (see `activeMappingSlotBackend`), so `sload`/`sstore` can route to the
+separate `mappings` table. Issue #259 tracks migration to a keccak-faithful
+backend.
 -/
 
 open Compiler.Proofs.YulGeneration in

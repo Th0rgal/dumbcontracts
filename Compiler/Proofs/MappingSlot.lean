@@ -9,17 +9,43 @@ Today this delegates to the tagged encoding model in `MappingEncoding.lean`.
 When issue #259 is implemented, only this module should need backend changes.
 -/
 
+/-- Mapping-slot backend chosen for proof semantics. -/
+inductive MappingSlotBackend where
+  | tagged
+  | keccak
+  deriving DecidableEq, Repr
+
+/--
+Active proof-model backend.
+
+`tagged` is the current verification-level model. `keccak` is reserved for the
+issue #259 backend migration.
+-/
+def activeMappingSlotBackend : MappingSlotBackend := .tagged
+
+/-- Whether the active backend matches EVM keccak-derived slot layout exactly. -/
+def activeMappingSlotBackendIsEvmFaithful : Bool :=
+  match activeMappingSlotBackend with
+  | .tagged => false
+  | .keccak => true
+
 /-- Active proof-model mapping slot encoding backend. -/
 def abstractMappingSlot (baseSlot key : Nat) : Nat :=
-  encodeMappingSlot baseSlot key
+  match activeMappingSlotBackend with
+  | .tagged => encodeMappingSlot baseSlot key
+  | .keccak => encodeMappingSlot baseSlot key
 
 /-- Active proof-model mapping slot tag sentinel (backend-specific). -/
 def abstractMappingTag : Nat :=
-  mappingTag
+  match activeMappingSlotBackend with
+  | .tagged => mappingTag
+  | .keccak => mappingTag
 
 /-- Active proof-model mapping slot decoder backend. -/
 def abstractDecodeMappingSlot (slot : Nat) : Option (Nat × Nat) :=
-  decodeMappingSlot slot
+  match activeMappingSlotBackend with
+  | .tagged => decodeMappingSlot slot
+  | .keccak => decodeMappingSlot slot
 
 /-- Active proof-model nested mapping slot helper. -/
 def abstractNestedMappingSlot (baseSlot key1 key2 : Nat) : Nat :=
@@ -66,6 +92,12 @@ def abstractStoreStorageOrMapping
 
 @[simp] theorem abstractDecodeMappingSlot_eq_decode (slot : Nat) :
     abstractDecodeMappingSlot slot = decodeMappingSlot slot := rfl
+
+@[simp] theorem activeMappingSlotBackend_eq_tagged :
+    activeMappingSlotBackend = .tagged := rfl
+
+@[simp] theorem activeMappingSlotBackendIsEvmFaithful_eq_false :
+    activeMappingSlotBackendIsEvmFaithful = false := rfl
 
 @[simp] theorem abstractNestedMappingSlot_eq_encodeNested (baseSlot key1 key2 : Nat) :
     abstractNestedMappingSlot baseSlot key1 key2 = encodeNestedMappingSlot baseSlot key1 key2 := by

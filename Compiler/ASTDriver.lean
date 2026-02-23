@@ -211,6 +211,99 @@ private def exprReadsStateOrEnv : Expr → Bool
   | .safeAdd a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
   | .safeSub a b => exprReadsStateOrEnv a || exprReadsStateOrEnv b
 
+mutual
+  private partial def isPureUintExpr : Expr → Bool
+    | .lit _ => true
+    | .var _ => true
+    | .add a b => isPureUintExpr a && isPureUintExpr b
+    | .sub a b => isPureUintExpr a && isPureUintExpr b
+    | .mul a b => isPureUintExpr a && isPureUintExpr b
+    | _ => false
+
+  private partial def isPureAddrExpr : Expr → Bool
+    | .varAddr _ => true
+    | _ => false
+
+  private partial def isPureBoolExpr : Expr → Bool
+    | .eqAddr a b => isPureAddrExpr a && isPureAddrExpr b
+    | .ge a b => isPureUintExpr a && isPureUintExpr b
+    | .gt a b => isPureUintExpr a && isPureUintExpr b
+    | other => isPureUintExpr other
+end
+
+private def isBindUintSourceExpr : Expr → Bool
+  | .storage _ => true
+  | .mapping _ key => isPureAddrExpr key
+  | _ => false
+
+private def isBindAddrSourceExpr : Expr → Bool
+  | .sender => true
+  | .storageAddr _ => true
+  | _ => false
+
+private def isRequireSomeSourceExpr : Expr → Bool
+  | .safeAdd a b => isPureUintExpr a && isPureUintExpr b
+  | .safeSub a b => isPureUintExpr a && isPureUintExpr b
+  | _ => false
+
+private partial def validateWellFormedStmt
+    (contractName : String) (entryName : String) : Stmt → Except String Unit
+  | .ret expr =>
+      if isPureUintExpr expr then
+        pure ()
+      else
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: ret expects a pure uint expression"
+  | .retAddr expr =>
+      if isPureAddrExpr expr then
+        pure ()
+      else
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: retAddr expects a bound address variable"
+  | .stop =>
+      pure ()
+  | .bindUint _ expr rest => do
+      if !isBindUintSourceExpr expr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: bindUint expects storage(...) or mapping(..., varAddr ...)"
+      validateWellFormedStmt contractName entryName rest
+  | .bindAddr _ expr rest => do
+      if !isBindAddrSourceExpr expr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: bindAddr expects sender or storageAddr(...)"
+      validateWellFormedStmt contractName entryName rest
+  | .bindBool _ expr rest => do
+      if !isPureBoolExpr expr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: bindBool expects a pure bool expression"
+      validateWellFormedStmt contractName entryName rest
+  | .letUint _ expr rest => do
+      if !isPureUintExpr expr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: letUint expects a pure uint expression"
+      validateWellFormedStmt contractName entryName rest
+  | .sstore _ valExpr rest => do
+      if !isPureUintExpr valExpr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: sstore value must be a pure uint expression"
+      validateWellFormedStmt contractName entryName rest
+  | .sstoreAddr _ valExpr rest => do
+      if !isPureAddrExpr valExpr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: sstoreAddr value must be a bound address variable"
+      validateWellFormedStmt contractName entryName rest
+  | .mstore _ keyExpr valExpr rest => do
+      if !isPureAddrExpr keyExpr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: mstore key must be a bound address variable"
+      if !isPureUintExpr valExpr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: mstore value must be a pure uint expression"
+      validateWellFormedStmt contractName entryName rest
+  | .require condExpr _ rest => do
+      if !isPureBoolExpr condExpr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: require condition must be a pure bool expression"
+      validateWellFormedStmt contractName entryName rest
+  | .requireSome _ optExpr _ rest => do
+      if !isRequireSomeSourceExpr optExpr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: requireSome expects safeAdd(...) or safeSub(...)"
+      validateWellFormedStmt contractName entryName rest
+  | .ite condExpr thenBranch elseBranch => do
+      if !isPureBoolExpr condExpr then
+        throw s!"Function '{entryName}' in {contractName} has malformed AST: ite condition must be a pure bool expression"
+      validateWellFormedStmt contractName entryName thenBranch
+      validateWellFormedStmt contractName entryName elseBranch
+
 private partial def stmtWritesState : Stmt → Bool
   | .ret _ => false
   | .retAddr _ => false
@@ -299,10 +392,13 @@ private def validateSpec (spec : ASTContractSpec) : Except String Unit := do
       throw s!"Function '{fn.name}' in {spec.name} is marked pure but writes state"
     if fn.isPure && stmtReadsStateOrEnv fn.body then
       throw s!"Function '{fn.name}' in {spec.name} is marked pure but reads state/environment"
+    validateWellFormedStmt spec.name fn.name fn.body
     validateReturnShapeInStmt spec.name fn.name fn.returnType fn.body
 
   match spec.constructor with
-  | some ctor => validateParamNames s!"constructor of {spec.name}" ctor.params
+  | some ctor => do
+      validateParamNames s!"constructor of {spec.name}" ctor.params
+      validateWellFormedStmt spec.name "constructor" ctor.body
   | none => pure ()
 
   match findDuplicate (spec.functions.map (·.name)) with

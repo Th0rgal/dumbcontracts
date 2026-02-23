@@ -487,7 +487,8 @@ private def validAddressReturnShapeSpec : ASTContractSpec := {
     { name := "owner"
       params := []
       returnType := .address
-      body := Stmt.retAddr Expr.sender }
+      body := Stmt.bindAddr "sender" Expr.sender
+        (Stmt.retAddr (Expr.varAddr "sender")) }
   ]
 }
 
@@ -497,5 +498,65 @@ private def validAddressReturnShapeSpec : ASTContractSpec := {
     throw (IO.userError s!"✗ expected valid address return shape to compile, got: {err}")
   | .ok _ =>
     IO.println "✓ AST compile accepts valid address return shape"
+
+private def invalidAddressReturnShapeSpec : ASTContractSpec := {
+  name := "InvalidAddressReturnShapeSpec"
+  functions := [
+    { name := "owner"
+      params := []
+      returnType := .address
+      body := Stmt.retAddr Expr.sender }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidAddressReturnShapeSpec [0] with
+  | .error err =>
+    if contains err "malformed AST: retAddr expects a bound address variable" then
+      IO.println "✓ AST compile rejects malformed retAddr expression shape"
+    else
+      throw (IO.userError s!"✗ unexpected malformed retAddr error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected malformed retAddr expression to be rejected")
+
+private def malformedBindUintSourceSpec : ASTContractSpec := {
+  name := "MalformedBindUintSourceSpec"
+  functions := [
+    { name := "f"
+      params := []
+      returnType := .unit
+      body := Stmt.bindUint "x" Expr.sender Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec malformedBindUintSourceSpec [0] with
+  | .error err =>
+    if contains err "malformed AST: bindUint expects storage(...) or mapping(..., varAddr ...)" then
+      IO.println "✓ AST compile rejects malformed bindUint source shape"
+    else
+      throw (IO.userError s!"✗ unexpected malformed bindUint error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected malformed bindUint source to be rejected")
+
+private def malformedRequireSomeSourceSpec : ASTContractSpec := {
+  name := "MalformedRequireSomeSourceSpec"
+  functions := [
+    { name := "f"
+      params := []
+      returnType := .unit
+      body := Stmt.requireSome "x" (Expr.lit 1) "bad" Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec malformedRequireSomeSourceSpec [0] with
+  | .error err =>
+    if contains err "malformed AST: requireSome expects safeAdd(...) or safeSub(...)" then
+      IO.println "✓ AST compile rejects malformed requireSome source shape"
+    else
+      throw (IO.userError s!"✗ unexpected malformed requireSome error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected malformed requireSome source to be rejected")
 
 end Compiler.ASTDriverTest

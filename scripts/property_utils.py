@@ -28,8 +28,11 @@ FILE_RE = re.compile(r"^Property(.+)\.t\.sol$")
 CONTRACT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 THEOREM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
 
-# Regex pattern for extracting theorems from Lean files
-THEOREM_RE = re.compile(r"^\s*(theorem|lemma)\s+([A-Za-z0-9_']+)")
+# Regex pattern for extracting theorem/lemma declarations from Lean files.
+# Accept common declaration prefixes used in the repo (attributes/visibility).
+THEOREM_RE = re.compile(
+    r"^\s*(?:@\[[^\]]*\]\s*)*(?:(?:private|protected)\s+)*(theorem|lemma)\s+([A-Za-z_][A-Za-z0-9_']*)\b"
+)
 
 
 def _require_contract_identifier(contract: str, source: Path) -> str:

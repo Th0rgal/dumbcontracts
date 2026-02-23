@@ -115,6 +115,9 @@ jobs:
       - name: Check verify.yml path filter sync
         run: python3 scripts/check_verify_paths_sync.py
 
+      - name: Check verify checks/docs sync
+        run: python3 scripts/check_verify_checks_docs_sync.py
+
       - name: Check solc pin consistency
         run: python3 scripts/check_solc_pin.py
 

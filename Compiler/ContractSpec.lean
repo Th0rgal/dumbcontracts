@@ -1917,6 +1917,22 @@ private def validateSpecialEntrypointSpec (spec : FunctionSpec) : Except String 
 private def issue625Ref : String :=
   "Issue #625 (internal function multi-return support)"
 
+private def issue753Ref : String :=
+  "Issue #753 (internal dynamic params unsupported)"
+
+private def firstInternalDynamicParam
+    (fns : List FunctionSpec) : Option (String × String × ParamType) :=
+  let rec goFns : List FunctionSpec → Option (String × String × ParamType)
+    | [] => none
+    | fn :: rest =>
+        if !fn.isInternal then
+          goFns rest
+        else
+          match fn.params.find? (fun p => isDynamicParamType p.ty) with
+          | some p => some (fn.name, p.name, p.ty)
+          | none => goFns rest
+  goFns fns
+
 private def findInternalFunctionByName (functions : List FunctionSpec)
     (callerName calleeName : String) : Except String FunctionSpec := do
   let candidates := functions.filter (fun fn => fn.isInternal && fn.name == calleeName)
@@ -3835,6 +3851,11 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   let fields := applySlotAliasRanges spec.fields spec.slotAliasRanges
   let externalFns := spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)
   let internalFns := spec.functions.filter (·.isInternal)
+  match firstInternalDynamicParam spec.functions with
+  | some (fnName, paramName, ty) =>
+      throw s!"Compilation error: internal function '{fnName}' parameter '{paramName}' has dynamic type {repr ty}, which is currently unsupported ({issue753Ref}). Internal dynamic ABI lowering is not implemented yet."
+  | none =>
+      pure ()
   match firstDuplicateFunctionParamName spec.functions with
   | some (fnName, dup) =>
       throw s!"Compilation error: duplicate parameter name '{dup}' in function '{fnName}'"

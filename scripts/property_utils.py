@@ -41,6 +41,15 @@ def _require_contract_identifier(contract: str, source: Path) -> str:
     return contract
 
 
+def _require_theorem_identifier(theorem: str, source: Path) -> str:
+    """Validate and return a theorem identifier from a filesystem-derived source."""
+    if theorem != theorem.strip() or not THEOREM_NAME_RE.fullmatch(theorem):
+        raise SystemExit(
+            f"Invalid theorem identifier from {source}: {theorem!r}"
+        )
+    return theorem
+
+
 def load_manifest() -> dict[str, set[str]]:
     """Load property manifest from JSON file.
 
@@ -103,10 +112,7 @@ def _load_contract_name_sets(path: Path, *, missing_ok: bool) -> dict[str, set[s
                 raise SystemExit(
                     f"Invalid schema in {path}: entry {name!r} in {contract!r} must be a non-empty string."
                 )
-            if name != name.strip() or not THEOREM_NAME_RE.fullmatch(name):
-                raise SystemExit(
-                    f"Invalid schema in {path}: entry {name!r} in {contract!r} must match {THEOREM_NAME_RE.pattern!r}."
-                )
+            _require_theorem_identifier(name, path)
         duplicate_names = _find_duplicates(names)
         if duplicate_names:
             raise SystemExit(
@@ -163,11 +169,11 @@ def extract_property_names(path: Path) -> list[str]:
     for line in text.splitlines():
         match = PROPERTY_WITH_NUM_RE.search(line)
         if match:
-            names.append(match.group(1))
+            names.append(_require_theorem_identifier(match.group(1), path))
             continue
         match = PROPERTY_SIMPLE_RE.search(line)
         if match:
-            names.append(match.group(1))
+            names.append(_require_theorem_identifier(match.group(1), path))
     return names
 
 
@@ -206,7 +212,7 @@ def collect_theorems(path: Path) -> list[str]:
     for line in text.splitlines():
         match = THEOREM_RE.match(line)
         if match:
-            names.append(match.group(2))
+            names.append(_require_theorem_identifier(match.group(2), path))
     return names
 
 

@@ -16,9 +16,11 @@ from generate_contract import (
     Field,
     Function,
     Param,
+    gen_all_lean_imports,
     gen_property_tests,
     parse_fields,
     parse_functions,
+    scaffold_files,
 )
 
 
@@ -142,6 +144,36 @@ class GenerateContractGetterPropertyScaffoldTests(unittest.TestCase):
         out = gen_property_tests(cfg)
         self.assertIn("function testProperty_SetStoredValue_MeetsSpec() public {", out)
         self.assertIn("Property: setStoredValue_meets_spec", out)
+
+
+class GenerateContractStructureScaffoldTests(unittest.TestCase):
+    def test_scaffold_files_include_ast_and_spec_correctness(self) -> None:
+        cfg = ContractConfig(
+            name="AuditProbe",
+            fields=[Field(name="storedValue", ty="uint256")],
+            functions=[
+                Function(
+                    name="setStoredValue",
+                    params=[Param(name="value", ty="uint256")],
+                )
+            ],
+        )
+        paths = {str(path) for path, _ in scaffold_files(cfg)}
+
+        self.assertIn(str((SCRIPT_DIR.parent / "Verity" / "AST" / "AuditProbe.lean")), paths)
+        self.assertIn(
+            str((SCRIPT_DIR.parent / "Compiler" / "Proofs" / "SpecCorrectness" / "AuditProbe.lean")),
+            paths,
+        )
+
+    def test_all_lean_imports_include_ast_module(self) -> None:
+        cfg = ContractConfig(
+            name="AuditProbe",
+            fields=[Field(name="storedValue", ty="uint256")],
+            functions=[Function(name="getStoredValue", params=[])],
+        )
+        imports = gen_all_lean_imports(cfg)
+        self.assertIn("import Verity.AST.AuditProbe", imports)
 
 
 if __name__ == "__main__":

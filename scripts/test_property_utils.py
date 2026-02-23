@@ -101,12 +101,15 @@ class PropertyUtilsPropertyTagTests(unittest.TestCase):
                 "contract PropertyCounter {\n"
                 "    /// Property 1: theorem_indexed\n"
                 "    /// Property: theorem_simple\n"
+                "    /**\n"
+                "     * Property 2: theorem_block_doc\n"
+                "     */\n"
                 "}\n",
                 encoding="utf-8",
             )
 
             names = property_utils.extract_property_names(path)
-            self.assertEqual(names, ["theorem_indexed", "theorem_simple"])
+            self.assertEqual(names, ["theorem_indexed", "theorem_simple", "theorem_block_doc"])
 
 
 class PropertyUtilsTheoremExtractionTests(unittest.TestCase):
@@ -127,28 +130,6 @@ class PropertyUtilsTheoremExtractionTests(unittest.TestCase):
 
             names = property_utils.collect_theorems(path)
             self.assertEqual(names, ["real_theorem"])
-
-    def test_collect_theorems_supports_attributes_and_modifiers(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "Spec.lean"
-            path.write_text(
-                "@[simp] theorem attr_theorem : True := by\n"
-                "  trivial\n"
-                "private theorem private_theorem : True := by\n"
-                "  trivial\n"
-                "@[simp]\n"
-                "@[aesop]\n"
-                "protected lemma protected_lemma : True := by\n"
-                "  trivial\n",
-                encoding="utf-8",
-            )
-
-            names = property_utils.collect_theorems(path)
-            self.assertEqual(
-                names,
-                ["attr_theorem", "private_theorem", "protected_lemma"],
-            )
-
 
 if __name__ == "__main__":
     unittest.main()

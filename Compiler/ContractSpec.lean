@@ -1211,7 +1211,7 @@ private partial def stmtWritesState : Stmt → Bool
   | Stmt.forEach _ count body =>
       exprWritesState count || body.any stmtWritesState
   | Stmt.emit _ args =>
-      args.any exprWritesState
+      args.any exprWritesState || true
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
       args.any exprWritesState || true
 where

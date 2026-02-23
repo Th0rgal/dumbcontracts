@@ -3079,6 +3079,52 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected view+pure mutability conflict to fail compilation")
 
 #eval! do
+  let viewEmitsEventSpec : ContractSpec := {
+    name := "ViewEmitsEventSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badViewEmit"
+        params := []
+        returnType := none
+        isView := true
+        body := [Stmt.emit "Ping" [Expr.literal 1], Stmt.stop]
+      }
+    ]
+    events := [{ name := "Ping", params := [{ name := "value", ty := ParamType.uint256, kind := EventParamKind.unindexed }] }]
+  }
+  match compile viewEmitsEventSpec [1] with
+  | .error err =>
+      if !contains err "is marked view but writes state" then
+        throw (IO.userError s!"✗ view-emit mutability diagnostic mismatch: {err}")
+      IO.println "✓ view-emit mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected view function emitting event to fail compilation")
+
+#eval! do
+  let pureEmitsEventSpec : ContractSpec := {
+    name := "PureEmitsEventSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badPureEmit"
+        params := []
+        returnType := none
+        isPure := true
+        body := [Stmt.emit "Ping" [Expr.literal 1], Stmt.stop]
+      }
+    ]
+    events := [{ name := "Ping", params := [{ name := "value", ty := ParamType.uint256, kind := EventParamKind.unindexed }] }]
+  }
+  match compile pureEmitsEventSpec [1] with
+  | .error err =>
+      if !contains err "is marked pure but writes state" then
+        throw (IO.userError s!"✗ pure-emit mutability diagnostic mismatch: {err}")
+      IO.println "✓ pure-emit mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected pure function emitting event to fail compilation")
+
+#eval! do
   let duplicateFunctionParamSpec : ContractSpec := {
     name := "DuplicateFunctionParamSpec"
     fields := []

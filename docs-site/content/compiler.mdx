@@ -161,8 +161,8 @@ forge create SimpleStorage --from 0x... --private-key ...
 
 **`Compiler/ContractSpec.lean`**
 - Declarative contract DSL
-- Expression language: `literal`, `param`, `storage`, `mapping`, `mapping2`, `mappingUint`, `caller`, `msgValue`, `blockTimestamp`, `localVar`, `externalCall`, `internalCall`, `arrayLength`, `arrayElement`, arithmetic, bitwise, comparisons, logical operators
-- Statement language: `letVar`, `assignVar`, `setStorage`, `setMapping`, `setMapping2`, `setMappingUint`, `require`, `return`, `stop`, `ite`, `forEach`, `emit`, `internalCall`
+- Expression language: `literal`, `param`, `storage`, `mapping`, `mappingWord`, `mapping2`, `mappingUint`, `caller`, `msgValue`, `blockTimestamp`, `localVar`, `externalCall`, `internalCall`, `arrayLength`, `arrayElement`, arithmetic, bitwise, comparisons, logical operators
+- Statement language: `letVar`, `assignVar`, `setStorage`, `setMapping`, `setMappingWord`, `setMapping2`, `setMappingUint`, `require`, `return`, `stop`, `ite`, `forEach`, `emit`, `internalCall`
 - Automatic IR generation from specs
 - Constructor parameter handling (bytecode argument loading)
 - Storage slot inference (field order → slots 0, 1, 2, ...)
@@ -251,6 +251,7 @@ The ContractSpec DSL provides a complete expression and statement language for s
 | `constructorArg i` | Deploy-time argument | `argN` (from bytecode) |
 | `storage "f"` | Read storage field | `sload(slot)` |
 | `mapping "f" key` | Read mapping entry | `sload(mappingSlot(slot, key))` |
+| `mappingWord "f" key offset` | Read mapping member word | `sload(add(mappingSlot(slot, key), offset))` |
 | `mapping2 "f" k1 k2` | Read nested mapping (e.g., allowances) | `sload(mappingSlot(mappingSlot(slot, k1), k2))` |
 | `mappingUint "f" key` | Read uint256-keyed mapping | `sload(mappingSlot(slot, key))` |
 | `caller` | Transaction sender | `caller()` |
@@ -300,6 +301,7 @@ Use typed intrinsics (`Expr.mload`, `Expr.keccak256`, `Expr.contractAddress`, `E
 | `assignVar "x" expr` | Reassign existing variable | `x := expr` |
 | `setStorage "f" expr` | Write storage field | `sstore(slot, expr)` |
 | `setMapping "f" key val` | Write mapping entry | `sstore(mappingSlot(slot, key), val)` |
+| `setMappingWord "f" key offset val` | Write mapping member word | `sstore(add(mappingSlot(slot, key), offset), val)` |
 | `setMapping2 "f" k1 k2 val` | Write nested mapping entry | `sstore(mappingSlot(mappingSlot(slot, k1), k2), val)` |
 | `setMappingUint "f" key val` | Write uint256-keyed mapping | `sstore(mappingSlot(slot, key), val)` |
 | `require cond "msg"` | Guard with revert message | `if iszero(cond) { revert(...) }` |

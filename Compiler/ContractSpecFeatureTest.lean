@@ -3013,4 +3013,53 @@ private def featureSpec : ContractSpec := {
         ["let __ite_cond := 7", "let __ite_cond_1 := 1", "mstore(0, __ite_cond)"]
       assertNotContains "ite temp avoids local collision" rendered ["mstore(0, __ite_cond_1)"]
 
+#eval! do
+  let duplicateLetVarSpec : ContractSpec := {
+    name := "DuplicateLetVar"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "x" (Expr.literal 1),
+          Stmt.letVar "x" (Expr.literal 2),
+          Stmt.return (Expr.localVar "x")
+        ]
+      }
+    ]
+  }
+  match compile duplicateLetVarSpec [1] with
+  | .error err =>
+      if !contains err "function 'f' redeclares local variable 'x' in the same scope" then
+        throw (IO.userError s!"✗ duplicate letVar diagnostic mismatch: {err}")
+      IO.println "✓ duplicate letVar diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected duplicate letVar names to fail compilation")
+
+#eval! do
+  let letVarShadowingParamSpec : ContractSpec := {
+    name := "LetVarShadowingParam"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "x" (Expr.literal 2),
+          Stmt.return (Expr.localVar "x")
+        ]
+      }
+    ]
+  }
+  match compile letVarShadowingParamSpec [1] with
+  | .error err =>
+      if !contains err "function 'f' declares local variable 'x' that shadows a parameter" then
+        throw (IO.userError s!"✗ letVar parameter shadow diagnostic mismatch: {err}")
+      IO.println "✓ letVar parameter shadow diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected letVar parameter shadowing to fail compilation")
+
 end Compiler.ContractSpecFeatureTest

@@ -507,6 +507,42 @@ private def featureSpec : ContractSpec := {
       assertContains "optional bool returndata helper lowering" rendered ["eq(returndatasize(), 0)", "eq(returndatasize(), 32)", "eq(mload(0), 1)"]
 
 #eval! do
+  let typedIntrinsicSpec : ContractSpec := {
+    name := "TypedIntrinsics"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "domainProbe"
+        params := []
+        returnType := some FieldType.uint256
+        isView := true
+        body := [
+          Stmt.mstore (Expr.literal 0) Expr.contractAddress,
+          Stmt.mstore (Expr.literal 32) Expr.chainid,
+          Stmt.return (Expr.keccak256 (Expr.literal 0) (Expr.literal 64))
+        ]
+      },
+      { name := "peekWord"
+        params := [{ name := "offset", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        isView := true
+        body := [Stmt.return (Expr.mload (Expr.param "offset"))]
+      }
+    ]
+  }
+  match compile typedIntrinsicSpec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected typed intrinsics to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "typed env/hash intrinsics lowering" rendered [
+        "mstore(0, address())",
+        "mstore(32, chainid())",
+        "mstore(0, keccak256(0, 64))",
+        "mstore(0, mload(offset))"
+      ]
+
+#eval! do
   let lowLevelCallSpec : ContractSpec := {
     name := "LowLevelCallUnsupported"
     fields := []

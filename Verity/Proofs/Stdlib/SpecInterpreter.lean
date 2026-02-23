@@ -314,8 +314,20 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
           storage.getMapping2 baseSlot key1Val key2Val
       | none => 0
   | Expr.caller => ctx.sender.val
+  | Expr.contractAddress =>
+      -- Contract address is not modeled in the scalar interpreter.
+      0
+  | Expr.chainid =>
+      -- chainid is not modeled in the scalar interpreter.
+      0
   | Expr.msgValue => ctx.msgValue % modulus
   | Expr.blockTimestamp => ctx.blockTimestamp % modulus
+  | Expr.mload _offset =>
+      -- Linear memory is not modeled in the scalar interpreter.
+      0
+  | Expr.keccak256 _offset _size =>
+      -- Keccak over linear memory is not modeled in the scalar interpreter.
+      0
   | Expr.call _gas _target _value _inOffset _inSize _outOffset _outSize =>
       -- Low-level call semantics are not modeled in the scalar SpecInterpreter yet.
       0
@@ -401,6 +413,8 @@ end
 
 mutual
 def exprUsesUnsupportedLowLevel : Expr → Bool
+  | Expr.contractAddress | Expr.chainid => true
+  | Expr.mload _ | Expr.keccak256 _ _ => true
   | Expr.call _ _ _ _ _ _ _ => true
   | Expr.staticcall _ _ _ _ _ _ => true
   | Expr.delegatecall _ _ _ _ _ _ => true
@@ -441,6 +455,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       exprUsesUnsupportedLowLevel cond || exprListUsesUnsupportedLowLevel args
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
       exprListUsesUnsupportedLowLevel args
+  | Stmt.mstore _ _ =>
+      true
   | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata =>
       true
   | Stmt.ite cond thenBranch elseBranch =>
@@ -596,6 +612,10 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       -- The spec interpreter models scalar returnValue only.
       -- Dynamic array return encoding/storage reads are codegen concerns.
       some (ctx, { state with returnValue := none, halted := true })
+
+  | Stmt.mstore _offset _value =>
+      -- Memory writes are not modeled in the scalar SpecInterpreter.
+      none
 
   | Stmt.returndataCopy _destOffset _sourceOffset _size =>
       -- Returndata memory effects are not modeled in the scalar SpecInterpreter.

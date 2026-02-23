@@ -264,5 +264,53 @@ class GenerateContractStructureScaffoldTests(unittest.TestCase):
         self.assertIn("import Verity.AST.AuditProbe", imports)
 
 
+class GenerateContractCompilerSpecMappingGetterTests(unittest.TestCase):
+    def _assert_compiler_spec_error(self, cfg: ContractConfig) -> str:
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            with self.assertRaises(SystemExit) as ctx:
+                gen_compiler_spec(cfg)
+        self.assertEqual(ctx.exception.code, 1)
+        return buf.getvalue()
+
+    def test_rejects_mapping_getter_without_key_param(self) -> None:
+        cfg = ContractConfig(
+            name="Demo",
+            fields=[Field(name="balances", ty="mapping")],
+            functions=[Function(name="getBalance", params=[])],
+        )
+        err = self._assert_compiler_spec_error(cfg)
+        self.assertIn("Mapping getter 'getBalance' for field 'balances' requires", err)
+        self.assertIn("type 'address'", err)
+
+    def test_rejects_mapping_getter_with_wrong_key_type(self) -> None:
+        cfg = ContractConfig(
+            name="Demo",
+            fields=[Field(name="balances", ty="mapping")],
+            functions=[Function(name="getBalance", params=[Param(name="key", ty="uint256")])],
+        )
+        err = self._assert_compiler_spec_error(cfg)
+        self.assertIn("requires first parameter type 'address'", err)
+        self.assertIn("got 'uint256'", err)
+
+    def test_allows_address_mapping_getter_with_address_key(self) -> None:
+        cfg = ContractConfig(
+            name="Demo",
+            fields=[Field(name="balances", ty="mapping")],
+            functions=[Function(name="getBalance", params=[Param(name="account", ty="address")])],
+        )
+        out = gen_compiler_spec(cfg)
+        self.assertIn('Stmt.return (Expr.mapping "balances" (Expr.param "account"))', out)
+
+    def test_allows_uint_mapping_getter_with_uint_key(self) -> None:
+        cfg = ContractConfig(
+            name="Demo",
+            fields=[Field(name="data", ty="mapping_uint")],
+            functions=[Function(name="getData", params=[Param(name="id", ty="uint256")])],
+        )
+        out = gen_compiler_spec(cfg)
+        self.assertIn('Stmt.return (Expr.mapping "data" (Expr.param "id"))', out)
+
+
 if __name__ == "__main__":
     unittest.main()

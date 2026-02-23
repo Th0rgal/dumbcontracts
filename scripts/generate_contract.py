@@ -990,7 +990,23 @@ def gen_compiler_spec(cfg: ContractConfig) -> str:
             target = _getter_target_field(fn, cfg.fields)
             if target and target.is_mapping:
                 # Mapping getter: Expr.mapping with key param (see balanceOf in SimpleToken)
-                key_param = fn.params[0].name if fn.params else "key"
+                expected_key_ty = "address" if target.ty == "mapping" else "uint256"
+                if not fn.params:
+                    print(
+                        f"Error: Mapping getter '{fn.name}' for field '{target.name}' requires "
+                        f"a first parameter of type '{expected_key_ty}'.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                provided_key_ty = fn.params[0].ty
+                if provided_key_ty != expected_key_ty:
+                    print(
+                        f"Error: Mapping getter '{fn.name}' for field '{target.name}' requires "
+                        f"first parameter type '{expected_key_ty}', got '{provided_key_ty}'.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                key_param = fn.params[0].name
                 body_expr = f'Expr.mapping "{target.name}" (Expr.param "{key_param}")'
             elif target:
                 body_expr = f'Expr.storage "{target.name}"'

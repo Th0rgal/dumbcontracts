@@ -1311,10 +1311,22 @@ private def issue586Ref : String :=
 private def issue623Ref : String :=
   "Issue #623 (ContractSpec storage layout controls)"
 
+private partial def validateNoRuntimeReturnsInConstructorStmt : Stmt → Except String Unit
+  | Stmt.return _ | Stmt.returnValues _ | Stmt.returnArray _
+  | Stmt.returnBytes _ | Stmt.returnStorageWords _ =>
+      throw "Compilation error: constructor must not return runtime data directly"
+  | Stmt.ite _ thenBranch elseBranch => do
+      thenBranch.forM validateNoRuntimeReturnsInConstructorStmt
+      elseBranch.forM validateNoRuntimeReturnsInConstructorStmt
+  | Stmt.forEach _ _ body =>
+      body.forM validateNoRuntimeReturnsInConstructorStmt
+  | _ => pure ()
+
 private def validateConstructorSpec (ctor : Option ConstructorSpec) : Except String Unit := do
   match ctor with
   | none => pure ()
   | some spec =>
+      spec.body.forM validateNoRuntimeReturnsInConstructorStmt
       spec.body.forM (validateStmtParamReferences "constructor" spec.params)
       validateConstructorIdentifierReferences ctor
 

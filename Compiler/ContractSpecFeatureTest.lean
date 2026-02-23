@@ -3336,6 +3336,27 @@ private def featureSpec : ContractSpec := {
       assertNotContains "ite temp avoids local collision" rendered ["mstore(0, __ite_cond_1)"]
 
 #eval! do
+  let badConstructorReturnSpec : ContractSpec := {
+    name := "BadConstructorReturn"
+    fields := []
+    constructor := some {
+      params := []
+      isPayable := false
+      body := [Stmt.return (Expr.literal 1)]
+    }
+    functions := [
+      { name := "noop", params := [], returnType := none, body := [Stmt.stop] }
+    ]
+  }
+  match compile badConstructorReturnSpec [1] with
+  | .error err =>
+      if !contains err "constructor must not return runtime data directly" then
+        throw (IO.userError s!"✗ constructor return rejection diagnostic mismatch: {err}")
+      IO.println "✓ constructor return(...) rejected in ContractSpec"
+  | .ok _ =>
+      throw (IO.userError "✗ expected constructor return(...) to be rejected")
+
+#eval! do
   let duplicateLetVarSpec : ContractSpec := {
     name := "DuplicateLetVar"
     fields := []

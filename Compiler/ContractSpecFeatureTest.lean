@@ -2174,6 +2174,39 @@ private def featureSpec : ContractSpec := {
          "__ret0_2 := __ret0_1"]
 
 #eval! do
+  let internalReturnTerminatesSpec : ContractSpec := {
+    name := "InternalReturnTerminates"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "helper"
+        params := []
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [
+          Stmt.return (Expr.literal 1),
+          Stmt.setStorage "x" (Expr.literal 9)
+        ]
+      },
+      { name := "entry"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.internalCall "helper" [])]
+      }
+    ]
+  }
+  match compile internalReturnTerminatesSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected internal return termination lowering to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "internal return termination lowering" rendered
+        ["function internal_helper() -> __ret0",
+         "__ret0 := 1",
+         "leave",
+         "sstore(0, 9)"]
+
+#eval! do
   let exprInternalCallMultiReturnSpec : ContractSpec := {
     name := "ExprInternalCallMultiReturnRejected"
     fields := []

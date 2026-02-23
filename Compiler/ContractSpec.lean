@@ -2207,8 +2207,8 @@ private def revertWithCustomError (dynamicSource : DynamicDataSource)
   pure [YulStmt.block ([storePtr] ++ sigStores ++ [hashStmt, selectorStmt, selectorStore, tailInit] ++ argStores.flatten ++ [revertStmt])]
 
 -- Compile statement to Yul (using mutual recursion for lists).
--- When isInternal=true, Stmt.return compiles to `__ret := value` (for internal Yul functions)
--- instead of EVM RETURN which terminates the entire call.
+-- When isInternal=true, Stmt.return compiles to `__ret := value; leave` so internal
+-- function execution terminates immediately without exiting the outer EVM call.
 mutual
 def compileStmtList (fields : List Field) (events : List EventDef := [])
     (errors : List ErrorDef := [])
@@ -2373,7 +2373,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let valueExpr ← compileExpr fields dynamicSource value
       if isInternal then
         match internalRetNames with
-        | retName :: _ => pure [YulStmt.assign retName valueExpr]
+        | retName :: _ => pure [YulStmt.assign retName valueExpr, YulStmt.leave]
         | [] => throw s!"Compilation error: internal return target is missing"
       else
         pure [
@@ -2878,8 +2878,9 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
           throw s!"Compilation error: internal return arity mismatch: expected {internalRetNames.length}, got {values.length}"
         else
           let compiled ← compileExprList fields dynamicSource values
-          pure ((internalRetNames.zip compiled).map fun (name, valueExpr) =>
-            YulStmt.assign name valueExpr)
+          let assigns := (internalRetNames.zip compiled).map fun (name, valueExpr) =>
+            YulStmt.assign name valueExpr
+          pure (assigns ++ [YulStmt.leave])
       else if values.isEmpty then
         pure [YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 0])]
       else

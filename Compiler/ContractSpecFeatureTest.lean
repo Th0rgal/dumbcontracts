@@ -2968,6 +2968,50 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected payable+view mutability conflict to fail compilation")
 
 #eval! do
+  let viewWritesStateSpec : ContractSpec := {
+    name := "ViewWritesStateSpec"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "badViewWrite"
+        params := []
+        returnType := none
+        isView := true
+        body := [Stmt.setStorage "x" (Expr.literal 1), Stmt.stop]
+      }
+    ]
+  }
+  match compile viewWritesStateSpec [1] with
+  | .error err =>
+      if !contains err "is marked view but writes state" then
+        throw (IO.userError s!"✗ view-write mutability diagnostic mismatch: {err}")
+      IO.println "✓ view-write mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected view function with state write to fail compilation")
+
+#eval! do
+  let pureReadsStateSpec : ContractSpec := {
+    name := "PureReadsStateSpec"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "badPureRead"
+        params := []
+        returnType := some FieldType.uint256
+        isPure := true
+        body := [Stmt.return (Expr.storage "x")]
+      }
+    ]
+  }
+  match compile pureReadsStateSpec [1] with
+  | .error err =>
+      if !contains err "is marked pure but reads state/environment" then
+        throw (IO.userError s!"✗ pure-read mutability diagnostic mismatch: {err}")
+      IO.println "✓ pure-read mutability diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected pure function with state read to fail compilation")
+
+#eval! do
   let duplicateFunctionParamSpec : ContractSpec := {
     name := "DuplicateFunctionParamSpec"
     fields := []

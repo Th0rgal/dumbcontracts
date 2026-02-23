@@ -41,11 +41,14 @@ def _require_contract_identifier(contract: str, source: Path) -> str:
     return contract
 
 
-def _require_theorem_identifier(theorem: str, source: Path) -> str:
+def _require_theorem_identifier(
+    theorem: str, source: Path, *, context: str | None = None
+) -> str:
     """Validate and return a theorem identifier from a filesystem-derived source."""
     if theorem != theorem.strip() or not THEOREM_NAME_RE.fullmatch(theorem):
+        location = f"{source} ({context})" if context else str(source)
         raise SystemExit(
-            f"Invalid theorem identifier from {source}: {theorem!r}"
+            f"Invalid theorem identifier from {location}: {theorem!r}"
         )
     return theorem
 
@@ -112,7 +115,7 @@ def _load_contract_name_sets(path: Path, *, missing_ok: bool) -> dict[str, set[s
                 raise SystemExit(
                     f"Invalid schema in {path}: entry {name!r} in {contract!r} must be a non-empty string."
                 )
-            _require_theorem_identifier(name, path)
+            _require_theorem_identifier(name, path, context=f"contract {contract!r}")
         duplicate_names = _find_duplicates(names)
         if duplicate_names:
             raise SystemExit(

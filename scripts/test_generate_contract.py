@@ -18,6 +18,7 @@ from generate_contract import (
     Param,
     gen_all_lean_imports,
     gen_basic_proofs,
+    gen_compiler_spec,
     gen_property_tests,
     parse_fields,
     parse_functions,
@@ -153,6 +154,39 @@ class GenerateContractGetterPropertyScaffoldTests(unittest.TestCase):
         out = gen_property_tests(cfg)
         self.assertIn("function testProperty_SetStoredValue_MeetsSpec() public {", out)
         self.assertIn("Property: setStoredValue_meets_spec", out)
+
+
+class GenerateContractCompilerSpecGetterTests(unittest.TestCase):
+    def test_unknown_getter_target_field_fails(self) -> None:
+        cfg = ContractConfig(
+            name="AuditDemo",
+            fields=[
+                Field(name="owner", ty="address"),
+                Field(name="totalSupply", ty="uint256"),
+            ],
+            functions=[Function(name="getSupply", params=[])],
+        )
+
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            with self.assertRaises(SystemExit) as ctx:
+                gen_compiler_spec(cfg)
+        self.assertEqual(ctx.exception.code, 1)
+        err = buf.getvalue()
+        self.assertIn("Cannot infer target field for getter 'getSupply'", err)
+
+    def test_matching_getter_target_field_is_used(self) -> None:
+        cfg = ContractConfig(
+            name="AuditDemo",
+            fields=[
+                Field(name="owner", ty="address"),
+                Field(name="totalSupply", ty="uint256"),
+            ],
+            functions=[Function(name="getTotalSupply", params=[])],
+        )
+
+        rendered = gen_compiler_spec(cfg)
+        self.assertIn('Stmt.return (Expr.storage "totalSupply")', rendered)
 
 
 class GenerateContractBasicProofScaffoldTests(unittest.TestCase):

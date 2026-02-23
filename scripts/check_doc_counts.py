@@ -278,6 +278,23 @@ def check_and_maybe_fix(
     return check_file(path, checks)
 
 
+def check_required_and_forbidden_substrings(
+    path: Path, required: list[str], forbidden: list[str]
+) -> list[str]:
+    """Validate that required phrases are present and forbidden ones absent."""
+    if not path.exists():
+        return [f"{path}: file not found"]
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    for phrase in required:
+        if phrase not in text:
+            errors.append(f"{path.name}: missing required trust-model phrase: '{phrase}'")
+    for phrase in forbidden:
+        if phrase in text:
+            errors.append(f"{path.name}: forbidden stale trust-model phrase present: '{phrase}'")
+    return errors
+
+
 def check_verification_theorem_names(path: Path) -> list[str]:
     """Validate backtick-quoted theorem names in verification.mdx tables.
 
@@ -560,6 +577,15 @@ def main() -> None:
             str(count),
         ))
     errors.extend(check_and_maybe_fix(llms, llms_contract_checks, args.fix))
+    errors.extend(
+        check_required_and_forbidden_substrings(
+            llms,
+            required=[
+                "- **Axioms**: 1 documented axiom (see AXIOMS.md) — keccak256_first_4_bytes only"
+            ],
+            forbidden=["address injectivity"],
+        )
+    )
 
     # Check compiler.mdx
     compiler_mdx = ROOT / "docs-site" / "content" / "compiler.mdx"
@@ -621,6 +647,15 @@ def main() -> None:
             args.fix,
         )
     )
+    errors.extend(
+        check_required_and_forbidden_substrings(
+            compiler_mdx,
+            required=[
+                "- **Machine-checked proofs**: 1 documented axiom (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)) — `keccak256_first_4_bytes` only, 0 sorry."
+            ],
+            forbidden=["address injectivity"],
+        )
+    )
 
     # Check examples.mdx
     examples_mdx = ROOT / "docs-site" / "content" / "examples.mdx"
@@ -635,6 +670,18 @@ def main() -> None:
                 ),
             ],
             args.fix,
+        )
+    )
+
+    # Check trust-model wording in index.mdx
+    index_mdx = ROOT / "docs-site" / "content" / "index.mdx"
+    errors.extend(
+        check_required_and_forbidden_substrings(
+            index_mdx,
+            required=[
+                "**What are axioms?** Statements assumed true without proof. This project uses 1 documented axiom: `keccak256_first_4_bytes` for selector hashing (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md))."
+            ],
+            forbidden=["address injectivity"],
         )
     )
 

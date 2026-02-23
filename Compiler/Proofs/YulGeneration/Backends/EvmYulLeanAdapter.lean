@@ -65,7 +65,6 @@ existing Verity builtin semantics path.
 -/
 def evalBuiltinCallViaEvmYulLean
     (_storage : Nat → Nat)
-    (_mappings : Nat → Nat → Nat)
     (_sender : Nat)
     (_selector : Nat)
     (_calldata : List Nat)

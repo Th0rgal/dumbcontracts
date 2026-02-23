@@ -19,12 +19,12 @@ executing an IR function body matches executing the same Yul statements.
     interpretYulBody fn tx state =
       interpretYulRuntime fn.body
         { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
-        state.storage state.mappings := by
+        state.storage := by
   rfl
 
 /-- Helper: initial Yul state aligned with the IR transaction/state. -/
 def initialYulState (tx : YulTransaction) (state : IRState) : YulState :=
-  YulState.initial tx state.storage state.mappings
+  YulState.initial tx state.storage
 
 @[simp]
 theorem evalYulExpr_selectorExpr_initial

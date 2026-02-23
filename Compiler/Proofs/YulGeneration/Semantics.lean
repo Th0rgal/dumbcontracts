@@ -36,7 +36,6 @@ aligned with Solidity's keccak-derived flat storage slot layout.
 structure YulState where
   vars : List (String × Nat)
   storage : Nat → Nat
-  mappings : Nat → Nat → Nat
   memory : Nat → Nat
   calldata : List Nat
   selector : Nat
@@ -51,10 +50,9 @@ structure YulTransaction where
   deriving Repr
 
 /-- Initial state for Yul execution -/
-def YulState.initial (tx : YulTransaction) (storage : Nat → Nat) (mappings : Nat → Nat → Nat) : YulState :=
+def YulState.initial (tx : YulTransaction) (storage : Nat → Nat) : YulState :=
   { vars := []
     storage := storage
-    mappings := mappings
     memory := fun _ => 0
     calldata := tx.args
     selector := tx.functionSelector
@@ -102,7 +100,7 @@ def evalYulCall (state : YulState) (func : String) : List YulExpr → Option Nat
     let argVals ← evalYulExprs state args
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend
       Compiler.Proofs.YulGeneration.defaultBuiltinBackend
-      state.storage state.mappings state.sender state.selector state.calldata func argVals
+      state.storage state.sender state.selector state.calldata func argVals
 termination_by args => exprsSize args + 1
 decreasing_by
   simp [exprsSize, exprSize]
@@ -146,6 +144,7 @@ def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
               match evalYulExpr state value with
               | some v => .continue (state.setVar name v)
               | none => .revert state
+          | .letMany _ _ => .revert state
           | .assign name value =>
               match evalYulExpr state value with
               | some v => .continue (state.setVar name v)
@@ -159,22 +158,20 @@ def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
                       match evalYulExpr state baseExpr, evalYulExpr state keyExpr, evalYulExpr state valExpr with
                       | some baseSlot, some key, some val =>
                           let updated := Compiler.Proofs.abstractStoreMappingEntry
-                            state.storage state.mappings baseSlot key val
+                            state.storage baseSlot key val
                           .continue {
                             state with
-                            storage := updated.1
-                            mappings := updated.2
+                            storage := updated
                           }
                       | _, _, _ => .revert state
                   | _ =>
                       match evalYulExpr state slotExpr, evalYulExpr state valExpr with
                       | some slot, some val =>
                           let updated := Compiler.Proofs.abstractStoreStorageOrMapping
-                            state.storage state.mappings slot val
+                            state.storage slot val
                           .continue {
                             state with
-                            storage := updated.1
-                            mappings := updated.2
+                            storage := updated
                           }
                       | _, _ => .revert state
               | .call "mstore" [offsetExpr, valExpr] =>
@@ -204,13 +201,13 @@ def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
                   else
                     execYulFuel fuel state (.stmts body)
               | none => .revert state
-          | .switch expr cases default =>
+          | .switch expr cases defaultCase =>
               match evalYulExpr state expr with
               | some v =>
                   match cases.find? (fun x => decide (x.fst = v)) with
                   | some (_, body) => execYulFuel fuel state (.stmts body)
                   | none =>
-                      match default with
+                      match defaultCase with
                       | some body => execYulFuel fuel state (.stmts body)
                       | none => .continue state
               | none => .revert state
@@ -250,10 +247,10 @@ set_option allowUnsafeReducibility true in
 attribute [reducible] execYulFuel
 
 
-def execYulStmt (state : YulState) (stmt : YulStmt) : YulExecResult :=
+noncomputable def execYulStmt (state : YulState) (stmt : YulStmt) : YulExecResult :=
   execYulStmtFuel (sizeOf stmt + 1) state stmt
 
-def execYulStmts (state : YulState) (stmts : List YulStmt) : YulExecResult :=
+noncomputable def execYulStmts (state : YulState) (stmts : List YulStmt) : YulExecResult :=
   execYulStmtsFuel (sizeOf stmts + 1) state stmts
 
 structure YulResult where
@@ -263,34 +260,34 @@ structure YulResult where
   finalMappings : Nat → Nat → Nat
 
 /-- Execute a Yul runtime program with selector-aware calldata -/
-def interpretYulRuntime (runtimeCode : List YulStmt) (tx : YulTransaction)
-    (storage : Nat → Nat) (mappings : Nat → Nat → Nat) : YulResult :=
-  let initialState := YulState.initial tx storage mappings
+noncomputable def interpretYulRuntime (runtimeCode : List YulStmt) (tx : YulTransaction)
+    (storage : Nat → Nat) : YulResult :=
+  let initialState := YulState.initial tx storage
   match execYulStmts initialState runtimeCode with
   | .continue s =>
       { success := true
         returnValue := s.returnValue
         finalStorage := s.storage
-        finalMappings := s.mappings }
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage }
   | .return v s =>
       { success := true
         returnValue := some v
         finalStorage := s.storage
-        finalMappings := s.mappings }
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage }
   | .stop s =>
       { success := true
         returnValue := none
         finalStorage := s.storage
-        finalMappings := s.mappings }
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage }
   | .revert _ =>
       { success := false
         returnValue := none
         finalStorage := storage
-        finalMappings := mappings }
+        finalMappings := Compiler.Proofs.storageAsMappings storage }
 
 /-- Interpret a Yul object by executing its runtime code. -/
-def interpretYulObject (obj : YulObject) (tx : YulTransaction)
-    (storage : Nat → Nat) (mappings : Nat → Nat → Nat) : YulResult :=
-  interpretYulRuntime obj.runtimeCode tx storage mappings
+noncomputable def interpretYulObject (obj : YulObject) (tx : YulTransaction)
+    (storage : Nat → Nat) : YulResult :=
+  interpretYulRuntime obj.runtimeCode tx storage
 
 end Compiler.Proofs.YulGeneration

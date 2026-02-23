@@ -31,7 +31,6 @@ def calldataloadWord (selector : Nat) (calldata : List Nat) (offset : Nat) : Nat
 
 def evalBuiltinCall
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (sender : Nat)
     (selector : Nat)
     (calldata : List Nat)
@@ -43,7 +42,7 @@ def evalBuiltinCall
     | _ => none
   else if func = "sload" then
     match argVals with
-    | [slot] => some (Compiler.Proofs.abstractLoadStorageOrMapping storage mappings slot)
+    | [slot] => some (Compiler.Proofs.abstractLoadStorageOrMapping storage slot)
     | _ => none
   else if func = "add" then
     match argVals with
@@ -126,7 +125,6 @@ abbrev defaultBuiltinBackend : BuiltinBackend := .verity
 def evalBuiltinCallWithBackend
     (backend : BuiltinBackend)
     (storage : Nat → Nat)
-    (mappings : Nat → Nat → Nat)
     (sender : Nat)
     (selector : Nat)
     (calldata : List Nat)
@@ -134,9 +132,9 @@ def evalBuiltinCallWithBackend
     (argVals : List Nat) : Option Nat :=
   match backend with
   | .verity =>
-      evalBuiltinCall storage mappings sender selector calldata func argVals
+      evalBuiltinCall storage sender selector calldata func argVals
   | .evmYulLean =>
       Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallViaEvmYulLean
-        storage mappings sender selector calldata func argVals
+        storage sender selector calldata func argVals
 
 end Compiler.Proofs.YulGeneration

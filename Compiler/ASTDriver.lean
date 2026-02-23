@@ -20,6 +20,7 @@ import Compiler.Linker
 import Compiler.Selector
 import Compiler.Hex
 import Compiler.ABI
+import Compiler.Identifier
 
 namespace Compiler.ASTDriver
 
@@ -182,26 +183,8 @@ private def ensureNonEmpty (kind name : String) : Except String Unit := do
   if name.trim.isEmpty then
     throw s!"{kind} name cannot be empty"
 
-private def isAsciiLetter (c : Char) : Bool :=
-  ('a' ≤ c && c ≤ 'z') || ('A' ≤ c && c ≤ 'Z')
-
-private def isAsciiDigit (c : Char) : Bool :=
-  '0' ≤ c && c ≤ '9'
-
-private def isIdentifierStart (c : Char) : Bool :=
-  isAsciiLetter c || c = '_'
-
-private def isIdentifierContinue (c : Char) : Bool :=
-  isIdentifierStart c || isAsciiDigit c
-
-private def isValidIdentifier (name : String) : Bool :=
-  match name.data with
-  | [] => false
-  | c :: cs => isIdentifierStart c && cs.all isIdentifierContinue
-
 private def ensureValidIdentifier (kind name : String) : Except String Unit := do
-  if !isValidIdentifier name then
-    throw s!"{kind} name must be a valid identifier: {name}"
+  Compiler.ensureValidIdentifier kind name
 
 private def validateParamNames (kind : String) (params : List Param) : Except String Unit := do
   for param in params do

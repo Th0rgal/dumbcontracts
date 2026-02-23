@@ -527,10 +527,19 @@ private def featureSpec : ContractSpec := {
         returnType := some FieldType.uint256
         isView := true
         body := [Stmt.return (Expr.mload (Expr.param "offset"))]
+      },
+      { name := "pureHash"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        isPure := true
+        body := [
+          Stmt.mstore (Expr.literal 0) (Expr.param "x"),
+          Stmt.return (Expr.keccak256 (Expr.literal 0) (Expr.literal 32))
+        ]
       }
     ]
   }
-  match compile typedIntrinsicSpec [1, 2] with
+  match compile typedIntrinsicSpec [1, 2, 3] with
   | .error err =>
       throw (IO.userError s!"✗ expected typed intrinsics to compile, got: {err}")
   | .ok ir =>

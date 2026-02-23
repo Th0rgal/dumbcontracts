@@ -1315,8 +1315,8 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.chainid => true
   | Expr.msgValue => true
   | Expr.blockTimestamp => true
-  | Expr.mload offset => exprReadsStateOrEnv offset || true
-  | Expr.keccak256 offset size => exprReadsStateOrEnv offset || exprReadsStateOrEnv size || true
+  | Expr.mload offset => exprReadsStateOrEnv offset
+  | Expr.keccak256 offset size => exprReadsStateOrEnv offset || exprReadsStateOrEnv size
   | Expr.call gas target value inOffset inSize outOffset outSize =>
       exprReadsStateOrEnv gas || exprReadsStateOrEnv target || exprReadsStateOrEnv value ||
       exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
@@ -1438,7 +1438,7 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.returnStorageWords _ =>
       true
   | Stmt.mstore offset value =>
-      exprReadsStateOrEnv offset || exprReadsStateOrEnv value || true
+      exprReadsStateOrEnv offset || exprReadsStateOrEnv value
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprReadsStateOrEnv destOffset || exprReadsStateOrEnv sourceOffset || exprReadsStateOrEnv size || true
   | Stmt.revertReturndata =>

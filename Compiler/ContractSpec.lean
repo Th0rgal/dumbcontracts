@@ -2903,6 +2903,22 @@ private def firstDuplicateName (names : List String) : Option String :=
         go (n :: seen) rest
   go [] names
 
+private def firstDuplicateFunctionParamName
+    (fns : List FunctionSpec) : Option (String × String) :=
+  let rec goFns : List FunctionSpec → Option (String × String)
+    | [] => none
+    | fn :: rest =>
+        match firstDuplicateName (fn.params.map (·.name)) with
+        | some dup => some (fn.name, dup)
+        | none => goFns rest
+  goFns fns
+
+private def firstDuplicateConstructorParamName
+    (ctor : Option ConstructorSpec) : Option String :=
+  match ctor with
+  | none => none
+  | some spec => firstDuplicateName (spec.params.map (·.name))
+
 private def dedupNatPreserve (xs : List Nat) : List Nat :=
   let rec go (seen : List Nat) : List Nat → List Nat
     | [] => []
@@ -3065,6 +3081,16 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   let fields := applySlotAliasRanges spec.fields spec.slotAliasRanges
   let externalFns := spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)
   let internalFns := spec.functions.filter (·.isInternal)
+  match firstDuplicateFunctionParamName spec.functions with
+  | some (fnName, dup) =>
+      throw s!"Compilation error: duplicate parameter name '{dup}' in function '{fnName}'"
+  | none =>
+      pure ()
+  match firstDuplicateConstructorParamName spec.constructor with
+  | some dup =>
+      throw s!"Compilation error: duplicate parameter name '{dup}' in constructor"
+  | none =>
+      pure ()
   for fn in spec.functions do
     validateFunctionSpec fn
     validateInteropFunctionSpec fn

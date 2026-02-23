@@ -66,6 +66,26 @@ private def uniqueSelectors (spec : ASTContractSpec) : List Nat :=
     assertContains "SimpleToken.deploy has constructor side effects" rendered ["sstore(0", "sstore(2"]
     assertNotContains "SimpleToken.deploy strips constructor stop()" rendered ["stop()"]
 
+private def boolCtorSpec : ASTContractSpec := {
+  name := "BoolCtorSpec"
+  constructor := some {
+    params := [{ name := "flag", ty := .bool }]
+    body := Stmt.stop
+  }
+  functions := []
+}
+
+#eval! do
+  match compileSpec boolCtorSpec [] with
+  | .error err =>
+    throw (IO.userError s!"✗ bool constructor compile failed: {err}")
+  | .ok ir =>
+    let rendered := renderDeploy ir.deploy
+    assertContains "AST constructor bool decode enforces strict ABI domain" rendered
+      ["let __abi_ctor_bool_word_0 := mload(0)",
+       "if iszero(or(eq(__abi_ctor_bool_word_0, 0), eq(__abi_ctor_bool_word_0, 1))) {",
+       "let flag := iszero(iszero(__abi_ctor_bool_word_0))"]
+
 private def badConstructorReturnSpec : ASTContractSpec := {
   name := "BadConstructorReturn"
   constructor := some {

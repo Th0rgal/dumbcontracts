@@ -118,9 +118,20 @@ private def genConstructorArgLoads (params : List Param) : List YulStmt :=
           load, YulExpr.hex addressMask
         ])]
       | ParamType.bool =>
-        [YulStmt.let_ param.name (YulExpr.call "iszero" [
-          YulExpr.call "iszero" [load]
-        ])]
+        let boolWord := s!"__abi_ctor_bool_word_{idx}"
+        [ YulStmt.let_ boolWord load
+        , YulStmt.if_ (YulExpr.call "iszero" [
+            YulExpr.call "or" [
+              YulExpr.call "eq" [YulExpr.ident boolWord, YulExpr.lit 0],
+              YulExpr.call "eq" [YulExpr.ident boolWord, YulExpr.lit 1]
+            ]
+          ]) [
+            YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+          ]
+        , YulStmt.let_ param.name (YulExpr.call "iszero" [
+            YulExpr.call "iszero" [YulExpr.ident boolWord]
+          ])
+        ]
       | _ =>
         [YulStmt.let_ param.name load]
     argsOffset ++ loadArgs

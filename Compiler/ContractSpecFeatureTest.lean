@@ -154,17 +154,31 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError s!"✗ feature spec compile failed: {err}")
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
-      assertContains "bool param normalization" rendered ["iszero(iszero(calldataload(4)))"]
+      assertContains "bool param normalization" rendered
+        ["let __abi_bool_word_4 := calldataload(4)",
+         "if iszero(or(eq(__abi_bool_word_4, 0), eq(__abi_bool_word_4, 1))) {",
+         "let flag := iszero(iszero(__abi_bool_word_4))"]
       assertContains "multi-return ABI encoding" rendered ["return(0, 64)"]
       assertContains "indexed event log opcode" rendered ["log2("]
       assertContains "indexed bool topic normalization" rendered ["iszero(iszero(2))"]
       assertContains "event topic hashing uses free memory pointer" rendered ["keccak256(__evt_ptr,"]
       assertContains "event topic hash cached before data writes" rendered ["let __evt_topic0 := keccak256(__evt_ptr,", "log2(__evt_ptr, 32, __evt_topic0"]
       assertContains "dynamic array ABI return" rendered ["calldatacopy(64"]
-      assertContains "static tuple decode head offsets" rendered ["let t_0 := calldataload(4)", "let t_1 := and(calldataload(36)", "let t_2 := iszero(iszero(calldataload(68)))", "let z := calldataload(100)"]
+      assertContains "static tuple decode head offsets" rendered
+        ["let t_0 := calldataload(4)", "let t_1 := and(calldataload(36)",
+         "let __abi_bool_word_68 := calldataload(68)",
+         "let t_2 := iszero(iszero(__abi_bool_word_68))", "let z := calldataload(100)"]
       assertContains "dynamic tuple keeps offset head word" rendered ["let td_offset := calldataload(4)", "let x := calldataload(36)"]
-      assertContains "nested static tuple decode head offsets" rendered ["let u_0_0 := calldataload(4)", "let u_0_1 := calldataload(36)", "let u_1_0 := and(calldataload(68)", "let u_1_1 := iszero(iszero(calldataload(100)))", "let u_2 := calldataload(132)", "let y := calldataload(164)"]
-      assertContains "fixed array of static tuples decode offsets" rendered ["let fa_0_0 := calldataload(4)", "let fa_0_1 := iszero(iszero(calldataload(36)))", "let fa_1_0 := calldataload(68)", "let fa_1_1 := iszero(iszero(calldataload(100)))", "let q := calldataload(132)"]
+      assertContains "nested static tuple decode head offsets" rendered
+        ["let u_0_0 := calldataload(4)", "let u_0_1 := calldataload(36)",
+         "let u_1_0 := and(calldataload(68)", "let __abi_bool_word_100 := calldataload(100)",
+         "let u_1_1 := iszero(iszero(__abi_bool_word_100))", "let u_2 := calldataload(132)",
+         "let y := calldataload(164)"]
+      assertContains "fixed array of static tuples decode offsets" rendered
+        ["let fa_0_0 := calldataload(4)", "let __abi_bool_word_36 := calldataload(36)",
+         "let fa_0_1 := iszero(iszero(__abi_bool_word_36))", "let fa_1_0 := calldataload(68)",
+         "let __abi_bool_word_100 := calldataload(100)",
+         "let fa_1_1 := iszero(iszero(__abi_bool_word_100))", "let q := calldataload(132)"]
       assertContains "dynamic bytes ABI return" rendered ["calldatacopy(64, data_data_offset, data_length)", "mstore(add(64, data_length), 0)", "return(0, add(64, and(add(data_length, 31), not(31))))"]
       assertContains "storage-word array return ABI" rendered ["let __slot := calldataload(add(slots_data_offset, mul(__i, 32)))", "mstore(add(64, mul(__i, 32)), sload(__slot))", "return(0, add(64, mul(slots_length, 32)))"]
       assertContains "custom error revert payload emission" rendered ["let __err_hash := keccak256(__err_ptr,", "mstore(0, __err_selector)", "mstore(4, and(who,", "let __err_tail := 64", "revert(0, add(4, __err_tail))"]
@@ -529,7 +543,9 @@ private def featureSpec : ContractSpec := {
   | .ok ir =>
       let rendered := Yul.render (emitYul ir)
       assertContains "constructor bool param normalization" rendered
-        ["let flag := iszero(iszero(mload(0)))", "let arg0 := flag"]
+        ["let __abi_bool_word_0 := mload(0)",
+         "if iszero(or(eq(__abi_bool_word_0, 0), eq(__abi_bool_word_0, 1))) {",
+         "let flag := iszero(iszero(__abi_bool_word_0))", "let arg0 := flag"]
 
 #eval! do
   let ctorDynamicParamSpec : ContractSpec := {

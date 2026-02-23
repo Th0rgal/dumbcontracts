@@ -9,19 +9,24 @@ description: EDSL to EVM compilation with automatic IR generation
 
 ## Overview
 
-The Verity compiler transforms high-level, verified contract specifications into deployable EVM bytecode. All contracts compile automatically from declarative specifications—no manual IR writing required.
+The Verity compiler transforms `ContractSpec` models into deployable EVM bytecode. No manual IR writing is required.
 
-**Pipeline**: EDSL Contract → Declarative Spec → IR → Yul → EVM Bytecode
+**Pipeline**: EDSL Contract → ContractSpec → IR → Yul → EVM Bytecode
 
-**Spec sources**:
-- User-facing specs: `Verity/Specs/<Name>/Spec.lean`
-- Compiler specs (for codegen): `Compiler/Specs.lean` (generated/maintained separately)
+Important: Verity has two different "spec" concepts.
+
+1. Logical specs in `Verity/Specs/<Name>/Spec.lean` are `Prop` statements used for proofs.
+2. Compiler specs in `Compiler/Specs.lean` are `ContractSpec` values used for code generation.
+
+`ContractSpec` is not only an ABI. It also contains storage fields and function bodies (`Expr`/`Stmt`).
 
 ## Trust Model
 
 ### What's Verified (Zero Trust Required)
-- **EDSL + compiler proofs**: Lean theorems for contract specs, IR generation, and Yul codegen
-- **Machine-checked proofs**: 2 documented axioms (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)), 0 sorry — all proofs complete
+- **Layer 1 per contract**: EDSL behavior is proven equivalent to its `ContractSpec`.
+- **Layer 2 framework proof**: `ContractSpec -> IR` preserves semantics.
+- **Layer 3 framework proof**: `IR -> Yul` preserves semantics.
+- **Machine-checked proofs**: 1 documented axiom (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)), 0 sorry.
 - **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean
 
 ### What's Tested (High Confidence)

@@ -231,13 +231,16 @@ def check_file(path: Path, checks: list[tuple[str, re.Pattern, str]]) -> list[st
     text = path.read_text(encoding="utf-8")
     errors = []
     for desc, pattern, expected in checks:
-        match = pattern.search(text)
-        if not match:
+        matches = list(pattern.finditer(text))
+        if not matches:
             errors.append(f"{path.name}: missing expected pattern for {desc}")
-        elif match.group(1) != expected:
-            errors.append(
-                f"{path.name}: {desc} says '{match.group(1)}' but expected '{expected}'"
-            )
+            continue
+        for i, match in enumerate(matches, start=1):
+            if match.group(1) != expected:
+                errors.append(
+                    f"{path.name}: {desc} occurrence {i} says "
+                    f"'{match.group(1)}' but expected '{expected}'"
+                )
     return errors
 
 
@@ -248,12 +251,10 @@ def apply_fixes(path: Path, checks: list[tuple[str, re.Pattern, str]]) -> bool:
     text = path.read_text(encoding="utf-8")
     edits: list[tuple[int, int, str]] = []
     for _, pattern, expected in checks:
-        match = pattern.search(text)
-        if not match:
-            continue
-        if match.group(1) == expected:
-            continue
-        edits.append((match.start(1), match.end(1), expected))
+        for match in pattern.finditer(text):
+            if match.group(1) == expected:
+                continue
+            edits.append((match.start(1), match.end(1), expected))
 
     if not edits:
         return False
@@ -478,7 +479,9 @@ def main() -> None:
             continue
         solidity_contract_checks.append((
             f"solidity README {contract} count",
-            re.compile(rf"{contract}\.lean.*?(\d+) theorems"),
+            re.compile(
+                rf"`Verity/Examples/{re.escape(contract)}\.lean`\s*\|\s*(\d+) theorems"
+            ),
             str(count),
         ))
     errors.extend(check_and_maybe_fix(solidity_readme, solidity_contract_checks, args.fix))

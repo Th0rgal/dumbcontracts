@@ -1920,6 +1920,19 @@ private def issue625Ref : String :=
 private def issue753Ref : String :=
   "Issue #753 (internal dynamic params unsupported)"
 
+private def issue756Ref : String :=
+  "Issue #756 (external/helper namespace collisions)"
+
+private def reservedExternalNames : List String :=
+  let mappingHelpers := ["mappingSlot"]
+  let arrayHelpers := [checkedArrayElementCalldataHelperName, checkedArrayElementMemoryHelperName]
+  let entrypoints := ["fallback", "receive"]
+  (mappingHelpers ++ arrayHelpers ++ entrypoints).eraseDups
+
+private def firstReservedExternalCollision (spec : ContractSpec) : Option String :=
+  (spec.externals.map (·.name)).find? (fun name =>
+    name.startsWith internalFunctionPrefix || reservedExternalNames.contains name)
+
 private def firstInternalDynamicParam
     (fns : List FunctionSpec) : Option (String × String × ParamType) :=
   let rec goFns : List FunctionSpec → Option (String × String × ParamType)
@@ -3941,6 +3954,14 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
   match firstDuplicateName (spec.externals.map (·.name)) with
   | some dup =>
       throw s!"Compilation error: duplicate external declaration '{dup}' in {spec.name}"
+  | none =>
+      pure ()
+  match firstReservedExternalCollision spec with
+  | some name =>
+      if name.startsWith internalFunctionPrefix then
+        throw s!"Compilation error: external declaration '{name}' uses reserved prefix '{internalFunctionPrefix}' ({issue756Ref})."
+      else
+        throw s!"Compilation error: external declaration '{name}' collides with compiler-generated/reserved symbol '{name}' ({issue756Ref}). Rename the external wrapper."
   | none =>
       pure ()
   for err in spec.errors do

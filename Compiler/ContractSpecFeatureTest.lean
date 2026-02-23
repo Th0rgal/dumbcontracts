@@ -3530,6 +3530,62 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ declared external target accepted"
 
 #eval! do
+  let helperNameCollisionSpec : ContractSpec := {
+    name := "HelperNameCollisionSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "mappingSlot" [Expr.param "x", Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "mappingSlot"
+        params := [ParamType.uint256, ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  match compile helperNameCollisionSpec [1] with
+  | .error err =>
+      if !contains err "collides with compiler-generated/reserved symbol 'mappingSlot'" then
+        throw (IO.userError s!"✗ helper-name collision diagnostic mismatch: {err}")
+      IO.println "✓ helper-name external collision rejected"
+  | .ok _ =>
+      throw (IO.userError "✗ expected helper-name external collision to fail compilation")
+
+#eval! do
+  let internalPrefixCollisionSpec : ContractSpec := {
+    name := "InternalPrefixCollisionSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "internal_lib" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "internal_lib"
+        params := [ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  match compile internalPrefixCollisionSpec [1] with
+  | .error err =>
+      if !contains err "uses reserved prefix 'internal_'" then
+        throw (IO.userError s!"✗ internal-prefix collision diagnostic mismatch: {err}")
+      IO.println "✓ internal-prefix external collision rejected"
+  | .ok _ =>
+      throw (IO.userError "✗ expected internal-prefix external collision to fail compilation")
+
+#eval! do
   let invalidSpecialEntrypointMutabilitySpec : ContractSpec := {
     name := "InvalidSpecialEntrypointMutabilitySpec"
     fields := []

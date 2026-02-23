@@ -25,6 +25,10 @@ REQUIRED_ABSTRACTION_IMPORTS = {
     PROOFS_DIR / "YulGeneration" / "Semantics.lean",
 }
 
+LEGACY_SYMBOL_FORBIDDEN_FILES = REQUIRED_ABSTRACTION_IMPORTS | {
+    PROOFS_DIR / "YulGeneration" / "SmokeTests.lean",
+}
+
 BUILTINS_FILE = PROOFS_DIR / "YulGeneration" / "Builtins.lean"
 
 IMPORT_MAPPING_ENCODING_RE = re.compile(r"^\s*import\s+Compiler\.Proofs\.MappingEncoding\s*$", re.MULTILINE)
@@ -140,6 +144,10 @@ def main() -> int:
         if not ABSTRACT_STORE_ENTRY_REF_RE.search(text):
             errors.append(f"{rel}: missing reference to Compiler.Proofs.abstractStoreMappingEntry")
 
+    for lean_file in LEGACY_SYMBOL_FORBIDDEN_FILES:
+        text = lean_file.read_text(encoding="utf-8")
+        rel = lean_file.relative_to(ROOT)
+
         if DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE.search(text):
             errors.append(
                 f"{rel}: direct reference to MappingEncoding symbol is disallowed; "
@@ -149,7 +157,7 @@ def main() -> int:
         if LEGACY_ALIAS_SYMBOL_RE.search(text):
             errors.append(
                 f"{rel}: legacy mapping symbol names (mappingTag/encodeMappingSlot/decodeMappingSlot) "
-                "are disallowed; use abstractMapping* names directly"
+                "are disallowed; use MappingSlot/solidityMappingSlot-based names directly"
             )
 
     builtins_text = BUILTINS_FILE.read_text(encoding="utf-8")

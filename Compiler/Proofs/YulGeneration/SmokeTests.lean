@@ -121,15 +121,15 @@ example :
     | _ => false) = true := by
   native_decide
 
--- sstore on tagged-encoded literal now behaves as a plain storage write
+-- sstore on a literal solidityMappingSlot writes plain storage at that slot
 example :
     (let runtime := [
       YulStmt.expr (YulExpr.call "sstore" [
-        YulExpr.lit (encodeMappingSlot 4 9),
+        YulExpr.lit (solidityMappingSlot 4 9),
         YulExpr.lit 555
       ])
     ]
-    let slot := encodeMappingSlot 4 9
+    let slot := solidityMappingSlot 4 9
     match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
     | { success := true, finalStorage, finalMappings, .. } =>
         decide (finalStorage slot = 555 ∧ finalMappings 4 9 = 0)
@@ -151,16 +151,16 @@ example :
     | _ => false) = true := by
   native_decide
 
--- sload from a tagged-encoded literal now reads plain storage at that slot
+-- sload from a literal solidityMappingSlot reads plain storage at that slot
 example :
     (let runtime := [
       YulStmt.expr (YulExpr.call "sstore" [
-        YulExpr.lit (encodeMappingSlot 4 9),
+        YulExpr.lit (solidityMappingSlot 4 9),
         YulExpr.lit 321
       ]),
       YulStmt.expr (YulExpr.call "mstore" [
         YulExpr.lit 0,
-        YulExpr.call "sload" [YulExpr.lit (encodeMappingSlot 4 9)]
+        YulExpr.call "sload" [YulExpr.lit (solidityMappingSlot 4 9)]
       ]),
       YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
     ]
@@ -169,18 +169,18 @@ example :
     | _ => false) = true := by
   native_decide
 
--- sstore on an encoded nested mapping slot routes through mapping-of-mapping base slot
+-- sstore on a literal nested solidityMappingSlot writes flat storage at that slot
 example :
     (let runtime := [
       YulStmt.expr (YulExpr.call "sstore" [
-        YulExpr.lit (encodeNestedMappingSlot 3 4 5),
+        YulExpr.lit (solidityMappingSlot (solidityMappingSlot 3 4) 5),
         YulExpr.lit 777
       ])
     ]
-    let slot := encodeNestedMappingSlot 3 4 5
+    let slot := solidityMappingSlot (solidityMappingSlot 3 4) 5
     match runYul runtime { sender := 0, functionSelector := 0, args := [] } emptyStorage emptyMappings with
     | { success := true, finalStorage, finalMappings, .. } =>
-        decide (finalStorage slot = 777 ∧ finalMappings (encodeMappingSlot 3 4) 5 = 0)
+        decide (finalStorage slot = 777 ∧ finalMappings 3 4 = 0 ∧ finalMappings (solidityMappingSlot 3 4) 5 = 0)
     | _ => false) = true := by
   native_decide
 

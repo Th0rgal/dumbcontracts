@@ -399,4 +399,46 @@ private def invalidMutabilitySpecViewPure : ASTContractSpec := {
   | .ok _ =>
     throw (IO.userError "✗ expected view+pure mutability to be rejected")
 
+private def invalidViewWritesStateSpec : ASTContractSpec := {
+  name := "InvalidViewWritesStateSpec"
+  functions := [
+    { name := "mutate"
+      params := []
+      returnType := .unit
+      isView := true
+      body := Stmt.sstore 0 (Expr.lit 1) Stmt.stop }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidViewWritesStateSpec [0] with
+  | .error err =>
+    if contains err "is marked view but writes state" then
+      IO.println "✓ View mutability rejects state writes in AST body"
+    else
+      throw (IO.userError s!"✗ unexpected view-write mutability error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected view function with state write to be rejected")
+
+private def invalidPureReadsStateSpec : ASTContractSpec := {
+  name := "InvalidPureReadsStateSpec"
+  functions := [
+    { name := "readStorage"
+      params := []
+      returnType := .uint256
+      isPure := true
+      body := Stmt.ret (Expr.storage 0) }
+  ]
+}
+
+#eval! do
+  match compileSpec invalidPureReadsStateSpec [0] with
+  | .error err =>
+    if contains err "is marked pure but reads state/environment" then
+      IO.println "✓ Pure mutability rejects state/environment reads in AST body"
+    else
+      throw (IO.userError s!"✗ unexpected pure-read mutability error: {err}")
+  | .ok _ =>
+    throw (IO.userError "✗ expected pure function with state read to be rejected")
+
 end Compiler.ASTDriverTest

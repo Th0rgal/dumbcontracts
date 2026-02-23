@@ -35,6 +35,8 @@
     "comment",
     "expr",
     "if_",
+    "leave",
+    "letMany",
     "let_",
     "switch"
   ]

@@ -103,6 +103,7 @@ private def rewriteStmtOnce (orderedRules : List ExprPatchRule) : YulStmt → (Y
   | .expr expr =>
       let (expr', hits) := rewriteExprOnce orderedRules expr
       (.expr expr', hits)
+  | .leave => (.leave, [])
   | .if_ cond body =>
       let (cond', condHits) := rewriteExprOnce orderedRules cond
       let (body', bodyHits) := rewriteStmtListOnce orderedRules body

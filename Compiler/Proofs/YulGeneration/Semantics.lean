@@ -149,6 +149,7 @@ def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
               match evalYulExpr state value with
               | some v => .continue (state.setVar name v)
               | none => .revert state
+          | .leave => .continue state
           | .expr e =>
               match e with
               | .call "sstore" [slotExpr, valExpr] =>

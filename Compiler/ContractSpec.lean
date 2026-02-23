@@ -2287,11 +2287,18 @@ private def validateInternalCallShapesInFunction (functions : List FunctionSpec)
 private def issue732Ref : String :=
   "Issue #732 (reject undeclared external call targets)"
 
+private def issue184Ref : String :=
+  "Issue #184 (verified external interface declarations)"
+
 private partial def validateExternalCallTargetsInExpr
     (externals : List ExternalFunction) (context : String) : Expr → Except String Unit
   | Expr.externalCall name args => do
-      if !(externals.any (fun ext => ext.name == name)) then
-        throw s!"Compilation error: {context} references unknown external call target '{name}' ({issue732Ref}). Declare it in spec.externals."
+      match externals.find? (fun ext => ext.name == name) with
+      | none =>
+          throw s!"Compilation error: {context} references unknown external call target '{name}' ({issue732Ref}). Declare it in spec.externals."
+      | some ext =>
+          if args.length != ext.params.length then
+            throw s!"Compilation error: {context} calls external '{name}' with {args.length} args, but spec.externals declares {ext.params.length} ({issue184Ref})."
       args.forM (validateExternalCallTargetsInExpr externals context)
   | Expr.call gas target value inOffset inSize outOffset outSize => do
       validateExternalCallTargetsInExpr externals context gas

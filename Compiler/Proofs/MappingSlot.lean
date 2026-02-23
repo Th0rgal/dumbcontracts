@@ -6,8 +6,9 @@ namespace Compiler.Proofs
 /-!
 Mapping slot abstraction used by proof interpreters.
 
-Today this delegates to the tagged encoding model in `MappingEncoding.lean`.
-When issue #259 is implemented, only this module should need backend changes.
+The active backend is keccak-faithful (`solidityMappingSlot`), while the tagged
+encoding model from `MappingEncoding.lean` is retained only for transitional
+reference and compatibility scaffolding.
 -/
 
 /-- Mapping-slot backend chosen for proof semantics. -/
@@ -19,10 +20,9 @@ inductive MappingSlotBackend where
 /--
 Active proof-model backend.
 
-`tagged` is the current verification-level model. `keccak` is reserved for the
-issue #259 backend migration.
+`keccak` is the active, EVM-faithful mapping-slot model.
 -/
-def activeMappingSlotBackend : MappingSlotBackend := .tagged
+def activeMappingSlotBackend : MappingSlotBackend := .keccak
 
 /-- Whether the active backend matches EVM keccak-derived slot layout exactly. -/
 def activeMappingSlotBackendIsEvmFaithful : Bool :=
@@ -102,46 +102,44 @@ def abstractStoreStorageOrMapping
   | none =>
       (fun s => if s = slot then value else storage s, mappings)
 
-@[simp] theorem abstractMappingSlot_eq_encode (baseSlot key : Nat) :
-    abstractMappingSlot baseSlot key = encodeMappingSlot baseSlot key := rfl
+@[simp] theorem abstractMappingSlot_eq_solidity (baseSlot key : Nat) :
+    abstractMappingSlot baseSlot key = solidityMappingSlot baseSlot key := rfl
 
-@[simp] theorem abstractMappingTag_eq_mappingTag :
-    abstractMappingTag = mappingTag := rfl
+@[simp] theorem abstractMappingTag_eq_zero :
+    abstractMappingTag = 0 := rfl
 
-@[simp] theorem abstractDecodeMappingSlot_eq_decode (slot : Nat) :
-    abstractDecodeMappingSlot slot = decodeMappingSlot slot := rfl
+@[simp] theorem abstractDecodeMappingSlot_eq_none (slot : Nat) :
+    abstractDecodeMappingSlot slot = none := rfl
 
-@[simp] theorem activeMappingSlotBackend_eq_tagged :
-    activeMappingSlotBackend = .tagged := rfl
+@[simp] theorem activeMappingSlotBackend_eq_keccak :
+    activeMappingSlotBackend = .keccak := rfl
 
-@[simp] theorem activeMappingSlotBackendIsEvmFaithful_eq_false :
-    activeMappingSlotBackendIsEvmFaithful = false := rfl
+@[simp] theorem activeMappingSlotBackendIsEvmFaithful_eq_true :
+    activeMappingSlotBackendIsEvmFaithful = true := rfl
 
-@[simp] theorem abstractNestedMappingSlot_eq_encodeNested (baseSlot key1 key2 : Nat) :
-    abstractNestedMappingSlot baseSlot key1 key2 = encodeNestedMappingSlot baseSlot key1 key2 := by
-  simp [abstractNestedMappingSlot, encodeNestedMappingSlot]
+@[simp] theorem abstractNestedMappingSlot_eq_solidityNested (baseSlot key1 key2 : Nat) :
+    abstractNestedMappingSlot baseSlot key1 key2 =
+      solidityMappingSlot (solidityMappingSlot baseSlot key1) key2 := by
+  simp [abstractNestedMappingSlot]
 
 @[simp] theorem abstractLoadMappingEntry_eq
     (storage : Nat → Nat)
     (mappings : Nat → Nat → Nat)
     (baseSlot key : Nat) :
-    abstractLoadMappingEntry storage mappings baseSlot key = mappings baseSlot key := rfl
+    abstractLoadMappingEntry storage mappings baseSlot key = storage (solidityMappingSlot baseSlot key) := rfl
 
 @[simp] theorem abstractStoreMappingEntry_eq
     (storage : Nat → Nat)
     (mappings : Nat → Nat → Nat)
     (baseSlot key value : Nat) :
     abstractStoreMappingEntry storage mappings baseSlot key value =
-      (storage, fun b k => if b = baseSlot ∧ k = key then value else mappings b k) := rfl
+      (fun s => if s = solidityMappingSlot baseSlot key then value else storage s, mappings) := rfl
 
 @[simp] theorem abstractLoadStorageOrMapping_eq
     (storage : Nat → Nat)
     (mappings : Nat → Nat → Nat)
     (slot : Nat) :
-    abstractLoadStorageOrMapping storage mappings slot =
-      match decodeMappingSlot slot with
-      | some (baseSlot, key) => mappings baseSlot key
-      | none => storage slot := by
+    abstractLoadStorageOrMapping storage mappings slot = storage slot := by
   simp [abstractLoadStorageOrMapping]
 
 @[simp] theorem abstractStoreStorageOrMapping_eq
@@ -149,11 +147,7 @@ def abstractStoreStorageOrMapping
     (mappings : Nat → Nat → Nat)
     (slot value : Nat) :
     abstractStoreStorageOrMapping storage mappings slot value =
-      match decodeMappingSlot slot with
-      | some (baseSlot, key) =>
-          (storage, fun b k => if b = baseSlot ∧ k = key then value else mappings b k)
-      | none =>
-          (fun s => if s = slot then value else storage s, mappings) := by
+      (fun s => if s = slot then value else storage s, mappings) := by
   simp [abstractStoreStorageOrMapping]
 
 end Compiler.Proofs

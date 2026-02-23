@@ -26,10 +26,9 @@ def selectorExpr : YulExpr :=
 
 /-!
 Runtime Yul mapping slots are derived via `keccak(baseSlot, key)`. Proof
-semantics call through `MappingSlot`; the currently active proof backend is
-`tagged` (see `activeMappingSlotBackend`), so `sload`/`sstore` route to the
-separate `mappings` table rather than flat `storage`. Issue #259 tracks
-migration to a keccak-faithful backend.
+semantics call through `MappingSlot`; the active backend is `keccak` (see
+`activeMappingSlotBackend`), so `mappingSlot`/`sload`/`sstore` semantics are
+aligned with Solidity's keccak-derived flat storage slot layout.
 -/
 
 /-! ## Execution State -/

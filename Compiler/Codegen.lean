@@ -7,7 +7,17 @@ namespace Compiler
 
 open Yul
 
+inductive BackendProfile where
+  | semantic
+  | solidityParityOrdering
+  | solidityParity
+  deriving Repr, DecidableEq
+
+instance : Inhabited BackendProfile where
+  default := .semantic
+
 structure YulEmitOptions where
+  backendProfile : BackendProfile := .semantic
   patchConfig : Yul.PatchPassConfig := { enabled := false }
   /-- Scratch memory base used by compiler-generated mapping-slot helpers.
       Default `0` preserves historical behavior (`mstore(0, key); mstore(32, baseSlot)`). -/
@@ -89,10 +99,27 @@ private def defaultDispatchCase
 -- Duplicated here to avoid importing ContractSpec into the lightweight Codegen module.
 private def selectorShift : Nat := 224
 
+private def insertBySelector (fn : IRFunction) : List IRFunction → List IRFunction
+  | [] => [fn]
+  | head :: tail =>
+      if fn.selector < head.selector then
+        fn :: head :: tail
+      else
+        head :: insertBySelector fn tail
+
+private def sortBySelector (funcs : List IRFunction) : List IRFunction :=
+  funcs.foldl (fun acc fn => insertBySelector fn acc) []
+
 def buildSwitch
     (funcs : List IRFunction)
     (fallback : Option IREntrypoint := none)
-    (receive : Option IREntrypoint := none) : YulStmt :=
+    (receive : Option IREntrypoint := none)
+    (sortCasesBySelector : Bool := false) : YulStmt :=
+  let funcs :=
+    if sortCasesBySelector then
+      sortBySelector funcs
+    else
+      funcs
   let selectorExpr := YulExpr.call "shr" [YulExpr.lit selectorShift, YulExpr.call "calldataload" [YulExpr.lit 0]]
   let cases := funcs.map (fun fn =>
     let body := dispatchBody fn.payable s!"{fn.name}()" ([calldatasizeGuard fn.params.length] ++ fn.body)
@@ -112,10 +139,17 @@ def runtimeCode (contract : IRContract) : List YulStmt :=
   let internals := contract.internalFunctions
   mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
 
+private def profileSortsDispatchCases (profile : BackendProfile) : Bool :=
+  match profile with
+  | .semantic => false
+  | .solidityParityOrdering => true
+  | .solidityParity => true
+
 def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
   let mapping := if contract.usesMapping then [mappingSlotFuncAt options.mappingSlotScratchBase] else []
   let internals := contract.internalFunctions
-  mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
+  let sortCases := profileSortsDispatchCases options.backendProfile
+  mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases]
 
 /-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
 def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=

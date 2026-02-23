@@ -309,6 +309,7 @@ Options:
   -o <dir>           Short form of --output
   --abi-output <dir> Output ABI JSON artifacts (<Contract>.abi.json)
   --ast              Use unified AST compilation path
+  --backend-profile <semantic|solidity-parity-ordering|solidity-parity>
   --enable-patches   Enable deterministic Yul patch pass
   --patch-max-iterations <n>  Max patch-pass fixpoint iterations (default: 2)
   --patch-report <path>       Write TSV patch coverage report
@@ -317,6 +318,11 @@ Options:
   -v                 Short form of --verbose
   --help             Show help message
 ```
+
+`--backend-profile` controls deterministic output-shape normalization:
+- `semantic`: default behavior.
+- `solidity-parity-ordering`: sort dispatch `case` blocks by selector.
+- `solidity-parity`: `solidity-parity-ordering` plus deterministic patch pass enabled.
 
 **Examples**:
 ```bash

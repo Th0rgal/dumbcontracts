@@ -37,6 +37,28 @@ private def assertNotContains (label rendered : String) (needles : List String) 
       throw (IO.userError s!"✗ {label}: unexpected '{needle}' in:\n{rendered}")
   IO.println s!"✓ {label}"
 
+private def firstIndexOf? (haystack needle : String) : Option Nat :=
+  let h := haystack.toList
+  let n := needle.toList
+  if n.isEmpty then some 0
+  else
+    let rec go (rest : List Char) (idx : Nat) : Option Nat :=
+      match rest with
+      | [] => none
+      | _ :: tail =>
+          if rest.take n.length == n then some idx
+          else go tail (idx + 1)
+    go h 0
+
+private def assertAppearsBefore (label rendered first second : String) : IO Unit := do
+  let some firstIdx := firstIndexOf? rendered first
+    | throw (IO.userError s!"✗ {label}: missing first needle '{first}'")
+  let some secondIdx := firstIndexOf? rendered second
+    | throw (IO.userError s!"✗ {label}: missing second needle '{second}'")
+  if !(firstIdx < secondIdx) then
+    throw (IO.userError s!"✗ {label}: expected '{first}' to appear before '{second}'")
+  IO.println s!"✓ {label}"
+
 private def featureSpec : ContractSpec := {
   name := "FeatureSpec"
   fields := []
@@ -2900,6 +2922,36 @@ private def featureSpec : ContractSpec := {
       assertContains "mappingSlot helper custom key scratch address" renderedCustom ["mstore(128, key)"]
       assertContains "mappingSlot helper custom baseSlot scratch address" renderedCustom ["mstore(160, baseSlot)"]
       assertContains "mappingSlot helper custom keccak scratch address" renderedCustom ["keccak256(128, 64)"]
+
+#eval! do
+  let selectorOrderingSpec : ContractSpec := {
+    name := "SelectorOrderingSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "zebra", params := [], returnType := none, body := [Stmt.stop] },
+      { name := "alpha", params := [], returnType := none, body := [Stmt.stop] },
+      { name := "middle", params := [], returnType := none, body := [Stmt.stop] }
+    ]
+  }
+  let selectors := [0x30000000, 0x10000000, 0x20000000]
+  match compile selectorOrderingSpec selectors with
+  | .error err =>
+      throw (IO.userError s!"✗ selector ordering compile failed: {err}")
+  | .ok ir =>
+      let renderedDefault := Yul.render (emitYulWithOptions ir {})
+      assertAppearsBefore "default profile preserves source selector order (zebra before alpha)"
+        renderedDefault "case 0x30000000 {" "case 0x10000000 {"
+
+      let renderedParityOrdering :=
+        Yul.render (emitYulWithOptions ir { backendProfile := .solidityParityOrdering })
+      assertAppearsBefore "solidity-parity-ordering sorts selector cases ascending (alpha before zebra)"
+        renderedParityOrdering "case 0x10000000 {" "case 0x30000000 {"
+
+      let renderedParity :=
+        Yul.render (emitYulWithOptions ir { backendProfile := .solidityParity })
+      assertAppearsBefore "solidity-parity also sorts selector cases ascending (alpha before zebra)"
+        renderedParity "case 0x10000000 {" "case 0x30000000 {"
 
 #eval! do
   let slotAliasRangeMirrorWriteSpec : ContractSpec := {

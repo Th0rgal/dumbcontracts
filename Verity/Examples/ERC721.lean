@@ -56,9 +56,12 @@ def balanceOf (addr : Address) : Contract Uint256 := do
 
 def ownerOf (tokenId : Uint256) : Contract Address := do
   let ownerWord ← getMappingUint owners tokenId
+  require (ownerWord != 0) "Token does not exist"
   return wordToAddress ownerWord
 
 def getApproved (tokenId : Uint256) : Contract Address := do
+  let ownerWord ← getMappingUint owners tokenId
+  require (ownerWord != 0) "Token does not exist"
   let approvedWord ← getMappingUint tokenApprovals tokenId
   return wordToAddress approvedWord
 

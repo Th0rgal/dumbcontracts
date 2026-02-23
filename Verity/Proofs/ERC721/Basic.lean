@@ -49,21 +49,23 @@ theorem balanceOf_meets_spec (s : ContractState) (addr : Address) :
   simp [Verity.Examples.ERC721.balanceOf, balanceOf_spec, getMapping, Contract.runValue,
     Verity.Examples.ERC721.balances]
 
-/-- `ownerOf` decodes owner word in slot 4 for `tokenId`. -/
+/-- `ownerOf` reverts for unminted tokens and returns owner for minted tokens. -/
 theorem ownerOf_meets_spec (s : ContractState) (tokenId : Uint256) :
-    ownerOf_spec tokenId ((Verity.Examples.ERC721.ownerOf tokenId).runValue s) s := by
-  simp [ownerOf_spec, Verity.Examples.ERC721.ownerOf, Contract.runValue, Verity.bind, Bind.bind,
-    getMappingUint, Verity.Examples.ERC721.owners,
-    Verity.Examples.ERC721.wordToAddress, Verity.Specs.ERC721.wordToAddress]
-  simp [Pure.pure, Verity.pure]
+    ownerOf_spec tokenId ((Verity.Examples.ERC721.ownerOf tokenId).run s) s := by
+  cases h_owner : (s.storageMapUint 4 tokenId != 0) <;>
+    simp [ownerOf_spec, Verity.Examples.ERC721.ownerOf, Contract.run, Verity.bind, Bind.bind,
+      getMappingUint, Verity.Examples.ERC721.owners, Verity.Examples.ERC721.wordToAddress,
+      Verity.Specs.ERC721.wordToAddress, Pure.pure, Verity.pure,
+      require, h_owner]
 
-/-- `getApproved` decodes approval word in slot 5 for `tokenId`. -/
+/-- `getApproved` reverts for unminted tokens and returns approval for minted tokens. -/
 theorem getApproved_meets_spec (s : ContractState) (tokenId : Uint256) :
-    getApproved_spec tokenId ((Verity.Examples.ERC721.getApproved tokenId).runValue s) s := by
-  simp [getApproved_spec, Verity.Examples.ERC721.getApproved, Contract.runValue, Verity.bind, Bind.bind,
-    getMappingUint, Verity.Examples.ERC721.tokenApprovals,
-    Verity.Examples.ERC721.wordToAddress, Verity.Specs.ERC721.wordToAddress]
-  simp [Pure.pure, Verity.pure]
+    getApproved_spec tokenId ((Verity.Examples.ERC721.getApproved tokenId).run s) s := by
+  cases h_owner : (s.storageMapUint 4 tokenId != 0) <;>
+    simp [getApproved_spec, Verity.Examples.ERC721.getApproved, Contract.run, Verity.bind, Bind.bind,
+      getMappingUint, Verity.Examples.ERC721.owners, Verity.Examples.ERC721.tokenApprovals,
+      Verity.Examples.ERC721.wordToAddress, Verity.Specs.ERC721.wordToAddress, Pure.pure, Verity.pure,
+      require, h_owner]
 
 /-- `isApprovedForAll` checks nonzero operator-approval flag in slot 6. -/
 theorem isApprovedForAll_meets_spec (s : ContractState) (ownerAddr operator : Address) :

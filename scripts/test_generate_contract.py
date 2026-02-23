@@ -19,6 +19,7 @@ from generate_contract import (
     gen_all_lean_imports,
     gen_basic_proofs,
     gen_compiler_spec,
+    gen_spec,
     gen_property_tests,
     parse_fields,
     parse_functions,
@@ -154,6 +155,30 @@ class GenerateContractGetterPropertyScaffoldTests(unittest.TestCase):
         out = gen_property_tests(cfg)
         self.assertIn("function testProperty_SetStoredValue_MeetsSpec() public {", out)
         self.assertIn("Property: setStoredValue_meets_spec", out)
+        self.assertIn("assertEq(", out)
+        self.assertIn("scaffold default: slot 0 unchanged", out)
+
+
+class GenerateContractSpecScaffoldTests(unittest.TestCase):
+    def test_specs_are_not_vacuous_true(self) -> None:
+        cfg = ContractConfig(
+            name="AuditVacuous",
+            fields=[Field(name="x", ty="uint256")],
+            functions=[
+                Function(name="setX", params=[Param(name="value", ty="uint256")]),
+                Function(name="getX", params=[]),
+                Function(name="isReady", params=[]),
+            ],
+        )
+
+        out = gen_spec(cfg)
+        self.assertNotIn(" : Prop :=\n  True", out)
+        self.assertIn("def setX_spec (value : Uint256) (s s' : ContractState) : Prop :=", out)
+        self.assertIn("sameExceptEvents s s'", out)
+        self.assertIn("def getX_spec (result : Uint256) (s : ContractState) : Prop :=", out)
+        self.assertIn("result = 0", out)
+        self.assertIn("def isReady_spec (result : Bool) (s : ContractState) : Prop :=", out)
+        self.assertIn("result = false", out)
 
 
 class GenerateContractCompilerSpecGetterTests(unittest.TestCase):

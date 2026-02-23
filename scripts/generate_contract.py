@@ -557,14 +557,17 @@ def gen_spec(cfg: ContractConfig) -> str:
             ret_type = _getter_return_type(fn, cfg.fields)
             param_part = f" {lean_params}" if lean_params else ""
             spec_defs.append(f"def {fn.name}_spec{param_part} (result : {ret_type}) (s : ContractState) : Prop :=")
-            spec_defs.append(f"  -- TODO: Define what the return value should be")
-            spec_defs.append(f"  True")
+            spec_defs.append("  -- Scaffold default: matches the generated placeholder implementation.")
+            if ret_type == "Bool":
+                spec_defs.append("  result = false")
+            else:
+                spec_defs.append("  result = 0")
         else:
             # Mutator spec: state-based (see deposit_spec, store_spec)
             param_part = f" {lean_params}" if lean_params else ""
             spec_defs.append(f"def {fn.name}_spec{param_part} (s s' : ContractState) : Prop :=")
-            spec_defs.append(f"  -- TODO: Define postconditions on s'")
-            spec_defs.append(f"  True")
+            spec_defs.append("  -- Scaffold default: no state/context change.")
+            spec_defs.append("  sameExceptEvents s s'")
         spec_defs.append("")
 
     imports = ["import Verity.Specs.Common"]
@@ -904,10 +907,12 @@ def _gen_single_test(
         );
         require(success, "{fn.name} call failed");
 
-        // TODO: Add assertions matching {fn.name}'s formal spec.
-        // Examples:
-        //   assertEq(readStorage(0), slot0Before + 1, "should increment");
-        //   assertEq(readStorage(1), expectedValue, "should update slot 1");
+        // Scaffold default matches `sameExceptEvents` in generated Lean spec.
+        assertEq(
+            readStorage(0),
+            slot0Before,
+            "scaffold default: slot 0 unchanged (replace with real spec assertions)"
+        );
     }}
 """
 

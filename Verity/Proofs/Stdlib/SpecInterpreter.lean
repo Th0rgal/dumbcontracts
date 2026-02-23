@@ -222,13 +222,13 @@ def writeStorageField (storage : SpecStorage) (fields : List Field) (fieldName :
     (hfind : findFieldWithResolvedSlot fields fieldName = some (field, slot))
     (hpacked : field.packedBits = none) :
     readStorageField storage fields fieldName = storage.getSlot slot := by
-  simpa [readStorageField, hfind, hpacked]
+  simp [readStorageField, hfind, hpacked]
 
 @[simp] theorem readStorageField_missing
     (storage : SpecStorage) (fields : List Field) (fieldName : String)
     (hfind : findFieldWithResolvedSlot fields fieldName = none) :
     readStorageField storage fields fieldName = 0 := by
-  simpa [readStorageField, hfind]
+  simp [readStorageField, hfind]
 
 @[simp] theorem writeStorageField_unpacked_noAlias
     (storage : SpecStorage) (fields : List Field) (fieldName : String) (rawValue : Nat)
@@ -238,7 +238,7 @@ def writeStorageField (storage : SpecStorage) (fields : List Field) (fieldName :
     (hAlias : field.aliasSlots = [])
     (hPacked : field.packedBits = none) :
     writeStorageField storage fields fieldName rawValue = some (storage.setSlot slot rawValue) := by
-  simpa [writeStorageField, hMap, hFind, hAlias, hPacked, dedupNatPreserve]
+  simp [writeStorageField, hMap, hFind, hAlias, hPacked, dedupNatPreserve]
 
 /-!
 ## Expression Evaluation

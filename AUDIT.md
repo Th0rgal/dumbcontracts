@@ -1,147 +1,139 @@
 # Audit Guide
 
-Entry point for security auditors. For full trust boundary analysis, see [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md). For axiom details, see [AXIOMS.md](AXIOMS.md).
+Read this file first. It gives the minimum architecture and trust model needed to audit Verity.
 
-## Architecture
+For formal detail, see [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md) and [AXIOMS.md](AXIOMS.md).
 
-```
-Proven path (ContractSpec):
-  EDSL (Verity/)          User-facing contract DSL with formal specs
-      ↓ Layer 1            Proven: spec preserves EDSL semantics
-  ContractSpec            Intermediate specification language
-      ↓ Layer 2            Proven: IR preserves spec semantics
-  IR                      Flat intermediate representation
-      ↓ Layer 3            Proven: Yul preserves IR semantics (1 axiom)
-  Yul AST → text          Pretty-printed, compiled by solc
-      ↓ Trusted            solc (pinned version)
-  EVM bytecode
+## Architecture Overview
 
-Unproven path (AST):
-  Verity.AST.Stmt         Unified AST (Phase 4 of #364)
-      ↓                    ASTCompile: direct Stmt → YulStmt translation
-  Yul AST → text          Shared Codegen/PrettyPrint/Linker infrastructure
-      ↓ Trusted            solc (pinned version)
-  EVM bytecode
-```
+Verity has two compilation paths:
 
-**Two compilation paths exist.** The ContractSpec path is fully verified across three layers. The AST path (`--ast` flag) bypasses ContractSpec/IR and compiles `Verity.AST.Stmt` directly to Yul — it is **not covered by formal proofs**. CI enforces bytecode equivalence where both paths compile the same contract (6 known diffs tracked in `scripts/fixtures/yul_ast_bytecode_diffs.allowlist`).
+1. `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode` (proof-backed path)
+2. `Unified AST (--ast) -> Yul -> solc -> bytecode` (migration path)
 
-All three ContractSpec layers are fully verified in Lean 4. Zero `sorry` placeholders. One axiom (`keccak256_first_4_bytes`) — CI-validated against solc output.
+Formal semantic guarantees apply to Path 1. Path 2 is implemented and tested, but not in the same end-to-end proof chain.
 
-### Key files
+### Terms You Must Separate
 
-| File | Role |
-|------|------|
-| `Compiler/ContractSpec.lean` | Spec → IR compilation, ABI encoding, all validation |
-| `Compiler/Codegen.lean` | IR → Yul AST emission |
-| `Compiler/Yul/PrettyPrint.lean` | Yul AST → text rendering |
-| `Compiler/Linker.lean` | External library injection (outside proof boundary) |
-| `Compiler/Selector.lean` | Function selector computation via keccak256 |
-| `Compiler/Specs.lean` | All contract specifications (ContractSpec path) |
-| `Compiler/ASTDriver.lean` | AST path: orchestration, constructor loading, validation |
-| `Compiler/ASTSpecs.lean` | All contract specifications (AST path) |
-| `Compiler/ASTCompile.lean` | AST path: Stmt → YulStmt direct translation |
-| `Verity/Core.lean` | Core EDSL types and semantics |
+Audits are much easier when these names are not mixed:
 
-## Trust boundaries
+1. `EDSL` (`Verity/Examples/*`): executable Lean contract code (`Contract α := ContractState -> ContractResult α`).
+2. `Logical spec` (`Verity/Specs/*/Spec.lean`): properties as `Prop`.
+3. `ContractSpec` (`Compiler/ContractSpec.lean`, instances in `Compiler/Specs.lean`): declarative compiler model with function bodies. This is not ABI-only data.
 
-### Where external input enters
+`ContractSpec` contains:
+1. Interface metadata (name, params, returns, mutability, events).
+2. Storage field declarations.
+3. Function and constructor bodies (`Expr` and `Stmt`) used by the compiler.
 
-1. **Contract specifications** (`Compiler/Specs.lean`): All specs are Lean source — no runtime input parsing. The `compile` function validates specs exhaustively (7+ validators for functions, 5 for constructors, duplicate name rejection for functions/errors/fields/events/externals) before emitting code.
+### Why Path 2 Exists
 
-2. **Calldata**: Generated decoder reads ABI-encoded calldata. `calldatasizeGuard` enforces minimum size for fixed params. Dynamic param bounds rely on EVM semantics (out-of-bounds calldataload returns zero), matching solc behavior.
+Path 2 is not a replacement for Path 1 today. It exists for controlled migration and cross-checking.
 
-3. **External libraries** (`Compiler/Linker.lean`): Injected as raw Yul text. Validated for name collisions and call arity but NOT for semantic correctness. **This is outside the proof boundary.** Libraries are the highest-risk trust boundary.
+Simple reasons:
 
-4. **Selector computation** (`Compiler/Selector.lean`): Shells out to `scripts/keccak256.py`. CI cross-validates against `solc --hashes`.
+1. It is the target architecture for the unification effort (`Compiler/ASTSpecs.lean`, `Compiler/ASTDriver.lean`).
+2. It gives an independent compiler implementation, which helps detect regressions that can hide inside one pipeline.
+3. It keeps migration incremental: contracts can move to unified AST without blocking the verified ContractSpec flow.
 
-### Where trust changes
+Where it is used now:
 
-| Boundary | What's trusted | What's verified |
-|----------|---------------|-----------------|
-| EDSL → Spec | Nothing | Full semantic preservation |
-| Spec → IR | Nothing | Full semantic preservation |
-| IR → Yul | `keccak256_first_4_bytes` axiom | Everything else |
-| AST → Yul (AST path) | ASTCompile correctness | CI bytecode diff baseline only |
-| Yul → EVM | solc correctness | Yul text correctness |
-| Linked libraries | Library code correctness | Name/arity constraints only |
-| Storage slots | Keccak256 collision freedom | Slot derivation logic |
-| Arithmetic | Wrapping semantics match intent | Wrapping is correctly implemented |
+1. CLI path selection in `Compiler/Main.lean` via `--ast`.
+2. CI generation of AST artifacts into `compiler/yul-ast` (`.github/workflows/verify.yml`).
+3. AST pipeline regression modules: `Compiler/ASTCompileTest.lean`, `Compiler/ASTDriverTest.lean`, `Compiler/MainTest.lean`.
+4. Cross-path checks:
+   - `scripts/check_selectors.py` (selector consistency in `compiler/yul` and `compiler/yul-ast`)
+   - `scripts/check_storage_layout.py` (EDSL/Spec/Compiler/AST slot drift)
+   - `scripts/check_yul_compiles.py --compare-dirs ... --allow-compare-diff-file ...` (compileability plus controlled diff baseline)
+   - `scripts/check_gas_model_coverage.py` on legacy, patched, and AST outputs
 
-## Security model
+When Path 2 is useful during limitations:
 
-### Threat assumptions
+1. During feature migration to unified AST, before full proof integration is complete.
+2. When validating that ABI, storage, and dispatch behavior stay aligned across two compiler front-ends.
+3. When investigating whether a bug is in ContractSpec lowering or in later shared Yul/solc stages.
 
-- **Solc is correct**: Pinned version, CI-validated. See `scripts/check_solc_pin.py`.
-- **Keccak256 is collision-resistant**: Standard assumption. One axiom depends on first-4-bytes uniqueness for selectors.
-- **EVM semantics are correct**: Lean model assumes standard EVM behavior.
-- **No gas modeling**: Proofs assume infinite gas. Contracts with unbounded loops could be DoS'd. See TRUST_ASSUMPTIONS.md §9.
+Bug classes Path 2 helps catch:
 
-### Arithmetic semantics
+1. Selector and dispatch table mismatches.
+2. Constructor/deploy path regressions.
+3. ABI mutability metadata drift (`isPayable`, `isView`, `isPure`).
+4. Storage slot/type mismatches between layers.
+5. Yul shape drift that breaks `solc` compileability or violates the known diff allowlist.
 
-EDSL uses **wrapping** `mod 2^256` arithmetic. Solidity uses **checked** arithmetic (reverts on overflow). Contracts must add explicit `require` guards for overflow-sensitive operations. This is documented in TRUST_ASSUMPTIONS.md §8.
+Why not keep only Path 1:
 
-### Revert state semantics
+1. One path gives one failure signal; two paths provide differential evidence.
+2. Removing Path 2 would reduce migration safety for the unification roadmap.
+3. Several CI guards are designed to detect cross-path drift; those checks lose value without a second concrete pipeline.
 
-`ContractResult.snd` returns the state **including partial mutations** on revert. The EVM discards all state changes on REVERT. Contracts must follow **checks-before-effects** (all `require` before any `setStorage`/`setMapping`). This is NOT compiler-enforced — see `Verity/Core.lean:80-85` and issue #254.
+## Verification Layers (Path 1)
 
-## Design decisions
+- Layer 1: EDSL behavior matches `ContractSpec` behavior (proven per contract).
+- Layer 2: `ContractSpec` lowering to IR preserves behavior (proven).
+- Layer 3: IR lowering to Yul preserves behavior (proven, with one documented axiom).
+- `solc`: trusted external compiler.
 
-| Decision | Rationale |
-|----------|-----------|
-| Wrapping arithmetic | Simpler formal model; overflow checks are contract-specific policy |
-| Single axiom for selectors | Avoids embedding full keccak256 in Lean; CI-validated against solc |
-| `partial def` in compiler | ~25 functions recurse on `ParamType` (finite depth); termination proofs would add complexity without security value |
-| `allowUnsafeReducibility` | One use in `Semantics.lean:247` for `execYulFuel`; fuel-bounded, provably terminating. See TRUST_ASSUMPTIONS.md §7 |
-| Raw text linker injection | Libraries are inherently outside the proof boundary; semantic validation would require a Yul verifier |
-| Shared `isInteropEntrypointName` | Single definition filters fallback/receive consistently across Selector, ABI (`renderSpecialEntry` uses it as guard + derives ABI type from `fn.name`), and ContractSpec.compile |
-| Shared `isDynamicParamType`/`paramHeadSize` | Single definitions used by both event encoding and calldata parameter loading; eliminates divergence risk |
-| Shared `fieldTypeToParamType` | ABI.lean reuses ContractSpec's canonical definition instead of maintaining a private copy; eliminates FieldType→ParamType divergence |
-| Non-short-circuit `logicalAnd`/`logicalOr` | Compiled to EVM bitwise `and`/`or` — both operands always evaluated. Simpler codegen; no side-effecting expressions in current DSL |
-| Shared `Selector.runKeccak` | Single keccak subprocess helper shared between ContractSpec and AST compilation paths; eliminates duplicated subprocess handling |
-| Shared `internalFunctionPrefix` | `"internal_"` prefix for generated Yul internal function names defined once; CI validates no user function name collides with this prefix |
-| Shared `errorStringSelectorWord` | `Error(string)` selector (`0x08c379a0 << 224`) defined once in ContractSpec; reused in revert codegen and proof terms. Interpreter keeps a private copy (decimal) to avoid importing ContractSpec; CI validates both values match |
-| Shared `addressMask` | 160-bit address mask `(2^160)-1` defined once in ContractSpec; used across codegen (ContractSpec, ASTDriver) and proof terms (Expr.lean). Interpreter keeps private `addressModulus` (`2^160`); CI validates both |
-| Shared `selectorShift` | Selector shift amount (`224` bits) defined in ContractSpec; Codegen and proof Builtins keep private copies to avoid cross-module imports. CI validates all three definitions match |
-| Named `freeMemoryPointer` | Solidity free memory pointer address (`0x40`) extracted as named constant; used in custom error emission and event encoding. CI validates the value matches the Solidity convention |
+## Current Code Structure
 
-## Known risks
+### ContractSpec path
 
-1. **Revert state gap**: Partial mutations visible on revert. Mitigation: checks-before-effects convention. Not enforced.
-2. **Linked library correctness**: No semantic validation. Mitigation: name/arity checks, explicit trust boundary documentation.
-3. **No gas bounds**: Unbounded loops could exhaust gas. Mitigation: gas calibration tests, manual review.
-4. **Wrapping overflow**: No automatic overflow protection. Mitigation: explicit `require` guards per contract.
-5. **Non-short-circuit logic ops**: `Expr.logicalAnd`/`logicalOr` always evaluate both operands. Safe today (no side-effecting sub-expressions), but must be revisited if low-level calls (#622) are added to `Expr`.
-6. **AST path unproven**: `ASTCompile` translates `Verity.AST.Stmt` → `YulStmt` without formal verification. CI tracks a bytecode diff baseline (6 known mismatches) but cannot prove semantic equivalence. The AST path also lacks events, custom errors, internal functions, and `isPayable` support.
+- `Verity/`: EDSL contracts and proofs.
+- `Compiler/ContractSpec.lean`: spec validation and lowering.
+- `Compiler/Codegen.lean`: IR to Yul AST lowering.
+- `Compiler/Yul/PrettyPrint.lean`: Yul text rendering.
 
-## External dependencies
+### AST path (`--ast`)
 
-| Dependency | Why trusted |
-|------------|-------------|
-| Lean 4 type checker | Foundational trust; widely used, formally specified |
-| solc (pinned) | Industry standard; version pinned in `foundry.toml`, CI-validated |
-| Python keccak256 | Selector computation only; cross-validated against solc |
-| Foundry | Testing only; not in production TCB |
+- `Verity/AST.lean`: unified AST.
+- `Compiler/ASTCompile.lean`: AST statement compilation.
+- `Compiler/ASTDriver.lean`: AST pipeline orchestration and ABI generation.
 
-## Attack surface
+Current AST status:
 
-| Surface | Risk | Mitigation |
-|---------|------|------------|
-| Malformed calldata | Low | ABI decoding matches solc; EVM protects OOB reads |
-| Storage slot collision | Very low | Standard keccak256 mapping layout |
-| Selector collision | Very low | CI validates against solc; `firstDuplicateSelector` check in compiler |
-| Linked library bugs | Medium | Outside proof boundary; auditor must review library code separately |
-| Integer overflow | Low | Documented wrapping semantics; contract-level guards required |
+- Implemented and tested.
+- Supports mutability metadata (`isPayable`, `isView`, `isPure`) in specs and ABI.
+- Not yet covered by the same Layer 2 and 3 proof chain as `ContractSpec`.
 
-## CI validation suite
+## Priority Files for Auditors
 
-30+ scripts enforce consistency between proofs, tests, and documentation. Key checks:
+- `Compiler/ContractSpec.lean`
+- `Compiler/Selector.lean`
+- `Compiler/Selectors.lean`
+- `Compiler/Linker.lean`
+- `Compiler/ASTDriver.lean`
+- `Compiler/ASTCompile.lean`
+- `Verity/Core.lean`
+- `scripts/check_yul_compiles.py`
+- `scripts/check_selectors.py`
+- `scripts/check_doc_counts.py`
 
-- `check_yul_compiles.py`: All generated Yul compiles with solc; legacy/AST bytecode diff baseline
-- `check_selectors.py` / `check_selector_fixtures.py`: Selector cross-validation (both ContractSpec and ASTSpecs; cross-checks signature equivalence; reserved prefix collision check; duplicate function name check; Error(string) selector constant sync; address mask constant sync; selector shift constant sync; internal prefix sync; special entrypoint names sync; compile duplicate-name guards for all 5 collections)
-- `check_doc_counts.py`: Theorem/test counts consistent across all docs
-- `check_lean_warning_regression.py`: Zero-warning policy
-- `check_axiom_locations.py`: All axioms documented in AXIOMS.md
-- `check_storage_layout.py`: Storage layout validation
-- `check_solc_pin.py`: solc version pinned
-- `check_builtin_list_sync.py`: Linker/ContractSpec opcode list sync
+## Trust Boundaries
+
+1. `solc` correctness is trusted.
+2. Keccak selector hashing uses one explicit axiom (cross-checked in CI).
+3. Linked external Yul libraries are trusted for semantics.
+4. Mapping slot collision freedom relies on the standard keccak assumption.
+5. Gas is out of scope for formal semantics.
+
+## Main Audit Risks
+
+1. Revert-state modeling gap at high-level semantics: confirm checks-before-effects discipline.
+2. Linked Yul libraries: audit separately as trusted code.
+3. Wrapping arithmetic: verify it is intended or guarded.
+4. AST and ContractSpec drift: review allowlist-backed differences explicitly.
+
+## Minimal Audit Checklist
+
+1. Confirm which path is used (`ContractSpec`, AST, or both).
+2. Read `AXIOMS.md`; verify the axiom set is minimal and justified.
+3. Read `TRUST_ASSUMPTIONS.md`; confirm deployment assumptions are acceptable.
+4. Run selector, Yul compileability, storage-layout, and doc consistency checks.
+5. If libraries are linked, include them in scope as TCB code.
+
+## Writing Suggestions for This File
+
+1. Keep this file as orientation, not a proof transcript.
+2. Use short sections with concrete file references.
+3. Keep all counts script-backed (`check_doc_counts.py`).
+4. Update this file in the same PR as any architecture or trust change.

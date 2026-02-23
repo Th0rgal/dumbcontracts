@@ -14,6 +14,7 @@ def lowerExpr : YulExpr → EvmYul.Yul.Ast.Expr
   | .ident name => .Var name
   | .call func args => .Call (.inr func) (args.map lowerExpr)
 
+mutual
 partial def lowerStmts : List YulStmt → Except AdapterError (List EvmYul.Yul.Ast.Stmt)
   | [] => pure []
   | stmt :: rest => do
@@ -24,21 +25,23 @@ partial def lowerStmts : List YulStmt → Except AdapterError (List EvmYul.Yul.A
 partial def lowerStmt : YulStmt → Except AdapterError EvmYul.Yul.Ast.Stmt
   | .comment _ => pure (.Block [])
   | .let_ name value => pure (.Let [name] (some (lowerExpr value)))
+  | .letMany names value => pure (.Let names (some (lowerExpr value)))
   | .assign _ _ =>
       .error "adapter gap: assignment lowering not implemented"
   | .expr e => pure (.ExprStmtCall (lowerExpr e))
+  | .leave => pure .Leave
   | .if_ cond body => do
       let body' ← lowerStmts body
       pure (.If (lowerExpr cond) body')
   | .for_ init cond post body => do
-      if init != [] then
+      if !init.isEmpty then
         .error "adapter gap: for-loop init lowering not implemented"
       else
         let post' ← lowerStmts post
         let body' ← lowerStmts body
         pure (.For (lowerExpr cond) post' body')
   | .switch expr cases default => do
-      let lowerCase := fun (tag, block : Nat × List YulStmt) => do
+      let lowerCase := fun ((tag, block) : Nat × List YulStmt) => do
         let block' ← lowerStmts block
         pure (EvmYul.UInt256.ofNat tag, block')
       let cases' ← cases.mapM lowerCase
@@ -49,6 +52,7 @@ partial def lowerStmt : YulStmt → Except AdapterError EvmYul.Yul.Ast.Stmt
       pure (.Block stmts')
   | .funcDef _ _ _ _ =>
       .error "adapter gap: function definition lowering not implemented"
+end
 
 def lowerProgram (stmts : List YulStmt) : Except AdapterError EvmYul.Yul.Ast.Stmt := do
   let stmts' ← lowerStmts stmts

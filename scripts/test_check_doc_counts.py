@@ -11,6 +11,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+import check_doc_counts
+import property_utils
 from check_doc_counts import apply_fixes, check_file
 
 
@@ -112,6 +114,62 @@ class CheckDocCountsMultiMatchTests(unittest.TestCase):
                     "README.md: theorem total in tree coverage occurrence 1 says '401' but expected '431'",
                 ],
             )
+
+    def test_get_axiom_and_sorry_counts_ignore_comments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "Compiler").mkdir(parents=True, exist_ok=True)
+            (root / "Verity").mkdir(parents=True, exist_ok=True)
+            (root / "Compiler" / "Commented.lean").write_text(
+                "\n".join(
+                    [
+                        "-- axiom fakeAxiom",
+                        "/-",
+                        "axiom fakeInBlock",
+                        "sorry",
+                        "-/",
+                        "def quoted := \"axiom fakeInString\"",
+                        "def quoted2 := \"sorry\"",
+                        "axiom realAxiom : True",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "Verity" / "Proof.lean").write_text(
+                "\n".join(
+                    [
+                        "-- sorry",
+                        "theorem realSorry : True := by",
+                        "  sorry",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            old_root = check_doc_counts.ROOT
+            try:
+                check_doc_counts.ROOT = root
+                self.assertEqual(check_doc_counts.get_axiom_count(), 1)
+                self.assertEqual(check_doc_counts.get_sorry_count(), 1)
+            finally:
+                check_doc_counts.ROOT = old_root
+
+    def test_get_manifest_counts_rejects_duplicate_json_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest = Path(tmpdir) / "property_manifest.json"
+            manifest.write_text(
+                '{\n  "Counter": ["ok"],\n  "Counter": ["dup"]\n}\n',
+                encoding="utf-8",
+            )
+            old_manifest = property_utils.MANIFEST
+            try:
+                property_utils.MANIFEST = manifest
+                with self.assertRaises(SystemExit) as ctx:
+                    check_doc_counts.get_manifest_counts()
+                self.assertIn("duplicate object key", str(ctx.exception))
+            finally:
+                property_utils.MANIFEST = old_manifest
 
 
 if __name__ == "__main__":

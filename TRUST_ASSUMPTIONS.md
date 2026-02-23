@@ -1,734 +1,119 @@
 # Trust Assumptions and Verification Boundaries
 
-This document provides a comprehensive overview of what is formally verified in Verity and what components are trusted without formal proof. Understanding these boundaries is essential for security audits and production deployments.
+This document states, in a formal and current way, what Verity proves and what Verity still trusts.
 
-## Table of Contents
+## Scope
 
-- [Overview](#overview)
-- [Verified Components](#verified-components)
-- [Trusted Components](#trusted-components)
-- [Axioms](#axioms)
-- [Security Audit Checklist](#security-audit-checklist)
-- [Future Work to Reduce Trust](#future-work-to-reduce-trust)
+Verity has two compilation paths:
 
----
+1. `ContractSpec` path (proof-backed): `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode`
+2. AST path (`--ast`): `Unified AST -> Yul -> solc -> bytecode`
 
-## Overview
+The formal Layer 1/2/3 guarantees apply to the `ContractSpec` path.
 
-Verity provides **end-to-end verification** from high-level contract specifications down to Yul intermediate representation, with a small trusted computing base (TCB).
-
-### Verification Chain
+## Verification Chain
 
 ```
-User's Contract Code (EDSL)
-    ↓ [Layer 1: FULLY VERIFIED]
-ContractSpec (High-level specification)
-    ↓ [Layer 2: FULLY VERIFIED]
-IR (Intermediate representation)
-    ↓ [Layer 3: FULLY VERIFIED, 1 axioms]
-Yul (Ethereum intermediate language)
-    ↓ [TRUSTED: Solidity compiler]
+EDSL
+  ↓ [Layer 1: FULLY VERIFIED]
+ContractSpec
+  ↓ [Layer 2: FULLY VERIFIED]
+IR
+  ↓ [Layer 3: FULLY VERIFIED, 1 axioms]
+Yul
+  ↓ [trusted external compiler]
 EVM Bytecode
 ```
 
-### Trust Model Summary
+## Current Verified Facts
 
-| Component | Status | Risk Level |
-|-----------|--------|------------|
-| Layer 1 (EDSL → Spec) | ✅ Verified | None |
-| Layer 2 (Spec → IR) | ✅ Verified | None |
-| Layer 3 (IR → Yul) | ✅ Verified (1 axiom) | Very Low |
-| Axioms | ⚠️ Documented | Low |
-| Solidity Compiler (solc) | ⚠️ Trusted | Medium |
-| Keccak256 Hashing | ⚠️ Trusted | Low |
-| EVM Semantics | ⚠️ Trusted | Low |
-| Linked Libraries (Linker) | ⚠️ Trusted | Varies |
-| Mapping Slot Collision Freedom | ⚠️ Trusted | Low |
-| Arithmetic Semantics | ⚠️ Documented | Low |
-| Address Type | ✅ Verified | Very Low |
-| Lean 4 Type Checker | ⚠️ Foundational | Very Low |
-| `allowUnsafeReducibility` | ⚠️ Documented | Low |
-| Gas Modeling | ⚠️ Documented | Medium |
+- Layer 1 (EDSL -> ContractSpec) is proven in Lean.
+- Layer 2 (ContractSpec -> IR) is proven in Lean.
+- Layer 3 (IR -> Yul) is proven in Lean except for one documented axiom.
+- Unified AST equivalence proofs exist for migrated example contracts, but AST code generation is not yet inside the same end-to-end proof chain as ContractSpec compilation.
 
----
+Metrics tracked by repository tooling:
 
-## Verified Components
+- 431 theorems across 11 categories.
+- 250 theorems have corresponding Foundry property tests.
+- 58% runtime test coverage.
 
-These components have been formally verified with machine-checked proofs in Lean 4.
-
-### Layer 1: EDSL → ContractSpec
-
-**Status**: ✅ **Fully Verified**
-
-**What is proven**: Contract implementations written in the EDSL correctly implement their formal specifications.
-
-**Files**:
-- `Verity/Proofs/*/Basic.lean` + `Correctness.lean` (one directory per contract)
-- Example: `Verity/Proofs/SimpleStorage/Basic.lean`
-
-**Example Theorems**:
-```lean
--- SimpleStorage: getValue returns the stored value
-theorem getValue_correct (state : ContractState) :
-    let result := (getValue.run state).fst
-    result = state.storage valueSlot
-
--- Counter: increment increases count by exactly 1
-theorem increment_correct (state : ContractState) :
-    let finalState := increment.runState state
-    finalState.storage countSlot = add (state.storage countSlot) 1
-```
-
-**Coverage**: All 401 theorems are formally proven (100% proof coverage). Additionally, 250 theorems have corresponding Foundry property tests (58% runtime test coverage).
-
-**What this guarantees**:
-- Contract behavior matches specification
-- No unexpected side effects
-- State transitions are correct
-- Arithmetic operations are safe
-
----
-
-### Layer 2: ContractSpec → IR
-
-**Status**: ✅ **Fully Verified**
-
-**What is proven**: Compilation from high-level ContractSpec to intermediate representation (IR) preserves all semantic properties.
-
-**Files**:
-- `Compiler/Proofs/IRGeneration/*`
-- Key file: `Compiler/Proofs/IRGeneration/Conversions.lean`
-
-**Example Theorems**:
-```lean
--- Expression evaluation is preserved
-theorem evalExpr_preserves_semantics :
-    evalContractSpecExpr expr state = evalIRExpr (compileExpr expr) irState
-
--- Statement execution is preserved
-theorem execStmt_preserves_properties :
-    allPropertiesHold spec state →
-    allPropertiesHold (compileSpec spec) (compileState state)
-```
-
-**What this guarantees**:
-- IR accurately represents high-level spec
-- No information loss during compilation
-- Properties proven at Layer 1 still hold
-- Type safety maintained
-
----
-
-### Layer 3: IR → Yul
-
-**Status**: ✅ **Verified (with 1 axiom)**
-
-**What is proven**: IR execution is equivalent to Yul execution when states are properly aligned.
-
-**Files**:
-- `Compiler/Proofs/YulGeneration/*`
-- Key file: `Compiler/Proofs/YulGeneration/StatementEquivalence.lean`
-
-**Example Theorems**:
-```lean
--- Variable assignment equivalence
-theorem assign_equiv :
-    execIRStmt (assign var expr) irState =
-    execYulStmt (assign var expr) yulState
-
--- Storage operations equivalence
-theorem storageStore_equiv : ...
-
--- Control flow equivalence
-theorem if_equiv : ...
-```
-
-**Dependencies**: Relies on 1 axiom (see [Axioms](#axioms) section)
-
-**What this guarantees**:
-- Yul code correctly implements IR semantics
-- All IR properties transfer to Yul
-- Execution equivalence under state alignment
-
----
+(These values are validated by `scripts/check_doc_counts.py` against `artifacts/verification_status.json`.)
 
 ## Trusted Components
 
-These components are **not formally verified** but are trusted based on testing, industry adoption, or foundational assumptions.
+### 1. Solidity Compiler (`solc`)
 
-### 1. Solidity Compiler (solc)
+- Role: compiles Yul to EVM bytecode.
+- **Version**: 0.8.33+commit.64118f21 (pinned).
+- Status: trusted external tool, version pinned in `foundry.toml` (`solc_version = "0.8.33"`).
+- Mitigation: CI enforces pin and Yul compileability checks.
 
-**Role**: Compiles Yul intermediate representation to EVM bytecode
+### 2. Keccak-based Selector Computation
 
-**Assumption**: The Solidity compiler correctly translates Yul to executable EVM bytecode without introducing bugs or semantic changes.
+- Role: function selector derivation from signatures.
+- Status: one explicit axiom in `Compiler/Selectors.lean` (see `AXIOMS.md`).
+- Mitigation: CI selector cross-checks against `solc --hashes` and fixtures.
 
-**Details**:
-- **Version**: 0.8.33+commit.64118f21 (pinned)
-- **Scope**: Only Yul → Bytecode compilation (not Solidity)
-- **Industry Status**: Battle-tested, used to secure billions in value
+### 3. Linked Yul Libraries
 
-**Mitigation Strategies**:
-1. **Differential Testing**: 70,000+ property tests validate EDSL ≡ Yul ≡ EVM execution
-   - Files: `test/Property*.t.sol`
-   - Tests run on actual compiled bytecode
-   - Catches discrepancies between layers
+- Role: external functions injected by linker.
+- Status: outside formal semantic proofs.
+- What is enforced: duplicate-name, collision, unresolved reference, and arity checks.
+- What is trusted: semantic correctness of linked Yul code.
 
-2. **Pinned Version**: Exact solc version locked in CI
-   - Prevents unexpected compiler changes
-   - Reproducible builds
+### 4. Mapping Slot Collision Freedom
 
-3. **CI Validation**:
-   - `scripts/check_yul_compiles.py` - Ensures Yul compiles without errors and enforces a reviewed legacy-vs-AST bytecode diff baseline (fails on new drift)
-   - `scripts/check_selector_fixtures.py` - Validates function selectors
+- Role: mapping slot layout depends on keccak-derived slot addressing.
+- Status: standard Ethereum assumption.
+- Mitigation: consistent layout checks and explicit documentation of this boundary.
 
-**Risk Assessment**: **Medium**
-- Solc is mature and widely used
-- Yul compilation is simpler than Solidity compilation
-- Differential tests provide strong validation
-- However, compiler bugs are possible
+### 5. EVM Semantics and Gas
 
-**Future Work**:
-- Integrate KEVM or EVMYulLean for Yul → Bytecode verification
-- See issue #76 for formal verification roadmap
+- Role: runtime execution model.
+- Status: trusted EVM behavior; gas is not formally modeled by current proofs.
+- Implication: semantic correctness does not imply gas-safety or gas-bounded liveness.
 
----
+### 6. Foundational Lean Trust
 
-### 2. Keccak256 Function Selector Hashing
+- Role: proof checker and kernel soundness.
+- Status: foundational assumption for all Lean-based verification.
 
-**Role**: Computes Ethereum function selectors via Keccak256 hashing
+## Semantic Caveats Auditors Must Track
 
-**Assumption**: Python's Keccak256 implementation matches the EVM's Keccak256 semantics.
+### Wrapping Arithmetic
 
-**Details**:
-- **Implementation**: `scripts/keccak256.py`
-- **Usage**: Generates function selectors for contract compilation
-- **Standard**: EIP-20 function selector specification
+`Uint256` arithmetic in the formal model is wrapping modulo `2^256`. If Solidity parity requires checked overflow behavior, contracts must encode explicit checks.
 
-**Mitigation Strategies**:
-1. **Self-Test**: `python3 scripts/keccak256.py --self-test`
-   - 14 test vectors: 4 full 32-byte digests + 10 selector-only checks
-   - Full digests verified against Ethereum Yellow Paper and ethers.js
-   - Selector vectors verified against `solc --hashes`
-   - Runs in CI before any dependent script
+### Revert-State Modeling
 
-2. **Cross-Validation**: `scripts/check_selectors.py`
-   - Compares Python output against solc-generated selectors
-   - Runs in CI on every build
-   - Ensures consistency
+High-level semantics can expose intermediate state in a reverted computation model. EVM runtime reverts discard state. Contracts should preserve checks-before-effects discipline.
 
-3. **Fixture Testing**: `scripts/check_selector_fixtures.py`
-   - Tests against known correct selector values via `solc --hashes`
-   - Prevents regression
+### AST Path Assurance Level
 
-**Risk Assessment**: **Low**
-- Keccak256 is a deterministic algorithm
-- Validated against multiple independent implementations (solc, ethers.js)
-- 14 test vectors catch round-constant, padding, or rotation bugs
-- Any mismatch would fail differential tests
-
-**Files**:
-- `Compiler/Selectors.lean` - Selector definitions
-- `scripts/keccak256.py` - Implementation (with `--self-test` mode)
-- `scripts/check_selectors.py` - Cross-validation against specs
-- `scripts/check_selector_fixtures.py` - Cross-validation against solc
-
----
-
-### 3. Mapping Slot Collision Freedom
-
-**Role**: Storage slot derivation for mappings via `keccak256(key ++ slot)`
-
-**Assumption**: The keccak256-based storage slot calculation used by Solidity (and Verity's compiled Yul) for mapping entries is collision-free in practice — distinct `(key, baseSlot)` pairs produce distinct storage slot addresses.
-
-**Details**:
-- **Lean proof model**: Mapping slots are routed through `Compiler/Proofs/MappingSlot.lean`, whose current backend delegates to the tagged model in `Compiler/Proofs/MappingEncoding.lean` (`mappingTag = 2^256`). A mapping access is encoded as `mappingTag + normalize(baseSlot) * 2^256 + (key % 2^256)`, so mapping slots are disjoint from direct storage slots in the proof model. Runtime routing of `sload`/`sstore` is centralized there via `abstractLoadStorageOrMapping`, `abstractStoreStorageOrMapping`, and `abstractStoreMappingEntry`.
-- **Yul implementation**: Mappings use `keccak256(abi.encodePacked(key, baseSlot))` to derive a storage slot address, then read/write via `sload`/`sstore`.
-- **The gap**: The Lean proofs reason about a tag-based separation model. The Yul code uses hash-based slot derivation. These are equivalent only if (1) keccak256 mapping slots never collide with each other or with direct storage slots (0, 1, 2, ...), and (2) the tag-based Lean encoding is injective (distinct `(slot, addr)` pairs produce distinct encoded values).
-
-**Why this is safe**:
-1. This is a [standard Ethereum assumption](https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html) — all Solidity contracts rely on it
-2. Keccak256 outputs are 256 bits; collision probability is negligible (~2^-128 for birthday attacks)
-3. Direct storage slots (small integers) are astronomically unlikely to collide with keccak256 outputs
-4. No real-world collision has ever been observed in the Ethereum ecosystem
-
-**Risk Assessment**: **Low**
-- Universal assumption in Ethereum smart contract development
-- Would affect all Solidity contracts equally if violated
-- Formally equivalent to assuming keccak256 is a random oracle for these inputs
-
-**Related**: Issue #157, Issue #84 (storage layout formalization)
-
----
-
-### 4. EVM Semantics
-
-**Role**: The Ethereum Virtual Machine executes bytecode
-
-**Assumption**: The EVM behaves according to the Ethereum Yellow Paper specification and established consensus rules.
-
-**Details**:
-- **Specification**: Ethereum Yellow Paper (Byzantium+)
-- **Implementation**: Various EVM implementations (Geth, Foundry, etc.)
-- **Validation**: Ethereum consensus across thousands of nodes
-- **Proof-model boundary**: Runtime builtin-call semantics are centralized in `Compiler/Proofs/YulGeneration/Builtins.lean` and consumed by both IR and Yul proof interpreters, reducing migration risk for issue #294 to a single backend touchpoint.
-
-**Mitigation Strategies**:
-1. **Differential Testing**:
-   - Tests run against Foundry's EVM implementation
-   - 70,000+ test cases validate expected behavior
-   - Sharded testing across 8 parallel jobs
-
-2. **Conformance Testing** (planned):
-   - Issue #75 tracks integration with Ethereum test vectors
-   - Will validate against official EVM test suite
-
-**Risk Assessment**: **Low**
-- EVM semantics are well-defined and stable
-- Billions of dollars secured by EVM
-- Multiple independent implementations agree
-- Decades of production use
-
-**Future Work**:
-- Add conformance testing (issue #75)
-- Integrate with EVMYulLean for EVM semantics proofs
-
----
-
-### 5. External Library Code (Linker)
-
-**Role**: The [Linker](Compiler/Linker.lean) injects external Yul library functions into compiled contracts at code-generation time, enabling production cryptographic implementations (e.g., Poseidon hash) to replace placeholder stubs.
-
-**Assumption**: Linked library functions behave as specified in their interfaces and are semantically compatible with the placeholder stubs used during formal verification.
-
-**How It Works**:
-```
-ContractSpec → IR → Yul AST → Yul text → [Linker injects library text] → final .yul
-```
-Library functions are provided via `--link <path.yul>` flags to the compiler CLI. The Linker parses function definitions from library files and injects them as raw text into the rendered Yul output.
-
-**Safety Checks** (implemented in `Compiler/Linker.lean`):
-1. **Duplicate name detection** (`validateNoDuplicateNames`): No two library functions may share the same name
-2. **Name collision detection** (`validateNoNameCollisions`): Library functions cannot shadow Yul builtins (`add`, `sstore`, etc.) or internal helpers (`mappingSlot`)
-3. **External reference validation** (`validateExternalReferences`): All non-builtin function calls in the contract must be resolved by a linked library
-4. **Call arity validation** (`validateCallArity`): Call sites must match the declared parameter count of linked functions
-
-**Remaining Gaps**:
-- Library code is entirely outside the formal proof boundary
-
-**Risk Assessment**: **Medium to High** (depends on library)
-- Precompiled contracts: Low (EVM-native, well-tested)
-- Third-party Yul libraries: Medium to High
-- Recommendation: Minimize external dependencies, audit linked libraries independently
-
-**Future Work**:
-- Issue #294: EVMYulLean integration (includes precompiled contracts)
-- Formal interface specifications for external calls
-
----
-
-### 6. Lean 4 Type Checker
-
-**Role**: Verifies all Lean proofs are correct
-
-**Assumption**: Lean 4's type checker and proof checker are sound.
-
-**Details**:
-- **Foundation**: Lean is based on the Calculus of Inductive Constructions
-- **Development**: Extensively peer-reviewed, formal methods community
-- **Status**: Used in academic research and industrial verification
-
-**Risk Assessment**: **Very Low** (Foundational Trust)
-- Lean's soundness is a foundational assumption of all formal verification
-- Decades of research in type theory
-- Active development and testing
-- No known soundness bugs in Lean 4
-
-**Note**: This is an irreducible trust assumption - all formal verification tools require trusting their proof checker.
-
----
-
-### 7. `allowUnsafeReducibility` Usage
-
-**Role**: Allows Lean's `simp` and `rfl` tactics to unfold function definitions that Lean's termination checker cannot verify
-
-**Assumption**: The function marked as reducible is structurally recursive on a fuel parameter and terminates in practice.
-
-**Details**:
-One file uses `set_option allowUnsafeReducibility true`:
-
-1. **`Compiler/Proofs/YulGeneration/Semantics.lean:349`**
-   ```lean
-   set_option allowUnsafeReducibility true in
-   attribute [reducible] execYulFuel
-   ```
-   Makes `execYulFuel` unfoldable for proofs about Yul execution semantics.
-
-**Previously**, `Compiler/Proofs/YulGeneration/Equivalence.lean` also used `allowUnsafeReducibility` for `execIRStmt`/`execIRStmts`. This was **eliminated** by making the IR interpreter total (PR #241).
-
-**Why This Matters**:
-- `allowUnsafeReducibility` can make the Lean kernel unsound in theory
-- Lean keeps certain definitions opaque to prevent reasoning about potentially non-terminating functions
-- This option overrides that safety check, allowing proofs to unfold these definitions
-
-**Risk Assessment**: **Low**
-- `execYulFuel` is fuel-bounded (guaranteed termination), so reducibility is safe
-- Lean cannot verify the recursion pattern due to the `for_` loop case, which passes the same fuel but a structurally different statement
-- Validated by 70,000+ differential tests
-
-**Elimination Path**:
-- The IR side has already been eliminated (PR #241)
-- The Yul side (`execYulFuel`) could potentially be proven terminating with a well-founded measure on `(fuel, stmtSize target)`, but the `for_` loop case makes this non-trivial
-
----
-
-### 8. Arithmetic Semantics: Wrapping vs Checked
-
-**Role**: The Lean EDSL uses **wrapping (modular) arithmetic** for `Uint256` operations, while Solidity `^0.8` uses **checked arithmetic** that reverts on overflow/underflow.
-
-**Assumption**: Contract specifications and proofs reason about EVM-level wrapping arithmetic semantics, which matches raw EVM opcodes but differs from Solidity's default checked arithmetic.
-
-**Details**:
-
-The Lean EDSL in `Verity/Core/Uint256.lean` defines:
-```lean
-def add (a b : Uint256) : Uint256 := ⟨(a.val + b.val) % 2^256⟩
-def sub (a b : Uint256) : Uint256 := ⟨(a.val + 2^256 - b.val) % 2^256⟩
-```
-
-This matches the EVM's `add` and `sub` opcodes which wrap on overflow/underflow.
-
-Solidity `^0.8.0` by default uses checked arithmetic:
-```solidity
-uint256 x = type(uint256).max + 1;  // reverts with overflow
-```
-
-**Impact**:
-
-| Contract | Lean Model | Solidity Reference | Implication |
-|----------|-----------|-------------------|-------------|
-| Counter | `increment()` at MAX wraps to 0 | `count += 1` reverts | Wrapping states unreachable in Solidity |
-| Ledger | `credit()` wraps on overflow | `balances[addr] += amount` reverts | Same |
-| SimpleToken | `transfer()` underflow wraps | `balances[from] -= amount` reverts | Same |
-
-**Mitigation Strategies**:
-
-1. **SafeCounter Pattern**: Use `require` guards to prevent overflow/underflow:
-   ```lean
-   def increment (c : Counter) : Contract Unit := do
-     let current ← getStorage countSlot
-     require (current + 1 > current) "overflow"
-     setStorage countSlot (current + 1)
-   ```
-   This matches Solidity's checked semantics and is proven correct in `SafeCounter`.
-
-2. **Explicit Wrapping Semantics**: For contracts that intentionally use wrapping (e.g., `Counter`), document that proofs cover EVM-level wrapping behavior, not Solidity's revert-on-overflow.
-
-3. **Solidity Reference Alignment**: Use `unchecked { }` blocks in Solidity reference contracts to match Lean wrapping semantics, or add explicit `require` guards in Lean contracts.
-
-**Risk Assessment**: **Low**
-- This is a well-known semantic difference documented here
-- The `SafeCounter` contract demonstrates the correct pattern for checked arithmetic
-- Differential tests execute against compiled Yul (wrapping), so behavior is validated end-to-end
-- Users can choose wrapping or checked semantics by adding/removing `require` guards
-
-**Recommendation for Developers**:
-- For contracts intended to match Solidity `^0.8` behavior: add `require` guards (see `SafeCounter` as reference)
-- For contracts using intentional wrapping (e.g., counters, tokens with explicit overflow handling): document this in the spec
-- When comparing to Solidity reference contracts: ensure both use the same arithmetic model
-
-**Future Work**:
-- Add a `CheckedUint256` type that automatically validates on each operation
-- Issue tracking: #162
-
----
-
-### 9. Address Type: Bounded Nat
-
-**Role**: Ethereum addresses are represented as bounded natural numbers (`Verity/Core/Address.lean`):
-
-```lean
-structure Address where
-  val : Nat
-  isLt : val < 2^160
-  deriving DecidableEq
-```
-
-**Status**: ✅ **Verified** -- Address injectivity is now a provable theorem, not an axiom.
-
-**Details**:
-
-The `addressToNat_injective` axiom has been **eliminated**. With `Address` as a bounded Nat structure (following the `Uint256` pattern), injectivity follows trivially from `Address.ext`.
-
-Previously, `abbrev Address := String` made `addressToNat_injective` technically unsound -- `"0xFF" ≠ "0xff"` as strings but `addressToNat "0xFF" = addressToNat "0xff"`. This is now resolved.
-
-**Risk Assessment**: **Very Low**
-- Addresses are 160-bit integers, matching EVM semantics exactly
-- `DecidableEq`, `BEq`, `LawfulBEq` all derive automatically from the structure
-- No axioms required for address-related proofs
-
-**Issue**: #253 (resolved)
-
----
-
-### 10. No Gas Modeling
-
-**Role**: The verification framework operates without any gas cost modeling.
-
-**Assumption**: Contract specifications and proofs assume sufficient gas for execution. Verified properties hold in an infinite-gas model.
-
-**Details**:
-
-1. **EDSL Semantics**: The `Contract` monad (`ContractState → ContractResult α`) has no gas accounting:
-   ```lean
-   def run (c : Contract α) (s : ContractState) : ContractResult α
-   ```
-   There is no gas parameter in the execution model.
-
-2. **IR/Yul Semantics**: The Yul semantics model (`Compiler/Proofs/YulGeneration/Semantics.lean`) uses a fuel parameter, but this is a **termination bound**, not EVM gas:
-   ```lean
-   def execYulFuel (fuel : Nat) (stmt : YulStmt) (s : YulState) : YulState
-   ```
-   Fuel bounds ensure the interpreter terminates, but does not model EVM gas costs.
-
-3. **Compiled Contracts**: No gas optimization or estimation is performed during compilation.
-
-**Impact**:
-
-| Concern | Description | Risk |
-|---------|-------------|------|
-| Deployment Gas | Large contracts may exceed block gas limits — not verified | Medium |
-| Runtime Gas | Operations may run out of gas mid-execution — not verified | Medium |
-| DoS Vulnerability | Loops over large mappings could be proven correct but DoS on-chain | Medium |
-| View Functions | No `view`/`pure` annotations — callers can't know gas requirements | Low |
-
-**Specific Examples**:
-- `transfer` in SimpleToken does 2 SSTORE + 2 SLOAD + mapping slot computation (~50k gas minimum)
-- Sum property proofs iterate over all known addresses — O(n) gas on-chain
-- No way to specify gas limits for external calls
-
-**Mitigation Strategies**:
-
-1. **Document Gas Assumptions**: Include gas analysis in contract documentation
-   ```markdown
-   ## Gas Analysis
-   - `deposit()`: ~50k gas (2 SSTORE, 2 SLOAD, mapping computation)
-   - `withdraw()`: ~50k gas
-   - `transfer()`: ~60k gas (3 SSTORE, 2 SLOAD)
-   ```
-
-2. **Use Foundry Gas Reports**: Run `FOUNDRY_PROFILE=difftest forge test --gas-report` to estimate deployment and function call costs
-
-3. **Add Gas Benchmarks**: Use differential tests to measure gas consumption:
-   ```solidity
-   function testGas_deposit() public {
-       uint256 gasBefore = gasleft();
-       contract.deposit{value: 1 ether}();
-       uint256 gasUsed = gasBefore - gasleft();
-       assertTrue(gasUsed <= 50000);  // Add gas bounds to tests
-   }
-   ```
-
-4. **Keep Contracts Simple**: Minimize storage operations per function
-   - Batch storage reads before writes
-   - Use events instead of storage for historical data
-   - Consider cold vs. warm storage access costs
-
-**Risk Assessment**: **Medium**
-- Verified properties assume infinite gas
-- Real-world execution may fail due to gas limits
-- Differential tests validate execution against deployed bytecode but not gas behavior
-
-**Recommendation for Developers**:
-- Always run gas estimates before deployment (`FOUNDRY_PROFILE=difftest forge test --gas-report`)
-- Add explicit gas bounds to property tests for critical functions
-- Document gas assumptions in contract README
-- For high-value contracts: consider formal gas verification (future work)
-
-**Future Work** (Issue #262):
-- Add gas cost annotations to ContractSpec
-- Model gas in Yul semantics
-- Prove gas bounds for critical functions
-- Integrate with gas analysis tools
-
----
-
-## Axioms
-
-Verity uses **1 axiom** across the verification codebase. All axioms are documented with soundness justifications.
-
-**See**: [AXIOMS.md](AXIOMS.md) for complete details.
-
-### Summary of Axioms
-
-| Axiom | Purpose | Risk | Validation |
-|-------|---------|------|------------|
-| `keccak256_first_4_bytes` | Function selector computation | Low | CI validation against solc --hashes |
-
-**Key Points**:
-- All axioms have **low risk** with strong soundness arguments
-- All validated by **70,000+ differential tests**
-- Documented with elimination strategies
-- CI enforces documentation (see AXIOMS.md)
-
-**Future Work**:
-- Expression evaluation axioms eliminated (IR interpreter is now total)
-- `addressToNat_injective` eliminated (Address is now a bounded Nat structure)
-- Remaining: prove `keccak256_first_4_bytes` via a Lean keccak256 implementation
-
----
+AST compilation (`--ast`) is tested and drift-checked, but not yet proven with the same end-to-end semantic preservation proofs as the `ContractSpec` path.
 
 ## Security Audit Checklist
 
-Use this checklist when performing security audits of Verity-verified contracts.
+1. Confirm whether deployment uses ContractSpec path, AST path, or both.
+2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
+3. If linked libraries are used, audit each linked Yul file as trusted code.
+4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.
+5. Confirm arithmetic and revert assumptions are explicitly acceptable for the target contract.
+6. For production readiness, include gas profiling and upper-bound testing.
 
-### 1. Verification Review
-- [ ] Review Layer 1 proofs for the specific contract
-- [ ] Check property coverage (should be ≥70%)
-- [ ] Verify no `sorry` placeholders in proofs
-- [ ] Confirm all properties tested in `test/Property*.t.sol`
+## Change Control Requirement
 
-### 2. Trust Boundary Analysis
-- [ ] Review AXIOMS.md for current axioms
-- [ ] Assess axiom soundness arguments
-- [ ] Check solc version is pinned and tested
-- [ ] Verify differential tests cover contract functionality
-- [ ] Verify arithmetic semantics: wrapping (EDSL) vs checked (Solidity reference)
+Any source change that affects architecture, semantics, trust boundary, or CI safeguards must update this file in the same change set.
 
-### 3. Testing Validation
-- [ ] Confirm all Foundry tests pass
-- [ ] Review property coverage report
-- [ ] Check differential test count (should be >10k for production contracts)
-- [ ] Validate tests against edge cases
+If this file is stale, audit conclusions may be invalid.
 
-### 4. External Dependencies
-- [ ] List all external contract calls
-- [ ] Assess risk of each external dependency
-- [ ] Check for precompile usage (lower risk)
-- [ ] Review interface specifications
+## Related Documents
 
-### 5. Deployment Verification
-- [ ] Verify compiled bytecode matches Yul output
-- [ ] Check function selectors against specifications
-- [ ] Validate storage layout (issue #84)
-- [ ] Confirm gas costs are acceptable (issue #262)
-- [ ] Run gas estimates: `FOUNDRY_PROFILE=difftest forge test --gas-report`
-- [ ] Add gas bounds to property tests for critical functions
+- [AUDIT.md](AUDIT.md)
+- [AXIOMS.md](AXIOMS.md)
+- [docs/ROADMAP.md](docs/ROADMAP.md)
+- [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)
 
-### 6. Documentation Review
-- [ ] Check README for accurate description
-- [ ] Verify TRUST_ASSUMPTIONS.md is current
-- [ ] Review AXIOMS.md for changes
-- [ ] Confirm property manifest is up-to-date
-
----
-
-## Future Work to Reduce Trust
-
-### Short-term (3-6 months)
-
-1. **EVMYulLean UInt256 Integration** (Issue #294)
-   - Replace current Uint256 with EVMYulLean's verified implementation
-   - Reduces trust in arithmetic operations
-   - Effort: 3 days
-
-2. **Precompiled Contracts Integration** (Issue #294)
-   - Use EVMYulLean's verified precompiles
-   - Reduces trust in cryptographic operations
-   - Effort: 2 weeks
-
-3. **Conformance Testing** (Issue #75)
-   - Validate against Ethereum test vectors
-   - Cross-validates with EVM implementations
-   - Effort: 2 weeks
-
-4. **Storage Layout Formalization** (Issue #84)
-   - Type-safe storage layout system
-   - Prevents slot collisions
-   - Effort: 5 weeks
-
-### Long-term (6-12 months)
-
-1. **Formal Yul → Bytecode Verification** (Issue #76)
-   - Integrate KEVM or EVMYulLean EVM semantics
-   - **Eliminates solc trust assumption**
-   - Proves Yul semantics ≡ Bytecode execution
-   - Effort: 3-4 months
-
-2. **Further Axiom Elimination**
-   - 5 of 6 axioms already eliminated (3 via Issue #148, 1 via PR #202, 1 via Issue #253)
-   - `addressToNat_injective` eliminated: Address is now a bounded Nat structure, injectivity is a theorem
-   - Remaining: prove `keccak256_first_4_bytes` via a Lean keccak256 implementation
-
-3. **Gas Cost Verification** (Issue #262)
-   - Formally verify gas bounds
-   - Prevents DoS via gas exhaustion
-   - Effort: 6 weeks
-
-### Verification Roadmap
-
-**Current State**:
-```
-EDSL → Spec → IR → Yul → [solc] → Bytecode
-     ✅     ✅    ✅      ⚠️ TRUSTED
-```
-
-**After Issue #76**:
-```
-EDSL → Spec → IR → Yul → Bytecode
-     ✅     ✅    ✅    ✅
-```
-
-**Impact**: Complete end-to-end verification, minimal trust assumptions
-
----
-
-## Conclusion
-
-Verity provides **strong formal verification** with a **small trusted computing base**:
-
-### What is Guaranteed (Proven)
-✅ Contract implementations match specifications (Layer 1)
-✅ Specifications preserved through compilation (Layer 2)
-✅ IR semantics equivalent to Yul semantics (Layer 3)
-✅ 431 theorems across 11 categories (220 covered by property tests)
-
-### What is Trusted (Validated but Not Proven)
-⚠️ Solidity compiler (solc) - Validated by 70k+ differential tests
-⚠️ Keccak256 hashing - Validated against solc
-⚠️ Mapping slot collision freedom - Standard Ethereum assumption
-⚠️ Arithmetic semantics - Wrapping (Lean) vs checked (Solidity), see section 8
-⚠️ EVM semantics - Industry standard, billions in TVL
-⚠️ Linked libraries - Outside proof boundary, validated by compile-time reference checks
-⚠️ 1 axiom - Low risk, extensively validated (see AXIOMS.md)
-⚠️ Gas modeling - Not verified, assume infinite gas (see section 10)
-
-### Risk Profile
-- **Overall**: Low to Medium risk
-- **Production Ready**: Yes, with caveats
-- **Recommended Use**: High-value contracts where formal verification adds significant security value
-- **Not Recommended**: Contracts requiring zero trust (not achievable without full EVM verification)
-
-### For Auditors
-Verity offers **substantially higher assurance** than traditional Solidity contracts:
-- Formal proofs replace manual code review for core logic
-- Differential testing validates entire compilation pipeline
-- Explicit trust boundaries enable focused auditing
-- Property-based testing catches edge cases
-
-### For Developers
-Trust assumptions are **documented and minimized**:
-- Clear distinction between proven and trusted
-- Roadmap for further trust reduction
-- CI enforces documentation of all assumptions
-- Regular updates as verification expands
-
----
-
-**Last Updated**: 2026-02-19
-**Next Review**: After completing issue #76 (Yul → Bytecode verification)
-**Maintainer**: Update when trust boundaries change or new components are verified
-
-**Related Documents**:
-- [AXIOMS.md](AXIOMS.md) - Detailed axiom documentation
-- [README.md](README.md) - Project overview
-- [docs/ROADMAP.md](docs/ROADMAP.md) - Verification roadmap
+**Last Updated**: 2026-02-23
+**Maintainer Rule**: Update on every trust-boundary-relevant code change.

@@ -45,6 +45,12 @@ private def assertContains (label : String) (rendered : String) (needles : List 
       throw (IO.userError s!"✗ {label}: expected substring '{needle}' not found in:\n{rendered}")
   IO.println s!"✓ {label}"
 
+private def assertNotContains (label : String) (rendered : String) (needles : List String) : IO Unit := do
+  for needle in needles do
+    if contains rendered needle then
+      throw (IO.userError s!"✗ {label}: unexpected substring '{needle}' found in:\n{rendered}")
+  IO.println s!"✓ {label}"
+
 /-!
 ## SimpleStorage
 -/
@@ -167,6 +173,17 @@ private def assertContains (label : String) (rendered : String) (needles : List 
   assertContains "SimpleToken.transfer" rendered ["mappingSlot", "revert(0,", "__ite_cond"]
 
 #eval! do
+  let stmt : Stmt :=
+    Stmt.letUint "__ite_cond" (Expr.lit 7)
+      (Stmt.ite (Expr.lit 1)
+        (Stmt.ret (Expr.var "__ite_cond"))
+        (Stmt.ret (Expr.lit 0)))
+  let rendered := renderStmts (compileStmt stmt)
+  assertContains "Stmt.ite temp avoids local collision" rendered
+    ["let __ite_cond := 7", "let __ite_cond_1 := 1", "mstore(0, __ite_cond)"]
+  assertNotContains "Stmt.ite temp avoids local collision" rendered ["mstore(0, __ite_cond_1)"]
+
+#eval! do
   let rendered := renderStmts (compileStmt Verity.AST.SimpleToken.balanceOfAST)
   assertContains "SimpleToken.balanceOf" rendered ["mappingSlot", "return(0, 32)"]
 
@@ -177,5 +194,15 @@ private def assertContains (label : String) (rendered : String) (needles : List 
 #eval! do
   let rendered := renderStmts (compileStmt Verity.AST.SimpleToken.getOwnerAST)
   assertContains "SimpleToken.getOwner" rendered ["sload(0)", "return(0, 32)"]
+
+/-!
+## Regression: bindBool normalization
+-/
+
+#eval! do
+  let ast : Stmt := .bindBool "b" (.lit 2) (.sstore 0 (.var "b") .stop)
+  let rendered := renderStmts (compileStmt ast)
+  assertContains "bindBool canonicalizes non-zero to 1" rendered
+    ["let b := iszero(iszero(2))", "sstore(0, b)", "stop()"]
 
 end Compiler.ASTCompileTest

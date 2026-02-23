@@ -131,5 +131,55 @@ class PropertyUtilsTheoremExtractionTests(unittest.TestCase):
             names = property_utils.collect_theorems(path)
             self.assertEqual(names, ["real_theorem"])
 
+    def test_collect_theorems_accepts_declaration_prefixes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "Spec.lean"
+            path.write_text(
+                "theorem plain_theorem : True := by\n"
+                "  trivial\n"
+                "\n"
+                "@[simp] theorem simp_theorem : True := by\n"
+                "  trivial\n"
+                "\n"
+                "private theorem private_theorem : True := by\n"
+                "  trivial\n",
+                encoding="utf-8",
+            )
+
+            names = property_utils.collect_theorems(path, include_helpers=True)
+            self.assertEqual(names, ["plain_theorem", "simp_theorem", "private_theorem"])
+
+    def test_collect_theorems_accepts_multiline_attribute_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "Spec.lean"
+            path.write_text(
+                "@[\n"
+                "  simp,\n"
+                "  reducible\n"
+                "]\n"
+                "theorem multi_attr_theorem : True := by\n"
+                "  trivial\n",
+                encoding="utf-8",
+            )
+
+            names = property_utils.collect_theorems(path, include_helpers=True)
+            self.assertEqual(names, ["multi_attr_theorem"])
+
+    def test_collect_theorems_excludes_helper_declarations_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "Spec.lean"
+            path.write_text(
+                "theorem plain_theorem : True := by\n"
+                "  trivial\n"
+                "@[simp] theorem simp_theorem : True := by\n"
+                "  trivial\n"
+                "private theorem private_theorem : True := by\n"
+                "  trivial\n",
+                encoding="utf-8",
+            )
+
+            names = property_utils.collect_theorems(path)
+            self.assertEqual(names, ["plain_theorem"])
+
 if __name__ == "__main__":
     unittest.main()

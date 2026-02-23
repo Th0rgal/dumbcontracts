@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/Th0rgal/verity/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/built%20with-Lean%204-blueviolet.svg" alt="Built with Lean 4"></a>
-  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-401-brightgreen.svg" alt="401 Theorems"></a>
+  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-431-brightgreen.svg" alt="431 Theorems"></a>
   <a href="https://github.com/Th0rgal/verity/actions"><img src="https://img.shields.io/github/actions/workflow/status/Th0rgal/verity/verify.yml?label=verify" alt="Verify"></a>
 </p>
 
@@ -55,35 +55,55 @@ lake exe verity-compiler \
 
 **Run tests:**
 ```bash
-FOUNDRY_PROFILE=difftest forge test           # 375 tests across 32 suites
+FOUNDRY_PROFILE=difftest forge test           # 403 tests across 35 suites
 ```
 
 ---
 
-Verity is a Lean 4 framework that lets you write smart contracts in a domain-specific language, formally verify their correctness, and compile them to EVM bytecode.
+Verity is a Lean 4 framework that lets you write smart contracts in a domain specific language, prove key properties, and compile to EVM bytecode.
 
-**The idea is simple:** humans review 10-line specs that are easy to audit. Agents write 1000-line implementations. Lean proves the implementation matches the spec - no trust required.
+The project has three contract artifacts. Keep them separate:
+1. `EDSL implementation` (`Verity/Examples/*`): executable Lean code in the `Contract` monad.
+2. `Logical spec` (`Verity/Specs/*/Spec.lean`): `Prop` statements that describe intended behavior.
+3. `ContractSpec` (`Compiler/Specs.lean`): declarative compiler model with function bodies (`Expr`/`Stmt`), used for IR and Yul generation.
 
 ## How It Works
 
 ```lean
--- 1. Write a spec (human-readable, ~10 lines)
+-- 1) Logical spec (property, not compiler input)
 def store_spec (value : Uint256) (s s' : ContractState) : Prop :=
   s'.storage 0 = value ∧
   storageUnchangedExcept 0 s s' ∧
   sameAddrMapContext s s'
 
--- 2. Write an implementation
+-- 2) EDSL implementation (executable)
 def store (value : Uint256) : Contract Unit := do
   setStorage storedData value
 
--- 3. Prove correctness - math guarantees the match
+-- 3) Prove implementation satisfies the logical spec
 theorem store_meets_spec (s : ContractState) (value : Uint256) :
   store_spec value s (((store value).run s).snd) := by
   simp [store, store_spec, storedData, setStorage, storageUnchangedExcept, sameAddrMapContext]
 ```
 
-One spec can have many competing implementations - naive, gas-optimized, packed storage - all proven correct against the same rules.
+Then separately, `ContractSpec` drives compilation. It is more than an ABI: it includes storage layout plus function bodies.
+
+```lean
+def simpleStorageSpec : ContractSpec := {
+  name := "SimpleStorage"
+  fields := [{ name := "storedData", ty := .uint256 }]
+  constructor := none
+  functions := [
+    { name := "store"
+      params := [{ name := "value", ty := .uint256 }]
+      returnType := none
+      body := [Stmt.setStorage "storedData" (Expr.param "value"), Stmt.stop]
+    }
+  ]
+}
+```
+
+One logical spec can have many implementations, and one implementation can have multiple compiler backends, as long as the proof obligations hold.
 
 ## Verified Contracts
 
@@ -141,10 +161,11 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 
 ## What's Verified
 
-- **EDSL correctness** - each contract satisfies its spec in Lean (Layer 1)
-- **Compiler correctness** - IR generation preserves semantics (Layer 2), Yul codegen preserves IR (Layer 3)
-- **End-to-end pipeline** - EDSL -> ContractSpec -> IR -> Yul, fully verified with 1 axioms
-- **Trust boundary** - Yul -> EVM bytecode via solc (validated by 70k+ differential tests)
+- **Layer 1 (per contract)**: EDSL behavior matches its `ContractSpec` model.
+- **Layer 2 (framework)**: `ContractSpec -> IR` preserves behavior.
+- **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
+- **Proof-chain note**: the `EDSL -> ContractSpec -> IR -> Yul` chain is verified with 1 axioms.
+- **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.
 

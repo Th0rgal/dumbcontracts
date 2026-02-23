@@ -61,6 +61,12 @@ The first build downloads Mathlib and compiles everything — expect **20–45 m
 
 While the first build runs (or after it completes), get a feel for what Verity does:
 
+Before reading files, keep this map:
+
+1. `Verity/Examples/*`: EDSL implementation, executable Lean code.
+2. `Verity/Specs/*`: logical behavior specs (`Prop`) and invariants.
+3. `Compiler/Specs.lean`: `ContractSpec` compiler models that generate IR/Yul.
+
 **1. Open an example contract** — [`Verity/Examples/SimpleStorage.lean`](https://github.com/Th0rgal/verity/blob/main/Verity/Examples/SimpleStorage.lean):
 ```lean
 -- A contract with a single uint256 storage slot

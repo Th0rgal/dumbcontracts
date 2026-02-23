@@ -1722,6 +1722,37 @@ private def featureSpec : ContractSpec := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
+  let unusedInvalidIndexedEventSpec : ContractSpec := {
+    name := "UnusedInvalidIndexedEventRejected"
+    fields := []
+    constructor := none
+    events := [
+      { name := "TooManyIndexed"
+        params := [
+          { name := "a", ty := ParamType.uint256, kind := EventParamKind.indexed },
+          { name := "b", ty := ParamType.uint256, kind := EventParamKind.indexed },
+          { name := "c", ty := ParamType.uint256, kind := EventParamKind.indexed },
+          { name := "d", ty := ParamType.uint256, kind := EventParamKind.indexed }
+        ]
+      }
+    ]
+    functions := [
+      { name := "f"
+        params := []
+        returnType := none
+        body := [Stmt.stop]
+      }
+    ]
+  }
+  match compile unusedInvalidIndexedEventSpec [1] with
+  | .error err =>
+      if !(contains err "event 'TooManyIndexed' has 4 indexed params; max is 3") then
+        throw (IO.userError s!"✗ invalid unused event declaration diagnostic mismatch: {err}")
+      IO.println "✓ invalid unused event declaration rejected at compile boundary"
+  | .ok _ =>
+      throw (IO.userError "✗ expected unused invalid event declaration to fail compilation")
+
+#eval! do
   let indexedBytesEventSpec : ContractSpec := {
     name := "IndexedBytesEventSupported"
     fields := []
@@ -2172,6 +2203,39 @@ private def featureSpec : ContractSpec := {
       assertContains "internal return name collision hygiene" rendered
         ["function internal_helper(__ret0) -> __ret0_2",
          "__ret0_2 := __ret0_1"]
+
+#eval! do
+  let internalReturnTerminatesSpec : ContractSpec := {
+    name := "InternalReturnTerminates"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "helper"
+        params := []
+        returnType := some FieldType.uint256
+        isInternal := true
+        body := [
+          Stmt.return (Expr.literal 1),
+          Stmt.setStorage "x" (Expr.literal 9)
+        ]
+      },
+      { name := "entry"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.internalCall "helper" [])]
+      }
+    ]
+  }
+  match compile internalReturnTerminatesSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected internal return termination lowering to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "internal return termination lowering" rendered
+        ["function internal_helper() -> __ret0",
+         "__ret0 := 1",
+         "leave",
+         "sstore(0, 9)"]
 
 #eval! do
   let exprInternalCallMultiReturnSpec : ContractSpec := {
@@ -2753,6 +2817,69 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected overlapping reserved slot ranges to fail compilation")
 
 #eval! do
+  let undeclaredParamReferenceSpec : ContractSpec := {
+    name := "UndeclaredParamReferenceSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badParam"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.add (Expr.param "x") (Expr.param "typo"))]
+      }
+    ]
+  }
+  match compile undeclaredParamReferenceSpec [1] with
+  | .error err =>
+      if !contains err "function 'badParam' references unknown parameter 'typo'" then
+        throw (IO.userError s!"✗ undeclared parameter diagnostic mismatch: {err}")
+      IO.println "✓ undeclared parameter diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected undeclared Expr.param to fail compilation")
+
+#eval! do
+  let undeclaredLocalReferenceSpec : ContractSpec := {
+    name := "UndeclaredLocalReferenceSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badLocal"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.localVar "neverDeclared")]
+      }
+    ]
+  }
+  match compile undeclaredLocalReferenceSpec [1] with
+  | .error err =>
+      if !contains err "function 'badLocal' references unknown local variable 'neverDeclared'" then
+        throw (IO.userError s!"✗ undeclared local diagnostic mismatch: {err}")
+      IO.println "✓ undeclared local diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected undeclared Expr.localVar to fail compilation")
+
+#eval! do
+  let assignBeforeDeclarationSpec : ContractSpec := {
+    name := "AssignBeforeDeclarationSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badAssign"
+        params := []
+        returnType := none
+        body := [Stmt.assignVar "x" (Expr.literal 1), Stmt.stop]
+      }
+    ]
+  }
+  match compile assignBeforeDeclarationSpec [1] with
+  | .error err =>
+      if !contains err "function 'badAssign' assigns to undeclared local variable 'x'" then
+        throw (IO.userError s!"✗ assign before declaration diagnostic mismatch: {err}")
+      IO.println "✓ assign before declaration diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected assignVar before declaration to fail compilation")
+
+#eval! do
   let invalidMutabilitySpec : ContractSpec := {
     name := "InvalidMutabilitySpec"
     fields := []
@@ -2821,6 +2948,54 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected duplicate constructor params to fail compilation")
 
 #eval! do
+  let unknownExternalTargetSpec : ContractSpec := {
+    name := "UnknownExternalTargetSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "missing_fn" [])]
+      }
+    ]
+    externals := []
+  }
+  match compile unknownExternalTargetSpec [1] with
+  | .error err =>
+      if !contains err "function 'f' references unknown external call target 'missing_fn'" then
+        throw (IO.userError s!"✗ unknown external target diagnostic mismatch: {err}")
+      IO.println "✓ unknown external target diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected unknown external target to fail compilation")
+
+#eval! do
+  let declaredExternalTargetSpec : ContractSpec := {
+    name := "DeclaredExternalTargetSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.externalCall "known_fn" [Expr.param "x"])]
+      }
+    ]
+    externals := [
+      { name := "known_fn"
+        params := [ParamType.uint256]
+        returnType := some ParamType.uint256
+        axiomNames := []
+      }
+    ]
+  }
+  match compile declaredExternalTargetSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected declared external target to compile, got: {err}")
+  | .ok _ =>
+      IO.println "✓ declared external target accepted"
+
+#eval! do
   let invalidSpecialEntrypointMutabilitySpec : ContractSpec := {
     name := "InvalidSpecialEntrypointMutabilitySpec"
     fields := []
@@ -2841,5 +3016,81 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ fallback mutability diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected fallback view/pure mutability conflict to fail compilation")
+
+#eval! do
+  let iteNameCollisionSpec : ContractSpec := {
+    name := "IteNameCollision"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "__ite_cond" (Expr.literal 7),
+          Stmt.ite (Expr.literal 1)
+            [Stmt.return (Expr.localVar "__ite_cond")]
+            [Stmt.return (Expr.literal 0)]
+        ]
+      }
+    ]
+  }
+  match compile iteNameCollisionSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ ite temp collision regression compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "ite temp avoids local collision" rendered
+        ["let __ite_cond := 7", "let __ite_cond_1 := 1", "mstore(0, __ite_cond)"]
+      assertNotContains "ite temp avoids local collision" rendered ["mstore(0, __ite_cond_1)"]
+
+#eval! do
+  let duplicateLetVarSpec : ContractSpec := {
+    name := "DuplicateLetVar"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "x" (Expr.literal 1),
+          Stmt.letVar "x" (Expr.literal 2),
+          Stmt.return (Expr.localVar "x")
+        ]
+      }
+    ]
+  }
+  match compile duplicateLetVarSpec [1] with
+  | .error err =>
+      if !contains err "function 'f' redeclares local variable 'x' in the same scope" then
+        throw (IO.userError s!"✗ duplicate letVar diagnostic mismatch: {err}")
+      IO.println "✓ duplicate letVar diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected duplicate letVar names to fail compilation")
+
+#eval! do
+  let letVarShadowingParamSpec : ContractSpec := {
+    name := "LetVarShadowingParam"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "f"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "x" (Expr.literal 2),
+          Stmt.return (Expr.localVar "x")
+        ]
+      }
+    ]
+  }
+  match compile letVarShadowingParamSpec [1] with
+  | .error err =>
+      if !contains err "function 'f' declares local variable 'x' that shadows a parameter" then
+        throw (IO.userError s!"✗ letVar parameter shadow diagnostic mismatch: {err}")
+      IO.println "✓ letVar parameter shadow diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected letVar parameter shadowing to fail compilation")
 
 end Compiler.ContractSpecFeatureTest

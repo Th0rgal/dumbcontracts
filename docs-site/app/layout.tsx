@@ -1,5 +1,5 @@
 import { Layout, Navbar } from 'nextra-theme-docs'
-import { Banner, Head } from 'nextra/components'
+import { Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
 
@@ -10,12 +10,6 @@ export const metadata = {
   },
   description: 'Minimal Lean 4 EDSL for Smart Contracts with Formal Verification',
 }
-
-const banner = (
-  <Banner storageKey="verification-complete">
-    431/431 theorems proven — 100% formal verification
-  </Banner>
-)
 
 const navbar = (
   <Navbar
@@ -30,10 +24,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <Head />
       <body>
         <Layout
-          banner={banner}
           navbar={navbar}
           pageMap={await getPageMap()}
           docsRepositoryBase="https://github.com/Th0rgal/verity/tree/main/docs-site"
+          banner={<span>431/431 theorems proven</span>}
           sidebar={{ defaultMenuCollapseLevel: 1 }}
           toc={{ backToTop: true }}
         >

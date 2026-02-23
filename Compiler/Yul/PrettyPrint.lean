@@ -50,6 +50,8 @@ def ppStmt (indent : Nat) : YulStmt → List String
       [s!"{indentStr indent}{name} := {ppExpr value}"]
   | YulStmt.expr e =>
       [s!"{indentStr indent}{ppExpr e}"]
+  | YulStmt.leave =>
+      [s!"{indentStr indent}leave"]
   | YulStmt.if_ cond body =>
       let header := indentStr indent ++ "if " ++ ppExpr cond ++ " {"
       let bodyLines := ppStmts (indent + 1) body

@@ -92,6 +92,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_verify_multiseed_sync.py`** - Ensures `foundry-multi-seed` seed lists stay synchronized across `.github/workflows/verify.yml`, `scripts/test_multiple_seeds.sh`, and this README
 - **`check_verify_foundry_shard_sync.py`** - Ensures `foundry` shard settings stay synchronized across `.github/workflows/verify.yml` (`matrix.shard_index`, `DIFFTEST_SHARD_COUNT`, `DIFFTEST_RANDOM_SEED`) and this README summary
 - **`check_verify_foundry_patched_sync.py`** - Ensures `foundry-patched` smoke-test settings stay synchronized across `.github/workflows/verify.yml` and this README summary (seed, single-shard mode, and `--no-match-test "Random10000"`)
+- **`check_verify_foundry_job_sync.py`** - Ensures shared Foundry job settings stay synchronized across `foundry`, `foundry-patched`, and `foundry-multi-seed` in `.github/workflows/verify.yml` (profile, random params, Yul dir/download wiring, and `Random10000` skip policy)
 - **`check_verify_foundry_gas_calibration_sync.py`** - Ensures `foundry-gas-calibration` settings stay synchronized across `.github/workflows/verify.yml` and this README summary (profile, static report artifact/input, and calibration command)
 - **`check_verify_artifact_sync.py`** - Ensures downstream artifact downloads in `.github/workflows/verify.yml` match build-job artifact uploads (and rejects duplicate artifact names per producer/consumer job)
 - **`generate_verification_status.py`** - Deterministically generates `artifacts/verification_status.json` (theorem/test/axiom/sorry/toolchain metrics) and supports `--check` mode for CI freshness gating
@@ -113,6 +114,7 @@ python3 scripts/check_verify_ci_jobs_docs_sync.py
 python3 scripts/check_verify_multiseed_sync.py
 python3 scripts/check_verify_foundry_shard_sync.py
 python3 scripts/check_verify_foundry_patched_sync.py
+python3 scripts/check_verify_foundry_job_sync.py
 python3 scripts/check_verify_foundry_gas_calibration_sync.py
 python3 scripts/check_verify_artifact_sync.py
 
@@ -219,19 +221,20 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 12. Verify multi-seed sync (`check_verify_multiseed_sync.py`)
 13. Verify foundry shard sync (`check_verify_foundry_shard_sync.py`)
 14. Verify foundry-patched sync (`check_verify_foundry_patched_sync.py`)
-15. Verify foundry-gas-calibration sync (`check_verify_foundry_gas_calibration_sync.py`)
-16. Verify artifact upload/download sync (`check_verify_artifact_sync.py`)
-17. Solc pin consistency (`check_solc_pin.py`)
-18. Property manifest sync (`check_property_manifest_sync.py`)
-19. Storage layout consistency (`check_storage_layout.py`)
-20. Lean hygiene (`check_lean_hygiene.py`)
-21. Static gas model builtin coverage (`check_gas_model_coverage.py`)
-22. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-23. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-24. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
-25. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-26. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-27. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+15. Verify foundry job sync (`check_verify_foundry_job_sync.py`)
+16. Verify foundry-gas-calibration sync (`check_verify_foundry_gas_calibration_sync.py`)
+17. Verify artifact upload/download sync (`check_verify_artifact_sync.py`)
+18. Solc pin consistency (`check_solc_pin.py`)
+19. Property manifest sync (`check_property_manifest_sync.py`)
+20. Storage layout consistency (`check_storage_layout.py`)
+21. Lean hygiene (`check_lean_hygiene.py`)
+22. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+23. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+24. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+25. Builtin list sync (Linker ↔ ContractSpec) (`check_builtin_list_sync.py`)
+26. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+27. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+28. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)

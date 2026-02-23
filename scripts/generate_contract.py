@@ -242,8 +242,12 @@ def parse_fields(spec: str) -> List[Field]:
             name = _validate_identifier(name, "field")
             ty = _normalize_field_type(ty_raw)
             if not ty:
-                print(f"Warning: Unknown type '{ty_raw.strip()}', defaulting to uint256", file=sys.stderr)
-                ty = "uint256"
+                print(
+                    f"Error: Unsupported field type '{ty_raw.strip()}' for field '{name}'. "
+                    "Supported types: uint256, address, mapping(address), mapping(uint256)",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             fields.append(Field(name, ty))
         else:
             name = _validate_identifier(part.strip(), "field")

@@ -74,6 +74,14 @@ class GenerateContractIdentifierValidationTests(unittest.TestCase):
         self.assertEqual([f.name for f in fields], ["storedData", "owner_address"])
         self.assertEqual([f.name for f in funcs], ["setStoredData", "getStoredData"])
 
+    def test_parse_fields_rejects_unknown_field_type(self) -> None:
+        err = self._assert_exits_with_error(parse_fields, "flag:bool")
+        self.assertIn("Unsupported field type 'bool'", err)
+
+    def test_parse_fields_accepts_supported_mapping_field_types(self) -> None:
+        fields = parse_fields("balances:mapping(address),scores:mapping(uint256)")
+        self.assertEqual([f.ty for f in fields], ["mapping", "mapping_uint"])
+
 
 class GenerateContractFunctionSignatureValidationTests(unittest.TestCase):
     def _assert_parse_functions_error(self, spec: str) -> str:

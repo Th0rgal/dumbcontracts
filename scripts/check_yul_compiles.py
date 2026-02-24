@@ -15,7 +15,7 @@ from pathlib import Path
 from property_utils import ROOT, YUL_DIR, report_errors
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Compile generated Yul with solc and optionally compare bytecode parity."
     )
@@ -51,7 +51,7 @@ def parse_args() -> argparse.Namespace:
             "'mismatch:<file>', 'missing_in_a:<file>', or 'missing_in_b:<file>'."
         ),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def resolve_dir(path_str: str) -> Path:
@@ -155,8 +155,8 @@ def load_allowed_compare_diffs(path: str | None) -> set[tuple[str, str]]:
     return allowed
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     yul_dirs = [resolve_dir(d) for d in (args.dirs or [str(YUL_DIR)])]
     files, failures = collect_yul_files(yul_dirs)
     if not files and not failures:

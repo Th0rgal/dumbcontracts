@@ -21,7 +21,7 @@ class GasRow:
     total: int
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--baseline-report",
@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional markdown output path for CI summaries.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def percentile(values: list[float], p: float) -> float:
@@ -169,8 +169,8 @@ def render_markdown(
     return "\n".join(lines)
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     try:
         baseline = load_report(args.baseline_report)
         patched = load_report(args.patched_report)

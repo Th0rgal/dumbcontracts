@@ -20,7 +20,7 @@ MODELED_CALL_RE = re.compile(r'name\s*=\s*"([A-Za-z_][A-Za-z0-9_]*)"')
 NON_CALL_KEYWORDS = {"function", "if", "switch", "object", "code"}
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dir",
@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Yul directory to scan (repeatable). Default: compiler/yul",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def load_modeled_calls() -> set[str]:
@@ -71,8 +71,8 @@ def collect_yul_calls(scan_dirs: list[Path]) -> set[str]:
     return calls
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     scan_dirs = normalize_scan_dirs(args.dirs)
 
     if not STATIC_ANALYSIS.exists():

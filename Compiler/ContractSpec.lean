@@ -1384,8 +1384,12 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.callback target _ args bytesParam => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount target
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
-      if !dynamicParams.contains bytesParam then
-        throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' which is not a dynamic bytes parameter"
+      match findParamType params bytesParam with
+      | some ParamType.bytes => pure ()
+      | some ty =>
+          throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' of type {repr ty}, but only ParamType.bytes is supported"
+      | none =>
+          throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' which is not a declared parameter"
       pure localScope
   | _ => pure localScope
 

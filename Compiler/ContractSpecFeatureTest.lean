@@ -4677,7 +4677,7 @@ private def featureSpec : ContractSpec := {
   }
   match compile badCallbackSpec [1] with
   | .error err =>
-      if contains err "not a dynamic bytes parameter" then
+      if contains err "only ParamType.bytes is supported" then
         IO.println s!"✓ callback correctly rejects non-bytes parameter: {err}"
       else
         throw (IO.userError s!"✗ unexpected error for callback bad param: {err}")
@@ -4826,6 +4826,35 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ safeTransfer correctly rejected in view function"
   | .ok _ =>
       throw (IO.userError "✗ expected safeTransfer in view function to be rejected")
+
+-- ===== Stmt.callback validation: rejects array parameter =====
+#eval! do
+  let arrayCallbackSpec : ContractSpec := {
+    name := "ArrayCallbackTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "arrayCallback"
+        params := [
+          ⟨"items", ParamType.array ParamType.uint256⟩
+        ]
+        returnType := none
+        body := [
+          -- "items" is uint256[], not bytes — should be rejected
+          Stmt.callback Expr.caller 0x12345678 [] "items",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile arrayCallbackSpec [1] with
+  | .error err =>
+      if contains err "only ParamType.bytes is supported" then
+        IO.println s!"✓ callback correctly rejects array parameter: {err}"
+      else
+        throw (IO.userError s!"✗ unexpected error for callback array param: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ expected callback with array param to be rejected")
 
 -- ===== Stmt.callback rejects in view function =====
 #eval! do

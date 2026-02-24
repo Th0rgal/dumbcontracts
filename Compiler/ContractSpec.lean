@@ -274,6 +274,11 @@ inductive Expr
   /-- `max(a, b)` — unsigned maximum.
       Compiles to `add(a, mul(sub(b, a), gt(b, a)))`. (#928) -/
   | max (a b : Expr)
+  /-- Expression-level conditional: `ite cond thenVal elseVal`.
+      Compiles to branchless `add(mul(iszero(iszero(cond)), thenVal), mul(iszero(cond), elseVal))`.
+      Both branches are eagerly evaluated; `cond` is evaluated twice.
+      For complex conditions with side effects, bind to a local variable first. -/
+  | ite (cond thenVal elseVal : Expr)
   deriving Repr
 
 inductive Stmt
@@ -630,6 +635,7 @@ private partial def collectExprNames : Expr → List String
   | Expr.wDivUp a b => collectExprNames a ++ collectExprNames b
   | Expr.min a b => collectExprNames a ++ collectExprNames b
   | Expr.max a b => collectExprNames a ++ collectExprNames b
+  | Expr.ite cond thenVal elseVal => collectExprNames cond ++ collectExprNames thenVal ++ collectExprNames elseVal
 
 private partial def collectExprListNames : List Expr → List String
   | [] => []
@@ -908,6 +914,17 @@ def compileExpr (fields : List Field)
           YulExpr.call "gt" [cb, ca]
         ]
       ])
+  | Expr.ite cond thenVal elseVal => do
+      let condExpr ← compileExpr fields dynamicSource cond
+      let thenExpr ← compileExpr fields dynamicSource thenVal
+      let elseExpr ← compileExpr fields dynamicSource elseVal
+      -- Branchless ternary: add(mul(iszero(iszero(cond)), thenVal), mul(iszero(cond), elseVal))
+      let condBool := YulExpr.call "iszero" [YulExpr.call "iszero" [condExpr]]
+      let condNeg := YulExpr.call "iszero" [condExpr]
+      pure (YulExpr.call "add" [
+        YulExpr.call "mul" [condBool, thenExpr],
+        YulExpr.call "mul" [condNeg, elseExpr]
+      ])
 end
 
 -- Compile require condition to a "failure" predicate to avoid double-negation.
@@ -1063,6 +1080,8 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
       exprContainsCallLike a || exprContainsCallLike b || exprContainsCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsCallLike a
+  | Expr.ite cond thenVal elseVal =>
+      exprContainsCallLike cond || exprContainsCallLike thenVal || exprContainsCallLike elseVal
   -- Leaf expressions with no sub-expressions: exhaustive to trigger compiler
   -- errors when new variants are added.
   | Expr.literal _ | Expr.param _ | Expr.constructorArg _ | Expr.storage _
@@ -1137,6 +1156,10 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsUnsafeLogicalCallLike a
+  | Expr.ite cond thenVal elseVal =>
+      exprContainsUnsafeLogicalCallLike cond ||
+      exprContainsUnsafeLogicalCallLike thenVal ||
+      exprContainsUnsafeLogicalCallLike elseVal
   -- Leaf expressions: no sub-expressions to recurse into.
   | Expr.literal _ | Expr.param _ | Expr.constructorArg _ | Expr.storage _
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.blockTimestamp
@@ -1362,6 +1385,10 @@ private partial def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
   | Expr.bitNot a | Expr.logicalNot a =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+  | Expr.ite cond thenVal elseVal => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount cond
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount thenVal
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount elseVal
   -- Leaf expressions: no identifiers to validate.
   | Expr.literal _ | Expr.storage _ | Expr.caller | Expr.contractAddress | Expr.chainid
   | Expr.msgValue | Expr.blockTimestamp | Expr.calldatasize | Expr.returndataSize =>
@@ -1676,6 +1703,8 @@ private partial def exprReadsStateOrEnv : Expr → Bool
       exprReadsStateOrEnv a || exprReadsStateOrEnv b || exprReadsStateOrEnv c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprReadsStateOrEnv a
+  | Expr.ite cond thenVal elseVal =>
+      exprReadsStateOrEnv cond || exprReadsStateOrEnv thenVal || exprReadsStateOrEnv elseVal
 
 private partial def stmtWritesState : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value =>
@@ -1747,6 +1776,8 @@ where
         exprWritesState a || exprWritesState b || exprWritesState c
     | Expr.bitNot a | Expr.logicalNot a =>
         exprWritesState a
+    | Expr.ite cond thenVal elseVal =>
+        exprWritesState cond || exprWritesState thenVal || exprWritesState elseVal
     | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
         exprWritesState key
     | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ =>
@@ -2383,6 +2414,10 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
       validateInteropExpr context c
   | Expr.bitNot a | Expr.logicalNot a =>
       validateInteropExpr context a
+  | Expr.ite cond thenVal elseVal => do
+      validateInteropExpr context cond
+      validateInteropExpr context thenVal
+      validateInteropExpr context elseVal
   | _ =>
       pure ()
 
@@ -2605,6 +2640,10 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName c
   | Expr.bitNot a | Expr.logicalNot a =>
       validateInternalCallShapesInExpr functions callerName a
+  | Expr.ite cond thenVal elseVal => do
+      validateInternalCallShapesInExpr functions callerName cond
+      validateInternalCallShapesInExpr functions callerName thenVal
+      validateInternalCallShapesInExpr functions callerName elseVal
   | _ =>
       pure ()
 
@@ -2792,6 +2831,10 @@ private partial def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context c
   | Expr.bitNot a | Expr.logicalNot a =>
       validateExternalCallTargetsInExpr externals context a
+  | Expr.ite cond thenVal elseVal => do
+      validateExternalCallTargetsInExpr externals context cond
+      validateExternalCallTargetsInExpr externals context thenVal
+      validateExternalCallTargetsInExpr externals context elseVal
   | _ =>
       pure ()
 
@@ -4586,6 +4629,8 @@ private partial def exprUsesArrayElement : Expr → Bool
       exprUsesArrayElement a || exprUsesArrayElement b || exprUsesArrayElement c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesArrayElement a
+  | Expr.ite cond thenVal elseVal =>
+      exprUsesArrayElement cond || exprUsesArrayElement thenVal || exprUsesArrayElement elseVal
   -- Leaf expressions: no sub-expressions that could contain arrayElement.
   | Expr.literal _ | Expr.param _ | Expr.constructorArg _ | Expr.storage _
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.blockTimestamp

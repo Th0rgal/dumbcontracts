@@ -642,8 +642,8 @@ private partial def collectStmtNames : Stmt → List String
       collectExprListNames topics ++ collectExprNames dataOffset ++ collectExprNames dataSize
   | Stmt.externalCallBind resultVars externalName args =>
       resultVars ++ externalName :: collectExprListNames args
-  | Stmt.externalCallWithReturn resultVar _ _ args _ =>
-      resultVar :: collectExprListNames args
+  | Stmt.externalCallWithReturn resultVar target _ args _ =>
+      resultVar :: collectExprNames target ++ collectExprListNames args
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -3823,10 +3823,14 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let sizeCheck := YulStmt.if_ (YulExpr.call "lt" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
         YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
       ]
-      -- Step 6: extract return value (call/staticcall already copied returndata to memory[0..32])
+      -- Wrap call + checks in a block so __ecwr_success is block-scoped.
+      -- This avoids duplicate let declarations when multiple externalCallWithReturn
+      -- statements appear in the same function body.
+      let callBlock := YulStmt.block ([storeSelector] ++ storeArgs ++ [letSuccess, revertBlock, sizeCheck])
+      -- Step 6: extract return value outside the block (call already copied returndata to memory[0..32])
+      -- resultVar is flat-scoped so subsequent statements can reference it.
       let bindResult := YulStmt.let_ resultVar (YulExpr.call "mload" [YulExpr.lit 0])
-      -- Emit statements flat (not in a block) so resultVar is visible to subsequent statements
-      pure ([storeSelector] ++ storeArgs ++ [letSuccess, revertBlock, sizeCheck, bindResult])
+      pure [callBlock, bindResult]
   | Stmt.returnValues values => do
       if isInternal then
         if values.length != internalRetNames.length then

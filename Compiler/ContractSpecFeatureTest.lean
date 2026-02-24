@@ -5198,4 +5198,31 @@ private def externalCallWithReturnSpec : ContractSpec := {
   | .ok _ =>
       IO.println "✓ externalCallWithReturn staticcall accepted for view function"
 
+-- Test: multiple externalCallWithReturn in same function (no duplicate let collision)
+#eval! do
+  let multiCallSpec : ContractSpec := {
+    name := "MultiExternalCall"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "getPrices"
+        params := [{ name := "oracle1", ty := ParamType.address }, { name := "oracle2", ty := ParamType.address }]
+        returnType := none
+        body := [
+          Stmt.externalCallWithReturn "price1" (Expr.param "oracle1") 0xa035b1fe [] (isStatic := true),
+          Stmt.externalCallWithReturn "price2" (Expr.param "oracle2") 0xa035b1fe [] (isStatic := true),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile multiCallSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ multiple externalCallWithReturn should compile: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "multi externalCallWithReturn both bindings" rendered
+        ["let price1 := mload(0)", "let price2 := mload(0)"]
+      IO.println "✓ multiple externalCallWithReturn in same function compiles without collision"
+
 end Compiler.ContractSpecFeatureTest

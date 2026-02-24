@@ -395,6 +395,14 @@ def _consume_command_wrapper(tokens: list[str], i: int) -> int:
         if tok in {"-p", "-v", "-V"}:
             i += 1
             continue
+        if (
+            len(tok) > 1
+            and tok.startswith("-")
+            and not tok.startswith("--")
+            and set(tok[1:]).issubset({"p", "v", "V"})
+        ):
+            i += 1
+            continue
         break
     return i
 

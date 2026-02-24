@@ -131,6 +131,15 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_combined_command_short_options(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "command -pv -- env FOUNDRY_PROFILE=difftest forge test",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
     def test_match_shell_command_accepts_time_wrapper(self) -> None:
         matched, forge_tokens = match_shell_command(
             'time -f "%E" env FOUNDRY_PROFILE=difftest forge test -vv',

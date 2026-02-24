@@ -341,6 +341,9 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.contractAddress =>
       -- Contract address is not modeled in the scalar interpreter.
       0
+  | Expr.extcodesize _ =>
+      -- Extcodesize is not modeled in the scalar interpreter.
+      0
   | Expr.chainid =>
       -- chainid is not modeled in the scalar interpreter.
       0
@@ -471,7 +474,7 @@ end
 
 mutual
 def exprUsesUnsupportedLowLevel : Expr → Bool
-  | Expr.contractAddress | Expr.chainid => true
+  | Expr.contractAddress | Expr.chainid | Expr.extcodesize _ => true
   | Expr.mload _ | Expr.keccak256 _ _ => true
   | Expr.call _ _ _ _ _ _ _ => true
   | Expr.staticcall _ _ _ _ _ _ => true

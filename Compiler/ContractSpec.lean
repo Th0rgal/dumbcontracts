@@ -222,6 +222,8 @@ inductive Expr
   | delegatecall (gas target inOffset inSize outOffset outSize : Expr)
   /-- Size in bytes of returndata from the most recent external call frame. -/
   | returndataSize
+  /-- Size in bytes of code deployed at the given address (0 for EOAs). -/
+  | extcodesize (addr : Expr)
   /-- ERC20-style optional bool return helper:
       true iff `returndatasize() == 0 || (returndatasize() == 32 && mload(outOffset) == 1)`. -/
   | returndataOptionalBoolAt (outOffset : Expr)
@@ -562,6 +564,7 @@ private partial def collectExprNames : Expr → List String
   | Expr.caller => []
   | Expr.contractAddress => []
   | Expr.chainid => []
+  | Expr.extcodesize addr => collectExprNames addr
   | Expr.msgValue => []
   | Expr.blockTimestamp => []
   | Expr.mload offset => collectExprNames offset
@@ -721,6 +724,8 @@ def compileExpr (fields : List Field)
   | Expr.caller => pure (YulExpr.call "caller" [])
   | Expr.contractAddress => pure (YulExpr.call "address" [])
   | Expr.chainid => pure (YulExpr.call "chainid" [])
+  | Expr.extcodesize addr => do
+      pure (YulExpr.call "extcodesize" [← compileExpr fields dynamicSource addr])
   | Expr.msgValue => pure (YulExpr.call "callvalue" [])
   | Expr.blockTimestamp => pure (YulExpr.call "timestamp" [])
   | Expr.mload offset => do
@@ -1002,6 +1007,8 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
       exprContainsCallLike index
   | Expr.returndataOptionalBoolAt outOffset =>
       exprContainsCallLike outOffset
+  | Expr.extcodesize addr =>
+      exprContainsCallLike addr
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
@@ -1069,6 +1076,8 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike key1 || exprContainsUnsafeLogicalCallLike key2
   | Expr.arrayElement _ index | Expr.returndataOptionalBoolAt index =>
       exprContainsUnsafeLogicalCallLike index
+  | Expr.extcodesize addr =>
+      exprContainsUnsafeLogicalCallLike addr
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
@@ -1247,6 +1256,8 @@ private partial def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount inSize
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount outOffset
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount outSize
+  | Expr.extcodesize addr =>
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount addr
   | Expr.mload offset =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
   | Expr.keccak256 offset size => do
@@ -1529,6 +1540,7 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.caller => true
   | Expr.contractAddress => true
   | Expr.chainid => true
+  | Expr.extcodesize addr => exprReadsStateOrEnv addr || true
   | Expr.msgValue => true
   | Expr.blockTimestamp => true
   | Expr.mload offset => exprReadsStateOrEnv offset
@@ -1652,6 +1664,8 @@ where
         exprWritesState outOffset
     | Expr.externalCall _ args | Expr.internalCall _ args =>
         args.any exprWritesState || true
+    | Expr.extcodesize addr =>
+        exprWritesState addr
     | Expr.arrayElement _ index =>
         exprWritesState index
     | _ =>
@@ -2211,6 +2225,8 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
       validateInteropExpr context outSize
   | Expr.contractAddress | Expr.chainid =>
       pure ()
+  | Expr.extcodesize addr =>
+      validateInteropExpr context addr
   | Expr.mload offset =>
       validateInteropExpr context offset
   | Expr.keccak256 offset size => do
@@ -2421,6 +2437,8 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName inSize
       validateInternalCallShapesInExpr functions callerName outOffset
       validateInternalCallShapesInExpr functions callerName outSize
+  | Expr.extcodesize addr =>
+      validateInternalCallShapesInExpr functions callerName addr
   | Expr.mload offset =>
       validateInternalCallShapesInExpr functions callerName offset
   | Expr.keccak256 offset size => do
@@ -2590,6 +2608,8 @@ private partial def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context inSize
       validateExternalCallTargetsInExpr externals context outOffset
       validateExternalCallTargetsInExpr externals context outSize
+  | Expr.extcodesize addr =>
+      validateExternalCallTargetsInExpr externals context addr
   | Expr.mload offset =>
       validateExternalCallTargetsInExpr externals context offset
   | Expr.keccak256 offset size => do
@@ -4248,6 +4268,7 @@ private partial def exprUsesArrayElement : Expr → Bool
       exprUsesArrayElement gas || exprUsesArrayElement target ||
       exprUsesArrayElement inOffset || exprUsesArrayElement inSize ||
       exprUsesArrayElement outOffset || exprUsesArrayElement outSize
+  | Expr.extcodesize addr => exprUsesArrayElement addr
   | Expr.mload offset =>
       exprUsesArrayElement offset
   | Expr.keccak256 offset size =>

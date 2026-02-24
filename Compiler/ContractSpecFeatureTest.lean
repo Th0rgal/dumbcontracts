@@ -4990,6 +4990,42 @@ private def externalCallBindSpec : ContractSpec := {
   ]
 }
 
+-- ========================================================
+-- Expr.extcodesize tests
+-- ========================================================
+
+private def extcodesizeSpec : ContractSpec := {
+  name := "ExtcodesizeSpec"
+  fields := [{ name := "target", ty := FieldType.uint256 }]
+  constructor := none
+  functions := [
+    { name := "requireHasCode"
+      params := [{ name := "addr", ty := ParamType.address }]
+      returnType := none
+      body := [
+        Stmt.require (Expr.gt (Expr.extcodesize (Expr.param "addr")) (Expr.literal 0)) "no code",
+        Stmt.stop
+      ]
+    },
+    { name := "getCodeSize"
+      params := [{ name := "addr", ty := ParamType.address }]
+      returnType := some .uint256
+      isView := true
+      body := [
+        Stmt.return (Expr.extcodesize (Expr.param "addr"))
+      ]
+    },
+    { name := "checkSelfCode"
+      params := []
+      returnType := some .uint256
+      isView := true
+      body := [
+        Stmt.return (Expr.extcodesize Expr.contractAddress)
+      ]
+    }
+  ]
+}
+
 -- Stmt.externalCallWithReturn: ABI-encoded external call with return (#926)
 
 -- Test: externalCallWithReturn compiles to mstore+call+returndatacopy pattern
@@ -5100,6 +5136,59 @@ private def externalCallWithReturnSpec : ContractSpec := {
         throw (IO.userError s!"✗ externalCallBind wrong error message: {err}")
   | .ok _ =>
       throw (IO.userError "✗ externalCallBind should have rejected arity mismatch")
+
+#eval do
+  match compile extcodesizeSpec [1, 2, 3] with
+  | .error e => throw (IO.userError s!"Compilation failed: {e}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+
+      -- Test 1: extcodesize compiles to correct Yul
+      assertContains "extcodesize compiles to Yul builtin" rendered [
+        "extcodesize(addr)"
+      ]
+
+      -- Test 2: requireHasCode uses extcodesize in condition
+      assertContains "requireHasCode uses extcodesize in require" rendered [
+        "gt(extcodesize(addr)"
+      ]
+
+      -- Test 3: view function can use extcodesize (reads state, doesn't write)
+      assertContains "getCodeSize view function compiles" rendered [
+        "extcodesize(addr)"
+      ]
+
+      -- Test 4: extcodesize with contractAddress nested expression
+      assertContains "checkSelfCode uses extcodesize(address())" rendered [
+        "extcodesize(address())"
+      ]
+
+      IO.println "✓ All Expr.extcodesize tests passed"
+
+-- Test: Expr.extcodesize rejected in pure functions
+#eval do
+  let pureExtcodesizeSpec : ContractSpec := {
+    name := "PureExtcodesizeSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "pureGetCode"
+        params := [{ name := "addr", ty := ParamType.address }]
+        returnType := some .uint256
+        isPure := true
+        body := [
+          Stmt.return (Expr.extcodesize (Expr.param "addr"))
+        ]
+      }
+    ]
+  }
+  match compile pureExtcodesizeSpec [1] with
+  | .ok _ => throw (IO.userError "✗ extcodesize in pure function should be rejected")
+  | .error e =>
+      if contains e "pure" then
+        IO.println s!"✓ extcodesize correctly rejected in pure function"
+      else
+        throw (IO.userError s!"✗ extcodesize in pure function rejected but with unexpected error: {e}")
 
 -- Test: externalCallBind validation rejects unknown external
 #eval! do

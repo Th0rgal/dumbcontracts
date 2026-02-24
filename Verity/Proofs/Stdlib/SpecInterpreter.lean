@@ -493,6 +493,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       exprListUsesUnsupportedLowLevel args
   | Stmt.internalCallAssign _ _ args =>
       exprListUsesUnsupportedLowLevel args
+  | Stmt.rawLog _ _ _ =>
+      true
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
       false
 
@@ -719,6 +721,11 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
   | Stmt.internalCallAssign _names _functionName _args =>
       -- Multi-value internal-call bindings are only modeled in compiler/codegen.
       -- The basic interpreter does not model tuple return values.
+      none
+
+  | Stmt.rawLog _topics _dataOffset _dataSize =>
+      -- Raw log emission requires memory model not available in the scalar
+      -- SpecInterpreter. Revert instead of silently skipping.
       none
 
 -- Execute a list of statements sequentially

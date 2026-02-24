@@ -279,6 +279,10 @@ inductive Stmt
   | emit (eventName : String) (args : List Expr)  -- Emit event (#153)
   | internalCall (functionName : String) (args : List Expr)  -- Internal call as statement (#181)
   | internalCallAssign (names : List String) (functionName : String) (args : List Expr)
+  /-- Low-level log emission: `logN(dataOffset, dataSize, topic0, …, topicN-1)`.
+      `topics` must contain 0–4 expressions (selects log0–log4).
+      The caller is responsible for prior `mstore` calls that populate the data region. (#930) -/
+  | rawLog (topics : List Expr) (dataOffset dataSize : Expr)
   deriving Repr
 
 structure FunctionSpec where
@@ -595,6 +599,8 @@ private partial def collectStmtNames : Stmt → List String
   | Stmt.internalCall functionName args => functionName :: collectExprListNames args
   | Stmt.internalCallAssign names functionName args =>
       names ++ functionName :: collectExprListNames args
+  | Stmt.rawLog topics dataOffset dataSize =>
+      collectExprListNames topics ++ collectExprNames dataOffset ++ collectExprNames dataSize
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -977,6 +983,10 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike count || body.any stmtContainsUnsafeLogicalCallLike
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
       args.any exprContainsUnsafeLogicalCallLike
+  | Stmt.rawLog topics dataOffset dataSize =>
+      topics.any exprContainsUnsafeLogicalCallLike ||
+      exprContainsUnsafeLogicalCallLike dataOffset ||
+      exprContainsUnsafeLogicalCallLike dataSize
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1180,6 +1190,11 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.internalCallAssign names _ args => do
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
       pure (names.reverse ++ localScope)
+  | Stmt.rawLog topics dataOffset dataSize => do
+      topics.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount dataOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount dataSize
+      pure localScope
   | _ => pure localScope
 
 private partial def validateScopedStmtListIdentifiers
@@ -1407,6 +1422,8 @@ private partial def stmtWritesState : Stmt → Bool
       exprWritesState count || body.any stmtWritesState
   | Stmt.emit _ args =>
       args.any exprWritesState || true
+  | Stmt.rawLog topics dataOffset dataSize =>
+      topics.any exprWritesState || exprWritesState dataOffset || exprWritesState dataSize || true
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
       args.any exprWritesState || true
 where
@@ -1476,6 +1493,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       exprReadsStateOrEnv cond || thenBranch.any stmtReadsStateOrEnv || elseBranch.any stmtReadsStateOrEnv
   | Stmt.forEach _ count body =>
       exprReadsStateOrEnv count || body.any stmtReadsStateOrEnv
+  | Stmt.rawLog topics dataOffset dataSize =>
+      topics.any exprReadsStateOrEnv || exprReadsStateOrEnv dataOffset || exprReadsStateOrEnv dataSize
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
       args.any exprReadsStateOrEnv || true
 
@@ -2067,6 +2086,10 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       args.forM (validateInteropExpr context)
   | Stmt.returnValues values =>
       values.forM (validateInteropExpr context)
+  | Stmt.rawLog topics dataOffset dataSize => do
+      topics.forM (validateInteropExpr context)
+      validateInteropExpr context dataOffset
+      validateInteropExpr context dataSize
   | _ =>
       pure ()
 
@@ -2277,6 +2300,10 @@ private partial def validateInternalCallShapesInStmt
       let returns ← functionReturns callee
       if returns.length != names.length then
         throw s!"Compilation error: function '{callerName}' binds {names.length} values from internal function '{calleeName}', but callee returns {returns.length} ({issue625Ref})."
+  | Stmt.rawLog topics dataOffset dataSize => do
+      topics.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExpr functions callerName dataOffset
+      validateInternalCallShapesInExpr functions callerName dataSize
   | _ =>
       pure ()
 
@@ -2399,6 +2426,10 @@ private partial def validateExternalCallTargetsInStmt
       args.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.returnValues values =>
       values.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.rawLog topics dataOffset dataSize => do
+      topics.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExpr externals context dataOffset
+      validateExternalCallTargetsInExpr externals context dataSize
   | _ =>
       pure ()
 
@@ -3626,6 +3657,14 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
           YulExpr.ident "__returndata_size"
         ])
       ]]
+  | Stmt.rawLog topics dataOffset dataSize => do
+      if topics.length > 4 then
+        throw s!"Compilation error: rawLog supports at most 4 topics (log0–log4), got {topics.length}"
+      let topicExprs ← compileExprList fields dynamicSource topics
+      let offsetExpr ← compileExpr fields dynamicSource dataOffset
+      let sizeExpr ← compileExpr fields dynamicSource dataSize
+      let logFn := s!"log{topics.length}"
+      pure [YulStmt.expr (YulExpr.call logFn ([offsetExpr, sizeExpr] ++ topicExprs))]
 end
 
 private def isScalarParamType : ParamType → Bool
@@ -3859,6 +3898,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement count || body.any stmtUsesArrayElement
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
       args.any exprUsesArrayElement
+  | Stmt.rawLog topics dataOffset dataSize =>
+      topics.any exprUsesArrayElement || exprUsesArrayElement dataOffset || exprUsesArrayElement dataSize
   | _ => false
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=

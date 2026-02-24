@@ -4856,6 +4856,34 @@ private def featureSpec : ContractSpec := {
   | .ok _ =>
       throw (IO.userError "✗ expected callback with array param to be rejected")
 
+-- ===== Stmt.callback validation: rejects oversized selector =====
+#eval! do
+  let bigSelectorSpec : ContractSpec := {
+    name := "BigSelectorTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bigSelector"
+        params := [
+          ⟨"data", ParamType.bytes⟩
+        ]
+        returnType := none
+        body := [
+          Stmt.callback Expr.caller 0x100000000 [] "data",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile bigSelectorSpec [1] with
+  | .error err =>
+      if contains err "must be < 2^32" then
+        IO.println s!"✓ callback correctly rejects oversized selector: {err}"
+      else
+        throw (IO.userError s!"✗ unexpected error for oversized selector: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ expected callback with oversized selector to be rejected")
+
 -- ===== Stmt.callback rejects in view function =====
 #eval! do
   let viewCallbackSpec : ContractSpec := {

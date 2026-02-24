@@ -1381,9 +1381,11 @@ private partial def validateScopedStmtIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount to
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount amount
       pure localScope
-  | Stmt.callback target _ args bytesParam => do
+  | Stmt.callback target selector args bytesParam => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount target
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      if selector >= 4294967296 then
+        throw s!"Compilation error: {context} uses Stmt.callback with selector {selector} which exceeds 4 bytes (must be < 2^32)"
       match findParamType params bytesParam with
       | some ParamType.bytes => pure ()
       | some ty =>

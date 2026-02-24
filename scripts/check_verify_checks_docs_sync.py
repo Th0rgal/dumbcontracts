@@ -15,7 +15,7 @@ SCRIPTS_README = ROOT / "scripts" / "README.md"
 
 
 def _normalize_workflow_cmd(raw: str) -> str:
-    text = raw.strip()
+    text = " ".join(raw.strip().split())
     if not text.startswith("python3 "):
         raise ValueError(f"Expected python3 scripts command, got: {raw!r}")
     text = text[len("python3 ") :].strip()
@@ -44,36 +44,70 @@ def _extract_workflow_checks_commands(text: str) -> list[str]:
     i = 0
     while i < len(steps):
         line = steps[i]
-        cmd = re.match(r"^(?P<indent>\s*)run:\s*(?P<body>.*?)\s*$", line)
-        if not cmd:
+        m = re.match(r"^(\s*)run:\s*(.*?)\s*$", line)
+        if not m:
             i += 1
             continue
 
-        run_indent = len(cmd.group("indent"))
-        body = cmd.group("body")
-
-        if body.startswith("|") or body.startswith(">"):
+        indent = len(m.group(1))
+        payload = m.group(2)
+        block_lines: list[str] = []
+        if payload.startswith("|") or payload.startswith(">"):
             i += 1
             while i < len(steps):
-                block_line = steps[i]
-                if block_line.strip():
-                    block_indent = len(block_line) - len(block_line.lstrip(" "))
-                    if block_indent <= run_indent:
-                        break
-                    invocation = re.match(
-                        r"^\s*(python3\s+scripts/[^\n]+?)\s*$", block_line
-                    )
-                    if invocation:
-                        commands.append(_normalize_workflow_cmd(invocation.group(1)))
+                nxt = steps[i]
+                if not nxt.strip():
+                    block_lines.append("")
+                    i += 1
+                    continue
+                if len(nxt) - len(nxt.lstrip(" ")) <= indent:
+                    break
+                block_lines.append(nxt[indent + 2 :])
                 i += 1
-            continue
+        else:
+            block_lines.append(payload)
+            i += 1
 
-        invocation = re.match(r"^(python3\s+scripts/[^\n]+?)\s*$", body)
-        if invocation:
-            commands.append(_normalize_workflow_cmd(invocation.group(1)))
-        i += 1
+        commands.extend(_extract_python_script_commands(block_lines))
+
     if not commands:
         raise ValueError(f"No python3 scripts/* run commands found in checks job in {VERIFY_YML}")
+    return commands
+
+
+def _extract_python_script_commands(block_lines: list[str]) -> list[str]:
+    commands: list[str] = []
+    i = 0
+    while i < len(block_lines):
+        stripped = block_lines[i].strip()
+        if not stripped or stripped.startswith("#"):
+            i += 1
+            continue
+
+        if not stripped.startswith("python3 scripts/"):
+            i += 1
+            continue
+
+        cmd = stripped
+        if "#" in cmd:
+            cmd = cmd.split("#", 1)[0].rstrip()
+        while cmd.endswith("\\"):
+            cmd = cmd[:-1].rstrip()
+            i += 1
+            if i >= len(block_lines):
+                raise ValueError(
+                    "Trailing line-continuation in python3 scripts command in "
+                    f"{VERIFY_YML}: {stripped!r}"
+                )
+            continuation = block_lines[i].strip()
+            if continuation:
+                if "#" in continuation:
+                    continuation = continuation.split("#", 1)[0].rstrip()
+                if continuation:
+                    cmd += " " + continuation
+
+        commands.append(_normalize_workflow_cmd(cmd))
+        i += 1
     return commands
 
 

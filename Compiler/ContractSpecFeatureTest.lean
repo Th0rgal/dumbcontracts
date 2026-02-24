@@ -4433,4 +4433,180 @@ private def featureSpec : ContractSpec := {
     throw (IO.userError s!"✗ mapping packed read mismatch in SpecInterpreter: {readResult.returnValue}")
   IO.println "✓ SpecInterpreter honors packed mapping word read/write semantics with alias mirrors"
 
+-- ============================================================
+-- Stmt.rawLog tests (#930)
+-- ============================================================
+
+-- rawLog with 0 topics → log0
+#eval! do
+  let rawLog0Spec : ContractSpec := {
+    name := "RawLog0"
+    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    constructor := none
+    functions := [
+      { name := "emitRaw"
+        params := []
+        returnType := none
+        body := [
+          Stmt.mstore (Expr.literal 0) (Expr.literal 42),
+          Stmt.rawLog [] (Expr.literal 0) (Expr.literal 32),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile rawLog0Spec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected rawLog0 to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "rawLog log0 lowering" rendered [
+        "log0(0, 32)"
+      ]
+
+-- rawLog with 1 topic → log1
+#eval! do
+  let rawLog1Spec : ContractSpec := {
+    name := "RawLog1"
+    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    constructor := none
+    functions := [
+      { name := "emitRaw"
+        params := [{ name := "topic", ty := ParamType.uint256 }]
+        returnType := none
+        body := [
+          Stmt.mstore (Expr.literal 0) (Expr.literal 99),
+          Stmt.rawLog [Expr.param "topic"] (Expr.literal 0) (Expr.literal 32),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile rawLog1Spec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected rawLog1 to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "rawLog log1 lowering" rendered [
+        "log1(0, 32, topic)"
+      ]
+
+-- rawLog with 3 topics → log3
+#eval! do
+  let rawLog3Spec : ContractSpec := {
+    name := "RawLog3"
+    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    constructor := none
+    functions := [
+      { name := "emitRaw"
+        params := [{ name := "t0", ty := ParamType.uint256 },
+                   { name := "t1", ty := ParamType.uint256 },
+                   { name := "t2", ty := ParamType.uint256 }]
+        returnType := none
+        body := [
+          Stmt.mstore (Expr.literal 0) (Expr.literal 7),
+          Stmt.rawLog [Expr.param "t0", Expr.param "t1", Expr.param "t2"]
+                      (Expr.literal 0) (Expr.literal 32),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile rawLog3Spec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected rawLog3 to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "rawLog log3 lowering" rendered [
+        "log3(0, 32, t0, t1, t2)"
+      ]
+
+-- rawLog with 4 topics → log4
+#eval! do
+  let rawLog4Spec : ContractSpec := {
+    name := "RawLog4"
+    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    constructor := none
+    functions := [
+      { name := "emitRaw"
+        params := [{ name := "t0", ty := ParamType.uint256 },
+                   { name := "t1", ty := ParamType.uint256 },
+                   { name := "t2", ty := ParamType.uint256 },
+                   { name := "t3", ty := ParamType.uint256 }]
+        returnType := none
+        body := [
+          Stmt.mstore (Expr.literal 0) (Expr.literal 1),
+          Stmt.rawLog [Expr.param "t0", Expr.param "t1", Expr.param "t2", Expr.param "t3"]
+                      (Expr.literal 0) (Expr.literal 32),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile rawLog4Spec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected rawLog4 to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "rawLog log4 lowering" rendered [
+        "log4(0, 32, t0, t1, t2, t3)"
+      ]
+
+-- rawLog with 5 topics → compilation error
+#eval! do
+  let rawLog5Spec : ContractSpec := {
+    name := "RawLog5"
+    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    constructor := none
+    functions := [
+      { name := "emitRaw"
+        params := [{ name := "t0", ty := ParamType.uint256 },
+                   { name := "t1", ty := ParamType.uint256 },
+                   { name := "t2", ty := ParamType.uint256 },
+                   { name := "t3", ty := ParamType.uint256 },
+                   { name := "t4", ty := ParamType.uint256 }]
+        returnType := none
+        body := [
+          Stmt.rawLog [Expr.param "t0", Expr.param "t1", Expr.param "t2",
+                       Expr.param "t3", Expr.param "t4"]
+                      (Expr.literal 0) (Expr.literal 32),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile rawLog5Spec [1] with
+  | .error err =>
+      if !(contains err "rawLog supports at most 4 topics") then
+        throw (IO.userError s!"✗ rawLog >4 topics diagnostic mismatch: {err}")
+      IO.println "✓ rawLog rejects >4 topics"
+  | .ok _ =>
+      throw (IO.userError "✗ expected rawLog with 5 topics to fail compilation")
+
+-- rawLog in view function → rejected (writes state)
+#eval! do
+  let rawLogViewSpec : ContractSpec := {
+    name := "RawLogView"
+    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    constructor := none
+    functions := [
+      { name := "viewEmit"
+        params := []
+        returnType := none
+        isView := true
+        body := [
+          Stmt.rawLog [Expr.literal 0x1234] (Expr.literal 0) (Expr.literal 0),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile rawLogViewSpec [1] with
+  | .error err =>
+      if !(contains err "writes state") then
+        throw (IO.userError s!"✗ rawLog view diagnostic mismatch: {err}")
+      IO.println "✓ rawLog in view function correctly rejected"
+  | .ok _ =>
+      throw (IO.userError "✗ expected rawLog in view function to fail compilation")
+
 end Compiler.ContractSpecFeatureTest

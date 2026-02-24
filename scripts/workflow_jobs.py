@@ -498,6 +498,7 @@ def _consume_env_wrapper(tokens: list[str], i: int) -> int:
         return i
     i += 1
     env_opts_with_arg = {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"}
+    split_string_long_eq = "--split-string="
     env_options_done = False
     while i < len(tokens):
         tok = tokens[i]
@@ -521,6 +522,32 @@ def _consume_env_wrapper(tokens: list[str], i: int) -> int:
             i += 1
             if i < len(tokens):
                 i += 1
+            continue
+        if not env_options_done and tok.startswith(split_string_long_eq):
+            try:
+                split_tokens = shlex.split(tok[len(split_string_long_eq) :], posix=True)
+            except ValueError:
+                split_tokens = []
+            tokens[i : i + 1] = split_tokens
+            continue
+        if not env_options_done and tok.startswith("-S") and tok != "-S":
+            try:
+                split_tokens = shlex.split(tok[2:], posix=True)
+            except ValueError:
+                split_tokens = []
+            tokens[i : i + 1] = split_tokens
+            continue
+        if (
+            not env_options_done
+            and (tok.startswith("--unset=") or tok.startswith("--chdir="))
+        ):
+            i += 1
+            continue
+        if not env_options_done and tok.startswith("-u") and tok != "-u":
+            i += 1
+            continue
+        if not env_options_done and tok.startswith("-C") and tok != "-C":
+            i += 1
             continue
         if not env_options_done and tok.startswith("-"):
             i += 1

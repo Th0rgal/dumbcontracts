@@ -199,6 +199,42 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_nohup_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "nohup forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_setsid_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "setsid --wait -- forge test --no-match-test Random10000",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_ionice_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "ionice -c3 forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_chrt_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "chrt --rr 50 forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
     def test_match_shell_command_accepts_stdbuf_wrapper(self) -> None:
         matched, forge_tokens = match_shell_command(
             "stdbuf -oL -eL forge test --no-match-test Random10000",

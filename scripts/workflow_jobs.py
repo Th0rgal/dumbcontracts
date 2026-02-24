@@ -408,6 +408,135 @@ def _consume_nice_wrapper(tokens: list[str], i: int) -> int:
     return i
 
 
+def _consume_nohup_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "nohup"):
+        return i
+    i += 1
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    return i
+
+
+def _consume_setsid_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "setsid"):
+        return i
+    i += 1
+    setsid_opts_with_arg = {"-w", "--wait", "-c", "--ctty", "-s", "--session-leader"}
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok in setsid_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if any(tok.startswith(prefix + "=") for prefix in setsid_opts_with_arg if prefix.startswith("--")):
+            i += 1
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    return i
+
+
+def _consume_ionice_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "ionice"):
+        return i
+    i += 1
+    ionice_opts_with_arg = {
+        "-c",
+        "--class",
+        "-n",
+        "--classdata",
+        "-t",
+        "--ignore",
+        "-p",
+        "--pid",
+        "-P",
+        "--pgid",
+        "-u",
+        "--uid",
+    }
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok in ionice_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if any(tok.startswith(prefix + "=") for prefix in ionice_opts_with_arg if prefix.startswith("--")):
+            i += 1
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    return i
+
+
+def _consume_chrt_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "chrt"):
+        return i
+    i += 1
+    chrt_opts_with_arg = {
+        "-a",
+        "--all-tasks",
+        "-d",
+        "--deadline",
+        "-f",
+        "--fifo",
+        "-i",
+        "--idle",
+        "-m",
+        "--max",
+        "-o",
+        "--other",
+        "-p",
+        "--pid",
+        "-r",
+        "--rr",
+        "-R",
+        "--reset-on-fork",
+        "-T",
+        "--sched-runtime",
+        "-P",
+        "--sched-period",
+        "-D",
+        "--sched-deadline",
+    }
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok in chrt_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if any(tok.startswith(prefix + "=") for prefix in chrt_opts_with_arg if prefix.startswith("--")):
+            i += 1
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    return i
+
+
 def _consume_stdbuf_wrapper(tokens: list[str], i: int) -> int:
     if i >= len(tokens) or not _token_matches_program(tokens[i], "stdbuf"):
         return i
@@ -634,6 +763,26 @@ def match_shell_command(
                 changed = True
                 continue
             nxt = _consume_nice_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
+                continue
+            nxt = _consume_nohup_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
+                continue
+            nxt = _consume_setsid_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
+                continue
+            nxt = _consume_ionice_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
+                continue
+            nxt = _consume_chrt_wrapper(tokens, i)
             if nxt != i:
                 i = nxt
                 changed = True

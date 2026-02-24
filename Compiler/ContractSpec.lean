@@ -316,6 +316,12 @@ inductive Stmt
       (selector : Nat)           -- 4-byte function selector (e.g., 0xa035b1fe)
       (args : List Expr)         -- ABI-encoded arguments (each occupies 32 bytes)
       (isStatic : Bool := false) -- use staticcall instead of call
+  /-- ERC20 safeTransfer: encode transfer(to, amount), call token, handle optional bool return.
+      Reverts with descriptive error on call failure or false return. -/
+  | safeTransfer (token to amount : Expr)
+  /-- ERC20 safeTransferFrom: encode transferFrom(from, to, amount), call token, handle optional bool return.
+      Reverts with descriptive error on call failure or false return. -/
+  | safeTransferFrom (token fromAddr to amount : Expr)
   deriving Repr
 
 structure FunctionSpec where
@@ -644,6 +650,10 @@ private partial def collectStmtNames : Stmt → List String
       resultVars ++ externalName :: collectExprListNames args
   | Stmt.externalCallWithReturn resultVar target _ args _ =>
       resultVar :: collectExprNames target ++ collectExprListNames args
+  | Stmt.safeTransfer token to amount =>
+      collectExprNames token ++ collectExprNames to ++ collectExprNames amount
+  | Stmt.safeTransferFrom token fromAddr to amount =>
+      collectExprNames token ++ collectExprNames fromAddr ++ collectExprNames to ++ collectExprNames amount
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -1111,6 +1121,10 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       args.any exprContainsUnsafeLogicalCallLike
   | Stmt.externalCallWithReturn _ target _ args _ =>
       exprContainsUnsafeLogicalCallLike target || args.any exprContainsUnsafeLogicalCallLike
+  | Stmt.safeTransfer token to amount =>
+      exprContainsUnsafeLogicalCallLike token || exprContainsUnsafeLogicalCallLike to || exprContainsUnsafeLogicalCallLike amount
+  | Stmt.safeTransferFrom token fromAddr to amount =>
+      exprContainsUnsafeLogicalCallLike token || exprContainsUnsafeLogicalCallLike fromAddr || exprContainsUnsafeLogicalCallLike to || exprContainsUnsafeLogicalCallLike amount
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1348,6 +1362,17 @@ private partial def validateScopedStmtIdentifiers
       if localScope.contains resultVar then
         throw s!"Compilation error: {context} uses Stmt.externalCallWithReturn with result variable '{resultVar}' that redeclares an existing local variable"
       pure (resultVar :: localScope)
+  | Stmt.safeTransfer token to amount => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount token
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount to
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount amount
+      pure localScope
+  | Stmt.safeTransferFrom token fromAddr to amount => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount token
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount fromAddr
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount to
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount amount
+      pure localScope
   | _ => pure localScope
 
 private partial def validateScopedStmtListIdentifiers
@@ -1586,6 +1611,10 @@ private partial def stmtWritesState : Stmt → Bool
       args.any exprWritesState || true
   | Stmt.externalCallWithReturn _ target _ args isStatic =>
       exprWritesState target || args.any exprWritesState || !isStatic
+  | Stmt.safeTransfer token to amount =>
+      exprWritesState token || exprWritesState to || exprWritesState amount || true
+  | Stmt.safeTransferFrom token fromAddr to amount =>
+      exprWritesState token || exprWritesState fromAddr || exprWritesState to || exprWritesState amount || true
 where
   exprWritesState (expr : Expr) : Bool :=
     match expr with
@@ -1664,6 +1693,10 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       args.any exprReadsStateOrEnv || true
   | Stmt.externalCallWithReturn _ target _ args _ =>
       exprReadsStateOrEnv target || args.any exprReadsStateOrEnv || true
+  | Stmt.safeTransfer token to amount =>
+      exprReadsStateOrEnv token || exprReadsStateOrEnv to || exprReadsStateOrEnv amount || true
+  | Stmt.safeTransferFrom token fromAddr to amount =>
+      exprReadsStateOrEnv token || exprReadsStateOrEnv fromAddr || exprReadsStateOrEnv to || exprReadsStateOrEnv amount || true
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
@@ -2261,6 +2294,15 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
   | Stmt.externalCallWithReturn _ target _ args _ => do
       validateInteropExpr context target
       args.forM (validateInteropExpr context)
+  | Stmt.safeTransfer token to amount => do
+      validateInteropExpr context token
+      validateInteropExpr context to
+      validateInteropExpr context amount
+  | Stmt.safeTransferFrom token fromAddr to amount => do
+      validateInteropExpr context token
+      validateInteropExpr context fromAddr
+      validateInteropExpr context to
+      validateInteropExpr context amount
   | Stmt.returnValues values =>
       values.forM (validateInteropExpr context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -2491,6 +2533,15 @@ private partial def validateInternalCallShapesInStmt
   | Stmt.externalCallWithReturn _ target _ args _ => do
       validateInternalCallShapesInExpr functions callerName target
       args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.safeTransfer token to amount => do
+      validateInternalCallShapesInExpr functions callerName token
+      validateInternalCallShapesInExpr functions callerName to
+      validateInternalCallShapesInExpr functions callerName amount
+  | Stmt.safeTransferFrom token fromAddr to amount => do
+      validateInternalCallShapesInExpr functions callerName token
+      validateInternalCallShapesInExpr functions callerName fromAddr
+      validateInternalCallShapesInExpr functions callerName to
+      validateInternalCallShapesInExpr functions callerName amount
   | _ =>
       pure ()
 
@@ -2640,6 +2691,15 @@ private partial def validateExternalCallTargetsInStmt
   | Stmt.externalCallWithReturn _ target _ args _ => do
       validateExternalCallTargetsInExpr externals context target
       args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.safeTransfer token to amount => do
+      validateExternalCallTargetsInExpr externals context token
+      validateExternalCallTargetsInExpr externals context to
+      validateExternalCallTargetsInExpr externals context amount
+  | Stmt.safeTransferFrom token fromAddr to amount => do
+      validateExternalCallTargetsInExpr externals context token
+      validateExternalCallTargetsInExpr externals context fromAddr
+      validateExternalCallTargetsInExpr externals context to
+      validateExternalCallTargetsInExpr externals context amount
   | Stmt.returnValues values =>
       values.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -3930,6 +3990,65 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let sizeExpr ← compileExpr fields dynamicSource dataSize
       let logFn := s!"log{topics.length}"
       pure [YulStmt.expr (YulExpr.call logFn ([offsetExpr, sizeExpr] ++ topicExprs))]
+  | Stmt.safeTransfer token to amount => do
+      -- ERC20 safeTransfer: transfer(address,uint256) selector = 0xa9059cbb
+      let tokenExpr ← compileExpr fields dynamicSource token
+      let toExpr ← compileExpr fields dynamicSource to
+      let amountExpr ← compileExpr fields dynamicSource amount
+      -- selector word: 0xa9059cbb shifted left by 224 bits (28 bytes)
+      let selectorWord := 0xa9059cbb00000000000000000000000000000000000000000000000000000000
+      pure [YulStmt.block ([
+        -- Store selector at memory[0]
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorWord]),
+        -- Store 'to' at memory[4]
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, toExpr]),
+        -- Store 'amount' at memory[36]
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, amountExpr]),
+        -- call(gas(), token, 0, 0, 68, 0, 32)
+        YulStmt.let_ "__st_success" (YulExpr.call "call" [
+          YulExpr.call "gas" [], tokenExpr, YulExpr.lit 0,
+          YulExpr.lit 0, YulExpr.lit 68, YulExpr.lit 0, YulExpr.lit 32
+        ]),
+        -- Revert if call failed
+        YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__st_success"])
+          (revertWithMessage "transfer reverted"),
+        -- Check optional bool return: if returndatasize == 32 and mload(0) == 0, revert
+        YulStmt.if_ (YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
+          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "mload" [YulExpr.lit 0]])
+            (revertWithMessage "transfer returned false")
+        ]
+      ])]
+  | Stmt.safeTransferFrom token fromAddr to amount => do
+      -- ERC20 safeTransferFrom: transferFrom(address,address,uint256) selector = 0x23b872dd
+      let tokenExpr ← compileExpr fields dynamicSource token
+      let fromExpr ← compileExpr fields dynamicSource fromAddr
+      let toExpr ← compileExpr fields dynamicSource to
+      let amountExpr ← compileExpr fields dynamicSource amount
+      -- selector word: 0x23b872dd shifted left by 224 bits (28 bytes)
+      let selectorWord := 0x23b872dd00000000000000000000000000000000000000000000000000000000
+      pure [YulStmt.block ([
+        -- Store selector at memory[0]
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorWord]),
+        -- Store 'from' at memory[4]
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, fromExpr]),
+        -- Store 'to' at memory[36]
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, toExpr]),
+        -- Store 'amount' at memory[68]
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 68, amountExpr]),
+        -- call(gas(), token, 0, 0, 100, 0, 32)
+        YulStmt.let_ "__stf_success" (YulExpr.call "call" [
+          YulExpr.call "gas" [], tokenExpr, YulExpr.lit 0,
+          YulExpr.lit 0, YulExpr.lit 100, YulExpr.lit 0, YulExpr.lit 32
+        ]),
+        -- Revert if call failed
+        YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__stf_success"])
+          (revertWithMessage "transferFrom reverted"),
+        -- Check optional bool return: if returndatasize == 32 and mload(0) == 0, revert
+        YulStmt.if_ (YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
+          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "mload" [YulExpr.lit 0]])
+            (revertWithMessage "transferFrom returned false")
+        ]
+      ])]
 end
 
 private def isScalarParamType : ParamType → Bool
@@ -4100,6 +4219,8 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.internalCallAssign names _ _ => names
   | Stmt.externalCallBind resultVars _ _ => resultVars
   | Stmt.externalCallWithReturn resultVar _ _ _ _ => [resultVar]
+  | Stmt.safeTransfer _ _ _ => []
+  | Stmt.safeTransferFrom _ _ _ _ => []
   | _ => []
 
 private partial def collectStmtListBindNames : List Stmt → List String
@@ -4174,6 +4295,10 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       args.any exprUsesArrayElement
   | Stmt.externalCallWithReturn _ target _ args _ =>
       exprUsesArrayElement target || args.any exprUsesArrayElement
+  | Stmt.safeTransfer token to amount =>
+      exprUsesArrayElement token || exprUsesArrayElement to || exprUsesArrayElement amount
+  | Stmt.safeTransferFrom token fromAddr to amount =>
+      exprUsesArrayElement token || exprUsesArrayElement fromAddr || exprUsesArrayElement to || exprUsesArrayElement amount
   | _ => false
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=

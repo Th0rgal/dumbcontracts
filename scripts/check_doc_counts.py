@@ -4,7 +4,7 @@
 Validates counts in README.md, test/README.md, docs/VERIFICATION_STATUS.md,
 docs/ROADMAP.md, TRUST_ASSUMPTIONS.md, docs-site llms.txt, compiler.mdx,
 verification.mdx, research.mdx, core.mdx, examples.mdx, index.mdx,
-getting-started.mdx, and layout.tsx against the actual property manifest
+getting-started.mdx against the actual property manifest
 and codebase. Also validates theorem counts in Property*.t.sol file headers
 and AST equivalence theorem counts in Verity/AST/*.lean.
 
@@ -1144,27 +1144,6 @@ def main() -> None:
                     "core line count",
                     re.compile(r"the (\d+)-line core"),
                     str(core_lines),
-                ),
-            ],
-            args.fix,
-        )
-    )
-
-    # Check layout.tsx banner (proven/total theorems proven)
-    layout_tsx = ROOT / "docs-site" / "app" / "layout.tsx"
-    errors.extend(
-        check_and_maybe_fix(
-            layout_tsx,
-            [
-                (
-                    "banner proven count",
-                    re.compile(r"(\d+)/\d+ theorems proven"),
-                    str(proven_count),
-                ),
-                (
-                    "banner total count",
-                    re.compile(r"\d+/(\d+) theorems proven"),
-                    str(total_theorems),
                 ),
             ],
             args.fix,

@@ -452,6 +452,61 @@ class FoundryEnvSyncTests(unittest.TestCase):
         rc, stderr = self._run_patched_sync(workflow, readme)
         self.assertEqual(rc, 0, stderr)
 
+    def test_job_sync_accepts_time_timeout_nice_wrappers(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              foundry:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: time -p forge test
+
+              foundry-patched:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                steps:
+                  - name: Download patched Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul-patched
+                      path: compiler/yul-patched
+                  - run: timeout -k 5s 10m forge test --no-match-test "Random10000"
+
+              foundry-multi-seed:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: nice -n 10 forge test --no-match-test "Random10000"
+            """
+        )
+        rc, stderr = self._run_job_sync(workflow)
+        self.assertEqual(rc, 0, stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

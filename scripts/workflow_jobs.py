@@ -322,6 +322,110 @@ def _token_matches_program(token: str, program: str) -> bool:
     return token == program or _basename_token(token) == program
 
 
+def _consume_time_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "time"):
+        return i
+    i += 1
+    time_opts_with_arg = {"-f", "--format", "-o", "--output"}
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok in time_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    return i
+
+
+def _consume_timeout_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "timeout"):
+        return i
+    i += 1
+    timeout_opts_with_arg = {"-k", "--kill-after", "-s", "--signal"}
+    timeout_options_done = False
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            timeout_options_done = True
+            i += 1
+            continue
+        if not timeout_options_done and tok in timeout_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if not timeout_options_done and tok.startswith("-"):
+            i += 1
+            continue
+        break
+    if i < len(tokens):
+        i += 1
+    return i
+
+
+def _consume_nice_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "nice"):
+        return i
+    i += 1
+    if i < len(tokens) and tokens[i] in {"-n", "--adjustment"}:
+        i += 1
+        if i < len(tokens):
+            i += 1
+    while i < len(tokens) and tokens[i].startswith("-"):
+        i += 1
+    return i
+
+
+def _consume_command_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "command"):
+        return i
+    i += 1
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok in {"-p", "-v", "-V"}:
+            i += 1
+            continue
+        break
+    return i
+
+
+def _consume_env_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "env"):
+        return i
+    i += 1
+    env_opts_with_arg = {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"}
+    env_options_done = False
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            env_options_done = True
+            i += 1
+            continue
+        if not env_options_done and tok in env_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if not env_options_done and tok.startswith("-"):
+            i += 1
+            continue
+        if _SHELL_ASSIGNMENT_RE.match(tok):
+            i += 1
+            continue
+        break
+    return i
+
+
 def parse_shell_command_tokens(raw: str) -> list[str]:
     """Parse a shell command line into tokens after stripping inline comments."""
 
@@ -355,41 +459,41 @@ def match_shell_command(
         return False, []
 
     i = 0
-    while i < len(tokens) and _SHELL_ASSIGNMENT_RE.match(tokens[i]):
-        i += 1
+    changed = True
+    while changed:
+        changed = False
 
-    while i < len(tokens) and _token_matches_program(tokens[i], "command"):
-        i += 1
-        while i < len(tokens):
-            tok = tokens[i]
-            if tok == "--":
-                i += 1
+        while i < len(tokens) and _SHELL_ASSIGNMENT_RE.match(tokens[i]):
+            i += 1
+            changed = True
+
+        while True:
+            nxt = _consume_command_wrapper(tokens, i)
+            if nxt == i:
                 break
-            if tok in {"-p", "-v", "-V"}:
-                i += 1
-                continue
-            break
+            i = nxt
+            changed = True
 
-    if i < len(tokens) and _token_matches_program(tokens[i], "env"):
-        i += 1
-        env_opts_with_arg = {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"}
-        env_options_done = False
-        while i < len(tokens):
-            tok = tokens[i]
-            if tok == "--":
-                env_options_done = True
-                i += 1
+        nxt = _consume_env_wrapper(tokens, i)
+        if nxt != i:
+            i = nxt
+            changed = True
+
+        while True:
+            nxt = _consume_time_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
                 continue
-            if not env_options_done and tok in env_opts_with_arg:
-                i += 1
-                if i < len(tokens):
-                    i += 1
+            nxt = _consume_timeout_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
                 continue
-            if not env_options_done and tok.startswith("-"):
-                i += 1
-                continue
-            if _SHELL_ASSIGNMENT_RE.match(tok):
-                i += 1
+            nxt = _consume_nice_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
                 continue
             break
 

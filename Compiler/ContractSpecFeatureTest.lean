@@ -4441,7 +4441,7 @@ private def featureSpec : ContractSpec := {
 #eval! do
   let rawLog0Spec : ContractSpec := {
     name := "RawLog0"
-    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
     functions := [
       { name := "emitRaw"
@@ -4468,7 +4468,7 @@ private def featureSpec : ContractSpec := {
 #eval! do
   let rawLog1Spec : ContractSpec := {
     name := "RawLog1"
-    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
     functions := [
       { name := "emitRaw"
@@ -4495,7 +4495,7 @@ private def featureSpec : ContractSpec := {
 #eval! do
   let rawLog3Spec : ContractSpec := {
     name := "RawLog3"
-    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
     functions := [
       { name := "emitRaw"
@@ -4525,7 +4525,7 @@ private def featureSpec : ContractSpec := {
 #eval! do
   let rawLog4Spec : ContractSpec := {
     name := "RawLog4"
-    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
     functions := [
       { name := "emitRaw"
@@ -4556,7 +4556,7 @@ private def featureSpec : ContractSpec := {
 #eval! do
   let rawLog5Spec : ContractSpec := {
     name := "RawLog5"
-    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
     functions := [
       { name := "emitRaw"
@@ -4587,7 +4587,7 @@ private def featureSpec : ContractSpec := {
 #eval! do
   let rawLogViewSpec : ContractSpec := {
     name := "RawLogView"
-    fields := [{ name := "x", fieldType := FieldType.uint256, slot := 0 }]
+    fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
     functions := [
       { name := "viewEmit"

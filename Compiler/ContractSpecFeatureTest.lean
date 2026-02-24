@@ -5076,9 +5076,10 @@ private def externalCallWithReturnSpec : ContractSpec := {
       -- Should validate returndata size
       assertContains "externalCallWithReturn size check" rendered
         ["lt(returndatasize(), 32)"]
-      -- Should extract return value
+      -- Should extract return value (no redundant returndatacopy — call already copied to memory)
       assertContains "externalCallWithReturn return extraction" rendered
-        ["returndatacopy(0, 0, 32)", "let price := mload(0)"]
+        ["let price := mload(0)"]
+      -- Should NOT have a redundant returndatacopy(0, 0, 32) outside the revert block
       IO.println s!"✓ externalCallWithReturn staticcall compiles correctly"
 
 -- Test: call with one arg (balanceOf pattern)
@@ -5119,5 +5120,82 @@ private def externalCallWithReturnSpec : ContractSpec := {
       assertContains "externalCallWithReturn rate binding" rendered
         ["let rate := mload(0)"]
       IO.println s!"✓ externalCallWithReturn multi-arg call compiles correctly"
+
+-- Test: externalCallWithReturn rejects result variable shadowing a parameter
+#eval! do
+  let shadowSpec : ContractSpec := {
+    name := "ShadowParam"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bad"
+        params := [{ name := "oracle", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.externalCallWithReturn "oracle" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+          Stmt.return (Expr.localVar "oracle")
+        ]
+      }
+    ]
+  }
+  match compile shadowSpec [1] with
+  | .error err =>
+      if contains err "shadows a parameter" then
+        IO.println s!"✓ externalCallWithReturn rejects parameter shadow: {err}"
+      else
+        throw (IO.userError s!"✗ externalCallWithReturn wrong error: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ externalCallWithReturn should have rejected parameter shadow")
+
+-- Test: externalCallWithReturn rejects redeclaring existing local variable
+#eval! do
+  let redeclareSpec : ContractSpec := {
+    name := "RedeclareLocal"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bad"
+        params := [{ name := "oracle", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "price" (Expr.literal 0),
+          Stmt.externalCallWithReturn "price" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+          Stmt.return (Expr.localVar "price")
+        ]
+      }
+    ]
+  }
+  match compile redeclareSpec [1] with
+  | .error err =>
+      if contains err "redeclares an existing local variable" then
+        IO.println s!"✓ externalCallWithReturn rejects local redeclaration: {err}"
+      else
+        throw (IO.userError s!"✗ externalCallWithReturn wrong error: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ externalCallWithReturn should have rejected redeclaration")
+
+-- Test: staticcall external call allows view mutability
+#eval! do
+  let viewSpec : ContractSpec := {
+    name := "ViewStaticCall"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "getPrice"
+        params := [{ name := "oracle", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        isView := true
+        body := [
+          Stmt.externalCallWithReturn "price" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+          Stmt.return (Expr.localVar "price")
+        ]
+      }
+    ]
+  }
+  match compile viewSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ view staticcall should compile: {err}")
+  | .ok _ =>
+      IO.println "✓ externalCallWithReturn staticcall accepted for view function"
 
 end Compiler.ContractSpecFeatureTest

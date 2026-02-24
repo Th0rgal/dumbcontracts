@@ -1343,6 +1343,10 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.externalCallWithReturn resultVar target _ args _ => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount target
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      if paramScope.contains resultVar then
+        throw s!"Compilation error: {context} uses Stmt.externalCallWithReturn with result variable '{resultVar}' that shadows a parameter"
+      if localScope.contains resultVar then
+        throw s!"Compilation error: {context} uses Stmt.externalCallWithReturn with result variable '{resultVar}' that redeclares an existing local variable"
       pure (resultVar :: localScope)
   | _ => pure localScope
 
@@ -1580,8 +1584,8 @@ private partial def stmtWritesState : Stmt → Bool
       args.any exprWritesState || true
   | Stmt.externalCallBind _ _ args =>
       args.any exprWritesState || true
-  | Stmt.externalCallWithReturn _ target _ args _ =>
-      exprWritesState target || args.any exprWritesState || true
+  | Stmt.externalCallWithReturn _ target _ args isStatic =>
+      exprWritesState target || args.any exprWritesState || !isStatic
 where
   exprWritesState (expr : Expr) : Bool :=
     match expr with
@@ -3819,10 +3823,10 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let sizeCheck := YulStmt.if_ (YulExpr.call "lt" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
         YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
       ]
-      -- Step 6: extract return value
-      let copyReturn := YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.lit 32])
+      -- Step 6: extract return value (call/staticcall already copied returndata to memory[0..32])
       let bindResult := YulStmt.let_ resultVar (YulExpr.call "mload" [YulExpr.lit 0])
-      pure [YulStmt.block ([storeSelector] ++ storeArgs ++ [letSuccess, revertBlock, sizeCheck, copyReturn, bindResult])]
+      -- Emit statements flat (not in a block) so resultVar is visible to subsequent statements
+      pure ([storeSelector] ++ storeArgs ++ [letSuccess, revertBlock, sizeCheck, bindResult])
   | Stmt.returnValues values => do
       if isInternal then
         if values.length != internalRetNames.length then

@@ -206,7 +206,7 @@ def extract_run_commands_from_job_body(body: str, *, source: Path, context: str)
         indent = len(m.group("indent"))
         payload = m.group("payload")
         block_lines: list[str] = []
-        if payload in {"|", ">"}:
+        if payload.startswith("|") or payload.startswith(">"):
             i += 1
             while i < len(step_lines):
                 nxt = step_lines[i]

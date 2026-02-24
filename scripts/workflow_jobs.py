@@ -314,6 +314,14 @@ def extract_python_script_commands(
 _SHELL_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 
 
+def _basename_token(token: str) -> str:
+    return token.rsplit("/", 1)[-1]
+
+
+def _token_matches_program(token: str, program: str) -> bool:
+    return token == program or _basename_token(token) == program
+
+
 def parse_shell_command_tokens(raw: str) -> list[str]:
     """Parse a shell command line into tokens after stripping inline comments."""
 
@@ -350,7 +358,19 @@ def match_shell_command(
     while i < len(tokens) and _SHELL_ASSIGNMENT_RE.match(tokens[i]):
         i += 1
 
-    if i < len(tokens) and tokens[i] == "env":
+    while i < len(tokens) and _token_matches_program(tokens[i], "command"):
+        i += 1
+        while i < len(tokens):
+            tok = tokens[i]
+            if tok == "--":
+                i += 1
+                break
+            if tok in {"-p", "-v", "-V"}:
+                i += 1
+                continue
+            break
+
+    if i < len(tokens) and _token_matches_program(tokens[i], "env"):
         i += 1
         env_opts_with_arg = {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"}
         env_options_done = False
@@ -373,7 +393,7 @@ def match_shell_command(
                 continue
             break
 
-    if i >= len(tokens) or tokens[i] != program:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], program):
         return False, tokens
 
     for offset, expected in enumerate(args_prefix, start=1):

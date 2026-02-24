@@ -7,29 +7,15 @@ import re
 import sys
 from pathlib import Path
 
+from workflow_jobs import extract_top_level_jobs
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 SCRIPTS_README = ROOT / "scripts" / "README.md"
 
 
 def _extract_workflow_jobs(text: str) -> list[str]:
-    lines = text.splitlines()
-    jobs_idx = next((i for i, line in enumerate(lines) if line == "jobs:"), None)
-    if jobs_idx is None:
-        raise ValueError(f"Could not locate jobs section in {VERIFY_YML}")
-
-    jobs: list[str] = []
-    for line in lines[jobs_idx + 1 :]:
-        if not line:
-            continue
-        if not line.startswith(" "):
-            break
-        m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
-        if m:
-            jobs.append(m.group(1))
-    if not jobs:
-        raise ValueError(f"No top-level jobs found in {VERIFY_YML}")
-    return jobs
+    return extract_top_level_jobs(text, VERIFY_YML)
 
 
 def _extract_readme_ci_jobs(text: str) -> list[str]:

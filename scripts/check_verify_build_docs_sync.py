@@ -7,6 +7,8 @@ import re
 import sys
 from pathlib import Path
 
+from workflow_jobs import extract_job_body
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 SCRIPTS_README = ROOT / "scripts" / "README.md"
@@ -28,22 +30,19 @@ def _normalize_workflow_cmd(raw: str) -> str:
 
 
 def _extract_job_steps_block(workflow_text: str, job_name: str) -> list[str]:
-    lines = workflow_text.splitlines()
-    job_idx = next((i for i, line in enumerate(lines) if line == f"  {job_name}:"), None)
-    if job_idx is None:
-        raise ValueError(f"Could not locate {job_name} job in {VERIFY_YML}")
-
-    steps_idx = next(
-        (i for i in range(job_idx + 1, len(lines)) if lines[i] == "    steps:"),
-        None,
-    )
+    job_body = extract_job_body(workflow_text, job_name, VERIFY_YML)
+    lines = job_body.splitlines()
+    steps_idx = next((i for i, line in enumerate(lines) if line == "    steps:"), None)
     if steps_idx is None:
         raise ValueError(f"Could not locate {job_name}.steps in {VERIFY_YML}")
 
+    steps_indent = len(lines[steps_idx]) - len(lines[steps_idx].lstrip(" "))
     steps: list[str] = []
     for line in lines[steps_idx + 1 :]:
-        if re.match(r"^  [A-Za-z0-9_-]+:", line):
-            break
+        if line.strip():
+            indent = len(line) - len(line.lstrip(" "))
+            if indent <= steps_indent:
+                break
         steps.append(line)
     return steps
 

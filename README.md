@@ -217,7 +217,7 @@ See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOM
 
 ## How Verity Compares
 
-Smart contract verification is an active field with many strong tools. Each takes a different approach with different trade-offs. Verity's contribution is bringing interactive theorem proving (Lean 4) to the full compilation pipeline, which gives unbounded proofs at the cost of more effort per property.
+Several strong tools exist for smart contract verification, each with real trade-offs. Verity takes a different bet: using Lean 4 as an interactive theorem prover across the full compilation pipeline. This gives unbounded proofs with no loop-depth limits, but each property takes more work to verify.
 
 | | Certora | Halmos | Runtime Monitoring | Verity |
 |---|---|---|---|---|
@@ -229,7 +229,7 @@ Smart contract verification is an active field with many strong tools. Each take
 
 Verity is not a replacement for any of these tools. For most teams, Certora or Halmos will be the practical choice because their automation is far ahead. Verity is for cases where you need mathematical certainty that a property holds for all possible inputs and all possible execution paths, and you are willing to invest the proof engineering effort to get there.
 
-The effort gap is narrowing. Verity's proofs are structured enough that AI agents can already generate and maintain them (35% of this repository's commits are agent-authored, with every proof machine-checked by Lean regardless of origin). As agents improve at interactive theorem proving, the cost of writing unbounded proofs will continue to drop, potentially making full formal verification practical for a much wider range of contracts.
+The effort gap is narrowing. Much of this repository was built with heavy AI assistance, with every proof machine-checked by Lean regardless of origin. As agents improve at interactive theorem proving, the cost of writing unbounded proofs will continue to drop, potentially making full formal verification practical for a much wider range of contracts.
 
 ## Getting Started
 

@@ -506,6 +506,18 @@ def _consume_env_wrapper(tokens: list[str], i: int) -> int:
             i += 1
             continue
         if not env_options_done and tok in env_opts_with_arg:
+            if tok in {"-S", "--split-string"}:
+                # `env -S 'FOO=1 forge test'` injects split-string tokens as if
+                # they were written in argv directly. Expand in-place so wrapper
+                # normalization can continue on the resulting assignments/command.
+                i += 1
+                if i < len(tokens):
+                    try:
+                        split_tokens = shlex.split(tokens[i], posix=True)
+                    except ValueError:
+                        split_tokens = []
+                    tokens[i : i + 1] = split_tokens
+                continue
             i += 1
             if i < len(tokens):
                 i += 1

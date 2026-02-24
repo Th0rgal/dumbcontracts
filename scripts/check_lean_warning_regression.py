@@ -24,7 +24,12 @@ def parse_warnings(log_path: Path) -> tuple[Counter[str], Counter[str]]:
     by_file: Counter[str] = Counter()
     by_message: Counter[str] = Counter()
 
-    for raw_line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+    try:
+        lines = log_path.read_text(encoding="utf-8").splitlines()
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{log_path}: invalid UTF-8 in log input") from exc
+
+    for raw_line in lines:
         match = WARNING_RE.match(raw_line.strip())
         if not match:
             continue
@@ -46,12 +51,9 @@ def load_baseline(path: Path) -> dict[str, object]:
 
 def _validate_counter_field(
     baseline_path: Path,
-    payload: dict[str, object],
     field_name: str,
+    raw_counter: object,
 ) -> dict[str, int]:
-    raw_counter = payload.get(field_name)
-    if raw_counter is None:
-        return {}
     if not isinstance(raw_counter, dict):
         raise ValueError(f"{baseline_path}: '{field_name}' must be an object")
 
@@ -61,7 +63,7 @@ def _validate_counter_field(
             raise ValueError(
                 f"{baseline_path}: '{field_name}' keys must be strings, got {type(key).__name__}"
             )
-        if not isinstance(value, int):
+        if type(value) is not int:
             raise ValueError(
                 f"{baseline_path}: '{field_name}[{key}]' must be an integer, got {type(value).__name__}"
             )
@@ -77,18 +79,22 @@ def validate_baseline_schema(baseline_path: Path, payload: dict[str, object]) ->
     if unknown_keys:
         raise ValueError(f"{baseline_path}: unknown keys: {', '.join(unknown_keys)}")
 
-    schema_version = payload.get("schema_version")
-    if schema_version != 1:
+    missing_keys = sorted(allowed_keys - set(payload.keys()))
+    if missing_keys:
+        raise ValueError(f"{baseline_path}: missing required keys: {', '.join(missing_keys)}")
+
+    schema_version = payload["schema_version"]
+    if type(schema_version) is not int or schema_version != 1:
         raise ValueError(f"{baseline_path}: expected schema_version=1, got {schema_version!r}")
 
-    total_warnings = payload.get("total_warnings")
-    if not isinstance(total_warnings, int):
+    total_warnings = payload["total_warnings"]
+    if type(total_warnings) is not int:
         raise ValueError(f"{baseline_path}: 'total_warnings' must be an integer")
     if total_warnings < 0:
         raise ValueError(f"{baseline_path}: 'total_warnings' must be >= 0")
 
-    by_file = _validate_counter_field(baseline_path, payload, "by_file")
-    by_message = _validate_counter_field(baseline_path, payload, "by_message")
+    by_file = _validate_counter_field(baseline_path, "by_file", payload["by_file"])
+    by_message = _validate_counter_field(baseline_path, "by_message", payload["by_message"])
 
     by_file_total = sum(by_file.values())
     by_message_total = sum(by_message.values())

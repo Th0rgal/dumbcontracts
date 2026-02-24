@@ -7,7 +7,11 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body, extract_run_commands_from_job_body
+from workflow_jobs import (
+    extract_job_body,
+    extract_python_script_commands,
+    extract_run_commands_from_job_body,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -18,54 +22,14 @@ def _normalize_spaces(text: str) -> str:
     return " ".join(text.split())
 
 
-def _normalize_workflow_cmd(raw: str) -> str:
-    text = _normalize_spaces(raw.strip())
-    if not text.startswith("python3 "):
-        raise ValueError(f"Expected python3 scripts command, got: {raw!r}")
-    text = text[len("python3 ") :].strip()
-    if not text.startswith("scripts/"):
-        raise ValueError(f"Expected scripts/ path command, got: {raw!r}")
-    script_with_args = text[len("scripts/") :]
-    return script_with_args.split()[0]
-
-
-def _extract_python_script_commands(run_commands: list[str]) -> list[str]:
-    commands: list[str] = []
-    i = 0
-    while i < len(run_commands):
-        stripped = run_commands[i].strip()
-        if not stripped or stripped.startswith("#"):
-            i += 1
-            continue
-
-        if not stripped.startswith("python3 scripts/"):
-            i += 1
-            continue
-
-        cmd = stripped
-        while cmd.endswith("\\"):
-            cmd = cmd[:-1].rstrip()
-            i += 1
-            if i >= len(run_commands):
-                raise ValueError(
-                    "Trailing line-continuation in python3 scripts command in "
-                    f"{VERIFY_YML}: {stripped!r}"
-                )
-            continuation = run_commands[i].strip()
-            if continuation:
-                cmd += " " + continuation
-
-        commands.append(_normalize_workflow_cmd(cmd))
-        i += 1
-    return commands
-
-
 def _extract_workflow_build_commands(text: str) -> list[str]:
     job_body = extract_job_body(text, "build", VERIFY_YML)
     run_commands = extract_run_commands_from_job_body(
         job_body, source=VERIFY_YML, context="build"
     )
-    commands = _extract_python_script_commands(run_commands)
+    commands = extract_python_script_commands(
+        run_commands, source=VERIFY_YML, include_args=False
+    )
     if not commands:
         raise ValueError(f"No python3 scripts/* run commands found in build job in {VERIFY_YML}")
     return commands

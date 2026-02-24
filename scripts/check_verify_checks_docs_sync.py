@@ -7,21 +7,15 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body, extract_run_commands_from_job_body
+from workflow_jobs import (
+    extract_job_body,
+    extract_python_script_commands,
+    extract_run_commands_from_job_body,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 SCRIPTS_README = ROOT / "scripts" / "README.md"
-
-
-def _normalize_workflow_cmd(raw: str) -> str:
-    text = " ".join(raw.strip().split())
-    if not text.startswith("python3 "):
-        raise ValueError(f"Expected python3 scripts command, got: {raw!r}")
-    text = text[len("python3 ") :].strip()
-    if not text.startswith("scripts/"):
-        raise ValueError(f"Expected scripts/ path command, got: {raw!r}")
-    return text[len("scripts/") :]
 
 
 def _extract_workflow_checks_commands(text: str) -> list[str]:
@@ -29,46 +23,10 @@ def _extract_workflow_checks_commands(text: str) -> list[str]:
     run_commands = extract_run_commands_from_job_body(
         job_body, source=VERIFY_YML, context="checks"
     )
-    commands = _extract_python_script_commands(run_commands)
+    commands = extract_python_script_commands(run_commands, source=VERIFY_YML)
 
     if not commands:
         raise ValueError(f"No python3 scripts/* run commands found in checks job in {VERIFY_YML}")
-    return commands
-
-
-def _extract_python_script_commands(run_commands: list[str]) -> list[str]:
-    commands: list[str] = []
-    i = 0
-    while i < len(run_commands):
-        stripped = run_commands[i].strip()
-        if not stripped or stripped.startswith("#"):
-            i += 1
-            continue
-
-        if not stripped.startswith("python3 scripts/"):
-            i += 1
-            continue
-
-        cmd = stripped
-        if "#" in cmd:
-            cmd = cmd.split("#", 1)[0].rstrip()
-        while cmd.endswith("\\"):
-            cmd = cmd[:-1].rstrip()
-            i += 1
-            if i >= len(run_commands):
-                raise ValueError(
-                    "Trailing line-continuation in python3 scripts command in "
-                    f"{VERIFY_YML}: {stripped!r}"
-                )
-            continuation = run_commands[i].strip()
-            if continuation:
-                if "#" in continuation:
-                    continuation = continuation.split("#", 1)[0].rstrip()
-                if continuation:
-                    cmd += " " + continuation
-
-        commands.append(_normalize_workflow_cmd(cmd))
-        i += 1
     return commands
 
 

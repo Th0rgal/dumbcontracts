@@ -620,7 +620,8 @@ private def featureSpec : ContractSpec := {
   }
   match compile eagerLogicalCallSpec [1] with
   | .error err =>
-      if !(contains err "Expr.logicalAnd/Expr.logicalOr with call-like operand(s)" &&
+      if !(contains err "Expr.logicalAnd/Expr.logicalOr" &&
+          contains err "call-like operand(s)" &&
           contains err "Issue #748") then
         throw (IO.userError s!"✗ logical call operand diagnostic mismatch: {err}")
       IO.println "✓ logical call operand validation"
@@ -653,7 +654,8 @@ private def featureSpec : ContractSpec := {
   }
   match compile eagerLogicalExternalSpec [1] with
   | .error err =>
-      if !(contains err "Expr.logicalAnd/Expr.logicalOr with call-like operand(s)" &&
+      if !(contains err "Expr.logicalAnd/Expr.logicalOr" &&
+          contains err "call-like operand(s)" &&
           contains err "Issue #748") then
         throw (IO.userError s!"✗ logical external operand diagnostic mismatch: {err}")
       IO.println "✓ logical external operand validation"
@@ -4608,5 +4610,225 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ rawLog in view function correctly rejected"
   | .ok _ =>
       throw (IO.userError "✗ expected rawLog in view function to fail compilation")
+
+-- ============================================================
+-- Arithmetic helpers (#928)
+-- ============================================================
+
+-- Test: mulDivDown compiles to div(mul(a, b), c)
+#eval! do
+  let spec : ContractSpec := {
+    name := "MulDivDown"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "compute"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }, { name := "c", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.mulDivDown (Expr.param "a") (Expr.param "b") (Expr.param "c"))]
+      }
+    ]
+  }
+  match compile spec [1] with
+  | .error err => throw (IO.userError s!"✗ mulDivDown should compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "mulDivDown lowering" rendered ["div(mul(a, b), c)"]
+      IO.println "✓ mulDivDown compiles to div(mul(a, b), c)"
+
+-- Test: mulDivUp compiles to div(add(mul(a, b), sub(c, 1)), c)
+#eval! do
+  let spec : ContractSpec := {
+    name := "MulDivUp"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "compute"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }, { name := "c", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.mulDivUp (Expr.param "a") (Expr.param "b") (Expr.param "c"))]
+      }
+    ]
+  }
+  match compile spec [1] with
+  | .error err => throw (IO.userError s!"✗ mulDivUp should compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "mulDivUp lowering" rendered ["div(add(mul(a, b), sub(c, 1)), c)"]
+      IO.println "✓ mulDivUp compiles to div(add(mul(a, b), sub(c, 1)), c)"
+
+-- Test: wMulDown compiles to div(mul(a, b), 1000000000000000000)
+#eval! do
+  let spec : ContractSpec := {
+    name := "WMulDown"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "compute"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.wMulDown (Expr.param "a") (Expr.param "b"))]
+      }
+    ]
+  }
+  match compile spec [1] with
+  | .error err => throw (IO.userError s!"✗ wMulDown should compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "wMulDown lowering" rendered ["div(mul(a, b), 1000000000000000000)"]
+      IO.println "✓ wMulDown compiles to div(mul(a, b), WAD)"
+
+-- Test: wDivUp compiles correctly
+#eval! do
+  let spec : ContractSpec := {
+    name := "WDivUp"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "compute"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.wDivUp (Expr.param "a") (Expr.param "b"))]
+      }
+    ]
+  }
+  match compile spec [1] with
+  | .error err => throw (IO.userError s!"✗ wDivUp should compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "wDivUp lowering" rendered ["div(add(mul(a, 1000000000000000000), sub(b, 1)), b)"]
+      IO.println "✓ wDivUp compiles to div(add(mul(a, WAD), sub(b, 1)), b)"
+
+-- Test: min compiles to sub(a, mul(sub(a, b), gt(a, b)))
+#eval! do
+  let spec : ContractSpec := {
+    name := "MinExpr"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "compute"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.min (Expr.param "a") (Expr.param "b"))]
+      }
+    ]
+  }
+  match compile spec [1] with
+  | .error err => throw (IO.userError s!"✗ min should compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "min lowering" rendered ["sub(a, mul(sub(a, b), gt(a, b)))"]
+      IO.println "✓ min compiles to sub(a, mul(sub(a, b), gt(a, b)))"
+
+-- Test: max compiles to add(a, mul(sub(b, a), gt(b, a)))
+#eval! do
+  let spec : ContractSpec := {
+    name := "MaxExpr"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "compute"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.max (Expr.param "a") (Expr.param "b"))]
+      }
+    ]
+  }
+  match compile spec [1] with
+  | .error err => throw (IO.userError s!"✗ max should compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "max lowering" rendered ["add(a, mul(sub(b, a), gt(b, a)))"]
+      IO.println "✓ max compiles to add(a, mul(sub(b, a), gt(b, a)))"
+
+-- Test: nested arithmetic helpers compile correctly
+#eval! do
+  let spec : ContractSpec := {
+    name := "NestedArith"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "sharesToAssets"
+        params := [
+          { name := "shares", ty := .uint256 },
+          { name := "totalAssets", ty := .uint256 },
+          { name := "totalShares", ty := .uint256 }
+        ]
+        returnType := some .uint256
+        body := [
+          -- mulDivDown(shares, totalAssets + 1, totalShares + 1000000)
+          Stmt.return (Expr.mulDivDown
+            (Expr.param "shares")
+            (Expr.add (Expr.param "totalAssets") (Expr.literal 1))
+            (Expr.add (Expr.param "totalShares") (Expr.literal 1000000)))
+        ]
+      }
+    ]
+  }
+  match compile spec [1] with
+  | .error err => throw (IO.userError s!"✗ nested arithmetic should compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "nested arithmetic" rendered [
+        "div(mul(shares, add(totalAssets, 1)), add(totalShares, 1000000))"
+      ]
+      IO.println "✓ nested arithmetic helpers compile correctly"
+
+-- Test: SpecInterpreter evaluates mulDivDown
+#eval! do
+  let spec : ContractSpec := {
+    name := "MulDivInterp"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "compute"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }, { name := "c", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.mulDivDown (Expr.param "a") (Expr.param "b") (Expr.param "c"))]
+      }
+    ]
+  }
+  -- mulDivDown(10, 3, 2) = (10 * 3) / 2 = 15
+  let tx : Transaction := { sender := 0, functionName := "compute", args := [10, 3, 2] }
+  let result := interpretSpec spec SpecStorage.empty tx
+  if result.returnValue != some 15 then
+    throw (IO.userError s!"✗ mulDivDown interpreter: expected 15, got {result.returnValue}")
+  IO.println "✓ SpecInterpreter evaluates mulDivDown(10, 3, 2) = 15"
+
+-- Test: SpecInterpreter evaluates min/max
+#eval! do
+  let spec : ContractSpec := {
+    name := "MinMaxInterp"
+    fields := [{ name := "x", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "getMin"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.min (Expr.param "a") (Expr.param "b"))]
+      },
+      { name := "getMax"
+        params := [{ name := "a", ty := .uint256 }, { name := "b", ty := .uint256 }]
+        returnType := some .uint256
+        body := [Stmt.return (Expr.max (Expr.param "a") (Expr.param "b"))]
+      }
+    ]
+  }
+  -- min(7, 3) = 3
+  let minTx : Transaction := { sender := 0, functionName := "getMin", args := [7, 3] }
+  let minResult := interpretSpec spec SpecStorage.empty minTx
+  if minResult.returnValue != some 3 then
+    throw (IO.userError s!"✗ min interpreter: expected 3, got {minResult.returnValue}")
+  -- max(7, 3) = 7
+  let maxTx : Transaction := { sender := 0, functionName := "getMax", args := [7, 3] }
+  let maxResult := interpretSpec spec SpecStorage.empty maxTx
+  if maxResult.returnValue != some 7 then
+    throw (IO.userError s!"✗ max interpreter: expected 7, got {maxResult.returnValue}")
+  -- min(5, 5) = 5
+  let minEqTx : Transaction := { sender := 0, functionName := "getMin", args := [5, 5] }
+  let minEqResult := interpretSpec spec SpecStorage.empty minEqTx
+  if minEqResult.returnValue != some 5 then
+    throw (IO.userError s!"✗ min interpreter equal: expected 5, got {minEqResult.returnValue}")
+  IO.println "✓ SpecInterpreter evaluates min/max correctly"
 
 end Compiler.ContractSpecFeatureTest

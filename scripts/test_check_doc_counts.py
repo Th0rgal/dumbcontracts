@@ -18,6 +18,22 @@ from check_doc_counts import apply_fixes, check_file
 
 
 class CheckDocCountsMultiMatchTests(unittest.TestCase):
+    def test_main_does_not_check_docs_layout_banner(self) -> None:
+        visited: list[Path] = []
+        original = check_doc_counts.check_and_maybe_fix
+
+        def _record(path: Path, checks: list[tuple[str, re.Pattern[str], str]], fix: bool) -> list[str]:
+            visited.append(path)
+            return original(path, checks, fix)
+
+        check_doc_counts.check_and_maybe_fix = _record
+        try:
+            check_doc_counts.main()
+        finally:
+            check_doc_counts.check_and_maybe_fix = original
+
+        self.assertNotIn(check_doc_counts.ROOT / "docs-site" / "app" / "layout.tsx", visited)
+
     def test_check_file_reports_stale_non_first_occurrence(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "README.md"

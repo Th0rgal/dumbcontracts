@@ -191,15 +191,122 @@ def collect_metrics() -> dict[str, Any]:
     }
 
 
+def _expect_exact_keys(path: Path, section: str, payload: dict[str, Any], expected: set[str]) -> None:
+    unknown = sorted(set(payload.keys()) - expected)
+    if unknown:
+        raise ValueError(f"{path}: {section}: unknown keys: {', '.join(unknown)}")
+    missing = sorted(expected - set(payload.keys()))
+    if missing:
+        raise ValueError(f"{path}: {section}: missing required keys: {', '.join(missing)}")
+
+
+def _expect_int(path: Path, field_path: str, value: Any) -> int:
+    if type(value) is not int:
+        raise ValueError(f"{path}: {field_path} must be an integer, got {type(value).__name__}")
+    return value
+
+
+def _expect_non_negative_int(path: Path, field_path: str, value: Any) -> int:
+    parsed = _expect_int(path, field_path, value)
+    if parsed < 0:
+        raise ValueError(f"{path}: {field_path} must be >= 0")
+    return parsed
+
+
+def _expect_str(path: Path, field_path: str, value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{path}: {field_path} must be a string, got {type(value).__name__}")
+    return value
+
+
 def load_metrics_from_artifact(path: Path) -> dict[str, Any]:
-    """Load and minimally validate verification status artifact JSON."""
+    """Load and strictly validate verification status artifact JSON."""
     if not path.exists():
         raise FileNotFoundError(f"{path}: verification status artifact not found")
     data = json.loads(path.read_text(encoding="utf-8"))
-    required = ["theorems", "tests", "proofs", "codebase", "toolchain"]
-    missing = [key for key in required if key not in data]
-    if missing:
-        raise ValueError(f"{path}: missing required keys: {', '.join(missing)}")
+    if not isinstance(data, dict):
+        raise ValueError(f"{path}: artifact payload must be a JSON object")
+
+    top_keys = {"schema_version", "theorems", "tests", "proofs", "codebase", "toolchain"}
+    _expect_exact_keys(path, "root", data, top_keys)
+    schema_version = _expect_int(path, "schema_version", data["schema_version"])
+    if schema_version != 1:
+        raise ValueError(f"{path}: expected schema_version=1, got {schema_version!r}")
+
+    theorems = data["theorems"]
+    tests = data["tests"]
+    proofs = data["proofs"]
+    codebase = data["codebase"]
+    toolchain = data["toolchain"]
+    for name, section in (
+        ("theorems", theorems),
+        ("tests", tests),
+        ("proofs", proofs),
+        ("codebase", codebase),
+        ("toolchain", toolchain),
+    ):
+        if not isinstance(section, dict):
+            raise ValueError(f"{path}: {name} must be an object")
+
+    _expect_exact_keys(
+        path,
+        "theorems",
+        theorems,
+        {
+            "total",
+            "categories",
+            "per_contract",
+            "covered",
+            "coverage_percent",
+            "excluded",
+            "proven",
+            "stdlib",
+            "non_stdlib_total",
+            "ast_equivalence",
+        },
+    )
+    _expect_non_negative_int(path, "theorems.total", theorems["total"])
+    _expect_non_negative_int(path, "theorems.categories", theorems["categories"])
+    per_contract = theorems["per_contract"]
+    if not isinstance(per_contract, dict):
+        raise ValueError(f"{path}: theorems.per_contract must be an object")
+    for contract, count in per_contract.items():
+        if not isinstance(contract, str):
+            raise ValueError(
+                f"{path}: theorems.per_contract keys must be strings, got {type(contract).__name__}"
+            )
+        _expect_non_negative_int(path, f"theorems.per_contract[{contract!r}]", count)
+    _expect_non_negative_int(path, "theorems.covered", theorems["covered"])
+    _expect_non_negative_int(path, "theorems.coverage_percent", theorems["coverage_percent"])
+    _expect_non_negative_int(path, "theorems.excluded", theorems["excluded"])
+    _expect_non_negative_int(path, "theorems.proven", theorems["proven"])
+    _expect_non_negative_int(path, "theorems.stdlib", theorems["stdlib"])
+    _expect_non_negative_int(path, "theorems.non_stdlib_total", theorems["non_stdlib_total"])
+    _expect_non_negative_int(path, "theorems.ast_equivalence", theorems["ast_equivalence"])
+
+    _expect_exact_keys(
+        path,
+        "tests",
+        tests,
+        {"foundry_functions", "suites", "property_functions", "differential_total"},
+    )
+    _expect_non_negative_int(path, "tests.foundry_functions", tests["foundry_functions"])
+    _expect_non_negative_int(path, "tests.suites", tests["suites"])
+    _expect_non_negative_int(path, "tests.property_functions", tests["property_functions"])
+    _expect_non_negative_int(path, "tests.differential_total", tests["differential_total"])
+
+    _expect_exact_keys(path, "proofs", proofs, {"axioms", "sorry"})
+    _expect_non_negative_int(path, "proofs.axioms", proofs["axioms"])
+    _expect_non_negative_int(path, "proofs.sorry", proofs["sorry"])
+
+    _expect_exact_keys(path, "codebase", codebase, {"core_lines", "example_contracts"})
+    _expect_non_negative_int(path, "codebase.core_lines", codebase["core_lines"])
+    _expect_non_negative_int(path, "codebase.example_contracts", codebase["example_contracts"])
+
+    _expect_exact_keys(path, "toolchain", toolchain, {"lean", "solc"})
+    _expect_str(path, "toolchain.lean", toolchain["lean"])
+    _expect_str(path, "toolchain.solc", toolchain["solc"])
+
     return data
 
 

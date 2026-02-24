@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import re
 import sys
 import tempfile
@@ -170,6 +171,33 @@ class CheckDocCountsMultiMatchTests(unittest.TestCase):
                 self.assertIn("duplicate object key", str(ctx.exception))
             finally:
                 property_utils.MANIFEST = old_manifest
+
+    def test_load_metrics_from_artifact_rejects_boolean_numeric_field(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact = Path(tmpdir) / "verification_status.json"
+            payload = check_doc_counts.collect_metrics()
+            payload["proofs"]["axioms"] = True
+            artifact.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "proofs\\.axioms must be an integer, got bool"):
+                check_doc_counts.load_metrics_from_artifact(artifact)
+
+    def test_load_metrics_from_artifact_rejects_missing_schema_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact = Path(tmpdir) / "verification_status.json"
+            payload = check_doc_counts.collect_metrics()
+            del payload["schema_version"]
+            artifact.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "root: missing required keys: schema_version"):
+                check_doc_counts.load_metrics_from_artifact(artifact)
+
+    def test_load_metrics_from_artifact_rejects_unknown_top_level_key(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact = Path(tmpdir) / "verification_status.json"
+            payload = check_doc_counts.collect_metrics()
+            payload["extra"] = 1
+            artifact.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "root: unknown keys: extra"):
+                check_doc_counts.load_metrics_from_artifact(artifact)
 
 
 if __name__ == "__main__":

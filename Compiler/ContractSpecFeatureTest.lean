@@ -4788,7 +4788,7 @@ private def featureSpec : ContractSpec := {
   }
   -- mulDivDown(10, 3, 2) = (10 * 3) / 2 = 15
   let tx : Transaction := { sender := 0, functionName := "compute", args := [10, 3, 2] }
-  let result := interpretSpec spec SpecInterpreter.emptyStorage tx
+  let result := interpretSpec spec SpecStorage.empty tx
   if result.returnValue != some 15 then
     throw (IO.userError s!"✗ mulDivDown interpreter: expected 15, got {result.returnValue}")
   IO.println "✓ SpecInterpreter evaluates mulDivDown(10, 3, 2) = 15"
@@ -4814,17 +4814,17 @@ private def featureSpec : ContractSpec := {
   }
   -- min(7, 3) = 3
   let minTx : Transaction := { sender := 0, functionName := "getMin", args := [7, 3] }
-  let minResult := interpretSpec spec SpecInterpreter.emptyStorage minTx
+  let minResult := interpretSpec spec SpecStorage.empty minTx
   if minResult.returnValue != some 3 then
     throw (IO.userError s!"✗ min interpreter: expected 3, got {minResult.returnValue}")
   -- max(7, 3) = 7
   let maxTx : Transaction := { sender := 0, functionName := "getMax", args := [7, 3] }
-  let maxResult := interpretSpec spec SpecInterpreter.emptyStorage maxTx
+  let maxResult := interpretSpec spec SpecStorage.empty maxTx
   if maxResult.returnValue != some 7 then
     throw (IO.userError s!"✗ max interpreter: expected 7, got {maxResult.returnValue}")
   -- min(5, 5) = 5
   let minEqTx : Transaction := { sender := 0, functionName := "getMin", args := [5, 5] }
-  let minEqResult := interpretSpec spec SpecInterpreter.emptyStorage minEqTx
+  let minEqResult := interpretSpec spec SpecStorage.empty minEqTx
   if minEqResult.returnValue != some 5 then
     throw (IO.userError s!"✗ min interpreter equal: expected 5, got {minEqResult.returnValue}")
   IO.println "✓ SpecInterpreter evaluates min/max correctly"

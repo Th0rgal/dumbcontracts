@@ -11,6 +11,7 @@ from workflow_jobs import (
     extract_job_body,
     extract_literal_from_mapping_blocks,
     extract_run_commands_from_job_body,
+    match_shell_command,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,7 +57,11 @@ def _extract_download(job_body: str, artifact_name: str, job: str) -> tuple[str,
 
 def _extract_forge_line(job_body: str, job: str) -> str:
     run_commands = extract_run_commands_from_job_body(job_body, source=VERIFY_YML, context=job)
-    forge_lines = [cmd for cmd in run_commands if cmd.startswith("forge test")]
+    forge_lines = [
+        cmd
+        for cmd in run_commands
+        if match_shell_command(cmd, program="forge", args_prefix=("test",))[0]
+    ]
     if not forge_lines:
         raise ValueError(f"Could not locate 'forge test' command in {job} job in {VERIFY_YML}")
     if len(forge_lines) > 1:

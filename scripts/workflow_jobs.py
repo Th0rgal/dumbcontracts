@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from pathlib import Path
 
 _JOB_KEY_RE = re.compile(
@@ -308,3 +309,56 @@ def extract_python_script_commands(
         i += 1
 
     return commands
+
+
+_SHELL_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+
+
+def parse_shell_command_tokens(raw: str) -> list[str]:
+    """Parse a shell command line into tokens after stripping inline comments."""
+
+    stripped = _strip_shell_inline_comment(raw.strip())
+    if not stripped:
+        return []
+    try:
+        return shlex.split(stripped, posix=True)
+    except ValueError:
+        # Fail closed for malformed shell quoting.
+        return []
+
+
+def match_shell_command(
+    raw: str,
+    *,
+    program: str,
+    args_prefix: tuple[str, ...] = (),
+) -> tuple[bool, list[str]]:
+    """Match shell commands while tolerating leading env assignments.
+
+    Supports forms like:
+      FOO=1 BAR=2 forge test ...
+      env FOO=1 BAR=2 forge test ...
+    """
+
+    tokens = parse_shell_command_tokens(raw)
+    if not tokens:
+        return False, []
+
+    i = 0
+    while i < len(tokens) and _SHELL_ASSIGNMENT_RE.match(tokens[i]):
+        i += 1
+
+    if i < len(tokens) and tokens[i] == "env":
+        i += 1
+        while i < len(tokens) and _SHELL_ASSIGNMENT_RE.match(tokens[i]):
+            i += 1
+
+    if i >= len(tokens) or tokens[i] != program:
+        return False, tokens
+
+    for offset, expected in enumerate(args_prefix, start=1):
+        idx = i + offset
+        if idx >= len(tokens) or tokens[idx] != expected:
+            return False, tokens
+
+    return True, tokens[i:]

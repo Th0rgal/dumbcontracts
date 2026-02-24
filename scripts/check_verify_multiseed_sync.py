@@ -7,6 +7,8 @@ import re
 import sys
 from pathlib import Path
 
+from workflow_jobs import extract_job_body
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 MULTISEED_SCRIPT = ROOT / "scripts" / "test_multiple_seeds.sh"
@@ -24,15 +26,8 @@ def _parse_seed_csv(raw: str, source: Path) -> list[int]:
 
 
 def _extract_verify_seeds(text: str) -> list[int]:
-    section = re.search(
-        r"^  foundry-multi-seed:\n(?P<body>.*?)(?:^  [A-Za-z0-9_-]+:|\Z)",
-        text,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    if not section:
-        raise ValueError(f"Could not locate foundry-multi-seed job in {VERIFY_YML}")
-
-    seed_line = re.search(r"^\s*seed:\s*\[(?P<csv>[^\]]+)\]\s*$", section.group("body"), re.MULTILINE)
+    job_body = extract_job_body(text, "foundry-multi-seed", VERIFY_YML)
+    seed_line = re.search(r"^\s*seed:\s*\[(?P<csv>[^\]]+)\]\s*$", job_body, re.MULTILINE)
     if not seed_line:
         raise ValueError(f"Could not locate matrix seed list in {VERIFY_YML}")
     return _parse_seed_csv(seed_line.group("csv"), VERIFY_YML)

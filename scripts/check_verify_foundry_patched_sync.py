@@ -7,20 +7,15 @@ import re
 import sys
 from pathlib import Path
 
+from workflow_jobs import extract_job_body
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 SCRIPTS_README = ROOT / "scripts" / "README.md"
 
 
 def _extract_foundry_patched_job(text: str) -> str:
-    section = re.search(
-        r"^  foundry-patched:\n(?P<body>.*?)(?:^  [A-Za-z0-9_-]+:|\Z)",
-        text,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    if not section:
-        raise ValueError(f"Could not locate foundry-patched job in {VERIFY_YML}")
-    return section.group("body")
+    return extract_job_body(text, "foundry-patched", VERIFY_YML)
 
 
 def _extract_env_literal(job_body: str, name: str) -> str:

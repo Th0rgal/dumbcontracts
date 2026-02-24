@@ -8,19 +8,14 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from workflow_jobs import extract_job_body, extract_top_level_jobs
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 
 
 def _extract_job_block(text: str, job_name: str) -> str:
-    m = re.search(
-        rf"^  {re.escape(job_name)}:\n(?P<body>.*?)(?:^  [A-Za-z0-9_-]+:|\Z)",
-        text,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    if not m:
-        raise ValueError(f"Could not locate '{job_name}' job in {VERIFY_YML}")
-    return m.group("body")
+    return extract_job_body(text, job_name, VERIFY_YML)
 
 
 def _extract_upload_names(build_body: str) -> list[str]:
@@ -40,21 +35,7 @@ def _extract_download_names(job_body: str) -> list[str]:
 
 
 def _extract_job_names(text: str) -> list[str]:
-    lines = text.splitlines()
-    jobs_idx = next((i for i, line in enumerate(lines) if line == "jobs:"), None)
-    if jobs_idx is None:
-        raise ValueError(f"Could not locate jobs section in {VERIFY_YML}")
-
-    jobs: list[str] = []
-    for line in lines[jobs_idx + 1 :]:
-        if line and not line.startswith(" "):
-            break
-        m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
-        if m:
-            jobs.append(m.group(1))
-    if not jobs:
-        raise ValueError(f"Could not locate any top-level jobs in {VERIFY_YML}")
-    return jobs
+    return extract_top_level_jobs(text, VERIFY_YML)
 
 
 def _duplicates(items: list[str]) -> list[str]:

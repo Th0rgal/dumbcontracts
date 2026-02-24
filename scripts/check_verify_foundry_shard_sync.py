@@ -7,6 +7,8 @@ import re
 import sys
 from pathlib import Path
 
+from workflow_jobs import extract_job_body
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 SCRIPTS_README = ROOT / "scripts" / "README.md"
@@ -23,14 +25,7 @@ def _parse_csv_ints(raw: str, source: Path) -> list[int]:
 
 
 def _extract_foundry_job_body(text: str) -> str:
-    m = re.search(
-        r"^  foundry:\n(?P<body>.*?)(?:^  [A-Za-z0-9_-]+:|\Z)",
-        text,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    if not m:
-        raise ValueError(f"Could not locate foundry job in {VERIFY_YML}")
-    return m.group("body")
+    return extract_job_body(text, "foundry", VERIFY_YML)
 
 
 def _extract_verify_shard_indices(body: str) -> list[int]:

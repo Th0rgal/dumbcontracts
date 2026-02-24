@@ -7,19 +7,14 @@ import re
 import sys
 from pathlib import Path
 
+from workflow_jobs import extract_job_body
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 
 
 def _extract_job_body(text: str, job: str) -> str:
-    section = re.search(
-        rf"^  {re.escape(job)}:\n(?P<body>.*?)(?:^  [A-Za-z0-9_-]+:|\Z)",
-        text,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    if not section:
-        raise ValueError(f"Could not locate {job} job in {VERIFY_YML}")
-    return section.group("body")
+    return extract_job_body(text, job, VERIFY_YML)
 
 
 def _extract_env_literal(job_body: str, name: str, job: str) -> str:

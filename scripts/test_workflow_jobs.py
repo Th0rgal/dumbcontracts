@@ -199,6 +199,33 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_stdbuf_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "stdbuf -oL -eL forge test --no-match-test Random10000",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_sudo_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "sudo -E -u runner forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_composed_sudo_stdbuf_env_wrappers(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "sudo -E stdbuf -oL env FOUNDRY_PROFILE=difftest forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
 
 if __name__ == "__main__":
     unittest.main()

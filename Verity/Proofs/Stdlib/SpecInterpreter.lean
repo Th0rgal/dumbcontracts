@@ -337,6 +337,14 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
           let key2Val := evalExpr ctx storage fields paramNames externalFns key2
           storage.getMapping2 baseSlot key1Val key2Val
       | none => 0
+  | Expr.mapping2Word fieldName key1 key2 wordOffset =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
+          let key1Val := evalExpr ctx storage fields paramNames externalFns key1
+          let key2Val := evalExpr ctx storage fields paramNames externalFns key2
+          storage.getMapping2 baseSlot key1Val ((key2Val + wordOffset) % modulus)
+      | none => 0
   | Expr.caller => ctx.sender.val
   | Expr.contractAddress =>
       -- Contract address is not modeled in the scalar interpreter.
@@ -491,7 +499,7 @@ def exprUsesUnsupportedLowLevel : Expr → Bool
   | Expr.returndataOptionalBoolAt _ => true
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
       exprUsesUnsupportedLowLevel key
-  | Expr.mapping2 _ key1 key2 =>
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2
   | Expr.externalCall _ args | Expr.internalCall _ args =>
       exprListUsesUnsupportedLowLevel args
@@ -521,7 +529,7 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       exprUsesUnsupportedLowLevel value
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>
       exprUsesUnsupportedLowLevel key || exprUsesUnsupportedLowLevel value
-  | Stmt.setMapping2 _ key1 key2 value =>
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2 || exprUsesUnsupportedLowLevel value
   | Stmt.requireError cond _ args =>
       exprUsesUnsupportedLowLevel cond || exprListUsesUnsupportedLowLevel args
@@ -700,6 +708,23 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
               let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
               let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
               let key2 := evalExpr ctx state.storage fields paramNames externalFns key2Expr
+              let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
+              let storage' :=
+                writeSlots.foldl (fun acc writeSlot => acc.setMapping2 writeSlot key1 key2 value) state.storage
+              some (ctx, { state with storage := storage' })
+      | none => none
+
+  | Stmt.setMapping2Word fieldName key1Expr key2Expr wordOffset valueExpr =>
+      match fields.findIdx? (·.name == fieldName) with
+      | some idx =>
+          match fields[idx]? with
+          | none => none
+          | some f =>
+              let baseSlot := f.slot.getD idx
+              let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
+              let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
+              let key2Raw := evalExpr ctx state.storage fields paramNames externalFns key2Expr
+              let key2 := (key2Raw + wordOffset) % modulus
               let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
               let storage' :=
                 writeSlots.foldl (fun acc writeSlot => acc.setMapping2 writeSlot key1 key2 value) state.storage

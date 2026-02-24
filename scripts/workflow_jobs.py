@@ -408,6 +408,67 @@ def _consume_nice_wrapper(tokens: list[str], i: int) -> int:
     return i
 
 
+def _consume_stdbuf_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "stdbuf"):
+        return i
+    i += 1
+    stdbuf_opts_with_arg = {"-i", "-o", "-e"}
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok in stdbuf_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if any(tok.startswith(prefix) and len(tok) > 2 for prefix in stdbuf_opts_with_arg):
+            i += 1
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    return i
+
+
+def _consume_sudo_wrapper(tokens: list[str], i: int) -> int:
+    if i >= len(tokens) or not _token_matches_program(tokens[i], "sudo"):
+        return i
+    i += 1
+    sudo_opts_with_arg = {
+        "-u",
+        "--user",
+        "-g",
+        "--group",
+        "-h",
+        "--host",
+        "-p",
+        "--prompt",
+        "-C",
+        "--close-from",
+    }
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok in sudo_opts_with_arg:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        if any(tok.startswith(prefix + "=") for prefix in sudo_opts_with_arg if prefix.startswith("--")):
+            i += 1
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    return i
+
+
 def _consume_command_wrapper(tokens: list[str], i: int) -> int:
     if i >= len(tokens) or not _token_matches_program(tokens[i], "command"):
         return i
@@ -513,6 +574,16 @@ def match_shell_command(
             changed = True
 
         while True:
+            nxt = _consume_sudo_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
+                continue
+            nxt = _consume_stdbuf_wrapper(tokens, i)
+            if nxt != i:
+                i = nxt
+                changed = True
+                continue
             nxt = _consume_time_wrapper(tokens, i)
             if nxt != i:
                 i = nxt

@@ -41,10 +41,37 @@ def _extract_workflow_checks_commands(text: str) -> list[str]:
         steps.append(line)
 
     commands: list[str] = []
-    for line in steps:
-        cmd = re.match(r"^\s*run:\s*(python3\s+scripts/[^\n]+?)\s*$", line)
-        if cmd:
-            commands.append(_normalize_workflow_cmd(cmd.group(1)))
+    i = 0
+    while i < len(steps):
+        line = steps[i]
+        cmd = re.match(r"^(?P<indent>\s*)run:\s*(?P<body>.*?)\s*$", line)
+        if not cmd:
+            i += 1
+            continue
+
+        run_indent = len(cmd.group("indent"))
+        body = cmd.group("body")
+
+        if body.startswith("|") or body.startswith(">"):
+            i += 1
+            while i < len(steps):
+                block_line = steps[i]
+                if block_line.strip():
+                    block_indent = len(block_line) - len(block_line.lstrip(" "))
+                    if block_indent <= run_indent:
+                        break
+                    invocation = re.match(
+                        r"^\s*(python3\s+scripts/[^\n]+?)\s*$", block_line
+                    )
+                    if invocation:
+                        commands.append(_normalize_workflow_cmd(invocation.group(1)))
+                i += 1
+            continue
+
+        invocation = re.match(r"^(python3\s+scripts/[^\n]+?)\s*$", body)
+        if invocation:
+            commands.append(_normalize_workflow_cmd(invocation.group(1)))
+        i += 1
     if not commands:
         raise ValueError(f"No python3 scripts/* run commands found in checks job in {VERIFY_YML}")
     return commands

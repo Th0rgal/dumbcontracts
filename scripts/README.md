@@ -102,6 +102,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_contract_structure.py`** - Validates all contracts in Examples/ have complete file structure (Spec, Invariants, Basic proofs, Correctness proofs)
 - **`check_lean_hygiene.py`** - Validates proof hygiene (`#eval/#check/#print/#reduce`, `native_decide`, `sorry`) and exactly 1 `allowUnsafeReducibility`; parsing is comment/string-aware (including Lean raw strings) via shared Lean lexer utilities
 - **`check_lean_warning_regression.py`** - Enforces Lean warning non-regression from `lake build` output against `artifacts/lean_warning_baseline.json` (allows warning reduction, blocks warning increases by total/file/message), with strict baseline schema enforcement (required keys, no null counters, no boolean-as-integer coercions) and fail-closed UTF-8 log decoding
+- **`check_proof_length.py`** - Enforces proof length limits: soft limit at 30 lines, hard limit at 50 lines with an explicit allowlist for pre-existing long proofs; reports proof length distribution as a CI summary table (`--format=markdown`); comment/string-aware via shared Lean lexer utilities
 
 ```bash
 # Run locally before submitting documentation changes
@@ -246,6 +247,7 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 27. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
 28. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 29. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
+30. Proof length limits (`check_proof_length.py`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
@@ -257,7 +259,8 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 7. Static gas report invariants (`check_gas_report.py`)
 8. Save baseline + patch-enabled static gas report artifacts (`gas-report-static.tsv`, `gas-report-static-patched.tsv`)
 9. Patch gas delta non-regression + measurable improvement gate (`check_patch_gas_delta.py`)
-10. Coverage and storage layout reports in workflow summary (`report_property_coverage.py`, `check_storage_layout.py`)
+10. Proof length distribution report in workflow summary (`check_proof_length.py --format=markdown`)
+11. Coverage and storage layout reports in workflow summary (`report_property_coverage.py`, `check_storage_layout.py`)
 
 **`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42

@@ -87,6 +87,25 @@ FOUNDRY_PROFILE=difftest forge test           # 404 tests across 35 suites
 
 ---
 
+## Verification Guarantees
+
+Every claim below is enforced by CI on every commit. Each one can be independently reproduced with a single command.
+
+| Claim | Value | Verify locally |
+|-------|-------|----------------|
+| Proven theorems | 431 | `make verify` |
+| Incomplete proofs (`sorry`) | 0 | `make verify` (Lean rejects sorry) |
+| Project-specific axioms | 1 ([documented](AXIOMS.md)) | `make axiom-report` |
+| Axiom dependency audit | 569 theorems checked | `make axiom-report` |
+| Foundry runtime tests | 404 across 35 suites | `make test-foundry` |
+| Property test coverage | 250/431 (58%) | `python3 scripts/check_property_coverage.py` |
+| CI validation scripts | 30 | `make check` |
+| Proof length enforcement | 92% under 30 lines | `python3 scripts/check_proof_length.py` |
+
+See [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md) for the full trust model and [CONTRIBUTING.md](CONTRIBUTING.md) for the proof hygiene requirements enforced on every PR.
+
+---
+
 Verity is a Lean 4 framework that lets you write smart contracts in a domain specific language, prove key properties, and compile to EVM bytecode.
 
 The project has three contract artifacts. Keep them separate:
@@ -195,6 +214,20 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.
+
+## How Verity Compares
+
+Smart contract verification is an active field with many strong tools. Each takes a different approach with different trade-offs. Verity's contribution is bringing interactive theorem proving (Lean 4) to the full compilation pipeline, which gives unbounded proofs at the cost of more manual effort per property.
+
+| | Certora | Halmos | Runtime Monitoring | Verity |
+|---|---|---|---|---|
+| **Approach** | Bounded model checking via custom prover | Symbolic execution via Z3 | Runtime assertions | Interactive theorem proving (Lean 4) |
+| **Strengths** | Excellent automation, large ecosystem, battle-tested on production protocols | Free and open-source, integrates with Foundry, good for finding concrete bugs | Zero overhead at deploy time (checks only in testing), catches real transactions | Unbounded proofs (no loop depth limits), verified compiler, machine-checked by Lean kernel |
+| **Trade-offs** | Bounded (may miss bugs beyond loop unrolling depth), closed-source prover | Bounded (path explosion on complex contracts), depends on Z3 solver completeness | Cannot prove absence of bugs, only detects them at runtime | Higher manual effort per property, smaller ecosystem, requires Lean expertise |
+| **Compiler trust** | Trusts Solidity compiler entirely | Trusts Solidity compiler entirely | N/A | Verifies 3 compilation layers; trusts only `solc` Yul-to-bytecode |
+| **Best for** | Production protocol audits at scale | Bug-finding in Foundry-based workflows | Monitoring deployed contracts | High-assurance contracts where unbounded correctness guarantees matter |
+
+Verity is not a replacement for any of these tools. For most teams, Certora or Halmos will be the practical choice because their automation is far ahead. Verity is for cases where you need mathematical certainty that a property holds for all possible inputs and all possible execution paths, and you are willing to invest the proof engineering effort to get there.
 
 ## Getting Started
 

@@ -178,6 +178,9 @@ jobs:
       - name: Check PrintAxioms.lean freshness
         run: python3 scripts/generate_print_axioms.py --check
 
+      - name: Check proof length limits
+        run: python3 scripts/check_proof_length.py
+
       - name: Run Python unit tests
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
@@ -408,6 +411,9 @@ jobs:
             for patch, total in sorted(totals.items(), key=lambda kv: kv[1], reverse=True):
               print(f"| `{patch}` | {total} | {contracts[patch]} |")
           PY
+
+      - name: Generate proof length report
+        run: python3 scripts/check_proof_length.py --format=markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Generate property coverage report
         run: python3 scripts/report_property_coverage.py --format=markdown >> $GITHUB_STEP_SUMMARY

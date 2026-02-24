@@ -57,12 +57,51 @@ FOUNDRY_PROFILE=difftest forge test  # Must pass — runs all Foundry tests
 - Run `python3 scripts/check_doc_counts.py` to verify all counts are synchronized (validates 14 doc files + property test headers)
 - Run `python3 scripts/check_lean_hygiene.py` to verify no `#eval` in proof files and `allowUnsafeReducibility` count is correct
 
+## Proof Hygiene Requirements
+
+Every PR that touches proof files must satisfy all of the following.
+Each requirement is enforced by CI and cannot be bypassed without updating
+the corresponding enforcement script.
+
+1. **Zero `sorry`**: `lake build` rejects incomplete proofs at the Lean kernel level.
+   CI runs an independent grep scan as defense in depth
+   ([`check_lean_hygiene.py`](scripts/check_lean_hygiene.py)).
+
+2. **Zero new axioms** without a same-commit update to [AXIOMS.md](AXIOMS.md)
+   including: justification, risk rating, CI validation strategy, and
+   elimination path. Enforced by
+   [`check_axiom_locations.py`](scripts/check_axiom_locations.py).
+
+3. **Axiom dependency freshness**: If theorems are added or removed,
+   `PrintAxioms.lean` must be regenerated
+   (`python3 scripts/generate_print_axioms.py`).
+   CI validates via `--check` mode.
+
+4. **Proof size**: Proofs should be under 30 lines. Proofs over 50 lines
+   require an entry in the allowlist in
+   [`check_proof_length.py`](scripts/check_proof_length.py) with a
+   PR comment explaining why decomposition is not feasible. Enforced by CI.
+
+5. **No `native_decide` in contract proofs**: `native_decide` bypasses the
+   Lean kernel checker. It is allowed only in smoke tests
+   (`Compiler/Proofs/YulGeneration/SmokeTests.lean`). Enforced by
+   [`check_lean_hygiene.py`](scripts/check_lean_hygiene.py).
+
+6. **No debug commands in proofs**: `#eval`, `#check`, `#print`, `#reduce` are
+   forbidden in proof files (they slow incremental builds). Enforced by
+   [`check_lean_hygiene.py`](scripts/check_lean_hygiene.py).
+
+7. **Documentation count sync**: Module headers and documentation files must
+   accurately reflect theorem, axiom, and contract counts.
+   Enforced by [`check_doc_counts.py`](scripts/check_doc_counts.py)
+   (validates 14 files).
+
 ## Code Style
 
 **Lean**:
 - 2-space indentation
 - Meaningful names (`irState` not `s`)
-- Proofs under 20 lines when possible
+- Proofs under 30 lines when possible (see Proof Hygiene above)
 - Document complex proof strategies
 
 **Commits**:

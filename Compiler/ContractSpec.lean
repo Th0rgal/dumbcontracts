@@ -307,6 +307,15 @@ inductive Stmt
       (resultVars : List String)  -- local vars to bind return values to
       (externalName : String)     -- name of the external function declaration
       (args : List Expr)          -- call arguments
+  /-- High-level ABI-encoded external call with return value binding.
+      Compiles to: mstore(selector+args), call/staticcall, revert forwarding, returndatacopy+mload.
+      Covers the common `call(gas(), target, 0, 0, calldataSize, 0, 32)` + decode pattern. -/
+  | externalCallWithReturn
+      (resultVar : String)       -- local variable to bind the returned uint256
+      (target : Expr)            -- target contract address
+      (selector : Nat)           -- 4-byte function selector (e.g., 0xa035b1fe)
+      (args : List Expr)         -- ABI-encoded arguments (each occupies 32 bytes)
+      (isStatic : Bool := false) -- use staticcall instead of call
   deriving Repr
 
 structure FunctionSpec where
@@ -633,6 +642,8 @@ private partial def collectStmtNames : Stmt → List String
       collectExprListNames topics ++ collectExprNames dataOffset ++ collectExprNames dataSize
   | Stmt.externalCallBind resultVars externalName args =>
       resultVars ++ externalName :: collectExprListNames args
+  | Stmt.externalCallWithReturn resultVar _ _ args _ =>
+      resultVar :: collectExprListNames args
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -1098,6 +1109,8 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike dataSize
   | Stmt.externalCallBind _ _ args =>
       args.any exprContainsUnsafeLogicalCallLike
+  | Stmt.externalCallWithReturn _ target _ args _ =>
+      exprContainsUnsafeLogicalCallLike target || args.any exprContainsUnsafeLogicalCallLike
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1327,6 +1340,10 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.externalCallBind resultVars _ args => do
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
       pure (resultVars.reverse ++ localScope)
+  | Stmt.externalCallWithReturn resultVar target _ args _ => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount target
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      pure (resultVar :: localScope)
   | _ => pure localScope
 
 private partial def validateScopedStmtListIdentifiers
@@ -1563,6 +1580,8 @@ private partial def stmtWritesState : Stmt → Bool
       args.any exprWritesState || true
   | Stmt.externalCallBind _ _ args =>
       args.any exprWritesState || true
+  | Stmt.externalCallWithReturn _ target _ args _ =>
+      exprWritesState target || args.any exprWritesState || true
 where
   exprWritesState (expr : Expr) : Bool :=
     match expr with
@@ -1639,6 +1658,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       args.any exprReadsStateOrEnv || true
   | Stmt.externalCallBind _ _ args =>
       args.any exprReadsStateOrEnv || true
+  | Stmt.externalCallWithReturn _ target _ args _ =>
+      exprReadsStateOrEnv target || args.any exprReadsStateOrEnv || true
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
@@ -2233,6 +2254,9 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       args.forM (validateInteropExpr context)
   | Stmt.externalCallBind _ _ args =>
       args.forM (validateInteropExpr context)
+  | Stmt.externalCallWithReturn _ target _ args _ => do
+      validateInteropExpr context target
+      args.forM (validateInteropExpr context)
   | Stmt.returnValues values =>
       values.forM (validateInteropExpr context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -2460,6 +2484,9 @@ private partial def validateInternalCallShapesInStmt
       validateInternalCallShapesInExpr functions callerName dataSize
   | Stmt.externalCallBind _resultVars _ args =>
       args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.externalCallWithReturn _ target _ args _ => do
+      validateInternalCallShapesInExpr functions callerName target
+      args.forM (validateInternalCallShapesInExpr functions callerName)
   | _ =>
       pure ()
 
@@ -2606,6 +2633,9 @@ private partial def validateExternalCallTargetsInStmt
                 else
                   checkDuplicateVars (name :: seen) rest
           checkDuplicateVars [] resultVars
+  | Stmt.externalCallWithReturn _ target _ args _ => do
+      validateExternalCallTargetsInExpr externals context target
+      args.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.returnValues values =>
       values.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -3751,6 +3781,48 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
   | Stmt.externalCallBind resultVars externalName args => do
       let argExprs ← compileExprList fields dynamicSource args
       pure [YulStmt.letMany resultVars (YulExpr.call externalName argExprs)]
+  | Stmt.externalCallWithReturn resultVar target selector args isStatic => do
+      let targetExpr ← compileExpr fields dynamicSource target
+      let argCompiledExprs ← compileExprList fields dynamicSource args
+      -- Step 1: store selector (left-shifted 224 bits) at memory offset 0
+      let selectorExpr := YulExpr.call "shl" [YulExpr.lit 224, YulExpr.hex selector]
+      let storeSelector := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, selectorExpr])
+      -- Step 2: store each arg at offsets 4, 36, 68, ...
+      let storeArgs := argCompiledExprs.zipIdx.map fun (argExpr, i) =>
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit (4 + i * 32), argExpr])
+      -- Step 3: perform call/staticcall
+      let calldataSize := 4 + args.length * 32
+      let callExpr :=
+        if isStatic then
+          YulExpr.call "staticcall" [
+            YulExpr.call "gas" [],
+            targetExpr,
+            YulExpr.lit 0, YulExpr.lit calldataSize,
+            YulExpr.lit 0, YulExpr.lit 32
+          ]
+        else
+          YulExpr.call "call" [
+            YulExpr.call "gas" [],
+            targetExpr,
+            YulExpr.lit 0,
+            YulExpr.lit 0, YulExpr.lit calldataSize,
+            YulExpr.lit 0, YulExpr.lit 32
+          ]
+      let letSuccess := YulStmt.let_ "__ecwr_success" callExpr
+      -- Step 4: revert forwarding on failure
+      let revertBlock := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__ecwr_success"]) [
+        YulStmt.let_ "__ecwr_rds" (YulExpr.call "returndatasize" []),
+        YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__ecwr_rds"]),
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__ecwr_rds"])
+      ]
+      -- Step 5: validate return data size ≥ 32
+      let sizeCheck := YulStmt.if_ (YulExpr.call "lt" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+      ]
+      -- Step 6: extract return value
+      let copyReturn := YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.lit 32])
+      let bindResult := YulStmt.let_ resultVar (YulExpr.call "mload" [YulExpr.lit 0])
+      pure [YulStmt.block ([storeSelector] ++ storeArgs ++ [letSuccess, revertBlock, sizeCheck, copyReturn, bindResult])]
   | Stmt.returnValues values => do
       if isInternal then
         if values.length != internalRetNames.length then
@@ -4019,6 +4091,7 @@ private partial def collectStmtBindNames : Stmt → List String
       varName :: collectStmtListBindNames body
   | Stmt.internalCallAssign names _ _ => names
   | Stmt.externalCallBind resultVars _ _ => resultVars
+  | Stmt.externalCallWithReturn resultVar _ _ _ _ => [resultVar]
   | _ => []
 
 private partial def collectStmtListBindNames : List Stmt → List String
@@ -4091,6 +4164,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       topics.any exprUsesArrayElement || exprUsesArrayElement dataOffset || exprUsesArrayElement dataSize
   | Stmt.externalCallBind _ _ args =>
       args.any exprUsesArrayElement
+  | Stmt.externalCallWithReturn _ target _ args _ =>
+      exprUsesArrayElement target || args.any exprUsesArrayElement
   | _ => false
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=

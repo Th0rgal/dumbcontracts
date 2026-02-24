@@ -35,7 +35,7 @@ INTERPRETER_FILE = ROOT / "Compiler" / "Interpreter.lean"
 CODEGEN_FILE = ROOT / "Compiler" / "Codegen.lean"
 BUILTINS_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Builtins.lean"
 YUL_DIR_LEGACY = ("yul", YUL_DIR)
-YUL_DIR_AST = ("yul-ast", ROOT / "compiler" / "yul-ast")
+YUL_DIR_AST = ("yul-ast", ROOT / "generated" / "yul-ast")
 
 SIMPLE_PARAM_MAP = {
     "uint256": "uint256",

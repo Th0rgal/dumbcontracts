@@ -4616,6 +4616,9 @@ private def featureSpec : ContractSpec := {
       -- Check ABI offset pointer for bytes parameter
       assertContains "callback stores ABI bytes offset" rendered
         ["mstore(36,"]
+      -- Check bytes data is padded to 32-byte boundary in totalSize
+      assertContains "callback pads bytes to 32-byte boundary" rendered
+        ["and(add(data_length, 31), not(31))"]
 
 -- ===== Stmt.callback with multiple static args =====
 #eval! do

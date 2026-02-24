@@ -4114,8 +4114,13 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let bytesDataOffset := YulExpr.ident s!"{bytesParam}_data_offset"
       let copyBytes := dynamicCopyData dynamicSource
         (YulExpr.lit bytesDataSlot) bytesDataOffset bytesLenExpr
-      -- Total calldata size: fixed header + bytes data
-      let totalSize := YulExpr.call "add" [YulExpr.lit bytesDataSlot, bytesLenExpr]
+      -- Total calldata size: fixed header + bytes data padded to 32-byte boundary
+      -- ABI encoding requires bytes tails to be zero-padded: ceil(len/32)*32
+      let paddedBytesLen := YulExpr.call "and" [
+        YulExpr.call "add" [bytesLenExpr, YulExpr.lit 31],
+        YulExpr.call "not" [YulExpr.lit 31]
+      ]
+      let totalSize := YulExpr.call "add" [YulExpr.lit bytesDataSlot, paddedBytesLen]
       -- call(gas(), target, 0, 0, totalSize, 0, 0) — no return data expected
       let callExpr := YulExpr.call "call" [
         YulExpr.call "gas" [],

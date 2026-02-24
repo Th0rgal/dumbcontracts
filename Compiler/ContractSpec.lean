@@ -334,6 +334,10 @@ inductive Stmt
       call target, revert-forward on failure. Used for flash-loan patterns where
       the contract calls back into the caller with encoded data (#927). -/
   | callback (target : Expr) (selector : Nat) (staticArgs : List Expr) (bytesParam : String)
+  /-- Recover signer address from ECDSA signature via the ecrecover precompile (address 0x01).
+      Writes hash, v, r, s to memory[0..128], calls staticcall, reverts on failure,
+      and binds the recovered address (masked to 160 bits) to `resultVar`. -/
+  | ecrecover (resultVar : String) (hash v r s : Expr)
   deriving Repr
 
 structure FunctionSpec where
@@ -673,6 +677,8 @@ private partial def collectStmtNames : Stmt → List String
       collectExprNames token ++ collectExprNames fromAddr ++ collectExprNames to ++ collectExprNames amount
   | Stmt.callback target _ args bytesParam =>
       collectExprNames target ++ collectExprListNames args ++ [bytesParam]
+  | Stmt.ecrecover resultVar hash v r s =>
+      resultVar :: collectExprNames hash ++ collectExprNames v ++ collectExprNames r ++ collectExprNames s
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -1161,6 +1167,11 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike token || exprContainsUnsafeLogicalCallLike fromAddr || exprContainsUnsafeLogicalCallLike to || exprContainsUnsafeLogicalCallLike amount
   | Stmt.callback target _ args _ =>
       exprContainsUnsafeLogicalCallLike target || args.any exprContainsUnsafeLogicalCallLike
+  | Stmt.ecrecover _ hash v r s =>
+      exprContainsUnsafeLogicalCallLike hash ||
+      exprContainsUnsafeLogicalCallLike v ||
+      exprContainsUnsafeLogicalCallLike r ||
+      exprContainsUnsafeLogicalCallLike s
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1430,6 +1441,16 @@ private partial def validateScopedStmtIdentifiers
       | none =>
           throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' which is not a declared parameter"
       pure localScope
+  | Stmt.ecrecover resultVar hash v r s => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount hash
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount v
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount r
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount s
+      if paramScope.contains resultVar then
+        throw s!"Compilation error: {context} declares ecrecover result '{resultVar}' that shadows a parameter"
+      if localScope.contains resultVar then
+        throw s!"Compilation error: {context} redeclares ecrecover result '{resultVar}' in the same scope"
+      pure (resultVar :: localScope)
   | _ => pure localScope
 
 private partial def validateScopedStmtListIdentifiers
@@ -1679,6 +1700,8 @@ private partial def stmtWritesState : Stmt → Bool
       exprWritesState token || exprWritesState fromAddr || exprWritesState to || exprWritesState amount || true
   | Stmt.callback target _ args _ =>
       exprWritesState target || args.any exprWritesState || true
+  | Stmt.ecrecover _ hash v r s =>
+      exprWritesState hash || exprWritesState v || exprWritesState r || exprWritesState s
 where
   exprWritesState (expr : Expr) : Bool :=
     match expr with
@@ -1769,6 +1792,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       exprReadsStateOrEnv token || exprReadsStateOrEnv fromAddr || exprReadsStateOrEnv to || exprReadsStateOrEnv amount || true
   | Stmt.callback target _ args _ =>
       exprReadsStateOrEnv target || args.any exprReadsStateOrEnv || true
+  | Stmt.ecrecover _ hash v r s =>
+      exprReadsStateOrEnv hash || exprReadsStateOrEnv v || exprReadsStateOrEnv r || exprReadsStateOrEnv s || true
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
@@ -2394,6 +2419,11 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       topics.forM (validateInteropExpr context)
       validateInteropExpr context dataOffset
       validateInteropExpr context dataSize
+  | Stmt.ecrecover _ hash v r s => do
+      validateInteropExpr context hash
+      validateInteropExpr context v
+      validateInteropExpr context r
+      validateInteropExpr context s
   | _ =>
       pure ()
 
@@ -2638,6 +2668,11 @@ private partial def validateInternalCallShapesInStmt
   | Stmt.callback target _ args _ => do
       validateInternalCallShapesInExpr functions callerName target
       args.forM (validateInternalCallShapesInExpr functions callerName)
+  | Stmt.ecrecover _ hash v r s => do
+      validateInternalCallShapesInExpr functions callerName hash
+      validateInternalCallShapesInExpr functions callerName v
+      validateInternalCallShapesInExpr functions callerName r
+      validateInternalCallShapesInExpr functions callerName s
   | _ =>
       pure ()
 
@@ -2813,6 +2848,11 @@ private partial def validateExternalCallTargetsInStmt
       topics.forM (validateExternalCallTargetsInExpr externals context)
       validateExternalCallTargetsInExpr externals context dataOffset
       validateExternalCallTargetsInExpr externals context dataSize
+  | Stmt.ecrecover _ hash v r s => do
+      validateExternalCallTargetsInExpr externals context hash
+      validateExternalCallTargetsInExpr externals context v
+      validateExternalCallTargetsInExpr externals context r
+      validateExternalCallTargetsInExpr externals context s
   | _ =>
       pure ()
 
@@ -4220,6 +4260,37 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         [storeSelector] ++ storeArgs ++ [storeOffset, storeBytesLen] ++ copyBytes ++
         [YulStmt.let_ "__cb_success" callExpr, revertBlock]
       )]
+  | Stmt.ecrecover resultVar hash v r s => do
+      -- ecrecover precompile: write hash, v, r, s to memory[0..128], staticcall to address 0x01
+      let hashExpr ← compileExpr fields dynamicSource hash
+      let vExpr ← compileExpr fields dynamicSource v
+      let rExpr ← compileExpr fields dynamicSource r
+      let sExpr ← compileExpr fields dynamicSource s
+      let storeHash := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, hashExpr])
+      let storeV := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 32, vExpr])
+      let storeR := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 64, rExpr])
+      let storeS := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 96, sExpr])
+      -- staticcall(gas(), 0x01, 0, 128, 0, 32)
+      let callExpr := YulExpr.call "staticcall" [
+        YulExpr.call "gas" [],
+        YulExpr.lit 1,
+        YulExpr.lit 0, YulExpr.lit 128,
+        YulExpr.lit 0, YulExpr.lit 32
+      ]
+      -- Revert on failure
+      let revertBlock := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__ecr_success"]) [
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+      ]
+      -- Bind recovered address (masked to 160 bits) -- resultVar must be flat-scoped
+      let addrMask := YulExpr.hex 0xffffffffffffffffffffffffffffffffffffffff
+      let bindResult := YulStmt.let_ resultVar
+        (YulExpr.call "and" [YulExpr.call "mload" [YulExpr.lit 0], addrMask])
+      -- Block scopes __ecr_success; bindResult is emitted outside so resultVar is accessible
+      pure [YulStmt.block (
+        [storeHash, storeV, storeR, storeS,
+         YulStmt.let_ "__ecr_success" callExpr,
+         revertBlock]
+      ), bindResult]
 end
 
 private def isScalarParamType : ParamType → Bool
@@ -4393,6 +4464,7 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.safeTransfer _ _ _ => []
   | Stmt.safeTransferFrom _ _ _ _ => []
   | Stmt.callback _ _ _ _ => []
+  | Stmt.ecrecover resultVar _ _ _ _ => [resultVar]
   | _ => []
 
 private partial def collectStmtListBindNames : List Stmt → List String
@@ -4478,6 +4550,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement token || exprUsesArrayElement fromAddr || exprUsesArrayElement to || exprUsesArrayElement amount
   | Stmt.callback target _ args _ =>
       exprUsesArrayElement target || args.any exprUsesArrayElement
+  | Stmt.ecrecover _ hash v r s =>
+      exprUsesArrayElement hash || exprUsesArrayElement v || exprUsesArrayElement r || exprUsesArrayElement s
   | _ => false
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=

@@ -5131,6 +5131,91 @@ private def featureSpec : ContractSpec := {
     throw (IO.userError s!"✗ min interpreter equal: expected 5, got {minEqResult.returnValue}")
   IO.println "✓ SpecInterpreter evaluates min/max correctly"
 
+-- ===== Stmt.ecrecover compilation =====
+private def ecrecoverSpec : ContractSpec := {
+  name := "EcrecoverSpec"
+  fields := [{ name := "recovered", ty := FieldType.address }]
+  constructor := none
+  functions := [
+    { name := "recoverSigner"
+      params := [
+        ⟨"digest", ParamType.bytes32⟩,
+        ⟨"v", ParamType.uint256⟩,
+        ⟨"r", ParamType.bytes32⟩,
+        ⟨"s", ParamType.bytes32⟩
+      ]
+      returnType := some FieldType.address
+      body := [
+        Stmt.ecrecover "signer" (Expr.param "digest") (Expr.param "v") (Expr.param "r") (Expr.param "s"),
+        Stmt.setStorage "recovered" (Expr.localVar "signer"),
+        Stmt.return (Expr.localVar "signer")
+      ]
+    },
+    { name := "getRecovered"
+      params := []
+      returnType := some FieldType.address
+      isView := true
+      body := [
+        Stmt.return (Expr.storage "recovered")
+      ]
+    }
+  ]
+}
+
+#eval! do
+  match compile ecrecoverSpec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ ecrecover compilation failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Check for staticcall to precompile 0x01
+      assertContains "ecrecover compiles to staticcall precompile" rendered
+        ["staticcall(gas(), 1, 0, 128, 0, 32)"]
+      -- Check for mstore of hash at offset 0
+      assertContains "ecrecover stores hash at memory[0]" rendered
+        ["mstore(0,"]
+      -- Check for address mask
+      assertContains "ecrecover masks result to 160 bits" rendered
+        ["and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)"]
+      -- Check for revert on failure
+      assertContains "ecrecover reverts on staticcall failure" rendered
+        ["iszero(__ecr_success)"]
+      -- Check result binding is accessible (used in sstore after the block)
+      assertContains "ecrecover result variable accessible" rendered
+        ["signer"]
+
+-- ===== Stmt.ecrecover rejects in pure function =====
+#eval! do
+  let pureEcrecoverSpec : ContractSpec := {
+    name := "PureEcrecoverReject"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "pureFn"
+        params := [
+          ⟨"h", ParamType.bytes32⟩,
+          ⟨"v", ParamType.uint256⟩,
+          ⟨"r", ParamType.bytes32⟩,
+          ⟨"s", ParamType.bytes32⟩
+        ]
+        returnType := some FieldType.address
+        isPure := true
+        body := [
+          Stmt.ecrecover "signer" (Expr.param "h") (Expr.param "v") (Expr.param "r") (Expr.param "s"),
+          Stmt.return (Expr.localVar "signer")
+        ]
+      }
+    ]
+  }
+  match compile pureEcrecoverSpec [1] with
+  | .error err =>
+      if contains err "pure" then
+        IO.println s!"✓ ecrecover correctly rejected in pure function: {err}"
+      else
+        throw (IO.userError s!"✗ unexpected error for ecrecover in pure function: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ expected ecrecover in pure function to be rejected")
+
 -- ================================================================
 -- Stmt.externalCallBind: multi-return external call binding (#929)
 -- ================================================================
@@ -5726,5 +5811,43 @@ private def viewCalldataloadSpec : ContractSpec := {
   let _result := interpretSpec spec initialStorage tx
   -- calldatasize/calldataload are unsupported low-level, so the interpreter should skip
   IO.println s!"✓ SpecInterpreter handles calldata access specs (low-level unsupported path)"
+
+-- ===== Stmt.ecrecover result variable shadow check =====
+#eval! do
+  let shadowSpec : ContractSpec := {
+    name := "ShadowTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "shadowParam"
+        params := [
+          ⟨"digest", ParamType.bytes32⟩,
+          ⟨"v", ParamType.uint256⟩,
+          ⟨"r", ParamType.bytes32⟩,
+          ⟨"s", ParamType.bytes32⟩
+        ]
+        returnType := some FieldType.address
+        body := [
+          Stmt.ecrecover "digest" (Expr.param "digest") (Expr.param "v") (Expr.param "r") (Expr.param "s"),
+          Stmt.return (Expr.localVar "digest")
+        ]
+      }
+    ]
+  }
+  match compile shadowSpec [1] with
+  | .error err =>
+      if contains err "shadows a parameter" then
+        IO.println s!"✓ ecrecover correctly rejects shadowing parameter: {err}"
+      else
+        throw (IO.userError s!"✗ unexpected error for ecrecover shadow: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ expected ecrecover parameter shadow to be rejected")
+
+-- ===== Stmt.ecrecover SpecInterpreter unsupported =====
+#eval! do
+  if stmtUsesUnsupportedLowLevel (Stmt.ecrecover "x" (Expr.literal 0) (Expr.literal 0) (Expr.literal 0) (Expr.literal 0)) then
+    IO.println "✓ SpecInterpreter marks ecrecover as unsupported low-level"
+  else
+    throw (IO.userError "✗ SpecInterpreter should mark ecrecover as unsupported")
 
 end Compiler.ContractSpecFeatureTest

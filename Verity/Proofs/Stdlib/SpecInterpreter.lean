@@ -557,6 +557,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       exprUsesUnsupportedLowLevel target || exprListUsesUnsupportedLowLevel args
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
       false
+  | Stmt.ecrecover _ _ _ _ _ =>
+      true
 
 def stmtListUsesUnsupportedLowLevel : List Stmt → Bool
   | [] => false
@@ -805,6 +807,9 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       -- ERC20 safe transfers require linked Yul; not modeled in basic interpreter.
       none
   | Stmt.callback _target _selector _args _bytesParam =>
+      none
+  | Stmt.ecrecover _ _ _ _ _ =>
+      -- ecrecover requires low-level precompile call; not modeled in the scalar interpreter.
       none
 
 -- Execute a list of statements sequentially

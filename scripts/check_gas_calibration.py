@@ -22,7 +22,7 @@ STATIC_HEADER = "contract\tdeploy_upper_bound\truntime_upper_bound\ttotal_upper_
 ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--static-report",
@@ -68,7 +68,7 @@ def parse_args() -> argparse.Namespace:
             "Can be repeated."
         ),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def run_command(cmd: list[str], env: dict[str, str] | None = None) -> str:
@@ -300,8 +300,8 @@ def validate_contract_coverage(
     return failures
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     try:
         static_bounds = load_static_bounds(args.static_report)
         if args.foundry_report is None:

@@ -175,7 +175,7 @@ def compare_against_baseline(
     return errors
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--log", required=True, type=Path, help="Path to lake build output log")
     parser.add_argument(
@@ -189,7 +189,7 @@ def main() -> None:
         type=Path,
         help="Write baseline artifact from current log and exit",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     by_file, by_message = parse_warnings(args.log)
 

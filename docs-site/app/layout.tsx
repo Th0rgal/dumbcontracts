@@ -27,7 +27,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           navbar={navbar}
           pageMap={await getPageMap()}
           docsRepositoryBase="https://github.com/Th0rgal/verity/tree/main/docs-site"
-          banner={<span>431/431 theorems proven</span>}
           sidebar={{ defaultMenuCollapseLevel: 1 }}
           toc={{ backToTop: true }}
         >

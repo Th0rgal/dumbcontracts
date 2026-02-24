@@ -10,6 +10,10 @@ from property_utils import ROOT
 BUILTINS_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Builtins.lean"
 
 BUILTIN_NAME_RE = re.compile(r'func\s*=\s*"([^"]+)"')
+FUNC_COMPARE_RE = re.compile(r"\bfunc\s*=\s*(.+?)\s+then\b")
+STRING_LITERAL_RE = re.compile(r'^"([^"]+)"$')
+IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
+LET_STRING_BINDING_RE = re.compile(r'^\s*let\s+([A-Za-z_][A-Za-z0-9_\']*)\s*:=\s*"([^"]+)"\s*$')
 
 # Builtins currently modeled as part of the overlap subset for planned
 # EVMYulLean-backed semantics.
@@ -50,6 +54,78 @@ EVMYULLEAN_UNSUPPORTED_BUILTINS = {
 
 def extract_found_builtins(builtins_file: Path = BUILTINS_FILE) -> set[str]:
     """Extract builtin names from Builtins.lean."""
-    text = builtins_file.read_text(encoding="utf-8")
-    return set(BUILTIN_NAME_RE.findall(text))
+    found, _diagnostics = extract_found_builtins_with_diagnostics(builtins_file)
+    return found
 
+
+def _strip_lean_line_comment(line: str) -> str:
+    """Remove Lean single-line comments to avoid comment-decoy parsing."""
+    return line.split("--", 1)[0]
+
+
+def extract_found_builtins_with_diagnostics(
+    builtins_file: Path = BUILTINS_FILE,
+) -> tuple[set[str], list[str]]:
+    """Extract builtins and report non-literal dispatch patterns.
+
+    Fail-closed diagnostics are produced when `func = ... then` uses an
+    unresolved/non-literal RHS in `evalBuiltinCall`.
+    """
+    text = builtins_file.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    found: set[str] = set()
+    diagnostics: list[str] = []
+    aliases: dict[str, str] = {}
+
+    in_eval_builtin = False
+    eval_indent = 0
+
+    for line_no, raw_line in enumerate(lines, start=1):
+        line = _strip_lean_line_comment(raw_line)
+
+        if not in_eval_builtin:
+            if line.lstrip().startswith("def evalBuiltinCall"):
+                in_eval_builtin = True
+                eval_indent = len(line) - len(line.lstrip())
+            continue
+
+        stripped = line.strip()
+        if stripped:
+            indent = len(line) - len(line.lstrip())
+            if indent <= eval_indent and not stripped.startswith("|"):
+                break
+
+        let_match = LET_STRING_BINDING_RE.match(line)
+        if let_match:
+            aliases[let_match.group(1)] = let_match.group(2)
+
+        compare_match = FUNC_COMPARE_RE.search(line)
+        if not compare_match:
+            continue
+
+        rhs = compare_match.group(1).strip()
+        literal_match = STRING_LITERAL_RE.match(rhs)
+        if literal_match:
+            found.add(literal_match.group(1))
+            continue
+
+        if IDENT_RE.match(rhs):
+            resolved = aliases.get(rhs)
+            if resolved is not None:
+                found.add(resolved)
+            else:
+                diagnostics.append(
+                    f"line {line_no}: unresolved non-literal dispatch `func = {rhs}`"
+                )
+            continue
+
+        diagnostics.append(
+            f"line {line_no}: unsupported non-literal dispatch `func = {rhs}`"
+        )
+
+    # Backward-compatible fallback in case evalBuiltinCall was not detected.
+    if not found and not diagnostics:
+        found = set(BUILTIN_NAME_RE.findall(text))
+
+    return found, diagnostics

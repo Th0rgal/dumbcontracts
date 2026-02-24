@@ -16,7 +16,7 @@ from evmyullean_capability import (
     EVMYULLEAN_OVERLAP_BUILTINS,
     EVMYULLEAN_UNSUPPORTED_BUILTINS,
     VERITY_HELPER_BUILTINS,
-    extract_found_builtins,
+    extract_found_builtins_with_diagnostics,
 )
 from property_utils import ROOT
 
@@ -29,7 +29,7 @@ def main() -> int:
         )
         return 1
 
-    found = extract_found_builtins(BUILTINS_FILE)
+    found, diagnostics = extract_found_builtins_with_diagnostics(BUILTINS_FILE)
 
     allowed = EVMYULLEAN_OVERLAP_BUILTINS | VERITY_HELPER_BUILTINS
 
@@ -45,6 +45,11 @@ def main() -> int:
     if unknown:
         errors.append(
             "introduces builtins outside capability boundary: " + ", ".join(unknown)
+        )
+    if diagnostics:
+        errors.append(
+            "uses non-literal builtin dispatch patterns (fail-closed): "
+            + "; ".join(diagnostics)
         )
 
     if errors:

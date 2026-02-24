@@ -217,7 +217,7 @@ See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOM
 
 ## How Verity Compares
 
-Several strong tools exist for smart contract verification, each with real trade-offs. Verity takes a different bet: using Lean 4 as an interactive theorem prover across the full compilation pipeline. This gives unbounded proofs with no loop-depth limits, but each property takes more work to verify.
+Smart contract verification is an active field with already strong tooling today. Verity uses Lean 4 as an interactive theorem prover across the full compilation pipeline. This gives unbounded proofs with no loop-depth limits at the cost of more effort per property.
 
 | | Certora | Halmos | Runtime Monitoring | Verity |
 |---|---|---|---|---|

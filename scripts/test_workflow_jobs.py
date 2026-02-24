@@ -13,6 +13,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from workflow_jobs import (
     extract_job_body,
     extract_literal_from_mapping_blocks,
+    extract_python_script_commands,
     extract_run_commands_from_job_body,
     extract_top_level_jobs,
     match_shell_command,
@@ -112,6 +113,46 @@ class WorkflowJobsTests(unittest.TestCase):
             )
             self.assertIn('forge test --no-match-test "Random10000"', commands)
             self.assertNotIn('name: forge test --no-match-test "Random10000"', commands)
+
+    def test_extract_run_commands_from_job_body_folds_yaml_folded_scalar(self) -> None:
+        body = "\n".join(
+            [
+                "    steps:",
+                "      - name: run checks",
+                "        run: >",
+                "          python3 scripts/check_doc_counts.py",
+                "          --readme README.md",
+                "          --axioms AXIOMS.md",
+                "",
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = Path(tmpdir) / "verify.yml"
+            source.write_text(body, encoding="utf-8")
+            commands = extract_run_commands_from_job_body(
+                body,
+                source=source,
+                context="checks",
+            )
+            self.assertEqual(
+                commands,
+                [
+                    "python3 scripts/check_doc_counts.py --readme README.md --axioms AXIOMS.md",
+                ],
+            )
+
+    def test_extract_python_script_commands_keeps_args_for_folded_scalar(self) -> None:
+        run_commands = [
+            "python3 scripts/check_doc_counts.py --readme README.md --axioms AXIOMS.md"
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = Path(tmpdir) / "verify.yml"
+            source.write_text("", encoding="utf-8")
+            scripts = extract_python_script_commands(run_commands, source=source)
+            self.assertEqual(
+                scripts,
+                ["check_doc_counts.py --readme README.md --axioms AXIOMS.md"],
+            )
 
     def test_match_shell_command_accepts_path_env_wrapper(self) -> None:
         matched, forge_tokens = match_shell_command(

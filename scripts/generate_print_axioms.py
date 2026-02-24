@@ -14,6 +14,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from property_utils import strip_lean_comments
+
 ROOT = Path(__file__).resolve().parent.parent
 PROOF_DIRS = [ROOT / "Verity" / "Proofs", ROOT / "Compiler" / "Proofs"]
 OUTPUT = ROOT / "PrintAxioms.lean"
@@ -26,40 +29,54 @@ def file_to_module(path: Path) -> str:
 
 
 def extract_theorems(path: Path) -> list[tuple[str, bool]]:
-    """Extract (fully_qualified_name, is_private) pairs from a Lean file."""
-    text = path.read_text()
-    module = file_to_module(path)
-    lines = text.splitlines()
+    """Extract (fully_qualified_name, is_private) pairs from a Lean file.
 
-    # Track namespace stack
+    FQN construction: In Lean 4 the fully-qualified name of a declaration is
+    determined by the namespace stack, not the module (file) path. So a theorem
+    ``foo`` inside ``namespace A.B`` has FQN ``A.B.foo`` regardless of which file
+    it lives in.
+
+    Namespace tracking: ``end <name>`` closes the matching namespace. Bare
+    ``end`` (no name) closes ``mutual`` or ``section`` blocks, NOT namespaces,
+    so we only pop the stack when the ``end`` token matches a namespace name.
+
+    Comment handling: Uses the shared ``strip_lean_comments`` lexer which
+    correctly handles nested block comments, inline block comments, line
+    comments, and string literals.
+    """
+    text = path.read_text()
+    stripped_text = strip_lean_comments(text)
+    lines = stripped_text.splitlines()
+
+    # Track namespace stack (each entry is a dotted namespace name)
     ns_stack: list[str] = []
-    in_block_comment = False
     results: list[tuple[str, bool]] = []
 
     for line in lines:
         stripped = line.strip()
 
-        # Handle block comments
-        if "/-" in stripped and "-/" not in stripped:
-            in_block_comment = True
-            continue
-        if in_block_comment:
-            if "-/" in stripped:
-                in_block_comment = False
+        # Skip blank lines
+        if not stripped:
             continue
 
-        # Skip line comments
-        if stripped.startswith("--"):
-            continue
-
-        # Track namespace
+        # Track namespace openings
         ns_match = re.match(r"^namespace\s+(\S+)", stripped)
         if ns_match:
             ns_stack.append(ns_match.group(1))
             continue
-        if re.match(r"^end\s+", stripped):
-            if ns_stack:
+
+        # Track namespace closings: only pop when ``end X`` matches the top
+        # of the namespace stack. Bare ``end`` (closing mutual/section) and
+        # ``end X`` where X doesn't match the top namespace are ignored.
+        end_match = re.match(r"^end\s+(\S+)", stripped)
+        if end_match:
+            end_name = end_match.group(1)
+            if ns_stack and ns_stack[-1] == end_name:
                 ns_stack.pop()
+            continue
+
+        # Bare ``end`` (no name): closes mutual/section, never a namespace
+        if stripped == "end":
             continue
 
         # Match theorem/lemma declarations
@@ -72,10 +89,11 @@ def extract_theorems(path: Path) -> list[tuple[str, bool]]:
             # Remove trailing colon/where if present
             name = name.rstrip(":")
 
+            # FQN = namespace prefix + local name (no module prefix)
             if ns_stack:
-                fqn = f"{module}.{'.'.join(ns_stack)}.{name}"
+                fqn = f"{'.'.join(ns_stack)}.{name}"
             else:
-                fqn = f"{module}.{name}"
+                fqn = f"{name}"
 
             results.append((fqn, is_private))
 

@@ -20,12 +20,13 @@ import re
 import sys
 from pathlib import Path
 
-# Lean kernel axioms that are always present and expected
+# Lean kernel axioms that are always present and expected.
+# sorryAx is intentionally excluded: it indicates an incomplete proof and must
+# surface as forbidden/unexpected rather than being silently classified as builtin.
 LEAN_BUILTIN_AXIOMS = frozenset([
     "propext",
     "Quot.sound",
     "Classical.choice",
-    "sorryAx",       # Would indicate incomplete proofs!
 ])
 
 # Axioms documented in AXIOMS.md as acceptable

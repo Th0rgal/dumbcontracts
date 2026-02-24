@@ -45,681 +45,681 @@ import Compiler.Proofs.YulGeneration.Preservation
 import Compiler.Proofs.YulGeneration.StatementEquivalence
 
 -- Verity/Proofs/Counter/Basic.lean
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.setStorage_updates_count
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.getStorage_reads_count
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.setStorage_preserves_other_slots
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.setStorage_preserves_context
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.setStorage_preserves_addr_storage
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.setStorage_preserves_map_storage
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.increment_meets_spec
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.increment_adds_one
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.decrement_meets_spec
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.decrement_subtracts_one
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.getCount_meets_spec
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.getCount_reads_count_value
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.increment_getCount_correct
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.decrement_getCount_correct
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.increment_twice_adds_two
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.increment_decrement_cancel
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.increment_preserves_wellformedness
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.decrement_preserves_wellformedness
-#print axioms Verity.Proofs.Counter.Basic.Verity.Proofs.Counter.getCount_preserves_state
+#print axioms Verity.Proofs.Counter.setStorage_updates_count
+#print axioms Verity.Proofs.Counter.getStorage_reads_count
+#print axioms Verity.Proofs.Counter.setStorage_preserves_other_slots
+#print axioms Verity.Proofs.Counter.setStorage_preserves_context
+#print axioms Verity.Proofs.Counter.setStorage_preserves_addr_storage
+#print axioms Verity.Proofs.Counter.setStorage_preserves_map_storage
+#print axioms Verity.Proofs.Counter.increment_meets_spec
+#print axioms Verity.Proofs.Counter.increment_adds_one
+#print axioms Verity.Proofs.Counter.decrement_meets_spec
+#print axioms Verity.Proofs.Counter.decrement_subtracts_one
+#print axioms Verity.Proofs.Counter.getCount_meets_spec
+#print axioms Verity.Proofs.Counter.getCount_reads_count_value
+#print axioms Verity.Proofs.Counter.increment_getCount_correct
+#print axioms Verity.Proofs.Counter.decrement_getCount_correct
+#print axioms Verity.Proofs.Counter.increment_twice_adds_two
+#print axioms Verity.Proofs.Counter.increment_decrement_cancel
+#print axioms Verity.Proofs.Counter.increment_preserves_wellformedness
+#print axioms Verity.Proofs.Counter.decrement_preserves_wellformedness
+#print axioms Verity.Proofs.Counter.getCount_preserves_state
 
 -- Verity/Proofs/Counter/Correctness.lean
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.increment_state_preserved_except_count
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.decrement_state_preserved_except_count
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.getCount_state_preserved
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.increment_getCount_meets_spec
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.decrement_getCount_meets_spec
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.two_increments_meets_spec
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.increment_decrement_meets_cancel
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.getCount_preserves_wellformedness
-#print axioms Verity.Proofs.Counter.Correctness.Verity.Proofs.Counter.Correctness.decrement_at_zero_wraps_max
+#print axioms Verity.Proofs.Counter.Correctness.increment_state_preserved_except_count
+#print axioms Verity.Proofs.Counter.Correctness.decrement_state_preserved_except_count
+#print axioms Verity.Proofs.Counter.Correctness.getCount_state_preserved
+#print axioms Verity.Proofs.Counter.Correctness.increment_getCount_meets_spec
+#print axioms Verity.Proofs.Counter.Correctness.decrement_getCount_meets_spec
+#print axioms Verity.Proofs.Counter.Correctness.two_increments_meets_spec
+#print axioms Verity.Proofs.Counter.Correctness.increment_decrement_meets_cancel
+#print axioms Verity.Proofs.Counter.Correctness.getCount_preserves_wellformedness
+#print axioms Verity.Proofs.Counter.Correctness.decrement_at_zero_wraps_max
 
 -- Verity/Proofs/ERC20/Basic.lean
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.constructor_meets_spec
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.approve_meets_spec
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.balanceOf_meets_spec
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.allowanceOf_meets_spec
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.totalSupply_meets_spec
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.getOwner_meets_spec
--- #print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.mint_unfold  -- private
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.mint_meets_spec_when_owner
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.mint_increases_balance_when_owner
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.mint_increases_supply_when_owner
--- #print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.transfer_unfold_self  -- private
--- #print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.transfer_unfold_other  -- private
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.transfer_meets_spec_when_sufficient
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.transfer_decreases_sender_balance_when_sufficient
-#print axioms Verity.Proofs.ERC20.Basic.Verity.Proofs.ERC20.transfer_increases_recipient_balance_when_sufficient
+#print axioms Verity.Proofs.ERC20.constructor_meets_spec
+#print axioms Verity.Proofs.ERC20.approve_meets_spec
+#print axioms Verity.Proofs.ERC20.balanceOf_meets_spec
+#print axioms Verity.Proofs.ERC20.allowanceOf_meets_spec
+#print axioms Verity.Proofs.ERC20.totalSupply_meets_spec
+#print axioms Verity.Proofs.ERC20.getOwner_meets_spec
+-- #print axioms Verity.Proofs.ERC20.mint_unfold  -- private
+#print axioms Verity.Proofs.ERC20.mint_meets_spec_when_owner
+#print axioms Verity.Proofs.ERC20.mint_increases_balance_when_owner
+#print axioms Verity.Proofs.ERC20.mint_increases_supply_when_owner
+-- #print axioms Verity.Proofs.ERC20.transfer_unfold_self  -- private
+-- #print axioms Verity.Proofs.ERC20.transfer_unfold_other  -- private
+#print axioms Verity.Proofs.ERC20.transfer_meets_spec_when_sufficient
+#print axioms Verity.Proofs.ERC20.transfer_decreases_sender_balance_when_sufficient
+#print axioms Verity.Proofs.ERC20.transfer_increases_recipient_balance_when_sufficient
 
 -- Verity/Proofs/ERC20/Correctness.lean
-#print axioms Verity.Proofs.ERC20.Correctness.Verity.Proofs.ERC20.balanceOf_preserves_state
-#print axioms Verity.Proofs.ERC20.Correctness.Verity.Proofs.ERC20.allowanceOf_preserves_state
-#print axioms Verity.Proofs.ERC20.Correctness.Verity.Proofs.ERC20.getTotalSupply_preserves_state
-#print axioms Verity.Proofs.ERC20.Correctness.Verity.Proofs.ERC20.getOwner_preserves_state
-#print axioms Verity.Proofs.ERC20.Correctness.Verity.Proofs.ERC20.approve_is_balance_neutral_holds
-#print axioms Verity.Proofs.ERC20.Correctness.Verity.Proofs.ERC20.transfer_preserves_totalSupply_when_sufficient
-#print axioms Verity.Proofs.ERC20.Correctness.Verity.Proofs.ERC20.transfer_preserves_owner_when_sufficient
+#print axioms Verity.Proofs.ERC20.balanceOf_preserves_state
+#print axioms Verity.Proofs.ERC20.allowanceOf_preserves_state
+#print axioms Verity.Proofs.ERC20.getTotalSupply_preserves_state
+#print axioms Verity.Proofs.ERC20.getOwner_preserves_state
+#print axioms Verity.Proofs.ERC20.approve_is_balance_neutral_holds
+#print axioms Verity.Proofs.ERC20.transfer_preserves_totalSupply_when_sufficient
+#print axioms Verity.Proofs.ERC20.transfer_preserves_owner_when_sufficient
 
 -- Verity/Proofs/ERC721/Basic.lean
-#print axioms Verity.Proofs.ERC721.Basic.Verity.Proofs.ERC721.constructor_meets_spec
-#print axioms Verity.Proofs.ERC721.Basic.Verity.Proofs.ERC721.balanceOf_meets_spec
-#print axioms Verity.Proofs.ERC721.Basic.Verity.Proofs.ERC721.ownerOf_meets_spec
-#print axioms Verity.Proofs.ERC721.Basic.Verity.Proofs.ERC721.getApproved_meets_spec
-#print axioms Verity.Proofs.ERC721.Basic.Verity.Proofs.ERC721.isApprovedForAll_meets_spec
-#print axioms Verity.Proofs.ERC721.Basic.Verity.Proofs.ERC721.setApprovalForAll_meets_spec
+#print axioms Verity.Proofs.ERC721.constructor_meets_spec
+#print axioms Verity.Proofs.ERC721.balanceOf_meets_spec
+#print axioms Verity.Proofs.ERC721.ownerOf_meets_spec
+#print axioms Verity.Proofs.ERC721.getApproved_meets_spec
+#print axioms Verity.Proofs.ERC721.isApprovedForAll_meets_spec
+#print axioms Verity.Proofs.ERC721.setApprovalForAll_meets_spec
 
 -- Verity/Proofs/ERC721/Correctness.lean
-#print axioms Verity.Proofs.ERC721.Correctness.Verity.Proofs.ERC721.balanceOf_preserves_state
-#print axioms Verity.Proofs.ERC721.Correctness.Verity.Proofs.ERC721.ownerOf_preserves_state
-#print axioms Verity.Proofs.ERC721.Correctness.Verity.Proofs.ERC721.getApproved_preserves_state
-#print axioms Verity.Proofs.ERC721.Correctness.Verity.Proofs.ERC721.isApprovedForAll_preserves_state
-#print axioms Verity.Proofs.ERC721.Correctness.Verity.Proofs.ERC721.setApprovalForAll_is_balance_neutral_holds
+#print axioms Verity.Proofs.ERC721.balanceOf_preserves_state
+#print axioms Verity.Proofs.ERC721.ownerOf_preserves_state
+#print axioms Verity.Proofs.ERC721.getApproved_preserves_state
+#print axioms Verity.Proofs.ERC721.isApprovedForAll_preserves_state
+#print axioms Verity.Proofs.ERC721.setApprovalForAll_is_balance_neutral_holds
 
 -- Verity/Proofs/Ledger/Basic.lean
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.getBalance_meets_spec
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.getBalance_returns_balance
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.getBalance_preserves_state
--- #print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.deposit_unfold  -- private
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.deposit_meets_spec
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.deposit_increases_balance
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.deposit_preserves_other_balances
--- #print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.withdraw_unfold  -- private
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.withdraw_meets_spec
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.withdraw_decreases_balance
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.withdraw_reverts_insufficient
--- #print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_unfold_self  -- private
--- #print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_unfold_other  -- private
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_meets_spec
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_self_preserves_balance
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_decreases_sender
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_increases_recipient
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_reverts_insufficient
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.transfer_reverts_recipient_overflow
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.deposit_preserves_non_mapping
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.withdraw_preserves_non_mapping
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.deposit_preserves_wellformedness
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.withdraw_preserves_wellformedness
-#print axioms Verity.Proofs.Ledger.Basic.Verity.Proofs.Ledger.deposit_getBalance_correct
+#print axioms Verity.Proofs.Ledger.getBalance_meets_spec
+#print axioms Verity.Proofs.Ledger.getBalance_returns_balance
+#print axioms Verity.Proofs.Ledger.getBalance_preserves_state
+-- #print axioms Verity.Proofs.Ledger.deposit_unfold  -- private
+#print axioms Verity.Proofs.Ledger.deposit_meets_spec
+#print axioms Verity.Proofs.Ledger.deposit_increases_balance
+#print axioms Verity.Proofs.Ledger.deposit_preserves_other_balances
+-- #print axioms Verity.Proofs.Ledger.withdraw_unfold  -- private
+#print axioms Verity.Proofs.Ledger.withdraw_meets_spec
+#print axioms Verity.Proofs.Ledger.withdraw_decreases_balance
+#print axioms Verity.Proofs.Ledger.withdraw_reverts_insufficient
+-- #print axioms Verity.Proofs.Ledger.transfer_unfold_self  -- private
+-- #print axioms Verity.Proofs.Ledger.transfer_unfold_other  -- private
+#print axioms Verity.Proofs.Ledger.transfer_meets_spec
+#print axioms Verity.Proofs.Ledger.transfer_self_preserves_balance
+#print axioms Verity.Proofs.Ledger.transfer_decreases_sender
+#print axioms Verity.Proofs.Ledger.transfer_increases_recipient
+#print axioms Verity.Proofs.Ledger.transfer_reverts_insufficient
+#print axioms Verity.Proofs.Ledger.transfer_reverts_recipient_overflow
+#print axioms Verity.Proofs.Ledger.deposit_preserves_non_mapping
+#print axioms Verity.Proofs.Ledger.withdraw_preserves_non_mapping
+#print axioms Verity.Proofs.Ledger.deposit_preserves_wellformedness
+#print axioms Verity.Proofs.Ledger.withdraw_preserves_wellformedness
+#print axioms Verity.Proofs.Ledger.deposit_getBalance_correct
 
 -- Verity/Proofs/Ledger/Conservation.lean
-#print axioms Verity.Proofs.Ledger.Conservation.Verity.Proofs.Ledger.Conservation.deposit_sum_equation
-#print axioms Verity.Proofs.Ledger.Conservation.Verity.Proofs.Ledger.Conservation.deposit_sum_singleton_sender
-#print axioms Verity.Proofs.Ledger.Conservation.Verity.Proofs.Ledger.Conservation.withdraw_sum_equation
-#print axioms Verity.Proofs.Ledger.Conservation.Verity.Proofs.Ledger.Conservation.withdraw_sum_singleton_sender
-#print axioms Verity.Proofs.Ledger.Conservation.Verity.Proofs.Ledger.Conservation.transfer_sum_equation
-#print axioms Verity.Proofs.Ledger.Conservation.Verity.Proofs.Ledger.Conservation.transfer_sum_preserved_unique
-#print axioms Verity.Proofs.Ledger.Conservation.Verity.Proofs.Ledger.Conservation.deposit_withdraw_sum_cancel
+#print axioms Verity.Proofs.Ledger.Conservation.deposit_sum_equation
+#print axioms Verity.Proofs.Ledger.Conservation.deposit_sum_singleton_sender
+#print axioms Verity.Proofs.Ledger.Conservation.withdraw_sum_equation
+#print axioms Verity.Proofs.Ledger.Conservation.withdraw_sum_singleton_sender
+#print axioms Verity.Proofs.Ledger.Conservation.transfer_sum_equation
+#print axioms Verity.Proofs.Ledger.Conservation.transfer_sum_preserved_unique
+#print axioms Verity.Proofs.Ledger.Conservation.deposit_withdraw_sum_cancel
 
 -- Verity/Proofs/Ledger/Correctness.lean
-#print axioms Verity.Proofs.Ledger.Correctness.Verity.Proofs.Ledger.Correctness.transfer_preserves_wellformedness
-#print axioms Verity.Proofs.Ledger.Correctness.Verity.Proofs.Ledger.Correctness.transfer_preserves_non_mapping
-#print axioms Verity.Proofs.Ledger.Correctness.Verity.Proofs.Ledger.Correctness.withdraw_getBalance_correct
-#print axioms Verity.Proofs.Ledger.Correctness.Verity.Proofs.Ledger.Correctness.transfer_getBalance_sender_correct
-#print axioms Verity.Proofs.Ledger.Correctness.Verity.Proofs.Ledger.Correctness.transfer_getBalance_recipient_correct
-#print axioms Verity.Proofs.Ledger.Correctness.Verity.Proofs.Ledger.Correctness.deposit_withdraw_cancel
+#print axioms Verity.Proofs.Ledger.Correctness.transfer_preserves_wellformedness
+#print axioms Verity.Proofs.Ledger.Correctness.transfer_preserves_non_mapping
+#print axioms Verity.Proofs.Ledger.Correctness.withdraw_getBalance_correct
+#print axioms Verity.Proofs.Ledger.Correctness.transfer_getBalance_sender_correct
+#print axioms Verity.Proofs.Ledger.Correctness.transfer_getBalance_recipient_correct
+#print axioms Verity.Proofs.Ledger.Correctness.deposit_withdraw_cancel
 
 -- Verity/Proofs/Owned/Basic.lean
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.setStorageAddr_updates_owner
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.getStorageAddr_reads_owner
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.setStorageAddr_preserves_other_slots
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.setStorageAddr_preserves_uint_storage
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.setStorageAddr_preserves_map_storage
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.setStorageAddr_preserves_context
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.constructor_meets_spec
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.constructor_sets_owner
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.getOwner_meets_spec
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.getOwner_returns_owner
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.getOwner_preserves_state
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.isOwner_meets_spec
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.isOwner_returns_correct_value
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.transferOwnership_unfold
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.transferOwnership_meets_spec_when_owner
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.transferOwnership_changes_owner_when_allowed
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.constructor_getOwner_correct
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.constructor_preserves_wellformedness
-#print axioms Verity.Proofs.Owned.Basic.Verity.Proofs.Owned.getOwner_preserves_wellformedness
+#print axioms Verity.Proofs.Owned.setStorageAddr_updates_owner
+#print axioms Verity.Proofs.Owned.getStorageAddr_reads_owner
+#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_other_slots
+#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_uint_storage
+#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_map_storage
+#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_context
+#print axioms Verity.Proofs.Owned.constructor_meets_spec
+#print axioms Verity.Proofs.Owned.constructor_sets_owner
+#print axioms Verity.Proofs.Owned.getOwner_meets_spec
+#print axioms Verity.Proofs.Owned.getOwner_returns_owner
+#print axioms Verity.Proofs.Owned.getOwner_preserves_state
+#print axioms Verity.Proofs.Owned.isOwner_meets_spec
+#print axioms Verity.Proofs.Owned.isOwner_returns_correct_value
+#print axioms Verity.Proofs.Owned.transferOwnership_unfold
+#print axioms Verity.Proofs.Owned.transferOwnership_meets_spec_when_owner
+#print axioms Verity.Proofs.Owned.transferOwnership_changes_owner_when_allowed
+#print axioms Verity.Proofs.Owned.constructor_getOwner_correct
+#print axioms Verity.Proofs.Owned.constructor_preserves_wellformedness
+#print axioms Verity.Proofs.Owned.getOwner_preserves_wellformedness
 
 -- Verity/Proofs/Owned/Correctness.lean
-#print axioms Verity.Proofs.Owned.Correctness.Verity.Proofs.Owned.Correctness.transferOwnership_reverts_when_not_owner
-#print axioms Verity.Proofs.Owned.Correctness.Verity.Proofs.Owned.Correctness.transferOwnership_preserves_wellformedness
-#print axioms Verity.Proofs.Owned.Correctness.Verity.Proofs.Owned.Correctness.constructor_transferOwnership_getOwner
-#print axioms Verity.Proofs.Owned.Correctness.Verity.Proofs.Owned.Correctness.transferred_owner_cannot_act
+#print axioms Verity.Proofs.Owned.Correctness.transferOwnership_reverts_when_not_owner
+#print axioms Verity.Proofs.Owned.Correctness.transferOwnership_preserves_wellformedness
+#print axioms Verity.Proofs.Owned.Correctness.constructor_transferOwnership_getOwner
+#print axioms Verity.Proofs.Owned.Correctness.transferred_owner_cannot_act
 
 -- Verity/Proofs/OwnedCounter/Basic.lean
--- #print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.onlyOwner_reverts  -- private
--- #print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.guarded_reverts  -- private
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.constructor_meets_spec
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.constructor_sets_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.constructor_preserves_count
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.getCount_meets_spec
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.getCount_returns_count
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.getCount_preserves_state
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.getOwner_meets_spec
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.getOwner_returns_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.getOwner_preserves_state
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.isOwner_correct
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.increment_unfold
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.increment_meets_spec_when_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.increment_adds_one_when_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.increment_reverts_when_not_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.decrement_unfold
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.decrement_meets_spec_when_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.decrement_subtracts_one_when_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.decrement_reverts_when_not_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.transferOwnership_unfold
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.transferOwnership_meets_spec_when_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.transferOwnership_changes_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.transferOwnership_reverts_when_not_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.increment_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.decrement_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.transferOwnership_preserves_count
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.constructor_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.increment_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.decrement_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.Basic.Verity.Proofs.OwnedCounter.constructor_increment_getCount
+-- #print axioms Verity.Proofs.OwnedCounter.onlyOwner_reverts  -- private
+-- #print axioms Verity.Proofs.OwnedCounter.guarded_reverts  -- private
+#print axioms Verity.Proofs.OwnedCounter.constructor_meets_spec
+#print axioms Verity.Proofs.OwnedCounter.constructor_sets_owner
+#print axioms Verity.Proofs.OwnedCounter.constructor_preserves_count
+#print axioms Verity.Proofs.OwnedCounter.getCount_meets_spec
+#print axioms Verity.Proofs.OwnedCounter.getCount_returns_count
+#print axioms Verity.Proofs.OwnedCounter.getCount_preserves_state
+#print axioms Verity.Proofs.OwnedCounter.getOwner_meets_spec
+#print axioms Verity.Proofs.OwnedCounter.getOwner_returns_owner
+#print axioms Verity.Proofs.OwnedCounter.getOwner_preserves_state
+#print axioms Verity.Proofs.OwnedCounter.isOwner_correct
+#print axioms Verity.Proofs.OwnedCounter.increment_unfold
+#print axioms Verity.Proofs.OwnedCounter.increment_meets_spec_when_owner
+#print axioms Verity.Proofs.OwnedCounter.increment_adds_one_when_owner
+#print axioms Verity.Proofs.OwnedCounter.increment_reverts_when_not_owner
+#print axioms Verity.Proofs.OwnedCounter.decrement_unfold
+#print axioms Verity.Proofs.OwnedCounter.decrement_meets_spec_when_owner
+#print axioms Verity.Proofs.OwnedCounter.decrement_subtracts_one_when_owner
+#print axioms Verity.Proofs.OwnedCounter.decrement_reverts_when_not_owner
+#print axioms Verity.Proofs.OwnedCounter.transferOwnership_unfold
+#print axioms Verity.Proofs.OwnedCounter.transferOwnership_meets_spec_when_owner
+#print axioms Verity.Proofs.OwnedCounter.transferOwnership_changes_owner
+#print axioms Verity.Proofs.OwnedCounter.transferOwnership_reverts_when_not_owner
+#print axioms Verity.Proofs.OwnedCounter.increment_preserves_owner
+#print axioms Verity.Proofs.OwnedCounter.decrement_preserves_owner
+#print axioms Verity.Proofs.OwnedCounter.transferOwnership_preserves_count
+#print axioms Verity.Proofs.OwnedCounter.constructor_preserves_wellformedness
+#print axioms Verity.Proofs.OwnedCounter.increment_preserves_wellformedness
+#print axioms Verity.Proofs.OwnedCounter.decrement_preserves_wellformedness
+#print axioms Verity.Proofs.OwnedCounter.constructor_increment_getCount
 
 -- Verity/Proofs/OwnedCounter/Correctness.lean
--- #print axioms Verity.Proofs.OwnedCounter.Correctness.Verity.Proofs.OwnedCounter.Correctness.transfer_sender_not_new_owner  -- private
-#print axioms Verity.Proofs.OwnedCounter.Correctness.Verity.Proofs.OwnedCounter.Correctness.transfer_then_increment_reverts
-#print axioms Verity.Proofs.OwnedCounter.Correctness.Verity.Proofs.OwnedCounter.Correctness.transfer_then_decrement_reverts
-#print axioms Verity.Proofs.OwnedCounter.Correctness.Verity.Proofs.OwnedCounter.Correctness.transfer_then_transfer_reverts
-#print axioms Verity.Proofs.OwnedCounter.Correctness.Verity.Proofs.OwnedCounter.Correctness.transferOwnership_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.Correctness.Verity.Proofs.OwnedCounter.Correctness.increment_survives_transfer
+-- #print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_sender_not_new_owner  -- private
+#print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_then_increment_reverts
+#print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_then_decrement_reverts
+#print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_then_transfer_reverts
+#print axioms Verity.Proofs.OwnedCounter.Correctness.transferOwnership_preserves_wellformedness
+#print axioms Verity.Proofs.OwnedCounter.Correctness.increment_survives_transfer
 
 -- Verity/Proofs/OwnedCounter/Isolation.lean
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.increment_count_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.decrement_count_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.constructor_owner_preserves_count
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.transferOwnership_owner_preserves_count
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.constructor_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.increment_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.decrement_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.transferOwnership_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.getCount_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.getOwner_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.constructor_preserves_map_storage
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.increment_preserves_map_storage
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.decrement_preserves_map_storage
-#print axioms Verity.Proofs.OwnedCounter.Isolation.Verity.Proofs.OwnedCounter.Isolation.transferOwnership_preserves_map_storage
+#print axioms Verity.Proofs.OwnedCounter.Isolation.increment_count_preserves_owner
+#print axioms Verity.Proofs.OwnedCounter.Isolation.decrement_count_preserves_owner
+#print axioms Verity.Proofs.OwnedCounter.Isolation.constructor_owner_preserves_count
+#print axioms Verity.Proofs.OwnedCounter.Isolation.transferOwnership_owner_preserves_count
+#print axioms Verity.Proofs.OwnedCounter.Isolation.constructor_context_preserved
+#print axioms Verity.Proofs.OwnedCounter.Isolation.increment_context_preserved
+#print axioms Verity.Proofs.OwnedCounter.Isolation.decrement_context_preserved
+#print axioms Verity.Proofs.OwnedCounter.Isolation.transferOwnership_context_preserved
+#print axioms Verity.Proofs.OwnedCounter.Isolation.getCount_context_preserved
+#print axioms Verity.Proofs.OwnedCounter.Isolation.getOwner_context_preserved
+#print axioms Verity.Proofs.OwnedCounter.Isolation.constructor_preserves_map_storage
+#print axioms Verity.Proofs.OwnedCounter.Isolation.increment_preserves_map_storage
+#print axioms Verity.Proofs.OwnedCounter.Isolation.decrement_preserves_map_storage
+#print axioms Verity.Proofs.OwnedCounter.Isolation.transferOwnership_preserves_map_storage
 
 -- Verity/Proofs/SafeCounter/Basic.lean
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.getCount_meets_spec
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.getCount_returns_count
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.getCount_preserves_state
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.evm_add_eq_of_no_overflow
--- #print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_unfold  -- private
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_meets_spec
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_adds_one
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_preserves_other_slots
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_reverts_overflow
--- #print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.decrement_unfold  -- private
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.decrement_meets_spec
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.decrement_subtracts_one
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.decrement_preserves_other_slots
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.decrement_reverts_underflow
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_preserves_wellformedness
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.decrement_preserves_wellformedness
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_preserves_bounds
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.decrement_preserves_bounds
-#print axioms Verity.Proofs.SafeCounter.Basic.Verity.Proofs.SafeCounter.increment_getCount_correct
+#print axioms Verity.Proofs.SafeCounter.getCount_meets_spec
+#print axioms Verity.Proofs.SafeCounter.getCount_returns_count
+#print axioms Verity.Proofs.SafeCounter.getCount_preserves_state
+#print axioms Verity.Proofs.SafeCounter.evm_add_eq_of_no_overflow
+-- #print axioms Verity.Proofs.SafeCounter.increment_unfold  -- private
+#print axioms Verity.Proofs.SafeCounter.increment_meets_spec
+#print axioms Verity.Proofs.SafeCounter.increment_adds_one
+#print axioms Verity.Proofs.SafeCounter.increment_preserves_other_slots
+#print axioms Verity.Proofs.SafeCounter.increment_reverts_overflow
+-- #print axioms Verity.Proofs.SafeCounter.decrement_unfold  -- private
+#print axioms Verity.Proofs.SafeCounter.decrement_meets_spec
+#print axioms Verity.Proofs.SafeCounter.decrement_subtracts_one
+#print axioms Verity.Proofs.SafeCounter.decrement_preserves_other_slots
+#print axioms Verity.Proofs.SafeCounter.decrement_reverts_underflow
+#print axioms Verity.Proofs.SafeCounter.increment_preserves_wellformedness
+#print axioms Verity.Proofs.SafeCounter.decrement_preserves_wellformedness
+#print axioms Verity.Proofs.SafeCounter.increment_preserves_bounds
+#print axioms Verity.Proofs.SafeCounter.decrement_preserves_bounds
+#print axioms Verity.Proofs.SafeCounter.increment_getCount_correct
 
 -- Verity/Proofs/SafeCounter/Correctness.lean
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.increment_preserves_context
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.decrement_preserves_context
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.increment_preserves_storage_isolated
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.decrement_preserves_storage_isolated
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.getCount_preserves_context
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.getCount_preserves_wellformedness
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.increment_decrement_cancel
-#print axioms Verity.Proofs.SafeCounter.Correctness.Verity.Proofs.SafeCounter.Correctness.decrement_getCount_correct
+#print axioms Verity.Proofs.SafeCounter.Correctness.increment_preserves_context
+#print axioms Verity.Proofs.SafeCounter.Correctness.decrement_preserves_context
+#print axioms Verity.Proofs.SafeCounter.Correctness.increment_preserves_storage_isolated
+#print axioms Verity.Proofs.SafeCounter.Correctness.decrement_preserves_storage_isolated
+#print axioms Verity.Proofs.SafeCounter.Correctness.getCount_preserves_context
+#print axioms Verity.Proofs.SafeCounter.Correctness.getCount_preserves_wellformedness
+#print axioms Verity.Proofs.SafeCounter.Correctness.increment_decrement_cancel
+#print axioms Verity.Proofs.SafeCounter.Correctness.decrement_getCount_correct
 
 -- Verity/Proofs/SimpleStorage/Basic.lean
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.setStorage_updates_slot
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.getStorage_reads_slot
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.setStorage_preserves_other_slots
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.setStorage_preserves_sender
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.setStorage_preserves_address
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.setStorage_preserves_addr_storage
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.setStorage_preserves_map_storage
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.store_meets_spec
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.retrieve_meets_spec
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.store_retrieve_correct
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.store_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.retrieve_preserves_state
-#print axioms Verity.Proofs.SimpleStorage.Basic.Verity.Proofs.SimpleStorage.retrieve_twice_idempotent
+#print axioms Verity.Proofs.SimpleStorage.setStorage_updates_slot
+#print axioms Verity.Proofs.SimpleStorage.getStorage_reads_slot
+#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_other_slots
+#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_sender
+#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_address
+#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_addr_storage
+#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_map_storage
+#print axioms Verity.Proofs.SimpleStorage.store_meets_spec
+#print axioms Verity.Proofs.SimpleStorage.retrieve_meets_spec
+#print axioms Verity.Proofs.SimpleStorage.store_retrieve_correct
+#print axioms Verity.Proofs.SimpleStorage.store_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleStorage.retrieve_preserves_state
+#print axioms Verity.Proofs.SimpleStorage.retrieve_twice_idempotent
 
 -- Verity/Proofs/SimpleStorage/Correctness.lean
-#print axioms Verity.Proofs.SimpleStorage.Correctness.Verity.Proofs.SimpleStorage.Correctness.store_retrieve_roundtrip_holds
-#print axioms Verity.Proofs.SimpleStorage.Correctness.Verity.Proofs.SimpleStorage.Correctness.store_preserves_storage_isolated
-#print axioms Verity.Proofs.SimpleStorage.Correctness.Verity.Proofs.SimpleStorage.Correctness.store_preserves_addr_storage
-#print axioms Verity.Proofs.SimpleStorage.Correctness.Verity.Proofs.SimpleStorage.Correctness.store_preserves_map_storage
-#print axioms Verity.Proofs.SimpleStorage.Correctness.Verity.Proofs.SimpleStorage.Correctness.store_preserves_context
-#print axioms Verity.Proofs.SimpleStorage.Correctness.Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_context
-#print axioms Verity.Proofs.SimpleStorage.Correctness.Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleStorage.Correctness.store_retrieve_roundtrip_holds
+#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_storage_isolated
+#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_addr_storage
+#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_map_storage
+#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_context
+#print axioms Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_context
+#print axioms Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_wellformedness
 
 -- Verity/Proofs/SimpleToken/Basic.lean
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.setStorageAddr_updates_owner
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.setStorage_updates_supply
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.setMapping_updates_balance
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getMapping_reads_balance
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getStorage_reads_supply
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getStorageAddr_reads_owner
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.setMapping_preserves_other_addresses
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.constructor_meets_spec
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.constructor_sets_owner
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.constructor_sets_supply_zero
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.isOwner_true_when_owner
--- #print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.mint_unfold  -- private
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.mint_meets_spec_when_owner
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.mint_increases_balance
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.mint_increases_supply
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.mint_reverts_balance_overflow
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.mint_reverts_supply_overflow
--- #print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_unfold_self  -- private
--- #print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_unfold_other  -- private
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_meets_spec_when_sufficient
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_preserves_supply_when_sufficient
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_decreases_sender_balance
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_increases_recipient_balance
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_self_preserves_balance
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.transfer_reverts_recipient_overflow
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.balanceOf_meets_spec
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.balanceOf_returns_balance
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.balanceOf_preserves_state
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getTotalSupply_meets_spec
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getTotalSupply_returns_supply
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getTotalSupply_preserves_state
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getOwner_meets_spec
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getOwner_returns_owner
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getOwner_preserves_state
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.constructor_getTotalSupply_correct
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.constructor_getOwner_correct
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.constructor_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.balanceOf_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getTotalSupply_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.Basic.Verity.Proofs.SimpleToken.getOwner_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleToken.setStorageAddr_updates_owner
+#print axioms Verity.Proofs.SimpleToken.setStorage_updates_supply
+#print axioms Verity.Proofs.SimpleToken.setMapping_updates_balance
+#print axioms Verity.Proofs.SimpleToken.getMapping_reads_balance
+#print axioms Verity.Proofs.SimpleToken.getStorage_reads_supply
+#print axioms Verity.Proofs.SimpleToken.getStorageAddr_reads_owner
+#print axioms Verity.Proofs.SimpleToken.setMapping_preserves_other_addresses
+#print axioms Verity.Proofs.SimpleToken.constructor_meets_spec
+#print axioms Verity.Proofs.SimpleToken.constructor_sets_owner
+#print axioms Verity.Proofs.SimpleToken.constructor_sets_supply_zero
+#print axioms Verity.Proofs.SimpleToken.isOwner_true_when_owner
+-- #print axioms Verity.Proofs.SimpleToken.mint_unfold  -- private
+#print axioms Verity.Proofs.SimpleToken.mint_meets_spec_when_owner
+#print axioms Verity.Proofs.SimpleToken.mint_increases_balance
+#print axioms Verity.Proofs.SimpleToken.mint_increases_supply
+#print axioms Verity.Proofs.SimpleToken.mint_reverts_balance_overflow
+#print axioms Verity.Proofs.SimpleToken.mint_reverts_supply_overflow
+-- #print axioms Verity.Proofs.SimpleToken.transfer_unfold_self  -- private
+-- #print axioms Verity.Proofs.SimpleToken.transfer_unfold_other  -- private
+#print axioms Verity.Proofs.SimpleToken.transfer_meets_spec_when_sufficient
+#print axioms Verity.Proofs.SimpleToken.transfer_preserves_supply_when_sufficient
+#print axioms Verity.Proofs.SimpleToken.transfer_decreases_sender_balance
+#print axioms Verity.Proofs.SimpleToken.transfer_increases_recipient_balance
+#print axioms Verity.Proofs.SimpleToken.transfer_self_preserves_balance
+#print axioms Verity.Proofs.SimpleToken.transfer_reverts_recipient_overflow
+#print axioms Verity.Proofs.SimpleToken.balanceOf_meets_spec
+#print axioms Verity.Proofs.SimpleToken.balanceOf_returns_balance
+#print axioms Verity.Proofs.SimpleToken.balanceOf_preserves_state
+#print axioms Verity.Proofs.SimpleToken.getTotalSupply_meets_spec
+#print axioms Verity.Proofs.SimpleToken.getTotalSupply_returns_supply
+#print axioms Verity.Proofs.SimpleToken.getTotalSupply_preserves_state
+#print axioms Verity.Proofs.SimpleToken.getOwner_meets_spec
+#print axioms Verity.Proofs.SimpleToken.getOwner_returns_owner
+#print axioms Verity.Proofs.SimpleToken.getOwner_preserves_state
+#print axioms Verity.Proofs.SimpleToken.constructor_getTotalSupply_correct
+#print axioms Verity.Proofs.SimpleToken.constructor_getOwner_correct
+#print axioms Verity.Proofs.SimpleToken.constructor_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleToken.balanceOf_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleToken.getTotalSupply_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleToken.getOwner_preserves_wellformedness
 
 -- Verity/Proofs/SimpleToken/Correctness.lean
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.mint_reverts_when_not_owner
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.transfer_reverts_insufficient_balance
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.mint_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.transfer_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.mint_preserves_owner
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.transfer_preserves_owner
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.mint_then_balanceOf_correct
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.mint_then_getTotalSupply_correct
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.transfer_then_balanceOf_sender_correct
-#print axioms Verity.Proofs.SimpleToken.Correctness.Verity.Proofs.SimpleToken.Correctness.transfer_then_balanceOf_recipient_correct
+#print axioms Verity.Proofs.SimpleToken.Correctness.mint_reverts_when_not_owner
+#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_reverts_insufficient_balance
+#print axioms Verity.Proofs.SimpleToken.Correctness.mint_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_preserves_wellformedness
+#print axioms Verity.Proofs.SimpleToken.Correctness.mint_preserves_owner
+#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_preserves_owner
+#print axioms Verity.Proofs.SimpleToken.Correctness.mint_then_balanceOf_correct
+#print axioms Verity.Proofs.SimpleToken.Correctness.mint_then_getTotalSupply_correct
+#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_then_balanceOf_sender_correct
+#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_then_balanceOf_recipient_correct
 
 -- Verity/Proofs/SimpleToken/Isolation.lean
--- #print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.constructor_isolation  -- private
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.constructor_supply_storage_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.constructor_balance_mapping_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.constructor_owner_addr_isolated
--- #print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.mint_isolation  -- private
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.mint_supply_storage_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.mint_balance_mapping_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.mint_owner_addr_isolated
--- #print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.transfer_isolation  -- private
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.transfer_supply_storage_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.transfer_balance_mapping_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.Verity.Proofs.SimpleToken.Isolation.transfer_owner_addr_isolated
+-- #print axioms Verity.Proofs.SimpleToken.Isolation.constructor_isolation  -- private
+#print axioms Verity.Proofs.SimpleToken.Isolation.constructor_supply_storage_isolated
+#print axioms Verity.Proofs.SimpleToken.Isolation.constructor_balance_mapping_isolated
+#print axioms Verity.Proofs.SimpleToken.Isolation.constructor_owner_addr_isolated
+-- #print axioms Verity.Proofs.SimpleToken.Isolation.mint_isolation  -- private
+#print axioms Verity.Proofs.SimpleToken.Isolation.mint_supply_storage_isolated
+#print axioms Verity.Proofs.SimpleToken.Isolation.mint_balance_mapping_isolated
+#print axioms Verity.Proofs.SimpleToken.Isolation.mint_owner_addr_isolated
+-- #print axioms Verity.Proofs.SimpleToken.Isolation.transfer_isolation  -- private
+#print axioms Verity.Proofs.SimpleToken.Isolation.transfer_supply_storage_isolated
+#print axioms Verity.Proofs.SimpleToken.Isolation.transfer_balance_mapping_isolated
+#print axioms Verity.Proofs.SimpleToken.Isolation.transfer_owner_addr_isolated
 
 -- Verity/Proofs/SimpleToken/Supply.lean
--- #print axioms Verity.Proofs.SimpleToken.Supply.Verity.Proofs.SimpleToken.Supply.map_sum_zero_of_all_zero  -- private
-#print axioms Verity.Proofs.SimpleToken.Supply.Verity.Proofs.SimpleToken.Supply.constructor_establishes_supply_bounds
-#print axioms Verity.Proofs.SimpleToken.Supply.Verity.Proofs.SimpleToken.Supply.mint_sum_equation
-#print axioms Verity.Proofs.SimpleToken.Supply.Verity.Proofs.SimpleToken.Supply.mint_sum_singleton_to
-#print axioms Verity.Proofs.SimpleToken.Supply.Verity.Proofs.SimpleToken.Supply.transfer_sum_equation
-#print axioms Verity.Proofs.SimpleToken.Supply.Verity.Proofs.SimpleToken.Supply.transfer_sum_preserved_unique
+-- #print axioms Verity.Proofs.SimpleToken.Supply.map_sum_zero_of_all_zero  -- private
+#print axioms Verity.Proofs.SimpleToken.Supply.constructor_establishes_supply_bounds
+#print axioms Verity.Proofs.SimpleToken.Supply.mint_sum_equation
+#print axioms Verity.Proofs.SimpleToken.Supply.mint_sum_singleton_to
+#print axioms Verity.Proofs.SimpleToken.Supply.transfer_sum_equation
+#print axioms Verity.Proofs.SimpleToken.Supply.transfer_sum_preserved_unique
 
 -- Verity/Proofs/Stdlib/Automation.lean
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.isSuccess_success
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.isSuccess_revert
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getState_success
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getState_revert
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getStorage_runState
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_runState
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getStorage_runValue
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_getStorage
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_getStorage_diff
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.bind_pure_left
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.bind_pure_right
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.bind_assoc
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.bind_getStorage_setStorage_runState
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.bind_isSuccess_left
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getStorageAddr_runState
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_runState
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getStorageAddr_runValue
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.addressToNat_lt_modulus
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.addressToNat_injective
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getMapping_runState
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.getMapping_runValue
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.msgSender_runState
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.msgSender_runValue
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.require_true_isSuccess
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.require_false_isSuccess
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.require_success_implies_cond
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.address_beq_eq_true_iff_eq
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.address_beq_false_of_ne
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.addressToNat_ne_of_ne
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.addressToNat_beq_false_of_ne
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.evm_add_eq_hadd
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.uint256_add_val
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.uint256_sub_val
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.uint256_sub_val_of_le
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.SpecStorage_getSlot_setSlot_same
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.lookup_filter_ne
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.lookup_cons_ne
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.SpecStorage_getSlot_setSlot_diff
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.SpecStorage_getMapping_setMapping_same
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.SpecStorage_getMapping_setMapping_diff_slot
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.safeSub_some_iff_ge
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.safeSub_none_iff_lt
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.safeSub_some_val
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.safeAdd_some_iff_le
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.safeAdd_none_iff_gt
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.safeAdd_some_val
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.wf_of_state_eq
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_storageAddr
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_storageMap
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_sender
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_thisAddress
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_other_storage
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_storage
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_storageMap
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_sender
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_thisAddress
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setMapping_preserves_storage
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setMapping_preserves_storageAddr
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setMapping_preserves_sender
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setMapping_preserves_thisAddress
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_msgValue
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_msgValue
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setMapping_preserves_msgValue
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_blockTimestamp
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_blockTimestamp
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setMapping_preserves_blockTimestamp
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_knownAddresses
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_knownAddresses
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorage_preserves_events
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_events
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.setMapping_preserves_events
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.emitEvent_emitEvent_events
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.modulus_eq_max_uint256_succ
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.max_uint256_lt_modulus
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.lt_modulus_of_le_max_uint256
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.uint256_ge_val_le
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.amount_lt_modulus_of_val_ge
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.uint256_ofNat_le_of_val_ge
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.require_beq_success_implies_eq
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.require_beq_isSuccess_true_iff_eq
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.require_beq_isSuccess_false_iff_ne
-#print axioms Verity.Proofs.Stdlib.Automation.Verity.Proofs.Stdlib.Automation.owner_guard_success_implies_storageAddr_eq_sender
+#print axioms Verity.Proofs.Stdlib.Automation.isSuccess_success
+#print axioms Verity.Proofs.Stdlib.Automation.isSuccess_revert
+#print axioms Verity.Proofs.Stdlib.Automation.getState_success
+#print axioms Verity.Proofs.Stdlib.Automation.getState_revert
+#print axioms Verity.Proofs.Stdlib.Automation.getStorage_runState
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_runState
+#print axioms Verity.Proofs.Stdlib.Automation.getStorage_runValue
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_getStorage
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_getStorage_diff
+#print axioms Verity.Proofs.Stdlib.Automation.bind_pure_left
+#print axioms Verity.Proofs.Stdlib.Automation.bind_pure_right
+#print axioms Verity.Proofs.Stdlib.Automation.bind_assoc
+#print axioms Verity.Proofs.Stdlib.Automation.bind_getStorage_setStorage_runState
+#print axioms Verity.Proofs.Stdlib.Automation.bind_isSuccess_left
+#print axioms Verity.Proofs.Stdlib.Automation.getStorageAddr_runState
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_runState
+#print axioms Verity.Proofs.Stdlib.Automation.getStorageAddr_runValue
+#print axioms Verity.Proofs.Stdlib.Automation.addressToNat_lt_modulus
+#print axioms Verity.Proofs.Stdlib.Automation.addressToNat_injective
+#print axioms Verity.Proofs.Stdlib.Automation.getMapping_runState
+#print axioms Verity.Proofs.Stdlib.Automation.getMapping_runValue
+#print axioms Verity.Proofs.Stdlib.Automation.msgSender_runState
+#print axioms Verity.Proofs.Stdlib.Automation.msgSender_runValue
+#print axioms Verity.Proofs.Stdlib.Automation.require_true_isSuccess
+#print axioms Verity.Proofs.Stdlib.Automation.require_false_isSuccess
+#print axioms Verity.Proofs.Stdlib.Automation.require_success_implies_cond
+#print axioms Verity.Proofs.Stdlib.Automation.address_beq_eq_true_iff_eq
+#print axioms Verity.Proofs.Stdlib.Automation.address_beq_false_of_ne
+#print axioms Verity.Proofs.Stdlib.Automation.addressToNat_ne_of_ne
+#print axioms Verity.Proofs.Stdlib.Automation.addressToNat_beq_false_of_ne
+#print axioms Verity.Proofs.Stdlib.Automation.evm_add_eq_hadd
+#print axioms Verity.Proofs.Stdlib.Automation.uint256_add_val
+#print axioms Verity.Proofs.Stdlib.Automation.uint256_sub_val
+#print axioms Verity.Proofs.Stdlib.Automation.uint256_sub_val_of_le
+#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getSlot_setSlot_same
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_filter_ne
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_cons_ne
+#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getSlot_setSlot_diff
+#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getMapping_setMapping_same
+#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getMapping_setMapping_diff_slot
+#print axioms Verity.Proofs.Stdlib.Automation.safeSub_some_iff_ge
+#print axioms Verity.Proofs.Stdlib.Automation.safeSub_none_iff_lt
+#print axioms Verity.Proofs.Stdlib.Automation.safeSub_some_val
+#print axioms Verity.Proofs.Stdlib.Automation.safeAdd_some_iff_le
+#print axioms Verity.Proofs.Stdlib.Automation.safeAdd_none_iff_gt
+#print axioms Verity.Proofs.Stdlib.Automation.safeAdd_some_val
+#print axioms Verity.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
+#print axioms Verity.Proofs.Stdlib.Automation.wf_of_state_eq
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_storageAddr
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_storageMap
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_sender
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_thisAddress
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_other_storage
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_storage
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_storageMap
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_sender
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_thisAddress
+#print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_storage
+#print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_storageAddr
+#print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_sender
+#print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_thisAddress
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_msgValue
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_msgValue
+#print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_msgValue
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_blockTimestamp
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_blockTimestamp
+#print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_blockTimestamp
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_knownAddresses
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_knownAddresses
+#print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_events
+#print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_events
+#print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_events
+#print axioms Verity.Proofs.Stdlib.Automation.emitEvent_emitEvent_events
+#print axioms Verity.Proofs.Stdlib.Automation.modulus_eq_max_uint256_succ
+#print axioms Verity.Proofs.Stdlib.Automation.max_uint256_lt_modulus
+#print axioms Verity.Proofs.Stdlib.Automation.lt_modulus_of_le_max_uint256
+#print axioms Verity.Proofs.Stdlib.Automation.uint256_ge_val_le
+#print axioms Verity.Proofs.Stdlib.Automation.amount_lt_modulus_of_val_ge
+#print axioms Verity.Proofs.Stdlib.Automation.uint256_ofNat_le_of_val_ge
+#print axioms Verity.Proofs.Stdlib.Automation.require_beq_success_implies_eq
+#print axioms Verity.Proofs.Stdlib.Automation.require_beq_isSuccess_true_iff_eq
+#print axioms Verity.Proofs.Stdlib.Automation.require_beq_isSuccess_false_iff_ne
+#print axioms Verity.Proofs.Stdlib.Automation.owner_guard_success_implies_storageAddr_eq_sender
 
 -- Verity/Proofs/Stdlib/ListSum.lean
-#print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.countOcc_cons_eq
-#print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.countOcc_cons_ne
-#print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.countOccU_cons_eq
-#print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.countOccU_cons_ne
--- #print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.mul_one_add  -- private
-#print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.map_sum_point_update
-#print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.map_sum_point_decrease
-#print axioms Verity.Proofs.Stdlib.ListSum.Verity.Proofs.Stdlib.ListSum.map_sum_transfer_eq
+#print axioms Verity.Proofs.Stdlib.ListSum.countOcc_cons_eq
+#print axioms Verity.Proofs.Stdlib.ListSum.countOcc_cons_ne
+#print axioms Verity.Proofs.Stdlib.ListSum.countOccU_cons_eq
+#print axioms Verity.Proofs.Stdlib.ListSum.countOccU_cons_ne
+-- #print axioms Verity.Proofs.Stdlib.ListSum.mul_one_add  -- private
+#print axioms Verity.Proofs.Stdlib.ListSum.map_sum_point_update
+#print axioms Verity.Proofs.Stdlib.ListSum.map_sum_point_decrease
+#print axioms Verity.Proofs.Stdlib.ListSum.map_sum_transfer_eq
 
 -- Verity/Proofs/Stdlib/MappingAutomation.lean
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.getMapping_runState
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.getMapping_runValue
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_runState
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_getMapping_same
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_getMapping_diff
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_preserves_other_slot
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_knownAddresses_same_slot
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_knownAddresses_other_slot
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_knownAddresses_mem_iff
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.getMappingUint_runState
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.getMappingUint_runValue
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_runState
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_getMappingUint_same
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_getMappingUint_diff
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storage
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storageAddr
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storageMap
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storageMap2
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_sender
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_thisAddress
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_knownAddresses
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.getMapping2_runState
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.getMapping2_runValue
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_runState
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_getMapping2_same
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_getMapping2_diff_key1
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_getMapping2_diff_key2
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storage
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storageAddr
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storageMap
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storageMapUint
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_sender
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_thisAddress
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_knownAddresses
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_msgValue
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_blockTimestamp
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_msgValue
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_blockTimestamp
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_preserves_storageMapUint
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping_preserves_storageMap2
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setStorage_preserves_storageMapUint
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setStorage_preserves_storageMap2
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setStorageAddr_preserves_storageMapUint
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setStorageAddr_preserves_storageMap2
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_events
-#print axioms Verity.Proofs.Stdlib.MappingAutomation.Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_events
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.getMapping_runState
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.getMapping_runValue
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_runState
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_getMapping_same
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_getMapping_diff
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_preserves_other_slot
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_knownAddresses_same_slot
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_knownAddresses_other_slot
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_knownAddresses_mem_iff
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.getMappingUint_runState
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.getMappingUint_runValue
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_runState
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_getMappingUint_same
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_getMappingUint_diff
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storage
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storageAddr
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storageMap
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_storageMap2
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_sender
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_thisAddress
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_knownAddresses
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.getMapping2_runState
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.getMapping2_runValue
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_runState
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_getMapping2_same
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_getMapping2_diff_key1
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_getMapping2_diff_key2
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storage
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storageAddr
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storageMap
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_storageMapUint
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_sender
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_thisAddress
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_knownAddresses
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_msgValue
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_blockTimestamp
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_msgValue
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_blockTimestamp
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_preserves_storageMapUint
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping_preserves_storageMap2
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setStorage_preserves_storageMapUint
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setStorage_preserves_storageMap2
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setStorageAddr_preserves_storageMapUint
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setStorageAddr_preserves_storageMap2
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMappingUint_preserves_events
+#print axioms Verity.Proofs.Stdlib.MappingAutomation.setMapping2_preserves_events
 
 -- Verity/Proofs/Stdlib/Math.lean
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeAdd_some
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeAdd_none
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeAdd_zero_left
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeAdd_zero_right
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeAdd_comm
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeAdd_result_bounded
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeSub_some
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeSub_none
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeSub_zero
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeSub_self
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeSub_result_le
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_some
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_none
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_zero_left
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_zero_right
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_one_left
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_one_right
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_comm
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeDiv_some
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeDiv_none
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeDiv_zero_numerator
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeDiv_by_one
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeDiv_self
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeMul_result_bounded
-#print axioms Verity.Proofs.Stdlib.Math.Verity.Proofs.Stdlib.Math.safeDiv_result_le_numerator
+#print axioms Verity.Proofs.Stdlib.Math.safeAdd_some
+#print axioms Verity.Proofs.Stdlib.Math.safeAdd_none
+#print axioms Verity.Proofs.Stdlib.Math.safeAdd_zero_left
+#print axioms Verity.Proofs.Stdlib.Math.safeAdd_zero_right
+#print axioms Verity.Proofs.Stdlib.Math.safeAdd_comm
+#print axioms Verity.Proofs.Stdlib.Math.safeAdd_result_bounded
+#print axioms Verity.Proofs.Stdlib.Math.safeSub_some
+#print axioms Verity.Proofs.Stdlib.Math.safeSub_none
+#print axioms Verity.Proofs.Stdlib.Math.safeSub_zero
+#print axioms Verity.Proofs.Stdlib.Math.safeSub_self
+#print axioms Verity.Proofs.Stdlib.Math.safeSub_result_le
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_some
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_none
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_zero_left
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_zero_right
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_one_left
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_one_right
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_comm
+#print axioms Verity.Proofs.Stdlib.Math.safeDiv_some
+#print axioms Verity.Proofs.Stdlib.Math.safeDiv_none
+#print axioms Verity.Proofs.Stdlib.Math.safeDiv_zero_numerator
+#print axioms Verity.Proofs.Stdlib.Math.safeDiv_by_one
+#print axioms Verity.Proofs.Stdlib.Math.safeDiv_self
+#print axioms Verity.Proofs.Stdlib.Math.safeMul_result_bounded
+#print axioms Verity.Proofs.Stdlib.Math.safeDiv_result_le_numerator
 
 -- Compiler/Proofs/IRGeneration/Expr.lean
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleStorage_store_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct_with_storage
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.counter_increment_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.safeCounter_increment_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.safeCounter_decrement_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.safeCounter_getCount_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.counter_decrement_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.counter_getCount_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.owned_transferOwnership_correct_as_owner
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.owned_getOwner_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ownedCounter_increment_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ownedCounter_decrement_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ownedCounter_getCount_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ownedCounter_getOwner_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ownedCounter_transferOwnership_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ledger_deposit_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ledger_withdraw_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ledger_transfer_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.ledger_getBalance_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleToken_mint_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleToken_transfer_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleToken_balanceOf_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleToken_totalSupply_correct
-#print axioms Compiler.Proofs.IRGeneration.Expr.Compiler.Proofs.IRGeneration.simpleToken_owner_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleStorage_store_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct_with_storage
+#print axioms Compiler.Proofs.IRGeneration.counter_increment_correct
+#print axioms Compiler.Proofs.IRGeneration.safeCounter_increment_correct
+#print axioms Compiler.Proofs.IRGeneration.safeCounter_decrement_correct
+#print axioms Compiler.Proofs.IRGeneration.safeCounter_getCount_correct
+#print axioms Compiler.Proofs.IRGeneration.counter_decrement_correct
+#print axioms Compiler.Proofs.IRGeneration.counter_getCount_correct
+#print axioms Compiler.Proofs.IRGeneration.owned_transferOwnership_correct_as_owner
+#print axioms Compiler.Proofs.IRGeneration.owned_getOwner_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_increment_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_decrement_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_getCount_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_getOwner_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_transferOwnership_correct
+#print axioms Compiler.Proofs.IRGeneration.ledger_deposit_correct
+#print axioms Compiler.Proofs.IRGeneration.ledger_withdraw_correct
+#print axioms Compiler.Proofs.IRGeneration.ledger_transfer_correct
+#print axioms Compiler.Proofs.IRGeneration.ledger_getBalance_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_mint_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_transfer_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_balanceOf_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_totalSupply_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_owner_correct
 
 -- Compiler/Proofs/SpecCorrectness/Counter.lean
--- #print axioms Compiler.Proofs.SpecCorrectness.Counter.Compiler.Proofs.SpecCorrectness.evalExpr_decrement_eq  -- private
-#print axioms Compiler.Proofs.SpecCorrectness.Counter.Compiler.Proofs.SpecCorrectness.counter_increment_correct
-#print axioms Compiler.Proofs.SpecCorrectness.Counter.Compiler.Proofs.SpecCorrectness.counter_decrement_correct
-#print axioms Compiler.Proofs.SpecCorrectness.Counter.Compiler.Proofs.SpecCorrectness.counter_getCount_correct
-#print axioms Compiler.Proofs.SpecCorrectness.Counter.Compiler.Proofs.SpecCorrectness.counter_getCount_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.Counter.Compiler.Proofs.SpecCorrectness.counter_increment_decrement_roundtrip
-#print axioms Compiler.Proofs.SpecCorrectness.Counter.Compiler.Proofs.SpecCorrectness.counter_decrement_increment_roundtrip
+-- #print axioms Compiler.Proofs.SpecCorrectness.evalExpr_decrement_eq  -- private
+#print axioms Compiler.Proofs.SpecCorrectness.counter_increment_correct
+#print axioms Compiler.Proofs.SpecCorrectness.counter_decrement_correct
+#print axioms Compiler.Proofs.SpecCorrectness.counter_getCount_correct
+#print axioms Compiler.Proofs.SpecCorrectness.counter_getCount_preserves_state
+#print axioms Compiler.Proofs.SpecCorrectness.counter_increment_decrement_roundtrip
+#print axioms Compiler.Proofs.SpecCorrectness.counter_decrement_increment_roundtrip
 
 -- Compiler/Proofs/SpecCorrectness/ERC20.lean
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_constructor_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_balanceOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_allowanceOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_getOwner_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_totalSupply_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_approve_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_mint_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_transfer_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_transfer_preserves_totalSupply_when_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.ERC20.Compiler.Proofs.SpecCorrectness.erc20_transfer_preserves_owner_when_sufficient
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_constructor_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_balanceOf_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_allowanceOf_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_getOwner_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_totalSupply_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_approve_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_mint_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_transfer_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_transfer_preserves_totalSupply_when_sufficient
+#print axioms Compiler.Proofs.SpecCorrectness.erc20_transfer_preserves_owner_when_sufficient
 
 -- Compiler/Proofs/SpecCorrectness/ERC721.lean
-#print axioms Compiler.Proofs.SpecCorrectness.ERC721.Compiler.Proofs.SpecCorrectness.erc721_balanceOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC721.Compiler.Proofs.SpecCorrectness.erc721_ownerOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC721.Compiler.Proofs.SpecCorrectness.erc721_getApproved_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC721.Compiler.Proofs.SpecCorrectness.erc721_isApprovedForAll_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ERC721.Compiler.Proofs.SpecCorrectness.erc721_setApprovalForAll_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc721_balanceOf_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc721_ownerOf_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc721_getApproved_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc721_isApprovedForAll_spec_correct
+#print axioms Compiler.Proofs.SpecCorrectness.erc721_setApprovalForAll_spec_correct
 
 -- Compiler/Proofs/SpecCorrectness/Ledger.lean
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_deposit_correct
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_withdraw_correct_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_withdraw_reverts_insufficient
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_transfer_correct_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_transfer_reverts_insufficient
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_getBalance_correct
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_getBalance_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_deposit_increases
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_transfer_preserves_total
-#print axioms Compiler.Proofs.SpecCorrectness.Ledger.Compiler.Proofs.SpecCorrectness.ledger_deposit_isolates_other
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_deposit_correct
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_withdraw_correct_sufficient
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_withdraw_reverts_insufficient
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_transfer_correct_sufficient
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_transfer_reverts_insufficient
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_getBalance_correct
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_getBalance_preserves_state
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_deposit_increases
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_transfer_preserves_total
+#print axioms Compiler.Proofs.SpecCorrectness.ledger_deposit_isolates_other
 
 -- Compiler/Proofs/SpecCorrectness/Owned.lean
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_constructor_correct
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_transferOwnership_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_transferOwnership_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_getOwner_correct
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_getOwner_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_only_owner_can_transfer
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_constructor_sets_owner
-#print axioms Compiler.Proofs.SpecCorrectness.Owned.Compiler.Proofs.SpecCorrectness.owned_transferOwnership_updates_owner
+#print axioms Compiler.Proofs.SpecCorrectness.owned_constructor_correct
+#print axioms Compiler.Proofs.SpecCorrectness.owned_transferOwnership_correct_as_owner
+#print axioms Compiler.Proofs.SpecCorrectness.owned_transferOwnership_reverts_as_nonowner
+#print axioms Compiler.Proofs.SpecCorrectness.owned_getOwner_correct
+#print axioms Compiler.Proofs.SpecCorrectness.owned_getOwner_preserves_state
+#print axioms Compiler.Proofs.SpecCorrectness.owned_only_owner_can_transfer
+#print axioms Compiler.Proofs.SpecCorrectness.owned_constructor_sets_owner
+#print axioms Compiler.Proofs.SpecCorrectness.owned_transferOwnership_updates_owner
 
 -- Compiler/Proofs/SpecCorrectness/OwnedCounter.lean
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_constructor_correct
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_increment_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_increment_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_decrement_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_decrement_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_getCount_correct
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_getOwner_correct
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_transferOwnership_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_transferOwnership_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_getters_preserve_state
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_only_owner_modifies
-#print axioms Compiler.Proofs.SpecCorrectness.OwnedCounter.Compiler.Proofs.SpecCorrectness.ownedCounter_slots_independent
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_constructor_correct
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_increment_correct_as_owner
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_increment_reverts_as_nonowner
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_decrement_correct_as_owner
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_decrement_reverts_as_nonowner
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_getCount_correct
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_getOwner_correct
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_transferOwnership_correct_as_owner
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_transferOwnership_reverts_as_nonowner
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_getters_preserve_state
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_only_owner_modifies
+#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_slots_independent
 
 -- Compiler/Proofs/SpecCorrectness/SafeCounter.lean
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.lookup_count_newcount  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.lookup_newcount  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.lookup_count_single  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.add_one_val_eq_mod'  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.increment_spec_success_iff  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.increment_spec_storage  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.decrement_spec_success_iff  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.decrement_spec_storage  -- private
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeIncrement_reverts_at_max
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeIncrement_succeeds_below_max
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeIncrement_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeDecrement_reverts_at_zero
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeDecrement_succeeds_above_zero
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeDecrement_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeGetCount_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SafeCounter.Compiler.Proofs.SpecCorrectness.safeGetCount_preserves_state
+-- #print axioms Compiler.Proofs.SpecCorrectness.lookup_count_newcount  -- private
+-- #print axioms Compiler.Proofs.SpecCorrectness.lookup_newcount  -- private
+-- #print axioms Compiler.Proofs.SpecCorrectness.lookup_count_single  -- private
+-- #print axioms Compiler.Proofs.SpecCorrectness.add_one_val_eq_mod'  -- private
+-- #print axioms Compiler.Proofs.SpecCorrectness.increment_spec_success_iff  -- private
+-- #print axioms Compiler.Proofs.SpecCorrectness.increment_spec_storage  -- private
+-- #print axioms Compiler.Proofs.SpecCorrectness.decrement_spec_success_iff  -- private
+-- #print axioms Compiler.Proofs.SpecCorrectness.decrement_spec_storage  -- private
+#print axioms Compiler.Proofs.SpecCorrectness.safeIncrement_reverts_at_max
+#print axioms Compiler.Proofs.SpecCorrectness.safeIncrement_succeeds_below_max
+#print axioms Compiler.Proofs.SpecCorrectness.safeIncrement_correct
+#print axioms Compiler.Proofs.SpecCorrectness.safeDecrement_reverts_at_zero
+#print axioms Compiler.Proofs.SpecCorrectness.safeDecrement_succeeds_above_zero
+#print axioms Compiler.Proofs.SpecCorrectness.safeDecrement_correct
+#print axioms Compiler.Proofs.SpecCorrectness.safeGetCount_correct
+#print axioms Compiler.Proofs.SpecCorrectness.safeGetCount_preserves_state
 
 -- Compiler/Proofs/SpecCorrectness/SimpleStorage.lean
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleStorage.Compiler.Proofs.SpecCorrectness.simpleStorage_store_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleStorage.Compiler.Proofs.SpecCorrectness.simpleStorage_retrieve_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleStorage.Compiler.Proofs.SpecCorrectness.simpleStorage_retrieve_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleStorage.Compiler.Proofs.SpecCorrectness.simpleStorage_store_retrieve_roundtrip
+#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_store_correct
+#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_retrieve_correct
+#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_retrieve_preserves_state
+#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_store_retrieve_roundtrip
 
 -- Compiler/Proofs/SpecCorrectness/SimpleToken.lean
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_constructor_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_mint_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_mint_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_transfer_correct_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_transfer_reverts_insufficient
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_balanceOf_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_getTotalSupply_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_getOwner_correct
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_getters_preserve_state
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_mint_increases_supply
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_transfer_preserves_supply
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_only_owner_mints
-#print axioms Compiler.Proofs.SpecCorrectness.SimpleToken.Compiler.Proofs.SpecCorrectness.token_transfer_preserves_total_balance
+#print axioms Compiler.Proofs.SpecCorrectness.token_constructor_correct
+#print axioms Compiler.Proofs.SpecCorrectness.token_mint_correct_as_owner
+#print axioms Compiler.Proofs.SpecCorrectness.token_mint_reverts_as_nonowner
+#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_correct_sufficient
+#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_reverts_insufficient
+#print axioms Compiler.Proofs.SpecCorrectness.token_balanceOf_correct
+#print axioms Compiler.Proofs.SpecCorrectness.token_getTotalSupply_correct
+#print axioms Compiler.Proofs.SpecCorrectness.token_getOwner_correct
+#print axioms Compiler.Proofs.SpecCorrectness.token_getters_preserve_state
+#print axioms Compiler.Proofs.SpecCorrectness.token_mint_increases_supply
+#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_supply
+#print axioms Compiler.Proofs.SpecCorrectness.token_only_owner_mints
+#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_total_balance
 
 -- Compiler/Proofs/YulGeneration/Codegen.lean
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.emitYul_runtimeCode_eq
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_eq
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.execYulFuel_mappingSlotFunc
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.execYulFuel_drop_mappingSlotFunc_buildSwitch
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.execYulStmts_runtimeCode_eq
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.find_switch_case_of_find_function
-#print axioms Compiler.Proofs.YulGeneration.Codegen.Compiler.Proofs.YulGeneration.find_switch_case_of_find_function_none
+#print axioms Compiler.Proofs.YulGeneration.emitYul_runtimeCode_eq
+#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr
+#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_eq
+#print axioms Compiler.Proofs.YulGeneration.execYulFuel_mappingSlotFunc
+#print axioms Compiler.Proofs.YulGeneration.execYulFuel_drop_mappingSlotFunc_buildSwitch
+#print axioms Compiler.Proofs.YulGeneration.execYulStmts_runtimeCode_eq
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss
+#print axioms Compiler.Proofs.YulGeneration.find_switch_case_of_find_function
+#print axioms Compiler.Proofs.YulGeneration.find_switch_case_of_find_function_none
 
 -- Compiler/Proofs/YulGeneration/Equivalence.lean
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.resultsMatch_of_execResultsAligned
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.statesAligned_refl
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execYulStmtsFuel_nil
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execYulStmtsFuel_cons
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execIRStmtsFuel_nil
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execIRStmtsFuel_cons
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmts_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execIRFunctionFuel_equiv_interpretYulBodyFromState_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.ir_yul_function_equiv_fuel_goal_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.execIRFunctionFuel_adequate
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
-#print axioms Compiler.Proofs.YulGeneration.Equivalence.Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
+#print axioms Compiler.Proofs.YulGeneration.resultsMatch_of_execResultsAligned
+#print axioms Compiler.Proofs.YulGeneration.statesAligned_refl
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtsFuel_nil
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtsFuel_cons
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_nil
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_cons
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmts_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.execIRFunctionFuel_equiv_interpretYulBodyFromState_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_fuel_goal_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.execIRFunctionFuel_adequate
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 
 -- Compiler/Proofs/YulGeneration/Lemmas.lean
-#print axioms Compiler.Proofs.YulGeneration.Lemmas.Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match_semantics
-#print axioms Compiler.Proofs.YulGeneration.Lemmas.Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match_semantics
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
 
 -- Compiler/Proofs/YulGeneration/Preservation.lean
-#print axioms Compiler.Proofs.YulGeneration.Preservation.Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_initial
-#print axioms Compiler.Proofs.YulGeneration.Preservation.Compiler.Proofs.YulGeneration.yulCodegen_preserves_semantics
-#print axioms Compiler.Proofs.YulGeneration.Preservation.Compiler.Proofs.YulGeneration.ir_function_body_equiv
+#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_initial
+#print axioms Compiler.Proofs.YulGeneration.yulCodegen_preserves_semantics
+#print axioms Compiler.Proofs.YulGeneration.ir_function_body_equiv
 
 -- Compiler/Proofs/YulGeneration/StatementEquivalence.lean
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.evalIRExpr_eq_evalYulExpr
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.evalIRExprs_eq_evalYulExprs
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.evalIRCall_eq_evalYulCall
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.assign_equiv
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.storageStore_equiv
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.conditional_equiv
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.all_stmts_equiv
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.return_equiv
-#print axioms Compiler.Proofs.YulGeneration.StatementEquivalence.Compiler.Proofs.YulGeneration.revert_equiv
+#print axioms Compiler.Proofs.YulGeneration.evalIRExpr_eq_evalYulExpr
+#print axioms Compiler.Proofs.YulGeneration.evalIRExprs_eq_evalYulExprs
+#print axioms Compiler.Proofs.YulGeneration.evalIRCall_eq_evalYulCall
+#print axioms Compiler.Proofs.YulGeneration.assign_equiv
+#print axioms Compiler.Proofs.YulGeneration.storageStore_equiv
+#print axioms Compiler.Proofs.YulGeneration.conditional_equiv
+#print axioms Compiler.Proofs.YulGeneration.all_stmts_equiv
+#print axioms Compiler.Proofs.YulGeneration.return_equiv
+#print axioms Compiler.Proofs.YulGeneration.revert_equiv
 -- Total: 597 theorems/lemmas (568 public, 29 private)

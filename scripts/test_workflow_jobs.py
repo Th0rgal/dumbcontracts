@@ -253,6 +253,24 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_chrt_no_arg_flag(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "chrt --reset-on-fork --rr 50 forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_chrt_positional_priority(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "chrt --other 0 forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
     def test_match_shell_command_accepts_stdbuf_wrapper(self) -> None:
         matched, forge_tokens = match_shell_command(
             "stdbuf -oL -eL forge test --no-match-test Random10000",

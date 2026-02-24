@@ -631,7 +631,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: compiler/yul
-                  - run: chrt --rr 50 forge test --no-match-test "Random10000"
+                  - run: chrt --reset-on-fork --other 0 forge test --no-match-test "Random10000"
             """
         )
         rc, stderr = self._run_job_sync(workflow)

@@ -488,7 +488,7 @@ def _consume_chrt_wrapper(tokens: list[str], i: int) -> int:
     if i >= len(tokens) or not _token_matches_program(tokens[i], "chrt"):
         return i
     i += 1
-    chrt_opts_with_arg = {
+    chrt_opts_without_arg = {
         "-a",
         "--all-tasks",
         "-d",
@@ -501,12 +501,14 @@ def _consume_chrt_wrapper(tokens: list[str], i: int) -> int:
         "--max",
         "-o",
         "--other",
-        "-p",
-        "--pid",
         "-r",
         "--rr",
         "-R",
         "--reset-on-fork",
+    }
+    chrt_opts_with_arg = {
+        "-p",
+        "--pid",
         "-T",
         "--sched-runtime",
         "-P",
@@ -531,6 +533,10 @@ def _consume_chrt_wrapper(tokens: list[str], i: int) -> int:
             i += 1
             continue
         break
+    # For command-launch mode, `chrt` accepts a positional priority token
+    # before the wrapped command (for example: `chrt --rr 50 forge test`).
+    if i < len(tokens) and re.fullmatch(r"[+-]?\d+", tokens[i]):
+        i += 1
     return i
 
 

@@ -19,6 +19,8 @@ import re
 import sys
 from pathlib import Path
 
+from property_utils import strip_lean_comments
+
 ROOT = Path(__file__).resolve().parents[1]
 LINKER = ROOT / "Compiler" / "Linker.lean"
 CONTRACT_SPEC = ROOT / "Compiler" / "ContractSpec.lean"
@@ -31,39 +33,146 @@ EXPECTED_LINKER_ONLY = {
 
 
 def extract_string_list(text: str, name: str) -> set[str]:
-    """Extract a Lean string list definition by name."""
-    # Match: (private )?(def|abbrev) <name> ... := \n  [...]
-    pattern = rf'(?:private\s+)?def\s+{re.escape(name)}\b[^:]*:\s*List\s+String\s*:=\s*\n((?:\s*\[.*?\](?:\s*\+\+\s*\[.*?\])*)+)'
-    # Simpler: just find all quoted strings after the definition start
-    # First find the definition
-    def_pattern = rf'(?:private\s+)?def\s+{re.escape(name)}\b'
-    m = re.search(def_pattern, text)
-    if not m:
+    """Extract string literals from a Lean `def ... :=` body by name.
+
+    Source is stripped of Lean comments first so comment-only decoys like
+    `-- def <name>` cannot satisfy extraction.
+    """
+    cleaned = strip_lean_comments(text)
+    body = extract_def_body(cleaned, name)
+    if body is None:
         print(f"  Could not find definition of '{name}'", file=sys.stderr)
         return set()
+    list_expr = extract_list_expression(body)
+    if list_expr is None:
+        print(f"  Could not parse list body for '{name}'", file=sys.stderr)
+        return set()
+    return set(re.findall(r'"([^"]+)"', list_expr))
 
-    # From the definition start, collect all quoted strings until next definition or end
-    rest = text[m.start():]
-    # Find end: next `private def`, `def`, `end`, or blank line after content
-    lines = rest.split('\n')
-    strings: set[str] = set()
-    started = False
-    for line in lines:
-        if '"' in line:
-            started = True
-            strings.update(re.findall(r'"([^"]+)"', line))
-        elif started and line.strip() and not line.strip().startswith('--'):
-            # Non-empty line without strings after we started = end of list
+
+def extract_def_body(text: str, name: str) -> str | None:
+    """Extract a `def <name> ... :=` body until the next `def` header.
+
+    Assumes comments have already been stripped.
+    """
+    header_re = re.compile(
+        rf"^[ \t]*(?:private[ \t]+)?def[ \t]+{re.escape(name)}\b[^\n]*:=[ \t]*(.*)$",
+        re.MULTILINE,
+    )
+    m = header_re.search(text)
+    if not m:
+        return None
+
+    lines = text[m.start() :].splitlines()
+    lines[0] = m.group(1)
+    body_lines: list[str] = []
+    list_depth = 0
+    saw_list = False
+    in_string = False
+    escaped = False
+    next_def_re = re.compile(r"^[ \t]*(?:private[ \t]+)?def[ \t]+\w+\b")
+
+    for idx, line in enumerate(lines):
+        if idx > 0 and list_depth == 0 and saw_list and next_def_re.match(line):
             break
-    return strings
+        body_lines.append(line)
+        for ch in line:
+            if in_string:
+                if escaped:
+                    escaped = False
+                    continue
+                if ch == "\\":
+                    escaped = True
+                    continue
+                if ch == '"':
+                    in_string = False
+                continue
+            if ch == '"':
+                in_string = True
+                continue
+            if ch == "[":
+                list_depth += 1
+                saw_list = True
+            elif ch == "]":
+                list_depth = max(list_depth - 1, 0)
+
+    body = "\n".join(body_lines)
+    return body if saw_list else None
 
 
 def extract_low_level_calls(text: str) -> set[str]:
-    """Extract the isLowLevelCallName string list (single-line definition)."""
-    m = re.search(r'def\s+isLowLevelCallName[^\n]*\n\s*\[([^\]]+)\]', text)
-    if not m:
+    """Extract string literals from isLowLevelCallName list expression."""
+    cleaned = strip_lean_comments(text)
+    body = extract_def_body(cleaned, "isLowLevelCallName")
+    if body is None:
         return set()
-    return set(re.findall(r'"([^"]+)"', m.group(1)))
+    list_expr = extract_list_expression(body)
+    if list_expr is None:
+        return set()
+    return set(re.findall(r'"([^"]+)"', list_expr))
+
+
+def extract_list_expression(body: str) -> str | None:
+    """Extract `[ ... ]` (optionally chained by `++ [ ... ]`) from a def body."""
+    i = 0
+    n = len(body)
+
+    def skip_ws(pos: int) -> int:
+        while pos < n and body[pos].isspace():
+            pos += 1
+        return pos
+
+    def parse_list(start: int) -> int | None:
+        if start >= n or body[start] != "[":
+            return None
+        depth = 0
+        in_string = False
+        escaped = False
+        pos = start
+        while pos < n:
+            ch = body[pos]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+                pos += 1
+                continue
+            if ch == '"':
+                in_string = True
+                pos += 1
+                continue
+            if ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth == 0:
+                    return pos + 1
+            pos += 1
+        return None
+
+    i = skip_ws(i)
+    start = i
+    end = parse_list(i)
+    if end is None:
+        return None
+    i = end
+    while True:
+        i = skip_ws(i)
+        if i + 1 < n and body[i] == "+" and body[i + 1] == "+":
+            i += 2
+            i = skip_ws(i)
+            next_end = parse_list(i)
+            if next_end is None:
+                return None
+            i = next_end
+            end = i
+            continue
+        end = i
+        break
+    return body[start:end]
 
 
 def main() -> int:

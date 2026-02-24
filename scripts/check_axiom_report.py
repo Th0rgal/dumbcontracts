@@ -74,7 +74,7 @@ def classify_axioms(
     builtin = all_axioms & LEAN_BUILTIN_AXIOMS
     documented = all_axioms & DOCUMENTED_AXIOMS
     forbidden = all_axioms & FORBIDDEN_AXIOMS
-    unexpected = all_axioms - LEAN_BUILTIN_AXIOMS - DOCUMENTED_AXIOMS
+    unexpected = all_axioms - LEAN_BUILTIN_AXIOMS - DOCUMENTED_AXIOMS - FORBIDDEN_AXIOMS
 
     # Map unexpected axioms to the theorems that use them
     unexpected_usage: dict[str, list[str]] = {}

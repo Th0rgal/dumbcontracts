@@ -87,37 +87,37 @@ def switchCases (fns : List IRFunction) : List (Prod Nat (List YulStmt)) :=
 /-- If the selector matches a case, the switch executes that case body (fueled). -/
 theorem execYulStmtFuel_switch_match
     (state : YulState) (expr : YulExpr) (cases' : List (Prod Nat (List YulStmt)))
-    (default : Option (List YulStmt)) (fuel v : Nat) (body : List YulStmt)
+    (defaultCase : Option (List YulStmt)) (fuel v : Nat) (body : List YulStmt)
     (hEval : evalYulExpr state expr = some v)
     (hFind : List.find? (fun (c, _) => c = v) cases' = some (v, body)) :
-    execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
+    execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' defaultCase) =
       execYulStmtsFuel fuel state body := by
   have hFind' :
       List.find? (fun x : Prod Nat (List YulStmt) => decide (x.1 = v)) cases' = some (v, body) := by
     simpa using hFind
   simpa using (Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match_semantics
-    state expr cases' default fuel v body hEval hFind')
+    state expr cases' defaultCase fuel v body hEval hFind')
 
 /-- If no selector case matches, the switch executes the default (or continues). -/
 def execYulStmtFuel_switch_miss_result (state : YulState) (fuel : Nat)
-    (default : Option (List YulStmt)) : YulExecResult :=
-  match default with
+    (defaultCase : Option (List YulStmt)) : YulExecResult :=
+  match defaultCase with
   | some body => execYulStmtsFuel fuel state body
   | none => YulExecResult.continue state
 
 theorem execYulStmtFuel_switch_miss
     (state : YulState) (expr : YulExpr) (cases' : List (Prod Nat (List YulStmt)))
-    (default : Option (List YulStmt)) (fuel v : Nat)
+    (defaultCase : Option (List YulStmt)) (fuel v : Nat)
     (hEval : evalYulExpr state expr = some v)
     (hFind : List.find? (fun (c, _) => c = v) cases' = none) :
-    execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' default) =
-      execYulStmtFuel_switch_miss_result state fuel default := by
+    execYulStmtFuel (Nat.succ fuel) state (YulStmt.switch expr cases' defaultCase) =
+      execYulStmtFuel_switch_miss_result state fuel defaultCase := by
   have hFind' :
       List.find? (fun x : Prod Nat (List YulStmt) => decide (x.1 = v)) cases' = none := by
     simpa using hFind
   have h :=
     Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
-      state expr cases' default fuel v hEval hFind'
+      state expr cases' defaultCase fuel v hEval hFind'
   simpa [execYulStmtFuel_switch_miss_result] using h
 
 /- Bridge lemmas for switch-case lookup. -/

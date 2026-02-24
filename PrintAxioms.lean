@@ -28,6 +28,10 @@ import Verity.Proofs.Stdlib.Automation
 import Verity.Proofs.Stdlib.ListSum
 import Verity.Proofs.Stdlib.MappingAutomation
 import Verity.Proofs.Stdlib.Math
+import Verity.Proofs.Stdlib.SpecInterpreter
+import Compiler.Proofs.IRGeneration.Conversions
+import Compiler.Proofs.IRGeneration.Expr
+import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.SpecCorrectness.Counter
 import Compiler.Proofs.SpecCorrectness.ERC20
 import Compiler.Proofs.SpecCorrectness.ERC721
@@ -37,6 +41,11 @@ import Compiler.Proofs.SpecCorrectness.OwnedCounter
 import Compiler.Proofs.SpecCorrectness.SafeCounter
 import Compiler.Proofs.SpecCorrectness.SimpleStorage
 import Compiler.Proofs.SpecCorrectness.SimpleToken
+import Compiler.Proofs.YulGeneration.Codegen
+import Compiler.Proofs.YulGeneration.Equivalence
+import Compiler.Proofs.YulGeneration.Lemmas
+import Compiler.Proofs.YulGeneration.Preservation
+import Compiler.Proofs.YulGeneration.StatementEquivalence
 
 -- Verity/Proofs/Counter/Basic.lean
 #print axioms Verity.Proofs.Counter.setStorage_updates_count
@@ -370,6 +379,32 @@ import Compiler.Proofs.SpecCorrectness.SimpleToken
 #print axioms Verity.Proofs.SimpleToken.Supply.transfer_sum_preserved_unique
 
 -- Verity/Proofs/Stdlib/Automation.lean
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_owner_ownedCounter
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_owner_ownedCounter_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_count_ownedCounter
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_count_ownedCounter_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_count_safeCounter
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_count_safeCounter_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_balances_simpleToken
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_balances_simpleToken_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_owner_simpleToken
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_owner_simpleToken_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_totalSupply_simpleToken
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_totalSupply_simpleToken_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_balances_ledger
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_balances_ledger_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_newOwner
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_newOwner_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_initialOwner
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_initialOwner_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_to_to_amount
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_to_to_amount_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_amount_to_amount
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_amount_to_amount_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_addr
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_addr_decide
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_amount_single
+#print axioms Verity.Proofs.Stdlib.Automation.findIdx_param_amount_single_decide
 #print axioms Verity.Proofs.Stdlib.Automation.isSuccess_success
 #print axioms Verity.Proofs.Stdlib.Automation.isSuccess_revert
 #print axioms Verity.Proofs.Stdlib.Automation.getState_success
@@ -388,18 +423,35 @@ import Compiler.Proofs.SpecCorrectness.SimpleToken
 #print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_runState
 #print axioms Verity.Proofs.Stdlib.Automation.getStorageAddr_runValue
 #print axioms Verity.Proofs.Stdlib.Automation.addressToNat_lt_modulus
+#print axioms Verity.Proofs.Stdlib.Automation.addressToNat_mod_eq
+#print axioms Verity.Proofs.Stdlib.Automation.addressToNat_beq_self
 #print axioms Verity.Proofs.Stdlib.Automation.addressToNat_injective
 #print axioms Verity.Proofs.Stdlib.Automation.getMapping_runState
 #print axioms Verity.Proofs.Stdlib.Automation.getMapping_runValue
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_senderBal
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_recipientBal
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_senderBal_with_delta
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_recipientBal_with_delta
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_sameAddr_with_delta
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_delta_with_delta
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_amountDelta_with_delta
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_addr_first
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_addr_second
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_slot_first
+#print axioms Verity.Proofs.Stdlib.Automation.lookup_slot_second
 #print axioms Verity.Proofs.Stdlib.Automation.msgSender_runState
 #print axioms Verity.Proofs.Stdlib.Automation.msgSender_runValue
 #print axioms Verity.Proofs.Stdlib.Automation.require_true_isSuccess
 #print axioms Verity.Proofs.Stdlib.Automation.require_false_isSuccess
 #print axioms Verity.Proofs.Stdlib.Automation.require_success_implies_cond
+#print axioms Verity.Proofs.Stdlib.Automation.require_state
+#print axioms Verity.Proofs.Stdlib.Automation.require_bind_true_run
+#print axioms Verity.Proofs.Stdlib.Automation.require_bind_false_run
 #print axioms Verity.Proofs.Stdlib.Automation.address_beq_eq_true_iff_eq
 #print axioms Verity.Proofs.Stdlib.Automation.address_beq_false_of_ne
 #print axioms Verity.Proofs.Stdlib.Automation.addressToNat_ne_of_ne
 #print axioms Verity.Proofs.Stdlib.Automation.addressToNat_beq_false_of_ne
+#print axioms Verity.Proofs.Stdlib.Automation.one_mod_modulus
 #print axioms Verity.Proofs.Stdlib.Automation.evm_add_eq_hadd
 #print axioms Verity.Proofs.Stdlib.Automation.uint256_add_val
 #print axioms Verity.Proofs.Stdlib.Automation.uint256_sub_val
@@ -442,6 +494,10 @@ import Compiler.Proofs.SpecCorrectness.SimpleToken
 #print axioms Verity.Proofs.Stdlib.Automation.setStorage_preserves_events
 #print axioms Verity.Proofs.Stdlib.Automation.setStorageAddr_preserves_events
 #print axioms Verity.Proofs.Stdlib.Automation.setMapping_preserves_events
+#print axioms Verity.Proofs.Stdlib.Automation.emitEvent_isSuccess
+#print axioms Verity.Proofs.Stdlib.Automation.emitEvent_runValue
+#print axioms Verity.Proofs.Stdlib.Automation.emitEvent_runState
+#print axioms Verity.Proofs.Stdlib.Automation.emitEvent_events_append
 #print axioms Verity.Proofs.Stdlib.Automation.emitEvent_emitEvent_events
 #print axioms Verity.Proofs.Stdlib.Automation.modulus_eq_max_uint256_succ
 #print axioms Verity.Proofs.Stdlib.Automation.max_uint256_lt_modulus
@@ -538,6 +594,66 @@ import Compiler.Proofs.SpecCorrectness.SimpleToken
 #print axioms Verity.Proofs.Stdlib.Math.safeDiv_self
 #print axioms Verity.Proofs.Stdlib.Math.safeMul_result_bounded
 #print axioms Verity.Proofs.Stdlib.Math.safeDiv_result_le_numerator
+
+-- Verity/Proofs/Stdlib/SpecInterpreter.lean
+#print axioms Verity.Proofs.Stdlib.SpecInterpreter.dedupNatPreserve_go_nil_single
+#print axioms Verity.Proofs.Stdlib.SpecInterpreter.readStorageField_unpacked
+#print axioms Verity.Proofs.Stdlib.SpecInterpreter.readStorageField_missing
+#print axioms Verity.Proofs.Stdlib.SpecInterpreter.writeStorageField_unpacked_noAlias
+
+-- Compiler/Proofs/IRGeneration/Conversions.lean
+#print axioms Compiler.Proofs.IRGeneration.specStorageToIRState_storage
+#print axioms Compiler.Proofs.IRGeneration.specStorageToIRState_memory
+#print axioms Compiler.Proofs.IRGeneration.contractStateToIRState_memory
+
+-- Compiler/Proofs/IRGeneration/Expr.lean
+#print axioms Compiler.Proofs.IRGeneration.compile_simpleStorageSpec
+#print axioms Compiler.Proofs.IRGeneration.specStorage_getSlot_setSlot_same
+#print axioms Compiler.Proofs.IRGeneration.specStorage_getSlot_setSlot_other
+#print axioms Compiler.Proofs.IRGeneration.addressToNat_mask
+#print axioms Compiler.Proofs.IRGeneration.simpleStorage_store_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct_with_storage
+#print axioms Compiler.Proofs.IRGeneration.compile_counterSpec
+#print axioms Compiler.Proofs.IRGeneration.counter_increment_correct
+#print axioms Compiler.Proofs.IRGeneration.compile_safeCounterSpec
+#print axioms Compiler.Proofs.IRGeneration.safeCounter_increment_correct
+#print axioms Compiler.Proofs.IRGeneration.safeCounter_decrement_correct
+#print axioms Compiler.Proofs.IRGeneration.safeCounter_getCount_correct
+#print axioms Compiler.Proofs.IRGeneration.counter_decrement_correct
+#print axioms Compiler.Proofs.IRGeneration.counter_getCount_correct
+#print axioms Compiler.Proofs.IRGeneration.compile_ownedSpec
+#print axioms Compiler.Proofs.IRGeneration.owned_transferOwnership_correct_as_owner
+#print axioms Compiler.Proofs.IRGeneration.owned_getOwner_correct
+#print axioms Compiler.Proofs.IRGeneration.compile_ownedCounterSpec
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_increment_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_decrement_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_getCount_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_getOwner_correct
+#print axioms Compiler.Proofs.IRGeneration.ownedCounter_transferOwnership_correct
+#print axioms Compiler.Proofs.IRGeneration.compile_ledgerSpec
+#print axioms Compiler.Proofs.IRGeneration.ledger_deposit_correct
+#print axioms Compiler.Proofs.IRGeneration.ledger_withdraw_correct
+#print axioms Compiler.Proofs.IRGeneration.ledger_transfer_correct
+#print axioms Compiler.Proofs.IRGeneration.ledger_getBalance_correct
+#print axioms Compiler.Proofs.IRGeneration.compile_simpleTokenSpec
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_mint_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_transfer_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_balanceOf_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_totalSupply_correct
+#print axioms Compiler.Proofs.IRGeneration.simpleToken_owner_correct
+
+-- Compiler/Proofs/MappingSlot.lean
+#print axioms Compiler.Proofs.abstractMappingSlot_eq_solidity
+#print axioms Compiler.Proofs.abstractMappingTag_eq_zero
+#print axioms Compiler.Proofs.abstractDecodeMappingSlot_eq_none
+#print axioms Compiler.Proofs.activeMappingSlotBackend_eq_keccak
+#print axioms Compiler.Proofs.activeMappingSlotBackendIsEvmFaithful_eq_true
+#print axioms Compiler.Proofs.abstractNestedMappingSlot_eq_solidityNested
+#print axioms Compiler.Proofs.abstractLoadMappingEntry_eq
+#print axioms Compiler.Proofs.abstractStoreMappingEntry_eq
+#print axioms Compiler.Proofs.abstractLoadStorageOrMapping_eq
+#print axioms Compiler.Proofs.abstractStoreStorageOrMapping_eq
 
 -- Compiler/Proofs/SpecCorrectness/Counter.lean
 -- #print axioms Compiler.Proofs.SpecCorrectness.evalExpr_decrement_eq  -- private
@@ -641,4 +757,55 @@ import Compiler.Proofs.SpecCorrectness.SimpleToken
 #print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_supply
 #print axioms Compiler.Proofs.SpecCorrectness.token_only_owner_mints
 #print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_total_balance
--- Total: 534 theorems/lemmas (505 public, 29 private)
+
+-- Compiler/Proofs/YulGeneration/Codegen.lean
+#print axioms Compiler.Proofs.YulGeneration.emitYul_runtimeCode_eq
+#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr
+#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_eq
+#print axioms Compiler.Proofs.YulGeneration.execYulFuel_mappingSlotFunc
+#print axioms Compiler.Proofs.YulGeneration.execYulFuel_drop_mappingSlotFunc_buildSwitch
+#print axioms Compiler.Proofs.YulGeneration.execYulStmts_runtimeCode_eq
+#print axioms Compiler.Proofs.YulGeneration.buildSwitch_eq
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss
+#print axioms Compiler.Proofs.YulGeneration.find_switch_case_of_find_function
+#print axioms Compiler.Proofs.YulGeneration.find_switch_case_of_find_function_none
+
+-- Compiler/Proofs/YulGeneration/Equivalence.lean
+#print axioms Compiler.Proofs.YulGeneration.resultsMatch_of_execResultsAligned
+#print axioms Compiler.Proofs.YulGeneration.statesAligned_refl
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtsFuel_nil
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtsFuel_cons
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_nil
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_cons
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmts_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.execIRFunctionFuel_equiv_interpretYulBodyFromState_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_fuel_goal_of_stmt_equiv
+#print axioms Compiler.Proofs.YulGeneration.execIRFunctionFuel_adequate
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
+#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
+
+-- Compiler/Proofs/YulGeneration/Lemmas.lean
+#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_semantics
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match_semantics
+#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
+
+-- Compiler/Proofs/YulGeneration/Preservation.lean
+#print axioms Compiler.Proofs.YulGeneration.interpretYulBody_eq_runtime
+#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_initial
+#print axioms Compiler.Proofs.YulGeneration.yulCodegen_preserves_semantics
+#print axioms Compiler.Proofs.YulGeneration.ir_function_body_equiv
+
+-- Compiler/Proofs/YulGeneration/StatementEquivalence.lean
+#print axioms Compiler.Proofs.YulGeneration.evalIRExpr_eq_evalYulExpr
+#print axioms Compiler.Proofs.YulGeneration.evalIRExprs_eq_evalYulExprs
+#print axioms Compiler.Proofs.YulGeneration.evalIRCall_eq_evalYulCall
+#print axioms Compiler.Proofs.YulGeneration.assign_equiv
+#print axioms Compiler.Proofs.YulGeneration.storageStore_equiv
+#print axioms Compiler.Proofs.YulGeneration.conditional_equiv
+#print axioms Compiler.Proofs.YulGeneration.all_stmts_equiv
+#print axioms Compiler.Proofs.YulGeneration.return_equiv
+#print axioms Compiler.Proofs.YulGeneration.revert_equiv
+-- Total: 674 theorems/lemmas (645 public, 29 private)

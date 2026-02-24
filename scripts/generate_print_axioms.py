@@ -79,9 +79,11 @@ def extract_theorems(path: Path) -> list[tuple[str, bool]]:
         if stripped == "end":
             continue
 
-        # Match theorem/lemma declarations
+        # Match theorem/lemma declarations, including those with attribute
+        # annotations like @[simp] theorem foo ...
         decl_match = re.match(
-            r"^(private\s+)?(protected\s+)?(theorem|lemma)\s+(\S+)", stripped
+            r"^(?:@\[[^\]]*\]\s*)*(private\s+)?(protected\s+)?(theorem|lemma)\s+(\S+)",
+            stripped,
         )
         if decl_match:
             is_private = decl_match.group(1) is not None
@@ -107,26 +109,7 @@ def generate() -> str:
         if d.exists():
             all_files.extend(sorted(d.rglob("*.lean")))
 
-    # Skip non-Lean files and modules that don't compile against current
-    # definitions.  Three files have direct compilation errors, and four
-    # more transitively depend on them.  This list should shrink as the
-    # proof files are brought back in sync.
-    EXCLUDED_PATHS = {
-        # Direct compilation failures
-        "Compiler/Proofs/IRGeneration/Conversions.lean",       # stale IRState fields
-        "Compiler/Proofs/YulGeneration/Lemmas.lean",           # syntax errors (default/switch)
-        "Compiler/Proofs/YulGeneration/StatementEquivalence.lean",  # tactic failures
-        # Transitive dependents of the above
-        "Compiler/Proofs/IRGeneration/Expr.lean",              # imports Conversions
-        "Compiler/Proofs/YulGeneration/Codegen.lean",          # imports Lemmas
-        "Compiler/Proofs/YulGeneration/Equivalence.lean",      # imports Codegen
-        "Compiler/Proofs/YulGeneration/Preservation.lean",     # imports StatementEquivalence + Codegen
-    }
-    all_files = [
-        f for f in all_files
-        if "README" not in f.name
-        and str(f.relative_to(ROOT)) not in EXCLUDED_PATHS
-    ]
+    all_files = [f for f in all_files if "README" not in f.name]
 
     imports: list[str] = []
     sections: list[str] = []

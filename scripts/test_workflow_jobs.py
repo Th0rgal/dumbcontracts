@@ -226,6 +226,15 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_setsid_session_leader_flag(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "setsid --session-leader forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
     def test_match_shell_command_accepts_ionice_wrapper(self) -> None:
         matched, forge_tokens = match_shell_command(
             "ionice -c3 forge test -vv",

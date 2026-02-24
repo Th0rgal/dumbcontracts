@@ -428,7 +428,16 @@ def _consume_setsid_wrapper(tokens: list[str], i: int) -> int:
     if i >= len(tokens) or not _token_matches_program(tokens[i], "setsid"):
         return i
     i += 1
-    setsid_opts_without_arg = {"-w", "--wait", "-c", "--ctty", "-f", "--fork"}
+    setsid_opts_without_arg = {
+        "-w",
+        "--wait",
+        "-c",
+        "--ctty",
+        "-f",
+        "--fork",
+        "-s",
+        "--session-leader",
+    }
     while i < len(tokens):
         tok = tokens[i]
         if tok == "--":

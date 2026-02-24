@@ -466,7 +466,7 @@ def check_verification_theorem_names(path: Path) -> list[str]:
     return errors
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Check documentation count claims against manifest/code metrics."
     )
@@ -481,7 +481,7 @@ def main() -> None:
         default=ROOT / "artifacts" / "verification_status.json",
         help="Path to verification status artifact JSON.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     artifact_metrics = load_metrics_from_artifact(args.artifact)
     live_metrics = collect_metrics()

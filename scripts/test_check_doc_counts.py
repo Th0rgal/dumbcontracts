@@ -28,7 +28,7 @@ class CheckDocCountsMultiMatchTests(unittest.TestCase):
 
         check_doc_counts.check_and_maybe_fix = _record
         try:
-            check_doc_counts.main()
+            check_doc_counts.main([])
         finally:
             check_doc_counts.check_and_maybe_fix = original
 

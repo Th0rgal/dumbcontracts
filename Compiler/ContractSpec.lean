@@ -1157,6 +1157,8 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsUnsafeLogicalCallLike a
   | Expr.ite cond thenVal elseVal =>
+      -- Both branches and cond are eagerly evaluated; cond is duplicated in Yul output
+      (exprContainsCallLike cond || exprContainsCallLike thenVal || exprContainsCallLike elseVal) ||
       exprContainsUnsafeLogicalCallLike cond ||
       exprContainsUnsafeLogicalCallLike thenVal ||
       exprContainsUnsafeLogicalCallLike elseVal
@@ -1386,6 +1388,11 @@ private partial def validateScopedExprIdentifiers
   | Expr.bitNot a | Expr.logicalNot a =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
   | Expr.ite cond thenVal elseVal => do
+      -- Expr.ite compiles to a branchless ternary that eagerly evaluates all 3 operands;
+      -- cond is also duplicated.  Reject call-like sub-expressions to avoid the same
+      -- eager-evaluation footgun as logicalAnd/logicalOr (Issue #748).
+      if exprContainsCallLike cond || exprContainsCallLike thenVal || exprContainsCallLike elseVal then
+        throw s!"Compilation error: {context} uses Expr.ite with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Both branches execute regardless of the condition. Move call-like expressions into Stmt.letVar/Stmt.ite before using Expr.ite."
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount cond
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount thenVal
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount elseVal
@@ -1870,7 +1877,7 @@ private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := d
   if spec.isPure && spec.body.any stmtReadsStateOrEnv then
     throw s!"Compilation error: function '{spec.name}' is marked pure but reads state/environment (Issue #734)"
   if spec.body.any stmtContainsUnsafeLogicalCallLike then
-    throw s!"Compilation error: function '{spec.name}' uses Expr.logicalAnd/Expr.logicalOr or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
+    throw s!"Compilation error: function '{spec.name}' uses Expr.logicalAnd/Expr.logicalOr/Expr.ite or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   if !returns.isEmpty && !stmtListAlwaysReturnsOrReverts spec.body then
@@ -1900,7 +1907,7 @@ private def validateConstructorSpec (ctor : Option ConstructorSpec) : Except Str
   | none => pure ()
   | some spec =>
       if spec.body.any stmtContainsUnsafeLogicalCallLike then
-        throw s!"Compilation error: constructor uses Expr.logicalAnd/Expr.logicalOr or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
+        throw s!"Compilation error: constructor uses Expr.logicalAnd/Expr.logicalOr/Expr.ite or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
       spec.body.forM validateNoRuntimeReturnsInConstructorStmt
       spec.body.forM (validateStmtParamReferences "constructor" spec.params)
       validateConstructorIdentifierReferences ctor

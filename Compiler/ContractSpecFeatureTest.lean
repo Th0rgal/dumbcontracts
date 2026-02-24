@@ -6219,4 +6219,31 @@ private def viewCalldataloadSpec : ContractSpec := {
     throw (IO.userError s!"✗ Expr.ite large nonzero cond: expected 111, got {bigResult.returnValue}")
   IO.println "✓ SpecInterpreter Expr.ite zero/nonzero condition semantics"
 
+-- Test 8: Expr.ite rejects call-like operands in branches (Issue #748 parity)
+#eval! do
+  let exprIteCallLikeSpec : ContractSpec := {
+    name := "ExprIteCallLikeRejected"
+    fields := []
+    constructor := none
+    externals := [{ name := "oracle", params := [], returnType := some ParamType.uint256, axiomNames := [] }]
+    functions := [
+      { name := "bad"
+        params := [{ name := "flag", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.return (Expr.ite (Expr.param "flag")
+            (Expr.externalCall "oracle" [])
+            (Expr.literal 0))
+        ]
+      }
+    ]
+  }
+  match compile exprIteCallLikeSpec [1] with
+  | .error err =>
+      if !(contains err "Expr.ite" && contains err "call-like operand" && contains err "Issue #748") then
+        throw (IO.userError s!"✗ Expr.ite call-like operand diagnostic mismatch: {err}")
+      IO.println "✓ Expr.ite rejects call-like operands in branches"
+  | .ok _ =>
+      throw (IO.userError "✗ expected call-like Expr.ite operand to fail compilation")
+
 end Compiler.ContractSpecFeatureTest

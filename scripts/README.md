@@ -245,6 +245,7 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 26. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
 27. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
 28. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+29. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)

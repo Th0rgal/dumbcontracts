@@ -175,6 +175,12 @@ jobs:
       - name: Check EVMYulLean adapter report freshness
         run: python3 scripts/generate_evmyullean_adapter_report.py --check
 
+      - name: Check PrintAxioms.lean freshness
+        run: python3 scripts/generate_print_axioms.py --check
+
+      - name: Run Python unit tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -301,6 +307,11 @@ jobs:
           else
             echo "✓ No axioms found in proof files"
           fi
+
+      - name: Generate axiom dependency report
+        run: |
+          lake env lean PrintAxioms.lean 2>&1 | tee axiom-report-raw.log
+          AXIOM_REPORT_FILE=axiom-report.md python3 scripts/check_axiom_report.py --log axiom-report-raw.log | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Build compiler
         run: lake build verity-compiler
@@ -446,6 +457,14 @@ jobs:
         with:
           name: patch-coverage-report
           path: compiler/patch-report.tsv
+
+      - name: Upload axiom dependency report
+        uses: actions/upload-artifact@v4
+        with:
+          name: axiom-dependency-report
+          path: |
+            axiom-report.md
+            axiom-report-raw.log
 
   foundry-gas-calibration:
     runs-on: ubuntu-latest

@@ -131,6 +131,24 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_time_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            'time -f "%E" env FOUNDRY_PROFILE=difftest forge test -vv',
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_timeout_and_nice_wrappers(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "timeout -k 5s 10m nice -n 10 forge test --no-match-test Random10000",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
 
 if __name__ == "__main__":
     unittest.main()

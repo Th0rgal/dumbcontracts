@@ -85,11 +85,23 @@ def _parse_roadmap_rows() -> dict[str, list[str]]:
             f"{ROADMAP}: unexpected matrix header {header!r}; expected {expected_header!r}"
         )
     parsed: dict[str, list[str]] = {}
-    for row in body:
+    seen_labels: dict[str, str] = {}
+    seen_rows: dict[str, int] = {}
+    for row_idx, row in enumerate(body, start=1):
         if len(row) != len(expected_header):
             raise ValueError(f"{ROADMAP}: malformed matrix row: {row!r}")
-        feature = _normalize_feature(row[1])
+        feature_label = row[1]
+        feature = _normalize_feature(feature_label)
+        if feature in parsed:
+            prev_label = seen_labels[feature]
+            prev_row = seen_rows[feature]
+            raise ValueError(
+                f"{ROADMAP}: duplicate normalized feature key {feature!r} in roadmap rows "
+                f"{prev_row} and {row_idx}: {prev_label!r} vs {feature_label!r}"
+            )
         parsed[feature] = row[2:]
+        seen_labels[feature] = feature_label
+        seen_rows[feature] = row_idx
     return parsed
 
 
@@ -104,17 +116,39 @@ def _parse_verification_rows() -> dict[str, list[str]]:
             f"{VERIFICATION_STATUS}: unexpected matrix header {header!r}; expected {expected_header!r}"
         )
     parsed: dict[str, list[str]] = {}
-    for row in body:
+    seen_labels: dict[str, str] = {}
+    seen_rows: dict[str, int] = {}
+    for row_idx, row in enumerate(body, start=1):
         if len(row) != len(expected_header):
             raise ValueError(f"{VERIFICATION_STATUS}: malformed matrix row: {row!r}")
-        feature = _normalize_feature(row[0])
+        feature_label = row[0]
+        feature = _normalize_feature(feature_label)
+        if feature in parsed:
+            prev_label = seen_labels[feature]
+            prev_row = seen_rows[feature]
+            raise ValueError(
+                f"{VERIFICATION_STATUS}: duplicate normalized feature key {feature!r} "
+                f"in verification rows {prev_row} and {row_idx}: "
+                f"{prev_label!r} vs {feature_label!r}"
+            )
         parsed[feature] = row[1:]
+        seen_labels[feature] = feature_label
+        seen_rows[feature] = row_idx
     return parsed
 
 
 def main() -> None:
-    roadmap = _parse_roadmap_rows()
-    verification = _parse_verification_rows()
+    try:
+        roadmap = _parse_roadmap_rows()
+        verification = _parse_verification_rows()
+    except ValueError as exc:
+        print("Interop matrix sync check failed:", file=sys.stderr)
+        print(f"- {exc}", file=sys.stderr)
+        print(
+            "\nKeep docs/ROADMAP.md and docs/VERIFICATION_STATUS.md interop matrices synchronized.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     errors: list[str] = []
 

@@ -22,6 +22,7 @@ def _normalize_scalar(raw: str) -> str:
     value = raw.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
         return value[1:-1]
+    value = re.sub(r"\s+#.*$", "", value).strip()
     return value
 
 
@@ -79,10 +80,16 @@ def _extract_foundry_profile(job_body: str) -> str:
 
 def _extract_static_report_artifact(job_body: str) -> str:
     step_body = _extract_named_step_body(job_body, "Download static gas report")
-    uses = re.search(r"^\s*uses:\s*actions/download-artifact@v4\s*$", step_body, flags=re.MULTILINE)
-    if not uses:
+    uses_m = re.search(r"^\s*uses:\s*(.+?)\s*$", step_body, flags=re.MULTILINE)
+    if not uses_m:
         raise ValueError(
-            "Download static gas report step must use actions/download-artifact@v4 in "
+            "Could not locate uses key in Download static gas report step in "
+            f"{VERIFY_YML}"
+        )
+    uses_value = _normalize_scalar(uses_m.group(1))
+    if not uses_value.startswith("actions/download-artifact@"):
+        raise ValueError(
+            "Download static gas report step must use actions/download-artifact@<ref> in "
             f"{VERIFY_YML}"
         )
     return _extract_mapping_value(step_body, "with", "name", "download static gas report step")

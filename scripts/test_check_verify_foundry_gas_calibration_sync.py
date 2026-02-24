@@ -118,6 +118,58 @@ class VerifyFoundryGasCalibrationSyncTests(unittest.TestCase):
         rc, stderr = self._run_check(verify, readme)
         self.assertEqual(rc, 0, stderr)
 
+    def test_step_names_allow_inline_comments(self) -> None:
+        verify = textwrap.dedent(
+            """
+            name: Verify proofs
+            jobs:
+              foundry-gas-calibration:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Download static gas report # keep
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: static-gas-report
+
+                  - name: Check static-vs-foundry gas calibration # keep
+                    env:
+                      FOUNDRY_PROFILE: difftest
+                    run: python3 scripts/check_gas_calibration.py --static-report gas-report-static.tsv
+            """
+        )
+        readme = (
+            "**`foundry-gas-calibration`** Runs `check_gas_calibration.py` "
+            "using Foundry gas report against static report baseline.\n"
+        )
+        rc, stderr = self._run_check(verify, readme)
+        self.assertEqual(rc, 0, stderr)
+
+    def test_download_artifact_allows_non_v4_ref(self) -> None:
+        verify = textwrap.dedent(
+            """
+            name: Verify proofs
+            jobs:
+              foundry-gas-calibration:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Download static gas report
+                    uses: "actions/download-artifact@v4.1.0"
+                    with:
+                      name: static-gas-report
+
+                  - name: Check static-vs-foundry gas calibration
+                    env:
+                      FOUNDRY_PROFILE: difftest
+                    run: python3 scripts/check_gas_calibration.py --static-report gas-report-static.tsv
+            """
+        )
+        readme = (
+            "**`foundry-gas-calibration`** Runs `check_gas_calibration.py` "
+            "using Foundry gas report against static report baseline.\n"
+        )
+        rc, stderr = self._run_check(verify, readme)
+        self.assertEqual(rc, 0, stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from workflow_jobs import extract_job_body, extract_top_level_jobs
+from workflow_jobs import (
+    extract_job_body,
+    extract_literal_from_mapping_blocks,
+    extract_top_level_jobs,
+)
 
 
 class WorkflowJobsTests(unittest.TestCase):
@@ -56,6 +60,31 @@ class WorkflowJobsTests(unittest.TestCase):
             body = extract_job_body(workflow, "foundry", source)
             self.assertIn('DIFFTEST_RANDOM_SEED: "7"', body)
             self.assertNotIn('DIFFTEST_RANDOM_SEED: "999"', body)
+
+    def test_extract_literal_from_env_ignores_with_block_decoys(self) -> None:
+        body = "\n".join(
+            [
+                "    steps:",
+                "      - uses: actions/upload-artifact@v4",
+                "        with:",
+                '          DIFFTEST_RANDOM_SEED: "999"',
+                "      - name: run tests",
+                "        env:",
+                '          DIFFTEST_RANDOM_SEED: "42"',
+                "",
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = Path(tmpdir) / "verify.yml"
+            source.write_text(body, encoding="utf-8")
+            value = extract_literal_from_mapping_blocks(
+                body,
+                "env",
+                "DIFFTEST_RANDOM_SEED",
+                source=source,
+                context="foundry",
+            )
+            self.assertEqual(value, "42")
 
 
 if __name__ == "__main__":

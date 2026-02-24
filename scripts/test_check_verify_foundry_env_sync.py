@@ -377,6 +377,61 @@ class FoundryEnvSyncTests(unittest.TestCase):
         rc, stderr = self._run_job_sync(workflow)
         self.assertEqual(rc, 0, stderr)
 
+    def test_job_sync_accepts_command_and_abs_path_wrapped_forge_commands(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              foundry:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: command -- /usr/bin/env FOUNDRY_PROFILE=difftest forge test
+
+              foundry-patched:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                steps:
+                  - name: Download patched Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul-patched
+                      path: compiler/yul-patched
+                  - run: command -p -- /usr/bin/env FOUNDRY_PROFILE=difftest forge test --no-match-test "Random10000"
+
+              foundry-multi-seed:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: command -- env DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
+            """
+        )
+        rc, stderr = self._run_job_sync(workflow)
+        self.assertEqual(rc, 0, stderr)
+
     def test_foundry_patched_sync_accepts_env_prefix_and_extra_flags(self) -> None:
         workflow = textwrap.dedent(
             """

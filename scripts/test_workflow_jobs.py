@@ -15,6 +15,7 @@ from workflow_jobs import (
     extract_literal_from_mapping_blocks,
     extract_run_commands_from_job_body,
     extract_top_level_jobs,
+    match_shell_command,
 )
 
 
@@ -111,6 +112,24 @@ class WorkflowJobsTests(unittest.TestCase):
             )
             self.assertIn('forge test --no-match-test "Random10000"', commands)
             self.assertNotIn('name: forge test --no-match-test "Random10000"', commands)
+
+    def test_match_shell_command_accepts_path_env_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            '/usr/bin/env FOUNDRY_PROFILE=difftest forge test --no-match-test "Random10000"',
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_command_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "command -- env FOUNDRY_PROFILE=difftest forge test",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
 
 if __name__ == "__main__":

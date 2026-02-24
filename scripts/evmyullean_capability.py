@@ -13,7 +13,26 @@ BUILTIN_NAME_RE = re.compile(r'func\s*=\s*"([^"]+)"')
 FUNC_COMPARE_RE = re.compile(r"\bfunc\s*=\s*(.+?)\s+then\b")
 STRING_LITERAL_RE = re.compile(r'^"([^"]+)"$')
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
-LET_STRING_BINDING_RE = re.compile(r'^\s*let\s+([A-Za-z_][A-Za-z0-9_\']*)\s*:=\s*"([^"]+)"\s*$')
+LET_BINDING_RE = re.compile(
+    r"^\s*let\s+([A-Za-z_][A-Za-z0-9_']*)(?:\s*:\s*[^:=]+)?\s*:=\s*(.+?)\s*$"
+)
+
+
+def _strip_outer_parens(text: str) -> str:
+    """Strip one level of balanced outer parentheses from an expression."""
+    text = text.strip()
+    if len(text) >= 2 and text[0] == "(" and text[-1] == ")":
+        depth = 0
+        for idx, ch in enumerate(text):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0 and idx != len(text) - 1:
+                    return text
+        if depth == 0:
+            return text[1:-1].strip()
+    return text
 
 # Builtins currently modeled as part of the overlap subset for planned
 # EVMYulLean-backed semantics.
@@ -96,9 +115,17 @@ def extract_found_builtins_with_diagnostics(
             if indent <= eval_indent and not stripped.startswith("|"):
                 break
 
-        let_match = LET_STRING_BINDING_RE.match(line)
+        let_match = LET_BINDING_RE.match(line)
         if let_match:
-            aliases[let_match.group(1)] = let_match.group(2)
+            alias_name = let_match.group(1)
+            rhs_expr = _strip_outer_parens(let_match.group(2))
+            literal_match = STRING_LITERAL_RE.match(rhs_expr)
+            if literal_match:
+                aliases[alias_name] = literal_match.group(1)
+            elif IDENT_RE.match(rhs_expr):
+                resolved = aliases.get(rhs_expr)
+                if resolved is not None:
+                    aliases[alias_name] = resolved
 
         compare_match = FUNC_COMPARE_RE.search(line)
         if not compare_match:

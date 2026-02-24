@@ -118,7 +118,7 @@ def simpleStorageSpec : ContractSpec := {
 
 ### Generated Yul
 ```yul
-// compiler/yul/SimpleStorage.yul
+// generated/yul/SimpleStorage.yul
 object "SimpleStorage" {
     code {
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
@@ -360,7 +360,7 @@ Link production cryptographic libraries (or any external Yul functions) into com
 lake exe verity-compiler \
     --link examples/external-libs/PoseidonT3.yul \
     --link examples/external-libs/PoseidonT4.yul \
-    -o compiler/yul
+    -o generated/yul
 ```
 
 **How it works**: The linker parses `.yul` files, extracts function definitions, and injects them into the runtime `code {}` section of each compiled contract. This lets you prove properties about contract logic using simple placeholder functions in Lean, then swap in production-grade implementations at compile time.
@@ -591,7 +591,7 @@ lake build verity-compiler
 # Generate Yul for all contracts
 lake exe verity-compiler
 
-# Output: compiler/yul/*.yul
+# Output: generated/yul/*.yul
 ```
 
 ### Test Compiled Contracts
@@ -626,7 +626,7 @@ lake build verity-compiler
 lake exe verity-compiler
 ```
 
-3. **Done!** Contract generated in `compiler/yul/MyContract.yul`
+3. **Done!** Contract generated in `generated/yul/MyContract.yul`
 
 Time: **~5 minutes** (vs ~30 minutes manual IR)
 

@@ -141,7 +141,7 @@ python3 scripts/generate_evmyullean_adapter_report.py
 
 ## Selector & Yul Scripts
 
-- **`check_selectors.py`** - Verifies selector hash consistency across ContractSpec, compile selector tables, and generated Yul (`compiler/yul` and `compiler/yul-ast` when present); strips Lean comments/docstrings with the same shared string-aware parser used by storage checks; parses `ParamType` expressions recursively (including `bool`, tuple, array, and fixed-array forms) when extracting Solidity signatures; enforces compile selector table coverage for all specs except those with non-empty `externals`
+- **`check_selectors.py`** - Verifies selector hash consistency across ContractSpec, compile selector tables, and generated Yul (`generated/yul` and `generated/yul-ast` when present); strips Lean comments/docstrings with the same shared string-aware parser used by storage checks; parses `ParamType` expressions recursively (including `bool`, tuple, array, and fixed-array forms) when extracting Solidity signatures; enforces compile selector table coverage for all specs except those with non-empty `externals`
 - **`check_selector_fixtures.py`** - Cross-checks selectors against solc-generated hashes; fixture signature extraction is comment/string-aware so commented examples/debug strings cannot create false selector expectations, scans full function headers (so visibility can appear after modifiers like `virtual`), includes only `public`/`external` selectors (matching `solc --hashes`), canonicalizes ABI-sensitive param forms (`function(...)`, `uint/int` aliases, user-defined `contract`/`enum`/`type` aliases, and struct params into canonical tuple signatures), parses both `solc --hashes` output layouts robustly (including nested tuple signatures), and enforces reverse completeness (every `solc --hashes` signature must be present in extracted fixtures)
 - **`check_yul_compiles.py`** - Ensures generated Yul code compiles with solc, fails closed when any requested `--dir` is missing/empty, can enforce filename-set parity between directories (e.g. legacy vs patched outputs), can compare bytecode parity between directories, and can enforce a checked baseline of known compare diffs via allowlist
 - **`check_gas_report.py`** - Validates `lake exe gas-report` output shape, arithmetic consistency of totals, and monotonicity under more conservative static analysis settings
@@ -150,23 +150,23 @@ python3 scripts/generate_evmyullean_adapter_report.py
 - **`check_gas_calibration.py`** - Compares static bounds (`lake exe gas-report`) against Foundry `--gas-report` measurements for `test/yul/*.t.sol`, requiring runtime bounds + transaction base gas to dominate observed max call gas, deploy bounds + creation/code-deposit overhead to dominate deployment gas, and every static-report contract to have both runtime + deployment Foundry measurements (unless explicitly allowlisted). Parsing is header-driven (not fixed-column) and strips ANSI color escapes to tolerate Foundry output-format drift. Accepts precomputed `--static-report` and `--foundry-report` files for deterministic replay/debugging.
 
 ```bash
-# Default: check compiler/yul
+# Default: check generated/yul
 python3 scripts/check_yul_compiles.py
 
 # Check multiple directories and enforce legacy/AST known-diff baseline
 python3 scripts/check_yul_compiles.py \
-  --dir compiler/yul \
-  --dir compiler/yul-patched \
-  --dir compiler/yul-ast \
-  --require-same-files compiler/yul compiler/yul-patched \
-  --compare-dirs compiler/yul compiler/yul-ast \
+  --dir generated/yul \
+  --dir generated/yul-patched \
+  --dir generated/yul-ast \
+  --require-same-files generated/yul generated/yul-patched \
+  --compare-dirs generated/yul generated/yul-ast \
   --allow-compare-diff-file scripts/fixtures/yul_ast_bytecode_diffs.allowlist
 
 # Check static gas model coverage against legacy + patched + AST Yul outputs
 python3 scripts/check_gas_model_coverage.py \
-  --dir compiler/yul \
-  --dir compiler/yul-patched \
-  --dir compiler/yul-ast
+  --dir generated/yul \
+  --dir generated/yul-patched \
+  --dir generated/yul-ast
 
 # Check patch-enabled static gas deltas (median/p90 non-regression + configurable improvement floor)
 python3 scripts/check_patch_gas_delta.py \

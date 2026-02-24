@@ -318,20 +318,20 @@ jobs:
         run: |
           ./.lake/build/bin/verity-compiler \
             --enable-patches \
-            --patch-report compiler/patch-report.tsv \
-            --output compiler/yul-patched \
+            --patch-report generated/patch-report.tsv \
+            --output generated/yul-patched \
             --link examples/external-libs/PoseidonT3.yul \
             --link examples/external-libs/PoseidonT4.yul
 
       - name: Generate Yul (unified AST path)
-        run: ./.lake/build/bin/verity-compiler --ast --output compiler/yul-ast
+        run: ./.lake/build/bin/verity-compiler --ast --output generated/yul-ast
 
       - name: Check static gas model coverage on generated Yul (legacy + AST)
         run: |
           python3 scripts/check_gas_model_coverage.py \
-            --dir compiler/yul \
-            --dir compiler/yul-ast \
-            --dir compiler/yul-patched
+            --dir generated/yul \
+            --dir generated/yul-ast \
+            --dir generated/yul-patched
 
       - name: Keccak-256 self-test (validate hash implementation)
         run: python3 scripts/keccak256.py --self-test
@@ -345,11 +345,11 @@ jobs:
       - name: Compile generated Yul with solc + enforce legacy/AST diff baseline
         run: |
           python3 scripts/check_yul_compiles.py \
-            --dir compiler/yul \
-            --dir compiler/yul-patched \
-            --dir compiler/yul-ast \
-            --require-same-files compiler/yul compiler/yul-patched \
-            --compare-dirs compiler/yul compiler/yul-ast \
+            --dir generated/yul \
+            --dir generated/yul-patched \
+            --dir generated/yul-ast \
+            --require-same-files generated/yul generated/yul-patched \
+            --compare-dirs generated/yul generated/yul-ast \
             --allow-compare-diff-file scripts/fixtures/yul_ast_bytecode_diffs.allowlist
 
       - name: Check selector fixtures against solc
@@ -377,7 +377,7 @@ jobs:
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import csv
           from collections import defaultdict
-          path = "compiler/patch-report.tsv"
+          path = "generated/patch-report.tsv"
           rows = list(csv.DictReader(open(path), delimiter="\t"))
           totals = defaultdict(int)
           contracts = defaultdict(int)
@@ -415,13 +415,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-yul
-          path: compiler/yul
+          path: generated/yul
 
       - name: Upload patched Yul
         uses: actions/upload-artifact@v4
         with:
           name: generated-yul-patched
-          path: compiler/yul-patched
+          path: generated/yul-patched
 
       - name: Upload difftest interpreter
         uses: actions/upload-artifact@v4
@@ -445,7 +445,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: patch-coverage-report
-          path: compiler/patch-report.tsv
+          path: generated/patch-report.tsv
 
   foundry-gas-calibration:
     runs-on: ubuntu-latest
@@ -488,7 +488,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: generated-yul
-          path: compiler/yul
+          path: generated/yul
 
       - name: Setup Foundry environment
         uses: ./.github/actions/setup-foundry
@@ -496,7 +496,7 @@ jobs:
       - name: Run Foundry tests with seed 42
         env:
           FOUNDRY_PROFILE: difftest
-          DIFFTEST_YUL_DIR: "compiler/yul"
+          DIFFTEST_YUL_DIR: "generated/yul"
           DIFFTEST_RANDOM_SMALL: "100"
           DIFFTEST_RANDOM_LARGE: "10000"
           DIFFTEST_RANDOM_SEED: "42"
@@ -521,7 +521,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: generated-yul-patched
-          path: compiler/yul-patched
+          path: generated/yul-patched
 
       - name: Setup Foundry environment
         uses: ./.github/actions/setup-foundry
@@ -529,7 +529,7 @@ jobs:
       - name: Run Foundry patched-Yul smoke tests
         env:
           FOUNDRY_PROFILE: difftest
-          DIFFTEST_YUL_DIR: "compiler/yul-patched"
+          DIFFTEST_YUL_DIR: "generated/yul-patched"
           DIFFTEST_RANDOM_SMALL: "100"
           DIFFTEST_RANDOM_LARGE: "10000"
           DIFFTEST_RANDOM_SEED: "42"
@@ -559,7 +559,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: generated-yul
-          path: compiler/yul
+          path: generated/yul
 
       - name: Setup Foundry environment
         uses: ./.github/actions/setup-foundry
@@ -567,7 +567,7 @@ jobs:
       - name: Run tests with seed ${{ matrix.seed }}
         env:
           FOUNDRY_PROFILE: difftest
-          DIFFTEST_YUL_DIR: "compiler/yul"
+          DIFFTEST_YUL_DIR: "generated/yul"
           DIFFTEST_RANDOM_SMALL: "100"
           DIFFTEST_RANDOM_LARGE: "10000"
           DIFFTEST_RANDOM_SEED: "${{ matrix.seed }}"

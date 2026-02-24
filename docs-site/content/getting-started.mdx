@@ -81,8 +81,8 @@ lake build Verity.Proofs.SimpleStorage.Basic    # Verifies in seconds
 
 **3. See it compile to EVM bytecode** — after `lake build` completes:
 ```bash
-lake exe verity-compiler    # Outputs Yul to compiler/yul/
-cat compiler/yul/SimpleStorage.yul
+lake exe verity-compiler    # Outputs Yul to generated/yul/
+cat generated/yul/SimpleStorage.yul
 ```
 
 This is the core loop: **write a contract in Lean → prove it correct → compile it to EVM bytecode**.
@@ -125,13 +125,13 @@ Follow the printed instructions to register the contract in `Verity/All.lean` an
 
 ```bash
 lake build verity-compiler
-lake exe verity-compiler          # Output in compiler/yul/
+lake exe verity-compiler          # Output in generated/yul/
 ```
 
 For contracts that use external libraries (e.g., Poseidon hash):
 
 ```bash
-lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul -o generated/yul
 ```
 
 See the [Linking Libraries guide](/guides/linking-libraries) for details.

@@ -9,7 +9,7 @@
     lake exe verity-compiler \
         --link examples/external-libs/PoseidonT3.yul \
         --link examples/external-libs/PoseidonT4.yul \
-        -o compiler/yul
+        -o generated/yul
 -/
 
 import Compiler.Yul.Ast

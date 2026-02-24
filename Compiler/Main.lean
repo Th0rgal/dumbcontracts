@@ -6,14 +6,14 @@ import Compiler.ASTDriver
 
 Supports:
 - `--link <path>` : Link external Yul library (can be specified multiple times)
-- `--output <dir>` or `-o <dir>` : Output directory (default: "compiler/yul")
+- `--output <dir>` or `-o <dir>` : Output directory (default: "generated/yul")
 - `--ast` : Use unified AST compilation path (issue #364)
 - `--verbose` or `-v` : Verbose output
 - `--help` or `-h` : Show help message
 -/
 
 private structure CLIArgs where
-  outDir : String := "compiler/yul"
+  outDir : String := "generated/yul"
   abiOutDir : Option String := none
   libs : List String := []
   verbose : Bool := false
@@ -48,7 +48,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println ""
         IO.println "Options:"
         IO.println "  --link <path>      Link external Yul library (can be used multiple times)"
-        IO.println "  --output <dir>     Output directory (default: compiler/yul)"
+        IO.println "  --output <dir>     Output directory (default: generated/yul)"
         IO.println "  -o <dir>           Short form of --output"
         IO.println "  --ast              Use unified AST compilation path (#364)"
         IO.println "  --abi-output <dir> Output ABI JSON artifacts (one <Contract>.abi.json per spec)"
@@ -63,9 +63,9 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println "  -h                 Short form of --help"
         IO.println ""
         IO.println "Example:"
-        IO.println "  verity-compiler --link examples/external-libs/PoseidonT3.yul -o compiler/yul"
+        IO.println "  verity-compiler --link examples/external-libs/PoseidonT3.yul -o generated/yul"
         IO.println "  verity-compiler --ast -v  # compile using unified AST path"
-        IO.println "  verity-compiler --enable-patches --patch-report compiler/patch-report.tsv"
+        IO.println "  verity-compiler --enable-patches --patch-report generated/patch-report.tsv"
         throw (IO.userError "help")
     | "--link" :: path :: rest =>
         go rest { cfg with libs := path :: cfg.libs }

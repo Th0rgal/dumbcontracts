@@ -35,13 +35,13 @@ python3 scripts/generate_contract.py MyContract
 
 # 4. Compile to Yul/EVM
 lake build verity-compiler
-lake exe verity-compiler                      # Output in compiler/yul/
+lake exe verity-compiler                      # Output in generated/yul/
 ```
 
 **With external libraries (e.g., Poseidon hash):**
 ```bash
 # Link your Yul library at compile time
-lake exe verity-compiler --link examples/external-libs/MyLib.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyLib.yul -o generated/yul
 ```
 
 **With deterministic Yul patch pass + coverage report:**
@@ -49,9 +49,9 @@ lake exe verity-compiler --link examples/external-libs/MyLib.yul -o compiler/yul
 lake exe verity-compiler \
   --enable-patches \
   --patch-max-iterations 2 \
-  --patch-report compiler/patch-report.tsv \
+  --patch-report generated/patch-report.tsv \
   --mapping-slot-scratch-base 128 \
-  -o compiler/yul-patched
+  -o generated/yul-patched
 ```
 
 `--mapping-slot-scratch-base` controls where compiler-generated `mappingSlot` helpers write temporary words before `keccak256`.
@@ -166,7 +166,7 @@ Verity supports linking external Yul libraries (e.g., cryptographic libraries) t
 lake exe verity-compiler \
     --link examples/external-libs/PoseidonT3.yul \
     --link examples/external-libs/PoseidonT4.yul \
-    -o compiler/yul
+    -o generated/yul
 ```
 
 **Minimal example:**
@@ -277,7 +277,7 @@ Stmt.letVar "h" (Expr.externalCall "poseidonHash" [Expr.param "a", Expr.param "b
 
 3. **Compile with linking**:
 ```bash
-lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o generated/yul
 ```
 
 The compiler validates function names, arities, and prevents name collisions. See [`examples/external-libs/README.md`](examples/external-libs/README.md) for detailed guidance.

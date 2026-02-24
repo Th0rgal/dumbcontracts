@@ -22,3 +22,9 @@ out/
 cache/
 .sandboxed-sh_context.json
 __pycache__/
+
+# Generated compiler output (build artifacts)
+generated/yul/
+generated/yul-patched/
+generated/yul-ast/
+generated/patch-report.tsv

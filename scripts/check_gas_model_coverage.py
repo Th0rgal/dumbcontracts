@@ -11,7 +11,7 @@ from pathlib import Path
 from property_utils import ROOT
 
 STATIC_ANALYSIS = ROOT / "Compiler" / "Gas" / "StaticAnalysis.lean"
-DEFAULT_YUL_DIR = ROOT / "compiler" / "yul"
+DEFAULT_YUL_DIR = ROOT / "generated" / "yul"
 
 FUNCTION_DEF_RE = re.compile(r"\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 CALL_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
@@ -27,7 +27,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="dirs",
         action="append",
         default=[],
-        help="Yul directory to scan (repeatable). Default: compiler/yul",
+        help="Yul directory to scan (repeatable). Default: generated/yul",
     )
     return parser.parse_args(argv)
 

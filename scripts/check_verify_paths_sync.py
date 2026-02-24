@@ -13,6 +13,8 @@ import re
 import sys
 from pathlib import Path
 
+from workflow_jobs import extract_job_body
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 CHECK_ONLY_PATHS = [
@@ -44,6 +46,15 @@ def extract_list_block(text: str, pattern: str, label: str) -> list[str]:
     if not entries:
         raise ValueError(f"{label} is empty in {VERIFY_YML}")
     return entries
+
+
+def extract_changes_filter_paths(text: str) -> list[str]:
+    changes_body = extract_job_body(text, "changes", VERIFY_YML)
+    return extract_list_block(
+        changes_body,
+        r"^\s*filters:\s*\|\n(?:^\s+.*\n)*?^\s*code:\n(?P<block>(?:^\s*-\s+.*\n)+)",
+        "changes.filter.code",
+    )
 
 
 def duplicates(values: list[str]) -> list[str]:
@@ -109,11 +120,7 @@ def main() -> int:
         r"^  pull_request:\n(?:^    .*\n)*?^    paths:\n(?P<block>(?:^      - .*\n)+)",
         "on.pull_request.paths",
     )
-    filter_paths = extract_list_block(
-        text,
-        r"^          filters: \|\n(?:^            .*\n)*?^            code:\n(?P<block>(?:^              - .*\n)+)",
-        "changes.filter.code",
-    )
+    filter_paths = extract_changes_filter_paths(text)
 
     errors: list[str] = []
 

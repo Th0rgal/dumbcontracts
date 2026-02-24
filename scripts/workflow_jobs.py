@@ -338,6 +338,8 @@ def match_shell_command(
     Supports forms like:
       FOO=1 BAR=2 forge test ...
       env FOO=1 BAR=2 forge test ...
+      env -i FOO=1 forge test ...
+      env -u FOO -- forge test ...
     """
 
     tokens = parse_shell_command_tokens(raw)
@@ -350,8 +352,26 @@ def match_shell_command(
 
     if i < len(tokens) and tokens[i] == "env":
         i += 1
-        while i < len(tokens) and _SHELL_ASSIGNMENT_RE.match(tokens[i]):
-            i += 1
+        env_opts_with_arg = {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"}
+        env_options_done = False
+        while i < len(tokens):
+            tok = tokens[i]
+            if tok == "--":
+                env_options_done = True
+                i += 1
+                continue
+            if not env_options_done and tok in env_opts_with_arg:
+                i += 1
+                if i < len(tokens):
+                    i += 1
+                continue
+            if not env_options_done and tok.startswith("-"):
+                i += 1
+                continue
+            if _SHELL_ASSIGNMENT_RE.match(tok):
+                i += 1
+                continue
+            break
 
     if i >= len(tokens) or tokens[i] != program:
         return False, tokens

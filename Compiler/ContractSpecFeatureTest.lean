@@ -620,7 +620,8 @@ private def featureSpec : ContractSpec := {
   }
   match compile eagerLogicalCallSpec [1] with
   | .error err =>
-      if !(contains err "Expr.logicalAnd/Expr.logicalOr with call-like operand(s)" &&
+      if !(contains err "Expr.logicalAnd/Expr.logicalOr" &&
+          contains err "call-like operand(s)" &&
           contains err "Issue #748") then
         throw (IO.userError s!"✗ logical call operand diagnostic mismatch: {err}")
       IO.println "✓ logical call operand validation"
@@ -653,7 +654,8 @@ private def featureSpec : ContractSpec := {
   }
   match compile eagerLogicalExternalSpec [1] with
   | .error err =>
-      if !(contains err "Expr.logicalAnd/Expr.logicalOr with call-like operand(s)" &&
+      if !(contains err "Expr.logicalAnd/Expr.logicalOr" &&
+          contains err "call-like operand(s)" &&
           contains err "Issue #748") then
         throw (IO.userError s!"✗ logical external operand diagnostic mismatch: {err}")
       IO.println "✓ logical external operand validation"

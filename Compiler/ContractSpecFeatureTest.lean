@@ -4493,6 +4493,84 @@ private def featureSpec : ContractSpec := {
         "log1(0, 32, topic)"
       ]
 
+-- ===== Stmt.safeTransfer compilation test =====
+#eval! do
+  let safeTransferSpec : ContractSpec := {
+    name := "SafeTransferTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "doTransfer"
+        params := [⟨"token", ParamType.address⟩, ⟨"to", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+        returnType := none
+        body := [
+          Stmt.safeTransfer (Expr.param "token") (Expr.param "to") (Expr.param "amount"),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile safeTransferSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected safeTransfer to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Check selector for transfer(address,uint256) = 0xa9059cbb
+      assertContains "safeTransfer compiles with correct selector" rendered
+        ["a9059cbb"]
+      -- Check call pattern
+      assertContains "safeTransfer emits call" rendered
+        ["call(gas(),"]
+      -- Check revert pattern: Error(string) selector + revert encoding
+      -- "transfer reverted" = 17 bytes, hex = 7472616e73666572207265766572746564
+      assertContains "safeTransfer emits revert on failure" rendered
+        ["mstore(36, 17)", "7472616e73666572207265766572746564"]
+      -- "transfer returned false" = 23 bytes, hex = 7472616e736665722072657475726e65642066616c7365
+      assertContains "safeTransfer emits revert on false return" rendered
+        ["mstore(36, 23)", "7472616e736665722072657475726e65642066616c7365"]
+      -- Check optional bool check pattern
+      assertContains "safeTransfer checks returndatasize" rendered
+        ["returndatasize()"]
+
+-- ===== Stmt.safeTransferFrom compilation test =====
+#eval! do
+  let safeTransferFromSpec : ContractSpec := {
+    name := "SafeTransferFromTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "doTransferFrom"
+        params := [⟨"token", ParamType.address⟩, ⟨"from", ParamType.address⟩, ⟨"to", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+        returnType := none
+        body := [
+          Stmt.safeTransferFrom (Expr.param "token") (Expr.param "from") (Expr.param "to") (Expr.param "amount"),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile safeTransferFromSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected safeTransferFrom to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Check selector for transferFrom(address,address,uint256) = 0x23b872dd
+      assertContains "safeTransferFrom compiles with correct selector" rendered
+        ["23b872dd"]
+      -- Check call pattern with 100-byte calldata
+      assertContains "safeTransferFrom emits call" rendered
+        ["call(gas(),"]
+      -- Check revert pattern: Error(string) selector + revert encoding
+      -- "transferFrom reverted" = 21 bytes, hex = 7472616e7366657246726f6d2072657665727465640000
+      assertContains "safeTransferFrom emits revert on failure" rendered
+        ["mstore(36, 21)", "7472616e7366657246726f6d20726576657274656400"]
+      -- "transferFrom returned false" = 27 bytes, hex = 7472616e7366657246726f6d2072657475726e65642066616c7365
+      assertContains "safeTransferFrom emits revert on false return" rendered
+        ["mstore(36, 27)", "7472616e7366657246726f6d2072657475726e65642066616c7365"]
+      -- Check optional bool check pattern
+      assertContains "safeTransferFrom checks returndatasize" rendered
+        ["returndatasize()"]
+
 -- rawLog with 3 topics → log3
 #eval! do
   let rawLog3Spec : ContractSpec := {
@@ -4603,6 +4681,7 @@ private def featureSpec : ContractSpec := {
       }
     ]
   }
+
   match compile rawLogViewSpec [1] with
   | .error err =>
       if !(contains err "writes state") then
@@ -4610,6 +4689,30 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ rawLog in view function correctly rejected"
   | .ok _ =>
       throw (IO.userError "✗ expected rawLog in view function to fail compilation")
+
+-- ===== Stmt.safeTransfer validation: rejects in view function =====
+#eval! do
+  let safeTransferViewSpec : ContractSpec := {
+    name := "SafeTransferViewReject"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badView"
+        params := [⟨"token", ParamType.address⟩, ⟨"to", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+        returnType := none
+        isView := true
+        body := [
+          Stmt.safeTransfer (Expr.param "token") (Expr.param "to") (Expr.param "amount"),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile safeTransferViewSpec [1] with
+  | .error _ =>
+      IO.println "✓ safeTransfer correctly rejected in view function"
+  | .ok _ =>
+      throw (IO.userError "✗ expected safeTransfer in view function to be rejected")
 
 -- ============================================================
 -- Arithmetic helpers (#928)

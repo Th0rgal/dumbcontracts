@@ -301,6 +301,12 @@ inductive Stmt
       `topics` must contain 0–4 expressions (selects log0–log4).
       The caller is responsible for prior `mstore` calls that populate the data region. (#930) -/
   | rawLog (topics : List Expr) (dataOffset dataSize : Expr)
+  /-- Perform an external call and bind ABI-decoded return values to local variables.
+      Reverts with forwarded returndata on call failure or insufficient return data. -/
+  | externalCallBind
+      (resultVars : List String)  -- local vars to bind return values to
+      (externalName : String)     -- name of the external function declaration
+      (args : List Expr)          -- call arguments
   deriving Repr
 
 structure FunctionSpec where
@@ -625,6 +631,8 @@ private partial def collectStmtNames : Stmt → List String
       names ++ functionName :: collectExprListNames args
   | Stmt.rawLog topics dataOffset dataSize =>
       collectExprListNames topics ++ collectExprNames dataOffset ++ collectExprNames dataSize
+  | Stmt.externalCallBind resultVars externalName args =>
+      resultVars ++ externalName :: collectExprListNames args
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -1088,6 +1096,8 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       topics.any exprContainsUnsafeLogicalCallLike ||
       exprContainsUnsafeLogicalCallLike dataOffset ||
       exprContainsUnsafeLogicalCallLike dataSize
+  | Stmt.externalCallBind _ _ args =>
+      args.any exprContainsUnsafeLogicalCallLike
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1314,6 +1324,9 @@ private partial def validateScopedStmtIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount dataOffset
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount dataSize
       pure localScope
+  | Stmt.externalCallBind resultVars _ args => do
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      pure (resultVars.reverse ++ localScope)
   | _ => pure localScope
 
 private partial def validateScopedStmtListIdentifiers
@@ -1548,6 +1561,8 @@ private partial def stmtWritesState : Stmt → Bool
       topics.any exprWritesState || exprWritesState dataOffset || exprWritesState dataSize || true
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
       args.any exprWritesState || true
+  | Stmt.externalCallBind _ _ args =>
+      args.any exprWritesState || true
 where
   exprWritesState (expr : Expr) : Bool :=
     match expr with
@@ -1621,6 +1636,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.rawLog topics dataOffset dataSize =>
       topics.any exprReadsStateOrEnv || exprReadsStateOrEnv dataOffset || exprReadsStateOrEnv dataSize
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
+      args.any exprReadsStateOrEnv || true
+  | Stmt.externalCallBind _ _ args =>
       args.any exprReadsStateOrEnv || true
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
@@ -2214,6 +2231,8 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       args.forM (validateInteropExpr context)
   | Stmt.internalCallAssign _ _ args =>
       args.forM (validateInteropExpr context)
+  | Stmt.externalCallBind _ _ args =>
+      args.forM (validateInteropExpr context)
   | Stmt.returnValues values =>
       values.forM (validateInteropExpr context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -2439,6 +2458,8 @@ private partial def validateInternalCallShapesInStmt
       topics.forM (validateInternalCallShapesInExpr functions callerName)
       validateInternalCallShapesInExpr functions callerName dataOffset
       validateInternalCallShapesInExpr functions callerName dataSize
+  | Stmt.externalCallBind _resultVars _ args =>
+      args.forM (validateInternalCallShapesInExpr functions callerName)
   | _ =>
       pure ()
 
@@ -2564,6 +2585,27 @@ private partial def validateExternalCallTargetsInStmt
       args.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.internalCallAssign _ _ args =>
       args.forM (validateExternalCallTargetsInExpr externals context)
+  | Stmt.externalCallBind resultVars externalName args => do
+      args.forM (validateExternalCallTargetsInExpr externals context)
+      match externals.find? (fun ext => ext.name == externalName) with
+      | none =>
+          throw s!"Compilation error: {context} uses Stmt.externalCallBind with unknown external function '{externalName}'."
+      | some ext => do
+          if args.length != ext.params.length then
+            throw s!"Compilation error: {context} calls external function '{externalName}' with {args.length} args, expected {ext.params.length}."
+          let returns ← externalFunctionReturns ext
+          if resultVars.isEmpty then
+            throw s!"Compilation error: {context} uses Stmt.externalCallBind with no result variables."
+          if returns.length != resultVars.length then
+            throw s!"Compilation error: {context} binds {resultVars.length} values from external function '{externalName}', but it returns {returns.length}."
+          let rec checkDuplicateVars (seen : List String) : List String → Except String Unit
+            | [] => pure ()
+            | name :: rest =>
+                if seen.contains name then
+                  throw s!"Compilation error: {context} uses Stmt.externalCallBind with duplicate result variable '{name}'."
+                else
+                  checkDuplicateVars (name :: seen) rest
+          checkDuplicateVars [] resultVars
   | Stmt.returnValues values =>
       values.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -3706,6 +3748,9 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
   | Stmt.internalCallAssign names functionName args => do
       let argExprs ← compileExprList fields dynamicSource args
       pure [YulStmt.letMany names (YulExpr.call (internalFunctionYulName functionName) argExprs)]
+  | Stmt.externalCallBind resultVars externalName args => do
+      let argExprs ← compileExprList fields dynamicSource args
+      pure [YulStmt.letMany resultVars (YulExpr.call externalName argExprs)]
   | Stmt.returnValues values => do
       if isInternal then
         if values.length != internalRetNames.length then
@@ -3973,6 +4018,7 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.forEach varName _ body =>
       varName :: collectStmtListBindNames body
   | Stmt.internalCallAssign names _ _ => names
+  | Stmt.externalCallBind resultVars _ _ => resultVars
   | _ => []
 
 private partial def collectStmtListBindNames : List Stmt → List String
@@ -4043,6 +4089,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       args.any exprUsesArrayElement
   | Stmt.rawLog topics dataOffset dataSize =>
       topics.any exprUsesArrayElement || exprUsesArrayElement dataOffset || exprUsesArrayElement dataSize
+  | Stmt.externalCallBind _ _ args =>
+      args.any exprUsesArrayElement
   | _ => false
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=

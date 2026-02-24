@@ -4831,4 +4831,185 @@ private def featureSpec : ContractSpec := {
     throw (IO.userError s!"✗ min interpreter equal: expected 5, got {minEqResult.returnValue}")
   IO.println "✓ SpecInterpreter evaluates min/max correctly"
 
+-- ================================================================
+-- Stmt.externalCallBind: multi-return external call binding (#929)
+-- ================================================================
+
+-- Test: externalCallBind compiles to letMany with external function name
+private def externalCallBindSpec : ContractSpec := {
+  name := "ExternalCallBindSpec"
+  fields := [{ name := "x", ty := FieldType.uint256 }]
+  constructor := none
+  externals := [
+    { name := "getPrice"
+      params := [ParamType.address]
+      returns := [ParamType.uint256]
+      axiomNames := []
+    },
+    { name := "getPair"
+      params := [ParamType.uint256]
+      returns := [ParamType.uint256, ParamType.uint256]
+      axiomNames := []
+    },
+    { name := "getTriple"
+      params := []
+      returns := [ParamType.uint256, ParamType.uint256, ParamType.uint256]
+      axiomNames := []
+    }
+  ]
+  functions := [
+    { name := "fetchPrice"
+      params := [{ name := "oracle", ty := .address }]
+      returnType := some .uint256
+      body := [
+        Stmt.externalCallBind ["price"] "getPrice" [Expr.param "oracle"],
+        Stmt.return (Expr.localVar "price")
+      ]
+    },
+    { name := "fetchPair"
+      params := [{ name := "key", ty := .uint256 }]
+      returnType := none
+      returns := [ParamType.uint256, ParamType.uint256]
+      body := [
+        Stmt.externalCallBind ["a", "b"] "getPair" [Expr.param "key"],
+        Stmt.returnValues [Expr.localVar "a", Expr.localVar "b"]
+      ]
+    },
+    { name := "fetchTriple"
+      params := []
+      returnType := none
+      returns := [ParamType.uint256, ParamType.uint256, ParamType.uint256]
+      body := [
+        Stmt.externalCallBind ["x", "y", "z"] "getTriple" [],
+        Stmt.returnValues [Expr.localVar "x", Expr.localVar "y", Expr.localVar "z"]
+      ]
+    }
+  ]
+}
+
+-- Test: single return externalCallBind compiles correctly
+#eval! do
+  match compile externalCallBindSpec [1, 2, 3] with
+  | .error err =>
+      throw (IO.userError s!"✗ externalCallBind spec compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "externalCallBind single return" rendered
+        ["let price := getPrice(oracle)"]
+      IO.println s!"✓ externalCallBind single return compiles to let binding"
+
+-- Test: dual return externalCallBind compiles correctly
+#eval! do
+  match compile externalCallBindSpec [1, 2, 3] with
+  | .error err =>
+      throw (IO.userError s!"✗ externalCallBind spec compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "externalCallBind dual return" rendered
+        ["let a, b := getPair(key)"]
+      IO.println s!"✓ externalCallBind dual return compiles to letMany binding"
+
+-- Test: triple return externalCallBind compiles correctly
+#eval! do
+  match compile externalCallBindSpec [1, 2, 3] with
+  | .error err =>
+      throw (IO.userError s!"✗ externalCallBind spec compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "externalCallBind triple return" rendered
+        ["let x, y, z := getTriple()"]
+      IO.println s!"✓ externalCallBind triple return compiles to letMany binding"
+
+-- Test: externalCallBind validation rejects mismatched arity
+#eval! do
+  let badSpec : ContractSpec := {
+    name := "BadAritySpec"
+    fields := []
+    constructor := none
+    externals := [
+      { name := "getOne"
+        params := []
+        returns := [ParamType.uint256]
+        axiomNames := []
+      }
+    ]
+    functions := [
+      { name := "fetch"
+        params := []
+        returnType := none
+        body := [
+          Stmt.externalCallBind ["a", "b"] "getOne" [],
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile badSpec [1] with
+  | .error err =>
+      if contains err "binds 2 values" then
+        IO.println s!"✓ externalCallBind rejects arity mismatch: {err}"
+      else
+        throw (IO.userError s!"✗ externalCallBind wrong error message: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ externalCallBind should have rejected arity mismatch")
+
+-- Test: externalCallBind validation rejects unknown external
+#eval! do
+  let badSpec : ContractSpec := {
+    name := "BadExternalSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "fetch"
+        params := []
+        returnType := none
+        body := [
+          Stmt.externalCallBind ["a"] "nonExistent" [],
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile badSpec [1] with
+  | .error err =>
+      if contains err "unknown external function" then
+        IO.println s!"✓ externalCallBind rejects unknown external: {err}"
+      else
+        throw (IO.userError s!"✗ externalCallBind wrong error message: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ externalCallBind should have rejected unknown external")
+
+-- Test: externalCallBind validation rejects duplicate result vars
+#eval! do
+  let badSpec : ContractSpec := {
+    name := "DupVarSpec"
+    fields := []
+    constructor := none
+    externals := [
+      { name := "getPair"
+        params := []
+        returns := [ParamType.uint256, ParamType.uint256]
+        axiomNames := []
+      }
+    ]
+    functions := [
+      { name := "fetch"
+        params := []
+        returnType := none
+        body := [
+          Stmt.externalCallBind ["x", "x"] "getPair" [],
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile badSpec [1] with
+  | .error err =>
+      if contains err "duplicate result variable" then
+        IO.println s!"✓ externalCallBind rejects duplicate vars: {err}"
+      else
+        throw (IO.userError s!"✗ externalCallBind wrong error message: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ externalCallBind should have rejected duplicate vars")
+
 end Compiler.ContractSpecFeatureTest

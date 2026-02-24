@@ -35,11 +35,25 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _match(pattern: re.Pattern[str], text: str, label: str) -> str:
-    m = pattern.search(text)
-    if m is None:
+def _collect(pattern: re.Pattern[str], text: str, label: str) -> list[str]:
+    values = [m.group(1) for m in pattern.finditer(text)]
+    if not values:
         raise ValueError(f"could not parse {label}")
-    return m.group(1)
+    return values
+
+
+def _extract_canonical(
+    pattern: re.Pattern[str], text: str, label: str, errors: list[str]
+) -> str:
+    values = _collect(pattern, text, label)
+    canonical = values[0]
+    for idx, value in enumerate(values[1:], start=2):
+        if value != canonical:
+            errors.append(
+                f".github/workflows/verify.yml: {label} occurrence {idx} "
+                f"('{value}') conflicts with canonical '{canonical}'"
+            )
+    return canonical
 
 
 def main() -> int:
@@ -55,9 +69,9 @@ def main() -> int:
         return 1
 
     try:
-        solc_version = _match(SOLC_VERSION_RE, verify_text, "SOLC_VERSION")
-        solc_url = _match(SOLC_URL_RE, verify_text, "SOLC_URL")
-        _match(SOLC_SHA256_RE, verify_text, "SOLC_SHA256")
+        solc_version = _extract_canonical(SOLC_VERSION_RE, verify_text, "SOLC_VERSION", errors)
+        solc_url = _extract_canonical(SOLC_URL_RE, verify_text, "SOLC_URL", errors)
+        _extract_canonical(SOLC_SHA256_RE, verify_text, "SOLC_SHA256", errors)
     except ValueError as err:
         print(f"solc pin check failed: {err}", file=sys.stderr)
         return 1

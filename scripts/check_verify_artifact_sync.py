@@ -18,20 +18,172 @@ def _extract_job_block(text: str, job_name: str) -> str:
     return extract_job_body(text, job_name, VERIFY_YML)
 
 
+def _strip_yaml_inline_comment(raw: str) -> str:
+    out: list[str] = []
+    quote: str | None = None
+    for ch in raw:
+        if quote is None and ch in {"'", '"'}:
+            quote = ch
+            out.append(ch)
+            continue
+        if quote is not None and ch == quote:
+            quote = None
+            out.append(ch)
+            continue
+        if quote is None and ch == "#":
+            break
+        out.append(ch)
+    return "".join(out).strip()
+
+
+def _unquote_yaml_scalar(raw: str) -> str:
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {"'", '"'}:
+        return raw[1:-1]
+    return raw
+
+
+def _iter_step_blocks(job_body: str) -> list[str]:
+    lines = job_body.splitlines()
+    blocks: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not re.match(r"^\s*-\s+\S", line):
+            i += 1
+            continue
+        step_indent = len(line) - len(line.lstrip(" "))
+        j = i + 1
+        block_lines: list[str] = [line]
+        while j < len(lines):
+            child = lines[j]
+            if child.strip() == "":
+                block_lines.append(child)
+                j += 1
+                continue
+            child_indent = len(child) - len(child.lstrip(" "))
+            if child_indent <= step_indent:
+                break
+            block_lines.append(child)
+            j += 1
+        blocks.append("\n".join(block_lines))
+        i = j
+    return blocks
+
+
+def _step_uses_action(step_block: str, action: str) -> bool:
+    lines = step_block.splitlines()
+    if not lines:
+        return False
+    step_indent = len(lines[0]) - len(lines[0].lstrip(" "))
+
+    uses_value: str | None = None
+    first = re.match(r"^\s*-\s+uses:\s*(?P<value>.+?)\s*$", lines[0])
+    if first:
+        uses_value = first.group("value")
+    else:
+        min_child_indent: int | None = None
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+            child_indent = len(line) - len(line.lstrip(" "))
+            if child_indent <= step_indent:
+                continue
+            if min_child_indent is None or child_indent < min_child_indent:
+                min_child_indent = child_indent
+        if min_child_indent is not None:
+            for line in lines[1:]:
+                if not line.strip():
+                    continue
+                child_indent = len(line) - len(line.lstrip(" "))
+                if child_indent != min_child_indent:
+                    continue
+                m = re.match(r"^\s*uses:\s*(?P<value>.+?)\s*$", line)
+                if m:
+                    uses_value = m.group("value")
+                    break
+
+    if uses_value is None:
+        return False
+    uses_clean = _unquote_yaml_scalar(_strip_yaml_inline_comment(uses_value))
+    return bool(re.fullmatch(rf"actions/{re.escape(action)}@v\d+", uses_clean))
+
+
+def _iter_artifact_step_blocks(job_body: str, action: str) -> list[str]:
+    return [block for block in _iter_step_blocks(job_body) if _step_uses_action(block, action)]
+
+
+def _extract_name_from_with_block(step_block: str) -> str | None:
+    lines = step_block.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r"^(?P<indent>\s*)with:\s*(?:#.*)?$", line)
+        if not m:
+            i += 1
+            continue
+        with_indent = len(m.group("indent"))
+        j = i + 1
+        block_lines: list[str] = []
+        while j < len(lines):
+            child = lines[j]
+            if child.strip() == "":
+                block_lines.append(child)
+                j += 1
+                continue
+            child_indent = len(child) - len(child.lstrip(" "))
+            if child_indent <= with_indent:
+                break
+            block_lines.append(child)
+            j += 1
+
+        min_child_indent: int | None = None
+        for child in block_lines:
+            if not child.strip():
+                continue
+            child_indent = len(child) - len(child.lstrip(" "))
+            if min_child_indent is None or child_indent < min_child_indent:
+                min_child_indent = child_indent
+
+        if min_child_indent is None:
+            i = j
+            continue
+
+        for child in block_lines:
+            if not child.strip():
+                continue
+            child_indent = len(child) - len(child.lstrip(" "))
+            if child_indent != min_child_indent:
+                continue
+            km = re.match(r"^\s*name:\s*(?P<value>.+?)\s*$", child)
+            if not km:
+                continue
+            raw = _strip_yaml_inline_comment(km.group("value"))
+            if not raw:
+                continue
+            return _unquote_yaml_scalar(raw)
+
+        i = j
+    return None
+
+
 def _extract_upload_names(build_body: str) -> list[str]:
-    return re.findall(
-        r"actions/upload-artifact@v\d+\n\s+with:\n\s+name:\s*([^\s]+)",
-        build_body,
-        flags=re.MULTILINE,
-    )
+    names: list[str] = []
+    for step_block in _iter_artifact_step_blocks(build_body, "upload-artifact"):
+        name = _extract_name_from_with_block(step_block)
+        if name is None:
+            raise ValueError("Found upload-artifact step without a literal with.name entry")
+        names.append(name)
+    return names
 
 
 def _extract_download_names(job_body: str) -> list[str]:
-    return re.findall(
-        r"actions/download-artifact@v\d+\n\s+with:\n\s+name:\s*([^\s]+)",
-        job_body,
-        flags=re.MULTILINE,
-    )
+    names: list[str] = []
+    for step_block in _iter_artifact_step_blocks(job_body, "download-artifact"):
+        name = _extract_name_from_with_block(step_block)
+        if name is None:
+            raise ValueError("Found download-artifact step without a literal with.name entry")
+        names.append(name)
+    return names
 
 
 def _extract_job_names(text: str) -> list[str]:

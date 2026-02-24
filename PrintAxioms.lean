@@ -28,7 +28,6 @@ import Verity.Proofs.Stdlib.Automation
 import Verity.Proofs.Stdlib.ListSum
 import Verity.Proofs.Stdlib.MappingAutomation
 import Verity.Proofs.Stdlib.Math
-import Compiler.Proofs.IRGeneration.Expr
 import Compiler.Proofs.SpecCorrectness.Counter
 import Compiler.Proofs.SpecCorrectness.ERC20
 import Compiler.Proofs.SpecCorrectness.ERC721
@@ -38,9 +37,6 @@ import Compiler.Proofs.SpecCorrectness.OwnedCounter
 import Compiler.Proofs.SpecCorrectness.SafeCounter
 import Compiler.Proofs.SpecCorrectness.SimpleStorage
 import Compiler.Proofs.SpecCorrectness.SimpleToken
-import Compiler.Proofs.YulGeneration.Codegen
-import Compiler.Proofs.YulGeneration.Equivalence
-import Compiler.Proofs.YulGeneration.Preservation
 
 -- Verity/Proofs/Counter/Basic.lean
 #print axioms Verity.Proofs.Counter.setStorage_updates_count
@@ -543,33 +539,6 @@ import Compiler.Proofs.YulGeneration.Preservation
 #print axioms Verity.Proofs.Stdlib.Math.safeMul_result_bounded
 #print axioms Verity.Proofs.Stdlib.Math.safeDiv_result_le_numerator
 
--- Compiler/Proofs/IRGeneration/Expr.lean
-#print axioms Compiler.Proofs.IRGeneration.simpleStorage_store_correct
-#print axioms Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct
-#print axioms Compiler.Proofs.IRGeneration.simpleStorage_retrieve_correct_with_storage
-#print axioms Compiler.Proofs.IRGeneration.counter_increment_correct
-#print axioms Compiler.Proofs.IRGeneration.safeCounter_increment_correct
-#print axioms Compiler.Proofs.IRGeneration.safeCounter_decrement_correct
-#print axioms Compiler.Proofs.IRGeneration.safeCounter_getCount_correct
-#print axioms Compiler.Proofs.IRGeneration.counter_decrement_correct
-#print axioms Compiler.Proofs.IRGeneration.counter_getCount_correct
-#print axioms Compiler.Proofs.IRGeneration.owned_transferOwnership_correct_as_owner
-#print axioms Compiler.Proofs.IRGeneration.owned_getOwner_correct
-#print axioms Compiler.Proofs.IRGeneration.ownedCounter_increment_correct
-#print axioms Compiler.Proofs.IRGeneration.ownedCounter_decrement_correct
-#print axioms Compiler.Proofs.IRGeneration.ownedCounter_getCount_correct
-#print axioms Compiler.Proofs.IRGeneration.ownedCounter_getOwner_correct
-#print axioms Compiler.Proofs.IRGeneration.ownedCounter_transferOwnership_correct
-#print axioms Compiler.Proofs.IRGeneration.ledger_deposit_correct
-#print axioms Compiler.Proofs.IRGeneration.ledger_withdraw_correct
-#print axioms Compiler.Proofs.IRGeneration.ledger_transfer_correct
-#print axioms Compiler.Proofs.IRGeneration.ledger_getBalance_correct
-#print axioms Compiler.Proofs.IRGeneration.simpleToken_mint_correct
-#print axioms Compiler.Proofs.IRGeneration.simpleToken_transfer_correct
-#print axioms Compiler.Proofs.IRGeneration.simpleToken_balanceOf_correct
-#print axioms Compiler.Proofs.IRGeneration.simpleToken_totalSupply_correct
-#print axioms Compiler.Proofs.IRGeneration.simpleToken_owner_correct
-
 -- Compiler/Proofs/SpecCorrectness/Counter.lean
 -- #print axioms Compiler.Proofs.SpecCorrectness.evalExpr_decrement_eq  -- private
 #print axioms Compiler.Proofs.SpecCorrectness.counter_increment_correct
@@ -672,37 +641,4 @@ import Compiler.Proofs.YulGeneration.Preservation
 #print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_supply
 #print axioms Compiler.Proofs.SpecCorrectness.token_only_owner_mints
 #print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_total_balance
-
--- Compiler/Proofs/YulGeneration/Codegen.lean
-#print axioms Compiler.Proofs.YulGeneration.emitYul_runtimeCode_eq
-#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr
-#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_eq
-#print axioms Compiler.Proofs.YulGeneration.execYulFuel_mappingSlotFunc
-#print axioms Compiler.Proofs.YulGeneration.execYulFuel_drop_mappingSlotFunc_buildSwitch
-#print axioms Compiler.Proofs.YulGeneration.execYulStmts_runtimeCode_eq
-#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match
-#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss
-#print axioms Compiler.Proofs.YulGeneration.find_switch_case_of_find_function
-#print axioms Compiler.Proofs.YulGeneration.find_switch_case_of_find_function_none
-
--- Compiler/Proofs/YulGeneration/Equivalence.lean
-#print axioms Compiler.Proofs.YulGeneration.resultsMatch_of_execResultsAligned
-#print axioms Compiler.Proofs.YulGeneration.statesAligned_refl
-#print axioms Compiler.Proofs.YulGeneration.execYulStmtsFuel_nil
-#print axioms Compiler.Proofs.YulGeneration.execYulStmtsFuel_cons
-#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_nil
-#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_cons
-#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.execIRStmtsFuel_equiv_execYulStmts_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.execIRFunctionFuel_equiv_interpretYulBodyFromState_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_fuel_goal_of_stmt_equiv
-#print axioms Compiler.Proofs.YulGeneration.execIRFunctionFuel_adequate
-#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
-#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
-#print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
-
--- Compiler/Proofs/YulGeneration/Preservation.lean
-#print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_initial
-#print axioms Compiler.Proofs.YulGeneration.yulCodegen_preserves_semantics
-#print axioms Compiler.Proofs.YulGeneration.ir_function_body_equiv
--- Total: 586 theorems/lemmas (557 public, 29 private)
+-- Total: 534 theorems/lemmas (505 public, 29 private)

@@ -108,16 +108,24 @@ def generate() -> str:
             all_files.extend(sorted(d.rglob("*.lean")))
 
     # Skip non-Lean files and modules that don't compile against current
-    # definitions.  These are tracked in the exclusion list below and should
-    # be removed as the proof files are brought back in sync.
-    EXCLUDED_STEMS = {
-        "Conversions",        # Compiler/Proofs/IRGeneration — uses stale IRState fields
-        "Lemmas",             # Compiler/Proofs/YulGeneration — syntax errors (default/switch)
-        "StatementEquivalence",  # Compiler/Proofs/YulGeneration — tactic failures
+    # definitions.  Three files have direct compilation errors, and four
+    # more transitively depend on them.  This list should shrink as the
+    # proof files are brought back in sync.
+    EXCLUDED_PATHS = {
+        # Direct compilation failures
+        "Compiler/Proofs/IRGeneration/Conversions.lean",       # stale IRState fields
+        "Compiler/Proofs/YulGeneration/Lemmas.lean",           # syntax errors (default/switch)
+        "Compiler/Proofs/YulGeneration/StatementEquivalence.lean",  # tactic failures
+        # Transitive dependents of the above
+        "Compiler/Proofs/IRGeneration/Expr.lean",              # imports Conversions
+        "Compiler/Proofs/YulGeneration/Codegen.lean",          # imports Lemmas
+        "Compiler/Proofs/YulGeneration/Equivalence.lean",      # imports Codegen
+        "Compiler/Proofs/YulGeneration/Preservation.lean",     # imports StatementEquivalence + Codegen
     }
     all_files = [
         f for f in all_files
-        if "README" not in f.name and f.stem not in EXCLUDED_STEMS
+        if "README" not in f.name
+        and str(f.relative_to(ROOT)) not in EXCLUDED_PATHS
     ]
 
     imports: list[str] = []

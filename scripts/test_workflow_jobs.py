@@ -13,6 +13,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from workflow_jobs import (
     extract_job_body,
     extract_literal_from_mapping_blocks,
+    extract_run_commands_from_job_body,
     extract_top_level_jobs,
 )
 
@@ -85,6 +86,31 @@ class WorkflowJobsTests(unittest.TestCase):
                 context="foundry",
             )
             self.assertEqual(value, "42")
+
+    def test_extract_run_commands_from_job_body_ignores_name_decoys(self) -> None:
+        body = "\n".join(
+            [
+                "    steps:",
+                '      - name: forge test --no-match-test "Random10000"',
+                "        run: echo not the real command",
+                "      - name: run tests",
+                "        run: |",
+                "          echo starting",
+                "          # forge test --no-match-test \"Random10000\"",
+                "          forge test --no-match-test \"Random10000\"",
+                "",
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = Path(tmpdir) / "verify.yml"
+            source.write_text(body, encoding="utf-8")
+            commands = extract_run_commands_from_job_body(
+                body,
+                source=source,
+                context="foundry-patched",
+            )
+            self.assertIn('forge test --no-match-test "Random10000"', commands)
+            self.assertNotIn('name: forge test --no-match-test "Random10000"', commands)
 
 
 if __name__ == "__main__":

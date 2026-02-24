@@ -7,7 +7,11 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body, extract_literal_from_mapping_blocks
+from workflow_jobs import (
+    extract_job_body,
+    extract_literal_from_mapping_blocks,
+    extract_run_commands_from_job_body,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -25,15 +29,25 @@ def _extract_env_literal(job_body: str, name: str) -> str:
 
 
 def _extract_no_match_test_target(job_body: str) -> str:
-    m = re.search(
-        r'^\s*forge test --no-match-test "([^"]+)"\s*$',
-        job_body,
-        flags=re.MULTILINE,
+    run_commands = extract_run_commands_from_job_body(
+        job_body, source=VERIFY_YML, context="foundry-patched"
     )
-    if not m:
+    forge_lines = [cmd for cmd in run_commands if cmd.startswith("forge test")]
+    if not forge_lines:
         raise ValueError(
             "Could not locate 'forge test --no-match-test \"...\"' in "
             f"foundry-patched job in {VERIFY_YML}"
+        )
+    if len(forge_lines) > 1:
+        raise ValueError(
+            "Found multiple forge test commands in foundry-patched job in "
+            f"{VERIFY_YML}; keep a single command for deterministic checks"
+        )
+    m = re.match(r'^forge test --no-match-test "([^"]+)"\s*$', forge_lines[0])
+    if not m:
+        raise ValueError(
+            "Could not parse '--no-match-test \"...\"' from foundry-patched "
+            f"forge test command in {VERIFY_YML}: {forge_lines[0]!r}"
         )
     return m.group(1)
 

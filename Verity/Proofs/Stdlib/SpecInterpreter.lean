@@ -445,7 +445,8 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       if vc == 0 then 0
       else
         let product := (va * vb) % modulus
-        (product + vc - 1) / vc
+        let subtracted := if vc >= 1 then vc - 1 else modulus - (1 - vc)
+        ((product + subtracted) % modulus) / vc
   | Expr.wMulDown a b =>
       let va := evalExpr ctx storage fields paramNames externalFns a
       let vb := evalExpr ctx storage fields paramNames externalFns b
@@ -454,7 +455,10 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       let va := evalExpr ctx storage fields paramNames externalFns a
       let vb := evalExpr ctx storage fields paramNames externalFns b
       if vb == 0 then 0
-      else ((va * 1000000000000000000) % modulus + vb - 1) / vb
+      else
+        let product := (va * 1000000000000000000) % modulus
+        let subtracted := if vb >= 1 then vb - 1 else modulus - (1 - vb)
+        ((product + subtracted) % modulus) / vb
   | Expr.min a b =>
       let va := evalExpr ctx storage fields paramNames externalFns a
       let vb := evalExpr ctx storage fields paramNames externalFns b

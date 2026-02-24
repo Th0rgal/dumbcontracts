@@ -993,9 +993,26 @@ private def validateLogicalOperandPurity (context : String) (a b : Expr) : Excep
   if exprContainsCallLike a || exprContainsCallLike b then
     throw s!"Compilation error: {context} uses Expr.logicalAnd/Expr.logicalOr with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Move call-like expressions into Stmt.letVar/Stmt.ite before combining booleans."
 
+/-- Validate that subexpressions duplicated by arithmetic helpers don't contain call-like expressions.
+    mulDivUp/wDivUp/min/max inline subexpressions multiple times in the generated Yul,
+    so call-like operands would be re-evaluated. -/
+private def validateArithDuplicatedOperandPurity (context : String) (duplicated : List Expr) : Except String Unit := do
+  if duplicated.any exprContainsCallLike then
+    throw s!"Compilation error: {context} uses an arithmetic helper (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before using them in arithmetic helpers."
+
 private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   match expr with
   | Expr.logicalAnd a b | Expr.logicalOr a b =>
+      (exprContainsCallLike a || exprContainsCallLike b) ||
+      exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
+  -- Arithmetic ops that duplicate subexpressions in Yul output
+  | Expr.mulDivUp a b c =>
+      exprContainsCallLike c ||
+      exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
+  | Expr.wDivUp a b =>
+      exprContainsCallLike b ||
+      exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
+  | Expr.min a b | Expr.max a b =>
       (exprContainsCallLike a || exprContainsCallLike b) ||
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
   | Expr.call gas target value inOffset inSize outOffset outSize =>
@@ -1026,9 +1043,9 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
+    Expr.wMulDown a b =>
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c =>
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsUnsafeLogicalCallLike a
@@ -1205,10 +1222,23 @@ private partial def validateScopedExprIdentifiers
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b => do
+    Expr.wMulDown a b => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+  | Expr.wDivUp a b => do
+      validateArithDuplicatedOperandPurity context [b]
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+  | Expr.min a b | Expr.max a b => do
+      validateArithDuplicatedOperandPurity context [a, b]
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+  | Expr.mulDivDown a b c => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
+  | Expr.mulDivUp a b c => do
+      validateArithDuplicatedOperandPurity context [c]
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
@@ -1605,7 +1635,7 @@ private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := d
   if spec.isPure && spec.body.any stmtReadsStateOrEnv then
     throw s!"Compilation error: function '{spec.name}' is marked pure but reads state/environment (Issue #734)"
   if spec.body.any stmtContainsUnsafeLogicalCallLike then
-    throw s!"Compilation error: function '{spec.name}' uses Expr.logicalAnd/Expr.logicalOr with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Move call-like expressions into Stmt.letVar/Stmt.ite before combining booleans."
+    throw s!"Compilation error: function '{spec.name}' uses Expr.logicalAnd/Expr.logicalOr or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   if !returns.isEmpty && !stmtListAlwaysReturnsOrReverts spec.body then
@@ -1635,7 +1665,7 @@ private def validateConstructorSpec (ctor : Option ConstructorSpec) : Except Str
   | none => pure ()
   | some spec =>
       if spec.body.any stmtContainsUnsafeLogicalCallLike then
-        throw s!"Compilation error: constructor uses Expr.logicalAnd/Expr.logicalOr with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Move call-like expressions into Stmt.letVar/Stmt.ite before combining booleans."
+        throw s!"Compilation error: constructor uses Expr.logicalAnd/Expr.logicalOr or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
       spec.body.forM validateNoRuntimeReturnsInConstructorStmt
       spec.body.forM (validateStmtParamReferences "constructor" spec.params)
       validateConstructorIdentifierReferences ctor

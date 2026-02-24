@@ -411,7 +411,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul-patched
                       path: compiler/yul-patched
-                  - run: command -p -- /usr/bin/env FOUNDRY_PROFILE=difftest forge test --no-match-test "Random10000"
+                  - run: command -pv -- /usr/bin/env FOUNDRY_PROFILE=difftest forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
                 runs-on: ubuntu-latest
@@ -426,7 +426,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: compiler/yul
-                  - run: command -- env DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
+                  - run: command -Vp -- env DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
             """
         )
         rc, stderr = self._run_job_sync(workflow)

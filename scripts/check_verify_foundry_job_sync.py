@@ -7,7 +7,11 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body, extract_literal_from_mapping_blocks
+from workflow_jobs import (
+    extract_job_body,
+    extract_literal_from_mapping_blocks,
+    extract_run_commands_from_job_body,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -51,10 +55,15 @@ def _extract_download(job_body: str, artifact_name: str, job: str) -> tuple[str,
 
 
 def _extract_forge_line(job_body: str, job: str) -> str:
-    m = re.search(r"^\s*forge test[^\n]*$", job_body, flags=re.MULTILINE)
-    if not m:
+    run_commands = extract_run_commands_from_job_body(job_body, source=VERIFY_YML, context=job)
+    forge_lines = [cmd for cmd in run_commands if cmd.startswith("forge test")]
+    if not forge_lines:
         raise ValueError(f"Could not locate 'forge test' command in {job} job in {VERIFY_YML}")
-    return m.group(0).strip()
+    if len(forge_lines) > 1:
+        raise ValueError(
+            f"Found multiple 'forge test' commands in {job} job in {VERIFY_YML}; keep a single command for deterministic checks"
+        )
+    return forge_lines[0]
 
 
 def main() -> int:

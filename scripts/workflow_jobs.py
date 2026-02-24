@@ -165,3 +165,69 @@ def extract_literal_from_mapping_blocks(
         )
 
     return values[0]
+
+
+def extract_run_commands_from_job_body(body: str, *, source: Path, context: str) -> list[str]:
+    """Extract executable shell command lines from `run:` steps in a job body.
+
+    Parses only the `steps:` section and ignores comments/blank lines.
+    """
+
+    lines = body.splitlines()
+    steps_idx = next(
+        (
+            i
+            for i, line in enumerate(lines)
+            if re.match(r"^\s*steps:\s*(?:#.*)?$", line)
+        ),
+        None,
+    )
+    if steps_idx is None:
+        raise ValueError(f"Could not locate {context}.steps in {source}")
+
+    steps_indent = len(lines[steps_idx]) - len(lines[steps_idx].lstrip(" "))
+    step_lines: list[str] = []
+    for line in lines[steps_idx + 1 :]:
+        if line.strip():
+            indent = len(line) - len(line.lstrip(" "))
+            if indent <= steps_indent:
+                break
+        step_lines.append(line)
+
+    commands: list[str] = []
+    i = 0
+    while i < len(step_lines):
+        line = step_lines[i]
+        m = re.match(r"^(?P<indent>\s*)(?:-\s*)?run:\s*(?P<payload>.*?)\s*$", line)
+        if not m:
+            i += 1
+            continue
+
+        indent = len(m.group("indent"))
+        payload = m.group("payload")
+        block_lines: list[str] = []
+        if payload in {"|", ">"}:
+            i += 1
+            while i < len(step_lines):
+                nxt = step_lines[i]
+                if not nxt.strip():
+                    block_lines.append("")
+                    i += 1
+                    continue
+                if len(nxt) - len(nxt.lstrip(" ")) <= indent:
+                    break
+                block_lines.append(nxt[indent + 2 :])
+                i += 1
+        else:
+            block_lines.append(payload)
+            i += 1
+
+        for raw in block_lines:
+            stripped = raw.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            commands.append(stripped)
+
+    if not commands:
+        raise ValueError(f"Could not locate executable run commands in {context} job in {source}")
+    return commands

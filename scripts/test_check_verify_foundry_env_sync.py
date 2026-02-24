@@ -188,6 +188,85 @@ class FoundryEnvSyncTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("DIFFTEST_SHARD_COUNT", stderr)
 
+    def test_job_sync_ignores_forge_decoy_in_step_name(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              foundry:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - name: forge test
+                    run: echo "not running tests"
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+
+              foundry-patched:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Download patched Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul-patched
+                      path: compiler/yul-patched
+                  - run: forge test --no-match-test "Random10000"
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+
+              foundry-multi-seed:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: forge test --no-match-test "Random10000"
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+            """
+        )
+        rc, stderr = self._run_job_sync(workflow)
+        self.assertEqual(rc, 1)
+        self.assertIn("Could not locate 'forge test' command", stderr)
+
+    def test_foundry_patched_sync_ignores_forge_decoy_in_name(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              foundry-patched:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: forge test --no-match-test "Random10000"
+                    run: echo "placeholder"
+                env:
+                  DIFFTEST_RANDOM_SEED: "42"
+                  DIFFTEST_SHARD_COUNT: "1"
+                  DIFFTEST_SHARD_INDEX: "0"
+            """
+        )
+        readme = "**`foundry-patched`** (seed 42, single shard, no `Random10000`)\n"
+        rc, stderr = self._run_patched_sync(workflow, readme)
+        self.assertEqual(rc, 1)
+        self.assertIn("Could not locate 'forge test --no-match-test", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

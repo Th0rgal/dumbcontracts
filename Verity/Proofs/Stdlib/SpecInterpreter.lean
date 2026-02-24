@@ -534,6 +534,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       true
   | Stmt.externalCallBind _ _ args =>
       exprListUsesUnsupportedLowLevel args
+  | Stmt.externalCallWithReturn _ target _ args _ =>
+      exprUsesUnsupportedLowLevel target || exprListUsesUnsupportedLowLevel args
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
       false
 
@@ -770,6 +772,10 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       -- SpecInterpreter. Revert instead of silently skipping.
       none
 
+  | Stmt.externalCallWithReturn _resultVar _target _selector _args _isStatic =>
+      -- ABI-encoded external calls require linked Yul; not modeled in basic interpreter.
+      none
+
 -- Execute a list of statements sequentially
 -- Thread both context and state through the computation
 -- Stop early if return/stop is encountered (halted = true)
@@ -866,6 +872,9 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
               none
           | Stmt.externalCallBind _resultVars _externalName _args =>
               -- External call bindings require linked Yul; not modeled in fuel-based interpreter.
+              none
+          | Stmt.externalCallWithReturn _resultVar _target _selector _args _isStatic =>
+              -- ABI-encoded external calls require linked Yul; not modeled in fuel-based interpreter.
               none
           | other => execStmt ctx fields paramNames externalFns state other
         match result with

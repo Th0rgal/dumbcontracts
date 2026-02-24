@@ -4887,6 +4887,51 @@ private def externalCallBindSpec : ContractSpec := {
   ]
 }
 
+-- Stmt.externalCallWithReturn: ABI-encoded external call with return (#926)
+
+-- Test: externalCallWithReturn compiles to mstore+call+returndatacopy pattern
+private def externalCallWithReturnSpec : ContractSpec := {
+  name := "ExternalCallWithReturn"
+  fields := []
+  constructor := none
+  functions := [
+    -- Test 1: simple staticcall with no args (oracle price feed pattern)
+    { name := "getPrice"
+      params := [{ name := "oracle", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.externalCallWithReturn "price" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+        Stmt.return (Expr.localVar "price")
+      ]
+    },
+    -- Test 2: call with args (ERC20 balanceOf pattern)
+    { name := "getBalance"
+      params := [
+        { name := "token", ty := ParamType.address },
+        { name := "account", ty := ParamType.address }
+      ]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.externalCallWithReturn "bal" (Expr.param "token") 0x70a08231 [Expr.param "account"],
+        Stmt.return (Expr.localVar "bal")
+      ]
+    },
+    -- Test 3: call with multiple args (IRM borrowRate pattern)
+    { name := "getBorrowRate"
+      params := [
+        { name := "irm", ty := ParamType.address },
+        { name := "a", ty := ParamType.uint256 },
+        { name := "b", ty := ParamType.uint256 }
+      ]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.externalCallWithReturn "rate" (Expr.param "irm") 0x9451fed4 [Expr.param "a", Expr.param "b"],
+        Stmt.return (Expr.localVar "rate")
+      ]
+    }
+  ]
+}
+
 -- Test: single return externalCallBind compiles correctly
 #eval! do
   match compile externalCallBindSpec [1, 2, 3] with
@@ -5011,5 +5056,173 @@ private def externalCallBindSpec : ContractSpec := {
         throw (IO.userError s!"✗ externalCallBind wrong error message: {err}")
   | .ok _ =>
       throw (IO.userError "✗ externalCallBind should have rejected duplicate vars")
+
+-- Test: staticcall with no args (oracle pattern)
+#eval! do
+  match compile externalCallWithReturnSpec [1, 2, 3] with
+  | .error err =>
+      throw (IO.userError s!"✗ externalCallWithReturn spec compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Should use shl(224, selector) for selector encoding
+      assertContains "externalCallWithReturn staticcall selector" rendered
+        ["shl(224, 0xa035b1fe)"]
+      -- Should use staticcall (not call) since isStatic=true
+      assertContains "externalCallWithReturn uses staticcall" rendered
+        ["staticcall(gas(),"]
+      -- Should have revert forwarding
+      assertContains "externalCallWithReturn revert forwarding" rendered
+        ["iszero(__ecwr_success)", "returndatacopy(0, 0, __ecwr_rds)", "revert(0, __ecwr_rds)"]
+      -- Should validate returndata size
+      assertContains "externalCallWithReturn size check" rendered
+        ["lt(returndatasize(), 32)"]
+      -- Should extract return value (no redundant returndatacopy — call already copied to memory)
+      assertContains "externalCallWithReturn return extraction" rendered
+        ["let price := mload(0)"]
+      -- Should NOT have a redundant returndatacopy(0, 0, 32) outside the revert block
+      IO.println s!"✓ externalCallWithReturn staticcall compiles correctly"
+
+-- Test: call with one arg (balanceOf pattern)
+#eval! do
+  match compile externalCallWithReturnSpec [1, 2, 3] with
+  | .error err =>
+      throw (IO.userError s!"✗ externalCallWithReturn spec compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Should use shl(224, selector) for balanceOf selector
+      assertContains "externalCallWithReturn call selector" rendered
+        ["shl(224, 0x70a08231)"]
+      -- Should store arg at offset 4
+      assertContains "externalCallWithReturn arg encoding" rendered
+        ["mstore(4,"]
+      -- Should use call (not staticcall) since isStatic=false
+      assertContains "externalCallWithReturn uses call" rendered
+        ["call(gas(),"]
+      -- Should extract result to bal
+      assertContains "externalCallWithReturn bal binding" rendered
+        ["let bal := mload(0)"]
+      IO.println s!"✓ externalCallWithReturn call with args compiles correctly"
+
+-- Test: call with multiple args (IRM pattern)
+#eval! do
+  match compile externalCallWithReturnSpec [1, 2, 3] with
+  | .error err =>
+      throw (IO.userError s!"✗ externalCallWithReturn spec compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Should store two args at offsets 4 and 36
+      assertContains "externalCallWithReturn multi-arg encoding" rendered
+        ["shl(224, 0x9451fed4)", "mstore(4,", "mstore(36,"]
+      -- Calldata size should be 4 + 2*32 = 68
+      assertContains "externalCallWithReturn calldata size" rendered
+        ["call(gas(),"]
+      -- Should extract result to rate
+      assertContains "externalCallWithReturn rate binding" rendered
+        ["let rate := mload(0)"]
+      IO.println s!"✓ externalCallWithReturn multi-arg call compiles correctly"
+
+-- Test: externalCallWithReturn rejects result variable shadowing a parameter
+#eval! do
+  let shadowSpec : ContractSpec := {
+    name := "ShadowParam"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bad"
+        params := [{ name := "oracle", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.externalCallWithReturn "oracle" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+          Stmt.return (Expr.localVar "oracle")
+        ]
+      }
+    ]
+  }
+  match compile shadowSpec [1] with
+  | .error err =>
+      if contains err "shadows a parameter" then
+        IO.println s!"✓ externalCallWithReturn rejects parameter shadow: {err}"
+      else
+        throw (IO.userError s!"✗ externalCallWithReturn wrong error: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ externalCallWithReturn should have rejected parameter shadow")
+
+-- Test: externalCallWithReturn rejects redeclaring existing local variable
+#eval! do
+  let redeclareSpec : ContractSpec := {
+    name := "RedeclareLocal"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bad"
+        params := [{ name := "oracle", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.letVar "price" (Expr.literal 0),
+          Stmt.externalCallWithReturn "price" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+          Stmt.return (Expr.localVar "price")
+        ]
+      }
+    ]
+  }
+  match compile redeclareSpec [1] with
+  | .error err =>
+      if contains err "redeclares an existing local variable" then
+        IO.println s!"✓ externalCallWithReturn rejects local redeclaration: {err}"
+      else
+        throw (IO.userError s!"✗ externalCallWithReturn wrong error: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ externalCallWithReturn should have rejected redeclaration")
+
+-- Test: staticcall external call allows view mutability
+#eval! do
+  let viewSpec : ContractSpec := {
+    name := "ViewStaticCall"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "getPrice"
+        params := [{ name := "oracle", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        isView := true
+        body := [
+          Stmt.externalCallWithReturn "price" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+          Stmt.return (Expr.localVar "price")
+        ]
+      }
+    ]
+  }
+  match compile viewSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ view staticcall should compile: {err}")
+  | .ok _ =>
+      IO.println "✓ externalCallWithReturn staticcall accepted for view function"
+
+-- Test: multiple externalCallWithReturn in same function (no duplicate let collision)
+#eval! do
+  let multiCallSpec : ContractSpec := {
+    name := "MultiExternalCall"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "getPrices"
+        params := [{ name := "oracle1", ty := ParamType.address }, { name := "oracle2", ty := ParamType.address }]
+        returnType := none
+        body := [
+          Stmt.externalCallWithReturn "price1" (Expr.param "oracle1") 0xa035b1fe [] (isStatic := true),
+          Stmt.externalCallWithReturn "price2" (Expr.param "oracle2") 0xa035b1fe [] (isStatic := true),
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile multiCallSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ multiple externalCallWithReturn should compile: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "multi externalCallWithReturn both bindings" rendered
+        ["let price1 := mload(0)", "let price2 := mload(0)"]
+      IO.println "✓ multiple externalCallWithReturn in same function compiles without collision"
 
 end Compiler.ContractSpecFeatureTest

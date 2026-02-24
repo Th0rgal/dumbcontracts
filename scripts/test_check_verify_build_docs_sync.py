@@ -77,6 +77,27 @@ class VerifyBuildDocsSyncTests(unittest.TestCase):
 
         self.assertEqual(_extract_workflow_build_commands(workflow), ["check_d.py"])
 
+    def test_extracts_with_inline_comments(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            jobs:
+              build:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: comments
+                    run: |
+                      # decoy
+                      python3 scripts/check_e.py --strict  # keep strict in workflow only
+                      echo done
+              other:
+                runs-on: ubuntu-latest
+                steps: []
+            """
+        )
+
+        self.assertEqual(_extract_workflow_build_commands(workflow), ["check_e.py"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -231,3 +231,80 @@ def extract_run_commands_from_job_body(body: str, *, source: Path, context: str)
     if not commands:
         raise ValueError(f"Could not locate executable run commands in {context} job in {source}")
     return commands
+
+
+def _strip_shell_inline_comment(raw: str) -> str:
+    out: list[str] = []
+    quote: str | None = None
+    escaped = False
+    for idx, ch in enumerate(raw):
+        if escaped:
+            out.append(ch)
+            escaped = False
+            continue
+        if ch == "\\":
+            out.append(ch)
+            escaped = True
+            continue
+        if quote is None and ch in {"'", '"'}:
+            quote = ch
+            out.append(ch)
+            continue
+        if quote is not None and ch == quote:
+            quote = None
+            out.append(ch)
+            continue
+        if quote is None and ch == "#" and (idx == 0 or raw[idx - 1].isspace()):
+            break
+        out.append(ch)
+    return "".join(out).rstrip()
+
+
+def extract_python_script_commands(
+    run_commands: list[str],
+    *,
+    source: Path,
+    command_prefix: str = "python3 scripts/",
+    include_args: bool = True,
+) -> list[str]:
+    """Extract normalized `python3 scripts/*` commands from run command lines.
+
+    Supports shell line continuations and inline comments.
+    """
+
+    commands: list[str] = []
+    i = 0
+    while i < len(run_commands):
+        stripped = run_commands[i].strip()
+        if not stripped or stripped.startswith("#"):
+            i += 1
+            continue
+
+        if not stripped.startswith(command_prefix):
+            i += 1
+            continue
+
+        cmd = _strip_shell_inline_comment(stripped)
+        while cmd.endswith("\\"):
+            cmd = cmd[:-1].rstrip()
+            i += 1
+            if i >= len(run_commands):
+                raise ValueError(
+                    "Trailing line-continuation in scripts command "
+                    f"in {source}: {stripped!r}"
+                )
+            continuation = _strip_shell_inline_comment(run_commands[i].strip())
+            if continuation:
+                cmd += " " + continuation
+
+        normalized = " ".join(cmd.split())
+        if not normalized.startswith(command_prefix):
+            raise ValueError(f"Expected scripts command prefixed by {command_prefix!r}, got: {cmd!r}")
+
+        script = normalized[len(command_prefix) :]
+        if not include_args:
+            script = script.split()[0]
+        commands.append(script)
+        i += 1
+
+    return commands

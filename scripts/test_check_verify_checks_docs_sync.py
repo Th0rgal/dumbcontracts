@@ -132,6 +132,27 @@ class VerifyChecksDocsSyncTests(unittest.TestCase):
             ["check_f.py --strict"],
         )
 
+    def test_preserves_hash_inside_quotes(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            jobs:
+              checks:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: quoted
+                    run: python3 scripts/check_g.py --label "a#b"
+              other:
+                runs-on: ubuntu-latest
+                steps: []
+            """
+        )
+
+        self.assertEqual(
+            _extract_workflow_checks_commands(workflow),
+            ['check_g.py --label "a#b"'],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

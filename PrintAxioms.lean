@@ -40,9 +40,7 @@ import Compiler.Proofs.SpecCorrectness.SimpleStorage
 import Compiler.Proofs.SpecCorrectness.SimpleToken
 import Compiler.Proofs.YulGeneration.Codegen
 import Compiler.Proofs.YulGeneration.Equivalence
-import Compiler.Proofs.YulGeneration.Lemmas
 import Compiler.Proofs.YulGeneration.Preservation
-import Compiler.Proofs.YulGeneration.StatementEquivalence
 
 -- Verity/Proofs/Counter/Basic.lean
 #print axioms Verity.Proofs.Counter.setStorage_updates_count
@@ -703,23 +701,8 @@ import Compiler.Proofs.YulGeneration.StatementEquivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 
--- Compiler/Proofs/YulGeneration/Lemmas.lean
-#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_match_semantics
-#print axioms Compiler.Proofs.YulGeneration.execYulStmtFuel_switch_miss_semantics
-
 -- Compiler/Proofs/YulGeneration/Preservation.lean
 #print axioms Compiler.Proofs.YulGeneration.evalYulExpr_selectorExpr_initial
 #print axioms Compiler.Proofs.YulGeneration.yulCodegen_preserves_semantics
 #print axioms Compiler.Proofs.YulGeneration.ir_function_body_equiv
-
--- Compiler/Proofs/YulGeneration/StatementEquivalence.lean
-#print axioms Compiler.Proofs.YulGeneration.evalIRExpr_eq_evalYulExpr
-#print axioms Compiler.Proofs.YulGeneration.evalIRExprs_eq_evalYulExprs
-#print axioms Compiler.Proofs.YulGeneration.evalIRCall_eq_evalYulCall
-#print axioms Compiler.Proofs.YulGeneration.assign_equiv
-#print axioms Compiler.Proofs.YulGeneration.storageStore_equiv
-#print axioms Compiler.Proofs.YulGeneration.conditional_equiv
-#print axioms Compiler.Proofs.YulGeneration.all_stmts_equiv
-#print axioms Compiler.Proofs.YulGeneration.return_equiv
-#print axioms Compiler.Proofs.YulGeneration.revert_equiv
--- Total: 597 theorems/lemmas (568 public, 29 private)
+-- Total: 586 theorems/lemmas (557 public, 29 private)

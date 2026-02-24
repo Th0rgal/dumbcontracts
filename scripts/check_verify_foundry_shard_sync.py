@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body
+from workflow_jobs import extract_job_body, extract_literal_from_mapping_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -36,10 +36,11 @@ def _extract_verify_shard_indices(body: str) -> list[int]:
 
 
 def _extract_verify_shard_count(body: str) -> int:
-    m = re.search(r'^\s*DIFFTEST_SHARD_COUNT:\s*"(?P<count>\d+)"\s*$', body, flags=re.MULTILINE)
-    if not m:
-        raise ValueError(f"Could not locate DIFFTEST_SHARD_COUNT in foundry job in {VERIFY_YML}")
-    return int(m.group("count"))
+    return int(
+        extract_literal_from_mapping_blocks(
+            body, "env", "DIFFTEST_SHARD_COUNT", source=VERIFY_YML, context="foundry"
+        )
+    )
 
 
 def _extract_readme_foundry_summary(text: str) -> tuple[int, int]:
@@ -57,10 +58,11 @@ def _extract_readme_foundry_summary(text: str) -> tuple[int, int]:
 
 
 def _extract_verify_seed(body: str) -> int:
-    m = re.search(r'^\s*DIFFTEST_RANDOM_SEED:\s*"(?P<seed>\d+)"\s*$', body, flags=re.MULTILINE)
-    if not m:
-        raise ValueError(f"Could not locate DIFFTEST_RANDOM_SEED in foundry job in {VERIFY_YML}")
-    return int(m.group("seed"))
+    return int(
+        extract_literal_from_mapping_blocks(
+            body, "env", "DIFFTEST_RANDOM_SEED", source=VERIFY_YML, context="foundry"
+        )
+    )
 
 
 def _fmt_indices(values: list[int]) -> str:

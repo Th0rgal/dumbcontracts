@@ -61,3 +61,107 @@ def extract_job_body(text: str, job_name: str, source: Path) -> str:
         return body + ("\n" if body else "")
 
     raise ValueError(f"Could not locate '{job_name}' job in {source}")
+
+
+def _extract_mapping_blocks(body: str, mapping_name: str) -> list[tuple[int, list[str]]]:
+    lines = body.splitlines()
+    blocks: list[tuple[int, list[str]]] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(rf"^(?P<indent>\s*){re.escape(mapping_name)}:\s*(?:#.*)?$", line)
+        if not m:
+            i += 1
+            continue
+
+        indent = len(m.group("indent"))
+        j = i + 1
+        block_lines: list[str] = []
+        while j < len(lines):
+            child = lines[j]
+            if child.strip() == "":
+                block_lines.append(child)
+                j += 1
+                continue
+            child_indent = len(child) - len(child.lstrip(" "))
+            if child_indent <= indent:
+                break
+            block_lines.append(child)
+            j += 1
+
+        if block_lines:
+            blocks.append((indent, block_lines))
+        i = j
+
+    return blocks
+
+
+def _strip_yaml_inline_comment(raw: str) -> str:
+    out: list[str] = []
+    quote: str | None = None
+    for ch in raw:
+        if quote is None and ch in {"'", '"'}:
+            quote = ch
+            out.append(ch)
+            continue
+        if quote is not None and ch == quote:
+            quote = None
+            out.append(ch)
+            continue
+        if quote is None and ch == "#":
+            break
+        out.append(ch)
+    return "".join(out).strip()
+
+
+def _unquote_yaml_scalar(raw: str) -> str:
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {"'", '"'}:
+        return raw[1:-1]
+    return raw
+
+
+def extract_literal_from_mapping_blocks(
+    body: str, mapping_name: str, key: str, *, source: Path, context: str
+) -> str:
+    """Extract a scalar key from mapping blocks (for example `env:`) inside a job body.
+
+    Fails closed when the key is missing or has conflicting values across blocks.
+    """
+
+    values: list[str] = []
+    for parent_indent, block in _extract_mapping_blocks(body, mapping_name):
+        min_child_indent: int | None = None
+        for line in block:
+            if not line.strip():
+                continue
+            child_indent = len(line) - len(line.lstrip(" "))
+            if min_child_indent is None or child_indent < min_child_indent:
+                min_child_indent = child_indent
+        if min_child_indent is None:
+            continue
+
+        for line in block:
+            if not line.strip():
+                continue
+            child_indent = len(line) - len(line.lstrip(" "))
+            if child_indent != min_child_indent or child_indent <= parent_indent:
+                continue
+            m = re.match(rf"^\s*{re.escape(key)}:\s*(?P<value>.+?)\s*$", line)
+            if m:
+                raw = _strip_yaml_inline_comment(m.group("value"))
+                if raw:
+                    values.append(_unquote_yaml_scalar(raw))
+
+    if not values:
+        raise ValueError(
+            f"Could not locate {key} in {context} {mapping_name} block in {source}"
+        )
+
+    unique = set(values)
+    if len(unique) > 1:
+        rendered = ", ".join(sorted(unique))
+        raise ValueError(
+            f"Found conflicting {key} values in {context} {mapping_name} blocks in {source}: {rendered}"
+        )
+
+    return values[0]

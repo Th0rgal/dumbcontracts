@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body
+from workflow_jobs import extract_job_body, extract_literal_from_mapping_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -19,10 +19,9 @@ def _extract_foundry_patched_job(text: str) -> str:
 
 
 def _extract_env_literal(job_body: str, name: str) -> str:
-    m = re.search(rf'^\s*{re.escape(name)}:\s*"([^"]+)"\s*$', job_body, re.MULTILINE)
-    if not m:
-        raise ValueError(f"Could not locate {name} in foundry-patched env block in {VERIFY_YML}")
-    return m.group(1)
+    return extract_literal_from_mapping_blocks(
+        job_body, "env", name, source=VERIFY_YML, context="foundry-patched"
+    )
 
 
 def _extract_no_match_test_target(job_body: str) -> str:

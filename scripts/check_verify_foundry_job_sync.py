@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body
+from workflow_jobs import extract_job_body, extract_literal_from_mapping_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -18,13 +18,9 @@ def _extract_job_body(text: str, job: str) -> str:
 
 
 def _extract_env_literal(job_body: str, name: str, job: str) -> str:
-    m = re.search(rf"^\s*{re.escape(name)}:\s*([^\n#]+?)\s*$", job_body, re.MULTILINE)
-    if not m:
-        raise ValueError(f"Could not locate {name} in {job} env block in {VERIFY_YML}")
-    raw = m.group(1).strip()
-    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {'"', "'"}:
-        return raw[1:-1]
-    return raw
+    return extract_literal_from_mapping_blocks(
+        job_body, "env", name, source=VERIFY_YML, context=job
+    )
 
 
 def _extract_download(job_body: str, artifact_name: str, job: str) -> tuple[str, str]:

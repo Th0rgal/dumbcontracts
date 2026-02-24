@@ -433,6 +433,36 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       if evalExpr ctx storage fields paramNames externalFns a ≠ 0 || evalExpr ctx storage fields paramNames externalFns b ≠ 0 then 1 else 0
   | Expr.logicalNot a =>
       if evalExpr ctx storage fields paramNames externalFns a == 0 then 1 else 0
+  | Expr.mulDivDown a b c =>
+      let va := evalExpr ctx storage fields paramNames externalFns a
+      let vb := evalExpr ctx storage fields paramNames externalFns b
+      let vc := evalExpr ctx storage fields paramNames externalFns c
+      if vc == 0 then 0 else ((va * vb) % modulus) / vc
+  | Expr.mulDivUp a b c =>
+      let va := evalExpr ctx storage fields paramNames externalFns a
+      let vb := evalExpr ctx storage fields paramNames externalFns b
+      let vc := evalExpr ctx storage fields paramNames externalFns c
+      if vc == 0 then 0
+      else
+        let product := (va * vb) % modulus
+        (product + vc - 1) / vc
+  | Expr.wMulDown a b =>
+      let va := evalExpr ctx storage fields paramNames externalFns a
+      let vb := evalExpr ctx storage fields paramNames externalFns b
+      ((va * vb) % modulus) / 1000000000000000000
+  | Expr.wDivUp a b =>
+      let va := evalExpr ctx storage fields paramNames externalFns a
+      let vb := evalExpr ctx storage fields paramNames externalFns b
+      if vb == 0 then 0
+      else ((va * 1000000000000000000) % modulus + vb - 1) / vb
+  | Expr.min a b =>
+      let va := evalExpr ctx storage fields paramNames externalFns a
+      let vb := evalExpr ctx storage fields paramNames externalFns b
+      if va ≤ vb then va else vb
+  | Expr.max a b =>
+      let va := evalExpr ctx storage fields paramNames externalFns a
+      let vb := evalExpr ctx storage fields paramNames externalFns b
+      if va ≥ vb then va else vb
 end
 
 mutual
@@ -455,8 +485,11 @@ def exprUsesUnsupportedLowLevel : Expr → Bool
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b =>
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
       exprUsesUnsupportedLowLevel a || exprUsesUnsupportedLowLevel b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+      exprUsesUnsupportedLowLevel a || exprUsesUnsupportedLowLevel b || exprUsesUnsupportedLowLevel c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesUnsupportedLowLevel a
   | _ =>

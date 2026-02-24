@@ -249,6 +249,24 @@ inductive Expr
   | logicalAnd (a b : Expr)  -- Logical AND (both operands always evaluated)
   | logicalOr (a b : Expr)   -- Logical OR  (both operands always evaluated)
   | logicalNot (a : Expr)    -- Logical NOT
+  /-- `mulDivDown(a, b, c)` = `a * b / c` (round toward zero).
+      Compiles to `div(mul(a, b), c)`. (#928) -/
+  | mulDivDown (a b c : Expr)
+  /-- `mulDivUp(a, b, c)` = `(a * b + c - 1) / c` (round away from zero).
+      Compiles to `div(add(mul(a, b), sub(c, 1)), c)`. (#928) -/
+  | mulDivUp (a b c : Expr)
+  /-- `wMulDown(a, b)` = `a * b / WAD` (WAD = 1e18, round down).
+      Sugar for `mulDivDown a b (literal WAD)`. (#928) -/
+  | wMulDown (a b : Expr)
+  /-- `wDivUp(a, b)` = `(a * WAD + b - 1) / b` (WAD = 1e18, round up).
+      Compiles to `div(add(mul(a, WAD), sub(b, 1)), b)`. (#928) -/
+  | wDivUp (a b : Expr)
+  /-- `min(a, b)` — unsigned minimum.
+      Compiles to `sub(a, mul(sub(a, b), gt(a, b)))`. (#928) -/
+  | min (a b : Expr)
+  /-- `max(a, b)` — unsigned maximum.
+      Compiles to `add(a, mul(sub(b, a), gt(b, a)))`. (#928) -/
+  | max (a b : Expr)
   deriving Repr
 
 inductive Stmt
@@ -563,6 +581,12 @@ private partial def collectExprNames : Expr → List String
   | Expr.logicalAnd a b => collectExprNames a ++ collectExprNames b
   | Expr.logicalOr a b => collectExprNames a ++ collectExprNames b
   | Expr.logicalNot a => collectExprNames a
+  | Expr.mulDivDown a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
+  | Expr.mulDivUp a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
+  | Expr.wMulDown a b => collectExprNames a ++ collectExprNames b
+  | Expr.wDivUp a b => collectExprNames a ++ collectExprNames b
+  | Expr.min a b => collectExprNames a ++ collectExprNames b
+  | Expr.max a b => collectExprNames a ++ collectExprNames b
 
 private partial def collectExprListNames : List Expr → List String
   | [] => []
@@ -753,6 +777,60 @@ def compileExpr (fields : List Field)
   | Expr.logicalAnd a b => return yulBinOp "and" (yulToBool (← compileExpr fields dynamicSource a)) (yulToBool (← compileExpr fields dynamicSource b))
   | Expr.logicalOr a b  => return yulBinOp "or"  (yulToBool (← compileExpr fields dynamicSource a)) (yulToBool (← compileExpr fields dynamicSource b))
   | Expr.logicalNot a   => return YulExpr.call "iszero" [← compileExpr fields dynamicSource a]
+  | Expr.mulDivDown a b c => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      let cc ← compileExpr fields dynamicSource c
+      -- div(mul(a, b), c)
+      pure (YulExpr.call "div" [YulExpr.call "mul" [ca, cb], cc])
+  | Expr.mulDivUp a b c => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      let cc ← compileExpr fields dynamicSource c
+      -- div(add(mul(a, b), sub(c, 1)), c)
+      pure (YulExpr.call "div" [
+        YulExpr.call "add" [
+          YulExpr.call "mul" [ca, cb],
+          YulExpr.call "sub" [cc, YulExpr.lit 1]
+        ],
+        cc
+      ])
+  | Expr.wMulDown a b => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      -- div(mul(a, b), 1000000000000000000)
+      pure (YulExpr.call "div" [YulExpr.call "mul" [ca, cb], YulExpr.lit 1000000000000000000])
+  | Expr.wDivUp a b => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      -- div(add(mul(a, 1000000000000000000), sub(b, 1)), b)
+      pure (YulExpr.call "div" [
+        YulExpr.call "add" [
+          YulExpr.call "mul" [ca, YulExpr.lit 1000000000000000000],
+          YulExpr.call "sub" [cb, YulExpr.lit 1]
+        ],
+        cb
+      ])
+  | Expr.min a b => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      -- sub(a, mul(sub(a, b), gt(a, b)))
+      pure (YulExpr.call "sub" [ca,
+        YulExpr.call "mul" [
+          YulExpr.call "sub" [ca, cb],
+          YulExpr.call "gt" [ca, cb]
+        ]
+      ])
+  | Expr.max a b => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      -- add(a, mul(sub(b, a), gt(b, a)))
+      pure (YulExpr.call "add" [ca,
+        YulExpr.call "mul" [
+          YulExpr.call "sub" [cb, ca],
+          YulExpr.call "gt" [cb, ca]
+        ]
+      ])
 end
 
 -- Compile require condition to a "failure" predicate to avoid double-negation.
@@ -898,8 +976,11 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b =>
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
       exprContainsCallLike a || exprContainsCallLike b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+      exprContainsCallLike a || exprContainsCallLike b || exprContainsCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsCallLike a
   | _ =>
@@ -944,8 +1025,11 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike index
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
-    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b =>
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+      exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsUnsafeLogicalCallLike a
   | _ =>
@@ -1120,9 +1204,14 @@ private partial def validateScopedExprIdentifiers
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
-    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b => do
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
   | Expr.logicalAnd a b | Expr.logicalOr a b => do
       validateLogicalOperandPurity context a b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
@@ -1378,8 +1467,11 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b =>
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
       exprReadsStateOrEnv a || exprReadsStateOrEnv b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+      exprReadsStateOrEnv a || exprReadsStateOrEnv b || exprReadsStateOrEnv c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprReadsStateOrEnv a
 
@@ -1432,8 +1524,11 @@ where
     | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
       Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
       Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-      Expr.logicalAnd a b | Expr.logicalOr a b =>
+      Expr.logicalAnd a b | Expr.logicalOr a b |
+      Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
         exprWritesState a || exprWritesState b
+    | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+        exprWritesState a || exprWritesState b || exprWritesState c
     | Expr.bitNot a | Expr.logicalNot a =>
         exprWritesState a
     | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
@@ -2038,9 +2133,14 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b => do
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b => do
       validateInteropExpr context a
       validateInteropExpr context b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+      validateInteropExpr context a
+      validateInteropExpr context b
+      validateInteropExpr context c
   | Expr.bitNot a | Expr.logicalNot a =>
       validateInteropExpr context a
   | _ =>
@@ -2225,9 +2325,14 @@ private partial def validateInternalCallShapesInExpr
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b => do
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b => do
       validateInternalCallShapesInExpr functions callerName a
       validateInternalCallShapesInExpr functions callerName b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+      validateInternalCallShapesInExpr functions callerName a
+      validateInternalCallShapesInExpr functions callerName b
+      validateInternalCallShapesInExpr functions callerName c
   | Expr.bitNot a | Expr.logicalNot a =>
       validateInternalCallShapesInExpr functions callerName a
   | _ =>
@@ -2377,9 +2482,14 @@ private partial def validateExternalCallTargetsInExpr
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b => do
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b => do
       validateExternalCallTargetsInExpr externals context a
       validateExternalCallTargetsInExpr externals context b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+      validateExternalCallTargetsInExpr externals context a
+      validateExternalCallTargetsInExpr externals context b
+      validateExternalCallTargetsInExpr externals context c
   | Expr.bitNot a | Expr.logicalNot a =>
       validateExternalCallTargetsInExpr externals context a
   | _ =>
@@ -3870,8 +3980,11 @@ private partial def exprUsesArrayElement : Expr → Bool
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-    Expr.logicalAnd a b | Expr.logicalOr a b =>
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
       exprUsesArrayElement a || exprUsesArrayElement b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+      exprUsesArrayElement a || exprUsesArrayElement b || exprUsesArrayElement c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesArrayElement a
   | _ => false

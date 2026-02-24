@@ -311,6 +311,11 @@ jobs:
             echo "✓ No axioms found in proof files"
           fi
 
+      - name: Build proof modules for axiom audit
+        env:
+          LEAN_NUM_THREADS: 2
+        run: lake build PrintAxioms
+
       - name: Generate axiom dependency report
         run: |
           set -o pipefail

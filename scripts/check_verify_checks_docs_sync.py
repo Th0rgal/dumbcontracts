@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body
+from workflow_jobs import extract_job_body, extract_run_commands_from_job_body
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -26,60 +26,21 @@ def _normalize_workflow_cmd(raw: str) -> str:
 
 def _extract_workflow_checks_commands(text: str) -> list[str]:
     job_body = extract_job_body(text, "checks", VERIFY_YML)
-    lines = job_body.splitlines()
-    steps_idx = next((i for i, line in enumerate(lines) if line == "    steps:"), None)
-    if steps_idx is None:
-        raise ValueError(f"Could not locate checks.steps in {VERIFY_YML}")
-
-    steps_indent = len(lines[steps_idx]) - len(lines[steps_idx].lstrip(" "))
-    steps: list[str] = []
-    for line in lines[steps_idx + 1 :]:
-        if line.strip():
-            indent = len(line) - len(line.lstrip(" "))
-            if indent <= steps_indent:
-                break
-        steps.append(line)
-
-    commands: list[str] = []
-    i = 0
-    while i < len(steps):
-        line = steps[i]
-        m = re.match(r"^(\s*)run:\s*(.*?)\s*$", line)
-        if not m:
-            i += 1
-            continue
-
-        indent = len(m.group(1))
-        payload = m.group(2)
-        block_lines: list[str] = []
-        if payload.startswith("|") or payload.startswith(">"):
-            i += 1
-            while i < len(steps):
-                nxt = steps[i]
-                if not nxt.strip():
-                    block_lines.append("")
-                    i += 1
-                    continue
-                if len(nxt) - len(nxt.lstrip(" ")) <= indent:
-                    break
-                block_lines.append(nxt[indent + 2 :])
-                i += 1
-        else:
-            block_lines.append(payload)
-            i += 1
-
-        commands.extend(_extract_python_script_commands(block_lines))
+    run_commands = extract_run_commands_from_job_body(
+        job_body, source=VERIFY_YML, context="checks"
+    )
+    commands = _extract_python_script_commands(run_commands)
 
     if not commands:
         raise ValueError(f"No python3 scripts/* run commands found in checks job in {VERIFY_YML}")
     return commands
 
 
-def _extract_python_script_commands(block_lines: list[str]) -> list[str]:
+def _extract_python_script_commands(run_commands: list[str]) -> list[str]:
     commands: list[str] = []
     i = 0
-    while i < len(block_lines):
-        stripped = block_lines[i].strip()
+    while i < len(run_commands):
+        stripped = run_commands[i].strip()
         if not stripped or stripped.startswith("#"):
             i += 1
             continue
@@ -94,12 +55,12 @@ def _extract_python_script_commands(block_lines: list[str]) -> list[str]:
         while cmd.endswith("\\"):
             cmd = cmd[:-1].rstrip()
             i += 1
-            if i >= len(block_lines):
+            if i >= len(run_commands):
                 raise ValueError(
                     "Trailing line-continuation in python3 scripts command in "
                     f"{VERIFY_YML}: {stripped!r}"
                 )
-            continuation = block_lines[i].strip()
+            continuation = run_commands[i].strip()
             if continuation:
                 if "#" in continuation:
                     continuation = continuation.split("#", 1)[0].rstrip()

@@ -14,6 +14,27 @@ from check_verify_checks_docs_sync import _extract_workflow_checks_commands
 
 
 class VerifyChecksDocsSyncTests(unittest.TestCase):
+    def test_extracts_inline_dash_run_style(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            jobs:
+              checks:
+                runs-on: ubuntu-latest
+                steps:
+                  - run: python3 scripts/check_inline.py --strict
+                  - run: echo done
+              other:
+                runs-on: ubuntu-latest
+                steps: []
+            """
+        )
+
+        self.assertEqual(
+            _extract_workflow_checks_commands(workflow),
+            ["check_inline.py --strict"],
+        )
+
     def test_extracts_single_line_and_block_run_commands(self) -> None:
         workflow = textwrap.dedent(
             """

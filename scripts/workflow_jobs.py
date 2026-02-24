@@ -428,18 +428,22 @@ def _consume_setsid_wrapper(tokens: list[str], i: int) -> int:
     if i >= len(tokens) or not _token_matches_program(tokens[i], "setsid"):
         return i
     i += 1
-    setsid_opts_with_arg = {"-w", "--wait", "-c", "--ctty", "-s", "--session-leader"}
+    setsid_opts_without_arg = {
+        "-w",
+        "--wait",
+        "-c",
+        "--ctty",
+        "-f",
+        "--fork",
+        "-s",
+        "--session-leader",
+    }
     while i < len(tokens):
         tok = tokens[i]
         if tok == "--":
             i += 1
             break
-        if tok in setsid_opts_with_arg:
-            i += 1
-            if i < len(tokens):
-                i += 1
-            continue
-        if any(tok.startswith(prefix + "=") for prefix in setsid_opts_with_arg if prefix.startswith("--")):
+        if tok in setsid_opts_without_arg:
             i += 1
             continue
         if tok.startswith("-"):
@@ -458,8 +462,6 @@ def _consume_ionice_wrapper(tokens: list[str], i: int) -> int:
         "--class",
         "-n",
         "--classdata",
-        "-t",
-        "--ignore",
         "-p",
         "--pid",
         "-P",
@@ -467,11 +469,15 @@ def _consume_ionice_wrapper(tokens: list[str], i: int) -> int:
         "-u",
         "--uid",
     }
+    ionice_opts_without_arg = {"-t", "--ignore"}
     while i < len(tokens):
         tok = tokens[i]
         if tok == "--":
             i += 1
             break
+        if tok in ionice_opts_without_arg:
+            i += 1
+            continue
         if tok in ionice_opts_with_arg:
             i += 1
             if i < len(tokens):
@@ -491,7 +497,7 @@ def _consume_chrt_wrapper(tokens: list[str], i: int) -> int:
     if i >= len(tokens) or not _token_matches_program(tokens[i], "chrt"):
         return i
     i += 1
-    chrt_opts_with_arg = {
+    chrt_opts_without_arg = {
         "-a",
         "--all-tasks",
         "-d",
@@ -504,12 +510,14 @@ def _consume_chrt_wrapper(tokens: list[str], i: int) -> int:
         "--max",
         "-o",
         "--other",
-        "-p",
-        "--pid",
         "-r",
         "--rr",
         "-R",
         "--reset-on-fork",
+    }
+    chrt_opts_with_arg = {
+        "-p",
+        "--pid",
         "-T",
         "--sched-runtime",
         "-P",
@@ -534,6 +542,10 @@ def _consume_chrt_wrapper(tokens: list[str], i: int) -> int:
             i += 1
             continue
         break
+    # For command-launch mode, `chrt` accepts a positional priority token
+    # before the wrapped command (for example: `chrt --rr 50 forge test`).
+    if i < len(tokens) and re.fullmatch(r"[+-]?\d+", tokens[i]):
+        i += 1
     return i
 
 

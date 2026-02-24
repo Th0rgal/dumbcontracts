@@ -217,6 +217,24 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_setsid_no_arg_flags_without_terminator(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "setsid --wait --ctty --fork forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_setsid_session_leader_flag(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "setsid --session-leader forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
     def test_match_shell_command_accepts_ionice_wrapper(self) -> None:
         matched, forge_tokens = match_shell_command(
             "ionice -c3 forge test -vv",
@@ -226,9 +244,36 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_ionice_ignore_no_arg_wrapper(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "ionice -t --class=none --classdata=0 forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
     def test_match_shell_command_accepts_chrt_wrapper(self) -> None:
         matched, forge_tokens = match_shell_command(
             "chrt --rr 50 forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_chrt_no_arg_flag(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "chrt --reset-on-fork --rr 50 forge test -vv",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_chrt_positional_priority(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "chrt --other 0 forge test -vv",
             program="forge",
             args_prefix=("test",),
         )

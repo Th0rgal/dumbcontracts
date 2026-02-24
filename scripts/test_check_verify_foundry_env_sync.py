@@ -582,6 +582,116 @@ class FoundryEnvSyncTests(unittest.TestCase):
         rc, stderr = self._run_patched_sync(workflow, readme)
         self.assertEqual(rc, 0, stderr)
 
+    def test_sync_accepts_setsid_wait_and_ionice_ignore_without_terminator(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              foundry:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: setsid --wait --ctty --fork forge test
+
+              foundry-patched:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                steps:
+                  - name: Download patched Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul-patched
+                      path: compiler/yul-patched
+                  - run: ionice -t --class=none --classdata=0 forge test --no-match-test "Random10000"
+
+              foundry-multi-seed:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: chrt --reset-on-fork --other 0 forge test --no-match-test "Random10000"
+            """
+        )
+        rc, stderr = self._run_job_sync(workflow)
+        self.assertEqual(rc, 0, stderr)
+
+    def test_sync_accepts_setsid_session_leader_without_terminator(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              foundry:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: setsid --session-leader forge test
+
+              foundry-patched:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                steps:
+                  - name: Download patched Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul-patched
+                      path: compiler/yul-patched
+                  - run: setsid --session-leader forge test --no-match-test "Random10000"
+
+              foundry-multi-seed:
+                runs-on: ubuntu-latest
+                env:
+                  FOUNDRY_PROFILE: "difftest"
+                  DIFFTEST_RANDOM_SMALL: "100"
+                  DIFFTEST_RANDOM_LARGE: "10000"
+                  DIFFTEST_YUL_DIR: "compiler/yul"
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+                  - run: setsid --session-leader forge test --no-match-test "Random10000"
+            """
+        )
+        rc, stderr = self._run_job_sync(workflow)
+        self.assertEqual(rc, 0, stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

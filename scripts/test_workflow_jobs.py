@@ -244,6 +244,24 @@ class WorkflowJobsTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(forge_tokens[:2], ["forge", "test"])
 
+    def test_match_shell_command_accepts_env_split_string_long_option_equals_form(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "env --split-string='FOUNDRY_PROFILE=difftest forge test -vv'",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
+    def test_match_shell_command_accepts_env_split_string_short_attached_form(self) -> None:
+        matched, forge_tokens = match_shell_command(
+            "env -S'FOUNDRY_PROFILE=difftest forge test --no-match-test Random10000'",
+            program="forge",
+            args_prefix=("test",),
+        )
+        self.assertTrue(matched)
+        self.assertEqual(forge_tokens[:2], ["forge", "test"])
+
 
 if __name__ == "__main__":
     unittest.main()

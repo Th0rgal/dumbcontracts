@@ -532,8 +532,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       exprListUsesUnsupportedLowLevel args
   | Stmt.rawLog _ _ _ =>
       true
-  | Stmt.externalCallBind _ _ args _ value =>
-      exprListUsesUnsupportedLowLevel args || exprUsesUnsupportedLowLevel value
+  | Stmt.externalCallBind _ _ args =>
+      exprListUsesUnsupportedLowLevel args
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
       false
 
@@ -761,7 +761,7 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       -- Multi-value internal-call bindings are only modeled in compiler/codegen.
       -- The basic interpreter does not model tuple return values.
       none
-  | Stmt.externalCallBind _resultVars _externalName _args _isStatic _value =>
+  | Stmt.externalCallBind _resultVars _externalName _args =>
       -- External call bindings require linked Yul; not modeled in the basic interpreter.
       none
 
@@ -864,7 +864,7 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
           | Stmt.internalCallAssign _names _functionName _args =>
               -- Fuel-based interpreter does not model tuple-valued internal call bindings yet.
               none
-          | Stmt.externalCallBind _resultVars _externalName _args _isStatic _value =>
+          | Stmt.externalCallBind _resultVars _externalName _args =>
               -- External call bindings require linked Yul; not modeled in fuel-based interpreter.
               none
           | other => execStmt ctx fields paramNames externalFns state other

@@ -208,17 +208,42 @@ def extract_run_commands_from_job_body(body: str, *, source: Path, context: str)
         payload = m.group("payload")
         block_lines: list[str] = []
         if payload.startswith("|") or payload.startswith(">"):
+            is_folded = payload.startswith(">")
             i += 1
+            scalar_lines: list[str] = []
             while i < len(step_lines):
                 nxt = step_lines[i]
                 if not nxt.strip():
-                    block_lines.append("")
+                    scalar_lines.append("")
                     i += 1
                     continue
                 if len(nxt) - len(nxt.lstrip(" ")) <= indent:
                     break
-                block_lines.append(nxt[indent + 2 :])
+                scalar_lines.append(nxt[indent + 2 :])
                 i += 1
+            if is_folded:
+                # Keep command boundaries, but merge obvious continuation fragments
+                # (for example lines starting with CLI flags).
+                current: str | None = None
+                for raw_line in scalar_lines:
+                    part = raw_line.strip()
+                    if not part:
+                        if current is not None:
+                            block_lines.append(current)
+                            current = None
+                        continue
+                    if current is None:
+                        current = part
+                        continue
+                    if part.startswith(("-", "&&", "||", "|", ";")):
+                        current += " " + part
+                        continue
+                    block_lines.append(current)
+                    current = part
+                if current is not None:
+                    block_lines.append(current)
+            else:
+                block_lines.extend(scalar_lines)
         else:
             block_lines.append(payload)
             i += 1

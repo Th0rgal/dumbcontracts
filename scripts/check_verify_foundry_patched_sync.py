@@ -11,6 +11,7 @@ from workflow_jobs import (
     extract_job_body,
     extract_literal_from_mapping_blocks,
     extract_run_commands_from_job_body,
+    match_shell_command,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +33,11 @@ def _extract_no_match_test_target(job_body: str) -> str:
     run_commands = extract_run_commands_from_job_body(
         job_body, source=VERIFY_YML, context="foundry-patched"
     )
-    forge_lines = [cmd for cmd in run_commands if cmd.startswith("forge test")]
+    forge_lines = [
+        cmd
+        for cmd in run_commands
+        if match_shell_command(cmd, program="forge", args_prefix=("test",))[0]
+    ]
     if not forge_lines:
         raise ValueError(
             "Could not locate 'forge test --no-match-test \"...\"' in "
@@ -43,13 +48,32 @@ def _extract_no_match_test_target(job_body: str) -> str:
             "Found multiple forge test commands in foundry-patched job in "
             f"{VERIFY_YML}; keep a single command for deterministic checks"
         )
-    m = re.match(r'^forge test --no-match-test "([^"]+)"\s*$', forge_lines[0])
-    if not m:
+    matched, forge_tokens = match_shell_command(
+        forge_lines[0], program="forge", args_prefix=("test",)
+    )
+    if not matched:
+        raise ValueError(
+            "Could not parse forge test command in foundry-patched "
+            f"job in {VERIFY_YML}: {forge_lines[0]!r}"
+        )
+    if "--no-match-test" not in forge_tokens:
         raise ValueError(
             "Could not parse '--no-match-test \"...\"' from foundry-patched "
             f"forge test command in {VERIFY_YML}: {forge_lines[0]!r}"
         )
-    return m.group(1)
+    idx = forge_tokens.index("--no-match-test")
+    if idx + 1 >= len(forge_tokens):
+        raise ValueError(
+            "Could not parse '--no-match-test \"...\"' from foundry-patched "
+            f"forge test command in {VERIFY_YML}: {forge_lines[0]!r}"
+        )
+    target = forge_tokens[idx + 1]
+    if target.startswith("-"):
+        raise ValueError(
+            "Expected value after '--no-match-test' in foundry-patched "
+            f"forge test command in {VERIFY_YML}: {forge_lines[0]!r}"
+        )
+    return target
 
 
 def _extract_readme_foundry_patched_line(text: str) -> str:

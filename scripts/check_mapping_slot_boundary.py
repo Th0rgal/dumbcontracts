@@ -11,6 +11,8 @@ import re
 import sys
 from pathlib import Path
 
+from property_utils import strip_lean_comments
+
 ROOT = Path(__file__).resolve().parents[1]
 PROOFS_DIR = ROOT / "Compiler" / "Proofs"
 MAPPING_SLOT_FILE = PROOFS_DIR / "MappingSlot.lean"
@@ -67,10 +69,90 @@ KECCAK_STORE_ENTRY_ROUTING_RE = re.compile(
 )
 
 
+def scrub_lean_code(text: str) -> str:
+    """Remove comments and string literal payloads from Lean source."""
+    return _strip_lean_strings(strip_lean_comments(text))
+
+
+def _strip_lean_strings(text: str) -> str:
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    in_string = False
+    raw_hashes: int | None = None
+
+    while i < n:
+        ch = text[i]
+
+        if raw_hashes is not None:
+            if ch == "\n":
+                out.append("\n")
+                i += 1
+                continue
+            if ch == '"':
+                j = i + 1
+                hashes = 0
+                while j < n and text[j] == "#" and hashes < raw_hashes:
+                    hashes += 1
+                    j += 1
+                if hashes == raw_hashes:
+                    out.append('"')
+                    out.extend("#" * hashes)
+                    i = j
+                    raw_hashes = None
+                    continue
+            out.append(" ")
+            i += 1
+            continue
+
+        if in_string:
+            if ch == "\n":
+                out.append("\n")
+                i += 1
+                continue
+            if ch == "\\" and i + 1 < n:
+                out.extend([" ", " "])
+                i += 2
+                continue
+            if ch == '"':
+                out.append('"')
+                in_string = False
+                i += 1
+                continue
+            out.append(" ")
+            i += 1
+            continue
+
+        if ch == '"':
+            out.append('"')
+            in_string = True
+            i += 1
+            continue
+
+        if ch == "r":
+            j = i + 1
+            hashes = 0
+            while j < n and text[j] == "#":
+                hashes += 1
+                j += 1
+            if j < n and text[j] == '"':
+                out.append("r")
+                out.extend("#" * hashes)
+                out.append('"')
+                i = j + 1
+                raw_hashes = hashes
+                continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
 def main() -> int:
     errors: list[str] = []
 
-    mapping_slot_text = MAPPING_SLOT_FILE.read_text(encoding="utf-8")
+    mapping_slot_text = scrub_lean_code(MAPPING_SLOT_FILE.read_text(encoding="utf-8"))
     trust_text = TRUST_ASSUMPTIONS_FILE.read_text(encoding="utf-8")
 
     if not ACTIVE_BACKEND_KECCAK_RE.search(mapping_slot_text):
@@ -130,7 +212,7 @@ def main() -> int:
         )
 
     for lean_file in PROOFS_DIR.rglob("*.lean"):
-        text = lean_file.read_text(encoding="utf-8")
+        text = scrub_lean_code(lean_file.read_text(encoding="utf-8"))
 
         if IMPORT_MAPPING_ENCODING_RE.search(text) and lean_file not in ALLOWED_MAPPING_ENCODING_IMPORTERS:
             rel = lean_file.relative_to(ROOT)
@@ -140,7 +222,7 @@ def main() -> int:
             )
 
     for lean_file in REQUIRED_ABSTRACTION_IMPORTS:
-        text = lean_file.read_text(encoding="utf-8")
+        text = scrub_lean_code(lean_file.read_text(encoding="utf-8"))
         rel = lean_file.relative_to(ROOT)
 
         if not IMPORT_MAPPING_SLOT_RE.search(text):
@@ -153,7 +235,7 @@ def main() -> int:
             errors.append(f"{rel}: missing reference to Compiler.Proofs.abstractStoreMappingEntry")
 
     for lean_file in LEGACY_SYMBOL_FORBIDDEN_FILES:
-        text = lean_file.read_text(encoding="utf-8")
+        text = scrub_lean_code(lean_file.read_text(encoding="utf-8"))
         rel = lean_file.relative_to(ROOT)
 
         if DIRECT_MAPPING_ENCODING_SYMBOL_REF_RE.search(text):
@@ -169,7 +251,7 @@ def main() -> int:
                 "are disallowed; use MappingSlot/solidityMappingSlot-based names directly"
             )
 
-    builtins_text = BUILTINS_FILE.read_text(encoding="utf-8")
+    builtins_text = scrub_lean_code(BUILTINS_FILE.read_text(encoding="utf-8"))
     builtins_rel = BUILTINS_FILE.relative_to(ROOT)
 
     if not IMPORT_MAPPING_SLOT_RE.search(builtins_text):
@@ -182,7 +264,7 @@ def main() -> int:
         errors.append(f"{builtins_rel}: missing reference to Compiler.Proofs.abstractLoadStorageOrMapping")
 
     for state_file in (IR_INTERPRETER_FILE, YUL_SEMANTICS_FILE):
-        state_text = state_file.read_text(encoding="utf-8")
+        state_text = scrub_lean_code(state_file.read_text(encoding="utf-8"))
         state_rel = state_file.relative_to(ROOT)
         if STATE_MAPPINGS_FIELD_RE.search(state_text):
             errors.append(

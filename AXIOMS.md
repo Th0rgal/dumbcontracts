@@ -58,6 +58,33 @@ Selector hashing is modeled as an external cryptographic primitive rather than r
 - Mapping-slot abstraction boundary checks in CI.
 - End-to-end proof/runtime regression suites that exercise mapping reads/writes through `mappingSlot`.
 
+## External Call Module (ECM) Axioms
+
+ECMs introduce trust assumptions via their `axioms` field. These are not Lean
+kernel axioms — they are documented interface assumptions about external contracts
+and precompiles. The compiler aggregates them at compile time and surfaces them
+in `--verbose` output.
+
+### Standard Module Axioms
+
+| Module | Axiom | Meaning |
+|--------|-------|---------|
+| `ERC20.safeTransfer` | `erc20_transfer_interface` | Target implements ERC-20 `transfer(address,uint256)` |
+| `ERC20.safeTransferFrom` | `erc20_transferFrom_interface` | Target implements ERC-20 `transferFrom(address,address,uint256)` |
+| `ERC20.safeApprove` | `erc20_approve_interface` | Target implements ERC-20 `approve(address,uint256)` |
+| `Precompiles.ecrecover` | `evm_ecrecover_precompile` | EVM precompile at address 0x01 behaves per Yellow Paper |
+| `Callbacks.callback` | `callback_target_interface` | Callback target processes ABI-encoded arguments correctly |
+| `Calls.withReturn` | `external_call_abi_interface` | Target contract function matches declared selector and ABI |
+
+### Third-Party Module Axioms
+
+Third-party ECMs (external Lean packages) document their axioms in their own
+`AXIOMS.md`. All axioms — standard and third-party — are aggregated and reported
+at compile time. See `docs/EXTERNAL_CALL_MODULES.md` for details.
+
+**Risk**: Low. ECM axioms are interface assumptions (not proof-kernel extensions)
+scoped to contracts that use the module.
+
 ## Eliminated Axioms (Historical)
 
 The repository removed prior axioms related to IR and Yul expression and statement equivalence and address injectivity by making interpreters total and by using a bounded-nat `Address` representation.
@@ -76,4 +103,4 @@ Any commit that adds, removes, renames, or moves an axiom must update this file 
 
 If this file is stale, trust analysis is stale.
 
-**Last Updated**: 2026-02-23
+**Last Updated**: 2026-02-25

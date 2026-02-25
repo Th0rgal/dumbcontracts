@@ -41,13 +41,20 @@ def addressToNat (addr : String) : Nat :=
 def hexDigit (n : Nat) : Char :=
   if n < 10 then Char.ofNat (n + 48) else Char.ofNat (n - 10 + 97)
 
+/-- Core recursive helper: convert a positive Nat to hex digit chars (big-endian). -/
+private def natToHexCore (val : Nat) (acc : List Char) : List Char :=
+  if val = 0 then acc
+  else natToHexCore (val / 16) (hexDigit (val % 16) :: acc)
+
 /-- Convert a Nat to a zero-padded hex string (e.g. selector → "0x12345678") -/
 def natToHex (n : Nat) (digits : Nat := 8) : String :=
-  let rec go (val : Nat) (acc : List Char) : List Char :=
-    if val = 0 then acc
-    else go (val / 16) (hexDigit (val % 16) :: acc)
-  let raw := go n []
+  let raw := natToHexCore n []
   let padded := List.replicate (digits - raw.length) '0' ++ raw
   "0x" ++ String.mk padded
+
+/-- Convert a Nat to a minimal unpadded hex string without prefix (e.g. 255 → "ff"). -/
+def natToHexUnpadded (n : Nat) : String :=
+  if n = 0 then "0"
+  else String.mk (natToHexCore n [])
 
 end Compiler.Hex

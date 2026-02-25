@@ -4,24 +4,7 @@ import Compiler.Hex
 namespace Compiler.Yul
 
 open YulExpr
-open Compiler.Hex (hexDigit)
-
-def toHex (n : Nat) : String :=
-  if n == 0 then
-    "0"
-  else
-    let rec loop (x : Nat) (acc : List Char) : List Char :=
-      if x == 0 then acc
-      else
-        let d := x % 16
-        let acc' := hexDigit d :: acc
-        loop (x / 16) acc'
-    termination_by x
-    decreasing_by
-      simp_wf
-      simp at *
-      exact Nat.div_lt_self (by omega) (by omega)
-    String.mk (loop n [])
+open Compiler.Hex (natToHexUnpadded)
 
 private def indentStr (n : Nat) : String :=
   String.mk (List.replicate (n * 4) ' ')
@@ -29,7 +12,7 @@ private def indentStr (n : Nat) : String :=
 mutual
 def ppExpr : YulExpr → String
   | lit n => toString n
-  | hex n => "0x" ++ toHex n
+  | hex n => "0x" ++ natToHexUnpadded n
   | str s => "\"" ++ (s.replace "\\" "\\\\").replace "\"" "\\\"" ++ "\""
   | ident name => name
   | call func args =>
@@ -101,7 +84,7 @@ def ppStmts (indent : Nat) : List YulStmt → List String
 def ppCases (indent : Nat) : List (Nat × List YulStmt) → List String
   | [] => []
   | (c, body) :: rest =>
-      let caseHeader := indentStr indent ++ "case 0x" ++ toHex c ++ " {"
+      let caseHeader := indentStr indent ++ "case 0x" ++ natToHexUnpadded c ++ " {"
       let bodyLines := ppStmts (indent + 1) body
       let footer := s!"{indentStr indent}}"
       (caseHeader :: bodyLines ++ [footer]) ++ ppCases indent rest

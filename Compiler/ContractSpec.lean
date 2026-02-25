@@ -1048,10 +1048,11 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
       exprContainsCallLike key1 || exprContainsCallLike key2
   | Expr.arrayElement _ index =>
       exprContainsCallLike index
-  | Expr.returndataOptionalBoolAt outOffset =>
-      exprContainsCallLike outOffset
-  | Expr.extcodesize addr =>
-      exprContainsCallLike addr
+  | Expr.mload offset | Expr.calldataload offset | Expr.extcodesize offset |
+    Expr.returndataOptionalBoolAt offset =>
+      exprContainsCallLike offset
+  | Expr.keccak256 offset size =>
+      exprContainsCallLike offset || exprContainsCallLike size
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
@@ -1062,7 +1063,11 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
       exprContainsCallLike a || exprContainsCallLike b || exprContainsCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsCallLike a
-  | _ =>
+  -- Leaf expressions with no sub-expressions: exhaustive to trigger compiler
+  -- errors when new variants are added.
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _ | Expr.storage _
+  | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.blockTimestamp
+  | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ =>
       false
 
 private def issue748Ref : String :=
@@ -1132,7 +1137,10 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsUnsafeLogicalCallLike a
-  | _ =>
+  -- Leaf expressions: no sub-expressions to recurse into.
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _ | Expr.storage _
+  | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.blockTimestamp
+  | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ =>
       false
 
 private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
@@ -1354,7 +1362,10 @@ private partial def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
   | Expr.bitNot a | Expr.logicalNot a =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
-  | _ => pure ()
+  -- Leaf expressions: no identifiers to validate.
+  | Expr.literal _ | Expr.storage _ | Expr.caller | Expr.contractAddress | Expr.chainid
+  | Expr.msgValue | Expr.blockTimestamp | Expr.calldatasize | Expr.returndataSize =>
+      pure ()
 
 mutual
 private partial def validateScopedStmtIdentifiers
@@ -1469,7 +1480,10 @@ private partial def validateScopedStmtIdentifiers
       if localScope.contains resultVar then
         throw s!"Compilation error: {context} redeclares ecrecover result '{resultVar}' in the same scope"
       pure (resultVar :: localScope)
-  | _ => pure localScope
+  -- Leaf statements: no sub-expressions with identifiers to validate, no scope changes.
+  | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
+  | Stmt.revertReturndata | Stmt.stop =>
+      pure localScope
 
 private partial def validateScopedStmtListIdentifiers
     (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
@@ -4516,11 +4530,16 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.internalCallAssign names _ _ => names
   | Stmt.externalCallBind resultVars _ _ => resultVars
   | Stmt.externalCallWithReturn resultVar _ _ _ _ => [resultVar]
-  | Stmt.safeTransfer _ _ _ => []
-  | Stmt.safeTransferFrom _ _ _ _ => []
-  | Stmt.callback _ _ _ _ => []
   | Stmt.ecrecover resultVar _ _ _ _ => [resultVar]
-  | _ => []
+  -- Statements that never bind new names.
+  | Stmt.assignVar _ _ | Stmt.setStorage _ _ | Stmt.return _
+  | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
+  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _ | Stmt.require _ _ | Stmt.requireError _ _ _ | Stmt.revertError _ _
+  | Stmt.returnValues _ | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
+  | Stmt.mstore _ _ | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata | Stmt.stop
+  | Stmt.emit _ _ | Stmt.internalCall _ _ | Stmt.rawLog _ _ _
+  | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _ | Stmt.callback _ _ _ _ =>
+      []
 
 private partial def collectStmtListBindNames : List Stmt → List String
   | [] => []
@@ -4567,7 +4586,11 @@ private partial def exprUsesArrayElement : Expr → Bool
       exprUsesArrayElement a || exprUsesArrayElement b || exprUsesArrayElement c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesArrayElement a
-  | _ => false
+  -- Leaf expressions: no sub-expressions that could contain arrayElement.
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _ | Expr.storage _
+  | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.blockTimestamp
+  | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ =>
+      false
 
 private partial def stmtUsesArrayElement : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
@@ -4607,7 +4630,10 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement target || args.any exprUsesArrayElement
   | Stmt.ecrecover _ hash v r s =>
       exprUsesArrayElement hash || exprUsesArrayElement v || exprUsesArrayElement r || exprUsesArrayElement s
-  | _ => false
+  -- Leaf statements: no sub-expressions that could contain arrayElement.
+  | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
+  | Stmt.revertReturndata | Stmt.stop =>
+      false
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=
   fn.body.any stmtUsesArrayElement

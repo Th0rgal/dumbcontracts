@@ -321,11 +321,11 @@ The compiler validates function names, arities, and prevents name collisions. Se
 
 ## Documentation
 
-**Full documentation**: [verity.thomasm.ar](https://verity.thomasm.ar/) — guides, DSL reference, examples, and verification details.
+**Full documentation**: [verity.thomas.md](https://verity.thomas.md/) — guides, DSL reference, examples, and verification details.
 
 | | |
 |---|---|
-| [Docs Site](https://verity.thomasm.ar/) | Full documentation site with guides and DSL reference |
+| [Docs Site](https://verity.thomas.md/) | Full documentation site with guides and DSL reference |
 | [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) | What's verified, what's trusted, trust reduction roadmap |
 | [`AXIOMS.md`](AXIOMS.md) | All axioms with soundness justifications (1 remaining) |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Coding conventions, workflow, PR guidelines |

@@ -4282,14 +4282,21 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
       ]
       -- Bind recovered address (masked to 160 bits) -- resultVar must be flat-scoped
-      let addrMask := YulExpr.hex 0xffffffffffffffffffffffffffffffffffffffff
+      -- When the precompile receives an invalid signature it succeeds (returns 1)
+      -- but writes 0 bytes of output.  Memory[0] would still contain the stale hash.
+      -- Guard against this by zeroing the output region when returndatasize is 0.
+      let guardStale := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "returndatasize" []]) [
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.lit 0])
+      ]
+      -- Bind recovered address (masked to 160 bits) -- resultVar must be flat-scoped
       let bindResult := YulStmt.let_ resultVar
-        (YulExpr.call "and" [YulExpr.call "mload" [YulExpr.lit 0], addrMask])
+        (YulExpr.call "and" [YulExpr.call "mload" [YulExpr.lit 0], YulExpr.hex addressMask])
       -- Block scopes __ecr_success; bindResult is emitted outside so resultVar is accessible
       pure [YulStmt.block (
         [storeHash, storeV, storeR, storeS,
          YulStmt.let_ "__ecr_success" callExpr,
-         revertBlock]
+         revertBlock,
+         guardStale]
       ), bindResult]
 end
 

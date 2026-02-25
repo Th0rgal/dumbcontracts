@@ -11,6 +11,7 @@
   Success: Identical results → high confidence in compiler correctness
 -/
 
+import Compiler.Constants
 import Verity.Examples.SimpleStorage
 import Verity.Examples.Counter
 import Verity.Examples.SafeCounter
@@ -22,6 +23,8 @@ import Compiler.DiffTestTypes
 import Compiler.Hex
 
 namespace Compiler.Interpreter
+
+open Compiler.Constants (errorStringSelectorWord addressModulus)
 
 open Verity
 open Verity.Examples
@@ -76,20 +79,8 @@ def extractMappingChanges (before after : ContractState) (keys : List (Nat × Ad
     let newVal := after.storageMap slot key
     if oldVal ≠ newVal then some (slot, key, newVal) else none
 
--- EVM revert data for Error(string) uses selector 0x08c379a0 in the first 32 bytes.
--- Canonical definition: Compiler.ContractSpec.errorStringSelectorWord
--- Duplicated here to avoid importing ContractSpec into the interpreter.
-private def revertSelectorWord : Nat :=
-  3963877391197344453575983046348115674221700746820753546331534351508065746944
-
 private def revertReturnValue (msg : String) : Nat :=
-  if msg.isEmpty then 0 else revertSelectorWord
-
--- Helper: 160-bit address modulus (EVM address size)
--- Canonical mask: Compiler.ContractSpec.addressMask ((2^160) - 1)
--- Duplicated here as modulus (2^160) to avoid importing ContractSpec.
-private def addressModulus : Nat :=
-  2 ^ 160
+  if msg.isEmpty then 0 else errorStringSelectorWord
 
 -- Helper: Convert Nat to Address (bounded to 160 bits)
 private def natToAddress (n : Nat) : Address :=

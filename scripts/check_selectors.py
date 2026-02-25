@@ -31,6 +31,7 @@ SPEC_FILE = ROOT / "Compiler" / "Specs.lean"
 AST_SPEC_FILE = ROOT / "Compiler" / "ASTSpecs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
 CONTRACT_SPEC_FILE = ROOT / "Compiler" / "ContractSpec.lean"
+CONSTANTS_FILE = ROOT / "Compiler" / "Constants.lean"
 INTERPRETER_FILE = ROOT / "Compiler" / "Interpreter.lean"
 CODEGEN_FILE = ROOT / "Compiler" / "Codegen.lean"
 BUILTINS_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Builtins.lean"
@@ -501,43 +502,30 @@ _INTERPRETER_RE = re.compile(
 
 
 def check_error_selector_sync() -> List[str]:
-    """Verify the Error(string) selector constant is consistent across files.
+    """Verify the Error(string) selector constant is consistent.
 
-    Checks that:
-    - ContractSpec.errorStringSelectorWord matches the expected value
-    - Interpreter.revertSelectorWord (private copy) matches the canonical value
+    Checks that Constants.errorStringSelectorWord matches the expected value.
+    (The canonical definition now lives in Compiler/Constants.lean.)
     """
     errors: List[str] = []
 
-    if not CONTRACT_SPEC_FILE.exists():
-        errors.append(f"Missing {CONTRACT_SPEC_FILE}")
+    if not CONSTANTS_FILE.exists():
+        errors.append(f"Missing {CONSTANTS_FILE}")
         return errors
 
-    spec_text = CONTRACT_SPEC_FILE.read_text(encoding="utf-8")
-    m = _CANONICAL_RE.search(spec_text)
+    constants_text = CONSTANTS_FILE.read_text(encoding="utf-8")
+    m = _CANONICAL_RE.search(constants_text)
     if not m:
         errors.append(
-            "ContractSpec.lean: missing errorStringSelectorWord definition"
+            "Constants.lean: missing errorStringSelectorWord definition"
         )
     else:
         canonical = int(m.group(1), 16) * (2**224)
         if canonical != _ERROR_STRING_SELECTOR_SHIFTED:
             errors.append(
-                f"ContractSpec.errorStringSelectorWord: expected "
+                f"Constants.errorStringSelectorWord: expected "
                 f"0x{_ERROR_STRING_SELECTOR_SHIFTED:064x}, got 0x{canonical:064x}"
             )
-
-    if INTERPRETER_FILE.exists():
-        interp_text = INTERPRETER_FILE.read_text(encoding="utf-8")
-        m2 = _INTERPRETER_RE.search(interp_text)
-        if m2:
-            interp_val = int(m2.group(1))
-            if interp_val != _ERROR_STRING_SELECTOR_SHIFTED:
-                errors.append(
-                    f"Interpreter.revertSelectorWord: value {interp_val} does not "
-                    f"match canonical errorStringSelectorWord "
-                    f"({_ERROR_STRING_SELECTOR_SHIFTED})"
-                )
 
     return errors
 
@@ -557,32 +545,28 @@ _ADDRESS_MODULUS_RE = re.compile(
 
 
 def check_address_mask_sync() -> List[str]:
-    """Verify the address mask/modulus constants are consistent across files.
+    """Verify the address mask/modulus constants exist in Constants.lean.
 
-    Checks that:
-    - ContractSpec.addressMask exists (canonical definition)
-    - Interpreter.addressModulus == 2^160 (matches addressMask + 1)
+    Checks that Constants.addressMask and Constants.addressModulus exist.
+    (The canonical definitions now live in Compiler/Constants.lean.)
     """
     errors: List[str] = []
 
-    if not CONTRACT_SPEC_FILE.exists():
-        errors.append(f"Missing {CONTRACT_SPEC_FILE}")
+    if not CONSTANTS_FILE.exists():
+        errors.append(f"Missing {CONSTANTS_FILE}")
         return errors
 
-    spec_text = CONTRACT_SPEC_FILE.read_text(encoding="utf-8")
-    if not _ADDRESS_MASK_RE.search(spec_text):
+    constants_text = CONSTANTS_FILE.read_text(encoding="utf-8")
+    if not _ADDRESS_MASK_RE.search(constants_text):
         errors.append(
-            "ContractSpec.lean: missing addressMask definition "
+            "Constants.lean: missing addressMask definition "
             "(expected: def addressMask : Nat := (2 ^ 160) - 1)"
         )
-
-    if INTERPRETER_FILE.exists():
-        interp_text = INTERPRETER_FILE.read_text(encoding="utf-8")
-        if not _ADDRESS_MODULUS_RE.search(interp_text):
-            errors.append(
-                "Interpreter.lean: missing or changed addressModulus definition "
-                "(expected: def addressModulus : Nat := 2 ^ 160)"
-            )
+    if not _ADDRESS_MODULUS_RE.search(constants_text):
+        errors.append(
+            "Constants.lean: missing addressModulus definition "
+            "(expected: def addressModulus : Nat := 2 ^ 160)"
+        )
 
     return errors
 
@@ -597,26 +581,21 @@ _SELECTOR_SHIFT_RE = re.compile(
 
 
 def check_selector_shift_sync() -> List[str]:
-    """Verify the selectorShift constant (224) is consistent across files.
+    """Verify the selectorShift constant (224) exists in Constants.lean.
 
-    Checks that ContractSpec, Codegen, and Builtins all define selectorShift = 224.
+    The canonical definition now lives in Compiler/Constants.lean;
+    ContractSpec, Codegen, and Builtins import it from there.
     """
     errors: List[str] = []
-    targets = [
-        ("ContractSpec.lean", CONTRACT_SPEC_FILE),
-        ("Codegen.lean", CODEGEN_FILE),
-        ("Builtins.lean", BUILTINS_FILE),
-    ]
-    for label, path in targets:
-        if not path.exists():
-            errors.append(f"Missing {path}")
-            continue
-        text = path.read_text(encoding="utf-8")
-        if not _SELECTOR_SHIFT_RE.search(text):
-            errors.append(
-                f"{label}: missing or changed selectorShift definition "
-                f"(expected: def selectorShift : Nat := 224)"
-            )
+    if not CONSTANTS_FILE.exists():
+        errors.append(f"Missing {CONSTANTS_FILE}")
+        return errors
+    text = CONSTANTS_FILE.read_text(encoding="utf-8")
+    if not _SELECTOR_SHIFT_RE.search(text):
+        errors.append(
+            "Constants.lean: missing or changed selectorShift definition "
+            "(expected: def selectorShift : Nat := 224)"
+        )
     return errors
 
 
@@ -687,20 +666,20 @@ def check_special_entrypoints_sync() -> List[str]:
 def check_free_memory_pointer_sync() -> List[str]:
     """Verify freeMemoryPointer matches the Solidity convention (0x40)."""
     errors: List[str] = []
-    if not CONTRACT_SPEC_FILE.exists():
-        errors.append(f"Missing {CONTRACT_SPEC_FILE}")
+    if not CONSTANTS_FILE.exists():
+        errors.append(f"Missing {CONSTANTS_FILE}")
         return errors
-    text = CONTRACT_SPEC_FILE.read_text(encoding="utf-8")
+    text = CONSTANTS_FILE.read_text(encoding="utf-8")
     m = re.search(r"def\s+freeMemoryPointer\s*:\s*Nat\s*:=\s*(0x[0-9a-fA-F]+|\d+)", text)
     if not m:
         errors.append(
-            "ContractSpec.lean: missing freeMemoryPointer definition"
+            "Constants.lean: missing freeMemoryPointer definition"
         )
     else:
         val = int(m.group(1), 0)
         if val != 0x40:
             errors.append(
-                f"ContractSpec.freeMemoryPointer: expected 0x40 (64), got {val}"
+                f"Constants.freeMemoryPointer: expected 0x40 (64), got {val}"
             )
     return errors
 

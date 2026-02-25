@@ -189,6 +189,9 @@ private def packedBitsValid (packed : PackedBits) : Bool :=
   packed.offset < 256 &&
   packed.offset + packed.width <= 256
 
+private def wordIndexedKey (key wordOffset : Nat) : Nat :=
+  (key % modulus) + wordOffset * modulus
+
 def readStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) : Nat :=
   match findFieldWithResolvedSlot fields fieldName with
   | some (field, slot) =>
@@ -356,7 +359,7 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
           | some idx =>
               let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
               let keyVal := evalExpr ctx storage fields paramNames externalFns key
-              let word := storage.getMapping baseSlot ((keyVal + member.wordOffset) % modulus)
+              let word := storage.getMapping baseSlot (wordIndexedKey keyVal member.wordOffset)
               match member.packed with
               | none => word
               | some packed => Nat.land (word >>> packed.offset) (packedMaskNat packed)
@@ -373,7 +376,7 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
               let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
               let key1Val := evalExpr ctx storage fields paramNames externalFns key1
               let key2Val := evalExpr ctx storage fields paramNames externalFns key2
-              let word := storage.getMapping2 baseSlot key1Val ((key2Val + member.wordOffset) % modulus)
+              let word := storage.getMapping2 baseSlot key1Val (wordIndexedKey key2Val member.wordOffset)
               match member.packed with
               | none => word
               | some packed => Nat.land (word >>> packed.offset) (packedMaskNat packed)
@@ -791,7 +794,7 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
                   let baseSlot := f.slot.getD idx
                   let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
                   let keyVal := evalExpr ctx state.storage fields paramNames externalFns keyExpr
-                  let key := (keyVal + member.wordOffset) % modulus
+                  let key := wordIndexedKey keyVal member.wordOffset
                   let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
                   match member.packed with
                   | none =>
@@ -826,7 +829,7 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
                   let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
                   let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
                   let key2Raw := evalExpr ctx state.storage fields paramNames externalFns key2Expr
-                  let key2 := (key2Raw + member.wordOffset) % modulus
+                  let key2 := wordIndexedKey key2Raw member.wordOffset
                   let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
                   match member.packed with
                   | none =>

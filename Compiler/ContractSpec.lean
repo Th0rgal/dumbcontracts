@@ -4852,7 +4852,8 @@ private def firstMappingPackedBits (fields : List Field) :
 
 /-- Validate struct member definitions within a mappingStruct/mappingStruct2 field.
     Checks: (1) no duplicate member names, (2) packed ranges are valid,
-    (3) no overlapping packed ranges within the same word offset. -/
+    (3) no conflicting members sharing the same word offset:
+        full-word with anything, or overlapping packed ranges. -/
 private def validateStructMembers (fieldName : String) (members : List StructMember) : Except String Unit := do
   -- Check for duplicate member names
   match firstDuplicateName (members.map (·.name)) with
@@ -4867,6 +4868,20 @@ private def validateStructMembers (fieldName : String) (members : List StructMem
     | some packed =>
         if !packedBitsValid packed then
           throw s!"Compilation error: struct field '{fieldName}' member '{m.name}' has invalid packed range offset={packed.offset} width={packed.width}. Require 0 < width <= 256, offset < 256, and offset + width <= 256."
+  -- Check for same-word conflicts:
+  -- - full word (`packed = none`) conflicts with any member at same wordOffset
+  -- - packed members at same wordOffset must not overlap
+  let rec firstSameWordConflict (seen : List StructMember) : List StructMember → Option (StructMember × StructMember)
+    | [] => none
+    | m :: rest =>
+        match seen.find? (fun prev => prev.wordOffset == m.wordOffset && packedSlotsConflict prev.packed m.packed) with
+        | some prev => some (prev, m)
+        | none => firstSameWordConflict (m :: seen) rest
+  match firstSameWordConflict [] members with
+  | some (a, b) =>
+      throw s!"Compilation error: struct field '{fieldName}' has overlapping/conflicting members '{a.name}' and '{b.name}' at wordOffset {a.wordOffset}."
+  | none =>
+      pure ()
 
 /-- Find the first struct field with invalid member definitions (if any). -/
 private def firstInvalidStructField (fields : List Field) : Except String Unit := do

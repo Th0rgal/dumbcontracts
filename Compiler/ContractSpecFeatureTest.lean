@@ -6759,7 +6759,133 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
   | .ok _ =>
       throw (IO.userError "✗ expected compilation to fail for invalid packed range in struct member")
 
--- Test 9: Type mismatch — structMember on a double mapping field
+-- Test 9: Validation rejects overlapping packed ranges in same struct word
+#eval! do
+  let overlapPackedSpec : ContractSpec := {
+    name := "OverlapPacked"
+    fields := [
+      { name := "data", ty := FieldType.mappingStruct MappingKeyType.uint256 [
+          { name := "a", wordOffset := 0, packed := some { offset := 0, width := 128 } },
+          { name := "b", wordOffset := 0, packed := some { offset := 64, width := 128 } }
+        ], slot := some 0
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "getA"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "data" (Expr.param "id") "a")]
+      }
+    ]
+  }
+  match compile overlapPackedSpec [1] with
+  | .error err =>
+      if !(contains err "overlapping/conflicting members" && contains err "'a'" && contains err "'b'") then
+        throw (IO.userError s!"✗ overlapping packed members diagnostic mismatch: {err}")
+      IO.println "✓ validation rejects overlapping packed ranges in struct members"
+  | .ok _ =>
+      throw (IO.userError "✗ expected compilation to fail for overlapping packed struct members")
+
+-- Test 10: Validation rejects full-word and packed member sharing same word
+#eval! do
+  let fullAndPackedSpec : ContractSpec := {
+    name := "FullAndPacked"
+    fields := [
+      { name := "data", ty := FieldType.mappingStruct MappingKeyType.address [
+          { name := "full", wordOffset := 1 },
+          { name := "packed", wordOffset := 1, packed := some { offset := 0, width := 64 } }
+        ], slot := some 0
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "get"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "data" (Expr.param "who") "full")]
+      }
+    ]
+  }
+  match compile fullAndPackedSpec [1] with
+  | .error err =>
+      if !(contains err "overlapping/conflicting members" && contains err "'full'" && contains err "'packed'") then
+        throw (IO.userError s!"✗ full-word vs packed diagnostic mismatch: {err}")
+      IO.println "✓ validation rejects full-word/packed same-word struct members"
+  | .ok _ =>
+      throw (IO.userError "✗ expected compilation to fail for full-word/packed same-word members")
+
+-- Test 11: SpecInterpreter struct member keys do not collide across key/wordOffset pairs
+#eval! do
+  let structCollisionSpec : ContractSpec := {
+    name := "StructCollision"
+    fields := [
+      { name := "data", ty := FieldType.mappingStruct MappingKeyType.uint256 [
+          { name := "a", wordOffset := 0 },
+          { name := "b", wordOffset := 1 }
+        ], slot := some 0
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "setB"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "data" (Expr.param "id") "b" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "getA"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "data" (Expr.param "id") "a")]
+      }
+    ]
+  }
+  let w := interpretSpec structCollisionSpec SpecStorage.empty
+    { sender := 0, functionName := "setB", args := [100, 777] }
+  if !w.success then
+    throw (IO.userError "✗ struct key-collision regression setup write reverted")
+  let r := interpretSpec structCollisionSpec w.finalStorage
+    { sender := 0, functionName := "getA", args := [101] }
+  if r.returnValue != some 0 then
+    throw (IO.userError s!"✗ struct key-collision regression: expected getA(101)=0, got {r.returnValue}")
+  IO.println "✓ SpecInterpreter avoids struct key/wordOffset collisions"
+
+-- Test 12: SpecInterpreter nested struct member keys do not collide across inner key/wordOffset pairs
+#eval! do
+  let struct2CollisionSpec : ContractSpec := {
+    name := "Struct2Collision"
+    fields := [
+      { name := "data", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.uint256 [
+          { name := "a", wordOffset := 0 },
+          { name := "b", wordOffset := 1 }
+        ], slot := some 0
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "setB"
+        params := [{ name := "k1", ty := ParamType.uint256 }, { name := "k2", ty := ParamType.uint256 }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember2 "data" (Expr.param "k1") (Expr.param "k2") "b" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "getA"
+        params := [{ name := "k1", ty := ParamType.uint256 }, { name := "k2", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember2 "data" (Expr.param "k1") (Expr.param "k2") "a")]
+      }
+    ]
+  }
+  let w := interpretSpec struct2CollisionSpec SpecStorage.empty
+    { sender := 0, functionName := "setB", args := [7, 100, 777] }
+  if !w.success then
+    throw (IO.userError "✗ nested struct key-collision regression setup write reverted")
+  let r := interpretSpec struct2CollisionSpec w.finalStorage
+    { sender := 0, functionName := "getA", args := [7, 101] }
+  if r.returnValue != some 0 then
+    throw (IO.userError s!"✗ nested struct key-collision regression: expected getA(7,101)=0, got {r.returnValue}")
+  IO.println "✓ SpecInterpreter avoids nested struct key/wordOffset collisions"
+
+-- Test 13: Type mismatch — structMember on a double mapping field
 #eval! do
   let mismatchSpec : ContractSpec := {
     name := "Mismatch"

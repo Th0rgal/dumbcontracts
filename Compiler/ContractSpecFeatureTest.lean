@@ -6342,6 +6342,30 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
   | .error err => throw (IO.userError s!"✗ ECM callback (multi-arg) compilation failed: {err}")
   | .ok _ => IO.println "✓ ECM callback (multi-arg) compiles successfully"
 
+-- ===== ECM callback rejects oversized selector =====
+#eval! do
+  let spec : ContractSpec := {
+    name := "CallbackOversizedSelectorTest"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "doCallback"
+      params := [⟨"target", ParamType.address⟩, ⟨"data", ParamType.bytes⟩]
+      returnType := none
+      body := [
+        Modules.Callbacks.callback Expr.caller 0x1FFFFFFFF [] "data",
+        Stmt.stop
+      ]
+    }]
+  }
+  match compile spec [1] with
+  | .error err =>
+    if contains err "exceeds 4 bytes" then
+      IO.println s!"✓ ECM callback correctly rejects oversized selector"
+    else
+      throw (IO.userError s!"✗ unexpected error: {err}")
+  | .ok _ => throw (IO.userError "✗ expected oversized selector to be rejected")
+
 -- ===== ECM safeApprove compiles (new module, no old equivalent) =====
 #eval! do
   let spec : ContractSpec := {

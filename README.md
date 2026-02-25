@@ -203,14 +203,14 @@ Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a step-by-step guide and [`docs-site/content/guides/linking-libraries.mdx`](docs-site/content/guides/linking-libraries.mdx) for the full documentation.
 
-431 theorems across 11 categories, all fully proven. 404 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axioms. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
+431 theorems across 11 categories, all fully proven. 404 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axiom. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
 
 ## What's Verified
 
 - **Layer 1 (per contract)**: EDSL behavior matches its `ContractSpec` model.
 - **Layer 2 (framework)**: `ContractSpec -> IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
-- **Proof-chain note**: the `EDSL -> ContractSpec -> IR -> Yul` chain is verified with 1 axioms.
+- **Proof-chain note**: the `EDSL -> ContractSpec -> IR -> Yul` chain is verified with 1 axiom.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.

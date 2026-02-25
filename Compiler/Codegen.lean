@@ -139,17 +139,17 @@ def runtimeCode (contract : IRContract) : List YulStmt :=
   let internals := contract.internalFunctions
   mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
 
-private def profileSortsDispatchCases (profile : BackendProfile) : Bool :=
+private def profileSortsOutput (profile : BackendProfile) : Bool :=
   match profile with
   | .semantic => false
   | .solidityParityOrdering => true
   | .solidityParity => true
 
+private def profileSortsDispatchCases (profile : BackendProfile) : Bool :=
+  profileSortsOutput profile
+
 private def profileSortsInternalHelpers (profile : BackendProfile) : Bool :=
-  match profile with
-  | .semantic => false
-  | .solidityParityOrdering => true
-  | .solidityParity => true
+  profileSortsOutput profile
 
 private def internalHelperName? (stmt : YulStmt) : Option String :=
   match stmt with

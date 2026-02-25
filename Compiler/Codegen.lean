@@ -96,16 +96,14 @@ private def defaultDispatchCase
           (dispatchBody fb.payable "fallback()" fb.body)
       ]]
 
-private def insertBySelector (fn : IRFunction) : List IRFunction → List IRFunction
-  | [] => [fn]
+private def insertBy [LT β] [DecidableRel (α := β) (· < ·)] (key : α → β) (x : α) : List α → List α
+  | [] => [x]
   | head :: tail =>
-      if fn.selector < head.selector then
-        fn :: head :: tail
-      else
-        head :: insertBySelector fn tail
+      if key x < key head then x :: head :: tail
+      else head :: insertBy key x tail
 
-private def sortBySelector (funcs : List IRFunction) : List IRFunction :=
-  funcs.foldl (fun acc fn => insertBySelector fn acc) []
+private def insertionSortBy [LT β] [DecidableRel (α := β) (· < ·)] (key : α → β) (xs : List α) : List α :=
+  xs.foldl (fun acc x => insertBy key x acc) []
 
 def buildSwitch
     (funcs : List IRFunction)
@@ -114,7 +112,7 @@ def buildSwitch
     (sortCasesBySelector : Bool := false) : YulStmt :=
   let funcs :=
     if sortCasesBySelector then
-      sortBySelector funcs
+      insertionSortBy (·.selector) funcs
     else
       funcs
   let selectorExpr := YulExpr.call "shr" [YulExpr.lit selectorShift, YulExpr.call "calldataload" [YulExpr.lit 0]]
@@ -153,21 +151,13 @@ private def internalHelperName? (stmt : YulStmt) : Option String :=
   | .funcDef name _ _ _ => some name
   | _ => none
 
-private def insertHelperByName (entry : String × YulStmt) : List (String × YulStmt) → List (String × YulStmt)
-  | [] => [entry]
-  | head :: tail =>
-      if entry.1 < head.1 then
-        entry :: head :: tail
-      else
-        head :: insertHelperByName entry tail
-
 private def sortInternalHelpersByName (helpers : List YulStmt) : List YulStmt :=
   let named := helpers.filterMap (fun stmt =>
     match internalHelperName? stmt with
     | some name => some (name, stmt)
     | none => none)
   if named.length == helpers.length then
-    (named.foldl (fun acc entry => insertHelperByName entry acc) []).map Prod.snd
+    (insertionSortBy Prod.fst named).map Prod.snd
   else
     helpers
 

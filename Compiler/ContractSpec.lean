@@ -1665,39 +1665,25 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.param _ => false
   | Expr.constructorArg _ => false
   | Expr.storage _ => true
-  | Expr.mapping _ key => exprReadsStateOrEnv key || true
-  | Expr.mappingWord _ key _ => exprReadsStateOrEnv key || true
-  | Expr.mappingPackedWord _ key _ _ => exprReadsStateOrEnv key || true
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ => exprReadsStateOrEnv key1 || exprReadsStateOrEnv key2 || true
-  | Expr.mappingUint _ key => exprReadsStateOrEnv key || true
+  | Expr.mapping _ _ | Expr.mappingWord _ _ _ | Expr.mappingPackedWord _ _ _ _
+  | Expr.mapping2 _ _ _ | Expr.mapping2Word _ _ _ _
+  | Expr.mappingUint _ _ => true
   | Expr.caller => true
   | Expr.contractAddress => true
   | Expr.chainid => true
-  | Expr.extcodesize addr => exprReadsStateOrEnv addr || true
+  | Expr.extcodesize _ => true
   | Expr.msgValue => true
   | Expr.blockTimestamp => true
   | Expr.calldatasize => true
-  | Expr.calldataload offset => exprReadsStateOrEnv offset || true
+  | Expr.calldataload _ => true
   | Expr.mload offset => exprReadsStateOrEnv offset
   | Expr.keccak256 offset size => exprReadsStateOrEnv offset || exprReadsStateOrEnv size
-  | Expr.call gas target value inOffset inSize outOffset outSize =>
-      exprReadsStateOrEnv gas || exprReadsStateOrEnv target || exprReadsStateOrEnv value ||
-      exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
-      exprReadsStateOrEnv outOffset || exprReadsStateOrEnv outSize || true
-  | Expr.staticcall gas target inOffset inSize outOffset outSize =>
-      exprReadsStateOrEnv gas || exprReadsStateOrEnv target ||
-      exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
-      exprReadsStateOrEnv outOffset || exprReadsStateOrEnv outSize || true
-  | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
-      exprReadsStateOrEnv gas || exprReadsStateOrEnv target ||
-      exprReadsStateOrEnv inOffset || exprReadsStateOrEnv inSize ||
-      exprReadsStateOrEnv outOffset || exprReadsStateOrEnv outSize || true
+  | Expr.call _ _ _ _ _ _ _ | Expr.staticcall _ _ _ _ _ _
+  | Expr.delegatecall _ _ _ _ _ _ => true
   | Expr.returndataSize => true
-  | Expr.returndataOptionalBoolAt outOffset =>
-      exprReadsStateOrEnv outOffset || true
+  | Expr.returndataOptionalBoolAt _ => true
   | Expr.localVar _ => false
-  | Expr.externalCall _ args => args.any exprReadsStateOrEnv || true
-  | Expr.internalCall _ args => args.any exprReadsStateOrEnv || true
+  | Expr.externalCall _ _ | Expr.internalCall _ _ => true
   | Expr.arrayLength _ => false
   | Expr.arrayElement _ index => exprReadsStateOrEnv index
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
@@ -1716,12 +1702,9 @@ private partial def exprReadsStateOrEnv : Expr → Bool
 private partial def stmtWritesState : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value =>
       exprWritesState value
-  | Stmt.setStorage _ value =>
-      exprWritesState value || true
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>
-      exprWritesState key || exprWritesState value || true
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value =>
-      exprWritesState key1 || exprWritesState key2 || exprWritesState value || true
+  | Stmt.setStorage _ _
+  | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
+  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _ => true
   | Stmt.require cond _ =>
       exprWritesState cond
   | Stmt.requireError cond _ args =>
@@ -1752,22 +1735,13 @@ private partial def stmtWritesState : Stmt → Bool
       exprWritesState cond || thenBranch.any stmtWritesState || elseBranch.any stmtWritesState
   | Stmt.forEach _ count body =>
       exprWritesState count || body.any stmtWritesState
-  | Stmt.emit _ args =>
-      args.any exprWritesState || true
-  | Stmt.rawLog topics dataOffset dataSize =>
-      topics.any exprWritesState || exprWritesState dataOffset || exprWritesState dataSize || true
-  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
-      args.any exprWritesState || true
-  | Stmt.externalCallBind _ _ args =>
-      args.any exprWritesState || true
+  | Stmt.emit _ _ | Stmt.rawLog _ _ _
+  | Stmt.internalCall _ _ | Stmt.internalCallAssign _ _ _
+  | Stmt.externalCallBind _ _ _ => true
   | Stmt.externalCallWithReturn _ target _ args isStatic =>
       exprWritesState target || args.any exprWritesState || !isStatic
-  | Stmt.safeTransfer token to amount =>
-      exprWritesState token || exprWritesState to || exprWritesState amount || true
-  | Stmt.safeTransferFrom token fromAddr to amount =>
-      exprWritesState token || exprWritesState fromAddr || exprWritesState to || exprWritesState amount || true
-  | Stmt.callback target _ args _ =>
-      exprWritesState target || args.any exprWritesState || true
+  | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _
+  | Stmt.callback _ _ _ _ => true
   | Stmt.ecrecover _ hash v r s =>
       exprWritesState hash || exprWritesState v || exprWritesState r || exprWritesState s
 where
@@ -1789,18 +1763,12 @@ where
         exprWritesState key
     | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ =>
         exprWritesState key1 || exprWritesState key2
-    | Expr.call gas target value inOffset inSize outOffset outSize =>
-        exprWritesState gas || exprWritesState target || exprWritesState value ||
-        exprWritesState inOffset || exprWritesState inSize ||
-        exprWritesState outOffset || exprWritesState outSize || true
+    | Expr.call _ _ _ _ _ _ _ => true
     | Expr.staticcall gas target inOffset inSize outOffset outSize =>
         exprWritesState gas || exprWritesState target ||
         exprWritesState inOffset || exprWritesState inSize ||
         exprWritesState outOffset || exprWritesState outSize
-    | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
-        exprWritesState gas || exprWritesState target ||
-        exprWritesState inOffset || exprWritesState inSize ||
-        exprWritesState outOffset || exprWritesState outSize || true
+    | Expr.delegatecall _ _ _ _ _ _ => true
     | Expr.mload offset =>
         exprWritesState offset
     | Expr.calldataload offset =>
@@ -1809,8 +1777,7 @@ where
         exprWritesState offset || exprWritesState size
     | Expr.returndataOptionalBoolAt outOffset =>
         exprWritesState outOffset
-    | Expr.externalCall _ args | Expr.internalCall _ args =>
-        args.any exprWritesState || true
+    | Expr.externalCall _ _ | Expr.internalCall _ _ => true
     | Expr.extcodesize addr =>
         exprWritesState addr
     | Expr.arrayElement _ index =>
@@ -1832,38 +1799,23 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       true
   | Stmt.mstore offset value =>
       exprReadsStateOrEnv offset || exprReadsStateOrEnv value
-  | Stmt.calldatacopy destOffset sourceOffset size =>
-      exprReadsStateOrEnv destOffset || exprReadsStateOrEnv sourceOffset || exprReadsStateOrEnv size || true
-  | Stmt.returndataCopy destOffset sourceOffset size =>
-      exprReadsStateOrEnv destOffset || exprReadsStateOrEnv sourceOffset || exprReadsStateOrEnv size || true
+  | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ => true
   | Stmt.revertReturndata =>
       true
   | Stmt.stop =>
       false
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>
-      exprReadsStateOrEnv key || exprReadsStateOrEnv value || true
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value =>
-      exprReadsStateOrEnv key1 || exprReadsStateOrEnv key2 || exprReadsStateOrEnv value || true
+  | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
+  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _ => true
   | Stmt.ite cond thenBranch elseBranch =>
       exprReadsStateOrEnv cond || thenBranch.any stmtReadsStateOrEnv || elseBranch.any stmtReadsStateOrEnv
   | Stmt.forEach _ count body =>
       exprReadsStateOrEnv count || body.any stmtReadsStateOrEnv
   | Stmt.rawLog topics dataOffset dataSize =>
       topics.any exprReadsStateOrEnv || exprReadsStateOrEnv dataOffset || exprReadsStateOrEnv dataSize
-  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
-      args.any exprReadsStateOrEnv || true
-  | Stmt.externalCallBind _ _ args =>
-      args.any exprReadsStateOrEnv || true
-  | Stmt.externalCallWithReturn _ target _ args _ =>
-      exprReadsStateOrEnv target || args.any exprReadsStateOrEnv || true
-  | Stmt.safeTransfer token to amount =>
-      exprReadsStateOrEnv token || exprReadsStateOrEnv to || exprReadsStateOrEnv amount || true
-  | Stmt.safeTransferFrom token fromAddr to amount =>
-      exprReadsStateOrEnv token || exprReadsStateOrEnv fromAddr || exprReadsStateOrEnv to || exprReadsStateOrEnv amount || true
-  | Stmt.callback target _ args _ =>
-      exprReadsStateOrEnv target || args.any exprReadsStateOrEnv || true
-  | Stmt.ecrecover _ hash v r s =>
-      exprReadsStateOrEnv hash || exprReadsStateOrEnv v || exprReadsStateOrEnv r || exprReadsStateOrEnv s || true
+  | Stmt.internalCall _ _ | Stmt.internalCallAssign _ _ _
+  | Stmt.externalCallBind _ _ _ | Stmt.externalCallWithReturn _ _ _ _ _
+  | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _
+  | Stmt.callback _ _ _ _ | Stmt.ecrecover _ _ _ _ _ => true
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then

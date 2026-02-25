@@ -21,11 +21,14 @@
   - Verified external library integration (#184)
 -/
 
+import Compiler.Constants
 import Compiler.IR
 import Compiler.Yul.Ast
 import Compiler.Identifier
 
 namespace Compiler.ContractSpec
+
+export Compiler.Constants (errorStringSelectorWord addressMask selectorShift freeMemoryPointer)
 
 open Compiler
 open Compiler.Yul
@@ -940,25 +943,9 @@ def wordFromBytes (bs : List UInt8) : Nat :=
   let padded := bs ++ List.replicate (32 - bs.length) (0 : UInt8)
   padded.foldl (fun acc b => acc * 256 + b.toNat) 0
 
-/-- The 4-byte selector for `Error(string)` (keccak256("Error(string)")[0:4]),
-    left-shifted to fill a 32-byte EVM word.  This is 0x08c379a0 << 224.
-    Used in `revertWithMessage` (compiler) and concrete IR proofs. -/
-def errorStringSelectorWord : Nat := 0x08c379a0 * (2 ^ 224)
-
-/-- 160-bit address mask used to normalize EVM addresses (bitwise AND).
-    EVM addresses are 20 bytes; calldataload reads a full 32-byte word,
-    so the upper 96 bits must be cleared. -/
-def addressMask : Nat := (2 ^ 160) - 1
-
-/-- Selector shift: function selectors occupy the top 4 bytes of a 32-byte
-    EVM word, so calldata word 0 is right-shifted by 224 bits to extract
-    the selector, and error hashes are left-shifted by 224 bits to pack them. -/
-def selectorShift : Nat := 224
-
-/-- Solidity free memory pointer address (0x40 = 64).
-    By convention, `mload(0x40)` returns the next available memory offset.
-    Used in custom error emission and event encoding to allocate scratch space. -/
-def freeMemoryPointer : Nat := 0x40
+-- EVM constants (errorStringSelectorWord, addressMask, selectorShift,
+-- freeMemoryPointer) are defined in Compiler.Constants and re-exported
+-- via the `export` directive at the top of this namespace.
 
 def revertWithMessage (message : String) : List YulStmt :=
   let bytes := bytesFromString message

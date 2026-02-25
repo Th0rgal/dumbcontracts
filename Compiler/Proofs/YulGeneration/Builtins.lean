@@ -1,17 +1,11 @@
+import Compiler.Constants
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter
 
 namespace Compiler.Proofs.YulGeneration
 
 open Compiler.Proofs
-
-abbrev evmModulus : Nat := 2 ^ 256
-
-def selectorModulus : Nat := 2 ^ 32
-
--- Canonical definition: Compiler.ContractSpec.selectorShift
--- Duplicated here to avoid importing ContractSpec into the proof module.
-def selectorShift : Nat := 224
+export Compiler.Constants (evmModulus selectorModulus selectorShift)
 
 def selectorWord (selector : Nat) : Nat :=
   (selector % selectorModulus) * (2 ^ selectorShift)

@@ -1,3 +1,4 @@
+import Compiler.Constants
 import Compiler.IR
 import Compiler.Yul.PrettyPrint
 import Compiler.Yul.PatchFramework
@@ -6,6 +7,7 @@ import Compiler.Yul.PatchRules
 namespace Compiler
 
 open Yul
+open Compiler.Constants (selectorShift)
 
 inductive BackendProfile where
   | semantic
@@ -93,11 +95,6 @@ private def defaultDispatchCase
         YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__is_empty_calldata"])
           (dispatchBody fb.payable "fallback()" fb.body)
       ]]
-
--- Selector shift amount (224 = 256 - 32).
--- Canonical definition: Compiler.ContractSpec.selectorShift
--- Duplicated here to avoid importing ContractSpec into the lightweight Codegen module.
-private def selectorShift : Nat := 224
 
 private def insertBySelector (fn : IRFunction) : List IRFunction → List IRFunction
   | [] => [fn]

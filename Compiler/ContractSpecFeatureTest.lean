@@ -5955,15 +5955,14 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- ===== ECM ecrecover SpecInterpreter unsupported =====
 -- ECM modules route through Stmt.ecm which returns `none` in execStmt/execStmtsFuel.
--- stmtUsesUnsupportedLowLevel only checks argument expressions, not module semantics,
--- so it correctly returns false for ECM with simple literal args.
+-- stmtUsesUnsupportedLowLevel correctly returns true for all ECM variants since the
+-- interpreter cannot execute them regardless of argument expressions.
 #eval! do
-  -- Verify that ECM ecrecover with literal args does not flag unsupported low-level
-  -- (the unsupported check is on expressions, not on the module type)
+  -- Verify that ECM ecrecover is flagged as unsupported (interpreter returns none)
   if stmtUsesUnsupportedLowLevel (Modules.Precompiles.ecrecover "x" (Expr.literal 0) (Expr.literal 0) (Expr.literal 0) (Expr.literal 0)) then
-    throw (IO.userError "✗ ECM ecrecover with literal args should not flag unsupported low-level")
+    IO.println "✓ ECM ecrecover correctly flagged as unsupported low-level"
   else
-    IO.println "✓ ECM ecrecover with literal args correctly not flagged as unsupported"
+    throw (IO.userError "✗ ECM ecrecover should be flagged as unsupported (interpreter cannot execute ECMs)")
 -- ═══════════════════════════════════════════════════════════════
 -- Expr.ite (expression-level conditional / branchless ternary)
 -- ═══════════════════════════════════════════════════════════════

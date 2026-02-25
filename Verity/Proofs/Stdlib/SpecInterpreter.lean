@@ -565,8 +565,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       exprListUsesUnsupportedLowLevel args
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
       false
-  | Stmt.ecm _ args =>
-      exprListUsesUnsupportedLowLevel args
+  | Stmt.ecm _ _ =>
+      true
 
 def stmtListUsesUnsupportedLowLevel : List Stmt → Bool
   | [] => false

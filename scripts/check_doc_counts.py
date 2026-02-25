@@ -549,7 +549,7 @@ def main(argv: list[str] | None = None) -> None:
                 ),
                 (
                     "axiom count in What's Verified",
-                    re.compile(r"verified with (\d+) axioms"),
+                    re.compile(r"verified with (\d+) axioms?"),
                     str(axiom_count),
                 ),
                 (
@@ -800,7 +800,7 @@ def main(argv: list[str] | None = None) -> None:
             [
                 (
                     "axiom count in verification chain",
-                    re.compile(r"FULLY VERIFIED, (\d+) axioms"),
+                    re.compile(r"FULLY VERIFIED, (\d+) axioms?"),
                     str(axiom_count),
                 ),
                 (

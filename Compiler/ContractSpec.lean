@@ -460,14 +460,6 @@ def isMapping2 (fields : List Field) (name : String) : Bool :=
     | FieldType.mappingStruct2 _ _ _ => true
     | _ => false
 
--- Helper: Is field a struct-valued mapping?
-def isMappingStruct (fields : List Field) (name : String) : Bool :=
-  fields.find? (·.name == name) |>.any fun f =>
-    match f.ty with
-    | FieldType.mappingStruct _ _ => true
-    | FieldType.mappingStruct2 _ _ _ => true
-    | _ => false
-
 -- Helper: Find struct members for a struct-valued mapping field.
 def findStructMembers (fields : List Field) (name : String) : Option (List StructMember) :=
   fields.find? (·.name == name) |>.bind fun f =>

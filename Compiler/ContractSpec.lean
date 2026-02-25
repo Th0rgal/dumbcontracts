@@ -326,29 +326,6 @@ inductive Stmt
       (resultVars : List String)  -- local vars to bind return values to
       (externalName : String)     -- name of the external function declaration
       (args : List Expr)          -- call arguments
-  /-- High-level ABI-encoded external call with return value binding.
-      Compiles to: mstore(selector+args), call/staticcall, revert forwarding, returndatacopy+mload.
-      Covers the common `call(gas(), target, 0, 0, calldataSize, 0, 32)` + decode pattern. -/
-  | externalCallWithReturn
-      (resultVar : String)       -- local variable to bind the returned uint256
-      (target : Expr)            -- target contract address
-      (selector : Nat)           -- 4-byte function selector (e.g., 0xa035b1fe)
-      (args : List Expr)         -- ABI-encoded arguments (each occupies 32 bytes)
-      (isStatic : Bool := false) -- use staticcall instead of call
-  /-- ERC20 safeTransfer: encode transfer(to, amount), call token, handle optional bool return.
-      Reverts with descriptive error on call failure or false return. -/
-  | safeTransfer (token to amount : Expr)
-  /-- ERC20 safeTransferFrom: encode transferFrom(from, to, amount), call token, handle optional bool return.
-      Reverts with descriptive error on call failure or false return. -/
-  | safeTransferFrom (token fromAddr to amount : Expr)
-  /-- Callback invocation: encode selector + static args + forwarded bytes param,
-      call target, revert-forward on failure. Used for flash-loan patterns where
-      the contract calls back into the caller with encoded data (#927). -/
-  | callback (target : Expr) (selector : Nat) (staticArgs : List Expr) (bytesParam : String)
-  /-- Recover signer address from ECDSA signature via the ecrecover precompile (address 0x01).
-      Writes hash, v, r, s to memory[0..128], calls staticcall, reverts on failure,
-      and binds the recovered address (masked to 160 bits) to `resultVar`. -/
-  | ecrecover (resultVar : String) (hash v r s : Expr)
   /-- Invoke an External Call Module with the given arguments.
       This generic variant delegates validation, compilation, and state analysis
       to the module's metadata and compile function. See Compiler.ECM (#964). -/
@@ -673,16 +650,6 @@ private partial def collectStmtNames : Stmt → List String
       collectExprListNames topics ++ collectExprNames dataOffset ++ collectExprNames dataSize
   | Stmt.externalCallBind resultVars externalName args =>
       resultVars ++ externalName :: collectExprListNames args
-  | Stmt.externalCallWithReturn resultVar target _ args _ =>
-      resultVar :: collectExprNames target ++ collectExprListNames args
-  | Stmt.safeTransfer token to amount =>
-      collectExprNames token ++ collectExprNames to ++ collectExprNames amount
-  | Stmt.safeTransferFrom token fromAddr to amount =>
-      collectExprNames token ++ collectExprNames fromAddr ++ collectExprNames to ++ collectExprNames amount
-  | Stmt.callback target _ args bytesParam =>
-      collectExprNames target ++ collectExprListNames args ++ [bytesParam]
-  | Stmt.ecrecover resultVar hash v r s =>
-      resultVar :: collectExprNames hash ++ collectExprNames v ++ collectExprNames r ++ collectExprNames s
   | Stmt.ecm mod args =>
       mod.resultVars ++ collectExprListNames args
 
@@ -1216,19 +1183,6 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike dataSize
   | Stmt.externalCallBind _ _ args =>
       args.any exprContainsUnsafeLogicalCallLike
-  | Stmt.externalCallWithReturn _ target _ args _ =>
-      exprContainsUnsafeLogicalCallLike target || args.any exprContainsUnsafeLogicalCallLike
-  | Stmt.safeTransfer token to amount =>
-      exprContainsUnsafeLogicalCallLike token || exprContainsUnsafeLogicalCallLike to || exprContainsUnsafeLogicalCallLike amount
-  | Stmt.safeTransferFrom token fromAddr to amount =>
-      exprContainsUnsafeLogicalCallLike token || exprContainsUnsafeLogicalCallLike fromAddr || exprContainsUnsafeLogicalCallLike to || exprContainsUnsafeLogicalCallLike amount
-  | Stmt.callback target _ args _ =>
-      exprContainsUnsafeLogicalCallLike target || args.any exprContainsUnsafeLogicalCallLike
-  | Stmt.ecrecover _ hash v r s =>
-      exprContainsUnsafeLogicalCallLike hash ||
-      exprContainsUnsafeLogicalCallLike v ||
-      exprContainsUnsafeLogicalCallLike r ||
-      exprContainsUnsafeLogicalCallLike s
   | Stmt.ecm _ args =>
       args.any exprContainsUnsafeLogicalCallLike
 
@@ -1481,47 +1435,6 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.externalCallBind resultVars _ args => do
       args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
       pure (resultVars.reverse ++ localScope)
-  | Stmt.externalCallWithReturn resultVar target _ args _ => do
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount target
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
-      if paramScope.contains resultVar then
-        throw s!"Compilation error: {context} uses Stmt.externalCallWithReturn with result variable '{resultVar}' that shadows a parameter"
-      if localScope.contains resultVar then
-        throw s!"Compilation error: {context} uses Stmt.externalCallWithReturn with result variable '{resultVar}' that redeclares an existing local variable"
-      pure (resultVar :: localScope)
-  | Stmt.safeTransfer token to amount => do
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount token
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount to
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount amount
-      pure localScope
-  | Stmt.safeTransferFrom token fromAddr to amount => do
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount token
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount fromAddr
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount to
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount amount
-      pure localScope
-  | Stmt.callback target selector args bytesParam => do
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount target
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
-      if selector >= 4294967296 then
-        throw s!"Compilation error: {context} uses Stmt.callback with selector {selector} which exceeds 4 bytes (must be < 2^32)"
-      match findParamType params bytesParam with
-      | some ParamType.bytes => pure ()
-      | some ty =>
-          throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' of type {repr ty}, but only ParamType.bytes is supported"
-      | none =>
-          throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' which is not a declared parameter"
-      pure localScope
-  | Stmt.ecrecover resultVar hash v r s => do
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount hash
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount v
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount r
-      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount s
-      if paramScope.contains resultVar then
-        throw s!"Compilation error: {context} declares ecrecover result '{resultVar}' that shadows a parameter"
-      if localScope.contains resultVar then
-        throw s!"Compilation error: {context} redeclares ecrecover result '{resultVar}' in the same scope"
-      pure (resultVar :: localScope)
   | Stmt.ecm mod args => do
       if args.length != mod.numArgs then
         throw s!"Compilation error: {context} uses ECM '{mod.name}' with {args.length} arguments but it expects {mod.numArgs}"
@@ -1758,12 +1671,6 @@ private partial def stmtWritesState : Stmt → Bool
   | Stmt.emit _ _ | Stmt.rawLog _ _ _
   | Stmt.internalCall _ _ | Stmt.internalCallAssign _ _ _
   | Stmt.externalCallBind _ _ _ => true
-  | Stmt.externalCallWithReturn _ target _ args isStatic =>
-      exprWritesState target || args.any exprWritesState || !isStatic
-  | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _
-  | Stmt.callback _ _ _ _ => true
-  | Stmt.ecrecover _ hash v r s =>
-      exprWritesState hash || exprWritesState v || exprWritesState r || exprWritesState s
   | Stmt.ecm mod args =>
       mod.writesState || args.any exprWritesState
 where
@@ -1835,9 +1742,7 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.rawLog topics dataOffset dataSize =>
       topics.any exprReadsStateOrEnv || exprReadsStateOrEnv dataOffset || exprReadsStateOrEnv dataSize
   | Stmt.internalCall _ _ | Stmt.internalCallAssign _ _ _
-  | Stmt.externalCallBind _ _ _ | Stmt.externalCallWithReturn _ _ _ _ _
-  | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _
-  | Stmt.callback _ _ _ _ | Stmt.ecrecover _ _ _ _ _ => true
+  | Stmt.externalCallBind _ _ _ => true
   | Stmt.ecm mod args => mod.readsState || mod.writesState || args.any exprReadsStateOrEnv
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
@@ -2441,32 +2346,12 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       args.forM (validateInteropExpr context)
   | Stmt.externalCallBind _ _ args =>
       args.forM (validateInteropExpr context)
-  | Stmt.externalCallWithReturn _ target _ args _ => do
-      validateInteropExpr context target
-      args.forM (validateInteropExpr context)
-  | Stmt.safeTransfer token to amount => do
-      validateInteropExpr context token
-      validateInteropExpr context to
-      validateInteropExpr context amount
-  | Stmt.safeTransferFrom token fromAddr to amount => do
-      validateInteropExpr context token
-      validateInteropExpr context fromAddr
-      validateInteropExpr context to
-      validateInteropExpr context amount
-  | Stmt.callback target _ args _ => do
-      validateInteropExpr context target
-      args.forM (validateInteropExpr context)
   | Stmt.returnValues values =>
       values.forM (validateInteropExpr context)
   | Stmt.rawLog topics dataOffset dataSize => do
       topics.forM (validateInteropExpr context)
       validateInteropExpr context dataOffset
       validateInteropExpr context dataSize
-  | Stmt.ecrecover _ hash v r s => do
-      validateInteropExpr context hash
-      validateInteropExpr context v
-      validateInteropExpr context r
-      validateInteropExpr context s
   | Stmt.ecm _ args =>
       args.forM (validateInteropExpr context)
   | _ =>
@@ -2693,26 +2578,6 @@ private partial def validateInternalCallShapesInStmt
       validateInternalCallShapesInExpr functions callerName dataSize
   | Stmt.externalCallBind _resultVars _ args =>
       args.forM (validateInternalCallShapesInExpr functions callerName)
-  | Stmt.externalCallWithReturn _ target _ args _ => do
-      validateInternalCallShapesInExpr functions callerName target
-      args.forM (validateInternalCallShapesInExpr functions callerName)
-  | Stmt.safeTransfer token to amount => do
-      validateInternalCallShapesInExpr functions callerName token
-      validateInternalCallShapesInExpr functions callerName to
-      validateInternalCallShapesInExpr functions callerName amount
-  | Stmt.safeTransferFrom token fromAddr to amount => do
-      validateInternalCallShapesInExpr functions callerName token
-      validateInternalCallShapesInExpr functions callerName fromAddr
-      validateInternalCallShapesInExpr functions callerName to
-      validateInternalCallShapesInExpr functions callerName amount
-  | Stmt.callback target _ args _ => do
-      validateInternalCallShapesInExpr functions callerName target
-      args.forM (validateInternalCallShapesInExpr functions callerName)
-  | Stmt.ecrecover _ hash v r s => do
-      validateInternalCallShapesInExpr functions callerName hash
-      validateInternalCallShapesInExpr functions callerName v
-      validateInternalCallShapesInExpr functions callerName r
-      validateInternalCallShapesInExpr functions callerName s
   | Stmt.ecm _ args =>
       args.forM (validateInternalCallShapesInExpr functions callerName)
   | _ =>
@@ -2867,32 +2732,12 @@ private partial def validateExternalCallTargetsInStmt
                 else
                   checkDuplicateVars (name :: seen) rest
           checkDuplicateVars [] resultVars
-  | Stmt.externalCallWithReturn _ target _ args _ => do
-      validateExternalCallTargetsInExpr externals context target
-      args.forM (validateExternalCallTargetsInExpr externals context)
-  | Stmt.safeTransfer token to amount => do
-      validateExternalCallTargetsInExpr externals context token
-      validateExternalCallTargetsInExpr externals context to
-      validateExternalCallTargetsInExpr externals context amount
-  | Stmt.safeTransferFrom token fromAddr to amount => do
-      validateExternalCallTargetsInExpr externals context token
-      validateExternalCallTargetsInExpr externals context fromAddr
-      validateExternalCallTargetsInExpr externals context to
-      validateExternalCallTargetsInExpr externals context amount
-  | Stmt.callback target _ args _ => do
-      validateExternalCallTargetsInExpr externals context target
-      args.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.returnValues values =>
       values.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.rawLog topics dataOffset dataSize => do
       topics.forM (validateExternalCallTargetsInExpr externals context)
       validateExternalCallTargetsInExpr externals context dataOffset
       validateExternalCallTargetsInExpr externals context dataSize
-  | Stmt.ecrecover _ hash v r s => do
-      validateExternalCallTargetsInExpr externals context hash
-      validateExternalCallTargetsInExpr externals context v
-      validateExternalCallTargetsInExpr externals context r
-      validateExternalCallTargetsInExpr externals context s
   | Stmt.ecm _ args =>
       args.forM (validateExternalCallTargetsInExpr externals context)
   | _ =>
@@ -4064,52 +3909,16 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
   | Stmt.externalCallBind resultVars externalName args => do
       let argExprs ← compileExprList fields dynamicSource args
       pure [YulStmt.letMany resultVars (YulExpr.call externalName argExprs)]
-  | Stmt.externalCallWithReturn resultVar target selector args isStatic => do
-      let targetExpr ← compileExpr fields dynamicSource target
-      let argCompiledExprs ← compileExprList fields dynamicSource args
-      -- Step 1: store selector (left-shifted 224 bits) at memory offset 0
-      let selectorExpr := YulExpr.call "shl" [YulExpr.lit 224, YulExpr.hex selector]
-      let storeSelector := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, selectorExpr])
-      -- Step 2: store each arg at offsets 4, 36, 68, ...
-      let storeArgs := argCompiledExprs.zipIdx.map fun (argExpr, i) =>
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit (4 + i * 32), argExpr])
-      -- Step 3: perform call/staticcall
-      let calldataSize := 4 + args.length * 32
-      let callExpr :=
-        if isStatic then
-          YulExpr.call "staticcall" [
-            YulExpr.call "gas" [],
-            targetExpr,
-            YulExpr.lit 0, YulExpr.lit calldataSize,
-            YulExpr.lit 0, YulExpr.lit 32
-          ]
-        else
-          YulExpr.call "call" [
-            YulExpr.call "gas" [],
-            targetExpr,
-            YulExpr.lit 0,
-            YulExpr.lit 0, YulExpr.lit calldataSize,
-            YulExpr.lit 0, YulExpr.lit 32
-          ]
-      let letSuccess := YulStmt.let_ "__ecwr_success" callExpr
-      -- Step 4: revert forwarding on failure
-      let revertBlock := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__ecwr_success"]) [
-        YulStmt.let_ "__ecwr_rds" (YulExpr.call "returndatasize" []),
-        YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__ecwr_rds"]),
-        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__ecwr_rds"])
-      ]
-      -- Step 5: validate return data size ≥ 32
-      let sizeCheck := YulStmt.if_ (YulExpr.call "lt" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
-        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
-      ]
-      -- Wrap call + checks in a block so __ecwr_success is block-scoped.
-      -- This avoids duplicate let declarations when multiple externalCallWithReturn
-      -- statements appear in the same function body.
-      let callBlock := YulStmt.block ([storeSelector] ++ storeArgs ++ [letSuccess, revertBlock, sizeCheck])
-      -- Step 6: extract return value outside the block (call already copied returndata to memory[0..32])
-      -- resultVar is flat-scoped so subsequent statements can reference it.
-      let bindResult := YulStmt.let_ resultVar (YulExpr.call "mload" [YulExpr.lit 0])
-      pure [callBlock, bindResult]
+  -- NOTE: safeTransfer, safeTransferFrom, externalCallWithReturn, callback, ecrecover
+  -- have been removed. Use Stmt.ecm with the appropriate module from Compiler/Modules/.
+  | Stmt.ecm mod args => do
+      if args.length != mod.numArgs then
+        throw s!"ECM '{mod.name}': expected {mod.numArgs} arguments, got {args.length}"
+      let compiledArgs ← compileExprList fields dynamicSource args
+      let ctx : ECM.CompilationContext := {
+        isDynamicFromCalldata := dynamicSource == .calldata
+      }
+      mod.compile ctx compiledArgs
   | Stmt.returnValues values => do
       if isInternal then
         if values.length != internalRetNames.length then
@@ -4215,169 +4024,6 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
       let sizeExpr ← compileExpr fields dynamicSource dataSize
       let logFn := s!"log{topics.length}"
       pure [YulStmt.expr (YulExpr.call logFn ([offsetExpr, sizeExpr] ++ topicExprs))]
-  | Stmt.safeTransfer token to amount => do
-      -- ERC20 safeTransfer: transfer(address,uint256) selector = 0xa9059cbb
-      let tokenExpr ← compileExpr fields dynamicSource token
-      let toExpr ← compileExpr fields dynamicSource to
-      let amountExpr ← compileExpr fields dynamicSource amount
-      -- selector word: 0xa9059cbb shifted left by 224 bits (28 bytes)
-      let selectorWord := 0xa9059cbb00000000000000000000000000000000000000000000000000000000
-      pure [YulStmt.block ([
-        -- Store selector at memory[0]
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorWord]),
-        -- Store 'to' at memory[4]
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, toExpr]),
-        -- Store 'amount' at memory[36]
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, amountExpr]),
-        -- call(gas(), token, 0, 0, 68, 0, 32)
-        YulStmt.let_ "__st_success" (YulExpr.call "call" [
-          YulExpr.call "gas" [], tokenExpr, YulExpr.lit 0,
-          YulExpr.lit 0, YulExpr.lit 68, YulExpr.lit 0, YulExpr.lit 32
-        ]),
-        -- Revert if call failed
-        YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__st_success"])
-          (revertWithMessage "transfer reverted"),
-        -- Check optional bool return: if returndatasize == 32 and mload(0) == 0, revert
-        YulStmt.if_ (YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
-          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "mload" [YulExpr.lit 0]])
-            (revertWithMessage "transfer returned false")
-        ]
-      ])]
-  | Stmt.safeTransferFrom token fromAddr to amount => do
-      -- ERC20 safeTransferFrom: transferFrom(address,address,uint256) selector = 0x23b872dd
-      let tokenExpr ← compileExpr fields dynamicSource token
-      let fromExpr ← compileExpr fields dynamicSource fromAddr
-      let toExpr ← compileExpr fields dynamicSource to
-      let amountExpr ← compileExpr fields dynamicSource amount
-      -- selector word: 0x23b872dd shifted left by 224 bits (28 bytes)
-      let selectorWord := 0x23b872dd00000000000000000000000000000000000000000000000000000000
-      pure [YulStmt.block ([
-        -- Store selector at memory[0]
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorWord]),
-        -- Store 'from' at memory[4]
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, fromExpr]),
-        -- Store 'to' at memory[36]
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, toExpr]),
-        -- Store 'amount' at memory[68]
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 68, amountExpr]),
-        -- call(gas(), token, 0, 0, 100, 0, 32)
-        YulStmt.let_ "__stf_success" (YulExpr.call "call" [
-          YulExpr.call "gas" [], tokenExpr, YulExpr.lit 0,
-          YulExpr.lit 0, YulExpr.lit 100, YulExpr.lit 0, YulExpr.lit 32
-        ]),
-        -- Revert if call failed
-        YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__stf_success"])
-          (revertWithMessage "transferFrom reverted"),
-        -- Check optional bool return: if returndatasize == 32 and mload(0) == 0, revert
-        YulStmt.if_ (YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
-          YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "mload" [YulExpr.lit 0]])
-            (revertWithMessage "transferFrom returned false")
-        ]
-      ])]
-  | Stmt.callback target selector staticArgs bytesParam => do
-      -- Callback invocation (#927): ABI-encode selector + static args + bytes, call target
-      let targetExpr ← compileExpr fields dynamicSource target
-      let argCompiledExprs ← compileExprList fields dynamicSource staticArgs
-      let numStaticArgs := staticArgs.length
-      -- Memory layout:
-      --   [0..4]                          selector (shl(224, selector))
-      --   [4..4+numStaticArgs*32]          static args
-      --   [4+numStaticArgs*32..+32]        ABI offset to bytes data = (numStaticArgs+1)*32
-      --   [4+(numStaticArgs+1)*32..+32]    bytes length
-      --   [4+(numStaticArgs+2)*32..+len]   bytes data (calldatacopy)
-      let selectorExpr := YulExpr.call "shl" [YulExpr.lit 224, YulExpr.hex selector]
-      let storeSelector := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, selectorExpr])
-      let storeArgs := argCompiledExprs.zipIdx.map fun (argExpr, i) =>
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit (4 + i * 32), argExpr])
-      -- ABI offset pointer: points to start of bytes data relative to args start
-      let bytesOffsetSlot := 4 + numStaticArgs * 32
-      let bytesOffset := (numStaticArgs + 1) * 32  -- relative offset from start of args
-      let storeOffset := YulStmt.expr (YulExpr.call "mstore" [
-        YulExpr.lit bytesOffsetSlot, YulExpr.lit bytesOffset
-      ])
-      -- Bytes length from the parameter
-      let bytesLenExpr := YulExpr.ident s!"{bytesParam}_length"
-      let bytesLenSlot := 4 + (numStaticArgs + 1) * 32
-      let storeBytesLen := YulStmt.expr (YulExpr.call "mstore" [
-        YulExpr.lit bytesLenSlot, bytesLenExpr
-      ])
-      -- Copy bytes data from calldata
-      let bytesDataSlot := 4 + (numStaticArgs + 2) * 32
-      let bytesDataOffset := YulExpr.ident s!"{bytesParam}_data_offset"
-      let copyBytes := dynamicCopyData dynamicSource
-        (YulExpr.lit bytesDataSlot) bytesDataOffset bytesLenExpr
-      -- Total calldata size: fixed header + bytes data padded to 32-byte boundary
-      -- ABI encoding requires bytes tails to be zero-padded: ceil(len/32)*32
-      let paddedBytesLen := YulExpr.call "and" [
-        YulExpr.call "add" [bytesLenExpr, YulExpr.lit 31],
-        YulExpr.call "not" [YulExpr.lit 31]
-      ]
-      let totalSize := YulExpr.call "add" [YulExpr.lit bytesDataSlot, paddedBytesLen]
-      -- call(gas(), target, 0, 0, totalSize, 0, 0) — no return data expected
-      let callExpr := YulExpr.call "call" [
-        YulExpr.call "gas" [],
-        targetExpr,
-        YulExpr.lit 0,
-        YulExpr.lit 0, totalSize,
-        YulExpr.lit 0, YulExpr.lit 0
-      ]
-      -- Revert forwarding on failure
-      let revertBlock := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__cb_success"]) [
-        YulStmt.let_ "__cb_rds" (YulExpr.call "returndatasize" []),
-        YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__cb_rds"]),
-        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__cb_rds"])
-      ]
-      -- Wrap in block to scope __cb_success and __cb_rds
-      pure [YulStmt.block (
-        [storeSelector] ++ storeArgs ++ [storeOffset, storeBytesLen] ++ copyBytes ++
-        [YulStmt.let_ "__cb_success" callExpr, revertBlock]
-      )]
-  | Stmt.ecrecover resultVar hash v r s => do
-      -- ecrecover precompile: write hash, v, r, s to memory[0..128], staticcall to address 0x01
-      let hashExpr ← compileExpr fields dynamicSource hash
-      let vExpr ← compileExpr fields dynamicSource v
-      let rExpr ← compileExpr fields dynamicSource r
-      let sExpr ← compileExpr fields dynamicSource s
-      let storeHash := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, hashExpr])
-      let storeV := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 32, vExpr])
-      let storeR := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 64, rExpr])
-      let storeS := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 96, sExpr])
-      -- staticcall(gas(), 0x01, 0, 128, 0, 32)
-      let callExpr := YulExpr.call "staticcall" [
-        YulExpr.call "gas" [],
-        YulExpr.lit 1,
-        YulExpr.lit 0, YulExpr.lit 128,
-        YulExpr.lit 0, YulExpr.lit 32
-      ]
-      -- Revert on failure
-      let revertBlock := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__ecr_success"]) [
-        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
-      ]
-      -- Bind recovered address (masked to 160 bits) -- resultVar must be flat-scoped
-      -- When the precompile receives an invalid signature it succeeds (returns 1)
-      -- but writes 0 bytes of output.  Memory[0] would still contain the stale hash.
-      -- Guard against this by zeroing the output region when returndatasize is 0.
-      let guardStale := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "returndatasize" []]) [
-        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.lit 0])
-      ]
-      -- Bind recovered address (masked to 160 bits) -- resultVar must be flat-scoped
-      let bindResult := YulStmt.let_ resultVar
-        (YulExpr.call "and" [YulExpr.call "mload" [YulExpr.lit 0], YulExpr.hex addressMask])
-      -- Block scopes __ecr_success; bindResult is emitted outside so resultVar is accessible
-      pure [YulStmt.block (
-        [storeHash, storeV, storeR, storeS,
-         YulStmt.let_ "__ecr_success" callExpr,
-         revertBlock,
-         guardStale]
-      ), bindResult]
-  | Stmt.ecm mod args => do
-      if args.length != mod.numArgs then
-        throw s!"ECM '{mod.name}': expected {mod.numArgs} arguments, got {args.length}"
-      let compiledArgs ← compileExprList fields dynamicSource args
-      let ctx : ECM.CompilationContext := {
-        isDynamicFromCalldata := dynamicSource == .calldata
-      }
-      mod.compile ctx compiledArgs
 end
 
 private def isScalarParamType : ParamType → Bool
@@ -4547,8 +4193,6 @@ private partial def collectStmtBindNames : Stmt → List String
       varName :: collectStmtListBindNames body
   | Stmt.internalCallAssign names _ _ => names
   | Stmt.externalCallBind resultVars _ _ => resultVars
-  | Stmt.externalCallWithReturn resultVar _ _ _ _ => [resultVar]
-  | Stmt.ecrecover resultVar _ _ _ _ => [resultVar]
   | Stmt.ecm mod _ => mod.resultVars
   -- Statements that never bind new names.
   | Stmt.assignVar _ _ | Stmt.setStorage _ _ | Stmt.return _
@@ -4556,8 +4200,7 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _ | Stmt.require _ _ | Stmt.requireError _ _ _ | Stmt.revertError _ _
   | Stmt.returnValues _ | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
   | Stmt.mstore _ _ | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata | Stmt.stop
-  | Stmt.emit _ _ | Stmt.internalCall _ _ | Stmt.rawLog _ _ _
-  | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _ | Stmt.callback _ _ _ _ =>
+  | Stmt.emit _ _ | Stmt.internalCall _ _ | Stmt.rawLog _ _ _ =>
       []
 
 private partial def collectStmtListBindNames : List Stmt → List String
@@ -4641,16 +4284,6 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       topics.any exprUsesArrayElement || exprUsesArrayElement dataOffset || exprUsesArrayElement dataSize
   | Stmt.externalCallBind _ _ args =>
       args.any exprUsesArrayElement
-  | Stmt.externalCallWithReturn _ target _ args _ =>
-      exprUsesArrayElement target || args.any exprUsesArrayElement
-  | Stmt.safeTransfer token to amount =>
-      exprUsesArrayElement token || exprUsesArrayElement to || exprUsesArrayElement amount
-  | Stmt.safeTransferFrom token fromAddr to amount =>
-      exprUsesArrayElement token || exprUsesArrayElement fromAddr || exprUsesArrayElement to || exprUsesArrayElement amount
-  | Stmt.callback target _ args _ =>
-      exprUsesArrayElement target || args.any exprUsesArrayElement
-  | Stmt.ecrecover _ hash v r s =>
-      exprUsesArrayElement hash || exprUsesArrayElement v || exprUsesArrayElement r || exprUsesArrayElement s
   | Stmt.ecm _ args =>
       args.any exprUsesArrayElement
   -- Leaf statements: no sub-expressions that could contain arrayElement.

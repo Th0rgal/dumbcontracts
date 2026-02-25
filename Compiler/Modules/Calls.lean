@@ -77,7 +77,7 @@ def withReturnModule (resultVar : String) (selector : Nat) (numArgs : Nat) (isSt
     pure [callBlock, bindResult]
 
 /-- Convenience: create a `Stmt.ecm` for an external call with return.
-    Mirrors `Stmt.externalCallWithReturn` exactly. -/
+    Replaces the former `Stmt.externalCallWithReturn` variant. -/
 def withReturn (resultVar : String) (target : Expr) (selector : Nat)
     (args : List Expr) (isStatic : Bool := false) : Stmt :=
   .ecm (withReturnModule resultVar selector args.length isStatic) ([target] ++ args)

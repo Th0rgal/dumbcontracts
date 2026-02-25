@@ -32,9 +32,6 @@ AST_SPEC_FILE = ROOT / "Compiler" / "ASTSpecs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
 CONTRACT_SPEC_FILE = ROOT / "Compiler" / "ContractSpec.lean"
 CONSTANTS_FILE = ROOT / "Compiler" / "Constants.lean"
-INTERPRETER_FILE = ROOT / "Compiler" / "Interpreter.lean"
-CODEGEN_FILE = ROOT / "Compiler" / "Codegen.lean"
-BUILTINS_FILE = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Builtins.lean"
 YUL_DIR_LEGACY = ("yul", YUL_DIR)
 YUL_DIR_AST = ("yul-ast", ROOT / "compiler" / "yul-ast")
 
@@ -495,9 +492,6 @@ _ERROR_STRING_SELECTOR_SHIFTED: int = 0x08c379a0 * (2**224)
 
 _CANONICAL_RE = re.compile(
     r"def\s+errorStringSelectorWord\s*:\s*Nat\s*:=\s*(0x[0-9a-fA-F]+)\s*\*\s*\(2\s*\^\s*224\)"
-)
-_INTERPRETER_RE = re.compile(
-    r"def\s+revertSelectorWord\s*:\s*Nat\s*:=\s*\n?\s*(\d+)"
 )
 
 

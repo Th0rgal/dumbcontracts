@@ -3,6 +3,10 @@ import Compiler.Selector
 import Compiler.Codegen
 import Compiler.Yul.PrettyPrint
 import Compiler.DiffTestTypes
+import Compiler.Modules.ERC20
+import Compiler.Modules.Precompiles
+import Compiler.Modules.Callbacks
+import Compiler.Modules.Calls
 import Verity.Proofs.Stdlib.SpecInterpreter
 
 namespace Compiler.ContractSpecFeatureTest
@@ -6267,5 +6271,302 @@ private def viewCalldataloadSpec : ContractSpec := {
       IO.println "✓ Expr.ite rejects call-like operands in branches"
   | .ok _ =>
       throw (IO.userError "✗ expected call-like Expr.ite operand to fail compilation")
+
+-- ===== ECM Output Equivalence Tests =====
+-- Verify that the new ECM modules generate byte-identical Yul to the old
+-- hardcoded Stmt variants.  This is a prerequisite for Phase 3 migration.
+
+private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String := do
+  match compile spec selectors with
+  | .error err => throw (IO.userError s!"compile failed: {err}")
+  | .ok ir => pure (Yul.render (emitYul ir))
+
+-- ===== ECM equivalence: safeTransfer =====
+#eval! do
+  let oldSpec : ContractSpec := {
+    name := "SafeTransferOld"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "doTransfer"
+      params := [⟨"token", ParamType.address⟩, ⟨"to", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+      returnType := none
+      body := [
+        Stmt.safeTransfer (Expr.param "token") (Expr.param "to") (Expr.param "amount"),
+        Stmt.stop
+      ]
+    }]
+  }
+  let newSpec : ContractSpec := {
+    name := "SafeTransferOld"  -- same name so contract header matches
+    fields := []
+    constructor := none
+    functions := [{
+      name := "doTransfer"
+      params := [⟨"token", ParamType.address⟩, ⟨"to", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+      returnType := none
+      body := [
+        Modules.ERC20.safeTransfer (Expr.param "token") (Expr.param "to") (Expr.param "amount"),
+        Stmt.stop
+      ]
+    }]
+  }
+  let oldYul ← renderSpec oldSpec [1]
+  let newYul ← renderSpec newSpec [1]
+  if oldYul == newYul then
+    IO.println "✓ ECM equivalence: safeTransfer produces identical Yul"
+  else
+    throw (IO.userError s!"✗ ECM safeTransfer Yul differs:\n--- OLD ---\n{oldYul}\n--- NEW ---\n{newYul}")
+
+-- ===== ECM equivalence: safeTransferFrom =====
+#eval! do
+  let oldSpec : ContractSpec := {
+    name := "SafeTransferFromOld"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "doTransferFrom"
+      params := [⟨"token", ParamType.address⟩, ⟨"from", ParamType.address⟩, ⟨"to", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+      returnType := none
+      body := [
+        Stmt.safeTransferFrom (Expr.param "token") (Expr.param "from") (Expr.param "to") (Expr.param "amount"),
+        Stmt.stop
+      ]
+    }]
+  }
+  let newSpec : ContractSpec := {
+    name := "SafeTransferFromOld"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "doTransferFrom"
+      params := [⟨"token", ParamType.address⟩, ⟨"from", ParamType.address⟩, ⟨"to", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+      returnType := none
+      body := [
+        Modules.ERC20.safeTransferFrom (Expr.param "token") (Expr.param "from") (Expr.param "to") (Expr.param "amount"),
+        Stmt.stop
+      ]
+    }]
+  }
+  let oldYul ← renderSpec oldSpec [1]
+  let newYul ← renderSpec newSpec [1]
+  if oldYul == newYul then
+    IO.println "✓ ECM equivalence: safeTransferFrom produces identical Yul"
+  else
+    throw (IO.userError s!"✗ ECM safeTransferFrom Yul differs:\n--- OLD ---\n{oldYul}\n--- NEW ---\n{newYul}")
+
+-- ===== ECM equivalence: ecrecover =====
+#eval! do
+  let oldSpec : ContractSpec := {
+    name := "EcrecoverOld"
+    fields := [{ name := "recovered", ty := FieldType.address }]
+    constructor := none
+    functions := [{
+      name := "recoverSigner"
+      params := [⟨"digest", ParamType.bytes32⟩, ⟨"v", ParamType.uint256⟩, ⟨"r", ParamType.bytes32⟩, ⟨"s", ParamType.bytes32⟩]
+      returnType := some FieldType.address
+      body := [
+        Stmt.ecrecover "signer" (Expr.param "digest") (Expr.param "v") (Expr.param "r") (Expr.param "s"),
+        Stmt.setStorage "recovered" (Expr.localVar "signer"),
+        Stmt.return (Expr.localVar "signer")
+      ]
+    }]
+  }
+  let newSpec : ContractSpec := {
+    name := "EcrecoverOld"
+    fields := [{ name := "recovered", ty := FieldType.address }]
+    constructor := none
+    functions := [{
+      name := "recoverSigner"
+      params := [⟨"digest", ParamType.bytes32⟩, ⟨"v", ParamType.uint256⟩, ⟨"r", ParamType.bytes32⟩, ⟨"s", ParamType.bytes32⟩]
+      returnType := some FieldType.address
+      body := [
+        Modules.Precompiles.ecrecover "signer" (Expr.param "digest") (Expr.param "v") (Expr.param "r") (Expr.param "s"),
+        Stmt.setStorage "recovered" (Expr.localVar "signer"),
+        Stmt.return (Expr.localVar "signer")
+      ]
+    }]
+  }
+  let oldYul ← renderSpec oldSpec [1]
+  let newYul ← renderSpec newSpec [1]
+  if oldYul == newYul then
+    IO.println "✓ ECM equivalence: ecrecover produces identical Yul"
+  else
+    throw (IO.userError s!"✗ ECM ecrecover Yul differs:\n--- OLD ---\n{oldYul}\n--- NEW ---\n{newYul}")
+
+-- ===== ECM equivalence: externalCallWithReturn (staticcall) =====
+#eval! do
+  let oldSpec : ContractSpec := {
+    name := "ExternalCallOld"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "getPrice"
+      params := [{ name := "oracle", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.externalCallWithReturn "price" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+        Stmt.return (Expr.localVar "price")
+      ]
+    }]
+  }
+  let newSpec : ContractSpec := {
+    name := "ExternalCallOld"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "getPrice"
+      params := [{ name := "oracle", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        Modules.Calls.withReturn "price" (Expr.param "oracle") 0xa035b1fe [] (isStatic := true),
+        Stmt.return (Expr.localVar "price")
+      ]
+    }]
+  }
+  let oldYul ← renderSpec oldSpec [1]
+  let newYul ← renderSpec newSpec [1]
+  if oldYul == newYul then
+    IO.println "✓ ECM equivalence: externalCallWithReturn (staticcall) produces identical Yul"
+  else
+    throw (IO.userError s!"✗ ECM externalCallWithReturn staticcall Yul differs:\n--- OLD ---\n{oldYul}\n--- NEW ---\n{newYul}")
+
+-- ===== ECM equivalence: externalCallWithReturn (call, multiple args) =====
+#eval! do
+  let oldSpec : ContractSpec := {
+    name := "ExternalCallMultiOld"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "getBorrowRate"
+      params := [{ name := "irm", ty := ParamType.address }, { name := "a", ty := ParamType.uint256 }, { name := "b", ty := ParamType.uint256 }]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.externalCallWithReturn "rate" (Expr.param "irm") 0x9451fed4 [Expr.param "a", Expr.param "b"],
+        Stmt.return (Expr.localVar "rate")
+      ]
+    }]
+  }
+  let newSpec : ContractSpec := {
+    name := "ExternalCallMultiOld"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "getBorrowRate"
+      params := [{ name := "irm", ty := ParamType.address }, { name := "a", ty := ParamType.uint256 }, { name := "b", ty := ParamType.uint256 }]
+      returnType := some FieldType.uint256
+      body := [
+        Modules.Calls.withReturn "rate" (Expr.param "irm") 0x9451fed4 [Expr.param "a", Expr.param "b"],
+        Stmt.return (Expr.localVar "rate")
+      ]
+    }]
+  }
+  let oldYul ← renderSpec oldSpec [1]
+  let newYul ← renderSpec newSpec [1]
+  if oldYul == newYul then
+    IO.println "✓ ECM equivalence: externalCallWithReturn (call, multi-arg) produces identical Yul"
+  else
+    throw (IO.userError s!"✗ ECM externalCallWithReturn call Yul differs:\n--- OLD ---\n{oldYul}\n--- NEW ---\n{newYul}")
+
+-- ===== ECM equivalence: callback =====
+#eval! do
+  let oldSpec : ContractSpec := {
+    name := "CallbackOld"
+    fields := [{ name := "balance", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [{
+      name := "supplyWithCallback"
+      params := [⟨"assets", ParamType.uint256⟩, ⟨"data", ParamType.bytes⟩]
+      returnType := none
+      body := [
+        Stmt.setStorage "balance" (Expr.add (Expr.storage "balance") (Expr.param "assets")),
+        Stmt.callback Expr.caller 0x7a29084c [Expr.param "assets"] "data",
+        Stmt.stop
+      ]
+    }]
+  }
+  let newSpec : ContractSpec := {
+    name := "CallbackOld"
+    fields := [{ name := "balance", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [{
+      name := "supplyWithCallback"
+      params := [⟨"assets", ParamType.uint256⟩, ⟨"data", ParamType.bytes⟩]
+      returnType := none
+      body := [
+        Stmt.setStorage "balance" (Expr.add (Expr.storage "balance") (Expr.param "assets")),
+        Modules.Callbacks.callback Expr.caller 0x7a29084c [Expr.param "assets"] "data",
+        Stmt.stop
+      ]
+    }]
+  }
+  let oldYul ← renderSpec oldSpec [1]
+  let newYul ← renderSpec newSpec [1]
+  if oldYul == newYul then
+    IO.println "✓ ECM equivalence: callback produces identical Yul"
+  else
+    throw (IO.userError s!"✗ ECM callback Yul differs:\n--- OLD ---\n{oldYul}\n--- NEW ---\n{newYul}")
+
+-- ===== ECM equivalence: callback with multiple static args =====
+#eval! do
+  let oldSpec : ContractSpec := {
+    name := "CallbackMultiOld"
+    fields := [{ name := "balance", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [{
+      name := "liquidateCallback"
+      params := [⟨"repaid", ParamType.uint256⟩, ⟨"seized", ParamType.uint256⟩, ⟨"data", ParamType.bytes⟩]
+      returnType := none
+      body := [
+        Stmt.callback Expr.caller 0xbeadbeef [Expr.param "repaid", Expr.param "seized"] "data",
+        Stmt.stop
+      ]
+    }]
+  }
+  let newSpec : ContractSpec := {
+    name := "CallbackMultiOld"
+    fields := [{ name := "balance", ty := FieldType.uint256 }]
+    constructor := none
+    functions := [{
+      name := "liquidateCallback"
+      params := [⟨"repaid", ParamType.uint256⟩, ⟨"seized", ParamType.uint256⟩, ⟨"data", ParamType.bytes⟩]
+      returnType := none
+      body := [
+        Modules.Callbacks.callback Expr.caller 0xbeadbeef [Expr.param "repaid", Expr.param "seized"] "data",
+        Stmt.stop
+      ]
+    }]
+  }
+  let oldYul ← renderSpec oldSpec [1]
+  let newYul ← renderSpec newSpec [1]
+  if oldYul == newYul then
+    IO.println "✓ ECM equivalence: callback (multi-arg) produces identical Yul"
+  else
+    throw (IO.userError s!"✗ ECM callback multi-arg Yul differs:\n--- OLD ---\n{oldYul}\n--- NEW ---\n{newYul}")
+
+-- ===== ECM safeApprove compiles (new module, no old equivalent) =====
+#eval! do
+  let spec : ContractSpec := {
+    name := "SafeApproveTest"
+    fields := []
+    constructor := none
+    functions := [{
+      name := "doApprove"
+      params := [⟨"token", ParamType.address⟩, ⟨"spender", ParamType.address⟩, ⟨"amount", ParamType.uint256⟩]
+      returnType := none
+      body := [
+        Modules.ERC20.safeApprove (Expr.param "token") (Expr.param "spender") (Expr.param "amount"),
+        Stmt.stop
+      ]
+    }]
+  }
+  let rendered ← renderSpec spec [1]
+  -- Check selector for approve(address,uint256) = 0x095ea7b3
+  -- Note: Yul renderer drops leading zero, emitting 0x95ea7b3...
+  assertContains "safeApprove selector" rendered ["95ea7b3"]
+  assertContains "safeApprove emits call" rendered ["call(gas(),"]
+  assertContains "safeApprove revert on failure" rendered ["617070726f7665207265766572746564"]  -- "approve reverted"
+  assertContains "safeApprove revert on false return" rendered ["617070726f76652072657475726e65642066616c7365"]  -- "approve returned false"
+  IO.println "✓ ECM safeApprove (new module) compiles correctly"
 
 end Compiler.ContractSpecFeatureTest

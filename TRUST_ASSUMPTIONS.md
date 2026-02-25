@@ -19,7 +19,7 @@ EDSL
 ContractSpec
   ↓ [Layer 2: FULLY VERIFIED]
 IR
-  ↓ [Layer 3: FULLY VERIFIED, 1 axioms]
+  ↓ [Layer 3: FULLY VERIFIED, 1 axiom]
 Yul
   ↓ [trusted external compiler]
 EVM Bytecode

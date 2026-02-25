@@ -22,6 +22,7 @@
 -/
 
 import Compiler.Constants
+import Compiler.ECM
 import Compiler.IR
 import Compiler.Yul.Ast
 import Compiler.Identifier
@@ -348,6 +349,10 @@ inductive Stmt
       Writes hash, v, r, s to memory[0..128], calls staticcall, reverts on failure,
       and binds the recovered address (masked to 160 bits) to `resultVar`. -/
   | ecrecover (resultVar : String) (hash v r s : Expr)
+  /-- Invoke an External Call Module with the given arguments.
+      This generic variant delegates validation, compilation, and state analysis
+      to the module's metadata and compile function. See Compiler.ECM (#964). -/
+  | ecm (mod : ECM.ExternalCallModule) (args : List Expr)
   deriving Repr
 
 structure FunctionSpec where
@@ -678,6 +683,8 @@ private partial def collectStmtNames : Stmt → List String
       collectExprNames target ++ collectExprListNames args ++ [bytesParam]
   | Stmt.ecrecover resultVar hash v r s =>
       resultVar :: collectExprNames hash ++ collectExprNames v ++ collectExprNames r ++ collectExprNames s
+  | Stmt.ecm mod args =>
+      mod.resultVars ++ collectExprListNames args
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -1222,6 +1229,8 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike v ||
       exprContainsUnsafeLogicalCallLike r ||
       exprContainsUnsafeLogicalCallLike s
+  | Stmt.ecm _ args =>
+      args.any exprContainsUnsafeLogicalCallLike
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1513,6 +1522,18 @@ private partial def validateScopedStmtIdentifiers
       if localScope.contains resultVar then
         throw s!"Compilation error: {context} redeclares ecrecover result '{resultVar}' in the same scope"
       pure (resultVar :: localScope)
+  | Stmt.ecm mod args => do
+      if args.length != mod.numArgs then
+        throw s!"Compilation error: {context} uses ECM '{mod.name}' with {args.length} arguments but it expects {mod.numArgs}"
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      let mut scope := localScope
+      for rv in mod.resultVars do
+        if paramScope.contains rv then
+          throw s!"Compilation error: {context} ECM '{mod.name}' result '{rv}' shadows a parameter"
+        if scope.contains rv then
+          throw s!"Compilation error: {context} ECM '{mod.name}' redeclares result '{rv}' in the same scope"
+        scope := rv :: scope
+      pure scope
   -- Leaf statements: no sub-expressions with identifiers to validate, no scope changes.
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
   | Stmt.revertReturndata | Stmt.stop =>
@@ -1743,6 +1764,8 @@ private partial def stmtWritesState : Stmt → Bool
   | Stmt.callback _ _ _ _ => true
   | Stmt.ecrecover _ hash v r s =>
       exprWritesState hash || exprWritesState v || exprWritesState r || exprWritesState s
+  | Stmt.ecm mod args =>
+      mod.writesState || args.any exprWritesState
 where
   exprWritesState (expr : Expr) : Bool :=
     match expr with
@@ -1815,6 +1838,7 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.externalCallBind _ _ _ | Stmt.externalCallWithReturn _ _ _ _ _
   | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _
   | Stmt.callback _ _ _ _ | Stmt.ecrecover _ _ _ _ _ => true
+  | Stmt.ecm mod _ => mod.readsState || mod.writesState
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
@@ -2443,6 +2467,8 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       validateInteropExpr context v
       validateInteropExpr context r
       validateInteropExpr context s
+  | Stmt.ecm _ args =>
+      args.forM (validateInteropExpr context)
   | _ =>
       pure ()
 
@@ -2687,6 +2713,8 @@ private partial def validateInternalCallShapesInStmt
       validateInternalCallShapesInExpr functions callerName v
       validateInternalCallShapesInExpr functions callerName r
       validateInternalCallShapesInExpr functions callerName s
+  | Stmt.ecm _ args =>
+      args.forM (validateInternalCallShapesInExpr functions callerName)
   | _ =>
       pure ()
 
@@ -2865,6 +2893,8 @@ private partial def validateExternalCallTargetsInStmt
       validateExternalCallTargetsInExpr externals context v
       validateExternalCallTargetsInExpr externals context r
       validateExternalCallTargetsInExpr externals context s
+  | Stmt.ecm _ args =>
+      args.forM (validateExternalCallTargetsInExpr externals context)
   | _ =>
       pure ()
 
@@ -4340,6 +4370,14 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
          revertBlock,
          guardStale]
       ), bindResult]
+  | Stmt.ecm mod args => do
+      if args.length != mod.numArgs then
+        throw s!"ECM '{mod.name}': expected {mod.numArgs} arguments, got {args.length}"
+      let compiledArgs ← compileExprList fields dynamicSource args
+      let ctx : ECM.CompilationContext := {
+        isDynamicFromCalldata := dynamicSource == .calldata
+      }
+      mod.compile ctx compiledArgs
 end
 
 private def isScalarParamType : ParamType → Bool
@@ -4511,6 +4549,7 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.externalCallBind resultVars _ _ => resultVars
   | Stmt.externalCallWithReturn resultVar _ _ _ _ => [resultVar]
   | Stmt.ecrecover resultVar _ _ _ _ => [resultVar]
+  | Stmt.ecm mod _ => mod.resultVars
   -- Statements that never bind new names.
   | Stmt.assignVar _ _ | Stmt.setStorage _ _ | Stmt.return _
   | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
@@ -4612,6 +4651,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement target || args.any exprUsesArrayElement
   | Stmt.ecrecover _ hash v r s =>
       exprUsesArrayElement hash || exprUsesArrayElement v || exprUsesArrayElement r || exprUsesArrayElement s
+  | Stmt.ecm _ args =>
+      args.any exprUsesArrayElement
   -- Leaf statements: no sub-expressions that could contain arrayElement.
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
   | Stmt.revertReturndata | Stmt.stop =>

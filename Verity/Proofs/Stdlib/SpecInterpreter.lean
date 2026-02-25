@@ -575,6 +575,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       false
   | Stmt.ecrecover _ _ _ _ _ =>
       true
+  | Stmt.ecm _ args =>
+      exprListUsesUnsupportedLowLevel args
 
 def stmtListUsesUnsupportedLowLevel : List Stmt → Bool
   | [] => false
@@ -846,6 +848,9 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
   | Stmt.ecrecover _ _ _ _ _ =>
       -- ecrecover requires low-level precompile call; not modeled in the scalar interpreter.
       none
+  | Stmt.ecm _mod _args =>
+      -- ECM modules require linked Yul; not modeled in basic interpreter.
+      none
 
 -- Execute a list of statements sequentially
 -- Thread both context and state through the computation
@@ -954,6 +959,9 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
               -- ERC20 safe transfers require linked Yul; not modeled in fuel-based interpreter.
               none
           | Stmt.callback _target _selector _args _bytesParam =>
+              none
+          | Stmt.ecm _mod _args =>
+              -- ECM modules require linked Yul; not modeled in fuel-based interpreter.
               none
           | other => execStmt ctx fields paramNames externalFns state other
         match result with

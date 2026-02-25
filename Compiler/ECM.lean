@@ -59,7 +59,9 @@ structure ExternalCallModule where
   axioms : List String := []
 
 instance : BEq ExternalCallModule where
-  beq a b := a.name == b.name && a.numArgs == b.numArgs
+  beq a b := a.name == b.name && a.numArgs == b.numArgs &&
+    a.resultVars == b.resultVars && a.writesState == b.writesState &&
+    a.readsState == b.readsState && a.axioms == b.axioms
 
 instance : Repr ExternalCallModule where
   reprPrec m _ := s!"ECM[{m.name}]"

@@ -1838,7 +1838,7 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.externalCallBind _ _ _ | Stmt.externalCallWithReturn _ _ _ _ _
   | Stmt.safeTransfer _ _ _ | Stmt.safeTransferFrom _ _ _ _
   | Stmt.callback _ _ _ _ | Stmt.ecrecover _ _ _ _ _ => true
-  | Stmt.ecm mod _ => mod.readsState || mod.writesState
+  | Stmt.ecm mod args => mod.readsState || mod.writesState || args.any exprReadsStateOrEnv
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then

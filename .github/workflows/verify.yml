@@ -175,6 +175,15 @@ jobs:
       - name: Check EVMYulLean adapter report freshness
         run: python3 scripts/generate_evmyullean_adapter_report.py --check
 
+      - name: Check PrintAxioms.lean freshness
+        run: python3 scripts/generate_print_axioms.py --check
+
+      - name: Check proof length limits
+        run: python3 scripts/check_proof_length.py
+
+      - name: Run Python unit tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -302,6 +311,17 @@ jobs:
             echo "✓ No axioms found in proof files"
           fi
 
+      - name: Build proof modules for axiom audit
+        env:
+          LEAN_NUM_THREADS: 2
+        run: lake build PrintAxioms
+
+      - name: Generate axiom dependency report
+        run: |
+          set -o pipefail
+          lake env lean PrintAxioms.lean 2>&1 | tee axiom-report-raw.log
+          AXIOM_REPORT_FILE=axiom-report.md python3 scripts/check_axiom_report.py --log axiom-report-raw.log | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Build compiler
         run: lake build verity-compiler
 
@@ -398,6 +418,9 @@ jobs:
               print(f"| `{patch}` | {total} | {contracts[patch]} |")
           PY
 
+      - name: Generate proof length report
+        run: python3 scripts/check_proof_length.py --format=markdown >> $GITHUB_STEP_SUMMARY
+
       - name: Generate property coverage report
         run: python3 scripts/report_property_coverage.py --format=markdown >> $GITHUB_STEP_SUMMARY
 
@@ -446,6 +469,14 @@ jobs:
         with:
           name: patch-coverage-report
           path: compiler/patch-report.tsv
+
+      - name: Upload axiom dependency report
+        uses: actions/upload-artifact@v4
+        with:
+          name: axiom-dependency-report
+          path: |
+            axiom-report.md
+            axiom-report-raw.log
 
   foundry-gas-calibration:
     runs-on: ubuntu-latest

@@ -51,24 +51,19 @@ def uint256ToNat (u : Uint256) : Nat := u.val
 
     Maps:
     - Storage slots: Uint256 values → Nat values
-    - Storage mappings: Address keys → Nat keys, Uint256 values → Nat values
     - Sender: Address → Nat
 
-    Mapping conversion is only sound for a finite set of addresses `addrs`:
-    we decode Nat keys using the address table derived from `addrs`.
-    For keys outside this table, we return 0 (default mapping value).
+    Mappings are derived from flat storage via `storageAsMappings` (Solidity
+    keccak256 slot computation) rather than stored as a separate field.
 -/
 def contractStateToIRState (addrs : List Address) (state : ContractState) : IRState :=
   { vars := []  -- IR starts with empty variable bindings
     storage := fun slot => uint256ToNat (state.storage slot)
-    mappings := fun base key =>
-      match addressFromNat addrs key with
-      | some addr => uint256ToNat (state.storageMap base addr)
-      | none => 0
     memory := fun _ => 0
     calldata := []
     returnValue := none
-    sender := addressToNat state.sender }
+    sender := addressToNat state.sender
+    selector := 0 }
 
 /-! ## SpecStorage → IRState
 
@@ -79,7 +74,6 @@ def contractStateToIRState (addrs : List Address) (state : ContractState) : IRSt
 def specStorageToIRState (storage : SpecStorage) (sender : Address) : IRState :=
   { vars := []
     storage := fun slot => storage.getSlot slot
-    mappings := fun base key => storage.getMapping base key
     memory := fun _ => 0
     calldata := []
     returnValue := none
@@ -88,10 +82,6 @@ def specStorageToIRState (storage : SpecStorage) (sender : Address) : IRState :=
 
 @[simp] theorem specStorageToIRState_storage (storage : SpecStorage) (sender : Address) (slot : Nat) :
     (specStorageToIRState storage sender).storage slot = storage.getSlot slot := by
-  rfl
-
-@[simp] theorem specStorageToIRState_mappings (storage : SpecStorage) (sender : Address) (base key : Nat) :
-    (specStorageToIRState storage sender).mappings base key = storage.getMapping base key := by
   rfl
 
 @[simp] theorem specStorageToIRState_memory (storage : SpecStorage) (sender : Address) (offset : Nat) :

@@ -14,6 +14,11 @@ lean_lib «Verity» where
 lean_lib «Compiler» where
   globs := #[.andSubmodules `Compiler]
 
+-- Axiom dependency audit: imports all proof modules so `lake build PrintAxioms`
+-- compiles them, then `lake env lean PrintAxioms.lean` can run #print axioms.
+lean_lib «PrintAxioms» where
+  globs := #[.one `PrintAxioms]
+
 lean_exe «verity-compiler» where
   root := `Compiler.Main
 

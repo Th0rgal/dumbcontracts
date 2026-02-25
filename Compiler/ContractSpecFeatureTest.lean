@@ -3801,6 +3801,28 @@ private def featureSpec : ContractSpec := {
       throw (IO.userError "✗ expected duplicate constructor params to fail compilation")
 
 #eval! do
+  let duplicateEventParamSpec : ContractSpec := {
+    name := "DuplicateEventParamSpec"
+    fields := []
+    constructor := none
+    functions := [{ name := "noop", params := [], returnType := none, body := [Stmt.stop] }]
+    events := [
+      { name := "Transfer"
+        params := [
+          { name := "amount", ty := ParamType.uint256, kind := EventParamKind.unindexed },
+          { name := "amount", ty := ParamType.address, kind := EventParamKind.indexed }
+        ] }
+    ]
+  }
+  match compile duplicateEventParamSpec [1] with
+  | .error err =>
+      if !contains err "duplicate parameter name 'amount' in event 'Transfer'" then
+        throw (IO.userError s!"✗ duplicate event param diagnostic mismatch: {err}")
+      IO.println "✓ duplicate event param diagnostic"
+  | .ok _ =>
+      throw (IO.userError "✗ expected duplicate event params to fail compilation")
+
+#eval! do
   let unknownExternalTargetSpec : ContractSpec := {
     name := "UnknownExternalTargetSpec"
     fields := []

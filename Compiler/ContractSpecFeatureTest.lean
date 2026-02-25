@@ -6018,5 +6018,232 @@ private def viewCalldataloadSpec : ContractSpec := {
     IO.println "✓ SpecInterpreter marks ecrecover as unsupported low-level"
   else
     throw (IO.userError "✗ SpecInterpreter should mark ecrecover as unsupported")
+-- ═══════════════════════════════════════════════════════════════
+-- Expr.ite (expression-level conditional / branchless ternary)
+-- ═══════════════════════════════════════════════════════════════
+
+-- Test 1: Basic codegen — branchless ternary pattern in rendered Yul
+#eval! do
+  let exprIteCodegenSpec : ContractSpec := {
+    name := "ExprIteCodegenSpec"
+    fields := [
+      { name := "x", ty := FieldType.uint256, slot := some 0 }
+    ]
+    constructor := none
+    functions := [
+      { name := "conditionalReturn"
+        params := [{ name := "flag", ty := ParamType.uint256 }, { name := "a", ty := ParamType.uint256 }, { name := "b", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.ite (Expr.param "flag") (Expr.param "a") (Expr.param "b"))]
+        isView := true
+      }
+    ]
+  }
+  match compile exprIteCodegenSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ Expr.ite codegen compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Branchless: add(mul(iszero(iszero(flag)), a), mul(iszero(flag), b))
+      assertContains "Expr.ite branchless ternary" rendered
+        ["iszero(iszero(flag))", "mul(iszero(iszero(flag)), a)", "mul(iszero(flag), b)", "add(mul("]
+
+-- Test 2: Expr.ite with literal condition (true path)
+#eval! do
+  let exprIteLiteralSpec : ContractSpec := {
+    name := "ExprIteLiteralSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "alwaysTrue"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.ite (Expr.literal 1) (Expr.literal 42) (Expr.literal 99))]
+        isView := true
+      }
+    ]
+  }
+  match compile exprIteLiteralSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ Expr.ite literal codegen compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "Expr.ite literal codegen" rendered
+        ["iszero(iszero(1))", "mul(iszero(1), 99)", "mul(iszero(iszero(1)), 42)"]
+
+-- Test 3: Expr.ite nested inside arithmetic
+#eval! do
+  let exprIteNestedSpec : ContractSpec := {
+    name := "ExprIteNestedSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "addWithConditional"
+        params := [{ name := "flag", ty := ParamType.uint256 }, { name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.add (Expr.param "x") (Expr.ite (Expr.param "flag") (Expr.literal 10) (Expr.literal 20)))]
+        isView := true
+      }
+    ]
+  }
+  match compile exprIteNestedSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ Expr.ite nested codegen compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- The outer expression should be add(x, ite(flag, 10, 20))
+      assertContains "Expr.ite nested in arithmetic" rendered
+        ["add(x, add(mul(iszero(iszero(flag)), 10), mul(iszero(flag), 20)))"]
+
+-- Test 4: Expr.ite with storage read — rejected in pure function
+#eval! do
+  let exprItePureRejectedSpec : ContractSpec := {
+    name := "ExprItePureRejectedSpec"
+    fields := [
+      { name := "val", ty := FieldType.uint256, slot := some 0 }
+    ]
+    constructor := none
+    functions := [
+      { name := "pureWithStorageRead"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.ite (Expr.storage "val") (Expr.literal 1) (Expr.literal 0))]
+        isPure := true
+      }
+    ]
+  }
+  match compile exprItePureRejectedSpec [1] with
+  | .error err =>
+      if !contains err "reads state/environment" then
+        throw (IO.userError s!"✗ Expr.ite pure rejection diagnostic mismatch: {err}")
+      IO.println "✓ Expr.ite storage read rejected in pure function"
+  | .ok _ =>
+      throw (IO.userError "✗ expected Expr.ite with storage read to fail in pure function")
+
+-- Test 5: Expr.ite with storage read — accepted in view function
+#eval! do
+  let exprIteViewAcceptedSpec : ContractSpec := {
+    name := "ExprIteViewAcceptedSpec"
+    fields := [
+      { name := "val", ty := FieldType.uint256, slot := some 0 }
+    ]
+    constructor := none
+    functions := [
+      { name := "viewWithStorageRead"
+        params := []
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.ite (Expr.storage "val") (Expr.literal 1) (Expr.literal 0))]
+        isView := true
+      }
+    ]
+  }
+  match compile exprIteViewAcceptedSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ Expr.ite view acceptance compile failed: {err}")
+  | .ok _ =>
+      IO.println "✓ Expr.ite with storage read accepted in view function"
+
+-- Test 6: SpecInterpreter — Expr.ite evaluates true branch
+#eval! do
+  let exprIteInterpreterSpec : ContractSpec := {
+    name := "ExprIteInterpreterSpec"
+    fields := [
+      { name := "threshold", ty := FieldType.uint256, slot := some 0 }
+    ]
+    constructor := none
+    functions := [
+      { name := "setThreshold"
+        params := [{ name := "v", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStorage "threshold" (Expr.param "v"), Stmt.stop]
+      },
+      { name := "check"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          -- return (x > threshold) ? x : threshold
+          Stmt.return (Expr.ite (Expr.gt (Expr.param "x") (Expr.storage "threshold"))
+            (Expr.param "x")
+            (Expr.storage "threshold"))
+        ]
+        isView := true
+      }
+    ]
+  }
+  -- Set threshold = 50
+  let setTx : Transaction := { sender := 0, functionName := "setThreshold", args := [50] }
+  let setResult := interpretSpec exprIteInterpreterSpec SpecStorage.empty setTx
+  if !setResult.success then
+    throw (IO.userError s!"✗ Expr.ite interpreter setThreshold reverted: {setResult.revertReason}")
+  -- check(100) should return 100 (true branch: 100 > 50)
+  let checkHighTx : Transaction := { sender := 0, functionName := "check", args := [100] }
+  let checkHighResult := interpretSpec exprIteInterpreterSpec setResult.finalStorage checkHighTx
+  if checkHighResult.returnValue != some 100 then
+    throw (IO.userError s!"✗ Expr.ite interpreter true branch: expected 100, got {checkHighResult.returnValue}")
+  -- check(30) should return 50 (false branch: 30 < 50)
+  let checkLowTx : Transaction := { sender := 0, functionName := "check", args := [30] }
+  let checkLowResult := interpretSpec exprIteInterpreterSpec setResult.finalStorage checkLowTx
+  if checkLowResult.returnValue != some 50 then
+    throw (IO.userError s!"✗ Expr.ite interpreter false branch: expected 50, got {checkLowResult.returnValue}")
+  IO.println "✓ SpecInterpreter Expr.ite evaluates both branches correctly"
+
+-- Test 7: SpecInterpreter — Expr.ite with zero condition
+#eval! do
+  let exprIteZeroSpec : ContractSpec := {
+    name := "ExprIteZeroSpec"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "ternary"
+        params := [{ name := "cond", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.ite (Expr.param "cond") (Expr.literal 111) (Expr.literal 222))]
+        isView := true
+      }
+    ]
+  }
+  -- cond = 0 → false branch (222)
+  let zeroTx : Transaction := { sender := 0, functionName := "ternary", args := [0] }
+  let zeroResult := interpretSpec exprIteZeroSpec SpecStorage.empty zeroTx
+  if zeroResult.returnValue != some 222 then
+    throw (IO.userError s!"✗ Expr.ite zero cond: expected 222, got {zeroResult.returnValue}")
+  -- cond = 1 → true branch (111)
+  let oneTx : Transaction := { sender := 0, functionName := "ternary", args := [1] }
+  let oneResult := interpretSpec exprIteZeroSpec SpecStorage.empty oneTx
+  if oneResult.returnValue != some 111 then
+    throw (IO.userError s!"✗ Expr.ite nonzero cond: expected 111, got {oneResult.returnValue}")
+  -- cond = 999 → true branch (111) — any nonzero is truthy
+  let bigTx : Transaction := { sender := 0, functionName := "ternary", args := [999] }
+  let bigResult := interpretSpec exprIteZeroSpec SpecStorage.empty bigTx
+  if bigResult.returnValue != some 111 then
+    throw (IO.userError s!"✗ Expr.ite large nonzero cond: expected 111, got {bigResult.returnValue}")
+  IO.println "✓ SpecInterpreter Expr.ite zero/nonzero condition semantics"
+
+-- Test 8: Expr.ite rejects call-like operands in branches (Issue #748 parity)
+#eval! do
+  let exprIteCallLikeSpec : ContractSpec := {
+    name := "ExprIteCallLikeRejected"
+    fields := []
+    constructor := none
+    externals := [{ name := "oracle", params := [], returnType := some ParamType.uint256, axiomNames := [] }]
+    functions := [
+      { name := "bad"
+        params := [{ name := "flag", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.return (Expr.ite (Expr.param "flag")
+            (Expr.externalCall "oracle" [])
+            (Expr.literal 0))
+        ]
+      }
+    ]
+  }
+  match compile exprIteCallLikeSpec [1] with
+  | .error err =>
+      if !(contains err "Expr.ite" && contains err "call-like operand" && contains err "Issue #748") then
+        throw (IO.userError s!"✗ Expr.ite call-like operand diagnostic mismatch: {err}")
+      IO.println "✓ Expr.ite rejects call-like operands in branches"
+  | .ok _ =>
+      throw (IO.userError "✗ expected call-like Expr.ite operand to fail compilation")
 
 end Compiler.ContractSpecFeatureTest

@@ -484,6 +484,10 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
       let va := evalExpr ctx storage fields paramNames externalFns a
       let vb := evalExpr ctx storage fields paramNames externalFns b
       if va ≥ vb then va else vb
+  | Expr.ite cond thenVal elseVal =>
+      if evalExpr ctx storage fields paramNames externalFns cond ≠ 0
+      then evalExpr ctx storage fields paramNames externalFns thenVal
+      else evalExpr ctx storage fields paramNames externalFns elseVal
 end
 
 mutual
@@ -515,6 +519,10 @@ def exprUsesUnsupportedLowLevel : Expr → Bool
       exprUsesUnsupportedLowLevel a || exprUsesUnsupportedLowLevel b || exprUsesUnsupportedLowLevel c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesUnsupportedLowLevel a
+  | Expr.ite cond thenVal elseVal =>
+      exprUsesUnsupportedLowLevel cond ||
+      exprUsesUnsupportedLowLevel thenVal ||
+      exprUsesUnsupportedLowLevel elseVal
   | _ =>
       false
 
@@ -574,8 +582,10 @@ def stmtListUsesUnsupportedLowLevel : List Stmt → Bool
       stmtUsesUnsupportedLowLevel s || stmtListUsesUnsupportedLowLevel ss
 end
 
-attribute [simp] exprUsesUnsupportedLowLevel exprListUsesUnsupportedLowLevel
-attribute [simp] stmtUsesUnsupportedLowLevel stmtListUsesUnsupportedLowLevel
+-- Use @[reducible] so that simp/dsimp can unfold these functions on concrete terms
+-- without generating expensive equation lemmas (which timeout on CI).
+attribute [reducible] exprUsesUnsupportedLowLevel exprListUsesUnsupportedLowLevel
+attribute [reducible] stmtUsesUnsupportedLowLevel stmtListUsesUnsupportedLowLevel
 
 /-!
 ## Statement Execution

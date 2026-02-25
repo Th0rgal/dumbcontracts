@@ -582,8 +582,10 @@ def stmtListUsesUnsupportedLowLevel : List Stmt → Bool
       stmtUsesUnsupportedLowLevel s || stmtListUsesUnsupportedLowLevel ss
 end
 
-attribute [simp] exprUsesUnsupportedLowLevel exprListUsesUnsupportedLowLevel
-attribute [simp] stmtUsesUnsupportedLowLevel stmtListUsesUnsupportedLowLevel
+-- Use @[reducible] so that simp/dsimp can unfold these functions on concrete terms
+-- without generating expensive equation lemmas (which timeout on CI).
+attribute [reducible] exprUsesUnsupportedLowLevel exprListUsesUnsupportedLowLevel
+attribute [reducible] stmtUsesUnsupportedLowLevel stmtListUsesUnsupportedLowLevel
 
 /-!
 ## Statement Execution

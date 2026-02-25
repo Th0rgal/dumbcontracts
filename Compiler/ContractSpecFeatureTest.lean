@@ -6390,4 +6390,459 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
   assertContains "safeApprove revert on false return" rendered ["617070726f76652072657475726e65642066616c7365"]  -- "approve returned false"
   IO.println "✓ ECM safeApprove (new module) compiles correctly"
 
+-- ============================================================
+-- Struct-typed storage fields (mappingStruct / mappingStruct2)
+-- ============================================================
+
+-- Test 1: Compiler produces correct Yul for struct member read/write (single key)
+#eval! do
+  let structSpec : ContractSpec := {
+    name := "StructSingleKey"
+    fields := [
+      { name := "data", ty := FieldType.mappingStruct MappingKeyType.address [
+          { name := "amount", wordOffset := 0 },
+          { name := "timestamp", wordOffset := 1 }
+        ], slot := some 5
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "setAmount"
+        params := [{ name := "who", ty := ParamType.address }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "data" (Expr.param "who") "amount" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "setTimestamp"
+        params := [{ name := "who", ty := ParamType.address }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "data" (Expr.param "who") "timestamp" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "getAmount"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "data" (Expr.param "who") "amount")]
+      },
+      { name := "getTimestamp"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "data" (Expr.param "who") "timestamp")]
+      }
+    ]
+  }
+  match compile structSpec [1, 2, 3, 4] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected struct single-key to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- amount is at wordOffset 0, so no add offset
+      assertContains "struct member read amount (wordOffset=0)" rendered [
+        "mappingSlot(5, who)", "sload("
+      ]
+      -- timestamp is at wordOffset 1, should have add(..., 1)
+      assertContains "struct member read timestamp (wordOffset=1)" rendered [
+        "add(", ", 1)"
+      ]
+      IO.println "✓ struct single-key compilation produces correct Yul"
+
+-- Test 2: Compiler produces correct Yul for packed struct members (single key)
+#eval! do
+  let packedStructSpec : ContractSpec := {
+    name := "PackedStruct"
+    fields := [
+      { name := "market", ty := FieldType.mappingStruct MappingKeyType.uint256 [
+          { name := "totalSupply", wordOffset := 0, packed := some { offset := 0, width := 128 } },
+          { name := "totalBorrow", wordOffset := 0, packed := some { offset := 128, width := 128 } },
+          { name := "fee", wordOffset := 1 }
+        ], slot := some 3
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "getSupply"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "market" (Expr.param "id") "totalSupply")]
+      },
+      { name := "getBorrow"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "market" (Expr.param "id") "totalBorrow")]
+      },
+      { name := "setSupply"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "market" (Expr.param "id") "totalSupply" (Expr.param "val"), Stmt.stop]
+      }
+    ]
+  }
+  match compile packedStructSpec [1, 2, 3] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected packed struct to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- totalSupply packed at offset=0, width=128 → mask = 2^128 - 1
+      assertContains "packed struct read supply (shr+and)" rendered [
+        "and(shr(0,", "sload("
+      ]
+      -- totalBorrow packed at offset=128 → shr by 128
+      assertContains "packed struct read borrow (shr 128)" rendered [
+        "shr(128,"
+      ]
+      -- setSupply should do read-modify-write
+      assertContains "packed struct write supply (read-modify-write)" rendered [
+        "sstore(", "or(", "not("
+      ]
+      IO.println "✓ packed struct compilation produces correct Yul for read/write"
+
+-- Test 3: SpecInterpreter read/write for struct members (single key)
+#eval! do
+  let structInterpSpec : ContractSpec := {
+    name := "StructInterp"
+    fields := [
+      { name := "positions", ty := FieldType.mappingStruct MappingKeyType.address [
+          { name := "balance", wordOffset := 0 },
+          { name := "shares", wordOffset := 1 }
+        ], slot := some 7
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "setBalance"
+        params := [{ name := "who", ty := ParamType.address }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "positions" (Expr.param "who") "balance" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "setShares"
+        params := [{ name := "who", ty := ParamType.address }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "positions" (Expr.param "who") "shares" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "getBalance"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "positions" (Expr.param "who") "balance")]
+      },
+      { name := "getShares"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "positions" (Expr.param "who") "shares")]
+      }
+    ]
+  }
+  let key : Nat := 0xABCD
+  -- Write balance=100
+  let tx1 : Transaction := { sender := 0, functionName := "setBalance", args := [key, 100] }
+  let r1 := interpretSpec structInterpSpec SpecStorage.empty tx1
+  if !r1.success then throw (IO.userError "✗ struct interp setBalance reverted")
+  -- Write shares=200
+  let tx2 : Transaction := { sender := 0, functionName := "setShares", args := [key, 200] }
+  let r2 := interpretSpec structInterpSpec r1.finalStorage tx2
+  if !r2.success then throw (IO.userError "✗ struct interp setShares reverted")
+  -- Read balance back
+  let tx3 : Transaction := { sender := 0, functionName := "getBalance", args := [key] }
+  let r3 := interpretSpec structInterpSpec r2.finalStorage tx3
+  if r3.returnValue != some 100 then
+    throw (IO.userError s!"✗ struct interp getBalance expected 100, got {r3.returnValue}")
+  -- Read shares back
+  let tx4 : Transaction := { sender := 0, functionName := "getShares", args := [key] }
+  let r4 := interpretSpec structInterpSpec r2.finalStorage tx4
+  if r4.returnValue != some 200 then
+    throw (IO.userError s!"✗ struct interp getShares expected 200, got {r4.returnValue}")
+  IO.println "✓ SpecInterpreter struct member read/write round-trip works correctly"
+
+-- Test 4: SpecInterpreter packed struct member read/write
+#eval! do
+  let packedStructInterpSpec : ContractSpec := {
+    name := "PackedStructInterp"
+    fields := [
+      { name := "info", ty := FieldType.mappingStruct MappingKeyType.uint256 [
+          { name := "low", wordOffset := 0, packed := some { offset := 0, width := 128 } },
+          { name := "high", wordOffset := 0, packed := some { offset := 128, width := 128 } }
+        ], slot := some 2
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "setLow"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "info" (Expr.param "id") "low" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "setHigh"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember "info" (Expr.param "id") "high" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "getLow"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "info" (Expr.param "id") "low")]
+      },
+      { name := "getHigh"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "info" (Expr.param "id") "high")]
+      }
+    ]
+  }
+  let key : Nat := 42
+  -- Write low=0xFF
+  let tx1 : Transaction := { sender := 0, functionName := "setLow", args := [key, 0xFF] }
+  let r1 := interpretSpec packedStructInterpSpec SpecStorage.empty tx1
+  if !r1.success then throw (IO.userError "✗ packed struct interp setLow reverted")
+  -- Write high=0xAA (should not clobber low)
+  let tx2 : Transaction := { sender := 0, functionName := "setHigh", args := [key, 0xAA] }
+  let r2 := interpretSpec packedStructInterpSpec r1.finalStorage tx2
+  if !r2.success then throw (IO.userError "✗ packed struct interp setHigh reverted")
+  -- Read low back → should still be 0xFF
+  let tx3 : Transaction := { sender := 0, functionName := "getLow", args := [key] }
+  let r3 := interpretSpec packedStructInterpSpec r2.finalStorage tx3
+  if r3.returnValue != some 0xFF then
+    throw (IO.userError s!"✗ packed struct getLow expected 0xFF, got {r3.returnValue}")
+  -- Read high back → should be 0xAA
+  let tx4 : Transaction := { sender := 0, functionName := "getHigh", args := [key] }
+  let r4 := interpretSpec packedStructInterpSpec r2.finalStorage tx4
+  if r4.returnValue != some 0xAA then
+    throw (IO.userError s!"✗ packed struct getHigh expected 0xAA, got {r4.returnValue}")
+  IO.println "✓ SpecInterpreter packed struct member isolation (read-modify-write) works correctly"
+
+-- Test 5: Double-key struct (mappingStruct2) compilation
+#eval! do
+  let struct2Spec : ContractSpec := {
+    name := "StructDoubleKey"
+    fields := [
+      { name := "positions", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.address [
+          { name := "supplyShares", wordOffset := 0 },
+          { name := "borrowShares", wordOffset := 1 },
+          { name := "collateral", wordOffset := 2 }
+        ], slot := some 10
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "getSupplyShares"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember2 "positions" (Expr.param "id") (Expr.param "who") "supplyShares")]
+      },
+      { name := "setCollateral"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "who", ty := ParamType.address }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember2 "positions" (Expr.param "id") (Expr.param "who") "collateral" (Expr.param "val"), Stmt.stop]
+      }
+    ]
+  }
+  match compile struct2Spec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected struct2 to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Double mapping: mappingSlot(mappingSlot(10, key1), key2) + wordOffset
+      assertContains "struct2 nested mapping slot" rendered [
+        "mappingSlot(10,", "mappingSlot("
+      ]
+      -- collateral at wordOffset=2 → add(..., 2)
+      assertContains "struct2 collateral offset" rendered [
+        "add(", ", 2)"
+      ]
+      IO.println "✓ struct2 (double-key) compilation produces correct Yul"
+
+-- Test 6: SpecInterpreter double-key struct read/write
+#eval! do
+  let struct2InterpSpec : ContractSpec := {
+    name := "Struct2Interp"
+    fields := [
+      { name := "pos", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.address [
+          { name := "shares", wordOffset := 0 },
+          { name := "debt", wordOffset := 1 }
+        ], slot := some 4
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "setShares"
+        params := [{ name := "mkt", ty := ParamType.uint256 }, { name := "who", ty := ParamType.address }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember2 "pos" (Expr.param "mkt") (Expr.param "who") "shares" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "setDebt"
+        params := [{ name := "mkt", ty := ParamType.uint256 }, { name := "who", ty := ParamType.address }, { name := "val", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setStructMember2 "pos" (Expr.param "mkt") (Expr.param "who") "debt" (Expr.param "val"), Stmt.stop]
+      },
+      { name := "getShares"
+        params := [{ name := "mkt", ty := ParamType.uint256 }, { name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember2 "pos" (Expr.param "mkt") (Expr.param "who") "shares")]
+      },
+      { name := "getDebt"
+        params := [{ name := "mkt", ty := ParamType.uint256 }, { name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember2 "pos" (Expr.param "mkt") (Expr.param "who") "debt")]
+      }
+    ]
+  }
+  let mkt : Nat := 1
+  let user : Nat := 0x1234
+  -- Write shares=500
+  let tx1 : Transaction := { sender := 0, functionName := "setShares", args := [mkt, user, 500] }
+  let r1 := interpretSpec struct2InterpSpec SpecStorage.empty tx1
+  if !r1.success then throw (IO.userError "✗ struct2 interp setShares reverted")
+  -- Write debt=300
+  let tx2 : Transaction := { sender := 0, functionName := "setDebt", args := [mkt, user, 300] }
+  let r2 := interpretSpec struct2InterpSpec r1.finalStorage tx2
+  if !r2.success then throw (IO.userError "✗ struct2 interp setDebt reverted")
+  -- Read shares → 500
+  let tx3 : Transaction := { sender := 0, functionName := "getShares", args := [mkt, user] }
+  let r3 := interpretSpec struct2InterpSpec r2.finalStorage tx3
+  if r3.returnValue != some 500 then
+    throw (IO.userError s!"✗ struct2 getShares expected 500, got {r3.returnValue}")
+  -- Read debt → 300
+  let tx4 : Transaction := { sender := 0, functionName := "getDebt", args := [mkt, user] }
+  let r4 := interpretSpec struct2InterpSpec r2.finalStorage tx4
+  if r4.returnValue != some 300 then
+    throw (IO.userError s!"✗ struct2 getDebt expected 300, got {r4.returnValue}")
+  IO.println "✓ SpecInterpreter struct2 read/write round-trip works correctly"
+
+-- Test 7: Validation rejects duplicate struct member names
+#eval! do
+  let dupMemberSpec : ContractSpec := {
+    name := "DupMember"
+    fields := [
+      { name := "data", ty := FieldType.mappingStruct MappingKeyType.address [
+          { name := "x", wordOffset := 0 },
+          { name := "x", wordOffset := 1 }
+        ], slot := some 0
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "get"
+        params := [{ name := "who", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "data" (Expr.param "who") "x")]
+      }
+    ]
+  }
+  match compile dupMemberSpec [1] with
+  | .error err =>
+      if !(contains err "duplicate member name 'x'") then
+        throw (IO.userError s!"✗ duplicate member diagnostic mismatch: {err}")
+      IO.println "✓ validation rejects duplicate struct member names"
+  | .ok _ =>
+      throw (IO.userError "✗ expected compilation to fail for duplicate struct member names")
+
+-- Test 8: Validation rejects invalid packed range in struct member
+#eval! do
+  let badPackedSpec : ContractSpec := {
+    name := "BadPacked"
+    fields := [
+      { name := "data", ty := FieldType.mappingStruct MappingKeyType.uint256 [
+          { name := "x", wordOffset := 0, packed := some { offset := 200, width := 100 } }
+        ], slot := some 0
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "get"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.structMember "data" (Expr.param "id") "x")]
+      }
+    ]
+  }
+  match compile badPackedSpec [1] with
+  | .error err =>
+      if !(contains err "invalid packed range") then
+        throw (IO.userError s!"✗ bad packed range diagnostic mismatch: {err}")
+      IO.println "✓ validation rejects invalid packed range in struct member"
+  | .ok _ =>
+      throw (IO.userError "✗ expected compilation to fail for invalid packed range in struct member")
+
+-- Test 9: Type mismatch — structMember on a double mapping field
+#eval! do
+  let mismatchSpec : ContractSpec := {
+    name := "Mismatch"
+    fields := [
+      { name := "nested", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.address [
+          { name := "val", wordOffset := 0 }
+        ], slot := some 0
+      }
+    ]
+    constructor := none
+    functions := [
+      { name := "get"
+        params := [{ name := "id", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        -- Wrong: using structMember (single key) on a mappingStruct2 (double key) field
+        body := [Stmt.return (Expr.structMember "nested" (Expr.param "id") "val")]
+      }
+    ]
+  }
+  match compile mismatchSpec [1] with
+  | .error err =>
+      if !(contains err "double mapping" && contains err "structMember2") then
+        throw (IO.userError s!"✗ type mismatch diagnostic mismatch: {err}")
+      IO.println "✓ compilation rejects structMember on double-mapping struct field"
+  | .ok _ =>
+      throw (IO.userError "✗ expected compilation to fail for structMember on double-mapping field")
+
+-- Test 10: internalCallAssign in fuel-based interpreter
+#eval! do
+  let internalMultiReturnSpec : ContractSpec := {
+    name := "InternalMultiReturn"
+    fields := [
+      { name := "val", ty := FieldType.uint256 }
+    ]
+    constructor := none
+    functions := [
+      { name := "helper"
+        params := [{ name := "x", ty := ParamType.uint256 }]
+        returnType := none
+        returns := [ParamType.uint256, ParamType.uint256]
+        isInternal := true
+        body := [
+          Stmt.returnValues [Expr.add (Expr.param "x") (Expr.literal 10), Expr.mul (Expr.param "x") (Expr.literal 2)]
+        ]
+      },
+      { name := "doCall"
+        params := [{ name := "input", ty := ParamType.uint256 }]
+        returnType := some FieldType.uint256
+        body := [
+          Stmt.internalCallAssign ["a", "b"] "helper" [Expr.param "input"],
+          Stmt.return (Expr.add (Expr.localVar "a") (Expr.localVar "b"))
+        ]
+      }
+    ]
+  }
+  -- Use fuel-based interpreter for internal call support
+  let fields := resolveFields internalMultiReturnSpec
+  let ctx : EvalContext := {
+    sender := ⟨0⟩
+    msgValue := 0
+    blockTimestamp := 0
+    params := [5]  -- input = 5
+    paramTypes := [ParamType.uint256]
+    constructorArgs := []
+    constructorParamTypes := []
+    localVars := []
+    arrayParams := []
+  }
+  let initialState : ExecState := {
+    storage := SpecStorage.empty
+    returnValue := none
+    halted := false
+  }
+  let paramNames := ["input"]
+  match execStmtsFuel 1000 ctx fields paramNames [] internalMultiReturnSpec.functions initialState
+      [Stmt.internalCallAssign ["a", "b"] "helper" [Expr.param "input"],
+       Stmt.return (Expr.add (Expr.localVar "a") (Expr.localVar "b"))] with
+  | none =>
+      throw (IO.userError "✗ internalCallAssign fuel-based execution reverted")
+  | some (_, finalState) =>
+      -- helper(5) → (15, 10), so a+b = 25
+      if finalState.returnValue != some 25 then
+        throw (IO.userError s!"✗ internalCallAssign expected return 25, got {finalState.returnValue}")
+      IO.println "✓ fuel-based internalCallAssign properly binds multi-return values"
+
 end Compiler.ContractSpecFeatureTest

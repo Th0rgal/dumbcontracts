@@ -118,6 +118,20 @@ def compileAllWithOptions
       if verbose then
         IO.println s!"✓ Wrote patch report: {path}"
   | none => pure ()
+  -- Axiom aggregation report (verbose mode)
+  if verbose then
+    IO.println ""
+    IO.println "ECM axiom report:"
+    let mut anyAxioms := false
+    for spec in specs do
+      let axioms := collectEcmAxioms spec
+      if !axioms.isEmpty then
+        anyAxioms := true
+        IO.println s!"  {spec.name}:"
+        for (modName, assumption) in axioms do
+          IO.println s!"    [{modName}] {assumption}"
+    if !anyAxioms then
+      IO.println "  (no ECM axioms — no external call modules used)"
   if verbose then
     IO.println ""
     IO.println "Compilation complete!"

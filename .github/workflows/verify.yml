@@ -241,7 +241,7 @@ jobs:
       - name: Run ContractSpec feature regression module
         env:
           LEAN_NUM_THREADS: 2
-        run: lake env lean Compiler/ContractSpecFeatureTest.lean
+        run: lake build Compiler.ContractSpecFeatureTest
 
       - name: Check for sorry
         run: |

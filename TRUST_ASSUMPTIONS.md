@@ -75,10 +75,27 @@ Metrics tracked by repository tooling:
 - Status: trusted EVM behavior; gas is not formally modeled by current proofs.
 - Implication: semantic correctness does not imply gas-safety or gas-bounded liveness.
 
-### 6. Foundational Lean Trust
+### 6. External Call Modules (ECMs)
+
+- Role: reusable external call patterns (ERC-20 transfers, precompile calls, callbacks, generic ABI calls).
+- Status: standard modules in `Compiler/Modules/` are maintained alongside the compiler.
+- Trust boundary: the compiler trusts that `mod.compile` produces Yul that correctly implements the pattern described by the module's name, documentation, and axioms.
+- Scope: a bug in one module does not affect contracts that don't use it.
+- Third-party ECMs (external Lean packages) are outside the Verity team's trust boundary.
+- Mitigation: ECM axioms are aggregated and reported at compile time (`--verbose`). Module-level validation (selector bounds, parameter checks) runs within the `compile` function. View/pure mutability enforcement uses `writesState`/`readsState` flags.
+- See `docs/EXTERNAL_CALL_MODULES.md` and `AXIOMS.md` for details.
+
+### 7. Foundational Lean Trust
 
 - Role: proof checker and kernel soundness.
 - Status: foundational assumption for all Lean-based verification.
+
+### 8. ECM Interface Assumptions
+
+- Role: trust that external contracts/precompiles conform to their declared ABI.
+- Status: documented per-module in `AXIOMS.md` and aggregated at compile time.
+- Scope: opt-in per contract — only contracts using a given ECM inherit its assumptions.
+- Mitigation: axiom aggregation report, code review of standard modules.
 
 ## Semantic Caveats Auditors Must Track
 
@@ -102,6 +119,8 @@ AST compilation (`--ast`) is tested and drift-checked, but not yet proven with t
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.
 5. Confirm arithmetic and revert assumptions are explicitly acceptable for the target contract.
 6. For production readiness, include gas profiling and upper-bound testing.
+7. Review ECM axiom report (`--verbose`) and confirm all module trust assumptions are acceptable.
+8. If third-party ECMs are used, audit their `AXIOMS.md` and `compile` implementations.
 
 ## Change Control Requirement
 
@@ -113,8 +132,9 @@ If this file is stale, audit conclusions may be invalid.
 
 - [AUDIT.md](AUDIT.md)
 - [AXIOMS.md](AXIOMS.md)
+- [docs/EXTERNAL_CALL_MODULES.md](docs/EXTERNAL_CALL_MODULES.md)
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)
 
-**Last Updated**: 2026-02-23
+**Last Updated**: 2026-02-25
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

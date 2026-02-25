@@ -563,17 +563,9 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       true
   | Stmt.externalCallBind _ _ args =>
       exprListUsesUnsupportedLowLevel args
-  | Stmt.externalCallWithReturn _ target _ args _ =>
-      exprUsesUnsupportedLowLevel target || exprListUsesUnsupportedLowLevel args
-  | Stmt.safeTransfer token to amount =>
-      exprUsesUnsupportedLowLevel token || exprUsesUnsupportedLowLevel to || exprUsesUnsupportedLowLevel amount
-  | Stmt.safeTransferFrom token fromAddr to amount =>
-      exprUsesUnsupportedLowLevel token || exprUsesUnsupportedLowLevel fromAddr || exprUsesUnsupportedLowLevel to || exprUsesUnsupportedLowLevel amount
-  | Stmt.callback target _ args _ =>
-      exprUsesUnsupportedLowLevel target || exprListUsesUnsupportedLowLevel args
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
       false
-  | Stmt.ecrecover _ _ _ _ _ =>
+  | Stmt.ecm _ _ =>
       true
 
 def stmtListUsesUnsupportedLowLevel : List Stmt → Bool
@@ -832,19 +824,8 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
       -- SpecInterpreter. Revert instead of silently skipping.
       none
 
-  | Stmt.externalCallWithReturn _resultVar _target _selector _args _isStatic =>
-      -- ABI-encoded external calls require linked Yul; not modeled in basic interpreter.
-      none
-  | Stmt.safeTransfer _token _to _amount =>
-      -- ERC20 safe transfers require linked Yul; not modeled in basic interpreter.
-      none
-  | Stmt.safeTransferFrom _token _from _to _amount =>
-      -- ERC20 safe transfers require linked Yul; not modeled in basic interpreter.
-      none
-  | Stmt.callback _target _selector _args _bytesParam =>
-      none
-  | Stmt.ecrecover _ _ _ _ _ =>
-      -- ecrecover requires low-level precompile call; not modeled in the scalar interpreter.
+  | Stmt.ecm _mod _args =>
+      -- ECM modules require linked Yul; not modeled in basic interpreter.
       none
 
 -- Execute a list of statements sequentially
@@ -944,16 +925,8 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
           | Stmt.externalCallBind _resultVars _externalName _args =>
               -- External call bindings require linked Yul; not modeled in fuel-based interpreter.
               none
-          | Stmt.externalCallWithReturn _resultVar _target _selector _args _isStatic =>
-              -- ABI-encoded external calls require linked Yul; not modeled in fuel-based interpreter.
-              none
-          | Stmt.safeTransfer _token _to _amount =>
-              -- ERC20 safe transfers require linked Yul; not modeled in fuel-based interpreter.
-              none
-          | Stmt.safeTransferFrom _token _from _to _amount =>
-              -- ERC20 safe transfers require linked Yul; not modeled in fuel-based interpreter.
-              none
-          | Stmt.callback _target _selector _args _bytesParam =>
+          | Stmt.ecm _mod _args =>
+              -- ECM modules require linked Yul; not modeled in fuel-based interpreter.
               none
           | other => execStmt ctx fields paramNames externalFns state other
         match result with

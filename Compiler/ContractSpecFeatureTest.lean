@@ -6818,7 +6818,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
   -- Use fuel-based interpreter for internal call support
   let fields := resolveFields internalMultiReturnSpec
   let ctx : EvalContext := {
-    sender := ⟨0⟩
+    sender := 0
     msgValue := 0
     blockTimestamp := 0
     params := [5]  -- input = 5

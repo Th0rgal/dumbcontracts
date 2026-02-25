@@ -5811,6 +5811,175 @@ private def viewCalldataloadSpec : ContractSpec := {
   let _result := interpretSpec spec initialStorage tx
   -- calldatasize/calldataload are unsupported low-level, so the interpreter should skip
   IO.println s!"✓ SpecInterpreter handles calldata access specs (low-level unsupported path)"
+-- ============ mapping2Word / setMapping2Word ============
+
+-- Test: mapping2Word read compiles to sload(add(mappingSlot(mappingSlot(slot, key1), key2), wordOffset))
+#eval! do
+  let mapping2WordSpec : ContractSpec := {
+    name := "Mapping2WordSpec"
+    fields := [
+      { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
+    ]
+    constructor := none
+    functions := [
+      { name := "getBalance"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mapping2Word "positions" (Expr.param "id") (Expr.param "user") 1)]
+      },
+      { name := "setBalance"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }, { name := "amount", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setMapping2Word "positions" (Expr.param "id") (Expr.param "user") 1 (Expr.param "amount"), Stmt.stop]
+      }
+    ]
+    events := []
+  }
+  match compile mapping2WordSpec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ mapping2Word compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "mapping2Word read lowers to nested mappingSlot + wordOffset" rendered
+        ["sload(add(mappingSlot(mappingSlot(3, id), user), 1))"]
+      assertContains "setMapping2Word write lowers to nested mappingSlot + wordOffset" rendered
+        ["sstore(add(mappingSlot(mappingSlot(3, id), user), 1), amount)"]
+
+-- Test: mapping2Word with wordOffset 0 omits the add
+#eval! do
+  let mapping2WordZeroSpec : ContractSpec := {
+    name := "Mapping2WordZeroSpec"
+    fields := [
+      { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
+    ]
+    constructor := none
+    functions := [
+      { name := "getBase"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mapping2Word "positions" (Expr.param "id") (Expr.param "user") 0)]
+      }
+    ]
+    events := []
+  }
+  match compile mapping2WordZeroSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ mapping2Word zero offset compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "mapping2Word with offset 0 omits add" rendered
+        ["sload(mappingSlot(mappingSlot(3, id), user))"]
+      -- Ensure the add variant is NOT present
+      if contains rendered "add(mappingSlot(mappingSlot(3, id), user), 0)" then
+        throw (IO.userError "✗ mapping2Word with offset 0 should not emit add(..., 0)")
+      IO.println "✓ mapping2Word with offset 0 correctly omits add"
+
+-- Test: setMapping2Word with alias slots writes to both canonical and alias
+#eval! do
+  let mapping2WordAliasSpec : ContractSpec := {
+    name := "Mapping2WordAliasSpec"
+    fields := [
+      { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3, aliasSlots := [15] }
+    ]
+    constructor := none
+    functions := [
+      { name := "setBalance"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }, { name := "amount", ty := ParamType.uint256 }]
+        returnType := none
+        body := [Stmt.setMapping2Word "positions" (Expr.param "id") (Expr.param "user") 1 (Expr.param "amount"), Stmt.stop]
+      }
+    ]
+    events := []
+  }
+  match compile mapping2WordAliasSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ mapping2Word alias compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "setMapping2Word alias mirror writes include canonical and alias slots" rendered
+        ["sstore(add(mappingSlot(mappingSlot(3, __compat_key1), __compat_key2), 1), __compat_value)",
+         "sstore(add(mappingSlot(mappingSlot(15, __compat_key1), __compat_key2), 1), __compat_value)"]
+
+-- Test: mapping2Word view function allowed, pure function rejected
+#eval! do
+  let mapping2WordViewSpec : ContractSpec := {
+    name := "Mapping2WordViewSpec"
+    fields := [
+      { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
+    ]
+    constructor := none
+    functions := [
+      { name := "getBalance"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mapping2Word "positions" (Expr.param "id") (Expr.param "user") 1)]
+        isView := true
+      }
+    ]
+    events := []
+  }
+  match compile mapping2WordViewSpec [1] with
+  | .error _ => throw (IO.userError "✗ mapping2Word view function should compile")
+  | .ok _ => IO.println "✓ mapping2Word allowed in view function"
+
+  let mapping2WordPureSpec : ContractSpec := {
+    name := "Mapping2WordPureSpec"
+    fields := [
+      { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
+    ]
+    constructor := none
+    functions := [
+      { name := "getBalance"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mapping2Word "positions" (Expr.param "id") (Expr.param "user") 1)]
+        isPure := true
+      }
+    ]
+    events := []
+  }
+  match compile mapping2WordPureSpec [1] with
+  | .error _ => IO.println "✓ mapping2Word correctly rejected in pure function"
+  | .ok _ => throw (IO.userError "✗ mapping2Word should be rejected in pure function")
+
+-- Test: SpecInterpreter for mapping2Word read/write
+#eval! do
+  let mapping2WordInterpSpec : ContractSpec := {
+    name := "Mapping2WordInterpSpec"
+    fields := [
+      { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
+    ]
+    constructor := none
+    functions := [
+      { name := "setBalance"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }, { name := "amount", ty := ParamType.uint256 }]
+        returnType := none
+        body := [
+          Stmt.setMapping2Word "positions" (Expr.param "id") (Expr.param "user") 1 (Expr.param "amount"),
+          Stmt.stop
+        ]
+      },
+      { name := "getBalance"
+        params := [{ name := "id", ty := ParamType.uint256 }, { name := "user", ty := ParamType.address }]
+        returnType := some FieldType.uint256
+        body := [Stmt.return (Expr.mapping2Word "positions" (Expr.param "id") (Expr.param "user") 1)]
+      }
+    ]
+    events := []
+  }
+  let initialStorage := SpecStorage.empty
+  let marketId := 42
+  let user := 0xBEEF
+  let amount := 999
+  let writeTx : Transaction := { sender := 0, functionName := "setBalance", args := [marketId, user, amount] }
+  let writeResult := interpretSpec mapping2WordInterpSpec initialStorage writeTx
+  if !writeResult.success then
+    throw (IO.userError s!"✗ mapping2Word interpreter write reverted: {writeResult.revertReason}")
+  let readTx : Transaction := { sender := 0, functionName := "getBalance", args := [marketId, user] }
+  let readResult := interpretSpec mapping2WordInterpSpec writeResult.finalStorage readTx
+  if readResult.returnValue != some amount then
+    throw (IO.userError s!"✗ mapping2Word interpreter read mismatch: expected {amount}, got {readResult.returnValue}")
+  IO.println "✓ SpecInterpreter mapping2Word read/write round-trip succeeds"
 
 -- ===== Stmt.ecrecover result variable shadow check =====
 #eval! do

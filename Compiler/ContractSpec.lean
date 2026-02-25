@@ -220,6 +220,10 @@ inductive Expr
   /-- First-class low-level `delegatecall(gas, target, inOffset, inSize, outOffset, outSize)`.
       Returns the EVM success bit (0/1). -/
   | delegatecall (gas target inOffset inSize outOffset outSize : Expr)
+  /-- Size in bytes of the current call's calldata (`calldatasize()`). -/
+  | calldatasize
+  /-- Load a 32-byte word from calldata at the given byte offset (`calldataload(offset)`). -/
+  | calldataload (offset : Expr)
   /-- Size in bytes of returndata from the most recent external call frame. -/
   | returndataSize
   /-- Size in bytes of code deployed at the given address (0 for EOAs). -/
@@ -289,6 +293,8 @@ inductive Stmt
   | returnBytes (name : String)        -- ABI-encode dynamic bytes parameter loaded from calldata
   | returnStorageWords (name : String) -- ABI-encode dynamic uint256[] from sload over a dynamic word-array parameter
   | mstore (offset value : Expr)
+  /-- First-class `calldatacopy(destOffset, sourceOffset, size)` statement. -/
+  | calldatacopy (destOffset sourceOffset size : Expr)
   /-- First-class `returndatacopy(destOffset, sourceOffset, size)` statement. -/
   | returndataCopy (destOffset sourceOffset size : Expr)
   /-- Forward current returndata as revert payload (`returndatacopy` + `revert`). -/
@@ -583,6 +589,8 @@ private partial def collectExprNames : Expr → List String
   | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
       collectExprNames gas ++ collectExprNames target ++ collectExprNames inOffset ++
       collectExprNames inSize ++ collectExprNames outOffset ++ collectExprNames outSize
+  | Expr.calldatasize => []
+  | Expr.calldataload offset => collectExprNames offset
   | Expr.returndataSize => []
   | Expr.returndataOptionalBoolAt outOffset => collectExprNames outOffset
   | Expr.localVar name => [name]
@@ -639,6 +647,8 @@ private partial def collectStmtNames : Stmt → List String
   | Stmt.returnBytes name => [name]
   | Stmt.returnStorageWords name => [name]
   | Stmt.mstore offset value => collectExprNames offset ++ collectExprNames value
+  | Stmt.calldatacopy destOffset sourceOffset size =>
+      collectExprNames destOffset ++ collectExprNames sourceOffset ++ collectExprNames size
   | Stmt.returndataCopy destOffset sourceOffset size =>
       collectExprNames destOffset ++ collectExprNames sourceOffset ++ collectExprNames size
   | Stmt.revertReturndata => []
@@ -769,6 +779,9 @@ def compileExpr (fields : List Field)
         ← compileExpr fields dynamicSource outOffset,
         ← compileExpr fields dynamicSource outSize
       ])
+  | Expr.calldatasize => pure (YulExpr.call "calldatasize" [])
+  | Expr.calldataload offset => do
+      pure (YulExpr.call "calldataload" [← compileExpr fields dynamicSource offset])
   | Expr.returndataSize => pure (YulExpr.call "returndatasize" [])
   | Expr.returndataOptionalBoolAt outOffset => do
       let outOffsetExpr ← compileExpr fields dynamicSource outOffset
@@ -1064,6 +1077,8 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike outSize
   | Expr.mload offset =>
       exprContainsUnsafeLogicalCallLike offset
+  | Expr.calldataload offset =>
+      exprContainsUnsafeLogicalCallLike offset
   | Expr.keccak256 offset size =>
       exprContainsUnsafeLogicalCallLike offset || exprContainsUnsafeLogicalCallLike size
   | Expr.staticcall gas target inOffset inSize outOffset outSize =>
@@ -1108,6 +1123,10 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       false
   | Stmt.mstore offset value =>
       exprContainsUnsafeLogicalCallLike offset || exprContainsUnsafeLogicalCallLike value
+  | Stmt.calldatacopy destOffset sourceOffset size =>
+      exprContainsUnsafeLogicalCallLike destOffset ||
+      exprContainsUnsafeLogicalCallLike sourceOffset ||
+      exprContainsUnsafeLogicalCallLike size
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprContainsUnsafeLogicalCallLike destOffset ||
       exprContainsUnsafeLogicalCallLike sourceOffset ||
@@ -1268,6 +1287,8 @@ private partial def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount addr
   | Expr.mload offset =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
+  | Expr.calldataload offset =>
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
   | Expr.keccak256 offset size => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount size
@@ -1344,6 +1365,11 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.mstore offset value => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
+      pure localScope
+  | Stmt.calldatacopy destOffset sourceOffset size => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount destOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount sourceOffset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount size
       pure localScope
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount destOffset
@@ -1563,6 +1589,8 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.extcodesize addr => exprReadsStateOrEnv addr || true
   | Expr.msgValue => true
   | Expr.blockTimestamp => true
+  | Expr.calldatasize => true
+  | Expr.calldataload offset => exprReadsStateOrEnv offset || true
   | Expr.mload offset => exprReadsStateOrEnv offset
   | Expr.keccak256 offset size => exprReadsStateOrEnv offset || exprReadsStateOrEnv size
   | Expr.call gas target value inOffset inSize outOffset outSize =>
@@ -1623,6 +1651,8 @@ private partial def stmtWritesState : Stmt → Bool
       false
   | Stmt.mstore offset value =>
       exprWritesState offset || exprWritesState value
+  | Stmt.calldatacopy destOffset sourceOffset size =>
+      exprWritesState destOffset || exprWritesState sourceOffset || exprWritesState size
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprWritesState destOffset || exprWritesState sourceOffset || exprWritesState size
   | Stmt.revertReturndata =>
@@ -1680,6 +1710,8 @@ where
         exprWritesState outOffset || exprWritesState outSize || true
     | Expr.mload offset =>
         exprWritesState offset
+    | Expr.calldataload offset =>
+        exprWritesState offset
     | Expr.keccak256 offset size =>
         exprWritesState offset || exprWritesState size
     | Expr.returndataOptionalBoolAt outOffset =>
@@ -1707,6 +1739,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       true
   | Stmt.mstore offset value =>
       exprReadsStateOrEnv offset || exprReadsStateOrEnv value
+  | Stmt.calldatacopy destOffset sourceOffset size =>
+      exprReadsStateOrEnv destOffset || exprReadsStateOrEnv sourceOffset || exprReadsStateOrEnv size || true
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprReadsStateOrEnv destOffset || exprReadsStateOrEnv sourceOffset || exprReadsStateOrEnv size || true
   | Stmt.revertReturndata =>
@@ -2251,6 +2285,10 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
       pure ()
   | Expr.extcodesize addr =>
       validateInteropExpr context addr
+  | Expr.calldatasize =>
+      pure ()
+  | Expr.calldataload offset =>
+      validateInteropExpr context offset
   | Expr.mload offset =>
       validateInteropExpr context offset
   | Expr.keccak256 offset size => do
@@ -2303,6 +2341,10 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
   | Stmt.mstore offset value => do
       validateInteropExpr context offset
       validateInteropExpr context value
+  | Stmt.calldatacopy destOffset sourceOffset size => do
+      validateInteropExpr context destOffset
+      validateInteropExpr context sourceOffset
+      validateInteropExpr context size
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateInteropExpr context destOffset
       validateInteropExpr context sourceOffset
@@ -2468,6 +2510,8 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName addr
   | Expr.mload offset =>
       validateInternalCallShapesInExpr functions callerName offset
+  | Expr.calldataload offset =>
+      validateInternalCallShapesInExpr functions callerName offset
   | Expr.keccak256 offset size => do
       validateInternalCallShapesInExpr functions callerName offset
       validateInternalCallShapesInExpr functions callerName size
@@ -2515,6 +2559,10 @@ private partial def validateInternalCallShapesInStmt
   | Stmt.mstore offset value => do
       validateInternalCallShapesInExpr functions callerName offset
       validateInternalCallShapesInExpr functions callerName value
+  | Stmt.calldatacopy destOffset sourceOffset size => do
+      validateInternalCallShapesInExpr functions callerName destOffset
+      validateInternalCallShapesInExpr functions callerName sourceOffset
+      validateInternalCallShapesInExpr functions callerName size
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateInternalCallShapesInExpr functions callerName destOffset
       validateInternalCallShapesInExpr functions callerName sourceOffset
@@ -2642,6 +2690,8 @@ private partial def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context addr
   | Expr.mload offset =>
       validateExternalCallTargetsInExpr externals context offset
+  | Expr.calldataload offset =>
+      validateExternalCallTargetsInExpr externals context offset
   | Expr.keccak256 offset size => do
       validateExternalCallTargetsInExpr externals context offset
       validateExternalCallTargetsInExpr externals context size
@@ -2691,6 +2741,10 @@ private partial def validateExternalCallTargetsInStmt
   | Stmt.mstore offset value => do
       validateExternalCallTargetsInExpr externals context offset
       validateExternalCallTargetsInExpr externals context value
+  | Stmt.calldatacopy destOffset sourceOffset size => do
+      validateExternalCallTargetsInExpr externals context destOffset
+      validateExternalCallTargetsInExpr externals context sourceOffset
+      validateExternalCallTargetsInExpr externals context size
   | Stmt.returndataCopy destOffset sourceOffset size => do
       validateExternalCallTargetsInExpr externals context destOffset
       validateExternalCallTargetsInExpr externals context sourceOffset
@@ -4016,6 +4070,12 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         ← compileExpr fields dynamicSource offset,
         ← compileExpr fields dynamicSource value
       ])]
+  | Stmt.calldatacopy destOffset sourceOffset size => do
+      pure [YulStmt.expr (YulExpr.call "calldatacopy" [
+        ← compileExpr fields dynamicSource destOffset,
+        ← compileExpr fields dynamicSource sourceOffset,
+        ← compileExpr fields dynamicSource size
+      ])]
   | Stmt.returndataCopy destOffset sourceOffset size => do
       pure [YulStmt.expr (YulExpr.call "returndatacopy" [
         ← compileExpr fields dynamicSource destOffset,
@@ -4363,6 +4423,8 @@ private partial def exprUsesArrayElement : Expr → Bool
   | Expr.extcodesize addr => exprUsesArrayElement addr
   | Expr.mload offset =>
       exprUsesArrayElement offset
+  | Expr.calldataload offset =>
+      exprUsesArrayElement offset
   | Expr.keccak256 offset size =>
       exprUsesArrayElement offset || exprUsesArrayElement size
   | Expr.returndataOptionalBoolAt outOffset => exprUsesArrayElement outOffset
@@ -4390,6 +4452,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       args.any exprUsesArrayElement
   | Stmt.mstore offset value =>
       exprUsesArrayElement offset || exprUsesArrayElement value
+  | Stmt.calldatacopy destOffset sourceOffset size =>
+      exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>

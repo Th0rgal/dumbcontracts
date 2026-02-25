@@ -364,6 +364,12 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
   | Expr.delegatecall _gas _target _inOffset _inSize _outOffset _outSize =>
       -- Low-level call semantics are not modeled in the scalar SpecInterpreter yet.
       0
+  | Expr.calldatasize =>
+      -- Calldata access is not modeled in the scalar SpecInterpreter yet.
+      0
+  | Expr.calldataload _offset =>
+      -- Calldata access is not modeled in the scalar SpecInterpreter yet.
+      0
   | Expr.returndataSize =>
       -- Returndata buffers are not modeled in the scalar SpecInterpreter yet.
       0
@@ -475,6 +481,8 @@ end
 mutual
 def exprUsesUnsupportedLowLevel : Expr → Bool
   | Expr.contractAddress | Expr.chainid | Expr.extcodesize _ => true
+  | Expr.calldatasize => true
+  | Expr.calldataload _ => true
   | Expr.mload _ | Expr.keccak256 _ _ => true
   | Expr.call _ _ _ _ _ _ _ => true
   | Expr.staticcall _ _ _ _ _ _ => true
@@ -520,6 +528,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
       exprListUsesUnsupportedLowLevel args
   | Stmt.mstore _ _ =>
+      true
+  | Stmt.calldatacopy _ _ _ =>
       true
   | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata =>
       true
@@ -733,6 +743,10 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
   | Stmt.mstore _offset _value =>
       -- Memory writes are not modeled in the scalar SpecInterpreter.
       none
+
+  | Stmt.calldatacopy _destOffset _sourceOffset _size =>
+      -- Calldata copy to memory is not modeled in the scalar SpecInterpreter.
+      some (ctx, state)
 
   | Stmt.returndataCopy _destOffset _sourceOffset _size =>
       -- Returndata memory effects are not modeled in the scalar SpecInterpreter.

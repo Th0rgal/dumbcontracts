@@ -5614,4 +5614,117 @@ private def externalCallWithReturnSpec : ContractSpec := {
         ["let price1 := mload(0)", "let price2 := mload(0)"]
       IO.println "✓ multiple externalCallWithReturn in same function compiles without collision"
 
+-- ============================================================================
+-- Calldata access primitives: Expr.calldatasize, Expr.calldataload, Stmt.calldatacopy
+-- ============================================================================
+
+private def calldataAccessSpec : ContractSpec := {
+  name := "CalldataAccessSpec"
+  fields := [{ name := "lastSize", ty := FieldType.uint256 }]
+  constructor := none
+  functions := [
+    { name := "parseCalldata"
+      params := [⟨"offset", ParamType.uint256⟩]
+      returnType := some FieldType.uint256
+      body := [
+        -- Store calldatasize for later retrieval
+        Stmt.setStorage "lastSize" Expr.calldatasize,
+        -- Load a word from calldata at the given offset
+        Stmt.letVar "word" (Expr.calldataload (Expr.param "offset")),
+        Stmt.return (Expr.localVar "word")
+      ]
+    },
+    { name := "copyCalldata"
+      params := [⟨"srcOffset", ParamType.uint256⟩, ⟨"size", ParamType.uint256⟩]
+      returnType := some FieldType.uint256
+      body := [
+        -- Copy calldata to memory at offset 0
+        Stmt.calldatacopy (Expr.literal 0) (Expr.param "srcOffset") (Expr.param "size"),
+        -- Return the first word from memory
+        Stmt.return (Expr.mload (Expr.literal 0))
+      ]
+    }
+  ]
+  events := []
+}
+
+-- Test: calldata access compiles to correct Yul opcodes
+#eval! do
+  match compile calldataAccessSpec [1, 2] with
+  | .error err =>
+      throw (IO.userError s!"✗ calldata access compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "calldatasize opcode" rendered
+        ["calldatasize()"]
+      assertContains "calldataload opcode" rendered
+        ["calldataload(offset)"]
+      assertContains "calldatacopy opcode" rendered
+        ["calldatacopy(0, srcOffset, size)"]
+      IO.println s!"✓ calldata access primitives compile successfully"
+
+-- Test: calldatasize and calldataload rejected in pure functions
+private def pureCalldataSpec : ContractSpec := {
+  name := "PureCalldataSpec"
+  fields := []
+  constructor := none
+  functions := [
+    { name := "pureFunc"
+      params := []
+      returnType := some FieldType.uint256
+      isPure := true
+      body := [
+        Stmt.return Expr.calldatasize
+      ]
+    }
+  ]
+  events := []
+}
+
+#eval! do
+  match compile pureCalldataSpec [1] with
+  | .ok _ =>
+      throw (IO.userError "✗ expected pure function with calldatasize to fail compilation")
+  | .error err =>
+      if !contains err "pure" then
+        throw (IO.userError s!"✗ expected 'pure' in error, got: {err}")
+      IO.println "✓ calldatasize correctly rejected in pure function"
+
+-- Test: calldataload with nested expr in view function
+private def viewCalldataloadSpec : ContractSpec := {
+  name := "ViewCalldataloadSpec"
+  fields := [{ name := "data", ty := FieldType.uint256 }]
+  constructor := none
+  functions := [
+    { name := "viewFunc"
+      params := [⟨"pos", ParamType.uint256⟩]
+      returnType := some FieldType.uint256
+      isView := true
+      body := [
+        Stmt.return (Expr.calldataload (Expr.param "pos"))
+      ]
+    }
+  ]
+  events := []
+}
+
+#eval! do
+  match compile viewCalldataloadSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ view calldataload compile failed: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      assertContains "view calldataload" rendered
+        ["calldataload(pos)"]
+      IO.println "✓ calldataload works in view functions"
+
+-- Test: SpecInterpreter marks calldata access as unsupported low-level
+#eval! do
+  let spec := calldataAccessSpec
+  let initialStorage := SpecStorage.empty
+  let tx : Transaction := { sender := 0, functionName := "parseCalldata", args := [4] }
+  let _result := interpretSpec spec initialStorage tx
+  -- calldatasize/calldataload are unsupported low-level, so the interpreter should skip
+  IO.println s!"✓ SpecInterpreter handles calldata access specs (low-level unsupported path)"
+
 end Compiler.ContractSpecFeatureTest

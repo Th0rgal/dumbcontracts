@@ -1077,6 +1077,33 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
 private def issue748Ref : String :=
   "Issue #748 (logicalAnd/logicalOr eager evaluation footgun)"
 
+private def issue586Ref : String :=
+  "Issue #586 (Solidity interop profile)"
+
+private def issue623Ref : String :=
+  "Issue #623 (ContractSpec storage layout controls)"
+
+private def issue625Ref : String :=
+  "Issue #625 (internal function multi-return support)"
+
+private def issue732Ref : String :=
+  "Issue #732 (reject undeclared external call targets)"
+
+private def issue734Ref : String :=
+  "Issue #734 (view/pure mutability enforcement)"
+
+private def issue738Ref : String :=
+  "Issue #738 (exhaustive return-path analysis)"
+
+private def issue753Ref : String :=
+  "Issue #753 (internal dynamic params unsupported)"
+
+private def issue756Ref : String :=
+  "Issue #756 (external/helper namespace collisions)"
+
+private def issue184Ref : String :=
+  "Issue #184 (verified external interface declarations)"
+
 private def validateLogicalOperandPurity (context : String) (a b : Expr) : Except String Unit := do
   if exprContainsCallLike a || exprContainsCallLike b then
     throw s!"Compilation error: {context} uses Expr.logicalAnd/Expr.logicalOr with call-like operand(s), which are eagerly evaluated ({issue748Ref}). Move call-like expressions into Stmt.letVar/Stmt.ite before combining booleans."
@@ -1599,21 +1626,21 @@ private partial def validateReturnShapesInStmt (fnName : String)
         pure ()
   | Stmt.returnArray _ =>
       if isInternal then
-        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnArray; only static returns via Stmt.return/Stmt.returnValues are supported (Issue #625)."
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnArray; only static returns via Stmt.return/Stmt.returnValues are supported ({issue625Ref})."
       else if expectedReturns == [ParamType.array ParamType.uint256] then
         pure ()
       else
         throw s!"Compilation error: function '{fnName}' uses Stmt.returnArray but declared returns are {repr expectedReturns}"
   | Stmt.returnBytes _ =>
       if isInternal then
-        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnBytes; only static returns via Stmt.return/Stmt.returnValues are supported (Issue #625)."
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnBytes; only static returns via Stmt.return/Stmt.returnValues are supported ({issue625Ref})."
       else if expectedReturns == [ParamType.bytes] then
         pure ()
       else
         throw s!"Compilation error: function '{fnName}' uses Stmt.returnBytes but declared returns are {repr expectedReturns}"
   | Stmt.returnStorageWords _ =>
       if isInternal then
-        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnStorageWords; only static returns via Stmt.return/Stmt.returnValues are supported (Issue #625)."
+        throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnStorageWords; only static returns via Stmt.return/Stmt.returnValues are supported ({issue625Ref})."
       else if expectedReturns == [ParamType.array ParamType.uint256] then
         pure ()
       else
@@ -1804,29 +1831,23 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
-    throw s!"Compilation error: function '{spec.name}' cannot be both payable and view/pure (Issue #586 (Solidity interop profile))"
+    throw s!"Compilation error: function '{spec.name}' cannot be both payable and view/pure ({issue586Ref})"
   if spec.isView && spec.isPure then
-    throw s!"Compilation error: function '{spec.name}' cannot be both view and pure; use exactly one mutability marker (Issue #586 (Solidity interop profile))"
+    throw s!"Compilation error: function '{spec.name}' cannot be both view and pure; use exactly one mutability marker ({issue586Ref})"
   if spec.isView && spec.body.any stmtWritesState then
-    throw s!"Compilation error: function '{spec.name}' is marked view but writes state (Issue #734)"
+    throw s!"Compilation error: function '{spec.name}' is marked view but writes state ({issue734Ref})"
   if spec.isPure && spec.body.any stmtWritesState then
-    throw s!"Compilation error: function '{spec.name}' is marked pure but writes state (Issue #734)"
+    throw s!"Compilation error: function '{spec.name}' is marked pure but writes state ({issue734Ref})"
   if spec.isPure && spec.body.any stmtReadsStateOrEnv then
-    throw s!"Compilation error: function '{spec.name}' is marked pure but reads state/environment (Issue #734)"
+    throw s!"Compilation error: function '{spec.name}' is marked pure but reads state/environment ({issue734Ref})"
   if spec.body.any stmtContainsUnsafeLogicalCallLike then
     throw s!"Compilation error: function '{spec.name}' uses Expr.logicalAnd/Expr.logicalOr/Expr.ite or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
   let returns ← functionReturns spec
   spec.body.forM (validateReturnShapesInStmt spec.name returns spec.isInternal)
   if !returns.isEmpty && !stmtListAlwaysReturnsOrReverts spec.body then
-    throw s!"Compilation error: function '{spec.name}' declares return values but not all control-flow paths end in return/revert (Issue #738)"
+    throw s!"Compilation error: function '{spec.name}' declares return values but not all control-flow paths end in return/revert ({issue738Ref})"
   spec.body.forM (validateStmtParamReferences spec.name spec.params)
   validateFunctionIdentifierReferences spec
-
-private def issue586Ref : String :=
-  "Issue #586 (Solidity interop profile)"
-
-private def issue623Ref : String :=
-  "Issue #623 (ContractSpec storage layout controls)"
 
 private partial def validateNoRuntimeReturnsInConstructorStmt : Stmt → Except String Unit
   | Stmt.return _ | Stmt.returnValues _ | Stmt.returnArray _
@@ -2467,15 +2488,6 @@ private def validateSpecialEntrypointSpec (spec : FunctionSpec) : Except String 
     if spec.isView || spec.isPure then
       throw s!"Compilation error: function '{spec.name}' cannot be marked view/pure ({issue586Ref})"
 
-private def issue625Ref : String :=
-  "Issue #625 (internal function multi-return support)"
-
-private def issue753Ref : String :=
-  "Issue #753 (internal dynamic params unsupported)"
-
-private def issue756Ref : String :=
-  "Issue #756 (external/helper namespace collisions)"
-
 private def reservedExternalNames (mappingHelpersRequired arrayHelpersRequired : Bool) : List String :=
   let mappingHelpers := if mappingHelpersRequired then ["mappingSlot"] else []
   let arrayHelpers :=
@@ -2694,12 +2706,6 @@ private partial def validateInternalCallShapesInStmt
 private def validateInternalCallShapesInFunction (functions : List FunctionSpec)
     (spec : FunctionSpec) : Except String Unit := do
   spec.body.forM (validateInternalCallShapesInStmt functions spec.name)
-
-private def issue732Ref : String :=
-  "Issue #732 (reject undeclared external call targets)"
-
-private def issue184Ref : String :=
-  "Issue #184 (verified external interface declarations)"
 
 private partial def validateExternalCallTargetsInExpr
     (externals : List ExternalFunction) (context : String) : Expr → Except String Unit

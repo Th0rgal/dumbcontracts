@@ -322,6 +322,10 @@ inductive Stmt
   /-- ERC20 safeTransferFrom: encode transferFrom(from, to, amount), call token, handle optional bool return.
       Reverts with descriptive error on call failure or false return. -/
   | safeTransferFrom (token fromAddr to amount : Expr)
+  /-- Callback invocation: encode selector + static args + forwarded bytes param,
+      call target, revert-forward on failure. Used for flash-loan patterns where
+      the contract calls back into the caller with encoded data (#927). -/
+  | callback (target : Expr) (selector : Nat) (staticArgs : List Expr) (bytesParam : String)
   deriving Repr
 
 structure FunctionSpec where
@@ -654,6 +658,8 @@ private partial def collectStmtNames : Stmt → List String
       collectExprNames token ++ collectExprNames to ++ collectExprNames amount
   | Stmt.safeTransferFrom token fromAddr to amount =>
       collectExprNames token ++ collectExprNames fromAddr ++ collectExprNames to ++ collectExprNames amount
+  | Stmt.callback target _ args bytesParam =>
+      collectExprNames target ++ collectExprListNames args ++ [bytesParam]
 
 private partial def collectStmtListNames : List Stmt → List String
   | [] => []
@@ -1125,6 +1131,8 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike token || exprContainsUnsafeLogicalCallLike to || exprContainsUnsafeLogicalCallLike amount
   | Stmt.safeTransferFrom token fromAddr to amount =>
       exprContainsUnsafeLogicalCallLike token || exprContainsUnsafeLogicalCallLike fromAddr || exprContainsUnsafeLogicalCallLike to || exprContainsUnsafeLogicalCallLike amount
+  | Stmt.callback target _ args _ =>
+      exprContainsUnsafeLogicalCallLike target || args.any exprContainsUnsafeLogicalCallLike
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1373,6 +1381,18 @@ private partial def validateScopedStmtIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount to
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount amount
       pure localScope
+  | Stmt.callback target selector args bytesParam => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount target
+      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      if selector >= 4294967296 then
+        throw s!"Compilation error: {context} uses Stmt.callback with selector {selector} which exceeds 4 bytes (must be < 2^32)"
+      match findParamType params bytesParam with
+      | some ParamType.bytes => pure ()
+      | some ty =>
+          throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' of type {repr ty}, but only ParamType.bytes is supported"
+      | none =>
+          throw s!"Compilation error: {context} uses Stmt.callback with bytesParam '{bytesParam}' which is not a declared parameter"
+      pure localScope
   | _ => pure localScope
 
 private partial def validateScopedStmtListIdentifiers
@@ -1615,6 +1635,8 @@ private partial def stmtWritesState : Stmt → Bool
       exprWritesState token || exprWritesState to || exprWritesState amount || true
   | Stmt.safeTransferFrom token fromAddr to amount =>
       exprWritesState token || exprWritesState fromAddr || exprWritesState to || exprWritesState amount || true
+  | Stmt.callback target _ args _ =>
+      exprWritesState target || args.any exprWritesState || true
 where
   exprWritesState (expr : Expr) : Bool :=
     match expr with
@@ -1697,6 +1719,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
       exprReadsStateOrEnv token || exprReadsStateOrEnv to || exprReadsStateOrEnv amount || true
   | Stmt.safeTransferFrom token fromAddr to amount =>
       exprReadsStateOrEnv token || exprReadsStateOrEnv fromAddr || exprReadsStateOrEnv to || exprReadsStateOrEnv amount || true
+  | Stmt.callback target _ args _ =>
+      exprReadsStateOrEnv target || args.any exprReadsStateOrEnv || true
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
@@ -2303,6 +2327,9 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       validateInteropExpr context fromAddr
       validateInteropExpr context to
       validateInteropExpr context amount
+  | Stmt.callback target _ args _ => do
+      validateInteropExpr context target
+      args.forM (validateInteropExpr context)
   | Stmt.returnValues values =>
       values.forM (validateInteropExpr context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -2542,6 +2569,9 @@ private partial def validateInternalCallShapesInStmt
       validateInternalCallShapesInExpr functions callerName fromAddr
       validateInternalCallShapesInExpr functions callerName to
       validateInternalCallShapesInExpr functions callerName amount
+  | Stmt.callback target _ args _ => do
+      validateInternalCallShapesInExpr functions callerName target
+      args.forM (validateInternalCallShapesInExpr functions callerName)
   | _ =>
       pure ()
 
@@ -2700,6 +2730,9 @@ private partial def validateExternalCallTargetsInStmt
       validateExternalCallTargetsInExpr externals context fromAddr
       validateExternalCallTargetsInExpr externals context to
       validateExternalCallTargetsInExpr externals context amount
+  | Stmt.callback target _ args _ => do
+      validateExternalCallTargetsInExpr externals context target
+      args.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.returnValues values =>
       values.forM (validateExternalCallTargetsInExpr externals context)
   | Stmt.rawLog topics dataOffset dataSize => do
@@ -4049,6 +4082,64 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
             (revertWithMessage "transferFrom returned false")
         ]
       ])]
+  | Stmt.callback target selector staticArgs bytesParam => do
+      -- Callback invocation (#927): ABI-encode selector + static args + bytes, call target
+      let targetExpr ← compileExpr fields dynamicSource target
+      let argCompiledExprs ← compileExprList fields dynamicSource staticArgs
+      let numStaticArgs := staticArgs.length
+      -- Memory layout:
+      --   [0..4]                          selector (shl(224, selector))
+      --   [4..4+numStaticArgs*32]          static args
+      --   [4+numStaticArgs*32..+32]        ABI offset to bytes data = (numStaticArgs+1)*32
+      --   [4+(numStaticArgs+1)*32..+32]    bytes length
+      --   [4+(numStaticArgs+2)*32..+len]   bytes data (calldatacopy)
+      let selectorExpr := YulExpr.call "shl" [YulExpr.lit 224, YulExpr.hex selector]
+      let storeSelector := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, selectorExpr])
+      let storeArgs := argCompiledExprs.zipIdx.map fun (argExpr, i) =>
+        YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit (4 + i * 32), argExpr])
+      -- ABI offset pointer: points to start of bytes data relative to args start
+      let bytesOffsetSlot := 4 + numStaticArgs * 32
+      let bytesOffset := (numStaticArgs + 1) * 32  -- relative offset from start of args
+      let storeOffset := YulStmt.expr (YulExpr.call "mstore" [
+        YulExpr.lit bytesOffsetSlot, YulExpr.lit bytesOffset
+      ])
+      -- Bytes length from the parameter
+      let bytesLenExpr := YulExpr.ident s!"{bytesParam}_length"
+      let bytesLenSlot := 4 + (numStaticArgs + 1) * 32
+      let storeBytesLen := YulStmt.expr (YulExpr.call "mstore" [
+        YulExpr.lit bytesLenSlot, bytesLenExpr
+      ])
+      -- Copy bytes data from calldata
+      let bytesDataSlot := 4 + (numStaticArgs + 2) * 32
+      let bytesDataOffset := YulExpr.ident s!"{bytesParam}_data_offset"
+      let copyBytes := dynamicCopyData dynamicSource
+        (YulExpr.lit bytesDataSlot) bytesDataOffset bytesLenExpr
+      -- Total calldata size: fixed header + bytes data padded to 32-byte boundary
+      -- ABI encoding requires bytes tails to be zero-padded: ceil(len/32)*32
+      let paddedBytesLen := YulExpr.call "and" [
+        YulExpr.call "add" [bytesLenExpr, YulExpr.lit 31],
+        YulExpr.call "not" [YulExpr.lit 31]
+      ]
+      let totalSize := YulExpr.call "add" [YulExpr.lit bytesDataSlot, paddedBytesLen]
+      -- call(gas(), target, 0, 0, totalSize, 0, 0) — no return data expected
+      let callExpr := YulExpr.call "call" [
+        YulExpr.call "gas" [],
+        targetExpr,
+        YulExpr.lit 0,
+        YulExpr.lit 0, totalSize,
+        YulExpr.lit 0, YulExpr.lit 0
+      ]
+      -- Revert forwarding on failure
+      let revertBlock := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__cb_success"]) [
+        YulStmt.let_ "__cb_rds" (YulExpr.call "returndatasize" []),
+        YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__cb_rds"]),
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__cb_rds"])
+      ]
+      -- Wrap in block to scope __cb_success and __cb_rds
+      pure [YulStmt.block (
+        [storeSelector] ++ storeArgs ++ [storeOffset, storeBytesLen] ++ copyBytes ++
+        [YulStmt.let_ "__cb_success" callExpr, revertBlock]
+      )]
 end
 
 private def isScalarParamType : ParamType → Bool
@@ -4221,6 +4312,7 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.externalCallWithReturn resultVar _ _ _ _ => [resultVar]
   | Stmt.safeTransfer _ _ _ => []
   | Stmt.safeTransferFrom _ _ _ _ => []
+  | Stmt.callback _ _ _ _ => []
   | _ => []
 
 private partial def collectStmtListBindNames : List Stmt → List String
@@ -4299,6 +4391,8 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement token || exprUsesArrayElement to || exprUsesArrayElement amount
   | Stmt.safeTransferFrom token fromAddr to amount =>
       exprUsesArrayElement token || exprUsesArrayElement fromAddr || exprUsesArrayElement to || exprUsesArrayElement amount
+  | Stmt.callback target _ args _ =>
+      exprUsesArrayElement target || args.any exprUsesArrayElement
   | _ => false
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=

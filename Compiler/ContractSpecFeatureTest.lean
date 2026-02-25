@@ -4571,6 +4571,122 @@ private def featureSpec : ContractSpec := {
       assertContains "safeTransferFrom checks returndatasize" rendered
         ["returndatasize()"]
 
+-- ===== Stmt.callback compilation test =====
+#eval! do
+  let callbackSpec : ContractSpec := {
+    name := "CallbackTest"
+    fields := [
+      { name := "balance", ty := FieldType.uint256 }
+    ]
+    constructor := none
+    functions := [
+      { name := "supplyWithCallback"
+        params := [
+          ⟨"assets", ParamType.uint256⟩,
+          ⟨"data", ParamType.bytes⟩
+        ]
+        returnType := none
+        body := [
+          -- Update accounting
+          Stmt.setStorage "balance" (Expr.add (Expr.storage "balance") (Expr.param "assets")),
+          -- Invoke callback: onMorphoSupply(uint256, bytes) selector = 0x7a29084c
+          Stmt.callback Expr.caller 0x7a29084c [Expr.param "assets"] "data",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile callbackSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected callback to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Check selector encoding
+      assertContains "callback compiles with correct selector" rendered
+        ["shl(224, 0x7a29084c)"]
+      -- Check call pattern
+      assertContains "callback emits call to caller" rendered
+        ["call(gas(), caller(),"]
+      -- Check bytes forwarding (calldatacopy)
+      assertContains "callback forwards bytes data" rendered
+        ["calldatacopy("]
+      -- Check revert forwarding
+      assertContains "callback has revert forwarding" rendered
+        ["iszero(__cb_success)", "returndatacopy(", "revert(0,"]
+      -- Check ABI offset pointer for bytes parameter
+      assertContains "callback stores ABI bytes offset" rendered
+        ["mstore(36,"]
+      -- Check bytes data is padded to 32-byte boundary in totalSize
+      assertContains "callback pads bytes to 32-byte boundary" rendered
+        ["and(add(data_length, 31), not(31))"]
+
+-- ===== Stmt.callback with multiple static args =====
+#eval! do
+  let multiArgCallbackSpec : ContractSpec := {
+    name := "MultiArgCallbackTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "liquidateWithCallback"
+        params := [
+          ⟨"repaid", ParamType.uint256⟩,
+          ⟨"seized", ParamType.uint256⟩,
+          ⟨"data", ParamType.bytes⟩
+        ]
+        returnType := none
+        body := [
+          -- onMorphoLiquidate(uint256 repaid, uint256 seized, bytes data)
+          Stmt.callback Expr.caller 0xbeadbeef [Expr.param "repaid", Expr.param "seized"] "data",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile multiArgCallbackSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ expected multi-arg callback to compile, got: {err}")
+  | .ok ir =>
+      let rendered := Yul.render (emitYul ir)
+      -- Check two static args at offsets 4 and 36
+      assertContains "multi-arg callback stores args" rendered
+        ["mstore(4,", "mstore(36,"]
+      -- ABI bytes offset at slot 68 (4 + 2*32) with value 96 (3*32)
+      assertContains "multi-arg callback ABI bytes offset" rendered
+        ["mstore(68, 96)"]
+      -- Bytes length at slot 100 (4 + 3*32)
+      assertContains "multi-arg callback bytes length" rendered
+        ["mstore(100,"]
+      IO.println "✓ multi-arg callback compiles correctly"
+
+-- ===== Stmt.callback validation: rejects non-bytes parameter =====
+#eval! do
+  let badCallbackSpec : ContractSpec := {
+    name := "BadCallbackTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badCallback"
+        params := [
+          ⟨"amount", ParamType.uint256⟩
+        ]
+        returnType := none
+        body := [
+          -- "amount" is uint256, not bytes — should be rejected
+          Stmt.callback Expr.caller 0x12345678 [] "amount",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile badCallbackSpec [1] with
+  | .error err =>
+      if contains err "only ParamType.bytes is supported" then
+        IO.println s!"✓ callback correctly rejects non-bytes parameter: {err}"
+      else
+        throw (IO.userError s!"✗ unexpected error for callback bad param: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ expected callback with non-bytes param to be rejected")
+
 -- rawLog with 3 topics → log3
 #eval! do
   let rawLog3Spec : ContractSpec := {
@@ -4713,6 +4829,87 @@ private def featureSpec : ContractSpec := {
       IO.println "✓ safeTransfer correctly rejected in view function"
   | .ok _ =>
       throw (IO.userError "✗ expected safeTransfer in view function to be rejected")
+
+-- ===== Stmt.callback validation: rejects array parameter =====
+#eval! do
+  let arrayCallbackSpec : ContractSpec := {
+    name := "ArrayCallbackTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "arrayCallback"
+        params := [
+          ⟨"items", ParamType.array ParamType.uint256⟩
+        ]
+        returnType := none
+        body := [
+          -- "items" is uint256[], not bytes — should be rejected
+          Stmt.callback Expr.caller 0x12345678 [] "items",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile arrayCallbackSpec [1] with
+  | .error err =>
+      if contains err "only ParamType.bytes is supported" then
+        IO.println s!"✓ callback correctly rejects array parameter: {err}"
+      else
+        throw (IO.userError s!"✗ unexpected error for callback array param: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ expected callback with array param to be rejected")
+
+-- ===== Stmt.callback validation: rejects oversized selector =====
+#eval! do
+  let bigSelectorSpec : ContractSpec := {
+    name := "BigSelectorTest"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "bigSelector"
+        params := [
+          ⟨"data", ParamType.bytes⟩
+        ]
+        returnType := none
+        body := [
+          Stmt.callback Expr.caller 0x100000000 [] "data",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile bigSelectorSpec [1] with
+  | .error err =>
+      if contains err "must be < 2^32" then
+        IO.println s!"✓ callback correctly rejects oversized selector: {err}"
+      else
+        throw (IO.userError s!"✗ unexpected error for oversized selector: {err}")
+  | .ok _ =>
+      throw (IO.userError "✗ expected callback with oversized selector to be rejected")
+
+-- ===== Stmt.callback rejects in view function =====
+#eval! do
+  let viewCallbackSpec : ContractSpec := {
+    name := "ViewCallbackReject"
+    fields := []
+    constructor := none
+    functions := [
+      { name := "badView"
+        params := [⟨"data", ParamType.bytes⟩]
+        returnType := none
+        isView := true
+        body := [
+          Stmt.callback Expr.caller 0x12345678 [] "data",
+          Stmt.stop
+        ]
+      }
+    ]
+  }
+  match compile viewCallbackSpec [1] with
+  | .error _ =>
+      IO.println "✓ callback correctly rejected in view function"
+  | .ok _ =>
+      throw (IO.userError "✗ expected callback in view function to be rejected")
 
 -- ============================================================
 -- Arithmetic helpers (#928)

@@ -540,6 +540,8 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
       exprUsesUnsupportedLowLevel token || exprUsesUnsupportedLowLevel to || exprUsesUnsupportedLowLevel amount
   | Stmt.safeTransferFrom token fromAddr to amount =>
       exprUsesUnsupportedLowLevel token || exprUsesUnsupportedLowLevel fromAddr || exprUsesUnsupportedLowLevel to || exprUsesUnsupportedLowLevel amount
+  | Stmt.callback target _ args _ =>
+      exprUsesUnsupportedLowLevel target || exprListUsesUnsupportedLowLevel args
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ | Stmt.stop =>
       false
 
@@ -785,6 +787,8 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
   | Stmt.safeTransferFrom _token _from _to _amount =>
       -- ERC20 safe transfers require linked Yul; not modeled in basic interpreter.
       none
+  | Stmt.callback _target _selector _args _bytesParam =>
+      none
 
 -- Execute a list of statements sequentially
 -- Thread both context and state through the computation
@@ -891,6 +895,8 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
               none
           | Stmt.safeTransferFrom _token _from _to _amount =>
               -- ERC20 safe transfers require linked Yul; not modeled in fuel-based interpreter.
+              none
+          | Stmt.callback _target _selector _args _bytesParam =>
               none
           | other => execStmt ctx fields paramNames externalFns state other
         match result with

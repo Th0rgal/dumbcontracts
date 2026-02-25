@@ -4858,6 +4858,16 @@ private def firstDuplicateConstructorParamName
   | none => none
   | some spec => firstDuplicateName (spec.params.map (·.name))
 
+private def firstDuplicateEventParamName
+    (events : List EventDef) : Option (String × String) :=
+  let rec goEvents : List EventDef → Option (String × String)
+    | [] => none
+    | ev :: rest =>
+        match firstDuplicateName (ev.params.map (·.name)) with
+        | some dup => some (ev.name, dup)
+        | none => goEvents rest
+  goEvents events
+
 private def dedupNatPreserve (xs : List Nat) : List Nat :=
   let rec go (seen : List Nat) : List Nat → List Nat
     | [] => []
@@ -5142,6 +5152,11 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
       pure ()
   for eventDef in spec.events do
     validateEventDef eventDef
+  match firstDuplicateEventParamName spec.events with
+  | some (evName, dup) =>
+      throw s!"Compilation error: duplicate parameter name '{dup}' in event '{evName}'"
+  | none =>
+      pure ()
   match firstDuplicateName (spec.externals.map (·.name)) with
   | some dup =>
       throw s!"Compilation error: duplicate external declaration '{dup}' in {spec.name}"

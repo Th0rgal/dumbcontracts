@@ -182,10 +182,12 @@ def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptio
 def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
   (runtimeCodeWithOptionsReport contract options).runtimeCode
 
-private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile) : List YulStmt :=
+private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile)
+    (mappingSlotScratchBase : Nat := 0) : List YulStmt :=
   let valueGuard := if contract.constructorPayable then [] else [callvalueGuard]
+  let mapping := if contract.usesMapping then [mappingSlotFuncAt mappingSlotScratchBase] else []
   let internals := internalHelpersForProfile profile contract.internalFunctions
-  valueGuard ++ internals ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
+  valueGuard ++ mapping ++ internals ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
 
 private def deployCode (contract : IRContract) : List YulStmt :=
   deployCodeWithProfile contract .semantic
@@ -197,7 +199,7 @@ def emitYul (contract : IRContract) : YulObject :=
 
 def emitYulWithOptions (contract : IRContract) (options : YulEmitOptions) : YulObject :=
   { name := contract.name
-    deployCode := deployCodeWithProfile contract options.backendProfile
+    deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
     runtimeCode := runtimeCodeWithOptions contract options }
 
 /-- Emit Yul and preserve patch-pass audit details for downstream reporting. -/
@@ -205,7 +207,7 @@ def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) 
     YulObject × Yul.PatchPassReport :=
   let runtimeReport := runtimeCodeWithOptionsReport contract options
   ({ name := contract.name
-     deployCode := deployCodeWithProfile contract options.backendProfile
+     deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
      runtimeCode := runtimeReport.runtimeCode },
    runtimeReport.patchReport)
 

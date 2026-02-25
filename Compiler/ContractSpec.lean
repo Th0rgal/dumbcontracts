@@ -63,17 +63,40 @@ inductive MappingType
   | nested (outerKey : MappingKeyType) (innerKey : MappingKeyType)  -- mapping(K1 => mapping(K2 => uint256))
   deriving Repr, BEq
 
-inductive FieldType
-  | uint256
-  | address
-  | mappingTyped (mt : MappingType)  -- Flexible mapping types (#154)
-  deriving Repr, BEq
-
 structure PackedBits where
   /-- Least-significant bit offset within the 256-bit storage word. -/
   offset : Nat
   /-- Bit width of this packed subfield. -/
   width : Nat
+  deriving Repr, BEq
+
+/-- A named member within a struct-valued mapping.
+    Each member occupies a specific word within the struct's storage region,
+    and may optionally be packed into a subregion of that word. -/
+structure StructMember where
+  /-- The member name (used in `Expr.structMember` / `Stmt.setStructMember`). -/
+  name : String
+  /-- Zero-based word offset from the struct's base slot. -/
+  wordOffset : Nat
+  /-- Optional packed subfield within the word. When `none`, the member occupies
+      the full 256-bit word. -/
+  packed : Option PackedBits := none
+  deriving Repr, BEq
+
+inductive FieldType
+  | uint256
+  | address
+  | mappingTyped (mt : MappingType)  -- Flexible mapping types (#154)
+  /-- A mapping whose value is a multi-word struct with named members.
+      `mappingStruct keyType members` defines `mapping(K => Struct)` where
+      `Struct` spans `members.map (·.wordOffset) |>.maximum + 1` words.
+      Access members via `Expr.structMember` / `Stmt.setStructMember`. -/
+  | mappingStruct (keyType : MappingKeyType) (members : List StructMember)
+  /-- A nested mapping whose inner value is a multi-word struct with named members.
+      `mappingStruct2 outerKey innerKey members` defines
+      `mapping(K1 => mapping(K2 => Struct))`.
+      Access members via `Expr.structMember2` / `Stmt.setStructMember2`. -/
+  | mappingStruct2 (outerKey : MappingKeyType) (innerKey : MappingKeyType) (members : List StructMember)
   deriving Repr, BEq
 
 structure Field where
@@ -133,6 +156,8 @@ def FieldType.toIRType : FieldType → IRType
   | uint256 => IRType.uint256
   | address => IRType.address
   | mappingTyped _ => IRType.uint256  -- All mappings return uint256
+  | mappingStruct _ _ => IRType.uint256  -- Struct members are accessed individually as uint256
+  | mappingStruct2 _ _ _ => IRType.uint256
 
 def ParamType.toIRType : ParamType → IRType
   | uint256 => IRType.uint256
@@ -209,6 +234,16 @@ inductive Expr
   | mapping2 (field : String) (key1 key2 : Expr)  -- Double mapping (#154)
   | mapping2Word (field : String) (key1 key2 : Expr) (wordOffset : Nat)  -- Double mapping + word offset
   | mappingUint (field : String) (key : Expr)  -- Uint256-keyed mapping (#154)
+  /-- Read a named member of a struct-valued mapping.
+      Resolves the member's word offset and optional packed bits at compile time.
+      `structMember field key memberName` compiles to the same Yul as
+      `mappingPackedWord field key member.wordOffset member.packed` (or
+      `mappingWord` when unpacked). -/
+  | structMember (field : String) (key : Expr) (memberName : String)
+  /-- Read a named member of a struct-valued double mapping.
+      `structMember2 field key1 key2 memberName` resolves the member's word offset
+      and packed bits from the field's struct definition. -/
+  | structMember2 (field : String) (key1 key2 : Expr) (memberName : String)
   | caller
   | contractAddress
   | chainid
@@ -295,6 +330,15 @@ inductive Stmt
   | setMapping2 (field : String) (key1 key2 : Expr) (value : Expr)  -- Double mapping write (#154)
   | setMapping2Word (field : String) (key1 key2 : Expr) (wordOffset : Nat) (value : Expr)  -- Double mapping + word offset write
   | setMappingUint (field : String) (key : Expr) (value : Expr)  -- Uint256-keyed mapping write (#154)
+  /-- Write to a named member of a struct-valued mapping.
+      Resolves the member's word offset and optional packed bits at compile time.
+      Generates the same Yul as `setMappingPackedWord` (or `setMappingWord` when
+      unpacked), including alias slot mirror writes. -/
+  | setStructMember (field : String) (key : Expr) (memberName : String) (value : Expr)
+  /-- Write to a named member of a struct-valued double mapping.
+      `setStructMember2 field key1 key2 memberName value` resolves the member's
+      word offset and packed bits from the field's struct definition. -/
+  | setStructMember2 (field : String) (key1 key2 : Expr) (memberName : String) (value : Expr)
   | require (cond : Expr) (message : String)
   | requireError (cond : Expr) (errorName : String) (args : List Expr)
   | revertError (errorName : String) (args : List Expr)
@@ -404,6 +448,8 @@ def isMapping (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any fun f =>
     match f.ty with
     | FieldType.mappingTyped _ => true
+    | FieldType.mappingStruct _ _ => true
+    | FieldType.mappingStruct2 _ _ _ => true
     | _ => false
 
 -- Helper: Is field a double mapping?
@@ -411,7 +457,20 @@ def isMapping2 (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any fun f =>
     match f.ty with
     | FieldType.mappingTyped (MappingType.nested _ _) => true
+    | FieldType.mappingStruct2 _ _ _ => true
     | _ => false
+
+-- Helper: Find struct members for a struct-valued mapping field.
+def findStructMembers (fields : List Field) (name : String) : Option (List StructMember) :=
+  fields.find? (·.name == name) |>.bind fun f =>
+    match f.ty with
+    | FieldType.mappingStruct _ members => some members
+    | FieldType.mappingStruct2 _ _ members => some members
+    | _ => none
+
+-- Helper: Look up a named struct member from the members list.
+def findStructMember (members : List StructMember) (memberName : String) : Option StructMember :=
+  members.find? (·.name == memberName)
 
 -- Keep compiler literals aligned with Uint256 semantics (mod 2^256).
 def uint256Modulus : Nat := 2 ^ 256
@@ -553,6 +612,8 @@ private partial def collectExprNames : Expr → List String
   | Expr.mapping2 field key1 key2 => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.mapping2Word field key1 key2 _ => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.mappingUint field key => field :: collectExprNames key
+  | Expr.structMember field key _ => field :: collectExprNames key
+  | Expr.structMember2 field key1 key2 _ => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.caller => []
   | Expr.contractAddress => []
   | Expr.chainid => []
@@ -623,6 +684,9 @@ private partial def collectStmtNames : Stmt → List String
   | Stmt.setMapping2Word field key1 key2 _ value =>
     field :: collectExprNames key1 ++ collectExprNames key2 ++ collectExprNames value
   | Stmt.setMappingUint field key value => field :: collectExprNames key ++ collectExprNames value
+  | Stmt.setStructMember field key _ value => field :: collectExprNames key ++ collectExprNames value
+  | Stmt.setStructMember2 field key1 key2 _ value =>
+    field :: collectExprNames key1 ++ collectExprNames key2 ++ collectExprNames value
   | Stmt.require cond _ => collectExprNames cond
   | Stmt.requireError cond errorName args => errorName :: collectExprNames cond ++ collectExprListNames args
   | Stmt.revertError errorName args => errorName :: collectExprListNames args
@@ -729,6 +793,50 @@ def compileExpr (fields : List Field)
       | none => throw s!"Compilation error: unknown mapping field '{field}'"
   | Expr.mappingUint field key => do
       compileMappingSlotRead fields field (← compileExpr fields dynamicSource key) "mappingUint"
+  | Expr.structMember field key memberName => do
+      if isMapping2 fields field then
+        throw s!"Compilation error: field '{field}' is a double mapping; use Expr.structMember2 instead of Expr.structMember"
+      match findStructMembers fields field with
+      | none => throw s!"Compilation error: field '{field}' is not a mappingStruct"
+      | some members =>
+        match findStructMember members memberName with
+        | none => throw s!"Compilation error: struct field '{field}' has no member '{memberName}'"
+        | some member =>
+          match member.packed with
+          | none =>
+            compileMappingSlotRead fields field (← compileExpr fields dynamicSource key) s!"structMember.{memberName}" member.wordOffset
+          | some packed =>
+            let slotWord ← compileMappingSlotRead fields field (← compileExpr fields dynamicSource key) s!"structMember.{memberName}" member.wordOffset
+            pure (YulExpr.call "and" [
+              YulExpr.call "shr" [YulExpr.lit packed.offset, slotWord],
+              YulExpr.lit (packedMaskNat packed)
+            ])
+  | Expr.structMember2 field key1 key2 memberName =>
+      if !isMapping2 fields field then
+        throw s!"Compilation error: field '{field}' is not a double mapping; use Expr.structMember instead of Expr.structMember2"
+      else
+        match findStructMembers fields field with
+        | none => throw s!"Compilation error: field '{field}' is not a mappingStruct"
+        | some members =>
+          match findStructMember members memberName with
+          | none => throw s!"Compilation error: struct field '{field}' has no member '{memberName}'"
+          | some member =>
+            match findFieldSlot fields field with
+            | some slot => do
+              let key1Expr ← compileExpr fields dynamicSource key1
+              let key2Expr ← compileExpr fields dynamicSource key2
+              let innerSlot := YulExpr.call "mappingSlot" [YulExpr.lit slot, key1Expr]
+              let outerSlot := YulExpr.call "mappingSlot" [innerSlot, key2Expr]
+              let finalSlot := if member.wordOffset == 0 then outerSlot else YulExpr.call "add" [outerSlot, YulExpr.lit member.wordOffset]
+              match member.packed with
+              | none =>
+                pure (YulExpr.call "sload" [finalSlot])
+              | some packed =>
+                pure (YulExpr.call "and" [
+                  YulExpr.call "shr" [YulExpr.lit packed.offset, YulExpr.call "sload" [finalSlot]],
+                  YulExpr.lit (packedMaskNat packed)
+                ])
+            | none => throw s!"Compilation error: unknown mapping field '{field}'"
   | Expr.caller => pure (YulExpr.call "caller" [])
   | Expr.contractAddress => pure (YulExpr.call "address" [])
   | Expr.chainid => pure (YulExpr.call "chainid" [])
@@ -969,6 +1077,8 @@ def fieldTypeToParamType : FieldType → ParamType
   | FieldType.uint256 => ParamType.uint256
   | FieldType.address => ParamType.address
   | FieldType.mappingTyped _ => ParamType.uint256
+  | FieldType.mappingStruct _ _ => ParamType.uint256
+  | FieldType.mappingStruct2 _ _ _ => ParamType.uint256
 
 private def resolveReturns (context : String) (legacy : Option ParamType)
     (returns : List ParamType) : Except String (List ParamType) := do
@@ -1005,9 +1115,11 @@ private partial def exprContainsCallLike (expr : Expr) : Bool :=
   | Expr.staticcall _ _ _ _ _ _ => true
   | Expr.delegatecall _ _ _ _ _ _ => true
   | Expr.externalCall _ _ | Expr.internalCall _ _ => true
-  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
+  | Expr.structMember _ key _ =>
       exprContainsCallLike key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ =>
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ =>
       exprContainsCallLike key1 || exprContainsCallLike key2
   | Expr.arrayElement _ index =>
       exprContainsCallLike index
@@ -1112,9 +1224,11 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike outOffset || exprContainsUnsafeLogicalCallLike outSize
   | Expr.externalCall _ args | Expr.internalCall _ args =>
       args.any exprContainsUnsafeLogicalCallLike
-  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
+  | Expr.structMember _ key _ =>
       exprContainsUnsafeLogicalCallLike key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ =>
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ =>
       exprContainsUnsafeLogicalCallLike key1 || exprContainsUnsafeLogicalCallLike key2
   | Expr.arrayElement _ index | Expr.returndataOptionalBoolAt index =>
       exprContainsUnsafeLogicalCallLike index
@@ -1163,9 +1277,11 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike size
   | Stmt.revertReturndata | Stmt.stop =>
       false
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
+  | Stmt.setStructMember _ key _ value =>
       exprContainsUnsafeLogicalCallLike key || exprContainsUnsafeLogicalCallLike value
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value =>
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
+  | Stmt.setStructMember2 _ key1 key2 _ value =>
       exprContainsUnsafeLogicalCallLike key1 ||
       exprContainsUnsafeLogicalCallLike key2 ||
       exprContainsUnsafeLogicalCallLike value
@@ -1280,9 +1396,11 @@ private partial def validateScopedExprIdentifiers
       | none =>
           throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayElement"
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount index
-  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
+  | Expr.structMember _ key _ =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ => do
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key1
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key2
   | Expr.call gas target value inOffset inSize outOffset outSize => do
@@ -1382,11 +1500,13 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.setStorage _ value | Stmt.return value | Stmt.require value _ => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
       pure localScope
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
+  | Stmt.setStructMember _ key _ value => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
       pure localScope
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value => do
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
+  | Stmt.setStructMember2 _ key1 key2 _ value => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key1
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key2
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
@@ -1600,7 +1720,8 @@ private partial def exprReadsStateOrEnv : Expr → Bool
   | Expr.storage _ => true
   | Expr.mapping _ _ | Expr.mappingWord _ _ _ | Expr.mappingPackedWord _ _ _ _
   | Expr.mapping2 _ _ _ | Expr.mapping2Word _ _ _ _
-  | Expr.mappingUint _ _ => true
+  | Expr.mappingUint _ _
+  | Expr.structMember _ _ _ | Expr.structMember2 _ _ _ _ => true
   | Expr.caller => true
   | Expr.contractAddress => true
   | Expr.chainid => true
@@ -1637,7 +1758,8 @@ private partial def stmtWritesState : Stmt → Bool
       exprWritesState value
   | Stmt.setStorage _ _
   | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
-  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _ => true
+  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _
+  | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _ => true
   | Stmt.require cond _ =>
       exprWritesState cond
   | Stmt.requireError cond _ args =>
@@ -1688,9 +1810,11 @@ where
         exprWritesState a
     | Expr.ite cond thenVal elseVal =>
         exprWritesState cond || exprWritesState thenVal || exprWritesState elseVal
-    | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
+    | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
+    | Expr.structMember _ key _ =>
         exprWritesState key
-    | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ =>
+    | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+    | Expr.structMember2 _ key1 key2 _ =>
         exprWritesState key1 || exprWritesState key2
     | Expr.call _ _ _ _ _ _ _ => true
     | Expr.staticcall gas target inOffset inSize outOffset outSize =>
@@ -1734,7 +1858,8 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.stop =>
       false
   | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
-  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _ => true
+  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _
+  | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _ => true
   | Stmt.ite cond thenBranch elseBranch =>
       exprReadsStateOrEnv cond || thenBranch.any stmtReadsStateOrEnv || elseBranch.any stmtReadsStateOrEnv
   | Stmt.forEach _ count body =>
@@ -2274,7 +2399,9 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
   | Expr.mapping _ key => validateInteropExpr context key
   | Expr.mappingWord _ key _ => validateInteropExpr context key
   | Expr.mappingPackedWord _ key _ _ => validateInteropExpr context key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ => do
+  | Expr.structMember _ key _ => validateInteropExpr context key
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ => do
       validateInteropExpr context key1
       validateInteropExpr context key2
   | Expr.mappingUint _ key => validateInteropExpr context key
@@ -2324,10 +2451,12 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       validateInteropExpr context size
   | Stmt.revertReturndata =>
       pure ()
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
+  | Stmt.setStructMember _ key _ value => do
       validateInteropExpr context key
       validateInteropExpr context value
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value => do
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
+  | Stmt.setStructMember2 _ key1 key2 _ value => do
       validateInteropExpr context key1
       validateInteropExpr context key2
       validateInteropExpr context value
@@ -2474,7 +2603,10 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName key
   | Expr.mappingPackedWord _ key _ _ =>
       validateInternalCallShapesInExpr functions callerName key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ => do
+  | Expr.structMember _ key _ =>
+      validateInternalCallShapesInExpr functions callerName key
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ => do
       validateInternalCallShapesInExpr functions callerName key1
       validateInternalCallShapesInExpr functions callerName key2
   | Expr.mappingUint _ key =>
@@ -2524,10 +2656,12 @@ private partial def validateInternalCallShapesInStmt
       validateInternalCallShapesInExpr functions callerName size
   | Stmt.revertReturndata =>
       pure ()
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
+  | Stmt.setStructMember _ key _ value => do
       validateInternalCallShapesInExpr functions callerName key
       validateInternalCallShapesInExpr functions callerName value
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value => do
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
+  | Stmt.setStructMember2 _ key1 key2 _ value => do
       validateInternalCallShapesInExpr functions callerName key1
       validateInternalCallShapesInExpr functions callerName key2
       validateInternalCallShapesInExpr functions callerName value
@@ -2639,7 +2773,10 @@ private partial def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context key
   | Expr.mappingPackedWord _ key _ _ =>
       validateExternalCallTargetsInExpr externals context key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ => do
+  | Expr.structMember _ key _ =>
+      validateExternalCallTargetsInExpr externals context key
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ => do
       validateExternalCallTargetsInExpr externals context key1
       validateExternalCallTargetsInExpr externals context key2
   | Expr.mappingUint _ key =>
@@ -2691,10 +2828,12 @@ private partial def validateExternalCallTargetsInStmt
       validateExternalCallTargetsInExpr externals context size
   | Stmt.revertReturndata =>
       pure ()
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value => do
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
+  | Stmt.setStructMember _ key _ value => do
       validateExternalCallTargetsInExpr externals context key
       validateExternalCallTargetsInExpr externals context value
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value => do
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
+  | Stmt.setStructMember2 _ key1 key2 _ value => do
       validateExternalCallTargetsInExpr externals context key1
       validateExternalCallTargetsInExpr externals context key2
       validateExternalCallTargetsInExpr externals context value
@@ -3377,6 +3516,107 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         (← compileExpr fields dynamicSource key)
         (← compileExpr fields dynamicSource value)
         "setMappingUint"
+  | Stmt.setStructMember field key memberName value => do
+      if isMapping2 fields field then
+        throw s!"Compilation error: field '{field}' is a double mapping; use Stmt.setStructMember2 instead of Stmt.setStructMember"
+      match findStructMembers fields field with
+      | none => throw s!"Compilation error: field '{field}' is not a mappingStruct"
+      | some members =>
+        match findStructMember members memberName with
+        | none => throw s!"Compilation error: struct field '{field}' has no member '{memberName}'"
+        | some member =>
+          match member.packed with
+          | none =>
+            compileMappingSlotWrite fields field
+              (← compileExpr fields dynamicSource key)
+              (← compileExpr fields dynamicSource value)
+              s!"setStructMember.{memberName}"
+              member.wordOffset
+          | some packed =>
+            compileMappingPackedSlotWrite fields field
+              (← compileExpr fields dynamicSource key)
+              (← compileExpr fields dynamicSource value)
+              member.wordOffset
+              packed
+              s!"setStructMember.{memberName}"
+  | Stmt.setStructMember2 field key1 key2 memberName value =>
+      if !isMapping2 fields field then
+        throw s!"Compilation error: field '{field}' is not a double mapping; use Stmt.setStructMember instead of Stmt.setStructMember2"
+      else
+        match findStructMembers fields field with
+        | none => throw s!"Compilation error: field '{field}' is not a mappingStruct"
+        | some members =>
+          match findStructMember members memberName with
+          | none => throw s!"Compilation error: struct field '{field}' has no member '{memberName}'"
+          | some member =>
+            match findFieldWriteSlots fields field with
+            | some slots => do
+                let key1Expr ← compileExpr fields dynamicSource key1
+                let key2Expr ← compileExpr fields dynamicSource key2
+                let valueExpr ← compileExpr fields dynamicSource value
+                match slots with
+                | [] =>
+                    throw s!"Compilation error: internal invariant failure: no write slots for mapping field '{field}' in setStructMember2.{memberName}"
+                | [slot] =>
+                    let innerSlot := YulExpr.call "mappingSlot" [YulExpr.lit slot, key1Expr]
+                    let outerSlot := YulExpr.call "mappingSlot" [innerSlot, key2Expr]
+                    let finalSlot := if member.wordOffset == 0 then outerSlot else YulExpr.call "add" [outerSlot, YulExpr.lit member.wordOffset]
+                    match member.packed with
+                    | none =>
+                      pure [YulStmt.expr (YulExpr.call "sstore" [finalSlot, valueExpr])]
+                    | some packed =>
+                      let maskNat := packedMaskNat packed
+                      let shiftedMaskNat := packedShiftedMaskNat packed
+                      pure [
+                        YulStmt.block [
+                          YulStmt.let_ "__compat_value" valueExpr,
+                          YulStmt.let_ "__compat_packed" (YulExpr.call "and" [YulExpr.ident "__compat_value", YulExpr.lit maskNat]),
+                          YulStmt.let_ "__compat_slot_word" (YulExpr.call "sload" [finalSlot]),
+                          YulStmt.let_ "__compat_slot_cleared" (YulExpr.call "and" [
+                            YulExpr.ident "__compat_slot_word",
+                            YulExpr.call "not" [YulExpr.lit shiftedMaskNat]
+                          ]),
+                          YulStmt.expr (YulExpr.call "sstore" [
+                            finalSlot,
+                            YulExpr.call "or" [
+                              YulExpr.ident "__compat_slot_cleared",
+                              YulExpr.call "shl" [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]
+                            ]
+                          ])
+                        ]
+                      ]
+                | _ =>
+                    pure [
+                      YulStmt.block (
+                        [YulStmt.let_ "__compat_key1" key1Expr, YulStmt.let_ "__compat_key2" key2Expr, YulStmt.let_ "__compat_value" valueExpr] ++
+                        slots.map (fun slot =>
+                          let innerSlot := YulExpr.call "mappingSlot" [YulExpr.lit slot, YulExpr.ident "__compat_key1"]
+                          let outerSlot := YulExpr.call "mappingSlot" [innerSlot, YulExpr.ident "__compat_key2"]
+                          let finalSlot := if member.wordOffset == 0 then outerSlot else YulExpr.call "add" [outerSlot, YulExpr.lit member.wordOffset]
+                          match member.packed with
+                          | none =>
+                            YulStmt.expr (YulExpr.call "sstore" [finalSlot, YulExpr.ident "__compat_value"])
+                          | some packed =>
+                            let maskNat := packedMaskNat packed
+                            let shiftedMaskNat := packedShiftedMaskNat packed
+                            YulStmt.block [
+                              YulStmt.let_ "__compat_slot_word" (YulExpr.call "sload" [finalSlot]),
+                              YulStmt.let_ "__compat_slot_cleared" (YulExpr.call "and" [
+                                YulExpr.ident "__compat_slot_word",
+                                YulExpr.call "not" [YulExpr.lit shiftedMaskNat]
+                              ]),
+                              YulStmt.expr (YulExpr.call "sstore" [
+                                finalSlot,
+                                YulExpr.call "or" [
+                                  YulExpr.ident "__compat_slot_cleared",
+                                  YulExpr.call "shl" [YulExpr.lit packed.offset,
+                                    YulExpr.call "and" [YulExpr.ident "__compat_value", YulExpr.lit maskNat]]
+                                ]
+                              ])
+                            ])
+                      )
+                    ]
+            | none => throw s!"Compilation error: unknown mapping field '{field}' in setStructMember2.{memberName}"
   | Stmt.require cond message =>
     do
       let failCond ← compileRequireFailCond fields dynamicSource cond
@@ -4197,7 +4437,9 @@ private partial def collectStmtBindNames : Stmt → List String
   -- Statements that never bind new names.
   | Stmt.assignVar _ _ | Stmt.setStorage _ _ | Stmt.return _
   | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
-  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _ | Stmt.require _ _ | Stmt.requireError _ _ _ | Stmt.revertError _ _
+  | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _
+  | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _
+  | Stmt.require _ _ | Stmt.requireError _ _ _ | Stmt.revertError _ _
   | Stmt.returnValues _ | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
   | Stmt.mstore _ _ | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata | Stmt.stop
   | Stmt.emit _ _ | Stmt.internalCall _ _ | Stmt.rawLog _ _ _ =>
@@ -4214,7 +4456,9 @@ private partial def exprUsesArrayElement : Expr → Bool
   | Expr.mapping _ key => exprUsesArrayElement key
   | Expr.mappingWord _ key _ => exprUsesArrayElement key
   | Expr.mappingPackedWord _ key _ _ => exprUsesArrayElement key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ => exprUsesArrayElement key1 || exprUsesArrayElement key2
+  | Expr.structMember _ key _ => exprUsesArrayElement key
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ => exprUsesArrayElement key1 || exprUsesArrayElement key2
   | Expr.mappingUint _ key => exprUsesArrayElement key
   | Expr.call gas target value inOffset inSize outOffset outSize =>
       exprUsesArrayElement gas || exprUsesArrayElement target || exprUsesArrayElement value ||
@@ -4270,9 +4514,11 @@ private partial def stmtUsesArrayElement : Stmt → Bool
       exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
   | Stmt.returndataCopy destOffset sourceOffset size =>
       exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
+  | Stmt.setStructMember _ key _ value =>
       exprUsesArrayElement key || exprUsesArrayElement value
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value =>
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
+  | Stmt.setStructMember2 _ key1 key2 _ value =>
       exprUsesArrayElement key1 || exprUsesArrayElement key2 || exprUsesArrayElement value
   | Stmt.ite cond thenBranch elseBranch =>
       exprUsesArrayElement cond || thenBranch.any stmtUsesArrayElement || elseBranch.any stmtUsesArrayElement
@@ -4591,8 +4837,51 @@ private def firstMappingPackedBits (fields : List Field) :
     | f :: rest =>
         match f.ty, f.packedBits with
         | FieldType.mappingTyped _, some _ => some f.name
+        | FieldType.mappingStruct _ _, some _ => some f.name
+        | FieldType.mappingStruct2 _ _ _, some _ => some f.name
         | _, _ => go rest
   go fields
+
+/-- Validate struct member definitions within a mappingStruct/mappingStruct2 field.
+    Checks: (1) no duplicate member names, (2) packed ranges are valid,
+    (3) no conflicting members sharing the same word offset:
+        full-word with anything, or overlapping packed ranges. -/
+private def validateStructMembers (fieldName : String) (members : List StructMember) : Except String Unit := do
+  -- Check for duplicate member names
+  match firstDuplicateName (members.map (·.name)) with
+  | some dup =>
+      throw s!"Compilation error: struct field '{fieldName}' has duplicate member name '{dup}'"
+  | none =>
+      pure ()
+  -- Check packed range validity for each member
+  for m in members do
+    match m.packed with
+    | none => pure ()
+    | some packed =>
+        if !packedBitsValid packed then
+          throw s!"Compilation error: struct field '{fieldName}' member '{m.name}' has invalid packed range offset={packed.offset} width={packed.width}. Require 0 < width <= 256, offset < 256, and offset + width <= 256."
+  -- Check for same-word conflicts:
+  -- - full word (`packed = none`) conflicts with any member at same wordOffset
+  -- - packed members at same wordOffset must not overlap
+  let rec firstSameWordConflict (seen : List StructMember) : List StructMember → Option (StructMember × StructMember)
+    | [] => none
+    | m :: rest =>
+        match seen.find? (fun prev => prev.wordOffset == m.wordOffset && packedSlotsConflict prev.packed m.packed) with
+        | some prev => some (prev, m)
+        | none => firstSameWordConflict (m :: seen) rest
+  match firstSameWordConflict [] members with
+  | some (a, b) =>
+      throw s!"Compilation error: struct field '{fieldName}' has overlapping/conflicting members '{a.name}' and '{b.name}' at wordOffset {a.wordOffset}."
+  | none =>
+      pure ()
+
+/-- Find the first struct field with invalid member definitions (if any). -/
+private def firstInvalidStructField (fields : List Field) : Except String Unit := do
+  for f in fields do
+    match f.ty with
+    | FieldType.mappingStruct _ members => validateStructMembers f.name members
+    | FieldType.mappingStruct2 _ _ members => validateStructMembers f.name members
+    | _ => pure ()
 
 private def firstFieldWriteSlotConflict (fields : List Field) : Option (Nat × String × String) :=
   let rec go (seen : List (Nat × String × Option PackedBits)) (idx : Nat) :
@@ -4729,6 +5018,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
       throw s!"Compilation error: field '{fieldName}' is a mapping and cannot declare packedBits in {spec.name} ({issue623Ref}). Packed subfields are only supported for value-word fields."
   | none =>
       pure ()
+  firstInvalidStructField spec.fields
   match firstFieldWriteSlotConflict fields with
   | some (slot, existingField, conflictingField) =>
       throw s!"Compilation error: storage slot {slot} has overlapping write ranges for '{existingField}' and '{conflictingField}' in {spec.name} ({issue623Ref}). Ensure full-slot writes are unique and packed bit ranges are disjoint per slot."

@@ -189,6 +189,9 @@ private def packedBitsValid (packed : PackedBits) : Bool :=
   packed.offset < 256 &&
   packed.offset + packed.width <= 256
 
+private def wordIndexedKey (key wordOffset : Nat) : Nat :=
+  (key % modulus) + wordOffset * modulus
+
 def readStorageField (storage : SpecStorage) (fields : List Field) (fieldName : String) : Nat :=
   match findFieldWithResolvedSlot fields fieldName with
   | some (field, slot) =>
@@ -345,6 +348,39 @@ def evalExpr (ctx : EvalContext) (storage : SpecStorage) (fields : List Field) (
           let key2Val := evalExpr ctx storage fields paramNames externalFns key2
           storage.getMapping2 baseSlot key1Val ((key2Val + wordOffset) % modulus)
       | none => 0
+  | Expr.structMember fieldName key memberName =>
+      match findStructMembers fields fieldName with
+      | none => 0
+      | some members =>
+        match findStructMember members memberName with
+        | none => 0
+        | some member =>
+          match fields.findIdx? (·.name == fieldName) with
+          | some idx =>
+              let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
+              let keyVal := evalExpr ctx storage fields paramNames externalFns key
+              let word := storage.getMapping baseSlot (wordIndexedKey keyVal member.wordOffset)
+              match member.packed with
+              | none => word
+              | some packed => Nat.land (word >>> packed.offset) (packedMaskNat packed)
+          | none => 0
+  | Expr.structMember2 fieldName key1 key2 memberName =>
+      match findStructMembers fields fieldName with
+      | none => 0
+      | some members =>
+        match findStructMember members memberName with
+        | none => 0
+        | some member =>
+          match fields.findIdx? (·.name == fieldName) with
+          | some idx =>
+              let baseSlot := (fields[idx]?.map (fun f => f.slot.getD idx)).getD idx
+              let key1Val := evalExpr ctx storage fields paramNames externalFns key1
+              let key2Val := evalExpr ctx storage fields paramNames externalFns key2
+              let word := storage.getMapping2 baseSlot key1Val (wordIndexedKey key2Val member.wordOffset)
+              match member.packed with
+              | none => word
+              | some packed => Nat.land (word >>> packed.offset) (packedMaskNat packed)
+          | none => 0
   | Expr.caller => ctx.sender.val
   | Expr.contractAddress =>
       -- Contract address is not modeled in the scalar interpreter.
@@ -501,9 +537,11 @@ def exprUsesUnsupportedLowLevel : Expr → Bool
   | Expr.delegatecall _ _ _ _ _ _ => true
   | Expr.returndataSize => true
   | Expr.returndataOptionalBoolAt _ => true
-  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key =>
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
+  | Expr.structMember _ key _ =>
       exprUsesUnsupportedLowLevel key
-  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _ =>
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2
   | Expr.externalCall _ args | Expr.internalCall _ args =>
       exprListUsesUnsupportedLowLevel args
@@ -535,9 +573,11 @@ def stmtUsesUnsupportedLowLevel : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       exprUsesUnsupportedLowLevel value
-  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value =>
+  | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
+  | Stmt.setStructMember _ key _ value =>
       exprUsesUnsupportedLowLevel key || exprUsesUnsupportedLowLevel value
-  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value =>
+  | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
+  | Stmt.setStructMember2 _ key1 key2 _ value =>
       exprUsesUnsupportedLowLevel key1 || exprUsesUnsupportedLowLevel key2 || exprUsesUnsupportedLowLevel value
   | Stmt.requireError cond _ args =>
       exprUsesUnsupportedLowLevel cond || exprListUsesUnsupportedLowLevel args
@@ -596,6 +636,10 @@ these features, use `execStmtsFuel` / `execFunctionFuel`.
 structure ExecState where
   storage : SpecStorage
   returnValue : Option Nat
+  /-- All return values from multi-return statements (Stmt.returnValues).
+      Used by fuel-based internalCallAssign to bind multiple results.
+      Empty list when unused; populated by returnValues/return. -/
+  allReturnValues : List Nat := []
   halted : Bool
   deriving Repr
 
@@ -735,6 +779,75 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
               some (ctx, { state with storage := storage' })
       | none => none
 
+  | Stmt.setStructMember fieldName keyExpr memberName valueExpr =>
+      match findStructMembers fields fieldName with
+      | none => none
+      | some members =>
+        match findStructMember members memberName with
+        | none => none
+        | some member =>
+          match fields.findIdx? (·.name == fieldName) with
+          | some idx =>
+              match fields[idx]? with
+              | none => none
+              | some f =>
+                  let baseSlot := f.slot.getD idx
+                  let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
+                  let keyVal := evalExpr ctx state.storage fields paramNames externalFns keyExpr
+                  let key := wordIndexedKey keyVal member.wordOffset
+                  let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
+                  match member.packed with
+                  | none =>
+                      let storage' := writeSlots.foldl (fun acc writeSlot => acc.setMapping writeSlot key value) state.storage
+                      some (ctx, { state with storage := storage' })
+                  | some packed =>
+                      let packedValue := Nat.land value (packedMaskNat packed)
+                      let shiftedMask := packedShiftedMaskNat packed
+                      let clearedMask := wordMask - shiftedMask
+                      let storage' := writeSlots.foldl (fun acc writeSlot =>
+                        let slotWord := acc.getMapping writeSlot key
+                        let slotCleared := Nat.land slotWord clearedMask
+                        let packedWord := packedValue <<< packed.offset
+                        acc.setMapping writeSlot key (Nat.lor slotCleared packedWord)
+                      ) state.storage
+                      some (ctx, { state with storage := storage' })
+          | none => none
+
+  | Stmt.setStructMember2 fieldName key1Expr key2Expr memberName valueExpr =>
+      match findStructMembers fields fieldName with
+      | none => none
+      | some members =>
+        match findStructMember members memberName with
+        | none => none
+        | some member =>
+          match fields.findIdx? (·.name == fieldName) with
+          | some idx =>
+              match fields[idx]? with
+              | none => none
+              | some f =>
+                  let baseSlot := f.slot.getD idx
+                  let writeSlots := dedupNatPreserve (baseSlot :: f.aliasSlots)
+                  let key1 := evalExpr ctx state.storage fields paramNames externalFns key1Expr
+                  let key2Raw := evalExpr ctx state.storage fields paramNames externalFns key2Expr
+                  let key2 := wordIndexedKey key2Raw member.wordOffset
+                  let value := evalExpr ctx state.storage fields paramNames externalFns valueExpr
+                  match member.packed with
+                  | none =>
+                      let storage' := writeSlots.foldl (fun acc writeSlot => acc.setMapping2 writeSlot key1 key2 value) state.storage
+                      some (ctx, { state with storage := storage' })
+                  | some packed =>
+                      let packedValue := Nat.land value (packedMaskNat packed)
+                      let shiftedMask := packedShiftedMaskNat packed
+                      let clearedMask := wordMask - shiftedMask
+                      let storage' := writeSlots.foldl (fun acc writeSlot =>
+                        let slotWord := acc.getMapping2 writeSlot key1 key2
+                        let slotCleared := Nat.land slotWord clearedMask
+                        let packedWord := packedValue <<< packed.offset
+                        acc.setMapping2 writeSlot key1 key2 (Nat.lor slotCleared packedWord)
+                      ) state.storage
+                      some (ctx, { state with storage := storage' })
+          | none => none
+
   | Stmt.require condExpr _message =>
       let cond := evalExpr ctx state.storage fields paramNames externalFns condExpr
       if cond ≠ 0 then some (ctx, state) else none
@@ -748,11 +861,12 @@ def execStmt (ctx : EvalContext) (fields : List Field) (paramNames : List String
 
   | Stmt.return expr =>
       let value := evalExpr ctx state.storage fields paramNames externalFns expr
-      some (ctx, { state with returnValue := some value, halted := true })
+      some (ctx, { state with returnValue := some value, allReturnValues := [value], halted := true })
 
   | Stmt.returnValues values =>
-      let first := (evalExprs ctx state.storage fields paramNames externalFns values).head?
-      some (ctx, { state with returnValue := first, halted := true })
+      let vals := evalExprs ctx state.storage fields paramNames externalFns values
+      let first := vals.head?
+      some (ctx, { state with returnValue := first, allReturnValues := vals, halted := true })
 
   | Stmt.returnArray _name =>
       -- The spec interpreter models scalar returnValue only.
@@ -919,9 +1033,34 @@ def execStmtsFuel (fuel : Nat) (ctx : EvalContext) (fields : List Field) (paramN
                   | some (_, calleeResult) =>
                       -- Propagate only storage and events; restore caller's halted/return state
                       some (ctx, { state with storage := calleeResult.storage })
-          | Stmt.internalCallAssign _names _functionName _args =>
-              -- Fuel-based interpreter does not model tuple-valued internal call bindings yet.
-              none
+          | Stmt.internalCallAssign names functionName args =>
+              if args.any exprUsesUnsupportedLowLevel then
+                none
+              else
+              match functions.find? (·.name == functionName) with
+              | none => none
+              | some func =>
+                  let argVals := evalExprs ctx state.storage fields paramNames externalFns args
+                  let calleeParamNames := func.params.map (·.name)
+                  let calleeCtx : EvalContext := {
+                    ctx with
+                    params := argVals
+                    paramTypes := func.params.map (·.ty)
+                    localVars := []
+                  }
+                  let calleeState := { state with halted := false, returnValue := none, allReturnValues := [] }
+                  match execStmtsFuel fuel' calleeCtx fields calleeParamNames externalFns functions calleeState func.body with
+                  | none => none
+                  | some (_, calleeResult) =>
+                      -- Use allReturnValues populated by Stmt.return / Stmt.returnValues
+                      let returnVals := calleeResult.allReturnValues
+                      -- Pad with zeros if fewer return values than names
+                      let paddedVals := returnVals ++ List.replicate (names.length - returnVals.length) 0
+                      -- Bind each name to its corresponding return value
+                      let newVars := (names.zip paddedVals).foldl
+                        (fun acc (name, val) => (name, val) :: acc.filter (·.1 ≠ name))
+                        ctx.localVars
+                      some ({ ctx with localVars := newVars }, { state with storage := calleeResult.storage })
           | Stmt.externalCallBind _resultVars _externalName _args =>
               -- External call bindings require linked Yul; not modeled in fuel-based interpreter.
               none

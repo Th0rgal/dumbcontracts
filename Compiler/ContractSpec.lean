@@ -393,41 +393,26 @@ structure ContractSpec where
 Automatically compile a ContractSpec to IRContract.
 -/
 
--- Helper: Find field slot number
+-- Helper: Look up a field by name, resolving its canonical slot, and apply
+-- a caller-supplied projection to the matched field and resolved slot.
+private def findFieldByName (fields : List Field) (name : String)
+    (extract : Field → Nat → α) : Option α :=
+  let rec go (remaining : List Field) (idx : Nat) : Option α :=
+    match remaining with
+    | [] => none
+    | f :: rest =>
+        if f.name == name then some (extract f (f.slot.getD idx))
+        else go rest (idx + 1)
+  go fields 0
+
 def findFieldSlot (fields : List Field) (name : String) : Option Nat :=
-  let rec go (remaining : List Field) (idx : Nat) : Option Nat :=
-    match remaining with
-    | [] => none
-    | f :: rest =>
-        if f.name == name then
-          some (f.slot.getD idx)
-        else
-          go rest (idx + 1)
-  go fields 0
+  findFieldByName fields name fun _ slot => slot
 
--- Helper: Find field plus resolved canonical slot.
 def findFieldWithResolvedSlot (fields : List Field) (name : String) : Option (Field × Nat) :=
-  let rec go (remaining : List Field) (idx : Nat) : Option (Field × Nat) :=
-    match remaining with
-    | [] => none
-    | f :: rest =>
-        if f.name == name then
-          some (f, f.slot.getD idx)
-        else
-          go rest (idx + 1)
-  go fields 0
+  findFieldByName fields name fun f slot => (f, slot)
 
--- Helper: Find all write slots for a field (canonical slot + mirror aliases).
 def findFieldWriteSlots (fields : List Field) (name : String) : Option (List Nat) :=
-  let rec go (remaining : List Field) (idx : Nat) : Option (List Nat) :=
-    match remaining with
-    | [] => none
-    | f :: rest =>
-        if f.name == name then
-          some ((f.slot.getD idx) :: f.aliasSlots)
-        else
-          go rest (idx + 1)
-  go fields 0
+  findFieldByName fields name fun f slot => slot :: f.aliasSlots
 
 -- Helper: Is field a mapping?
 def isMapping (fields : List Field) (name : String) : Bool :=

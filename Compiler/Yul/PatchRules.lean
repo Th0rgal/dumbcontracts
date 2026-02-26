@@ -712,8 +712,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     stmtRules := foundationStmtPatchPack
     blockRules := foundationBlockPatchPack
     objectRules := foundationObjectPatchPack ++
-      [ solcCompatOutlineDispatchHelpersRule
-      , solcCompatCanonicalizeInternalFunNamesRule
+      [ solcCompatCanonicalizeInternalFunNamesRule
       , solcCompatDedupeEquivalentHelpersRule
       , solcCompatPruneUnreachableHelpersRule ] }
 
@@ -1131,7 +1130,7 @@ example :
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
 example :
     solcCompatProofAllowlist.any
-      (fun proofRef => proofRef = solcCompatOutlineDispatchHelpersProofRef) = true := by
+      (fun proofRef => proofRef = solcCompatOutlineDispatchHelpersProofRef) = false := by
   native_decide
 
 /-- Smoke test: dispatch cases are outlined into top-level `fun_*` helper defs. -/
@@ -1154,7 +1153,7 @@ example :
       { enabled := true
         maxIterations := 2
         rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
+        requiredProofRefs := solcCompatProofAllowlist ++ [solcCompatOutlineDispatchHelpersProofRef] }
       []
       []
       []
@@ -1195,7 +1194,7 @@ example :
       { enabled := true
         maxIterations := 2
         rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
+        requiredProofRefs := solcCompatProofAllowlist ++ [solcCompatOutlineDispatchHelpersProofRef] }
       []
       []
       []

@@ -186,8 +186,9 @@ private def profileSortsInternalHelpers (profile : BackendProfile) : Bool :=
 
 private def profileOutlinesDispatchHelpers (profile : BackendProfile) : Bool :=
   match profile with
-  | .solidityParity => true
-  | _ => false
+  | .semantic => false
+  | .solidityParityOrdering => false
+  | .solidityParity => false
 
 private def internalHelperName? (stmt : YulStmt) : Option String :=
   match stmt with
@@ -420,7 +421,7 @@ example :
     hasObjectRule = true := by
   native_decide
 
-/-- Regression guard: solidity parity profile outlines dispatch cases into `fun_*` helper defs. -/
+/-- Regression guard: solidity parity profile keeps dispatch inlined in switch cases. -/
 example :
     let contract : IRContract :=
       { name := "DispatchOutlineRegression"
@@ -442,7 +443,7 @@ example :
         | .funcDef "fun_ping" [] [] _ => true
         | _ => false)
     let switchCallsHelper := runtime.any (stmtContainsSwitchCaseCall "fun_ping")
-    hasFunHelper && switchCallsHelper := by
+    (!hasFunHelper) && (!switchCallsHelper) := by
   native_decide
 
 end Compiler

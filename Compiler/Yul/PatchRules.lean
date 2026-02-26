@@ -535,6 +535,86 @@ private def outlineRuntimeDispatchHelpers (stmts : List YulStmt) : List YulStmt 
   else
     (insertTopLevelHelpersAfterPrefix rewritten helperDefs, helperDefs.length)
 
+private def topLevelZeroArityFunctionBodies (stmts : List YulStmt) : List (String × List YulStmt) :=
+  stmts.foldr
+    (fun stmt acc =>
+      match stmt with
+      | .funcDef name [] [] body => (name, body) :: acc
+      | _ => acc)
+    []
+
+private def helperBodyForName? (defs : List (String × List YulStmt)) (name : String) : Option (List YulStmt) :=
+  match defs.find? (fun entry => entry.1 = name) with
+  | some entry => some entry.2
+  | none => none
+
+mutual
+
+private partial def inlineDispatchWrapperCallsInStmt
+    (helpers : List (String × List YulStmt))
+    (stmt : YulStmt) : YulStmt × Nat
+  := match stmt with
+    | .comment text => (.comment text, 0)
+    | .let_ name value => (.let_ name value, 0)
+    | .letMany names value => (.letMany names value, 0)
+    | .assign name value => (.assign name value, 0)
+    | .expr value => (.expr value, 0)
+    | .leave => (.leave, 0)
+    | .if_ cond body =>
+        let (body', rewritten) := inlineDispatchWrapperCallsInStmts helpers body
+        (.if_ cond body', rewritten)
+    | .for_ init cond post body =>
+        let (init', initRewrites) := inlineDispatchWrapperCallsInStmts helpers init
+        let (post', postRewrites) := inlineDispatchWrapperCallsInStmts helpers post
+        let (body', bodyRewrites) := inlineDispatchWrapperCallsInStmts helpers body
+        (.for_ init' cond post' body', initRewrites + postRewrites + bodyRewrites)
+    | .switch expr cases default =>
+        let rewriteCase := fun (entry : Nat × List YulStmt) =>
+          let (tag, body) := entry
+          match body with
+          | [.expr (.call helperName [])] =>
+              if helperName.startsWith "fun_" then
+                match helperBodyForName? helpers helperName with
+                | some helperBody => ((tag, helperBody), 1)
+                | none => ((tag, body), 0)
+              else
+                ((tag, body), 0)
+          | _ =>
+              let (body', rewritten) := inlineDispatchWrapperCallsInStmts helpers body
+              ((tag, body'), rewritten)
+        let rewrittenCases := cases.map rewriteCase
+        let cases' := rewrittenCases.map Prod.fst
+        let caseRewriteCount := rewrittenCases.foldl (fun acc entry => acc + entry.snd) 0
+        let (default', defaultRewriteCount) :=
+          match default with
+          | some body =>
+              let (body', rewritten) := inlineDispatchWrapperCallsInStmts helpers body
+              (some body', rewritten)
+          | none => (none, 0)
+        (.switch expr cases' default', caseRewriteCount + defaultRewriteCount)
+    | .block stmts =>
+        let (stmts', rewritten) := inlineDispatchWrapperCallsInStmts helpers stmts
+        (.block stmts', rewritten)
+    | .funcDef name params rets body =>
+        let (body', rewritten) := inlineDispatchWrapperCallsInStmts helpers body
+        (.funcDef name params rets body', rewritten)
+
+private partial def inlineDispatchWrapperCallsInStmts
+    (helpers : List (String × List YulStmt))
+    (stmts : List YulStmt) : List YulStmt × Nat
+  := match stmts with
+    | [] => ([], 0)
+    | stmt :: rest =>
+        let (stmt', rewrittenHead) := inlineDispatchWrapperCallsInStmt helpers stmt
+        let (rest', rewrittenTail) := inlineDispatchWrapperCallsInStmts helpers rest
+        (stmt' :: rest', rewrittenHead + rewrittenTail)
+
+end
+
+private def inlineRuntimeDispatchWrapperCalls (stmts : List YulStmt) : List YulStmt × Nat :=
+  let helpers := topLevelZeroArityFunctionBodies stmts
+  inlineDispatchWrapperCallsInStmts helpers stmts
+
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
 
@@ -545,6 +625,10 @@ def solcCompatCanonicalizeInternalFunNamesProofRef : String :=
 /-- Deduplicate top-level helper definitions that are structurally equivalent. -/
 def solcCompatDedupeEquivalentHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_dedupe_equivalent_helpers_preserves"
+
+/-- Inline dispatch wrapper case calls to top-level zero-arity `fun_*` helper definitions. -/
+def solcCompatInlineDispatchWrapperCallsProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_inline_dispatch_wrapper_calls_preserves"
 
 /-- Outline switch dispatch case bodies into explicit top-level `fun_*` helpers. -/
 def solcCompatOutlineDispatchHelpersProofRef : String :=
@@ -653,6 +737,27 @@ def solcCompatDedupeEquivalentHelpersRule : ObjectPatchRule :=
       else
         some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
 
+/-- Inline runtime switch case bodies of the form `fun_X()` to the corresponding zero-arity helper body.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatInlineDispatchWrapperCallsRule : ObjectPatchRule :=
+  { patchName := "solc-compat-inline-dispatch-wrapper-calls"
+    pattern := "runtime switch case body with a single call to `fun_*`"
+    rewrite := "replace case body with the referenced top-level zero-arity helper body"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "case body must be exactly one statement: `fun_*()` call"
+      , "target helper must be a top-level zero-arity definition in the same object" ]
+    proofId := solcCompatInlineDispatchWrapperCallsProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 212
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := inlineRuntimeDispatchWrapperCalls obj.runtimeCode
+      if rewritten = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -713,6 +818,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     blockRules := foundationBlockPatchPack
     objectRules := foundationObjectPatchPack ++
       [ solcCompatCanonicalizeInternalFunNamesRule
+      , solcCompatInlineDispatchWrapperCallsRule
       , solcCompatDedupeEquivalentHelpersRule
       , solcCompatPruneUnreachableHelpersRule ] }
 
@@ -1127,6 +1233,12 @@ example :
       (fun proofRef => proofRef = solcCompatDedupeEquivalentHelpersProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains dispatch-wrapper inlining proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatInlineDispatchWrapperCallsProofRef) = true := by
+  native_decide
+
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -1206,6 +1318,82 @@ example :
           [ .if_ (.lit 1)
               [ .switch (.ident "__selector")
                   [(1, [.comment "accrueInterest()", .leave])]
+                  none
+              ]
+          ]
+      ], [] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: dispatch wrapper calls are inlined and wrapper helper becomes pruneable. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_ping" [] [] [.leave]
+          , .block
+              [ .if_ (.lit 1)
+                  [ .switch (.ident "__selector")
+                      [(1, [.expr (.call "fun_ping" [])])]
+                      none
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 4
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatInlineDispatchWrapperCallsRule, solcCompatPruneUnreachableHelpersRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .block
+          [ .if_ (.lit 1)
+              [ .switch (.ident "__selector")
+                  [(1, [.leave])]
+                  none
+              ]
+          ]
+      ],
+      ["solc-compat-inline-dispatch-wrapper-calls", "solc-compat-prune-unreachable-helpers"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: dispatch wrapper inlining skips non-zero-arity helpers. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_ping" ["arg0"] [] [.leave]
+          , .block
+              [ .if_ (.lit 1)
+                  [ .switch (.ident "__selector")
+                      [(1, [.expr (.call "fun_ping" [])])]
+                      none
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatInlineDispatchWrapperCallsRule]
+      input
+    (match report.patched.runtimeCode, report.manifest with
+    | [ .funcDef "fun_ping" ["arg0"] [] [.leave]
+      , .block
+          [ .if_ (.lit 1)
+              [ .switch (.ident "__selector")
+                  [(1, [.expr (.call "fun_ping" [])])]
                   none
               ]
           ]

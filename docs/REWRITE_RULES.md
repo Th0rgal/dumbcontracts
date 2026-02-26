@@ -80,6 +80,28 @@ Still planned:
 3. Blast-radius tests (no unrelated subtree mutation).
 4. Differential execution backstop between pre/post rewrite artifacts.
 
+## Efficient Authoring Strategy (Yul Identity)
+
+Use this rule-authoring order to maximize parity progress per change:
+
+1. Target the active hash mismatch function first (currently `fun_accrueInterest#0`) before adding isolated helper-family rewrites elsewhere.
+2. Prefer structural normalization rewrites that collapse multiple downstream helper gaps in one pass over micro-rules for single helper names.
+3. Add helper materialization only as a consequence of normalized callsites, and only when referenced + absent.
+4. Keep rewrites function-scoped and shape-guarded; avoid broad global rewrites that can introduce non-`solc` helper drift.
+5. Preserve `onlyInVerity = 0` as a hard invariant for each parity step.
+
+When choosing the next rule, rank candidates by:
+
+1. Expected reduction in `hashMismatch` for the active target function.
+2. Number of `onlyInSolidity` entries likely to close with one deterministic rewrite.
+3. Blast-radius risk (prefer narrow matcher/scope and auditable proof obligations).
+
+Avoid:
+
+1. Broad runtime pruning in `solc-compat-v0` that removes Solidity-emitted helper families.
+2. Outlining/introducing helper families not emitted by `solc` for the pinned tuple.
+3. Unsupported-manifest edits without a corresponding proof-gated rewrite + tests.
+
 ## Related
 
 - [`PARITY_PACKS.md`](PARITY_PACKS.md)

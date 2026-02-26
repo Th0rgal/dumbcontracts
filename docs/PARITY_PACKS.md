@@ -80,6 +80,26 @@ Example: `solc-0.8.27-o200-viair-false-evm-shanghai`
 4. Prove per-rule semantic preservation and pack composition.
 5. Gate in CI and publish support matrix.
 
+## Recommended Execution Loop (Efficient Path)
+
+For each parity iteration, apply this loop in order:
+
+1. Compute machine-readable gap report and identify the top hash mismatch function.
+2. Author one proof-gated, deterministic rewrite that normalizes a high-impact pattern inside that function.
+3. Add/adjust rule smoke tests for positive match + rewrite.
+4. Add/adjust rule smoke tests for negative/out-of-scope behavior.
+5. Add/adjust rule smoke tests for wrapper-safe behavior.
+6. Add/adjust rule smoke tests for helper insertion only when referenced + absent.
+7. Re-run identity report and update unsupported manifest only for residual, explicitly-tracked gaps.
+8. Stop if `onlyInVerity != 0`; fix drift before proceeding.
+
+Milestone gates:
+
+1. Gate A: eliminate active function hash mismatch (`hashMismatch = 0` for current target function set).
+2. Gate B: keep `onlyInVerity = 0` across all parity steps.
+3. Gate C: monotonically reduce `onlyInSolidity`.
+4. Gate D: enforce unsupported manifest consistency in CI (`unsupportedManifestOk = true`).
+
 ## CI Expectations
 
 1. Pack selection must be explicit in build/test command.

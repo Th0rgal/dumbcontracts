@@ -195,9 +195,10 @@ private structure EmitObjectWithOptionsReport where
 private def emitYulWithOptionsInternal
     (contract : IRContract)
     (options : YulEmitOptions) : EmitObjectWithOptionsReport :=
+  let rewriteBundle := Yul.rewriteBundleForId options.patchConfig.rewriteBundleId
   let requiredProofRefs :=
     if options.patchConfig.requiredProofRefs.isEmpty then
-      Yul.foundationProofAllowlist
+      Yul.rewriteProofAllowlistForId rewriteBundle.id
     else
       options.patchConfig.requiredProofRefs
   let patchConfig :=
@@ -208,9 +209,9 @@ private def emitYulWithOptionsInternal
   -- reserved for explicit object-level rules.
   let runtimePatchReport := Yul.runPatchPassWithBlocks
     patchConfig
-    Yul.foundationExprPatchPack
-    Yul.foundationStmtPatchPack
-    Yul.foundationBlockPatchPack
+    rewriteBundle.exprRules
+    rewriteBundle.stmtRules
+    rewriteBundle.blockRules
     base.runtimeCode
   let runtimePatched := { base with runtimeCode := runtimePatchReport.patched }
   let objectReport := Yul.runPatchPassWithObjects
@@ -218,7 +219,7 @@ private def emitYulWithOptionsInternal
     []
     []
     []
-    Yul.foundationObjectPatchPack
+    rewriteBundle.objectRules
     runtimePatched
   { patched := objectReport.patched
     runtimePatchReport := runtimePatchReport }

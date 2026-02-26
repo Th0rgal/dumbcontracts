@@ -19,7 +19,9 @@ Partially implemented:
 7. `--parity-pack` now propagates into patch execution context (`PatchPassConfig.packId`), and rules can gate activation with `packAllowlist`.
 8. Patch execution now supports proof registry enforcement (`PatchPassConfig.requiredProofRefs`), and codegen wires the shipped foundation packs to an explicit allowlist (`foundationProofAllowlist`).
 9. Parity packs now carry explicit proof-composition metadata (`compositionProofRef`, `requiredProofRefs`) with fail-closed validation at `--parity-pack` selection time.
-10. Pack proof registries now propagate through CLI → codegen patch config, with codegen defaulting to `foundationProofAllowlist` only when no explicit registry is provided.
+10. Pack proof registries now propagate through CLI → codegen patch config, with codegen defaulting to the selected rewrite bundle's proof allowlist when no explicit registry is provided.
+11. Parity packs now carry `rewriteBundleId`, and `--parity-pack` selection fails closed unless that bundle exists and the pack proof registry is a deduped subset of the bundle's proof allowlist.
+12. Shipped rewrite bundles now include a baseline `foundation` bundle and an explicit opt-in `solc-compat-v0` bundle boundary for future compatibility-only rewrites.
 
 Not implemented yet:
 1. identity checker and unsupported manifest workflow.
@@ -47,10 +49,11 @@ Example: `solc-0.8.27-o200-viair-false-evm-shanghai`
 ## Proposed Pack Contents
 
 1. `compat`: pinned tuple metadata (solc commit/version, flags, EVM version).
-2. `rules`: ordered typed rewrite rule IDs.
-3. `canonicalization`: deterministic naming/ordering/layout policy.
-4. `proofRefs`: theorem references for each rule and pack composition.
-5. `unsupported`: explicit list of known non-identity constructs.
+2. `rewriteBundleId`: selected typed rewrite bundle.
+3. `rules`: ordered typed rewrite rule IDs.
+4. `canonicalization`: deterministic naming/ordering/layout policy.
+5. `proofRefs`: theorem references for each rule and pack composition.
+6. `unsupported`: explicit list of known non-identity constructs.
 
 ## Lifecycle
 

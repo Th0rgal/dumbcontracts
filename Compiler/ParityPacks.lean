@@ -20,6 +20,8 @@ structure ParityPack where
   backendProfile : BackendProfile
   forcePatches : Bool
   defaultPatchMaxIterations : Nat
+  /-- Rewrite bundle ID selected for this parity tuple. -/
+  rewriteBundleId : String
   /-- Pack-level composition theorem for the active rewrite set. -/
   compositionProofRef : String
   /-- Activation-time proof registry used by this pack's rewrite policy. -/
@@ -39,13 +41,16 @@ private def isDeduped (xs : List String) : Bool :=
 private def containsAll (superset subset : List String) : Bool :=
   subset.all (fun item => superset.any (fun present => present = item))
 
-/-- Fail-closed pack-level proof composition check for the shipped foundation rewrite set. -/
+/-- Fail-closed pack-level proof composition check for the selected rewrite bundle. -/
 def ParityPack.proofCompositionValid (pack : ParityPack) : Bool :=
-  !(pack.compositionProofRef.isEmpty) &&
-    !(pack.requiredProofRefs.isEmpty) &&
-    pack.requiredProofRefs.all (fun ref => !(ref.isEmpty)) &&
-    isDeduped pack.requiredProofRefs &&
-    containsAll pack.requiredProofRefs Compiler.Yul.foundationProofAllowlist
+  match Compiler.Yul.findRewriteBundle? pack.rewriteBundleId with
+  | none => false
+  | some _ =>
+      !(pack.compositionProofRef.isEmpty) &&
+        !(pack.requiredProofRefs.isEmpty) &&
+        pack.requiredProofRefs.all (fun ref => !(ref.isEmpty)) &&
+        isDeduped pack.requiredProofRefs &&
+        containsAll pack.requiredProofRefs (Compiler.Yul.rewriteProofAllowlistForId pack.rewriteBundleId)
 
 def solc_0_8_28_o200_viair_false_evm_shanghai : ParityPack :=
   { id := "solc-0.8.28-o200-viair-false-evm-shanghai"
@@ -60,6 +65,7 @@ def solc_0_8_28_o200_viair_false_evm_shanghai : ParityPack :=
     backendProfile := .solidityParity
     forcePatches := true
     defaultPatchMaxIterations := 2
+    rewriteBundleId := Compiler.Yul.solcCompatRewriteBundleId
     compositionProofRef := "Compiler.Proofs.YulGeneration.PatchRulesProofs.foundation_patch_pack_obligations"
     requiredProofRefs := Compiler.Yul.foundationProofAllowlist
   }
@@ -77,6 +83,7 @@ def solc_0_8_28_o999999_viair_true_evm_paris : ParityPack :=
     backendProfile := .solidityParity
     forcePatches := true
     defaultPatchMaxIterations := 2
+    rewriteBundleId := Compiler.Yul.solcCompatRewriteBundleId
     compositionProofRef := "Compiler.Proofs.YulGeneration.PatchRulesProofs.foundation_patch_pack_obligations"
     requiredProofRefs := Compiler.Yul.foundationProofAllowlist
   }

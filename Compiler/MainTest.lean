@@ -62,9 +62,16 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
       backendProfile := .solidityParity
       forcePatches := true
       defaultPatchMaxIterations := 2
+      rewriteBundleId := Compiler.Yul.solcCompatRewriteBundleId
       compositionProofRef := ""
       requiredProofRefs := [] }
   expectTrue "parity pack proof composition rejects empty metadata" (!invalidPack.proofCompositionValid)
+  let missingBundlePack := { invalidPack with
+    compositionProofRef := "Compiler.Proofs.YulGeneration.PatchRulesProofs.foundation_patch_pack_obligations"
+    requiredProofRefs := Compiler.Yul.foundationProofAllowlist
+    rewriteBundleId := "missing-rewrite-bundle" }
+  expectTrue "parity pack proof composition rejects unknown rewrite bundle IDs"
+    (!missingBundlePack.proofCompositionValid)
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

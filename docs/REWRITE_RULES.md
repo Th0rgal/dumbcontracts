@@ -17,8 +17,9 @@ Partially implemented:
    Foundation packs for `StmtRule`/`BlockRule`/`ObjectRule` are wired but currently empty.
 6. Rule activation now supports pack-scoped allowlists (`packAllowlist`) checked against `RewriteCtx.packId`.
 7. Patch execution now supports activation-time proof registry enforcement via `PatchPassConfig.requiredProofRefs`.
-   In compiler codegen, this is wired to `foundationProofAllowlist`, so rules with unregistered `proofId` fail closed even if metadata is non-empty.
-8. Parity packs now require explicit pack-level proof composition metadata (`compositionProofRef`) and proof registry coverage (`requiredProofRefs`) before `--parity-pack` selection is accepted.
+   In compiler codegen, this defaults to the selected rewrite bundle proof allowlist, so rules with unregistered `proofId` fail closed even if metadata is non-empty.
+8. Rewrite bundles are now explicit and versioned (`foundation`, `solc-compat-v0`), with bundle selection propagated by `PatchPassConfig.rewriteBundleId`.
+9. Parity packs now require explicit pack-level proof composition metadata (`compositionProofRef`) and proof registry coverage (`requiredProofRefs`) against the selected rewrite bundle before `--parity-pack` selection is accepted.
 
 ## Rule Kinds
 

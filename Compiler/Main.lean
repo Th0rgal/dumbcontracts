@@ -179,6 +179,7 @@ def main (args : List String) : IO Unit := do
               IO.println s!"  viaIR: {pack.compat.viaIR}"
               IO.println s!"  evmVersion: {pack.compat.evmVersion}"
               IO.println s!"  metadataMode: {pack.compat.metadataMode}"
+              IO.println s!"  rewriteBundle: {pack.rewriteBundleId}"
           | none => pure ()
       | none => pure ()
       match cfg.abiOutDir with
@@ -204,12 +205,20 @@ def main (args : List String) : IO Unit := do
           | some pack => pack.requiredProofRefs
           | none => []
       | none => []
+    let packRewriteBundleId :=
+      match cfg.parityPackId with
+      | some packId =>
+          match Compiler.findParityPack? packId with
+          | some pack => pack.rewriteBundleId
+          | none => Compiler.Yul.foundationRewriteBundleId
+      | none => Compiler.Yul.foundationRewriteBundleId
     let options : Compiler.YulEmitOptions := {
       backendProfile := cfg.backendProfile
       patchConfig := {
         enabled := patchEnabled
         maxIterations := cfg.patchMaxIterations
         packId := cfg.parityPackId.getD ""
+        rewriteBundleId := packRewriteBundleId
         requiredProofRefs := packRequiredProofRefs
       }
       mappingSlotScratchBase := cfg.mappingSlotScratchBase

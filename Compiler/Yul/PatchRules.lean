@@ -213,16 +213,64 @@ def foundationBlockPatchPack : List BlockPatchRule :=
 def foundationObjectPatchPack : List ObjectPatchRule :=
   []
 
-/-- Activation-time proof allowlist for the shipped foundation patch packs. -/
-def foundationProofAllowlist : List String :=
-  let exprProofs := foundationExprPatchPack.map (fun rule => rule.proofId)
-  let stmtProofs := foundationStmtPatchPack.map (fun rule => rule.proofId)
-  let blockProofs := foundationBlockPatchPack.map (fun rule => rule.proofId)
-  let objectProofs := foundationObjectPatchPack.map (fun rule => rule.proofId)
+structure RewriteRuleBundle where
+  id : String
+  exprRules : List ExprPatchRule
+  stmtRules : List StmtPatchRule
+  blockRules : List BlockPatchRule
+  objectRules : List ObjectPatchRule
+
+private def rewriteBundleProofAllowlist (bundle : RewriteRuleBundle) : List String :=
+  let exprProofs := bundle.exprRules.map (fun rule => rule.proofId)
+  let stmtProofs := bundle.stmtRules.map (fun rule => rule.proofId)
+  let blockProofs := bundle.blockRules.map (fun rule => rule.proofId)
+  let objectProofs := bundle.objectRules.map (fun rule => rule.proofId)
   let allProofs := exprProofs ++ stmtProofs ++ blockProofs ++ objectProofs
   allProofs.foldl
     (fun acc proofRef => if acc.any (fun seen => seen = proofRef) then acc else acc ++ [proofRef])
     []
+
+def foundationRewriteBundleId : String := "foundation"
+
+def solcCompatRewriteBundleId : String := "solc-compat-v0"
+
+/-- Baseline, non-compat rewrite bundle. -/
+def foundationRewriteBundle : RewriteRuleBundle :=
+  { id := foundationRewriteBundleId
+    exprRules := foundationExprPatchPack
+    stmtRules := foundationStmtPatchPack
+    blockRules := foundationBlockPatchPack
+    objectRules := foundationObjectPatchPack }
+
+/-- Opt-in `solc` compatibility rewrite bundle.
+    Initially aliases foundation rules until dedicated compatibility rewrites land. -/
+def solcCompatRewriteBundle : RewriteRuleBundle :=
+  { id := solcCompatRewriteBundleId
+    exprRules := foundationExprPatchPack
+    stmtRules := foundationStmtPatchPack
+    blockRules := foundationBlockPatchPack
+    objectRules := foundationObjectPatchPack }
+
+def allRewriteBundles : List RewriteRuleBundle :=
+  [foundationRewriteBundle, solcCompatRewriteBundle]
+
+def supportedRewriteBundleIds : List String :=
+  allRewriteBundles.map (·.id)
+
+def findRewriteBundle? (bundleId : String) : Option RewriteRuleBundle :=
+  allRewriteBundles.find? (fun bundle => bundle.id = bundleId)
+
+def rewriteBundleForId (bundleId : String) : RewriteRuleBundle :=
+  match findRewriteBundle? bundleId with
+  | some bundle => bundle
+  | none => foundationRewriteBundle
+
+def rewriteProofAllowlistForId (bundleId : String) : List String :=
+  rewriteBundleProofAllowlist (rewriteBundleForId bundleId)
+
+/-- Activation-time proof allowlist for the shipped foundation patch packs. -/
+def foundationProofAllowlist : List String :=
+  rewriteBundleProofAllowlist foundationRewriteBundle
 
 /-- Smoke test: higher-priority rule wins deterministically. -/
 example :
@@ -571,6 +619,21 @@ example :
     (match reportMatched.patched, reportMissed.patched with
     | [.expr (.ident "x")], [.expr (.call "add" [.ident "x", .lit 0])] => true
     | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: shipped rewrite bundles include an explicit `solc` compatibility bundle. -/
+example :
+    supportedRewriteBundleIds = [foundationRewriteBundleId, solcCompatRewriteBundleId] := by
+  native_decide
+
+/-- Smoke test: unknown rewrite bundle IDs fail closed to foundation. -/
+example :
+    (rewriteBundleForId "missing-bundle").id = foundationRewriteBundleId := by
+  native_decide
+
+/-- Smoke test: compatibility bundle currently inherits foundation proof allowlist. -/
+example :
+    rewriteProofAllowlistForId solcCompatRewriteBundleId = foundationProofAllowlist := by
   native_decide
 
 /-- Smoke test: non-auditable object rules are fail-closed. -/

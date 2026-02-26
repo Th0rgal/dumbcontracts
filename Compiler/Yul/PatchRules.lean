@@ -1031,6 +1031,35 @@ private def checkedDivUint256HelperBody : List YulStmt :=
 private def checkedDivUint256HelperStmt : YulStmt :=
   .funcDef "checked_div_uint256" ["x", "y"] ["r"] checkedDivUint256HelperBody
 
+private def toSharesDownHelperBody : List YulStmt :=
+  [ .let_ "sum" (.call "add" [.ident "var_totalShares", .lit 1000000])
+  , .if_ (.call "gt" [.ident "var_totalShares", .ident "sum"])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x11])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  , .let_ "sum_1" (.call "add" [.ident "var_totalAssets", .lit 1])
+  , .if_ (.call "gt" [.ident "var_totalAssets", .ident "sum_1"])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x11])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  , .assign "var_"
+      (.call "checked_div_uint256"
+        [ .call "checked_mul_uint256" [.ident "var_assets", .ident "sum"]
+        , .ident "sum_1"
+        ])
+  ]
+
+private def toSharesDownHelperStmt : YulStmt :=
+  .funcDef "fun_toSharesDown" ["var_assets", "var_totalAssets", "var_totalShares"] ["var_"] toSharesDownHelperBody
+
 private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulStmt) : List YulStmt × Nat :=
   let (wrapped, topStmts) :=
     match stmts with
@@ -1076,15 +1105,27 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       insertTopLevelFuncDefAfterPrefix withAddMulDivAdd128 checkedSubUint128HelperStmt
     else
       withAddMulDivAdd128
+  let needsToSharesDown :=
+    !hasTopLevelFunctionNamed withAddMulDivAdd128Sub128 "fun_toSharesDown" &&
+      (callNamesInStmts withAddMulDivAdd128Sub128).any (fun called => called = "fun_toSharesDown")
+  let withAll :=
+    if needsToSharesDown then
+      insertTopLevelFuncDefAfterPrefix withAddMulDivAdd128Sub128 toSharesDownHelperStmt
+    else
+      withAddMulDivAdd128Sub128
   let inserted : Nat :=
     (if needsAdd then 1 else 0) + (if needsMul then 1 else 0) + (if needsDiv then 1 else 0) +
-      (if needsAdd128 then 1 else 0) + (if needsSub128 then 1 else 0)
+      (if needsAdd128 then 1 else 0) + (if needsSub128 then 1 else 0) +
+      (if needsToSharesDown then 1 else 0)
   if inserted = 0 then
     (stmts, 0)
   else if wrapped then
-    ([.block withAddMulDivAdd128Sub128], inserted)
+    ([.block withAll], inserted)
   else
-    (withAddMulDivAdd128Sub128, inserted)
+    (withAll, inserted)
+
+private def hasAccrueInterestCompatBaseName (base name : String) : Bool :=
+  name = base || name.startsWith s!"{base}_"
 
 mutual
 
@@ -1329,11 +1370,28 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
     | .call "add" [.ident "totalSupplyAssets", .ident "interest"] =>
         (.call "checked_add_uint128" [.ident "totalSupplyAssets", .ident "interest"], 1)
     | .call "sub" [.ident lhs, .ident rhs] =>
-        if (lhs = "newTotalSupplyAssets" || lhs.startsWith "newTotalSupplyAssets_") &&
-            (rhs = "feeAmount" || rhs.startsWith "feeAmount_") then
+        if hasAccrueInterestCompatBaseName "newTotalSupplyAssets" lhs &&
+            hasAccrueInterestCompatBaseName "feeAmount" rhs then
           (.call "checked_sub_uint128" [.ident lhs, .ident rhs], 1)
         else
           (.call "sub" [.ident lhs, .ident rhs], 0)
+    | .call "div"
+        [ .call "mul" [.ident feeAmount, .call "add" [.ident totalSupplyShares, .lit 1000000]]
+        , .call "add" [.ident feeDenominator, .lit 1]
+        ] =>
+        if hasAccrueInterestCompatBaseName "feeAmount" feeAmount &&
+            hasAccrueInterestCompatBaseName "totalSupplyShares" totalSupplyShares &&
+            hasAccrueInterestCompatBaseName "feeDenominator" feeDenominator then
+          (.call "fun_toSharesDown"
+            [ .ident feeAmount
+            , .ident feeDenominator
+            , .ident totalSupplyShares
+            ], 1)
+        else
+          (.call "div"
+            [ .call "mul" [.ident feeAmount, .call "add" [.ident totalSupplyShares, .lit 1000000]]
+            , .call "add" [.ident feeDenominator, .lit 1]
+            ], 0)
     | .call name args =>
         let (args', rewritten) := rewriteAccrueInterestCheckedArithmeticExprs args
         (.call name args', rewritten)
@@ -2771,6 +2829,11 @@ example :
               , .let_ "interest" (.call "div" [.call "mul" [.ident "totalBorrowAssets", .ident "growth"], .lit 1000000000000000000])
               , .let_ "newTotalBorrowAssets" (.call "add" [.ident "totalBorrowAssets", .ident "interest"])
               , .let_ "feeDenominator" (.call "sub" [.ident "newTotalSupplyAssets", .ident "feeAmount"])
+              , .let_ "feeShares"
+                  (.call "div"
+                    [ .call "mul" [.ident "feeAmount", .call "add" [.ident "totalSupplyShares", .lit 1000000]]
+                    , .call "add" [.ident "feeDenominator", .lit 1]
+                    ])
               ]
           , .block [ .expr (.call "fun_accrueInterest" []) ]
           ] }
@@ -2791,11 +2854,13 @@ example :
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_div_uint256" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toSharesDown" &&
       called.any (fun name => name = "checked_mul_uint256") &&
       called.any (fun name => name = "checked_add_uint256") &&
       called.any (fun name => name = "checked_add_uint128") &&
       called.any (fun name => name = "checked_sub_uint128") &&
-      called.any (fun name => name = "checked_div_uint256") = true := by
+      called.any (fun name => name = "checked_div_uint256") &&
+      called.any (fun name => name = "fun_toSharesDown") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite is wrapper-safe for single top-level block runtime shape. -/
@@ -2810,6 +2875,11 @@ example :
                   , .let_ "secondTerm" (.call "div" [.call "mul" [.ident "firstTerm", .ident "firstTerm"], .lit 2000000000000000000])
                   , .let_ "newTotalSupplyAssets" (.call "add" [.ident "totalSupplyAssets", .ident "interest"])
                   , .let_ "feeDenominator" (.call "sub" [.ident "newTotalSupplyAssets", .ident "feeAmount"])
+                  , .let_ "feeShares"
+                      (.call "div"
+                        [ .call "mul" [.ident "feeAmount", .call "add" [.ident "totalSupplyShares", .lit 1000000]]
+                        , .call "add" [.ident "feeDenominator", .lit 1]
+                        ])
                   ]
               , .block [ .expr (.call "fun_accrueInterest" []) ]
               ]
@@ -2834,13 +2904,15 @@ example :
       hasTopLevelFunctionNamed top "checked_add_uint128" &&
       hasTopLevelFunctionNamed top "checked_sub_uint128" &&
       hasTopLevelFunctionNamed top "checked_div_uint256" &&
+      hasTopLevelFunctionNamed top "fun_toSharesDown" &&
       called.any (fun name => name = "checked_mul_uint256") &&
       called.any (fun name => name = "checked_add_uint128") &&
       called.any (fun name => name = "checked_sub_uint128") &&
-      called.any (fun name => name = "checked_div_uint256") = true := by
+      called.any (fun name => name = "checked_div_uint256") &&
+      called.any (fun name => name = "fun_toSharesDown") = true := by
   native_decide
 
-/-- Smoke test: checked arithmetic rewrite accepts suffixed `newTotalSupplyAssets_*` / `feeAmount_*` names. -/
+/-- Smoke test: checked arithmetic rewrite accepts suffixed accrue-interest names. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -2848,6 +2920,11 @@ example :
         runtimeCode :=
           [ .funcDef "fun_accrueInterest" [] []
               [ .let_ "feeDenominator_1" (.call "sub" [.ident "newTotalSupplyAssets_3", .ident "feeAmount_7"])
+              , .let_ "feeShares_1"
+                  (.call "div"
+                    [ .call "mul" [.ident "feeAmount_7", .call "add" [.ident "totalSupplyShares_2", .lit 1000000]]
+                    , .call "add" [.ident "feeDenominator_1", .lit 1]
+                    ])
               ]
           , .block [ .expr (.call "fun_accrueInterest" []) ]
           ] }
@@ -2864,7 +2941,9 @@ example :
     let called := callNamesInStmts report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" &&
-      called.any (fun name => name = "checked_sub_uint128") = true := by
+      hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toSharesDown" &&
+      called.any (fun name => name = "checked_sub_uint128") &&
+      called.any (fun name => name = "fun_toSharesDown") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-matching `sub` names. -/
@@ -2892,6 +2971,37 @@ example :
     report.manifest.map (fun m => m.patchName) = [] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" = false &&
       called.any (fun name => name = "checked_sub_uint128") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-matching toSharesDown names. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "feeShares"
+                  (.call "div"
+                    [ .call "mul" [.ident "feeAmountAlt", .call "add" [.ident "totalSupplyShares", .lit 1000000]]
+                    , .call "add" [.ident "feeDenominator", .lit 1]
+                    ])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = [] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toSharesDown" = false &&
+      called.any (fun name => name = "fun_toSharesDown") = false := by
   native_decide
 
 /-- Smoke test: unused top-level `keccakMarketParams` helper is dropped. -/

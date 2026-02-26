@@ -31,6 +31,7 @@ Partially implemented:
    - `solc-compat-dedupe-equivalent-helpers` for deterministic deduplication of structurally equivalent top-level helpers with callsite rewrites to canonical helpers;
    - `solc-compat-prune-unreachable-helpers` for deterministic dead helper pruning.
    `solc-compat-outline-dispatch-helpers` is currently kept out of the default bundle activation to avoid over-outlining runtime entry dispatch on active parity targets.
+   Runtime codegen does not provide a separate backend-profile dispatch-helper outlining toggle; compat outlining is object-rule only.
    Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
 14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-mapping-slot-calls` → `inline-keccak-market-params` → `drop-unused-keccak-helper` → `dedupe` → `prune`) without manual CLI overrides.
 

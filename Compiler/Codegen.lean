@@ -129,44 +129,6 @@ def buildSwitch
       [YulStmt.switch selectorExpr cases (some defaultCase)]
   ]
 
-private def funDispatchHelperName (fn : IRFunction) : String :=
-  s!"fun_{fn.name}"
-
-private def buildSwitchWithDispatchHelpers
-    (funcs : List IRFunction)
-    (fallback : Option IREntrypoint := none)
-    (receive : Option IREntrypoint := none)
-    (sortCasesBySelector : Bool := false)
-    (reservedNames : List String := []) : List YulStmt × YulStmt :=
-  let funcs :=
-    if sortCasesBySelector then
-      insertionSortBy (·.selector) funcs
-    else
-      funcs
-  let selectorExpr := YulExpr.call "shr" [YulExpr.lit selectorShift, YulExpr.call "calldataload" [YulExpr.lit 0]]
-  let step :=
-    fun (acc : (List YulStmt × List (Nat × List YulStmt) × List String)) (fn : IRFunction) =>
-      let (helpersRev, casesRev, seenNames) := acc
-      let helperName := funDispatchHelperName fn
-      let caseBody := dispatchBody fn.payable s!"{fn.name}()" ([calldatasizeGuard fn.params.length] ++ fn.body)
-      if seenNames.any (fun seen => seen = helperName) then
-        (helpersRev, (fn.selector, caseBody) :: casesRev, seenNames)
-      else
-        let helperDef := YulStmt.funcDef helperName [] [] caseBody
-        (helperDef :: helpersRev, (fn.selector, [YulStmt.expr (YulExpr.call helperName [])]) :: casesRev,
-          helperName :: seenNames)
-  let (helpersRev, casesRev, _) := funcs.foldl step ([], [], reservedNames)
-  let defaultCase := defaultDispatchCase fallback receive
-  let switchStmt :=
-    YulStmt.block [
-      YulStmt.let_ "__has_selector"
-        (YulExpr.call "iszero" [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]),
-      YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) defaultCase,
-      YulStmt.if_ (YulExpr.ident "__has_selector")
-        [YulStmt.switch selectorExpr casesRev.reverse (some defaultCase)]
-    ]
-  (helpersRev.reverse, switchStmt)
-
 def runtimeCode (contract : IRContract) : List YulStmt :=
   let mapping := if contract.usesMapping then [mappingSlotFuncAt 0] else []
   let internals := contract.internalFunctions
@@ -183,12 +145,6 @@ private def profileSortsDispatchCases (profile : BackendProfile) : Bool :=
 
 private def profileSortsInternalHelpers (profile : BackendProfile) : Bool :=
   profileSortsOutput profile
-
-private def profileOutlinesDispatchHelpers (profile : BackendProfile) : Bool :=
-  match profile with
-  | .semantic => false
-  | .solidityParityOrdering => false
-  | .solidityParity => false
 
 private def internalHelperName? (stmt : YulStmt) : Option String :=
   match stmt with
@@ -215,18 +171,10 @@ def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmitOptions
   let mapping := if contract.usesMapping then [mappingSlotFuncAt options.mappingSlotScratchBase] else []
   let internals := internalHelpersForProfile options.backendProfile contract.internalFunctions
   let sortCases := profileSortsDispatchCases options.backendProfile
-  let internalNames := internals.filterMap internalHelperName?
-  let (dispatchHelpers, switchStmt) :=
-    if profileOutlinesDispatchHelpers options.backendProfile then
-      buildSwitchWithDispatchHelpers
-        contract.functions
-        contract.fallbackEntrypoint
-        contract.receiveEntrypoint
-        sortCases
-        internalNames
-    else
-      ([], buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases)
-  mapping ++ internals ++ dispatchHelpers ++ [switchStmt]
+  -- Dispatch helper outlining is intentionally handled only by proof-gated object
+  -- rewrite rules (`solc-compat-*`) after codegen.
+  let switchStmt := buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases
+  mapping ++ internals ++ [switchStmt]
 
 private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile)
     (mappingSlotScratchBase : Nat := 0) : List YulStmt :=

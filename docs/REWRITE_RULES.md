@@ -29,6 +29,7 @@ Partially implemented:
    - `solc-compat-dedupe-equivalent-helpers`: deduplicates structurally equivalent top-level helper defs and rewrites call sites to the retained canonical helper.
    - `solc-compat-prune-unreachable-helpers`: prunes unreachable top-level helper defs deterministically.
    `solc-compat-outline-dispatch-helpers` remains implemented and tested, but is not activated in `solc-compat-v0` by default because broad dispatch outlining introduces non-`solc` helper families on current targets.
+   Runtime codegen no longer has a separate backend-profile dispatch-helper outlining path; outlining is centralized in proof-gated object rules.
 9. Parity packs now require explicit pack-level proof composition metadata (`compositionProofRef`) and proof registry coverage (`requiredProofRefs`) against the selected rewrite bundle before `--parity-pack` selection is accepted.
 
 ## Rule Kinds

@@ -934,18 +934,10 @@ private def insertTopLevelFuncDefAfterPrefix (stmts : List YulStmt) (funcDef : Y
   pref ++ [funcDef] ++ suff
 
 private def materializeIncrementUint256Helper (stmts : List YulStmt) : List YulStmt × Nat :=
-  let (wrapped, topStmts) :=
-    match stmts with
-    | [.block inner] => (true, inner)
-    | _ => (false, stmts)
-  if hasTopLevelFunctionNamed topStmts "increment_uint256" then
+  if hasTopLevelFunctionNamed stmts "increment_uint256" then
     (stmts, 0)
-  else if containsAddOneStmts topStmts then
-    let inserted := insertTopLevelFuncDefAfterPrefix topStmts incrementUint256HelperStmt
-    if wrapped then
-      ([.block inserted], 1)
-    else
-      (inserted, 1)
+  else if containsAddOneStmts stmts then
+    (insertTopLevelFuncDefAfterPrefix stmts incrementUint256HelperStmt, 1)
   else
     (stmts, 0)
 

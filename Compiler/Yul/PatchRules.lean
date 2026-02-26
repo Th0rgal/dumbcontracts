@@ -303,4 +303,46 @@ example :
     | _, _, _ => false) = true := by
   native_decide
 
+/-- Smoke test: statement rules run after expression rewrites in one pass. -/
+example :
+    let commentFlip : StmtPatchRule :=
+      { patchName := "comment-flip"
+        pattern := "// from"
+        rewrite := "// to"
+        sideConditions := ["statement is comment // from"]
+        proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.comment_flip_preserves"
+        passPhase := .postCodegen
+        priority := 50
+        applyStmt := fun stmt =>
+          match stmt with
+          | .comment "from" => some (.comment "to")
+          | _ => none }
+    let stmt : YulStmt := .comment "from"
+    let report := runPatchPass { enabled := true, maxIterations := 1 } foundationExprPatchPack [commentFlip] [stmt]
+    (match report.patched, report.manifest.map (fun m => m.patchName) with
+    | [.comment "to"], ["comment-flip"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: non-auditable statement rules are fail-closed. -/
+example :
+    let unsafeStmtRule : StmtPatchRule :=
+      { patchName := "unsafe-stmt-without-proof"
+        pattern := "// from"
+        rewrite := "// to"
+        sideConditions := []
+        proofId := ""
+        passPhase := .postCodegen
+        priority := 999
+        applyStmt := fun stmt =>
+          match stmt with
+          | .comment "from" => some (.comment "to")
+          | _ => none }
+    let stmt : YulStmt := .comment "from"
+    let report := runPatchPass { enabled := true, maxIterations := 1 } [] [unsafeStmtRule] [stmt]
+    (match report.patched, report.iterations, report.manifest with
+    | [.comment "from"], 0, [] => true
+    | _, _, _ => false) = true := by
+  native_decide
+
 end Compiler.Yul

@@ -155,7 +155,7 @@ These limitations affect only the basic interpreter path (used for proofs). The 
 
 ### 🟡 **Parity-Pack Identity Track** (Issue #967)
 **What**: Move from deterministic output-shape parity to exact pinned-`solc` Yul identity with proof-carrying rewrites.
-**Status**: Groundwork docs added, implementation pending.
+**Status**: Groundwork + initial implementation (pack registry + CLI selection + validation guard).
 
 Planned phases:
 1. versioned parity packs keyed to pinned compiler tuples;

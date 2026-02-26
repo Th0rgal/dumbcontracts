@@ -1,4 +1,4 @@
-# Parity Packs (Groundwork)
+# Parity Packs
 
 Issue: [#967](https://github.com/Th0rgal/verity/issues/967)
 
@@ -6,7 +6,15 @@ This document defines the proposed structure for versioned parity packs that tar
 
 ## Status
 
-Groundwork only. This file documents design intent and acceptance criteria; it does not imply implementation is complete.
+Partially implemented:
+1. CLI selection via `--parity-pack <id>`.
+2. Registry + hard validation in `Compiler/ParityPacks.lean`.
+3. Ambiguous selection guard (`--parity-pack` cannot be combined with `--backend-profile`).
+
+Not implemented yet:
+1. typed rule-kinds (`StmtRule`, `BlockRule`, `ObjectRule`) beyond expression-level rules;
+2. pack-level proof composition checks;
+3. identity checker and unsupported manifest workflow.
 
 ## Purpose
 
@@ -22,6 +30,10 @@ Groundwork only. This file documents design intent and acceptance criteria; it d
 `solc-<version>-o<optimizerRuns>-viair-<true|false>-evm-<version>`
 
 Example: `solc-0.8.27-o200-viair-false-evm-shanghai`
+
+## Implemented Pack(s)
+
+1. `solc-0.8.28-o200-viair-false-evm-shanghai`
 
 ## Proposed Pack Contents
 

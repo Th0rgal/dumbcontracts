@@ -12,6 +12,7 @@ This document defines the opt-in backend profile used for deterministic output-s
 1. `semantic` (default)
 2. `solidity-parity-ordering`
 3. `solidity-parity`
+4. `--parity-pack <id>` (tuple-pinned selection that maps to a backend profile + patch defaults)
 
 All levels preserve Verity's semantic guarantees. Parity levels only normalize output shape.
 
@@ -31,6 +32,8 @@ For a fixed source, fixed profile, fixed tool version, and fixed CLI options:
 - profile-normalized ordering is stable across repeated runs;
 - profile behavior is fully opt-in (`semantic` remains default).
 
+For parity-pack mode, reproducibility is additionally keyed by the pack ID and compatibility tuple metadata.
+
 ## Non-Goals (v1)
 
 `v1` does not attempt full byte-for-byte `solc` output identity. In particular:
@@ -45,7 +48,7 @@ Future versions can add additional rules with explicit IDs and migration notes.
 
 Issue [#967](https://github.com/Th0rgal/verity/issues/967) defines the path from output-shape parity to exact `solc` Yul identity for pinned compiler tuples.
 
-Planned extensions (not implemented in `v1`):
+Planned extensions (beyond current `--parity-pack` registry/selection support):
 
 1. Versioned parity packs (`solc-version + optimizer + evm version`) with explicit compatibility metadata.
 2. Typed rewrite rules (`ExprRule`, `StmtRule`, `BlockRule`, `ObjectRule`) with strict scope boundaries.

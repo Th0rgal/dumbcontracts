@@ -186,6 +186,21 @@ def foundationExprPatchPack : List ExprPatchRule :=
   , modOneRightRule
   ]
 
+/-- Initial deterministic statement patch pack.
+    Intentionally empty until the first proof-carrying statement rewrites land. -/
+def foundationStmtPatchPack : List StmtPatchRule :=
+  []
+
+/-- Initial deterministic block patch pack.
+    Intentionally empty until the first proof-carrying block rewrites land. -/
+def foundationBlockPatchPack : List BlockPatchRule :=
+  []
+
+/-- Initial deterministic object patch pack.
+    Intentionally empty until the first proof-carrying object rewrites land. -/
+def foundationObjectPatchPack : List ObjectPatchRule :=
+  []
+
 /-- Smoke test: higher-priority rule wins deterministically. -/
 example :
     (let rules := orderRulesByPriority

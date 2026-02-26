@@ -10,6 +10,8 @@ Partially implemented:
 1. CLI selection via `--parity-pack <id>`.
 2. Registry + hard validation in `Compiler/ParityPacks.lean`.
 3. Ambiguous selection guard (`--parity-pack` cannot be combined with `--backend-profile`).
+4. Codegen now executes the full typed patch entrypoint (`runPatchPassWithObjects`) with foundation packs for `ExprRule`/`StmtRule`/`BlockRule`/`ObjectRule`.
+5. Verbose parity-pack logs now include `metadataMode` alongside the rest of the pinned tuple.
 
 Not implemented yet:
 1. pack-level proof composition checks;

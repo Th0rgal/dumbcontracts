@@ -174,6 +174,7 @@ def main (args : List String) : IO Unit := do
               IO.println s!"  optimizer runs: {pack.compat.optimizerRuns}"
               IO.println s!"  viaIR: {pack.compat.viaIR}"
               IO.println s!"  evmVersion: {pack.compat.evmVersion}"
+              IO.println s!"  metadataMode: {pack.compat.metadataMode}"
           | none => pure ()
       | none => pure ()
       match cfg.abiOutDir with

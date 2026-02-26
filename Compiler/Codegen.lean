@@ -173,15 +173,6 @@ def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmitOptions
   let sortCases := profileSortsDispatchCases options.backendProfile
   mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases]
 
-/-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
-def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
-  let base := runtimeCodeWithEmitOptions contract options
-  let patchReport := Yul.runExprPatchPass options.patchConfig Yul.foundationExprPatchPack base
-  { runtimeCode := patchReport.patched, patchReport := patchReport }
-
-def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
-  (runtimeCodeWithOptionsReport contract options).runtimeCode
-
 private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile)
     (mappingSlotScratchBase : Nat := 0) : List YulStmt :=
   let valueGuard := if contract.constructorPayable then [] else [callvalueGuard]
@@ -192,24 +183,50 @@ private def deployCodeWithProfile (contract : IRContract) (profile : BackendProf
 private def deployCode (contract : IRContract) : List YulStmt :=
   deployCodeWithProfile contract .semantic
 
+private def baseObjectWithOptions (contract : IRContract) (options : YulEmitOptions) : YulObject :=
+  { name := contract.name
+    deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
+    runtimeCode := runtimeCodeWithEmitOptions contract options }
+
+private def runtimePatchReportFromObjectReport (report : Yul.ObjectPatchPassReport) : Yul.PatchPassReport :=
+  { patched := report.patched.runtimeCode
+    iterations := report.iterations
+    manifest := report.manifest }
+
+private def emitYulWithOptionsObjectReport
+    (contract : IRContract)
+    (options : YulEmitOptions) : Yul.ObjectPatchPassReport :=
+  let base := baseObjectWithOptions contract options
+  Yul.runPatchPassWithObjects
+    options.patchConfig
+    Yul.foundationExprPatchPack
+    Yul.foundationStmtPatchPack
+    Yul.foundationBlockPatchPack
+    Yul.foundationObjectPatchPack
+    base
+
+/-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
+def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
+  let objectReport := emitYulWithOptionsObjectReport contract options
+  { runtimeCode := objectReport.patched.runtimeCode
+    patchReport := runtimePatchReportFromObjectReport objectReport }
+
+def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
+  (runtimeCodeWithOptionsReport contract options).runtimeCode
+
 def emitYul (contract : IRContract) : YulObject :=
   { name := contract.name
     deployCode := deployCode contract
     runtimeCode := runtimeCode contract }
 
 def emitYulWithOptions (contract : IRContract) (options : YulEmitOptions) : YulObject :=
-  { name := contract.name
-    deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
-    runtimeCode := runtimeCodeWithOptions contract options }
+  (emitYulWithOptionsObjectReport contract options).patched
 
 /-- Emit Yul and preserve patch-pass audit details for downstream reporting. -/
 def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) :
     YulObject × Yul.PatchPassReport :=
-  let runtimeReport := runtimeCodeWithOptionsReport contract options
-  ({ name := contract.name
-     deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
-     runtimeCode := runtimeReport.runtimeCode },
-   runtimeReport.patchReport)
+  let objectReport := emitYulWithOptionsObjectReport contract options
+  (objectReport.patched, runtimePatchReportFromObjectReport objectReport)
 
 /-- Regression guard: report and legacy runtime APIs stay in sync. -/
 example (contract : IRContract) (options : YulEmitOptions) :

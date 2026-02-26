@@ -27,7 +27,6 @@ Partially implemented:
    - `solc-compat-inline-keccak-market-params-calls`: inlines direct runtime `keccakMarketParams(...)` helper calls into explicit `mstore`/`keccak256` sequences.
    - `solc-compat-drop-unused-mapping-slot-helper`: drops top-level runtime `mappingSlot` helper definitions when no call sites remain.
    - `solc-compat-drop-unused-keccak-market-params-helper`: drops top-level runtime `keccakMarketParams` helper definitions when no call sites remain.
-   - `solc-compat-materialize-increment-uint256-helper`: materializes Solidity-compatible helper `increment_uint256(value) -> ret` when runtime contains `add(x, 1)` and the helper is absent.
    - `solc-compat-dedupe-equivalent-helpers`: deduplicates structurally equivalent top-level helper defs and rewrites call sites to the retained canonical helper.
    `solc-compat-prune-unreachable-helpers` remains implemented and tested, but is not activated in `solc-compat-v0` by default because broad helper pruning removes `solc`-emitted helper families needed for exact function-level identity.
    `solc-compat-outline-dispatch-helpers` remains implemented and tested, but is not activated in `solc-compat-v0` by default because broad dispatch outlining introduces non-`solc` helper families on current targets.

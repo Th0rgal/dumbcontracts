@@ -860,87 +860,6 @@ end
 private def inlineRuntimeKeccakMarketParamsCalls (stmts : List YulStmt) : List YulStmt × Nat :=
   inlineKeccakMarketParamsCallsInStmts stmts
 
-mutual
-
-private partial def containsAddOneExpr : YulExpr → Bool
-  | .lit _ => false
-  | .hex _ => false
-  | .str _ => false
-  | .ident _ => false
-  | .call "add" [_lhs, .lit 1] => true
-  | .call _ args => containsAddOneExprs args
-
-private partial def containsAddOneExprs : List YulExpr → Bool
-  | [] => false
-  | expr :: rest => containsAddOneExpr expr || containsAddOneExprs rest
-
-private partial def containsAddOneStmt : YulStmt → Bool
-  | .comment _ => false
-  | .let_ _ value => containsAddOneExpr value
-  | .letMany _ value => containsAddOneExpr value
-  | .assign _ value => containsAddOneExpr value
-  | .expr value => containsAddOneExpr value
-  | .leave => false
-  | .if_ cond body => containsAddOneExpr cond || containsAddOneStmts body
-  | .for_ init cond post body =>
-      containsAddOneStmts init || containsAddOneExpr cond || containsAddOneStmts post || containsAddOneStmts body
-  | .switch expr cases default =>
-      containsAddOneExpr expr ||
-        cases.any (fun (_, body) => containsAddOneStmts body) ||
-        match default with
-        | some body => containsAddOneStmts body
-        | none => false
-  | .block stmts => containsAddOneStmts stmts
-  | .funcDef _ _ _ body => containsAddOneStmts body
-
-private partial def containsAddOneStmts : List YulStmt → Bool
-  | [] => false
-  | stmt :: rest => containsAddOneStmt stmt || containsAddOneStmts rest
-
-end
-
-private def hasTopLevelFunctionNamed (stmts : List YulStmt) (name : String) : Bool :=
-  stmts.any
-    (fun stmt =>
-      match stmt with
-      | .funcDef fnName _ _ _ => fnName = name
-      | _ => false)
-
-private def incrementUint256HelperBody : List YulStmt :=
-  [ .if_ (.call "eq" [.ident "value", .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff])
-      [ .expr (.call "mstore"
-          [ .lit 0
-          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
-          ])
-      , .expr (.call "mstore" [.lit 4, .hex 0x11])
-      , .expr (.call "revert" [.lit 0, .hex 0x24])
-      ]
-  , .assign "ret" (.call "add" [.ident "value", .lit 1])
-  ]
-
-private def incrementUint256HelperStmt : YulStmt :=
-  .funcDef "increment_uint256" ["value"] ["ret"] incrementUint256HelperBody
-
-private def insertTopLevelFuncDefAfterPrefix (stmts : List YulStmt) (funcDef : YulStmt) : List YulStmt :=
-  let rec splitPrefix : List YulStmt → List YulStmt × List YulStmt
-    | [] => ([], [])
-    | stmt :: rest =>
-        match stmt with
-        | .funcDef _ _ _ _ =>
-            let (pref, suff) := splitPrefix rest
-            (stmt :: pref, suff)
-        | _ => ([], stmt :: rest)
-  let (pref, suff) := splitPrefix stmts
-  pref ++ [funcDef] ++ suff
-
-private def materializeIncrementUint256Helper (stmts : List YulStmt) : List YulStmt × Nat :=
-  if hasTopLevelFunctionNamed stmts "increment_uint256" then
-    (stmts, 0)
-  else if containsAddOneStmts stmts then
-    (insertTopLevelFuncDefAfterPrefix stmts incrementUint256HelperStmt, 1)
-  else
-    (stmts, 0)
-
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
 
@@ -973,9 +892,6 @@ def solcCompatDropUnusedKeccakMarketParamsHelperProofRef : String :=
 
 def solcCompatDropUnusedMappingSlotHelperProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_drop_unused_mapping_slot_helper_preserves"
-
-def solcCompatMaterializeIncrementUint256HelperProofRef : String :=
-  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_materialize_increment_uint256_helper_preserves"
 
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
@@ -1215,27 +1131,6 @@ def solcCompatDropUnusedMappingSlotHelperRule : ObjectPatchRule :=
       else
         some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
 
-/-- Materialize `increment_uint256` helper when runtime uses `add(x, 1)` and helper is absent.
-    This is enabled only in the opt-in `solc-compat` bundle. -/
-def solcCompatMaterializeIncrementUint256HelperRule : ObjectPatchRule :=
-  { patchName := "solc-compat-materialize-increment-uint256-helper"
-    pattern := "runtime arithmetic includes `add(x, 1)` and top-level helper `increment_uint256` is absent"
-    rewrite := "insert a top-level `increment_uint256(value) -> ret` helper with Solidity-compatible body"
-    sideConditions :=
-      [ "only runtime code is transformed"
-      , "insertion occurs only when helper is absent"
-      , "inserted helper body is deterministic and fixed" ]
-    proofId := solcCompatMaterializeIncrementUint256HelperProofRef
-    scope := .object
-    passPhase := .postCodegen
-    priority := 204
-    applyObject := fun _ obj =>
-      let (runtimeCode', inserted) := materializeIncrementUint256Helper obj.runtimeCode
-      if inserted = 0 then
-        none
-      else
-        some { obj with runtimeCode := runtimeCode' } }
-
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -1301,7 +1196,6 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatDropUnusedMappingSlotHelperRule
       , solcCompatDropUnusedKeccakMarketParamsHelperRule
-      , solcCompatMaterializeIncrementUint256HelperRule
       , solcCompatDedupeEquivalentHelpersRule ] }
 
 def allRewriteBundles : List RewriteRuleBundle :=
@@ -1745,12 +1639,6 @@ example :
       (fun proofRef => proofRef = solcCompatDropUnusedMappingSlotHelperProofRef) = true := by
   native_decide
 
-/-- Smoke test: `solc-compat` bundle contains increment helper materialization proof refs. -/
-example :
-    solcCompatProofAllowlist.any
-      (fun proofRef => proofRef = solcCompatMaterializeIncrementUint256HelperProofRef) = true := by
-  native_decide
-
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -2148,71 +2036,6 @@ example :
       , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
       ], [] => true
     | _, _ => false) = true := by
-  native_decide
-
-/-- Smoke test: `increment_uint256` helper is materialized when `add(x, 1)` occurs. -/
-example :
-    let input : YulObject :=
-      { name := "Main"
-        deployCode := []
-        runtimeCode :=
-          [ .funcDef "fun_tick" ["x"] ["ret"]
-              [ .assign "ret" (.call "add" [.ident "x", .lit 1]) ]
-          , .block [ .expr (.call "fun_tick" [.lit 1]) ]
-          ] }
-    let report := runPatchPassWithObjects
-      { enabled := true
-        maxIterations := 1
-        rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
-      []
-      []
-      []
-      [solcCompatMaterializeIncrementUint256HelperRule]
-      input
-    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
-    | [ .funcDef "fun_tick" ["x"] ["ret"]
-          [ .assign "ret" (.call "add" [.ident "x", .lit 1]) ]
-      , .funcDef "increment_uint256" ["value"] ["ret"]
-          [ .if_ (.call "eq" [.ident "value", .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff])
-              [ .expr (.call "mstore"
-                  [ .lit 0
-                  , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
-                  ])
-              , .expr (.call "mstore" [.lit 4, .hex 0x11])
-              , .expr (.call "revert" [.lit 0, .hex 0x24])
-              ]
-          , .assign "ret" (.call "add" [.ident "value", .lit 1])
-          ]
-      , .block [ .expr (.call "fun_tick" [.lit 1]) ]
-      ],
-      ["solc-compat-materialize-increment-uint256-helper"] => true
-    | _, _ => false) = true := by
-  native_decide
-
-/-- Smoke test: `increment_uint256` helper materialization is skipped when helper already exists. -/
-example :
-    let input : YulObject :=
-      { name := "Main"
-        deployCode := []
-        runtimeCode :=
-          [ incrementUint256HelperStmt
-          , .funcDef "fun_tick" ["x"] ["ret"]
-              [ .assign "ret" (.call "add" [.ident "x", .lit 1]) ]
-          ] }
-    let report := runPatchPassWithObjects
-      { enabled := true
-        maxIterations := 1
-        rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
-      []
-      []
-      []
-      [solcCompatMaterializeIncrementUint256HelperRule]
-      input
-    (match report.manifest with
-    | [] => true
-    | _ => false) = true := by
   native_decide
 
 /-- Smoke test: object rule canonicalizes internal helper names and rewrites call sites. -/

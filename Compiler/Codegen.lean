@@ -190,7 +190,7 @@ private def baseObjectWithOptions (contract : IRContract) (options : YulEmitOpti
 
 private structure EmitObjectWithOptionsReport where
   patched : YulObject
-  runtimePatchReport : Yul.PatchPassReport
+  patchReport : Yul.PatchPassReport
 
 private def emitYulWithOptionsInternal
     (contract : IRContract)
@@ -221,14 +221,18 @@ private def emitYulWithOptionsInternal
     []
     rewriteBundle.objectRules
     runtimePatched
+  let mergedPatchReport : Yul.PatchPassReport :=
+    { patched := objectReport.patched.runtimeCode
+      iterations := runtimePatchReport.iterations + objectReport.iterations
+      manifest := runtimePatchReport.manifest ++ objectReport.manifest }
   { patched := objectReport.patched
-    runtimePatchReport := runtimePatchReport }
+    patchReport := mergedPatchReport }
 
 /-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
 def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
   let report := emitYulWithOptionsInternal contract options
   { runtimeCode := report.patched.runtimeCode
-    patchReport := report.runtimePatchReport }
+    patchReport := report.patchReport }
 
 def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
   (runtimeCodeWithOptionsReport contract options).runtimeCode
@@ -245,7 +249,7 @@ def emitYulWithOptions (contract : IRContract) (options : YulEmitOptions) : YulO
 def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) :
     YulObject × Yul.PatchPassReport :=
   let report := emitYulWithOptionsInternal contract options
-  (report.patched, report.runtimePatchReport)
+  (report.patched, report.patchReport)
 
 /-- Regression guard: report and legacy runtime APIs stay in sync. -/
 example (contract : IRContract) (options : YulEmitOptions) :
@@ -304,6 +308,36 @@ example :
           if entry.patchName = "add-zero-right" then acc + entry.matchCount else acc)
         0
     deployStillHasMarker && runtimeNoLongerHasMarker && runtimeMatchCount == 1 := by
+  native_decide
+
+/-- Regression guard: object-level rewrites are included in emitted patch report manifests. -/
+example :
+    let contract : IRContract :=
+      { name := "ObjectManifestRegression"
+        deploy := []
+        constructorPayable := true
+        functions :=
+          [{ name := "f"
+             selector := 1
+             params := []
+             ret := .unit
+             payable := false
+             body := [.expr (.call "liveHelper" [])] }]
+        usesMapping := false
+        internalFunctions :=
+          [ .funcDef "liveHelper" [] [] [.leave]
+          , .funcDef "deadHelper" [] [] [.leave]
+          ] }
+    let options : YulEmitOptions :=
+      { patchConfig :=
+          { enabled := true
+            maxIterations := 2
+            rewriteBundleId := Yul.solcCompatRewriteBundleId
+            requiredProofRefs := Yul.solcCompatProofAllowlist } }
+    let report := emitYulWithOptionsReport contract options
+    let hasObjectRule :=
+      report.2.manifest.any (fun entry => entry.patchName = "solc-compat-prune-unreachable-helpers")
+    hasObjectRule = true := by
   native_decide
 
 end Compiler

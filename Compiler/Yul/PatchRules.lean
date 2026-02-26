@@ -439,6 +439,24 @@ example :
     | _, _ => false) = true := by
   native_decide
 
+/-- Smoke test: compatibility wrapper `runPatchPassOnObject` rewrites deploy/runtime
+    subtrees without object-level rules. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := [.expr (.call "or" [.ident "x", .lit 0])]
+        runtimeCode := [.expr (.call "add" [.ident "y", .lit 0])] }
+    let report := runPatchPassOnObject
+      { enabled := true, maxIterations := 1 }
+      foundationExprPatchPack
+      []
+      []
+      input
+    (match report.patched.deployCode, report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [.expr (.ident "x")], [.expr (.ident "y")], ["or-zero-right", "add-zero-right"] => true
+    | _, _, _ => false) = true := by
+  native_decide
+
 /-- Smoke test: non-auditable object rules are fail-closed. -/
 example :
     let unsafeObjectRule : ObjectPatchRule :=

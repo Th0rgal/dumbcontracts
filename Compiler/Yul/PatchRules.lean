@@ -9,9 +9,10 @@ def orZeroRightRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["second argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.or_zero_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 100
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "or" [lhs, .lit 0] => some lhs
       | _ => none }
@@ -23,9 +24,10 @@ def orZeroLeftRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["first argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.or_zero_left_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 95
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "or" [.lit 0, rhs] => some rhs
       | _ => none }
@@ -37,9 +39,10 @@ def xorZeroRightRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["second argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.xor_zero_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 90
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "xor" [lhs, .lit 0] => some lhs
       | _ => none }
@@ -51,9 +54,10 @@ def xorZeroLeftRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["first argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.xor_zero_left_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 85
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "xor" [.lit 0, rhs] => some rhs
       | _ => none }
@@ -65,9 +69,10 @@ def andZeroRightRule : ExprPatchRule :=
     rewrite := "0"
     sideConditions := ["second argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.and_zero_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 80
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "and" [_lhs, .lit 0] => some (.lit 0)
       | _ => none }
@@ -79,9 +84,10 @@ def addZeroRightRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["second argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.add_zero_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 75
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "add" [lhs, .lit 0] => some lhs
       | _ => none }
@@ -93,9 +99,10 @@ def addZeroLeftRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["first argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.add_zero_left_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 74
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "add" [.lit 0, rhs] => some rhs
       | _ => none }
@@ -107,9 +114,10 @@ def subZeroRightRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["second argument is literal zero"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.sub_zero_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 73
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "sub" [lhs, .lit 0] => some lhs
       | _ => none }
@@ -121,9 +129,10 @@ def mulOneRightRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["second argument is literal one"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.mul_one_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 72
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "mul" [lhs, .lit 1] => some lhs
       | _ => none }
@@ -135,9 +144,10 @@ def mulOneLeftRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["first argument is literal one"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.mul_one_left_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 71
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "mul" [.lit 1, rhs] => some rhs
       | _ => none }
@@ -149,9 +159,10 @@ def divOneRightRule : ExprPatchRule :=
     rewrite := "x"
     sideConditions := ["second argument is literal one"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.div_one_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 70
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "div" [lhs, .lit 1] => some lhs
       | _ => none }
@@ -163,9 +174,10 @@ def modOneRightRule : ExprPatchRule :=
     rewrite := "0"
     sideConditions := ["second argument is literal one"]
     proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.mod_one_right_preserves"
+    scope := .runtime
     passPhase := .postCodegen
     priority := 69
-    applyExpr := fun expr =>
+    applyExpr := fun _ expr =>
       match expr with
       | .call "mod" [_lhs, .lit 1] => some (.lit 0)
       | _ => none }
@@ -305,9 +317,10 @@ example :
         rewrite := "x"
         sideConditions := []
         proofId := ""
+        scope := .runtime
         passPhase := .postCodegen
         priority := 999
-        applyExpr := fun expr =>
+        applyExpr := fun _ expr =>
           match expr with
           | .call "or" [lhs, .lit 0] => some lhs
           | _ => none }
@@ -326,9 +339,10 @@ example :
         rewrite := "// to"
         sideConditions := ["statement is comment // from"]
         proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.comment_flip_preserves"
+        scope := .runtime
         passPhase := .postCodegen
         priority := 50
-        applyStmt := fun stmt =>
+        applyStmt := fun _ stmt =>
           match stmt with
           | .comment "from" => some (.comment "to")
           | _ => none }
@@ -347,9 +361,10 @@ example :
         rewrite := "// to"
         sideConditions := []
         proofId := ""
+        scope := .runtime
         passPhase := .postCodegen
         priority := 999
-        applyStmt := fun stmt =>
+        applyStmt := fun _ stmt =>
           match stmt with
           | .comment "from" => some (.comment "to")
           | _ => none }
@@ -368,9 +383,10 @@ example :
         rewrite := "{ /* nop */ }"
         sideConditions := ["block contains exactly one leave statement"]
         proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.collapse_to_nop_preserves"
+        scope := .runtime
         passPhase := .postCodegen
         priority := 40
-        applyBlock := fun block =>
+        applyBlock := fun _ block =>
           match block with
           | [.leave] => some [.comment "nop"]
           | _ => none }
@@ -393,9 +409,10 @@ example :
         rewrite := "{ /* nop */ }"
         sideConditions := []
         proofId := ""
+        scope := .runtime
         passPhase := .postCodegen
         priority := 999
-        applyBlock := fun block =>
+        applyBlock := fun _ block =>
           match block with
           | [.leave] => some [.comment "nop"]
           | _ => none }
@@ -418,9 +435,10 @@ example :
         rewrite := "object MainParity"
         sideConditions := ["object name is Main"]
         proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.rename_object_preserves"
+        scope := .object
         passPhase := .postCodegen
         priority := 30
-        applyObject := fun obj =>
+        applyObject := fun _ obj =>
           if obj.name = "Main" then
             some { obj with name := "MainParity" }
           else
@@ -440,7 +458,7 @@ example :
   native_decide
 
 /-- Smoke test: compatibility wrapper `runPatchPassOnObject` rewrites deploy/runtime
-    subtrees without object-level rules. -/
+    subtrees with scope-aware rule enforcement. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -453,7 +471,37 @@ example :
       []
       input
     (match report.patched.deployCode, report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
-    | [.expr (.ident "x")], [.expr (.ident "y")], ["or-zero-right", "add-zero-right"] => true
+    | [.expr (.call "or" [.ident "x", .lit 0])], [.expr (.ident "y")], ["add-zero-right"] => true
+    | _, _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: deploy-scoped expression rules do not run on runtime code. -/
+example :
+    let deployOnly : ExprPatchRule :=
+      { patchName := "deploy-only-add-zero-right"
+        pattern := "add(x, 0)"
+        rewrite := "x"
+        sideConditions := ["second argument is literal zero"]
+        proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.add_zero_right_preserves"
+        scope := .deploy
+        passPhase := .postCodegen
+        priority := 1000
+        applyExpr := fun _ expr =>
+          match expr with
+          | .call "add" [lhs, .lit 0] => some lhs
+          | _ => none }
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := [.expr (.call "add" [.ident "x", .lit 0])]
+        runtimeCode := [.expr (.call "add" [.ident "y", .lit 0])] }
+    let report := runPatchPassOnObject
+      { enabled := true, maxIterations := 1 }
+      [deployOnly]
+      []
+      []
+      input
+    (match report.patched.deployCode, report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [.expr (.ident "x")], [.expr (.call "add" [.ident "y", .lit 0])], ["deploy-only-add-zero-right"] => true
     | _, _, _ => false) = true := by
   native_decide
 
@@ -465,9 +513,10 @@ example :
         rewrite := "object MainParity"
         sideConditions := []
         proofId := ""
+        scope := .object
         passPhase := .postCodegen
         priority := 999
-        applyObject := fun obj =>
+        applyObject := fun _ obj =>
           if obj.name = "Main" then
             some { obj with name := "MainParity" }
           else

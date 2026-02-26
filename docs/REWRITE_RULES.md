@@ -17,8 +17,7 @@ Partially implemented:
    Foundation packs for `StmtRule`/`BlockRule`/`ObjectRule` are wired but currently empty.
 
 Not implemented yet:
-1. typed `RewriteCtx` plumbing.
-2. mandatory proof checking beyond metadata linkage.
+1. mandatory proof checking beyond metadata linkage.
 
 ## Rule Kinds
 
@@ -36,19 +35,22 @@ Not implemented yet:
 5. `proofRef`: theorem establishing semantic preservation under matcher preconditions.
 6. `deterministic`: explicit guarantee that output is stable.
 
-## Rewrite Context (Planned)
+## Rewrite Context (Implemented Foundation)
 
-Rules should receive a typed `RewriteCtx` with:
+Rules now receive a typed `RewriteCtx` with:
 
+1. stage scope (`runtime`, `deploy`, `object`);
+2. pass metadata (phase, iteration, pack ID).
+
+Still planned:
 1. symbol table and helper registry;
 2. selector map / ABI layout facts;
-3. stage metadata (deploy/runtime, pass index, pack ID);
-4. canonicalization settings.
+3. canonicalization settings.
 
 ## Safety Rules
 
 1. Rules without `proofRef` are not activatable.
-2. Out-of-scope rewrite attempts must fail.
+2. Out-of-scope rewrite attempts fail closed via scope-checked `RewriteCtx`.
 3. Overlapping rules must be conflict-checked.
 4. Pack composition must have a theorem proving semantics preservation.
 

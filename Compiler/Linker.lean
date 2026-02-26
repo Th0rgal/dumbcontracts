@@ -363,7 +363,7 @@ private def collectExternalCallNames (obj : YulObject) (libraries : List Library
 /-- Keep only directly referenced external library functions, preserving input order.
     This is a deterministic text-linking minimization step that avoids injecting
     unused library helpers into rendered runtime code. -/
-def selectDirectlyReferencedLibraries (obj : YulObject) (libraries : List LibraryFunction) : List LibraryFunction :=
+private def selectDirectlyReferencedLibraries (obj : YulObject) (libraries : List LibraryFunction) : List LibraryFunction :=
   let referenced := collectExternalCallNames obj libraries
   libraries.filter fun fn => referenced.contains fn.name
 

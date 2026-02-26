@@ -421,6 +421,7 @@ private def manifestFromHits (ruleMeta : List PatchRuleMeta) (hits : List String
 
 private def runPatchPassLoop
     (config : PatchPassConfig)
+    (scope : RewriteScope)
     (fuel : Nat)
     (orderedExprRules : List ExprPatchRule)
     (orderedStmtRules : List StmtPatchRule)
@@ -432,7 +433,7 @@ private def runPatchPassLoop
   | 0 => (current, iterations, allHits)
   | Nat.succ fuel' =>
       let runtimeCtx : RewriteCtx :=
-        { scope := .runtime
+        { scope := scope
           passPhase := config.passPhase
           iteration := iterations
           packId := config.packId }
@@ -440,7 +441,7 @@ private def runPatchPassLoop
       if stepHits.isEmpty then
         (current, iterations, allHits)
       else
-        runPatchPassLoop config fuel' orderedExprRules orderedStmtRules orderedBlockRules next (iterations + 1) (allHits ++ stepHits)
+        runPatchPassLoop config scope fuel' orderedExprRules orderedStmtRules orderedBlockRules next (iterations + 1) (allHits ++ stepHits)
 
 private def rewriteObjectOnce
     (config : PatchPassConfig)
@@ -502,13 +503,15 @@ private def runObjectPatchPassLoop
           (iterations + 1)
           (allHits ++ stepHits)
 
-/-- Run one deterministic patch pass over expression and statement rules with bounded fixpoint iterations. -/
+/-- Run one deterministic patch pass over expression/statement/block rules with bounded fixpoint iterations.
+    The pass defaults to runtime scope but can target deploy scope explicitly. -/
 def runPatchPassWithBlocks
     (config : PatchPassConfig)
     (exprRules : List ExprPatchRule)
     (stmtRules : List StmtPatchRule)
     (blockRules : List BlockPatchRule)
-    (stmts : List YulStmt) : PatchPassReport :=
+    (stmts : List YulStmt)
+    (scope : RewriteScope := .runtime) : PatchPassReport :=
   if ¬config.enabled then
     { patched := stmts, iterations := 0, manifest := [] }
   else
@@ -523,7 +526,7 @@ def runPatchPassWithBlocks
         (blockRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let ruleMeta := metaListFromRules orderedExprRules orderedStmtRules orderedBlockRules []
     let (patched, iterations, hits) :=
-      runPatchPassLoop config config.maxIterations orderedExprRules orderedStmtRules orderedBlockRules stmts 0 []
+      runPatchPassLoop config scope config.maxIterations orderedExprRules orderedStmtRules orderedBlockRules stmts 0 []
     { patched := patched
       iterations := iterations
       manifest := manifestFromHits ruleMeta hits }
@@ -567,20 +570,24 @@ def runPatchPassWithObjects
       iterations := iterations
       manifest := manifestFromHits ruleMeta hits }
 
-/-- Run one deterministic patch pass over expression and statement rules with bounded fixpoint iterations. -/
+/-- Run one deterministic patch pass over expression and statement rules with bounded fixpoint iterations.
+    Defaults to runtime scope. -/
 def runPatchPass
     (config : PatchPassConfig)
     (exprRules : List ExprPatchRule)
     (stmtRules : List StmtPatchRule)
-    (stmts : List YulStmt) : PatchPassReport :=
-  runPatchPassWithBlocks config exprRules stmtRules [] stmts
+    (stmts : List YulStmt)
+    (scope : RewriteScope := .runtime) : PatchPassReport :=
+  runPatchPassWithBlocks config exprRules stmtRules [] stmts scope
 
-/-- Run one deterministic patch pass on statements with bounded fixpoint iterations. -/
+/-- Run one deterministic expression patch pass on statements with bounded fixpoint iterations.
+    Defaults to runtime scope. -/
 def runExprPatchPass
     (config : PatchPassConfig)
     (rules : List ExprPatchRule)
-    (stmts : List YulStmt) : PatchPassReport :=
-  runPatchPassWithBlocks config rules [] [] stmts
+    (stmts : List YulStmt)
+    (scope : RewriteScope := .runtime) : PatchPassReport :=
+  runPatchPassWithBlocks config rules [] [] stmts scope
 
 /-- Run one deterministic patch pass over a full Yul object with expression/statement/block rules. -/
 def runPatchPassOnObject

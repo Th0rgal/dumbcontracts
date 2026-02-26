@@ -213,6 +213,17 @@ def foundationBlockPatchPack : List BlockPatchRule :=
 def foundationObjectPatchPack : List ObjectPatchRule :=
   []
 
+/-- Activation-time proof allowlist for the shipped foundation patch packs. -/
+def foundationProofAllowlist : List String :=
+  let exprProofs := foundationExprPatchPack.map (fun rule => rule.proofId)
+  let stmtProofs := foundationStmtPatchPack.map (fun rule => rule.proofId)
+  let blockProofs := foundationBlockPatchPack.map (fun rule => rule.proofId)
+  let objectProofs := foundationObjectPatchPack.map (fun rule => rule.proofId)
+  let allProofs := exprProofs ++ stmtProofs ++ blockProofs ++ objectProofs
+  allProofs.foldl
+    (fun acc proofRef => if acc.any (fun seen => seen = proofRef) then acc else acc ++ [proofRef])
+    []
+
 /-- Smoke test: higher-priority rule wins deterministically. -/
 example :
     (let rules := orderRulesByPriority
@@ -326,6 +337,33 @@ example :
           | _ => none }
     let stmt : YulStmt := .expr (.call "or" [.ident "x", .lit 0])
     let report := runExprPatchPass { enabled := true, maxIterations := 1 } [unsafeRule] [stmt]
+    (match report.patched, report.iterations, report.manifest with
+    | [.expr (.call "or" [.ident "x", .lit 0])], 0, [] => true
+    | _, _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: rules with unregistered proof refs are fail-closed when proof registry enforcement is enabled. -/
+example :
+    let mismatchedProofRule : ExprPatchRule :=
+      { patchName := "unregistered-proof-id"
+        pattern := "or(x, 0)"
+        rewrite := "x"
+        sideConditions := ["second argument is literal zero"]
+        proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.not_registered"
+        scope := .runtime
+        passPhase := .postCodegen
+        priority := 999
+        applyExpr := fun _ expr =>
+          match expr with
+          | .call "or" [lhs, .lit 0] => some lhs
+          | _ => none }
+    let stmt : YulStmt := .expr (.call "or" [.ident "x", .lit 0])
+    let report := runExprPatchPass
+      { enabled := true
+        maxIterations := 1
+        requiredProofRefs := foundationProofAllowlist }
+      [mismatchedProofRule]
+      [stmt]
     (match report.patched, report.iterations, report.manifest with
     | [.expr (.call "or" [.ident "x", .lit 0])], 0, [] => true
     | _, _, _ => false) = true := by

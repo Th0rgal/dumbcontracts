@@ -17,6 +17,7 @@ Partially implemented:
 5. Verbose parity-pack logs now include `metadataMode` alongside the rest of the pinned tuple.
 6. Typed `RewriteCtx` scope/phase/iteration/pack metadata is now threaded through patch execution, and rule scope is enforced at application sites.
 7. `--parity-pack` now propagates into patch execution context (`PatchPassConfig.packId`), and rules can gate activation with `packAllowlist`.
+8. Patch execution now supports proof registry enforcement (`PatchPassConfig.requiredProofRefs`), and codegen wires the shipped foundation packs to an explicit allowlist (`foundationProofAllowlist`).
 
 Not implemented yet:
 1. pack-level proof composition checks;

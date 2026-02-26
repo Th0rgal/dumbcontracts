@@ -80,6 +80,9 @@ structure PatchPassConfig where
   maxIterations : Nat := 2
   passPhase : PatchPhase := .postCodegen
   packId : String := ""
+  /-- Optional activation-time proof registry for fail-closed rule filtering.
+      When non-empty, only rules whose `proofId` appears in this list can run. -/
+  requiredProofRefs : List String := []
 
 /-- Per-rule usage entry emitted by the patch pass. -/
 structure PatchManifestEntry where
@@ -165,6 +168,10 @@ private def ruleActiveInCtx [PatchRuleLike α] (rule : α) (ctx : RewriteCtx) : 
   PatchRuleLike.scope rule == ctx.scope &&
     PatchRuleLike.passPhase rule == ctx.passPhase &&
     ruleAllowsPack rule ctx.packId
+
+private def ruleHasRegisteredProof [PatchRuleLike α] (config : PatchPassConfig) (rule : α) : Bool :=
+  config.requiredProofRefs.isEmpty ||
+    config.requiredProofRefs.any (fun proofRef => proofRef = PatchRuleLike.proofId rule)
 
 /-- Fail-closed metadata guard: a runnable rule must carry audit/proof linkage. -/
 def ExprPatchRule.isAuditable (rule : ExprPatchRule) : Bool :=
@@ -497,11 +504,14 @@ def runPatchPassWithBlocks
     { patched := stmts, iterations := 0, manifest := [] }
   else
     let orderedExprRules :=
-      orderRulesByPriority (exprRules.filter (fun rule => rule.isAuditable))
+      orderRulesByPriority
+        (exprRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let orderedStmtRules :=
-      orderStmtRulesByPriority (stmtRules.filter (fun rule => rule.isAuditable))
+      orderStmtRulesByPriority
+        (stmtRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let orderedBlockRules :=
-      orderBlockRulesByPriority (blockRules.filter (fun rule => rule.isAuditable))
+      orderBlockRulesByPriority
+        (blockRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let ruleMeta := metaListFromRules orderedExprRules orderedStmtRules orderedBlockRules []
     let (patched, iterations, hits) :=
       runPatchPassLoop config config.maxIterations orderedExprRules orderedStmtRules orderedBlockRules stmts 0 []
@@ -521,13 +531,17 @@ def runPatchPassWithObjects
     { patched := obj, iterations := 0, manifest := [] }
   else
     let orderedExprRules :=
-      orderRulesByPriority (exprRules.filter (fun rule => rule.isAuditable))
+      orderRulesByPriority
+        (exprRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let orderedStmtRules :=
-      orderStmtRulesByPriority (stmtRules.filter (fun rule => rule.isAuditable))
+      orderStmtRulesByPriority
+        (stmtRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let orderedBlockRules :=
-      orderBlockRulesByPriority (blockRules.filter (fun rule => rule.isAuditable))
+      orderBlockRulesByPriority
+        (blockRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let orderedObjectRules :=
-      orderObjectRulesByPriority (objectRules.filter (fun rule => rule.isAuditable))
+      orderObjectRulesByPriority
+        (objectRules.filter (fun rule => rule.isAuditable && ruleHasRegisteredProof config rule))
     let ruleMeta := metaListFromRules orderedExprRules orderedStmtRules orderedBlockRules orderedObjectRules
     let (patched, iterations, hits) :=
       runObjectPatchPassLoop

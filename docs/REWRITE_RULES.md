@@ -16,9 +16,11 @@ Partially implemented:
    - object pass for `ObjectRule`.
    Foundation packs for `StmtRule`/`BlockRule`/`ObjectRule` are wired but currently empty.
 6. Rule activation now supports pack-scoped allowlists (`packAllowlist`) checked against `RewriteCtx.packId`.
+7. Patch execution now supports activation-time proof registry enforcement via `PatchPassConfig.requiredProofRefs`.
+   In compiler codegen, this is wired to `foundationProofAllowlist`, so rules with unregistered `proofId` fail closed even if metadata is non-empty.
 
 Not implemented yet:
-1. mandatory proof checking beyond metadata linkage.
+1. pack-level proof composition checks.
 
 ## Rule Kinds
 
@@ -51,9 +53,10 @@ Still planned:
 ## Safety Rules
 
 1. Rules without `proofRef` are not activatable.
-2. Out-of-scope rewrite attempts fail closed via scope-checked `RewriteCtx`.
-3. Overlapping rules must be conflict-checked.
-4. Pack composition must have a theorem proving semantics preservation.
+2. Rules whose `proofRef` is not in the active proof registry are not activatable.
+3. Out-of-scope rewrite attempts fail closed via scope-checked `RewriteCtx`.
+4. Overlapping rules must be conflict-checked.
+5. Pack composition must have a theorem proving semantics preservation.
 
 ## Testing Expectations
 

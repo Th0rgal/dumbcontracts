@@ -1395,8 +1395,17 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
         (.call "checked_add_uint128" [.ident "totalBorrowAssets", .ident "interest"], 1)
     | .call "add" [.ident "totalSupplyAssets", .ident "interest"] =>
         (.call "checked_add_uint128" [.ident "totalSupplyAssets", .ident "interest"], 1)
-    | .call "add" [.ident "feePosShares", .ident "feeShares"] =>
-        (.call "checked_add_uint256" [.ident "feePosShares", .ident "feeShares"], 1)
+    | .call "add" [.ident lhs, .ident rhs] =>
+        if lhs = "feePosShares" && rhs = "feeShares" then
+          (.call "checked_add_uint256" [.ident "feePosShares", .ident "feeShares"], 1)
+        else if hasAccrueInterestCompatBaseName "totalSupplyShares" lhs &&
+            hasAccrueInterestCompatBaseName "feeShares" rhs then
+          (.call "checked_add_uint128" [.ident lhs, .ident rhs], 1)
+        else if hasAccrueInterestCompatBaseName "feeShares" lhs &&
+            hasAccrueInterestCompatBaseName "totalSupplyShares" rhs then
+          (.call "checked_add_uint128" [.ident lhs, .ident rhs], 1)
+        else
+          (.call "add" [.ident lhs, .ident rhs], 0)
     | .call "sub" [.ident lhs, .ident rhs] =>
         if hasAccrueInterestCompatBaseName "newTotalSupplyAssets" lhs &&
             hasAccrueInterestCompatBaseName "feeAmount" rhs then
@@ -3011,6 +3020,84 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint256" &&
       called.any (fun name => name = "checked_add_uint256") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite canonicalizes total supply share addition in accrue-interest flow. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "newTotalSupplyShares" (.call "add" [.ident "totalSupplyShares", .ident "feeShares"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" &&
+      called.any (fun name => name = "checked_add_uint128") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite canonicalizes suffixed total-supply-share addition names. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "newTotalSupplyShares_9" (.call "add" [.ident "totalSupplyShares_2", .ident "feeShares_1"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" &&
+      called.any (fun name => name = "checked_add_uint128") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat total-supply-share names. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "newTotalSupplyShares" (.call "add" [.ident "totalSupplySharesAlt", .ident "feeShares"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = [] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" = false &&
+      called.any (fun name => name = "checked_add_uint128") = false := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite canonicalizes packed uint128 upper-slot writes. -/

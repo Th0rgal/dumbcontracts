@@ -956,6 +956,26 @@ private def checkedAddUint256HelperBody : List YulStmt :=
 private def checkedAddUint256HelperStmt : YulStmt :=
   .funcDef "checked_add_uint256" ["x", "y"] ["sum"] checkedAddUint256HelperBody
 
+private def checkedAddUint128HelperBody : List YulStmt :=
+  [ .let_ "_1" (.hex 0xffffffffffffffffffffffffffffffff)
+  , .assign "sum"
+      (.call "add"
+        [ .call "and" [.ident "x", .ident "_1"]
+        , .call "and" [.ident "y", .ident "_1"]
+        ])
+  , .if_ (.call "gt" [.ident "sum", .ident "_1"])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x11])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  ]
+
+private def checkedAddUint128HelperStmt : YulStmt :=
+  .funcDef "checked_add_uint128" ["x", "y"] ["sum"] checkedAddUint128HelperBody
+
 private def checkedMulUint256HelperBody : List YulStmt :=
   [ .assign "product" (.call "mul" [.ident "x", .ident "y"])
   , .if_ (.call "iszero"
@@ -1020,14 +1040,23 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       insertTopLevelFuncDefAfterPrefix withAddMul checkedDivUint256HelperStmt
     else
       withAddMul
+  let needsAdd128 :=
+    !hasTopLevelFunctionNamed withAddMulDiv "checked_add_uint128" &&
+      (callNamesInStmts withAddMulDiv).any (fun called => called = "checked_add_uint128")
+  let withAddMulDivAdd128 :=
+    if needsAdd128 then
+      insertTopLevelFuncDefAfterPrefix withAddMulDiv checkedAddUint128HelperStmt
+    else
+      withAddMulDiv
   let inserted : Nat :=
-    (if needsAdd then 1 else 0) + (if needsMul then 1 else 0) + (if needsDiv then 1 else 0)
+    (if needsAdd then 1 else 0) + (if needsMul then 1 else 0) + (if needsDiv then 1 else 0) +
+      (if needsAdd128 then 1 else 0)
   if inserted = 0 then
     (stmts, 0)
   else if wrapped then
-    ([.block withAddMulDiv], inserted)
+    ([.block withAddMulDivAdd128], inserted)
   else
-    (withAddMulDiv, inserted)
+    (withAddMulDivAdd128, inserted)
 
 mutual
 
@@ -1268,9 +1297,9 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
           , .call "checked_add_uint256" [.ident "secondTerm", .ident "thirdTerm"]
           ], 1)
     | .call "add" [.ident "totalBorrowAssets", .ident "interest"] =>
-        (.call "checked_add_uint256" [.ident "totalBorrowAssets", .ident "interest"], 1)
+        (.call "checked_add_uint128" [.ident "totalBorrowAssets", .ident "interest"], 1)
     | .call "add" [.ident "totalSupplyAssets", .ident "interest"] =>
-        (.call "checked_add_uint256" [.ident "totalSupplyAssets", .ident "interest"], 1)
+        (.call "checked_add_uint128" [.ident "totalSupplyAssets", .ident "interest"], 1)
     | .call name args =>
         let (args', rewritten) := rewriteAccrueInterestCheckedArithmeticExprs args
         (.call name args', rewritten)
@@ -1675,13 +1704,14 @@ def solcCompatRewriteElapsedCheckedSubRule : ObjectPatchRule :=
         some { obj with runtimeCode := runtimeCode'' } }
 
 /-- Rewrite selected runtime `accrueInterest` arithmetic patterns to
-    Solidity-style `checked_add_uint256` / `checked_mul_uint256` / `checked_div_uint256` helper calls.
+    Solidity-style checked helper calls (`checked_add_uint256` / `checked_add_uint128` /
+    `checked_mul_uint256` / `checked_div_uint256`).
     Insert helpers only when referenced and absent.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatRewriteAccrueInterestCheckedArithmeticRule : ObjectPatchRule :=
   { patchName := "solc-compat-rewrite-accrue-interest-checked-arithmetic"
     pattern := "selected runtime `mul`/`add` expressions in `accrueInterest` flow"
-    rewrite := "replace with `checked_mul_uint256` / `checked_add_uint256` / `checked_div_uint256` and materialize helpers if needed"
+    rewrite := "replace with checked helper calls and materialize helpers if needed"
     sideConditions :=
       [ "only runtime code is transformed"
       , "rewrite is scoped to known identifier-shape arithmetic in accrue-interest flow"
@@ -2693,7 +2723,7 @@ example :
     | _, _ => false) = true := by
   native_decide
 
-/-- Smoke test: accrue-interest arithmetic rewrite inserts checked add/mul/div helpers. -/
+/-- Smoke test: accrue-interest arithmetic rewrite inserts checked add/mul/div helpers (including uint128 add). -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -2723,9 +2753,11 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_mul_uint256" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint256" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_div_uint256" &&
       called.any (fun name => name = "checked_mul_uint256") &&
       called.any (fun name => name = "checked_add_uint256") &&
+      called.any (fun name => name = "checked_add_uint128") &&
       called.any (fun name => name = "checked_div_uint256") = true := by
   native_decide
 
@@ -2761,10 +2793,10 @@ example :
     let called := callNamesInStmts top
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed top "checked_mul_uint256" &&
-      hasTopLevelFunctionNamed top "checked_add_uint256" &&
+      hasTopLevelFunctionNamed top "checked_add_uint128" &&
       hasTopLevelFunctionNamed top "checked_div_uint256" &&
       called.any (fun name => name = "checked_mul_uint256") &&
-      called.any (fun name => name = "checked_add_uint256") &&
+      called.any (fun name => name = "checked_add_uint128") &&
       called.any (fun name => name = "checked_div_uint256") = true := by
   native_decide
 

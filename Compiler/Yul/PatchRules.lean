@@ -860,6 +860,141 @@ end
 private def inlineRuntimeKeccakMarketParamsCalls (stmts : List YulStmt) : List YulStmt × Nat :=
   inlineKeccakMarketParamsCallsInStmts stmts
 
+private def incrementUint256HelperBody : List YulStmt :=
+  [ .if_ (.call "eq" [.ident "value", .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x11])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  , .assign "ret" (.call "add" [.ident "value", .lit 1])
+  ]
+
+private def incrementUint256HelperStmt : YulStmt :=
+  .funcDef "increment_uint256" ["value"] ["ret"] incrementUint256HelperBody
+
+private def hasTopLevelFunctionNamed (stmts : List YulStmt) (name : String) : Bool :=
+  stmts.any
+    (fun stmt =>
+      match stmt with
+      | .funcDef fnName _ _ _ => fnName = name
+      | _ => false)
+
+private def insertTopLevelFuncDefAfterPrefix (stmts : List YulStmt) (funcDef : YulStmt) : List YulStmt :=
+  let rec splitPrefix : List YulStmt → List YulStmt × List YulStmt
+    | [] => ([], [])
+    | stmt :: rest =>
+        match stmt with
+        | .funcDef _ _ _ _ =>
+            let (pref, suff) := splitPrefix rest
+            (stmt :: pref, suff)
+        | _ => ([], stmt :: rest)
+  let (pref, suff) := splitPrefix stmts
+  pref ++ [funcDef] ++ suff
+
+private def materializeIncrementUint256HelperIfCalled (stmts : List YulStmt) : List YulStmt × Nat :=
+  let (wrapped, topStmts) :=
+    match stmts with
+    | [.block inner] => (true, inner)
+    | _ => (false, stmts)
+  if hasTopLevelFunctionNamed topStmts "increment_uint256" then
+    (stmts, 0)
+  else if (callNamesInStmts topStmts).any (fun called => called = "increment_uint256") then
+    let inserted := insertTopLevelFuncDefAfterPrefix topStmts incrementUint256HelperStmt
+    if wrapped then
+      ([.block inserted], 1)
+    else
+      (inserted, 1)
+  else
+    (stmts, 0)
+
+mutual
+
+private partial def rewriteCurrentNonceIncrementExpr
+    (expr : YulExpr) : YulExpr × Nat
+  := match expr with
+    | .lit value => (.lit value, 0)
+    | .hex value => (.hex value, 0)
+    | .str value => (.str value, 0)
+    | .ident name => (.ident name, 0)
+    | .call "add" [.ident "currentNonce", .lit 1] =>
+        (.call "increment_uint256" [.ident "currentNonce"], 1)
+    | .call name args =>
+        let (args', rewritten) := rewriteCurrentNonceIncrementExprs args
+        (.call name args', rewritten)
+
+private partial def rewriteCurrentNonceIncrementExprs
+    (exprs : List YulExpr) : List YulExpr × Nat
+  := match exprs with
+    | [] => ([], 0)
+    | expr :: rest =>
+        let (expr', rewrittenHead) := rewriteCurrentNonceIncrementExpr expr
+        let (rest', rewrittenTail) := rewriteCurrentNonceIncrementExprs rest
+        (expr' :: rest', rewrittenHead + rewrittenTail)
+
+private partial def rewriteCurrentNonceIncrementStmt
+    (stmt : YulStmt) : YulStmt × Nat
+  := match stmt with
+    | .comment text => (.comment text, 0)
+    | .let_ name value =>
+        let (value', rewritten) := rewriteCurrentNonceIncrementExpr value
+        (.let_ name value', rewritten)
+    | .letMany names value =>
+        let (value', rewritten) := rewriteCurrentNonceIncrementExpr value
+        (.letMany names value', rewritten)
+    | .assign name value =>
+        let (value', rewritten) := rewriteCurrentNonceIncrementExpr value
+        (.assign name value', rewritten)
+    | .expr value =>
+        let (value', rewritten) := rewriteCurrentNonceIncrementExpr value
+        (.expr value', rewritten)
+    | .leave => (.leave, 0)
+    | .if_ cond body =>
+        let (cond', condRewritten) := rewriteCurrentNonceIncrementExpr cond
+        let (body', bodyRewritten) := rewriteCurrentNonceIncrementStmts body
+        (.if_ cond' body', condRewritten + bodyRewritten)
+    | .for_ init cond post body =>
+        let (init', initRewritten) := rewriteCurrentNonceIncrementStmts init
+        let (cond', condRewritten) := rewriteCurrentNonceIncrementExpr cond
+        let (post', postRewritten) := rewriteCurrentNonceIncrementStmts post
+        let (body', bodyRewritten) := rewriteCurrentNonceIncrementStmts body
+        (.for_ init' cond' post' body', initRewritten + condRewritten + postRewritten + bodyRewritten)
+    | .switch expr cases default =>
+        let (expr', exprRewritten) := rewriteCurrentNonceIncrementExpr expr
+        let rewriteCase := fun (entry : Nat × List YulStmt) =>
+          let (tag, body) := entry
+          let (body', rewritten) := rewriteCurrentNonceIncrementStmts body
+          ((tag, body'), rewritten)
+        let rewrittenCases := cases.map rewriteCase
+        let cases' := rewrittenCases.map Prod.fst
+        let caseRewritten := rewrittenCases.foldl (fun acc entry => acc + entry.snd) 0
+        let (default', defaultRewritten) :=
+          match default with
+          | some body =>
+              let (body', rewritten) := rewriteCurrentNonceIncrementStmts body
+              (some body', rewritten)
+          | none => (none, 0)
+        (.switch expr' cases' default', exprRewritten + caseRewritten + defaultRewritten)
+    | .block stmts =>
+        let (stmts', rewritten) := rewriteCurrentNonceIncrementStmts stmts
+        (.block stmts', rewritten)
+    | .funcDef name params rets body =>
+        let (body', rewritten) := rewriteCurrentNonceIncrementStmts body
+        (.funcDef name params rets body', rewritten)
+
+private partial def rewriteCurrentNonceIncrementStmts
+    (stmts : List YulStmt) : List YulStmt × Nat
+  := match stmts with
+    | [] => ([], 0)
+    | stmt :: rest =>
+        let (stmt', rewrittenHead) := rewriteCurrentNonceIncrementStmt stmt
+        let (rest', rewrittenTail) := rewriteCurrentNonceIncrementStmts rest
+        (stmt' :: rest', rewrittenHead + rewrittenTail)
+
+end
+
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
 
@@ -895,6 +1030,9 @@ def solcCompatDropUnusedMappingSlotHelperProofRef : String :=
 
 def solcCompatPruneUnreachableDeployHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_deploy_helpers_preserves"
+
+def solcCompatRewriteNonceIncrementProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_nonce_increment_preserves"
 
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
@@ -1134,6 +1272,29 @@ def solcCompatDropUnusedMappingSlotHelperRule : ObjectPatchRule :=
       else
         some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
 
+/-- Rewrite nonce increments from `add(currentNonce, 1)` to `increment_uint256(currentNonce)`.
+    Insert `increment_uint256` helper only when referenced and absent.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatRewriteNonceIncrementRule : ObjectPatchRule :=
+  { patchName := "solc-compat-rewrite-nonce-increment"
+    pattern := "runtime expression `add(currentNonce, 1)`"
+    rewrite := "replace with `increment_uint256(currentNonce)` and materialize helper if needed"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "rewrite is scoped to identifier name `currentNonce`"
+      , "helper insertion is top-level, deterministic, and only when absent" ]
+    proofId := solcCompatRewriteNonceIncrementProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 211
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := rewriteCurrentNonceIncrementStmts obj.runtimeCode
+      let (runtimeCode'', inserted) := materializeIncrementUint256HelperIfCalled runtimeCode'
+      if rewritten + inserted = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode'' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -1218,6 +1379,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineDispatchWrapperCallsRule
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
+      , solcCompatRewriteNonceIncrementRule
       , solcCompatPruneUnreachableDeployHelpersRule
       , solcCompatDropUnusedMappingSlotHelperRule
       , solcCompatDropUnusedKeccakMarketParamsHelperRule
@@ -1664,6 +1826,12 @@ example :
       (fun proofRef => proofRef = solcCompatDropUnusedMappingSlotHelperProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains nonce-increment rewrite proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatRewriteNonceIncrementProofRef) = true := by
+  native_decide
+
 /-- Smoke test: `solc-compat` bundle contains deploy-only prune proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -1925,6 +2093,96 @@ example :
           ]
       ],
       ["solc-compat-inline-mapping-slot-calls", "solc-compat-drop-unused-mapping-slot-helper"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: nonce increment rewrite replaces `add(currentNonce, 1)` and inserts helper. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_authorize" [] []
+              [ .let_ "currentNonce" (.call "sload" [.lit 7])
+              , .expr (.call "sstore" [.lit 7, .call "add" [.ident "currentNonce", .lit 1]])
+              ]
+          , .block [ .expr (.call "fun_authorize" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteNonceIncrementRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "fun_authorize" [] []
+          [ .let_ "currentNonce" (.call "sload" [.lit 7])
+          , .expr (.call "sstore" [.lit 7, .call "increment_uint256" [.ident "currentNonce"]])
+          ]
+      , .funcDef "increment_uint256" ["value"] ["ret"]
+          [ .if_ (.call "eq" [.ident "value", .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff])
+              [ .expr (.call "mstore"
+                  [ .lit 0
+                  , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+                  ])
+              , .expr (.call "mstore" [.lit 4, .hex 0x11])
+              , .expr (.call "revert" [.lit 0, .hex 0x24])
+              ]
+          , .assign "ret" (.call "add" [.ident "value", .lit 1])
+          ]
+      , .block [ .expr (.call "fun_authorize" []) ]
+      ], ["solc-compat-rewrite-nonce-increment"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: nonce increment rewrite is wrapper-safe for single top-level block runtime shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_authorize" [] []
+                  [ .let_ "currentNonce" (.call "sload" [.lit 7])
+                  , .expr (.call "sstore" [.lit 7, .call "add" [.ident "currentNonce", .lit 1]])
+                  ]
+              , .block [ .expr (.call "fun_authorize" []) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteNonceIncrementRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .block
+          [ .funcDef "fun_authorize" [] []
+              [ .let_ "currentNonce" (.call "sload" [.lit 7])
+              , .expr (.call "sstore" [.lit 7, .call "increment_uint256" [.ident "currentNonce"]])
+              ]
+          , .funcDef "increment_uint256" ["value"] ["ret"]
+              [ .if_ (.call "eq" [.ident "value", .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff])
+                  [ .expr (.call "mstore"
+                      [ .lit 0
+                      , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+                      ])
+                  , .expr (.call "mstore" [.lit 4, .hex 0x11])
+                  , .expr (.call "revert" [.lit 0, .hex 0x24])
+                  ]
+              , .assign "ret" (.call "add" [.ident "value", .lit 1])
+              ]
+          , .block [ .expr (.call "fun_authorize" []) ]
+          ] ],
+      ["solc-compat-rewrite-nonce-increment"] => true
     | _, _ => false) = true := by
   native_decide
 

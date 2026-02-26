@@ -413,6 +413,47 @@ def solcCompatPruneUnreachableHelpersProofRef : String :=
 def solcCompatCanonicalizeInternalFunNamesProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_canonicalize_internal_fun_names_preserves"
 
+/-- Deduplicate top-level helper definitions that are structurally equivalent. -/
+def solcCompatDedupeEquivalentHelpersProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_dedupe_equivalent_helpers_preserves"
+
+private def findEquivalentTopLevelHelper?
+    (seen : List (String × List String × List String × String))
+    (params rets : List String)
+    (body : List YulStmt) : Option String :=
+  let bodyKey : String := reprStr body
+  match seen.find? (fun entry =>
+      decide (entry.2.1 = params) && decide (entry.2.2.1 = rets) && decide (entry.2.2.2 = bodyKey)) with
+  | some entry => some entry.1
+  | none => none
+
+private def dedupeEquivalentTopLevelHelpers (stmts : List YulStmt) : List YulStmt × Nat :=
+  let step := fun (acc : (List YulStmt × List (String × List String × List String × String) ×
+      List (String × String) × Nat)) (stmt : YulStmt) =>
+    let (keptRev, seen, renames, removed) := acc
+    match stmt with
+    | .funcDef name params rets body =>
+        match findEquivalentTopLevelHelper? seen params rets body with
+        | some canonical =>
+            let renames' :=
+              if canonical = name || renames.any (fun pair => pair.fst = name && pair.snd = canonical) then
+                renames
+              else
+                renames ++ [(name, canonical)]
+            (keptRev, seen, renames', removed + 1)
+        | none =>
+            (.funcDef name params rets body :: keptRev, (name, params, rets, reprStr body) :: seen, renames, removed)
+    | _ =>
+        (stmt :: keptRev, seen, renames, removed)
+  let (keptRev, _, renames, removed) := stmts.foldl step ([], [], [], 0)
+  let kept := keptRev.reverse
+  if removed = 0 then
+    (stmts, 0)
+  else if renames.isEmpty then
+    (kept, removed)
+  else
+    (renameCallsInStmts renames kept, removed)
+
 /-- Canonicalize `internal__*` helper names to `fun_*` and rewrite in-object call sites.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatCanonicalizeInternalFunNamesRule : ObjectPatchRule :=
@@ -431,6 +472,28 @@ def solcCompatCanonicalizeInternalFunNamesRule : ObjectPatchRule :=
       let (deployCode', deployRenamed) := canonicalizeInternalFunNames obj.deployCode
       let (runtimeCode', runtimeRenamed) := canonicalizeInternalFunNames obj.runtimeCode
       if deployRenamed + runtimeRenamed = 0 then
+        none
+      else
+        some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
+
+/-- Deduplicate top-level helper function defs that are structurally equivalent.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatDedupeEquivalentHelpersRule : ObjectPatchRule :=
+  { patchName := "solc-compat-dedupe-equivalent-helpers"
+    pattern := "duplicate top-level helper defs with equivalent params/returns/body"
+    rewrite := "retain first helper def, rewrite call sites to retained helper"
+    sideConditions :=
+      [ "only top-level function definitions are considered"
+      , "equivalence requires exact params/returns/body structural equality"
+      , "the first encountered equivalent helper is canonical" ]
+    proofId := solcCompatDedupeEquivalentHelpersProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 205
+    applyObject := fun _ obj =>
+      let (deployCode', deployRemoved) := dedupeEquivalentTopLevelHelpers obj.deployCode
+      let (runtimeCode', runtimeRemoved) := dedupeEquivalentTopLevelHelpers obj.runtimeCode
+      if deployRemoved + runtimeRemoved = 0 then
         none
       else
         some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
@@ -494,7 +557,9 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     stmtRules := foundationStmtPatchPack
     blockRules := foundationBlockPatchPack
     objectRules := foundationObjectPatchPack ++
-      [solcCompatCanonicalizeInternalFunNamesRule, solcCompatPruneUnreachableHelpersRule] }
+      [ solcCompatCanonicalizeInternalFunNamesRule
+      , solcCompatDedupeEquivalentHelpersRule
+      , solcCompatPruneUnreachableHelpersRule ] }
 
 def allRewriteBundles : List RewriteRuleBundle :=
   [foundationRewriteBundle, solcCompatRewriteBundle]
@@ -901,6 +966,12 @@ example :
       (fun proofRef => proofRef = solcCompatCanonicalizeInternalFunNamesProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains equivalent helper dedupe proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatDedupeEquivalentHelpersProofRef) = true := by
+  native_decide
+
 /-- Smoke test: object rule canonicalizes internal helper names and rewrites call sites. -/
 example :
     let input : YulObject :=
@@ -993,6 +1064,64 @@ example :
          (some [.expr (.call "revert" [.lit 0, .lit 0])])],
       ["solc-compat-prune-unreachable-helpers"] => true
     | _, _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: object rule dedupes equivalent helpers and rewrites call sites to canonical helper. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "helperCanonical" [] [] [.leave]
+          , .funcDef "helperAlias" [] [] [.leave]
+          , .funcDef "entry" [] [] [.expr (.call "helperAlias" [])]
+          , .expr (.call "entry" [])
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatDedupeEquivalentHelpersRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "helperCanonical" [] [] [.leave]
+      , .funcDef "entry" [] [] [.expr (.call "helperCanonical" [])]
+      , .expr (.call "entry" [])
+      ],
+      ["solc-compat-dedupe-equivalent-helpers"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: exact duplicate helper defs with identical names are deduped. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "dup" [] [] [.leave]
+          , .funcDef "dup" [] [] [.leave]
+          , .expr (.call "dup" [])
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatDedupeEquivalentHelpersRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "dup" [] [] [.leave]
+      , .expr (.call "dup" [])
+      ],
+      ["solc-compat-dedupe-equivalent-helpers"] => true
+    | _, _ => false) = true := by
   native_decide
 
 /-- Smoke test: non-auditable object rules are fail-closed. -/

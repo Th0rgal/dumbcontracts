@@ -24,6 +24,7 @@ Partially implemented:
 12. Shipped rewrite bundles now include a baseline `foundation` bundle and an explicit opt-in `solc-compat-v0` bundle boundary.
 13. `solc-compat-v0` now carries compatibility-only object rewrites:
    - `solc-compat-canonicalize-internal-fun-names` for deterministic internal helper naming canonicalization (`internal__*` → `fun_*`) with in-object callsite rewrites;
+   - `solc-compat-dedupe-equivalent-helpers` for deterministic deduplication of structurally equivalent top-level helpers with callsite rewrites to canonical helpers;
    - `solc-compat-prune-unreachable-helpers` for deterministic dead helper pruning.
    Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
 

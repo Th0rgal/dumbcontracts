@@ -941,6 +941,70 @@ private def materializeCheckedSubUint256HelperIfCalled (stmts : List YulStmt) : 
   else
     (stmts, 0)
 
+private def checkedAddUint256HelperBody : List YulStmt :=
+  [ .assign "sum" (.call "add" [.ident "x", .ident "y"])
+  , .if_ (.call "gt" [.ident "x", .ident "sum"])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x11])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  ]
+
+private def checkedAddUint256HelperStmt : YulStmt :=
+  .funcDef "checked_add_uint256" ["x", "y"] ["sum"] checkedAddUint256HelperBody
+
+private def checkedMulUint256HelperBody : List YulStmt :=
+  [ .assign "product" (.call "mul" [.ident "x", .ident "y"])
+  , .if_ (.call "iszero"
+      [ .call "or"
+          [ .call "iszero" [.ident "x"]
+          , .call "eq" [.ident "y", .call "div" [.ident "product", .ident "x"]]
+          ]
+      ])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x11])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  ]
+
+private def checkedMulUint256HelperStmt : YulStmt :=
+  .funcDef "checked_mul_uint256" ["x", "y"] ["product"] checkedMulUint256HelperBody
+
+private def materializeCheckedAddMulUint256HelpersIfCalled (stmts : List YulStmt) : List YulStmt × Nat :=
+  let (wrapped, topStmts) :=
+    match stmts with
+    | [.block inner] => (true, inner)
+    | _ => (false, stmts)
+  let needsAdd :=
+    !hasTopLevelFunctionNamed topStmts "checked_add_uint256" &&
+      (callNamesInStmts topStmts).any (fun called => called = "checked_add_uint256")
+  let withAdd :=
+    if needsAdd then
+      insertTopLevelFuncDefAfterPrefix topStmts checkedAddUint256HelperStmt
+    else
+      topStmts
+  let needsMul :=
+    !hasTopLevelFunctionNamed withAdd "checked_mul_uint256" &&
+      (callNamesInStmts withAdd).any (fun called => called = "checked_mul_uint256")
+  let withAddMul :=
+    if needsMul then
+      insertTopLevelFuncDefAfterPrefix withAdd checkedMulUint256HelperStmt
+    else
+      withAdd
+  let inserted : Nat := (if needsAdd then 1 else 0) + (if needsMul then 1 else 0)
+  if inserted = 0 then
+    (stmts, 0)
+  else if wrapped then
+    ([.block withAddMul], inserted)
+  else
+    (withAddMul, inserted)
+
 mutual
 
 private partial def rewriteCurrentNonceIncrementExpr
@@ -1111,6 +1175,112 @@ private partial def rewriteElapsedCheckedSubStmts
 
 end
 
+mutual
+
+private partial def rewriteAccrueInterestCheckedArithmeticExpr
+    (expr : YulExpr) : YulExpr × Nat
+  := match expr with
+    | .lit value => (.lit value, 0)
+    | .hex value => (.hex value, 0)
+    | .str value => (.str value, 0)
+    | .ident name => (.ident name, 0)
+    | .call "mul" [.ident "borrowRate", .ident "elapsed"] =>
+        (.call "checked_mul_uint256" [.ident "borrowRate", .ident "elapsed"], 1)
+    | .call "mul" [.ident "firstTerm", .ident "firstTerm"] =>
+        (.call "checked_mul_uint256" [.ident "firstTerm", .ident "firstTerm"], 1)
+    | .call "mul" [.ident "secondTerm", .ident "firstTerm"] =>
+        (.call "checked_mul_uint256" [.ident "secondTerm", .ident "firstTerm"], 1)
+    | .call "mul" [.ident "firstTerm", .ident "secondTerm"] =>
+        (.call "checked_mul_uint256" [.ident "firstTerm", .ident "secondTerm"], 1)
+    | .call "mul" [.ident "totalBorrowAssets", .ident "growth"] =>
+        (.call "checked_mul_uint256" [.ident "totalBorrowAssets", .ident "growth"], 1)
+    | .call "mul" [.ident "interest", .ident "fee"] =>
+        (.call "checked_mul_uint256" [.ident "interest", .ident "fee"], 1)
+    | .call "add" [.ident "secondTerm", .ident "thirdTerm"] =>
+        (.call "checked_add_uint256" [.ident "secondTerm", .ident "thirdTerm"], 1)
+    | .call "add" [.ident "firstTerm", .call "add" [.ident "secondTerm", .ident "thirdTerm"]] =>
+        (.call "checked_add_uint256"
+          [ .ident "firstTerm"
+          , .call "checked_add_uint256" [.ident "secondTerm", .ident "thirdTerm"]
+          ], 1)
+    | .call "add" [.ident "totalBorrowAssets", .ident "interest"] =>
+        (.call "checked_add_uint256" [.ident "totalBorrowAssets", .ident "interest"], 1)
+    | .call "add" [.ident "totalSupplyAssets", .ident "interest"] =>
+        (.call "checked_add_uint256" [.ident "totalSupplyAssets", .ident "interest"], 1)
+    | .call name args =>
+        let (args', rewritten) := rewriteAccrueInterestCheckedArithmeticExprs args
+        (.call name args', rewritten)
+
+private partial def rewriteAccrueInterestCheckedArithmeticExprs
+    (exprs : List YulExpr) : List YulExpr × Nat
+  := match exprs with
+    | [] => ([], 0)
+    | expr :: rest =>
+        let (expr', rewrittenHead) := rewriteAccrueInterestCheckedArithmeticExpr expr
+        let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticExprs rest
+        (expr' :: rest', rewrittenHead + rewrittenTail)
+
+private partial def rewriteAccrueInterestCheckedArithmeticStmt
+    (stmt : YulStmt) : YulStmt × Nat
+  := match stmt with
+    | .comment text => (.comment text, 0)
+    | .let_ name value =>
+        let (value', rewritten) := rewriteAccrueInterestCheckedArithmeticExpr value
+        (.let_ name value', rewritten)
+    | .letMany names value =>
+        let (value', rewritten) := rewriteAccrueInterestCheckedArithmeticExpr value
+        (.letMany names value', rewritten)
+    | .assign name value =>
+        let (value', rewritten) := rewriteAccrueInterestCheckedArithmeticExpr value
+        (.assign name value', rewritten)
+    | .expr value =>
+        let (value', rewritten) := rewriteAccrueInterestCheckedArithmeticExpr value
+        (.expr value', rewritten)
+    | .leave => (.leave, 0)
+    | .if_ cond body =>
+        let (cond', condRewritten) := rewriteAccrueInterestCheckedArithmeticExpr cond
+        let (body', bodyRewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+        (.if_ cond' body', condRewritten + bodyRewritten)
+    | .for_ init cond post body =>
+        let (init', initRewritten) := rewriteAccrueInterestCheckedArithmeticStmts init
+        let (cond', condRewritten) := rewriteAccrueInterestCheckedArithmeticExpr cond
+        let (post', postRewritten) := rewriteAccrueInterestCheckedArithmeticStmts post
+        let (body', bodyRewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+        (.for_ init' cond' post' body', initRewritten + condRewritten + postRewritten + bodyRewritten)
+    | .switch expr cases default =>
+        let (expr', exprRewritten) := rewriteAccrueInterestCheckedArithmeticExpr expr
+        let rewriteCase := fun (entry : Nat × List YulStmt) =>
+          let (tag, body) := entry
+          let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+          ((tag, body'), rewritten)
+        let rewrittenCases := cases.map rewriteCase
+        let cases' := rewrittenCases.map Prod.fst
+        let caseRewritten := rewrittenCases.foldl (fun acc entry => acc + entry.snd) 0
+        let (default', defaultRewritten) :=
+          match default with
+          | some body =>
+              let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+              (some body', rewritten)
+          | none => (none, 0)
+        (.switch expr' cases' default', exprRewritten + caseRewritten + defaultRewritten)
+    | .block stmts =>
+        let (stmts', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts stmts
+        (.block stmts', rewritten)
+    | .funcDef name params rets body =>
+        let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+        (.funcDef name params rets body', rewritten)
+
+private partial def rewriteAccrueInterestCheckedArithmeticStmts
+    (stmts : List YulStmt) : List YulStmt × Nat
+  := match stmts with
+    | [] => ([], 0)
+    | stmt :: rest =>
+        let (stmt', rewrittenHead) := rewriteAccrueInterestCheckedArithmeticStmt stmt
+        let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+        (stmt' :: rest', rewrittenHead + rewrittenTail)
+
+end
+
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
 
@@ -1152,6 +1322,9 @@ def solcCompatRewriteNonceIncrementProofRef : String :=
 
 def solcCompatRewriteElapsedCheckedSubProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_elapsed_checked_sub_preserves"
+
+def solcCompatRewriteAccrueInterestCheckedArithmeticProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_accrue_interest_checked_arithmetic_preserves"
 
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
@@ -1437,6 +1610,30 @@ def solcCompatRewriteElapsedCheckedSubRule : ObjectPatchRule :=
       else
         some { obj with runtimeCode := runtimeCode'' } }
 
+/-- Rewrite selected runtime `accrueInterest` arithmetic patterns to
+    Solidity-style `checked_add_uint256` / `checked_mul_uint256` helper calls.
+    Insert helpers only when referenced and absent.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatRewriteAccrueInterestCheckedArithmeticRule : ObjectPatchRule :=
+  { patchName := "solc-compat-rewrite-accrue-interest-checked-arithmetic"
+    pattern := "selected runtime `mul`/`add` expressions in `accrueInterest` flow"
+    rewrite := "replace with `checked_mul_uint256` / `checked_add_uint256` and materialize helpers if needed"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "rewrite is scoped to known identifier-shape arithmetic in accrue-interest flow"
+      , "helper insertion is top-level, deterministic, and only when absent" ]
+    proofId := solcCompatRewriteAccrueInterestCheckedArithmeticProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 211
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts obj.runtimeCode
+      let (runtimeCode'', inserted) := materializeCheckedAddMulUint256HelpersIfCalled runtimeCode'
+      if rewritten + inserted = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode'' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -1522,6 +1719,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatRewriteElapsedCheckedSubRule
+      , solcCompatRewriteAccrueInterestCheckedArithmeticRule
       , solcCompatRewriteNonceIncrementRule
       , solcCompatPruneUnreachableDeployHelpersRule
       , solcCompatDropUnusedMappingSlotHelperRule
@@ -1981,6 +2179,12 @@ example :
       (fun proofRef => proofRef = solcCompatRewriteElapsedCheckedSubProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains accrue-interest checked-arithmetic rewrite proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatRewriteAccrueInterestCheckedArithmeticProofRef) = true := by
+  native_decide
+
 /-- Smoke test: `solc-compat` bundle contains deploy-only prune proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -2423,6 +2627,76 @@ example :
           ] ],
       ["solc-compat-rewrite-elapsed-checked-sub"] => true
     | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: accrue-interest arithmetic rewrite inserts checked add/mul helpers. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "firstTerm" (.call "mul" [.ident "borrowRate", .ident "elapsed"])
+              , .let_ "secondTerm" (.call "div" [.call "mul" [.ident "firstTerm", .ident "firstTerm"], .lit 2000000000000000000])
+              , .let_ "thirdTerm" (.call "div" [.call "mul" [.ident "secondTerm", .ident "firstTerm"], .lit 3000000000000000000])
+              , .let_ "growth" (.call "add" [.ident "firstTerm", .call "add" [.ident "secondTerm", .ident "thirdTerm"]])
+              , .let_ "interest" (.call "div" [.call "mul" [.ident "totalBorrowAssets", .ident "growth"], .lit 1000000000000000000])
+              , .let_ "newTotalBorrowAssets" (.call "add" [.ident "totalBorrowAssets", .ident "interest"])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_mul_uint256" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint256" &&
+      called.any (fun name => name = "checked_mul_uint256") &&
+      called.any (fun name => name = "checked_add_uint256") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite is wrapper-safe for single top-level block runtime shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" [] []
+                  [ .let_ "firstTerm" (.call "mul" [.ident "borrowRate", .ident "elapsed"])
+                  , .let_ "newTotalSupplyAssets" (.call "add" [.ident "totalSupplyAssets", .ident "interest"])
+                  ]
+              , .block [ .expr (.call "fun_accrueInterest" []) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed top "checked_mul_uint256" &&
+      hasTopLevelFunctionNamed top "checked_add_uint256" &&
+      called.any (fun name => name = "checked_mul_uint256") &&
+      called.any (fun name => name = "checked_add_uint256") = true := by
   native_decide
 
 /-- Smoke test: unused top-level `keccakMarketParams` helper is dropped. -/

@@ -28,6 +28,7 @@ Partially implemented:
    - `solc-compat-inline-mapping-slot-calls` for deterministic inlining of runtime `mappingSlot(baseSlot, key)` calls to explicit helper-equivalent scratch writes (`mstore(512, key)`, `mstore(544, baseSlot)`) plus `keccak256(512, 64)`;
    - `solc-compat-inline-keccak-market-params-calls` for deterministic inlining of direct runtime `keccakMarketParams(...)` helper calls to explicit `mstore`/`keccak256` sequences;
    - `solc-compat-rewrite-elapsed-checked-sub` for deterministic rewrite of runtime `sub(timestamp(), prevLastUpdate)` expressions to `checked_sub_uint256(timestamp(), prevLastUpdate)` with conditional top-level helper materialization when referenced and absent;
+   - `solc-compat-rewrite-accrue-interest-checked-arithmetic` for deterministic rewrite of selected runtime `accrueInterest` arithmetic expressions to Solidity-style `checked_add_uint256` / `checked_mul_uint256` with conditional top-level helper materialization when referenced and absent;
    - `solc-compat-rewrite-nonce-increment` for deterministic rewrite of runtime `add(currentNonce, 1)` expressions to `increment_uint256(currentNonce)` with conditional top-level helper materialization when referenced and absent;
    - `solc-compat-prune-unreachable-deploy-helpers` for deterministic pruning of deploy-only top-level helper defs that are unreachable from non-function deploy statements;
    - `solc-compat-drop-unused-mapping-slot-helper` for deterministic removal of top-level runtime `mappingSlot` helper defs after call sites are eliminated;
@@ -37,7 +38,7 @@ Partially implemented:
    `solc-compat-outline-dispatch-helpers` is currently kept out of the default bundle activation to avoid over-outlining runtime entry dispatch on active parity targets.
    Runtime codegen does not provide a separate backend-profile dispatch-helper outlining toggle; compat outlining is object-rule only.
    Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
-14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-mapping-slot-calls` → `inline-keccak-market-params` → `rewrite-elapsed-checked-sub` → `rewrite-nonce-increment` → `prune-unreachable-deploy-helpers` → `drop-unused-mapping-slot-helper` → `drop-unused-keccak-helper` → `dedupe`) without manual CLI overrides.
+14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-mapping-slot-calls` → `inline-keccak-market-params` → `rewrite-elapsed-checked-sub` → `rewrite-accrue-interest-checked-arithmetic` → `rewrite-nonce-increment` → `prune-unreachable-deploy-helpers` → `drop-unused-mapping-slot-helper` → `drop-unused-keccak-helper` → `dedupe`) without manual CLI overrides.
 
 Not implemented yet:
 1. identity checker and unsupported manifest workflow.

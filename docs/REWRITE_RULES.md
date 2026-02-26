@@ -25,9 +25,10 @@ Partially implemented:
    - `solc-compat-inline-dispatch-wrapper-calls`: inlines runtime dispatch case bodies of the form `fun_*()` to the referenced top-level zero-arity helper body.
    - `solc-compat-inline-mapping-slot-calls`: inlines runtime `mappingSlot(baseSlot, key)` expression calls by materializing helper-equivalent scratch writes (`mstore(512, key)`, `mstore(544, baseSlot)`) plus `keccak256(512, 64)` into fresh collision-safe temporaries.
    - `solc-compat-inline-keccak-market-params-calls`: inlines direct runtime `keccakMarketParams(...)` helper calls into explicit `mstore`/`keccak256` sequences.
+   - `solc-compat-drop-unused-mapping-slot-helper`: drops top-level runtime `mappingSlot` helper definitions when no call sites remain.
    - `solc-compat-drop-unused-keccak-market-params-helper`: drops top-level runtime `keccakMarketParams` helper definitions when no call sites remain.
    - `solc-compat-dedupe-equivalent-helpers`: deduplicates structurally equivalent top-level helper defs and rewrites call sites to the retained canonical helper.
-   - `solc-compat-prune-unreachable-helpers`: prunes unreachable top-level helper defs deterministically.
+   `solc-compat-prune-unreachable-helpers` remains implemented and tested, but is not activated in `solc-compat-v0` by default because broad helper pruning removes `solc`-emitted helper families needed for exact function-level identity.
    `solc-compat-outline-dispatch-helpers` remains implemented and tested, but is not activated in `solc-compat-v0` by default because broad dispatch outlining introduces non-`solc` helper families on current targets.
    Runtime codegen no longer has a separate backend-profile dispatch-helper outlining path; outlining is centralized in proof-gated object rules.
 9. Parity packs now require explicit pack-level proof composition metadata (`compositionProofRef`) and proof registry coverage (`requiredProofRefs`) against the selected rewrite bundle before `--parity-pack` selection is accepted.

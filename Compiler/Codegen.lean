@@ -339,7 +339,7 @@ example :
     deployStillHasMarker && runtimeNoLongerHasMarker && runtimeMatchCount == 1 := by
   native_decide
 
-/-- Regression guard: object-level rewrites are included in emitted patch report manifests. -/
+/-- Regression guard: active `solc-compat` object rewrites are included in emitted patch report manifests. -/
 example :
     let contract : IRContract :=
       { name := "ObjectManifestRegression"
@@ -355,7 +355,11 @@ example :
         usesMapping := false
         internalFunctions :=
           [ .funcDef "liveHelper" [] [] [.leave]
-          , .funcDef "deadHelper" [] [] [.leave]
+          , .funcDef "mappingSlot" ["baseSlot", "key"] ["slot"]
+              [ .expr (.call "mstore" [.lit 512, .ident "key"])
+              , .expr (.call "mstore" [.lit 544, .ident "baseSlot"])
+              , .assign "slot" (.call "keccak256" [.lit 512, .lit 64])
+              ]
           ] }
     let options : YulEmitOptions :=
       { patchConfig :=
@@ -364,9 +368,9 @@ example :
             rewriteBundleId := Yul.solcCompatRewriteBundleId
             requiredProofRefs := Yul.solcCompatProofAllowlist } }
     let report := emitYulWithOptionsReport contract options
-    let hasObjectRule :=
-      report.2.manifest.any (fun entry => entry.patchName = "solc-compat-prune-unreachable-helpers")
-    hasObjectRule = true := by
+    let hasMappingDropRule :=
+      report.2.manifest.any (fun entry => entry.patchName = "solc-compat-drop-unused-mapping-slot-helper")
+    hasMappingDropRule = true := by
   native_decide
 
 /-- Regression guard: solidity parity profile keeps dispatch inlined in switch cases. -/

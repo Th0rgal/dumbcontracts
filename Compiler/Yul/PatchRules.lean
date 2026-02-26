@@ -890,6 +890,9 @@ def solcCompatInlineMappingSlotCallsProofRef : String :=
 def solcCompatDropUnusedKeccakMarketParamsHelperProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_drop_unused_keccak_market_params_helper_preserves"
 
+def solcCompatDropUnusedMappingSlotHelperProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_drop_unused_mapping_slot_helper_preserves"
+
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
     (params rets : List String)
@@ -1106,6 +1109,28 @@ def solcCompatDropUnusedKeccakMarketParamsHelperRule : ObjectPatchRule :=
       else
         some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
 
+/-- Drop top-level runtime `mappingSlot` helper when no call sites remain.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatDropUnusedMappingSlotHelperRule : ObjectPatchRule :=
+  { patchName := "solc-compat-drop-unused-mapping-slot-helper"
+    pattern := "top-level helper definition `mappingSlot` with no remaining call sites"
+    rewrite := "remove helper definition"
+    sideConditions :=
+      [ "deploy/runtime code is transformed"
+      , "only top-level definitions named `mappingSlot` are considered"
+      , "helper is removed only when no call site remains in the same object section" ]
+    proofId := solcCompatDropUnusedMappingSlotHelperProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 210
+    applyObject := fun _ obj =>
+      let (deployCode', deployRemoved) := dropUnusedTopLevelFunctionByName obj.deployCode "mappingSlot"
+      let (runtimeCode', runtimeRemoved) := dropUnusedTopLevelFunctionByName obj.runtimeCode "mappingSlot"
+      if deployRemoved + runtimeRemoved = 0 then
+        none
+      else
+        some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -1169,9 +1194,9 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineDispatchWrapperCallsRule
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
+      , solcCompatDropUnusedMappingSlotHelperRule
       , solcCompatDropUnusedKeccakMarketParamsHelperRule
-      , solcCompatDedupeEquivalentHelpersRule
-      , solcCompatPruneUnreachableHelpersRule ] }
+      , solcCompatDedupeEquivalentHelpersRule ] }
 
 def allRewriteBundles : List RewriteRuleBundle :=
   [foundationRewriteBundle, solcCompatRewriteBundle]
@@ -1569,7 +1594,7 @@ example :
 
 /-- Smoke test: `solc-compat` bundle contains compatibility-only proof refs. -/
 example :
-    solcCompatProofAllowlist.any (fun proofRef => proofRef = solcCompatPruneUnreachableHelpersProofRef) = true := by
+    solcCompatProofAllowlist.any (fun proofRef => proofRef = solcCompatPruneUnreachableHelpersProofRef) = false := by
   native_decide
 
 /-- Smoke test: `solc-compat` bundle contains canonical internal-fun rename proof refs. -/
@@ -1606,6 +1631,12 @@ example :
 example :
     solcCompatProofAllowlist.any
       (fun proofRef => proofRef = solcCompatDropUnusedKeccakMarketParamsHelperProofRef) = true := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle contains drop-unused-mapping-slot proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatDropUnusedMappingSlotHelperProofRef) = true := by
   native_decide
 
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
@@ -1694,7 +1725,7 @@ example :
     | _, _ => false) = true := by
   native_decide
 
-/-- Smoke test: dispatch wrapper calls are inlined and wrapper helper becomes pruneable. -/
+/-- Smoke test: dispatch wrapper calls are inlined without pruning helper definitions by default. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -1717,10 +1748,11 @@ example :
       []
       []
       []
-      [solcCompatInlineDispatchWrapperCallsRule, solcCompatPruneUnreachableHelpersRule]
+      [solcCompatInlineDispatchWrapperCallsRule]
       input
     (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
-    | [ .block
+    | [ .funcDef "fun_ping" [] [] [.leave]
+      , .block
           [ .if_ (.lit 1)
               [ .switch (.ident "__selector")
                   [(1, [.leave])]
@@ -1728,7 +1760,7 @@ example :
               ]
           ]
       ],
-      ["solc-compat-inline-dispatch-wrapper-calls", "solc-compat-prune-unreachable-helpers"] => true
+      ["solc-compat-inline-dispatch-wrapper-calls"] => true
     | _, _ => false) = true := by
   native_decide
 
@@ -1770,7 +1802,7 @@ example :
     | _, _ => false) = true := by
   native_decide
 
-/-- Smoke test: direct `keccakMarketParams(...)` calls are inlined and helper becomes pruneable. -/
+/-- Smoke test: direct `keccakMarketParams(...)` calls are inlined and helper is dropped via dedicated rule. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -1800,7 +1832,7 @@ example :
       []
       []
       []
-      [solcCompatInlineKeccakMarketParamsCallsRule, solcCompatPruneUnreachableHelpersRule]
+      [solcCompatInlineKeccakMarketParamsCallsRule, solcCompatDropUnusedKeccakMarketParamsHelperRule]
       input
     (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
     | [ .block
@@ -1812,11 +1844,11 @@ example :
           , .let_ "id0" (.call "keccak256" [.lit 0, .lit 160])
           ]
       ],
-      ["solc-compat-inline-keccak-market-params-calls", "solc-compat-prune-unreachable-helpers"] => true
+      ["solc-compat-inline-keccak-market-params-calls", "solc-compat-drop-unused-keccak-market-params-helper"] => true
     | _, _ => false) = true := by
   native_decide
 
-/-- Smoke test: nested `mappingSlot(...)` calls are inlined and helper becomes pruneable. -/
+/-- Smoke test: nested `mappingSlot(...)` calls are inlined and helper is dropped via dedicated rule. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -1848,7 +1880,7 @@ example :
       []
       []
       []
-      [solcCompatInlineMappingSlotCallsRule, solcCompatPruneUnreachableHelpersRule]
+      [solcCompatInlineMappingSlotCallsRule, solcCompatDropUnusedMappingSlotHelperRule]
       input
     (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
     | [ .block
@@ -1861,7 +1893,7 @@ example :
           , .let_ "value" (.call "sload" [.call "add" [.ident "__compat_mapping_slot_1", .lit 1]])
           ]
       ],
-      ["solc-compat-inline-mapping-slot-calls", "solc-compat-prune-unreachable-helpers"] => true
+      ["solc-compat-inline-mapping-slot-calls", "solc-compat-drop-unused-mapping-slot-helper"] => true
     | _, _ => false) = true := by
   native_decide
 
@@ -1931,6 +1963,76 @@ example :
           [ .let_ "slot" (.call "keccakMarketParams"
               [.ident "loanToken", .ident "collateralToken", .ident "oracle", .ident "irm", .ident "lltv"])
           ]
+      , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+      ], [] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: unused top-level `mappingSlot` helper is dropped. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "mappingSlot" ["baseSlot", "key"] ["slot"]
+              [ .expr (.call "mstore" [.lit 512, .ident "key"])
+              , .expr (.call "mstore" [.lit 544, .ident "baseSlot"])
+              , .assign "slot" (.call "keccak256" [.lit 512, .lit 64])
+              ]
+          , .funcDef "fun_accrueInterest" ["id"] [] [.leave]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatDropUnusedMappingSlotHelperRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "fun_accrueInterest" ["id"] [] [.leave]
+      , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+      ],
+      ["solc-compat-drop-unused-mapping-slot-helper"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: `mappingSlot` helper is kept when call sites remain. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "mappingSlot" ["baseSlot", "key"] ["slot"]
+              [ .expr (.call "mstore" [.lit 512, .ident "key"])
+              , .expr (.call "mstore" [.lit 544, .ident "baseSlot"])
+              , .assign "slot" (.call "keccak256" [.lit 512, .lit 64])
+              ]
+          , .funcDef "fun_accrueInterest" ["id"] []
+              [ .let_ "slot" (.call "mappingSlot" [.lit 3, .ident "id"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatDropUnusedMappingSlotHelperRule]
+      input
+    (match report.patched.runtimeCode, report.manifest with
+    | [ .funcDef "mappingSlot" ["baseSlot", "key"] ["slot"]
+          [ .expr (.call "mstore" [.lit 512, .ident "key"])
+          , .expr (.call "mstore" [.lit 544, .ident "baseSlot"])
+          , .assign "slot" (.call "keccak256" [.lit 512, .lit 64])
+          ]
+      , .funcDef "fun_accrueInterest" ["id"] []
+          [ .let_ "slot" (.call "mappingSlot" [.lit 3, .ident "id"]) ]
       , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
       ], [] => true
     | _, _ => false) = true := by
@@ -2013,7 +2115,7 @@ example :
       { enabled := true
         maxIterations := 2
         rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
+        requiredProofRefs := solcCompatProofAllowlist ++ [solcCompatPruneUnreachableHelpersProofRef] }
       []
       []
       []
@@ -2049,7 +2151,7 @@ example :
       { enabled := true
         maxIterations := 2
         rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
+        requiredProofRefs := solcCompatProofAllowlist ++ [solcCompatPruneUnreachableHelpersProofRef] }
       []
       []
       []

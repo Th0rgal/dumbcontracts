@@ -331,7 +331,7 @@ example :
     let options : YulEmitOptions :=
       { patchConfig :=
           { enabled := true
-            maxIterations := 2
+            maxIterations := 6
             rewriteBundleId := Yul.solcCompatRewriteBundleId
             requiredProofRefs := Yul.solcCompatProofAllowlist } }
     let report := emitYulWithOptionsReport contract options

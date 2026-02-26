@@ -406,6 +406,135 @@ private def canonicalizeInternalFunNames (stmts : List YulStmt) : List YulStmt �
   else
     (renameCallsInStmts renames stmts, renames.length)
 
+private def dispatchLabelFunctionName? (label : String) : Option String :=
+  if label = "fallback()" || label = "receive()" then
+    none
+  else if label.endsWith "()" then
+    let raw := label.dropRight 2
+    if raw.isEmpty then none else some raw
+  else
+    none
+
+private def topLevelFunctionNames (stmts : List YulStmt) : List String :=
+  (topLevelFunctionDefs stmts).map Prod.fst
+
+private def appendUniqueHelperDef
+    (defs : List (String × List YulStmt))
+    (name : String)
+    (body : List YulStmt) : List (String × List YulStmt) :=
+  if defs.any (fun entry => entry.1 = name) then
+    defs
+  else
+    defs ++ [(name, body)]
+
+private def helperDefsToStmts (defs : List (String × List YulStmt)) : List YulStmt :=
+  defs.map (fun entry => .funcDef entry.1 [] [] entry.2)
+
+private def insertTopLevelHelpersAfterPrefix
+    (stmts : List YulStmt)
+    (defs : List (String × List YulStmt)) : List YulStmt :=
+  let rec splitPrefix : List YulStmt → List YulStmt × List YulStmt
+    | [] => ([], [])
+    | stmt :: rest =>
+        match stmt with
+        | .funcDef _ _ _ _ =>
+            let (pref, suff) := splitPrefix rest
+            (stmt :: pref, suff)
+        | _ => ([], stmt :: rest)
+  let (pref, suff) := splitPrefix stmts
+  pref ++ helperDefsToStmts defs ++ suff
+
+mutual
+
+private partial def outlineDispatchCasesInStmt
+    (knownDefs : List String)
+    (stmt : YulStmt) : YulStmt × List (String × List YulStmt) × List String
+  := match stmt with
+    | .comment text => (.comment text, [], knownDefs)
+    | .let_ name value => (.let_ name value, [], knownDefs)
+    | .letMany names value => (.letMany names value, [], knownDefs)
+    | .assign name value => (.assign name value, [], knownDefs)
+    | .expr value => (.expr value, [], knownDefs)
+    | .leave => (.leave, [], knownDefs)
+    | .if_ cond body =>
+        let (body', defs, knownDefs') := outlineDispatchCasesInStmts knownDefs body
+        (.if_ cond body', defs, knownDefs')
+    | .for_ init cond post body =>
+        let (init', initDefs, knownAfterInit) := outlineDispatchCasesInStmts knownDefs init
+        let (post', postDefs, knownAfterPost) := outlineDispatchCasesInStmts knownAfterInit post
+        let (body', bodyDefs, knownAfterBody) := outlineDispatchCasesInStmts knownAfterPost body
+        (.for_ init' cond post' body',
+          initDefs ++ postDefs ++ bodyDefs,
+          knownAfterBody)
+    | .switch expr cases default =>
+        let rec rewriteCases
+            (remaining : List (Nat × List YulStmt))
+            (known : List String)
+            (accCases : List (Nat × List YulStmt))
+            (accDefs : List (String × List YulStmt))
+            : List (Nat × List YulStmt) × List (String × List YulStmt) × List String :=
+          match remaining with
+          | [] => (accCases.reverse, accDefs, known)
+          | (tag, body) :: rest =>
+              let (body', nestedDefs, knownAfterBody) := outlineDispatchCasesInStmts known body
+              let knownWithNested :=
+                nestedDefs.foldl (fun acc entry => appendUniqueString acc entry.1) knownAfterBody
+              let nestedMerged :=
+                nestedDefs.foldl (fun acc entry => appendUniqueHelperDef acc entry.1 entry.2) accDefs
+              match body' with
+              | .comment label :: restBody =>
+                  match dispatchLabelFunctionName? label with
+                  | some baseName =>
+                      let helperName := s!"fun_{baseName}"
+                      if knownWithNested.any (fun seen => seen = helperName) then
+                        rewriteCases rest knownWithNested ((tag, body') :: accCases) nestedMerged
+                      else
+                        let defs' := appendUniqueHelperDef nestedMerged helperName restBody
+                        let known' := appendUniqueString knownWithNested helperName
+                        rewriteCases rest known' ((tag, [.expr (.call helperName [])]) :: accCases) defs'
+                  | none =>
+                      rewriteCases rest knownWithNested ((tag, body') :: accCases) nestedMerged
+              | _ =>
+                  rewriteCases rest knownWithNested ((tag, body') :: accCases) nestedMerged
+        let (cases', defsFromCases, knownAfterCases) := rewriteCases cases knownDefs [] []
+        let (default', defsFromDefault, knownAfterDefault) :=
+          match default with
+          | some body =>
+              let (body', defs, known') := outlineDispatchCasesInStmts knownAfterCases body
+              (some body', defs, known')
+          | none => (none, [], knownAfterCases)
+        let defsAll :=
+          defsFromDefault.foldl (fun acc entry => appendUniqueHelperDef acc entry.1 entry.2) defsFromCases
+        (.switch expr cases' default', defsAll, knownAfterDefault)
+    | .block stmts =>
+        let (stmts', defs, knownDefs') := outlineDispatchCasesInStmts knownDefs stmts
+        (.block stmts', defs, knownDefs')
+    | .funcDef name params rets body =>
+        let (body', defs, knownDefs') := outlineDispatchCasesInStmts knownDefs body
+        (.funcDef name params rets body', defs, knownDefs')
+
+private partial def outlineDispatchCasesInStmts
+    (knownDefs : List String)
+    (stmts : List YulStmt) : List YulStmt × List (String × List YulStmt) × List String
+  := match stmts with
+    | [] => ([], [], knownDefs)
+    | stmt :: rest =>
+        let (stmt', defsHead, knownAfterHead) := outlineDispatchCasesInStmt knownDefs stmt
+        let (rest', defsTail, knownAfterTail) := outlineDispatchCasesInStmts knownAfterHead rest
+        let defs :=
+          defsTail.foldl (fun acc entry => appendUniqueHelperDef acc entry.1 entry.2) defsHead
+        (stmt' :: rest', defs, knownAfterTail)
+
+end
+
+private def outlineRuntimeDispatchHelpers (stmts : List YulStmt) : List YulStmt × Nat :=
+  let known := topLevelFunctionNames stmts
+  let (rewritten, helperDefs, _) := outlineDispatchCasesInStmts known stmts
+  if helperDefs.isEmpty then
+    (stmts, 0)
+  else
+    (insertTopLevelHelpersAfterPrefix rewritten helperDefs, helperDefs.length)
+
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
 
@@ -416,6 +545,10 @@ def solcCompatCanonicalizeInternalFunNamesProofRef : String :=
 /-- Deduplicate top-level helper definitions that are structurally equivalent. -/
 def solcCompatDedupeEquivalentHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_dedupe_equivalent_helpers_preserves"
+
+/-- Outline switch dispatch case bodies into explicit top-level `fun_*` helpers. -/
+def solcCompatOutlineDispatchHelpersProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_outline_dispatch_helpers_preserves"
 
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
@@ -475,6 +608,28 @@ def solcCompatCanonicalizeInternalFunNamesRule : ObjectPatchRule :=
         none
       else
         some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
+
+/-- Outline labeled runtime switch cases as explicit `fun_*` helper defs and dispatch via calls.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatOutlineDispatchHelpersRule : ObjectPatchRule :=
+  { patchName := "solc-compat-outline-dispatch-helpers"
+    pattern := "runtime switch case body prefixed with comment `<name>()`"
+    rewrite := "insert top-level `fun_<name>` helper and replace case body with helper call"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "labels `fallback()` and `receive()` are excluded"
+      , "existing `fun_*` names are collision-safe and never overwritten"
+      , "outlined helper parameters/returns are empty (dispatch shape only)" ]
+    proofId := solcCompatOutlineDispatchHelpersProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 215
+    applyObject := fun _ obj =>
+      let (runtimeCode', outlined) := outlineRuntimeDispatchHelpers obj.runtimeCode
+      if outlined = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode' } }
 
 /-- Deduplicate top-level helper function defs that are structurally equivalent.
     This is enabled only in the opt-in `solc-compat` bundle. -/
@@ -557,7 +712,8 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     stmtRules := foundationStmtPatchPack
     blockRules := foundationBlockPatchPack
     objectRules := foundationObjectPatchPack ++
-      [ solcCompatCanonicalizeInternalFunNamesRule
+      [ solcCompatOutlineDispatchHelpersRule
+      , solcCompatCanonicalizeInternalFunNamesRule
       , solcCompatDedupeEquivalentHelpersRule
       , solcCompatPruneUnreachableHelpersRule ] }
 
@@ -970,6 +1126,92 @@ example :
 example :
     solcCompatProofAllowlist.any
       (fun proofRef => proofRef = solcCompatDedupeEquivalentHelpersProofRef) = true := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatOutlineDispatchHelpersProofRef) = true := by
+  native_decide
+
+/-- Smoke test: dispatch cases are outlined into top-level `fun_*` helper defs. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "existing" [] [] [.leave]
+          , .block
+              [ .let_ "__has_selector" (.lit 1)
+              , .if_ (.ident "__has_selector")
+                  [ .switch (.ident "__selector")
+                      [(1, [.comment "accrueInterest()", .leave])]
+                      (some [.comment "fallback()", .leave])
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatOutlineDispatchHelpersRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "existing" [] [] [.leave]
+      , .funcDef "fun_accrueInterest" [] [] [.leave]
+      , .block
+          [ .let_ "__has_selector" (.lit 1)
+          , .if_ (.ident "__has_selector")
+              [ .switch (.ident "__selector")
+                  [(1, [.expr (.call "fun_accrueInterest" [])])]
+                  (some [.comment "fallback()", .leave])
+              ]
+          ]
+      ],
+      ["solc-compat-outline-dispatch-helpers"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: dispatch helper outlining is collision-safe when helper already exists. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] [] [.leave]
+          , .block
+              [ .if_ (.lit 1)
+                  [ .switch (.ident "__selector")
+                      [(1, [.comment "accrueInterest()", .leave])]
+                      none
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatOutlineDispatchHelpersRule]
+      input
+    (match report.patched.runtimeCode, report.manifest with
+    | [ .funcDef "fun_accrueInterest" [] [] [.leave]
+      , .block
+          [ .if_ (.lit 1)
+              [ .switch (.ident "__selector")
+                  [(1, [.comment "accrueInterest()", .leave])]
+                  none
+              ]
+          ]
+      ], [] => true
+    | _, _ => false) = true := by
   native_decide
 
 /-- Smoke test: object rule canonicalizes internal helper names and rewrites call sites. -/

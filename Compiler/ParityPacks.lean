@@ -64,7 +64,7 @@ def solc_0_8_28_o200_viair_false_evm_shanghai : ParityPack :=
     }
     backendProfile := .solidityParity
     forcePatches := true
-    defaultPatchMaxIterations := 2
+    defaultPatchMaxIterations := 6
     rewriteBundleId := Compiler.Yul.solcCompatRewriteBundleId
     compositionProofRef := "Compiler.Proofs.YulGeneration.PatchRulesProofs.foundation_patch_pack_obligations"
     requiredProofRefs := Compiler.Yul.solcCompatProofAllowlist
@@ -82,7 +82,7 @@ def solc_0_8_28_o999999_viair_true_evm_paris : ParityPack :=
     }
     backendProfile := .solidityParity
     forcePatches := true
-    defaultPatchMaxIterations := 2
+    defaultPatchMaxIterations := 6
     rewriteBundleId := Compiler.Yul.solcCompatRewriteBundleId
     compositionProofRef := "Compiler.Proofs.YulGeneration.PatchRulesProofs.foundation_patch_pack_obligations"
     requiredProofRefs := Compiler.Yul.solcCompatProofAllowlist

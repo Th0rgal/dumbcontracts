@@ -23,10 +23,12 @@ Partially implemented:
 11. Parity packs now carry `rewriteBundleId`, and `--parity-pack` selection fails closed unless that bundle exists and the pack proof registry is a deduped subset of the bundle's proof allowlist.
 12. Shipped rewrite bundles now include a baseline `foundation` bundle and an explicit opt-in `solc-compat-v0` bundle boundary.
 13. `solc-compat-v0` now carries compatibility-only object rewrites:
+   - `solc-compat-outline-dispatch-helpers` for deterministic outlining of labeled runtime dispatch switch cases into explicit top-level `fun_*` helpers with rewritten dispatch callsites;
    - `solc-compat-canonicalize-internal-fun-names` for deterministic internal helper naming canonicalization (`internal__*` → `fun_*`) with in-object callsite rewrites;
    - `solc-compat-dedupe-equivalent-helpers` for deterministic deduplication of structurally equivalent top-level helpers with callsite rewrites to canonical helpers;
    - `solc-compat-prune-unreachable-helpers` for deterministic dead helper pruning.
    Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
+14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`outline` → `canonicalize` → `dedupe` → `prune`) without manual CLI overrides.
 
 Not implemented yet:
 1. identity checker and unsupported manifest workflow.

@@ -1328,8 +1328,12 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
         (.call "checked_add_uint128" [.ident "totalBorrowAssets", .ident "interest"], 1)
     | .call "add" [.ident "totalSupplyAssets", .ident "interest"] =>
         (.call "checked_add_uint128" [.ident "totalSupplyAssets", .ident "interest"], 1)
-    | .call "sub" [.ident "newTotalSupplyAssets", .ident "feeAmount"] =>
-        (.call "checked_sub_uint128" [.ident "newTotalSupplyAssets", .ident "feeAmount"], 1)
+    | .call "sub" [.ident lhs, .ident rhs] =>
+        if (lhs = "newTotalSupplyAssets" || lhs.startsWith "newTotalSupplyAssets_") &&
+            (rhs = "feeAmount" || rhs.startsWith "feeAmount_") then
+          (.call "checked_sub_uint128" [.ident lhs, .ident rhs], 1)
+        else
+          (.call "sub" [.ident lhs, .ident rhs], 0)
     | .call name args =>
         let (args', rewritten) := rewriteAccrueInterestCheckedArithmeticExprs args
         (.call name args', rewritten)
@@ -2834,6 +2838,60 @@ example :
       called.any (fun name => name = "checked_add_uint128") &&
       called.any (fun name => name = "checked_sub_uint128") &&
       called.any (fun name => name = "checked_div_uint256") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite accepts suffixed `newTotalSupplyAssets_*` / `feeAmount_*` names. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "feeDenominator_1" (.call "sub" [.ident "newTotalSupplyAssets_3", .ident "feeAmount_7"])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" &&
+      called.any (fun name => name = "checked_sub_uint128") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-matching `sub` names. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "feeDenominator" (.call "sub" [.ident "newTotalSupplyAssetsAlt", .ident "feeAmount"])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = [] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" = false &&
+      called.any (fun name => name = "checked_sub_uint128") = false := by
   native_decide
 
 /-- Smoke test: unused top-level `keccakMarketParams` helper is dropped. -/

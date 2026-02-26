@@ -1091,19 +1091,20 @@ def solcCompatDropUnusedKeccakMarketParamsHelperRule : ObjectPatchRule :=
     pattern := "top-level helper definition `keccakMarketParams` with no remaining call sites"
     rewrite := "remove helper definition"
     sideConditions :=
-      [ "only runtime code is transformed"
+      [ "deploy/runtime code is transformed"
       , "only top-level definitions named `keccakMarketParams` are considered"
-      , "helper is removed only when no call site remains in runtime code" ]
+      , "helper is removed only when no call site remains in the same object section" ]
     proofId := solcCompatDropUnusedKeccakMarketParamsHelperProofRef
     scope := .object
     passPhase := .postCodegen
     priority := 210
     applyObject := fun _ obj =>
-      let (runtimeCode', removed) := dropUnusedTopLevelFunctionByName obj.runtimeCode "keccakMarketParams"
-      if removed = 0 then
+      let (deployCode', deployRemoved) := dropUnusedTopLevelFunctionByName obj.deployCode "keccakMarketParams"
+      let (runtimeCode', runtimeRemoved) := dropUnusedTopLevelFunctionByName obj.runtimeCode "keccakMarketParams"
+      if deployRemoved + runtimeRemoved = 0 then
         none
       else
-        some { obj with runtimeCode := runtimeCode' } }
+        some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
 
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/

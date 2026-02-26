@@ -213,6 +213,147 @@ def foundationBlockPatchPack : List BlockPatchRule :=
 def foundationObjectPatchPack : List ObjectPatchRule :=
   []
 
+private def appendUniqueString (xs : List String) (item : String) : List String :=
+  if xs.any (fun seen => seen = item) then xs else xs ++ [item]
+
+private def unionUniqueStrings (xs ys : List String) : List String :=
+  ys.foldl (fun acc item => appendUniqueString acc item) xs
+
+mutual
+
+private partial def callNamesInExpr : YulExpr → List String
+  | .call func args =>
+      let argCalls := callNamesInExprs args
+      appendUniqueString argCalls func
+  | _ => []
+
+private partial def callNamesInExprs : List YulExpr → List String
+  | [] => []
+  | expr :: rest =>
+      unionUniqueStrings (callNamesInExpr expr) (callNamesInExprs rest)
+
+private partial def callNamesInStmt : YulStmt → List String
+  | .comment _ => []
+  | .let_ _ value => callNamesInExpr value
+  | .letMany _ value => callNamesInExpr value
+  | .assign _ value => callNamesInExpr value
+  | .expr value => callNamesInExpr value
+  | .leave => []
+  | .if_ cond body =>
+      unionUniqueStrings (callNamesInExpr cond) (callNamesInStmts body)
+  | .for_ init cond post body =>
+      unionUniqueStrings
+        (callNamesInStmts init)
+        (unionUniqueStrings (callNamesInExpr cond) (unionUniqueStrings (callNamesInStmts post) (callNamesInStmts body)))
+  | .switch expr cases default =>
+      let caseCalls :=
+        cases.foldl (fun acc (_, body) => unionUniqueStrings acc (callNamesInStmts body)) []
+      let defaultCalls :=
+        match default with
+        | some body => callNamesInStmts body
+        | none => []
+      unionUniqueStrings (callNamesInExpr expr) (unionUniqueStrings caseCalls defaultCalls)
+  | .block stmts => callNamesInStmts stmts
+  | .funcDef _ _ _ body => callNamesInStmts body
+
+private partial def callNamesInStmts : List YulStmt → List String
+  | [] => []
+  | stmt :: rest =>
+      unionUniqueStrings (callNamesInStmt stmt) (callNamesInStmts rest)
+
+end
+
+private def topLevelFunctionDefs (stmts : List YulStmt) : List (String × List YulStmt) :=
+  stmts.foldr
+    (fun stmt acc =>
+      match stmt with
+      | .funcDef name _ _ body => (name, body) :: acc
+      | _ => acc)
+    []
+
+private def topLevelNonFunctionStmts (stmts : List YulStmt) : List YulStmt :=
+  stmts.foldr
+    (fun stmt acc =>
+      match stmt with
+      | .funcDef _ _ _ _ => acc
+      | _ => stmt :: acc)
+    []
+
+private def filterDefinedNames (definedNames : List String) (candidates : List String) : List String :=
+  candidates.foldl
+    (fun acc name =>
+      if definedNames.any (fun defined => defined = name) then
+        appendUniqueString acc name
+      else
+        acc)
+    []
+
+private partial def reachableHelperNamesFrom
+    (defs : List (String × List YulStmt))
+    (definedNames : List String)
+    (fuel : Nat)
+    (reachable : List String) : List String :=
+  match fuel with
+  | 0 => reachable
+  | fuel + 1 =>
+      let expanded :=
+        reachable.foldl
+          (fun acc name =>
+            match defs.find? (fun defn => defn.fst = name) with
+            | some (_, body) =>
+                unionUniqueStrings acc (filterDefinedNames definedNames (callNamesInStmts body))
+            | none => acc)
+          reachable
+      if expanded.length = reachable.length then
+        reachable
+      else
+        reachableHelperNamesFrom defs definedNames fuel expanded
+
+private def reachableTopLevelHelperNames (stmts : List YulStmt) : List String :=
+  let defs := topLevelFunctionDefs stmts
+  let definedNames := defs.map Prod.fst
+  let seed := filterDefinedNames definedNames (callNamesInStmts (topLevelNonFunctionStmts stmts))
+  reachableHelperNamesFrom defs definedNames (defs.length + 1) seed
+
+private def pruneUnreachableTopLevelHelpers (stmts : List YulStmt) : List YulStmt × Nat :=
+  let reachable := reachableTopLevelHelperNames stmts
+  stmts.foldr
+    (fun stmt (accStmts, removed) =>
+      match stmt with
+      | .funcDef name params rets body =>
+          if reachable.any (fun seen => seen = name) then
+            (.funcDef name params rets body :: accStmts, removed)
+          else
+            (accStmts, removed + 1)
+      | _ =>
+          (stmt :: accStmts, removed))
+    ([], 0)
+
+def solcCompatPruneUnreachableHelpersProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
+
+/-- Remove unreachable top-level helper function definitions in deploy/runtime code.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
+  { patchName := "solc-compat-prune-unreachable-helpers"
+    pattern := "object-level top-level helper function defs"
+    rewrite := "remove helpers not reachable from non-function statements"
+    sideConditions :=
+      [ "only top-level function definitions are considered"
+      , "reachability is computed transitively from non-function statements"
+      , "helpers called by reachable helpers are retained" ]
+    proofId := solcCompatPruneUnreachableHelpersProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 200
+    applyObject := fun _ obj =>
+      let (deployCode', deployRemoved) := pruneUnreachableTopLevelHelpers obj.deployCode
+      let (runtimeCode', runtimeRemoved) := pruneUnreachableTopLevelHelpers obj.runtimeCode
+      if deployRemoved + runtimeRemoved = 0 then
+        none
+      else
+        some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
+
 structure RewriteRuleBundle where
   id : String
   exprRules : List ExprPatchRule
@@ -249,7 +390,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     exprRules := foundationExprPatchPack
     stmtRules := foundationStmtPatchPack
     blockRules := foundationBlockPatchPack
-    objectRules := foundationObjectPatchPack }
+    objectRules := foundationObjectPatchPack ++ [solcCompatPruneUnreachableHelpersRule] }
 
 def allRewriteBundles : List RewriteRuleBundle :=
   [foundationRewriteBundle, solcCompatRewriteBundle]
@@ -271,6 +412,10 @@ def rewriteProofAllowlistForId (bundleId : String) : List String :=
 /-- Activation-time proof allowlist for the shipped foundation patch packs. -/
 def foundationProofAllowlist : List String :=
   rewriteBundleProofAllowlist foundationRewriteBundle
+
+/-- Activation-time proof allowlist for the shipped `solc` compatibility patch bundle. -/
+def solcCompatProofAllowlist : List String :=
+  rewriteBundleProofAllowlist solcCompatRewriteBundle
 
 /-- Smoke test: higher-priority rule wins deterministically. -/
 example :
@@ -633,7 +778,54 @@ example :
 
 /-- Smoke test: compatibility bundle currently inherits foundation proof allowlist. -/
 example :
-    rewriteProofAllowlistForId solcCompatRewriteBundleId = foundationProofAllowlist := by
+    rewriteProofAllowlistForId solcCompatRewriteBundleId = solcCompatProofAllowlist := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle extends foundation with compatibility-only proofs. -/
+example :
+    foundationProofAllowlist.any (fun proofRef => proofRef = solcCompatPruneUnreachableHelpersProofRef) = false := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle contains compatibility-only proof refs. -/
+example :
+    solcCompatProofAllowlist.any (fun proofRef => proofRef = solcCompatPruneUnreachableHelpersProofRef) = true := by
+  native_decide
+
+/-- Smoke test: object rule prunes unreachable helpers and keeps reachable transitive callees. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode :=
+          [ .funcDef "deployUnused" [] [] [.leave]
+          , .expr (.call "return" [.lit 0, .lit 0])
+          ]
+        runtimeCode :=
+          [ .funcDef "helperB" [] [] [.leave]
+          , .funcDef "helperA" [] [] [.expr (.call "helperB" [])]
+          , .funcDef "dead" [] [] [.leave]
+          , .switch (.call "shr" [.lit 224, .call "calldataload" [.lit 0]])
+              [(0, [.expr (.call "helperA" [])])]
+              (some [.expr (.call "revert" [.lit 0, .lit 0])])
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatPruneUnreachableHelpersRule]
+      input
+    (match report.patched.deployCode, report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [.expr (.call "return" [.lit 0, .lit 0])],
+      [.funcDef "helperB" [] [] [.leave],
+       .funcDef "helperA" [] [] [.expr (.call "helperB" [])],
+       .switch (.call "shr" [.lit 224, .call "calldataload" [.lit 0]])
+         [(0, [.expr (.call "helperA" [])])]
+         (some [.expr (.call "revert" [.lit 0, .lit 0])])],
+      ["solc-compat-prune-unreachable-helpers"] => true
+    | _, _, _ => false) = true := by
   native_decide
 
 /-- Smoke test: non-auditable object rules are fail-closed. -/

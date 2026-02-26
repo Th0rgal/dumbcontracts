@@ -21,7 +21,8 @@ Partially implemented:
 9. Parity packs now carry explicit proof-composition metadata (`compositionProofRef`, `requiredProofRefs`) with fail-closed validation at `--parity-pack` selection time.
 10. Pack proof registries now propagate through CLI → codegen patch config, with codegen defaulting to the selected rewrite bundle's proof allowlist when no explicit registry is provided.
 11. Parity packs now carry `rewriteBundleId`, and `--parity-pack` selection fails closed unless that bundle exists and the pack proof registry is a deduped subset of the bundle's proof allowlist.
-12. Shipped rewrite bundles now include a baseline `foundation` bundle and an explicit opt-in `solc-compat-v0` bundle boundary for future compatibility-only rewrites.
+12. Shipped rewrite bundles now include a baseline `foundation` bundle and an explicit opt-in `solc-compat-v0` bundle boundary.
+13. `solc-compat-v0` now carries a compatibility-only object rewrite (`solc-compat-prune-unreachable-helpers`) with its own proof reference, and parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
 
 Not implemented yet:
 1. identity checker and unsupported manifest workflow.

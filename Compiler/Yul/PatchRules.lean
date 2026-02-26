@@ -1309,7 +1309,6 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatDropUnusedMappingSlotHelperRule
       , solcCompatDropUnusedKeccakMarketParamsHelperRule
-      , solcCompatMaterializeIncrementUint256HelperRule
       , solcCompatDedupeEquivalentHelpersRule ] }
 
 def allRewriteBundles : List RewriteRuleBundle :=
@@ -1756,7 +1755,7 @@ example :
 /-- Smoke test: `solc-compat` bundle contains increment helper materialization proof refs. -/
 example :
     solcCompatProofAllowlist.any
-      (fun proofRef => proofRef = solcCompatMaterializeIncrementUint256HelperProofRef) = true := by
+      (fun proofRef => proofRef = solcCompatMaterializeIncrementUint256HelperProofRef) = false := by
   native_decide
 
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
@@ -2172,7 +2171,7 @@ example :
       { enabled := true
         maxIterations := 1
         rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
+        requiredProofRefs := solcCompatProofAllowlist ++ [solcCompatMaterializeIncrementUint256HelperProofRef] }
       []
       []
       []
@@ -2212,7 +2211,7 @@ example :
       { enabled := true
         maxIterations := 1
         rewriteBundleId := solcCompatRewriteBundleId
-        requiredProofRefs := solcCompatProofAllowlist }
+        requiredProofRefs := solcCompatProofAllowlist ++ [solcCompatMaterializeIncrementUint256HelperProofRef] }
       []
       []
       []

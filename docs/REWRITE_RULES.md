@@ -25,6 +25,7 @@ Partially implemented:
    - `solc-compat-inline-dispatch-wrapper-calls`: inlines runtime dispatch case bodies of the form `fun_*()` to the referenced top-level zero-arity helper body.
    - `solc-compat-inline-mapping-slot-calls`: inlines runtime `mappingSlot(baseSlot, key)` expression calls by materializing helper-equivalent scratch writes (`mstore(512, key)`, `mstore(544, baseSlot)`) plus `keccak256(512, 64)` into fresh collision-safe temporaries.
    - `solc-compat-inline-keccak-market-params-calls`: inlines direct runtime `keccakMarketParams(...)` helper calls into explicit `mstore`/`keccak256` sequences.
+   - `solc-compat-prune-unreachable-deploy-helpers`: prunes deploy top-level helpers that are unreachable from non-function deploy statements, while leaving runtime code unchanged.
    - `solc-compat-drop-unused-mapping-slot-helper`: drops top-level runtime `mappingSlot` helper definitions when no call sites remain.
    - `solc-compat-drop-unused-keccak-market-params-helper`: drops top-level runtime `keccakMarketParams` helper definitions when no call sites remain.
    - `solc-compat-dedupe-equivalent-helpers`: deduplicates structurally equivalent top-level helper defs and rewrites call sites to the retained canonical helper.

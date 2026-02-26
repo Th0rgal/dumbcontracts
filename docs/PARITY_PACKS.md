@@ -27,6 +27,7 @@ Partially implemented:
    - `solc-compat-inline-dispatch-wrapper-calls` for deterministic runtime switch-case inlining from `fun_*()` wrappers to helper bodies;
    - `solc-compat-inline-mapping-slot-calls` for deterministic inlining of runtime `mappingSlot(baseSlot, key)` calls to explicit helper-equivalent scratch writes (`mstore(512, key)`, `mstore(544, baseSlot)`) plus `keccak256(512, 64)`;
    - `solc-compat-inline-keccak-market-params-calls` for deterministic inlining of direct runtime `keccakMarketParams(...)` helper calls to explicit `mstore`/`keccak256` sequences;
+   - `solc-compat-prune-unreachable-deploy-helpers` for deterministic pruning of deploy-only top-level helper defs that are unreachable from non-function deploy statements;
    - `solc-compat-drop-unused-mapping-slot-helper` for deterministic removal of top-level runtime `mappingSlot` helper defs after call sites are eliminated;
    - `solc-compat-drop-unused-keccak-market-params-helper` for deterministic removal of top-level runtime `keccakMarketParams` helper defs after call sites are eliminated;
    - `solc-compat-dedupe-equivalent-helpers` for deterministic deduplication of structurally equivalent top-level helpers with callsite rewrites to canonical helpers.
@@ -34,7 +35,7 @@ Partially implemented:
    `solc-compat-outline-dispatch-helpers` is currently kept out of the default bundle activation to avoid over-outlining runtime entry dispatch on active parity targets.
    Runtime codegen does not provide a separate backend-profile dispatch-helper outlining toggle; compat outlining is object-rule only.
    Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
-14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-mapping-slot-calls` → `inline-keccak-market-params` → `drop-unused-mapping-slot-helper` → `drop-unused-keccak-helper` → `dedupe`) without manual CLI overrides.
+14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-mapping-slot-calls` → `inline-keccak-market-params` → `prune-unreachable-deploy-helpers` → `drop-unused-mapping-slot-helper` → `drop-unused-keccak-helper` → `dedupe`) without manual CLI overrides.
 
 Not implemented yet:
 1. identity checker and unsupported manifest workflow.

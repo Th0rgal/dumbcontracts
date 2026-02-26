@@ -893,6 +893,9 @@ def solcCompatDropUnusedKeccakMarketParamsHelperProofRef : String :=
 def solcCompatDropUnusedMappingSlotHelperProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_drop_unused_mapping_slot_helper_preserves"
 
+def solcCompatPruneUnreachableDeployHelpersProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_deploy_helpers_preserves"
+
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
     (params rets : List String)
@@ -1153,6 +1156,27 @@ def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
       else
         some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
 
+/-- Remove unreachable top-level helper function definitions in deploy code only.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatPruneUnreachableDeployHelpersRule : ObjectPatchRule :=
+  { patchName := "solc-compat-prune-unreachable-deploy-helpers"
+    pattern := "deploy-level top-level helper function defs"
+    rewrite := "remove deploy helpers not reachable from non-function deploy statements"
+    sideConditions :=
+      [ "only top-level function definitions in deploy code are considered"
+      , "reachability is computed transitively from deploy non-function statements"
+      , "runtime code is unchanged" ]
+    proofId := solcCompatPruneUnreachableDeployHelpersProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 209
+    applyObject := fun _ obj =>
+      let (deployCode', deployRemoved) := pruneUnreachableTopLevelHelpers obj.deployCode
+      if deployRemoved = 0 then
+        none
+      else
+        some { obj with deployCode := deployCode' } }
+
 structure RewriteRuleBundle where
   id : String
   exprRules : List ExprPatchRule
@@ -1194,6 +1218,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineDispatchWrapperCallsRule
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
+      , solcCompatPruneUnreachableDeployHelpersRule
       , solcCompatDropUnusedMappingSlotHelperRule
       , solcCompatDropUnusedKeccakMarketParamsHelperRule
       , solcCompatDedupeEquivalentHelpersRule ] }
@@ -1637,6 +1662,12 @@ example :
 example :
     solcCompatProofAllowlist.any
       (fun proofRef => proofRef = solcCompatDropUnusedMappingSlotHelperProofRef) = true := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle contains deploy-only prune proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatPruneUnreachableDeployHelpersProofRef) = true := by
   native_decide
 
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
@@ -2167,6 +2198,42 @@ example :
         ] ],
       ["solc-compat-prune-unreachable-helpers"] => true
     | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: deploy-only prune removes unreachable deploy helpers and preserves runtime unchanged. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode :=
+          [ .funcDef "leaf" [] [] [.leave]
+          , .funcDef "helper" [] [] [.expr (.call "leaf" [])]
+          , .funcDef "dead" [] [] [.leave]
+          , .expr (.call "helper" [])
+          ]
+        runtimeCode :=
+          [ .funcDef "runtimeDead" [] [] [.leave]
+          , .expr (.call "return" [.lit 0, .lit 0])
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatPruneUnreachableDeployHelpersRule]
+      input
+    (match report.patched.deployCode, report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "leaf" [] [] [.leave]
+      , .funcDef "helper" [] [] [.expr (.call "leaf" [])]
+      , .expr (.call "helper" [])
+      ],
+      [ .funcDef "runtimeDead" [] [] [.leave]
+      , .expr (.call "return" [.lit 0, .lit 0])
+      ],
+      ["solc-compat-prune-unreachable-deploy-helpers"] => true
+    | _, _, _ => false) = true := by
   native_decide
 
 /-- Smoke test: object rule dedupes equivalent helpers and rewrites call sites to canonical helper. -/

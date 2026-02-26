@@ -12,7 +12,12 @@ private def indentStr (n : Nat) : String :=
 mutual
 def ppExpr : YulExpr → String
   | lit n => toString n
-  | hex n => "0x" ++ natToHexUnpadded n
+  | hex n =>
+      let raw := natToHexUnpadded n
+      if raw.length % 2 = 0 then
+        "0x" ++ raw
+      else
+        "0x0" ++ raw
   | str s => "\"" ++ (s.replace "\\" "\\\\").replace "\"" "\\\"" ++ "\""
   | ident name => name
   | call func args =>

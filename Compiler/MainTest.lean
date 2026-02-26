@@ -47,6 +47,24 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   expectErrorContains "missing --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base"] "Missing value for --mapping-slot-scratch-base"
   expectErrorContains "invalid --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base", "not-a-number"] "Invalid value for --mapping-slot-scratch-base: not-a-number"
   expectErrorContains "unknown argument still reported" ["--definitely-unknown-flag"] "Unknown argument: --definitely-unknown-flag"
+  expectTrue "shipped parity packs have proof composition metadata"
+    Compiler.allParityPacksProofCompositionValid
+  let invalidPack : Compiler.ParityPack :=
+    { id := "invalid-proof-pack"
+      compat := {
+        solcVersion := "0.8.28"
+        solcCommit := "7893614a"
+        optimizerRuns := 200
+        viaIR := false
+        evmVersion := "shanghai"
+        metadataMode := "default"
+      }
+      backendProfile := .solidityParity
+      forcePatches := true
+      defaultPatchMaxIterations := 2
+      compositionProofRef := ""
+      requiredProofRefs := [] }
+  expectTrue "parity pack proof composition rejects empty metadata" (!invalidPack.proofCompositionValid)
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

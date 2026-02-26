@@ -120,14 +120,18 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         else
           match Compiler.findParityPack? raw with
           | some pack =>
-              go rest {
-                cfg with
-                  parityPackId := some pack.id
-                  backendProfile := pack.backendProfile
-                  patchEnabled := cfg.patchEnabled || pack.forcePatches
-                  patchMaxIterations :=
-                    if cfg.patchMaxIterationsExplicit then cfg.patchMaxIterations else pack.defaultPatchMaxIterations
-              }
+              if !pack.proofCompositionValid then
+                throw (IO.userError
+                  s!"Parity pack '{pack.id}' is missing valid proof composition metadata")
+              else
+                go rest {
+                  cfg with
+                    parityPackId := some pack.id
+                    backendProfile := pack.backendProfile
+                    patchEnabled := cfg.patchEnabled || pack.forcePatches
+                    patchMaxIterations :=
+                      if cfg.patchMaxIterationsExplicit then cfg.patchMaxIterations else pack.defaultPatchMaxIterations
+               }
           | none =>
               throw (IO.userError
                 s!"Invalid value for --parity-pack: {raw} (supported: {String.intercalate ", " Compiler.supportedParityPackIds})")
@@ -193,12 +197,20 @@ def main (args : List String) : IO Unit := do
       IO.println s!"Mapping slot scratch base: {cfg.mappingSlotScratchBase}"
       IO.println ""
     let patchEnabled := patchEnabledFor cfg
+    let packRequiredProofRefs :=
+      match cfg.parityPackId with
+      | some packId =>
+          match Compiler.findParityPack? packId with
+          | some pack => pack.requiredProofRefs
+          | none => []
+      | none => []
     let options : Compiler.YulEmitOptions := {
       backendProfile := cfg.backendProfile
       patchConfig := {
         enabled := patchEnabled
         maxIterations := cfg.patchMaxIterations
         packId := cfg.parityPackId.getD ""
+        requiredProofRefs := packRequiredProofRefs
       }
       mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }

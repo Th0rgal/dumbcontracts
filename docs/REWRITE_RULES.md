@@ -18,9 +18,7 @@ Partially implemented:
 6. Rule activation now supports pack-scoped allowlists (`packAllowlist`) checked against `RewriteCtx.packId`.
 7. Patch execution now supports activation-time proof registry enforcement via `PatchPassConfig.requiredProofRefs`.
    In compiler codegen, this is wired to `foundationProofAllowlist`, so rules with unregistered `proofId` fail closed even if metadata is non-empty.
-
-Not implemented yet:
-1. pack-level proof composition checks.
+8. Parity packs now require explicit pack-level proof composition metadata (`compositionProofRef`) and proof registry coverage (`requiredProofRefs`) before `--parity-pack` selection is accepted.
 
 ## Rule Kinds
 

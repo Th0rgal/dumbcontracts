@@ -195,9 +195,14 @@ private structure EmitObjectWithOptionsReport where
 private def emitYulWithOptionsInternal
     (contract : IRContract)
     (options : YulEmitOptions) : EmitObjectWithOptionsReport :=
+  let requiredProofRefs :=
+    if options.patchConfig.requiredProofRefs.isEmpty then
+      Yul.foundationProofAllowlist
+    else
+      options.patchConfig.requiredProofRefs
   let patchConfig :=
     { options.patchConfig with
-      requiredProofRefs := Yul.foundationProofAllowlist }
+      requiredProofRefs := requiredProofRefs }
   let base := baseObjectWithOptions contract options
   -- Keep expression/statement/block rewrites runtime-scoped; deploy rewriting is
   -- reserved for explicit object-level rules.

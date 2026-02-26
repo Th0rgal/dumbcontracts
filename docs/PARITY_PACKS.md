@@ -18,10 +18,11 @@ Partially implemented:
 6. Typed `RewriteCtx` scope/phase/iteration/pack metadata is now threaded through patch execution, and rule scope is enforced at application sites.
 7. `--parity-pack` now propagates into patch execution context (`PatchPassConfig.packId`), and rules can gate activation with `packAllowlist`.
 8. Patch execution now supports proof registry enforcement (`PatchPassConfig.requiredProofRefs`), and codegen wires the shipped foundation packs to an explicit allowlist (`foundationProofAllowlist`).
+9. Parity packs now carry explicit proof-composition metadata (`compositionProofRef`, `requiredProofRefs`) with fail-closed validation at `--parity-pack` selection time.
+10. Pack proof registries now propagate through CLI → codegen patch config, with codegen defaulting to `foundationProofAllowlist` only when no explicit registry is provided.
 
 Not implemented yet:
-1. pack-level proof composition checks;
-2. identity checker and unsupported manifest workflow.
+1. identity checker and unsupported manifest workflow.
 
 ## Purpose
 

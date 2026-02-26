@@ -23,6 +23,7 @@ Partially implemented:
    `solc-compat-v0` now includes compatibility-only object rules:
    - `solc-compat-canonicalize-internal-fun-names`: canonicalizes `internal__*` helper names to `fun_*` and rewrites in-object call sites deterministically.
    - `solc-compat-inline-dispatch-wrapper-calls`: inlines runtime dispatch case bodies of the form `fun_*()` to the referenced top-level zero-arity helper body.
+   - `solc-compat-inline-mapping-slot-calls`: inlines runtime `mappingSlot(baseSlot, key)` expression calls by materializing helper-equivalent scratch writes (`mstore(512, key)`, `mstore(544, baseSlot)`) plus `keccak256(512, 64)` into fresh collision-safe temporaries.
    - `solc-compat-inline-keccak-market-params-calls`: inlines direct runtime `keccakMarketParams(...)` helper calls into explicit `mstore`/`keccak256` sequences.
    - `solc-compat-dedupe-equivalent-helpers`: deduplicates structurally equivalent top-level helper defs and rewrites call sites to the retained canonical helper.
    - `solc-compat-prune-unreachable-helpers`: prunes unreachable top-level helper defs deterministically.

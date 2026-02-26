@@ -657,6 +657,116 @@ private def inlineRuntimeDispatchWrapperCalls (stmts : List YulStmt) : List YulS
   let helpers := topLevelZeroArityFunctionBodies stmts
   inlineDispatchWrapperCallsInStmts helpers stmts
 
+private def freshMappingSlotTemp (nextId : Nat) : String × Nat :=
+  (s!"__compat_mapping_slot_{nextId}", nextId + 1)
+
+mutual
+
+private partial def inlineMappingSlotCallsInExpr
+    (nextId : Nat)
+    (expr : YulExpr) : List YulStmt × YulExpr × Nat × Nat
+  := match expr with
+    | .lit n => ([], .lit n, nextId, 0)
+    | .hex n => ([], .hex n, nextId, 0)
+    | .str s => ([], .str s, nextId, 0)
+    | .ident name => ([], .ident name, nextId, 0)
+    | .call "mappingSlot" [baseSlot, key] =>
+        let (basePrefix, baseSlot', nextAfterBase, baseRewrites) := inlineMappingSlotCallsInExpr nextId baseSlot
+        let (keyPrefix, key', nextAfterKey, keyRewrites) := inlineMappingSlotCallsInExpr nextAfterBase key
+        let (tmpName, nextAfterTmp) := freshMappingSlotTemp nextAfterKey
+        let preStmts :=
+          basePrefix ++
+            keyPrefix ++
+              [ .expr (.call "mstore" [.lit 512, key'])
+              , .expr (.call "mstore" [.lit 544, baseSlot'])
+              , .let_ tmpName (.call "keccak256" [.lit 512, .lit 64])
+              ]
+        (preStmts, .ident tmpName, nextAfterTmp, baseRewrites + keyRewrites + 1)
+    | .call func args =>
+        let (preStmts, args', nextId', rewrites) := inlineMappingSlotCallsInExprs nextId args
+        (preStmts, .call func args', nextId', rewrites)
+
+private partial def inlineMappingSlotCallsInExprs
+    (nextId : Nat)
+    (exprs : List YulExpr) : List YulStmt × List YulExpr × Nat × Nat
+  := match exprs with
+    | [] => ([], [], nextId, 0)
+    | expr :: rest =>
+        let (prefixHead, exprHead, nextAfterHead, rewritesHead) := inlineMappingSlotCallsInExpr nextId expr
+        let (prefixTail, exprTail, nextAfterTail, rewritesTail) := inlineMappingSlotCallsInExprs nextAfterHead rest
+        (prefixHead ++ prefixTail, exprHead :: exprTail, nextAfterTail, rewritesHead + rewritesTail)
+
+private partial def inlineMappingSlotCallsInStmt
+    (nextId : Nat)
+    (stmt : YulStmt) : List YulStmt × Nat × Nat
+  := match stmt with
+    | .comment text => ([.comment text], nextId, 0)
+    | .let_ name value =>
+        let (preStmts, value', nextId', rewrites) := inlineMappingSlotCallsInExpr nextId value
+        (preStmts ++ [.let_ name value'], nextId', rewrites)
+    | .letMany names value =>
+        let (preStmts, value', nextId', rewrites) := inlineMappingSlotCallsInExpr nextId value
+        (preStmts ++ [.letMany names value'], nextId', rewrites)
+    | .assign name value =>
+        let (preStmts, value', nextId', rewrites) := inlineMappingSlotCallsInExpr nextId value
+        (preStmts ++ [.assign name value'], nextId', rewrites)
+    | .expr value =>
+        let (preStmts, value', nextId', rewrites) := inlineMappingSlotCallsInExpr nextId value
+        (preStmts ++ [.expr value'], nextId', rewrites)
+    | .leave => ([.leave], nextId, 0)
+    | .if_ cond body =>
+        let (condPrefix, cond', nextAfterCond, condRewrites) := inlineMappingSlotCallsInExpr nextId cond
+        let (body', nextAfterBody, bodyRewrites) := inlineMappingSlotCallsInStmts nextAfterCond body
+        (condPrefix ++ [.if_ cond' body'], nextAfterBody, condRewrites + bodyRewrites)
+    | .for_ init cond post body =>
+        let (init', nextAfterInit, initRewrites) := inlineMappingSlotCallsInStmts nextId init
+        let (post', nextAfterPost, postRewrites) := inlineMappingSlotCallsInStmts nextAfterInit post
+        let (body', nextAfterBody, bodyRewrites) := inlineMappingSlotCallsInStmts nextAfterPost body
+        ([.for_ init' cond post' body'], nextAfterBody, initRewrites + postRewrites + bodyRewrites)
+    | .switch expr cases default =>
+        let (exprPrefix, expr', nextAfterExpr, exprRewrites) := inlineMappingSlotCallsInExpr nextId expr
+        let rec rewriteCases
+            (remaining : List (Nat × List YulStmt))
+            (nextIdCases : Nat)
+            (accCases : List (Nat × List YulStmt))
+            (accRewrites : Nat)
+            : List (Nat × List YulStmt) × Nat × Nat :=
+          match remaining with
+          | [] => (accCases.reverse, nextIdCases, accRewrites)
+          | (tag, body) :: rest =>
+              let (body', nextAfterBody, bodyRewrites) := inlineMappingSlotCallsInStmts nextIdCases body
+              rewriteCases rest nextAfterBody ((tag, body') :: accCases) (accRewrites + bodyRewrites)
+        let (cases', nextAfterCases, caseRewrites) := rewriteCases cases nextAfterExpr [] 0
+        let (default', nextAfterDefault, defaultRewrites) :=
+          match default with
+          | some body =>
+              let (body', nextBody, rewritten) := inlineMappingSlotCallsInStmts nextAfterCases body
+              (some body', nextBody, rewritten)
+          | none => (none, nextAfterCases, 0)
+        (exprPrefix ++ [.switch expr' cases' default'], nextAfterDefault, exprRewrites + caseRewrites + defaultRewrites)
+    | .block stmts =>
+        let (stmts', nextId', rewrites) := inlineMappingSlotCallsInStmts nextId stmts
+        ([.block stmts'], nextId', rewrites)
+    | .funcDef name params rets body =>
+        let (body', nextId', rewrites) := inlineMappingSlotCallsInStmts nextId body
+        ([.funcDef name params rets body'], nextId', rewrites)
+
+private partial def inlineMappingSlotCallsInStmts
+    (nextId : Nat)
+    (stmts : List YulStmt) : List YulStmt × Nat × Nat
+  := match stmts with
+    | [] => ([], nextId, 0)
+    | stmt :: rest =>
+        let (stmt', nextAfterStmt, rewritesHead) := inlineMappingSlotCallsInStmt nextId stmt
+        let (rest', nextAfterRest, rewritesTail) := inlineMappingSlotCallsInStmts nextAfterStmt rest
+        (stmt' ++ rest', nextAfterRest, rewritesHead + rewritesTail)
+
+end
+
+private def inlineRuntimeMappingSlotCalls (stmts : List YulStmt) : List YulStmt × Nat :=
+  let (stmts', _, rewritten) := inlineMappingSlotCallsInStmts 0 stmts
+  (stmts', rewritten)
+
 private def inlineKeccakMarketParamsLet?
     (name : String)
     (args : List YulExpr) : Option (List YulStmt) :=
@@ -772,6 +882,10 @@ def solcCompatOutlineDispatchHelpersProofRef : String :=
 /-- Inline direct `keccakMarketParams(...)` helper calls into explicit memory writes + `keccak256`. -/
 def solcCompatInlineKeccakMarketParamsCallsProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_inline_keccak_market_params_calls_preserves"
+
+/-- Inline `mappingSlot(baseSlot, key)` helper calls into explicit scratch writes + `keccak256`. -/
+def solcCompatInlineMappingSlotCallsProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_inline_mapping_slot_calls_preserves"
 
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
@@ -919,6 +1033,29 @@ def solcCompatInlineKeccakMarketParamsCallsRule : ObjectPatchRule :=
       else
         some { obj with runtimeCode := runtimeCode' } }
 
+/-- Inline runtime `mappingSlot(baseSlot, key)` helper calls into explicit `mstore`/`keccak256`.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatInlineMappingSlotCallsRule : ObjectPatchRule :=
+  { patchName := "solc-compat-inline-mapping-slot-calls"
+    pattern := "expression call `mappingSlot(baseSlot, key)`"
+    rewrite := "introduce scratch writes to [512,544] and replace call with a fresh slot temporary"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "only calls with exactly two arguments are rewritten"
+      , "loop-condition expressions are intentionally not rewritten"
+      , "fresh temporary names use reserved prefix `__compat_mapping_slot_`"
+      , "scratch memory clobbering follows existing `mappingSlot` helper semantics (base 512)" ]
+    proofId := solcCompatInlineMappingSlotCallsProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 211
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := inlineRuntimeMappingSlotCalls obj.runtimeCode
+      if rewritten = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -980,6 +1117,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     objectRules := foundationObjectPatchPack ++
       [ solcCompatCanonicalizeInternalFunNamesRule
       , solcCompatInlineDispatchWrapperCallsRule
+      , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatDedupeEquivalentHelpersRule
       , solcCompatPruneUnreachableHelpersRule ] }
@@ -1407,6 +1545,12 @@ example :
       (fun proofRef => proofRef = solcCompatInlineKeccakMarketParamsCallsProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains mapping-slot inlining proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatInlineMappingSlotCallsProofRef) = true := by
+  native_decide
+
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -1612,6 +1756,55 @@ example :
           ]
       ],
       ["solc-compat-inline-keccak-market-params-calls", "solc-compat-prune-unreachable-helpers"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: nested `mappingSlot(...)` calls are inlined and helper becomes pruneable. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "mappingSlot" ["baseSlot", "key"] ["slot"]
+              [ .expr (.call "mstore" [.lit 512, .ident "key"])
+              , .expr (.call "mstore" [.lit 544, .ident "baseSlot"])
+              , .assign "slot" (.call "keccak256" [.lit 512, .lit 64])
+              ]
+          , .block
+              [ .let_ "value"
+                  (.call "sload"
+                    [ .call "add"
+                        [ .call "mappingSlot"
+                            [ .lit 3
+                            , .call "mappingSlot" [.lit 2, .ident "id"]
+                            ]
+                        , .lit 1
+                        ]
+                    ])
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatInlineMappingSlotCallsRule, solcCompatPruneUnreachableHelpersRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .block
+          [ .expr (.call "mstore" [.lit 512, .ident "id"])
+          , .expr (.call "mstore" [.lit 544, .lit 2])
+          , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+          , .expr (.call "mstore" [.lit 512, .ident "__compat_mapping_slot_0"])
+          , .expr (.call "mstore" [.lit 544, .lit 3])
+          , .let_ "__compat_mapping_slot_1" (.call "keccak256" [.lit 512, .lit 64])
+          , .let_ "value" (.call "sload" [.call "add" [.ident "__compat_mapping_slot_1", .lit 1]])
+          ]
+      ],
+      ["solc-compat-inline-mapping-slot-calls", "solc-compat-prune-unreachable-helpers"] => true
     | _, _ => false) = true := by
   native_decide
 

@@ -910,6 +910,37 @@ private def materializeIncrementUint256HelperIfCalled (stmts : List YulStmt) : L
   else
     (stmts, 0)
 
+private def checkedSubUint256HelperBody : List YulStmt :=
+  [ .assign "diff" (.call "sub" [.ident "x", .ident "y"])
+  , .if_ (.call "gt" [.ident "diff", .ident "x"])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x11])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  ]
+
+private def checkedSubUint256HelperStmt : YulStmt :=
+  .funcDef "checked_sub_uint256" ["x", "y"] ["diff"] checkedSubUint256HelperBody
+
+private def materializeCheckedSubUint256HelperIfCalled (stmts : List YulStmt) : List YulStmt × Nat :=
+  let (wrapped, topStmts) :=
+    match stmts with
+    | [.block inner] => (true, inner)
+    | _ => (false, stmts)
+  if hasTopLevelFunctionNamed topStmts "checked_sub_uint256" then
+    (stmts, 0)
+  else if (callNamesInStmts topStmts).any (fun called => called = "checked_sub_uint256") then
+    let inserted := insertTopLevelFuncDefAfterPrefix topStmts checkedSubUint256HelperStmt
+    if wrapped then
+      ([.block inserted], 1)
+    else
+      (inserted, 1)
+  else
+    (stmts, 0)
+
 mutual
 
 private partial def rewriteCurrentNonceIncrementExpr
@@ -995,6 +1026,91 @@ private partial def rewriteCurrentNonceIncrementStmts
 
 end
 
+mutual
+
+private partial def rewriteElapsedCheckedSubExpr
+    (expr : YulExpr) : YulExpr × Nat
+  := match expr with
+    | .lit value => (.lit value, 0)
+    | .hex value => (.hex value, 0)
+    | .str value => (.str value, 0)
+    | .ident name => (.ident name, 0)
+    | .call "sub" [.call "timestamp" [], .ident "prevLastUpdate"] =>
+        (.call "checked_sub_uint256" [.call "timestamp" [], .ident "prevLastUpdate"], 1)
+    | .call name args =>
+        let (args', rewritten) := rewriteElapsedCheckedSubExprs args
+        (.call name args', rewritten)
+
+private partial def rewriteElapsedCheckedSubExprs
+    (exprs : List YulExpr) : List YulExpr × Nat
+  := match exprs with
+    | [] => ([], 0)
+    | expr :: rest =>
+        let (expr', rewrittenHead) := rewriteElapsedCheckedSubExpr expr
+        let (rest', rewrittenTail) := rewriteElapsedCheckedSubExprs rest
+        (expr' :: rest', rewrittenHead + rewrittenTail)
+
+private partial def rewriteElapsedCheckedSubStmt
+    (stmt : YulStmt) : YulStmt × Nat
+  := match stmt with
+    | .comment text => (.comment text, 0)
+    | .let_ name value =>
+        let (value', rewritten) := rewriteElapsedCheckedSubExpr value
+        (.let_ name value', rewritten)
+    | .letMany names value =>
+        let (value', rewritten) := rewriteElapsedCheckedSubExpr value
+        (.letMany names value', rewritten)
+    | .assign name value =>
+        let (value', rewritten) := rewriteElapsedCheckedSubExpr value
+        (.assign name value', rewritten)
+    | .expr value =>
+        let (value', rewritten) := rewriteElapsedCheckedSubExpr value
+        (.expr value', rewritten)
+    | .leave => (.leave, 0)
+    | .if_ cond body =>
+        let (cond', condRewritten) := rewriteElapsedCheckedSubExpr cond
+        let (body', bodyRewritten) := rewriteElapsedCheckedSubStmts body
+        (.if_ cond' body', condRewritten + bodyRewritten)
+    | .for_ init cond post body =>
+        let (init', initRewritten) := rewriteElapsedCheckedSubStmts init
+        let (cond', condRewritten) := rewriteElapsedCheckedSubExpr cond
+        let (post', postRewritten) := rewriteElapsedCheckedSubStmts post
+        let (body', bodyRewritten) := rewriteElapsedCheckedSubStmts body
+        (.for_ init' cond' post' body', initRewritten + condRewritten + postRewritten + bodyRewritten)
+    | .switch expr cases default =>
+        let (expr', exprRewritten) := rewriteElapsedCheckedSubExpr expr
+        let rewriteCase := fun (entry : Nat × List YulStmt) =>
+          let (tag, body) := entry
+          let (body', rewritten) := rewriteElapsedCheckedSubStmts body
+          ((tag, body'), rewritten)
+        let rewrittenCases := cases.map rewriteCase
+        let cases' := rewrittenCases.map Prod.fst
+        let caseRewritten := rewrittenCases.foldl (fun acc entry => acc + entry.snd) 0
+        let (default', defaultRewritten) :=
+          match default with
+          | some body =>
+              let (body', rewritten) := rewriteElapsedCheckedSubStmts body
+              (some body', rewritten)
+          | none => (none, 0)
+        (.switch expr' cases' default', exprRewritten + caseRewritten + defaultRewritten)
+    | .block stmts =>
+        let (stmts', rewritten) := rewriteElapsedCheckedSubStmts stmts
+        (.block stmts', rewritten)
+    | .funcDef name params rets body =>
+        let (body', rewritten) := rewriteElapsedCheckedSubStmts body
+        (.funcDef name params rets body', rewritten)
+
+private partial def rewriteElapsedCheckedSubStmts
+    (stmts : List YulStmt) : List YulStmt × Nat
+  := match stmts with
+    | [] => ([], 0)
+    | stmt :: rest =>
+        let (stmt', rewrittenHead) := rewriteElapsedCheckedSubStmt stmt
+        let (rest', rewrittenTail) := rewriteElapsedCheckedSubStmts rest
+        (stmt' :: rest', rewrittenHead + rewrittenTail)
+
+end
+
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
 
@@ -1033,6 +1149,9 @@ def solcCompatPruneUnreachableDeployHelpersProofRef : String :=
 
 def solcCompatRewriteNonceIncrementProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_nonce_increment_preserves"
+
+def solcCompatRewriteElapsedCheckedSubProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_elapsed_checked_sub_preserves"
 
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
@@ -1295,6 +1414,29 @@ def solcCompatRewriteNonceIncrementRule : ObjectPatchRule :=
       else
         some { obj with runtimeCode := runtimeCode'' } }
 
+/-- Rewrite `sub(timestamp(), prevLastUpdate)` to `checked_sub_uint256(timestamp(), prevLastUpdate)`.
+    Insert `checked_sub_uint256` helper only when referenced and absent.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatRewriteElapsedCheckedSubRule : ObjectPatchRule :=
+  { patchName := "solc-compat-rewrite-elapsed-checked-sub"
+    pattern := "runtime expression `sub(timestamp(), prevLastUpdate)`"
+    rewrite := "replace with `checked_sub_uint256(timestamp(), prevLastUpdate)` and materialize helper if needed"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "rewrite is scoped to identifier name `prevLastUpdate`"
+      , "helper insertion is top-level, deterministic, and only when absent" ]
+    proofId := solcCompatRewriteElapsedCheckedSubProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 211
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := rewriteElapsedCheckedSubStmts obj.runtimeCode
+      let (runtimeCode'', inserted) := materializeCheckedSubUint256HelperIfCalled runtimeCode'
+      if rewritten + inserted = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode'' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -1379,6 +1521,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineDispatchWrapperCallsRule
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
+      , solcCompatRewriteElapsedCheckedSubRule
       , solcCompatRewriteNonceIncrementRule
       , solcCompatPruneUnreachableDeployHelpersRule
       , solcCompatDropUnusedMappingSlotHelperRule
@@ -1832,6 +1975,12 @@ example :
       (fun proofRef => proofRef = solcCompatRewriteNonceIncrementProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains elapsed checked-sub rewrite proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatRewriteElapsedCheckedSubProofRef) = true := by
+  native_decide
+
 /-- Smoke test: `solc-compat` bundle contains deploy-only prune proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -2183,6 +2332,96 @@ example :
           , .block [ .expr (.call "fun_authorize" []) ]
           ] ],
       ["solc-compat-rewrite-nonce-increment"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: elapsed checked-sub rewrite inserts helper and rewrites call site. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "prevLastUpdate" (.call "sload" [.lit 7])
+              , .let_ "elapsed" (.call "sub" [.call "timestamp" [], .ident "prevLastUpdate"])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteElapsedCheckedSubRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "fun_accrueInterest" [] []
+          [ .let_ "prevLastUpdate" (.call "sload" [.lit 7])
+          , .let_ "elapsed" (.call "checked_sub_uint256" [.call "timestamp" [], .ident "prevLastUpdate"])
+          ]
+      , .funcDef "checked_sub_uint256" ["x", "y"] ["diff"]
+          [ .assign "diff" (.call "sub" [.ident "x", .ident "y"])
+          , .if_ (.call "gt" [.ident "diff", .ident "x"])
+              [ .expr (.call "mstore"
+                  [ .lit 0
+                  , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+                  ])
+              , .expr (.call "mstore" [.lit 4, .hex 0x11])
+              , .expr (.call "revert" [.lit 0, .hex 0x24])
+              ]
+          ]
+      , .block [ .expr (.call "fun_accrueInterest" []) ]
+      ], ["solc-compat-rewrite-elapsed-checked-sub"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: elapsed checked-sub rewrite is wrapper-safe for single top-level block runtime shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" [] []
+                  [ .let_ "prevLastUpdate" (.call "sload" [.lit 7])
+                  , .let_ "elapsed" (.call "sub" [.call "timestamp" [], .ident "prevLastUpdate"])
+                  ]
+              , .block [ .expr (.call "fun_accrueInterest" []) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteElapsedCheckedSubRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .block
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "prevLastUpdate" (.call "sload" [.lit 7])
+              , .let_ "elapsed" (.call "checked_sub_uint256" [.call "timestamp" [], .ident "prevLastUpdate"])
+              ]
+          , .funcDef "checked_sub_uint256" ["x", "y"] ["diff"]
+              [ .assign "diff" (.call "sub" [.ident "x", .ident "y"])
+              , .if_ (.call "gt" [.ident "diff", .ident "x"])
+                  [ .expr (.call "mstore"
+                      [ .lit 0
+                      , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+                      ])
+                  , .expr (.call "mstore" [.lit 4, .hex 0x11])
+                  , .expr (.call "revert" [.lit 0, .hex 0x24])
+                  ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] ],
+      ["solc-compat-rewrite-elapsed-checked-sub"] => true
     | _, _ => false) = true := by
   native_decide
 

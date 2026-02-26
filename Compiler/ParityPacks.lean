@@ -36,8 +36,24 @@ def solc_0_8_28_o200_viair_false_evm_shanghai : ParityPack :=
     defaultPatchMaxIterations := 2
   }
 
+def solc_0_8_28_o999999_viair_true_evm_paris : ParityPack :=
+  { id := "solc-0.8.28-o999999-viair-true-evm-paris"
+    compat := {
+      solcVersion := "0.8.28"
+      solcCommit := "7893614a"
+      optimizerRuns := 999999
+      viaIR := true
+      evmVersion := "paris"
+      metadataMode := "none"
+    }
+    backendProfile := .solidityParity
+    forcePatches := true
+    defaultPatchMaxIterations := 2
+  }
+
 def allParityPacks : List ParityPack :=
-  [solc_0_8_28_o200_viair_false_evm_shanghai]
+  [solc_0_8_28_o200_viair_false_evm_shanghai,
+   solc_0_8_28_o999999_viair_true_evm_paris]
 
 def supportedParityPackIds : List String :=
   allParityPacks.map (·.id)

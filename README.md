@@ -71,6 +71,7 @@ lake exe verity-compiler --backend-profile solidity-parity
 
 # Versioned parity-pack selection (pinned tuple)
 lake exe verity-compiler --parity-pack solc-0.8.28-o200-viair-false-evm-shanghai
+lake exe verity-compiler --parity-pack solc-0.8.28-o999999-viair-true-evm-paris
 ```
 
 Normalization rules, scope levels, and reproducibility guarantees are versioned in [`docs/SOLIDITY_PARITY_PROFILE.md`](docs/SOLIDITY_PARITY_PROFILE.md).

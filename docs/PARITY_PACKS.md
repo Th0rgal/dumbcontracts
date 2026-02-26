@@ -34,6 +34,7 @@ Example: `solc-0.8.27-o200-viair-false-evm-shanghai`
 ## Implemented Pack(s)
 
 1. `solc-0.8.28-o200-viair-false-evm-shanghai`
+2. `solc-0.8.28-o999999-viair-true-evm-paris` (Morpho-focused tuple)
 
 ## Proposed Pack Contents
 

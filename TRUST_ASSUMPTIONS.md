@@ -133,8 +133,22 @@ If this file is stale, audit conclusions may be invalid.
 - [AUDIT.md](AUDIT.md)
 - [AXIOMS.md](AXIOMS.md)
 - [docs/EXTERNAL_CALL_MODULES.md](docs/EXTERNAL_CALL_MODULES.md)
+- [docs/SOLIDITY_PARITY_PROFILE.md](docs/SOLIDITY_PARITY_PROFILE.md)
+- [docs/PARITY_PACKS.md](docs/PARITY_PACKS.md)
+- [docs/REWRITE_RULES.md](docs/REWRITE_RULES.md)
+- [docs/IDENTITY_CHECKER.md](docs/IDENTITY_CHECKER.md)
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)
 
-**Last Updated**: 2026-02-25
+## Planned Trust-Boundary Hardening (Issue #967)
+
+The following items are planned but not yet active:
+
+1. proof-carrying typed rewrite rules for parity transforms;
+2. versioned parity packs keyed to pinned compiler tuples;
+3. AST-level identity gates between Verity and `solc` Yul outputs.
+
+Until these are implemented and CI-gated, claims of exact `solc` Yul identity remain out of scope.
+
+**Last Updated**: 2026-02-26
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

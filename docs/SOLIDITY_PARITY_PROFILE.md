@@ -1,6 +1,7 @@
 # Solidity-Parity Backend Profile
 
 Issue: [#802](https://github.com/Th0rgal/verity/issues/802)
+Roadmap extension: [#967](https://github.com/Th0rgal/verity/issues/967)
 
 This document defines the opt-in backend profile used for deterministic output-shape alignment with Solidity-style workflows.
 
@@ -39,3 +40,20 @@ For a fixed source, fixed profile, fixed tool version, and fixed CLI options:
 - it does not weaken verification constraints to chase shape parity.
 
 Future versions can add additional rules with explicit IDs and migration notes.
+
+## Identity Track (Groundwork)
+
+Issue [#967](https://github.com/Th0rgal/verity/issues/967) defines the path from output-shape parity to exact `solc` Yul identity for pinned compiler tuples.
+
+Planned extensions (not implemented in `v1`):
+
+1. Versioned parity packs (`solc-version + optimizer + evm version`) with explicit compatibility metadata.
+2. Typed rewrite rules (`ExprRule`, `StmtRule`, `BlockRule`, `ObjectRule`) with strict scope boundaries.
+3. Proof-carrying rule activation and pack-level composition theorem.
+4. AST-level identity checker with mismatch localization and machine-readable reports.
+5. Canonicalization phase for helper naming/order/layout normalization.
+
+See:
+- [`docs/PARITY_PACKS.md`](PARITY_PACKS.md)
+- [`docs/REWRITE_RULES.md`](REWRITE_RULES.md)
+- [`docs/IDENTITY_CHECKER.md`](IDENTITY_CHECKER.md)

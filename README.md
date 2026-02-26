@@ -71,6 +71,10 @@ lake exe verity-compiler --backend-profile solidity-parity
 ```
 
 Normalization rules, scope levels, and reproducibility guarantees are versioned in [`docs/SOLIDITY_PARITY_PROFILE.md`](docs/SOLIDITY_PARITY_PROFILE.md).
+Groundwork docs for parity packs, rewrite rules, and identity checking are tracked in
+[`docs/PARITY_PACKS.md`](docs/PARITY_PACKS.md),
+[`docs/REWRITE_RULES.md`](docs/REWRITE_RULES.md), and
+[`docs/IDENTITY_CHECKER.md`](docs/IDENTITY_CHECKER.md).
 
 For mapping-backed struct layouts, `ContractSpec` supports:
 - `Expr.mappingWord field key wordOffset`
@@ -334,6 +338,10 @@ The compiler validates function names, arities, and prevents name collisions. Se
 | [`AXIOMS.md`](AXIOMS.md) | All axioms with soundness justifications (1 remaining) |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Coding conventions, workflow, PR guidelines |
 | [`docs/EXTERNAL_CALL_MODULES.md`](docs/EXTERNAL_CALL_MODULES.md) | ECM framework: writing and using external call modules |
+| [`docs/SOLIDITY_PARITY_PROFILE.md`](docs/SOLIDITY_PARITY_PROFILE.md) | Backend profile levels and parity scope |
+| [`docs/PARITY_PACKS.md`](docs/PARITY_PACKS.md) | Planned parity-pack format, lifecycle, and CI contract |
+| [`docs/REWRITE_RULES.md`](docs/REWRITE_RULES.md) | Planned proof-carrying subtree rewrite model |
+| [`docs/IDENTITY_CHECKER.md`](docs/IDENTITY_CHECKER.md) | Planned AST identity checker workflow and report schema |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Verification progress, planned features |
 | [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) | Per-theorem status |
 

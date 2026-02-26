@@ -352,6 +352,21 @@ private def callsWithArityDefault : Option (List YulStmt) → List (String × Na
   | some body => callsWithArityFromStmts body
 end
 
+private def collectExternalCallNames (obj : YulObject) (libraries : List LibraryFunction) : List String :=
+  let allCode := obj.deployCode ++ obj.runtimeCode
+  let allCalls := (callsWithArityFromStmts allCode |>.map Prod.fst).eraseDups
+  let localDefs := (defsFromStmts allCode).eraseDups
+  let providedFunctions := collectLibraryFunctions libraries
+  allCalls.filter fun call =>
+    !yulBuiltins.contains call && !localDefs.contains call && providedFunctions.contains call
+
+/-- Keep only directly referenced external library functions, preserving input order.
+    This is a deterministic text-linking minimization step that avoids injecting
+    unused library helpers into rendered runtime code. -/
+def selectDirectlyReferencedLibraries (obj : YulObject) (libraries : List LibraryFunction) : List LibraryFunction :=
+  let referenced := collectExternalCallNames obj libraries
+  libraries.filter fun fn => referenced.contains fn.name
+
 -- Validate that all external calls are provided by libraries
 -- Excludes Yul builtins and locally-defined functions
 def validateExternalReferences (obj : YulObject) (libraries : List LibraryFunction) : Except String Unit := do

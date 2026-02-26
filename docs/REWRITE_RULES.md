@@ -10,11 +10,11 @@ Partially implemented:
 1. `ExprRule` (as `ExprPatchRule`) is active in the deterministic patch engine.
 2. `StmtRule` (as `StmtPatchRule`) is now supported in the patch engine with the same fail-closed metadata gate.
 3. `BlockRule` (as `BlockPatchRule`) is now supported in the patch engine with the same fail-closed metadata gate.
+4. `ObjectRule` (as `ObjectPatchRule`) is now supported in the patch engine with the same fail-closed metadata gate.
 
 Not implemented yet:
-1. `ObjectRule`.
-2. typed `RewriteCtx` plumbing.
-3. mandatory proof checking beyond metadata linkage.
+1. typed `RewriteCtx` plumbing.
+2. mandatory proof checking beyond metadata linkage.
 
 ## Rule Kinds
 

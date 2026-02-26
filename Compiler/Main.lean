@@ -113,7 +113,9 @@ private def parseArgs (args : List String) : IO CLIArgs := do
     | ["--backend-profile"] =>
         throw (IO.userError "Missing value for --backend-profile")
     | "--parity-pack" :: raw :: rest =>
-        if cfg.backendProfileExplicit then
+        if cfg.parityPackId.isSome then
+          throw (IO.userError "Cannot specify --parity-pack more than once")
+        else if cfg.backendProfileExplicit then
           throw (IO.userError "Cannot combine --parity-pack with --backend-profile")
         else
           match Compiler.findParityPack? raw with

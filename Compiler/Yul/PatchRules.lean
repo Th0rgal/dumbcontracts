@@ -395,4 +395,62 @@ example :
     | _, _, _ => false) = true := by
   native_decide
 
+/-- Smoke test: object rules can rewrite full-object fields after deploy/runtime subtree rewrites. -/
+example :
+    let renameObject : ObjectPatchRule :=
+      { patchName := "rename-object"
+        pattern := "object Main"
+        rewrite := "object MainParity"
+        sideConditions := ["object name is Main"]
+        proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.rename_object_preserves"
+        passPhase := .postCodegen
+        priority := 30
+        applyObject := fun obj =>
+          if obj.name = "Main" then
+            some { obj with name := "MainParity" }
+          else
+            none }
+    let input : YulObject :=
+      { name := "Main", deployCode := [.comment "deploy"], runtimeCode := [.comment "runtime"] }
+    let report := runPatchPassWithObjects
+      { enabled := true, maxIterations := 1 }
+      []
+      []
+      []
+      [renameObject]
+      input
+    (match report.patched.name, report.manifest.map (fun m => m.patchName) with
+    | "MainParity", ["rename-object"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: non-auditable object rules are fail-closed. -/
+example :
+    let unsafeObjectRule : ObjectPatchRule :=
+      { patchName := "unsafe-object-without-proof"
+        pattern := "object Main"
+        rewrite := "object MainParity"
+        sideConditions := []
+        proofId := ""
+        passPhase := .postCodegen
+        priority := 999
+        applyObject := fun obj =>
+          if obj.name = "Main" then
+            some { obj with name := "MainParity" }
+          else
+            none }
+    let input : YulObject :=
+      { name := "Main", deployCode := [.comment "deploy"], runtimeCode := [.comment "runtime"] }
+    let report := runPatchPassWithObjects
+      { enabled := true, maxIterations := 1 }
+      []
+      []
+      []
+      [unsafeObjectRule]
+      input
+    (match report.patched.name, report.iterations, report.manifest with
+    | "Main", 0, [] => true
+    | _, _, _ => false) = true := by
+  native_decide
+
 end Compiler.Yul

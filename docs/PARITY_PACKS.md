@@ -25,11 +25,12 @@ Partially implemented:
 13. `solc-compat-v0` now carries compatibility-only object rewrites:
    - `solc-compat-canonicalize-internal-fun-names` for deterministic internal helper naming canonicalization (`internal__*` → `fun_*`) with in-object callsite rewrites;
    - `solc-compat-inline-dispatch-wrapper-calls` for deterministic runtime switch-case inlining from `fun_*()` wrappers to helper bodies;
+   - `solc-compat-inline-keccak-market-params-calls` for deterministic inlining of direct runtime `keccakMarketParams(...)` helper calls to explicit `mstore`/`keccak256` sequences;
    - `solc-compat-dedupe-equivalent-helpers` for deterministic deduplication of structurally equivalent top-level helpers with callsite rewrites to canonical helpers;
    - `solc-compat-prune-unreachable-helpers` for deterministic dead helper pruning.
    `solc-compat-outline-dispatch-helpers` is currently kept out of the default bundle activation to avoid over-outlining runtime entry dispatch on active parity targets.
    Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
-14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `dedupe` → `prune`) without manual CLI overrides.
+14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-keccak-market-params` → `dedupe` → `prune`) without manual CLI overrides.
 
 Not implemented yet:
 1. identity checker and unsupported manifest workflow.

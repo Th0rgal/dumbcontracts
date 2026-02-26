@@ -615,6 +615,99 @@ private def inlineRuntimeDispatchWrapperCalls (stmts : List YulStmt) : List YulS
   let helpers := topLevelZeroArityFunctionBodies stmts
   inlineDispatchWrapperCallsInStmts helpers stmts
 
+private def inlineKeccakMarketParamsLet?
+    (name : String)
+    (args : List YulExpr) : Option (List YulStmt) :=
+  match args with
+  | [loanToken, collateralToken, oracle, irm, lltv] =>
+      some
+        [ .expr (.call "mstore" [.lit 0, loanToken])
+        , .expr (.call "mstore" [.lit 32, collateralToken])
+        , .expr (.call "mstore" [.lit 64, oracle])
+        , .expr (.call "mstore" [.lit 96, irm])
+        , .expr (.call "mstore" [.lit 128, lltv])
+        , .let_ name (.call "keccak256" [.lit 0, .lit 160])
+        ]
+  | _ => none
+
+private def inlineKeccakMarketParamsAssign?
+    (name : String)
+    (args : List YulExpr) : Option (List YulStmt) :=
+  match args with
+  | [loanToken, collateralToken, oracle, irm, lltv] =>
+      some
+        [ .expr (.call "mstore" [.lit 0, loanToken])
+        , .expr (.call "mstore" [.lit 32, collateralToken])
+        , .expr (.call "mstore" [.lit 64, oracle])
+        , .expr (.call "mstore" [.lit 96, irm])
+        , .expr (.call "mstore" [.lit 128, lltv])
+        , .assign name (.call "keccak256" [.lit 0, .lit 160])
+        ]
+  | _ => none
+
+mutual
+
+private partial def inlineKeccakMarketParamsCallsInStmt
+    (stmt : YulStmt) : List YulStmt × Nat
+  := match stmt with
+    | .comment text => ([.comment text], 0)
+    | .let_ name (.call "keccakMarketParams" args) =>
+        match inlineKeccakMarketParamsLet? name args with
+        | some stmts => (stmts, 1)
+        | none => ([stmt], 0)
+    | .let_ _ _ => ([stmt], 0)
+    | .letMany _ _ => ([stmt], 0)
+    | .assign name (.call "keccakMarketParams" args) =>
+        match inlineKeccakMarketParamsAssign? name args with
+        | some stmts => (stmts, 1)
+        | none => ([stmt], 0)
+    | .assign _ _ => ([stmt], 0)
+    | .expr _ => ([stmt], 0)
+    | .leave => ([stmt], 0)
+    | .if_ cond body =>
+        let (body', rewritten) := inlineKeccakMarketParamsCallsInStmts body
+        ([.if_ cond body'], rewritten)
+    | .for_ init cond post body =>
+        let (init', initRewrites) := inlineKeccakMarketParamsCallsInStmts init
+        let (post', postRewrites) := inlineKeccakMarketParamsCallsInStmts post
+        let (body', bodyRewrites) := inlineKeccakMarketParamsCallsInStmts body
+        ([.for_ init' cond post' body'], initRewrites + postRewrites + bodyRewrites)
+    | .switch expr cases default =>
+        let rewriteCase := fun (entry : Nat × List YulStmt) =>
+          let (tag, body) := entry
+          let (body', rewritten) := inlineKeccakMarketParamsCallsInStmts body
+          ((tag, body'), rewritten)
+        let rewrittenCases := cases.map rewriteCase
+        let cases' := rewrittenCases.map Prod.fst
+        let caseRewriteCount := rewrittenCases.foldl (fun acc entry => acc + entry.snd) 0
+        let (default', defaultRewriteCount) :=
+          match default with
+          | some body =>
+              let (body', rewritten) := inlineKeccakMarketParamsCallsInStmts body
+              (some body', rewritten)
+          | none => (none, 0)
+        ([.switch expr cases' default'], caseRewriteCount + defaultRewriteCount)
+    | .block stmts =>
+        let (stmts', rewritten) := inlineKeccakMarketParamsCallsInStmts stmts
+        ([.block stmts'], rewritten)
+    | .funcDef name params rets body =>
+        let (body', rewritten) := inlineKeccakMarketParamsCallsInStmts body
+        ([.funcDef name params rets body'], rewritten)
+
+private partial def inlineKeccakMarketParamsCallsInStmts
+    (stmts : List YulStmt) : List YulStmt × Nat
+  := match stmts with
+    | [] => ([], 0)
+    | stmt :: rest =>
+        let (stmt', rewrittenHead) := inlineKeccakMarketParamsCallsInStmt stmt
+        let (rest', rewrittenTail) := inlineKeccakMarketParamsCallsInStmts rest
+        (stmt' ++ rest', rewrittenHead + rewrittenTail)
+
+end
+
+private def inlineRuntimeKeccakMarketParamsCalls (stmts : List YulStmt) : List YulStmt × Nat :=
+  inlineKeccakMarketParamsCallsInStmts stmts
+
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
 
@@ -633,6 +726,10 @@ def solcCompatInlineDispatchWrapperCallsProofRef : String :=
 /-- Outline switch dispatch case bodies into explicit top-level `fun_*` helpers. -/
 def solcCompatOutlineDispatchHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_outline_dispatch_helpers_preserves"
+
+/-- Inline direct `keccakMarketParams(...)` helper calls into explicit memory writes + `keccak256`. -/
+def solcCompatInlineKeccakMarketParamsCallsProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_inline_keccak_market_params_calls_preserves"
 
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
@@ -758,6 +855,28 @@ def solcCompatInlineDispatchWrapperCallsRule : ObjectPatchRule :=
       else
         some { obj with runtimeCode := runtimeCode' } }
 
+/-- Inline runtime direct `keccakMarketParams(...)` helper calls to `mstore`/`keccak256` sequence.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatInlineKeccakMarketParamsCallsRule : ObjectPatchRule :=
+  { patchName := "solc-compat-inline-keccak-market-params-calls"
+    pattern := "let/assign using direct call `keccakMarketParams(a,b,c,d,e)`"
+    rewrite := "replace with explicit memory writes at [0,32,64,96,128] then `keccak256(0,160)`"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "only direct `.let_`/`.assign` calls are rewritten"
+      , "exactly five arguments are required"
+      , "scratch memory clobbering follows existing helper semantics" ]
+    proofId := solcCompatInlineKeccakMarketParamsCallsProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 211
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := inlineRuntimeKeccakMarketParamsCalls obj.runtimeCode
+      if rewritten = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -819,6 +938,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     objectRules := foundationObjectPatchPack ++
       [ solcCompatCanonicalizeInternalFunNamesRule
       , solcCompatInlineDispatchWrapperCallsRule
+      , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatDedupeEquivalentHelpersRule
       , solcCompatPruneUnreachableHelpersRule ] }
 
@@ -1239,6 +1359,12 @@ example :
       (fun proofRef => proofRef = solcCompatInlineDispatchWrapperCallsProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains keccak-market-params inlining proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatInlineKeccakMarketParamsCallsProofRef) = true := by
+  native_decide
+
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -1398,6 +1524,52 @@ example :
               ]
           ]
       ], [] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: direct `keccakMarketParams(...)` calls are inlined and helper becomes pruneable. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "keccakMarketParams"
+              ["loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              ["id"]
+              [ .expr (.call "mstore" [.lit 0, .ident "loanToken"])
+              , .expr (.call "mstore" [.lit 32, .ident "collateralToken"])
+              , .expr (.call "mstore" [.lit 64, .ident "oracle"])
+              , .expr (.call "mstore" [.lit 96, .ident "irm"])
+              , .expr (.call "mstore" [.lit 128, .ident "lltv"])
+              , .assign "id" (.call "keccak256" [.lit 0, .lit 160])
+              ]
+          , .block
+              [ .let_ "id0"
+                  (.call "keccakMarketParams"
+                    [.ident "loanToken", .ident "collateralToken", .ident "oracle", .ident "irm", .ident "lltv"])
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 4
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatInlineKeccakMarketParamsCallsRule, solcCompatPruneUnreachableHelpersRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .block
+          [ .expr (.call "mstore" [.lit 0, .ident "loanToken"])
+          , .expr (.call "mstore" [.lit 32, .ident "collateralToken"])
+          , .expr (.call "mstore" [.lit 64, .ident "oracle"])
+          , .expr (.call "mstore" [.lit 96, .ident "irm"])
+          , .expr (.call "mstore" [.lit 128, .ident "lltv"])
+          , .let_ "id0" (.call "keccak256" [.lit 0, .lit 160])
+          ]
+      ],
+      ["solc-compat-inline-keccak-market-params-calls", "solc-compat-prune-unreachable-helpers"] => true
     | _, _ => false) = true := by
   native_decide
 

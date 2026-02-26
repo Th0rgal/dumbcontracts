@@ -16,6 +16,7 @@ Partially implemented:
    This keeps deploy rewrites explicit (object rules only) while preserving runtime patch diagnostics.
 5. Verbose parity-pack logs now include `metadataMode` alongside the rest of the pinned tuple.
 6. Typed `RewriteCtx` scope/phase/iteration/pack metadata is now threaded through patch execution, and rule scope is enforced at application sites.
+7. `--parity-pack` now propagates into patch execution context (`PatchPassConfig.packId`), and rules can gate activation with `packAllowlist`.
 
 Not implemented yet:
 1. pack-level proof composition checks;

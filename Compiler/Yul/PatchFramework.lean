@@ -29,6 +29,7 @@ structure ExprPatchRule where
   rewrite : String
   sideConditions : List String
   proofId : String
+  packAllowlist : List String := []
   scope : RewriteScope
   passPhase : PatchPhase
   priority : Nat
@@ -41,6 +42,7 @@ structure StmtPatchRule where
   rewrite : String
   sideConditions : List String
   proofId : String
+  packAllowlist : List String := []
   scope : RewriteScope
   passPhase : PatchPhase
   priority : Nat
@@ -53,6 +55,7 @@ structure BlockPatchRule where
   rewrite : String
   sideConditions : List String
   proofId : String
+  packAllowlist : List String := []
   scope : RewriteScope
   passPhase : PatchPhase
   priority : Nat
@@ -65,6 +68,7 @@ structure ObjectPatchRule where
   rewrite : String
   sideConditions : List String
   proofId : String
+  packAllowlist : List String := []
   scope : RewriteScope
   passPhase : PatchPhase
   priority : Nat
@@ -107,6 +111,7 @@ private class PatchRuleLike (α : Type) where
   patchName : α → String
   proofId : α → String
   sideConditions : α → List String
+  packAllowlist : α → List String
   scope : α → RewriteScope
   passPhase : α → PatchPhase
   priority : α → Nat
@@ -120,6 +125,7 @@ private instance : PatchRuleLike ExprPatchRule where
   patchName := fun r => r.patchName
   proofId := fun r => r.proofId
   sideConditions := fun r => r.sideConditions
+  packAllowlist := fun r => r.packAllowlist
   scope := fun r => r.scope
   passPhase := fun r => r.passPhase
   priority := fun r => r.priority
@@ -128,6 +134,7 @@ private instance : PatchRuleLike StmtPatchRule where
   patchName := fun r => r.patchName
   proofId := fun r => r.proofId
   sideConditions := fun r => r.sideConditions
+  packAllowlist := fun r => r.packAllowlist
   scope := fun r => r.scope
   passPhase := fun r => r.passPhase
   priority := fun r => r.priority
@@ -136,6 +143,7 @@ private instance : PatchRuleLike BlockPatchRule where
   patchName := fun r => r.patchName
   proofId := fun r => r.proofId
   sideConditions := fun r => r.sideConditions
+  packAllowlist := fun r => r.packAllowlist
   scope := fun r => r.scope
   passPhase := fun r => r.passPhase
   priority := fun r => r.priority
@@ -144,12 +152,19 @@ private instance : PatchRuleLike ObjectPatchRule where
   patchName := fun r => r.patchName
   proofId := fun r => r.proofId
   sideConditions := fun r => r.sideConditions
+  packAllowlist := fun r => r.packAllowlist
   scope := fun r => r.scope
   passPhase := fun r => r.passPhase
   priority := fun r => r.priority
 
+private def ruleAllowsPack [PatchRuleLike α] (rule : α) (packId : String) : Bool :=
+  let allowlist := PatchRuleLike.packAllowlist rule
+  allowlist.isEmpty || allowlist.any (fun allowed => allowed = packId)
+
 private def ruleActiveInCtx [PatchRuleLike α] (rule : α) (ctx : RewriteCtx) : Bool :=
-  PatchRuleLike.scope rule == ctx.scope && PatchRuleLike.passPhase rule == ctx.passPhase
+  PatchRuleLike.scope rule == ctx.scope &&
+    PatchRuleLike.passPhase rule == ctx.passPhase &&
+    ruleAllowsPack rule ctx.packId
 
 /-- Fail-closed metadata guard: a runnable rule must carry audit/proof linkage. -/
 def ExprPatchRule.isAuditable (rule : ExprPatchRule) : Bool :=

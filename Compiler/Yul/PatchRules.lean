@@ -505,6 +505,36 @@ example :
     | _, _, _ => false) = true := by
   native_decide
 
+/-- Smoke test: pack-allowlisted expression rules only activate for matching `RewriteCtx.packId`. -/
+example :
+    let packScoped : ExprPatchRule :=
+      { patchName := "pack-scoped-add-zero-right"
+        pattern := "add(x, 0)"
+        rewrite := "x"
+        sideConditions := ["second argument is literal zero"]
+        proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.add_zero_right_preserves"
+        packAllowlist := ["solc-0.8.28-o999999-viair-true-evm-paris"]
+        scope := .runtime
+        passPhase := .postCodegen
+        priority := 1000
+        applyExpr := fun _ expr =>
+          match expr with
+          | .call "add" [lhs, .lit 0] => some lhs
+          | _ => none }
+    let stmt : YulStmt := .expr (.call "add" [.ident "x", .lit 0])
+    let reportMatched := runExprPatchPass
+      { enabled := true, maxIterations := 1, packId := "solc-0.8.28-o999999-viair-true-evm-paris" }
+      [packScoped]
+      [stmt]
+    let reportMissed := runExprPatchPass
+      { enabled := true, maxIterations := 1, packId := "solc-0.8.28-o200-viair-false-evm-shanghai" }
+      [packScoped]
+      [stmt]
+    (match reportMatched.patched, reportMissed.patched with
+    | [.expr (.ident "x")], [.expr (.call "add" [.ident "x", .lit 0])] => true
+    | _, _ => false) = true := by
+  native_decide
+
 /-- Smoke test: non-auditable object rules are fail-closed. -/
 example :
     let unsafeObjectRule : ObjectPatchRule :=

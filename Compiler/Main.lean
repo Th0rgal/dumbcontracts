@@ -198,6 +198,7 @@ def main (args : List String) : IO Unit := do
       patchConfig := {
         enabled := patchEnabled
         maxIterations := cfg.patchMaxIterations
+        packId := cfg.parityPackId.getD ""
       }
       mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }

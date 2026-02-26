@@ -15,6 +15,7 @@ Partially implemented:
    - runtime-scoped fixpoint pass for `ExprRule`/`StmtRule`/`BlockRule`;
    - object pass for `ObjectRule`.
    Foundation packs for `StmtRule`/`BlockRule`/`ObjectRule` are wired but currently empty.
+6. Rule activation now supports pack-scoped allowlists (`packAllowlist`) checked against `RewriteCtx.packId`.
 
 Not implemented yet:
 1. mandatory proof checking beyond metadata linkage.

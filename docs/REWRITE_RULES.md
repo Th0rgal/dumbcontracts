@@ -11,7 +11,10 @@ Partially implemented:
 2. `StmtRule` (as `StmtPatchRule`) is now supported in the patch engine with the same fail-closed metadata gate.
 3. `BlockRule` (as `BlockPatchRule`) is now supported in the patch engine with the same fail-closed metadata gate.
 4. `ObjectRule` (as `ObjectPatchRule`) is now supported in the patch engine with the same fail-closed metadata gate.
-5. Codegen now runs object-scoped fixpoint rewriting through `runPatchPassWithObjects`; foundation packs for `StmtRule`/`BlockRule`/`ObjectRule` are wired but currently empty.
+5. Codegen now runs a two-stage typed rewrite pipeline:
+   - runtime-scoped fixpoint pass for `ExprRule`/`StmtRule`/`BlockRule`;
+   - object pass for `ObjectRule`.
+   Foundation packs for `StmtRule`/`BlockRule`/`ObjectRule` are wired but currently empty.
 
 Not implemented yet:
 1. typed `RewriteCtx` plumbing.

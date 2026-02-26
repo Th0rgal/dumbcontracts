@@ -10,7 +10,10 @@ Partially implemented:
 1. CLI selection via `--parity-pack <id>`.
 2. Registry + hard validation in `Compiler/ParityPacks.lean`.
 3. Ambiguous selection guard (`--parity-pack` cannot be combined with `--backend-profile`).
-4. Codegen now executes the full typed patch entrypoint (`runPatchPassWithObjects`) with foundation packs for `ExprRule`/`StmtRule`/`BlockRule`/`ObjectRule`.
+4. Codegen now runs a typed two-stage patch pipeline:
+   - runtime-scoped `ExprRule`/`StmtRule`/`BlockRule` fixpoint pass,
+   - followed by `ObjectRule` pass over the full object.
+   This keeps deploy rewrites explicit (object rules only) while preserving runtime patch diagnostics.
 5. Verbose parity-pack logs now include `metadataMode` alongside the rest of the pinned tuple.
 
 Not implemented yet:

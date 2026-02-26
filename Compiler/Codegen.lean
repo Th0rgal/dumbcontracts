@@ -188,28 +188,38 @@ private def baseObjectWithOptions (contract : IRContract) (options : YulEmitOpti
     deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
     runtimeCode := runtimeCodeWithEmitOptions contract options }
 
-private def runtimePatchReportFromObjectReport (report : Yul.ObjectPatchPassReport) : Yul.PatchPassReport :=
-  { patched := report.patched.runtimeCode
-    iterations := report.iterations
-    manifest := report.manifest }
+private structure EmitObjectWithOptionsReport where
+  patched : YulObject
+  runtimePatchReport : Yul.PatchPassReport
 
-private def emitYulWithOptionsObjectReport
+private def emitYulWithOptionsInternal
     (contract : IRContract)
-    (options : YulEmitOptions) : Yul.ObjectPatchPassReport :=
+    (options : YulEmitOptions) : EmitObjectWithOptionsReport :=
   let base := baseObjectWithOptions contract options
-  Yul.runPatchPassWithObjects
+  -- Keep expression/statement/block rewrites runtime-scoped; deploy rewriting is
+  -- reserved for explicit object-level rules.
+  let runtimePatchReport := Yul.runPatchPassWithBlocks
     options.patchConfig
     Yul.foundationExprPatchPack
     Yul.foundationStmtPatchPack
     Yul.foundationBlockPatchPack
+    base.runtimeCode
+  let runtimePatched := { base with runtimeCode := runtimePatchReport.patched }
+  let objectReport := Yul.runPatchPassWithObjects
+    options.patchConfig
+    []
+    []
+    []
     Yul.foundationObjectPatchPack
-    base
+    runtimePatched
+  { patched := objectReport.patched
+    runtimePatchReport := runtimePatchReport }
 
 /-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
 def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
-  let objectReport := emitYulWithOptionsObjectReport contract options
-  { runtimeCode := objectReport.patched.runtimeCode
-    patchReport := runtimePatchReportFromObjectReport objectReport }
+  let report := emitYulWithOptionsInternal contract options
+  { runtimeCode := report.patched.runtimeCode
+    patchReport := report.runtimePatchReport }
 
 def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
   (runtimeCodeWithOptionsReport contract options).runtimeCode
@@ -220,13 +230,13 @@ def emitYul (contract : IRContract) : YulObject :=
     runtimeCode := runtimeCode contract }
 
 def emitYulWithOptions (contract : IRContract) (options : YulEmitOptions) : YulObject :=
-  (emitYulWithOptionsObjectReport contract options).patched
+  (emitYulWithOptionsInternal contract options).patched
 
 /-- Emit Yul and preserve patch-pass audit details for downstream reporting. -/
 def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) :
     YulObject × Yul.PatchPassReport :=
-  let objectReport := emitYulWithOptionsObjectReport contract options
-  (objectReport.patched, runtimePatchReportFromObjectReport objectReport)
+  let report := emitYulWithOptionsInternal contract options
+  (report.patched, report.runtimePatchReport)
 
 /-- Regression guard: report and legacy runtime APIs stay in sync. -/
 example (contract : IRContract) (options : YulEmitOptions) :
@@ -243,5 +253,48 @@ example (contract : IRContract) (options : YulEmitOptions) :
     (emitYulWithOptionsReport contract options).2 =
       (runtimeCodeWithOptionsReport contract options).patchReport := by
   rfl
+
+private def contains (haystack needle : String) : Bool :=
+  let h := haystack.toList
+  let n := needle.toList
+  if n.isEmpty then true
+  else
+    let rec go : List Char → Bool
+      | [] => false
+      | c :: cs =>
+          if (c :: cs).take n.length == n then true
+          else go cs
+    go h
+
+/-- Regression guard:
+    expression/statement/block patching remains runtime-scoped (deploy is unchanged),
+    and runtime patch reporting excludes deploy-only candidates. -/
+example :
+    let deployMarker := "__deploy_marker"
+    let runtimeMarker := "__runtime_marker"
+    let contract : IRContract :=
+      { name := "ScopeRegression"
+        deploy := [.expr (.call "add" [.ident deployMarker, .lit 0])]
+        constructorPayable := true
+        functions :=
+          [{ name := "f"
+             selector := 1
+             params := []
+             ret := .unit
+             payable := false
+             body := [.expr (.call "add" [.ident runtimeMarker, .lit 0])] }]
+        usesMapping := false }
+    let options : YulEmitOptions := { patchConfig := { enabled := true, maxIterations := 2 } }
+    let report := emitYulWithOptionsReport contract options
+    let rendered := Yul.render report.1
+    let deployStillHasMarker := contains rendered s!"add({deployMarker}, 0)"
+    let runtimeNoLongerHasMarker := !(contains rendered s!"add({runtimeMarker}, 0)")
+    let runtimeMatchCount :=
+      report.2.manifest.foldl
+        (fun acc entry =>
+          if entry.patchName = "add-zero-right" then acc + entry.matchCount else acc)
+        0
+    deployStillHasMarker && runtimeNoLongerHasMarker && runtimeMatchCount == 1 := by
+  native_decide
 
 end Compiler

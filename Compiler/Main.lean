@@ -27,6 +27,7 @@ private structure CLIArgs where
   patchMaxIterationsExplicit : Bool := false
   patchReportPath : Option String := none
   mappingSlotScratchBase : Nat := 0
+  mappingSlotScratchBaseExplicit : Bool := false
 
 private def profileForcesPatches (profile : Compiler.BackendProfile) : Bool :=
   match profile with
@@ -131,6 +132,8 @@ private def parseArgs (args : List String) : IO CLIArgs := do
                     patchEnabled := cfg.patchEnabled || pack.forcePatches
                     patchMaxIterations :=
                       if cfg.patchMaxIterationsExplicit then cfg.patchMaxIterations else pack.defaultPatchMaxIterations
+                    mappingSlotScratchBase :=
+                      if cfg.mappingSlotScratchBaseExplicit then cfg.mappingSlotScratchBase else 0x200
                }
           | none =>
               throw (IO.userError
@@ -151,7 +154,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         throw (IO.userError "Missing value for --patch-report")
     | "--mapping-slot-scratch-base" :: raw :: rest =>
         match raw.toNat? with
-        | some n => go rest { cfg with mappingSlotScratchBase := n }
+        | some n => go rest { cfg with mappingSlotScratchBase := n, mappingSlotScratchBaseExplicit := true }
         | none => throw (IO.userError s!"Invalid value for --mapping-slot-scratch-base: {raw}")
     | ["--mapping-slot-scratch-base"] =>
         throw (IO.userError "Missing value for --mapping-slot-scratch-base")

@@ -45,3 +45,4 @@ lake exe verity-compiler check-identity \
 
 - [`PARITY_PACKS.md`](PARITY_PACKS.md)
 - [`REWRITE_RULES.md`](REWRITE_RULES.md)
+- [`SOLIDITY_PARITY_PROTOCOL.md`](SOLIDITY_PARITY_PROTOCOL.md)

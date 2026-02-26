@@ -129,6 +129,44 @@ def buildSwitch
       [YulStmt.switch selectorExpr cases (some defaultCase)]
   ]
 
+private def funDispatchHelperName (fn : IRFunction) : String :=
+  s!"fun_{fn.name}"
+
+private def buildSwitchWithDispatchHelpers
+    (funcs : List IRFunction)
+    (fallback : Option IREntrypoint := none)
+    (receive : Option IREntrypoint := none)
+    (sortCasesBySelector : Bool := false)
+    (reservedNames : List String := []) : List YulStmt × YulStmt :=
+  let funcs :=
+    if sortCasesBySelector then
+      insertionSortBy (·.selector) funcs
+    else
+      funcs
+  let selectorExpr := YulExpr.call "shr" [YulExpr.lit selectorShift, YulExpr.call "calldataload" [YulExpr.lit 0]]
+  let step :=
+    fun (acc : (List YulStmt × List (Nat × List YulStmt) × List String)) (fn : IRFunction) =>
+      let (helpersRev, casesRev, seenNames) := acc
+      let helperName := funDispatchHelperName fn
+      let caseBody := dispatchBody fn.payable s!"{fn.name}()" ([calldatasizeGuard fn.params.length] ++ fn.body)
+      if seenNames.any (fun seen => seen = helperName) then
+        (helpersRev, (fn.selector, caseBody) :: casesRev, seenNames)
+      else
+        let helperDef := YulStmt.funcDef helperName [] [] caseBody
+        (helperDef :: helpersRev, (fn.selector, [YulStmt.expr (YulExpr.call helperName [])]) :: casesRev,
+          helperName :: seenNames)
+  let (helpersRev, casesRev, _) := funcs.foldl step ([], [], reservedNames)
+  let defaultCase := defaultDispatchCase fallback receive
+  let switchStmt :=
+    YulStmt.block [
+      YulStmt.let_ "__has_selector"
+        (YulExpr.call "iszero" [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]),
+      YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) defaultCase,
+      YulStmt.if_ (YulExpr.ident "__has_selector")
+        [YulStmt.switch selectorExpr casesRev.reverse (some defaultCase)]
+    ]
+  (helpersRev.reverse, switchStmt)
+
 def runtimeCode (contract : IRContract) : List YulStmt :=
   let mapping := if contract.usesMapping then [mappingSlotFuncAt 0] else []
   let internals := contract.internalFunctions
@@ -145,6 +183,11 @@ private def profileSortsDispatchCases (profile : BackendProfile) : Bool :=
 
 private def profileSortsInternalHelpers (profile : BackendProfile) : Bool :=
   profileSortsOutput profile
+
+private def profileOutlinesDispatchHelpers (profile : BackendProfile) : Bool :=
+  match profile with
+  | .solidityParity => true
+  | _ => false
 
 private def internalHelperName? (stmt : YulStmt) : Option String :=
   match stmt with
@@ -171,7 +214,18 @@ def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmitOptions
   let mapping := if contract.usesMapping then [mappingSlotFuncAt options.mappingSlotScratchBase] else []
   let internals := internalHelpersForProfile options.backendProfile contract.internalFunctions
   let sortCases := profileSortsDispatchCases options.backendProfile
-  mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases]
+  let internalNames := internals.filterMap internalHelperName?
+  let (dispatchHelpers, switchStmt) :=
+    if profileOutlinesDispatchHelpers options.backendProfile then
+      buildSwitchWithDispatchHelpers
+        contract.functions
+        contract.fallbackEntrypoint
+        contract.receiveEntrypoint
+        sortCases
+        internalNames
+    else
+      ([], buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases)
+  mapping ++ internals ++ dispatchHelpers ++ [switchStmt]
 
 private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile)
     (mappingSlotScratchBase : Nat := 0) : List YulStmt :=
@@ -279,6 +333,32 @@ private def contains (haystack needle : String) : Bool :=
           else go cs
     go h
 
+private partial def stmtContainsSwitchCaseCall (target : String) : YulStmt → Bool
+  | .comment _ => false
+  | .let_ _ _ => false
+  | .letMany _ _ => false
+  | .assign _ _ => false
+  | .expr _ => false
+  | .leave => false
+  | .if_ _ body => body.any (stmtContainsSwitchCaseCall target)
+  | .for_ init _ post body =>
+      init.any (stmtContainsSwitchCaseCall target) ||
+      post.any (stmtContainsSwitchCaseCall target) ||
+      body.any (stmtContainsSwitchCaseCall target)
+  | .switch _ cases default =>
+      let caseHit :=
+        cases.any (fun (_, body) =>
+          match body with
+          | [.expr (.call fn [])] => decide (fn = target)
+          | _ => false)
+      let defaultHit :=
+        match default with
+        | some body => body.any (stmtContainsSwitchCaseCall target)
+        | none => false
+      caseHit || defaultHit
+  | .block stmts => stmts.any (stmtContainsSwitchCaseCall target)
+  | .funcDef _ _ _ body => body.any (stmtContainsSwitchCaseCall target)
+
 /-- Regression guard:
     expression/statement/block patching remains runtime-scoped (deploy is unchanged),
     and runtime patch reporting excludes deploy-only candidates. -/
@@ -338,6 +418,31 @@ example :
     let hasObjectRule :=
       report.2.manifest.any (fun entry => entry.patchName = "solc-compat-prune-unreachable-helpers")
     hasObjectRule = true := by
+  native_decide
+
+/-- Regression guard: solidity parity profile outlines dispatch cases into `fun_*` helper defs. -/
+example :
+    let contract : IRContract :=
+      { name := "DispatchOutlineRegression"
+        deploy := []
+        constructorPayable := true
+        functions :=
+          [{ name := "ping"
+             selector := 1
+             params := []
+             ret := .unit
+             payable := false
+             body := [.leave] }]
+        usesMapping := false
+        internalFunctions := [] }
+    let runtime := runtimeCodeWithEmitOptions contract { backendProfile := .solidityParity }
+    let hasFunHelper :=
+      runtime.any (fun stmt =>
+        match stmt with
+        | .funcDef "fun_ping" [] [] _ => true
+        | _ => false)
+    let switchCallsHelper := runtime.any (stmtContainsSwitchCaseCall "fun_ping")
+    hasFunHelper && switchCallsHelper := by
   native_decide
 
 end Compiler

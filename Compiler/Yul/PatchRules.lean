@@ -1510,7 +1510,7 @@ example :
           ] }
     let report := runPatchPassWithObjects
       { enabled := true
-        maxIterations := 4
+        maxIterations := 1
         rewriteBundleId := solcCompatRewriteBundleId
         requiredProofRefs := solcCompatProofAllowlist }
       []
@@ -1593,7 +1593,7 @@ example :
           ] }
     let report := runPatchPassWithObjects
       { enabled := true
-        maxIterations := 4
+        maxIterations := 1
         rewriteBundleId := solcCompatRewriteBundleId
         requiredProofRefs := solcCompatProofAllowlist }
       []

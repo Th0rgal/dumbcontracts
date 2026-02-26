@@ -19,6 +19,7 @@ Partially implemented:
 7. Patch execution now supports activation-time proof registry enforcement via `PatchPassConfig.requiredProofRefs`.
    In compiler codegen, this defaults to the selected rewrite bundle proof allowlist, so rules with unregistered `proofId` fail closed even if metadata is non-empty.
 8. Rewrite bundles are now explicit and versioned (`foundation`, `solc-compat-v0`), with bundle selection propagated by `PatchPassConfig.rewriteBundleId`.
+   Object rules are now applied sequentially in deterministic priority order within each object-pass iteration (instead of first-match only), enabling chained compat transforms in one iteration.
    `solc-compat-v0` now includes compatibility-only object rules:
    - `solc-compat-canonicalize-internal-fun-names`: canonicalizes `internal__*` helper names to `fun_*` and rewrites in-object call sites deterministically.
    - `solc-compat-inline-dispatch-wrapper-calls`: inlines runtime dispatch case bodies of the form `fun_*()` to the referenced top-level zero-arity helper body.

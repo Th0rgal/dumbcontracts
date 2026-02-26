@@ -252,11 +252,20 @@ private def applyFirstBlockRule
     (block : List YulStmt) : Option (List YulStmt × String) :=
   applyFirstPatchRule orderedRules (fun rule ruleCtx node => rule.applyBlock ruleCtx node) ctx block
 
-private def applyFirstObjectRule
+private def applyAllObjectRulesOnce
     (orderedRules : List ObjectPatchRule)
     (ctx : RewriteCtx)
-    (obj : YulObject) : Option (YulObject × String) :=
-  applyFirstPatchRule orderedRules (fun rule ruleCtx node => rule.applyObject ruleCtx node) ctx obj
+    (obj : YulObject) : YulObject × List String :=
+  orderedRules.foldl
+    (fun (state : YulObject × List String) rule =>
+      let (currentObj, hits) := state
+      if ¬ruleActiveInCtx rule ctx then
+        (currentObj, hits)
+      else
+        match rule.applyObject ctx currentObj with
+        | some rewritten => (rewritten, hits ++ [rule.patchName])
+        | none => (currentObj, hits))
+    (obj, [])
 
 mutual
 
@@ -461,10 +470,8 @@ private def rewriteObjectOnce
   let (runtimeCode', runtimeHits) :=
     rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules runtimeCtx obj.runtimeCode
   let candidate := { obj with deployCode := deployCode', runtimeCode := runtimeCode' }
-  let hits := deployHits ++ runtimeHits
-  match applyFirstObjectRule orderedObjectRules objectCtx candidate with
-  | some (rewritten, patchName) => (rewritten, hits ++ [patchName])
-  | none => (candidate, hits)
+  let (afterObjectRules, objectHits) := applyAllObjectRulesOnce orderedObjectRules objectCtx candidate
+  (afterObjectRules, deployHits ++ runtimeHits ++ objectHits)
 
 private def runObjectPatchPassLoop
     (config : PatchPassConfig)

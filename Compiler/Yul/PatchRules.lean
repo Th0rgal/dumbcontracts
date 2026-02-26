@@ -1060,6 +1060,24 @@ private def toSharesDownHelperBody : List YulStmt :=
 private def toSharesDownHelperStmt : YulStmt :=
   .funcDef "fun_toSharesDown" ["var_assets", "var_totalAssets", "var_totalShares"] ["var_"] toSharesDownHelperBody
 
+private def updateStorageValueOffsetUint128HelperBody : List YulStmt :=
+  [ .let_ "_1" (.call "sload" [.ident "slot"])
+  , .expr
+      (.call "sstore"
+        [ .ident "slot"
+        , .call "or"
+            [ .call "and" [.ident "_1", .hex 0xffffffffffffffffffffffffffffffff]
+            , .call "and"
+                [ .call "shl" [.lit 128, .ident "value"]
+                , .hex 0xffffffffffffffffffffffffffffffff00000000000000000000000000000000
+                ]
+            ]
+        ])
+  ]
+
+private def updateStorageValueOffsetUint128HelperStmt : YulStmt :=
+  .funcDef "update_storage_value_offsett_uint128_to_uint128" ["slot", "value"] [] updateStorageValueOffsetUint128HelperBody
+
 private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulStmt) : List YulStmt × Nat :=
   let (wrapped, topStmts) :=
     match stmts with
@@ -1113,16 +1131,24 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       insertTopLevelFuncDefAfterPrefix withAddMulDivAdd128Sub128 toSharesDownHelperStmt
     else
       withAddMulDivAdd128Sub128
+  let needsUpdateStorageUint128 :=
+    !hasTopLevelFunctionNamed withAll "update_storage_value_offsett_uint128_to_uint128" &&
+      (callNamesInStmts withAll).any (fun called => called = "update_storage_value_offsett_uint128_to_uint128")
+  let withAll' :=
+    if needsUpdateStorageUint128 then
+      insertTopLevelFuncDefAfterPrefix withAll updateStorageValueOffsetUint128HelperStmt
+    else
+      withAll
   let inserted : Nat :=
     (if needsAdd then 1 else 0) + (if needsMul then 1 else 0) + (if needsDiv then 1 else 0) +
       (if needsAdd128 then 1 else 0) + (if needsSub128 then 1 else 0) +
-      (if needsToSharesDown then 1 else 0)
+      (if needsToSharesDown then 1 else 0) + (if needsUpdateStorageUint128 then 1 else 0)
   if inserted = 0 then
     (stmts, 0)
   else if wrapped then
-    ([.block withAll], inserted)
+    ([.block withAll'], inserted)
   else
-    (withAll, inserted)
+    (withAll', inserted)
 
 private def hasAccrueInterestCompatBaseName (base name : String) : Bool :=
   name = base || name.startsWith s!"{base}_"
@@ -1377,6 +1403,19 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
           (.call "checked_sub_uint128" [.ident lhs, .ident rhs], 1)
         else
           (.call "sub" [.ident lhs, .ident rhs], 0)
+    | .call "sstore"
+        [ .ident slot
+        , .call "or" [.ident slotCleared, .call "shl" [.lit 128, .ident packedValue]]
+        ] =>
+        if slot.startsWith "__compat_mapping_slot_" &&
+            slotCleared.startsWith "__compat_slot_cleared" &&
+            packedValue.startsWith "__compat_packed" then
+          (.call "update_storage_value_offsett_uint128_to_uint128" [.ident slot, .ident packedValue], 1)
+        else
+          (.call "sstore"
+            [ .ident slot
+            , .call "or" [.ident slotCleared, .call "shl" [.lit 128, .ident packedValue]]
+            ], 0)
     | .call "div"
         [ .call "mul" [.ident feeAmount, .call "add" [.ident totalSupplyShares, .lit 1000000]]
         , .call "add" [.ident feeDenominator, .lit 1]
@@ -2974,6 +3013,40 @@ example :
       called.any (fun name => name = "checked_add_uint256") = true := by
   native_decide
 
+/-- Smoke test: checked arithmetic rewrite canonicalizes packed uint128 upper-slot writes. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .expr
+                  (.call "sstore"
+                    [ .ident "__compat_mapping_slot_17"
+                    , .call "or"
+                        [ .ident "__compat_slot_cleared"
+                        , .call "shl" [.lit 128, .ident "__compat_packed"]
+                        ]
+                    ])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "update_storage_value_offsett_uint128_to_uint128" &&
+      called.any (fun name => name = "update_storage_value_offsett_uint128_to_uint128") = true := by
+  native_decide
+
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-matching `sub` names. -/
 example :
     let input : YulObject :=
@@ -2999,6 +3072,37 @@ example :
     report.manifest.map (fun m => m.patchName) = [] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" = false &&
       called.any (fun name => name = "checked_sub_uint128") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat packed sstore writes. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .expr
+                  (.call "sstore"
+                    [ .ident "slot"
+                    , .call "or" [.ident "slotCleared", .call "shl" [.lit 128, .ident "packedValue"]]
+                    ])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = [] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "update_storage_value_offsett_uint128_to_uint128" = false &&
+      called.any (fun name => name = "update_storage_value_offsett_uint128_to_uint128") = false := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-matching toSharesDown names. -/

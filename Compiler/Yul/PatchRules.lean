@@ -887,6 +887,9 @@ def solcCompatInlineKeccakMarketParamsCallsProofRef : String :=
 def solcCompatInlineMappingSlotCallsProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_inline_mapping_slot_calls_preserves"
 
+def solcCompatDropUnusedKeccakMarketParamsHelperProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_drop_unused_keccak_market_params_helper_preserves"
+
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
     (params rets : List String)
@@ -923,6 +926,31 @@ private def dedupeEquivalentTopLevelHelpers (stmts : List YulStmt) : List YulStm
     (kept, removed)
   else
     (renameCallsInStmts renames kept, removed)
+
+private def dropUnusedTopLevelFunctionByName (stmts : List YulStmt) (name : String) : List YulStmt × Nat :=
+  let (wrapped, topStmts) :=
+    match stmts with
+    | [.block inner] => (true, inner)
+    | _ => (false, stmts)
+  let (withoutTarget, removed) :=
+    topStmts.foldr
+      (fun stmt (accStmts, accRemoved) =>
+        match stmt with
+        | .funcDef defName params rets body =>
+            if defName = name then
+              (accStmts, accRemoved + 1)
+            else
+              (.funcDef defName params rets body :: accStmts, accRemoved)
+        | _ => (stmt :: accStmts, accRemoved))
+      ([], 0)
+  if removed = 0 then
+    (stmts, 0)
+  else if (callNamesInStmts withoutTarget).any (fun called => called = name) then
+    (stmts, 0)
+  else if wrapped then
+    ([.block withoutTarget], removed)
+  else
+    (withoutTarget, removed)
 
 /-- Canonicalize `internal__*` helper names to `fun_*` and rewrite in-object call sites.
     This is enabled only in the opt-in `solc-compat` bundle. -/
@@ -1056,6 +1084,27 @@ def solcCompatInlineMappingSlotCallsRule : ObjectPatchRule :=
       else
         some { obj with runtimeCode := runtimeCode' } }
 
+/-- Drop top-level runtime `keccakMarketParams` helper when no call sites remain.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatDropUnusedKeccakMarketParamsHelperRule : ObjectPatchRule :=
+  { patchName := "solc-compat-drop-unused-keccak-market-params-helper"
+    pattern := "top-level helper definition `keccakMarketParams` with no remaining call sites"
+    rewrite := "remove helper definition"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "only top-level definitions named `keccakMarketParams` are considered"
+      , "helper is removed only when no call site remains in runtime code" ]
+    proofId := solcCompatDropUnusedKeccakMarketParamsHelperProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 210
+    applyObject := fun _ obj =>
+      let (runtimeCode', removed) := dropUnusedTopLevelFunctionByName obj.runtimeCode "keccakMarketParams"
+      if removed = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -1119,6 +1168,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineDispatchWrapperCallsRule
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
+      , solcCompatDropUnusedKeccakMarketParamsHelperRule
       , solcCompatDedupeEquivalentHelpersRule
       , solcCompatPruneUnreachableHelpersRule ] }
 
@@ -1551,6 +1601,12 @@ example :
       (fun proofRef => proofRef = solcCompatInlineMappingSlotCallsProofRef) = true := by
   native_decide
 
+/-- Smoke test: `solc-compat` bundle contains drop-unused-keccak-helper proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatDropUnusedKeccakMarketParamsHelperProofRef) = true := by
+  native_decide
+
 /-- Smoke test: `solc-compat` bundle contains dispatch helper outlining proof refs. -/
 example :
     solcCompatProofAllowlist.any
@@ -1805,6 +1861,77 @@ example :
           ]
       ],
       ["solc-compat-inline-mapping-slot-calls", "solc-compat-prune-unreachable-helpers"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: unused top-level `keccakMarketParams` helper is dropped. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "keccakMarketParams"
+              ["loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              ["id"]
+              [ .assign "id" (.call "keccak256" [.lit 0, .lit 160]) ]
+          , .funcDef "fun_accrueInterest" ["id"] [] [.leave]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatDropUnusedKeccakMarketParamsHelperRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "fun_accrueInterest" ["id"] [] [.leave]
+      , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+      ],
+      ["solc-compat-drop-unused-keccak-market-params-helper"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: `keccakMarketParams` helper is kept when call sites remain. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "keccakMarketParams"
+              ["loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              ["id"]
+              [ .assign "id" (.call "keccak256" [.lit 0, .lit 160]) ]
+          , .funcDef "fun_accrueInterest" ["id"] []
+              [ .let_ "slot" (.call "keccakMarketParams"
+                  [.ident "loanToken", .ident "collateralToken", .ident "oracle", .ident "irm", .ident "lltv"])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatDropUnusedKeccakMarketParamsHelperRule]
+      input
+    (match report.patched.runtimeCode, report.manifest with
+    | [ .funcDef "keccakMarketParams"
+          ["loanToken", "collateralToken", "oracle", "irm", "lltv"]
+          ["id"]
+          [ .assign "id" (.call "keccak256" [.lit 0, .lit 160]) ]
+      , .funcDef "fun_accrueInterest" ["id"] []
+          [ .let_ "slot" (.call "keccakMarketParams"
+              [.ident "loanToken", .ident "collateralToken", .ident "oracle", .ident "irm", .ident "lltv"])
+          ]
+      , .block [ .expr (.call "fun_accrueInterest" [.lit 1]) ]
+      ], [] => true
     | _, _ => false) = true := by
   native_decide
 

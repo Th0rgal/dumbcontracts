@@ -24,8 +24,25 @@ private structure CLIArgs where
   parityPackId : Option String := none
   patchEnabled : Bool := false
   patchMaxIterations : Nat := 2
+  patchMaxIterationsExplicit : Bool := false
   patchReportPath : Option String := none
   mappingSlotScratchBase : Nat := 0
+
+private def profileForcesPatches (profile : Compiler.BackendProfile) : Bool :=
+  match profile with
+  | .solidityParity => true
+  | _ => false
+
+private def packForcesPatches (cfg : CLIArgs) : Bool :=
+  match cfg.parityPackId with
+  | some packId =>
+      match Compiler.findParityPack? packId with
+      | some pack => pack.forcePatches
+      | none => false
+  | none => false
+
+private def patchEnabledFor (cfg : CLIArgs) : Bool :=
+  cfg.patchEnabled || profileForcesPatches cfg.backendProfile || packForcesPatches cfg
 
 private def parseBackendProfile (raw : String) : Option Compiler.BackendProfile :=
   match raw with
@@ -107,7 +124,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
                   backendProfile := pack.backendProfile
                   patchEnabled := cfg.patchEnabled || pack.forcePatches
                   patchMaxIterations :=
-                    if cfg.patchMaxIterations == 2 then pack.defaultPatchMaxIterations else cfg.patchMaxIterations
+                    if cfg.patchMaxIterationsExplicit then cfg.patchMaxIterations else pack.defaultPatchMaxIterations
               }
           | none =>
               throw (IO.userError
@@ -118,7 +135,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         go rest { cfg with patchEnabled := true }
     | "--patch-max-iterations" :: raw :: rest =>
         match raw.toNat? with
-        | some n => go rest { cfg with patchEnabled := true, patchMaxIterations := n }
+        | some n => go rest { cfg with patchEnabled := true, patchMaxIterations := n, patchMaxIterationsExplicit := true }
         | none => throw (IO.userError s!"Invalid value for --patch-max-iterations: {raw}")
     | ["--patch-max-iterations"] =>
         throw (IO.userError "Missing value for --patch-max-iterations")
@@ -160,18 +177,7 @@ def main (args : List String) : IO Unit := do
       match cfg.abiOutDir with
       | some dir => IO.println s!"ABI output directory: {dir}"
       | none => pure ()
-      let profileForcesPatches :=
-        match cfg.backendProfile with
-        | .solidityParity => true
-        | _ => false
-      let packForcesPatches :=
-        match cfg.parityPackId with
-        | some packId =>
-            match Compiler.findParityPack? packId with
-            | some pack => pack.forcePatches
-            | none => false
-        | none => false
-      let patchEnabled := cfg.patchEnabled || profileForcesPatches || packForcesPatches
+      let patchEnabled := patchEnabledFor cfg
       if patchEnabled then
         IO.println s!"Patch pass: enabled (max iterations = {cfg.patchMaxIterations})"
       if !cfg.libs.isEmpty then
@@ -183,18 +189,7 @@ def main (args : List String) : IO Unit := do
       | none => pure ()
       IO.println s!"Mapping slot scratch base: {cfg.mappingSlotScratchBase}"
       IO.println ""
-    let profileForcesPatches :=
-      match cfg.backendProfile with
-      | .solidityParity => true
-      | _ => false
-    let packForcesPatches :=
-      match cfg.parityPackId with
-      | some packId =>
-          match Compiler.findParityPack? packId with
-          | some pack => pack.forcePatches
-          | none => false
-      | none => false
-    let patchEnabled := cfg.patchEnabled || profileForcesPatches || packForcesPatches
+    let patchEnabled := patchEnabledFor cfg
     let options : Compiler.YulEmitOptions := {
       backendProfile := cfg.backendProfile
       patchConfig := {

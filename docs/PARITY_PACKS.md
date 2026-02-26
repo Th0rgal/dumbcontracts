@@ -22,7 +22,10 @@ Partially implemented:
 10. Pack proof registries now propagate through CLI → codegen patch config, with codegen defaulting to the selected rewrite bundle's proof allowlist when no explicit registry is provided.
 11. Parity packs now carry `rewriteBundleId`, and `--parity-pack` selection fails closed unless that bundle exists and the pack proof registry is a deduped subset of the bundle's proof allowlist.
 12. Shipped rewrite bundles now include a baseline `foundation` bundle and an explicit opt-in `solc-compat-v0` bundle boundary.
-13. `solc-compat-v0` now carries a compatibility-only object rewrite (`solc-compat-prune-unreachable-helpers`) with its own proof reference, and parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
+13. `solc-compat-v0` now carries compatibility-only object rewrites:
+   - `solc-compat-canonicalize-internal-fun-names` for deterministic internal helper naming canonicalization (`internal__*` → `fun_*`) with in-object callsite rewrites;
+   - `solc-compat-prune-unreachable-helpers` for deterministic dead helper pruning.
+   Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
 
 Not implemented yet:
 1. identity checker and unsupported manifest workflow.

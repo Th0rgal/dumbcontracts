@@ -329,8 +329,111 @@ private def pruneUnreachableTopLevelHelpers (stmts : List YulStmt) : List YulStm
           (stmt :: accStmts, removed))
     ([], 0)
 
+private def solcCompatFunAliasTarget? (name : String) : Option String :=
+  if name.startsWith "internal__" then
+    some s!"fun_{name.drop 10}"
+  else
+    none
+
+private def renameTargetFor (renames : List (String × String)) (name : String) : String :=
+  match renames.find? (fun entry => entry.fst = name) with
+  | some entry => entry.snd
+  | none => name
+
+private def solcCompatInternalFunRenameMap (stmts : List YulStmt) : List (String × String) :=
+  let definedNames := topLevelFunctionDefs stmts |>.map Prod.fst
+  definedNames.foldl
+    (fun acc name =>
+      match solcCompatFunAliasTarget? name with
+      | none => acc
+      | some target =>
+          let targetAlreadyDefined := definedNames.any (fun seen => seen = target)
+          let targetAlreadyAssigned := acc.any (fun entry => entry.snd = target)
+          if targetAlreadyDefined || targetAlreadyAssigned then
+            acc
+          else
+            acc ++ [(name, target)])
+    []
+
+mutual
+
+private partial def renameCallsInExpr (renames : List (String × String)) : YulExpr → YulExpr
+  | .lit n => .lit n
+  | .hex n => .hex n
+  | .str s => .str s
+  | .ident name => .ident name
+  | .call func args =>
+      .call (renameTargetFor renames func) (renameCallsInExprs renames args)
+
+private partial def renameCallsInExprs (renames : List (String × String)) : List YulExpr → List YulExpr
+  | [] => []
+  | expr :: rest => renameCallsInExpr renames expr :: renameCallsInExprs renames rest
+
+private partial def renameCallsInStmt (renames : List (String × String)) : YulStmt → YulStmt
+  | .comment text => .comment text
+  | .let_ name value => .let_ name (renameCallsInExpr renames value)
+  | .letMany names value => .letMany names (renameCallsInExpr renames value)
+  | .assign name value => .assign name (renameCallsInExpr renames value)
+  | .expr value => .expr (renameCallsInExpr renames value)
+  | .leave => .leave
+  | .if_ cond body =>
+      .if_ (renameCallsInExpr renames cond) (renameCallsInStmts renames body)
+  | .for_ init cond post body =>
+      .for_
+        (renameCallsInStmts renames init)
+        (renameCallsInExpr renames cond)
+        (renameCallsInStmts renames post)
+        (renameCallsInStmts renames body)
+  | .switch expr cases default =>
+      .switch
+        (renameCallsInExpr renames expr)
+        (cases.map (fun (tag, body) => (tag, renameCallsInStmts renames body)))
+        (default.map (renameCallsInStmts renames))
+  | .block stmts => .block (renameCallsInStmts renames stmts)
+  | .funcDef name params rets body =>
+      .funcDef (renameTargetFor renames name) params rets (renameCallsInStmts renames body)
+
+private partial def renameCallsInStmts (renames : List (String × String)) : List YulStmt → List YulStmt
+  | [] => []
+  | stmt :: rest => renameCallsInStmt renames stmt :: renameCallsInStmts renames rest
+
+end
+
+private def canonicalizeInternalFunNames (stmts : List YulStmt) : List YulStmt × Nat :=
+  let renames := solcCompatInternalFunRenameMap stmts
+  if renames.isEmpty then
+    (stmts, 0)
+  else
+    (renameCallsInStmts renames stmts, renames.length)
+
 def solcCompatPruneUnreachableHelpersProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_prune_unreachable_helpers_preserves"
+
+/-- Canonicalize Verity internal helper naming to `solc`-style `fun_*` names when collision-free. -/
+def solcCompatCanonicalizeInternalFunNamesProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_canonicalize_internal_fun_names_preserves"
+
+/-- Canonicalize `internal__*` helper names to `fun_*` and rewrite in-object call sites.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatCanonicalizeInternalFunNamesRule : ObjectPatchRule :=
+  { patchName := "solc-compat-canonicalize-internal-fun-names"
+    pattern := "function internal__X(...) with in-object call sites"
+    rewrite := "function fun_X(...) with updated in-object call sites"
+    sideConditions :=
+      [ "only top-level function names with prefix internal__ are considered"
+      , "target fun_* name must not already be defined in the same object code list"
+      , "if two internal__ names map to the same target, only the first is renamed" ]
+    proofId := solcCompatCanonicalizeInternalFunNamesProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 210
+    applyObject := fun _ obj =>
+      let (deployCode', deployRenamed) := canonicalizeInternalFunNames obj.deployCode
+      let (runtimeCode', runtimeRenamed) := canonicalizeInternalFunNames obj.runtimeCode
+      if deployRenamed + runtimeRenamed = 0 then
+        none
+      else
+        some { obj with deployCode := deployCode', runtimeCode := runtimeCode' } }
 
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
@@ -390,7 +493,8 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
     exprRules := foundationExprPatchPack
     stmtRules := foundationStmtPatchPack
     blockRules := foundationBlockPatchPack
-    objectRules := foundationObjectPatchPack ++ [solcCompatPruneUnreachableHelpersRule] }
+    objectRules := foundationObjectPatchPack ++
+      [solcCompatCanonicalizeInternalFunNamesRule, solcCompatPruneUnreachableHelpersRule] }
 
 def allRewriteBundles : List RewriteRuleBundle :=
   [foundationRewriteBundle, solcCompatRewriteBundle]
@@ -789,6 +893,69 @@ example :
 /-- Smoke test: `solc-compat` bundle contains compatibility-only proof refs. -/
 example :
     solcCompatProofAllowlist.any (fun proofRef => proofRef = solcCompatPruneUnreachableHelpersProofRef) = true := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle contains canonical internal-fun rename proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatCanonicalizeInternalFunNamesProofRef) = true := by
+  native_decide
+
+/-- Smoke test: object rule canonicalizes internal helper names and rewrites call sites. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "internal__foo" [] [] [.leave]
+          , .funcDef "bar" [] [] [.expr (.call "internal__foo" [])]
+          , .expr (.call "bar" [])
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatCanonicalizeInternalFunNamesRule]
+      input
+    (match report.patched.runtimeCode, report.manifest.map (fun m => m.patchName) with
+    | [ .funcDef "fun_foo" [] [] [.leave]
+      , .funcDef "bar" [] [] [.expr (.call "fun_foo" [])]
+      , .expr (.call "bar" [])
+      ],
+      ["solc-compat-canonicalize-internal-fun-names"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: canonicalization is fail-safe when target name already exists. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "internal__foo" [] [] [.leave]
+          , .funcDef "fun_foo" [] [] [.leave]
+          , .funcDef "bar" [] [] [.expr (.call "internal__foo" [])]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 2
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatCanonicalizeInternalFunNamesRule]
+      input
+    (match report.patched.runtimeCode, report.manifest with
+    | [ .funcDef "internal__foo" [] [] [.leave]
+      , .funcDef "fun_foo" [] [] [.leave]
+      , .funcDef "bar" [] [] [.expr (.call "internal__foo" [])]
+      ], [] => true
+    | _, _ => false) = true := by
   native_decide
 
 /-- Smoke test: object rule prunes unreachable helpers and keeps reachable transitive callees. -/

@@ -19,7 +19,9 @@ Partially implemented:
 7. Patch execution now supports activation-time proof registry enforcement via `PatchPassConfig.requiredProofRefs`.
    In compiler codegen, this defaults to the selected rewrite bundle proof allowlist, so rules with unregistered `proofId` fail closed even if metadata is non-empty.
 8. Rewrite bundles are now explicit and versioned (`foundation`, `solc-compat-v0`), with bundle selection propagated by `PatchPassConfig.rewriteBundleId`.
-   `solc-compat-v0` now includes its first compatibility-only object rule (`solc-compat-prune-unreachable-helpers`) to prune unreachable top-level helper defs deterministically.
+   `solc-compat-v0` now includes compatibility-only object rules:
+   - `solc-compat-canonicalize-internal-fun-names`: canonicalizes `internal__*` helper names to `fun_*` and rewrites in-object call sites deterministically.
+   - `solc-compat-prune-unreachable-helpers`: prunes unreachable top-level helper defs deterministically.
 9. Parity packs now require explicit pack-level proof composition metadata (`compositionProofRef`) and proof registry coverage (`requiredProofRefs`) against the selected rewrite bundle before `--parity-pack` selection is accepted.
 
 ## Rule Kinds

@@ -12,7 +12,7 @@ Partially implemented:
 3. Ambiguous selection guard (`--parity-pack` cannot be combined with `--backend-profile`).
 
 Not implemented yet:
-1. `BlockRule` and `ObjectRule` typed rewrite kinds;
+1. `ObjectRule` typed rewrite kind;
 2. pack-level proof composition checks;
 3. identity checker and unsupported manifest workflow.
 

@@ -345,4 +345,54 @@ example :
     | _, _, _ => false) = true := by
   native_decide
 
+/-- Smoke test: block rules can rewrite whole statement blocks after child rewrites. -/
+example :
+    let collapseToNop : BlockPatchRule :=
+      { patchName := "collapse-to-nop"
+        pattern := "{ leave }"
+        rewrite := "{ /* nop */ }"
+        sideConditions := ["block contains exactly one leave statement"]
+        proofId := "Compiler.Proofs.YulGeneration.PatchRulesProofs.collapse_to_nop_preserves"
+        passPhase := .postCodegen
+        priority := 40
+        applyBlock := fun block =>
+          match block with
+          | [.leave] => some [.comment "nop"]
+          | _ => none }
+    let report := runPatchPassWithBlocks
+      { enabled := true, maxIterations := 1 }
+      []
+      []
+      [collapseToNop]
+      [.leave]
+    (match report.patched, report.manifest.map (fun m => m.patchName) with
+    | [.comment "nop"], ["collapse-to-nop"] => true
+    | _, _ => false) = true := by
+  native_decide
+
+/-- Smoke test: non-auditable block rules are fail-closed. -/
+example :
+    let unsafeBlockRule : BlockPatchRule :=
+      { patchName := "unsafe-block-without-proof"
+        pattern := "{ leave }"
+        rewrite := "{ /* nop */ }"
+        sideConditions := []
+        proofId := ""
+        passPhase := .postCodegen
+        priority := 999
+        applyBlock := fun block =>
+          match block with
+          | [.leave] => some [.comment "nop"]
+          | _ => none }
+    let report := runPatchPassWithBlocks
+      { enabled := true, maxIterations := 1 }
+      []
+      []
+      [unsafeBlockRule]
+      [.leave]
+    (match report.patched, report.iterations, report.manifest with
+    | [.leave], 0, [] => true
+    | _, _, _ => false) = true := by
+  native_decide
+
 end Compiler.Yul

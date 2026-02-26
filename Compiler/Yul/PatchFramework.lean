@@ -37,6 +37,21 @@ structure StmtPatchRule where
 def StmtPatchRule.isAuditable (rule : StmtPatchRule) : Bool :=
   !rule.patchName.isEmpty && !rule.proofId.isEmpty && !rule.sideConditions.isEmpty
 
+/-- Audit metadata + executable rewrite for one block patch rule. -/
+structure BlockPatchRule where
+  patchName : String
+  pattern : String
+  rewrite : String
+  sideConditions : List String
+  proofId : String
+  passPhase : PatchPhase
+  priority : Nat
+  applyBlock : List YulStmt → Option (List YulStmt)
+
+/-- Fail-closed metadata guard: a runnable block rule must carry audit/proof linkage. -/
+def BlockPatchRule.isAuditable (rule : BlockPatchRule) : Bool :=
+  !rule.patchName.isEmpty && !rule.proofId.isEmpty && !rule.sideConditions.isEmpty
+
 /-- Deterministic patch pass settings. -/
 structure PatchPassConfig where
   enabled : Bool := true
@@ -86,6 +101,18 @@ private def insertStmtRuleByPriority (rule : StmtPatchRule) : List StmtPatchRule
 def orderStmtRulesByPriority (rules : List StmtPatchRule) : List StmtPatchRule :=
   rules.foldl (fun acc rule => insertStmtRuleByPriority rule acc) []
 
+private def insertBlockRuleByPriority (rule : BlockPatchRule) : List BlockPatchRule → List BlockPatchRule
+  | [] => [rule]
+  | head :: tail =>
+      if rule.priority > head.priority then
+        rule :: head :: tail
+      else
+        head :: insertBlockRuleByPriority rule tail
+
+/-- Stable, deterministic ordering for block rules. -/
+def orderBlockRulesByPriority (rules : List BlockPatchRule) : List BlockPatchRule :=
+  rules.foldl (fun acc rule => insertBlockRuleByPriority rule acc) []
+
 private def applyFirstRule (orderedRules : List ExprPatchRule) (expr : YulExpr) : Option (YulExpr × String) :=
   let rec go : List ExprPatchRule → Option (YulExpr × String)
     | [] => none
@@ -100,6 +127,17 @@ private def applyFirstStmtRule (orderedRules : List StmtPatchRule) (stmt : YulSt
     | [] => none
     | rule :: rest =>
         match rule.applyStmt stmt with
+        | some rewritten => some (rewritten, rule.patchName)
+        | none => go rest
+  go orderedRules
+
+private def applyFirstBlockRule
+    (orderedRules : List BlockPatchRule)
+    (block : List YulStmt) : Option (List YulStmt × String) :=
+  let rec go : List BlockPatchRule → Option (List YulStmt × String)
+    | [] => none
+    | rule :: rest =>
+        match rule.applyBlock block with
         | some rewritten => some (rewritten, rule.patchName)
         | none => go rest
   go orderedRules
@@ -139,7 +177,8 @@ mutual
 
 private def rewriteStmtOnce
     (orderedExprRules : List ExprPatchRule)
-    (orderedStmtRules : List StmtPatchRule) : YulStmt → (YulStmt × List String)
+    (orderedStmtRules : List StmtPatchRule)
+    (orderedBlockRules : List BlockPatchRule) : YulStmt → (YulStmt × List String)
   | .comment txt =>
       applyStmtRulesToCandidate orderedStmtRules (.comment txt) []
   | .let_ name value =>
@@ -158,53 +197,60 @@ private def rewriteStmtOnce
       applyStmtRulesToCandidate orderedStmtRules .leave []
   | .if_ cond body =>
       let (cond', condHits) := rewriteExprOnce orderedExprRules cond
-      let (body', bodyHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules body
+      let (body', bodyHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules body
       applyStmtRulesToCandidate orderedStmtRules (.if_ cond' body') (condHits ++ bodyHits)
   | .for_ init cond post body =>
-      let (init', initHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules init
+      let (init', initHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules init
       let (cond', condHits) := rewriteExprOnce orderedExprRules cond
-      let (post', postHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules post
-      let (body', bodyHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules body
+      let (post', postHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules post
+      let (body', bodyHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules body
       applyStmtRulesToCandidate
         orderedStmtRules
         (.for_ init' cond' post' body')
         (initHits ++ condHits ++ postHits ++ bodyHits)
   | .switch expr cases default =>
       let (expr', exprHits) := rewriteExprOnce orderedExprRules expr
-      let (cases', caseHits) := rewriteSwitchCasesOnce orderedExprRules orderedStmtRules cases
-      let (default', defaultHits) := rewriteOptionalStmtListOnce orderedExprRules orderedStmtRules default
+      let (cases', caseHits) := rewriteSwitchCasesOnce orderedExprRules orderedStmtRules orderedBlockRules cases
+      let (default', defaultHits) := rewriteOptionalStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules default
       applyStmtRulesToCandidate orderedStmtRules (.switch expr' cases' default') (exprHits ++ caseHits ++ defaultHits)
   | .block stmts =>
-      let (stmts', hits) := rewriteStmtListOnce orderedExprRules orderedStmtRules stmts
+      let (stmts', hits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules stmts
       applyStmtRulesToCandidate orderedStmtRules (.block stmts') hits
   | .funcDef name params rets body =>
-      let (body', hits) := rewriteStmtListOnce orderedExprRules orderedStmtRules body
+      let (body', hits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules body
       applyStmtRulesToCandidate orderedStmtRules (.funcDef name params rets body') hits
 
 private def rewriteStmtListOnce
     (orderedExprRules : List ExprPatchRule)
-    (orderedStmtRules : List StmtPatchRule) : List YulStmt → (List YulStmt × List String)
+    (orderedStmtRules : List StmtPatchRule)
+    (orderedBlockRules : List BlockPatchRule) : List YulStmt → (List YulStmt × List String)
   | [] => ([], [])
   | stmt :: rest =>
-      let (stmt', headHits) := rewriteStmtOnce orderedExprRules orderedStmtRules stmt
-      let (rest', tailHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules rest
-      (stmt' :: rest', headHits ++ tailHits)
+      let (stmt', headHits) := rewriteStmtOnce orderedExprRules orderedStmtRules orderedBlockRules stmt
+      let (rest', tailHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules rest
+      let candidate := stmt' :: rest'
+      let hits := headHits ++ tailHits
+      match applyFirstBlockRule orderedBlockRules candidate with
+      | some (rewritten, patchName) => (rewritten, hits ++ [patchName])
+      | none => (candidate, hits)
 
 private def rewriteOptionalStmtListOnce
     (orderedExprRules : List ExprPatchRule)
-    (orderedStmtRules : List StmtPatchRule) : Option (List YulStmt) → (Option (List YulStmt) × List String)
+    (orderedStmtRules : List StmtPatchRule)
+    (orderedBlockRules : List BlockPatchRule) : Option (List YulStmt) → (Option (List YulStmt) × List String)
   | none => (none, [])
   | some stmts =>
-      let (stmts', hits) := rewriteStmtListOnce orderedExprRules orderedStmtRules stmts
+      let (stmts', hits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules stmts
       (some stmts', hits)
 
 private def rewriteSwitchCasesOnce
     (orderedExprRules : List ExprPatchRule)
-    (orderedStmtRules : List StmtPatchRule) : List (Nat × List YulStmt) → (List (Nat × List YulStmt) × List String)
+    (orderedStmtRules : List StmtPatchRule)
+    (orderedBlockRules : List BlockPatchRule) : List (Nat × List YulStmt) → (List (Nat × List YulStmt) × List String)
   | [] => ([], [])
   | (tag, body) :: rest =>
-      let (body', bodyHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules body
-      let (rest', restHits) := rewriteSwitchCasesOnce orderedExprRules orderedStmtRules rest
+      let (body', bodyHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules body
+      let (rest', restHits) := rewriteSwitchCasesOnce orderedExprRules orderedStmtRules orderedBlockRules rest
       ((tag, body') :: rest', bodyHits ++ restHits)
 
 end
@@ -214,10 +260,12 @@ private def countHitsForPatch (patchName : String) (hits : List String) : Nat :=
 
 private def metaListFromRules
     (exprRules : List ExprPatchRule)
-    (stmtRules : List StmtPatchRule) : List PatchRuleMeta :=
+    (stmtRules : List StmtPatchRule)
+    (blockRules : List BlockPatchRule) : List PatchRuleMeta :=
   let exprMeta := exprRules.map (fun rule => { patchName := rule.patchName, proofRef := rule.proofId })
   let stmtMeta := stmtRules.map (fun rule => { patchName := rule.patchName, proofRef := rule.proofId })
-  let allMeta := exprMeta ++ stmtMeta
+  let blockMeta := blockRules.map (fun rule => { patchName := rule.patchName, proofRef := rule.proofId })
+  let allMeta := exprMeta ++ stmtMeta ++ blockMeta
   allMeta.foldl
     (fun acc m =>
       if acc.any (fun seen => seen.patchName = m.patchName) then acc else acc ++ [m])
@@ -238,23 +286,25 @@ private def runPatchPassLoop
     (fuel : Nat)
     (orderedExprRules : List ExprPatchRule)
     (orderedStmtRules : List StmtPatchRule)
+    (orderedBlockRules : List BlockPatchRule)
     (current : List YulStmt)
     (iterations : Nat)
     (allHits : List String) : List YulStmt × Nat × List String :=
   match fuel with
   | 0 => (current, iterations, allHits)
   | Nat.succ fuel' =>
-      let (next, stepHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules current
+      let (next, stepHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules current
       if stepHits.isEmpty then
         (current, iterations, allHits)
       else
-        runPatchPassLoop fuel' orderedExprRules orderedStmtRules next (iterations + 1) (allHits ++ stepHits)
+        runPatchPassLoop fuel' orderedExprRules orderedStmtRules orderedBlockRules next (iterations + 1) (allHits ++ stepHits)
 
 /-- Run one deterministic patch pass over expression and statement rules with bounded fixpoint iterations. -/
-def runPatchPass
+def runPatchPassWithBlocks
     (config : PatchPassConfig)
     (exprRules : List ExprPatchRule)
     (stmtRules : List StmtPatchRule)
+    (blockRules : List BlockPatchRule)
     (stmts : List YulStmt) : PatchPassReport :=
   if ¬config.enabled then
     { patched := stmts, iterations := 0, manifest := [] }
@@ -265,18 +315,29 @@ def runPatchPass
     let orderedStmtRules :=
       orderStmtRulesByPriority (stmtRules.filter (fun rule =>
         rule.passPhase == config.passPhase && rule.isAuditable))
-    let ruleMeta := metaListFromRules orderedExprRules orderedStmtRules
+    let orderedBlockRules :=
+      orderBlockRulesByPriority (blockRules.filter (fun rule =>
+        rule.passPhase == config.passPhase && rule.isAuditable))
+    let ruleMeta := metaListFromRules orderedExprRules orderedStmtRules orderedBlockRules
     let (patched, iterations, hits) :=
-      runPatchPassLoop config.maxIterations orderedExprRules orderedStmtRules stmts 0 []
+      runPatchPassLoop config.maxIterations orderedExprRules orderedStmtRules orderedBlockRules stmts 0 []
     { patched := patched
       iterations := iterations
       manifest := manifestFromHits ruleMeta hits }
+
+/-- Run one deterministic patch pass over expression and statement rules with bounded fixpoint iterations. -/
+def runPatchPass
+    (config : PatchPassConfig)
+    (exprRules : List ExprPatchRule)
+    (stmtRules : List StmtPatchRule)
+    (stmts : List YulStmt) : PatchPassReport :=
+  runPatchPassWithBlocks config exprRules stmtRules [] stmts
 
 /-- Run one deterministic patch pass on statements with bounded fixpoint iterations. -/
 def runExprPatchPass
     (config : PatchPassConfig)
     (rules : List ExprPatchRule)
     (stmts : List YulStmt) : PatchPassReport :=
-  runPatchPass config rules [] stmts
+  runPatchPassWithBlocks config rules [] [] stmts
 
 end Compiler.Yul

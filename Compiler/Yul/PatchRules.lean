@@ -1032,7 +1032,7 @@ private def checkedDivUint256HelperStmt : YulStmt :=
   .funcDef "checked_div_uint256" ["x", "y"] ["r"] checkedDivUint256HelperBody
 
 private def toSharesDownHelperBody : List YulStmt :=
-  [ .let_ "sum" (.call "add" [.ident "var_totalShares", .lit 1000000])
+  [ .let_ "sum" (.call "add" [.ident "var_totalShares", .hex 0x0f4240])
   , .if_ (.call "gt" [.ident "var_totalShares", .ident "sum"])
       [ .expr (.call "mstore"
           [ .lit 0
@@ -1041,7 +1041,7 @@ private def toSharesDownHelperBody : List YulStmt :=
       , .expr (.call "mstore" [.lit 4, .hex 0x11])
       , .expr (.call "revert" [.lit 0, .hex 0x24])
       ]
-  , .let_ "sum_1" (.call "add" [.ident "var_totalAssets", .lit 1])
+  , .let_ "sum_1" (.call "add" [.ident "var_totalAssets", .hex 0x01])
   , .if_ (.call "gt" [.ident "var_totalAssets", .ident "sum_1"])
       [ .expr (.call "mstore"
           [ .lit 0

@@ -1479,6 +1479,87 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
 private def hasAccrueInterestCompatBaseName (base name : String) : Bool :=
   name = base || name.startsWith s!"{base}_"
 
+private def accrueInterestMarketParamsLoadExpr? (name : String) : Option YulExpr :=
+  match name with
+  | "loanToken" =>
+      some (.call "mload" [.ident "var_marketParams_46531_mpos"])
+  | "collateralToken" =>
+      some (.call "mload"
+        [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 32]
+        ])
+  | "oracle" =>
+      some (.call "mload"
+        [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 64]
+        ])
+  | "irm" =>
+      some (.call "mload"
+        [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 96]
+        ])
+  | "lltv" =>
+      some (.call "mload"
+        [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 128]
+        ])
+  | _ => none
+
+mutual
+
+private partial def rewriteAccrueInterestMarketParamsExpr
+    (expr : YulExpr) : YulExpr
+  := match expr with
+    | .ident "id" => .ident "var_id"
+    | .ident name =>
+        match accrueInterestMarketParamsLoadExpr? name with
+        | some lowered => lowered
+        | none => .ident name
+    | .lit value => .lit value
+    | .hex value => .hex value
+    | .str value => .str value
+    | .call name args => .call name (rewriteAccrueInterestMarketParamsExprs args)
+
+private partial def rewriteAccrueInterestMarketParamsExprs
+    (exprs : List YulExpr) : List YulExpr
+  := match exprs with
+    | [] => []
+    | expr :: rest =>
+        rewriteAccrueInterestMarketParamsExpr expr :: rewriteAccrueInterestMarketParamsExprs rest
+
+private partial def rewriteAccrueInterestMarketParamsStmt
+    (stmt : YulStmt) : YulStmt
+  := match stmt with
+    | .comment text => .comment text
+    | .let_ name value => .let_ name (rewriteAccrueInterestMarketParamsExpr value)
+    | .letMany names value => .letMany names (rewriteAccrueInterestMarketParamsExpr value)
+    | .assign name value => .assign name (rewriteAccrueInterestMarketParamsExpr value)
+    | .expr value => .expr (rewriteAccrueInterestMarketParamsExpr value)
+    | .leave => .leave
+    | .if_ cond body =>
+        .if_ (rewriteAccrueInterestMarketParamsExpr cond) (rewriteAccrueInterestMarketParamsStmts body)
+    | .for_ init cond post body =>
+        .for_
+          (rewriteAccrueInterestMarketParamsStmts init)
+          (rewriteAccrueInterestMarketParamsExpr cond)
+          (rewriteAccrueInterestMarketParamsStmts post)
+          (rewriteAccrueInterestMarketParamsStmts body)
+    | .switch expr cases default =>
+        let cases' := cases.map (fun (entry : Nat × List YulStmt) =>
+          let (tag, caseBody) := entry
+          (tag, rewriteAccrueInterestMarketParamsStmts caseBody))
+        let default' := default.map rewriteAccrueInterestMarketParamsStmts
+        .switch (rewriteAccrueInterestMarketParamsExpr expr) cases' default'
+    | .block stmts =>
+        .block (rewriteAccrueInterestMarketParamsStmts stmts)
+    | .funcDef name params rets body =>
+        .funcDef name params rets (rewriteAccrueInterestMarketParamsStmts body)
+
+private partial def rewriteAccrueInterestMarketParamsStmts
+    (stmts : List YulStmt) : List YulStmt
+  := match stmts with
+    | [] => []
+    | stmt :: rest =>
+        rewriteAccrueInterestMarketParamsStmt stmt :: rewriteAccrueInterestMarketParamsStmts rest
+
+end
+
 mutual
 
 private partial def rewriteCurrentNonceIncrementExpr
@@ -1870,6 +1951,16 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmt
     | .block stmts =>
         let (stmts', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts stmts
         (.block stmts', rewritten)
+    | .funcDef "fun_accrueInterest"
+        ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+        rets
+        body =>
+        let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+        ( .funcDef "fun_accrueInterest"
+            ["var_marketParams_46531_mpos", "var_id"]
+            rets
+            (rewriteAccrueInterestMarketParamsStmts body')
+        , rewritten + 1)
     | .funcDef name params rets body =>
         let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
         (.funcDef name params rets body', rewritten)
@@ -5274,6 +5365,126 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed top "checked_sub_uint256" &&
       called.any (fun name => name = "checked_sub_uint256") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite canonicalizes six-arg `fun_accrueInterest` entry to
+    Solidity-style market-params pointer + id shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              []
+              [ .expr (.call "mstore" [.lit 512, .ident "id"])
+              , .expr (.call "mstore" [.lit 4, .ident "loanToken"])
+              , .expr (.call "mstore" [.lit 36, .ident "collateralToken"])
+              , .expr (.call "mstore" [.lit 68, .ident "oracle"])
+              , .expr (.call "mstore" [.lit 100, .ident "irm"])
+              , .expr (.call "mstore" [.lit 132, .ident "lltv"])
+              ]
+          , .block
+              [ .expr
+                  (.call "fun_accrueInterest"
+                    [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5, .lit 6])
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let hasCanonicalSig :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] [] body =>
+              body.any
+                (fun inner =>
+                  match inner with
+                  | .expr (.call "mstore" [.lit 512, .ident "var_id"]) => true
+                  | _ => false)
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasCanonicalSig := by
+  native_decide
+
+/-- Smoke test: six-arg market-params signature canonicalization stays out-of-scope when
+    `fun_accrueInterest` arity does not match. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" ["id", "loanToken", "collateralToken", "oracle", "irm"] []
+              [ .expr (.call "mstore" [.lit 0, .ident "id"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let hasCanonicalSig :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] _ _ => true
+          | _ => false)
+    hasCanonicalSig = false := by
+  native_decide
+
+/-- Smoke test: six-arg market-params signature canonicalization is wrapper-safe. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest"
+                  ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+                  []
+                  [ .expr (.call "mstore" [.lit 0, .ident "id"]) ]
+              , .block [ .expr (.call "fun_accrueInterest" [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5, .lit 6]) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let hasCanonicalSigInBlock :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .block inner =>
+              inner.any
+                (fun nested =>
+                  match nested with
+                  | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] [] body =>
+                      match body with
+                      | [ .expr (.call "mstore" [.lit 0, .ident "var_id"]) ] => true
+                      | _ => false
+                  | _ => false)
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasCanonicalSigInBlock := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `checked_sub_uint256` helper

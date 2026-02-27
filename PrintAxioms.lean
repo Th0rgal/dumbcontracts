@@ -31,6 +31,7 @@ import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.SpecInterpreter
 import Compiler.Proofs.ArithmeticProfile
 import Compiler.Proofs.IRGeneration.Conversions
+import Compiler.Proofs.Lowering.FromEDSL
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.SpecCorrectness.Counter
 import Compiler.Proofs.SpecCorrectness.ERC20
@@ -611,6 +612,12 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.specStorageToIRState_memory
 #print axioms Compiler.Proofs.IRGeneration.contractStateToIRState_memory
 
+-- Compiler/Proofs/Lowering/FromEDSL.lean
+#print axioms Compiler.Proofs.Lowering.lowerContractCore_eq_model
+#print axioms Compiler.Proofs.Lowering.lowerContractCore_preserves_interpretSpec
+#print axioms Compiler.Proofs.Lowering.lowerLiftModel_eq
+#print axioms Compiler.Proofs.Lowering.lowerLiftModel_preserves_interpretSpec
+
 -- Compiler/Proofs/MappingSlot.lean
 #print axioms Compiler.Proofs.abstractMappingSlot_eq_solidity
 #print axioms Compiler.Proofs.abstractMappingTag_eq_zero
@@ -741,4 +748,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 619 theorems/lemmas (590 public, 29 private)
+-- Total: 623 theorems/lemmas (594 public, 29 private)

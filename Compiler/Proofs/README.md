@@ -25,8 +25,9 @@ bridge coverage across getter and mutating entrypoints in that subset
 (`ledger.transfer`, `simpleToken.mint`, and `simpleToken.transfer` included),
 plus explicit revert-path bridge coverage for owner-gated and
 insufficient-balance behaviors in `Owned`, `OwnedCounter`, `Ledger`, and
-`SimpleToken`. Getter-side read-only state-preservation bridges are also
-explicit for supported getter entrypoints.
+`SimpleToken`, plus overflow/underflow revert coverage in `SafeCounter`.
+Getter-side read-only state-preservation bridges are also explicit for
+supported getter entrypoints.
 
 Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The re-export shim at `Verity/Specs/<Name>/Proofs.lean` imports Layer 1 spec-correctness proofs from `Compiler/Proofs/SpecCorrectness/<Name>.lean`.
 

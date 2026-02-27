@@ -66,7 +66,9 @@ supported inputs:
 `lower_safeCounter_getCount_correct`,
 `lower_safeCounter_getCount_preserves_state`,
 `lower_safeCounter_increment_correct`,
-`lower_safeCounter_decrement_correct`.
+`lower_safeCounter_increment_reverts_at_max`,
+`lower_safeCounter_decrement_correct`,
+`lower_safeCounter_decrement_reverts_at_zero`.
 
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 

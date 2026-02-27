@@ -730,6 +730,43 @@ theorem lower_safeCounter_increment_correct
       specResult.finalStorage.getSlot 0 = ((Verity.ContractResult.getState edslResult).storage 0).val) := by
   simpa [lowerSupportedEDSLContract] using safeIncrement_correct state sender
 
+/-- Transition bridge: lowering `.safeCounter` preserves overflow revert semantics. -/
+theorem lower_safeCounter_increment_reverts_at_max
+    (state : Verity.ContractState)
+    (sender : Verity.Address)
+    (h : (state.storage 0).val = Verity.Core.MAX_UINT256) :
+    let edslResult := Verity.Examples.SafeCounter.increment.run { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "increment"
+      args := []
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .safeCounter)
+      (safeCounterEdslToSpecStorage state) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  have h_edsl : (Verity.Examples.SafeCounter.increment.run { state with sender := sender }).isSuccess = false := by
+    simpa using safeIncrement_reverts_at_max state sender h
+  have h_not_spec_true :
+      (interpretSpec (lowerSupportedEDSLContract .safeCounter)
+        (safeCounterEdslToSpecStorage state)
+        { sender := sender, functionName := "increment", args := [] }).success ≠ true := by
+    intro h_spec_true
+    have h_equiv_true :
+        (Verity.Examples.SafeCounter.increment.run { state with sender := sender }).isSuccess = true := by
+      exact (safeIncrement_correct state sender).1.mpr (by simpa [lowerSupportedEDSLContract] using h_spec_true)
+    rw [h_edsl] at h_equiv_true
+    cases h_equiv_true
+  constructor
+  · simpa using h_edsl
+  · by_cases h_spec_true : (interpretSpec (lowerSupportedEDSLContract .safeCounter)
+        (safeCounterEdslToSpecStorage state)
+        { sender := sender, functionName := "increment", args := [] }).success = true
+    · exact False.elim (h_not_spec_true h_spec_true)
+    · cases h_spec : (interpretSpec (lowerSupportedEDSLContract .safeCounter)
+          (safeCounterEdslToSpecStorage state)
+          { sender := sender, functionName := "increment", args := [] }).success <;> simp_all
+
 /-- Transition bridge: lowering `.safeCounter` preserves decrement semantics. -/
 theorem lower_safeCounter_decrement_correct
     (state : Verity.ContractState)
@@ -746,6 +783,43 @@ theorem lower_safeCounter_decrement_correct
     (edslResult.isSuccess = true →
       specResult.finalStorage.getSlot 0 = ((Verity.ContractResult.getState edslResult).storage 0).val) := by
   simpa [lowerSupportedEDSLContract] using safeDecrement_correct state sender
+
+/-- Transition bridge: lowering `.safeCounter` preserves underflow revert semantics. -/
+theorem lower_safeCounter_decrement_reverts_at_zero
+    (state : Verity.ContractState)
+    (sender : Verity.Address)
+    (h : (state.storage 0).val = 0) :
+    let edslResult := Verity.Examples.SafeCounter.decrement.run { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "decrement"
+      args := []
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .safeCounter)
+      (safeCounterEdslToSpecStorage state) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  have h_edsl : (Verity.Examples.SafeCounter.decrement.run { state with sender := sender }).isSuccess = false := by
+    simpa using safeDecrement_reverts_at_zero state sender h
+  have h_not_spec_true :
+      (interpretSpec (lowerSupportedEDSLContract .safeCounter)
+        (safeCounterEdslToSpecStorage state)
+        { sender := sender, functionName := "decrement", args := [] }).success ≠ true := by
+    intro h_spec_true
+    have h_equiv_true :
+        (Verity.Examples.SafeCounter.decrement.run { state with sender := sender }).isSuccess = true := by
+      exact (safeDecrement_correct state sender).1.mpr (by simpa [lowerSupportedEDSLContract] using h_spec_true)
+    rw [h_edsl] at h_equiv_true
+    cases h_equiv_true
+  constructor
+  · simpa using h_edsl
+  · by_cases h_spec_true : (interpretSpec (lowerSupportedEDSLContract .safeCounter)
+        (safeCounterEdslToSpecStorage state)
+        { sender := sender, functionName := "decrement", args := [] }).success = true
+    · exact False.elim (h_not_spec_true h_spec_true)
+    · cases h_spec : (interpretSpec (lowerSupportedEDSLContract .safeCounter)
+          (safeCounterEdslToSpecStorage state)
+          { sender := sender, functionName := "decrement", args := [] }).success <;> simp_all
 
 /-- Supported-contract parser round-trips through the CLI-stable name map. -/
 @[simp] theorem parseSupportedEDSLContract_roundtrip

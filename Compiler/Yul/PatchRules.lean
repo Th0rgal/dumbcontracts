@@ -1926,12 +1926,20 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
         , .expr (.call "revert" [.lit 0, .ident "__ecwr_rds"])
         ] :: rest =>
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
-        ( [ .let_ "__compat_returndata" (.call "extract_returndata" [])
-          , .expr
-              (.call "revert"
-                [ .call "add" [.ident "__compat_returndata", .lit 32]
-                , .call "mload" [.ident "__compat_returndata"]
-                ])
+        ( [ .if_ (.call "iszero" [.ident "__ecwr_success"])
+              [ .let_ "pos" (.call "mload" [.lit 64])
+              , .expr
+                  (.call "returndatacopy"
+                    [ .ident "pos"
+                    , .lit 0
+                    , .call "returndatasize" []
+                    ])
+              , .expr
+                  (.call "revert"
+                    [ .ident "pos"
+                    , .call "returndatasize" []
+                    ])
+              ]
           ] ++ rest'
         , rewrittenTail + 1)
     | stmt :: rest =>
@@ -3867,8 +3875,9 @@ example :
       called.any (fun name => name = "fun_toSharesDown") = false := by
   native_decide
 
-/-- Smoke test: checked arithmetic rewrite normalizes IRM call result buffering/revert handling and
-    borrow-rate load, then materializes required helpers when referenced+absent. -/
+/-- Smoke test: checked arithmetic rewrite normalizes IRM call result buffering/revert handling to
+    Solidity-style inline returndata forwarding and borrow-rate load, then materializes required
+    helpers when referenced+absent. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -3910,10 +3919,10 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" = false &&
       called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true &&
-      called.any (fun name => name = "extract_returndata") = true := by
+      called.any (fun name => name = "extract_returndata") = false := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat IRM revert-shape. -/
@@ -3962,7 +3971,8 @@ example :
       called.any (fun name => name = "extract_returndata") = false := by
   native_decide
 
-/-- Smoke test: checked arithmetic rewrite is wrapper-safe for IRM call-buffer/revert normalization. -/
+/-- Smoke test: checked arithmetic rewrite is wrapper-safe for IRM call-buffer/revert normalization
+    and keeps inline revert forwarding without helper-only drift. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -4010,10 +4020,10 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed top "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed top "finalize_allocation" &&
-      hasTopLevelFunctionNamed top "extract_returndata" &&
+      hasTopLevelFunctionNamed top "extract_returndata" = false &&
       called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true &&
-      called.any (fun name => name = "extract_returndata") = true := by
+      called.any (fun name => name = "extract_returndata") = false := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `finalize_allocation` helper. -/
@@ -4092,6 +4102,37 @@ example :
     let topNames := topLevelFunctionNames report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       (topNames.filter (fun name => name = "finalize_allocation_27033")).length = 1 := by
+  native_decide
+
+/-- Smoke test: helper insertion remains referenced+absent only for `extract_returndata`. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+              , .expr
+                  (.call "revert"
+                    [ .call "add" [.ident "__compat_returndata", .lit 32]
+                    , .call "mload" [.ident "__compat_returndata"]
+                    ])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let topNames := topLevelFunctionNames report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      (topNames.filter (fun name => name = "extract_returndata")).length = 1 := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `extract_returndata` helper. -/

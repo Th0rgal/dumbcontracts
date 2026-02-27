@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_top_level_jobs
+from workflow_jobs import compare_lists, extract_top_level_jobs
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -37,31 +37,6 @@ def _extract_readme_ci_jobs(text: str) -> list[str]:
     return jobs
 
 
-def _compare(expected: list[str], actual: list[str]) -> list[str]:
-    if expected == actual:
-        return []
-
-    errors: list[str] = []
-    expected_set = set(expected)
-    actual_set = set(actual)
-
-    missing = [job for job in expected if job not in actual_set]
-    extra = [job for job in actual if job not in expected_set]
-
-    if missing:
-        errors.append("README CI Integration is missing workflow jobs:")
-        errors.extend([f"  - {job}" for job in missing])
-    if extra:
-        errors.append("README CI Integration has jobs not present in workflow:")
-        errors.extend([f"  - {job}" for job in extra])
-    if not missing and not extra:
-        errors.append(
-            "README CI Integration contains the same jobs but in a different order. "
-            "Keep order aligned with workflow for quick cross-referencing."
-        )
-    return errors
-
-
 def main() -> int:
     workflow_text = VERIFY_YML.read_text(encoding="utf-8")
     readme_text = SCRIPTS_README.read_text(encoding="utf-8")
@@ -69,7 +44,7 @@ def main() -> int:
     workflow_jobs = _extract_workflow_jobs(workflow_text)
     readme_jobs = _extract_readme_ci_jobs(readme_text)
 
-    errors = _compare(workflow_jobs, readme_jobs)
+    errors = compare_lists("workflow", workflow_jobs, "README CI Integration", readme_jobs)
     if errors:
         print("verify CI job/docs sync check failed:", file=sys.stderr)
         for error in errors:

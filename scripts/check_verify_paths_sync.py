@@ -13,7 +13,7 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body
+from workflow_jobs import compare_lists, extract_job_body
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -65,31 +65,6 @@ def duplicates(values: list[str]) -> list[str]:
             dups.append(value)
         seen.add(value)
     return dups
-
-
-def compare_lists(reference_name: str, reference: list[str], other_name: str, other: list[str]) -> list[str]:
-    errors: list[str] = []
-    if reference == other:
-        return errors
-
-    ref_set = set(reference)
-    other_set = set(other)
-    missing = sorted(ref_set - other_set)
-    extra = sorted(other_set - ref_set)
-
-    if missing:
-        errors.append(f"{other_name} is missing {len(missing)} path(s) present in {reference_name}:")
-        errors.extend([f"  - {m}" for m in missing])
-    if extra:
-        errors.append(f"{other_name} has {len(extra)} extra path(s) not present in {reference_name}:")
-        errors.extend([f"  - {e}" for e in extra])
-
-    if not missing and not extra:
-        errors.append(
-            f"{other_name} has the same entries as {reference_name} but in a different order. "
-            "Keep order aligned to reduce review noise."
-        )
-    return errors
 
 
 def ensure_subset(parent_name: str, parent: list[str], subset_name: str, subset: list[str]) -> list[str]:

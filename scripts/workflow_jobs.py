@@ -1,4 +1,4 @@
-"""Helpers for extracting top-level GitHub Actions jobs from verify.yml."""
+"""Helpers for extracting and comparing GitHub Actions workflow data."""
 
 from __future__ import annotations
 
@@ -810,3 +810,37 @@ def match_shell_command(
             return False, tokens
 
     return True, tokens[i:]
+
+
+def compare_lists(
+    reference_name: str,
+    reference: list[str],
+    other_name: str,
+    other: list[str],
+) -> list[str]:
+    """Compare two ordered lists and return human-readable error descriptions.
+
+    Detects missing items, extra items, and order-only mismatches.
+    Returns an empty list when the lists are identical.
+    """
+    if reference == other:
+        return []
+
+    errors: list[str] = []
+    ref_set = set(reference)
+    other_set = set(other)
+
+    missing = [item for item in reference if item not in other_set]
+    extra = [item for item in other if item not in ref_set]
+
+    if missing:
+        errors.append(f"{other_name} is missing entries present in {reference_name}:")
+        errors.extend([f"  - {m}" for m in missing])
+    if extra:
+        errors.append(f"{other_name} has entries not present in {reference_name}:")
+        errors.extend([f"  - {e}" for e in extra])
+    if not missing and not extra:
+        errors.append(
+            f"{other_name} contains the same entries as {reference_name} but in a different order."
+        )
+    return errors

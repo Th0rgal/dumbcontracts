@@ -171,16 +171,10 @@ def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmitOptions
   let mapping := if contract.usesMapping then [mappingSlotFuncAt options.mappingSlotScratchBase] else []
   let internals := internalHelpersForProfile options.backendProfile contract.internalFunctions
   let sortCases := profileSortsDispatchCases options.backendProfile
-  mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases]
-
-/-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
-def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
-  let base := runtimeCodeWithEmitOptions contract options
-  let patchReport := Yul.runExprPatchPass options.patchConfig Yul.foundationExprPatchPack base
-  { runtimeCode := patchReport.patched, patchReport := patchReport }
-
-def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
-  (runtimeCodeWithOptionsReport contract options).runtimeCode
+  -- Dispatch helper outlining is intentionally handled only by proof-gated object
+  -- rewrite rules (`solc-compat-*`) after codegen.
+  let switchStmt := buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases
+  mapping ++ internals ++ [switchStmt]
 
 private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile)
     (mappingSlotScratchBase : Nat := 0) : List YulStmt :=
@@ -192,24 +186,73 @@ private def deployCodeWithProfile (contract : IRContract) (profile : BackendProf
 private def deployCode (contract : IRContract) : List YulStmt :=
   deployCodeWithProfile contract .semantic
 
+private def baseObjectWithOptions (contract : IRContract) (options : YulEmitOptions) : YulObject :=
+  { name := contract.name
+    deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
+    runtimeCode := runtimeCodeWithEmitOptions contract options }
+
+private structure EmitObjectWithOptionsReport where
+  patched : YulObject
+  patchReport : Yul.PatchPassReport
+
+private def emitYulWithOptionsInternal
+    (contract : IRContract)
+    (options : YulEmitOptions) : EmitObjectWithOptionsReport :=
+  let rewriteBundle := Yul.rewriteBundleForId options.patchConfig.rewriteBundleId
+  let requiredProofRefs :=
+    if options.patchConfig.requiredProofRefs.isEmpty then
+      Yul.rewriteProofAllowlistForId rewriteBundle.id
+    else
+      options.patchConfig.requiredProofRefs
+  let patchConfig :=
+    { options.patchConfig with
+      requiredProofRefs := requiredProofRefs }
+  let base := baseObjectWithOptions contract options
+  -- Keep expression/statement/block rewrites runtime-scoped; deploy rewriting is
+  -- reserved for explicit object-level rules.
+  let runtimePatchReport := Yul.runPatchPassWithBlocks
+    patchConfig
+    rewriteBundle.exprRules
+    rewriteBundle.stmtRules
+    rewriteBundle.blockRules
+    base.runtimeCode
+  let runtimePatched := { base with runtimeCode := runtimePatchReport.patched }
+  let objectReport := Yul.runPatchPassWithObjects
+    patchConfig
+    []
+    []
+    []
+    rewriteBundle.objectRules
+    runtimePatched
+  let mergedPatchReport : Yul.PatchPassReport :=
+    { patched := objectReport.patched.runtimeCode
+      iterations := runtimePatchReport.iterations + objectReport.iterations
+      manifest := runtimePatchReport.manifest ++ objectReport.manifest }
+  { patched := objectReport.patched
+    patchReport := mergedPatchReport }
+
+/-- Emit runtime code and keep the patch pass report (manifest + iteration count). -/
+def runtimeCodeWithOptionsReport (contract : IRContract) (options : YulEmitOptions) : RuntimeEmitReport :=
+  let report := emitYulWithOptionsInternal contract options
+  { runtimeCode := report.patched.runtimeCode
+    patchReport := report.patchReport }
+
+def runtimeCodeWithOptions (contract : IRContract) (options : YulEmitOptions) : List YulStmt :=
+  (runtimeCodeWithOptionsReport contract options).runtimeCode
+
 def emitYul (contract : IRContract) : YulObject :=
   { name := contract.name
     deployCode := deployCode contract
     runtimeCode := runtimeCode contract }
 
 def emitYulWithOptions (contract : IRContract) (options : YulEmitOptions) : YulObject :=
-  { name := contract.name
-    deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
-    runtimeCode := runtimeCodeWithOptions contract options }
+  (emitYulWithOptionsInternal contract options).patched
 
 /-- Emit Yul and preserve patch-pass audit details for downstream reporting. -/
 def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) :
     YulObject × Yul.PatchPassReport :=
-  let runtimeReport := runtimeCodeWithOptionsReport contract options
-  ({ name := contract.name
-     deployCode := deployCodeWithProfile contract options.backendProfile options.mappingSlotScratchBase
-     runtimeCode := runtimeReport.runtimeCode },
-   runtimeReport.patchReport)
+  let report := emitYulWithOptionsInternal contract options
+  (report.patched, report.patchReport)
 
 /-- Regression guard: report and legacy runtime APIs stay in sync. -/
 example (contract : IRContract) (options : YulEmitOptions) :
@@ -226,5 +269,133 @@ example (contract : IRContract) (options : YulEmitOptions) :
     (emitYulWithOptionsReport contract options).2 =
       (runtimeCodeWithOptionsReport contract options).patchReport := by
   rfl
+
+private def contains (haystack needle : String) : Bool :=
+  let h := haystack.toList
+  let n := needle.toList
+  if n.isEmpty then true
+  else
+    let rec go : List Char → Bool
+      | [] => false
+      | c :: cs =>
+          if (c :: cs).take n.length == n then true
+          else go cs
+    go h
+
+private partial def stmtContainsSwitchCaseCall (target : String) : YulStmt → Bool
+  | .comment _ => false
+  | .let_ _ _ => false
+  | .letMany _ _ => false
+  | .assign _ _ => false
+  | .expr _ => false
+  | .leave => false
+  | .if_ _ body => body.any (stmtContainsSwitchCaseCall target)
+  | .for_ init _ post body =>
+      init.any (stmtContainsSwitchCaseCall target) ||
+      post.any (stmtContainsSwitchCaseCall target) ||
+      body.any (stmtContainsSwitchCaseCall target)
+  | .switch _ cases default =>
+      let caseHit :=
+        cases.any (fun (_, body) =>
+          match body with
+          | [.expr (.call fn [])] => decide (fn = target)
+          | _ => false)
+      let defaultHit :=
+        match default with
+        | some body => body.any (stmtContainsSwitchCaseCall target)
+        | none => false
+      caseHit || defaultHit
+  | .block stmts => stmts.any (stmtContainsSwitchCaseCall target)
+  | .funcDef _ _ _ body => body.any (stmtContainsSwitchCaseCall target)
+
+/-- Regression guard:
+    expression/statement/block patching remains runtime-scoped (deploy is unchanged),
+    and runtime patch reporting excludes deploy-only candidates. -/
+example :
+    let deployMarker := "__deploy_marker"
+    let runtimeMarker := "__runtime_marker"
+    let contract : IRContract :=
+      { name := "ScopeRegression"
+        deploy := [.expr (.call "add" [.ident deployMarker, .lit 0])]
+        constructorPayable := true
+        functions :=
+          [{ name := "f"
+             selector := 1
+             params := []
+             ret := .unit
+             payable := false
+             body := [.expr (.call "add" [.ident runtimeMarker, .lit 0])] }]
+        usesMapping := false }
+    let options : YulEmitOptions := { patchConfig := { enabled := true, maxIterations := 2 } }
+    let report := emitYulWithOptionsReport contract options
+    let rendered := Yul.render report.1
+    let deployStillHasMarker := contains rendered s!"add({deployMarker}, 0)"
+    let runtimeNoLongerHasMarker := !(contains rendered s!"add({runtimeMarker}, 0)")
+    let runtimeMatchCount :=
+      report.2.manifest.foldl
+        (fun acc entry =>
+          if entry.patchName = "add-zero-right" then acc + entry.matchCount else acc)
+        0
+    deployStillHasMarker && runtimeNoLongerHasMarker && runtimeMatchCount == 1 := by
+  native_decide
+
+/-- Regression guard: active `solc-compat` object rewrites are included in emitted patch report manifests. -/
+example :
+    let contract : IRContract :=
+      { name := "ObjectManifestRegression"
+        deploy := []
+        constructorPayable := true
+        functions :=
+          [{ name := "f"
+             selector := 1
+             params := []
+             ret := .unit
+             payable := false
+             body := [.expr (.call "liveHelper" [])] }]
+        usesMapping := false
+        internalFunctions :=
+          [ .funcDef "liveHelper" [] [] [.leave]
+          , .funcDef "mappingSlot" ["baseSlot", "key"] ["slot"]
+              [ .expr (.call "mstore" [.lit 512, .ident "key"])
+              , .expr (.call "mstore" [.lit 544, .ident "baseSlot"])
+              , .assign "slot" (.call "keccak256" [.lit 512, .lit 64])
+              ]
+          ] }
+    let options : YulEmitOptions :=
+      { patchConfig :=
+          { enabled := true
+            maxIterations := 6
+            rewriteBundleId := Yul.solcCompatRewriteBundleId
+            requiredProofRefs := Yul.solcCompatProofAllowlist } }
+    let report := emitYulWithOptionsReport contract options
+    let hasMappingDropRule :=
+      report.2.manifest.any (fun entry => entry.patchName = "solc-compat-drop-unused-mapping-slot-helper")
+    hasMappingDropRule = true := by
+  native_decide
+
+/-- Regression guard: solidity parity profile keeps dispatch inlined in switch cases. -/
+example :
+    let contract : IRContract :=
+      { name := "DispatchOutlineRegression"
+        deploy := []
+        constructorPayable := true
+        functions :=
+          [{ name := "ping"
+             selector := 1
+             params := []
+             ret := .unit
+             payable := false
+             body := [.leave] }]
+        usesMapping := false
+        internalFunctions := [] }
+    let runtime := runtimeCodeWithEmitOptions contract { backendProfile := .solidityParity }
+    let hasFunHelper :=
+      runtime.any (fun stmt =>
+        match stmt with
+        | .funcDef "fun_ping" [] [] _ => true
+        | _ => false)
+    let switchCallsHelper := runtime.any (stmtContainsSwitchCaseCall "fun_ping")
+    (!hasFunHelper) && (!switchCallsHelper) := by
+  native_decide
 
 end Compiler

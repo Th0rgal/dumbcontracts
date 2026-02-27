@@ -154,6 +154,20 @@ Key: the default path is `execStmtsFuel` (fuel-based), which supports the full c
 
 **EVM Semantics**: Mitigated by differential testing against actual EVM execution (Foundry). Likely remains a documented fundamental assumption.
 
+### 🟡 **Parity-Pack Identity Track** (Issue #967)
+**What**: Move from deterministic output-shape parity to exact pinned-`solc` Yul identity with proof-carrying rewrites.
+**Status**: Groundwork + initial implementation (pack registry + CLI selection + validation guard).
+
+Planned phases:
+1. versioned parity packs keyed to pinned compiler tuples;
+2. typed subtree rewrite model with mandatory semantic-preservation proof refs;
+3. AST-level identity checker + CI gate + unsupported-manifest workflow.
+
+Reference docs:
+- `docs/SOLIDITY_PARITY_PROFILE.md`
+- `docs/PARITY_PACKS.md`
+- `docs/REWRITE_RULES.md`
+- `docs/IDENTITY_CHECKER.md`
 ### ✅ **Ledger Sum Properties** (Complete)
 **What**: Prove total supply equals sum of all balances
 **Status**: All 7/7 proven with zero `sorry` (PR #47, #51, Issue #65 resolved)

@@ -39,10 +39,40 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   expectErrorContains "missing --patch-max-iterations value" ["--patch-max-iterations"] "Missing value for --patch-max-iterations"
   expectErrorContains "missing --backend-profile value" ["--backend-profile"] "Missing value for --backend-profile"
   expectErrorContains "invalid --backend-profile value" ["--backend-profile", "invalid-profile"] "Invalid value for --backend-profile: invalid-profile"
+  expectErrorContains "missing --parity-pack value" ["--parity-pack"] "Missing value for --parity-pack"
+  expectErrorContains "invalid --parity-pack value" ["--parity-pack", "invalid-pack"] "Invalid value for --parity-pack: invalid-pack"
+  expectErrorContains "reject duplicate --parity-pack" ["--parity-pack", "solc-0.8.28-o200-viair-false-evm-shanghai", "--parity-pack", "solc-0.8.28-o999999-viair-true-evm-paris"] "Cannot specify --parity-pack more than once"
+  expectErrorContains "reject backend-profile + parity-pack conflict (profile first)" ["--backend-profile", "semantic", "--parity-pack", "solc-0.8.28-o200-viair-false-evm-shanghai"] "Cannot combine --parity-pack with --backend-profile"
+  expectErrorContains "reject backend-profile + parity-pack conflict (pack first)" ["--parity-pack", "solc-0.8.28-o200-viair-false-evm-shanghai", "--backend-profile", "semantic"] "Cannot combine --backend-profile with --parity-pack"
   expectErrorContains "missing --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base"] "Missing value for --mapping-slot-scratch-base"
   expectErrorContains "invalid --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base", "not-a-number"] "Invalid value for --mapping-slot-scratch-base: not-a-number"
   expectErrorContains "removed --ast flag is rejected" ["--ast"] "Unknown argument: --ast"
   expectErrorContains "unknown argument still reported" ["--definitely-unknown-flag"] "Unknown argument: --definitely-unknown-flag"
+  expectTrue "shipped parity packs have proof composition metadata"
+    Compiler.allParityPacksProofCompositionValid
+  let invalidPack : Compiler.ParityPack :=
+    { id := "invalid-proof-pack"
+      compat := {
+        solcVersion := "0.8.28"
+        solcCommit := "7893614a"
+        optimizerRuns := 200
+        viaIR := false
+        evmVersion := "shanghai"
+        metadataMode := "default"
+      }
+      backendProfile := .solidityParity
+      forcePatches := true
+      defaultPatchMaxIterations := 2
+      rewriteBundleId := Compiler.Yul.solcCompatRewriteBundleId
+      compositionProofRef := ""
+      requiredProofRefs := [] }
+  expectTrue "parity pack proof composition rejects empty metadata" (!invalidPack.proofCompositionValid)
+  let missingBundlePack := { invalidPack with
+    compositionProofRef := "Compiler.Proofs.YulGeneration.PatchRulesProofs.foundation_patch_pack_obligations"
+    requiredProofRefs := Compiler.Yul.foundationProofAllowlist
+    rewriteBundleId := "missing-rewrite-bundle" }
+  expectTrue "parity pack proof composition rejects unknown rewrite bundle IDs"
+    (!missingBundlePack.proofCompositionValid)
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

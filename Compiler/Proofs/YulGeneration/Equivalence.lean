@@ -137,7 +137,7 @@ theorem resultsMatch_of_execResultsAligned
   · -- continue / continue
     cases hExec
     simp [irResultOfExecWithRollback, yulResultOfExecWithRollback, resultsMatch,
-      statesAligned, yulStateOfIR]
+      yulStateOfIR]
   · -- continue / return
     cases hExec
   · -- continue / stop
@@ -162,7 +162,7 @@ theorem resultsMatch_of_execResultsAligned
   · -- stop / stop
     cases hExec
     simp [irResultOfExecWithRollback, yulResultOfExecWithRollback, resultsMatch,
-      statesAligned, yulStateOfIR]
+      yulStateOfIR]
   · -- stop / revert
     cases hExec
   · -- revert / continue
@@ -267,7 +267,7 @@ def execIRFunctionFuel (fuel : Nat) (fn : IRFunction) (args : List Nat) (initial
         returnValue := none
         finalStorage := s.storage
         finalMappings := Compiler.Proofs.storageAsMappings s.storage }
-  | .revert s =>
+  | .revert _ =>
       { success := false
         returnValue := none
         finalStorage := initialState.storage
@@ -303,13 +303,13 @@ theorem execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
   induction stmts with
   | nil =>
       intro fuel irState yulState hAligned
-      simp [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+      simp [execIRStmtsFuel, execIRStmts,
         execYulStmtsFuel_nil, execResultsAligned, hAligned]
   | cons stmt rest ih =>
       intro fuel irState yulState hAligned
       cases fuel with
       | zero =>
-          simp [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+          simp [execIRStmtsFuel, execIRStmts,
             execYulStmtsFuel, execYulFuel, execResultsAligned, hAligned]
       | succ fuel =>
           have hStmt := stmt_equiv selector fuel stmt irState yulState hAligned
@@ -323,15 +323,15 @@ theorem execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
                   simpa [execIRStmtsFuel, execIRStmts, execYulStmtsFuel_cons, hIR, hYul] using hRest
               | «return» v y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «stop» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «revert» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
           | «return» v ir' =>
               cases hYul : execYulStmtFuel fuel yulState stmt with
@@ -339,15 +339,15 @@ theorem execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
                   simpa [execIRStmtsFuel, execIRStmts, execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
               | «continue» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «stop» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «revert» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
           | «stop» ir' =>
               cases hYul : execYulStmtFuel fuel yulState stmt with
@@ -355,15 +355,15 @@ theorem execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
                   simpa [execIRStmtsFuel, execIRStmts, execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
               | «continue» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «return» v y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «revert» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
           | «revert» ir' =>
               cases hYul : execYulStmtFuel fuel yulState stmt with
@@ -371,15 +371,15 @@ theorem execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
                   simpa [execIRStmtsFuel, execIRStmts, execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
               | «continue» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «return» v y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
               | «stop» y' =>
                   have : False := by
-                    simpa [execResultsAligned, hIR, hYul] using hStmt
+                    simp [execResultsAligned, hIR, hYul] at hStmt
                   cases this
 
 theorem execIRStmtsFuel_equiv_execYulStmts_of_stmt_equiv

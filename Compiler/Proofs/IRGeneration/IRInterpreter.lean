@@ -106,7 +106,7 @@ def evalIRExprs (state : IRState) : List YulExpr → Option (List Nat)
 termination_by es => exprsSize es
 decreasing_by
   all_goals
-    simp [exprsSize, exprSize]
+    simp [exprsSize]
     omega
 
 /-- Evaluate an IR function call by evaluating all arguments first, then dispatching.
@@ -126,7 +126,7 @@ def evalIRCall (state : IRState) (func : String) : List YulExpr → Option Nat
       state.storage state.sender state.selector state.calldata func argVals
 termination_by args => exprsSize args + 1
 decreasing_by
-  simp [exprsSize, exprSize]
+  omega
 
 /-- Evaluate a Yul expression in the IR context.
 
@@ -139,7 +139,7 @@ def evalIRExpr (state : IRState) : YulExpr → Option Nat
   | .call func args => evalIRCall state func args
 termination_by e => exprSize e
 decreasing_by
-  simp [exprsSize, exprSize]
+  simp [exprSize]
 
 end -- mutual
 
@@ -309,7 +309,7 @@ noncomputable def execIRFunction (fn : IRFunction) (args : List Nat) (initialSta
       returnValue := none
       finalStorage := s.storage
       finalMappings := Compiler.Proofs.storageAsMappings s.storage }
-  | .revert s =>
+  | .revert _ =>
     { success := false
       returnValue := none
       -- On revert, storage and mappings roll back to the initial state

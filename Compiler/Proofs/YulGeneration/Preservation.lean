@@ -9,10 +9,14 @@ open Compiler
 open Compiler.Yul
 open Compiler.Proofs.IRGeneration
 
-/-! ## Codegen Preservation Theorem (Layer 3)
+/-! ## Codegen Preservation Theorem (Layer 3 — CompilationModel Path)
 
 We prove that Yul code generation preserves IR semantics, assuming that
 executing an IR function body matches executing the same Yul statements.
+
+**Scope**: This proof applies to the compilation path
+`CompilationModel -> IR -> Yul`.
+See `TRUST_ASSUMPTIONS.md` for the full trust-boundary description.
 -/
 
 @[simp] theorem interpretYulBody_eq_runtime (fn : IRFunction) (tx : IRTransaction) (state : IRState) :

@@ -7,22 +7,12 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body
+from workflow_jobs import extract_job_body, parse_csv_ints
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 MULTISEED_SCRIPT = ROOT / "scripts" / "test_multiple_seeds.sh"
 SCRIPTS_README = ROOT / "scripts" / "README.md"
-
-
-def _parse_seed_csv(raw: str, source: Path) -> list[int]:
-    items = [part.strip() for part in raw.split(",")]
-    if not items or any(not item for item in items):
-        raise ValueError(f"Malformed seed list in {source}: {raw!r}")
-    try:
-        return [int(item) for item in items]
-    except ValueError as exc:
-        raise ValueError(f"Non-integer seed in {source}: {raw!r}") from exc
 
 
 def _line_indent(line: str) -> int:
@@ -131,7 +121,7 @@ def _extract_verify_seeds(text: str) -> list[int]:
         m = re.fullmatch(r"\[(?P<csv>[^\]]+)\]", seed_rest)
         if not m:
             raise ValueError(f"Malformed matrix seed list in {VERIFY_YML}: {seed_rest!r}")
-        return _parse_seed_csv(m.group("csv"), VERIFY_YML)
+        return parse_csv_ints(m.group("csv"), VERIFY_YML)
     return _parse_seed_block_list(lines, VERIFY_YML, seed_idx=seed_idx, seed_indent=root_indent + 4)
 
 
@@ -159,7 +149,7 @@ def _extract_readme_seeds(text: str) -> list[int]:
             "Could not locate foundry-multi-seed seeds summary in "
             f"{SCRIPTS_README}"
         )
-    return _parse_seed_csv(line.group("csv"), SCRIPTS_README)
+    return parse_csv_ints(line.group("csv"), SCRIPTS_README)
 
 
 def _fmt(seeds: list[int]) -> str:

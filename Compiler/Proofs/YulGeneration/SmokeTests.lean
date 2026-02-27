@@ -1,4 +1,4 @@
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 import Compiler.Codegen
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.YulGeneration.Equivalence
@@ -9,7 +9,7 @@ import Std.Tactic
 namespace Compiler.Proofs.YulGeneration
 
 open Compiler
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Proofs.IRGeneration
 open Compiler.Proofs
 open Compiler.Specs

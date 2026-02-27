@@ -16,7 +16,7 @@ def isIdentifierStart (c : Char) : Bool :=
 def isIdentifierContinue (c : Char) : Bool :=
   isIdentifierStart c || isAsciiDigit c
 
-/-- Shared identifier validator for AST and ContractSpec frontends. -/
+/-- Shared identifier validator for AST and CompilationModel frontends. -/
 def isValidIdentifier (name : String) : Bool :=
   match name.data with
   | [] => false

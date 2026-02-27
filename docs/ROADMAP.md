@@ -7,14 +7,13 @@
 ## Current Status
 
 - ✅ **Layer 1 Complete**: 431 theorems across 11 categories (8 contracts + Stdlib math library)
-- ✅ **Layer 2 Complete**: All IR generation with preservation proofs (ContractSpec → IR)
+- ✅ **Layer 2 Complete**: All IR generation with preservation proofs (CompilationModel → IR)
 - ✅ **Layer 3 Complete**: All 8 statement equivalence proofs + universal dispatcher (PR #42)
 - ✅ **Property Testing**: 58% coverage (250/431), all testable properties covered
 - ✅ **Differential Testing**: Production-ready with 70k+ tests
 - ✅ **Trust Reduction Phase 1**: keccak256 axiom + CI validation (PR #43, #46)
 - ✅ **External Linking**: Cryptographic library support (PR #49)
-- ✅ **ContractSpec Real-World Support**: Loops, branching, arrays, events, multi-mappings, internal calls, verified extern linking (#153, #154, #179, #180, #181, #184)
-- ✅ **Unified AST (#364)**: All 7 contracts migrated with equivalence proofs (29 theorems, PR #370)
+- ✅ **CompilationModel Real-World Support**: Loops, branching, arrays, events, multi-mappings, internal calls, verified extern linking (#153, #154, #179, #180, #181, #184)
 
 ---
 
@@ -70,17 +69,17 @@ Status legend:
 | 6 | ABI JSON artifact generation | partial | partial | n/a | partial | partial |
 
 Recent progress for storage layout controls (`#623`):
-- `ContractSpec.Field` now supports optional explicit slot assignment (`slot := some <n>`), with backward-compatible positional slots when omitted.
+- `CompilationModel.Field` now supports optional explicit slot assignment (`slot := some <n>`), with backward-compatible positional slots when omitted.
 - Compiler now fails fast on conflicting effective slot assignments with an issue-linked diagnostic.
-- `ContractSpec.Field` now supports compatibility mirror-write slots (`aliasSlots := [...]`), so `setStorage`/`setMapping`/`setMapping2` write to canonical and alias slots in one declarative policy.
-- `ContractSpec` now supports slot remap policies (`slotAliasRanges := [{ sourceStart := a, sourceEnd := b, targetStart := c }, ...]`) so compatibility windows like `8..11 -> 20..23` can be declared once and applied automatically to canonical field writes.
-- `ContractSpec` now supports declarative reserved storage slot ranges (`reservedSlotRanges := [{ start := a, end_ := b }, ...]`) with compile-time overlap checks and fail-fast diagnostics when field canonical/alias write slots intersect reserved intervals.
-- `ContractSpec.Field` now supports packed subfield placement (`packedBits := some { offset := o, width := w }`) so multiple fields can share a slot with disjoint bit ranges; codegen performs masked read-modify-write updates and masked reads directly from layout metadata.
+- `CompilationModel.Field` now supports compatibility mirror-write slots (`aliasSlots := [...]`), so `setStorage`/`setMapping`/`setMapping2` write to canonical and alias slots in one declarative policy.
+- `CompilationModel` now supports slot remap policies (`slotAliasRanges := [{ sourceStart := a, sourceEnd := b, targetStart := c }, ...]`) so compatibility windows like `8..11 -> 20..23` can be declared once and applied automatically to canonical field writes.
+- `CompilationModel` now supports declarative reserved storage slot ranges (`reservedSlotRanges := [{ start := a, end_ := b }, ...]`) with compile-time overlap checks and fail-fast diagnostics when field canonical/alias write slots intersect reserved intervals.
+- `CompilationModel.Field` now supports packed subfield placement (`packedBits := some { offset := o, width := w }`) so multiple fields can share a slot with disjoint bit ranges; codegen performs masked read-modify-write updates and masked reads directly from layout metadata.
 
 Recent progress for low-level calls + returndata handling (`#622`):
-- `ContractSpec.Expr` now supports first-class low-level call primitives (`call`, `staticcall`, `delegatecall`) with explicit gas/value/target/input/output operands and deterministic Yul lowering.
-- `ContractSpec.Expr.returndataSize`, `Stmt.returndataCopy`, and `Stmt.revertReturndata` now provide first-class returndata access and revert-data forwarding without raw Yul builtin injection.
-- `ContractSpec.Expr.returndataOptionalBoolAt(outOffset)` now provides a first-class ERC20 compatibility helper for optional return-data bool decoding (`returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`), so low-level token call acceptance paths can be expressed without raw Yul builtins.
+- `CompilationModel.Expr` now supports first-class low-level call primitives (`call`, `staticcall`, `delegatecall`) with explicit gas/value/target/input/output operands and deterministic Yul lowering.
+- `CompilationModel.Expr.returndataSize`, `Stmt.returndataCopy`, and `Stmt.revertReturndata` now provide first-class returndata access and revert-data forwarding without raw Yul builtin injection.
+- `CompilationModel.Expr.returndataOptionalBoolAt(outOffset)` now provides a first-class ERC20 compatibility helper for optional return-data bool decoding (`returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`), so low-level token call acceptance paths can be expressed without raw Yul builtins.
 - Raw `Expr.externalCall` interop names for low-level/builtin opcodes remain fail-fast rejected, preserving explicit migration diagnostics while the first-class surface continues to expand.
 - ABI artifact emission now reflects explicit function mutability markers (`isView`, `isPure`) as `stateMutability: "view" | "pure"` in generated JSON.
 
@@ -89,9 +88,7 @@ Recent progress for custom errors (`#586`):
 - Static scalar payload args remain expression-friendly (`uint256`, `address`, `bool`, `bytes32`), while composite/dynamic payload args fail fast with issue-linked diagnostics when not provided as direct parameter references.
 
 Recent progress for ABI JSON artifact generation (`#688`):
-- `verity-compiler --ast --abi-output <dir>` now emits one `<Contract>.abi.json` file per unified AST spec, using an AST→ABI bridge that reuses the shared ABI renderer.
-- The previous AST-mode CLI rejection for `--abi-output` has been removed, so ContractSpec and AST compilation paths now have parity for ABI artifact emission.
-- AST specs now support explicit mutability metadata (`isPayable`, `isView`, `isPure`) that propagates to both runtime payability guards and ABI JSON `stateMutability`, with compile-time validation for invalid combinations.
+- `verity-compiler --abi-output <dir>` emits one `<Contract>.abi.json` file per compiled CompilationModel in the supported compilation path.
 
 Delivery policy for unsupported features:
 1. Compiler diagnostics must identify the exact unsupported construct.
@@ -102,11 +99,11 @@ Delivery policy for unsupported features:
 
 ## Lessons from UnlinkPool (#185)
 
-[UnlinkPool](https://github.com/Th0rgal/unlink-contracts/pull/4) — a ZK privacy pool — was the first non-trivial contract built with Verity (37 theorems, 0 `sorry`, 64 Foundry tests). It exposed gaps in the ContractSpec compilation path that prevented real-world contracts from using the verified pipeline (Layers 2+3).
+[UnlinkPool](https://github.com/Th0rgal/unlink-contracts/pull/4) — a ZK privacy pool — was the first non-trivial contract built with Verity (37 theorems, 0 `sorry`, 64 Foundry tests). It exposed gaps in the CompilationModel compilation path that prevented real-world contracts from using the verified pipeline (Layers 2+3).
 
 ### What was added
 
-| Feature | Issue | ContractSpec | Core/Interpreter |
+| Feature | Issue | CompilationModel | Core/Interpreter |
 |---------|-------|-------------|-----------------|
 | If/else branching | #179 | `Stmt.ite` | `execStmt` mutual recursion |
 | ForEach loops | #179 | `Stmt.forEach` | `execStmtsFuel` + `expandForEach` desugaring |
@@ -118,21 +115,21 @@ Delivery policy for unsupported features:
 
 ### What this enables
 
-A developer can now write a `ContractSpec` for contracts with conditional logic, loops over arrays, nested mappings (`address → address → uint256` for ERC20 allowances), event emission, internal helper functions, and linked external libraries — and compile through the verified pipeline (Layers 2+3). Previously only simple counter/token contracts were supported.
+A developer can now write a `CompilationModel` for contracts with conditional logic, loops over arrays, nested mappings (`address → address → uint256` for ERC20 allowances), event emission, internal helper functions, and linked external libraries — and compile through the verified pipeline (Layers 2+3). Previously only simple counter/token contracts were supported.
 
 ### Remaining gap
 
-The EDSL path remains more expressive (supports arbitrary Lean, `List.foldl`, pattern matching). Contracts like UnlinkPool that use advanced Lean features still need the EDSL path. The ContractSpec path now covers the subset needed for standard DeFi contracts (ERC20, ERC721, governance, simple AMMs).
+The EDSL path remains more expressive (supports arbitrary Lean, `List.foldl`, pattern matching). Contracts like UnlinkPool that use advanced Lean features still need the EDSL path. The CompilationModel path now covers the subset needed for standard DeFi contracts (ERC20, ERC721, governance, simple AMMs).
 
-### Known interpreter limitations
+### Interpreter feature-support contract
 
-The SpecInterpreter's basic `execStmts` path does not yet fully model all new constructs:
-- **forEach** reverts in `execStmts` — use `execStmtsFuel` for contracts with loops
-- **Stmt.internalCall** reverts in `execStmts` — use `execStmtsFuel` with `functions` parameter for contracts with internal calls
-- **Expr.internalCall** always returns 0 — internal function lookup as expression not yet implemented (requires threading `functions` through the mutual recursion block)
-- **arrayParams** is not populated from `Transaction` — array element access returns 0
+A comprehensive feature matrix documents which CompilationModel constructs each interpreter supports, their proof status, and known limitations:
 
-These limitations affect only the basic interpreter path (used for proofs). The fuel-based `execStmtsFuel` supports forEach and Stmt.internalCall. The compiler correctly handles all constructs.
+- **Human-readable**: [`docs/INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md)
+- **Machine-readable**: `artifacts/interpreter_feature_matrix.json`
+- **Smoke tests**: `Compiler/Proofs/InterpreterFeatureTest.lean` (22 `native_decide` proofs)
+
+Key: the default path is `execStmtsFuel` (fuel-based), which supports the full construct set including loops and internal calls. The basic `execStmts` path is used only for proofs that do not need these features.
 
 ---
 
@@ -146,10 +143,14 @@ These limitations affect only the basic interpreter path (used for proofs). The 
 | # | Component | Approach | Effort | Status |
 |---|-----------|----------|--------|--------|
 | 1 | ~~Function Selectors~~ | keccak256 axiom + CI | — | ✅ **DONE** (PR #43, #46) |
-| 2 | Yul→EVM Bridge | Integrate KEVM or similar | 1-3m | ⚪ TODO |
+| 2 | Yul/EVM Semantics Bridge | EVMYulLean integration | 1-3m | 🟡 **IN PROGRESS** |
 | 3 | EVM Semantics | Strong testing + documented assumption | Ongoing | ⚪ TODO |
 
-**Yul→EVM Bridge**: Currently `solc` compilation is trusted. Best option: integrate existing EVM semantics (KEVM). Alternative: accept as trust assumption with strong differential testing (current mitigation).
+**Yul/EVM Semantics Bridge**: EVMYulLean (NethermindEth) provides formally-defined Yul AST types and UInt256 operations. Current integration status:
+- AST adapter: all 11 statement types + 5 expression types lower to EVMYulLean AST (0 gaps)
+- Builtin bridge: 15 pure arithmetic/comparison/bitwise builtins delegate to EVMYulLean `UInt256` operations with compile-time equivalence checks
+- State-dependent builtins (sload, caller, calldataload) and Verity helpers (mappingSlot) remain on the Verity evaluation path
+- Next: full semantic evaluation via EVMYulLean interpreter, bridging proofs for state-dependent builtins
 
 **EVM Semantics**: Mitigated by differential testing against actual EVM execution (Foundry). Likely remains a documented fundamental assumption.
 
@@ -171,10 +172,6 @@ Reference docs:
 ### ✅ **Unified AST** (Issue #364, PR #370)
 **What**: Single deep embedding where `denote ast = edsl_fn` holds by equivalence proof
 **Status**: All 7/7 contracts migrated (27 theorems, 0 sorry)
-
-The unified AST (`Verity.AST`) provides a deep embedding that maps 1:1 to EDSL primitives. Simple contracts use `rfl` (definitional equality). Contracts with helper composition (e.g., `onlyOwner`) use `bind_assoc` to flatten nested `bind` before `rfl` closes the goal.
-
-**Next step**: Build the `contract` macro (Phase 4) and compiler `AST → Yul` (Phase 5).
 
 ### ✅ **Ledger Sum Properties** (Complete)
 **What**: Prove total supply equals sum of all balances
@@ -315,4 +312,4 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines and [`VE
 ---
 
 **Last Updated**: 2026-02-20
-**Status**: Layers 1-3 complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). Unified AST complete: all 7/7 contracts migrated (Issue #364). ContractSpec now supports real-world contracts (loops, branching, events, multi-mappings, internal calls, verified externs).
+**Status**: Layers 1-3 complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). CompilationModel now supports real-world contracts (loops, branching, events, multi-mappings, internal calls, verified externs).

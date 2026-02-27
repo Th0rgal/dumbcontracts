@@ -163,7 +163,7 @@ jobs:
       - name: Check Yul builtin abstraction boundary
         run: python3 scripts/check_yul_builtin_boundary.py
 
-      - name: Check builtin list sync (Linker ↔ ContractSpec)
+      - name: Check builtin list sync (Linker ↔ CompilationModel)
         run: python3 scripts/check_builtin_list_sync.py
 
       - name: Check EVMYulLean capability boundary
@@ -233,15 +233,15 @@ jobs:
       - name: Check Lean warning non-regression
         run: python3 scripts/check_lean_warning_regression.py --log lake-build.log
 
-      - name: Run AST pipeline regression modules
+      - name: Run compiler CLI regression module
         env:
           LEAN_NUM_THREADS: 2
-        run: lake build Compiler.ASTCompileTest Compiler.ASTDriverTest Compiler.MainTest
+        run: lake build Compiler.MainTest
 
-      - name: Run ContractSpec feature regression module
+      - name: Run CompilationModel feature regression module
         env:
           LEAN_NUM_THREADS: 2
-        run: lake build Compiler.ContractSpecFeatureTest
+        run: lake build Compiler.CompilationModelFeatureTest
 
       - name: Check for sorry
         run: |
@@ -343,14 +343,10 @@ jobs:
             --link examples/external-libs/PoseidonT3.yul \
             --link examples/external-libs/PoseidonT4.yul
 
-      - name: Generate Yul (unified AST path)
-        run: ./.lake/build/bin/verity-compiler --ast --output compiler/yul-ast
-
-      - name: Check static gas model coverage on generated Yul (legacy + AST)
+      - name: Check static gas model coverage on generated Yul (baseline + patched)
         run: |
           python3 scripts/check_gas_model_coverage.py \
             --dir compiler/yul \
-            --dir compiler/yul-ast \
             --dir compiler/yul-patched
 
       - name: Keccak-256 self-test (validate hash implementation)
@@ -362,15 +358,12 @@ jobs:
       - name: Setup solc
         uses: ./.github/actions/setup-solc
 
-      - name: Compile generated Yul with solc + enforce legacy/AST diff baseline
+      - name: Compile generated Yul with solc
         run: |
           python3 scripts/check_yul_compiles.py \
             --dir compiler/yul \
             --dir compiler/yul-patched \
-            --dir compiler/yul-ast \
-            --require-same-files compiler/yul compiler/yul-patched \
-            --compare-dirs compiler/yul compiler/yul-ast \
-            --allow-compare-diff-file scripts/fixtures/yul_ast_bytecode_diffs.allowlist
+            --require-same-files compiler/yul compiler/yul-patched
 
       - name: Check selector fixtures against solc
         run: python3 scripts/check_selector_fixtures.py

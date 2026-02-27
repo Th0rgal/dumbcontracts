@@ -8,7 +8,12 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from workflow_jobs import extract_job_body, extract_top_level_jobs
+from workflow_jobs import (
+    extract_job_body,
+    extract_top_level_jobs,
+    strip_yaml_inline_comment,
+    unquote_yaml_scalar,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
@@ -16,30 +21,6 @@ VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 
 def _extract_job_block(text: str, job_name: str) -> str:
     return extract_job_body(text, job_name, VERIFY_YML)
-
-
-def _strip_yaml_inline_comment(raw: str) -> str:
-    out: list[str] = []
-    quote: str | None = None
-    for ch in raw:
-        if quote is None and ch in {"'", '"'}:
-            quote = ch
-            out.append(ch)
-            continue
-        if quote is not None and ch == quote:
-            quote = None
-            out.append(ch)
-            continue
-        if quote is None and ch == "#":
-            break
-        out.append(ch)
-    return "".join(out).strip()
-
-
-def _unquote_yaml_scalar(raw: str) -> str:
-    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {"'", '"'}:
-        return raw[1:-1]
-    return raw
 
 
 def _iter_step_blocks(job_body: str) -> list[str]:
@@ -104,7 +85,7 @@ def _step_uses_action(step_block: str, action: str) -> bool:
 
     if uses_value is None:
         return False
-    uses_clean = _unquote_yaml_scalar(_strip_yaml_inline_comment(uses_value))
+    uses_clean = unquote_yaml_scalar(strip_yaml_inline_comment(uses_value))
     return bool(re.fullmatch(rf"actions/{re.escape(action)}@v\d+", uses_clean))
 
 
@@ -157,10 +138,10 @@ def _extract_name_from_with_block(step_block: str) -> str | None:
             km = re.match(r"^\s*name:\s*(?P<value>.+?)\s*$", child)
             if not km:
                 continue
-            raw = _strip_yaml_inline_comment(km.group("value"))
+            raw = strip_yaml_inline_comment(km.group("value"))
             if not raw:
                 continue
-            return _unquote_yaml_scalar(raw)
+            return unquote_yaml_scalar(raw)
 
         i = j
     return None

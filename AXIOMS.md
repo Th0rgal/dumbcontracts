@@ -91,6 +91,10 @@ The repository removed prior axioms related to IR and Yul expression and stateme
 
 These removals reduced the active Lean axiom surface to one item.
 
+## Non-Axiom: Arithmetic Semantics
+
+Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure builtins (add, sub, mul, div, mod, lt, gt, eq, iszero, and, or, xor, not, shl, shr) have formal wrapping proofs in `Compiler/Proofs/ArithmeticProfile.lean` and EVMYulLean bridge equivalence checks in `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanBridgeTest.lean`. This is a design choice matching EVM semantics, not a trust assumption. See [`docs/ARITHMETIC_PROFILE.md`](docs/ARITHMETIC_PROFILE.md) for the full specification.
+
 ## Trust Summary
 
 - Active axioms: 1

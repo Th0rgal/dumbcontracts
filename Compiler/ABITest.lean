@@ -2,7 +2,7 @@ import Compiler.ABI
 
 namespace Compiler.ABITest
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 
 private def contains (haystack needle : String) : Bool :=
   let h := haystack.toList
@@ -22,7 +22,7 @@ private def assertContains (label rendered : String) (needles : List String) : I
       throw (IO.userError s!"✗ {label}: missing '{needle}' in:\n{rendered}")
   IO.println s!"✓ {label}"
 
-private def abiSpec : ContractSpec := {
+private def abiSpec : CompilationModel := {
   name := "ABIEmitterFixture"
   fields := []
   constructor := some {

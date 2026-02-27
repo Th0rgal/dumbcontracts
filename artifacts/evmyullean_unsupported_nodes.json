@@ -1,20 +1,7 @@
 {
   "adapter_file": "Compiler/Proofs/YulGeneration/Backends/EvmYulLeanAdapter.lean",
-  "count": 3,
-  "nodes": [
-    {
-      "node": "assign",
-      "reason": "assignment lowering not implemented"
-    },
-    {
-      "node": "for_",
-      "reason": "for-loop init lowering not implemented"
-    },
-    {
-      "node": "funcDef",
-      "reason": "function definition lowering not implemented"
-    }
-  ],
+  "count": 0,
+  "nodes": [],
   "schema_version": 1,
   "source_report": "artifacts/evmyullean_capability_report.json"
 }

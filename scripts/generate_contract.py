@@ -3,7 +3,6 @@
 
 Creates the complete file structure needed to add a new contract:
   - EDSL implementation (Verity/Examples/{Name}.lean)
-  - Unified AST bridge scaffold (Verity/AST/{Name}.lean)
   - Formal specification (Verity/Specs/{Name}/Spec.lean)
   - State invariants (Verity/Specs/{Name}/Invariants.lean)
   - Layer 2 proof re-export (Verity/Specs/{Name}/Proofs.lean)
@@ -657,32 +656,6 @@ def gen_spec_proofs(cfg: ContractConfig) -> str:
 """
 
 
-def gen_ast_bridge(cfg: ContractConfig) -> str:
-    """Generate Verity/AST/{Name}.lean scaffold."""
-    return f"""/-
-  Verity.AST.{cfg.name}: Unified AST bridge scaffold
-
-  TODO:
-  - Define per-function AST terms
-  - Prove `denote ast = edsl_function` for each function
--/
-
-import Verity.Denote
-import Verity.Examples.{cfg.name}
-
-namespace Verity.AST.{cfg.name}
-
-open Verity
-open Verity.AST
-open Verity.Denote
-open Verity.Examples.{cfg.name}
-
--- TODO: Add AST definitions and equivalence proofs.
-
-end Verity.AST.{cfg.name}
-"""
-
-
 def gen_spec_correctness(cfg: ContractConfig) -> str:
     """Generate Compiler/Proofs/SpecCorrectness/{Name}.lean scaffold."""
     return f"""/-
@@ -698,7 +671,7 @@ import Verity.Examples.{cfg.name}
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity
 open Verity.Examples.{cfg.name}
@@ -1044,7 +1017,7 @@ def gen_compiler_spec(cfg: ContractConfig) -> str:
 ## {cfg.name} Specification
 -/
 
-def {name_lower}Spec : ContractSpec := {{
+def {name_lower}Spec : CompilationModel := {{
   name := "{cfg.name}"
   fields := [
     {fields_str}
@@ -1060,7 +1033,6 @@ def gen_all_lean_imports(cfg: ContractConfig) -> str:
     """Generate import lines for Verity/All.lean."""
     return f"""
 import Verity.Examples.{cfg.name}
-import Verity.AST.{cfg.name}
 import Verity.Specs.{cfg.name}.Spec
 import Verity.Specs.{cfg.name}.Invariants
 import Verity.Specs.{cfg.name}.Proofs
@@ -1073,7 +1045,6 @@ def scaffold_files(cfg: ContractConfig) -> List[tuple[Path, str]]:
     name = cfg.name
     return [
         (ROOT / "Verity" / "Examples" / f"{name}.lean", gen_example(cfg)),
-        (ROOT / "Verity" / "AST" / f"{name}.lean", gen_ast_bridge(cfg)),
         (ROOT / "Verity" / "Specs" / name / "Spec.lean", gen_spec(cfg)),
         (ROOT / "Verity" / "Specs" / name / "Invariants.lean", gen_invariants(cfg)),
         (ROOT / "Verity" / "Specs" / name / "Proofs.lean", gen_spec_proofs(cfg)),

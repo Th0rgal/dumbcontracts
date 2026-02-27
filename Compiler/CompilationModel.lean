@@ -1,7 +1,7 @@
 /-
-  Compiler.ContractSpec: Declarative Contract Specification
+  Compiler.CompilationModel: Declarative Compilation Model DSL
 
-  This module defines a declarative way to specify contracts for compilation,
+  This module defines a declarative way to model contracts for compilation,
   eliminating manual IR writing while keeping the system simple and maintainable.
 
   Philosophy:
@@ -27,7 +27,7 @@ import Compiler.IR
 import Compiler.Yul.Ast
 import Compiler.Identifier
 
-namespace Compiler.ContractSpec
+namespace Compiler.CompilationModel
 
 export Compiler.Constants (errorStringSelectorWord addressMask selectorShift freeMemoryPointer)
 
@@ -35,9 +35,9 @@ open Compiler
 open Compiler.Yul
 
 /-!
-## Contract Specification DSL
+## Compilation Model DSL
 
-Instead of manually writing IR, contracts provide a high-level specification:
+Instead of manually writing IR, contracts provide a high-level model:
 - Storage fields with automatic slot assignment
 - Functions with automatic selector computation
 - Guards and access control patterns
@@ -399,7 +399,7 @@ structure ConstructorSpec where
   body : List Stmt     -- Initialization code
   deriving Repr
 
-structure ContractSpec where
+structure CompilationModel where
   name : String
   fields : List Field
   /-- Storage slots reserved for compatibility policy; compiler rejects field
@@ -419,7 +419,7 @@ structure ContractSpec where
 /-!
 ## IR Generation from Spec
 
-Automatically compile a ContractSpec to IRContract.
+Automatically compile a CompilationModel to IRContract.
 -/
 
 -- Helper: Look up a field by name, resolving its canonical slot, and apply
@@ -1154,7 +1154,7 @@ private def issue586Ref : String :=
   "Issue #586 (Solidity interop profile)"
 
 private def issue623Ref : String :=
-  "Issue #623 (ContractSpec storage layout controls)"
+  "Issue #623 (CompilationModel storage layout controls)"
 
 private def issue625Ref : String :=
   "Issue #625 (internal function multi-return support)"
@@ -2333,7 +2333,7 @@ private def isInteropBuiltinCallName (name : String) : Bool :=
 
 /-- Returns true for special entrypoint names (fallback/receive) that are not
     dispatched via selector. Used by Selector.computeSelectors, ABI.lean, and
-    ContractSpec.compile to consistently filter these from selector-dispatched
+    CompilationModel.compile to consistently filter these from selector-dispatched
     external functions. -/
 def isInteropEntrypointName (name : String) : Bool :=
   ["fallback", "receive"].contains name
@@ -2526,7 +2526,7 @@ private def reservedExternalNames (mappingHelpersRequired arrayHelpersRequired :
   (mappingHelpers ++ arrayHelpers ++ entrypoints).eraseDups
 
 private def firstReservedExternalCollision
-    (spec : ContractSpec) (mappingHelpersRequired arrayHelpersRequired : Bool) : Option String :=
+    (spec : CompilationModel) (mappingHelpersRequired arrayHelpersRequired : Bool) : Option String :=
   (spec.externals.map (·.name)).find? (fun name =>
     name.startsWith internalFunctionPrefix ||
       (reservedExternalNames mappingHelpersRequired arrayHelpersRequired).contains name)
@@ -4544,7 +4544,7 @@ private def constructorUsesArrayElement : Option ConstructorSpec → Bool
   | none => false
   | some ctor => ctor.body.any stmtUsesArrayElement
 
-private def contractUsesArrayElement (spec : ContractSpec) : Bool :=
+private def contractUsesArrayElement (spec : CompilationModel) : Bool :=
   constructorUsesArrayElement spec.constructor || spec.functions.any functionUsesArrayElement
 
 private def pickFreshInternalRetName (usedNames : List String) (idx : Nat) : String :=
@@ -4676,7 +4676,7 @@ def firstDuplicateSelector (selectors : List Nat) : Option Nat :=
         go (sel :: seen) rest
   go [] selectors
 
-def selectorNames (spec : ContractSpec) (selectors : List Nat) (sel : Nat) : List String :=
+def selectorNames (spec : CompilationModel) (selectors : List Nat) (sel : Nat) : List String :=
   let externalFns := spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)
   (externalFns.zip selectors).foldl (fun acc (fn, s) =>
     if s == sel then acc ++ [fn.name] else acc
@@ -4921,7 +4921,7 @@ private def ensureContractIdentifier (kind name : String) : Except String Unit :
   | .ok _ => pure ()
   | .error err => throw s!"Compilation error: {err}"
 
-private def validateIdentifierShapes (spec : ContractSpec) : Except String Unit := do
+private def validateIdentifierShapes (spec : CompilationModel) : Except String Unit := do
   ensureContractIdentifier "contract" spec.name
   for field in spec.fields do
     ensureContractIdentifier "field" field.name
@@ -4943,7 +4943,7 @@ private def validateIdentifierShapes (spec : ContractSpec) : Except String Unit 
   for ext in spec.externals do
     ensureContractIdentifier "external declaration" ext.name
 
-def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContract := do
+def compile (spec : CompilationModel) (selectors : List Nat) : Except String IRContract := do
   validateIdentifierShapes spec
   match firstInvalidSlotAliasRange spec.slotAliasRanges with
   | some (idx, range) =>
@@ -5102,7 +5102,7 @@ def compile (spec : ContractSpec) (selectors : List Nat) : Except String IRContr
 
 /-- Collect all unique (moduleName, axiom) pairs from ECM statements in a spec.
     Used for axiom aggregation reports. -/
-def collectEcmAxioms (spec : ContractSpec) : List (String × String) :=
+def collectEcmAxioms (spec : CompilationModel) : List (String × String) :=
   let stmtsFromFn (fn : FunctionSpec) := fn.body
   let stmtsFromCtor : List Stmt := match spec.constructor with
     | some ctor => ctor.body
@@ -5123,4 +5123,4 @@ where
     | .ite cond a b => collectExprEcmAxioms cond ++ collectExprEcmAxioms a ++ collectExprEcmAxioms b
     | _ => []
 
-end Compiler.ContractSpec
+end Compiler.CompilationModel

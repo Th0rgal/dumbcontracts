@@ -8,45 +8,32 @@ Verity implements a **three-layer verification stack** that proves smart contrac
 
 ```
 User Contracts (EDSL)
-    ↓ Layer 1: EDSL ≡ ContractSpec
-ContractSpec (Human-Readable Specs)
-    ↓ Layer 2: ContractSpec → IR
+    ↓ Layer 1: EDSL ≡ CompilationModel (`CompilationModel` today) [PROVED]
+CompilationModel (Compiler-Facing Contract Model)
+    ↓ Layer 2: CompilationModel → IR [PROVED]
 Intermediate Representation (IR)
-    ↓ Layer 3: IR → Yul
+    ↓ Layer 3: IR → Yul [PROVED, 1 axiom]
 Yul (EVM Assembly)
     ↓ (Trusted: solc compiler)
 EVM Bytecode
 ```
 
-## Unified AST (Issue #364) ✅ **COMPLETE** (all 7 contracts)
+## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 
-**Status**: All 7 compilable contracts migrated with equivalence proofs (29 theorems, zero `sorry`)
+**Status**: Verity now maintains a single supported compiler path:
+`EDSL -> CompilationModel (CompilationModel) -> IR -> Yul`.
 
-**What This Achieves**: A single deep embedding (`Verity.AST`) maps 1:1 to EDSL primitives. The denotation function (`Verity.Denote`) interprets AST → Contract monad such that `denote ast = edsl_fn` holds by `rfl` (definitional equality). For contracts with helper composition (e.g., `onlyOwner`), `bind_assoc` flattens nested binds before `rfl` closes the goal.
+**What This Achieves**: Fewer moving parts, less maintenance overhead, and clearer verification boundaries. CI, docs, and scaffold tooling now align with this single path.
 
-### Migrated Contracts
+See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundary description.
 
-| Contract | Functions | Theorems | Proof Strategy | Location |
-|----------|-----------|----------|----------------|----------|
-| SimpleStorage | store, retrieve | 2 | `rfl` | `Verity/AST/SimpleStorage.lean` |
-| Counter | increment, decrement, getCount | 3 | `rfl` | `Verity/AST/Counter.lean` |
-| SafeCounter | increment, decrement, getCount | 3 | `rfl` | `Verity/AST/SafeCounter.lean` |
-| Ledger | deposit, withdraw, transfer, getBalance | 4 | `rfl` | `Verity/AST/Ledger.lean` |
-| Owned | constructor, transferOwnership, getOwner | 3 | `rfl` + `bind_assoc` | `Verity/AST/Owned.lean` |
-| OwnedCounter | constructor, increment, decrement, getCount, getOwner, transferOwnership | 6 | `rfl` + `bind_assoc` | `Verity/AST/OwnedCounter.lean` |
-| SimpleToken | constructor, mint, transfer, balanceOf, getTotalSupply, getOwner | 6 | `rfl` + `bind_assoc` | `Verity/AST/SimpleToken.lean` |
-
-### Key Files
-
-- `Verity/AST.lean` — Unified `Expr` / `Stmt` inductive types
-- `Verity/Denote.lean` — AST → Contract monad denotation (monad laws in `Verity/Core.lean`)
-- `Verity/AST/*.lean` — Per-contract AST definitions and equivalence proofs
-
-## Layer 1: EDSL ≡ ContractSpec ✅ **COMPLETE**
+## Layer 1: EDSL ≡ CompilationModel (`CompilationModel`) ✅ **COMPLETE**
 
 **Status**: 8 contracts verified (7 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
 
 **What This Layer Proves**: User-facing EDSL contracts satisfy their human-readable specifications.
+
+**Hybrid transition note**: Layer 1 currently uses a hybrid strategy: generated `EDSL -> CompilationModel` proofs cover the supported subset; advanced constructs (linked libraries, ECMs, custom ABI encoding) are expressed directly in `CompilationModel` and trusted at that boundary. See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for details.
 
 ### Verified Contracts
 
@@ -78,15 +65,16 @@ theorem increment_adds_one (state : ContractState) :
 
 ### Infrastructure
 
-- **SpecInterpreter**: Executable semantics for ContractSpec language
+- **SpecInterpreter**: Executable semantics for CompilationModel language (`CompilationModel` today)
 - **Automation Library**: Proven helper lemmas (safe arithmetic, storage operations)
 - **Proof Patterns**: Documented patterns for common verification tasks
+- **Feature Matrix**: Comprehensive interpreter support contract — see [`INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) and `artifacts/interpreter_feature_matrix.json`
 
-## Layer 2: ContractSpec → IR ✅ **COMPLETE**
+## Layer 2: CompilationModel (`CompilationModel`) → IR ✅ **COMPLETE**
 
 **Status**: All 7 compiled contracts have IR generation with preservation proofs
 
-**What This Layer Proves**: Intermediate representation (IR) generation preserves ContractSpec semantics.
+**What This Layer Proves**: Intermediate representation (IR) generation preserves CompilationModel semantics.
 
 ### IR Generation Proofs
 
@@ -112,7 +100,7 @@ theorem counter_ir_preserves_spec :
 ### Infrastructure
 
 - **IRInterpreter**: Executable semantics for IR language
-- **IR Codegen**: Automatic IR generation from ContractSpec
+- **IR Codegen**: Automatic IR generation from CompilationModel (`CompilationModel` today)
 - **Preservation Proofs**: Automated tactics for spec → IR equivalence
 
 ## Layer 3: IR → Yul ✅ **COMPLETE**
@@ -242,10 +230,11 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Verified Components (Zero Trust)
 
-1. **EDSL → ContractSpec**: Proven correct in Lean (Layer 1)
-2. **ContractSpec → IR**: Proven correct in Lean (Layer 2)
-3. **IR Interpreter**: Used for differential testing, verified against specs
-4. **Property Tests**: Extracted from proven theorems, tested in Foundry
+1. **EDSL → CompilationModel/CompilationModel**: Proven correct in Lean (Layer 1)
+2. **CompilationModel/CompilationModel → IR**: Proven correct in Lean (Layer 2)
+3. **IR → Yul**: Proven correct in Lean (Layer 3, 1 axiom)
+4. **IR Interpreter**: Used for differential testing, verified against specs
+5. **Property Tests**: Extracted from proven theorems, tested in Foundry
 
 ## Roadmap to Full Verification
 
@@ -297,7 +286,7 @@ Implemented:
   - opt-in patch execution via `YulEmitOptions.patchConfig`
 - `Compiler.emitYulWithOptionsReport`
   - emits `(YulObject × PatchPassReport)` so manifest + iteration metadata are available for CI/tooling
-- `verity-compiler` (`Compiler/Main.lean`, `Compiler/CompileDriver.lean`, `Compiler/ASTDriver.lean`)
+- `verity-compiler` (`Compiler/Main.lean`, `Compiler/CompileDriver.lean`)
   - supports `--enable-patches`, `--patch-max-iterations`, and `--patch-report <path>` to export TSV patch coverage per contract/rule
 - CI (`.github/workflows/verify.yml`)
   - produces and uploads `patch-coverage-report` artifact; summary table is included in workflow step summary
@@ -309,9 +298,9 @@ Current diagnostic coverage in compiler:
 - Non-payable external functions and constructors now emit a runtime `msg.value == 0` guard, while explicit `isPayable := true` enables `Expr.msgValue` usage.
 - Custom errors are now first-class declarations (`errors`) with `Stmt.requireError`/`Stmt.revertError` ABI payload emission for scalar payloads (`uint256`, `address`, `bool`, `bytes32`) and direct-parameter composite/dynamic payloads (`bytes`, tuple, fixed-array, array; including nested dynamic composites). Composite/dynamic args still fail fast with explicit guidance when not sourced from direct `Expr.param` references.
 - `fallback` and `receive` are now modeled as first-class entrypoints in dispatch (empty-calldata routing to `receive`, unmatched selector routing to `fallback`) with compile-time shape checks (`receive` must be payable, both must be parameterless and non-returning).
-- `ContractSpec` now provides first-class low-level call expressions (`Expr.call`, `Expr.staticcall`, `Expr.delegatecall`) with explicit gas/target/value/input/output operands and deterministic direct lowering to Yul call opcodes.
-- `ContractSpec` now provides first-class returndata primitives (`Expr.returndataSize`, `Stmt.returndataCopy`, `Stmt.revertReturndata`) so revert-data bubbling can be expressed without raw interop builtin calls.
-- `ContractSpec` now provides a first-class ERC20 optional-return helper (`Expr.returndataOptionalBoolAt`) that lowers to `returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`.
+- `CompilationModel` now provides first-class low-level call expressions (`Expr.call`, `Expr.staticcall`, `Expr.delegatecall`) with explicit gas/target/value/input/output operands and deterministic direct lowering to Yul call opcodes.
+- `CompilationModel` now provides first-class returndata primitives (`Expr.returndataSize`, `Stmt.returndataCopy`, `Stmt.revertReturndata`) so revert-data bubbling can be expressed without raw interop builtin calls.
+- `CompilationModel` now provides a first-class ERC20 optional-return helper (`Expr.returndataOptionalBoolAt`) that lowers to `returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`.
 - Raw interop builtin call names via `Expr.externalCall` (including low-level call-style names like `callcode`) remain fail-fast rejected with issue-linked diagnostics.
 - Additional interop builtins (`create`, `create2`, `extcodesize`, `extcodecopy`, `extcodehash`) now fail with explicit migration guidance instead of generic external-call handling.
 - Indexed `bytes` event params emit ABI-style hashed topics (`keccak256(payload)`), indexed static tuple/fixed-array params emit ABI-style hashed topics over canonical static in-place encoding, indexed dynamic arrays (including arrays with dynamic element payloads) hash canonical in-place ABI preimages, and indexed dynamic tuple/fixed-array composite params hash recursive in-place ABI encodings.
@@ -323,9 +312,8 @@ Current diagnostic coverage in compiler:
 - Contract specs now support declarative slot remap policies (`slotAliasRanges`) so canonical slot windows can auto-derive compatibility mirror slots (for example `8..11 -> 20..23`), with compile-time diagnostics for invalid/overlapping source intervals (Issue #623).
 - Contract specs now support declarative reserved slot intervals (`reservedSlotRanges`) with compile-time diagnostics for invalid/overlapping ranges and for field canonical/alias write slots that overlap reserved intervals (Issue #623).
 - Storage fields now support packed subfield metadata (`Field.packedBits`) with masked read and read-modify-write lowering, compile-time bit-range validation, and overlap diagnostics that permit shared slots only when packed ranges are disjoint (Issue #623).
-- `verity-compiler` now supports deterministic ABI artifact emission in ContractSpec mode via `--abi-output <dir>` and writes one `<Contract>.abi.json` per compiled spec, including `view`/`pure` `stateMutability` metadata when declared in `ContractSpec.FunctionSpec`.
-- `verity-compiler` now supports deterministic ABI artifact emission in unified AST mode via `--ast --abi-output <dir>`, using an AST→ABI bridge that emits one `<Contract>.abi.json` per AST spec with constructor/function signatures and typed outputs.
-- AST specs now support explicit mutability metadata (`isPayable`, `isView`, `isPure`) that drives runtime payability guards and ABI `stateMutability` emission, with compile-time diagnostics for invalid mutability combinations.
+- `verity-compiler` now supports deterministic ABI artifact emission in CompilationModel mode via `--abi-output <dir>` and writes one `<Contract>.abi.json` per compiled spec, including `view`/`pure` `stateMutability` metadata when declared in `CompilationModel.FunctionSpec`.
+- `verity-compiler` supports deterministic ABI artifact emission for the supported `CompilationModel` compilation path via `--abi-output <dir>`, writing one `<Contract>.abi.json` per compiled spec.
 - All interop diagnostics include an `Issue #586` reference for scope tracking.
 
 ### Short Term (1-2 months)
@@ -362,10 +350,12 @@ See `scripts/README.md` for:
 - **Main README**: `README.md`
 - **Compiler Proofs**: `Compiler/Proofs/README.md`
 - **Property Scripts**: `scripts/README.md`
+- **Interpreter Feature Matrix**: [`docs/INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) (+ `artifacts/interpreter_feature_matrix.json`)
+- **Arithmetic Profile**: [`docs/ARITHMETIC_PROFILE.md`](ARITHMETIC_PROFILE.md)
 - **Research Documentation**: `docs-site/content/research.mdx`
 - **GitHub Repository**: https://github.com/Th0rgal/verity
 
 ---
 
-**Last Updated**: 2026-02-20
-**Status Summary**: Layers 1-3 complete, trust reduction in progress, unified AST complete — all 7 contracts migrated (Issue #364)
+**Last Updated**: 2026-02-27
+**Status Summary**: Layers 1-3 complete (CompilationModel path), trust reduction in progress, single supported compiler path.

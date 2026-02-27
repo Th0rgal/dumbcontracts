@@ -46,7 +46,7 @@ When the compiler encounters `Stmt.ecm mod args`, it:
 import Compiler.Modules.ERC20
 import Compiler.Modules.Precompiles
 
-def vaultSpec : ContractSpec := {
+def vaultSpec : CompilationModel := {
   name := "Vault"
   fields := [{ name := "token", ty := .uint256 }]
   functions := [{
@@ -84,13 +84,13 @@ See `Compiler/Modules/README.md` for the full checklist on adding new standard m
 
 ```lean
 import Compiler.ECM
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 
 namespace MyProtocol
 
 open Compiler.Yul
 open Compiler.ECM
-open Compiler.ContractSpec (Stmt Expr)
+open Compiler.CompilationModel (Stmt Expr)
 
 def myCallModule : ExternalCallModule where
   name := "myCall"
@@ -130,7 +130,7 @@ The generic `Stmt.ecm` path handles:
 
 ### Testing
 
-Add compile-time tests in `Compiler/ContractSpecFeatureTest.lean` using
+Add compile-time tests in `Compiler/CompilationModelFeatureTest.lean` using
 `#eval! do` blocks. At minimum, test:
 
 1. Successful compilation (smoke test)

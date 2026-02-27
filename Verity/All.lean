@@ -17,19 +17,6 @@ import Verity.Core.FiniteSet
 import Verity.EVM.Uint256
 import Verity.Stdlib.Math
 
--- Unified AST & Denotation (issue #364)
-import Verity.AST
-import Verity.Denote
-import Verity.AST.SimpleStorage
-import Verity.AST.Counter
-import Verity.AST.SafeCounter
-import Verity.AST.Ledger
-import Verity.AST.Owned
-import Verity.AST.OwnedCounter
-import Verity.AST.SimpleToken
-import Verity.AST.ERC20
-import Verity.AST.ERC721
-
 -- Common specifications
 import Verity.Specs.Common
 import Verity.Specs.Common.Sum

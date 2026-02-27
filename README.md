@@ -80,7 +80,7 @@ Groundwork docs for parity packs, rewrite rules, and identity checking are track
 [`docs/REWRITE_RULES.md`](docs/REWRITE_RULES.md), and
 [`docs/IDENTITY_CHECKER.md`](docs/IDENTITY_CHECKER.md).
 
-For mapping-backed struct layouts, `ContractSpec` supports:
+For mapping-backed struct layouts, `CompilationModel` supports:
 - `Expr.mappingWord field key wordOffset`
 - `Stmt.setMappingWord field key wordOffset value`
 - `Expr.mappingPackedWord field key wordOffset { offset, width }`
@@ -119,7 +119,7 @@ Verity is a Lean 4 framework that lets you write smart contracts in a domain spe
 The project has three contract artifacts. Keep them separate:
 1. `EDSL implementation` (`Verity/Examples/*`): executable Lean code in the `Contract` monad.
 2. `Logical spec` (`Verity/Specs/*/Spec.lean`): `Prop` statements that describe intended behavior.
-3. `ContractSpec` (`Compiler/Specs.lean`): declarative compiler model with function bodies (`Expr`/`Stmt`), used for IR and Yul generation.
+3. `CompilationModel` (`Compiler/CompilationModel.lean`): declarative compiler-facing model with function bodies (`Expr`/`Stmt`), used for IR and Yul generation.
 
 ## How It Works
 
@@ -140,10 +140,10 @@ theorem store_meets_spec (s : ContractState) (value : Uint256) :
   simp [store, store_spec, storedData, setStorage, storageUnchangedExcept, sameAddrMapContext]
 ```
 
-Then separately, `ContractSpec` drives compilation. It is more than an ABI: it includes storage layout plus function bodies.
+Then separately, the compilation model (`CompilationModel`/`CompilationModel`) drives compilation. It is more than an ABI: it includes storage layout plus function bodies.
 
 ```lean
-def simpleStorageSpec : ContractSpec := {
+def simpleStorageSpec : CompilationModel := {
   name := "SimpleStorage"
   fields := [{ name := "storedData", ty := .uint256 }]
   constructor := none
@@ -185,7 +185,7 @@ Verity supports linking external Yul libraries (e.g., cryptographic libraries) t
 
 **The pattern:**
 1. Write a simple Lean placeholder (e.g., `add a b` for a hash function)
-2. Add an `externalCall` in your ContractSpec 
+2. Add an `externalCall` in your compilation model (`CompilationModel`/`CompilationModel`)
 3. Link your production Yul library at compile time
 
 ```bash
@@ -203,7 +203,7 @@ lake exe verity-compiler \
 def myHash (a b : Uint256) : Contract Uint256 := do
   return (a + b)  -- simple placeholder
 
--- 2. ContractSpec calls the real library
+-- 2. CompilationModel/CompilationModel calls the real library
 Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 -- 3. Compile with: lake exe verity-compiler --link examples/external-libs/MyHash.yul
@@ -219,11 +219,13 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 
 ## What's Verified
 
-- **Layer 1 (per contract)**: EDSL behavior matches its `ContractSpec` model.
-- **Layer 2 (framework)**: `ContractSpec -> IR` preserves behavior.
+- **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`CompilationModel`/`CompilationModel`).
+- **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
-- **Proof-chain note**: the `EDSL -> ContractSpec -> IR -> Yul` chain is verified with 1 axiom.
+- **Proof-chain note**: the `EDSL -> CompilationModel (CompilationModel) -> IR -> Yul` chain is verified with 1 axiom.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
+
+**Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.
 

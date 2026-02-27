@@ -4,33 +4,48 @@ This document states, in a formal and current way, what Verity proves and what V
 
 ## Scope
 
-Verity has two compilation paths:
+Verity uses a single supported compilation path:
 
-1. `ContractSpec` path (proof-backed): `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode`
-2. AST path (`--ast`): `Unified AST -> Yul -> solc -> bytecode`
+`EDSL -> CompilationModel (CompilationModel) -> IR -> Yul -> solc -> bytecode`
 
-The formal Layer 1/2/3 guarantees apply to the `ContractSpec` path.
+The formal Layer 1/2/3 guarantees apply to this path.
 
 ## Verification Chain
 
 ```
 EDSL
-  ↓ [Layer 1: FULLY VERIFIED]
-ContractSpec
-  ↓ [Layer 2: FULLY VERIFIED]
+  ↓ [Layer 1: FULLY VERIFIED — EDSL ≡ CompilationModel]
+CompilationModel (`CompilationModel`)
+  ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
-  ↓ [Layer 3: FULLY VERIFIED, 1 axiom]
+  ↓ [Layer 3: FULLY VERIFIED, 1 axiom — IR → Yul]
 Yul
-  ↓ [trusted external compiler]
+  ↓ [trusted external compiler — solc]
 EVM Bytecode
 ```
 
+## Layer-1 Hybrid Transition Strategy
+
+Layer 1 (EDSL ≡ CompilationModel) currently operates as a **hybrid**:
+
+- **Generated subset**: For contracts within the supported EDSL subset, the
+  `EDSL -> CompilationModel` correspondence is established by per-contract proofs
+  in `Compiler/Proofs/SpecCorrectness/` and `Verity/Proofs/`.
+- **Manual escape hatch**: Advanced or out-of-subset constructs (e.g., custom Yul
+  injection via linked libraries, ECM patterns, complex ABI encoding) are expressed
+  directly in the `CompilationModel` language. These are trusted at the
+  CompilationModel boundary — the compiler verifies IR/Yul generation from them,
+  but the correspondence to EDSL intent is the developer's responsibility.
+
+This hybrid approach is intentional during transition. The long-term direction is to
+expand the generated subset (and eventually automate `EDSL -> CompilationModel`
+generation), reducing the manual escape hatch surface over time.
+
 ## Current Verified Facts
 
-- Layer 1 (EDSL -> ContractSpec) is proven in Lean.
-- Layer 2 (ContractSpec -> IR) is proven in Lean.
-- Layer 3 (IR -> Yul) is proven in Lean except for one documented axiom.
-- Unified AST equivalence proofs exist for migrated example contracts, but AST code generation is not yet inside the same end-to-end proof chain as ContractSpec compilation.
+- Layer 1 (EDSL ≡ CompilationModel, currently `CompilationModel`) is proven in Lean.
+- Layer 2 (CompilationModel → IR) is proven in Lean.
+- Layer 3 (IR → Yul) is proven in Lean except for one documented axiom.
 
 Metrics tracked by repository tooling:
 
@@ -69,10 +84,11 @@ Metrics tracked by repository tooling:
 - Trust boundary: this relies on the external keccak implementation (`ffi.KEC` via EVMYul FFI) and standard collision-resistance assumptions for keccak256 (the same trust class as Solidity/EVM behavior).
 - Mitigation: abstraction-boundary CI (`scripts/check_mapping_slot_boundary.py`), selector/hash cross-check CI, and explicit documentation in `AXIOMS.md`.
 
-### 5. EVM Semantics and Gas
+### 5. EVM/Yul Semantics and Gas
 
 - Role: runtime execution model.
 - Status: trusted EVM behavior; gas is not formally modeled by current proofs.
+- EVMYulLean integration: pure arithmetic/comparison/bitwise builtins (add, sub, mul, div, mod, lt, gt, eq, iszero, and, or, xor, not, shl, shr) are bridged to EVMYulLean's formally-defined `UInt256` operations. The adapter covers all 11 Yul statement types. State-dependent builtins (sload, caller, calldataload) and Verity-specific helpers (mappingSlot) remain on the Verity evaluation path.
 - Implication: semantic correctness does not imply gas-safety or gas-bounded liveness.
 
 ### 6. External Call Modules (ECMs)
@@ -101,19 +117,21 @@ Metrics tracked by repository tooling:
 
 ### Wrapping Arithmetic
 
-`Uint256` arithmetic in the formal model is wrapping modulo `2^256`. If Solidity parity requires checked overflow behavior, contracts must encode explicit checks.
+`Uint256` arithmetic in the formal model is **wrapping modulo 2^256**, matching the EVM Yellow Paper. This applies to all operations: add, sub, mul, div, mod, bitwise (and, or, xor, not), and shifts (shl, shr). Division and modulo by zero return 0.
+
+This is a **proven property**, not an axiom — see `Compiler/Proofs/ArithmeticProfile.lean` for formal proofs (`add_wraps`, `sub_wraps`, `mul_wraps`, `div_by_zero`, `mod_by_zero`). The EVMYulLean bridge confirms agreement between Verity's `Nat`-modular arithmetic and EVMYulLean's `Fin`-based `UInt256` operations.
+
+For contracts that require overflow protection, the EDSL provides checked operations (`safeAdd`, `safeSub`, `safeMul`) that return `Option` and can be combined with `requireSomeUint` to revert on overflow. These are EDSL-level constructs — the compiler does not insert automatic overflow checks.
+
+All backend profiles use identical wrapping arithmetic. See [`docs/ARITHMETIC_PROFILE.md`](docs/ARITHMETIC_PROFILE.md) for the full specification.
 
 ### Revert-State Modeling
 
 High-level semantics can expose intermediate state in a reverted computation model. EVM runtime reverts discard state. Contracts should preserve checks-before-effects discipline.
 
-### AST Path Assurance Level
-
-AST compilation (`--ast`) is tested and drift-checked, but not yet proven with the same end-to-end semantic preservation proofs as the `ContractSpec` path.
-
 ## Security Audit Checklist
 
-1. Confirm whether deployment uses ContractSpec path, AST path, or both.
+1. Confirm deployment uses the `CompilationModel` (`CompilationModel`) path.
 2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.
@@ -132,6 +150,7 @@ If this file is stale, audit conclusions may be invalid.
 
 - [AUDIT.md](AUDIT.md)
 - [AXIOMS.md](AXIOMS.md)
+- [docs/ARITHMETIC_PROFILE.md](docs/ARITHMETIC_PROFILE.md)
 - [docs/EXTERNAL_CALL_MODULES.md](docs/EXTERNAL_CALL_MODULES.md)
 - [docs/SOLIDITY_PARITY_PROFILE.md](docs/SOLIDITY_PARITY_PROFILE.md)
 - [docs/PARITY_PACKS.md](docs/PARITY_PACKS.md)
@@ -150,5 +169,5 @@ The following items are planned but not yet active:
 
 Until these are implemented and CI-gated, claims of exact `solc` Yul identity remain out of scope.
 
-**Last Updated**: 2026-02-26
+**Last Updated**: 2026-02-27
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

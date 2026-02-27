@@ -12,7 +12,6 @@ A small set of contracts, each introducing a new pattern. They build on each oth
 - **Spec**: `Verity/Specs/<Name>/Spec.lean`
 - **Invariants**: `Verity/Specs/<Name>/Invariants.lean`
 - **Implementation**: `Verity/Examples/<Name>.lean`
-- **Unified AST + bridge proofs**: `Verity/AST/<Name>.lean` (proves `denote ast = edsl_fn`)
 - **Basic proofs**: `Verity/Proofs/<Name>/Basic.lean`
 - **Advanced proofs**: `Verity/Proofs/<Name>/Correctness.lean`
 - **Proof re-export**: `Verity/Specs/<Name>/Proofs.lean` (imports from `Compiler/Proofs/SpecCorrectness/`)
@@ -21,7 +20,6 @@ A small set of contracts, each introducing a new pattern. They build on each oth
 Example (SimpleStorage):
 - Spec: `Verity/Specs/SimpleStorage/Spec.lean`
 - Implementation: `Verity/Examples/SimpleStorage.lean`
-- AST bridge: `Verity/AST/SimpleStorage.lean`
 - Basic proofs: `Verity/Proofs/SimpleStorage/Basic.lean`
 - Correctness proofs: `Verity/Proofs/SimpleStorage/Correctness.lean`
 
@@ -215,7 +213,7 @@ def storeHashTwo (a b : Uint256) : Contract Unit := do
   setStorage lastHash h
 ```
 
-The EDSL uses a placeholder function (`add`) for the hash. At compile time, the [Linker](/guides/linking-libraries) replaces the compiled output with a call to the real Poseidon library via `Expr.externalCall` in the ContractSpec layer.
+The EDSL uses a placeholder function (`add`) for the hash. At compile time, the [Linker](/guides/linking-libraries) replaces the compiled output with a call to the real Poseidon library via `Expr.externalCall` in the CompilationModel layer.
 
 Source: [`Verity/Examples/CryptoHash.lean`](https://github.com/Th0rgal/verity/blob/main/Verity/Examples/CryptoHash.lean)
 

@@ -1155,6 +1155,25 @@ private def finalizeAllocation27020HelperBody : List YulStmt :=
 private def finalizeAllocation27020HelperStmt : YulStmt :=
   .funcDef "finalize_allocation_27020" ["memPtr"] [] finalizeAllocation27020HelperBody
 
+private def finalizeAllocation27033HelperBody : List YulStmt :=
+  [ .let_ "newFreePtr" (.call "add" [.ident "memPtr", .hex 0xa0])
+  , .if_ (.call "or"
+      [ .call "gt" [.ident "newFreePtr", .hex 0xffffffffffffffff]
+      , .call "lt" [.ident "newFreePtr", .ident "memPtr"]
+      ])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x41])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  , .expr (.call "mstore" [.lit 64, .ident "newFreePtr"])
+  ]
+
+private def finalizeAllocation27033HelperStmt : YulStmt :=
+  .funcDef "finalize_allocation_27033" ["memPtr"] [] finalizeAllocation27033HelperBody
+
 private def finalizeAllocationHelperBody : List YulStmt :=
   [ .let_ "newFreePtr"
       (.call "add"
@@ -1348,20 +1367,34 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
         finalizeAllocation27020HelperStmt
     else
       withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation
-  let needsToSharesDown :=
+  let needsFinalizeAllocation27033 :=
     !hasTopLevelFunctionNamed
         withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020
-        "fun_toSharesDown" &&
+        "finalize_allocation_27033" &&
       (callNamesInStmts
           withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020).any
+        (fun called => called = "finalize_allocation_27033")
+  let withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020FinalizeAllocation27033 :=
+    if needsFinalizeAllocation27033 then
+      insertTopLevelFuncDefAfterPrefix
+        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020
+        finalizeAllocation27033HelperStmt
+    else
+      withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020
+  let needsToSharesDown :=
+    !hasTopLevelFunctionNamed
+        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020FinalizeAllocation27033
+        "fun_toSharesDown" &&
+      (callNamesInStmts
+          withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020FinalizeAllocation27033).any
         (fun called => called = "fun_toSharesDown")
   let withAll :=
     if needsToSharesDown then
       insertTopLevelFuncDefAfterPrefix
-        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020
+        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020FinalizeAllocation27033
         toSharesDownHelperStmt
     else
-      withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020
+      withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation27020FinalizeAllocation27033
   let needsUpdateStorageUint128 :=
     !hasTopLevelFunctionNamed withAll "update_storage_value_offsett_uint128_to_uint128" &&
       (callNamesInStmts withAll).any (fun called => called = "update_storage_value_offsett_uint128_to_uint128")
@@ -1386,6 +1419,7 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       (if needsFinalizeAllocation35876 then 1 else 0) +
       (if needsFinalizeAllocation then 1 else 0) +
       (if needsFinalizeAllocation27020 then 1 else 0) +
+      (if needsFinalizeAllocation27033 then 1 else 0) +
       (if needsToSharesDown then 1 else 0) + (if needsUpdateStorageUint128 then 1 else 0) +
       (if needsUpdateStorageBool then 1 else 0)
   if inserted = 0 then
@@ -1823,7 +1857,7 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
           ]) :: rest =>
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
         ( [ .let_ "__compat_alloc_ptr" (.call "mload" [.lit 64])
-          , .expr (.call "finalize_allocation_27020" [.ident "__compat_alloc_ptr"])
+          , .expr (.call "finalize_allocation_27033" [.ident "__compat_alloc_ptr"])
           , .expr (.call "finalize_allocation" [.ident "__compat_alloc_ptr", .lit 32])
           , .let_ "__ecwr_success"
               (.call "call"
@@ -3772,7 +3806,7 @@ example :
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite normalizes IRM call result buffering and borrow-rate load,
-    then materializes `finalize_allocation_27020` and `finalize_allocation` when referenced+absent. -/
+    then materializes `finalize_allocation_27033` and `finalize_allocation` when referenced+absent. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -3807,9 +3841,9 @@ example :
       input
     let called := callNamesInStmts report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27020" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" &&
-      called.any (fun name => name = "finalize_allocation_27020") = true &&
+      called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true := by
   native_decide
 
@@ -3846,9 +3880,9 @@ example :
       input
     let called := callNamesInStmts report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27020" = false &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27033" = false &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" = false &&
-      called.any (fun name => name = "finalize_allocation_27020") = false &&
+      called.any (fun name => name = "finalize_allocation_27033") = false &&
       called.any (fun name => name = "finalize_allocation") = false := by
   native_decide
 
@@ -3893,9 +3927,9 @@ example :
       | other => other
     let called := callNamesInStmts top
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
-      hasTopLevelFunctionNamed top "finalize_allocation_27020" &&
+      hasTopLevelFunctionNamed top "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed top "finalize_allocation" &&
-      called.any (fun name => name = "finalize_allocation_27020") = true &&
+      called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true := by
   native_decide
 
@@ -3938,13 +3972,13 @@ example :
       (topNames.filter (fun name => name = "finalize_allocation")).length = 1 := by
   native_decide
 
-/-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `finalize_allocation_27020` helper. -/
+/-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `finalize_allocation_27033` helper. -/
 example :
     let input : YulObject :=
       { name := "Main"
         deployCode := []
         runtimeCode :=
-          [ finalizeAllocation27020HelperStmt
+          [ finalizeAllocation27033HelperStmt
           , .funcDef "fun_accrueInterest" [] []
               [ .let_ "__ecwr_success"
                   (.call "call"
@@ -3974,7 +4008,7 @@ example :
       input
     let topNames := topLevelFunctionNames report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
-      (topNames.filter (fun name => name = "finalize_allocation_27020")).length = 1 := by
+      (topNames.filter (fun name => name = "finalize_allocation_27033")).length = 1 := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite normalizes timestamp guard to checked-sub + early leave,

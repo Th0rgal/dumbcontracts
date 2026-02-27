@@ -1787,9 +1787,10 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                 , .lit 0
                 , .lit 0
                 , .lit 356
-                , .lit 0
+                , .ident "__compat_alloc_ptr"
                 , .lit 32
                 ])
+          , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]])
           ] ++ rest'
         , rewrittenTail + 1)
     | stmt :: rest =>

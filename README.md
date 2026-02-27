@@ -236,7 +236,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 - **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`CompilationModel`/`CompilationModel`).
 - **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
-- **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today; automatic compiler-lowered `--input edsl` is not wired yet. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
+- **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today, and compiler `--input edsl` currently covers a curated supported subset via pinned lowering targets. Fully automatic verified EDSL reification/lowering remains in progress. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
 - **Lowering-boundary note**: Even before automatic EDSL reification is wired, the existing `--input model` path runs through `Compiler.Lowering.lowerModelPath` to keep one explicit lowering boundary.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 

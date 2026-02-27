@@ -1,4 +1,5 @@
 import Compiler.CompileDriver
+import Compiler.Lowering.FromEDSL
 
 namespace Compiler.CompileDriverTest
 
@@ -37,6 +38,19 @@ private def expectFileEquals (label : String) (lhs rhs : String) : IO Unit := do
   if lhsText != rhsText then
     throw (IO.userError s!"✗ {label}: files differ\nlhs: {lhs}\nrhs: {rhs}")
   IO.println s!"✓ {label}"
+
+private def expectSupportedSubsetParity
+    (modelOutDir edslOutDir modelAbiDir edslAbiDir : String) : IO Unit := do
+  for contract in Compiler.Lowering.supportedEDSLContracts do
+    let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
+    expectFileEquals
+      s!"supported subset Yul parity: {spec.name}"
+      s!"{modelOutDir}/{spec.name}.yul"
+      s!"{edslOutDir}/{spec.name}.yul"
+    expectFileEquals
+      s!"supported subset ABI parity: {spec.name}"
+      s!"{modelAbiDir}/{spec.name}.abi.json"
+      s!"{edslAbiDir}/{spec.name}.abi.json"
 
 #eval! do
   let outDir := "/tmp/verity-compile-driver-test-out"
@@ -85,5 +99,13 @@ private def expectFileEquals (label : String) (lhs rhs : String) : IO Unit := do
     "edsl selected contract ABI matches model-path artifact"
     s!"{modelAbiDir}/SimpleStorage.abi.json"
     s!"{edslAbiDir}/SimpleStorage.abi.json"
+
+  compileAllFromEDSLWithOptions edslOutDir false [] [] {} none (some edslAbiDir)
+  expectSupportedSubsetParity modelOutDir edslOutDir modelAbiDir edslAbiDir
+
+  expectFailureContains
+    "duplicate selected EDSL contracts fail closed"
+    (compileAllFromEDSLWithOptions edslOutDir false [] ["counter", "counter"] {} none (some edslAbiDir))
+    "Duplicate --edsl-contract value: counter"
 
 end Compiler.CompileDriverTest

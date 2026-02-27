@@ -39,6 +39,19 @@ private def resolveSpecsForModelInput (libraryPaths : List String) : List Compil
 
 private def parseRequestedEDSLContracts (rawContracts : List String) :
     Except String (List Compiler.Lowering.SupportedEDSLContract) := do
+  let rec findDuplicate? (seen : Std.HashSet String) (remaining : List String) : Option String :=
+    match remaining with
+    | [] => none
+    | raw :: rest =>
+        if seen.contains raw then
+          some raw
+        else
+          findDuplicate? (seen.insert raw) rest
+  match findDuplicate? {} rawContracts with
+  | some dup =>
+      .error s!"Duplicate --edsl-contract value: {dup}"
+  | none =>
+      pure ()
   if rawContracts.isEmpty then
     .ok Compiler.Lowering.supportedEDSLContracts
   else

@@ -55,6 +55,10 @@ private def fileExists (path : String) : IO Bool := do
     "unknown --edsl-contract value"
     ["--input", "edsl", "--edsl-contract", "does-not-exist"]
     "Unsupported --edsl-contract: does-not-exist"
+  expectErrorContains
+    "duplicate --edsl-contract value"
+    ["--input", "edsl", "--edsl-contract", "counter", "--edsl-contract", "counter"]
+    "Duplicate --edsl-contract value: counter"
   let edslOutDir := "/tmp/verity-main-test-edsl-out"
   IO.FS.createDirAll edslOutDir
   main ["--input", "edsl", "--output", edslOutDir]

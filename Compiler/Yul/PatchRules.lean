@@ -2048,9 +2048,12 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
       (.let_ "borrowRate" (.call "mload" [.lit 0])) :: rest =>
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
         ( [ .if_ (.call "iszero" [.ident "__ecwr_success"])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+              , .expr
+                  (.call "revert"
+                    [ .call "add" [.ident "__compat_returndata", .lit 32]
+                    , .call "mload" [.ident "__compat_returndata"]
+                    ])
               ]
           , .let_ "borrowRate" (.lit 0)
           , .if_ (.ident "__ecwr_success")
@@ -4207,9 +4210,12 @@ example :
       match body with
       | [ .let_ "__ecwr_success" (.ident "callSucceeded")
         , .if_ (.call "iszero" [.ident "__ecwr_success"])
-            [ .let_ "pos" (.call "mload" [.lit 64])
-            , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-            , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+            [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+            , .expr
+                (.call "revert"
+                  [ .call "add" [.ident "__compat_returndata", .lit 32]
+                  , .call "mload" [.ident "__compat_returndata"]
+                  ])
             ]
         , .let_ "borrowRate" (.lit 0)
         , .if_ (.ident "__ecwr_success")
@@ -4241,7 +4247,7 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed top "finalize_allocation" &&
       called.any (fun name => name = "finalize_allocation") = true &&
-      called.any (fun name => name = "extract_returndata") = false &&
+      called.any (fun name => name = "extract_returndata") = true &&
       rewritten := by
   native_decide
 

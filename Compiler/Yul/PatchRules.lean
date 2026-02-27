@@ -2450,7 +2450,6 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                   , .ident compatAllocPtrLet
                   , .lit 32
                   ])
-            , .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrLet]])
             , .if_ (.call "iszero" [.ident ecwrSuccessLet])
                 [ .let_ "__compat_returndata" (.call "extract_returndata" [])
                 , .expr
@@ -2461,6 +2460,7 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                 ]
             , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
                 [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+            , .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrLet]])
             ] ++ rest'
           , rewrittenTail + 1)
         else
@@ -2526,7 +2526,6 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                   , .ident compatAllocPtrCall
                   , .lit 32
                   ])
-            , .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrCall]])
             , .if_ (.call "iszero" [.ident ecwrSuccessLet])
                 [ .let_ "__compat_returndata" (.call "extract_returndata" [])
                 , .expr
@@ -2537,6 +2536,7 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                 ]
             , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
                 [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+            , .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrCall]])
             ] ++ rest'
           , rewrittenTail + 1)
         else
@@ -4851,7 +4851,6 @@ example :
               , .ident "__compat_alloc_ptr_9"
               , .lit 32
               ])
-        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_9"]])
         , .if_ (.call "iszero" [.ident "__ecwr_success_9"])
             [ .let_ "__compat_returndata" (.call "extract_returndata" [])
             , .expr
@@ -4862,6 +4861,7 @@ example :
             ]
         , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
             [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_9"]])
         ] => true
       | _ => false
     let called := callNamesInStmts top
@@ -5086,7 +5086,6 @@ example :
               , .ident "__compat_alloc_ptr_22"
               , .lit 32
               ])
-        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_22"]])
         , .if_ (.call "iszero" [.ident "__ecwr_success_22"])
             [ .let_ "__compat_returndata" (.call "extract_returndata" [])
             , .expr
@@ -5097,6 +5096,7 @@ example :
             ]
         , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
             [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_22"]])
         ] => true
       | _ => false
     let called := callNamesInStmts top

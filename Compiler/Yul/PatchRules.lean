@@ -2096,6 +2096,96 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
             .let_ "borrowRate" (.call "mload" [.lit 0]) ::
             rest'
           , rewrittenTail)
+    | .let_ compatAllocPtrLet (.call "mload" [.lit 64]) ::
+      (.expr (.call "finalize_allocation_27020" [.ident compatAllocPtrFinalize20])) ::
+      (.expr (.call "finalize_allocation_27033" [.ident compatAllocPtrFinalize33])) ::
+      (.expr (.call "finalize_allocation" [.ident compatAllocPtrFinalize, .lit 32])) ::
+      (.let_ ecwrSuccessLet
+        (.call "call"
+          [ .call "gas" []
+          , .ident "irm"
+          , .lit 0
+          , .lit 0
+          , .lit 356
+          , .ident compatAllocPtrCall
+          , .lit 32
+          ])) ::
+      (.expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]])) ::
+      (.if_ (.call "iszero" [.ident ecwrSuccessIf])
+        [ .let_ "pos" (.call "mload" [.lit 64])
+        , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+        , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+        ]) ::
+      (.if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+        [ .expr (.call "revert" [.lit 0, .lit 0]) ]) :: rest =>
+        if hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrLet &&
+            hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrFinalize20 &&
+            hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrFinalize33 &&
+            hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrFinalize &&
+            hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrCall &&
+            hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrMstore &&
+            hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccessLet &&
+            hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccessIf &&
+            decide (compatAllocPtrLet = compatAllocPtrFinalize20) &&
+            decide (compatAllocPtrLet = compatAllocPtrFinalize33) &&
+            decide (compatAllocPtrLet = compatAllocPtrFinalize) &&
+            decide (compatAllocPtrLet = compatAllocPtrCall) &&
+            decide (compatAllocPtrLet = compatAllocPtrMstore) &&
+            decide (ecwrSuccessLet = ecwrSuccessIf) then
+          let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+          ( [ .let_ compatAllocPtrLet (.call "mload" [.lit 64])
+            , .expr (.call "finalize_allocation_27020" [.ident compatAllocPtrLet])
+            , .expr (.call "finalize_allocation_27033" [.ident compatAllocPtrLet])
+            , .expr (.call "finalize_allocation" [.ident compatAllocPtrLet, .lit 32])
+            , .let_ ecwrSuccessLet
+                (.call "call"
+                  [ .call "gas" []
+                  , .ident "irm"
+                  , .lit 0
+                  , .lit 0
+                  , .lit 356
+                  , .ident compatAllocPtrLet
+                  , .lit 32
+                  ])
+            , .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrLet]])
+            , .if_ (.call "iszero" [.ident ecwrSuccessLet])
+                [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+                , .expr
+                    (.call "revert"
+                      [ .call "add" [.ident "__compat_returndata", .lit 32]
+                      , .call "mload" [.ident "__compat_returndata"]
+                      ])
+                ]
+            , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+            ] ++ rest'
+          , rewrittenTail + 1)
+        else
+          let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+          ( .let_ compatAllocPtrLet (.call "mload" [.lit 64]) ::
+            .expr (.call "finalize_allocation_27020" [.ident compatAllocPtrFinalize20]) ::
+            .expr (.call "finalize_allocation_27033" [.ident compatAllocPtrFinalize33]) ::
+            .expr (.call "finalize_allocation" [.ident compatAllocPtrFinalize, .lit 32]) ::
+            .let_ ecwrSuccessLet
+              (.call "call"
+                [ .call "gas" []
+                , .ident "irm"
+                , .lit 0
+                , .lit 0
+                , .lit 356
+                , .ident compatAllocPtrCall
+                , .lit 32
+                ]) ::
+            .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]]) ::
+            .if_ (.call "iszero" [.ident ecwrSuccessIf])
+              [ .let_ "pos" (.call "mload" [.lit 64])
+              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              ] ::
+            .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+              [ .expr (.call "revert" [.lit 0, .lit 0]) ] ::
+            rest'
+          , rewrittenTail)
     | .let_ ecwrSuccessLet
         (.call "call"
           [ .call "gas" []
@@ -4536,6 +4626,172 @@ example :
               ])
         , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]])
         , .if_ (.call "iszero" [.ident "__other_success"])
+            [ .let_ "pos" (.call "mload" [.lit 64])
+            , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+            , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+            ]
+        , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+            [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+        ] => true
+      | _ => false
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      unchanged := by
+  native_decide
+
+/-- Smoke test: full IRM prelude shape (`mload(64)` + finalize_* + call + inline revert forwarding)
+    normalizes to helper-backed `extract_returndata()` forwarding. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__compat_alloc_ptr_22" (.call "mload" [.lit 64])
+              , .expr (.call "finalize_allocation_27020" [.ident "__compat_alloc_ptr_22"])
+              , .expr (.call "finalize_allocation_27033" [.ident "__compat_alloc_ptr_22"])
+              , .expr (.call "finalize_allocation" [.ident "__compat_alloc_ptr_22", .lit 32])
+              , .let_ "__ecwr_success_22"
+                  (.call "call"
+                    [ .call "gas" []
+                    , .ident "irm"
+                    , .lit 0
+                    , .lit 0
+                    , .lit 356
+                    , .ident "__compat_alloc_ptr_22"
+                    , .lit 32
+                    ])
+              , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_22"]])
+              , .if_ (.call "iszero" [.ident "__ecwr_success_22"])
+                  [ .let_ "pos" (.call "mload" [.lit 64])
+                  , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+                  , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                  ]
+              , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let body :=
+      match helperBodyForName? (topLevelZeroArityFunctionBodies top) "fun_accrueInterest" with
+      | some stmts => stmts
+      | none => []
+    let rewritten :=
+      match body with
+      | [ .let_ "__compat_alloc_ptr_22" (.call "mload" [.lit 64])
+        , .expr (.call "finalize_allocation_27020" [.ident "__compat_alloc_ptr_22"])
+        , .expr (.call "finalize_allocation_27033" [.ident "__compat_alloc_ptr_22"])
+        , .expr (.call "finalize_allocation" [.ident "__compat_alloc_ptr_22", .lit 32])
+        , .let_ "__ecwr_success_22"
+            (.call "call"
+              [ .call "gas" []
+              , .ident "irm"
+              , .lit 0
+              , .lit 0
+              , .lit 356
+              , .ident "__compat_alloc_ptr_22"
+              , .lit 32
+              ])
+        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_22"]])
+        , .if_ (.call "iszero" [.ident "__ecwr_success_22"])
+            [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+            , .expr
+                (.call "revert"
+                  [ .call "add" [.ident "__compat_returndata", .lit 32]
+                  , .call "mload" [.ident "__compat_returndata"]
+                  ])
+            ]
+        , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+            [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+        ] => true
+      | _ => false
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      called.any (fun name => name = "extract_returndata") = true &&
+      rewritten := by
+  native_decide
+
+/-- Smoke test: full IRM prelude normalization stays out-of-scope when finalize/call alloc pointers differ. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__compat_alloc_ptr_22" (.call "mload" [.lit 64])
+              , .expr (.call "finalize_allocation_27020" [.ident "__compat_alloc_ptr_22"])
+              , .expr (.call "finalize_allocation_27033" [.ident "__compat_alloc_ptr_22"])
+              , .expr (.call "finalize_allocation" [.ident "__compat_alloc_ptr_22", .lit 32])
+              , .let_ "__ecwr_success_22"
+                  (.call "call"
+                    [ .call "gas" []
+                    , .ident "irm"
+                    , .lit 0
+                    , .lit 0
+                    , .lit 356
+                    , .ident "__compat_alloc_ptr_22"
+                    , .lit 32
+                    ])
+              , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_mismatch"]])
+              , .if_ (.call "iszero" [.ident "__ecwr_success_22"])
+                  [ .let_ "pos" (.call "mload" [.lit 64])
+                  , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+                  , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                  ]
+              , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let body :=
+      match helperBodyForName? (topLevelZeroArityFunctionBodies top) "fun_accrueInterest" with
+      | some stmts => stmts
+      | none => []
+    let unchanged :=
+      match body with
+      | [ .let_ "__compat_alloc_ptr_22" (.call "mload" [.lit 64])
+        , .expr (.call "finalize_allocation_27020" [.ident "__compat_alloc_ptr_22"])
+        , .expr (.call "finalize_allocation_27033" [.ident "__compat_alloc_ptr_22"])
+        , .expr (.call "finalize_allocation" [.ident "__compat_alloc_ptr_22", .lit 32])
+        , .let_ "__ecwr_success_22"
+            (.call "call"
+              [ .call "gas" []
+              , .ident "irm"
+              , .lit 0
+              , .lit 0
+              , .lit 356
+              , .ident "__compat_alloc_ptr_22"
+              , .lit 32
+              ])
+        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_mismatch"]])
+        , .if_ (.call "iszero" [.ident "__ecwr_success_22"])
             [ .let_ "pos" (.call "mload" [.lit 64])
             , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
             , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])

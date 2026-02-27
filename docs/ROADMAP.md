@@ -121,15 +121,15 @@ A developer can now write a `ContractSpec` for contracts with conditional logic,
 
 The EDSL path remains more expressive (supports arbitrary Lean, `List.foldl`, pattern matching). Contracts like UnlinkPool that use advanced Lean features still need the EDSL path. The ContractSpec path now covers the subset needed for standard DeFi contracts (ERC20, ERC721, governance, simple AMMs).
 
-### Known interpreter limitations
+### Interpreter feature-support contract
 
-The SpecInterpreter's basic `execStmts` path does not yet fully model all new constructs:
-- **forEach** reverts in `execStmts` — use `execStmtsFuel` for contracts with loops
-- **Stmt.internalCall** reverts in `execStmts` — use `execStmtsFuel` with `functions` parameter for contracts with internal calls
-- **Expr.internalCall** always returns 0 — internal function lookup as expression not yet implemented (requires threading `functions` through the mutual recursion block)
-- **arrayParams** is not populated from `Transaction` — array element access returns 0
+A comprehensive feature matrix documents which CompilationModel constructs each interpreter supports, their proof status, and known limitations:
 
-These limitations affect only the basic interpreter path (used for proofs). The fuel-based `execStmtsFuel` supports forEach and Stmt.internalCall. The compiler correctly handles all constructs.
+- **Human-readable**: [`docs/INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md)
+- **Machine-readable**: `artifacts/interpreter_feature_matrix.json`
+- **Smoke tests**: `Compiler/Proofs/InterpreterFeatureTest.lean` (22 `native_decide` proofs)
+
+Key: the default path is `execStmtsFuel` (fuel-based), which supports the full construct set including loops and internal calls. The basic `execStmts` path is used only for proofs that do not need these features.
 
 ---
 

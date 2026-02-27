@@ -68,6 +68,7 @@ theorem increment_adds_one (state : ContractState) :
 - **SpecInterpreter**: Executable semantics for CompilationModel language (`ContractSpec` today)
 - **Automation Library**: Proven helper lemmas (safe arithmetic, storage operations)
 - **Proof Patterns**: Documented patterns for common verification tasks
+- **Feature Matrix**: Comprehensive interpreter support contract — see [`INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) and `artifacts/interpreter_feature_matrix.json`
 
 ## Layer 2: CompilationModel (`ContractSpec`) → IR ✅ **COMPLETE**
 
@@ -349,6 +350,8 @@ See `scripts/README.md` for:
 - **Main README**: `README.md`
 - **Compiler Proofs**: `Compiler/Proofs/README.md`
 - **Property Scripts**: `scripts/README.md`
+- **Interpreter Feature Matrix**: [`docs/INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) (+ `artifacts/interpreter_feature_matrix.json`)
+- **Arithmetic Profile**: [`docs/ARITHMETIC_PROFILE.md`](ARITHMETIC_PROFILE.md)
 - **Research Documentation**: `docs-site/content/research.mdx`
 - **GitHub Repository**: https://github.com/Th0rgal/verity
 

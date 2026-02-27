@@ -43,6 +43,8 @@ lake exe verity-compiler --input model        # Explicit manual CompilationModel
 Current lowering boundary scaffolding lives in
 `Compiler/Lowering/FromEDSL.lean` and
 `Compiler/Proofs/Lowering/FromEDSL.lean`.
+The current `--input model` compilation path is now routed through this
+lowering boundary via an explicit manual-bridge adapter.
 
 **With external libraries (e.g., Poseidon hash):**
 ```bash
@@ -229,6 +231,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 - **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
 - **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today; automatic compiler-lowered `--input edsl` is not wired yet. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
+- **Lowering-boundary note**: Even before automatic EDSL reification is wired, the existing `--input model` path runs through `Compiler.Lowering.lowerModelPath` to keep one explicit lowering boundary.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
 **Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.

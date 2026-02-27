@@ -33,4 +33,29 @@ is definitionally equal to the underlying `CompilationModel`. -/
       interpretSpec model initialStorage tx := by
   rfl
 
+/-- Manual bridge inputs lower to their wrapped `CompilationModel`. -/
+@[simp] theorem lowerFromEDSLSubset_manualBridge_eq
+    (core : ContractCore) :
+    lowerFromEDSLSubset (.manualBridge core) = .ok (lowerContractCore core) := by
+  rfl
+
+/-- The current manual compile path is preserved through the lowering boundary. -/
+@[simp] theorem lowerModelPath_eq_ok
+    (model : Compiler.CompilationModel.CompilationModel) :
+    lowerModelPath model = .ok model := by
+  rfl
+
+/-- Semantic preservation for the current lowered manual path. -/
+@[simp] theorem lowerModelPath_preserves_interpretSpec
+    (model : Compiler.CompilationModel.CompilationModel)
+    (initialStorage : SpecStorage)
+    (tx : Compiler.DiffTestTypes.Transaction) :
+    interpretSpec
+      (match lowerModelPath model with
+      | .ok lowered => lowered
+      | .error _ => model)
+      initialStorage tx =
+    interpretSpec model initialStorage tx := by
+  rfl
+
 end Compiler.Proofs.Lowering

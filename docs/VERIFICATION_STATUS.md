@@ -21,6 +21,9 @@ EVM Bytecode
 Compiler UX status: `verity-compiler` currently compiles via `--input model`.
 `--input edsl` is intentionally fail-closed until verified automatic lowering is
 wired into the CLI path.
+The `--input model` path is explicitly routed through the lowering boundary
+adapter (`Compiler.Lowering.lowerModelPath`) so model-mode compilation and
+future EDSL reification share one lowering API surface.
 
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 

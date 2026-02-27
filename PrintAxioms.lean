@@ -617,6 +617,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lowerContractCore_preserves_interpretSpec
 #print axioms Compiler.Proofs.Lowering.lowerLiftModel_eq
 #print axioms Compiler.Proofs.Lowering.lowerLiftModel_preserves_interpretSpec
+#print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_manualBridge_eq
+#print axioms Compiler.Proofs.Lowering.lowerModelPath_eq_ok
+#print axioms Compiler.Proofs.Lowering.lowerModelPath_preserves_interpretSpec
 
 -- Compiler/Proofs/MappingSlot.lean
 #print axioms Compiler.Proofs.abstractMappingSlot_eq_solidity
@@ -748,4 +751,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 623 theorems/lemmas (594 public, 29 private)
+-- Total: 626 theorems/lemmas (597 public, 29 private)

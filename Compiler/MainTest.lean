@@ -1,5 +1,7 @@
 import Compiler.Main
 import Compiler.Linker
+import Compiler.Lowering.FromEDSL
+import Compiler.Specs
 
 namespace Compiler.MainTest
 
@@ -76,6 +78,16 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
     rewriteBundleId := "missing-rewrite-bundle" }
   expectTrue "parity pack proof composition rejects unknown rewrite bundle IDs"
     (!missingBundlePack.proofCompositionValid)
+  expectTrue "manual model path lowers successfully through EDSL boundary"
+    (match Compiler.Lowering.lowerModelPath Compiler.Specs.simpleStorageSpec with
+    | .ok lowered => lowered.name == Compiler.Specs.simpleStorageSpec.name
+    | .error _ => false)
+  let unsupportedMsg :=
+    match Compiler.Lowering.lowerFromEDSLSubset (.unsupported "(test unsupported feature)") with
+    | .ok _ => ""
+    | .error err => err.message
+  expectTrue "explicit unsupported EDSL subset input returns deterministic diagnostic"
+    (contains unsupportedMsg "test unsupported feature")
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

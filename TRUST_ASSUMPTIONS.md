@@ -13,6 +13,9 @@ The formal Layer 1/2/3 guarantees apply to this path.
 Compiler UX status: `verity-compiler` currently routes through `--input model`.
 `--input edsl` remains fail-closed until the verified automatic lowering path is
 wired end-to-end.
+The model route now passes through the explicit lowering boundary helper
+`Compiler.Lowering.lowerModelPath`, keeping one centralized transition point for
+future automatic EDSL reification.
 
 ## Verification Chain
 

@@ -11,6 +11,13 @@ structure ContractCore where
   model : CompilationModel
   deriving Repr
 
+/-- Transitional representation of compilable EDSL input.
+`manualBridge` keeps the current path explicit while the real reifier lands. -/
+inductive EDSLSubsetInput where
+  | manualBridge (core : ContractCore)
+  | unsupported (details : String)
+  deriving Repr
+
 /-- Deterministic diagnostics for unsupported EDSL-input lowering. -/
 inductive LoweringError where
   | unsupported (details : String)
@@ -32,10 +39,17 @@ For the current transition stage, this is structurally the wrapped model. -/
 def lowerContractCore (core : ContractCore) : CompilationModel :=
   core.model
 
-/-- Placeholder entry point for EDSL-subset reification/lowering.
-It is intentionally fail-closed until verified lowering is wired. -/
-def lowerFromEDSLSubset : Except LoweringError CompilationModel :=
-  .error (.unsupported "(pending verified EDSL subset reification/lowering)")
+/-- Lower a compilable EDSL-subset input to `CompilationModel`.
+This currently supports the explicit manual-bridge case and fails closed
+for unimplemented automatic reification cases. -/
+def lowerFromEDSLSubset (input : EDSLSubsetInput) : Except LoweringError CompilationModel :=
+  match input with
+  | .manualBridge core => .ok (lowerContractCore core)
+  | .unsupported details => .error (.unsupported details)
+
+/-- Current manual compilation path routed through the lowering boundary. -/
+def lowerModelPath (model : CompilationModel) : Except LoweringError CompilationModel :=
+  lowerFromEDSLSubset (.manualBridge (liftModel model))
 
 def edslInputReservedMessage : String :=
   LoweringError.message (.unsupported "(pending verified EDSL subset reification/lowering)")

@@ -1634,6 +1634,101 @@ private def moveAccrueInterestTimestampWriteAfterIrmGuard
         (body, 0)
   | _ => (body, 0)
 
+mutual
+
+private partial def definesNameInStmt (target : String) (stmt : YulStmt) : Bool :=
+  match stmt with
+  | .let_ name _ => decide (name = target)
+  | .letMany names _ => names.any (fun name => decide (name = target))
+  | .assign name _ => decide (name = target)
+  | .if_ _ body => definesNameInStmts target body
+  | .for_ init _ post body =>
+      definesNameInStmts target init ||
+        definesNameInStmts target post ||
+        definesNameInStmts target body
+  | .switch _ cases default =>
+      let inCases := cases.any (fun (_, body) => definesNameInStmts target body)
+      let inDefault :=
+        match default with
+        | some body => definesNameInStmts target body
+        | none => false
+      inCases || inDefault
+  | .funcDef name params rets body =>
+      decide (name = target) ||
+        params.any (fun param => decide (param = target)) ||
+        rets.any (fun ret => decide (ret = target)) ||
+        definesNameInStmts target body
+  | .block body => definesNameInStmts target body
+  | _ => false
+
+private partial def definesNameInStmts (target : String) (stmts : List YulStmt) : Bool :=
+  match stmts with
+  | [] => false
+  | stmt :: rest => definesNameInStmt target stmt || definesNameInStmts target rest
+
+end
+
+private def rewriteAccrueInterestPrologueTemps
+    (idName : String) (body : List YulStmt) : List YulStmt × Nat :=
+  match body with
+  | (.expr (.call "mstore" [.lit 512, .ident idHead])) ::
+    (.expr (.call "mstore" [.lit 544, .lit 3])) ::
+    (.let_ compatMappingSlot0 (.call "keccak256" [.lit 512, .lit 64])) ::
+    (.let_ prevLastUpdateName
+      (.call "and"
+        [ .call "shr"
+            [ .lit 0
+            , .call "sload"
+                [ .call "add" [.ident compatMappingSlot0Ref, .lit 2]
+                ]
+            ]
+        , .lit 340282366920938463463374607431768211455
+        ])) ::
+    (.let_ compatElapsedName
+      (.call "checked_sub_uint256"
+        [ .call "timestamp" []
+        , .ident prevLastUpdateRef
+        ])) ::
+    (.if_ (.call "iszero" [.ident compatElapsedRef]) [.leave]) ::
+    rest =>
+      if decide (idHead = idName) &&
+          decide (compatMappingSlot0 = compatMappingSlot0Ref) &&
+          decide (prevLastUpdateName = prevLastUpdateRef) &&
+          decide (compatElapsedName = compatElapsedRef) &&
+          !definesNameInStmts "_1" body &&
+          !definesNameInStmts "_2" body &&
+          !definesNameInStmts "_3" body &&
+          !definesNameInStmts "_4" body &&
+          !definesNameInStmts "_5" body then
+        ( [ .let_ "_1" (.lit 0)
+          , .expr (.call "mstore" [.ident "_1", .ident idHead])
+          , .let_ "_2" (.lit 3)
+          , .let_ "_3" (.lit 32)
+          , .expr (.call "mstore" [.ident "_3", .ident "_2"])
+          , .let_ "_4" (.lit 340282366920938463463374607431768211455)
+          , .let_ "_5" (.lit 64)
+          , .let_ prevLastUpdateName
+              (.call "and"
+                [ .call "sload"
+                    [ .call "add"
+                        [ .call "keccak256" [.ident "_1", .ident "_5"]
+                        , .lit 2
+                        ]
+                    ]
+                , .ident "_4"
+                ])
+          , .let_ compatElapsedName
+              (.call "checked_sub_uint256"
+                [ .call "timestamp" []
+                , .ident prevLastUpdateName
+                ])
+          , .if_ (.call "iszero" [.ident compatElapsedName]) [.leave]
+          ] ++ rest
+        , 1)
+      else
+        (body, 0)
+  | _ => (body, 0)
+
 private def accrueInterestMarketParamsLoadExprFor?
     (loanTokenName collateralTokenName oracleName irmName lltvName name : String)
     : Option YulExpr :=
@@ -2199,6 +2294,54 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmt
         let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
         (.funcDef name params rets body', rewritten)
 
+private partial def rewriteAccrueInterestPrologueTempsStmts
+    (stmts : List YulStmt) : List YulStmt × Nat
+  := match stmts with
+    | [] => ([], 0)
+    | .if_ cond body :: rest =>
+        let (body', bodyRewritten) := rewriteAccrueInterestPrologueTempsStmts body
+        let (rest', rewrittenTail) := rewriteAccrueInterestPrologueTempsStmts rest
+        (.if_ cond body' :: rest', bodyRewritten + rewrittenTail)
+    | .for_ init cond post body :: rest =>
+        let (init', initRewritten) := rewriteAccrueInterestPrologueTempsStmts init
+        let (post', postRewritten) := rewriteAccrueInterestPrologueTempsStmts post
+        let (body', bodyRewritten) := rewriteAccrueInterestPrologueTempsStmts body
+        let (rest', rewrittenTail) := rewriteAccrueInterestPrologueTempsStmts rest
+        (.for_ init' cond post' body' :: rest', initRewritten + postRewritten + bodyRewritten + rewrittenTail)
+    | .switch expr cases default :: rest =>
+        let (cases', casesRewritten) :=
+          cases.foldr
+            (fun (entry : Nat × List YulStmt) (acc : List (Nat × List YulStmt) × Nat) =>
+              let (tag, body) := entry
+              let (body', rewritten) := rewriteAccrueInterestPrologueTempsStmts body
+              ((tag, body') :: acc.1, acc.2 + rewritten))
+            ([], 0)
+        let (default', defaultRewritten) :=
+          match default with
+          | some body =>
+              let (body', rewritten) := rewriteAccrueInterestPrologueTempsStmts body
+              (some body', rewritten)
+          | none => (none, 0)
+        let (rest', rewrittenTail) := rewriteAccrueInterestPrologueTempsStmts rest
+        (.switch expr cases' default' :: rest', casesRewritten + defaultRewritten + rewrittenTail)
+    | .block inner :: rest =>
+        let (inner', innerRewritten) := rewriteAccrueInterestPrologueTempsStmts inner
+        let (rest', rewrittenTail) := rewriteAccrueInterestPrologueTempsStmts rest
+        (.block inner' :: rest', innerRewritten + rewrittenTail)
+    | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] rets body :: rest =>
+        let (body', rewrittenHead) := rewriteAccrueInterestPrologueTemps "var_id" body
+        let (body'', rewrittenBody) := rewriteAccrueInterestPrologueTempsStmts body'
+        let (rest', rewrittenTail) := rewriteAccrueInterestPrologueTempsStmts rest
+        (.funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] rets body'' :: rest',
+          rewrittenHead + rewrittenBody + rewrittenTail)
+    | .funcDef name params rets body :: rest =>
+        let (body', rewritten) := rewriteAccrueInterestPrologueTempsStmts body
+        let (rest', rewrittenTail) := rewriteAccrueInterestPrologueTempsStmts rest
+        (.funcDef name params rets body' :: rest', rewritten + rewrittenTail)
+    | stmt :: rest =>
+        let (rest', rewrittenTail) := rewriteAccrueInterestPrologueTempsStmts rest
+        (stmt :: rest', rewrittenTail)
+
 private partial def rewriteAccrueInterestIrmGuardStmts
     (stmts : List YulStmt) : List YulStmt × Nat
   := match stmts with
@@ -2725,6 +2868,9 @@ def solcCompatRewriteElapsedCheckedSubProofRef : String :=
 def solcCompatRewriteAccrueInterestCheckedArithmeticProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_accrue_interest_checked_arithmetic_preserves"
 
+def solcCompatRewriteAccrueInterestPrologueTempsProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_accrue_interest_prologue_temps_preserves"
+
 def solcCompatRewriteAccrueInterestIrmGuardProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_accrue_interest_irm_guard_preserves"
 
@@ -3038,6 +3184,29 @@ def solcCompatRewriteAccrueInterestCheckedArithmeticRule : ObjectPatchRule :=
       else
         some { obj with runtimeCode := runtimeCode'' } }
 
+/-- Rewrite runtime two-arg `fun_accrueInterest(var_marketParams_46531_mpos, var_id)` prologue
+    into Solidity-style scratch-slot temp bindings (`_1.._5`) for deterministic parity.
+    This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatRewriteAccrueInterestPrologueTempsRule : ObjectPatchRule :=
+  { patchName := "solc-compat-rewrite-accrue-interest-prologue-temps"
+    pattern := "runtime `fun_accrueInterest` prologue with direct `mstore(512, var_id)` / `mstore(544, 3)` and compat slot-0 elapsed check"
+    rewrite := "materialize Solidity-style `_1.._5` temps and canonicalize prevLastUpdate source to `and(sload(add(keccak256(_1, _5), 2)), _4)`"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "rewrite is scoped to `fun_accrueInterest(var_marketParams_46531_mpos, var_id)`"
+      , "compat elapsed-check shape must match exactly"
+      , "rewrite is skipped when `_1.._5` names are already locally bound" ]
+    proofId := solcCompatRewriteAccrueInterestPrologueTempsProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 211
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := rewriteAccrueInterestPrologueTempsStmts obj.runtimeCode
+      if rewritten = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode' } }
+
 /-- Rewrite runtime `accrueInterest` IRM non-zero guard shape to Solidity-style masked
     `cleaned` guard form. This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatRewriteAccrueInterestIrmGuardRule : ObjectPatchRule :=
@@ -3144,6 +3313,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatRewriteElapsedCheckedSubRule
+      , solcCompatRewriteAccrueInterestPrologueTempsRule
       , solcCompatRewriteAccrueInterestIrmGuardRule
       , solcCompatRewriteAccrueInterestCheckedArithmeticRule
       , solcCompatRewriteNonceIncrementRule
@@ -3615,6 +3785,12 @@ example :
 example :
     solcCompatProofAllowlist.any
       (fun proofRef => proofRef = solcCompatRewriteAccrueInterestCheckedArithmeticProofRef) = true := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle contains accrue-interest prologue-temp rewrite proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatRewriteAccrueInterestPrologueTempsProofRef) = true := by
   native_decide
 
 /-- Smoke test: `solc-compat` bundle contains deploy-only prune proof refs. -/
@@ -5762,6 +5938,193 @@ example :
           | _ => false)
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasCanonicalSig := by
+  native_decide
+
+/-- Smoke test: accrue-interest prologue-temp rewrite canonicalizes compat scratch prologue
+    to Solidity-style `_1.._5` temp bindings. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] []
+              [ .expr (.call "mstore" [.lit 512, .ident "var_id"])
+              , .expr (.call "mstore" [.lit 544, .lit 3])
+              , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+              , .let_ "prevLastUpdate"
+                  (.call "and"
+                    [ .call "shr"
+                        [ .lit 0
+                        , .call "sload" [.call "add" [.ident "__compat_mapping_slot_0", .lit 2]]
+                        ]
+                    , .lit 340282366920938463463374607431768211455
+                    ])
+              , .let_ "__compat_elapsed"
+                  (.call "checked_sub_uint256"
+                    [ .call "timestamp" []
+                    , .ident "prevLastUpdate"
+                    ])
+              , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+              , .expr (.call "mstore" [.lit 0, .ident "prevLastUpdate"])
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestPrologueTempsRule]
+      input
+    let hasTempPrologue :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] _ body =>
+              match body with
+              | .let_ "_1" (.lit 0) ::
+                .expr (.call "mstore" [.ident "_1", .ident "var_id"]) ::
+                .let_ "_2" (.lit 3) ::
+                .let_ "_3" (.lit 32) ::
+                .expr (.call "mstore" [.ident "_3", .ident "_2"]) ::
+                .let_ "_4" (.lit 340282366920938463463374607431768211455) ::
+                .let_ "_5" (.lit 64) ::
+                .let_ "prevLastUpdate"
+                  (.call "and"
+                    [ .call "sload"
+                        [ .call "add"
+                            [ .call "keccak256" [.ident "_1", .ident "_5"]
+                            , .lit 2
+                            ]
+                        ]
+                    , .ident "_4"
+                    ]) :: _ => true
+              | _ => false
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-prologue-temps"] &&
+      hasTempPrologue := by
+  native_decide
+
+/-- Smoke test: prologue-temp rewrite stays out-of-scope for non-canonical two-arg signature. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" ["marketParamsPtr", "var_id"] []
+              [ .expr (.call "mstore" [.lit 512, .ident "var_id"])
+              , .expr (.call "mstore" [.lit 544, .lit 3])
+              , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+              , .let_ "prevLastUpdate"
+                  (.call "and"
+                    [ .call "shr"
+                        [ .lit 0
+                        , .call "sload" [.call "add" [.ident "__compat_mapping_slot_0", .lit 2]]
+                        ]
+                    , .lit 340282366920938463463374607431768211455
+                    ])
+              , .let_ "__compat_elapsed"
+                  (.call "checked_sub_uint256"
+                    [ .call "timestamp" []
+                    , .ident "prevLastUpdate"
+                    ])
+              , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestPrologueTempsRule]
+      input
+    report.manifest.map (fun m => m.patchName) = [] := by
+  native_decide
+
+/-- Smoke test: prologue-temp rewrite is wrapper-safe for single top-level runtime block shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] []
+                  [ .expr (.call "mstore" [.lit 512, .ident "var_id"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+                  , .let_ "prevLastUpdate"
+                      (.call "and"
+                        [ .call "shr"
+                            [ .lit 0
+                            , .call "sload" [.call "add" [.ident "__compat_mapping_slot_0", .lit 2]]
+                            ]
+                        , .lit 340282366920938463463374607431768211455
+                        ])
+                  , .let_ "__compat_elapsed"
+                      (.call "checked_sub_uint256"
+                        [ .call "timestamp" []
+                        , .ident "prevLastUpdate"
+                        ])
+                  , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestPrologueTempsRule]
+      input
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-prologue-temps"] := by
+  native_decide
+
+/-- Smoke test: prologue-temp rewrite does not force helper insertion when no helper is referenced. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] []
+              [ .expr (.call "mstore" [.lit 512, .ident "var_id"])
+              , .expr (.call "mstore" [.lit 544, .lit 3])
+              , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+              , .let_ "prevLastUpdate"
+                  (.call "and"
+                    [ .call "shr"
+                        [ .lit 0
+                        , .call "sload" [.call "add" [.ident "__compat_mapping_slot_0", .lit 2]]
+                        ]
+                    , .lit 340282366920938463463374607431768211455
+                    ])
+              , .let_ "__compat_elapsed"
+                  (.call "checked_sub_uint256"
+                    [ .call "timestamp" []
+                    , .ident "prevLastUpdate"
+                    ])
+              , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestPrologueTempsRule]
+      input
+    hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" = false &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint256" = false := by
   native_decide
 
 /-- Smoke test: IRM-guard rewrite canonicalizes `eq(mload(add(var_marketParams_*, 96)), 0)` to

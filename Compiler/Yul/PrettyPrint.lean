@@ -89,7 +89,12 @@ def ppStmts (indent : Nat) : List YulStmt → List String
 def ppCases (indent : Nat) : List (Nat × List YulStmt) → List String
   | [] => []
   | (c, body) :: rest =>
-      let caseHeader := indentStr indent ++ "case 0x" ++ natToHexUnpadded c ++ " {"
+      let caseValue :=
+        if c = 0 then
+          "0"
+        else
+          "0x" ++ natToHexUnpadded c
+      let caseHeader := indentStr indent ++ "case " ++ caseValue ++ " {"
       let bodyLines := ppStmts (indent + 1) body
       let footer := s!"{indentStr indent}}"
       (caseHeader :: bodyLines ++ [footer]) ++ ppCases indent rest
@@ -113,5 +118,11 @@ private def ppObject (obj : YulObject) : List String :=
 
 def render (obj : YulObject) : String :=
   "\n".intercalate (ppObject obj)
+
+example : ppCases 0 [(0, [])] = ["case 0 {", "}"] := by
+  native_decide
+
+example : ppCases 0 [(1, [])] = ["case 0x1 {", "}"] := by
+  native_decide
 
 end Compiler.Yul

@@ -168,6 +168,11 @@ Reference docs:
 - `docs/PARITY_PACKS.md`
 - `docs/REWRITE_RULES.md`
 - `docs/IDENTITY_CHECKER.md`
+
+### ✅ **Unified AST** (Issue #364, PR #370)
+**What**: Single deep embedding where `denote ast = edsl_fn` holds by equivalence proof
+**Status**: All 7/7 contracts migrated (27 theorems, 0 sorry)
+
 ### ✅ **Ledger Sum Properties** (Complete)
 **What**: Prove total supply equals sum of all balances
 **Status**: All 7/7 proven with zero `sorry` (PR #47, #51, Issue #65 resolved)

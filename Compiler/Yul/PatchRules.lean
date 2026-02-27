@@ -2199,6 +2199,90 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmt
         let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
         (.funcDef name params rets body', rewritten)
 
+private partial def rewriteAccrueInterestIrmGuardStmts
+    (stmts : List YulStmt) : List YulStmt × Nat
+  := match stmts with
+    | [] => ([], 0)
+    | .if_ (.call "iszero"
+        [ .call "eq"
+            [ .call "mload"
+                [ .call "add"
+                    [ .ident marketParamsName
+                    , .lit 96
+                    ]
+                ]
+            , .lit 0
+            ]
+        ]) body :: rest =>
+        if hasAccrueInterestCompatBaseName "var_marketParams" marketParamsName then
+          let (body', bodyRewritten) := rewriteAccrueInterestIrmGuardStmts body
+          let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+          ( [ .let_ "cleaned"
+                (.call "and"
+                  [ .call "mload"
+                      [ .call "add"
+                          [ .ident marketParamsName
+                          , .lit 96
+                          ]
+                      ]
+                  , .lit 1461501637330902918203684832716283019655932542975
+                  ])
+            , .if_ (.call "iszero" [.call "iszero" [.ident "cleaned"]]) body'
+            ] ++ rest'
+          , bodyRewritten + rewrittenTail + 1)
+        else
+          let (body', bodyRewritten) := rewriteAccrueInterestIrmGuardStmts body
+          let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+          (.if_ (.call "iszero"
+              [ .call "eq"
+                  [ .call "mload"
+                      [ .call "add"
+                          [ .ident marketParamsName
+                          , .lit 96
+                          ]
+                      ]
+                  , .lit 0
+                  ]
+              ]) body' :: rest',
+            bodyRewritten + rewrittenTail)
+    | .if_ cond body :: rest =>
+        let (body', bodyRewritten) := rewriteAccrueInterestIrmGuardStmts body
+        let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+        (.if_ cond body' :: rest', bodyRewritten + rewrittenTail)
+    | .for_ init cond post body :: rest =>
+        let (init', initRewritten) := rewriteAccrueInterestIrmGuardStmts init
+        let (post', postRewritten) := rewriteAccrueInterestIrmGuardStmts post
+        let (body', bodyRewritten) := rewriteAccrueInterestIrmGuardStmts body
+        let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+        (.for_ init' cond post' body' :: rest', initRewritten + postRewritten + bodyRewritten + rewrittenTail)
+    | .switch expr cases default :: rest =>
+        let (cases', casesRewritten) :=
+          cases.foldr
+            (fun (entry : Nat × List YulStmt) (acc : List (Nat × List YulStmt) × Nat) =>
+              let (tag, body) := entry
+              let (body', rewritten) := rewriteAccrueInterestIrmGuardStmts body
+              ((tag, body') :: acc.1, acc.2 + rewritten))
+            ([], 0)
+        let (default', defaultRewritten) :=
+          match default with
+          | some body =>
+              let (body', rewritten) := rewriteAccrueInterestIrmGuardStmts body
+              (some body', rewritten)
+          | none => (none, 0)
+        let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+        (.switch expr cases' default' :: rest', casesRewritten + defaultRewritten + rewrittenTail)
+    | .block inner :: rest =>
+        let (inner', innerRewritten) := rewriteAccrueInterestIrmGuardStmts inner
+        let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+        (.block inner' :: rest', innerRewritten + rewrittenTail)
+    | .funcDef name params rets body :: rest =>
+        let (body', rewritten) := rewriteAccrueInterestIrmGuardStmts body
+        let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+        (.funcDef name params rets body' :: rest', rewritten + rewrittenTail)
+    | stmt :: rest =>
+        let (rest', rewrittenTail) := rewriteAccrueInterestIrmGuardStmts rest
+        (stmt :: rest', rewrittenTail)
+
 private partial def rewriteAccrueInterestCheckedArithmeticStmts
     (stmts : List YulStmt) : List YulStmt × Nat
   := match stmts with
@@ -2641,6 +2725,9 @@ def solcCompatRewriteElapsedCheckedSubProofRef : String :=
 def solcCompatRewriteAccrueInterestCheckedArithmeticProofRef : String :=
   "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_accrue_interest_checked_arithmetic_preserves"
 
+def solcCompatRewriteAccrueInterestIrmGuardProofRef : String :=
+  "Compiler.Proofs.YulGeneration.PatchRulesProofs.solc_compat_rewrite_accrue_interest_irm_guard_preserves"
+
 private def findEquivalentTopLevelHelper?
     (seen : List (String × List String × List String × String))
     (params rets : List String)
@@ -2951,6 +3038,27 @@ def solcCompatRewriteAccrueInterestCheckedArithmeticRule : ObjectPatchRule :=
       else
         some { obj with runtimeCode := runtimeCode'' } }
 
+/-- Rewrite runtime `accrueInterest` IRM non-zero guard shape to Solidity-style masked
+    `cleaned` guard form. This is enabled only in the opt-in `solc-compat` bundle. -/
+def solcCompatRewriteAccrueInterestIrmGuardRule : ObjectPatchRule :=
+  { patchName := "solc-compat-rewrite-accrue-interest-irm-guard"
+    pattern := "runtime `if iszero(eq(mload(add(var_marketParams_*, 96)), 0))` guard"
+    rewrite := "replace with masked `cleaned` temporary and `if iszero(iszero(cleaned))`"
+    sideConditions :=
+      [ "only runtime code is transformed"
+      , "rewrite is scoped to `var_marketParams_*` pointer names"
+      , "helper insertion remains unchanged" ]
+    proofId := solcCompatRewriteAccrueInterestIrmGuardProofRef
+    scope := .object
+    passPhase := .postCodegen
+    priority := 211
+    applyObject := fun _ obj =>
+      let (runtimeCode', rewritten) := rewriteAccrueInterestIrmGuardStmts obj.runtimeCode
+      if rewritten = 0 then
+        none
+      else
+        some { obj with runtimeCode := runtimeCode' } }
+
 /-- Remove unreachable top-level helper function definitions in deploy/runtime code.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatPruneUnreachableHelpersRule : ObjectPatchRule :=
@@ -3036,6 +3144,7 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatRewriteElapsedCheckedSubRule
+      , solcCompatRewriteAccrueInterestIrmGuardRule
       , solcCompatRewriteAccrueInterestCheckedArithmeticRule
       , solcCompatRewriteNonceIncrementRule
       , solcCompatPruneUnreachableDeployHelpersRule
@@ -3494,6 +3603,12 @@ example :
 example :
     solcCompatProofAllowlist.any
       (fun proofRef => proofRef = solcCompatRewriteElapsedCheckedSubProofRef) = true := by
+  native_decide
+
+/-- Smoke test: `solc-compat` bundle contains accrue-interest IRM-guard rewrite proof refs. -/
+example :
+    solcCompatProofAllowlist.any
+      (fun proofRef => proofRef = solcCompatRewriteAccrueInterestIrmGuardProofRef) = true := by
   native_decide
 
 /-- Smoke test: `solc-compat` bundle contains accrue-interest checked-arithmetic rewrite proof refs. -/
@@ -5647,6 +5762,155 @@ example :
           | _ => false)
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasCanonicalSig := by
+  native_decide
+
+/-- Smoke test: IRM-guard rewrite canonicalizes `eq(mload(add(var_marketParams_*, 96)), 0)` to
+    Solidity-style masked `cleaned` guard. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] []
+              [ .if_
+                  (.call "iszero"
+                    [ .call "eq"
+                        [ .call "mload"
+                            [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 96]
+                            ]
+                        , .lit 0
+                        ]
+                    ])
+                  [.leave]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestIrmGuardRule]
+      input
+    let hasCleanedGuard :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" _ _ body =>
+              match body with
+              | .let_ "cleaned"
+                  (.call "and"
+                    [ .call "mload"
+                        [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 96]
+                        ]
+                    , .lit 1461501637330902918203684832716283019655932542975
+                    ]) ::
+                .if_ (.call "iszero" [.call "iszero" [.ident "cleaned"]]) _ :: _ => true
+              | _ => false
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-irm-guard"] &&
+      hasCleanedGuard := by
+  native_decide
+
+/-- Smoke test: IRM-guard rewrite stays out-of-scope for non-compat market-params pointers. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" ["marketParamsPtr", "var_id"] []
+              [ .if_
+                  (.call "iszero"
+                    [ .call "eq"
+                        [ .call "mload"
+                            [ .call "add" [.ident "marketParamsPtr", .lit 96]
+                            ]
+                        , .lit 0
+                        ]
+                    ])
+                  [.leave]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestIrmGuardRule]
+      input
+    report.manifest.map (fun m => m.patchName) = [] := by
+  native_decide
+
+/-- Smoke test: IRM-guard rewrite is wrapper-safe for single top-level runtime block shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] []
+                  [ .if_
+                      (.call "iszero"
+                        [ .call "eq"
+                            [ .call "mload"
+                                [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 96]
+                                ]
+                            , .lit 0
+                            ]
+                        ])
+                      [.leave]
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestIrmGuardRule]
+      input
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-irm-guard"] := by
+  native_decide
+
+/-- Smoke test: IRM-guard rewrite does not force helper insertion when no helper is referenced. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] []
+              [ .if_
+                  (.call "iszero"
+                    [ .call "eq"
+                        [ .call "mload"
+                            [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 96]
+                            ]
+                        , .lit 0
+                        ]
+                    ])
+                  [.leave]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestIrmGuardRule]
+      input
+    hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" = false &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint256" = false := by
   native_decide
 
 /-- Smoke test: six-arg market-params signature canonicalization stays out-of-scope when

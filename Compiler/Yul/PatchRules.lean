@@ -1222,14 +1222,14 @@ private def extractReturndataHelperBody : List YulStmt :=
                       [ .call "add" [.ident "_1", .lit 31]
                       , .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0
                       ]
-                  , .lit 32
+                  , .hex 0x20
                   ]
               ])
         , .expr (.call "mstore" [.ident "memPtr", .ident "_1"])
         , .assign "data" (.ident "memPtr")
         , .expr
             (.call "returndatacopy"
-              [ .call "add" [.ident "memPtr", .lit 32]
+              [ .call "add" [.ident "memPtr", .hex 0x20]
               , .lit 0
               , .call "returndatasize" []
               ])

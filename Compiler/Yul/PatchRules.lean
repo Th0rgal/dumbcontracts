@@ -1942,6 +1942,65 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
               ]
           ] ++ rest'
         , rewrittenTail + 1)
+    | .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]]) ::
+      (.if_ (.call "iszero" [.ident "__ecwr_success"])
+        [ .let_ "pos" (.call "mload" [.lit 64])
+        , .expr
+            (.call "returndatacopy"
+              [ .ident "pos"
+              , .lit 0
+              , .call "returndatasize" []
+              ])
+        , .expr
+            (.call "revert"
+              [ .ident "pos"
+              , .call "returndatasize" []
+              ])
+        ]) ::
+      (.if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+        [ .expr (.call "revert" [.lit 0, .lit 0]) ]) ::
+      (.let_ "borrowRate" (.call "mload" [.lit 0])) :: rest =>
+        let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+        ( [ .if_ (.call "iszero" [.ident "__ecwr_success"])
+              [ .let_ "pos" (.call "mload" [.lit 64])
+              , .expr
+                  (.call "returndatacopy"
+                    [ .ident "pos"
+                    , .lit 0
+                    , .call "returndatasize" []
+                    ])
+              , .expr
+                  (.call "revert"
+                    [ .ident "pos"
+                    , .call "returndatasize" []
+                    ])
+              ]
+          , .let_ "borrowRate" (.lit 0)
+          , .if_ (.ident "__ecwr_success")
+              [ .let_ "__compat_returndata_size" (.lit 32)
+              , .if_ (.call "gt" [.lit 32, .call "returndatasize" []])
+                  [ .assign "__compat_returndata_size" (.call "returndatasize" []) ]
+              , .expr
+                  (.call "finalize_allocation"
+                    [ .ident "__compat_alloc_ptr"
+                    , .ident "__compat_returndata_size"
+                    ])
+              , .if_
+                  (.call "slt"
+                    [ .call "sub"
+                        [ .call "add"
+                            [ .ident "__compat_alloc_ptr"
+                            , .ident "__compat_returndata_size"
+                            ]
+                        , .ident "__compat_alloc_ptr"
+                        ]
+                    , .lit 32
+                    ])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              , .assign "borrowRate" (.call "mload" [.ident "__compat_alloc_ptr"])
+              ]
+          ] ++ rest'
+        , rewrittenTail + 1)
     | stmt :: rest =>
         let (stmt', rewrittenHead) := rewriteAccrueInterestCheckedArithmeticStmt stmt
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
@@ -4024,6 +4083,171 @@ example :
       called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true &&
       called.any (fun name => name = "extract_returndata") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite normalizes intermediate borrow-rate guard shape
+    (`mstore(0, mload(__compat_alloc_ptr))` + inline revert forwarding + `lt(returndatasize(), 32)` + `mload(0)`)
+    to Solidity-style success-gated finalize/load flow. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__ecwr_success" (.ident "callSucceeded")
+              , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]])
+              , .if_ (.call "iszero" [.ident "__ecwr_success"])
+                  [ .let_ "pos" (.call "mload" [.lit 64])
+                  , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+                  , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                  ]
+              , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              , .let_ "borrowRate" (.call "mload" [.lit 0])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let body :=
+      match helperBodyForName? (topLevelZeroArityFunctionBodies top) "fun_accrueInterest" with
+      | some stmts => stmts
+      | none => []
+    let rewritten :=
+      match body with
+      | [ .let_ "__ecwr_success" (.ident "callSucceeded")
+        , .if_ (.call "iszero" [.ident "__ecwr_success"])
+            [ .let_ "pos" (.call "mload" [.lit 64])
+            , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+            , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+            ]
+        , .let_ "borrowRate" (.lit 0)
+        , .if_ (.ident "__ecwr_success")
+            [ .let_ "__compat_returndata_size" (.lit 32)
+            , .if_ (.call "gt" [.lit 32, .call "returndatasize" []])
+                [ .assign "__compat_returndata_size" (.call "returndatasize" []) ]
+            , .expr
+                (.call "finalize_allocation"
+                  [ .ident "__compat_alloc_ptr"
+                  , .ident "__compat_returndata_size"
+                  ])
+            , .if_
+                (.call "slt"
+                  [ .call "sub"
+                      [ .call "add"
+                          [ .ident "__compat_alloc_ptr"
+                          , .ident "__compat_returndata_size"
+                          ]
+                      , .ident "__compat_alloc_ptr"
+                      ]
+                  , .lit 32
+                  ])
+                [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+            , .assign "borrowRate" (.call "mload" [.ident "__compat_alloc_ptr"])
+            ]
+        ] => true
+      | _ => false
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed top "finalize_allocation" &&
+      called.any (fun name => name = "finalize_allocation") = true &&
+      rewritten := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-matching
+    intermediate borrow-rate guard shapes. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__ecwr_success" (.ident "callSucceeded")
+              , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__other_ptr"]])
+              , .if_ (.call "iszero" [.ident "__ecwr_success"])
+                  [ .let_ "pos" (.call "mload" [.lit 64])
+                  , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+                  , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                  ]
+              , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              , .let_ "borrowRate" (.call "mload" [.lit 0])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed top "finalize_allocation" = false &&
+      called.any (fun name => name = "finalize_allocation") = false := by
+  native_decide
+
+/-- Smoke test: intermediate borrow-rate guard normalization is wrapper-safe and keeps
+    helper insertion referenced+absent only. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" [] []
+                  [ .let_ "__ecwr_success" (.ident "callSucceeded")
+                  , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]])
+                  , .if_ (.call "iszero" [.ident "__ecwr_success"])
+                      [ .let_ "pos" (.call "mload" [.lit 64])
+                      , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+                      , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                      ]
+                  , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                      [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+                  , .let_ "borrowRate" (.call "mload" [.lit 0])
+                  ]
+              , .block [ .expr (.call "fun_accrueInterest" []) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed top "finalize_allocation" &&
+      called.any (fun name => name = "finalize_allocation") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `finalize_allocation` helper. -/

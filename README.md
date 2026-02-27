@@ -212,10 +212,12 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 ## What's Verified
 
 - **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`ContractSpec`/`CompilationModel`).
-- **Layer 2 (framework)**: compilation model (`ContractSpec`/`CompilationModel`) -> `IR` preserves behavior.
+- **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
 - **Proof-chain note**: the `EDSL -> CompilationModel (ContractSpec) -> IR -> Yul` chain is verified with 1 axiom.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
+
+**Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.
 

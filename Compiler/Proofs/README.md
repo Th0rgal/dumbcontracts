@@ -2,9 +2,11 @@
 
 Formal verification proofs for the Verity compiler, proving correctness across three layers.
 
+**Scope**: These proofs cover the compilation path `EDSL -> CompilationModel -> IR -> Yul`. See `TRUST_ASSUMPTIONS.md` for the full trust-boundary description.
+
 ## Verification Layers
 
-- **Layer 1: EDSL ≡ CompilationModel (`ContractSpec`)** — User contracts satisfy their compilation models (`Verity/Proofs/<Name>/` + `Compiler/Proofs/SpecCorrectness/`).
+- **Layer 1: EDSL ≡ CompilationModel (`ContractSpec`)** — User contracts satisfy their compilation models (`Verity/Proofs/<Name>/` + `Compiler/Proofs/SpecCorrectness/`). Uses a hybrid strategy: generated proofs for the supported subset, manual escape hatch for advanced constructs.
 - **Layer 2: CompilationModel (`ContractSpec`) → IR** — IR generation preserves compilation-model semantics (`Compiler/Proofs/IRGeneration/`).
 - **Layer 3: IR → Yul** — All statement equivalence proofs proven (`Compiler/Proofs/YulGeneration/`).
 

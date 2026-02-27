@@ -1479,84 +1479,143 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
 private def hasAccrueInterestCompatBaseName (base name : String) : Bool :=
   name = base || name.startsWith s!"{base}_"
 
-private def accrueInterestMarketParamsLoadExpr? (name : String) : Option YulExpr :=
-  match name with
-  | "loanToken" =>
+private def namesAreDistinct (names : List String) : Bool :=
+  let rec go (seen : List String) : List String → Bool
+    | [] => true
+    | name :: rest =>
+        if seen.any (fun prior => prior = name) then
+          false
+        else
+          go (name :: seen) rest
+  go [] names
+
+private def accrueInterestMarketParamsLoadExprFor?
+    (loanTokenName collateralTokenName oracleName irmName lltvName name : String)
+    : Option YulExpr :=
+  if name = loanTokenName then
       some (.call "mload" [.ident "var_marketParams_46531_mpos"])
-  | "collateralToken" =>
+  else if name = collateralTokenName then
       some (.call "mload"
         [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 32]
         ])
-  | "oracle" =>
+  else if name = oracleName then
       some (.call "mload"
         [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 64]
         ])
-  | "irm" =>
+  else if name = irmName then
       some (.call "mload"
         [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 96]
         ])
-  | "lltv" =>
+  else if name = lltvName then
       some (.call "mload"
         [ .call "add" [.ident "var_marketParams_46531_mpos", .lit 128]
         ])
-  | _ => none
+  else
+      none
 
 mutual
 
 private partial def rewriteAccrueInterestMarketParamsExpr
+    (idName loanTokenName collateralTokenName oracleName irmName lltvName : String)
     (expr : YulExpr) : YulExpr
   := match expr with
-    | .ident "id" => .ident "var_id"
     | .ident name =>
-        match accrueInterestMarketParamsLoadExpr? name with
-        | some lowered => lowered
-        | none => .ident name
+        if name = idName then
+          .ident "var_id"
+        else
+          match accrueInterestMarketParamsLoadExprFor?
+              loanTokenName collateralTokenName oracleName irmName lltvName name with
+          | some lowered => lowered
+          | none => .ident name
     | .lit value => .lit value
     | .hex value => .hex value
     | .str value => .str value
-    | .call name args => .call name (rewriteAccrueInterestMarketParamsExprs args)
+    | .call name args =>
+        .call name
+          (rewriteAccrueInterestMarketParamsExprs
+            idName loanTokenName collateralTokenName oracleName irmName lltvName args)
 
 private partial def rewriteAccrueInterestMarketParamsExprs
+    (idName loanTokenName collateralTokenName oracleName irmName lltvName : String)
     (exprs : List YulExpr) : List YulExpr
   := match exprs with
     | [] => []
     | expr :: rest =>
-        rewriteAccrueInterestMarketParamsExpr expr :: rewriteAccrueInterestMarketParamsExprs rest
+        rewriteAccrueInterestMarketParamsExpr
+          idName loanTokenName collateralTokenName oracleName irmName lltvName expr ::
+          rewriteAccrueInterestMarketParamsExprs
+            idName loanTokenName collateralTokenName oracleName irmName lltvName rest
 
 private partial def rewriteAccrueInterestMarketParamsStmt
+    (idName loanTokenName collateralTokenName oracleName irmName lltvName : String)
     (stmt : YulStmt) : YulStmt
   := match stmt with
     | .comment text => .comment text
-    | .let_ name value => .let_ name (rewriteAccrueInterestMarketParamsExpr value)
-    | .letMany names value => .letMany names (rewriteAccrueInterestMarketParamsExpr value)
-    | .assign name value => .assign name (rewriteAccrueInterestMarketParamsExpr value)
-    | .expr value => .expr (rewriteAccrueInterestMarketParamsExpr value)
+    | .let_ name value =>
+        .let_ name
+          (rewriteAccrueInterestMarketParamsExpr
+            idName loanTokenName collateralTokenName oracleName irmName lltvName value)
+    | .letMany names value =>
+        .letMany names
+          (rewriteAccrueInterestMarketParamsExpr
+            idName loanTokenName collateralTokenName oracleName irmName lltvName value)
+    | .assign name value =>
+        .assign name
+          (rewriteAccrueInterestMarketParamsExpr
+            idName loanTokenName collateralTokenName oracleName irmName lltvName value)
+    | .expr value =>
+        .expr
+          (rewriteAccrueInterestMarketParamsExpr
+            idName loanTokenName collateralTokenName oracleName irmName lltvName value)
     | .leave => .leave
     | .if_ cond body =>
-        .if_ (rewriteAccrueInterestMarketParamsExpr cond) (rewriteAccrueInterestMarketParamsStmts body)
+        .if_
+          (rewriteAccrueInterestMarketParamsExpr
+            idName loanTokenName collateralTokenName oracleName irmName lltvName cond)
+          (rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName body)
     | .for_ init cond post body =>
         .for_
-          (rewriteAccrueInterestMarketParamsStmts init)
-          (rewriteAccrueInterestMarketParamsExpr cond)
-          (rewriteAccrueInterestMarketParamsStmts post)
-          (rewriteAccrueInterestMarketParamsStmts body)
+          (rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName init)
+          (rewriteAccrueInterestMarketParamsExpr
+            idName loanTokenName collateralTokenName oracleName irmName lltvName cond)
+          (rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName post)
+          (rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName body)
     | .switch expr cases default =>
         let cases' := cases.map (fun (entry : Nat × List YulStmt) =>
           let (tag, caseBody) := entry
-          (tag, rewriteAccrueInterestMarketParamsStmts caseBody))
-        let default' := default.map rewriteAccrueInterestMarketParamsStmts
-        .switch (rewriteAccrueInterestMarketParamsExpr expr) cases' default'
+          (tag, rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName caseBody))
+        let default' := default.map
+          (rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName)
+        .switch
+          (rewriteAccrueInterestMarketParamsExpr
+            idName loanTokenName collateralTokenName oracleName irmName lltvName expr)
+          cases'
+          default'
     | .block stmts =>
-        .block (rewriteAccrueInterestMarketParamsStmts stmts)
+        .block
+          (rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName stmts)
     | .funcDef name params rets body =>
-        .funcDef name params rets (rewriteAccrueInterestMarketParamsStmts body)
+        .funcDef name params rets
+          (rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName body)
 
 private partial def rewriteAccrueInterestMarketParamsStmts
+    (idName loanTokenName collateralTokenName oracleName irmName lltvName : String)
     (stmts : List YulStmt) : List YulStmt
   := match stmts with
     | [] => []
     | stmt :: rest =>
-        rewriteAccrueInterestMarketParamsStmt stmt :: rewriteAccrueInterestMarketParamsStmts rest
+        rewriteAccrueInterestMarketParamsStmt
+          idName loanTokenName collateralTokenName oracleName irmName lltvName stmt ::
+          rewriteAccrueInterestMarketParamsStmts
+            idName loanTokenName collateralTokenName oracleName irmName lltvName rest
 
 end
 
@@ -1952,15 +2011,23 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmt
         let (stmts', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts stmts
         (.block stmts', rewritten)
     | .funcDef "fun_accrueInterest"
-        ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+        [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName]
         rets
         body =>
         let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
-        ( .funcDef "fun_accrueInterest"
-            ["var_marketParams_46531_mpos", "var_id"]
+        if namesAreDistinct
+            [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName] then
+          ( .funcDef "fun_accrueInterest"
+              ["var_marketParams_46531_mpos", "var_id"]
+              rets
+              (rewriteAccrueInterestMarketParamsStmts
+                idName loanTokenName collateralTokenName oracleName irmName lltvName body')
+          , rewritten + 1)
+        else
+          (.funcDef "fun_accrueInterest"
+            [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName]
             rets
-            (rewriteAccrueInterestMarketParamsStmts body')
-        , rewritten + 1)
+            body', rewritten)
     | .funcDef name params rets body =>
         let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
         (.funcDef name params rets body', rewritten)
@@ -5375,14 +5442,14 @@ example :
         deployCode := []
         runtimeCode :=
           [ .funcDef "fun_accrueInterest"
-              ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              ["id_7", "loanToken_1", "collateralToken_2", "oracle_3", "irm_4", "lltv_5"]
               []
-              [ .expr (.call "mstore" [.lit 512, .ident "id"])
-              , .expr (.call "mstore" [.lit 4, .ident "loanToken"])
-              , .expr (.call "mstore" [.lit 36, .ident "collateralToken"])
-              , .expr (.call "mstore" [.lit 68, .ident "oracle"])
-              , .expr (.call "mstore" [.lit 100, .ident "irm"])
-              , .expr (.call "mstore" [.lit 132, .ident "lltv"])
+              [ .expr (.call "mstore" [.lit 512, .ident "id_7"])
+              , .expr (.call "mstore" [.lit 4, .ident "loanToken_1"])
+              , .expr (.call "mstore" [.lit 36, .ident "collateralToken_2"])
+              , .expr (.call "mstore" [.lit 68, .ident "oracle_3"])
+              , .expr (.call "mstore" [.lit 100, .ident "irm_4"])
+              , .expr (.call "mstore" [.lit 132, .ident "lltv_5"])
               ]
           , .block
               [ .expr
@@ -5425,6 +5492,42 @@ example :
           [ .funcDef "fun_accrueInterest" ["id", "loanToken", "collateralToken", "oracle", "irm"] []
               [ .expr (.call "mstore" [.lit 0, .ident "id"]) ]
           , .block [ .expr (.call "fun_accrueInterest" [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let hasCanonicalSig :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] _ _ => true
+          | _ => false)
+    hasCanonicalSig = false := by
+  native_decide
+
+/-- Smoke test: six-arg market-params signature canonicalization stays out-of-scope when
+    six-arg parameter names are not distinct. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id", "loanToken", "loanToken", "oracle", "irm", "lltv"]
+              []
+              [ .expr (.call "mstore" [.lit 0, .ident "id"]) ]
+          , .block
+              [ .expr
+                  (.call "fun_accrueInterest"
+                    [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5, .lit 6])
+              ]
           ] }
     let report := runPatchPassWithObjects
       { enabled := true

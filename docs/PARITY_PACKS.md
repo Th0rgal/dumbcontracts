@@ -40,7 +40,7 @@ Partially implemented:
    `solc-compat-outline-dispatch-helpers` is currently kept out of the default bundle activation to avoid over-outlining runtime entry dispatch on active parity targets.
    Runtime codegen does not provide a separate backend-profile dispatch-helper outlining toggle; compat outlining is object-rule only.
    Parity packs wire `requiredProofRefs` to `solcCompatProofAllowlist`.
-14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-mapping-slot-calls` → `inline-keccak-market-params` → `rewrite-elapsed-checked-sub` → `rewrite-accrue-interest-prologue-temps` → `rewrite-accrue-interest-irm-guard` → `rewrite-accrue-interest-checked-arithmetic` → `rewrite-nonce-increment` → `prune-unreachable-deploy-helpers` → `drop-unused-mapping-slot-helper` → `drop-unused-keccak-helper` → `dedupe`) without manual CLI overrides.
+14. Shipped parity packs now default `patchMaxIterations` to `6` so the full object-rule sequence can execute (`canonicalize` → `inline-wrapper-calls` → `inline-mapping-slot-calls` → `inline-keccak-market-params` → `rewrite-elapsed-checked-sub` → `rewrite-accrue-interest-irm-guard` → `rewrite-accrue-interest-checked-arithmetic` → `rewrite-accrue-interest-prologue-temps` → `rewrite-nonce-increment` → `prune-unreachable-deploy-helpers` → `drop-unused-mapping-slot-helper` → `drop-unused-keccak-helper` → `dedupe`) without manual CLI overrides.
 15. Yul pretty-printing now canonicalizes switch zero-tags to `case 0` (instead of `case 0x0`) so function-level hash comparison aligns with Solidity tokenization in parity reports.
 
 Not implemented yet:

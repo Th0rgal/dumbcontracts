@@ -3313,9 +3313,9 @@ def solcCompatRewriteBundle : RewriteRuleBundle :=
       , solcCompatInlineMappingSlotCallsRule
       , solcCompatInlineKeccakMarketParamsCallsRule
       , solcCompatRewriteElapsedCheckedSubRule
-      , solcCompatRewriteAccrueInterestPrologueTempsRule
       , solcCompatRewriteAccrueInterestIrmGuardRule
       , solcCompatRewriteAccrueInterestCheckedArithmeticRule
+      , solcCompatRewriteAccrueInterestPrologueTempsRule
       , solcCompatRewriteNonceIncrementRule
       , solcCompatPruneUnreachableDeployHelpersRule
       , solcCompatDropUnusedMappingSlotHelperRule

@@ -77,7 +77,7 @@ Properties are excluded in `test/property_exclusions.json` for valid reasons:
 These CI-critical scripts validate cross-layer consistency:
 
 - **`check_property_manifest_sync.py`** - Ensures `property_manifest.json` stays in sync with actual Lean theorems (detects added/removed theorems)
-- **`check_storage_layout.py`** - Validates storage slot consistency across EDSL, Spec, Compiler, and AST layers; strips Lean comments/docstrings with a shared string-aware parser (so `--` and `/- -/` inside string literals are preserved), detects intra-contract slot collisions, derives Spec slot usage from `Verity/Specs/*/Spec.lean` literal state accesses, enforces Spec↔EDSL slot/type parity for compiled non-external contracts, enforces ASTSpec coverage for non-external compiler specs, and checks AST-vs-Compiler slot/type drift
+- **`check_storage_layout.py`** - Validates storage slot consistency across EDSL, Spec, and Compiler layers; strips Lean comments/docstrings with a shared string-aware parser (so `--` and `/- -/` inside string literals are preserved), detects intra-contract slot collisions, derives Spec slot usage from `Verity/Specs/*/Spec.lean` literal state accesses, and enforces Spec↔EDSL slot/type parity for compiled non-external contracts
 - **`check_mapping_slot_boundary.py`** - Enforces the mapping-slot abstraction boundary for proof interpreters: no proof semantics file may import `MappingEncoding`; builtin dispatch in `Compiler/Proofs/YulGeneration/Builtins.lean` must route through `abstractMappingSlot`/`abstractLoadStorageOrMapping`; runtime interpreters must import `MappingSlot`, use `abstractStoreStorageOrMapping`/`abstractStoreMappingEntry`, avoid legacy mapping internals (`mappingTag`/`encodeMappingSlot`/`decodeMappingSlot`/`encodeNestedMappingSlot`/`normalizeMappingBaseSlot`) including local aliases, and must not define a separate execution-state `mappings` table (`IRState`/`YulState` remain flat-storage only); also enforces explicit backend-scope markers (`activeMappingSlotBackend := .keccak`), presence of keccak helpers (`abiEncodeMappingSlot`, `solidityMappingSlot`), keccak routing through `solidityMappingSlot`, flat-storage keccak routing in `abstractLoadMappingEntry`/`abstractStoreMappingEntry`, smoke-test avoidance of legacy tagged helpers, and matching trust-boundary documentation in `TRUST_ASSUMPTIONS.md`; Lean source checks are comment/string-aware so comment-only or string-literal decoys cannot satisfy required markers
 - **`check_yul_builtin_boundary.py`** - Enforces a centralized Yul builtin semantics boundary: runtime interpreters must import `Compiler/Proofs/YulGeneration/Builtins.lean`, call `evalBuiltinCall` or `evalBuiltinCallWithBackend`, and avoid inline builtin dispatch branches (`func = "add"`, `func = "sload"`, etc.); Lean source checks are comment/string-aware so comment-only or string-literal decoys cannot satisfy required call markers
 - **`check_builtin_list_sync.py`** - Ensures `Compiler/Linker.lean` `yulBuiltins` stays synchronized with `Compiler/ContractSpec.lean` (`interopBuiltinCallNames ∪ isLowLevelCallName`) while allowing expected Linker-only Yul-object builtins (`datasize`, `dataoffset`, `datacopy`); Lean source checks are comment-aware so commented decoy `def` lines cannot satisfy extraction
@@ -142,7 +142,7 @@ python3 scripts/generate_evmyullean_adapter_report.py
 
 ## Selector & Yul Scripts
 
-- **`check_selectors.py`** - Verifies selector hash consistency across ContractSpec, compile selector tables, and generated Yul (`compiler/yul` and `compiler/yul-ast` when present); strips Lean comments/docstrings with the same shared string-aware parser used by storage checks; parses `ParamType` expressions recursively (including `bool`, tuple, array, and fixed-array forms) when extracting Solidity signatures; enforces compile selector table coverage for all specs except those with non-empty `externals`
+- **`check_selectors.py`** - Verifies selector hash consistency across ContractSpec, compile selector tables, and generated Yul (`compiler/yul`); strips Lean comments/docstrings with the same shared string-aware parser used by storage checks; parses `ParamType` expressions recursively (including `bool`, tuple, array, and fixed-array forms) when extracting Solidity signatures; enforces compile selector table coverage for all specs except those with non-empty `externals`
 - **`check_selector_fixtures.py`** - Cross-checks selectors against solc-generated hashes; fixture signature extraction is comment/string-aware so commented examples/debug strings cannot create false selector expectations, scans full function headers (so visibility can appear after modifiers like `virtual`), includes only `public`/`external` selectors (matching `solc --hashes`), canonicalizes ABI-sensitive param forms (`function(...)`, `uint/int` aliases, user-defined `contract`/`enum`/`type` aliases, and struct params into canonical tuple signatures), parses both `solc --hashes` output layouts robustly (including nested tuple signatures), and enforces reverse completeness (every `solc --hashes` signature must be present in extracted fixtures)
 - **`check_yul_compiles.py`** - Ensures generated Yul code compiles with solc, fails closed when any requested `--dir` is missing/empty, can enforce filename-set parity between directories (e.g. legacy vs patched outputs), can compare bytecode parity between directories, and can enforce a checked baseline of known compare diffs via allowlist
 - **`check_gas_report.py`** - Validates `lake exe gas-report` output shape, arithmetic consistency of totals, and monotonicity under more conservative static analysis settings
@@ -154,20 +154,16 @@ python3 scripts/generate_evmyullean_adapter_report.py
 # Default: check compiler/yul
 python3 scripts/check_yul_compiles.py
 
-# Check multiple directories and enforce legacy/AST known-diff baseline
+# Check multiple directories with filename-set parity enforcement
 python3 scripts/check_yul_compiles.py \
   --dir compiler/yul \
   --dir compiler/yul-patched \
-  --dir compiler/yul-ast \
-  --require-same-files compiler/yul compiler/yul-patched \
-  --compare-dirs compiler/yul compiler/yul-ast \
-  --allow-compare-diff-file scripts/fixtures/yul_ast_bytecode_diffs.allowlist
+  --require-same-files compiler/yul compiler/yul-patched
 
-# Check static gas model coverage against legacy + patched + AST Yul outputs
+# Check static gas model coverage against baseline + patched Yul outputs
 python3 scripts/check_gas_model_coverage.py \
   --dir compiler/yul \
-  --dir compiler/yul-patched \
-  --dir compiler/yul-ast
+  --dir compiler/yul-patched
 
 # Check patch-enabled static gas deltas (median/p90 non-regression + configurable improvement floor)
 python3 scripts/check_patch_gas_delta.py \
@@ -193,7 +189,7 @@ python3 scripts/generate_contract.py MyToken \
 python3 scripts/generate_contract.py MyContract --dry-run
 ```
 
-Creates 9 files: EDSL implementation, AST bridge scaffold, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
+Creates 8 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
 
 Identifier rules (fail-fast validation):
 - Contract name: PascalCase alphanumeric (existing rule), e.g. `MyToken`
@@ -251,10 +247,10 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 
 **`build` job** (requires `lake build` artifacts):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
-2. Static gas model coverage on generated Yul (legacy + patched + AST) (`check_gas_model_coverage.py`)
+2. Static gas model coverage on generated Yul (baseline + patched) (`check_gas_model_coverage.py`)
 3. Keccak-256 self-test (`keccak256.py --self-test`)
 4. Selector hash verification (`check_selectors.py`)
-5. Yul compilation (legacy + patched + AST) + legacy/AST diff-baseline check (`check_yul_compiles.py`)
+5. Yul compilation (baseline + patched) with filename-set parity check (`check_yul_compiles.py`)
 6. Selector fixture check (`check_selector_fixtures.py`)
 7. Static gas report invariants (`check_gas_report.py`)
 8. Save baseline + patch-enabled static gas report artifacts (`gas-report-static.tsv`, `gas-report-static-patched.tsv`)

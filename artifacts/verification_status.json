@@ -15,7 +15,6 @@
     "suites": 35
   },
   "theorems": {
-    "ast_equivalence": 29,
     "categories": 11,
     "coverage_percent": 58,
     "covered": 250,

@@ -2013,11 +2013,13 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
               ] :: rest',
             rewrittenTail)
     | .if_ (.call "iszero" [.ident ecwrSuccess])
-        [ .let_ "pos" (.call "mload" [.lit 64])
-        , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-        , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+        [ .let_ posName (.call "mload" [posPtr])
+        , .expr (.call "returndatacopy" [.ident copyPosName, .lit 0, .call "returndatasize" []])
+        , .expr (.call "revert" [.ident revertPosName, .call "returndatasize" []])
         ] :: rest =>
-        if hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccess then
+        if hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccess &&
+            decide (posName = copyPosName) &&
+            decide (posName = revertPosName) then
           let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
           ( [ .if_ (.call "iszero" [.ident ecwrSuccess])
                 [ .let_ "__compat_returndata" (.call "extract_returndata" [])
@@ -2032,22 +2034,24 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
         else
           let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
           (.if_ (.call "iszero" [.ident ecwrSuccess])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              [ .let_ posName (.call "mload" [posPtr])
+              , .expr (.call "returndatacopy" [.ident copyPosName, .lit 0, .call "returndatasize" []])
+              , .expr (.call "revert" [.ident revertPosName, .call "returndatasize" []])
               ] :: rest',
             rewrittenTail)
     | .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]]) ::
       (.if_ (.call "iszero" [.ident ecwrSuccessIf])
-        [ .let_ "pos" (.call "mload" [.lit 64])
-        , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-        , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+        [ .let_ posNameIf (.call "mload" [posPtrIf])
+        , .expr (.call "returndatacopy" [.ident copyPosNameIf, .lit 0, .call "returndatasize" []])
+        , .expr (.call "revert" [.ident revertPosNameIf, .call "returndatasize" []])
         ]) ::
       (.if_ (.call "lt" [.call "returndatasize" [], .lit 32])
         [ .expr (.call "revert" [.lit 0, .lit 0]) ]) ::
       (.let_ "borrowRate" (.call "mload" [.lit 0])) :: rest =>
         if hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrMstore &&
-            hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccessIf then
+            hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccessIf &&
+            decide (posNameIf = copyPosNameIf) &&
+            decide (posNameIf = revertPosNameIf) then
           let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
           ( [ .if_ (.call "iszero" [.ident ecwrSuccessIf])
                 [ .let_ "__compat_returndata" (.call "extract_returndata" [])
@@ -2087,9 +2091,9 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
           let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
           ( .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]]) ::
             .if_ (.call "iszero" [.ident ecwrSuccessIf])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              [ .let_ posNameIf (.call "mload" [posPtrIf])
+              , .expr (.call "returndatacopy" [.ident copyPosNameIf, .lit 0, .call "returndatasize" []])
+              , .expr (.call "revert" [.ident revertPosNameIf, .call "returndatasize" []])
               ] ::
             .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
               [ .expr (.call "revert" [.lit 0, .lit 0]) ] ::
@@ -2112,9 +2116,9 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
           ])) ::
       (.expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]])) ::
       (.if_ (.call "iszero" [.ident ecwrSuccessIf])
-        [ .let_ "pos" (.call "mload" [.lit 64])
-        , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-        , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+        [ .let_ posNameIf (.call "mload" [posPtrIf])
+        , .expr (.call "returndatacopy" [.ident copyPosNameIf, .lit 0, .call "returndatasize" []])
+        , .expr (.call "revert" [.ident revertPosNameIf, .call "returndatasize" []])
         ]) ::
       (.if_ (.call "lt" [.call "returndatasize" [], .lit 32])
         [ .expr (.call "revert" [.lit 0, .lit 0]) ]) :: rest =>
@@ -2126,6 +2130,8 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
             hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrMstore &&
             hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccessLet &&
             hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccessIf &&
+            decide (posNameIf = copyPosNameIf) &&
+            decide (posNameIf = revertPosNameIf) &&
             decide (compatAllocPtrLet = compatAllocPtrFinalize20) &&
             decide (compatAllocPtrLet = compatAllocPtrFinalize33) &&
             decide (compatAllocPtrLet = compatAllocPtrFinalize) &&
@@ -2178,9 +2184,9 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                 ]) ::
             .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]]) ::
             .if_ (.call "iszero" [.ident ecwrSuccessIf])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              [ .let_ posNameIf (.call "mload" [posPtrIf])
+              , .expr (.call "returndatacopy" [.ident copyPosNameIf, .lit 0, .call "returndatasize" []])
+              , .expr (.call "revert" [.ident revertPosNameIf, .call "returndatasize" []])
               ] ::
             .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
               [ .expr (.call "revert" [.lit 0, .lit 0]) ] ::
@@ -2198,9 +2204,9 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
           ]) ::
       (.expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]])) ::
       (.if_ (.call "iszero" [.ident ecwrSuccessIf])
-        [ .let_ "pos" (.call "mload" [.lit 64])
-        , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-        , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+        [ .let_ posNameIf (.call "mload" [posPtrIf])
+        , .expr (.call "returndatacopy" [.ident copyPosNameIf, .lit 0, .call "returndatasize" []])
+        , .expr (.call "revert" [.ident revertPosNameIf, .call "returndatasize" []])
         ]) ::
       (.if_ (.call "lt" [.call "returndatasize" [], .lit 32])
         [ .expr (.call "revert" [.lit 0, .lit 0]) ]) :: rest =>
@@ -2208,6 +2214,8 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
             hasAccrueInterestCompatBaseName "__ecwr_success" ecwrSuccessIf &&
             hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrCall &&
             hasAccrueInterestCompatBaseName "__compat_alloc_ptr" compatAllocPtrMstore &&
+            decide (posNameIf = copyPosNameIf) &&
+            decide (posNameIf = revertPosNameIf) &&
             decide (ecwrSuccessLet = ecwrSuccessIf) &&
             decide (compatAllocPtrCall = compatAllocPtrMstore) then
           let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
@@ -2248,9 +2256,9 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                 ]) ::
             .expr (.call "mstore" [.lit 0, .call "mload" [.ident compatAllocPtrMstore]]) ::
             .if_ (.call "iszero" [.ident ecwrSuccessIf])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              [ .let_ posNameIf (.call "mload" [posPtrIf])
+              , .expr (.call "returndatacopy" [.ident copyPosNameIf, .lit 0, .call "returndatasize" []])
+              , .expr (.call "revert" [.ident revertPosNameIf, .call "returndatasize" []])
               ] ::
             .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
               [ .expr (.call "revert" [.lit 0, .lit 0]) ] ::
@@ -4484,8 +4492,9 @@ example :
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite normalizes block-local IRM failure forwarding
-    (`let __ecwr_success* := call(... __compat_alloc_ptr* ...)` + inline `pos` forwarding + `lt(returndatasize(), 32)`)
-    to helper-backed `extract_returndata()` forwarding. -/
+    (`let __ecwr_success* := call(... __compat_alloc_ptr* ...)` + inline forwarding with
+    arbitrary temp/pointer names + `lt(returndatasize(), 32)`) to helper-backed
+    `extract_returndata()` forwarding. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -4505,9 +4514,9 @@ example :
                     ])
               , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_9"]])
               , .if_ (.call "iszero" [.ident "__ecwr_success_9"])
-                  [ .let_ "pos" (.call "mload" [.lit 64])
-                  , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-                  , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                  [ .let_ "__tmp_pos_9" (.call "mload" [.ident "__compat_mem_base"])
+                  , .expr (.call "returndatacopy" [.ident "__tmp_pos_9", .lit 0, .call "returndatasize" []])
+                  , .expr (.call "revert" [.ident "__tmp_pos_9", .call "returndatasize" []])
                   ]
               , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
                   [ .expr (.call "revert" [.lit 0, .lit 0]) ]
@@ -4629,6 +4638,81 @@ example :
             [ .let_ "pos" (.call "mload" [.lit 64])
             , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
             , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+            ]
+        , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+            [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+        ] => true
+      | _ => false
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      unchanged := by
+  native_decide
+
+/-- Smoke test: block-local IRM forwarding normalization stays out-of-scope when
+    `returndatacopy`/`revert` do not use the same temp pointer. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__compat_alloc_ptr_11" (.ident "ptr")
+              , .let_ "__ecwr_success_11"
+                  (.call "call"
+                    [ .call "gas" []
+                    , .ident "irm"
+                    , .lit 0
+                    , .lit 0
+                    , .lit 356
+                    , .ident "__compat_alloc_ptr_11"
+                    , .lit 32
+                    ])
+              , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_11"]])
+              , .if_ (.call "iszero" [.ident "__ecwr_success_11"])
+                  [ .let_ "__tmp_pos_11" (.call "mload" [.lit 64])
+                  , .expr (.call "returndatacopy" [.ident "__tmp_pos_11", .lit 0, .call "returndatasize" []])
+                  , .expr (.call "revert" [.ident "__tmp_other_11", .call "returndatasize" []])
+                  ]
+              , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let body :=
+      match helperBodyForName? (topLevelZeroArityFunctionBodies top) "fun_accrueInterest" with
+      | some stmts => stmts
+      | none => []
+    let unchanged :=
+      match body with
+      | [ .let_ "__compat_alloc_ptr_11" (.ident "ptr")
+        , .let_ "__ecwr_success_11"
+            (.call "call"
+              [ .call "gas" []
+              , .ident "irm"
+              , .lit 0
+              , .lit 0
+              , .lit 356
+              , .ident "__compat_alloc_ptr_11"
+              , .lit 32
+              ])
+        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr_11"]])
+        , .if_ (.call "iszero" [.ident "__ecwr_success_11"])
+            [ .let_ "__tmp_pos_11" (.call "mload" [.lit 64])
+            , .expr (.call "returndatacopy" [.ident "__tmp_pos_11", .lit 0, .call "returndatasize" []])
+            , .expr (.call "revert" [.ident "__tmp_other_11", .call "returndatasize" []])
             ]
         , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
             [ .expr (.call "revert" [.lit 0, .lit 0]) ]

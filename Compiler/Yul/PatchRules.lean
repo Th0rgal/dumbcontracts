@@ -2003,6 +2003,22 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
               ]
           ] ++ rest'
         , rewrittenTail + 1)
+    | .if_ (.call "iszero" [.ident "__ecwr_success"])
+        [ .let_ "pos" (.call "mload" [.lit 64])
+        , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
+        , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+        ] :: rest =>
+        let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+        ( [ .if_ (.call "iszero" [.ident "__ecwr_success"])
+              [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+              , .expr
+                  (.call "revert"
+                    [ .call "add" [.ident "__compat_returndata", .lit 32]
+                    , .call "mload" [.ident "__compat_returndata"]
+                    ])
+              ]
+          ] ++ rest'
+        , rewrittenTail + 1)
     | .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]]) ::
       (.if_ (.call "iszero" [.ident "__ecwr_success"])
         [ .let_ "pos" (.call "mload" [.lit 64])
@@ -4224,9 +4240,9 @@ example :
         deployCode := []
         runtimeCode :=
           [ .funcDef "fun_accrueInterest" [] []
-              [ .let_ "__ecwr_success" (.ident "callSucceeded")
+              [ .let_ "__ecwr_success_alt" (.ident "callSucceeded")
               , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__other_ptr"]])
-              , .if_ (.call "iszero" [.ident "__ecwr_success"])
+              , .if_ (.call "iszero" [.ident "__ecwr_success_alt"])
                   [ .let_ "pos" (.call "mload" [.lit 64])
                   , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
                   , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
@@ -4257,9 +4273,9 @@ example :
       | none => []
     let unchanged :=
       match body with
-      | [ .let_ "__ecwr_success" (.ident "callSucceeded")
+      | [ .let_ "__ecwr_success_alt" (.ident "callSucceeded")
         , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__other_ptr"]])
-        , .if_ (.call "iszero" [.ident "__ecwr_success"])
+        , .if_ (.call "iszero" [.ident "__ecwr_success_alt"])
             [ .let_ "pos" (.call "mload" [.lit 64])
             , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
             , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])

@@ -44,6 +44,8 @@ lake exe verity-compiler --input edsl --edsl-contract counter
 `--input edsl` now compiles a curated supported subset through the lowering boundary in
 `Compiler/Lowering/FromEDSL.lean` and
 `Compiler/Proofs/Lowering/FromEDSL.lean`.
+That proof module now includes transition bridge lemmas that connect lowered
+`.simpleStorage`/`.counter` inputs to existing Layer-1 EDSL correctness theorems.
 Current lowering is still transition-stage: supported EDSL contracts are pinned to
 their current lowering targets, and advanced flows (for example linked-library
 `CryptoHash`) remain on `--input model`.

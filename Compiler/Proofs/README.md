@@ -17,6 +17,10 @@ Key entry points:
 - Lowering boundary scaffolding proofs: `Compiler/Proofs/Lowering/`
 - Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
 
+The lowering boundary currently includes transition bridge lemmas that connect
+`SupportedEDSLContract` lowering cases to existing Layer 1 correctness results
+for `SimpleStorage` and `Counter`.
+
 Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The re-export shim at `Verity/Specs/<Name>/Proofs.lean` imports Layer 1 spec-correctness proofs from `Compiler/Proofs/SpecCorrectness/<Name>.lean`.
 
 ## Build

@@ -4,8 +4,8 @@ Formal verification proofs for the Verity compiler, proving correctness across t
 
 ## Verification Layers
 
-- **Layer 1: EDSL ≡ ContractSpec** — User contracts satisfy their specs (`Verity/Proofs/<Name>/` + `Compiler/Proofs/SpecCorrectness/`).
-- **Layer 2: ContractSpec → IR** — IR generation preserves spec semantics (`Compiler/Proofs/IRGeneration/`).
+- **Layer 1: EDSL ≡ CompilationModel (`ContractSpec`)** — User contracts satisfy their compilation models (`Verity/Proofs/<Name>/` + `Compiler/Proofs/SpecCorrectness/`).
+- **Layer 2: CompilationModel (`ContractSpec`) → IR** — IR generation preserves compilation-model semantics (`Compiler/Proofs/IRGeneration/`).
 - **Layer 3: IR → Yul** — All statement equivalence proofs proven (`Compiler/Proofs/YulGeneration/`).
 
 Key entry points:
@@ -29,7 +29,7 @@ All proofs complete — no `sorry` warnings expected.
 
 ### SpecInterpreter ([SpecInterpreter.lean](../../Verity/Proofs/Stdlib/SpecInterpreter.lean))
 
-Execution semantics for the ContractSpec language.
+Execution semantics for the compilation-model language (`ContractSpec` today).
 
 **Key Types**: `EvalContext` (execution environment), `SpecStorage` (abstract storage), `ExecState` (execution state with storage, return value, and halt flag).
 

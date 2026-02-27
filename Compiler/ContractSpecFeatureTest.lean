@@ -180,6 +180,36 @@ private def featureSpec : ContractSpec := {
   ]
 }
 
+private def compilationModelAliasSpec : CompilationModel := {
+  name := "CompilationModelAliasSpec"
+  fields := []
+  constructor := none
+  functions := [
+    { name := "ping"
+      params := []
+      returnType := none
+      body := [Stmt.stop]
+    }
+  ]
+}
+
+#eval! do
+  -- Positive path: the new canonical name compiles.
+  match compile compilationModelAliasSpec [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ CompilationModel alias compile failed: {err}")
+  | .ok _ =>
+      IO.println "✓ CompilationModel alias compile smoke"
+
+#eval! do
+  -- Backward-compat path: legacy `ContractSpec` annotations still work.
+  let legacyView : ContractSpec := compilationModelAliasSpec
+  match compile legacyView [1] with
+  | .error err =>
+      throw (IO.userError s!"✗ ContractSpec backward-compat compile failed: {err}")
+  | .ok _ =>
+      IO.println "✓ ContractSpec backward-compat compile smoke"
+
 #eval! do
   match compile featureSpec [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] with
   | .error err =>

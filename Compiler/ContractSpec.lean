@@ -1,7 +1,7 @@
 /-
-  Compiler.ContractSpec: Declarative Contract Specification
+  Compiler.ContractSpec: Declarative Compilation Model DSL
 
-  This module defines a declarative way to specify contracts for compilation,
+  This module defines a declarative way to model contracts for compilation,
   eliminating manual IR writing while keeping the system simple and maintainable.
 
   Philosophy:
@@ -35,9 +35,9 @@ open Compiler
 open Compiler.Yul
 
 /-!
-## Contract Specification DSL
+## Compilation Model DSL
 
-Instead of manually writing IR, contracts provide a high-level specification:
+Instead of manually writing IR, contracts provide a high-level model:
 - Storage fields with automatic slot assignment
 - Functions with automatic selector computation
 - Guards and access control patterns
@@ -415,6 +415,14 @@ structure ContractSpec where
   errors : List ErrorDef := []  -- Custom errors (#586)
   externals : List ExternalFunction := []  -- External function declarations (#184)
   deriving Repr
+
+/--
+Canonical compiler-facing name for `ContractSpec`.
+
+`CompilationModel` clarifies this artifact is the compiler input model, distinct
+from logical `Prop` specifications in `Verity/Specs/*`.
+-/
+abbrev CompilationModel := ContractSpec
 
 /-!
 ## IR Generation from Spec

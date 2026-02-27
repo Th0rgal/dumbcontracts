@@ -8,9 +8,9 @@ Verity implements a **three-layer verification stack** that proves smart contrac
 
 ```
 User Contracts (EDSL)
-    ↓ Layer 1: EDSL ≡ ContractSpec
-ContractSpec (Human-Readable Specs)
-    ↓ Layer 2: ContractSpec → IR
+    ↓ Layer 1: EDSL ≡ CompilationModel (`ContractSpec` today)
+CompilationModel (Compiler-Facing Contract Model)
+    ↓ Layer 2: CompilationModel → IR
 Intermediate Representation (IR)
     ↓ Layer 3: IR → Yul
 Yul (EVM Assembly)
@@ -25,7 +25,7 @@ EVM Bytecode
 
 **What This Achieves**: Fewer moving parts, less maintenance overhead, and clearer verification boundaries. CI, docs, and scaffold tooling now align with this single path.
 
-## Layer 1: EDSL ≡ ContractSpec ✅ **COMPLETE**
+## Layer 1: EDSL ≡ CompilationModel (`ContractSpec`) ✅ **COMPLETE**
 
 **Status**: 8 contracts verified (7 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
 
@@ -61,15 +61,15 @@ theorem increment_adds_one (state : ContractState) :
 
 ### Infrastructure
 
-- **SpecInterpreter**: Executable semantics for ContractSpec language
+- **SpecInterpreter**: Executable semantics for CompilationModel language (`ContractSpec` today)
 - **Automation Library**: Proven helper lemmas (safe arithmetic, storage operations)
 - **Proof Patterns**: Documented patterns for common verification tasks
 
-## Layer 2: ContractSpec → IR ✅ **COMPLETE**
+## Layer 2: CompilationModel (`ContractSpec`) → IR ✅ **COMPLETE**
 
 **Status**: All 7 compiled contracts have IR generation with preservation proofs
 
-**What This Layer Proves**: Intermediate representation (IR) generation preserves ContractSpec semantics.
+**What This Layer Proves**: Intermediate representation (IR) generation preserves CompilationModel semantics.
 
 ### IR Generation Proofs
 
@@ -95,7 +95,7 @@ theorem counter_ir_preserves_spec :
 ### Infrastructure
 
 - **IRInterpreter**: Executable semantics for IR language
-- **IR Codegen**: Automatic IR generation from ContractSpec
+- **IR Codegen**: Automatic IR generation from CompilationModel (`ContractSpec` today)
 - **Preservation Proofs**: Automated tactics for spec → IR equivalence
 
 ## Layer 3: IR → Yul ✅ **COMPLETE**

@@ -6,7 +6,7 @@ This document states, in a formal and current way, what Verity proves and what V
 
 Verity uses a single supported compilation path:
 
-1. `ContractSpec` path (proof-backed): `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode`
+`EDSL -> CompilationModel (ContractSpec) -> IR -> Yul -> solc -> bytecode`
 
 The formal Layer 1/2/3 guarantees apply to this path.
 
@@ -14,21 +14,38 @@ The formal Layer 1/2/3 guarantees apply to this path.
 
 ```
 EDSL
-  ↓ [Layer 1: FULLY VERIFIED]
-ContractSpec
-  ↓ [Layer 2: FULLY VERIFIED]
+  ↓ [Layer 1: FULLY VERIFIED — EDSL ≡ CompilationModel]
+CompilationModel (`ContractSpec`)
+  ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
-  ↓ [Layer 3: FULLY VERIFIED, 1 axiom]
+  ↓ [Layer 3: FULLY VERIFIED, 1 axiom — IR → Yul]
 Yul
-  ↓ [trusted external compiler]
+  ↓ [trusted external compiler — solc]
 EVM Bytecode
 ```
 
+## Layer-1 Hybrid Transition Strategy
+
+Layer 1 (EDSL ≡ CompilationModel) currently operates as a **hybrid**:
+
+- **Generated subset**: For contracts within the supported EDSL subset, the
+  `EDSL -> CompilationModel` correspondence is established by per-contract proofs
+  in `Compiler/Proofs/SpecCorrectness/` and `Verity/Proofs/`.
+- **Manual escape hatch**: Advanced or out-of-subset constructs (e.g., custom Yul
+  injection via linked libraries, ECM patterns, complex ABI encoding) are expressed
+  directly in the `CompilationModel` language. These are trusted at the
+  CompilationModel boundary — the compiler verifies IR/Yul generation from them,
+  but the correspondence to EDSL intent is the developer's responsibility.
+
+This hybrid approach is intentional during transition. The long-term direction is to
+expand the generated subset (and eventually automate `EDSL -> CompilationModel`
+generation), reducing the manual escape hatch surface over time.
+
 ## Current Verified Facts
 
-- Layer 1 (EDSL -> ContractSpec) is proven in Lean.
-- Layer 2 (ContractSpec -> IR) is proven in Lean.
-- Layer 3 (IR -> Yul) is proven in Lean except for one documented axiom.
+- Layer 1 (EDSL ≡ CompilationModel, currently `ContractSpec`) is proven in Lean.
+- Layer 2 (CompilationModel → IR) is proven in Lean.
+- Layer 3 (IR → Yul) is proven in Lean except for one documented axiom.
 
 Metrics tracked by repository tooling:
 
@@ -107,7 +124,7 @@ High-level semantics can expose intermediate state in a reverted computation mod
 
 ## Security Audit Checklist
 
-1. Confirm deployment uses the `ContractSpec` (`CompilationModel`) path.
+1. Confirm deployment uses the `CompilationModel` (`ContractSpec`) path.
 2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.
@@ -130,5 +147,5 @@ If this file is stale, audit conclusions may be invalid.
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)
 
-**Last Updated**: 2026-02-25
+**Last Updated**: 2026-02-27
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

@@ -26,8 +26,15 @@ Compiler UX status:
 Both modes are routed through `Compiler.Lowering` so model-mode and EDSL-mode
 share one lowering API surface.
 `Compiler/Proofs/Lowering/FromEDSL.lean` now includes explicit transition bridge
-theorems (`lower_simpleStorage_store_correct`, `lower_counter_increment_correct`)
-that reuse existing Layer-1 EDSL correctness proofs through lowered supported inputs.
+theorems that reuse existing Layer-1 EDSL correctness proofs through lowered
+supported inputs:
+`lower_simpleStorage_store_correct`,
+`lower_counter_increment_correct`,
+`lower_owned_getOwner_correct`,
+`lower_ledger_deposit_correct`,
+`lower_ownedCounter_getCount_correct`,
+`lower_simpleToken_getTotalSupply_correct`,
+`lower_safeCounter_getCount_correct`.
 
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 

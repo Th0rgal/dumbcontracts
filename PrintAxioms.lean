@@ -621,8 +621,18 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_supported_eq
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_simpleStorage_eq
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_counter_eq
+#print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_owned_eq
+#print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_ledger_eq
+#print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_ownedCounter_eq
+#print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_simpleToken_eq
+#print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_safeCounter_eq
 #print axioms Compiler.Proofs.Lowering.lower_simpleStorage_store_correct
 #print axioms Compiler.Proofs.Lowering.lower_counter_increment_correct
+#print axioms Compiler.Proofs.Lowering.lower_owned_getOwner_correct
+#print axioms Compiler.Proofs.Lowering.lower_ledger_deposit_correct
+#print axioms Compiler.Proofs.Lowering.lower_ownedCounter_getCount_correct
+#print axioms Compiler.Proofs.Lowering.lower_simpleToken_getTotalSupply_correct
+#print axioms Compiler.Proofs.Lowering.lower_safeCounter_getCount_correct
 #print axioms Compiler.Proofs.Lowering.parseSupportedEDSLContract_roundtrip
 #print axioms Compiler.Proofs.Lowering.lowerModelPath_eq_ok
 #print axioms Compiler.Proofs.Lowering.lowerModelPath_preserves_interpretSpec
@@ -757,4 +767,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 632 theorems/lemmas (603 public, 29 private)
+-- Total: 642 theorems/lemmas (613 public, 29 private)

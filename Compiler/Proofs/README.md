@@ -19,7 +19,8 @@ Key entry points:
 
 The lowering boundary currently includes transition bridge lemmas that connect
 `SupportedEDSLContract` lowering cases to existing Layer 1 correctness results
-for `SimpleStorage` and `Counter`.
+for the full currently supported subset (`SimpleStorage`, `Counter`, `Owned`,
+`Ledger`, `OwnedCounter`, `SimpleToken`, `SafeCounter`).
 
 Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The re-export shim at `Verity/Specs/<Name>/Proofs.lean` imports Layer 1 spec-correctness proofs from `Compiler/Proofs/SpecCorrectness/<Name>.lean`.
 

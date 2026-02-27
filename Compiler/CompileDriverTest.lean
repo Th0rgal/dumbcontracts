@@ -52,13 +52,14 @@ private def expectSupportedSubsetParity
       s!"{modelAbiDir}/{spec.name}.abi.json"
       s!"{edslAbiDir}/{spec.name}.abi.json"
 
-#eval! do
-  let outDir := "/tmp/verity-compile-driver-test-out"
-  let abiDir := "/tmp/verity-compile-driver-test-abi"
-  let modelOutDir := "/tmp/verity-compile-driver-test-model-out"
-  let edslOutDir := "/tmp/verity-compile-driver-test-edsl-out"
-  let modelAbiDir := "/tmp/verity-compile-driver-test-model-abi"
-  let edslAbiDir := "/tmp/verity-compile-driver-test-edsl-abi"
+#eval! (do
+  let nonce ← IO.rand 0 1000000000
+  let outDir := s!"/tmp/verity-compile-driver-test-{nonce}-out"
+  let abiDir := s!"/tmp/verity-compile-driver-test-{nonce}-abi"
+  let modelOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-model-out"
+  let edslOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-edsl-out"
+  let modelAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-model-abi"
+  let edslAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-edsl-abi"
   let missingLib := "/tmp/definitely-missing-library.yul"
   let failingAbi := s!"{abiDir}/CryptoHash.abi.json"
   let successfulAbi := s!"{abiDir}/SimpleStorage.abi.json"
@@ -107,5 +108,6 @@ private def expectSupportedSubsetParity
     "duplicate selected EDSL contracts fail closed"
     (compileAllFromEDSLWithOptions edslOutDir false [] ["counter", "counter"] {} none (some edslAbiDir))
     "Duplicate --edsl-contract value: counter"
+  : IO Unit)
 
 end Compiler.CompileDriverTest

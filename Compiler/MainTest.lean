@@ -59,12 +59,13 @@ private def fileExists (path : String) : IO Bool := do
     "duplicate --edsl-contract value"
     ["--input", "edsl", "--edsl-contract", "counter", "--edsl-contract", "counter"]
     "Duplicate --edsl-contract value: counter"
-  let edslOutDir := "/tmp/verity-main-test-edsl-out"
+  let nonce ← IO.monoMsNow
+  let edslOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-out"
   IO.FS.createDirAll edslOutDir
   main ["--input", "edsl", "--output", edslOutDir]
   let edslArtifact ← fileExists s!"{edslOutDir}/SimpleStorage.yul"
   expectTrue "edsl input mode compiles supported subset artifact" edslArtifact
-  let singleContractOutDir := "/tmp/verity-main-test-edsl-single-contract-out"
+  let singleContractOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-single-contract-out"
   IO.FS.createDirAll singleContractOutDir
   main ["--input", "edsl", "--edsl-contract", "counter", "--output", singleContractOutDir]
   let singleContractArtifact ← fileExists s!"{singleContractOutDir}/Counter.yul"

@@ -117,7 +117,13 @@ Metrics tracked by repository tooling:
 
 ### Wrapping Arithmetic
 
-`Uint256` arithmetic in the formal model is wrapping modulo `2^256`. If Solidity parity requires checked overflow behavior, contracts must encode explicit checks.
+`Uint256` arithmetic in the formal model is **wrapping modulo 2^256**, matching the EVM Yellow Paper. This applies to all operations: add, sub, mul, div, mod, bitwise (and, or, xor, not), and shifts (shl, shr). Division and modulo by zero return 0.
+
+This is a **proven property**, not an axiom — see `Compiler/Proofs/ArithmeticProfile.lean` for formal proofs (`add_wraps`, `sub_wraps`, `mul_wraps`, `div_by_zero`, `mod_by_zero`). The EVMYulLean bridge confirms agreement between Verity's `Nat`-modular arithmetic and EVMYulLean's `Fin`-based `UInt256` operations.
+
+For contracts that require overflow protection, the EDSL provides checked operations (`safeAdd`, `safeSub`, `safeMul`) that return `Option` and can be combined with `requireSomeUint` to revert on overflow. These are EDSL-level constructs — the compiler does not insert automatic overflow checks.
+
+All backend profiles use identical wrapping arithmetic. See [`docs/ARITHMETIC_PROFILE.md`](docs/ARITHMETIC_PROFILE.md) for the full specification.
 
 ### Revert-State Modeling
 
@@ -144,6 +150,7 @@ If this file is stale, audit conclusions may be invalid.
 
 - [AUDIT.md](AUDIT.md)
 - [AXIOMS.md](AXIOMS.md)
+- [docs/ARITHMETIC_PROFILE.md](docs/ARITHMETIC_PROFILE.md)
 - [docs/EXTERNAL_CALL_MODULES.md](docs/EXTERNAL_CALL_MODULES.md)
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)

@@ -1797,6 +1797,20 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
     (stmts : List YulStmt) : List YulStmt × Nat
   := match stmts with
     | [] => ([], 0)
+    | .if_ (.call "gt" [.call "timestamp" [], .ident prevLastUpdate]) body :: rest =>
+        if hasAccrueInterestCompatBaseName "prevLastUpdate" prevLastUpdate then
+          let (body', bodyRewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+          let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+          ( [ .let_ "__compat_elapsed"
+                (.call "checked_sub_uint256" [.call "timestamp" [], .ident prevLastUpdate])
+            , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+            ] ++ body' ++ rest'
+          , bodyRewritten + rewrittenTail + 1)
+        else
+          let (body', bodyRewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+          let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+          (.if_ (.call "gt" [.call "timestamp" [], .ident prevLastUpdate]) body' :: rest',
+            bodyRewritten + rewrittenTail)
     | .let_ "__ecwr_success"
         (.call "call"
           [ .call "gas" []
@@ -3961,6 +3975,126 @@ example :
     let topNames := topLevelFunctionNames report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       (topNames.filter (fun name => name = "finalize_allocation_27020")).length = 1 := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite normalizes timestamp guard to checked-sub + early leave,
+    then materializes `checked_sub_uint256` when referenced+absent. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .if_ (.call "gt" [.call "timestamp" [], .ident "prevLastUpdate_7"])
+                  [ .expr (.call "mstore" [.lit 0, .lit 1]) ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint256" &&
+      called.any (fun name => name = "checked_sub_uint256") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat timestamp guards. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .if_ (.call "gt" [.call "timestamp" [], .ident "lastUpdate"])
+                  [ .expr (.call "mstore" [.lit 0, .lit 1]) ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint256" = false &&
+      called.any (fun name => name = "checked_sub_uint256") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite is wrapper-safe for timestamp guard normalization. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" [] []
+                  [ .if_ (.call "gt" [.call "timestamp" [], .ident "prevLastUpdate_3"])
+                      [ .expr (.call "mstore" [.lit 0, .lit 1]) ]
+                  ]
+              , .block [ .expr (.call "fun_accrueInterest" []) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed top "checked_sub_uint256" &&
+      called.any (fun name => name = "checked_sub_uint256") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `checked_sub_uint256` helper
+    during timestamp guard normalization. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ checkedSubUint256HelperStmt
+          , .funcDef "fun_accrueInterest" [] []
+              [ .if_ (.call "gt" [.call "timestamp" [], .ident "prevLastUpdate_5"])
+                  [ .expr (.call "mstore" [.lit 0, .lit 1]) ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let topNames := topLevelFunctionNames report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      (topNames.filter (fun name => name = "checked_sub_uint256")).length = 1 := by
   native_decide
 
 /-- Smoke test: unused top-level `keccakMarketParams` helper is dropped. -/

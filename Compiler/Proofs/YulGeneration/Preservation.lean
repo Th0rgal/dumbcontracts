@@ -14,9 +14,8 @@ open Compiler.Proofs.IRGeneration
 We prove that Yul code generation preserves IR semantics, assuming that
 executing an IR function body matches executing the same Yul statements.
 
-**Scope**: This proof applies to the CompilationModel compilation path
-(`CompilationModel -> IR -> Yul`). The AST compilation path (`compileAST`)
-does not use IR and has no corresponding preservation proof.
+**Scope**: This proof applies to the compilation path
+`CompilationModel -> IR -> Yul`.
 See `TRUST_ASSUMPTIONS.md` for the full trust-boundary description.
 -/
 

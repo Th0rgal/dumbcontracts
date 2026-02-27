@@ -8,6 +8,7 @@ Components and flow:
 3. `Compiler/Codegen.lean` lowers IR to Yul AST.
 4. `Compiler/Yul/PrettyPrint.lean` renders Yul text.
 5. `solc` compiles Yul to EVM bytecode.
+6. AST types (`Verity/AST.lean`) and denotation proofs (`Verity/Denote.lean`) are retained as proof artifacts; the AST compiler backend (`--ast`) has been removed.
 
 Trust changes:
 1. Lean proofs stop at generated Yul; `solc` correctness is trusted.
@@ -20,7 +21,7 @@ Trust changes:
 Threat assumptions:
 1. Adversary may submit malformed source/contracts/docs/artifacts through PRs.
 2. CI runners execute checks on attacker-controlled branch contents.
-3. Deployers use the proof-backed `ContractSpec`/`CompilationModel` path.
+3. Deployers use the proof-backed CompilationModel path (ContractSpec).
 
 Access control and checks:
 1. Solidity runtime access control is contract-specific and tested in Foundry suites under `test/`.
@@ -50,7 +51,7 @@ Crypto choices:
 
 ## Design decisions
 
-1. Keep a single compiler front-end (`ContractSpec` / `CompilationModel`) to minimize maintenance surface.
+1. Single compiler front-end (`ContractSpec`/`CompilationModel`); AST backend was removed after migration completed.
 2. Use many small explicit CI check scripts rather than one opaque mega-check; each guard maps to one invariant and one failure reason.
 3. Keep warning-regression baseline as checked JSON artifact for deterministic CI behavior; validate schema strictly to avoid silent acceptance of malformed data.
 4. Prefer generated artifacts and sync checks over handwritten counts/metadata to reduce review-time ambiguity.
@@ -58,8 +59,9 @@ Crypto choices:
 ## Known risks
 
 1. `solc` is trusted and outside Lean proof scope.
-2. Linked external Yul libraries remain trusted dependencies and must be audited separately.
-3. Gas bounds are engineering checks, not semantic security proofs.
+2. AST denotation proofs are retained as proof artifacts but are not part of the active compilation path.
+3. Linked external Yul libraries remain trusted dependencies and must be audited separately.
+4. Gas bounds are engineering checks, not semantic security proofs.
 
 ## External dependencies
 

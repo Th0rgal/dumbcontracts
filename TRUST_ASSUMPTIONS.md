@@ -4,12 +4,11 @@ This document states, in a formal and current way, what Verity proves and what V
 
 ## Scope
 
-Verity has two compilation paths:
+Verity uses a single supported compilation path:
 
 1. `ContractSpec` path (proof-backed): `EDSL -> ContractSpec -> IR -> Yul -> solc -> bytecode`
-2. AST path (`--ast`): `Unified AST -> Yul -> solc -> bytecode`
 
-The formal Layer 1/2/3 guarantees apply to the `ContractSpec` path.
+The formal Layer 1/2/3 guarantees apply to this path.
 
 ## Verification Chain
 
@@ -30,7 +29,7 @@ EVM Bytecode
 - Layer 1 (EDSL -> ContractSpec) is proven in Lean.
 - Layer 2 (ContractSpec -> IR) is proven in Lean.
 - Layer 3 (IR -> Yul) is proven in Lean except for one documented axiom.
-- Unified AST equivalence proofs exist for migrated example contracts, but AST code generation is not yet inside the same end-to-end proof chain as ContractSpec compilation.
+- Unified AST equivalence proofs for migrated examples remain useful migration artifacts, but they are not a supported compiler backend path.
 
 Metrics tracked by repository tooling:
 
@@ -107,13 +106,13 @@ Metrics tracked by repository tooling:
 
 High-level semantics can expose intermediate state in a reverted computation model. EVM runtime reverts discard state. Contracts should preserve checks-before-effects discipline.
 
-### AST Path Assurance Level
+### AST Migration Artifacts
 
-AST compilation (`--ast`) is tested and drift-checked, but not yet proven with the same end-to-end semantic preservation proofs as the `ContractSpec` path.
+Unified AST artifacts are maintained for migration/interop and proof engineering. They are not a productized compilation backend.
 
 ## Security Audit Checklist
 
-1. Confirm whether deployment uses ContractSpec path, AST path, or both.
+1. Confirm deployment uses the `ContractSpec` (`CompilationModel`) path.
 2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.

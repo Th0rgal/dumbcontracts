@@ -1,5 +1,4 @@
 import Compiler.CompileDriver
-import Compiler.ASTDriver
 
 /-!
 ## CLI Argument Parsing
@@ -7,7 +6,6 @@ import Compiler.ASTDriver
 Supports:
 - `--link <path>` : Link external Yul library (can be specified multiple times)
 - `--output <dir>` or `-o <dir>` : Output directory (default: "compiler/yul")
-- `--ast` : Use unified AST compilation path (issue #364)
 - `--verbose` or `-v` : Verbose output
 - `--help` or `-h` : Show help message
 -/
@@ -17,7 +15,6 @@ private structure CLIArgs where
   abiOutDir : Option String := none
   libs : List String := []
   verbose : Bool := false
-  useAST : Bool := false
   backendProfile : Compiler.BackendProfile := .semantic
   patchEnabled : Bool := false
   patchMaxIterations : Nat := 2
@@ -50,7 +47,6 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println "  --link <path>      Link external Yul library (can be used multiple times)"
         IO.println "  --output <dir>     Output directory (default: compiler/yul)"
         IO.println "  -o <dir>           Short form of --output"
-        IO.println "  --ast              Use unified AST compilation path (#364)"
         IO.println "  --abi-output <dir> Output ABI JSON artifacts (one <Contract>.abi.json per spec)"
         IO.println "  --backend-profile <semantic|solidity-parity-ordering|solidity-parity>"
         IO.println "  --enable-patches   Enable deterministic Yul patch pass"
@@ -64,7 +60,6 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println ""
         IO.println "Example:"
         IO.println "  verity-compiler --link examples/external-libs/PoseidonT3.yul -o compiler/yul"
-        IO.println "  verity-compiler --ast -v  # compile using unified AST path"
         IO.println "  verity-compiler --enable-patches --patch-report compiler/patch-report.tsv"
         throw (IO.userError "help")
     | "--link" :: path :: rest =>
@@ -79,8 +74,6 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         go rest { cfg with abiOutDir := some dir }
     | ["--abi-output"] =>
         throw (IO.userError "Missing value for --abi-output")
-    | "--ast" :: rest =>
-        go rest { cfg with useAST := true }
     | "--backend-profile" :: raw :: rest =>
         match parseBackendProfile raw with
         | some profile => go rest { cfg with backendProfile := profile }
@@ -117,8 +110,6 @@ def main (args : List String) : IO Unit := do
     let cfg ← parseArgs args
     if cfg.verbose then
       IO.println s!"Output directory: {cfg.outDir}"
-      if cfg.useAST then
-        IO.println "Mode: unified AST compilation"
       IO.println s!"Backend profile: {backendProfileString cfg.backendProfile}"
       match cfg.abiOutDir with
       | some dir => IO.println s!"ABI output directory: {dir}"
@@ -152,10 +143,7 @@ def main (args : List String) : IO Unit := do
       }
       mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }
-    if cfg.useAST then
-      Compiler.ASTDriver.compileAllASTWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
-    else
-      compileAllWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
+    compileAllWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
   catch e =>
     if e.toString == "help" then
       -- Help was shown, exit cleanly

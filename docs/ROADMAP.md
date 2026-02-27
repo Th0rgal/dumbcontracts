@@ -89,9 +89,8 @@ Recent progress for custom errors (`#586`):
 - Static scalar payload args remain expression-friendly (`uint256`, `address`, `bool`, `bytes32`), while composite/dynamic payload args fail fast with issue-linked diagnostics when not provided as direct parameter references.
 
 Recent progress for ABI JSON artifact generation (`#688`):
-- `verity-compiler --ast --abi-output <dir>` now emits one `<Contract>.abi.json` file per unified AST spec, using an AST→ABI bridge that reuses the shared ABI renderer.
-- The previous AST-mode CLI rejection for `--abi-output` has been removed, so ContractSpec and AST compilation paths now have parity for ABI artifact emission.
-- AST specs now support explicit mutability metadata (`isPayable`, `isView`, `isPure`) that propagates to both runtime payability guards and ABI JSON `stateMutability`, with compile-time validation for invalid combinations.
+- `verity-compiler --abi-output <dir>` emits one `<Contract>.abi.json` file per compiled ContractSpec in the supported compilation path.
+- Unified AST mutability metadata (`isPayable`, `isView`, `isPure`) remains available for migration/proof artifacts, but AST is not a productized backend.
 
 Delivery policy for unsupported features:
 1. Compiler diagnostics must identify the exact unsupported construct.
@@ -159,7 +158,7 @@ These limitations affect only the basic interpreter path (used for proofs). The 
 
 The unified AST (`Verity.AST`) provides a deep embedding that maps 1:1 to EDSL primitives. Simple contracts use `rfl` (definitional equality). Contracts with helper composition (e.g., `onlyOwner`) use `bind_assoc` to flatten nested `bind` before `rfl` closes the goal.
 
-**Next step**: Build the `contract` macro (Phase 4) and compiler `AST → Yul` (Phase 5).
+**Next step**: Build the `contract` macro (Phase 4) for EDSL/AST authoring ergonomics while keeping the supported compiler backend centered on `ContractSpec`/`CompilationModel`.
 
 ### ✅ **Ledger Sum Properties** (Complete)
 **What**: Prove total supply equals sum of all balances

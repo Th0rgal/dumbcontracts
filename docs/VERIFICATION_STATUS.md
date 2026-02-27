@@ -297,7 +297,7 @@ Implemented:
   - opt-in patch execution via `YulEmitOptions.patchConfig`
 - `Compiler.emitYulWithOptionsReport`
   - emits `(YulObject × PatchPassReport)` so manifest + iteration metadata are available for CI/tooling
-- `verity-compiler` (`Compiler/Main.lean`, `Compiler/CompileDriver.lean`, `Compiler/ASTDriver.lean`)
+- `verity-compiler` (`Compiler/Main.lean`, `Compiler/CompileDriver.lean`)
   - supports `--enable-patches`, `--patch-max-iterations`, and `--patch-report <path>` to export TSV patch coverage per contract/rule
 - CI (`.github/workflows/verify.yml`)
   - produces and uploads `patch-coverage-report` artifact; summary table is included in workflow step summary
@@ -324,8 +324,8 @@ Current diagnostic coverage in compiler:
 - Contract specs now support declarative reserved slot intervals (`reservedSlotRanges`) with compile-time diagnostics for invalid/overlapping ranges and for field canonical/alias write slots that overlap reserved intervals (Issue #623).
 - Storage fields now support packed subfield metadata (`Field.packedBits`) with masked read and read-modify-write lowering, compile-time bit-range validation, and overlap diagnostics that permit shared slots only when packed ranges are disjoint (Issue #623).
 - `verity-compiler` now supports deterministic ABI artifact emission in ContractSpec mode via `--abi-output <dir>` and writes one `<Contract>.abi.json` per compiled spec, including `view`/`pure` `stateMutability` metadata when declared in `ContractSpec.FunctionSpec`.
-- `verity-compiler` now supports deterministic ABI artifact emission in unified AST mode via `--ast --abi-output <dir>`, using an AST→ABI bridge that emits one `<Contract>.abi.json` per AST spec with constructor/function signatures and typed outputs.
-- AST specs now support explicit mutability metadata (`isPayable`, `isView`, `isPure`) that drives runtime payability guards and ABI `stateMutability` emission, with compile-time diagnostics for invalid mutability combinations.
+- `verity-compiler` supports deterministic ABI artifact emission for the supported `ContractSpec` compilation path via `--abi-output <dir>`, writing one `<Contract>.abi.json` per compiled spec.
+- Unified AST artifacts remain available for migration/proof engineering, but are not a supported compiler backend path.
 - All interop diagnostics include an `Issue #586` reference for scope tracking.
 
 ### Short Term (1-2 months)
@@ -368,4 +368,4 @@ See `scripts/README.md` for:
 ---
 
 **Last Updated**: 2026-02-20
-**Status Summary**: Layers 1-3 complete, trust reduction in progress, unified AST complete — all 7 contracts migrated (Issue #364)
+**Status Summary**: Layers 1-3 complete, trust reduction in progress, unified AST migration artifacts complete — all 7 contracts migrated (Issue #364)

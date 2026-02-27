@@ -29,7 +29,9 @@ share one lowering API surface.
 theorems that reuse existing Layer-1 EDSL correctness proofs through lowered
 supported inputs:
 `lower_simpleStorage_store_correct`,
+`lower_simpleStorage_retrieve_correct`,
 `lower_counter_increment_correct`,
+`lower_counter_getCount_correct`,
 `lower_owned_getOwner_correct`,
 `lower_ledger_deposit_correct`,
 `lower_ownedCounter_getCount_correct`,

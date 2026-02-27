@@ -92,6 +92,23 @@ theorem lower_simpleStorage_store_correct
     specResult.finalStorage.getSlot 0 = (edslFinal.storage 0).val := by
   simpa [lowerSupportedEDSLContract] using simpleStorage_store_correct state value sender
 
+/-- Transition bridge: lowering `.simpleStorage` preserves the existing
+EDSL-vs-CompilationModel correctness theorem for `retrieve`. -/
+theorem lower_simpleStorage_retrieve_correct
+    (state : Verity.ContractState)
+    (sender : Verity.Address) :
+    let edslValue := (Verity.Examples.retrieve.runValue { state with sender := sender }).val
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "retrieve"
+      args := []
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .simpleStorage)
+      (simpleStorageEdslToSpecStorage state) specTx
+    specResult.success = true ∧
+    specResult.returnValue = some edslValue := by
+  simpa [lowerSupportedEDSLContract] using simpleStorage_retrieve_correct state sender
+
 /-- Transition bridge: lowering `.counter` preserves the existing
 EDSL-vs-CompilationModel correctness theorem for `increment`. -/
 theorem lower_counter_increment_correct
@@ -108,6 +125,23 @@ theorem lower_counter_increment_correct
     specResult.success = true ∧
     specResult.finalStorage.getSlot 0 = (edslFinal.storage 0).val := by
   simpa [lowerSupportedEDSLContract] using counter_increment_correct state sender
+
+/-- Transition bridge: lowering `.counter` preserves the existing
+EDSL-vs-CompilationModel correctness theorem for `getCount`. -/
+theorem lower_counter_getCount_correct
+    (state : Verity.ContractState)
+    (sender : Verity.Address) :
+    let edslValue := (Verity.Examples.Counter.getCount.runValue { state with sender := sender }).val
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "getCount"
+      args := []
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .counter)
+      (counterEdslToSpecStorage state) specTx
+    specResult.success = true ∧
+    specResult.returnValue = some edslValue := by
+  simpa [lowerSupportedEDSLContract] using counter_getCount_correct state sender
 
 /-- Transition bridge: lowering `.owned` preserves Layer-1 getter correctness. -/
 theorem lower_owned_getOwner_correct

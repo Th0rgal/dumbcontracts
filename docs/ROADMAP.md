@@ -143,10 +143,14 @@ These limitations affect only the basic interpreter path (used for proofs). The 
 | # | Component | Approach | Effort | Status |
 |---|-----------|----------|--------|--------|
 | 1 | ~~Function Selectors~~ | keccak256 axiom + CI | — | ✅ **DONE** (PR #43, #46) |
-| 2 | Yul→EVM Bridge | Integrate KEVM or similar | 1-3m | ⚪ TODO |
+| 2 | Yul/EVM Semantics Bridge | EVMYulLean integration | 1-3m | 🟡 **IN PROGRESS** |
 | 3 | EVM Semantics | Strong testing + documented assumption | Ongoing | ⚪ TODO |
 
-**Yul→EVM Bridge**: Currently `solc` compilation is trusted. Best option: integrate existing EVM semantics (KEVM). Alternative: accept as trust assumption with strong differential testing (current mitigation).
+**Yul/EVM Semantics Bridge**: EVMYulLean (NethermindEth) provides formally-defined Yul AST types and UInt256 operations. Current integration status:
+- AST adapter: all 11 statement types + 5 expression types lower to EVMYulLean AST (0 gaps)
+- Builtin bridge: 15 pure arithmetic/comparison/bitwise builtins delegate to EVMYulLean `UInt256` operations with compile-time equivalence checks
+- State-dependent builtins (sload, caller, calldataload) and Verity helpers (mappingSlot) remain on the Verity evaluation path
+- Next: full semantic evaluation via EVMYulLean interpreter, bridging proofs for state-dependent builtins
 
 **EVM Semantics**: Mitigated by differential testing against actual EVM execution (Foundry). Likely remains a documented fundamental assumption.
 

@@ -84,10 +84,11 @@ Metrics tracked by repository tooling:
 - Trust boundary: this relies on the external keccak implementation (`ffi.KEC` via EVMYul FFI) and standard collision-resistance assumptions for keccak256 (the same trust class as Solidity/EVM behavior).
 - Mitigation: abstraction-boundary CI (`scripts/check_mapping_slot_boundary.py`), selector/hash cross-check CI, and explicit documentation in `AXIOMS.md`.
 
-### 5. EVM Semantics and Gas
+### 5. EVM/Yul Semantics and Gas
 
 - Role: runtime execution model.
 - Status: trusted EVM behavior; gas is not formally modeled by current proofs.
+- EVMYulLean integration: pure arithmetic/comparison/bitwise builtins (add, sub, mul, div, mod, lt, gt, eq, iszero, and, or, xor, not, shl, shr) are bridged to EVMYulLean's formally-defined `UInt256` operations. The adapter covers all 11 Yul statement types. State-dependent builtins (sload, caller, calldataload) and Verity-specific helpers (mappingSlot) remain on the Verity evaluation path.
 - Implication: semantic correctness does not imply gas-safety or gas-bounded liveness.
 
 ### 6. External Call Modules (ECMs)

@@ -1489,6 +1489,109 @@ private def namesAreDistinct (names : List String) : Bool :=
           go (name :: seen) rest
   go [] names
 
+private def isAccrueInterestTimestampWriteBlock
+    (idName : String) (stmts : List YulStmt) : Bool :=
+  match stmts with
+  | [ .let_ compatValueName (.call "timestamp" [])
+    , .let_ compatPackedName
+        (.call "and"
+          [ .ident compatValueRef
+          , .lit 340282366920938463463374607431768211455
+          ])
+    , .expr (.call "mstore" [.lit 512, .ident idHead])
+    , .expr (.call "mstore" [.lit 544, .lit 3])
+    , .let_ compatMappingSlot1
+        (.call "keccak256" [.lit 512, .lit 64])
+    , .let_ compatSlotWordName
+        (.call "sload"
+          [ .call "add" [.ident compatMappingSlot1Ref, .lit 2]
+          ])
+    , .let_ compatSlotClearedName
+        (.call "and"
+          [ .ident compatSlotWordRef
+          , .call "not" [.lit 340282366920938463463374607431768211455]
+          ])
+    , .expr (.call "mstore" [.lit 512, .ident idTail])
+    , .expr (.call "mstore" [.lit 544, .lit 3])
+    , .let_ compatMappingSlot2
+        (.call "keccak256" [.lit 512, .lit 64])
+    , .expr
+        (.call "sstore"
+          [ .call "add" [.ident compatMappingSlot2Ref, .lit 2]
+          , .call "or"
+              [ .ident compatSlotClearedRef
+              , .call "shl" [.lit 0, .ident compatPackedRef]
+              ]
+          ])
+    ] =>
+      decide (compatValueName = compatValueRef) &&
+        decide (compatPackedName = compatPackedRef) &&
+        decide (compatMappingSlot1 = compatMappingSlot1Ref) &&
+        decide (compatSlotWordName = compatSlotWordRef) &&
+        decide (compatSlotClearedName = compatSlotClearedRef) &&
+        decide (compatMappingSlot2 = compatMappingSlot2Ref) &&
+        decide (idHead = idName) &&
+        decide (idTail = idName)
+  | _ => false
+
+private def moveAccrueInterestTimestampWriteAfterIrmGuard
+    (idName irmName : String) (body : List YulStmt) : List YulStmt × Nat :=
+  match body with
+  | (.expr (.call "mstore" [.lit 512, .ident idHead])) ::
+    (.expr (.call "mstore" [.lit 544, .lit 3])) ::
+    (.let_ compatMappingSlot0 (.call "keccak256" [.lit 512, .lit 64])) ::
+    (.let_ prevLastUpdateName
+      (.call "and"
+        [ .call "shr"
+            [ .lit 0
+            , .call "sload"
+                [ .call "add" [.ident compatMappingSlot0Ref, .lit 2]
+                ]
+            ]
+        , .lit 340282366920938463463374607431768211455
+        ])) ::
+    (.let_ compatElapsedName
+      (.call "checked_sub_uint256"
+        [ .call "timestamp" []
+        , .ident prevLastUpdateRef
+        ])) ::
+    (.if_ (.call "iszero" [.ident compatElapsedRef]) [.leave]) ::
+    (.block timestampWriteBlock) ::
+    (irmGuard@(.if_ (.call "iszero" [.call "eq" [.ident irmHead, .lit 0]]) _)) ::
+    rest =>
+      if decide (idHead = idName) &&
+          decide (compatMappingSlot0 = compatMappingSlot0Ref) &&
+          decide (prevLastUpdateName = prevLastUpdateRef) &&
+          decide (compatElapsedName = compatElapsedRef) &&
+          decide (irmHead = irmName) &&
+          isAccrueInterestTimestampWriteBlock idName timestampWriteBlock then
+        ( [ .expr (.call "mstore" [.lit 512, .ident idHead])
+          , .expr (.call "mstore" [.lit 544, .lit 3])
+          , .let_ compatMappingSlot0 (.call "keccak256" [.lit 512, .lit 64])
+          , .let_ prevLastUpdateName
+              (.call "and"
+                [ .call "shr"
+                    [ .lit 0
+                    , .call "sload"
+                        [ .call "add" [.ident compatMappingSlot0, .lit 2]
+                        ]
+                    ]
+                , .lit 340282366920938463463374607431768211455
+                ])
+          , .let_ compatElapsedName
+              (.call "checked_sub_uint256"
+                [ .call "timestamp" []
+                , .ident prevLastUpdateName
+                ])
+          , .if_ (.call "iszero" [.ident compatElapsedName]) [.leave]
+          , irmGuard
+          , .block timestampWriteBlock
+          ] ++ rest
+        , 1)
+      else
+        (body, 0)
+  | _ => (body, 0)
+
 private def accrueInterestMarketParamsLoadExprFor?
     (loanTokenName collateralTokenName oracleName irmName lltvName name : String)
     : Option YulExpr :=
@@ -2015,19 +2118,21 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmt
         rets
         body =>
         let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
+        let (body'', reordered) :=
+          moveAccrueInterestTimestampWriteAfterIrmGuard idName irmName body'
         if namesAreDistinct
             [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName] then
           ( .funcDef "fun_accrueInterest"
               ["var_marketParams_46531_mpos", "var_id"]
               rets
               (rewriteAccrueInterestMarketParamsStmts
-                idName loanTokenName collateralTokenName oracleName irmName lltvName body')
-          , rewritten + 1)
+                idName loanTokenName collateralTokenName oracleName irmName lltvName body'')
+          , rewritten + reordered + 1)
         else
           (.funcDef "fun_accrueInterest"
             [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName]
             rets
-            body', rewritten)
+            body'', rewritten + reordered)
     | .funcDef name params rets body =>
         let (body', rewritten) := rewriteAccrueInterestCheckedArithmeticStmts body
         (.funcDef name params rets body', rewritten)
@@ -2766,11 +2871,11 @@ def solcCompatRewriteElapsedCheckedSubRule : ObjectPatchRule :=
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatRewriteAccrueInterestCheckedArithmeticRule : ObjectPatchRule :=
   { patchName := "solc-compat-rewrite-accrue-interest-checked-arithmetic"
-    pattern := "selected runtime `mul`/`add`/`sub` expressions in `accrueInterest` flow, including uint128 cast shape"
-    rewrite := "replace with checked helper calls and `fun_toUint128` casts, then materialize referenced helpers if needed"
+    pattern := "selected runtime arithmetic and structural `accrueInterest` patterns, including uint128 cast and compat timestamp-write shape"
+    rewrite := "replace with checked helper calls, canonical `accrueInterest` structural forms, and `fun_toUint128` casts, then materialize referenced helpers if needed"
     sideConditions :=
       [ "only runtime code is transformed"
-      , "rewrite is scoped to known identifier-shape arithmetic in accrue-interest flow"
+      , "rewrite is scoped to known identifier-shape arithmetic and guarded structural patterns in accrue-interest flow"
       , "helper insertion is top-level, deterministic, and only when absent" ]
     proofId := solcCompatRewriteAccrueInterestCheckedArithmeticProofRef
     scope := .object
@@ -5588,6 +5693,347 @@ example :
           | _ => false)
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasCanonicalSigInBlock := by
+  native_decide
+
+/-- Smoke test: six-arg `fun_accrueInterest` timestamp write block is moved after the IRM guard
+    before market-params lowering. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id_7", "loanToken_1", "collateralToken_2", "oracle_3", "irm_4", "lltv_5"]
+              []
+              [ .expr (.call "mstore" [.lit 512, .ident "id_7"])
+              , .expr (.call "mstore" [.lit 544, .lit 3])
+              , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+              , .let_ "prevLastUpdate"
+                  (.call "and"
+                    [ .call "shr"
+                        [ .lit 0
+                        , .call "sload"
+                            [ .call "add" [.ident "__compat_mapping_slot_0", .lit 2]
+                            ]
+                        ]
+                    , .lit 340282366920938463463374607431768211455
+                    ])
+              , .let_ "__compat_elapsed"
+                  (.call "checked_sub_uint256" [.call "timestamp" [], .ident "prevLastUpdate"])
+              , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+              , .block
+                  [ .let_ "__compat_value" (.call "timestamp" [])
+                  , .let_ "__compat_packed"
+                      (.call "and"
+                        [ .ident "__compat_value"
+                        , .lit 340282366920938463463374607431768211455
+                        ])
+                  , .expr (.call "mstore" [.lit 512, .ident "id_7"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_1" (.call "keccak256" [.lit 512, .lit 64])
+                  , .let_ "__compat_slot_word"
+                      (.call "sload"
+                        [ .call "add" [.ident "__compat_mapping_slot_1", .lit 2]
+                        ])
+                  , .let_ "__compat_slot_cleared"
+                      (.call "and"
+                        [ .ident "__compat_slot_word"
+                        , .call "not" [.lit 340282366920938463463374607431768211455]
+                        ])
+                  , .expr (.call "mstore" [.lit 512, .ident "id_7"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_2" (.call "keccak256" [.lit 512, .lit 64])
+                  , .expr
+                      (.call "sstore"
+                        [ .call "add" [.ident "__compat_mapping_slot_2", .lit 2]
+                        , .call "or"
+                            [ .ident "__compat_slot_cleared"
+                            , .call "shl" [.lit 0, .ident "__compat_packed"]
+                            ]
+                        ])
+                  ]
+              , .if_ (.call "iszero" [.call "eq" [.ident "irm_4", .lit 0]])
+                  [ .comment "irm branch" ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5, .lit 6]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let moved :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] [] body =>
+              match body with
+              | _ :: _ :: _ :: _ :: _ :: _ ::
+                (.if_ _ [.comment "irm branch"]) ::
+                (.block tsBlock) :: _ =>
+                  isAccrueInterestTimestampWriteBlock "var_id" tsBlock
+              | _ => false
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      moved := by
+  native_decide
+
+/-- Smoke test: timestamp write reordering stays out-of-scope when compat-id aliases diverge
+    inside the timestamp write block. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id_7", "loanToken_1", "collateralToken_2", "oracle_3", "irm_4", "lltv_5"]
+              []
+              [ .expr (.call "mstore" [.lit 512, .ident "id_7"])
+              , .expr (.call "mstore" [.lit 544, .lit 3])
+              , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+              , .let_ "prevLastUpdate"
+                  (.call "and"
+                    [ .call "shr"
+                        [ .lit 0
+                        , .call "sload"
+                            [ .call "add" [.ident "__compat_mapping_slot_0", .lit 2]
+                            ]
+                        ]
+                    , .lit 340282366920938463463374607431768211455
+                    ])
+              , .let_ "__compat_elapsed"
+                  (.call "checked_sub_uint256" [.call "timestamp" [], .ident "prevLastUpdate"])
+              , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+              , .block
+                  [ .let_ "__compat_value" (.call "timestamp" [])
+                  , .let_ "__compat_packed"
+                      (.call "and"
+                        [ .ident "__compat_value"
+                        , .lit 340282366920938463463374607431768211455
+                        ])
+                  , .expr (.call "mstore" [.lit 512, .ident "other_id"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_1" (.call "keccak256" [.lit 512, .lit 64])
+                  , .let_ "__compat_slot_word"
+                      (.call "sload"
+                        [ .call "add" [.ident "__compat_mapping_slot_1", .lit 2]
+                        ])
+                  , .let_ "__compat_slot_cleared"
+                      (.call "and"
+                        [ .ident "__compat_slot_word"
+                        , .call "not" [.lit 340282366920938463463374607431768211455]
+                        ])
+                  , .expr (.call "mstore" [.lit 512, .ident "other_id"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_2" (.call "keccak256" [.lit 512, .lit 64])
+                  , .expr
+                      (.call "sstore"
+                        [ .call "add" [.ident "__compat_mapping_slot_2", .lit 2]
+                        , .call "or"
+                            [ .ident "__compat_slot_cleared"
+                            , .call "shl" [.lit 0, .ident "__compat_packed"]
+                            ]
+                        ])
+                  ]
+              , .if_ (.call "iszero" [.call "eq" [.ident "irm_4", .lit 0]])
+                  [ .comment "irm branch" ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5, .lit 6]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let outOfScope :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" _ _ body =>
+              match body with
+              | _ :: _ :: _ :: _ :: _ :: _ ::
+                (.block _) ::
+                (.if_ _ [.comment "irm branch"]) :: _ => true
+              | _ => false
+          | _ => false)
+    outOfScope := by
+  native_decide
+
+/-- Smoke test: timestamp write reordering is wrapper-safe for a single top-level runtime block. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest"
+                  ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+                  []
+                  [ .expr (.call "mstore" [.lit 512, .ident "id"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+                  , .let_ "prevLastUpdate"
+                      (.call "and"
+                        [ .call "shr"
+                            [ .lit 0
+                            , .call "sload"
+                                [ .call "add" [.ident "__compat_mapping_slot_0", .lit 2]
+                                ]
+                            ]
+                        , .lit 340282366920938463463374607431768211455
+                        ])
+                  , .let_ "__compat_elapsed"
+                      (.call "checked_sub_uint256" [.call "timestamp" [], .ident "prevLastUpdate"])
+                  , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+                  , .block
+                      [ .let_ "__compat_value" (.call "timestamp" [])
+                      , .let_ "__compat_packed"
+                          (.call "and"
+                            [ .ident "__compat_value"
+                            , .lit 340282366920938463463374607431768211455
+                            ])
+                      , .expr (.call "mstore" [.lit 512, .ident "id"])
+                      , .expr (.call "mstore" [.lit 544, .lit 3])
+                      , .let_ "__compat_mapping_slot_1" (.call "keccak256" [.lit 512, .lit 64])
+                      , .let_ "__compat_slot_word"
+                          (.call "sload"
+                            [ .call "add" [.ident "__compat_mapping_slot_1", .lit 2]
+                            ])
+                      , .let_ "__compat_slot_cleared"
+                          (.call "and"
+                            [ .ident "__compat_slot_word"
+                            , .call "not" [.lit 340282366920938463463374607431768211455]
+                            ])
+                      , .expr (.call "mstore" [.lit 512, .ident "id"])
+                      , .expr (.call "mstore" [.lit 544, .lit 3])
+                      , .let_ "__compat_mapping_slot_2" (.call "keccak256" [.lit 512, .lit 64])
+                      , .expr
+                          (.call "sstore"
+                            [ .call "add" [.ident "__compat_mapping_slot_2", .lit 2]
+                            , .call "or"
+                                [ .ident "__compat_slot_cleared"
+                                , .call "shl" [.lit 0, .ident "__compat_packed"]
+                                ]
+                            ])
+                      ]
+                  , .if_ (.call "iszero" [.call "eq" [.ident "irm", .lit 0]])
+                      [ .comment "irm branch" ]
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let movedInWrapper :=
+      top.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest" _ _ body =>
+              match body with
+              | _ :: _ :: _ :: _ :: _ :: _ ::
+                (.if_ _ [.comment "irm branch"]) ::
+                (.block tsBlock) :: _ =>
+                  isAccrueInterestTimestampWriteBlock "var_id" tsBlock
+              | _ => false
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      movedInWrapper := by
+  native_decide
+
+/-- Smoke test: timestamp write reordering does not force `extract_returndata` helper insertion
+    when it is not referenced. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              []
+              [ .expr (.call "mstore" [.lit 512, .ident "id"])
+              , .expr (.call "mstore" [.lit 544, .lit 3])
+              , .let_ "__compat_mapping_slot_0" (.call "keccak256" [.lit 512, .lit 64])
+              , .let_ "prevLastUpdate"
+                  (.call "and"
+                    [ .call "shr"
+                        [ .lit 0
+                        , .call "sload"
+                            [ .call "add" [.ident "__compat_mapping_slot_0", .lit 2]
+                            ]
+                        ]
+                    , .lit 340282366920938463463374607431768211455
+                    ])
+              , .let_ "__compat_elapsed"
+                  (.call "checked_sub_uint256" [.call "timestamp" [], .ident "prevLastUpdate"])
+              , .if_ (.call "iszero" [.ident "__compat_elapsed"]) [.leave]
+              , .block
+                  [ .let_ "__compat_value" (.call "timestamp" [])
+                  , .let_ "__compat_packed"
+                      (.call "and"
+                        [ .ident "__compat_value"
+                        , .lit 340282366920938463463374607431768211455
+                        ])
+                  , .expr (.call "mstore" [.lit 512, .ident "id"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_1" (.call "keccak256" [.lit 512, .lit 64])
+                  , .let_ "__compat_slot_word"
+                      (.call "sload"
+                        [ .call "add" [.ident "__compat_mapping_slot_1", .lit 2]
+                        ])
+                  , .let_ "__compat_slot_cleared"
+                      (.call "and"
+                        [ .ident "__compat_slot_word"
+                        , .call "not" [.lit 340282366920938463463374607431768211455]
+                        ])
+                  , .expr (.call "mstore" [.lit 512, .ident "id"])
+                  , .expr (.call "mstore" [.lit 544, .lit 3])
+                  , .let_ "__compat_mapping_slot_2" (.call "keccak256" [.lit 512, .lit 64])
+                  , .expr
+                      (.call "sstore"
+                        [ .call "add" [.ident "__compat_mapping_slot_2", .lit 2]
+                        , .call "or"
+                            [ .ident "__compat_slot_cleared"
+                            , .call "shl" [.lit 0, .ident "__compat_packed"]
+                            ]
+                        ])
+                  ]
+              , .if_ (.call "iszero" [.call "eq" [.ident "irm", .lit 0]])
+                  [ .comment "irm branch" ]
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" [.lit 1, .lit 2, .lit 3, .lit 4, .lit 5, .lit 6]) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" = false := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `checked_sub_uint256` helper

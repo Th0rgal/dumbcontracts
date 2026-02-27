@@ -196,6 +196,25 @@ theorem lower_owned_transferOwnership_correct_as_owner
   simpa [lowerSupportedEDSLContract] using
     owned_transferOwnership_correct_as_owner state newOwner sender h
 
+/-- Transition bridge: lowering `.owned` preserves non-owner revert semantics. -/
+theorem lower_owned_transferOwnership_reverts_as_nonowner
+    (state : Verity.ContractState)
+    (newOwner : Verity.Address)
+    (sender : Verity.Address)
+    (h : state.storageAddr 0 ≠ sender) :
+    let edslResult := (Verity.Examples.Owned.transferOwnership newOwner).run { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "transferOwnership"
+      args := [Verity.Core.Address.val newOwner]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .owned)
+      (ownedEdslToSpecStorage state) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    owned_transferOwnership_reverts_as_nonowner state newOwner sender h
+
 /-- Transition bridge: lowering `.ledger` preserves Layer-1 deposit correctness. -/
 theorem lower_ledger_deposit_correct
     (state : Verity.ContractState)
@@ -236,6 +255,27 @@ theorem lower_ledger_withdraw_correct_sufficient
       (edslResult.getState.storageMap 0 sender).val := by
   simpa [lowerSupportedEDSLContract] using
     ledger_withdraw_correct_sufficient state amount sender h
+
+/-- Transition bridge: lowering `.ledger` preserves insufficient-balance withdraw reverts. -/
+theorem lower_ledger_withdraw_reverts_insufficient
+    (state : Verity.ContractState)
+    (amount : Nat)
+    (sender : Verity.Address)
+    (h_amount : amount < Verity.Core.Uint256.modulus)
+    (h : (state.storageMap 0 sender).val < amount) :
+    let edslResult := (Verity.Examples.Ledger.withdraw (Verity.Core.Uint256.ofNat amount)).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "withdraw"
+      args := [amount]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .ledger)
+      (ledgerEdslToSpecStorageWithAddrs state [sender]) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    ledger_withdraw_reverts_insufficient state amount sender h_amount h
 
 /-- Transition bridge: lowering `.ledger` preserves getter correctness. -/
 theorem lower_ledger_getBalance_correct
@@ -280,6 +320,28 @@ theorem lower_ledger_transfer_correct_sufficient
   simpa [lowerSupportedEDSLContract] using
     ledger_transfer_correct_sufficient state to amount sender h h_no_overflow
 
+/-- Transition bridge: lowering `.ledger` preserves insufficient-balance transfer reverts. -/
+theorem lower_ledger_transfer_reverts_insufficient
+    (state : Verity.ContractState)
+    (to : Verity.Address)
+    (amount : Nat)
+    (sender : Verity.Address)
+    (h_amount : amount < Verity.Core.Uint256.modulus)
+    (h : (state.storageMap 0 sender).val < amount) :
+    let edslResult := (Verity.Examples.Ledger.transfer to (Verity.Core.Uint256.ofNat amount)).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "transfer"
+      args := [to.val, amount]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .ledger)
+      (ledgerEdslToSpecStorageWithAddrs state [sender, to]) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    ledger_transfer_reverts_insufficient state to amount sender h_amount h
+
 /-- Transition bridge: lowering `.ownedCounter` preserves Layer-1 getter correctness. -/
 theorem lower_ownedCounter_getCount_correct
     (state : Verity.ContractState)
@@ -315,6 +377,24 @@ theorem lower_ownedCounter_increment_correct_as_owner
   simpa [lowerSupportedEDSLContract] using
     ownedCounter_increment_correct_as_owner state sender h
 
+/-- Transition bridge: lowering `.ownedCounter` preserves non-owner increment reverts. -/
+theorem lower_ownedCounter_increment_reverts_as_nonowner
+    (state : Verity.ContractState)
+    (sender : Verity.Address)
+    (h : state.storageAddr 0 ≠ sender) :
+    let edslResult := Verity.Examples.OwnedCounter.increment.run { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "increment"
+      args := []
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .ownedCounter)
+      (ownedCounterEdslToSpecStorage state) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    ownedCounter_increment_reverts_as_nonowner state sender h
+
 /-- Transition bridge: lowering `.ownedCounter` preserves owner-only decrement semantics. -/
 theorem lower_ownedCounter_decrement_correct_as_owner
     (state : Verity.ContractState)
@@ -333,6 +413,24 @@ theorem lower_ownedCounter_decrement_correct_as_owner
     specResult.finalStorage.getSlot 1 = (edslResult.getState.storage 1).val := by
   simpa [lowerSupportedEDSLContract] using
     ownedCounter_decrement_correct_as_owner state sender h
+
+/-- Transition bridge: lowering `.ownedCounter` preserves non-owner decrement reverts. -/
+theorem lower_ownedCounter_decrement_reverts_as_nonowner
+    (state : Verity.ContractState)
+    (sender : Verity.Address)
+    (h : state.storageAddr 0 ≠ sender) :
+    let edslResult := Verity.Examples.OwnedCounter.decrement.run { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "decrement"
+      args := []
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .ownedCounter)
+      (ownedCounterEdslToSpecStorage state) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    ownedCounter_decrement_reverts_as_nonowner state sender h
 
 /-- Transition bridge: lowering `.ownedCounter` preserves owner getter correctness. -/
 theorem lower_ownedCounter_getOwner_correct
@@ -370,6 +468,26 @@ theorem lower_ownedCounter_transferOwnership_correct_as_owner
     specResult.finalStorage.getSlot 0 = newOwner.val := by
   simpa [lowerSupportedEDSLContract] using
     ownedCounter_transferOwnership_correct_as_owner state newOwner sender h
+
+/-- Transition bridge: lowering `.ownedCounter` preserves non-owner transfer reverts. -/
+theorem lower_ownedCounter_transferOwnership_reverts_as_nonowner
+    (state : Verity.ContractState)
+    (newOwner : Verity.Address)
+    (sender : Verity.Address)
+    (h : state.storageAddr 0 ≠ sender) :
+    let edslResult := (Verity.Examples.OwnedCounter.transferOwnership newOwner).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "transferOwnership"
+      args := [newOwner.val]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .ownedCounter)
+      (ownedCounterEdslToSpecStorage state) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    ownedCounter_transferOwnership_reverts_as_nonowner state newOwner sender h
 
 /-- Transition bridge: lowering `.simpleToken` preserves Layer-1 getter correctness. -/
 theorem lower_simpleToken_getTotalSupply_correct
@@ -445,6 +563,27 @@ theorem lower_simpleToken_mint_correct_as_owner
   simpa [lowerSupportedEDSLContract] using
     token_mint_correct_as_owner state to amount sender h h_no_bal_overflow h_no_sup_overflow
 
+/-- Transition bridge: lowering `.simpleToken` preserves non-owner mint reverts. -/
+theorem lower_simpleToken_mint_reverts_as_nonowner
+    (state : Verity.ContractState)
+    (to : Verity.Address)
+    (amount : Nat)
+    (sender : Verity.Address)
+    (h : state.storageAddr 0 ≠ sender) :
+    let edslResult := (Verity.Examples.SimpleToken.mint to (Verity.Core.Uint256.ofNat amount)).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "mint"
+      args := [to.val, amount]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .simpleToken)
+      (tokenEdslToSpecStorageWithAddrs state [to]) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    token_mint_reverts_as_nonowner state to amount sender h
+
 /-- Transition bridge: lowering `.simpleToken` preserves transfer semantics when balance is sufficient. -/
 theorem lower_simpleToken_transfer_correct_sufficient
     (state : Verity.ContractState)
@@ -471,6 +610,28 @@ theorem lower_simpleToken_transfer_correct_sufficient
       (edslResult.getState.storageMap 1 to).val := by
   simpa [lowerSupportedEDSLContract] using
     token_transfer_correct_sufficient state to amount sender h h_no_overflow
+
+/-- Transition bridge: lowering `.simpleToken` preserves insufficient-balance transfer reverts. -/
+theorem lower_simpleToken_transfer_reverts_insufficient
+    (state : Verity.ContractState)
+    (to : Verity.Address)
+    (amount : Nat)
+    (sender : Verity.Address)
+    (h_amount : amount < Verity.Core.Uint256.modulus)
+    (h : (state.storageMap 1 sender).val < amount) :
+    let edslResult := (Verity.Examples.SimpleToken.transfer to (Verity.Core.Uint256.ofNat amount)).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "transfer"
+      args := [to.val, amount]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .simpleToken)
+      (tokenEdslToSpecStorageWithAddrs state [sender, to]) specTx
+    edslResult.isSuccess = false ∧
+    specResult.success = false := by
+  simpa [lowerSupportedEDSLContract] using
+    token_transfer_reverts_insufficient state to amount sender h_amount h
 
 /-- Transition bridge: lowering `.safeCounter` preserves Layer-1 getter correctness. -/
 theorem lower_safeCounter_getCount_correct

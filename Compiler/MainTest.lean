@@ -122,6 +122,15 @@ private def fileExists (path : String) : IO Bool := do
     | .error err => err.message
   expectTrue "explicit unsupported EDSL subset input returns deterministic diagnostic"
     (contains unsupportedMsg "test unsupported feature")
+  let supportedNames := Compiler.Lowering.supportedEDSLContractNames
+  expectTrue "supported --edsl-contract names are unique"
+    (supportedNames.eraseDups.length == supportedNames.length)
+  let parserRoundtripUnique :=
+    Compiler.Lowering.supportedEDSLContracts.all (fun requested =>
+      match Compiler.Lowering.parseSupportedEDSLContract? (Compiler.Lowering.supportedEDSLContractName requested) with
+      | some parsed => parsed == requested
+      | none => false)
+  expectTrue "supported --edsl-contract parser roundtrip is unique" parserRoundtripUnique
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

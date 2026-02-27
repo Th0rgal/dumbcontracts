@@ -827,6 +827,32 @@ theorem lower_safeCounter_decrement_reverts_at_zero
     parseSupportedEDSLContract? (supportedEDSLContractName contract) = some contract := by
   cases contract <;> rfl
 
+/-- CLI-stable supported-contract names are injective. -/
+@[simp] theorem supportedEDSLContractName_injective :
+    ∀ a b : SupportedEDSLContract,
+      supportedEDSLContractName a = supportedEDSLContractName b → a = b := by
+  intro a b h
+  cases a <;> cases b <;> simp [supportedEDSLContractName] at h ⊢
+
+/-- Supported-contract parser round-trips are unique. -/
+@[simp] theorem parseSupportedEDSLContract_roundtrip_unique
+    (requested parsed : SupportedEDSLContract) :
+    parseSupportedEDSLContract? (supportedEDSLContractName requested) = some parsed ↔
+      requested = parsed := by
+  constructor
+  · intro h
+    have hEq : some requested = some parsed := by
+      simpa [parseSupportedEDSLContract_roundtrip requested] using h
+    exact Option.some.inj hEq
+  · intro hEq
+    cases hEq
+    simpa using parseSupportedEDSLContract_roundtrip requested
+
+/-- CLI-stable supported-contract names are pairwise distinct. -/
+@[simp] theorem supportedEDSLContractNames_nodup :
+    supportedEDSLContractNames.Nodup := by
+  decide
+
 /-- The current manual compile path is preserved through the lowering boundary. -/
 @[simp] theorem lowerModelPath_eq_ok
     (model : Compiler.CompilationModel.CompilationModel) :

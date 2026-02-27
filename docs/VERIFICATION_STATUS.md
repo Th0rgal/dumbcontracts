@@ -69,6 +69,11 @@ supported inputs:
 `lower_safeCounter_increment_reverts_at_max`,
 `lower_safeCounter_decrement_correct`,
 `lower_safeCounter_decrement_reverts_at_zero`.
+The same module also includes parser-determinism lemmas for `--edsl-contract`
+selection IDs:
+`supportedEDSLContractName_injective`,
+`parseSupportedEDSLContract_roundtrip_unique`,
+`supportedEDSLContractNames_nodup`.
 
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 

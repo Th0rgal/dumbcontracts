@@ -27,7 +27,10 @@ plus explicit revert-path bridge coverage for owner-gated and
 insufficient-balance behaviors in `Owned`, `OwnedCounter`, `Ledger`, and
 `SimpleToken`, plus overflow/underflow revert coverage in `SafeCounter`.
 Getter-side read-only state-preservation bridges are also explicit for
-supported getter entrypoints.
+supported getter entrypoints. Parser-determinism lemmas are also included for
+`--edsl-contract` IDs (`supportedEDSLContractName_injective`,
+`parseSupportedEDSLContract_roundtrip_unique`,
+`supportedEDSLContractNames_nodup`).
 
 Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The re-export shim at `Verity/Specs/<Name>/Proofs.lean` imports Layer 1 spec-correctness proofs from `Compiler/Proofs/SpecCorrectness/<Name>.lean`.
 

@@ -432,12 +432,12 @@ private def runPatchPassLoop
   match fuel with
   | 0 => (current, iterations, allHits)
   | Nat.succ fuel' =>
-      let runtimeCtx : RewriteCtx :=
+      let loopCtx : RewriteCtx :=
         { scope := scope
           passPhase := config.passPhase
           iteration := iterations
           packId := config.packId }
-      let (next, stepHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules runtimeCtx current
+      let (next, stepHits) := rewriteStmtListOnce orderedExprRules orderedStmtRules orderedBlockRules loopCtx current
       if stepHits.isEmpty then
         (current, iterations, allHits)
       else

@@ -39,3 +39,9 @@ For a fixed source, fixed profile, fixed tool version, and fixed CLI options:
 - it does not weaken verification constraints to chase shape parity.
 
 Future versions can add additional rules with explicit IDs and migration notes.
+
+## Arithmetic Semantics (Invariant Across Profiles)
+
+All backend profiles use identical **wrapping modular arithmetic at 2^256**. Profiles differ only in output-shape normalization (selector sorting, helper sorting, patch pass enablement), not semantic behavior. A contract compiled with `--backend-profile semantic` and `--backend-profile solidity-parity` will produce semantically equivalent Yul with identical arithmetic.
+
+See [`docs/ARITHMETIC_PROFILE.md`](ARITHMETIC_PROFILE.md) for the full arithmetic specification and proof coverage.

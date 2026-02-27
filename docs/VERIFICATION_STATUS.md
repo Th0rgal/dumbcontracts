@@ -8,11 +8,11 @@ Verity implements a **three-layer verification stack** that proves smart contrac
 
 ```
 User Contracts (EDSL)
-    ↓ Layer 1: EDSL ≡ ContractSpec
-ContractSpec (Human-Readable Specs)
-    ↓ Layer 2: ContractSpec → IR
+    ↓ Layer 1: EDSL ≡ CompilationModel (`ContractSpec` today) [PROVED]
+CompilationModel (Compiler-Facing Contract Model)
+    ↓ Layer 2: CompilationModel → IR [PROVED]
 Intermediate Representation (IR)
-    ↓ Layer 3: IR → Yul
+    ↓ Layer 3: IR → Yul [PROVED, 1 axiom]
 Yul (EVM Assembly)
     ↓ (Trusted: solc compiler)
 EVM Bytecode
@@ -21,15 +21,19 @@ EVM Bytecode
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 
 **Status**: Verity now maintains a single supported compiler path:
-`EDSL -> ContractSpec (CompilationModel) -> IR -> Yul`.
+`EDSL -> CompilationModel (ContractSpec) -> IR -> Yul`.
 
 **What This Achieves**: Fewer moving parts, less maintenance overhead, and clearer verification boundaries. CI, docs, and scaffold tooling now align with this single path.
 
-## Layer 1: EDSL ≡ ContractSpec ✅ **COMPLETE**
+See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundary description.
+
+## Layer 1: EDSL ≡ CompilationModel (`ContractSpec`) ✅ **COMPLETE**
 
 **Status**: 8 contracts verified (7 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
 
 **What This Layer Proves**: User-facing EDSL contracts satisfy their human-readable specifications.
+
+**Hybrid transition note**: Layer 1 currently uses a hybrid strategy: generated `EDSL -> CompilationModel` proofs cover the supported subset; advanced constructs (linked libraries, ECMs, custom ABI encoding) are expressed directly in `CompilationModel` and trusted at that boundary. See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for details.
 
 ### Verified Contracts
 
@@ -61,15 +65,16 @@ theorem increment_adds_one (state : ContractState) :
 
 ### Infrastructure
 
-- **SpecInterpreter**: Executable semantics for ContractSpec language
+- **SpecInterpreter**: Executable semantics for CompilationModel language (`ContractSpec` today)
 - **Automation Library**: Proven helper lemmas (safe arithmetic, storage operations)
 - **Proof Patterns**: Documented patterns for common verification tasks
+- **Feature Matrix**: Comprehensive interpreter support contract — see [`INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) and `artifacts/interpreter_feature_matrix.json`
 
-## Layer 2: ContractSpec → IR ✅ **COMPLETE**
+## Layer 2: CompilationModel (`ContractSpec`) → IR ✅ **COMPLETE**
 
 **Status**: All 7 compiled contracts have IR generation with preservation proofs
 
-**What This Layer Proves**: Intermediate representation (IR) generation preserves ContractSpec semantics.
+**What This Layer Proves**: Intermediate representation (IR) generation preserves CompilationModel semantics.
 
 ### IR Generation Proofs
 
@@ -95,7 +100,7 @@ theorem counter_ir_preserves_spec :
 ### Infrastructure
 
 - **IRInterpreter**: Executable semantics for IR language
-- **IR Codegen**: Automatic IR generation from ContractSpec
+- **IR Codegen**: Automatic IR generation from CompilationModel (`ContractSpec` today)
 - **Preservation Proofs**: Automated tactics for spec → IR equivalence
 
 ## Layer 3: IR → Yul ✅ **COMPLETE**
@@ -225,10 +230,11 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Verified Components (Zero Trust)
 
-1. **EDSL → ContractSpec**: Proven correct in Lean (Layer 1)
-2. **ContractSpec → IR**: Proven correct in Lean (Layer 2)
-3. **IR Interpreter**: Used for differential testing, verified against specs
-4. **Property Tests**: Extracted from proven theorems, tested in Foundry
+1. **EDSL → ContractSpec/CompilationModel**: Proven correct in Lean (Layer 1)
+2. **ContractSpec/CompilationModel → IR**: Proven correct in Lean (Layer 2)
+3. **IR → Yul**: Proven correct in Lean (Layer 3, 1 axiom)
+4. **IR Interpreter**: Used for differential testing, verified against specs
+5. **Property Tests**: Extracted from proven theorems, tested in Foundry
 
 ## Roadmap to Full Verification
 
@@ -344,10 +350,12 @@ See `scripts/README.md` for:
 - **Main README**: `README.md`
 - **Compiler Proofs**: `Compiler/Proofs/README.md`
 - **Property Scripts**: `scripts/README.md`
+- **Interpreter Feature Matrix**: [`docs/INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) (+ `artifacts/interpreter_feature_matrix.json`)
+- **Arithmetic Profile**: [`docs/ARITHMETIC_PROFILE.md`](ARITHMETIC_PROFILE.md)
 - **Research Documentation**: `docs-site/content/research.mdx`
 - **GitHub Repository**: https://github.com/Th0rgal/verity
 
 ---
 
-**Last Updated**: 2026-02-20
-**Status Summary**: Layers 1-3 complete, trust reduction in progress, single supported `CompilationModel` compiler path.
+**Last Updated**: 2026-02-27
+**Status Summary**: Layers 1-3 complete (CompilationModel path), trust reduction in progress, single supported compiler path.

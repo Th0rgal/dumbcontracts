@@ -7,21 +7,11 @@ import re
 import sys
 from pathlib import Path
 
-from workflow_jobs import extract_job_body, extract_literal_from_mapping_blocks
+from workflow_jobs import extract_job_body, extract_literal_from_mapping_blocks, parse_csv_ints
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
 SCRIPTS_README = ROOT / "scripts" / "README.md"
-
-
-def _parse_csv_ints(raw: str, source: Path) -> list[int]:
-    parts = [part.strip() for part in raw.split(",")]
-    if not parts or any(not part for part in parts):
-        raise ValueError(f"Malformed integer CSV in {source}: {raw!r}")
-    try:
-        return [int(part) for part in parts]
-    except ValueError as exc:
-        raise ValueError(f"Non-integer value in {source}: {raw!r}") from exc
 
 
 def _extract_foundry_job_body(text: str) -> str:
@@ -32,7 +22,7 @@ def _extract_verify_shard_indices(body: str) -> list[int]:
     m = re.search(r"^\s*shard_index:\s*\[(?P<csv>[^\]]+)\]\s*$", body, flags=re.MULTILINE)
     if not m:
         raise ValueError(f"Could not locate foundry matrix shard_index list in {VERIFY_YML}")
-    return _parse_csv_ints(m.group("csv"), VERIFY_YML)
+    return parse_csv_ints(m.group("csv"), VERIFY_YML)
 
 
 def _extract_verify_shard_count(body: str) -> int:

@@ -97,7 +97,7 @@ def _extract_mapping_blocks(body: str, mapping_name: str) -> list[tuple[int, lis
     return blocks
 
 
-def _strip_yaml_inline_comment(raw: str) -> str:
+def strip_yaml_inline_comment(raw: str) -> str:
     out: list[str] = []
     quote: str | None = None
     for ch in raw:
@@ -115,7 +115,7 @@ def _strip_yaml_inline_comment(raw: str) -> str:
     return "".join(out).strip()
 
 
-def _unquote_yaml_scalar(raw: str) -> str:
+def unquote_yaml_scalar(raw: str) -> str:
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {"'", '"'}:
         return raw[1:-1]
     return raw
@@ -149,9 +149,9 @@ def extract_literal_from_mapping_blocks(
                 continue
             m = re.match(rf"^\s*{re.escape(key)}:\s*(?P<value>.+?)\s*$", line)
             if m:
-                raw = _strip_yaml_inline_comment(m.group("value"))
+                raw = strip_yaml_inline_comment(m.group("value"))
                 if raw:
-                    values.append(_unquote_yaml_scalar(raw))
+                    values.append(unquote_yaml_scalar(raw))
 
     if not values:
         raise ValueError(
@@ -844,3 +844,14 @@ def compare_lists(
             f"{other_name} contains the same entries as {reference_name} but in a different order."
         )
     return errors
+
+
+def parse_csv_ints(raw: str, source: Path) -> list[int]:
+    """Parse a comma-separated list of integers, failing closed on bad input."""
+    parts = [part.strip() for part in raw.split(",")]
+    if not parts or any(not part for part in parts):
+        raise ValueError(f"Malformed integer CSV in {source}: {raw!r}")
+    try:
+        return [int(part) for part in parts]
+    except ValueError as exc:
+        raise ValueError(f"Non-integer value in {source}: {raw!r}") from exc

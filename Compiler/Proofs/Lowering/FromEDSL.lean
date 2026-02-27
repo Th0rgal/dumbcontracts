@@ -109,6 +109,14 @@ theorem lower_simpleStorage_retrieve_correct
     specResult.returnValue = some edslValue := by
   simpa [lowerSupportedEDSLContract] using simpleStorage_retrieve_correct state sender
 
+/-- Transition bridge: lowering `.simpleStorage` preserves retrieve read-only state behavior. -/
+theorem lower_simpleStorage_retrieve_preserves_state
+    (state : Verity.ContractState)
+    (sender : Verity.Address) :
+    let finalState := Verity.Examples.retrieve.runState { state with sender := sender }
+    finalState.storage = state.storage := by
+  simpa using simpleStorage_retrieve_preserves_state state sender
+
 /-- Transition bridge: lowering `.counter` preserves the existing
 EDSL-vs-CompilationModel correctness theorem for `increment`. -/
 theorem lower_counter_increment_correct
@@ -143,6 +151,14 @@ theorem lower_counter_getCount_correct
     specResult.returnValue = some edslValue := by
   simpa [lowerSupportedEDSLContract] using counter_getCount_correct state sender
 
+/-- Transition bridge: lowering `.counter` preserves getter read-only state behavior. -/
+theorem lower_counter_getCount_preserves_state
+    (state : Verity.ContractState)
+    (sender : Verity.Address) :
+    let finalState := Verity.Examples.Counter.getCount.runState { state with sender := sender }
+    finalState.storage 0 = state.storage 0 := by
+  simpa using counter_getCount_preserves_state state sender
+
 /-- Transition bridge: lowering `.counter` preserves the existing
 EDSL-vs-CompilationModel correctness theorem for `decrement`. -/
 theorem lower_counter_decrement_correct
@@ -175,6 +191,14 @@ theorem lower_owned_getOwner_correct
     specResult.success = true ∧
     specResult.returnValue = some (Verity.Core.Address.val edslAddr) := by
   simpa [lowerSupportedEDSLContract] using owned_getOwner_correct state sender
+
+/-- Transition bridge: lowering `.owned` preserves getter read-only state behavior. -/
+theorem lower_owned_getOwner_preserves_state
+    (state : Verity.ContractState)
+    (sender : Verity.Address) :
+    let finalState := Verity.Examples.Owned.getOwner.runState { state with sender := sender }
+    finalState.storageAddr 0 = state.storageAddr 0 := by
+  simpa using owned_getOwner_preserves_state state sender
 
 /-- Transition bridge: lowering `.owned` preserves owner-only transfer semantics. -/
 theorem lower_owned_transferOwnership_correct_as_owner
@@ -293,6 +317,15 @@ theorem lower_ledger_getBalance_correct
     specResult.success = true ∧
     specResult.returnValue = some edslValue.val := by
   simpa [lowerSupportedEDSLContract] using ledger_getBalance_correct state addr sender
+
+/-- Transition bridge: lowering `.ledger` preserves getter read-only state behavior. -/
+theorem lower_ledger_getBalance_preserves_state
+    (state : Verity.ContractState)
+    (addr : Verity.Address)
+    (sender : Verity.Address) :
+    let finalState := (Verity.Examples.Ledger.getBalance addr).runState { state with sender := sender }
+    ∀ a, finalState.storageMap 0 a = state.storageMap 0 a := by
+  simpa using ledger_getBalance_preserves_state state addr sender
 
 /-- Transition bridge: lowering `.ledger` preserves transfer semantics when balances permit. -/
 theorem lower_ledger_transfer_correct_sufficient
@@ -448,6 +481,16 @@ theorem lower_ownedCounter_getOwner_correct
     specResult.returnValue = some edslAddr.val := by
   simpa [lowerSupportedEDSLContract] using ownedCounter_getOwner_correct state sender
 
+/-- Transition bridge: lowering `.ownedCounter` preserves getter read-only state behavior. -/
+theorem lower_ownedCounter_getters_preserve_state
+    (state : Verity.ContractState)
+    (sender : Verity.Address) :
+    let countState := Verity.Examples.OwnedCounter.getCount.runState { state with sender := sender }
+    let ownerState := Verity.Examples.OwnedCounter.getOwner.runState { state with sender := sender }
+    countState.storage 1 = state.storage 1 ∧
+    ownerState.storageAddr 0 = state.storageAddr 0 := by
+  simpa using ownedCounter_getters_preserve_state state sender
+
 /-- Transition bridge: lowering `.ownedCounter` preserves owner-only transfer semantics. -/
 theorem lower_ownedCounter_transferOwnership_correct_as_owner
     (state : Verity.ContractState)
@@ -537,6 +580,19 @@ theorem lower_simpleToken_getOwner_correct
     specResult.success = true ∧
     specResult.returnValue = some (edslAddr.val) := by
   simpa [lowerSupportedEDSLContract] using token_getOwner_correct state sender
+
+/-- Transition bridge: lowering `.simpleToken` preserves getter read-only state behavior. -/
+theorem lower_simpleToken_getters_preserve_state
+    (state : Verity.ContractState)
+    (addr : Verity.Address)
+    (sender : Verity.Address) :
+    let balState := (Verity.Examples.SimpleToken.balanceOf addr).runState { state with sender := sender }
+    let supplyState := Verity.Examples.SimpleToken.getTotalSupply.runState { state with sender := sender }
+    let ownerState := Verity.Examples.SimpleToken.getOwner.runState { state with sender := sender }
+    balState.storageMap 1 addr = state.storageMap 1 addr ∧
+    supplyState.storage 2 = state.storage 2 ∧
+    ownerState.storageAddr 0 = state.storageAddr 0 := by
+  simpa using token_getters_preserve_state state addr sender
 
 /-- Transition bridge: lowering `.simpleToken` preserves owner-only mint semantics. -/
 theorem lower_simpleToken_mint_correct_as_owner
@@ -648,6 +704,14 @@ theorem lower_safeCounter_getCount_correct
     specResult.success = true ∧
     specResult.returnValue = some edslValue := by
   simpa [lowerSupportedEDSLContract] using safeGetCount_correct state sender
+
+/-- Transition bridge: lowering `.safeCounter` preserves getter read-only state behavior. -/
+theorem lower_safeCounter_getCount_preserves_state
+    (state : Verity.ContractState)
+    (sender : Verity.Address) :
+    let finalState := Verity.Examples.SafeCounter.getCount.runState { state with sender := sender }
+    finalState.storage 0 = state.storage 0 := by
+  simpa using safeGetCount_preserves_state state sender
 
 /-- Transition bridge: lowering `.safeCounter` preserves increment semantics. -/
 theorem lower_safeCounter_increment_correct

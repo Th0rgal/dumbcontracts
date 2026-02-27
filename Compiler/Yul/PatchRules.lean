@@ -1912,9 +1912,12 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
                 , .lit 32
                 ])
           , .if_ (.call "iszero" [.ident "__ecwr_success"])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+              , .expr
+                  (.call "revert"
+                    [ .call "add" [.ident "__compat_returndata", .lit 32]
+                    , .call "mload" [.ident "__compat_returndata"]
+                    ])
               ]
           , .let_ "borrowRate" (.lit 0)
           , .if_ (.ident "__ecwr_success")
@@ -3972,7 +3975,7 @@ example :
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite normalizes IRM call result buffering/revert handling to
-    Solidity-style inline returndata forwarding and borrow-rate load, then materializes required
+    helper-backed returndata forwarding and borrow-rate load, then materializes required
     helpers when referenced+absent. -/
 example :
     let input : YulObject :=
@@ -4016,11 +4019,11 @@ example :
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27020" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" = false &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" &&
       called.any (fun name => name = "finalize_allocation_27020") = true &&
       called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true &&
-      called.any (fun name => name = "extract_returndata") = false := by
+      called.any (fun name => name = "extract_returndata") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat IRM revert-shape. -/
@@ -4072,7 +4075,7 @@ example :
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite is wrapper-safe for IRM call-buffer/revert normalization
-    and keeps inline returndata forwarding without helper-only drift. -/
+    and keeps helper-backed returndata forwarding without helper-only drift. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -4121,11 +4124,11 @@ example :
       hasTopLevelFunctionNamed top "finalize_allocation_27020" &&
       hasTopLevelFunctionNamed top "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed top "finalize_allocation" &&
-      hasTopLevelFunctionNamed top "extract_returndata" = false &&
+      hasTopLevelFunctionNamed top "extract_returndata" &&
       called.any (fun name => name = "finalize_allocation_27020") = true &&
       called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true &&
-      called.any (fun name => name = "extract_returndata") = false := by
+      called.any (fun name => name = "extract_returndata") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite normalizes intermediate borrow-rate guard shape

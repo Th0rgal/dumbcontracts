@@ -74,6 +74,22 @@ def supportedEDSLContracts : List SupportedEDSLContract := [
   .safeCounter
 ]
 
+/-- CLI-stable identifier for each currently supported EDSL contract. -/
+def supportedEDSLContractName : SupportedEDSLContract → String
+  | .simpleStorage => "simple-storage"
+  | .counter => "counter"
+  | .owned => "owned"
+  | .ledger => "ledger"
+  | .ownedCounter => "owned-counter"
+  | .simpleToken => "simple-token"
+  | .safeCounter => "safe-counter"
+
+def supportedEDSLContractNames : List String :=
+  supportedEDSLContracts.map supportedEDSLContractName
+
+def parseSupportedEDSLContract? (raw : String) : Option SupportedEDSLContract :=
+  supportedEDSLContracts.find? (fun contract => supportedEDSLContractName contract == raw)
+
 /-- Lower a compilable EDSL-subset input to `CompilationModel`.
 This currently supports the explicit manual-bridge case and fails closed
 for unimplemented automatic reification cases. -/

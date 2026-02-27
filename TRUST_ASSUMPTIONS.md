@@ -13,6 +13,7 @@ The formal Layer 1/2/3 guarantees apply to this path.
 Compiler UX status:
 - `--input model` compiles the full `CompilationModel` set (including linked-library flows).
 - `--input edsl` compiles a curated supported EDSL subset through the same lowering boundary.
+- `--edsl-contract <id>` optionally narrows `--input edsl` to selected supported contracts.
 - linked-library flows remain fail-closed for `--input edsl` and require `--input model`.
 Both modes route through `Compiler.Lowering` helpers, keeping one centralized
 transition point for future automatic EDSL reification.

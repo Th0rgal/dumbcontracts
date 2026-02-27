@@ -45,6 +45,12 @@ is definitionally equal to the underlying `CompilationModel`. -/
     lowerFromEDSLSubset (.supported contract) = .ok (lowerSupportedEDSLContract contract) := by
   rfl
 
+/-- Supported-contract parser round-trips through the CLI-stable name map. -/
+@[simp] theorem parseSupportedEDSLContract_roundtrip
+    (contract : SupportedEDSLContract) :
+    parseSupportedEDSLContract? (supportedEDSLContractName contract) = some contract := by
+  cases contract <;> rfl
+
 /-- The current manual compile path is preserved through the lowering boundary. -/
 @[simp] theorem lowerModelPath_eq_ok
     (model : Compiler.CompilationModel.CompilationModel) :

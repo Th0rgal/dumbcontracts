@@ -38,6 +38,7 @@ lake build verity-compiler
 lake exe verity-compiler                      # Output in compiler/yul/
 lake exe verity-compiler --input model        # Explicit manual CompilationModel path
 lake exe verity-compiler --input edsl         # Curated supported EDSL subset path
+lake exe verity-compiler --input edsl --edsl-contract counter
 ```
 
 `--input edsl` now compiles a curated supported subset through the lowering boundary in
@@ -48,6 +49,8 @@ their current lowering targets, and advanced flows (for example linked-library
 `CryptoHash`) remain on `--input model`.
 Both `--input model` and `--input edsl` route through the same explicit lowering
 boundary API.
+`--edsl-contract <id>` can be repeated to compile only selected supported EDSL
+contracts (for example `counter`, `simple-storage`, `owned-counter`).
 
 **With external libraries (e.g., Poseidon hash):**
 ```bash

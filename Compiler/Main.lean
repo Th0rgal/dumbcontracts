@@ -16,6 +16,7 @@ private structure CLIArgs where
   outDir : String := "compiler/yul"
   abiOutDir : Option String := none
   inputMode : String := "model"
+  edslContracts : List String := []
   libs : List String := []
   verbose : Bool := false
   backendProfile : Compiler.BackendProfile := .semantic
@@ -63,7 +64,7 @@ private def parseInputMode (raw : String) : Option String :=
 private def parseArgs (args : List String) : IO CLIArgs := do
   let rec go (remaining : List String) (cfg : CLIArgs) : IO CLIArgs :=
     match remaining with
-    | [] => pure { cfg with libs := cfg.libs.reverse }
+    | [] => pure { cfg with libs := cfg.libs.reverse, edslContracts := cfg.edslContracts.reverse }
     | "--help" :: _ | "-h" :: _ => do
         IO.println "Verity Compiler"
         IO.println ""
@@ -75,6 +76,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println "  -o <dir>           Short form of --output"
         IO.println "  --abi-output <dir> Output ABI JSON artifacts (one <Contract>.abi.json per spec)"
         IO.println "  --input <model|edsl> Input source mode (default: model)"
+        IO.println s!"  --edsl-contract <id> Restrict --input edsl to selected contracts (supported: {String.intercalate ", " Compiler.Lowering.supportedEDSLContractNames})"
         IO.println "  --backend-profile <semantic|solidity-parity-ordering|solidity-parity>"
         IO.println "  --parity-pack <id> Versioned parity-pack tuple (see docs/PARITY_PACKS.md)"
         IO.println "  --enable-patches   Enable deterministic Yul patch pass"
@@ -109,6 +111,10 @@ private def parseArgs (args : List String) : IO CLIArgs := do
             throw (IO.userError s!"Invalid value for --input: {raw} (expected model or edsl)")
     | ["--input"] =>
         throw (IO.userError "Missing value for --input")
+    | "--edsl-contract" :: raw :: rest =>
+        go rest { cfg with edslContracts := raw :: cfg.edslContracts }
+    | ["--edsl-contract"] =>
+        throw (IO.userError "Missing value for --edsl-contract")
     | "--backend-profile" :: raw :: rest =>
         if cfg.parityPackId.isSome then
           throw (IO.userError "Cannot combine --backend-profile with --parity-pack")
@@ -177,6 +183,8 @@ def main (args : List String) : IO Unit := do
     if cfg.verbose then
       IO.println s!"Output directory: {cfg.outDir}"
       IO.println s!"Input mode: {cfg.inputMode}"
+      if cfg.inputMode == "edsl" && !cfg.edslContracts.isEmpty then
+        IO.println s!"EDSL contracts: {String.intercalate ", " cfg.edslContracts}"
       IO.println s!"Backend profile: {backendProfileString cfg.backendProfile}"
       match cfg.parityPackId with
       | some packId =>
@@ -230,8 +238,10 @@ def main (args : List String) : IO Unit := do
       }
       mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }
+    if cfg.inputMode != "edsl" && !cfg.edslContracts.isEmpty then
+      throw (IO.userError "--edsl-contract requires --input edsl")
     if cfg.inputMode == "edsl" then
-      compileAllFromEDSLWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
+      compileAllFromEDSLWithOptions cfg.outDir cfg.verbose cfg.libs cfg.edslContracts options cfg.patchReportPath cfg.abiOutDir
     else
       compileAllWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
   catch e =>

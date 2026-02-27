@@ -37,11 +37,26 @@ private def writePatchReport (path : String) (rows : List (String × Yul.PatchPa
 private def resolveSpecsForModelInput (libraryPaths : List String) : List CompilationModel :=
   if libraryPaths.isEmpty then Specs.allSpecs else Specs.allSpecs ++ [Specs.cryptoHashSpec]
 
-private def resolveSpecsForEDSLInput (libraryPaths : List String) : Except String (List CompilationModel) := do
+private def parseRequestedEDSLContracts (rawContracts : List String) :
+    Except String (List Compiler.Lowering.SupportedEDSLContract) := do
+  if rawContracts.isEmpty then
+    .ok Compiler.Lowering.supportedEDSLContracts
+  else
+    rawContracts.mapM fun raw =>
+      match Compiler.Lowering.parseSupportedEDSLContract? raw with
+      | some contract => .ok contract
+      | none =>
+          .error
+            s!"Unsupported --edsl-contract: {raw} (supported: {String.intercalate ", " Compiler.Lowering.supportedEDSLContractNames})"
+
+private def resolveSpecsForEDSLInput
+    (libraryPaths : List String)
+    (rawContracts : List String) : Except String (List CompilationModel) := do
   if !libraryPaths.isEmpty then
     .error Compiler.Lowering.edslInputLinkedLibrariesUnsupportedMessage
   else
-    Compiler.Lowering.supportedEDSLContracts.mapM fun contract =>
+    let contracts ← parseRequestedEDSLContracts rawContracts
+    contracts.mapM fun contract =>
       match Compiler.Lowering.lowerFromEDSLSubset (.supported contract) with
       | .ok spec => .ok spec
       | .error err => .error err.message
@@ -161,11 +176,12 @@ def compileAllFromEDSLWithOptions
     (outDir : String)
     (verbose : Bool := false)
     (libraryPaths : List String := [])
+    (edslContracts : List String := [])
     (options : YulEmitOptions := {})
     (patchReportPath : Option String := none)
     (abiOutDir : Option String := none) : IO Unit := do
   let specs ←
-    match resolveSpecsForEDSLInput libraryPaths with
+    match resolveSpecsForEDSLInput libraryPaths edslContracts with
     | .ok specs => pure specs
     | .error err => throw (IO.userError err)
   compileSpecsWithOptions specs outDir verbose libraryPaths options patchReportPath abiOutDir

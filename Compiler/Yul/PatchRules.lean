@@ -1479,6 +1479,20 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
 private def hasAccrueInterestCompatBaseName (base name : String) : Bool :=
   name = base || name.startsWith s!"{base}_"
 
+private def isAccrueInterestSixArgCompatCall
+    (idName loanTokenName collateralTokenName oracleName irmName lltvName : String) : Bool :=
+  let rec allDistinct (seen : List String) : List String → Bool
+    | [] => true
+    | name :: rest =>
+        if seen.any (fun prior => prior = name) then false else allDistinct (name :: seen) rest
+  hasAccrueInterestCompatBaseName "id" idName &&
+    hasAccrueInterestCompatBaseName "loanToken" loanTokenName &&
+    hasAccrueInterestCompatBaseName "collateralToken" collateralTokenName &&
+    hasAccrueInterestCompatBaseName "oracle" oracleName &&
+    hasAccrueInterestCompatBaseName "irm" irmName &&
+    hasAccrueInterestCompatBaseName "lltv" lltvName &&
+    allDistinct [] [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName]
+
 private def namesAreDistinct (names : List String) : Bool :=
   let rec go (seen : List String) : List String → Bool
     | [] => true
@@ -2053,6 +2067,26 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
           (.call "div"
             [ .call "mul" [.ident feeAmount, .call "add" [.ident totalSupplyShares, .lit 1000000]]
             , .call "add" [.ident feeDenominator, .lit 1]
+            ], 0)
+    | .call "fun_accrueInterest"
+        [ .ident idName
+        , .ident loanTokenName
+        , .ident collateralTokenName
+        , .ident oracleName
+        , .ident irmName
+        , .ident lltvName
+        ] =>
+        if isAccrueInterestSixArgCompatCall
+            idName loanTokenName collateralTokenName oracleName irmName lltvName then
+          (.call "fun_accrueInterest" [.lit 0, .ident idName], 1)
+        else
+          (.call "fun_accrueInterest"
+            [ .ident idName
+            , .ident loanTokenName
+            , .ident collateralTokenName
+            , .ident oracleName
+            , .ident irmName
+            , .ident lltvName
             ], 0)
     | .call name args =>
         let (args', rewritten) := rewriteAccrueInterestCheckedArithmeticExprs args
@@ -5651,6 +5685,170 @@ example :
           | .funcDef "fun_accrueInterest" ["var_marketParams_46531_mpos", "var_id"] _ _ => true
           | _ => false)
     hasCanonicalSig = false := by
+  native_decide
+
+/-- Smoke test: six-arg `fun_accrueInterest` callsites are canonicalized to
+    Solidity-style `(marketParamsPtr, id)` under suffix-safe guards. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              []
+              [.leave]
+          , .block
+              [ .let_ "id" (.lit 1)
+              , .let_ "loanToken" (.lit 2)
+              , .let_ "collateralToken" (.lit 3)
+              , .let_ "oracle" (.lit 4)
+              , .let_ "irm" (.lit 5)
+              , .let_ "lltv" (.lit 6)
+              , .expr
+                  (.call "fun_accrueInterest"
+                    [ .ident "id"
+                    , .ident "loanToken"
+                    , .ident "collateralToken"
+                    , .ident "oracle"
+                    , .ident "irm"
+                    , .ident "lltv"
+                    ])
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let callCanonicalized :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .block inner =>
+              inner.any
+                (fun nested =>
+                  match nested with
+                  | .expr (.call "fun_accrueInterest" [.lit 0, .ident "id"]) => true
+                  | _ => false)
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      callCanonicalized := by
+  native_decide
+
+/-- Smoke test: six-arg callsite canonicalization stays out-of-scope when argument aliases
+    are not distinct. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id", "loanToken", "collateralToken", "oracle", "irm", "lltv"]
+              []
+              [.leave]
+          , .block
+              [ .let_ "id" (.lit 1)
+              , .let_ "loanToken" (.lit 2)
+              , .let_ "collateralToken" (.lit 3)
+              , .let_ "oracle" (.lit 4)
+              , .let_ "irm" (.lit 5)
+              , .expr
+                  (.call "fun_accrueInterest"
+                    [ .ident "id"
+                    , .ident "loanToken"
+                    , .ident "collateralToken"
+                    , .ident "oracle"
+                    , .ident "irm"
+                    , .ident "irm"
+                    ])
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let callPreserved :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .block inner =>
+              inner.any
+                (fun nested =>
+                  match nested with
+                  | .expr
+                      (.call "fun_accrueInterest"
+                        [ .ident "id"
+                        , .ident "loanToken"
+                        , .ident "collateralToken"
+                        , .ident "oracle"
+                        , .ident "irm"
+                        , .ident "irm"
+                        ]) => true
+                  | _ => false)
+          | _ => false)
+    callPreserved := by
+  native_decide
+
+/-- Smoke test: six-arg callsite canonicalization is wrapper-safe for nested blocks. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .if_ (.lit 1)
+                  [ .expr
+                      (.call "fun_accrueInterest"
+                        [ .ident "id_1"
+                        , .ident "loanToken_2"
+                        , .ident "collateralToken_3"
+                        , .ident "oracle_4"
+                        , .ident "irm_5"
+                        , .ident "lltv_6"
+                        ])
+                  ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let callCanonicalizedInNestedBlock :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .block inner =>
+              inner.any
+                (fun nested =>
+                  match nested with
+                  | .if_ _ body =>
+                      body.any
+                        (fun nestedBody =>
+                          match nestedBody with
+                          | .expr (.call "fun_accrueInterest" [.lit 0, .ident "id_1"]) => true
+                          | _ => false)
+                  | _ => false)
+          | _ => false)
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      callCanonicalizedInNestedBlock := by
   native_decide
 
 /-- Smoke test: six-arg market-params signature canonicalization is wrapper-safe. -/

@@ -228,7 +228,7 @@ def renderWithLibraries (obj : YulObject) (libraries : List LibraryFunction) : E
 -- EVM/Yul built-in opcodes (not user-defined functions).
 -- This list must include all opcodes that linked libraries may call,
 -- otherwise `validateExternalReferences` will reject valid library code.
--- Keep in sync with `interopBuiltinCallNames` in CompilationModel.lean.
+-- Keep in sync with `interopBuiltinCallNames` in ContractSpec.lean.
 private def yulBuiltins : List String :=
   ["add", "sub", "mul", "div", "sdiv", "mod", "smod", "exp",
    "not", "lt", "gt", "slt", "sgt", "eq", "iszero", "and", "or", "xor",
@@ -366,14 +366,57 @@ private def collectExternalCallNames (obj : YulObject) (libraries : List Library
   allCalls.filter fun call =>
     !yulBuiltins.contains call && !localDefs.contains call && providedFunctions.contains call
 
-/-- Keep only directly referenced external library functions, preserving input order.
-    This is a deterministic text-linking minimization step that avoids injecting
-    unused library helpers into rendered runtime code.
+/-- Keep only referenced external library functions (transitive closure), preserving
+    input order.
+    This deterministic text-linking minimization step avoids injecting unused
+    library helpers while still retaining helper dependencies needed by retained
+    library functions.
     Exported for downstream compiler frontends (for example `morpho-verity`) that
     pre-filter libraries before invoking linker validation/rendering. -/
+private def collectReferencedLibraryClosure
+    (libraries : List LibraryFunction) (seed : List String) : List String :=
+  let providedFunctions := collectLibraryFunctions libraries
+  let referencesFunctionName := fun (body : List String) (name : String) =>
+    let text := String.intercalate "\n" body
+    (text.splitOn s!"{name}(").length > 1
+  let callNamesInLibraryBody := fun (body : List String) =>
+    providedFunctions.filter (fun name => referencesFunctionName body name)
+  let rec expand (fuel : Nat) (reachable : List String) : List String :=
+    match fuel with
+    | 0 => reachable
+    | fuel + 1 =>
+        let expanded :=
+          reachable.foldl (fun acc name =>
+            match libraries.find? (fun fn => fn.name = name) with
+            | some fn =>
+                let deps := (callNamesInLibraryBody fn.body).filter
+                  (fun dep => providedFunctions.contains dep)
+                (acc ++ deps).eraseDups
+            | none => acc) reachable
+        if expanded.length = reachable.length then
+          reachable
+        else
+          expand fuel expanded
+  expand (libraries.length + 1) seed
+
 def selectDirectlyReferencedLibraries (obj : YulObject) (libraries : List LibraryFunction) : List LibraryFunction :=
   let referenced := collectExternalCallNames obj libraries
-  libraries.filter fun fn => referenced.contains fn.name
+  let referencedClosure := collectReferencedLibraryClosure libraries referenced
+  libraries.filter fun fn => referencedClosure.contains fn.name
+
+/-- Smoke test: referenced-library selection keeps transitive helper dependencies. -/
+example :
+    let obj : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode := [.expr (.call "A" [])] }
+    let libs : List LibraryFunction :=
+      [ { name := "A", arity := 0, body := ["function A() {", "B()", "}"] }
+      , { name := "B", arity := 0, body := ["function B() {", "let x := 1", "}"] }
+      , { name := "C", arity := 0, body := ["function C() {", "let y := 2", "}"] }
+      ]
+    (selectDirectlyReferencedLibraries obj libs).map (·.name) = ["A", "B"] := by
+  native_decide
 
 -- Validate that all external calls are provided by libraries
 -- Excludes Yul builtins and locally-defined functions

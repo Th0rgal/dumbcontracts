@@ -630,11 +630,23 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lower_simpleStorage_retrieve_correct
 #print axioms Compiler.Proofs.Lowering.lower_counter_increment_correct
 #print axioms Compiler.Proofs.Lowering.lower_counter_getCount_correct
+#print axioms Compiler.Proofs.Lowering.lower_counter_decrement_correct
 #print axioms Compiler.Proofs.Lowering.lower_owned_getOwner_correct
+#print axioms Compiler.Proofs.Lowering.lower_owned_transferOwnership_correct_as_owner
 #print axioms Compiler.Proofs.Lowering.lower_ledger_deposit_correct
+#print axioms Compiler.Proofs.Lowering.lower_ledger_withdraw_correct_sufficient
+#print axioms Compiler.Proofs.Lowering.lower_ledger_getBalance_correct
 #print axioms Compiler.Proofs.Lowering.lower_ownedCounter_getCount_correct
+#print axioms Compiler.Proofs.Lowering.lower_ownedCounter_increment_correct_as_owner
+#print axioms Compiler.Proofs.Lowering.lower_ownedCounter_decrement_correct_as_owner
+#print axioms Compiler.Proofs.Lowering.lower_ownedCounter_getOwner_correct
+#print axioms Compiler.Proofs.Lowering.lower_ownedCounter_transferOwnership_correct_as_owner
 #print axioms Compiler.Proofs.Lowering.lower_simpleToken_getTotalSupply_correct
+#print axioms Compiler.Proofs.Lowering.lower_simpleToken_balanceOf_correct
+#print axioms Compiler.Proofs.Lowering.lower_simpleToken_getOwner_correct
 #print axioms Compiler.Proofs.Lowering.lower_safeCounter_getCount_correct
+#print axioms Compiler.Proofs.Lowering.lower_safeCounter_increment_correct
+#print axioms Compiler.Proofs.Lowering.lower_safeCounter_decrement_correct
 #print axioms Compiler.Proofs.Lowering.parseSupportedEDSLContract_roundtrip
 #print axioms Compiler.Proofs.Lowering.lowerModelPath_eq_ok
 #print axioms Compiler.Proofs.Lowering.lowerModelPath_preserves_interpretSpec
@@ -769,4 +781,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 644 theorems/lemmas (615 public, 29 private)
+-- Total: 656 theorems/lemmas (627 public, 29 private)

@@ -46,7 +46,9 @@ lake exe verity-compiler --input edsl --edsl-contract counter
 `Compiler/Proofs/Lowering/FromEDSL.lean`.
 That proof module now includes transition bridge lemmas that connect lowered
 supported inputs to existing Layer-1 EDSL correctness theorems, including both
-write and read paths for `simple-storage` and `counter`.
+write and read paths across the currently supported subset, including
+`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`,
+`simple-token`, and `safe-counter`.
 Current lowering is still transition-stage: supported EDSL contracts are pinned to
 their current lowering targets, and advanced flows (for example linked-library
 `CryptoHash`) remain on `--input model`.
@@ -241,7 +243,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
 - **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today, and compiler `--input edsl` currently covers a curated supported subset via pinned lowering targets. Fully automatic verified EDSL reification/lowering remains in progress. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
 - **Lowering-boundary note**: Even before automatic EDSL reification is wired, the existing `--input model` path runs through `Compiler.Lowering.lowerModelPath` to keep one explicit lowering boundary.
-- **Lowering bridge note**: `Compiler/Proofs/Lowering/FromEDSL.lean` now provides transition bridge theorems for all currently supported `--input edsl` contracts (`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`, `simple-token`, `safe-counter`).
+- **Lowering bridge note**: `Compiler/Proofs/Lowering/FromEDSL.lean` now provides transition bridge theorems for all currently supported `--input edsl` contracts (`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`, `simple-token`, `safe-counter`), including write/read bridges for mutating and getter entrypoints in that subset.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
 **Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.

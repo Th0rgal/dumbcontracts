@@ -92,7 +92,7 @@ def evalYulExprs (state : YulState) : List YulExpr → Option (List Nat)
 termination_by es => exprsSize es
 decreasing_by
   all_goals
-    simp [exprsSize, exprSize]
+    simp [exprsSize]
     omega
 
 def evalYulCall (state : YulState) (func : String) : List YulExpr → Option Nat
@@ -103,7 +103,7 @@ def evalYulCall (state : YulState) (func : String) : List YulExpr → Option Nat
       state.storage state.sender state.selector state.calldata func argVals
 termination_by args => exprsSize args + 1
 decreasing_by
-  simp [exprsSize, exprSize]
+  omega
 
 /-- Evaluate a Yul expression -/
 def evalYulExpr (state : YulState) : YulExpr → Option Nat
@@ -114,7 +114,7 @@ def evalYulExpr (state : YulState) : YulExpr → Option Nat
   | .call func args => evalYulCall state func args
 termination_by e => exprSize e
 decreasing_by
-  simp [exprsSize, exprSize]
+  simp [exprSize]
 
 end
 
@@ -132,8 +132,8 @@ inductive YulExecTarget
   | stmts (ss : List YulStmt)
 
 def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
-  | fuel, state, .stmts [] => .continue state
-  | fuel, state, .stmt (YulStmt.funcDef _ _ _ _) => .continue state
+  | _, state, .stmts [] => .continue state
+  | _, state, .stmt (YulStmt.funcDef _ _ _ _) => .continue state
   | 0, state, _ => .revert state
   | Nat.succ fuel, state, target =>
       match target with

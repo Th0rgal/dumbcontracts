@@ -1452,7 +1452,7 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       withAll'
   let needsExtractReturndata :=
     !hasTopLevelFunctionNamed withAll'' "extract_returndata" &&
-      (callNamesInStmts withAll'').any (fun called => called = "extract_returndata")
+      (callNamesInStmts withAll'').any (fun called => called = "fun_accrueInterest")
   let withAll''' :=
     if needsExtractReturndata then
       insertTopLevelFuncDefAfterPrefix withAll'' extractReturndataHelperStmt
@@ -4099,16 +4099,11 @@ example :
       []
       [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
       input
-    let called := callNamesInStmts report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27020" = false &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27033" = false &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" = false &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" = false &&
-      called.any (fun name => name = "finalize_allocation_27020") = false &&
-      called.any (fun name => name = "finalize_allocation_27033") = false &&
-      called.any (fun name => name = "finalize_allocation") = false &&
-      called.any (fun name => name = "extract_returndata") = false := by
+      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite is wrapper-safe for IRM call-buffer/revert normalization

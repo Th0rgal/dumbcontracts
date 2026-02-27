@@ -20,7 +20,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: docs-site
@@ -29,13 +29,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Debounce push builds (30 minutes)
-        id: debounce
+      - name: Skip stale push builds
+        id: freshness
         if: github.event_name == 'push'
         working-directory: .
         run: |
-          echo "Waiting 30 minutes to debounce docs-site pushes..."
-          sleep 1800
           git fetch --no-tags origin "${GITHUB_REF_NAME}"
           latest_sha="$(git rev-parse "origin/${GITHUB_REF_NAME}")"
           if [ "${latest_sha}" = "${GITHUB_SHA}" ]; then
@@ -46,13 +44,13 @@ jobs:
           fi
 
       - uses: actions/setup-node@v4
-        if: github.event_name != 'push' || steps.debounce.outputs.should_build == 'true'
+        if: github.event_name != 'push' || steps.freshness.outputs.should_build == 'true'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: docs-site/package-lock.json
 
-      - if: github.event_name != 'push' || steps.debounce.outputs.should_build == 'true'
+      - if: github.event_name != 'push' || steps.freshness.outputs.should_build == 'true'
         run: npm ci
-      - if: github.event_name != 'push' || steps.debounce.outputs.should_build == 'true'
+      - if: github.event_name != 'push' || steps.freshness.outputs.should_build == 'true'
         run: npm run build

@@ -1994,9 +1994,12 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
         ] :: rest =>
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
         ( [ .if_ (.call "iszero" [.ident "__ecwr_success"])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-              , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+              [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+              , .expr
+                  (.call "revert"
+                    [ .call "add" [.ident "__compat_returndata", .lit 32]
+                    , .call "mload" [.ident "__compat_returndata"]
+                    ])
               ]
           ] ++ rest'
         , rewrittenTail + 1)

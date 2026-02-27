@@ -352,11 +352,17 @@ private def callsWithArityDefault : Option (List YulStmt) → List (String × Na
   | some body => callsWithArityFromStmts body
 end
 
-private def collectExternalCallNames (obj : YulObject) (libraries : List LibraryFunction) : List String :=
+private def externalReferenceContext
+    (obj : YulObject) (libraries : List LibraryFunction) :
+    List String × List String × List String := Id.run do
   let allCode := obj.deployCode ++ obj.runtimeCode
   let allCalls := (callsWithArityFromStmts allCode |>.map Prod.fst).eraseDups
   let localDefs := (defsFromStmts allCode).eraseDups
   let providedFunctions := collectLibraryFunctions libraries
+  pure (allCalls, localDefs, providedFunctions)
+
+private def collectExternalCallNames (obj : YulObject) (libraries : List LibraryFunction) : List String :=
+  let (allCalls, localDefs, providedFunctions) := externalReferenceContext obj libraries
   allCalls.filter fun call =>
     !yulBuiltins.contains call && !localDefs.contains call && providedFunctions.contains call
 
@@ -372,10 +378,7 @@ def selectDirectlyReferencedLibraries (obj : YulObject) (libraries : List Librar
 -- Validate that all external calls are provided by libraries
 -- Excludes Yul builtins and locally-defined functions
 def validateExternalReferences (obj : YulObject) (libraries : List LibraryFunction) : Except String Unit := do
-  let allCode := obj.deployCode ++ obj.runtimeCode
-  let allCalls := (callsWithArityFromStmts allCode |>.map Prod.fst).eraseDups
-  let localDefs := (defsFromStmts allCode).eraseDups
-  let providedFunctions := collectLibraryFunctions libraries
+  let (allCalls, localDefs, providedFunctions) := externalReferenceContext obj libraries
   let known := yulBuiltins ++ localDefs ++ providedFunctions
   let missingFunctions := allCalls.filter fun call =>
     !known.contains call

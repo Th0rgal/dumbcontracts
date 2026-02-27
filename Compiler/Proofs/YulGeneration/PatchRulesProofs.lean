@@ -9,8 +9,8 @@ abbrev EvalExpr := YulExpr → Option Nat
 
 /-- Proof hook contract: a rewrite must preserve evaluation under a chosen semantics. -/
 def ExprPatchPreservesUnder (eval : EvalExpr) (rule : ExprPatchRule) : Prop :=
-  ∀ (expr rewritten : YulExpr),
-    rule.applyExpr { scope := .runtime, passPhase := .postCodegen, iteration := 0 } expr = some rewritten →
+  ∀ (ctx : RewriteCtx) (expr rewritten : YulExpr),
+    rule.applyExpr ctx expr = some rewritten →
     eval expr = eval rewritten
 
 /-- Minimal evaluator laws needed to discharge the foundation patch pack. -/

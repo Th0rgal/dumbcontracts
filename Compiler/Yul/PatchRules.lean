@@ -1060,6 +1060,107 @@ private def toSharesDownHelperBody : List YulStmt :=
 private def toSharesDownHelperStmt : YulStmt :=
   .funcDef "fun_toSharesDown" ["var_assets", "var_totalAssets", "var_totalShares"] ["var_"] toSharesDownHelperBody
 
+private def requireHelperStringBody : List YulStmt :=
+  [ .if_ (.call "iszero" [.ident "condition"])
+      [ .let_ "memPtr" (.call "mload" [.lit 64])
+      , .expr
+          (.call "mstore"
+            [ .ident "memPtr"
+            , .hex 0x08c379a000000000000000000000000000000000000000000000000000000000
+            ])
+      , .let_ "_1" (.lit 32)
+      , .expr (.call "mstore" [.call "add" [.ident "memPtr", .lit 4], .ident "_1"])
+      , .let_ "length" (.call "mload" [.ident "message"])
+      , .expr (.call "mstore" [.call "add" [.ident "memPtr", .lit 36], .ident "length"])
+      , .let_ "i" (.lit 0)
+      , .for_ []
+          (.call "lt" [.ident "i", .ident "length"])
+          [ .assign "i" (.call "add" [.ident "i", .ident "_1"]) ]
+          [ .expr
+              (.call "mstore"
+                [ .call "add"
+                    [ .call "add" [.ident "memPtr", .ident "i"]
+                    , .lit 68
+                    ]
+                , .call "mload"
+                    [ .call "add"
+                        [ .call "add" [.ident "message", .ident "i"]
+                        , .ident "_1"
+                        ]
+                    ]
+                ])
+          ]
+      , .expr
+          (.call "mstore"
+            [ .call "add"
+                [ .call "add" [.ident "memPtr", .ident "length"]
+                , .lit 68
+                ]
+            , .lit 0
+            ])
+      , .expr
+          (.call "revert"
+            [ .ident "memPtr"
+            , .call "add"
+                [ .call "sub"
+                    [ .call "add"
+                        [ .ident "memPtr"
+                        , .call "and"
+                            [ .call "add" [.ident "length", .lit 31]
+                            , .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0
+                            ]
+                        ]
+                    , .ident "memPtr"
+                    ]
+                , .lit 68
+                ]
+            ])
+      ]
+  ]
+
+private def requireHelperStringStmt : YulStmt :=
+  .funcDef "require_helper_string" ["condition", "message"] [] requireHelperStringBody
+
+private def finalizeAllocation35876HelperBody : List YulStmt :=
+  [ .let_ "newFreePtr" (.call "add" [.ident "memPtr", .lit 64])
+  , .if_ (.call "or"
+      [ .call "gt" [.ident "newFreePtr", .hex 0xffffffffffffffff]
+      , .call "lt" [.ident "newFreePtr", .ident "memPtr"]
+      ])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x41])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  , .expr (.call "mstore" [.lit 64, .ident "newFreePtr"])
+  ]
+
+private def finalizeAllocation35876HelperStmt : YulStmt :=
+  .funcDef "finalize_allocation_35876" ["memPtr"] [] finalizeAllocation35876HelperBody
+
+private def toUint128HelperBody : List YulStmt :=
+  [ .let_ "_1" (.hex 0xffffffffffffffffffffffffffffffff)
+  , .let_ "memPtr" (.call "mload" [.lit 64])
+  , .expr (.call "finalize_allocation_35876" [.ident "memPtr"])
+  , .expr (.call "mstore" [.ident "memPtr", .lit 20])
+  , .expr
+      (.call "mstore"
+        [ .call "add" [.ident "memPtr", .lit 32]
+        , .str "max uint128 exceeded"
+        ])
+  , .expr
+      (.call "require_helper_string"
+        [ .call "iszero" [.call "gt" [.ident "var_x", .ident "_1"]]
+        , .ident "memPtr"
+        ])
+  , .assign "var" (.call "and" [.ident "var_x", .ident "_1"])
+  ]
+
+private def toUint128HelperStmt : YulStmt :=
+  .funcDef "fun_toUint128" ["var_x"] ["var"] toUint128HelperBody
+
 private def updateStorageValueOffsetUint128HelperBody : List YulStmt :=
   [ .let_ "_1" (.call "sload" [.ident "slot"])
   , .expr
@@ -1153,14 +1254,45 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       insertTopLevelFuncDefAfterPrefix withAddMulDivAdd128 checkedSubUint128HelperStmt
     else
       withAddMulDivAdd128
-  let needsToSharesDown :=
-    !hasTopLevelFunctionNamed withAddMulDivAdd128Sub128 "fun_toSharesDown" &&
-      (callNamesInStmts withAddMulDivAdd128Sub128).any (fun called => called = "fun_toSharesDown")
-  let withAll :=
-    if needsToSharesDown then
-      insertTopLevelFuncDefAfterPrefix withAddMulDivAdd128Sub128 toSharesDownHelperStmt
+  let needsToUint128 :=
+    !hasTopLevelFunctionNamed withAddMulDivAdd128Sub128 "fun_toUint128" &&
+      (callNamesInStmts withAddMulDivAdd128Sub128).any (fun called => called = "fun_toUint128")
+  let withAddMulDivAdd128Sub128ToUint128 :=
+    if needsToUint128 then
+      insertTopLevelFuncDefAfterPrefix withAddMulDivAdd128Sub128 toUint128HelperStmt
     else
       withAddMulDivAdd128Sub128
+  let needsRequireHelperString :=
+    !hasTopLevelFunctionNamed withAddMulDivAdd128Sub128ToUint128 "require_helper_string" &&
+      (callNamesInStmts withAddMulDivAdd128Sub128ToUint128).any (fun called => called = "require_helper_string")
+  let withAddMulDivAdd128Sub128ToUint128RequireHelperString :=
+    if needsRequireHelperString then
+      insertTopLevelFuncDefAfterPrefix withAddMulDivAdd128Sub128ToUint128 requireHelperStringStmt
+    else
+      withAddMulDivAdd128Sub128ToUint128
+  let needsFinalizeAllocation35876 :=
+    !hasTopLevelFunctionNamed withAddMulDivAdd128Sub128ToUint128RequireHelperString "finalize_allocation_35876" &&
+      (callNamesInStmts withAddMulDivAdd128Sub128ToUint128RequireHelperString).any
+        (fun called => called = "finalize_allocation_35876")
+  let withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876 :=
+    if needsFinalizeAllocation35876 then
+      insertTopLevelFuncDefAfterPrefix
+        withAddMulDivAdd128Sub128ToUint128RequireHelperString
+        finalizeAllocation35876HelperStmt
+    else
+      withAddMulDivAdd128Sub128ToUint128RequireHelperString
+  let needsToSharesDown :=
+    !hasTopLevelFunctionNamed withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
+        "fun_toSharesDown" &&
+      (callNamesInStmts withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876).any
+        (fun called => called = "fun_toSharesDown")
+  let withAll :=
+    if needsToSharesDown then
+      insertTopLevelFuncDefAfterPrefix
+        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
+        toSharesDownHelperStmt
+    else
+      withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
   let needsUpdateStorageUint128 :=
     !hasTopLevelFunctionNamed withAll "update_storage_value_offsett_uint128_to_uint128" &&
       (callNamesInStmts withAll).any (fun called => called = "update_storage_value_offsett_uint128_to_uint128")
@@ -1181,6 +1313,8 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
     (if needsAdd then 1 else 0) + (if needsSub256 then 1 else 0) +
       (if needsMul then 1 else 0) + (if needsDiv then 1 else 0) +
       (if needsAdd128 then 1 else 0) + (if needsSub128 then 1 else 0) +
+      (if needsToUint128 then 1 else 0) + (if needsRequireHelperString then 1 else 0) +
+      (if needsFinalizeAllocation35876 then 1 else 0) +
       (if needsToSharesDown then 1 else 0) + (if needsUpdateStorageUint128 then 1 else 0) +
       (if needsUpdateStorageBool then 1 else 0)
   if inserted = 0 then
@@ -1432,18 +1566,55 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
           , .call "checked_add_uint256" [.ident "secondTerm", .ident "thirdTerm"]
           ], 1)
     | .call "add" [.ident "totalBorrowAssets", .ident "interest"] =>
-        (.call "checked_add_uint128" [.ident "totalBorrowAssets", .ident "interest"], 1)
+        (.call "checked_add_uint128"
+          [ .ident "totalBorrowAssets"
+          , .call "fun_toUint128" [.ident "interest"]
+          ], 1)
     | .call "add" [.ident "totalSupplyAssets", .ident "interest"] =>
-        (.call "checked_add_uint128" [.ident "totalSupplyAssets", .ident "interest"], 1)
+        (.call "checked_add_uint128"
+          [ .ident "totalSupplyAssets"
+          , .call "fun_toUint128" [.ident "interest"]
+          ], 1)
+    | .call "checked_add_uint128" [.ident lhs, .ident rhs] =>
+        if lhs = "totalBorrowAssets" && rhs = "interest" then
+          (.call "checked_add_uint128"
+            [ .ident "totalBorrowAssets"
+            , .call "fun_toUint128" [.ident "interest"]
+            ], 1)
+        else if lhs = "totalSupplyAssets" && rhs = "interest" then
+          (.call "checked_add_uint128"
+            [ .ident "totalSupplyAssets"
+            , .call "fun_toUint128" [.ident "interest"]
+            ], 1)
+        else if hasAccrueInterestCompatBaseName "totalSupplyShares" lhs &&
+            hasAccrueInterestCompatBaseName "feeShares" rhs then
+          (.call "checked_add_uint128"
+            [ .ident lhs
+            , .call "fun_toUint128" [.ident rhs]
+            ], 1)
+        else if hasAccrueInterestCompatBaseName "feeShares" lhs &&
+            hasAccrueInterestCompatBaseName "totalSupplyShares" rhs then
+          (.call "checked_add_uint128"
+            [ .ident rhs
+            , .call "fun_toUint128" [.ident lhs]
+            ], 1)
+        else
+          (.call "checked_add_uint128" [.ident lhs, .ident rhs], 0)
     | .call "add" [.ident lhs, .ident rhs] =>
         if lhs = "feePosShares" && rhs = "feeShares" then
           (.call "checked_add_uint256" [.ident "feePosShares", .ident "feeShares"], 1)
         else if hasAccrueInterestCompatBaseName "totalSupplyShares" lhs &&
             hasAccrueInterestCompatBaseName "feeShares" rhs then
-          (.call "checked_add_uint128" [.ident lhs, .ident rhs], 1)
+          (.call "checked_add_uint128"
+            [ .ident lhs
+            , .call "fun_toUint128" [.ident rhs]
+            ], 1)
         else if hasAccrueInterestCompatBaseName "feeShares" lhs &&
             hasAccrueInterestCompatBaseName "totalSupplyShares" rhs then
-          (.call "checked_add_uint128" [.ident lhs, .ident rhs], 1)
+          (.call "checked_add_uint128"
+            [ .ident rhs
+            , .call "fun_toUint128" [.ident lhs]
+            ], 1)
         else
           (.call "add" [.ident lhs, .ident rhs], 0)
     | .call "sub" [.ident lhs, .ident rhs] =>
@@ -1893,13 +2064,14 @@ def solcCompatRewriteElapsedCheckedSubRule : ObjectPatchRule :=
 
 /-- Rewrite selected runtime `accrueInterest` arithmetic patterns to
     Solidity-style checked helper calls (`checked_add_uint256` / `checked_add_uint128` /
-    `checked_sub_uint128` / `checked_mul_uint256` / `checked_div_uint256`).
+    `checked_sub_uint128` / `checked_mul_uint256` / `checked_div_uint256`), plus
+    explicit `fun_toUint128(...)` casts for selected uint128 add operands.
     Insert helpers only when referenced and absent.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatRewriteAccrueInterestCheckedArithmeticRule : ObjectPatchRule :=
   { patchName := "solc-compat-rewrite-accrue-interest-checked-arithmetic"
-    pattern := "selected runtime `mul`/`add`/`sub` expressions in `accrueInterest` flow"
-    rewrite := "replace with checked helper calls and materialize helpers if needed"
+    pattern := "selected runtime `mul`/`add`/`sub` expressions in `accrueInterest` flow, including uint128 cast shape"
+    rewrite := "replace with checked helper calls and `fun_toUint128` casts, then materialize referenced helpers if needed"
     sideConditions :=
       [ "only runtime code is transformed"
       , "rewrite is scoped to known identifier-shape arithmetic in accrue-interest flow"
@@ -3163,6 +3335,36 @@ example :
       called.any (fun name => name = "checked_add_uint128") = true := by
   native_decide
 
+/-- Smoke test: checked arithmetic rewrite wraps fee-share uint128 additions via `fun_toUint128` and
+    materializes dependencies only when referenced+absent. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "newTotalSupplyShares" (.call "add" [.ident "totalSupplyShares", .ident "feeShares"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toUint128" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "require_helper_string" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_35876" &&
+      called.any (fun name => name = "fun_toUint128") = true := by
+  native_decide
+
 /-- Smoke test: checked arithmetic rewrite canonicalizes suffixed total-supply-share addition names. -/
 example :
     let input : YulObject :=
@@ -3189,6 +3391,39 @@ example :
       called.any (fun name => name = "checked_add_uint128") = true := by
   native_decide
 
+/-- Smoke test: checked arithmetic rewrite is wrapper-safe for uint128-cast canonicalization. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" [] []
+                  [ .let_ "newTotalSupplyShares_9"
+                      (.call "add" [.ident "totalSupplyShares_2", .ident "feeShares_1"]) ]
+              , .block [ .expr (.call "fun_accrueInterest" []) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed top "fun_toUint128" &&
+      called.any (fun name => name = "fun_toUint128") = true := by
+  native_decide
+
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat total-supply-share names. -/
 example :
     let input : YulObject :=
@@ -3213,6 +3448,62 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" = false &&
       called.any (fun name => name = "checked_add_uint128") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite keeps uint128-cast rewrite out-of-scope for non-compat fee-share names. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "newTotalSupplyShares" (.call "add" [.ident "totalSupplyShares", .ident "feeSharesAlt"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toUint128" = false &&
+      called.any (fun name => name = "fun_toUint128") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing uint128 cast helper chain. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ requireHelperStringStmt
+          , finalizeAllocation35876HelperStmt
+          , toUint128HelperStmt
+          , .funcDef "fun_accrueInterest" [] []
+              [ .let_ "newTotalSupplyShares" (.call "add" [.ident "totalSupplyShares", .ident "feeShares"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let topNames := topLevelFunctionNames report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      (topNames.filter (fun name => name = "fun_toUint128")).length = 1 &&
+      (topNames.filter (fun name => name = "require_helper_string")).length = 1 &&
+      (topNames.filter (fun name => name = "finalize_allocation_35876")).length = 1 := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite canonicalizes packed uint128 upper-slot writes. -/

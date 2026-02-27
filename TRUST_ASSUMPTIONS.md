@@ -29,7 +29,6 @@ EVM Bytecode
 - Layer 1 (EDSL -> ContractSpec) is proven in Lean.
 - Layer 2 (ContractSpec -> IR) is proven in Lean.
 - Layer 3 (IR -> Yul) is proven in Lean except for one documented axiom.
-- Unified AST equivalence proofs for migrated examples remain useful migration artifacts, but they are not a supported compiler backend path.
 
 Metrics tracked by repository tooling:
 
@@ -105,10 +104,6 @@ Metrics tracked by repository tooling:
 ### Revert-State Modeling
 
 High-level semantics can expose intermediate state in a reverted computation model. EVM runtime reverts discard state. Contracts should preserve checks-before-effects discipline.
-
-### AST Migration Artifacts
-
-Unified AST artifacts are maintained for migration/interop and proof engineering. They are not a productized compilation backend.
 
 ## Security Audit Checklist
 

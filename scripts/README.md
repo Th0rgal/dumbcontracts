@@ -189,7 +189,7 @@ python3 scripts/generate_contract.py MyToken \
 python3 scripts/generate_contract.py MyContract --dry-run
 ```
 
-Creates 9 files: EDSL implementation, AST bridge scaffold, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
+Creates 8 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
 
 Identifier rules (fail-fast validation):
 - Contract name: PascalCase alphanumeric (existing rule), e.g. `MyToken`

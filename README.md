@@ -36,7 +36,10 @@ python3 scripts/generate_contract.py MyContract
 # 4. Compile to Yul/EVM
 lake build verity-compiler
 lake exe verity-compiler                      # Output in compiler/yul/
+lake exe verity-compiler --input model        # Explicit manual CompilationModel path
 ```
+
+`--input edsl` is reserved for the verified automatic EDSL-lowering path and currently fails closed with a diagnostic until that wiring lands.
 
 **With external libraries (e.g., Poseidon hash):**
 ```bash

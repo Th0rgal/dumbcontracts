@@ -1,4 +1,5 @@
 import Compiler.CompileDriver
+import Compiler.Lowering.FromEDSL
 import Compiler.ParityPacks
 
 /-!
@@ -230,10 +231,7 @@ def main (args : List String) : IO Unit := do
       mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }
     if cfg.inputMode == "edsl" then
-      let msg :=
-        "EDSL input mode is reserved for verified automatic lowering and is not wired in this CLI yet. " ++
-        "Use --input model for now (manual CompilationModel path)."
-      throw (IO.userError msg)
+      throw (IO.userError Compiler.Lowering.edslInputReservedMessage)
     compileAllWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
   catch e =>
     if e.toString == "help" then

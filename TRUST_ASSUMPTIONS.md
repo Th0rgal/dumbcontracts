@@ -10,6 +10,10 @@ Verity uses a single supported compilation path:
 
 The formal Layer 1/2/3 guarantees apply to this path.
 
+Compiler UX status: `verity-compiler` currently routes through `--input model`.
+`--input edsl` remains fail-closed until the verified automatic lowering path is
+wired end-to-end.
+
 ## Verification Chain
 
 ```

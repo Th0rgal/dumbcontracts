@@ -14,6 +14,7 @@ Key entry points:
 
 - Spec semantics: `Verity/Proofs/Stdlib/SpecInterpreter.lean`
 - IR generation and proofs: `Compiler/Proofs/IRGeneration/`
+- Lowering boundary scaffolding proofs: `Compiler/Proofs/Lowering/`
 - Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
 
 Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The re-export shim at `Verity/Specs/<Name>/Proofs.lean` imports Layer 1 spec-correctness proofs from `Compiler/Proofs/SpecCorrectness/<Name>.lean`.

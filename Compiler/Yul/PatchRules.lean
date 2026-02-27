@@ -1927,34 +1927,22 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
         ] :: rest =>
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
         ( [ .if_ (.call "iszero" [.ident "__ecwr_success"])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr
-                  (.call "returndatacopy"
-                    [ .ident "pos"
-                    , .lit 0
-                    , .call "returndatasize" []
-                    ])
+              [ .let_ "__compat_returndata" (.call "extract_returndata" [])
               , .expr
                   (.call "revert"
-                    [ .ident "pos"
-                    , .call "returndatasize" []
+                    [ .call "add" [.ident "__compat_returndata", .lit 32]
+                    , .call "mload" [.ident "__compat_returndata"]
                     ])
               ]
           ] ++ rest'
         , rewrittenTail + 1)
     | .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]]) ::
       (.if_ (.call "iszero" [.ident "__ecwr_success"])
-        [ .let_ "pos" (.call "mload" [.lit 64])
-        , .expr
-            (.call "returndatacopy"
-              [ .ident "pos"
-              , .lit 0
-              , .call "returndatasize" []
-              ])
+        [ .let_ "__compat_returndata" (.call "extract_returndata" [])
         , .expr
             (.call "revert"
-              [ .ident "pos"
-              , .call "returndatasize" []
+              [ .call "add" [.ident "__compat_returndata", .lit 32]
+              , .call "mload" [.ident "__compat_returndata"]
               ])
         ]) ::
       (.if_ (.call "lt" [.call "returndatasize" [], .lit 32])
@@ -1962,17 +1950,11 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
       (.let_ "borrowRate" (.call "mload" [.lit 0])) :: rest =>
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
         ( [ .if_ (.call "iszero" [.ident "__ecwr_success"])
-              [ .let_ "pos" (.call "mload" [.lit 64])
-              , .expr
-                  (.call "returndatacopy"
-                    [ .ident "pos"
-                    , .lit 0
-                    , .call "returndatasize" []
-                    ])
+              [ .let_ "__compat_returndata" (.call "extract_returndata" [])
               , .expr
                   (.call "revert"
-                    [ .ident "pos"
-                    , .call "returndatasize" []
+                    [ .call "add" [.ident "__compat_returndata", .lit 32]
+                    , .call "mload" [.ident "__compat_returndata"]
                     ])
               ]
           , .let_ "borrowRate" (.lit 0)
@@ -3935,7 +3917,7 @@ example :
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite normalizes IRM call result buffering/revert handling to
-    Solidity-style inline returndata forwarding and borrow-rate load, then materializes required
+    Solidity-style `extract_returndata()` forwarding and borrow-rate load, then materializes required
     helpers when referenced+absent. -/
 example :
     let input : YulObject :=
@@ -3978,10 +3960,10 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" = false &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "extract_returndata" &&
       called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true &&
-      called.any (fun name => name = "extract_returndata") = false := by
+      called.any (fun name => name = "extract_returndata") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat IRM revert-shape. -/
@@ -4031,7 +4013,7 @@ example :
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite is wrapper-safe for IRM call-buffer/revert normalization
-    and keeps inline revert forwarding without helper-only drift. -/
+    and keeps `extract_returndata()` forwarding without helper-only drift. -/
 example :
     let input : YulObject :=
       { name := "Main"
@@ -4079,14 +4061,14 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed top "finalize_allocation_27033" &&
       hasTopLevelFunctionNamed top "finalize_allocation" &&
-      hasTopLevelFunctionNamed top "extract_returndata" = false &&
+      hasTopLevelFunctionNamed top "extract_returndata" &&
       called.any (fun name => name = "finalize_allocation_27033") = true &&
       called.any (fun name => name = "finalize_allocation") = true &&
-      called.any (fun name => name = "extract_returndata") = false := by
+      called.any (fun name => name = "extract_returndata") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite normalizes intermediate borrow-rate guard shape
-    (`mstore(0, mload(__compat_alloc_ptr))` + inline revert forwarding + `lt(returndatasize(), 32)` + `mload(0)`)
+    (`mstore(0, mload(__compat_alloc_ptr))` + `extract_returndata()` forwarding + `lt(returndatasize(), 32)` + `mload(0)`)
     to Solidity-style success-gated finalize/load flow. -/
 example :
     let input : YulObject :=
@@ -4097,9 +4079,12 @@ example :
               [ .let_ "__ecwr_success" (.ident "callSucceeded")
               , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]])
               , .if_ (.call "iszero" [.ident "__ecwr_success"])
-                  [ .let_ "pos" (.call "mload" [.lit 64])
-                  , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-                  , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                  [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+                  , .expr
+                      (.call "revert"
+                        [ .call "add" [.ident "__compat_returndata", .lit 32]
+                        , .call "mload" [.ident "__compat_returndata"]
+                        ])
                   ]
               , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
                   [ .expr (.call "revert" [.lit 0, .lit 0]) ]
@@ -4129,9 +4114,12 @@ example :
       match body with
       | [ .let_ "__ecwr_success" (.ident "callSucceeded")
         , .if_ (.call "iszero" [.ident "__ecwr_success"])
-            [ .let_ "pos" (.call "mload" [.lit 64])
-            , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-            , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+            [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+            , .expr
+                (.call "revert"
+                  [ .call "add" [.ident "__compat_returndata", .lit 32]
+                  , .call "mload" [.ident "__compat_returndata"]
+                  ])
             ]
         , .let_ "borrowRate" (.lit 0)
         , .if_ (.ident "__ecwr_success")
@@ -4162,7 +4150,9 @@ example :
     let called := callNamesInStmts top
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed top "finalize_allocation" &&
+      hasTopLevelFunctionNamed top "extract_returndata" &&
       called.any (fun name => name = "finalize_allocation") = true &&
+      called.any (fun name => name = "extract_returndata") = true &&
       rewritten := by
   native_decide
 
@@ -4177,9 +4167,12 @@ example :
               [ .let_ "__ecwr_success" (.ident "callSucceeded")
               , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__other_ptr"]])
               , .if_ (.call "iszero" [.ident "__ecwr_success"])
-                  [ .let_ "pos" (.call "mload" [.lit 64])
-                  , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-                  , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                  [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+                  , .expr
+                      (.call "revert"
+                        [ .call "add" [.ident "__compat_returndata", .lit 32]
+                        , .call "mload" [.ident "__compat_returndata"]
+                        ])
                   ]
               , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
                   [ .expr (.call "revert" [.lit 0, .lit 0]) ]
@@ -4201,10 +4194,29 @@ example :
       match report.patched.runtimeCode with
       | [.block inner] => inner
       | other => other
-    let called := callNamesInStmts top
+    let body :=
+      match helperBodyForName? (topLevelZeroArityFunctionBodies top) "fun_accrueInterest" with
+      | some stmts => stmts
+      | none => []
+    let unchanged :=
+      match body with
+      | [ .let_ "__ecwr_success" (.ident "callSucceeded")
+        , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__other_ptr"]])
+        , .if_ (.call "iszero" [.ident "__ecwr_success"])
+            [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+            , .expr
+                (.call "revert"
+                  [ .call "add" [.ident "__compat_returndata", .lit 32]
+                  , .call "mload" [.ident "__compat_returndata"]
+                  ])
+            ]
+        , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+            [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+        , .let_ "borrowRate" (.call "mload" [.lit 0])
+        ] => true
+      | _ => false
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
-      hasTopLevelFunctionNamed top "finalize_allocation" = false &&
-      called.any (fun name => name = "finalize_allocation") = false := by
+      unchanged := by
   native_decide
 
 /-- Smoke test: intermediate borrow-rate guard normalization is wrapper-safe and keeps
@@ -4219,9 +4231,12 @@ example :
                   [ .let_ "__ecwr_success" (.ident "callSucceeded")
                   , .expr (.call "mstore" [.lit 0, .call "mload" [.ident "__compat_alloc_ptr"]])
                   , .if_ (.call "iszero" [.ident "__ecwr_success"])
-                      [ .let_ "pos" (.call "mload" [.lit 64])
-                      , .expr (.call "returndatacopy" [.ident "pos", .lit 0, .call "returndatasize" []])
-                      , .expr (.call "revert" [.ident "pos", .call "returndatasize" []])
+                      [ .let_ "__compat_returndata" (.call "extract_returndata" [])
+                      , .expr
+                          (.call "revert"
+                            [ .call "add" [.ident "__compat_returndata", .lit 32]
+                            , .call "mload" [.ident "__compat_returndata"]
+                            ])
                       ]
                   , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
                       [ .expr (.call "revert" [.lit 0, .lit 0]) ]

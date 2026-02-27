@@ -186,7 +186,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
@@ -218,14 +218,17 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .lake
-          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ github.sha }}
+          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Verity/**/*.lean', 'Compiler/**/*.lean') }}
           restore-keys: |
-            lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
+            lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-
             lake-${{ hashFiles('lean-toolchain') }}-
+
+      - name: Fetch mathlib compiled cache
+        run: lake exe cache get
 
       - name: Build and verify all proofs
         env:
-          LEAN_NUM_THREADS: 2
+          LEAN_NUM_THREADS: 4
         run: |
           set -o pipefail
           lake build 2>&1 | tee lake-build.log
@@ -235,12 +238,12 @@ jobs:
 
       - name: Run compiler CLI regression module
         env:
-          LEAN_NUM_THREADS: 2
+          LEAN_NUM_THREADS: 4
         run: lake build Compiler.MainTest
 
       - name: Run CompilationModel feature regression module
         env:
-          LEAN_NUM_THREADS: 2
+          LEAN_NUM_THREADS: 4
         run: lake build Compiler.CompilationModelFeatureTest
 
       - name: Check for sorry
@@ -313,7 +316,7 @@ jobs:
 
       - name: Build proof modules for axiom audit
         env:
-          LEAN_NUM_THREADS: 2
+          LEAN_NUM_THREADS: 4
         run: lake build PrintAxioms
 
       - name: Generate axiom dependency report
@@ -425,7 +428,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .lake
-          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ github.sha }}
+          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Verity/**/*.lean', 'Compiler/**/*.lean') }}
 
       - name: Upload generated Yul
         uses: actions/upload-artifact@v4

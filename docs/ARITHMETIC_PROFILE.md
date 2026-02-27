@@ -1,0 +1,90 @@
+# Arithmetic Profile
+
+Verity uses **wrapping modular arithmetic at 2^256** across all compilation layers, matching the EVM Yellow Paper specification.
+
+This document is the authoritative reference for arithmetic semantics. For formal proofs, see [`Compiler/Proofs/ArithmeticProfile.lean`](../Compiler/Proofs/ArithmeticProfile.lean).
+
+## Wrapping Semantics
+
+All arithmetic in the compilation path (`EDSL -> CompilationModel -> IR -> Yul`) wraps modulo 2^256. There are **no implicit overflow checks** — values silently wrap.
+
+| Operation | Semantics | Div/Mod-by-zero |
+|-----------|-----------|-----------------|
+| `add(a, b)` | `(a + b) % 2^256` | — |
+| `sub(a, b)` | `(2^256 + a - b) % 2^256` | — |
+| `mul(a, b)` | `(a * b) % 2^256` | — |
+| `div(a, b)` | `a / b` (truncating) | returns 0 |
+| `mod(a, b)` | `a % b` | returns 0 |
+| `and(a, b)` | bitwise AND | — |
+| `or(a, b)` | bitwise OR | — |
+| `xor(a, b)` | bitwise XOR | — |
+| `not(a)` | `(2^256 - 1) - a` | — |
+| `shl(s, v)` | `(v * 2^s) % 2^256` | — |
+| `shr(s, v)` | `v / 2^s` | — |
+| `lt(a, b)` | `1` if `a < b`, else `0` | — |
+| `gt(a, b)` | `1` if `a > b`, else `0` | — |
+| `eq(a, b)` | `1` if `a = b`, else `0` | — |
+| `iszero(a)` | `1` if `a = 0`, else `0` | — |
+
+## Proof Coverage
+
+Wrapping semantics are **proven** (not assumed) across all three verification layers:
+
+| Layer | Proof location | What is proved |
+|-------|---------------|----------------|
+| Layer 1 (EDSL) | `Verity/Core/Uint256.lean` | `Uint256.add`, `sub`, `mul`, `div`, `mod` are wrapping modular |
+| Layer 1 (EDSL) | `Verity/Proofs/Stdlib/Math.lean` | `safeAdd`, `safeSub`, `safeMul` correctness |
+| Compiler | `Compiler/Proofs/YulGeneration/Builtins.lean` | `evalBuiltinCall` implements wrapping for all 15 pure builtins |
+| Compiler | `Compiler/Proofs/ArithmeticProfile.lean` | `add_wraps`, `sub_wraps`, `mul_wraps`, `div_by_zero`, `mod_by_zero` |
+| EVMYulLean bridge | `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanBridgeTest.lean` | Smoke-test equivalence: Verity wrapping = EVMYulLean UInt256 on concrete test vectors |
+
+The EVMYulLean bridge validates that Verity's `Nat`-modular arithmetic agrees with EVMYulLean's `Fin`-based `UInt256` operations. Current coverage is concrete-value smoke tests; a universal equivalence proof is a future task.
+
+## Checked (Safe) Arithmetic
+
+For contracts that require overflow protection, the EDSL provides checked operations:
+
+| Operation | Type | Behavior |
+|-----------|------|----------|
+| `safeAdd a b` | `Option Uint256` | `none` if `a + b > 2^256 - 1` |
+| `safeSub a b` | `Option Uint256` | `none` if `b > a` |
+| `safeMul a b` | `Option Uint256` | `none` if `a * b > 2^256 - 1` |
+| `safeDiv a b` | `Option Uint256` | `none` if `b = 0` |
+
+Checked operations are **EDSL-level constructs**. They are not compiler-enforced — the compiler always uses wrapping arithmetic. Contracts that need checked behavior must explicitly use `safeAdd`/`safeSub`/`safeMul` and handle the `Option` result (e.g., via `requireSomeUint` to revert on `none`).
+
+**Correctness proofs**: `Verity/Proofs/Stdlib/Math.lean` proves that checked operations return the correct result within bounds and `none` otherwise (e.g., `safeAdd_some`, `safeAdd_none`).
+
+**Example**: See `Verity/Examples/SafeCounter.lean` and `Verity/Proofs/SafeCounter/Basic.lean` for a contract using checked arithmetic with proven overflow/underflow behavior.
+
+## Backend Profiles and Arithmetic
+
+All backend profiles (`--backend-profile semantic`, `solidity-parity-ordering`, `solidity-parity`) use **identical wrapping arithmetic semantics**. Profiles differ only in Yul output-shape normalization:
+
+- **`semantic`** (default): canonical output order
+- **`solidity-parity-ordering`**: dispatch `case` blocks sorted by selector
+- **`solidity-parity`**: selector sorting + deterministic patch pass
+
+The arithmetic model is invariant across profiles. See [`docs/SOLIDITY_PARITY_PROFILE.md`](SOLIDITY_PARITY_PROFILE.md) for profile details.
+
+## What Is NOT Proved
+
+- **Gas semantics**: proofs establish result correctness, not gas cost or bounded liveness.
+- **Compiler-layer overflow detection**: the compiler does not insert overflow checks. Use EDSL `safeAdd`/`safeSub`/`safeMul` for checked behavior.
+- **Cryptographic primitives**: keccak256 is axiomatized (see [`AXIOMS.md`](../AXIOMS.md)).
+- **Universal bridge equivalence**: EVMYulLean bridge uses concrete-value smoke tests, not a universal `∀ n` proof.
+
+## Auditor Checklist
+
+1. Confirm that the contract's arithmetic assumptions match wrapping semantics.
+2. If overflow protection is required, verify the contract uses `safeAdd`/`safeSub`/`safeMul`.
+3. Check that `requireSomeUint` is used to revert on overflow/underflow.
+4. Review `Compiler/Proofs/ArithmeticProfile.lean` for the formal wrapping proofs.
+5. Confirm the backend profile does not affect arithmetic behavior (it doesn't).
+
+## Related Documents
+
+- [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) — trust boundaries and semantic caveats
+- [`AXIOMS.md`](../AXIOMS.md) — documented axioms (arithmetic is NOT an axiom)
+- [`docs/SOLIDITY_PARITY_PROFILE.md`](SOLIDITY_PARITY_PROFILE.md) — backend profile specification
+- [`Compiler/Proofs/ArithmeticProfile.lean`](../Compiler/Proofs/ArithmeticProfile.lean) — formal proofs

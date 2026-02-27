@@ -37,14 +37,17 @@ python3 scripts/generate_contract.py MyContract
 lake build verity-compiler
 lake exe verity-compiler                      # Output in compiler/yul/
 lake exe verity-compiler --input model        # Explicit manual CompilationModel path
+lake exe verity-compiler --input edsl         # Curated supported EDSL subset path
 ```
 
-`--input edsl` is reserved for the verified automatic EDSL-lowering path and currently fails closed with a diagnostic until that wiring lands.
-Current lowering boundary scaffolding lives in
+`--input edsl` now compiles a curated supported subset through the lowering boundary in
 `Compiler/Lowering/FromEDSL.lean` and
 `Compiler/Proofs/Lowering/FromEDSL.lean`.
-The current `--input model` compilation path is now routed through this
-lowering boundary via an explicit manual-bridge adapter.
+Current lowering is still transition-stage: supported EDSL contracts are pinned to
+their current lowering targets, and advanced flows (for example linked-library
+`CryptoHash`) remain on `--input model`.
+Both `--input model` and `--input edsl` route through the same explicit lowering
+boundary API.
 
 **With external libraries (e.g., Poseidon hash):**
 ```bash

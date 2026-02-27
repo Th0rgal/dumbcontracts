@@ -34,6 +34,18 @@ private def renderPatchReportTsv (rows : List (String × Yul.PatchPassReport)) :
 private def writePatchReport (path : String) (rows : List (String × Yul.PatchPassReport)) : IO Unit := do
   IO.FS.writeFile path (renderPatchReportTsv rows)
 
+private def resolveSpecsForModelInput (libraryPaths : List String) : List CompilationModel :=
+  if libraryPaths.isEmpty then Specs.allSpecs else Specs.allSpecs ++ [Specs.cryptoHashSpec]
+
+private def resolveSpecsForEDSLInput (libraryPaths : List String) : Except String (List CompilationModel) := do
+  if !libraryPaths.isEmpty then
+    .error Compiler.Lowering.edslInputLinkedLibrariesUnsupportedMessage
+  else
+    Compiler.Lowering.supportedEDSLContracts.mapM fun contract =>
+      match Compiler.Lowering.lowerFromEDSLSubset (.supported contract) with
+      | .ok spec => .ok spec
+      | .error err => .error err.message
+
 private def writeContract
     (outDir : String)
     (contract : IRContract)
@@ -70,13 +82,14 @@ private def writeContract
   IO.FS.writeFile path text
   pure patchReport
 
-def compileAllWithOptions
+private def compileSpecsWithOptions
+    (specs : List CompilationModel)
     (outDir : String)
-    (verbose : Bool := false)
-    (libraryPaths : List String := [])
-    (options : YulEmitOptions := {})
-    (patchReportPath : Option String := none)
-    (abiOutDir : Option String := none) : IO Unit := do
+    (verbose : Bool)
+    (libraryPaths : List String)
+    (options : YulEmitOptions)
+    (patchReportPath : Option String)
+    (abiOutDir : Option String) : IO Unit := do
   IO.FS.createDirAll outDir
   match abiOutDir with
   | some dir => IO.FS.createDirAll dir
@@ -86,13 +99,6 @@ def compileAllWithOptions
   if !libraryPaths.isEmpty then
     if verbose then
       IO.println s!"Loading {libraryPaths.length} external libraries..."
-
-  -- When external libraries are provided, also compile CryptoHash (which
-  -- requires linked Poseidon functions).  Without --link the external call
-  -- validation would correctly reject it.
-  let specs :=
-    if libraryPaths.isEmpty then Specs.allSpecs
-    else Specs.allSpecs ++ [Specs.cryptoHashSpec]
 
   let mut patchRows : List (String × Yul.PatchPassReport) := []
   for spec in specs do
@@ -141,6 +147,28 @@ def compileAllWithOptions
     IO.println ""
     IO.println "Compilation complete!"
     IO.println s!"Generated {specs.length} contracts in {outDir}"
+
+def compileAllWithOptions
+    (outDir : String)
+    (verbose : Bool := false)
+    (libraryPaths : List String := [])
+    (options : YulEmitOptions := {})
+    (patchReportPath : Option String := none)
+    (abiOutDir : Option String := none) : IO Unit := do
+  compileSpecsWithOptions (resolveSpecsForModelInput libraryPaths) outDir verbose libraryPaths options patchReportPath abiOutDir
+
+def compileAllFromEDSLWithOptions
+    (outDir : String)
+    (verbose : Bool := false)
+    (libraryPaths : List String := [])
+    (options : YulEmitOptions := {})
+    (patchReportPath : Option String := none)
+    (abiOutDir : Option String := none) : IO Unit := do
+  let specs ←
+    match resolveSpecsForEDSLInput libraryPaths with
+    | .ok specs => pure specs
+    | .error err => throw (IO.userError err)
+  compileSpecsWithOptions specs outDir verbose libraryPaths options patchReportPath abiOutDir
 
 def compileAll (outDir : String) (verbose : Bool := false) (libraryPaths : List String := []) : IO Unit := do
   compileAllWithOptions outDir verbose libraryPaths {} none none

@@ -32,6 +32,13 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
     throw (IO.userError s!"✗ {label}")
   IO.println s!"✓ {label}"
 
+private def fileExists (path : String) : IO Bool := do
+  try
+    let _ ← IO.FS.readFile path
+    pure true
+  catch _ =>
+    pure false
+
 #eval! do
   expectErrorContains "missing --link value" ["--link"] "Missing value for --link"
   expectErrorContains "missing --output value" ["--output"] "Missing value for --output"
@@ -39,7 +46,15 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   expectErrorContains "missing --abi-output value" ["--abi-output"] "Missing value for --abi-output"
   expectErrorContains "missing --input value" ["--input"] "Missing value for --input"
   expectErrorContains "invalid --input value" ["--input", "ast"] "Invalid value for --input: ast"
-  expectErrorContains "edsl input mode is fail-closed until verified lowering is wired" ["--input", "edsl"] "EDSL input mode is reserved for verified automatic lowering"
+  let edslOutDir := "/tmp/verity-main-test-edsl-out"
+  IO.FS.createDirAll edslOutDir
+  main ["--input", "edsl", "--output", edslOutDir]
+  let edslArtifact ← fileExists s!"{edslOutDir}/SimpleStorage.yul"
+  expectTrue "edsl input mode compiles supported subset artifact" edslArtifact
+  expectErrorContains
+    "edsl input mode rejects linked-library path"
+    ["--input", "edsl", "--link", "examples/external-libs/PoseidonT3.yul", "--output", edslOutDir]
+    "Linked external Yul libraries are not yet supported through --input edsl"
   expectErrorContains "missing --patch-report value" ["--patch-report"] "Missing value for --patch-report"
   expectErrorContains "missing --patch-max-iterations value" ["--patch-max-iterations"] "Missing value for --patch-max-iterations"
   expectErrorContains "missing --backend-profile value" ["--backend-profile"] "Missing value for --backend-profile"

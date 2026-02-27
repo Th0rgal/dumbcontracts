@@ -231,8 +231,9 @@ def main (args : List String) : IO Unit := do
       mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }
     if cfg.inputMode == "edsl" then
-      throw (IO.userError Compiler.Lowering.edslInputReservedMessage)
-    compileAllWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
+      compileAllFromEDSLWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
+    else
+      compileAllWithOptions cfg.outDir cfg.verbose cfg.libs options cfg.patchReportPath cfg.abiOutDir
   catch e =>
     if e.toString == "help" then
       -- Help was shown, exit cleanly

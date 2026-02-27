@@ -39,6 +39,12 @@ is definitionally equal to the underlying `CompilationModel`. -/
     lowerFromEDSLSubset (.manualBridge core) = .ok (lowerContractCore core) := by
   rfl
 
+/-- Supported EDSL subset constructors lower to their pinned targets. -/
+@[simp] theorem lowerFromEDSLSubset_supported_eq
+    (contract : SupportedEDSLContract) :
+    lowerFromEDSLSubset (.supported contract) = .ok (lowerSupportedEDSLContract contract) := by
+  rfl
+
 /-- The current manual compile path is preserved through the lowering boundary. -/
 @[simp] theorem lowerModelPath_eq_ok
     (model : Compiler.CompilationModel.CompilationModel) :

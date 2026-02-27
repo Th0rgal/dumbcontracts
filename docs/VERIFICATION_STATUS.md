@@ -18,12 +18,12 @@ Yul (EVM Assembly)
 EVM Bytecode
 ```
 
-Compiler UX status: `verity-compiler` currently compiles via `--input model`.
-`--input edsl` is intentionally fail-closed until verified automatic lowering is
-wired into the CLI path.
-The `--input model` path is explicitly routed through the lowering boundary
-adapter (`Compiler.Lowering.lowerModelPath`) so model-mode compilation and
-future EDSL reification share one lowering API surface.
+Compiler UX status:
+- `--input model`: full current compiler path (`CompilationModel` set, including linked-library flows).
+- `--input edsl`: curated supported EDSL subset lowered through the same boundary API.
+- linked-library flows are intentionally fail-closed for `--input edsl` and remain on `--input model`.
+Both modes are routed through `Compiler.Lowering` so model-mode and EDSL-mode
+share one lowering API surface.
 
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 

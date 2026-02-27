@@ -167,6 +167,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
 def main (args : List String) : IO Unit := do
   try
     let cfg ← parseArgs args
+    let patchEnabled := patchEnabledFor cfg
     if cfg.verbose then
       IO.println s!"Output directory: {cfg.outDir}"
       if cfg.useAST then
@@ -188,7 +189,6 @@ def main (args : List String) : IO Unit := do
       match cfg.abiOutDir with
       | some dir => IO.println s!"ABI output directory: {dir}"
       | none => pure ()
-      let patchEnabled := patchEnabledFor cfg
       if patchEnabled then
         IO.println s!"Patch pass: enabled (max iterations = {cfg.patchMaxIterations})"
       if !cfg.libs.isEmpty then
@@ -200,7 +200,6 @@ def main (args : List String) : IO Unit := do
       | none => pure ()
       IO.println s!"Mapping slot scratch base: {cfg.mappingSlotScratchBase}"
       IO.println ""
-    let patchEnabled := patchEnabledFor cfg
     let packRequiredProofRefs :=
       match cfg.parityPackId with
       | some packId =>

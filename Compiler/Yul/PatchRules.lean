@@ -1668,6 +1668,9 @@ private partial def definesNameInStmts (target : String) (stmts : List YulStmt) 
 
 end
 
+private def hasAnyNestedDefinitionFor (names : List String) (body : List YulStmt) : Bool :=
+  names.any (fun name => definesNameInStmts name body)
+
 private def rewriteAccrueInterestPrologueTemps
     (idName : String) (body : List YulStmt) : List YulStmt × Nat :=
   match body with
@@ -2278,7 +2281,9 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmt
         let (body'', reordered) :=
           moveAccrueInterestTimestampWriteAfterIrmGuard idName irmName body'
         if namesAreDistinct
-            [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName] then
+              [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName] &&
+            !hasAnyNestedDefinitionFor
+              [idName, loanTokenName, collateralTokenName, oracleName, irmName, lltvName] body'' then
           ( .funcDef "fun_accrueInterest"
               ["var_marketParams_46531_mpos", "var_id"]
               rets
@@ -5938,6 +5943,40 @@ example :
           | _ => false)
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasCanonicalSig := by
+  native_decide
+
+/-- Smoke test: six-arg `fun_accrueInterest` canonicalization stays out-of-scope when
+    one of the matched parameter names is redefined inside the body (shadowing guard). -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest"
+              ["id_7", "loanToken_1", "collateralToken_2", "oracle_3", "irm_4", "lltv_5"]
+              []
+              [ .let_ "loanToken_1" (.lit 9)
+              , .expr (.call "mstore" [.lit 512, .ident "id_7"])
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let hasOriginalSig :=
+      report.patched.runtimeCode.any
+        (fun stmt =>
+          match stmt with
+          | .funcDef "fun_accrueInterest"
+              ["id_7", "loanToken_1", "collateralToken_2", "oracle_3", "irm_4", "lltv_5"] _ _ => true
+          | _ => false)
+    hasOriginalSig := by
   native_decide
 
 /-- Smoke test: accrue-interest prologue-temp rewrite canonicalizes compat scratch prologue

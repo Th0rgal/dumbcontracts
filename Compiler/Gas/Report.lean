@@ -1,13 +1,13 @@
 import Compiler.Specs
 import Compiler.Selector
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 import Compiler.Codegen
 import Compiler.Gas.StaticAnalysis
 
 namespace Compiler.Gas
 
 open Compiler
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Selector
 
 private structure CliConfig where
@@ -68,9 +68,9 @@ private def compileAndBound
     (cfg : GasConfig)
     (fuel : Nat)
     (emitOptions : Compiler.YulEmitOptions)
-    (spec : ContractSpec) : IO (String × Nat × Nat) := do
+    (spec : CompilationModel) : IO (String × Nat × Nat) := do
   let selectors ← computeSelectors spec
-  match Compiler.ContractSpec.compile spec selectors with
+  match Compiler.CompilationModel.compile spec selectors with
   | .error err => throw <| IO.userError s!"Failed to compile {spec.name}: {err}"
   | .ok irContract =>
       let yulObj := Compiler.emitYulWithOptions irContract emitOptions

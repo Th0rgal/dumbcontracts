@@ -21,9 +21,9 @@ echo 'function myHash(a, b) -> result { result := add(xor(a, b), 0x42) }' > exam
 def myHash (a b : Uint256) : Contract Uint256 := return add a b
 ```
 
-**Step 3** — Declare the external function and reference it in your ContractSpec:
+**Step 3** — Declare the external function and reference it in your CompilationModel:
 ```lean
--- In your ContractSpec definition:
+-- In your CompilationModel definition:
 externals := [
   { name := "myHash"
     params := [ParamType.uint256, ParamType.uint256]
@@ -74,12 +74,12 @@ def myHash (a b : Uint256) : Contract Uint256 := do
   return add a b
 ```
 
-### 3. Declare externals and add the call to your ContractSpec
+### 3. Declare externals and add the call to your CompilationModel
 
-In `Compiler/Specs.lean`, first declare the external function in the `externals` field of your ContractSpec, then use `Expr.externalCall` in the function body:
+In `Compiler/Specs.lean`, first declare the external function in the `externals` field of your CompilationModel, then use `Expr.externalCall` in the function body:
 
 ```lean
-def myContractSpec : ContractSpec := {
+def myCompilationModel : CompilationModel := {
   name := "MyContract"
   fields := [...]
   constructor := none
@@ -159,7 +159,7 @@ function PoseidonT3_hash(a, b) -> result {
 }
 ```
 
-> The EDSL function (`hashTwo`) is a placeholder used only in formal proofs — it never appears in the compiled Yul. The ContractSpec's `Expr.externalCall "PoseidonT3_hash"` is what the compiler actually emits, and the linker resolves it to the library function above.
+> The EDSL function (`hashTwo`) is a placeholder used only in formal proofs — it never appears in the compiled Yul. The CompilationModel's `Expr.externalCall "PoseidonT3_hash"` is what the compiler actually emits, and the linker resolves it to the library function above.
 
 **Compile with linking**:
 ```bash
@@ -255,7 +255,7 @@ Your proofs establish: *"If the library functions behave like the placeholders, 
 
 **What this means in practice**: A contract using `PoseidonT3_hash` via the linker has formally verified *logic* (storage updates, access control, arithmetic) but an *unverified* cryptographic core. The Lean proof guarantees that IF `PoseidonT3_hash(a, b)` returns a consistent value, THEN the contract correctly stores and retrieves it. The proof does NOT guarantee the Poseidon implementation computes the correct hash — auditing the `.yul` library file is the developer's responsibility.
 
-> Without the `externals` field on a `ContractSpec`, the linker will skip that contract even if `--link` is passed. No injection occurs and no error is raised.
+> Without the `externals` field on a `CompilationModel`, the linker will skip that contract even if `--link` is passed. No injection occurs and no error is raised.
 
 To increase confidence in linked libraries:
 - Use audited, battle-tested implementations
@@ -270,7 +270,7 @@ To increase confidence in linked libraries:
 ### Function name mismatch
 
 If you see `Unresolved external references: myFunc`, check that:
-- The function name in your ContractSpec matches the Yul library exactly (case-sensitive)
+- The function name in your CompilationModel matches the Yul library exactly (case-sensitive)
 - The library file is properly formatted with plain function definitions
 
 ### Arity mismatch

@@ -4,13 +4,13 @@
 
 ## Project Overview
 
-Lean 4 EDSL for writing smart contracts with machine-checked proofs. Three-layer verified compilation pipeline: EDSL -> ContractSpec -> IR -> Yul -> EVM bytecode.
+Lean 4 EDSL for writing smart contracts with machine-checked proofs. Three-layer verified compilation pipeline: EDSL -> CompilationModel -> IR -> Yul -> EVM bytecode.
 
 **Core**: Models contract state, storage operations, and `require` guards using explicit success/revert result type (`ContractResult`).
 
 **Contracts**: 9 formally verified contracts (+ CryptoHash as unverified linker demo) covering correctness, conservation laws, and storage isolation.
 
-**Compiler**: Declarative `ContractSpec` DSL compiles to Yul with verified IR generation. Solidity-compatible function selectors via keccak256.
+**Compiler**: Declarative `CompilationModel` DSL compiles to Yul with verified IR generation. Solidity-compatible function selectors via keccak256.
 
 ## Quick Facts
 
@@ -27,7 +27,7 @@ Lean 4 EDSL for writing smart contracts with machine-checked proofs. Three-layer
 
 ```
 Layer 1: EDSL Proofs      — Lean theorems about contract behavior
-Layer 2: Compiler Proofs  — ContractSpec -> IR preservation
+Layer 2: Compiler Proofs  — CompilationModel -> IR preservation
 Layer 3: IR -> Yul        — Statement/expression equivalence proofs
 Trust:   Yul -> Bytecode  — Via solc (validated by differential testing)
 ```
@@ -91,7 +91,7 @@ The GitHub Actions workflow validates:
 
 Use the Linker to inject production Yul libraries (Poseidon, Groth16, etc.) into compiled contracts. Prove properties against simple placeholders in Lean, then swap in real implementations at compile time.
 
-**Workflow**: EDSL placeholder (addition) → ContractSpec with `Expr.externalCall` → `--link lib.yul` at compile time → Yul with injected library functions.
+**Workflow**: EDSL placeholder (addition) → CompilationModel with `Expr.externalCall` → `--link lib.yul` at compile time → Yul with injected library functions.
 
 **Example**: CryptoHash contract demonstrates the full pattern:
 - EDSL: `Verity/Examples/CryptoHash.lean` (placeholder: `add a b`)
@@ -121,7 +121,7 @@ Add `.md` to any URL for raw markdown (saves tokens).
 ## Trust Assumptions
 
 See TRUST_ASSUMPTIONS.md for full analysis. Key trust boundaries:
-- **Verified**: EDSL -> ContractSpec -> IR -> Yul
+- **Verified**: EDSL -> CompilationModel -> IR -> Yul
 - **Trusted**: Yul -> Bytecode (via solc, validated by 70k+ differential tests)
 - **Axioms**: 1 documented, with soundness justification
 - **External**: Lean 4 kernel, EVM specification alignment
@@ -132,9 +132,9 @@ See TRUST_ASSUMPTIONS.md for full analysis. Key trust boundaries:
 - No gas modeling
 - Self-transfer handled via delta-zero pattern (not separate logic)
 
-## DSL Capabilities (ContractSpec)
+## DSL Capabilities (CompilationModel)
 
-The ContractSpec DSL supports: if/else branching (`Stmt.ite`), bounded loops (`Stmt.forEach`), event emission (`Stmt.emit`), nested/double mappings (`Expr.mapping2`, `Stmt.setMapping2`), uint256-keyed mappings (`Expr.mappingUint`, `Stmt.setMappingUint`), internal function composition (`Stmt.internalCall`, `Expr.internalCall`), dynamic array/bytes parameters, and external library linking (`Expr.externalCall`).
+The CompilationModel DSL supports: if/else branching (`Stmt.ite`), bounded loops (`Stmt.forEach`), event emission (`Stmt.emit`), nested/double mappings (`Expr.mapping2`, `Stmt.setMapping2`), uint256-keyed mappings (`Expr.mappingUint`, `Stmt.setMappingUint`), internal function composition (`Stmt.internalCall`, `Expr.internalCall`), dynamic array/bytes parameters, and external library linking (`Expr.externalCall`).
 
 ## What's Next
 

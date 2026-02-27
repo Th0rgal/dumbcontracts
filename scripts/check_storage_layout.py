@@ -4,7 +4,7 @@
 Extracts storage slot definitions from:
 1. EDSL layer:     Verity/Examples/*.lean  (StorageSlot definitions)
 2. Spec layer:     Verity/Specs/*/Spec.lean (StorageSlot definitions)
-3. Compiler layer: Compiler/Specs.lean            (ContractSpec field lists)
+3. Compiler layer: Compiler/Specs.lean            (CompilationModel field lists)
 
 Checks:
 - No intra-contract slot collisions within any layer
@@ -34,7 +34,7 @@ COMPILER_FIELD_RE = re.compile(
     r'\{\s*name\s*:=\s*"(\w+)"\s*,\s*ty\s*:=\s*FieldType\.([\w.() ]+?)\s*\}'
 )
 
-# Regex for ContractSpec name:
+# Regex for CompilationModel name:
 #   name := "<name>"
 SPEC_NAME_RE = re.compile(r'name\s*:=\s*"(\w+)"')
 
@@ -102,7 +102,7 @@ def extract_edsl_slots(filepath: Path) -> dict[str, list[tuple[str, str, int]]]:
 
 
 def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int]]]:
-    """Extract ContractSpec field definitions from Compiler/Specs.lean.
+    """Extract CompilationModel field definitions from Compiler/Specs.lean.
 
     Fields get automatic slot assignment based on list order (index-based).
     Returns dict mapping contract name to list of (name, type, slot_number).
@@ -111,7 +111,7 @@ def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int
     specs: dict[str, list[tuple[str, str, int]]] = {}
 
     spec_header_pattern = re.compile(
-        r"def\s+\w+\s*:\s*ContractSpec\s*:=\s*\{"
+        r"def\s+\w+\s*:\s*CompilationModel\s*:=\s*\{"
     )
     for block in iter_braced_blocks(content, spec_header_pattern):
 
@@ -146,12 +146,12 @@ def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int
 
 
 def extract_compiler_externals(filepath: Path) -> dict[str, bool]:
-    """Extract whether each ContractSpec has non-empty externals."""
+    """Extract whether each CompilationModel has non-empty externals."""
     content = strip_lean_comments(filepath.read_text())
     externals: dict[str, bool] = {}
 
     spec_header_pattern = re.compile(
-        r"def\s+\w+\s*:\s*ContractSpec\s*:=\s*\{"
+        r"def\s+\w+\s*:\s*CompilationModel\s*:=\s*\{"
     )
     for block in iter_braced_blocks(content, spec_header_pattern):
         name_match = SPEC_NAME_RE.search(block)

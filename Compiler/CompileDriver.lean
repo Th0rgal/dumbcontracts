@@ -8,7 +8,7 @@ import Compiler.ABI
 
 open Compiler
 open Compiler.Yul
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Selector
 open Compiler.Linker
 

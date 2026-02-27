@@ -10,12 +10,12 @@
   Run: lake build Compiler.Proofs.InterpreterFeatureTest
 -/
 
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 import Verity.Proofs.Stdlib.SpecInterpreter
 
 namespace Compiler.Proofs.InterpreterFeatureTest
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Verity.Proofs.Stdlib.SpecInterpreter
 
 /-! ## Test fixtures -/

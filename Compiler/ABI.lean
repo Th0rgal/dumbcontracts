@@ -1,9 +1,9 @@
 import Std
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 
 namespace Compiler.ABI
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 
 private def escapeJsonChar (c : Char) : String :=
   match c with
@@ -33,8 +33,8 @@ private partial def abiTypeString : ParamType → String
   | .array t => abiTypeString t ++ "[]"
   | .fixedArray t n => abiTypeString t ++ "[" ++ toString n ++ "]"
 
--- Uses `fieldTypeToParamType` from ContractSpec (shared, not duplicated).
--- Uses `isInteropEntrypointName` from ContractSpec for consistent filtering.
+-- Uses `fieldTypeToParamType` from CompilationModel (shared, not duplicated).
+-- Uses `isInteropEntrypointName` from CompilationModel for consistent filtering.
 
 private def functionOutputs (fn : FunctionSpec) : List ParamType :=
   if !fn.returns.isEmpty then
@@ -120,7 +120,7 @@ private def renderSpecialEntry (fn : FunctionSpec) : Option String :=
       s!"\"stateMutability\": {jsonString (functionStateMutability fn)}"
     ] ++ "}")
 
-def emitContractABIJson (spec : ContractSpec) : String :=
+def emitContractABIJson (spec : CompilationModel) : String :=
   let ctorEntries :=
     match spec.constructor with
     | some ctor => [renderConstructorEntry ctor]
@@ -132,7 +132,7 @@ def emitContractABIJson (spec : ContractSpec) : String :=
   let entries := ctorEntries ++ functionEntries ++ eventEntries ++ errorEntries ++ specialEntries
   "[\n  " ++ String.intercalate ",\n  " entries ++ "\n]\n"
 
-def writeContractABIFile (outDir : String) (spec : ContractSpec) : IO Unit := do
+def writeContractABIFile (outDir : String) (spec : CompilationModel) : IO Unit := do
   IO.FS.createDirAll outDir
   let path := s!"{outDir}/{spec.name}.abi.json"
   IO.FS.writeFile path (emitContractABIJson spec)

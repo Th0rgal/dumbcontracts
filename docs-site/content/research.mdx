@@ -20,7 +20,7 @@ The project evolved in two phases:
 This is the single source of truth for progress, roadmap, and milestone updates.
 
 - **Layer 1 (Spec Correctness)**: Complete for all 8 verified contracts (7 compiler-spec contracts + ReentrancyExample).
-- **Layer 2 (ContractSpec → IR)**: Complete for all 7 contracts (per‑function preservation theorems compiled in Lean).
+- **Layer 2 (CompilationModel → IR)**: Complete for all 7 contracts (per‑function preservation theorems compiled in Lean).
 - **Layer 3 (IR → Yul)**: Complete — all 8 statement equivalence proofs + universal dispatcher proven (PR #42).
 
 Recent updates:
@@ -120,8 +120,8 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 - **Supply = sum of balances**: Requires finite address model. Proven as exact sum equations with `countOcc`, not as global invariant over all addresses.
 - **`ContractResult.fst`**: Returns `default` on revert, requiring `[Inhabited a]`. Proofs using `.fst` always show result is `success` first.
 - **No gas modeling**: EDSL models storage and control flow only; verification assumes infinite gas.
-- **Events**: The ContractSpec DSL supports event emission (`Stmt.emit`), but the EDSL core does not yet model events in proofs.
-- **Nested mappings**: The ContractSpec DSL supports double mappings (`mapping2`/`setMapping2`), but EDSL-level proofs for nested mapping semantics are still limited.
+- **Events**: The CompilationModel DSL supports event emission (`Stmt.emit`), but the EDSL core does not yet model events in proofs.
+- **Nested mappings**: The CompilationModel DSL supports double mappings (`mapping2`/`setMapping2`), but EDSL-level proofs for nested mapping semantics are still limited.
 
 ## Compiler Development
 
@@ -134,7 +134,7 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 **Result**: All 7 contracts compile automatically. Zero manual IR. Generated code is more optimized than manual translations.
 
 **Implementation** (as of 2026-02-13):
-- `Compiler/ContractSpec.lean` — DSL + automatic IR compiler
+- `Compiler/CompilationModel.lean` — DSL + automatic IR compiler
   - Type-safe expression language (literals, storage, mappings, arithmetic, comparisons)
   - Statement DSL (setStorage, setMapping, require, return)
   - Automatic storage slot inference from field order
@@ -159,7 +159,7 @@ private def ownedContract : IRContract :=
 **After**:
 ```lean
 // Declarative spec (compact, declarative)
-def ownedSpec : ContractSpec := {
+def ownedSpec : CompilationModel := {
   name := "Owned"
   fields := [{ name := "owner", ty := FieldType.address }]
   constructor := some {

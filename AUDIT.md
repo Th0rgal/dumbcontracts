@@ -4,7 +4,7 @@
 
 Components and flow:
 1. `Verity/*` EDSL contracts and logical specs (`Prop`).
-2. `Compiler/ContractSpec.lean` validates and lowers `ContractSpec` to IR.
+2. `Compiler/CompilationModel.lean` validates and lowers `CompilationModel` to IR.
 3. `Compiler/Codegen.lean` lowers IR to Yul AST.
 4. `Compiler/Yul/PrettyPrint.lean` renders Yul text.
 5. `solc` compiles Yul to EVM bytecode.
@@ -21,7 +21,7 @@ Trust changes:
 Threat assumptions:
 1. Adversary may submit malformed source/contracts/docs/artifacts through PRs.
 2. CI runners execute checks on attacker-controlled branch contents.
-3. Deployers use the proof-backed CompilationModel path (ContractSpec).
+3. Deployers use the proof-backed CompilationModel path (CompilationModel).
 
 Access control and checks:
 1. Solidity runtime access control is contract-specific and tested in Foundry suites under `test/`.
@@ -51,7 +51,7 @@ Crypto choices:
 
 ## Design decisions
 
-1. Single compiler front-end (`ContractSpec`/`CompilationModel`); AST backend was removed after migration completed.
+1. Single compiler front-end (`CompilationModel`/`CompilationModel`); AST backend was removed after migration completed.
 2. Use many small explicit CI check scripts rather than one opaque mega-check; each guard maps to one invariant and one failure reason.
 3. Keep warning-regression baseline as checked JSON artifact for deterministic CI behavior; validate schema strictly to avoid silent acceptance of malformed data.
 4. Prefer generated artifacts and sync checks over handwritten counts/metadata to reduce review-time ambiguity.

@@ -8,7 +8,7 @@ Verity implements a **three-layer verification stack** that proves smart contrac
 
 ```
 User Contracts (EDSL)
-    ↓ Layer 1: EDSL ≡ CompilationModel (`ContractSpec` today) [PROVED]
+    ↓ Layer 1: EDSL ≡ CompilationModel (`CompilationModel` today) [PROVED]
 CompilationModel (Compiler-Facing Contract Model)
     ↓ Layer 2: CompilationModel → IR [PROVED]
 Intermediate Representation (IR)
@@ -21,13 +21,13 @@ EVM Bytecode
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 
 **Status**: Verity now maintains a single supported compiler path:
-`EDSL -> CompilationModel (ContractSpec) -> IR -> Yul`.
+`EDSL -> CompilationModel (CompilationModel) -> IR -> Yul`.
 
 **What This Achieves**: Fewer moving parts, less maintenance overhead, and clearer verification boundaries. CI, docs, and scaffold tooling now align with this single path.
 
 See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundary description.
 
-## Layer 1: EDSL ≡ CompilationModel (`ContractSpec`) ✅ **COMPLETE**
+## Layer 1: EDSL ≡ CompilationModel (`CompilationModel`) ✅ **COMPLETE**
 
 **Status**: 8 contracts verified (7 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
 
@@ -65,12 +65,12 @@ theorem increment_adds_one (state : ContractState) :
 
 ### Infrastructure
 
-- **SpecInterpreter**: Executable semantics for CompilationModel language (`ContractSpec` today)
+- **SpecInterpreter**: Executable semantics for CompilationModel language (`CompilationModel` today)
 - **Automation Library**: Proven helper lemmas (safe arithmetic, storage operations)
 - **Proof Patterns**: Documented patterns for common verification tasks
 - **Feature Matrix**: Comprehensive interpreter support contract — see [`INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) and `artifacts/interpreter_feature_matrix.json`
 
-## Layer 2: CompilationModel (`ContractSpec`) → IR ✅ **COMPLETE**
+## Layer 2: CompilationModel (`CompilationModel`) → IR ✅ **COMPLETE**
 
 **Status**: All 7 compiled contracts have IR generation with preservation proofs
 
@@ -100,7 +100,7 @@ theorem counter_ir_preserves_spec :
 ### Infrastructure
 
 - **IRInterpreter**: Executable semantics for IR language
-- **IR Codegen**: Automatic IR generation from CompilationModel (`ContractSpec` today)
+- **IR Codegen**: Automatic IR generation from CompilationModel (`CompilationModel` today)
 - **Preservation Proofs**: Automated tactics for spec → IR equivalence
 
 ## Layer 3: IR → Yul ✅ **COMPLETE**
@@ -230,8 +230,8 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Verified Components (Zero Trust)
 
-1. **EDSL → ContractSpec/CompilationModel**: Proven correct in Lean (Layer 1)
-2. **ContractSpec/CompilationModel → IR**: Proven correct in Lean (Layer 2)
+1. **EDSL → CompilationModel/CompilationModel**: Proven correct in Lean (Layer 1)
+2. **CompilationModel/CompilationModel → IR**: Proven correct in Lean (Layer 2)
 3. **IR → Yul**: Proven correct in Lean (Layer 3, 1 axiom)
 4. **IR Interpreter**: Used for differential testing, verified against specs
 5. **Property Tests**: Extracted from proven theorems, tested in Foundry
@@ -298,9 +298,9 @@ Current diagnostic coverage in compiler:
 - Non-payable external functions and constructors now emit a runtime `msg.value == 0` guard, while explicit `isPayable := true` enables `Expr.msgValue` usage.
 - Custom errors are now first-class declarations (`errors`) with `Stmt.requireError`/`Stmt.revertError` ABI payload emission for scalar payloads (`uint256`, `address`, `bool`, `bytes32`) and direct-parameter composite/dynamic payloads (`bytes`, tuple, fixed-array, array; including nested dynamic composites). Composite/dynamic args still fail fast with explicit guidance when not sourced from direct `Expr.param` references.
 - `fallback` and `receive` are now modeled as first-class entrypoints in dispatch (empty-calldata routing to `receive`, unmatched selector routing to `fallback`) with compile-time shape checks (`receive` must be payable, both must be parameterless and non-returning).
-- `ContractSpec` now provides first-class low-level call expressions (`Expr.call`, `Expr.staticcall`, `Expr.delegatecall`) with explicit gas/target/value/input/output operands and deterministic direct lowering to Yul call opcodes.
-- `ContractSpec` now provides first-class returndata primitives (`Expr.returndataSize`, `Stmt.returndataCopy`, `Stmt.revertReturndata`) so revert-data bubbling can be expressed without raw interop builtin calls.
-- `ContractSpec` now provides a first-class ERC20 optional-return helper (`Expr.returndataOptionalBoolAt`) that lowers to `returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`.
+- `CompilationModel` now provides first-class low-level call expressions (`Expr.call`, `Expr.staticcall`, `Expr.delegatecall`) with explicit gas/target/value/input/output operands and deterministic direct lowering to Yul call opcodes.
+- `CompilationModel` now provides first-class returndata primitives (`Expr.returndataSize`, `Stmt.returndataCopy`, `Stmt.revertReturndata`) so revert-data bubbling can be expressed without raw interop builtin calls.
+- `CompilationModel` now provides a first-class ERC20 optional-return helper (`Expr.returndataOptionalBoolAt`) that lowers to `returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`.
 - Raw interop builtin call names via `Expr.externalCall` (including low-level call-style names like `callcode`) remain fail-fast rejected with issue-linked diagnostics.
 - Additional interop builtins (`create`, `create2`, `extcodesize`, `extcodecopy`, `extcodehash`) now fail with explicit migration guidance instead of generic external-call handling.
 - Indexed `bytes` event params emit ABI-style hashed topics (`keccak256(payload)`), indexed static tuple/fixed-array params emit ABI-style hashed topics over canonical static in-place encoding, indexed dynamic arrays (including arrays with dynamic element payloads) hash canonical in-place ABI preimages, and indexed dynamic tuple/fixed-array composite params hash recursive in-place ABI encodings.
@@ -312,8 +312,8 @@ Current diagnostic coverage in compiler:
 - Contract specs now support declarative slot remap policies (`slotAliasRanges`) so canonical slot windows can auto-derive compatibility mirror slots (for example `8..11 -> 20..23`), with compile-time diagnostics for invalid/overlapping source intervals (Issue #623).
 - Contract specs now support declarative reserved slot intervals (`reservedSlotRanges`) with compile-time diagnostics for invalid/overlapping ranges and for field canonical/alias write slots that overlap reserved intervals (Issue #623).
 - Storage fields now support packed subfield metadata (`Field.packedBits`) with masked read and read-modify-write lowering, compile-time bit-range validation, and overlap diagnostics that permit shared slots only when packed ranges are disjoint (Issue #623).
-- `verity-compiler` now supports deterministic ABI artifact emission in ContractSpec mode via `--abi-output <dir>` and writes one `<Contract>.abi.json` per compiled spec, including `view`/`pure` `stateMutability` metadata when declared in `ContractSpec.FunctionSpec`.
-- `verity-compiler` supports deterministic ABI artifact emission for the supported `ContractSpec` compilation path via `--abi-output <dir>`, writing one `<Contract>.abi.json` per compiled spec.
+- `verity-compiler` now supports deterministic ABI artifact emission in CompilationModel mode via `--abi-output <dir>` and writes one `<Contract>.abi.json` per compiled spec, including `view`/`pure` `stateMutability` metadata when declared in `CompilationModel.FunctionSpec`.
+- `verity-compiler` supports deterministic ABI artifact emission for the supported `CompilationModel` compilation path via `--abi-output <dir>`, writing one `<Contract>.abi.json` per compiled spec.
 - All interop diagnostics include an `Issue #586` reference for scope tracking.
 
 ### Short Term (1-2 months)

@@ -3,7 +3,7 @@
 
   Prove that ownedSpec accurately represents the Owned EDSL.
 
-  This establishes that the manually written ContractSpec matches
+  This establishes that the manually written CompilationModel matches
   the verified EDSL semantics for Owned with ownership pattern.
 
   Strategy:
@@ -23,7 +23,7 @@ import Verity.Proofs.Owned.Correctness
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation

@@ -6,7 +6,7 @@ This document states, in a formal and current way, what Verity proves and what V
 
 Verity uses a single supported compilation path:
 
-`EDSL -> CompilationModel (ContractSpec) -> IR -> Yul -> solc -> bytecode`
+`EDSL -> CompilationModel (CompilationModel) -> IR -> Yul -> solc -> bytecode`
 
 The formal Layer 1/2/3 guarantees apply to this path.
 
@@ -15,7 +15,7 @@ The formal Layer 1/2/3 guarantees apply to this path.
 ```
 EDSL
   ↓ [Layer 1: FULLY VERIFIED — EDSL ≡ CompilationModel]
-CompilationModel (`ContractSpec`)
+CompilationModel (`CompilationModel`)
   ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
   ↓ [Layer 3: FULLY VERIFIED, 1 axiom — IR → Yul]
@@ -43,7 +43,7 @@ generation), reducing the manual escape hatch surface over time.
 
 ## Current Verified Facts
 
-- Layer 1 (EDSL ≡ CompilationModel, currently `ContractSpec`) is proven in Lean.
+- Layer 1 (EDSL ≡ CompilationModel, currently `CompilationModel`) is proven in Lean.
 - Layer 2 (CompilationModel → IR) is proven in Lean.
 - Layer 3 (IR → Yul) is proven in Lean except for one documented axiom.
 
@@ -131,7 +131,7 @@ High-level semantics can expose intermediate state in a reverted computation mod
 
 ## Security Audit Checklist
 
-1. Confirm deployment uses the `CompilationModel` (`ContractSpec`) path.
+1. Confirm deployment uses the `CompilationModel` (`CompilationModel`) path.
 2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.

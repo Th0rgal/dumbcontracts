@@ -3,7 +3,7 @@
 
   Prove that simpleTokenSpec accurately represents the SimpleToken EDSL.
 
-  This establishes that the manually written ContractSpec matches
+  This establishes that the manually written CompilationModel matches
   the verified EDSL semantics for SimpleToken, which composes
   ownership, balance mappings, and total supply tracking.
 
@@ -30,7 +30,7 @@ set_option linter.unusedSimpArgs false
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation

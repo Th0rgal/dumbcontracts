@@ -3,7 +3,7 @@
 
   Prove that ledgerSpec accurately represents the Ledger EDSL.
 
-  This establishes that the manually written ContractSpec matches
+  This establishes that the manually written CompilationModel matches
   the verified EDSL semantics for Ledger with mapping storage.
 
   Strategy:
@@ -26,7 +26,7 @@ set_option maxHeartbeats 400000
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation

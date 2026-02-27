@@ -17,7 +17,7 @@
 -/
 
 import Compiler.IR
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.YulGeneration.Builtins
 import Verity.Proofs.Stdlib.SpecInterpreter

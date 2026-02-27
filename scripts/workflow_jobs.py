@@ -1,4 +1,4 @@
-"""Helpers for extracting top-level GitHub Actions jobs from verify.yml."""
+"""Helpers for extracting and comparing GitHub Actions workflow data."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ def _extract_mapping_blocks(body: str, mapping_name: str) -> list[tuple[int, lis
     return blocks
 
 
-def _strip_yaml_inline_comment(raw: str) -> str:
+def strip_yaml_inline_comment(raw: str) -> str:
     out: list[str] = []
     quote: str | None = None
     for ch in raw:
@@ -115,7 +115,7 @@ def _strip_yaml_inline_comment(raw: str) -> str:
     return "".join(out).strip()
 
 
-def _unquote_yaml_scalar(raw: str) -> str:
+def unquote_yaml_scalar(raw: str) -> str:
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {"'", '"'}:
         return raw[1:-1]
     return raw
@@ -149,9 +149,9 @@ def extract_literal_from_mapping_blocks(
                 continue
             m = re.match(rf"^\s*{re.escape(key)}:\s*(?P<value>.+?)\s*$", line)
             if m:
-                raw = _strip_yaml_inline_comment(m.group("value"))
+                raw = strip_yaml_inline_comment(m.group("value"))
                 if raw:
-                    values.append(_unquote_yaml_scalar(raw))
+                    values.append(unquote_yaml_scalar(raw))
 
     if not values:
         raise ValueError(
@@ -810,3 +810,48 @@ def match_shell_command(
             return False, tokens
 
     return True, tokens[i:]
+
+
+def compare_lists(
+    reference_name: str,
+    reference: list[str],
+    other_name: str,
+    other: list[str],
+) -> list[str]:
+    """Compare two ordered lists and return human-readable error descriptions.
+
+    Detects missing items, extra items, and order-only mismatches.
+    Returns an empty list when the lists are identical.
+    """
+    if reference == other:
+        return []
+
+    errors: list[str] = []
+    ref_set = set(reference)
+    other_set = set(other)
+
+    missing = [item for item in reference if item not in other_set]
+    extra = [item for item in other if item not in ref_set]
+
+    if missing:
+        errors.append(f"{other_name} is missing entries present in {reference_name}:")
+        errors.extend([f"  - {m}" for m in missing])
+    if extra:
+        errors.append(f"{other_name} has entries not present in {reference_name}:")
+        errors.extend([f"  - {e}" for e in extra])
+    if not missing and not extra:
+        errors.append(
+            f"{other_name} contains the same entries as {reference_name} but in a different order."
+        )
+    return errors
+
+
+def parse_csv_ints(raw: str, source: Path) -> list[int]:
+    """Parse a comma-separated list of integers, failing closed on bad input."""
+    parts = [part.strip() for part in raw.split(",")]
+    if not parts or any(not part for part in parts):
+        raise ValueError(f"Malformed integer CSV in {source}: {raw!r}")
+    try:
+        return [int(part) for part in parts]
+    except ValueError as exc:
+        raise ValueError(f"Non-integer value in {source}: {raw!r}") from exc

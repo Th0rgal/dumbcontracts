@@ -671,7 +671,7 @@ import Verity.Examples.{cfg.name}
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity
 open Verity.Examples.{cfg.name}
@@ -1017,7 +1017,7 @@ def gen_compiler_spec(cfg: ContractConfig) -> str:
 ## {cfg.name} Specification
 -/
 
-def {name_lower}Spec : ContractSpec := {{
+def {name_lower}Spec : CompilationModel := {{
   name := "{cfg.name}"
   fields := [
     {fields_str}

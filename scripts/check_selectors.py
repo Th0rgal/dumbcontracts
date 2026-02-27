@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Verify selector hashing against ContractSpec, IR proofs, and Yul artifacts.
+"""Verify selector hashing against CompilationModel, IR proofs, and Yul artifacts.
 
 Checks:
-1) ContractSpec function signatures -> keccak selectors are unique per contract.
+1) CompilationModel function signatures -> keccak selectors are unique per contract.
 2) Compiler/Proofs/IRGeneration/Expr.lean compile selector lists match the spec.
 3) Generated Yul files include all expected selector case labels.
 4) No function name uses the reserved ``internal_`` prefix (Yul namespace collision).
-5) Error(string) selector constant sync between ContractSpec and Interpreter.
-6) Address mask constant sync between ContractSpec and Interpreter.
-7) Selector shift constant sync between ContractSpec, Codegen, and Builtins.
-8) Internal function prefix sync between ContractSpec and CI script.
-9) Special entrypoint names sync between ContractSpec and CI script.
+5) Error(string) selector constant sync between CompilationModel and Interpreter.
+6) Address mask constant sync between CompilationModel and Interpreter.
+7) Selector shift constant sync between CompilationModel, Codegen, and Builtins.
+8) Internal function prefix sync between CompilationModel and CI script.
+9) Special entrypoint names sync between CompilationModel and CI script.
 10) No duplicate function names per contract; compile has all five duplicate-name guards.
 11) Free memory pointer constant matches Solidity convention (0x40).
 """
@@ -27,7 +27,7 @@ from keccak256 import selector as keccak_selector
 from property_utils import ROOT, YUL_DIR, die, report_errors, strip_lean_comments
 SPEC_FILE = ROOT / "Compiler" / "Specs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
-CONTRACT_SPEC_FILE = ROOT / "Compiler" / "ContractSpec.lean"
+CONTRACT_SPEC_FILE = ROOT / "Compiler" / "CompilationModel.lean"
 CONSTANTS_FILE = ROOT / "Compiler" / "Constants.lean"
 YUL_DIR_LEGACY = ("yul", YUL_DIR)
 
@@ -70,7 +70,7 @@ def find_matching(text: str, start: int, open_ch: str, close_ch: str) -> int:
 
 def extract_specs(text: str) -> List[SpecInfo]:
     specs: List[SpecInfo] = []
-    spec_re = re.compile(r"def\s+(\w+)\s*:\s*ContractSpec\s*:=\s*\{")
+    spec_re = re.compile(r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*\{")
     for match in spec_re.finditer(text):
         def_name = match.group(1)
         block_start = match.end() - 1
@@ -102,11 +102,11 @@ def has_nonempty_externals(spec_block: str) -> bool:
 
 
 # Special entrypoint names that are NOT dispatched by selector.
-# Must match `isInteropEntrypointName` in ContractSpec.lean.
+# Must match `isInteropEntrypointName` in CompilationModel.lean.
 _SPECIAL_ENTRYPOINTS = {"fallback", "receive"}
 
 # Reserved Yul name prefix for compiler-generated internal functions.
-# Must match `internalFunctionPrefix` in ContractSpec.lean.
+# Must match `internalFunctionPrefix` in CompilationModel.lean.
 _INTERNAL_FUNCTION_PREFIX = "internal_"
 
 
@@ -152,10 +152,10 @@ def _build_signature(fn_block: str, fn_name: str) -> str:
 
 
 def extract_functions(spec_block: str) -> List[str]:
-    """Extract external function signatures from a ContractSpec block.
+    """Extract external function signatures from a CompilationModel block.
 
     Skips internal functions and special entrypoints (fallback/receive)
-    to match Selector.computeSelectors and ContractSpec.compile filtering.
+    to match Selector.computeSelectors and CompilationModel.compile filtering.
     """
     sigs: List[str] = []
     for fn_name, fn_block in _iter_function_blocks(spec_block):
@@ -321,7 +321,7 @@ def check_reserved_prefix_collisions(specs: List[SpecInfo]) -> List[str]:
     """Check that no function name (internal or external) starts with ``internal_``.
 
     The compiler prepends ``internal_`` to internal function names in generated
-    Yul (see ``internalFunctionPrefix`` in ContractSpec.lean).  Any user-defined
+    Yul (see ``internalFunctionPrefix`` in CompilationModel.lean).  Any user-defined
     function whose name starts with this prefix — regardless of whether it is
     marked ``isInternal`` — would create confusing or colliding Yul identifiers.
     """
@@ -341,7 +341,7 @@ def check_unique_function_names(specs: List[SpecInfo]) -> List[str]:
     """Check that no contract has duplicate function names.
 
     Mirrors the ``firstDuplicateName (spec.functions.map (·.name))`` check in
-    ``ContractSpec.compile``.
+    ``CompilationModel.compile``.
     """
     errors: List[str] = []
     for spec in specs:
@@ -507,7 +507,7 @@ def check_selector_shift_sync() -> List[str]:
     """Verify the selectorShift constant (224) exists in Constants.lean.
 
     The canonical definition now lives in Compiler/Constants.lean;
-    ContractSpec, Codegen, and Builtins import it from there.
+    CompilationModel, Codegen, and Builtins import it from there.
     """
     errors: List[str] = []
     if not CONSTANTS_FILE.exists():
@@ -532,7 +532,7 @@ _INTERNAL_PREFIX_RE = re.compile(
 
 
 def check_internal_prefix_sync() -> List[str]:
-    """Verify _INTERNAL_FUNCTION_PREFIX matches ContractSpec.internalFunctionPrefix."""
+    """Verify _INTERNAL_FUNCTION_PREFIX matches CompilationModel.internalFunctionPrefix."""
     errors: List[str] = []
     if not CONTRACT_SPEC_FILE.exists():
         errors.append(f"Missing {CONTRACT_SPEC_FILE}")
@@ -541,11 +541,11 @@ def check_internal_prefix_sync() -> List[str]:
     m = _INTERNAL_PREFIX_RE.search(text)
     if not m:
         errors.append(
-            "ContractSpec.lean: missing internalFunctionPrefix definition"
+            "CompilationModel.lean: missing internalFunctionPrefix definition"
         )
     elif m.group(1) != _INTERNAL_FUNCTION_PREFIX:
         errors.append(
-            f"ContractSpec.internalFunctionPrefix is {m.group(1)!r} "
+            f"CompilationModel.internalFunctionPrefix is {m.group(1)!r} "
             f"but check_selectors.py uses {_INTERNAL_FUNCTION_PREFIX!r}"
         )
     return errors
@@ -562,7 +562,7 @@ _INTEROP_ENTRYPOINTS_RE = re.compile(
 
 
 def check_special_entrypoints_sync() -> List[str]:
-    """Verify _SPECIAL_ENTRYPOINTS matches ContractSpec.isInteropEntrypointName."""
+    """Verify _SPECIAL_ENTRYPOINTS matches CompilationModel.isInteropEntrypointName."""
     errors: List[str] = []
     if not CONTRACT_SPEC_FILE.exists():
         errors.append(f"Missing {CONTRACT_SPEC_FILE}")
@@ -571,7 +571,7 @@ def check_special_entrypoints_sync() -> List[str]:
     m = _INTEROP_ENTRYPOINTS_RE.search(text)
     if not m:
         errors.append(
-            "ContractSpec.lean: missing isInteropEntrypointName definition"
+            "CompilationModel.lean: missing isInteropEntrypointName definition"
         )
         return errors
     # Parse the Lean list literal: ["fallback", "receive"]
@@ -580,7 +580,7 @@ def check_special_entrypoints_sync() -> List[str]:
     )
     if lean_names != _SPECIAL_ENTRYPOINTS:
         errors.append(
-            f"ContractSpec.isInteropEntrypointName uses {sorted(lean_names)} "
+            f"CompilationModel.isInteropEntrypointName uses {sorted(lean_names)} "
             f"but check_selectors.py uses {sorted(_SPECIAL_ENTRYPOINTS)}"
         )
     return errors
@@ -608,7 +608,7 @@ def check_free_memory_pointer_sync() -> List[str]:
 
 
 def check_compile_duplicate_name_guard() -> List[str]:
-    """Verify that ContractSpec.compile checks for duplicate names across all spec lists.
+    """Verify that CompilationModel.compile checks for duplicate names across all spec lists.
 
     Ensures the compile function calls ``firstDuplicateName`` on all five
     spec collections: functions, errors, fields, events, and externals.
@@ -623,7 +623,7 @@ def check_compile_duplicate_name_guard() -> List[str]:
             rf"firstDuplicateName\s*\(spec\.{collection}\.map", text
         ):
             errors.append(
-                f"ContractSpec.compile: missing duplicate {collection} name check "
+                f"CompilationModel.compile: missing duplicate {collection} name check "
                 f"(expected firstDuplicateName (spec.{collection}.map ...))"
             )
     return errors
@@ -640,7 +640,7 @@ def main() -> None:
     specs_text = strip_lean_comments(SPEC_FILE.read_text(encoding="utf-8"))
     specs = extract_specs(specs_text)
     if not specs:
-        die("No ContractSpec definitions found")
+        die("No CompilationModel definitions found")
 
     compile_text = strip_lean_comments(IR_EXPR_FILE.read_text(encoding="utf-8"))
     compile_lists = extract_compile_selectors(compile_text)
@@ -651,7 +651,7 @@ def main() -> None:
     errors.extend(check_reserved_prefix_collisions(specs))
     errors.extend(check_compile_lists(specs, compile_lists))
 
-    # Validate yul/ (legacy path) against ContractSpec specs.
+    # Validate yul/ (legacy path) against CompilationModel specs.
     yul_label, yul_dir = YUL_DIR_LEGACY
     if yul_dir.exists():
         errors.extend(check_yul_selectors(specs, yul_label, yul_dir))

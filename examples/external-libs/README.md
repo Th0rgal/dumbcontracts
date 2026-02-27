@@ -84,7 +84,7 @@ def myHash (a b : Uint256) : Contract Uint256 := do
   return add a b
 ```
 
-### 3. Add External Call to ContractSpec
+### 3. Add External Call to CompilationModel
 
 In `Compiler/Specs.lean`, reference the library function:
 
@@ -105,7 +105,7 @@ For a comprehensive guide on using external libraries, see the [Linking External
 The guide covers:
 - Writing library files
 - Creating Lean placeholders
-- Adding external calls to your ContractSpec
+- Adding external calls to your CompilationModel
 - Validation and error handling
 - Trust model considerations
 
@@ -125,7 +125,7 @@ function foo(x) -> y { y := add(x, 1) }
 
 ### 2. Function Name Mismatch
 
-The function name in your `.yul` file must exactly match what's called in your ContractSpec:
+The function name in your `.yul` file must exactly match what's called in your CompilationModel:
 
 ```yul
 // In MyHash.yul
@@ -196,4 +196,4 @@ External libraries are **outside the formal verification boundary**. Your Lean p
 
 - [CryptoHash Example](../Verity/Examples/CryptoHash.lean) - Shows placeholder usage
 - [Linker Module](../Compiler/Linker.lean) - Full linker implementation
-- [ContractSpec](../Compiler/ContractSpec.lean) - External call syntax
+- [CompilationModel](../Compiler/CompilationModel.lean) - External call syntax

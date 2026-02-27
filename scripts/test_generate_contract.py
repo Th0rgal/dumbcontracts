@@ -159,7 +159,7 @@ class GenerateContractGetterPropertyScaffoldTests(unittest.TestCase):
         self.assertIn("scaffold default: slot 0 unchanged", out)
 
 
-class GenerateContractSpecScaffoldTests(unittest.TestCase):
+class GenerateCompilationModelScaffoldTests(unittest.TestCase):
     def test_specs_are_not_vacuous_true(self) -> None:
         cfg = ContractConfig(
             name="AuditVacuous",

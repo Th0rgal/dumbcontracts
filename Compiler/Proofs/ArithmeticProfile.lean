@@ -35,7 +35,7 @@ theorem modulus_is_2_pow_256 : evmModulus = 2 ^ 256 := rfl
 
 /-- EVMYulLean's UInt256.size equals Verity's evmModulus. -/
 theorem evmyullean_size_eq_verity_modulus :
-    EvmYul.UInt256.size = evmModulus := by native_decide
+    EvmYul.UInt256.size = evmModulus := by decide
 
 -- ============================================================================
 -- § 2. Wrapping semantics: compiler builtins are total and wrapping

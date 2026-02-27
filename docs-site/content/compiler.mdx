@@ -9,22 +9,22 @@ description: EDSL to EVM compilation with automatic IR generation
 
 ## Overview
 
-The Verity compiler transforms `ContractSpec` models into deployable EVM bytecode. No manual IR writing is required.
+The Verity compiler transforms `CompilationModel` models into deployable EVM bytecode. No manual IR writing is required.
 
-**Pipeline**: EDSL Contract → ContractSpec → IR → Yul → EVM Bytecode
+**Pipeline**: EDSL Contract → CompilationModel → IR → Yul → EVM Bytecode
 
 Important: Verity has two different "spec" concepts.
 
 1. Logical specs in `Verity/Specs/<Name>/Spec.lean` are `Prop` statements used for proofs.
-2. Compiler specs in `Compiler/Specs.lean` are `ContractSpec` values used for code generation.
+2. Compiler specs in `Compiler/Specs.lean` are `CompilationModel` values used for code generation.
 
-`ContractSpec` is not only an ABI. It also contains storage fields and function bodies (`Expr`/`Stmt`).
+`CompilationModel` is not only an ABI. It also contains storage fields and function bodies (`Expr`/`Stmt`).
 
 ## Trust Model
 
 ### What's Verified (Zero Trust Required)
-- **Layer 1 per contract**: EDSL behavior is proven equivalent to its `ContractSpec`.
-- **Layer 2 framework proof**: `ContractSpec -> IR` preserves semantics.
+- **Layer 1 per contract**: EDSL behavior is proven equivalent to its `CompilationModel`.
+- **Layer 2 framework proof**: `CompilationModel -> IR` preserves semantics.
 - **Layer 3 framework proof**: `IR -> Yul` preserves semantics.
 - **Machine-checked proofs**: 1 documented axiom (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)) — `keccak256_first_4_bytes` only, 0 sorry.
 - **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean
@@ -60,7 +60,7 @@ def retrieve : Contract Uint256 := do
 ### Declarative Specification
 ```lean
 -- Compiler/Specs.lean
-def simpleStorageSpec : ContractSpec := {
+def simpleStorageSpec : CompilationModel := {
   name := "SimpleStorage"
   fields := [
     { name := "storedData", ty := FieldType.uint256 }
@@ -159,7 +159,7 @@ forge create SimpleStorage --from 0x... --private-key ...
 
 ### Modules
 
-**`Compiler/ContractSpec.lean`**
+**`Compiler/CompilationModel.lean`**
 - Declarative contract DSL
 - Expression language: `literal`, `param`, `storage`, `mapping`, `mappingWord`, `mappingPackedWord`, `mapping2`, `mappingUint`, `caller`, `msgValue`, `blockTimestamp`, `localVar`, `externalCall`, `internalCall`, `arrayLength`, `arrayElement`, arithmetic, bitwise, comparisons, logical operators
 - Statement language: `letVar`, `assignVar`, `setStorage`, `setMapping`, `setMappingWord`, `setMappingPackedWord`, `setMapping2`, `setMappingUint`, `require`, `return`, `stop`, `ite`, `forEach`, `emit`, `internalCall`
@@ -197,7 +197,7 @@ forge create SimpleStorage --from 0x... --private-key ...
 
 ### Compilation Process
 
-1. **Specification**: Write declarative `ContractSpec`
+1. **Specification**: Write declarative `CompilationModel`
 2. **Storage Inference**: Assign slots 0, 1, 2, ... based on field order
 3. **Selector Lookup**: Retrieve pre-computed function selectors
 4. **IR Generation**: Compile expressions/statements to IR
@@ -240,7 +240,7 @@ Pre-computed from Solidity keccak256. Extensible for new functions.
 
 ### Type-Safe DSL ✅
 
-The ContractSpec DSL provides a complete expression and statement language for specifying contract behavior.
+The CompilationModel DSL provides a complete expression and statement language for specifying contract behavior.
 
 **Expressions** (`Expr`) — key constructors:
 
@@ -446,7 +446,7 @@ for { let i := 0 } lt(i, recipients_length) { i := add(i, 1) } {
 Define reusable logic shared across multiple external functions. Internal functions compile to Yul `function` definitions and are **not** exposed via selector dispatch:
 
 ```lean
-def mySpec : ContractSpec := {
+def mySpec : CompilationModel := {
   name := "MyContract"
   fields := [{ name := "balances", ty := FieldType.mappingTyped (.simple .address) }]
   functions := [
@@ -494,7 +494,7 @@ Stmt.letVar "bal" (Expr.internalCall "getBalance" [Expr.caller])
 Emit EVM events for standards compliance (ERC20 Transfer/Approval, etc.):
 
 ```lean
-def tokenSpec : ContractSpec := {
+def tokenSpec : CompilationModel := {
   name := "Token"
   fields := [{ name := "balances", ty := FieldType.mappingTyped (.simple .address) }]
   events := [
@@ -606,7 +606,7 @@ FOUNDRY_PROFILE=difftest forge test
 
 1. **Define specification** in `Compiler/Specs.lean`:
 ```lean
-def myContractSpec : ContractSpec := {
+def myCompilationModel : CompilationModel := {
   name := "MyContract"
   fields := [/* ... */]
   constructor := /* ... */
@@ -614,9 +614,9 @@ def myContractSpec : ContractSpec := {
 }
 
 -- Add to allSpecs (selectors are auto-computed from function signatures)
-def allSpecs : List ContractSpec := [
+def allSpecs : List CompilationModel := [
   /* ... */,
-  myContractSpec
+  myCompilationModel
 ]
 ```
 
@@ -706,7 +706,7 @@ private def ownedContract : IRContract :=
 
 **After** (declarative spec):
 ```lean
-def ownedSpec : ContractSpec := {
+def ownedSpec : CompilationModel := {
   name := "Owned"
   fields := [
     { name := "owner", ty := FieldType.address }

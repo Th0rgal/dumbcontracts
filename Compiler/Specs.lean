@@ -5,11 +5,11 @@
   Each contract is specified once, and IR is generated automatically.
 -/
 
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 
 namespace Compiler.Specs
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 
 /-!
 ## Shared Helpers
@@ -51,7 +51,7 @@ def requireOwner : Stmt :=
 ## SimpleStorage Specification
 -/
 
-def simpleStorageSpec : ContractSpec := {
+def simpleStorageSpec : CompilationModel := {
   name := "SimpleStorage"
   fields := [
     { name := "storedData", ty := FieldType.uint256 }
@@ -81,7 +81,7 @@ def simpleStorageSpec : ContractSpec := {
 ## Counter Specification
 -/
 
-def counterSpec : ContractSpec := {
+def counterSpec : CompilationModel := {
   name := "Counter"
   fields := [
     { name := "count", ty := FieldType.uint256 }
@@ -119,7 +119,7 @@ def counterSpec : ContractSpec := {
 ## Owned Specification
 -/
 
-def ownedSpec : ContractSpec := {
+def ownedSpec : CompilationModel := {
   name := "Owned"
   fields := [
     { name := "owner", ty := FieldType.address }
@@ -150,7 +150,7 @@ def ownedSpec : ContractSpec := {
 ## Ledger Specification
 -/
 
-def ledgerSpec : ContractSpec := {
+def ledgerSpec : CompilationModel := {
   name := "Ledger"
   fields := [
     { name := "balances", ty := FieldType.mappingTyped (.simple .address) }
@@ -203,7 +203,7 @@ def ledgerSpec : ContractSpec := {
 ## OwnedCounter Specification (Combines Owned + Counter)
 -/
 
-def ownedCounterSpec : ContractSpec := {
+def ownedCounterSpec : CompilationModel := {
   name := "OwnedCounter"
   fields := [
     { name := "owner", ty := FieldType.address },
@@ -260,7 +260,7 @@ def ownedCounterSpec : ContractSpec := {
 ## SimpleToken Specification (Owned + Balances + Supply)
 -/
 
-def simpleTokenSpec : ContractSpec := {
+def simpleTokenSpec : CompilationModel := {
   name := "SimpleToken"
   fields := [
     { name := "owner", ty := FieldType.address },
@@ -334,12 +334,12 @@ def simpleTokenSpec : ContractSpec := {
 
 Demonstrates `Expr.externalCall` for linking external Yul libraries at
 compile time.  The EDSL placeholder in `Verity/Examples/CryptoHash.lean`
-uses simple addition; the ContractSpec below calls the real library
+uses simple addition; the CompilationModel below calls the real library
 functions (`PoseidonT3_hash`, `PoseidonT4_hash`) which are injected by
 the Linker when you pass `--link examples/external-libs/PoseidonT3.yul`.
 -/
 
-def cryptoHashSpec : ContractSpec := {
+def cryptoHashSpec : CompilationModel := {
   name := "CryptoHash"
   fields := [
     { name := "lastHash", ty := FieldType.uint256 }
@@ -395,7 +395,7 @@ def cryptoHashSpec : ContractSpec := {
 /-!
 ## SafeCounter Specification (Counter with overflow/underflow checks)
 -/
-def safeCounterSpec : ContractSpec := {
+def safeCounterSpec : CompilationModel := {
   name := "SafeCounter"
   fields := [
     { name := "count", ty := FieldType.uint256 }
@@ -444,13 +444,13 @@ def safeCounterSpec : ContractSpec := {
 Yul libraries (PoseidonT3/T4). Use `lake exe verity-compiler --link ...` to
 compile it separately.
 
-**Adding a new contract**: After adding `myContractSpec` here, also ensure
+**Adding a new contract**: After adding `myCompilationModel` here, also ensure
 each function's selector is pre-computed in `Compiler/Selectors.lean` via
 `computeSelectors`. The compiler will fail at runtime if a function has no
 matching selector.
 -/
 
-def allSpecs : List ContractSpec := [
+def allSpecs : List CompilationModel := [
   simpleStorageSpec,
   counterSpec,
   ownedSpec,

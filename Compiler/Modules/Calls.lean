@@ -10,13 +10,13 @@
 -/
 
 import Compiler.ECM
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 
 namespace Compiler.Modules.Calls
 
 open Compiler.Yul
 open Compiler.ECM
-open Compiler.ContractSpec (Stmt Expr)
+open Compiler.CompilationModel (Stmt Expr)
 
 /-- Generic external call with single uint256 return.
     ABI-encodes `selector(args...)`, calls/staticcalls target, reverts on failure,

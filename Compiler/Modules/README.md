@@ -31,7 +31,7 @@ body := [
 ## Writing a New Standard Module
 
 1. Create `Compiler/Modules/YourModule.lean`.
-2. Import `Compiler.ECM` and `Compiler.ContractSpec`.
+2. Import `Compiler.ECM` and `Compiler.CompilationModel`.
 3. Define an `ExternalCallModule` structure with:
    - `name`: human-readable identifier for error messages
    - `numArgs`: expected argument count
@@ -40,7 +40,7 @@ body := [
    - `compile`: function producing `List YulStmt` from compiled `YulExpr` arguments
    - `axioms`: trust assumptions this module introduces
 4. Add a convenience wrapper that returns `Stmt.ecm yourModule args`.
-5. Add compile-time tests in `ContractSpecFeatureTest.lean`.
+5. Add compile-time tests in `CompilationModelFeatureTest.lean`.
 
 ### Checklist
 
@@ -48,7 +48,7 @@ body := [
 - [ ] Convenience wrapper returns `Stmt.ecm` with correct argument list
 - [ ] `writesState`/`readsState` flags are accurate (tested via view/pure rejection)
 - [ ] `axioms` list documents all trust assumptions
-- [ ] Compile-time smoke test added to `ContractSpecFeatureTest.lean`
+- [ ] Compile-time smoke test added to `CompilationModelFeatureTest.lean`
 - [ ] Any validation (selector bounds, parameter names) is in `compile`, not deferred
 
 ## Standard vs. Third-Party

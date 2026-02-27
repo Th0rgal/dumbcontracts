@@ -21,7 +21,7 @@ open Compiler.Constants (errorStringSelectorWord addressMask)
 
 /-- Context provided to ECM compile functions beyond the argument expressions.
     This gives modules access to compiler services without coupling them to
-    the full ContractSpec compilation pipeline. -/
+    the full CompilationModel compilation pipeline. -/
 structure CompilationContext where
   /-- Whether dynamic data comes from calldata (external functions) or memory (internal). -/
   isDynamicFromCalldata : Bool := true
@@ -72,7 +72,7 @@ instance : ToString ExternalCallModule where
 /-! ### Shared Compilation Utilities
 
 These helpers are used by standard modules and available to third-party modules.
-They mirror the helpers in ContractSpec but are decoupled from the full compilation
+They mirror the helpers in CompilationModel but are decoupled from the full compilation
 pipeline so that module files only need to import `Compiler.ECM`. -/
 
 private def bytesFromString (s : String) : List UInt8 :=

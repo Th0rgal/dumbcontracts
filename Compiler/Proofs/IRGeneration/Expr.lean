@@ -1,7 +1,7 @@
 /-
   Expression Compilation Correctness
 
-  The compilation functions (compileExpr, compileStmt, etc.) in ContractSpec are
+  The compilation functions (compileExpr, compileStmt, etc.) in CompilationModel are
   now public (PR #374), enabling structural induction proofs over Expr/Stmt
   constructors toward a universal compile_preserves_semantics theorem.
 
@@ -17,7 +17,7 @@ namespace Compiler.Proofs.IRGeneration
 
 open Compiler
 open Compiler.Specs
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Yul
 open Verity
 open DiffTestTypes
@@ -1438,7 +1438,7 @@ theorem simpleToken_owner_correct (storedOwner storedSupply : Nat) (senderAddr :
 For any contract, we want to prove:
 
 ```lean
-theorem contract_preserves_semantics (spec : ContractSpec) (selectors : List Nat)
+theorem contract_preserves_semantics (spec : CompilationModel) (selectors : List Nat)
     (tx : Transaction) (state : ContractState) :
   match compile spec selectors with
   | .ok ir =>

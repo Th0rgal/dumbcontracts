@@ -3,7 +3,7 @@
 
   Prove that counterSpec accurately represents the Counter EDSL.
 
-  This establishes that the manually written ContractSpec matches
+  This establishes that the manually written CompilationModel matches
   the verified EDSL semantics for Counter.
 
   Strategy:
@@ -18,7 +18,7 @@ import Verity.Examples.Counter
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity

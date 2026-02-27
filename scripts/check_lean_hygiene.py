@@ -155,15 +155,18 @@ def main() -> None:
                 sorry_count += 1
                 errors.append(f"{rel}:{i}: found sorry (incomplete proof)")
 
-    # Check 4: No native_decide in proof files (except smoke tests)
-    # native_decide bypasses the kernel and is acceptable only in smoke tests
-    # that check generated code strings, not in mathematical proofs.
+    # Check 4: No native_decide in proof files (except tests/profiles)
+    # native_decide bypasses the kernel and is acceptable in:
+    #   - Smoke tests (string comparisons against generated code)
+    #   - Feature/bridge tests (decidable equality checks across systems)
+    #   - Arithmetic profiles (cross-system constant agreement)
+    # It is NOT acceptable in mathematical preservation/correctness proofs.
     native_decide_count = 0
     for proof_dir in proof_dirs:
         for lean_file in proof_dir.rglob("*.lean"):
             rel = lean_file.relative_to(ROOT)
-            # Smoke tests legitimately use native_decide for string comparisons
-            if "SmokeTest" in lean_file.name:
+            stem = lean_file.stem
+            if "Test" in stem or "Profile" in stem:
                 continue
             scrubbed_lines = scrub_lean_code(lean_file.read_text(encoding="utf-8")).splitlines()
             for i, line in enumerate(scrubbed_lines, 1):

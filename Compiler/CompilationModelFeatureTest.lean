@@ -1,4 +1,4 @@
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 import Compiler.Selector
 import Compiler.Codegen
 import Compiler.Yul.PrettyPrint
@@ -9,10 +9,10 @@ import Compiler.Modules.Callbacks
 import Compiler.Modules.Calls
 import Verity.Proofs.Stdlib.SpecInterpreter
 
-namespace Compiler.ContractSpecFeatureTest
+namespace Compiler.CompilationModelFeatureTest
 
 open Compiler
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Selector
 open Compiler.DiffTestTypes
 open Verity.Proofs.Stdlib.SpecInterpreter
@@ -63,7 +63,7 @@ private def assertAppearsBefore (label rendered first second : String) : IO Unit
     throw (IO.userError s!"✗ {label}: expected '{first}' to appear before '{second}'")
   IO.println s!"✓ {label}"
 
-private def featureSpec : ContractSpec := {
+private def featureSpec : CompilationModel := {
   name := "FeatureSpec"
   fields := []
   constructor := none
@@ -180,8 +180,8 @@ private def featureSpec : ContractSpec := {
   ]
 }
 
-private def compilationModelAliasSpec : CompilationModel := {
-  name := "CompilationModelAliasSpec"
+private def compilationModelSmokeSpec : CompilationModel := {
+  name := "CompilationModelSmokeSpec"
   fields := []
   constructor := none
   functions := [
@@ -194,21 +194,12 @@ private def compilationModelAliasSpec : CompilationModel := {
 }
 
 #eval! do
-  -- Positive path: the new canonical name compiles.
-  match compile compilationModelAliasSpec [1] with
+  -- Smoke test: CompilationModel compiles.
+  match compile compilationModelSmokeSpec [1] with
   | .error err =>
-      throw (IO.userError s!"✗ CompilationModel alias compile failed: {err}")
+      throw (IO.userError s!"✗ CompilationModel compile failed: {err}")
   | .ok _ =>
-      IO.println "✓ CompilationModel alias compile smoke"
-
-#eval! do
-  -- Backward-compat path: legacy `ContractSpec` annotations still work.
-  let legacyView : ContractSpec := compilationModelAliasSpec
-  match compile legacyView [1] with
-  | .error err =>
-      throw (IO.userError s!"✗ ContractSpec backward-compat compile failed: {err}")
-  | .ok _ =>
-      IO.println "✓ ContractSpec backward-compat compile smoke"
+      IO.println "✓ CompilationModel compile smoke"
 
 #eval! do
   match compile featureSpec [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] with
@@ -251,7 +242,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertContains "custom error revert payload emission" rendered ["let __err_hash := keccak256(__err_ptr,", "mstore(0, __err_selector)", "mstore(4, and(who,", "let __err_tail := 64", "revert(0, add(4, __err_tail))"]
 
 #eval! do
-  let conflictingReturnsSpec : ContractSpec := {
+  let conflictingReturnsSpec : CompilationModel := {
     name := "ConflictingReturns"
     fields := []
     constructor := none
@@ -273,7 +264,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected conflicting returns to fail compilation")
 
 #eval! do
-  let invalidReturnBytesSpec : ContractSpec := {
+  let invalidReturnBytesSpec : CompilationModel := {
     name := "InvalidReturnBytes"
     fields := []
     constructor := none
@@ -295,7 +286,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid returnBytes parameter to fail compilation")
 
 #eval! do
-  let invalidContractIdentifierSpec : ContractSpec := {
+  let invalidContractIdentifierSpec : CompilationModel := {
     name := "Bad-Contract"
     fields := []
     constructor := none
@@ -310,7 +301,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid contract identifier to fail compilation")
 
 #eval! do
-  let invalidFunctionIdentifierSpec : ContractSpec := {
+  let invalidFunctionIdentifierSpec : CompilationModel := {
     name := "InvalidFunctionIdentifier"
     fields := []
     constructor := none
@@ -331,7 +322,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid function identifier to fail compilation")
 
 #eval! do
-  let invalidFieldIdentifierSpec : ContractSpec := {
+  let invalidFieldIdentifierSpec : CompilationModel := {
     name := "InvalidFieldIdentifier"
     fields := [{ name := "stored-data", ty := FieldType.uint256 }]
     constructor := none
@@ -346,7 +337,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid field identifier to fail compilation")
 
 #eval! do
-  let invalidFunctionParamIdentifierSpec : ContractSpec := {
+  let invalidFunctionParamIdentifierSpec : CompilationModel := {
     name := "InvalidFunctionParamIdentifier"
     fields := []
     constructor := none
@@ -367,7 +358,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid function parameter identifier to fail compilation")
 
 #eval! do
-  let invalidEventIdentifierSpec : ContractSpec := {
+  let invalidEventIdentifierSpec : CompilationModel := {
     name := "InvalidEventIdentifier"
     fields := []
     constructor := none
@@ -387,7 +378,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid event identifier to fail compilation")
 
 #eval! do
-  let invalidExternalIdentifierSpec : ContractSpec := {
+  let invalidExternalIdentifierSpec : CompilationModel := {
     name := "InvalidExternalIdentifier"
     fields := []
     constructor := none
@@ -409,7 +400,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid external declaration identifier to fail compilation")
 
 #eval! do
-  let payableMsgValueSpec : ContractSpec := {
+  let payableMsgValueSpec : CompilationModel := {
     name := "PayableMsgValue"
     fields := []
     constructor := some {
@@ -435,7 +426,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertNotContains "payable function skips non-payable guard" rendered ["if callvalue()"]
 
 #eval! do
-  let nonPayableGuardSpec : ContractSpec := {
+  let nonPayableGuardSpec : CompilationModel := {
     name := "NonPayableGuard"
     fields := []
     constructor := none
@@ -455,7 +446,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertContains "non-payable function emits msg.value guard" rendered ["if callvalue()"]
 
 #eval! do
-  let lowLevelPrimitivesSpec : ContractSpec := {
+  let lowLevelPrimitivesSpec : CompilationModel := {
     name := "LowLevelPrimitives"
     fields := []
     constructor := none
@@ -563,7 +554,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertContains "optional bool returndata helper lowering" rendered ["eq(returndatasize(), 0)", "eq(returndatasize(), 32)", "eq(mload(0), 1)"]
 
 #eval! do
-  let typedIntrinsicSpec : ContractSpec := {
+  let typedIntrinsicSpec : CompilationModel := {
     name := "TypedIntrinsics"
     fields := []
     constructor := none
@@ -608,7 +599,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       ]
 
 #eval! do
-  let lowLevelCallSpec : ContractSpec := {
+  let lowLevelCallSpec : CompilationModel := {
     name := "LowLevelCallUnsupported"
     fields := []
     constructor := none
@@ -629,7 +620,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected low-level call usage to fail compilation")
 
 #eval! do
-  let eagerLogicalCallSpec : ContractSpec := {
+  let eagerLogicalCallSpec : CompilationModel := {
     name := "EagerLogicalCall"
     fields := []
     constructor := none
@@ -663,7 +654,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected call-like logical operand to fail compilation")
 
 #eval! do
-  let eagerLogicalExternalSpec : ContractSpec := {
+  let eagerLogicalExternalSpec : CompilationModel := {
     name := "EagerLogicalExternal"
     fields := []
     constructor := none
@@ -697,7 +688,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external-call logical operand to fail compilation")
 
 #eval! do
-  let staticcallSpec : ContractSpec := {
+  let staticcallSpec : CompilationModel := {
     name := "StaticcallUnsupported"
     fields := []
     constructor := none
@@ -718,7 +709,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected staticcall usage to fail compilation")
 
 #eval! do
-  let ctorMsgValueSpec : ContractSpec := {
+  let ctorMsgValueSpec : CompilationModel := {
     name := "CtorMsgValuePayable"
     fields := []
     constructor := some {
@@ -744,7 +735,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertNotContains "payable constructor skips non-payable guard" rendered ["if callvalue()"]
 
 #eval! do
-  let ctorNonPayableGuardSpec : ContractSpec := {
+  let ctorNonPayableGuardSpec : CompilationModel := {
     name := "CtorNonPayableGuard"
     fields := []
     constructor := some {
@@ -768,7 +759,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertContains "non-payable constructor emits msg.value guard" rendered ["if callvalue()"]
 
 #eval! do
-  let ctorLowLevelCallSpec : ContractSpec := {
+  let ctorLowLevelCallSpec : CompilationModel := {
     name := "CtorLowLevelCallUnsupported"
     fields := []
     constructor := some {
@@ -792,7 +783,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected constructor low-level call usage to fail compilation")
 
 #eval! do
-  let ctorCallcodeSpec : ContractSpec := {
+  let ctorCallcodeSpec : CompilationModel := {
     name := "CtorCallcodeUnsupported"
     fields := []
     constructor := some {
@@ -816,7 +807,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected constructor callcode usage to fail compilation")
 
 #eval! do
-  let ctorBoolParamSpec : ContractSpec := {
+  let ctorBoolParamSpec : CompilationModel := {
     name := "CtorBoolParamNormalization"
     fields := []
     constructor := some {
@@ -842,7 +833,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "let flag := iszero(iszero(__abi_bool_word_0))", "let arg0 := flag"]
 
 #eval! do
-  let ctorDynamicParamSpec : ContractSpec := {
+  let ctorDynamicParamSpec : CompilationModel := {
     name := "CtorDynamicParamSupported"
     fields := []
     constructor := some {
@@ -869,7 +860,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "let arg0 := payload_offset"]
 
 #eval! do
-  let ctorMixedParamSpec : ContractSpec := {
+  let ctorMixedParamSpec : CompilationModel := {
     name := "CtorMixedParamDecode"
     fields := []
     constructor := some {
@@ -894,7 +885,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "let arg1 := payload_offset"]
 
 #eval! do
-  let ctorDynamicReadSpec : ContractSpec := {
+  let ctorDynamicReadSpec : CompilationModel := {
     name := "CtorDynamicReadSource"
     fields := []
     constructor := some {
@@ -923,7 +914,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "let firstWord := mload(add(numbers_data_offset, mul(0, 32)))"]
 
 #eval! do
-  let callSpec : ContractSpec := {
+  let callSpec : CompilationModel := {
     name := "CallUnsupported"
     fields := []
     constructor := none
@@ -944,7 +935,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected call usage to fail compilation")
 
 #eval! do
-  let noArrayElementSpec : ContractSpec := {
+  let noArrayElementSpec : CompilationModel := {
     name := "NoArrayElementHelpers"
     fields := []
     constructor := none
@@ -966,7 +957,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "function __verity_array_element_memory_checked(data_offset, length, index) -> word"]
 
 #eval! do
-  let balanceSpec : ContractSpec := {
+  let balanceSpec : CompilationModel := {
     name := "BalanceUnsupported"
     fields := []
     constructor := none
@@ -987,7 +978,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected balance usage to fail compilation")
 
 #eval! do
-  let gasPriceSpec : ContractSpec := {
+  let gasPriceSpec : CompilationModel := {
     name := "GasPriceUnsupported"
     fields := []
     constructor := none
@@ -1008,7 +999,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected gasprice usage to fail compilation")
 
 #eval! do
-  let blobBaseFeeSpec : ContractSpec := {
+  let blobBaseFeeSpec : CompilationModel := {
     name := "BlobBaseFeeUnsupported"
     fields := []
     constructor := none
@@ -1029,7 +1020,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected blobbasefee usage to fail compilation")
 
 #eval! do
-  let blobHashSpec : ContractSpec := {
+  let blobHashSpec : CompilationModel := {
     name := "BlobHashUnsupported"
     fields := []
     constructor := none
@@ -1050,7 +1041,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected blobhash usage to fail compilation")
 
 #eval! do
-  let extCodeSizeSpec : ContractSpec := {
+  let extCodeSizeSpec : CompilationModel := {
     name := "ExtCodeSizeUnsupported"
     fields := []
     constructor := none
@@ -1071,7 +1062,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected extcodesize usage to fail compilation")
 
 #eval! do
-  let extCodeCopySpec : ContractSpec := {
+  let extCodeCopySpec : CompilationModel := {
     name := "ExtCodeCopyUnsupported"
     fields := []
     constructor := none
@@ -1092,7 +1083,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected extcodecopy usage to fail compilation")
 
 #eval! do
-  let extCodeHashSpec : ContractSpec := {
+  let extCodeHashSpec : CompilationModel := {
     name := "ExtCodeHashUnsupported"
     fields := []
     constructor := none
@@ -1113,7 +1104,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected extcodehash usage to fail compilation")
 
 #eval! do
-  let returnDataSizeSpec : ContractSpec := {
+  let returnDataSizeSpec : CompilationModel := {
     name := "ReturnDataSizeUnsupported"
     fields := []
     constructor := none
@@ -1134,7 +1125,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected returndatasize usage to fail compilation")
 
 #eval! do
-  let returnDataCopySpec : ContractSpec := {
+  let returnDataCopySpec : CompilationModel := {
     name := "ReturnDataCopyUnsupported"
     fields := []
     constructor := none
@@ -1155,7 +1146,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected returndatacopy usage to fail compilation")
 
 #eval! do
-  let selfDestructSpec : ContractSpec := {
+  let selfDestructSpec : CompilationModel := {
     name := "SelfDestructUnsupported"
     fields := []
     constructor := none
@@ -1176,7 +1167,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected selfdestruct usage to fail compilation")
 
 #eval! do
-  let invalidBuiltinSpec : ContractSpec := {
+  let invalidBuiltinSpec : CompilationModel := {
     name := "InvalidBuiltinUnsupported"
     fields := []
     constructor := none
@@ -1197,7 +1188,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid builtin usage to fail compilation")
 
 #eval! do
-  let mloadBuiltinSpec : ContractSpec := {
+  let mloadBuiltinSpec : CompilationModel := {
     name := "MloadBuiltinUnsupported"
     fields := []
     constructor := none
@@ -1218,7 +1209,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected mload builtin usage to fail compilation")
 
 #eval! do
-  let sstoreBuiltinSpec : ContractSpec := {
+  let sstoreBuiltinSpec : CompilationModel := {
     name := "SstoreBuiltinUnsupported"
     fields := []
     constructor := none
@@ -1242,7 +1233,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected sstore builtin usage to fail compilation")
 
 #eval! do
-  let tloadBuiltinSpec : ContractSpec := {
+  let tloadBuiltinSpec : CompilationModel := {
     name := "TloadBuiltinUnsupported"
     fields := []
     constructor := none
@@ -1263,7 +1254,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected tload builtin usage to fail compilation")
 
 #eval! do
-  let tstoreBuiltinSpec : ContractSpec := {
+  let tstoreBuiltinSpec : CompilationModel := {
     name := "TstoreBuiltinUnsupported"
     fields := []
     constructor := none
@@ -1287,7 +1278,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected tstore builtin usage to fail compilation")
 
 #eval! do
-  let externalBalanceSpec : ContractSpec := {
+  let externalBalanceSpec : CompilationModel := {
     name := "ExternalBalanceUnsupported"
     fields := []
     constructor := none
@@ -1315,7 +1306,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external balance declaration to fail compilation")
 
 #eval! do
-  let externalGasPriceSpec : ContractSpec := {
+  let externalGasPriceSpec : CompilationModel := {
     name := "ExternalGasPriceUnsupported"
     fields := []
     constructor := none
@@ -1343,7 +1334,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external gasprice declaration to fail compilation")
 
 #eval! do
-  let externalBlobBaseFeeSpec : ContractSpec := {
+  let externalBlobBaseFeeSpec : CompilationModel := {
     name := "ExternalBlobBaseFeeUnsupported"
     fields := []
     constructor := none
@@ -1371,7 +1362,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external blobbasefee declaration to fail compilation")
 
 #eval! do
-  let externalBlobHashSpec : ContractSpec := {
+  let externalBlobHashSpec : CompilationModel := {
     name := "ExternalBlobHashUnsupported"
     fields := []
     constructor := none
@@ -1399,7 +1390,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external blobhash declaration to fail compilation")
 
 #eval! do
-  let externalCreate2Spec : ContractSpec := {
+  let externalCreate2Spec : CompilationModel := {
     name := "ExternalCreate2Unsupported"
     fields := []
     constructor := none
@@ -1427,7 +1418,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external create2 declaration to fail compilation")
 
 #eval! do
-  let externalCreateSpec : ContractSpec := {
+  let externalCreateSpec : CompilationModel := {
     name := "ExternalCreateUnsupported"
     fields := []
     constructor := none
@@ -1455,7 +1446,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external create declaration to fail compilation")
 
 #eval! do
-  let externalMloadSpec : ContractSpec := {
+  let externalMloadSpec : CompilationModel := {
     name := "ExternalMloadUnsupported"
     fields := []
     constructor := none
@@ -1483,7 +1474,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external mload declaration to fail compilation")
 
 #eval! do
-  let externalSstoreSpec : ContractSpec := {
+  let externalSstoreSpec : CompilationModel := {
     name := "ExternalSstoreUnsupported"
     fields := []
     constructor := none
@@ -1511,7 +1502,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external sstore declaration to fail compilation")
 
 #eval! do
-  let externalTloadSpec : ContractSpec := {
+  let externalTloadSpec : CompilationModel := {
     name := "ExternalTloadUnsupported"
     fields := []
     constructor := none
@@ -1539,7 +1530,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external tload declaration to fail compilation")
 
 #eval! do
-  let externalTstoreSpec : ContractSpec := {
+  let externalTstoreSpec : CompilationModel := {
     name := "ExternalTstoreUnsupported"
     fields := []
     constructor := none
@@ -1567,7 +1558,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external tstore declaration to fail compilation")
 
 #eval! do
-  let unknownCustomErrorSpec : ContractSpec := {
+  let unknownCustomErrorSpec : CompilationModel := {
     name := "UnknownCustomError"
     fields := []
     constructor := none
@@ -1588,7 +1579,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected unknown custom error usage to fail compilation")
 
 #eval! do
-  let bytesCustomErrorSpec : ContractSpec := {
+  let bytesCustomErrorSpec : CompilationModel := {
     name := "BytesCustomErrorSupported"
     fields := []
     constructor := none
@@ -1618,7 +1609,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "revert(0, add(4, __err_tail))"]
 
 #eval! do
-  let bytesCustomErrorArgShapeSpec : ContractSpec := {
+  let bytesCustomErrorArgShapeSpec : CompilationModel := {
     name := "BytesCustomErrorArgShapeUnsupported"
     fields := []
     constructor := none
@@ -1637,14 +1628,14 @@ private def compilationModelAliasSpec : CompilationModel := {
   }
   match compile bytesCustomErrorArgShapeSpec [1] with
   | .error err =>
-      if !(contains err "expects Compiler.ContractSpec.ParamType.bytes arg to reference a matching parameter" && contains err "Issue #586") then
+      if !(contains err "expects Compiler.CompilationModel.ParamType.bytes arg to reference a matching parameter" && contains err "Issue #586") then
         throw (IO.userError s!"✗ bytes custom error arg-shape diagnostic mismatch: {err}")
       IO.println "✓ bytes custom error arg-shape diagnostic"
   | .ok _ =>
       throw (IO.userError "✗ expected invalid bytes custom error arg shape to fail compilation")
 
 #eval! do
-  let tupleCustomErrorSpec : ContractSpec := {
+  let tupleCustomErrorSpec : CompilationModel := {
     name := "TupleCustomErrorSupported"
     fields := []
     constructor := none
@@ -1672,7 +1663,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "revert(0, add(4, __err_tail))"]
 
 #eval! do
-  let arrayCustomErrorSpec : ContractSpec := {
+  let arrayCustomErrorSpec : CompilationModel := {
     name := "ArrayCustomErrorSupported"
     fields := []
     constructor := none
@@ -1701,7 +1692,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "revert(0, add(4, __err_tail))"]
 
 #eval! do
-  let unindexedBytesEventSpec : ContractSpec := {
+  let unindexedBytesEventSpec : CompilationModel := {
     name := "UnindexedBytesEventSupported"
     fields := []
     constructor := none
@@ -1733,7 +1724,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unindexedTupleEventSpec : ContractSpec := {
+  let unindexedTupleEventSpec : CompilationModel := {
     name := "UnindexedTupleEventSupported"
     fields := []
     constructor := none
@@ -1763,7 +1754,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, 64, __evt_topic0)"]
 
 #eval! do
-  let unindexedFixedArrayEventSpec : ContractSpec := {
+  let unindexedFixedArrayEventSpec : CompilationModel := {
     name := "UnindexedFixedArrayEventSupported"
     fields := []
     constructor := none
@@ -1793,7 +1784,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, 64, __evt_topic0)"]
 
 #eval! do
-  let unindexedDynamicArrayEventSpec : ContractSpec := {
+  let unindexedDynamicArrayEventSpec : CompilationModel := {
     name := "UnindexedDynamicArrayEventSupported"
     fields := []
     constructor := none
@@ -1826,7 +1817,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unindexedDynamicStaticTupleArrayEventSpec : ContractSpec := {
+  let unindexedDynamicStaticTupleArrayEventSpec : CompilationModel := {
     name := "UnindexedDynamicStaticTupleArrayEventSupported"
     fields := []
     constructor := none
@@ -1859,7 +1850,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unindexedDynamicBytes32ArrayEventSpec : ContractSpec := {
+  let unindexedDynamicBytes32ArrayEventSpec : CompilationModel := {
     name := "UnindexedDynamicBytes32ArrayEventSupported"
     fields := []
     constructor := none
@@ -1892,7 +1883,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unindexedDynamicBytesArrayEventSpec : ContractSpec := {
+  let unindexedDynamicBytesArrayEventSpec : CompilationModel := {
     name := "UnindexedDynamicBytesArrayEventSupported"
     fields := []
     constructor := none
@@ -1925,7 +1916,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unindexedDynamicCompositeArrayEventSpec : ContractSpec := {
+  let unindexedDynamicCompositeArrayEventSpec : CompilationModel := {
     name := "UnindexedDynamicCompositeArrayEventSupported"
     fields := []
     constructor := none
@@ -1956,7 +1947,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unindexedDynamicTupleEventSpec : ContractSpec := {
+  let unindexedDynamicTupleEventSpec : CompilationModel := {
     name := "UnindexedDynamicTupleEventSupported"
     fields := []
     constructor := none
@@ -1987,7 +1978,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unindexedDynamicFixedArrayEventSpec : ContractSpec := {
+  let unindexedDynamicFixedArrayEventSpec : CompilationModel := {
     name := "UnindexedDynamicFixedArrayEventSupported"
     fields := []
     constructor := none
@@ -2018,7 +2009,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log1(__evt_ptr, __evt_data_tail, __evt_topic0)"]
 
 #eval! do
-  let unusedInvalidIndexedEventSpec : ContractSpec := {
+  let unusedInvalidIndexedEventSpec : CompilationModel := {
     name := "UnusedInvalidIndexedEventRejected"
     fields := []
     constructor := none
@@ -2049,7 +2040,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected unused invalid event declaration to fail compilation")
 
 #eval! do
-  let indexedBytesEventSpec : ContractSpec := {
+  let indexedBytesEventSpec : CompilationModel := {
     name := "IndexedBytesEventSupported"
     fields := []
     constructor := none
@@ -2079,7 +2070,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedBytesEventArgTypeMismatchSpec : ContractSpec := {
+  let indexedBytesEventArgTypeMismatchSpec : CompilationModel := {
     name := "IndexedBytesEventArgTypeMismatch"
     fields := []
     constructor := none
@@ -2109,7 +2100,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid indexed bytes event arg type usage to fail compilation")
 
 #eval! do
-  let indexedTupleEventSpec : ContractSpec := {
+  let indexedTupleEventSpec : CompilationModel := {
     name := "IndexedTupleEventSupported"
     fields := []
     constructor := none
@@ -2140,7 +2131,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedFixedArrayEventSpec : ContractSpec := {
+  let indexedFixedArrayEventSpec : CompilationModel := {
     name := "IndexedFixedArrayEventSupported"
     fields := []
     constructor := none
@@ -2171,7 +2162,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedDynamicTupleEventSpec : ContractSpec := {
+  let indexedDynamicTupleEventSpec : CompilationModel := {
     name := "IndexedDynamicTupleEventSupported"
     fields := []
     constructor := none
@@ -2204,7 +2195,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedDynamicArrayEventSpec : ContractSpec := {
+  let indexedDynamicArrayEventSpec : CompilationModel := {
     name := "IndexedDynamicArrayEventSupported"
     fields := []
     constructor := none
@@ -2237,7 +2228,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedDynamicStaticTupleArrayEventSpec : ContractSpec := {
+  let indexedDynamicStaticTupleArrayEventSpec : CompilationModel := {
     name := "IndexedDynamicStaticTupleArrayEventSupported"
     fields := []
     constructor := none
@@ -2271,7 +2262,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedDynamicBytes32ArrayEventSpec : ContractSpec := {
+  let indexedDynamicBytes32ArrayEventSpec : CompilationModel := {
     name := "IndexedDynamicBytes32ArrayEventSupported"
     fields := []
     constructor := none
@@ -2305,7 +2296,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedDynamicBytesArrayEventSpec : ContractSpec := {
+  let indexedDynamicBytesArrayEventSpec : CompilationModel := {
     name := "IndexedDynamicBytesArrayEventSupported"
     fields := []
     constructor := none
@@ -2339,7 +2330,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedDynamicStaticFixedArrayEventSpec : ContractSpec := {
+  let indexedDynamicStaticFixedArrayEventSpec : CompilationModel := {
     name := "IndexedDynamicStaticFixedArrayEventSupported"
     fields := []
     constructor := none
@@ -2373,7 +2364,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let indexedDynamicCompositeArrayEventSpec : ContractSpec := {
+  let indexedDynamicCompositeArrayEventSpec : CompilationModel := {
     name := "IndexedDynamicCompositeArrayEventSupported"
     fields := []
     constructor := none
@@ -2406,7 +2397,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "log2(__evt_ptr, 0, __evt_topic0, __evt_topic1)"]
 
 #eval! do
-  let internalVoidReturnSpec : ContractSpec := {
+  let internalVoidReturnSpec : CompilationModel := {
     name := "InternalVoidReturnRejected"
     fields := []
     constructor := none
@@ -2428,7 +2419,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected internal void Stmt.return usage to fail compilation")
 
 #eval! do
-  let internalMultiReturnSpec : ContractSpec := {
+  let internalMultiReturnSpec : CompilationModel := {
     name := "InternalMultiReturnSupported"
     fields := []
     constructor := none
@@ -2470,7 +2461,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "return(0, 64)"]
 
 #eval! do
-  let internalReturnNameCollisionSpec : ContractSpec := {
+  let internalReturnNameCollisionSpec : CompilationModel := {
     name := "InternalReturnNameCollision"
     fields := []
     constructor := none
@@ -2501,7 +2492,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "__ret0_2 := __ret0_1"]
 
 #eval! do
-  let internalReturnTerminatesSpec : ContractSpec := {
+  let internalReturnTerminatesSpec : CompilationModel := {
     name := "InternalReturnTerminates"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -2534,7 +2525,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "sstore(0, 9)"]
 
 #eval! do
-  let exprInternalCallMultiReturnSpec : ContractSpec := {
+  let exprInternalCallMultiReturnSpec : CompilationModel := {
     name := "ExprInternalCallMultiReturnRejected"
     fields := []
     constructor := none
@@ -2563,7 +2554,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected Expr.internalCall on multi-return internal function to fail compilation")
 
 #eval! do
-  let internalCallAssignArityMismatchSpec : ContractSpec := {
+  let internalCallAssignArityMismatchSpec : CompilationModel := {
     name := "InternalCallAssignArityMismatch"
     fields := []
     constructor := none
@@ -2595,7 +2586,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected internalCallAssign arity mismatch to fail compilation")
 
 #eval! do
-  let internalCallAssignDuplicateTargetSpec : ContractSpec := {
+  let internalCallAssignDuplicateTargetSpec : CompilationModel := {
     name := "InternalCallAssignDuplicateTarget"
     fields := []
     constructor := none
@@ -2627,7 +2618,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected internalCallAssign duplicate target names to fail compilation")
 
 #eval! do
-  let internalDynamicParamRejectedSpec : ContractSpec := {
+  let internalDynamicParamRejectedSpec : CompilationModel := {
     name := "InternalDynamicParamRejected"
     fields := []
     constructor := none
@@ -2655,7 +2646,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected internal dynamic parameter to fail compilation")
 
 #eval! do
-  let multiReturnWithSingleReturnStmtSpec : ContractSpec := {
+  let multiReturnWithSingleReturnStmtSpec : CompilationModel := {
     name := "MultiReturnWithSingleStmtRejected"
     fields := []
     constructor := none
@@ -2677,7 +2668,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected single-value return statement on multi-return function to fail compilation")
 
 #eval! do
-  let returnValuesArityMismatchSpec : ContractSpec := {
+  let returnValuesArityMismatchSpec : CompilationModel := {
     name := "ReturnValuesArityMismatch"
     fields := []
     constructor := none
@@ -2698,7 +2689,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected returnValues arity mismatch to fail compilation")
 
 #eval! do
-  let missingReturnPathSpec : ContractSpec := {
+  let missingReturnPathSpec : CompilationModel := {
     name := "MissingReturnPathRejected"
     fields := []
     constructor := none
@@ -2719,7 +2710,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected missing return path on declared-return function to fail compilation")
 
 #eval! do
-  let bothBranchesReturnSpec : ContractSpec := {
+  let bothBranchesReturnSpec : CompilationModel := {
     name := "BothBranchesReturnAccepted"
     fields := []
     constructor := none
@@ -2742,7 +2733,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       IO.println "✓ both-branches return accepted"
 
 #eval! do
-  let branchMissingReturnSpec : ContractSpec := {
+  let branchMissingReturnSpec : CompilationModel := {
     name := "BranchMissingReturnRejected"
     fields := []
     constructor := none
@@ -2767,7 +2758,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected branch-missing-return function to fail compilation")
 
 #eval! do
-  let fallbackSpec : ContractSpec := {
+  let fallbackSpec : CompilationModel := {
     name := "FallbackSupported"
     fields := []
     constructor := none
@@ -2787,7 +2778,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertContains "fallback default branch emission" rendered ["default {", "/* fallback() */", "stop()"]
 
 #eval! do
-  let receiveSpec : ContractSpec := {
+  let receiveSpec : CompilationModel := {
     name := "ReceiveSupported"
     fields := []
     constructor := none
@@ -2811,7 +2802,7 @@ private def compilationModelAliasSpec : CompilationModel := {
         ["if iszero(__is_empty_calldata) {", "revert(0, 0)"]
 
 #eval! do
-  let receiveFallbackSpec : ContractSpec := {
+  let receiveFallbackSpec : CompilationModel := {
     name := "ReceiveFallbackSupported"
     fields := []
     constructor := none
@@ -2843,7 +2834,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "if __has_selector {"]
 
 #eval! do
-  let receiveNotPayableSpec : ContractSpec := {
+  let receiveNotPayableSpec : CompilationModel := {
     name := "ReceiveNotPayableRejected"
     fields := []
     constructor := none
@@ -2864,7 +2855,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected non-payable receive entrypoint to fail compilation")
 
 #eval! do
-  let explicitFieldSlotSpec : ContractSpec := {
+  let explicitFieldSlotSpec : CompilationModel := {
     name := "ExplicitFieldSlotSpec"
     fields := [
       { name := "a", ty := FieldType.uint256, slot := some 5 },
@@ -2900,7 +2891,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertContains "explicit slot mapping lowering" rendered ["mappingSlot(9, who)"]
 
 #eval! do
-  let aliasSlotMirrorWriteSpec : ContractSpec := {
+  let aliasSlotMirrorWriteSpec : CompilationModel := {
     name := "AliasSlotMirrorWriteSpec"
     fields := [
       { name := "a", ty := FieldType.uint256, slot := some 8, aliasSlots := [20] },
@@ -2931,7 +2922,7 @@ private def compilationModelAliasSpec : CompilationModel := {
         ["mappingSlot(9, __compat_key)", "mappingSlot(21, __compat_key)"]
 
 #eval! do
-  let mappingScratchBaseSpec : ContractSpec := {
+  let mappingScratchBaseSpec : CompilationModel := {
     name := "MappingScratchBaseSpec"
     fields := [
       { name := "balances", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9 }
@@ -2960,7 +2951,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertContains "mappingSlot helper custom keccak scratch address" renderedCustom ["keccak256(128, 64)"]
 
 #eval! do
-  let selectorOrderingSpec : ContractSpec := {
+  let selectorOrderingSpec : CompilationModel := {
     name := "SelectorOrderingSpec"
     fields := []
     constructor := none
@@ -2990,7 +2981,7 @@ private def compilationModelAliasSpec : CompilationModel := {
         renderedParity "case 0x10000000 {" "case 0x30000000 {"
 
 #eval! do
-  let helperOrderingSpec : ContractSpec := {
+  let helperOrderingSpec : CompilationModel := {
     name := "HelperOrderingSpec"
     fields := []
     constructor := none
@@ -3038,7 +3029,7 @@ private def compilationModelAliasSpec : CompilationModel := {
         throw (IO.userError "✗ solidity-parity profile should emit deterministic stable output across repeated runs")
 
 #eval! do
-  let slotAliasRangeMirrorWriteSpec : ContractSpec := {
+  let slotAliasRangeMirrorWriteSpec : CompilationModel := {
     name := "SlotAliasRangeMirrorWriteSpec"
     fields := [
       { name := "a", ty := FieldType.uint256, slot := some 8 },
@@ -3070,7 +3061,7 @@ private def compilationModelAliasSpec : CompilationModel := {
         ["mappingSlot(9, __compat_key)", "mappingSlot(21, __compat_key)"]
 
 #eval! do
-  let mappingWordSpec : ContractSpec := {
+  let mappingWordSpec : CompilationModel := {
     name := "MappingWordSpec"
     fields := [
       { name := "markets", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9, aliasSlots := [21] }
@@ -3101,7 +3092,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "sstore(add(mappingSlot(21, __compat_key), 2), __compat_value)"]
 
 #eval! do
-  let mappingPackedWordSpec : ContractSpec := {
+  let mappingPackedWordSpec : CompilationModel := {
     name := "MappingPackedWordSpec"
     fields := [
       { name := "markets", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9, aliasSlots := [21] }
@@ -3134,7 +3125,7 @@ private def compilationModelAliasSpec : CompilationModel := {
          "sstore(add(mappingSlot(21, __compat_key), 2), or(__compat_slot_cleared, shl(8, __compat_packed)))"]
 
 #eval! do
-  let invalidSlotAliasRangeSpec : ContractSpec := {
+  let invalidSlotAliasRangeSpec : CompilationModel := {
     name := "InvalidSlotAliasRangeSpec"
     fields := [{ name := "x", ty := FieldType.uint256, slot := some 8 }]
     slotAliasRanges := [{ sourceStart := 11, sourceEnd := 8, targetStart := 20 }]
@@ -3156,7 +3147,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid slotAliasRanges to fail compilation")
 
 #eval! do
-  let overlappingSlotAliasSourceSpec : ContractSpec := {
+  let overlappingSlotAliasSourceSpec : CompilationModel := {
     name := "OverlappingSlotAliasSourceSpec"
     fields := [{ name := "x", ty := FieldType.uint256, slot := some 8 }]
     slotAliasRanges := [
@@ -3181,7 +3172,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected overlapping slotAliasRanges source intervals to fail compilation")
 
 #eval! do
-  let slotAliasTargetConflictSpec : ContractSpec := {
+  let slotAliasTargetConflictSpec : CompilationModel := {
     name := "SlotAliasTargetConflictSpec"
     fields := [
       { name := "x", ty := FieldType.uint256, slot := some 8 },
@@ -3203,7 +3194,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected slotAliasRanges target conflict to fail compilation")
 
 #eval! do
-  let packedSubfieldSpec : ContractSpec := {
+  let packedSubfieldSpec : CompilationModel := {
     name := "PackedSubfieldSpec"
     fields := [
       { name := "lower", ty := FieldType.uint256, slot := some 4, packedBits := some { offset := 0, width := 128 } },
@@ -3244,7 +3235,7 @@ private def compilationModelAliasSpec : CompilationModel := {
         ["and(shr(0, sload(4)),", "and(shr(128, sload(4)),"]
 
 #eval! do
-  let overlappingPackedSubfieldSpec : ContractSpec := {
+  let overlappingPackedSubfieldSpec : CompilationModel := {
     name := "OverlappingPackedSubfieldSpec"
     fields := [
       { name := "a", ty := FieldType.uint256, slot := some 7, packedBits := some { offset := 0, width := 128 } },
@@ -3262,7 +3253,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected overlapping packed subfields to fail compilation")
 
 #eval! do
-  let invalidPackedBitsSpec : ContractSpec := {
+  let invalidPackedBitsSpec : CompilationModel := {
     name := "InvalidPackedBitsSpec"
     fields := [
       { name := "x", ty := FieldType.uint256, slot := some 2, packedBits := some { offset := 200, width := 80 } }
@@ -3279,7 +3270,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected invalid packedBits to fail compilation")
 
 #eval! do
-  let packedMappingRejectedSpec : ContractSpec := {
+  let packedMappingRejectedSpec : CompilationModel := {
     name := "PackedMappingRejectedSpec"
     fields := [
       { name := "m", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 5, packedBits := some { offset := 0, width := 128 } }
@@ -3296,7 +3287,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected mapping packedBits to fail compilation")
 
 #eval! do
-  let conflictingFieldSlotsSpec : ContractSpec := {
+  let conflictingFieldSlotsSpec : CompilationModel := {
     name := "ConflictingFieldSlotsSpec"
     fields := [
       { name := "x", ty := FieldType.uint256, slot := some 3 },
@@ -3320,7 +3311,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected conflicting explicit field slots to fail compilation")
 
 #eval! do
-  let conflictingAliasSlotsSpec : ContractSpec := {
+  let conflictingAliasSlotsSpec : CompilationModel := {
     name := "ConflictingAliasSlotsSpec"
     fields := [
       { name := "x", ty := FieldType.uint256, slot := some 3, aliasSlots := [7] },
@@ -3344,7 +3335,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected conflicting alias slots to fail compilation")
 
 #eval! do
-  let reservedSlotsSpec : ContractSpec := {
+  let reservedSlotsSpec : CompilationModel := {
     name := "ReservedSlotsSpec"
     fields := [
       { name := "x", ty := FieldType.uint256, slot := some 3 },
@@ -3367,7 +3358,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       IO.println "✓ reserved slot ranges accepted when disjoint from field write slots"
 
 #eval! do
-  let reservedSlotConflictSpec : ContractSpec := {
+  let reservedSlotConflictSpec : CompilationModel := {
     name := "ReservedSlotConflictSpec"
     fields := [
       { name := "x", ty := FieldType.uint256, slot := some 21 }
@@ -3391,7 +3382,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected reserved slot conflict to fail compilation")
 
 #eval! do
-  let overlappingReservedRangesSpec : ContractSpec := {
+  let overlappingReservedRangesSpec : CompilationModel := {
     name := "OverlappingReservedRangesSpec"
     fields := [{ name := "x", ty := FieldType.uint256, slot := some 3 }]
     reservedSlotRanges := [{ start := 20, end_ := 23 }, { start := 23, end_ := 30 }]
@@ -3413,7 +3404,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected overlapping reserved slot ranges to fail compilation")
 
 #eval! do
-  let undeclaredParamReferenceSpec : ContractSpec := {
+  let undeclaredParamReferenceSpec : CompilationModel := {
     name := "UndeclaredParamReferenceSpec"
     fields := []
     constructor := none
@@ -3434,7 +3425,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected undeclared Expr.param to fail compilation")
 
 #eval! do
-  let undeclaredLocalReferenceSpec : ContractSpec := {
+  let undeclaredLocalReferenceSpec : CompilationModel := {
     name := "UndeclaredLocalReferenceSpec"
     fields := []
     constructor := none
@@ -3455,7 +3446,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected undeclared Expr.localVar to fail compilation")
 
 #eval! do
-  let functionConstructorArgSpec : ContractSpec := {
+  let functionConstructorArgSpec : CompilationModel := {
     name := "FunctionConstructorArgSpec"
     fields := []
     constructor := none
@@ -3476,7 +3467,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected function Expr.constructorArg to fail compilation")
 
 #eval! do
-  let constructorArgOutOfRangeSpec : ContractSpec := {
+  let constructorArgOutOfRangeSpec : CompilationModel := {
     name := "ConstructorArgOutOfRangeSpec"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := some {
@@ -3501,7 +3492,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected out-of-range constructor Expr.constructorArg to fail compilation")
 
 #eval! do
-  let constructorArgInRangeSpec : ContractSpec := {
+  let constructorArgInRangeSpec : CompilationModel := {
     name := "ConstructorArgInRangeSpec"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := some {
@@ -3524,7 +3515,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       IO.println "✓ constructor Expr.constructorArg in-range accepted"
 
 #eval! do
-  let unknownArrayLengthParamSpec : ContractSpec := {
+  let unknownArrayLengthParamSpec : CompilationModel := {
     name := "UnknownArrayLengthParamSpec"
     fields := []
     constructor := none
@@ -3545,7 +3536,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected Expr.arrayLength unknown parameter to fail compilation")
 
 #eval! do
-  let nonArrayLengthParamSpec : ContractSpec := {
+  let nonArrayLengthParamSpec : CompilationModel := {
     name := "NonArrayLengthParamSpec"
     fields := []
     constructor := none
@@ -3567,7 +3558,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected Expr.arrayLength non-array parameter to fail compilation")
 
 #eval! do
-  let nonArrayElementParamSpec : ContractSpec := {
+  let nonArrayElementParamSpec : CompilationModel := {
     name := "NonArrayElementParamSpec"
     fields := []
     constructor := none
@@ -3589,7 +3580,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected Expr.arrayElement non-array parameter to fail compilation")
 
 #eval! do
-  let assignBeforeDeclarationSpec : ContractSpec := {
+  let assignBeforeDeclarationSpec : CompilationModel := {
     name := "AssignBeforeDeclarationSpec"
     fields := []
     constructor := none
@@ -3610,7 +3601,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected assignVar before declaration to fail compilation")
 
 #eval! do
-  let invalidMutabilitySpec : ContractSpec := {
+  let invalidMutabilitySpec : CompilationModel := {
     name := "InvalidMutabilitySpec"
     fields := []
     constructor := none
@@ -3633,7 +3624,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected payable+view mutability conflict to fail compilation")
 
 #eval! do
-  let viewWritesStateSpec : ContractSpec := {
+  let viewWritesStateSpec : CompilationModel := {
     name := "ViewWritesStateSpec"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -3655,7 +3646,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected view function with state write to fail compilation")
 
 #eval! do
-  let pureReadsStateSpec : ContractSpec := {
+  let pureReadsStateSpec : CompilationModel := {
     name := "PureReadsStateSpec"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -3677,7 +3668,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected pure function with state read to fail compilation")
 
 #eval! do
-  let pureWritesStateSpec : ContractSpec := {
+  let pureWritesStateSpec : CompilationModel := {
     name := "PureWritesStateSpec"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -3699,7 +3690,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected pure function with state write to fail compilation")
 
 #eval! do
-  let pureReadsEnvSpec : ContractSpec := {
+  let pureReadsEnvSpec : CompilationModel := {
     name := "PureReadsEnvSpec"
     fields := []
     constructor := none
@@ -3721,7 +3712,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected pure function with environment read to fail compilation")
 
 #eval! do
-  let invalidExclusiveMutabilitySpec : ContractSpec := {
+  let invalidExclusiveMutabilitySpec : CompilationModel := {
     name := "InvalidExclusiveMutabilitySpec"
     fields := []
     constructor := none
@@ -3744,7 +3735,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected view+pure mutability conflict to fail compilation")
 
 #eval! do
-  let viewEmitsEventSpec : ContractSpec := {
+  let viewEmitsEventSpec : CompilationModel := {
     name := "ViewEmitsEventSpec"
     fields := []
     constructor := none
@@ -3767,7 +3758,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected view function emitting event to fail compilation")
 
 #eval! do
-  let pureEmitsEventSpec : ContractSpec := {
+  let pureEmitsEventSpec : CompilationModel := {
     name := "PureEmitsEventSpec"
     fields := []
     constructor := none
@@ -3790,7 +3781,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected pure function emitting event to fail compilation")
 
 #eval! do
-  let duplicateFunctionParamSpec : ContractSpec := {
+  let duplicateFunctionParamSpec : CompilationModel := {
     name := "DuplicateFunctionParamSpec"
     fields := []
     constructor := none
@@ -3814,7 +3805,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected duplicate function params to fail compilation")
 
 #eval! do
-  let duplicateConstructorParamSpec : ContractSpec := {
+  let duplicateConstructorParamSpec : CompilationModel := {
     name := "DuplicateConstructorParamSpec"
     fields := []
     constructor := some {
@@ -3835,7 +3826,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected duplicate constructor params to fail compilation")
 
 #eval! do
-  let duplicateEventParamSpec : ContractSpec := {
+  let duplicateEventParamSpec : CompilationModel := {
     name := "DuplicateEventParamSpec"
     fields := []
     constructor := none
@@ -3857,7 +3848,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected duplicate event params to fail compilation")
 
 #eval! do
-  let unknownExternalTargetSpec : ContractSpec := {
+  let unknownExternalTargetSpec : CompilationModel := {
     name := "UnknownExternalTargetSpec"
     fields := []
     constructor := none
@@ -3879,7 +3870,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected unknown external target to fail compilation")
 
 #eval! do
-  let declaredExternalTargetSpec : ContractSpec := {
+  let declaredExternalTargetSpec : CompilationModel := {
     name := "DeclaredExternalTargetSpec"
     fields := []
     constructor := none
@@ -3905,7 +3896,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       IO.println "✓ declared external target accepted"
 
 #eval! do
-  let externalArityMismatchSpec : ContractSpec := {
+  let externalArityMismatchSpec : CompilationModel := {
     name := "ExternalArityMismatchSpec"
     fields := []
     constructor := none
@@ -3933,7 +3924,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected external arity mismatch to fail compilation")
 
 #eval! do
-  let externalVoidReturnInExprSpec : ContractSpec := {
+  let externalVoidReturnInExprSpec : CompilationModel := {
     name := "ExternalVoidReturnInExprSpec"
     fields := []
     constructor := none
@@ -3961,7 +3952,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected Expr.externalCall with void declaration to fail compilation")
 
 #eval! do
-  let externalMultiReturnInExprSpec : ContractSpec := {
+  let externalMultiReturnInExprSpec : CompilationModel := {
     name := "ExternalMultiReturnInExprSpec"
     fields := []
     constructor := none
@@ -3990,7 +3981,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected Expr.externalCall with multi-return declaration to fail compilation")
 
 #eval! do
-  let helperNameCollisionSpec : ContractSpec := {
+  let helperNameCollisionSpec : CompilationModel := {
     name := "HelperNameCollisionSpec"
     fields := [{ name := "balances", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address) }]
     constructor := none
@@ -4018,7 +4009,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected helper-name external collision to fail compilation")
 
 #eval! do
-  let helperNameAllowedWhenNotGeneratedSpec : ContractSpec := {
+  let helperNameAllowedWhenNotGeneratedSpec : CompilationModel := {
     name := "HelperNameAllowedWhenNotGeneratedSpec"
     fields := []
     constructor := none
@@ -4044,7 +4035,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       IO.println "✓ helper-name external accepted when helper is not generated"
 
 #eval! do
-  let arrayHelperNameAllowedWhenNotGeneratedSpec : ContractSpec := {
+  let arrayHelperNameAllowedWhenNotGeneratedSpec : CompilationModel := {
     name := "ArrayHelperNameAllowedWhenNotGeneratedSpec"
     fields := []
     constructor := none
@@ -4074,7 +4065,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       IO.println "✓ array-helper external accepted when helper is not generated"
 
 #eval! do
-  let internalPrefixCollisionSpec : ContractSpec := {
+  let internalPrefixCollisionSpec : CompilationModel := {
     name := "InternalPrefixCollisionSpec"
     fields := []
     constructor := none
@@ -4102,7 +4093,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected internal-prefix external collision to fail compilation")
 
 #eval! do
-  let invalidSpecialEntrypointMutabilitySpec : ContractSpec := {
+  let invalidSpecialEntrypointMutabilitySpec : CompilationModel := {
     name := "InvalidSpecialEntrypointMutabilitySpec"
     fields := []
     constructor := none
@@ -4124,7 +4115,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected fallback view/pure mutability conflict to fail compilation")
 
 #eval! do
-  let iteNameCollisionSpec : ContractSpec := {
+  let iteNameCollisionSpec : CompilationModel := {
     name := "IteNameCollision"
     fields := []
     constructor := none
@@ -4151,7 +4142,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       assertNotContains "ite temp avoids local collision" rendered ["mstore(0, __ite_cond_1)"]
 
 #eval! do
-  let badConstructorReturnSpec : ContractSpec := {
+  let badConstructorReturnSpec : CompilationModel := {
     name := "BadConstructorReturn"
     fields := []
     constructor := some {
@@ -4167,12 +4158,12 @@ private def compilationModelAliasSpec : CompilationModel := {
   | .error err =>
       if !contains err "constructor must not return runtime data directly" then
         throw (IO.userError s!"✗ constructor return rejection diagnostic mismatch: {err}")
-      IO.println "✓ constructor return(...) rejected in ContractSpec"
+      IO.println "✓ constructor return(...) rejected in CompilationModel"
   | .ok _ =>
       throw (IO.userError "✗ expected constructor return(...) to be rejected")
 
 #eval! do
-  let duplicateLetVarSpec : ContractSpec := {
+  let duplicateLetVarSpec : CompilationModel := {
     name := "DuplicateLetVar"
     fields := []
     constructor := none
@@ -4197,7 +4188,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected duplicate letVar names to fail compilation")
 
 #eval! do
-  let letVarShadowingParamSpec : ContractSpec := {
+  let letVarShadowingParamSpec : CompilationModel := {
     name := "LetVarShadowingParam"
     fields := []
     constructor := none
@@ -4221,7 +4212,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected letVar parameter shadowing to fail compilation")
 
 #eval! do
-  let selSpec : ContractSpec := {
+  let selSpec : CompilationModel := {
     name := "SelectorCheckedCompileSpec"
     fields := []
     constructor := none
@@ -4247,7 +4238,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected compileChecked to reject mismatched selectors")
 
 #eval! do
-  let externalModelSpec : ContractSpec := {
+  let externalModelSpec : CompilationModel := {
     name := "ExternalModelSpec"
     fields := []
     constructor := none
@@ -4277,7 +4268,7 @@ private def compilationModelAliasSpec : CompilationModel := {
   IO.println "✓ SpecInterpreter externalFns model required and applied"
 
 #eval! do
-  let internalExternalSpec : ContractSpec := {
+  let internalExternalSpec : CompilationModel := {
     name := "InternalExternalSpec"
     fields := []
     constructor := none
@@ -4327,7 +4318,7 @@ private def compilationModelAliasSpec : CompilationModel := {
   IO.println "✓ SpecInterpreter fuel path enforces external model in internal calls"
 
 #eval! do
-  let lowLevelSpec : ContractSpec := {
+  let lowLevelSpec : CompilationModel := {
     name := "LowLevelSpecInterpreterGuard"
     fields := []
     constructor := none
@@ -4357,7 +4348,7 @@ private def compilationModelAliasSpec : CompilationModel := {
   IO.println "✓ SpecInterpreter rejects unsupported low-level call semantics"
 
 #eval! do
-  let lowLevelFuelSpec : ContractSpec := {
+  let lowLevelFuelSpec : CompilationModel := {
     name := "LowLevelFuelInterpreterGuard"
     fields := []
     constructor := none
@@ -4389,7 +4380,7 @@ private def compilationModelAliasSpec : CompilationModel := {
       throw (IO.userError "✗ expected fuel-based SpecInterpreter to reject unsupported low-level returndata semantics")
 
 #eval! do
-  let layoutSpec : ContractSpec := {
+  let layoutSpec : CompilationModel := {
     name := "LayoutAwareInterpreter"
     fields := [
       { name := "f", ty := FieldType.uint256, slot := some 5, aliasSlots := [7] },
@@ -4448,7 +4439,7 @@ private def compilationModelAliasSpec : CompilationModel := {
   IO.println "✓ SpecInterpreter honors explicit slots, alias mirrors, slotAliasRanges, and packed storage semantics"
 
 #eval! do
-  let mappingPackedLayoutSpec : ContractSpec := {
+  let mappingPackedLayoutSpec : CompilationModel := {
     name := "MappingPackedLayoutSpec"
     fields := [
       { name := "markets", ty := FieldType.mappingTyped (MappingType.simple MappingKeyType.address), slot := some 9, aliasSlots := [21] }
@@ -4497,7 +4488,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- rawLog with 0 topics → log0
 #eval! do
-  let rawLog0Spec : ContractSpec := {
+  let rawLog0Spec : CompilationModel := {
     name := "RawLog0"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4524,7 +4515,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- rawLog with 1 topic → log1
 #eval! do
-  let rawLog1Spec : ContractSpec := {
+  let rawLog1Spec : CompilationModel := {
     name := "RawLog1"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4551,7 +4542,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- ===== ECM safeTransfer compilation test =====
 #eval! do
-  let safeTransferSpec : ContractSpec := {
+  let safeTransferSpec : CompilationModel := {
     name := "SafeTransferTest"
     fields := []
     constructor := none
@@ -4590,7 +4581,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- ===== ECM safeTransferFrom compilation test =====
 #eval! do
-  let safeTransferFromSpec : ContractSpec := {
+  let safeTransferFromSpec : CompilationModel := {
     name := "SafeTransferFromTest"
     fields := []
     constructor := none
@@ -4629,7 +4620,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- ===== ECM callback compilation test =====
 #eval! do
-  let callbackSpec : ContractSpec := {
+  let callbackSpec : CompilationModel := {
     name := "CallbackTest"
     fields := [
       { name := "balance", ty := FieldType.uint256 }
@@ -4678,7 +4669,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- ===== ECM callback with multiple static args =====
 #eval! do
-  let multiArgCallbackSpec : ContractSpec := {
+  let multiArgCallbackSpec : CompilationModel := {
     name := "MultiArgCallbackTest"
     fields := []
     constructor := none
@@ -4717,7 +4708,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- rawLog with 3 topics → log3
 #eval! do
-  let rawLog3Spec : ContractSpec := {
+  let rawLog3Spec : CompilationModel := {
     name := "RawLog3"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4747,7 +4738,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- rawLog with 4 topics → log4
 #eval! do
-  let rawLog4Spec : ContractSpec := {
+  let rawLog4Spec : CompilationModel := {
     name := "RawLog4"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4778,7 +4769,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- rawLog with 5 topics → compilation error
 #eval! do
-  let rawLog5Spec : ContractSpec := {
+  let rawLog5Spec : CompilationModel := {
     name := "RawLog5"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4809,7 +4800,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- rawLog in view function → rejected (writes state)
 #eval! do
-  let rawLogViewSpec : ContractSpec := {
+  let rawLogViewSpec : CompilationModel := {
     name := "RawLogView"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4836,7 +4827,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- ===== ECM safeTransfer validation: rejects in view function =====
 #eval! do
-  let safeTransferViewSpec : ContractSpec := {
+  let safeTransferViewSpec : CompilationModel := {
     name := "SafeTransferViewReject"
     fields := []
     constructor := none
@@ -4860,7 +4851,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- ===== ECM callback rejects in view function =====
 #eval! do
-  let viewCallbackSpec : ContractSpec := {
+  let viewCallbackSpec : CompilationModel := {
     name := "ViewCallbackReject"
     fields := []
     constructor := none
@@ -4888,7 +4879,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: mulDivDown compiles to div(mul(a, b), c)
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "MulDivDown"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4909,7 +4900,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: mulDivUp compiles to div(add(mul(a, b), sub(c, 1)), c)
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "MulDivUp"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4930,7 +4921,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: wMulDown compiles to div(mul(a, b), 1000000000000000000)
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "WMulDown"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4951,7 +4942,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: wDivUp compiles correctly
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "WDivUp"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4972,7 +4963,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: min compiles to sub(a, mul(sub(a, b), gt(a, b)))
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "MinExpr"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -4993,7 +4984,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: max compiles to add(a, mul(sub(b, a), gt(b, a)))
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "MaxExpr"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -5014,7 +5005,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: nested arithmetic helpers compile correctly
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "NestedArith"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -5047,7 +5038,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: SpecInterpreter evaluates mulDivDown
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "MulDivInterp"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -5068,7 +5059,7 @@ private def compilationModelAliasSpec : CompilationModel := {
 
 -- Test: SpecInterpreter evaluates min/max
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "MinMaxInterp"
     fields := [{ name := "x", ty := FieldType.uint256 }]
     constructor := none
@@ -5103,7 +5094,7 @@ private def compilationModelAliasSpec : CompilationModel := {
   IO.println "✓ SpecInterpreter evaluates min/max correctly"
 
 -- ===== ECM ecrecover compilation =====
-private def ecrecoverSpec : ContractSpec := {
+private def ecrecoverSpec : CompilationModel := {
   name := "EcrecoverSpec"
   fields := [{ name := "recovered", ty := FieldType.address }]
   constructor := none
@@ -5157,7 +5148,7 @@ private def ecrecoverSpec : ContractSpec := {
 
 -- ===== ECM ecrecover rejects in pure function =====
 #eval! do
-  let pureEcrecoverSpec : ContractSpec := {
+  let pureEcrecoverSpec : CompilationModel := {
     name := "PureEcrecoverReject"
     fields := []
     constructor := none
@@ -5192,7 +5183,7 @@ private def ecrecoverSpec : ContractSpec := {
 -- ================================================================
 
 -- Test: externalCallBind compiles to letMany with external function name
-private def externalCallBindSpec : ContractSpec := {
+private def externalCallBindSpec : CompilationModel := {
   name := "ExternalCallBindSpec"
   fields := [{ name := "x", ty := FieldType.uint256 }]
   constructor := none
@@ -5247,7 +5238,7 @@ private def externalCallBindSpec : ContractSpec := {
 -- Expr.extcodesize tests
 -- ========================================================
 
-private def extcodesizeSpec : ContractSpec := {
+private def extcodesizeSpec : CompilationModel := {
   name := "ExtcodesizeSpec"
   fields := [{ name := "target", ty := FieldType.uint256 }]
   constructor := none
@@ -5282,7 +5273,7 @@ private def extcodesizeSpec : ContractSpec := {
 -- ECM withReturn: ABI-encoded external call with return (#926)
 
 -- Test: externalCallWithReturn compiles to mstore+call+returndatacopy pattern
-private def externalCallWithReturnSpec : ContractSpec := {
+private def externalCallWithReturnSpec : CompilationModel := {
   name := "ExternalCallWithReturn"
   fields := []
   constructor := none
@@ -5359,7 +5350,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: externalCallBind validation rejects mismatched arity
 #eval! do
-  let badSpec : ContractSpec := {
+  let badSpec : CompilationModel := {
     name := "BadAritySpec"
     fields := []
     constructor := none
@@ -5420,7 +5411,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: Expr.extcodesize rejected in pure functions
 #eval do
-  let pureExtcodesizeSpec : ContractSpec := {
+  let pureExtcodesizeSpec : CompilationModel := {
     name := "PureExtcodesizeSpec"
     fields := []
     constructor := none
@@ -5445,7 +5436,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: externalCallBind validation rejects unknown external
 #eval! do
-  let badSpec : ContractSpec := {
+  let badSpec : CompilationModel := {
     name := "BadExternalSpec"
     fields := []
     constructor := none
@@ -5471,7 +5462,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: externalCallBind validation rejects duplicate result vars
 #eval! do
-  let badSpec : ContractSpec := {
+  let badSpec : CompilationModel := {
     name := "DupVarSpec"
     fields := []
     constructor := none
@@ -5568,7 +5559,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: externalCallWithReturn rejects result variable shadowing a parameter
 #eval! do
-  let shadowSpec : ContractSpec := {
+  let shadowSpec : CompilationModel := {
     name := "ShadowParam"
     fields := []
     constructor := none
@@ -5594,7 +5585,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: externalCallWithReturn rejects redeclaring existing local variable
 #eval! do
-  let redeclareSpec : ContractSpec := {
+  let redeclareSpec : CompilationModel := {
     name := "RedeclareLocal"
     fields := []
     constructor := none
@@ -5621,7 +5612,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: staticcall external call allows view mutability
 #eval! do
-  let viewSpec : ContractSpec := {
+  let viewSpec : CompilationModel := {
     name := "ViewStaticCall"
     fields := []
     constructor := none
@@ -5645,7 +5636,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 
 -- Test: multiple externalCallWithReturn in same function (no duplicate let collision)
 #eval! do
-  let multiCallSpec : ContractSpec := {
+  let multiCallSpec : CompilationModel := {
     name := "MultiExternalCall"
     fields := []
     constructor := none
@@ -5674,7 +5665,7 @@ private def externalCallWithReturnSpec : ContractSpec := {
 -- Calldata access primitives: Expr.calldatasize, Expr.calldataload, Stmt.calldatacopy
 -- ============================================================================
 
-private def calldataAccessSpec : ContractSpec := {
+private def calldataAccessSpec : CompilationModel := {
   name := "CalldataAccessSpec"
   fields := [{ name := "lastSize", ty := FieldType.uint256 }]
   constructor := none
@@ -5720,7 +5711,7 @@ private def calldataAccessSpec : ContractSpec := {
       IO.println s!"✓ calldata access primitives compile successfully"
 
 -- Test: calldatasize and calldataload rejected in pure functions
-private def pureCalldataSpec : ContractSpec := {
+private def pureCalldataSpec : CompilationModel := {
   name := "PureCalldataSpec"
   fields := []
   constructor := none
@@ -5747,7 +5738,7 @@ private def pureCalldataSpec : ContractSpec := {
       IO.println "✓ calldatasize correctly rejected in pure function"
 
 -- Test: calldataload with nested expr in view function
-private def viewCalldataloadSpec : ContractSpec := {
+private def viewCalldataloadSpec : CompilationModel := {
   name := "ViewCalldataloadSpec"
   fields := [{ name := "data", ty := FieldType.uint256 }]
   constructor := none
@@ -5786,7 +5777,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test: mapping2Word read compiles to sload(add(mappingSlot(mappingSlot(slot, key1), key2), wordOffset))
 #eval! do
-  let mapping2WordSpec : ContractSpec := {
+  let mapping2WordSpec : CompilationModel := {
     name := "Mapping2WordSpec"
     fields := [
       { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
@@ -5818,7 +5809,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test: mapping2Word with wordOffset 0 omits the add
 #eval! do
-  let mapping2WordZeroSpec : ContractSpec := {
+  let mapping2WordZeroSpec : CompilationModel := {
     name := "Mapping2WordZeroSpec"
     fields := [
       { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
@@ -5847,7 +5838,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test: setMapping2Word with alias slots writes to both canonical and alias
 #eval! do
-  let mapping2WordAliasSpec : ContractSpec := {
+  let mapping2WordAliasSpec : CompilationModel := {
     name := "Mapping2WordAliasSpec"
     fields := [
       { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3, aliasSlots := [15] }
@@ -5873,7 +5864,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test: mapping2Word view function allowed, pure function rejected
 #eval! do
-  let mapping2WordViewSpec : ContractSpec := {
+  let mapping2WordViewSpec : CompilationModel := {
     name := "Mapping2WordViewSpec"
     fields := [
       { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
@@ -5893,7 +5884,7 @@ private def viewCalldataloadSpec : ContractSpec := {
   | .error _ => throw (IO.userError "✗ mapping2Word view function should compile")
   | .ok _ => IO.println "✓ mapping2Word allowed in view function"
 
-  let mapping2WordPureSpec : ContractSpec := {
+  let mapping2WordPureSpec : CompilationModel := {
     name := "Mapping2WordPureSpec"
     fields := [
       { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
@@ -5915,7 +5906,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test: SpecInterpreter for mapping2Word read/write
 #eval! do
-  let mapping2WordInterpSpec : ContractSpec := {
+  let mapping2WordInterpSpec : CompilationModel := {
     name := "Mapping2WordInterpSpec"
     fields := [
       { name := "positions", ty := FieldType.mappingTyped (MappingType.nested MappingKeyType.uint256 MappingKeyType.address), slot := some 3 }
@@ -5954,7 +5945,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- ===== ECM ecrecover result variable shadow check =====
 #eval! do
-  let shadowSpec : ContractSpec := {
+  let shadowSpec : CompilationModel := {
     name := "ShadowTest"
     fields := []
     constructor := none
@@ -5999,7 +5990,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 1: Basic codegen — branchless ternary pattern in rendered Yul
 #eval! do
-  let exprIteCodegenSpec : ContractSpec := {
+  let exprIteCodegenSpec : CompilationModel := {
     name := "ExprIteCodegenSpec"
     fields := [
       { name := "x", ty := FieldType.uint256, slot := some 0 }
@@ -6025,7 +6016,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 2: Expr.ite with literal condition (true path)
 #eval! do
-  let exprIteLiteralSpec : ContractSpec := {
+  let exprIteLiteralSpec : CompilationModel := {
     name := "ExprIteLiteralSpec"
     fields := []
     constructor := none
@@ -6048,7 +6039,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 3: Expr.ite nested inside arithmetic
 #eval! do
-  let exprIteNestedSpec : ContractSpec := {
+  let exprIteNestedSpec : CompilationModel := {
     name := "ExprIteNestedSpec"
     fields := []
     constructor := none
@@ -6072,7 +6063,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 4: Expr.ite with storage read — rejected in pure function
 #eval! do
-  let exprItePureRejectedSpec : ContractSpec := {
+  let exprItePureRejectedSpec : CompilationModel := {
     name := "ExprItePureRejectedSpec"
     fields := [
       { name := "val", ty := FieldType.uint256, slot := some 0 }
@@ -6097,7 +6088,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 5: Expr.ite with storage read — accepted in view function
 #eval! do
-  let exprIteViewAcceptedSpec : ContractSpec := {
+  let exprIteViewAcceptedSpec : CompilationModel := {
     name := "ExprIteViewAcceptedSpec"
     fields := [
       { name := "val", ty := FieldType.uint256, slot := some 0 }
@@ -6120,7 +6111,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 6: SpecInterpreter — Expr.ite evaluates true branch
 #eval! do
-  let exprIteInterpreterSpec : ContractSpec := {
+  let exprIteInterpreterSpec : CompilationModel := {
     name := "ExprIteInterpreterSpec"
     fields := [
       { name := "threshold", ty := FieldType.uint256, slot := some 0 }
@@ -6164,7 +6155,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 7: SpecInterpreter — Expr.ite with zero condition
 #eval! do
-  let exprIteZeroSpec : ContractSpec := {
+  let exprIteZeroSpec : CompilationModel := {
     name := "ExprIteZeroSpec"
     fields := []
     constructor := none
@@ -6196,7 +6187,7 @@ private def viewCalldataloadSpec : ContractSpec := {
 
 -- Test 8: Expr.ite rejects call-like operands in branches (Issue #748 parity)
 #eval! do
-  let exprIteCallLikeSpec : ContractSpec := {
+  let exprIteCallLikeSpec : CompilationModel := {
     name := "ExprIteCallLikeRejected"
     fields := []
     constructor := none
@@ -6224,14 +6215,14 @@ private def viewCalldataloadSpec : ContractSpec := {
 -- ===== ECM Compilation Smoke Tests =====
 -- Verify that ECM modules compile correctly through the full pipeline.
 
-private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String := do
+private def renderSpec (spec : CompilationModel) (selectors : List Nat) : IO String := do
   match compile spec selectors with
   | .error err => throw (IO.userError s!"compile failed: {err}")
   | .ok ir => pure (Yul.render (emitYul ir))
 
 -- ===== ECM smoke test: safeTransfer compiles =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "SafeTransferSmoke"
     fields := []
     constructor := none
@@ -6251,7 +6242,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM smoke test: safeTransferFrom compiles =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "SafeTransferFromSmoke"
     fields := []
     constructor := none
@@ -6271,7 +6262,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM smoke test: ecrecover compiles =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "EcrecoverSmoke"
     fields := [{ name := "recovered", ty := FieldType.address }]
     constructor := none
@@ -6292,7 +6283,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM smoke test: withReturn (staticcall) compiles =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "ExternalCallSmoke"
     fields := []
     constructor := none
@@ -6312,7 +6303,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM smoke test: withReturn (multi-arg) compiles =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "ExternalCallMultiSmoke"
     fields := []
     constructor := none
@@ -6332,7 +6323,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM smoke test: callback compiles =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "CallbackSmoke"
     fields := [{ name := "balance", ty := FieldType.uint256 }]
     constructor := none
@@ -6353,7 +6344,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM smoke test: callback (multi-arg) compiles =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "CallbackMultiSmoke"
     fields := [{ name := "balance", ty := FieldType.uint256 }]
     constructor := none
@@ -6373,7 +6364,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM callback rejects oversized selector =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "CallbackOversizedSelectorTest"
     fields := []
     constructor := none
@@ -6397,7 +6388,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- ===== ECM safeApprove compiles (new module, no old equivalent) =====
 #eval! do
-  let spec : ContractSpec := {
+  let spec : CompilationModel := {
     name := "SafeApproveTest"
     fields := []
     constructor := none
@@ -6426,7 +6417,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 1: Compiler produces correct Yul for struct member read/write (single key)
 #eval! do
-  let structSpec : ContractSpec := {
+  let structSpec : CompilationModel := {
     name := "StructSingleKey"
     fields := [
       { name := "data", ty := FieldType.mappingStruct MappingKeyType.address [
@@ -6476,7 +6467,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 2: Compiler produces correct Yul for packed struct members (single key)
 #eval! do
-  let packedStructSpec : ContractSpec := {
+  let packedStructSpec : CompilationModel := {
     name := "PackedStruct"
     fields := [
       { name := "market", ty := FieldType.mappingStruct MappingKeyType.uint256 [
@@ -6526,7 +6517,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 3: SpecInterpreter read/write for struct members (single key)
 #eval! do
-  let structInterpSpec : ContractSpec := {
+  let structInterpSpec : CompilationModel := {
     name := "StructInterp"
     fields := [
       { name := "positions", ty := FieldType.mappingStruct MappingKeyType.address [
@@ -6582,7 +6573,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 4: SpecInterpreter packed struct member read/write
 #eval! do
-  let packedStructInterpSpec : ContractSpec := {
+  let packedStructInterpSpec : CompilationModel := {
     name := "PackedStructInterp"
     fields := [
       { name := "info", ty := FieldType.mappingStruct MappingKeyType.uint256 [
@@ -6638,7 +6629,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 5: Double-key struct (mappingStruct2) compilation
 #eval! do
-  let struct2Spec : ContractSpec := {
+  let struct2Spec : CompilationModel := {
     name := "StructDoubleKey"
     fields := [
       { name := "positions", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.address [
@@ -6679,7 +6670,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 6: SpecInterpreter double-key struct read/write
 #eval! do
-  let struct2InterpSpec : ContractSpec := {
+  let struct2InterpSpec : CompilationModel := {
     name := "Struct2Interp"
     fields := [
       { name := "pos", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.address [
@@ -6736,7 +6727,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 7: Validation rejects duplicate struct member names
 #eval! do
-  let dupMemberSpec : ContractSpec := {
+  let dupMemberSpec : CompilationModel := {
     name := "DupMember"
     fields := [
       { name := "data", ty := FieldType.mappingStruct MappingKeyType.address [
@@ -6764,7 +6755,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 8: Validation rejects invalid packed range in struct member
 #eval! do
-  let badPackedSpec : ContractSpec := {
+  let badPackedSpec : CompilationModel := {
     name := "BadPacked"
     fields := [
       { name := "data", ty := FieldType.mappingStruct MappingKeyType.uint256 [
@@ -6791,7 +6782,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 9: Validation rejects overlapping packed ranges in same struct word
 #eval! do
-  let overlapPackedSpec : ContractSpec := {
+  let overlapPackedSpec : CompilationModel := {
     name := "OverlapPacked"
     fields := [
       { name := "data", ty := FieldType.mappingStruct MappingKeyType.uint256 [
@@ -6819,7 +6810,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 10: Validation rejects full-word and packed member sharing same word
 #eval! do
-  let fullAndPackedSpec : ContractSpec := {
+  let fullAndPackedSpec : CompilationModel := {
     name := "FullAndPacked"
     fields := [
       { name := "data", ty := FieldType.mappingStruct MappingKeyType.address [
@@ -6847,7 +6838,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 11: SpecInterpreter struct member keys do not collide across key/wordOffset pairs
 #eval! do
-  let structCollisionSpec : ContractSpec := {
+  let structCollisionSpec : CompilationModel := {
     name := "StructCollision"
     fields := [
       { name := "data", ty := FieldType.mappingStruct MappingKeyType.uint256 [
@@ -6882,7 +6873,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 12: SpecInterpreter nested struct member keys do not collide across inner key/wordOffset pairs
 #eval! do
-  let struct2CollisionSpec : ContractSpec := {
+  let struct2CollisionSpec : CompilationModel := {
     name := "Struct2Collision"
     fields := [
       { name := "data", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.uint256 [
@@ -6917,7 +6908,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 13: Type mismatch — structMember on a double mapping field
 #eval! do
-  let mismatchSpec : ContractSpec := {
+  let mismatchSpec : CompilationModel := {
     name := "Mismatch"
     fields := [
       { name := "nested", ty := FieldType.mappingStruct2 MappingKeyType.uint256 MappingKeyType.address [
@@ -6945,7 +6936,7 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
 
 -- Test 10: internalCallAssign in fuel-based interpreter
 #eval! do
-  let internalMultiReturnSpec : ContractSpec := {
+  let internalMultiReturnSpec : CompilationModel := {
     name := "InternalMultiReturn"
     fields := [
       { name := "val", ty := FieldType.uint256 }
@@ -7001,4 +6992,4 @@ private def renderSpec (spec : ContractSpec) (selectors : List Nat) : IO String 
         throw (IO.userError s!"✗ internalCallAssign expected return 25, got {finalState.returnValue}")
       IO.println "✓ fuel-based internalCallAssign properly binds multi-return values"
 
-end Compiler.ContractSpecFeatureTest
+end Compiler.CompilationModelFeatureTest

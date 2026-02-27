@@ -163,7 +163,7 @@ jobs:
       - name: Check Yul builtin abstraction boundary
         run: python3 scripts/check_yul_builtin_boundary.py
 
-      - name: Check builtin list sync (Linker ↔ ContractSpec)
+      - name: Check builtin list sync (Linker ↔ CompilationModel)
         run: python3 scripts/check_builtin_list_sync.py
 
       - name: Check EVMYulLean capability boundary
@@ -238,10 +238,10 @@ jobs:
           LEAN_NUM_THREADS: 2
         run: lake build Compiler.MainTest
 
-      - name: Run ContractSpec feature regression module
+      - name: Run CompilationModel feature regression module
         env:
           LEAN_NUM_THREADS: 2
-        run: lake build Compiler.ContractSpecFeatureTest
+        run: lake build Compiler.CompilationModelFeatureTest
 
       - name: Check for sorry
         run: |

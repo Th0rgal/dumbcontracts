@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Ensure Linker.yulBuiltins and ContractSpec.interopBuiltinCallNames stay in sync.
+"""Ensure Linker.yulBuiltins and CompilationModel.interopBuiltinCallNames stay in sync.
 
 Both lists enumerate EVM/Yul opcodes. yulBuiltins is the Linker allowlist for
-linked library validation; interopBuiltinCallNames is the ContractSpec denylist
+linked library validation; interopBuiltinCallNames is the CompilationModel denylist
 for user-function body validation. They must agree on the opcode universe, with
 known exceptions documented below.
 
 Expected differences:
   - yulBuiltins includes low-level call opcodes (call, staticcall, delegatecall,
-    callcode) that ContractSpec tracks separately in `isLowLevelCallName`.
+    callcode) that CompilationModel tracks separately in `isLowLevelCallName`.
   - yulBuiltins includes Yul-object builtins (datasize, dataoffset, datacopy)
     that are not EVM opcodes and not relevant to interop validation.
 """
@@ -23,7 +23,7 @@ from property_utils import strip_lean_comments
 
 ROOT = Path(__file__).resolve().parents[1]
 LINKER = ROOT / "Compiler" / "Linker.lean"
-CONTRACT_SPEC = ROOT / "Compiler" / "ContractSpec.lean"
+CONTRACT_SPEC = ROOT / "Compiler" / "CompilationModel.lean"
 
 # Items in yulBuiltins but intentionally absent from interopBuiltinCallNames
 # AND isLowLevelCallName. These are Yul-object builtins, not EVM opcodes.
@@ -198,14 +198,14 @@ def main() -> int:
     if not yul_builtins:
         errors.append("Failed to extract yulBuiltins from Linker.lean")
     if not interop_builtins:
-        errors.append("Failed to extract interopBuiltinCallNames from ContractSpec.lean")
+        errors.append("Failed to extract interopBuiltinCallNames from CompilationModel.lean")
 
     if errors:
         for err in errors:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    # ContractSpec's full opcode set = interopBuiltinCallNames ∪ isLowLevelCallName
+    # CompilationModel's full opcode set = interopBuiltinCallNames ∪ isLowLevelCallName
     spec_full = interop_builtins | low_level_calls
 
     # yulBuiltins without the expected Linker-only entries should equal spec_full
@@ -217,13 +217,13 @@ def main() -> int:
     if in_linker_not_spec:
         sorted_names = sorted(in_linker_not_spec)
         errors.append(
-            f"In Linker.yulBuiltins but not in ContractSpec "
+            f"In Linker.yulBuiltins but not in CompilationModel "
             f"(interopBuiltinCallNames ∪ isLowLevelCallName): {sorted_names}"
         )
     if in_spec_not_linker:
         sorted_names = sorted(in_spec_not_linker)
         errors.append(
-            f"In ContractSpec (interopBuiltinCallNames ∪ isLowLevelCallName) "
+            f"In CompilationModel (interopBuiltinCallNames ∪ isLowLevelCallName) "
             f"but not in Linker.yulBuiltins: {sorted_names}"
         )
 
@@ -232,14 +232,14 @@ def main() -> int:
         for err in errors:
             print(f"  - {err}", file=sys.stderr)
         print(
-            "\nKeep Linker.yulBuiltins and ContractSpec.interopBuiltinCallNames "
+            "\nKeep Linker.yulBuiltins and CompilationModel.interopBuiltinCallNames "
             "in sync. See scripts/check_builtin_list_sync.py for expected differences.",
             file=sys.stderr,
         )
         return 1
 
     print(f"✓ Builtin lists in sync ({len(yul_builtins)} Linker, "
-          f"{len(interop_builtins)}+{len(low_level_calls)} ContractSpec)")
+          f"{len(interop_builtins)}+{len(low_level_calls)} CompilationModel)")
     return 0
 
 

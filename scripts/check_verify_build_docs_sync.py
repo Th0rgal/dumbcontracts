@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from workflow_jobs import (
+    compare_lists,
     extract_job_body,
     extract_python_script_commands,
     extract_run_commands_from_job_body,
@@ -60,31 +61,6 @@ def _extract_readme_build_commands(text: str) -> list[str]:
     return commands
 
 
-def _compare(expected: list[str], actual: list[str]) -> list[str]:
-    if expected == actual:
-        return []
-
-    errors: list[str] = []
-    expected_set = set(expected)
-    actual_set = set(actual)
-
-    missing = [cmd for cmd in expected if cmd not in actual_set]
-    extra = [cmd for cmd in actual if cmd not in expected_set]
-
-    if missing:
-        errors.append("README build list is missing workflow commands:")
-        errors.extend([f"  - {m}" for m in missing])
-    if extra:
-        errors.append("README build list has commands not present in workflow build job:")
-        errors.extend([f"  - {e}" for e in extra])
-    if not missing and not extra:
-        errors.append(
-            "README build list contains the same commands but in a different order. "
-            "Keep exact order aligned with workflow for auditability."
-        )
-    return errors
-
-
 def main() -> int:
     workflow_text = VERIFY_YML.read_text(encoding="utf-8")
     readme_text = SCRIPTS_README.read_text(encoding="utf-8")
@@ -92,7 +68,7 @@ def main() -> int:
     workflow_commands = _extract_workflow_build_commands(workflow_text)
     readme_commands = _extract_readme_build_commands(readme_text)
 
-    errors = _compare(workflow_commands, readme_commands)
+    errors = compare_lists("workflow build job", workflow_commands, "README build list", readme_commands)
     if errors:
         print("verify build/docs sync check failed:", file=sys.stderr)
         for error in errors:

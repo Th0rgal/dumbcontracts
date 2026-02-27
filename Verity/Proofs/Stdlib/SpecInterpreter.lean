@@ -1,12 +1,12 @@
 /-
-  Verity.Proofs.Stdlib.SpecInterpreter: Semantics for ContractSpec DSL
+  Verity.Proofs.Stdlib.SpecInterpreter: Semantics for CompilationModel DSL
 
-  This module defines what it *means* to execute a ContractSpec.
+  This module defines what it *means* to execute a CompilationModel.
   It provides a reference implementation that can be proven equivalent to
   both the EDSL semantics (Layer 1) and the IR/Yul semantics (Layers 2-3).
 
   Philosophy:
-  - Simple, direct interpretation of the ContractSpec DSL
+  - Simple, direct interpretation of the CompilationModel DSL
   - No optimizations - correctness over performance
   - Easy to understand and verify
 
@@ -37,13 +37,13 @@
     returns 0 (#180)
 -/
 
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 import Compiler.DiffTestTypes
 import Verity.Core
 
 namespace Verity.Proofs.Stdlib.SpecInterpreter
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.DiffTestTypes
 open Verity
 open Verity.Core.Uint256 (modulus)
@@ -53,7 +53,7 @@ def addressModulus : Nat := 2^160
 /-!
 ## Evaluation Context
 
-Context needed to evaluate ContractSpec expressions and statements.
+Context needed to evaluate CompilationModel expressions and statements.
 -/
 
 structure EvalContext where
@@ -168,7 +168,7 @@ private def wordMask : Nat := modulus - 1
     let mergedAliases := dedupNatPreserve (f.aliasSlots ++ derivedAliases)
     { f with aliasSlots := mergedAliases }
 
-@[simp] def resolveFields (spec : ContractSpec) : List Field :=
+@[simp] def resolveFields (spec : CompilationModel) : List Field :=
   if spec.slotAliasRanges.isEmpty then
     spec.fields
   else
@@ -263,13 +263,13 @@ from `externalFns`.
 @[simp] private def hasExternalModel (externalFns : List (String × (List Nat → Nat))) (name : String) : Bool :=
   externalFns.any (·.1 == name)
 
-@[simp] private def specHasUnmodeledExternals (spec : ContractSpec) (externalFns : List (String × (List Nat → Nat))) : Bool :=
+@[simp] private def specHasUnmodeledExternals (spec : CompilationModel) (externalFns : List (String × (List Nat → Nat))) : Bool :=
   spec.externals.any (fun ext => !(hasExternalModel externalFns ext.name))
 
 /-!
 ## Expression Evaluation
 
-Evaluate ContractSpec expressions to natural numbers.
+Evaluate CompilationModel expressions to natural numbers.
 All arithmetic is modular (mod 2^256) to match EVM semantics.
 -/
 
@@ -622,7 +622,7 @@ attribute [reducible] stmtUsesUnsupportedLowLevel stmtListUsesUnsupportedLowLeve
 /-!
 ## Statement Execution
 
-Execute ContractSpec statements, updating storage and context.
+Execute CompilationModel statements, updating storage and context.
 Returns None if execution reverts.
 
 The basic `execStmt` / `execStmts` handle most constructs. `Stmt.forEach` and
@@ -964,7 +964,7 @@ interpreter that properly handles bounded loops and recursive function calls.
 The fuel decreases at each recursive step.
 
 The `functions` parameter carries the full list of `FunctionSpec` entries from
-the `ContractSpec`, enabling lookup and execution of internal functions (#181).
+the `CompilationModel`, enabling lookup and execution of internal functions (#181).
 -/
 
 -- Helper: Expand a forEach into N copies of the loop body with let bindings
@@ -1076,7 +1076,7 @@ termination_by fuel
 /-!
 ## Function Execution
 
-Execute a function from a ContractSpec.
+Execute a function from a CompilationModel.
 
 `execFunction` / `execConstructor` use the basic `execStmts` path, which handles
 all constructs except `Stmt.forEach` and `Stmt.internalCall` (both revert).
@@ -1087,7 +1087,7 @@ which fully supports `forEach`, `Stmt.internalCall`, and all features. Use these
 for contracts that use loops or internal function calls.
 -/
 
-def execFunction (spec : ContractSpec) (funcName : String) (ctx : EvalContext) (externalFns : List (String × (List Nat → Nat)))
+def execFunction (spec : CompilationModel) (funcName : String) (ctx : EvalContext) (externalFns : List (String × (List Nat → Nat)))
     (initialStorage : SpecStorage) : Option (EvalContext × ExecState) :=
   match spec.functions.find? (·.name == funcName) with
   | none => none
@@ -1105,7 +1105,7 @@ def execFunction (spec : ContractSpec) (funcName : String) (ctx : EvalContext) (
         let paramNames := func.params.map (·.name)
         execStmts ctx fields paramNames externalFns initialState func.body
 
-def execConstructor (spec : ContractSpec) (ctx : EvalContext) (externalFns : List (String × (List Nat → Nat)))
+def execConstructor (spec : CompilationModel) (ctx : EvalContext) (externalFns : List (String × (List Nat → Nat)))
     (initialStorage : SpecStorage) : Option (EvalContext × ExecState) :=
   match spec.constructor with
   | none => some (ctx, { storage := initialStorage, returnValue := none, halted := false })
@@ -1126,7 +1126,7 @@ def execConstructor (spec : ContractSpec) (ctx : EvalContext) (externalFns : Lis
 /-- Execute a function using the fuel-based interpreter that supports all features
     including forEach loops and internal function calls. Default fuel of 10000
     is sufficient for most contracts. -/
-def execFunctionFuel (spec : ContractSpec) (funcName : String) (ctx : EvalContext)
+def execFunctionFuel (spec : CompilationModel) (funcName : String) (ctx : EvalContext)
     (externalFns : List (String × (List Nat → Nat)))
     (initialStorage : SpecStorage) (fuel : Nat := 10000) : Option (EvalContext × ExecState) :=
   match spec.functions.find? (·.name == funcName) with
@@ -1148,7 +1148,7 @@ def execFunctionFuel (spec : ContractSpec) (funcName : String) (ctx : EvalContex
 /-- Execute a constructor using the fuel-based interpreter that supports all features
     including forEach loops and internal function calls. Default fuel of 10000
     is sufficient for most contracts. -/
-def execConstructorFuel (spec : ContractSpec) (ctx : EvalContext)
+def execConstructorFuel (spec : CompilationModel) (ctx : EvalContext)
     (externalFns : List (String × (List Nat → Nat)))
     (initialStorage : SpecStorage) (fuel : Nat := 10000) : Option (EvalContext × ExecState) :=
   match spec.constructor with
@@ -1178,7 +1178,7 @@ structure SpecResult where
   finalStorage : SpecStorage
   deriving Repr
 
-def interpretSpec (spec : ContractSpec) (initialStorage : SpecStorage) (tx : Transaction)
+def interpretSpec (spec : CompilationModel) (initialStorage : SpecStorage) (tx : Transaction)
     (externalFns : List (String × (List Nat → Nat)) := []) : SpecResult :=
   if tx.functionName == "" then
     let ctx : EvalContext := {

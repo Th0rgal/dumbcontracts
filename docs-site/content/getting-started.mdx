@@ -65,7 +65,7 @@ Before reading files, keep this map:
 
 1. `Verity/Examples/*`: EDSL implementation, executable Lean code.
 2. `Verity/Specs/*`: logical behavior specs (`Prop`) and invariants.
-3. `Compiler/Specs.lean`: `ContractSpec` compiler models that generate IR/Yul.
+3. `Compiler/Specs.lean`: `CompilationModel` compiler models that generate IR/Yul.
 
 **1. Open an example contract** — [`Verity/Examples/SimpleStorage.lean`](https://github.com/Th0rgal/verity/blob/main/Verity/Examples/SimpleStorage.lean):
 ```lean
@@ -141,4 +141,4 @@ See the [Linking Libraries guide](/guides/linking-libraries) for details.
 1. **[Example Contracts](/examples)** — Progressive examples from single-slot storage to token transfers
 2. **[Core Architecture](/core)** — The Contract monad, state model, and design decisions
 3. **[First Contract tutorial](/guides/first-contract)** — Hands-on guide building a TipJar from scratch
-4. **[Compiler reference](/compiler)** — Full ContractSpec DSL documentation
+4. **[Compiler reference](/compiler)** — Full CompilationModel DSL documentation

@@ -1051,7 +1051,7 @@ private def toSharesDownHelperBody : List YulStmt :=
       , .expr (.call "revert" [.lit 0, .hex 0x24])
       ]
   , .assign "var_"
-      (.call "div"
+      (.call "checked_div_uint256"
         [ .call "checked_mul_uint256" [.ident "var_assets", .ident "sum"]
         , .ident "sum_1"
         ])
@@ -1113,14 +1113,22 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       insertTopLevelFuncDefAfterPrefix topStmts checkedAddUint256HelperStmt
     else
       topStmts
-  let needsMul :=
-    !hasTopLevelFunctionNamed withAdd "checked_mul_uint256" &&
-      (callNamesInStmts withAdd).any (fun called => called = "checked_mul_uint256")
-  let withAddMul :=
-    if needsMul then
-      insertTopLevelFuncDefAfterPrefix withAdd checkedMulUint256HelperStmt
+  let needsSub256 :=
+    !hasTopLevelFunctionNamed withAdd "checked_sub_uint256" &&
+      (callNamesInStmts withAdd).any (fun called => called = "checked_sub_uint256")
+  let withAddSub256 :=
+    if needsSub256 then
+      insertTopLevelFuncDefAfterPrefix withAdd checkedSubUint256HelperStmt
     else
       withAdd
+  let needsMul :=
+    !hasTopLevelFunctionNamed withAddSub256 "checked_mul_uint256" &&
+      (callNamesInStmts withAddSub256).any (fun called => called = "checked_mul_uint256")
+  let withAddMul :=
+    if needsMul then
+      insertTopLevelFuncDefAfterPrefix withAddSub256 checkedMulUint256HelperStmt
+    else
+      withAddSub256
   let needsDiv :=
     !hasTopLevelFunctionNamed withAddMul "checked_div_uint256" &&
       (callNamesInStmts withAddMul).any (fun called => called = "checked_div_uint256")
@@ -1170,7 +1178,8 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
     else
       withAll'
   let inserted : Nat :=
-    (if needsAdd then 1 else 0) + (if needsMul then 1 else 0) + (if needsDiv then 1 else 0) +
+    (if needsAdd then 1 else 0) + (if needsSub256 then 1 else 0) +
+      (if needsMul then 1 else 0) + (if needsDiv then 1 else 0) +
       (if needsAdd128 then 1 else 0) + (if needsSub128 then 1 else 0) +
       (if needsToSharesDown then 1 else 0) + (if needsUpdateStorageUint128 then 1 else 0) +
       (if needsUpdateStorageBool then 1 else 0)
@@ -1440,7 +1449,7 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
     | .call "sub" [.ident lhs, .ident rhs] =>
         if hasAccrueInterestCompatBaseName "newTotalSupplyAssets" lhs &&
             hasAccrueInterestCompatBaseName "feeAmount" rhs then
-          (.call "checked_sub_uint128" [.ident lhs, .ident rhs], 1)
+          (.call "checked_sub_uint256" [.ident lhs, .ident rhs], 1)
         else
           (.call "sub" [.ident lhs, .ident rhs], 0)
     | .call "sstore"
@@ -1878,7 +1887,7 @@ def solcCompatRewriteElapsedCheckedSubRule : ObjectPatchRule :=
 
 /-- Rewrite selected runtime `accrueInterest` arithmetic patterns to
     Solidity-style checked helper calls (`checked_add_uint256` / `checked_add_uint128` /
-    `checked_sub_uint128` / `checked_mul_uint256` / `checked_div_uint256`).
+    `checked_sub_uint256` / `checked_mul_uint256` / `checked_div_uint256`).
     Insert helpers only when referenced and absent.
     This is enabled only in the opt-in `solc-compat` bundle. -/
 def solcCompatRewriteAccrueInterestCheckedArithmeticRule : ObjectPatchRule :=
@@ -2933,13 +2942,13 @@ example :
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_mul_uint256" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint256" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_add_uint128" &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint256" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_div_uint256" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toSharesDown" &&
       called.any (fun name => name = "checked_mul_uint256") &&
       called.any (fun name => name = "checked_add_uint256") &&
       called.any (fun name => name = "checked_add_uint128") &&
-      called.any (fun name => name = "checked_sub_uint128") &&
+      called.any (fun name => name = "checked_sub_uint256") &&
       called.any (fun name => name = "checked_div_uint256") &&
       called.any (fun name => name = "fun_toSharesDown") = true := by
   native_decide
@@ -2983,12 +2992,12 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed top "checked_mul_uint256" &&
       hasTopLevelFunctionNamed top "checked_add_uint128" &&
-      hasTopLevelFunctionNamed top "checked_sub_uint128" &&
+      hasTopLevelFunctionNamed top "checked_sub_uint256" &&
       hasTopLevelFunctionNamed top "checked_div_uint256" &&
       hasTopLevelFunctionNamed top "fun_toSharesDown" &&
       called.any (fun name => name = "checked_mul_uint256") &&
       called.any (fun name => name = "checked_add_uint128") &&
-      called.any (fun name => name = "checked_sub_uint128") &&
+      called.any (fun name => name = "checked_sub_uint256") &&
       called.any (fun name => name = "checked_div_uint256") &&
       called.any (fun name => name = "fun_toSharesDown") = true := by
   native_decide
@@ -3090,9 +3099,9 @@ example :
       input
     let called := callNamesInStmts report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint256" &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toSharesDown" &&
-      called.any (fun name => name = "checked_sub_uint128") &&
+      called.any (fun name => name = "checked_sub_uint256") &&
       called.any (fun name => name = "fun_toSharesDown") = true := by
   native_decide
 
@@ -3257,8 +3266,8 @@ example :
       input
     let called := callNamesInStmts report.patched.runtimeCode
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
-      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" = false &&
-      called.any (fun name => name = "checked_sub_uint128") = false := by
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint256" = false &&
+      called.any (fun name => name = "checked_sub_uint256") = false := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat packed sstore writes. -/

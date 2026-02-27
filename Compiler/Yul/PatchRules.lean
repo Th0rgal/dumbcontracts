@@ -1857,6 +1857,7 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
           ]) :: rest =>
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
         ( [ .let_ "__compat_alloc_ptr" (.call "mload" [.lit 64])
+          , .expr (.call "finalize_allocation_27020" [.ident "__compat_alloc_ptr"])
           , .expr (.call "finalize_allocation_27033" [.ident "__compat_alloc_ptr"])
           , .expr (.call "finalize_allocation" [.ident "__compat_alloc_ptr", .lit 32])
           , .let_ "__ecwr_success"

@@ -1140,6 +1140,32 @@ private def finalizeAllocation35876HelperBody : List YulStmt :=
 private def finalizeAllocation35876HelperStmt : YulStmt :=
   .funcDef "finalize_allocation_35876" ["memPtr"] [] finalizeAllocation35876HelperBody
 
+private def finalizeAllocationHelperBody : List YulStmt :=
+  [ .let_ "newFreePtr"
+      (.call "add"
+        [ .ident "memPtr"
+        , .call "and"
+            [ .call "add" [.ident "size", .lit 31]
+            , .hex 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0
+            ]
+        ])
+  , .if_ (.call "or"
+      [ .call "gt" [.ident "newFreePtr", .hex 0xffffffffffffffff]
+      , .call "lt" [.ident "newFreePtr", .ident "memPtr"]
+      ])
+      [ .expr (.call "mstore"
+          [ .lit 0
+          , .lit 35408467139433450592217433187231851964531694900788300625387963629091585785856
+          ])
+      , .expr (.call "mstore" [.lit 4, .hex 0x41])
+      , .expr (.call "revert" [.lit 0, .hex 0x24])
+      ]
+  , .expr (.call "mstore" [.lit 64, .ident "newFreePtr"])
+  ]
+
+private def finalizeAllocationHelperStmt : YulStmt :=
+  .funcDef "finalize_allocation" ["memPtr", "size"] [] finalizeAllocationHelperBody
+
 private def toUint128HelperBody : List YulStmt :=
   [ .let_ "_1" (.hex 0xffffffffffffffffffffffffffffffff)
   , .let_ "memPtr" (.call "mload" [.lit 64])
@@ -1281,18 +1307,32 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
         finalizeAllocation35876HelperStmt
     else
       withAddMulDivAdd128Sub128ToUint128RequireHelperString
-  let needsToSharesDown :=
+  let needsFinalizeAllocation :=
     !hasTopLevelFunctionNamed withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
-        "fun_toSharesDown" &&
+        "finalize_allocation" &&
       (callNamesInStmts withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876).any
+        (fun called => called = "finalize_allocation")
+  let withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation :=
+    if needsFinalizeAllocation then
+      insertTopLevelFuncDefAfterPrefix
+        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
+        finalizeAllocationHelperStmt
+    else
+      withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
+  let needsToSharesDown :=
+    !hasTopLevelFunctionNamed
+        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation
+        "fun_toSharesDown" &&
+      (callNamesInStmts
+          withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation).any
         (fun called => called = "fun_toSharesDown")
   let withAll :=
     if needsToSharesDown then
       insertTopLevelFuncDefAfterPrefix
-        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
+        withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation
         toSharesDownHelperStmt
     else
-      withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876
+      withAddMulDivAdd128Sub128ToUint128RequireHelperStringFinalizeAllocation35876FinalizeAllocation
   let needsUpdateStorageUint128 :=
     !hasTopLevelFunctionNamed withAll "update_storage_value_offsett_uint128_to_uint128" &&
       (callNamesInStmts withAll).any (fun called => called = "update_storage_value_offsett_uint128_to_uint128")
@@ -1315,6 +1355,7 @@ private def materializeCheckedAddMulDivUint256HelpersIfCalled (stmts : List YulS
       (if needsAdd128 then 1 else 0) + (if needsSub128 then 1 else 0) +
       (if needsToUint128 then 1 else 0) + (if needsRequireHelperString then 1 else 0) +
       (if needsFinalizeAllocation35876 then 1 else 0) +
+      (if needsFinalizeAllocation then 1 else 0) +
       (if needsToSharesDown then 1 else 0) + (if needsUpdateStorageUint128 then 1 else 0) +
       (if needsUpdateStorageBool then 1 else 0)
   if inserted = 0 then
@@ -1726,6 +1767,31 @@ private partial def rewriteAccrueInterestCheckedArithmeticStmts
     (stmts : List YulStmt) : List YulStmt × Nat
   := match stmts with
     | [] => ([], 0)
+    | .let_ "__ecwr_success"
+        (.call "call"
+          [ .call "gas" []
+          , .ident "irm"
+          , .lit 0
+          , .lit 0
+          , .lit 356
+          , .lit 0
+          , .lit 32
+          ]) :: rest =>
+        let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
+        ( [ .let_ "__compat_alloc_ptr" (.call "mload" [.lit 64])
+          , .expr (.call "finalize_allocation" [.ident "__compat_alloc_ptr", .lit 32])
+          , .let_ "__ecwr_success"
+              (.call "call"
+                [ .call "gas" []
+                , .ident "irm"
+                , .lit 0
+                , .lit 0
+                , .lit 356
+                , .lit 0
+                , .lit 32
+                ])
+          ] ++ rest'
+        , rewrittenTail + 1)
     | stmt :: rest =>
         let (stmt', rewrittenHead) := rewriteAccrueInterestCheckedArithmeticStmt stmt
         let (rest', rewrittenTail) := rewriteAccrueInterestCheckedArithmeticStmts rest
@@ -3657,6 +3723,167 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "fun_toSharesDown" = false &&
       called.any (fun name => name = "fun_toSharesDown") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite normalizes IRM call result buffering and borrow-rate load,
+    then materializes `finalize_allocation` when referenced+absent. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__ecwr_success"
+                  (.call "call"
+                    [ .call "gas" []
+                    , .ident "irm"
+                    , .lit 0
+                    , .lit 0
+                    , .lit 356
+                    , .lit 0
+                    , .lit 32
+                    ])
+              , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              , .let_ "borrowRate" (.call "mload" [.lit 0])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" &&
+      called.any (fun name => name = "finalize_allocation") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-IRM call-buffer shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__ecwr_success"
+                  (.call "call"
+                    [ .call "gas" []
+                    , .ident "other"
+                    , .lit 0
+                    , .lit 0
+                    , .lit 356
+                    , .lit 0
+                    , .lit 32
+                    ])
+              , .let_ "borrowRate" (.call "mload" [.lit 0])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "finalize_allocation" = false &&
+      called.any (fun name => name = "finalize_allocation") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite is wrapper-safe for IRM call-buffer normalization. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .block
+              [ .funcDef "fun_accrueInterest" [] []
+                  [ .let_ "__ecwr_success"
+                      (.call "call"
+                        [ .call "gas" []
+                        , .ident "irm"
+                        , .lit 0
+                        , .lit 0
+                        , .lit 356
+                        , .lit 0
+                        , .lit 32
+                        ])
+                  , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                      [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+                  , .let_ "borrowRate" (.call "mload" [.lit 0])
+                  ]
+              , .block [ .expr (.call "fun_accrueInterest" []) ]
+              ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let top :=
+      match report.patched.runtimeCode with
+      | [.block inner] => inner
+      | other => other
+    let called := callNamesInStmts top
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed top "finalize_allocation" &&
+      called.any (fun name => name = "finalize_allocation") = true := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite does not duplicate pre-existing `finalize_allocation` helper. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ finalizeAllocationHelperStmt
+          , .funcDef "fun_accrueInterest" [] []
+              [ .let_ "__ecwr_success"
+                  (.call "call"
+                    [ .call "gas" []
+                    , .ident "irm"
+                    , .lit 0
+                    , .lit 0
+                    , .lit 356
+                    , .lit 0
+                    , .lit 32
+                    ])
+              , .if_ (.call "lt" [.call "returndatasize" [], .lit 32])
+                  [ .expr (.call "revert" [.lit 0, .lit 0]) ]
+              , .let_ "borrowRate" (.call "mload" [.lit 0])
+              ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let topNames := topLevelFunctionNames report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      (topNames.filter (fun name => name = "finalize_allocation")).length = 1 := by
   native_decide
 
 /-- Smoke test: unused top-level `keccakMarketParams` helper is dropped. -/

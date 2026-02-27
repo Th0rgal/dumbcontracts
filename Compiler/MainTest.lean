@@ -46,6 +46,7 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   expectErrorContains "reject backend-profile + parity-pack conflict (pack first)" ["--parity-pack", "solc-0.8.28-o200-viair-false-evm-shanghai", "--backend-profile", "semantic"] "Cannot combine --backend-profile with --parity-pack"
   expectErrorContains "missing --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base"] "Missing value for --mapping-slot-scratch-base"
   expectErrorContains "invalid --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base", "not-a-number"] "Invalid value for --mapping-slot-scratch-base: not-a-number"
+  expectErrorContains "removed --ast flag is rejected" ["--ast"] "Unknown argument: --ast"
   expectErrorContains "unknown argument still reported" ["--definitely-unknown-flag"] "Unknown argument: --definitely-unknown-flag"
   expectTrue "shipped parity packs have proof composition metadata"
     Compiler.allParityPacksProofCompositionValid

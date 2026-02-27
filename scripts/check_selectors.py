@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-"""Verify selector hashing against ContractSpec, ASTSpecs, and IR/Yul artifacts.
+"""Verify selector hashing against ContractSpec, IR proofs, and Yul artifacts.
 
 Checks:
 1) ContractSpec function signatures -> keccak selectors are unique per contract.
 2) Compiler/Proofs/IRGeneration/Expr.lean compile selector lists match the spec.
 3) Generated Yul files include all expected selector case labels.
-4) ASTSpecs function signatures -> keccak selectors match for yul-ast output.
-5) Cross-check: shared contracts have identical signatures in both spec sets.
-6) No function name uses the reserved ``internal_`` prefix (Yul namespace collision).
-7) Error(string) selector constant sync between ContractSpec and Interpreter.
-8) Address mask constant sync between ContractSpec and Interpreter.
-9) Selector shift constant sync between ContractSpec, Codegen, and Builtins.
-10) Internal function prefix sync between ContractSpec and CI script.
-11) Special entrypoint names sync between ContractSpec and CI script.
-12) No duplicate function names per contract; compile has all five duplicate-name guards.
-13) Free memory pointer constant matches Solidity convention (0x40).
+4) No function name uses the reserved ``internal_`` prefix (Yul namespace collision).
+5) Error(string) selector constant sync between ContractSpec and Interpreter.
+6) Address mask constant sync between ContractSpec and Interpreter.
+7) Selector shift constant sync between ContractSpec, Codegen, and Builtins.
+8) Internal function prefix sync between ContractSpec and CI script.
+9) Special entrypoint names sync between ContractSpec and CI script.
+10) No duplicate function names per contract; compile has all five duplicate-name guards.
+11) Free memory pointer constant matches Solidity convention (0x40).
 """
 
 from __future__ import annotations
@@ -28,12 +26,10 @@ from typing import Iterable, Iterator, List, Tuple
 from keccak256 import selector as keccak_selector
 from property_utils import ROOT, YUL_DIR, die, report_errors, strip_lean_comments
 SPEC_FILE = ROOT / "Compiler" / "Specs.lean"
-AST_SPEC_FILE = ROOT / "Compiler" / "ASTSpecs.lean"
 IR_EXPR_FILE = ROOT / "Compiler" / "Proofs" / "IRGeneration" / "Expr.lean"
 CONTRACT_SPEC_FILE = ROOT / "Compiler" / "ContractSpec.lean"
 CONSTANTS_FILE = ROOT / "Compiler" / "Constants.lean"
 YUL_DIR_LEGACY = ("yul", YUL_DIR)
-YUL_DIR_AST = ("yul-ast", ROOT / "compiler" / "yul-ast")
 
 SIMPLE_PARAM_MAP = {
     "uint256": "uint256",
@@ -122,7 +118,7 @@ def _is_internal_function(fn_block: str) -> bool:
 def _iter_function_blocks(spec_block: str) -> Iterator[Tuple[str, str]]:
     """Yield (fn_name, fn_block) pairs from a functions := [...] block.
 
-    Shared iteration logic for ContractSpec and ASTSpecs function extraction.
+    Shared iteration logic for function extraction from spec blocks.
     Callers apply their own filtering and result-building.
     """
     fn_match = re.search(r"functions\s*:=\s*\[", spec_block)
@@ -303,73 +299,6 @@ def extract_param_types(fn_block: str) -> List[str]:
         else:
             idx += 1
     return sol_types
-
-
-def extract_ast_specs(text: str) -> List[SpecInfo]:
-    """Extract specs from ASTSpecs.lean (ASTContractSpec definitions).
-
-    ASTSpecs functions have no isInternal or special entrypoint semantics,
-    so all functions are treated as external (matching ASTDriver.computeSelectors).
-    """
-    specs: List[SpecInfo] = []
-    spec_re = re.compile(r"def\s+(\w+)\s*:\s*ASTContractSpec\s*:=\s*\{")
-    for match in spec_re.finditer(text):
-        def_name = match.group(1)
-        block_start = match.end() - 1
-        block_end = find_matching(text, block_start, "{", "}")
-        if block_end == -1:
-            die(f"Failed to parse AST spec block for {def_name}")
-        block = text[block_start : block_end + 1]
-        name_match = re.search(r"name\s*:=\s*\"([^\"]+)\"", block)
-        if not name_match:
-            die(f"Missing name for AST spec {def_name}")
-        contract_name = name_match.group(1)
-        signatures = extract_ast_functions(block)
-        all_names = extract_all_function_names(block)
-        specs.append(SpecInfo(def_name, contract_name, signatures, all_function_names=all_names))
-    return specs
-
-
-def extract_ast_functions(spec_block: str) -> List[str]:
-    """Extract function signatures from an ASTContractSpec block.
-
-    Unlike ContractSpec, ASTSpecs have no isInternal or fallback/receive
-    semantics — all functions are external (matching ASTDriver.computeSelectors).
-    """
-    return [_build_signature(fn_block, fn_name)
-            for fn_name, fn_block in _iter_function_blocks(spec_block)]
-
-
-def check_ast_vs_legacy_signatures(
-    legacy_specs: List[SpecInfo], ast_specs: List[SpecInfo]
-) -> List[str]:
-    """Cross-check that shared contracts have equivalent external signatures.
-
-    ContractSpec's ``extract_functions`` filters out isInternal and
-    fallback/receive.  AST's ``extract_ast_functions`` includes everything
-    (ASTFunctionSpec doesn't model those concepts yet).  To compare like
-    with like, we filter AST signatures through the same exclusion set
-    before comparison.
-    """
-    errors: List[str] = []
-    legacy_map = {spec.contract_name: spec for spec in legacy_specs}
-    for ast_spec in ast_specs:
-        legacy_spec = legacy_map.get(ast_spec.contract_name)
-        if legacy_spec is None:
-            continue  # AST-only contract, no cross-check needed
-        # Filter AST signatures to match ContractSpec filtering (exclude
-        # any functions whose name is in _SPECIAL_ENTRYPOINTS).  AST specs
-        # don't have isInternal, so only entrypoint filtering applies.
-        ast_external_sigs = [
-            sig for sig, name in zip(ast_spec.signatures, ast_spec.all_function_names)
-            if name not in _SPECIAL_ENTRYPOINTS
-        ]
-        if ast_external_sigs != legacy_spec.signatures:
-            errors.append(
-                f"{ast_spec.contract_name}: AST and ContractSpec signatures diverge: "
-                f"AST={ast_external_sigs} vs ContractSpec={legacy_spec.signatures}"
-            )
-    return errors
 
 
 def compute_selectors(signatures: Iterable[str]) -> List[int]:
@@ -716,12 +645,6 @@ def main() -> None:
     compile_text = strip_lean_comments(IR_EXPR_FILE.read_text(encoding="utf-8"))
     compile_lists = extract_compile_selectors(compile_text)
 
-    # Extract AST specs for yul-ast validation (if file exists).
-    ast_specs: List[SpecInfo] = []
-    if AST_SPEC_FILE.exists():
-        ast_text = strip_lean_comments(AST_SPEC_FILE.read_text(encoding="utf-8"))
-        ast_specs = extract_ast_specs(ast_text)
-
     errors: List[str] = []
     errors.extend(check_unique_selectors(specs))
     errors.extend(check_unique_function_names(specs))
@@ -732,27 +655,6 @@ def main() -> None:
     yul_label, yul_dir = YUL_DIR_LEGACY
     if yul_dir.exists():
         errors.extend(check_yul_selectors(specs, yul_label, yul_dir))
-
-    # Validate yul-ast/ against AST specs (fall back to ContractSpec with warning).
-    ast_label, ast_dir = YUL_DIR_AST
-    if ast_dir.exists():
-        if ast_specs:
-            ast_check_specs = ast_specs
-        else:
-            print(
-                "WARNING: ASTSpecs.lean missing/empty; validating yul-ast/ "
-                "against ContractSpec specs instead",
-                file=sys.stderr,
-            )
-            ast_check_specs = specs
-        errors.extend(check_yul_selectors(ast_check_specs, ast_label, ast_dir))
-        errors.extend(check_unique_selectors(ast_specs))
-        errors.extend(check_unique_function_names(ast_specs))
-        errors.extend(check_reserved_prefix_collisions(ast_specs))
-
-    # Cross-check: shared contracts must have identical signatures.
-    if ast_specs:
-        errors.extend(check_ast_vs_legacy_signatures(specs, ast_specs))
 
     # Validate Error(string) selector constant consistency.
     errors.extend(check_error_selector_sync())

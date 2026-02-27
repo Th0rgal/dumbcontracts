@@ -18,29 +18,12 @@ Yul (EVM Assembly)
 EVM Bytecode
 ```
 
-## Unified AST (Issue #364) ✅ **COMPLETE** (all 7 contracts)
+## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 
-**Status**: All 7 compilable contracts migrated with equivalence proofs (29 theorems, zero `sorry`)
+**Status**: Verity now maintains a single supported compiler path:
+`EDSL -> ContractSpec (CompilationModel) -> IR -> Yul`.
 
-**What This Achieves**: A single deep embedding (`Verity.AST`) maps 1:1 to EDSL primitives. The denotation function (`Verity.Denote`) interprets AST → Contract monad such that `denote ast = edsl_fn` holds by `rfl` (definitional equality). For contracts with helper composition (e.g., `onlyOwner`), `bind_assoc` flattens nested binds before `rfl` closes the goal.
-
-### Migrated Contracts
-
-| Contract | Functions | Theorems | Proof Strategy | Location |
-|----------|-----------|----------|----------------|----------|
-| SimpleStorage | store, retrieve | 2 | `rfl` | `Verity/AST/SimpleStorage.lean` |
-| Counter | increment, decrement, getCount | 3 | `rfl` | `Verity/AST/Counter.lean` |
-| SafeCounter | increment, decrement, getCount | 3 | `rfl` | `Verity/AST/SafeCounter.lean` |
-| Ledger | deposit, withdraw, transfer, getBalance | 4 | `rfl` | `Verity/AST/Ledger.lean` |
-| Owned | constructor, transferOwnership, getOwner | 3 | `rfl` + `bind_assoc` | `Verity/AST/Owned.lean` |
-| OwnedCounter | constructor, increment, decrement, getCount, getOwner, transferOwnership | 6 | `rfl` + `bind_assoc` | `Verity/AST/OwnedCounter.lean` |
-| SimpleToken | constructor, mint, transfer, balanceOf, getTotalSupply, getOwner | 6 | `rfl` + `bind_assoc` | `Verity/AST/SimpleToken.lean` |
-
-### Key Files
-
-- `Verity/AST.lean` — Unified `Expr` / `Stmt` inductive types
-- `Verity/Denote.lean` — AST → Contract monad denotation (monad laws in `Verity/Core.lean`)
-- `Verity/AST/*.lean` — Per-contract AST definitions and equivalence proofs
+**What This Achieves**: Fewer moving parts, less maintenance overhead, and clearer verification boundaries. CI, docs, and scaffold tooling now align with this single path.
 
 ## Layer 1: EDSL ≡ ContractSpec ✅ **COMPLETE**
 
@@ -297,7 +280,7 @@ Implemented:
   - opt-in patch execution via `YulEmitOptions.patchConfig`
 - `Compiler.emitYulWithOptionsReport`
   - emits `(YulObject × PatchPassReport)` so manifest + iteration metadata are available for CI/tooling
-- `verity-compiler` (`Compiler/Main.lean`, `Compiler/CompileDriver.lean`, `Compiler/ASTDriver.lean`)
+- `verity-compiler` (`Compiler/Main.lean`, `Compiler/CompileDriver.lean`)
   - supports `--enable-patches`, `--patch-max-iterations`, and `--patch-report <path>` to export TSV patch coverage per contract/rule
 - CI (`.github/workflows/verify.yml`)
   - produces and uploads `patch-coverage-report` artifact; summary table is included in workflow step summary
@@ -324,8 +307,7 @@ Current diagnostic coverage in compiler:
 - Contract specs now support declarative reserved slot intervals (`reservedSlotRanges`) with compile-time diagnostics for invalid/overlapping ranges and for field canonical/alias write slots that overlap reserved intervals (Issue #623).
 - Storage fields now support packed subfield metadata (`Field.packedBits`) with masked read and read-modify-write lowering, compile-time bit-range validation, and overlap diagnostics that permit shared slots only when packed ranges are disjoint (Issue #623).
 - `verity-compiler` now supports deterministic ABI artifact emission in ContractSpec mode via `--abi-output <dir>` and writes one `<Contract>.abi.json` per compiled spec, including `view`/`pure` `stateMutability` metadata when declared in `ContractSpec.FunctionSpec`.
-- `verity-compiler` now supports deterministic ABI artifact emission in unified AST mode via `--ast --abi-output <dir>`, using an AST→ABI bridge that emits one `<Contract>.abi.json` per AST spec with constructor/function signatures and typed outputs.
-- AST specs now support explicit mutability metadata (`isPayable`, `isView`, `isPure`) that drives runtime payability guards and ABI `stateMutability` emission, with compile-time diagnostics for invalid mutability combinations.
+- `verity-compiler` supports deterministic ABI artifact emission for the supported `ContractSpec` compilation path via `--abi-output <dir>`, writing one `<Contract>.abi.json` per compiled spec.
 - All interop diagnostics include an `Issue #586` reference for scope tracking.
 
 ### Short Term (1-2 months)
@@ -368,4 +350,4 @@ See `scripts/README.md` for:
 ---
 
 **Last Updated**: 2026-02-20
-**Status Summary**: Layers 1-3 complete, trust reduction in progress, unified AST complete — all 7 contracts migrated (Issue #364)
+**Status Summary**: Layers 1-3 complete, trust reduction in progress, single supported `CompilationModel` compiler path.

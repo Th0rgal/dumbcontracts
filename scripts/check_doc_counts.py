@@ -5,8 +5,7 @@ Validates counts in README.md, test/README.md, docs/VERIFICATION_STATUS.md,
 docs/ROADMAP.md, TRUST_ASSUMPTIONS.md, docs-site llms.txt, compiler.mdx,
 verification.mdx, research.mdx, core.mdx, examples.mdx, index.mdx,
 getting-started.mdx against the actual property manifest
-and codebase. Also validates theorem counts in Property*.t.sol file headers
-and AST equivalence theorem counts in Verity/AST/*.lean.
+and codebase. Also validates theorem counts in Property*.t.sol file headers.
 
 Usage:
     python3 scripts/check_doc_counts.py
@@ -96,17 +95,6 @@ def get_contract_count() -> int:
     return len(list(examples_dir.glob("*.lean")))
 
 
-def get_ast_equiv_count() -> int:
-    """Count public theorems in Verity/AST/*.lean (equivalence proofs)."""
-    ast_dir = ROOT / "Verity" / "AST"
-    count = 0
-    for lean in ast_dir.glob("*.lean"):
-        text = lean.read_text(encoding="utf-8")
-        # Count public theorem declarations (not private)
-        count += len(re.findall(r"^theorem\s+", text, re.MULTILINE))
-    return count
-
-
 def get_diff_test_total() -> int:
     """Compute total differential tests (10,000 per contract × number of contracts)."""
     test_dir = ROOT / "test"
@@ -168,7 +156,6 @@ def collect_metrics() -> dict[str, Any]:
             "proven": total_theorems - sorry_count,
             "stdlib": stdlib_count,
             "non_stdlib_total": total_theorems - stdlib_count,
-            "ast_equivalence": get_ast_equiv_count(),
         },
         "tests": {
             "foundry_functions": test_count,
@@ -262,7 +249,6 @@ def load_metrics_from_artifact(path: Path) -> dict[str, Any]:
             "proven",
             "stdlib",
             "non_stdlib_total",
-            "ast_equivalence",
         },
     )
     _expect_non_negative_int(path, "theorems.total", theorems["total"])
@@ -282,7 +268,6 @@ def load_metrics_from_artifact(path: Path) -> dict[str, Any]:
     _expect_non_negative_int(path, "theorems.proven", theorems["proven"])
     _expect_non_negative_int(path, "theorems.stdlib", theorems["stdlib"])
     _expect_non_negative_int(path, "theorems.non_stdlib_total", theorems["non_stdlib_total"])
-    _expect_non_negative_int(path, "theorems.ast_equivalence", theorems["ast_equivalence"])
 
     _expect_exact_keys(
         path,
@@ -509,7 +494,6 @@ def main(argv: list[str] | None = None) -> None:
     proven_count = int(theorem_metrics["proven"])
     stdlib_count = int(theorem_metrics["stdlib"])
     non_stdlib_total = int(theorem_metrics["non_stdlib_total"])
-    ast_equiv_count = int(theorem_metrics["ast_equivalence"])
     test_count = int(tests_metrics["foundry_functions"])
     suite_count = int(tests_metrics["suites"])
     property_fn_count = int(tests_metrics["property_functions"])
@@ -950,11 +934,6 @@ def main(argv: list[str] | None = None) -> None:
                     re.compile(r"Scaled to (\d+,\d+)\+"),
                     f"{diff_test_total:,}",
                 ),
-                (
-                    "AST equiv theorem count",
-                    re.compile(r"equivalence proofs \((\d+) theorems"),
-                    str(ast_equiv_count),
-                ),
             ],
             args.fix,
         )
@@ -980,11 +959,6 @@ def main(argv: list[str] | None = None) -> None:
                     "total in coverage",
                     re.compile(r"Property Testing\*\*: \d+% coverage \(\d+/(\d+)\)"),
                     str(total_theorems),
-                ),
-                (
-                    "AST equiv theorem count",
-                    re.compile(r"equivalence proofs \((\d+) theorems"),
-                    str(ast_equiv_count),
                 ),
                 (
                     "Layer 1 theorem count",
@@ -1028,11 +1002,6 @@ def main(argv: list[str] | None = None) -> None:
             "Stdlib count",
             re.compile(r"Stdlib: (\d+) theorems"),
             str(stdlib_count),
-        ),
-        (
-            "AST equiv theorem count",
-            re.compile(r"\((\d+) public \+"),
-            str(ast_equiv_count),
         ),
     ]
     # Add per-contract total checks
@@ -1161,8 +1130,7 @@ def main(argv: list[str] | None = None) -> None:
             f"{test_count} tests, {suite_count} suites, "
             f"{sorry_count} sorry, {proven_count} proven, "
             f"{covered_count} covered ({coverage_pct}%), "
-            f"{exclusion_count} exclusions, "
-            f"{ast_equiv_count} AST equiv theorems",
+            f"{exclusion_count} exclusions",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -1172,7 +1140,7 @@ def main(argv: list[str] | None = None) -> None:
         f"({total_theorems} theorems, {num_categories} categories, "
         f"{axiom_count} axioms, {test_count} tests, {suite_count} suites, "
         f"{sorry_count} sorry, {covered_count}/{total_theorems} covered, "
-        f"{ast_equiv_count} AST equiv)."
+        f"{exclusion_count} exclusions)."
     )
 
 

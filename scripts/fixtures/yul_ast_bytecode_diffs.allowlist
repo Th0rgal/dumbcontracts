@@ -1,7 +1,0 @@
-# Known legacy-vs-AST Yul compare diffs. CI fails on any drift outside this set.
-missing_in_b:CryptoHash.yul
-mismatch:Ledger.yul
-mismatch:Owned.yul
-mismatch:OwnedCounter.yul
-mismatch:SafeCounter.yul
-mismatch:SimpleToken.yul

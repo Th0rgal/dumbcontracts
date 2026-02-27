@@ -41,6 +41,7 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   expectErrorContains "invalid --backend-profile value" ["--backend-profile", "invalid-profile"] "Invalid value for --backend-profile: invalid-profile"
   expectErrorContains "missing --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base"] "Missing value for --mapping-slot-scratch-base"
   expectErrorContains "invalid --mapping-slot-scratch-base value" ["--mapping-slot-scratch-base", "not-a-number"] "Invalid value for --mapping-slot-scratch-base: not-a-number"
+  expectErrorContains "removed --ast flag is rejected" ["--ast"] "Unknown argument: --ast"
   expectErrorContains "unknown argument still reported" ["--definitely-unknown-flag"] "Unknown argument: --definitely-unknown-flag"
 
   let libWithCommentAndStringBraces :=

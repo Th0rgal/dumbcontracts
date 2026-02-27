@@ -14,7 +14,6 @@
 - ✅ **Trust Reduction Phase 1**: keccak256 axiom + CI validation (PR #43, #46)
 - ✅ **External Linking**: Cryptographic library support (PR #49)
 - ✅ **ContractSpec Real-World Support**: Loops, branching, arrays, events, multi-mappings, internal calls, verified extern linking (#153, #154, #179, #180, #181, #184)
-- ✅ **Unified AST (#364)**: All 7 contracts migrated with equivalence proofs (29 theorems, PR #370)
 
 ---
 
@@ -89,9 +88,7 @@ Recent progress for custom errors (`#586`):
 - Static scalar payload args remain expression-friendly (`uint256`, `address`, `bool`, `bytes32`), while composite/dynamic payload args fail fast with issue-linked diagnostics when not provided as direct parameter references.
 
 Recent progress for ABI JSON artifact generation (`#688`):
-- `verity-compiler --ast --abi-output <dir>` now emits one `<Contract>.abi.json` file per unified AST spec, using an AST→ABI bridge that reuses the shared ABI renderer.
-- The previous AST-mode CLI rejection for `--abi-output` has been removed, so ContractSpec and AST compilation paths now have parity for ABI artifact emission.
-- AST specs now support explicit mutability metadata (`isPayable`, `isView`, `isPure`) that propagates to both runtime payability guards and ABI JSON `stateMutability`, with compile-time validation for invalid combinations.
+- `verity-compiler --abi-output <dir>` emits one `<Contract>.abi.json` file per compiled ContractSpec in the supported compilation path.
 
 Delivery policy for unsupported features:
 1. Compiler diagnostics must identify the exact unsupported construct.
@@ -152,14 +149,6 @@ These limitations affect only the basic interpreter path (used for proofs). The 
 **Yul→EVM Bridge**: Currently `solc` compilation is trusted. Best option: integrate existing EVM semantics (KEVM). Alternative: accept as trust assumption with strong differential testing (current mitigation).
 
 **EVM Semantics**: Mitigated by differential testing against actual EVM execution (Foundry). Likely remains a documented fundamental assumption.
-
-### ✅ **Unified AST** (Issue #364, PR #370)
-**What**: Single deep embedding where `denote ast = edsl_fn` holds by equivalence proof
-**Status**: All 7/7 contracts migrated (27 theorems, 0 sorry)
-
-The unified AST (`Verity.AST`) provides a deep embedding that maps 1:1 to EDSL primitives. Simple contracts use `rfl` (definitional equality). Contracts with helper composition (e.g., `onlyOwner`) use `bind_assoc` to flatten nested `bind` before `rfl` closes the goal.
-
-**Next step**: Build the `contract` macro (Phase 4) and compiler `AST → Yul` (Phase 5).
 
 ### ✅ **Ledger Sum Properties** (Complete)
 **What**: Prove total supply equals sum of all balances
@@ -300,4 +289,4 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines and [`VE
 ---
 
 **Last Updated**: 2026-02-20
-**Status**: Layers 1-3 complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). Unified AST complete: all 7/7 contracts migrated (Issue #364). ContractSpec now supports real-world contracts (loops, branching, events, multi-mappings, internal calls, verified externs).
+**Status**: Layers 1-3 complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). ContractSpec now supports real-world contracts (loops, branching, events, multi-mappings, internal calls, verified externs).

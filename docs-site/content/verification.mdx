@@ -24,16 +24,6 @@ The compiler is verified with IR preservation proofs and Yul equivalence proofs 
 - ReentrancyExample: 4 total (inline proofs: vulnerability existence, supply invariant).
 - Stdlib: 159 theorems (Math 25, Automation 56, MappingAutomation 37, ListSum 7, AddressAutomation 24; 2 shared between Automation and MappingAutomation).
 
-## Unified AST Bridge (Issue #364)
-
-The unified AST provides a deep embedding (`Verity.AST`) where each constructor maps 1:1 to an EDSL primitive. The denotation function in `Verity/Denote.lean` interprets ASTs into the Contract monad, and per-contract equivalence theorems prove `denote ast = edsl_fn`.
-
-- **AST types**: `Verity/AST.lean` (unified `Expr`/`Stmt` inductives)
-- **Denotation**: `Verity/Denote.lean` (AST → Contract monad)
-- **Per-contract ASTs + proofs**: `Verity/AST/{Contract}.lean` (29 public + 2 private theorems across 9 contracts)
-
-Simple contracts (SimpleStorage, Counter, SafeCounter, Ledger) hold by `rfl`. Contracts with helper composition (Owned, OwnedCounter, SimpleToken) use `bind_assoc` to flatten nested `bind` before `rfl` closes the goal.
-
 ## Compiler Proofs (IR + Yul)
 
 - **Spec semantics**: `Verity/Proofs/Stdlib/SpecInterpreter.lean`
@@ -48,7 +38,6 @@ Each contract has these layers of files:
 ```
 Verity/
 ├── Examples/{Contract}.lean      # Implementation (EDSL)
-├── AST/{Contract}.lean           # Unified AST + equivalence proofs (denote ast = edsl_fn)
 ├── Specs/{Contract}/
 │   ├── Spec.lean                 # What each operation should do
 │   └── Invariants.lean           # Properties that should always hold

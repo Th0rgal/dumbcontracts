@@ -1452,6 +1452,12 @@ private partial def rewriteAccrueInterestCheckedArithmeticExpr
           (.call "checked_sub_uint128" [.ident lhs, .ident rhs], 1)
         else
           (.call "sub" [.ident lhs, .ident rhs], 0)
+    | .call "checked_sub_uint256" [.ident lhs, .ident rhs] =>
+        if hasAccrueInterestCompatBaseName "newTotalSupplyAssets" lhs &&
+            hasAccrueInterestCompatBaseName "feeAmount" rhs then
+          (.call "checked_sub_uint128" [.ident lhs, .ident rhs], 1)
+        else
+          (.call "checked_sub_uint256" [.ident lhs, .ident rhs], 0)
     | .call "sstore"
         [ .ident slot
         , .call "or" [.ident slotCleared, .call "shl" [.lit 128, .ident packedValue]]
@@ -3268,6 +3274,36 @@ example :
     report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
       hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" = false &&
       called.any (fun name => name = "checked_sub_uint128") = false := by
+  native_decide
+
+/-- Smoke test: checked arithmetic rewrite canonicalizes pre-existing checked-sub fee denominator shape. -/
+example :
+    let input : YulObject :=
+      { name := "Main"
+        deployCode := []
+        runtimeCode :=
+          [ .funcDef "fun_accrueInterest" [] []
+              [ .let_ "feeDenominator"
+                  (.call "checked_sub_uint256" [.ident "newTotalSupplyAssets", .ident "feeAmount"])
+              ]
+          , .funcDef "checked_sub_uint256" ["x", "y"] ["diff"]
+              [ .assign "diff" (.call "sub" [.ident "x", .ident "y"]) ]
+          , .block [ .expr (.call "fun_accrueInterest" []) ]
+          ] }
+    let report := runPatchPassWithObjects
+      { enabled := true
+        maxIterations := 1
+        rewriteBundleId := solcCompatRewriteBundleId
+        requiredProofRefs := solcCompatProofAllowlist }
+      []
+      []
+      []
+      [solcCompatRewriteAccrueInterestCheckedArithmeticRule]
+      input
+    let called := callNamesInStmts report.patched.runtimeCode
+    report.manifest.map (fun m => m.patchName) = ["solc-compat-rewrite-accrue-interest-checked-arithmetic"] &&
+      hasTopLevelFunctionNamed report.patched.runtimeCode "checked_sub_uint128" &&
+      called.any (fun name => name = "checked_sub_uint128") = true := by
   native_decide
 
 /-- Smoke test: checked arithmetic rewrite stays out-of-scope for non-compat packed sstore writes. -/

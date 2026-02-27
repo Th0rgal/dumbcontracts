@@ -2,7 +2,7 @@
   Compiler.Constants: Shared EVM numeric constants
 
   Lightweight module with zero imports beyond the Lean prelude.
-  Constants defined here are referenced by ContractSpec, Codegen, proofs,
+  Constants defined here are referenced by CompilationModel, Codegen, proofs,
   and the interpreter — centralising them avoids duplication and prevents
   silent divergence if a value is updated in one place but not another.
 -/

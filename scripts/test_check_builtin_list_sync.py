@@ -21,7 +21,7 @@ class BuiltinListSyncTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=property_utils.ROOT) as tmpdir:
             root = Path(tmpdir)
             linker = root / "Compiler" / "Linker.lean"
-            spec = root / "Compiler" / "ContractSpec.lean"
+            spec = root / "Compiler" / "CompilationModel.lean"
             linker.parent.mkdir(parents=True, exist_ok=True)
             spec.parent.mkdir(parents=True, exist_ok=True)
             linker.write_text(linker_body, encoding="utf-8")
@@ -60,7 +60,7 @@ private def interopBuiltinCallNames : List String :=
 """,
         )
         self.assertEqual(rc, 1)
-        self.assertIn("In Linker.yulBuiltins but not in ContractSpec", stderr)
+        self.assertIn("In Linker.yulBuiltins but not in CompilationModel", stderr)
         self.assertIn("sstore", stderr)
 
     def test_checker_passes_for_matching_lists_with_expected_linker_only(self) -> None:

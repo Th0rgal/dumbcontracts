@@ -228,7 +228,7 @@ def renderWithLibraries (obj : YulObject) (libraries : List LibraryFunction) : E
 -- EVM/Yul built-in opcodes (not user-defined functions).
 -- This list must include all opcodes that linked libraries may call,
 -- otherwise `validateExternalReferences` will reject valid library code.
--- Keep in sync with `interopBuiltinCallNames` in ContractSpec.lean.
+-- Keep in sync with `interopBuiltinCallNames` in CompilationModel.lean.
 private def yulBuiltins : List String :=
   ["add", "sub", "mul", "div", "sdiv", "mod", "smod", "exp",
    "not", "lt", "gt", "slt", "sgt", "eq", "iszero", "and", "or", "xor",

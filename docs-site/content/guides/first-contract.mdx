@@ -360,7 +360,7 @@ grep -r "sorry" Verity/Specs/TipJar/ Verity/Proofs/TipJar/
 Add your contract to `Compiler/Specs.lean`:
 
 ```lean
-def tipJarSpec : ContractSpec := {
+def tipJarSpec : CompilationModel := {
   name := "TipJar"
   fields := [
     { name := "tips", ty := FieldType.mappingTyped (.simple .address) }
@@ -392,7 +392,7 @@ def tipJarSpec : ContractSpec := {
 Add your contract to the `allSpecs` list in `Compiler/Specs.lean`:
 
 ```lean
-def allSpecs : List ContractSpec := [
+def allSpecs : List CompilationModel := [
   -- ... existing contracts ...,
   tipJarSpec
 ]
@@ -404,7 +404,7 @@ Function selectors (the first 4 bytes of `keccak256("functionName(paramTypes)")`
 
 ### 5.3 Write Layer 2 Proofs
 
-Layer 2 proofs show that the `ContractSpec` you just wrote faithfully represents the EDSL implementation. Create `Compiler/Proofs/SpecCorrectness/TipJar.lean` (Lake discovers all `.lean` files under `Compiler/` automatically via `globs := #[.andSubmodules `Compiler]` in `lakefile.lean`, so no registration is needed):
+Layer 2 proofs show that the `CompilationModel` you just wrote faithfully represents the EDSL implementation. Create `Compiler/Proofs/SpecCorrectness/TipJar.lean` (Lake discovers all `.lean` files under `Compiler/` automatically via `globs := #[.andSubmodules `Compiler]` in `lakefile.lean`, so no registration is needed):
 
 ```lean
 /-
@@ -423,7 +423,7 @@ import Verity.Examples.TipJar
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity
@@ -688,7 +688,7 @@ import Verity.Proofs.TipJar.Correctness
 
 > **Tip**: The scaffold generator prints these exact lines when you run it — copy them directly.
 
-> **Tip**: Focus on the supported `ContractSpec` (`CompilationModel`) path for compiler-facing work. The scaffold and CI checks in this repository are aligned to that single path.
+> **Tip**: Focus on the supported `CompilationModel` (`CompilationModel`) path for compiler-facing work. The scaffold and CI checks in this repository are aligned to that single path.
 
 ---
 

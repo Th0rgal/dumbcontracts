@@ -32,7 +32,7 @@ namespace Verity.Proofs.Stdlib.Automation
 
 open Verity
 open Verity.Proofs.Stdlib.SpecInterpreter
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 
 /-!
 ## Index Normalization Helpers

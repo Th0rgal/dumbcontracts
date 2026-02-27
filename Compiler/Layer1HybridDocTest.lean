@@ -5,25 +5,25 @@
   the expected proof coverage, consistent with TRUST_ASSUMPTIONS.md.
 
   Positive checks:
-  - CompilationModel alias resolves to ContractSpec
+  - CompilationModel alias resolves to CompilationModel
   - CompilationModel-based spec interpreter compiles
   - Layer-1 hybrid infrastructure (SpecInterpreter) exists
 
   Run: lake build Compiler.Layer1HybridDocTest
 -/
 
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 import Verity.Proofs.Stdlib.SpecInterpreter
 
 namespace Compiler.Layer1HybridDocTest
 
 open Compiler
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 
 -- ## Positive: CompilationModel path artifacts exist
 
-/-- CompilationModel alias resolves to ContractSpec. -/
-example : CompilationModel = ContractSpec := rfl
+/-- CompilationModel alias resolves to CompilationModel. -/
+example : CompilationModel = CompilationModel := rfl
 
 /-- A CompilationModel can be constructed and used (compiler-facing artifact). -/
 private def smokeSpec : CompilationModel := {
@@ -55,7 +55,7 @@ example := @Verity.Proofs.Stdlib.SpecInterpreter.interpretSpec
 
 -- Compile-time IO smoke: prints trust-boundary check summary.
 def main : IO Unit := do
-  IO.println "✓ CompilationModel alias resolves (CompilationModel = ContractSpec)"
+  IO.println "✓ CompilationModel alias resolves (CompilationModel = CompilationModel)"
   IO.println "✓ CompilationModel spec construction compiles"
   IO.println "✓ SpecInterpreter (Layer-1 infrastructure) type-checks"
   IO.println "Layer-1 hybrid doc test: all checks passed"

@@ -3,7 +3,7 @@
 
   Prove that safeCounterSpec accurately represents the SafeCounter EDSL.
 
-  This establishes that the manually written ContractSpec matches
+  This establishes that the manually written CompilationModel matches
   the verified EDSL semantics for SafeCounter with overflow protection.
 
   Strategy:
@@ -21,7 +21,7 @@ import Verity.Proofs.SafeCounter.Basic
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity

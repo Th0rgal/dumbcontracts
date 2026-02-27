@@ -3,7 +3,7 @@
 
   Prove that simpleStorageSpec accurately represents the SimpleStorage EDSL.
 
-  This establishes that the manually written ContractSpec matches
+  This establishes that the manually written CompilationModel matches
   the verified EDSL semantics for SimpleStorage.
 
   Strategy:
@@ -18,7 +18,7 @@ import Verity.Examples.SimpleStorage
 
 namespace Compiler.Proofs.SpecCorrectness
 
-open Compiler.ContractSpec
+open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity

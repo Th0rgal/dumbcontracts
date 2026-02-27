@@ -213,7 +213,7 @@ def storeHashTwo (a b : Uint256) : Contract Unit := do
   setStorage lastHash h
 ```
 
-The EDSL uses a placeholder function (`add`) for the hash. At compile time, the [Linker](/guides/linking-libraries) replaces the compiled output with a call to the real Poseidon library via `Expr.externalCall` in the ContractSpec layer.
+The EDSL uses a placeholder function (`add`) for the hash. At compile time, the [Linker](/guides/linking-libraries) replaces the compiled output with a call to the real Poseidon library via `Expr.externalCall` in the CompilationModel layer.
 
 Source: [`Verity/Examples/CryptoHash.lean`](https://github.com/Th0rgal/verity/blob/main/Verity/Examples/CryptoHash.lean)
 

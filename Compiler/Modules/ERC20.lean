@@ -16,13 +16,13 @@
 -/
 
 import Compiler.ECM
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 
 namespace Compiler.Modules.ERC20
 
 open Compiler.Yul
 open Compiler.ECM
-open Compiler.ContractSpec (Stmt Expr)
+open Compiler.CompilationModel (Stmt Expr)
 
 /-- ERC-20 safeTransfer module.
     Calls `transfer(address to, uint256 amount)` with optional-bool-return handling.

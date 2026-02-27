@@ -9,13 +9,13 @@
 -/
 
 import Compiler.ECM
-import Compiler.ContractSpec
+import Compiler.CompilationModel
 
 namespace Compiler.Modules.Callbacks
 
 open Compiler.Yul
 open Compiler.ECM
-open Compiler.ContractSpec (Stmt Expr)
+open Compiler.CompilationModel (Stmt Expr)
 
 /-- Flash loan callback module.
     ABI-encodes `selector(staticArgs..., bytesParam)` and calls `target`.

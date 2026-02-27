@@ -38,6 +38,7 @@ supported inputs:
 `lower_ledger_deposit_correct`,
 `lower_ledger_withdraw_correct_sufficient`,
 `lower_ledger_getBalance_correct`,
+`lower_ledger_transfer_correct_sufficient`,
 `lower_ownedCounter_getCount_correct`,
 `lower_ownedCounter_increment_correct_as_owner`,
 `lower_ownedCounter_decrement_correct_as_owner`,
@@ -46,6 +47,8 @@ supported inputs:
 `lower_simpleToken_getTotalSupply_correct`,
 `lower_simpleToken_balanceOf_correct`,
 `lower_simpleToken_getOwner_correct`,
+`lower_simpleToken_mint_correct_as_owner`,
+`lower_simpleToken_transfer_correct_sufficient`,
 `lower_safeCounter_getCount_correct`,
 `lower_safeCounter_increment_correct`,
 `lower_safeCounter_decrement_correct`.

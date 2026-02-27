@@ -254,6 +254,32 @@ theorem lower_ledger_getBalance_correct
     specResult.returnValue = some edslValue.val := by
   simpa [lowerSupportedEDSLContract] using ledger_getBalance_correct state addr sender
 
+/-- Transition bridge: lowering `.ledger` preserves transfer semantics when balances permit. -/
+theorem lower_ledger_transfer_correct_sufficient
+    (state : Verity.ContractState)
+    (to : Verity.Address)
+    (amount : Nat)
+    (sender : Verity.Address)
+    (h : (state.storageMap 0 sender).val ≥ amount)
+    (h_no_overflow : (state.storageMap 0 to).val + amount ≤ Verity.Stdlib.Math.MAX_UINT256) :
+    let edslResult := (Verity.Examples.Ledger.transfer to (Verity.Core.Uint256.ofNat amount)).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "transfer"
+      args := [to.val, amount]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .ledger)
+      (ledgerEdslToSpecStorageWithAddrs state [sender, to]) specTx
+    edslResult.isSuccess = true ∧
+    specResult.success = true ∧
+    specResult.finalStorage.getMapping 0 (sender.val) =
+      (edslResult.getState.storageMap 0 sender).val ∧
+    specResult.finalStorage.getMapping 0 (to.val) =
+      (edslResult.getState.storageMap 0 to).val := by
+  simpa [lowerSupportedEDSLContract] using
+    ledger_transfer_correct_sufficient state to amount sender h h_no_overflow
+
 /-- Transition bridge: lowering `.ownedCounter` preserves Layer-1 getter correctness. -/
 theorem lower_ownedCounter_getCount_correct
     (state : Verity.ContractState)
@@ -393,6 +419,58 @@ theorem lower_simpleToken_getOwner_correct
     specResult.success = true ∧
     specResult.returnValue = some (edslAddr.val) := by
   simpa [lowerSupportedEDSLContract] using token_getOwner_correct state sender
+
+/-- Transition bridge: lowering `.simpleToken` preserves owner-only mint semantics. -/
+theorem lower_simpleToken_mint_correct_as_owner
+    (state : Verity.ContractState)
+    (to : Verity.Address)
+    (amount : Nat)
+    (sender : Verity.Address)
+    (h : state.storageAddr 0 = sender)
+    (h_no_bal_overflow : (state.storageMap 1 to : Nat) + amount ≤ Verity.Stdlib.Math.MAX_UINT256)
+    (h_no_sup_overflow : (state.storage 2 : Nat) + amount ≤ Verity.Stdlib.Math.MAX_UINT256) :
+    let edslResult := (Verity.Examples.SimpleToken.mint to (Verity.Core.Uint256.ofNat amount)).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "mint"
+      args := [to.val, amount]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .simpleToken)
+      (tokenEdslToSpecStorageWithAddrs state [to]) specTx
+    edslResult.isSuccess = true ∧
+    specResult.success = true ∧
+    specResult.finalStorage.getMapping 1 (to.val) = (edslResult.getState.storageMap 1 to).val ∧
+    specResult.finalStorage.getSlot 2 = (edslResult.getState.storage 2).val := by
+  simpa [lowerSupportedEDSLContract] using
+    token_mint_correct_as_owner state to amount sender h h_no_bal_overflow h_no_sup_overflow
+
+/-- Transition bridge: lowering `.simpleToken` preserves transfer semantics when balance is sufficient. -/
+theorem lower_simpleToken_transfer_correct_sufficient
+    (state : Verity.ContractState)
+    (to : Verity.Address)
+    (amount : Nat)
+    (sender : Verity.Address)
+    (h : (state.storageMap 1 sender).val ≥ amount)
+    (h_no_overflow : sender ≠ to →
+      (state.storageMap 1 to).val + amount ≤ Verity.Stdlib.Math.MAX_UINT256) :
+    let edslResult := (Verity.Examples.SimpleToken.transfer to (Verity.Core.Uint256.ofNat amount)).run
+      { state with sender := sender }
+    let specTx : Compiler.DiffTestTypes.Transaction := {
+      sender := sender
+      functionName := "transfer"
+      args := [to.val, amount]
+    }
+    let specResult := interpretSpec (lowerSupportedEDSLContract .simpleToken)
+      (tokenEdslToSpecStorageWithAddrs state [sender, to]) specTx
+    edslResult.isSuccess = true ∧
+    specResult.success = true ∧
+    specResult.finalStorage.getMapping 1 (sender.val) =
+      (edslResult.getState.storageMap 1 sender).val ∧
+    specResult.finalStorage.getMapping 1 (to.val) =
+      (edslResult.getState.storageMap 1 to).val := by
+  simpa [lowerSupportedEDSLContract] using
+    token_transfer_correct_sufficient state to amount sender h h_no_overflow
 
 /-- Transition bridge: lowering `.safeCounter` preserves Layer-1 getter correctness. -/
 theorem lower_safeCounter_getCount_correct

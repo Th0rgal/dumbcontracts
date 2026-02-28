@@ -91,6 +91,14 @@ def supportedEDSLContractNames : List String :=
 def parseSupportedEDSLContract? (raw : String) : Option SupportedEDSLContract :=
   supportedEDSLContracts.find? (fun contract => supportedEDSLContractName contract == raw)
 
+def unsupportedEDSLContractMessage (raw : String) : String :=
+  s!"Unsupported --edsl-contract: {raw} (supported: {String.intercalate ", " supportedEDSLContractNames})"
+
+def parseSupportedEDSLContract (raw : String) : Except String SupportedEDSLContract :=
+  match parseSupportedEDSLContract? raw with
+  | some contract => .ok contract
+  | none => .error (unsupportedEDSLContractMessage raw)
+
 /-- Lower a compilable EDSL-subset input to `CompilationModel`.
 This currently supports the explicit manual-bridge case and fails closed
 for unimplemented automatic reification cases. -/
@@ -103,6 +111,13 @@ def lowerFromEDSLSubset (input : EDSLSubsetInput) : Except LoweringError Compila
 /-- Current manual compilation path routed through the lowering boundary. -/
 def lowerModelPath (model : CompilationModel) : Except LoweringError CompilationModel :=
   lowerFromEDSLSubset (.manualBridge (liftModel model))
+
+/-- Parse a CLI selected supported-contract id and lower it through the boundary. -/
+def lowerFromParsedSupportedContract (raw : String) : Except String CompilationModel := do
+  let contract ← parseSupportedEDSLContract raw
+  match lowerFromEDSLSubset (.supported contract) with
+  | .ok spec => .ok spec
+  | .error err => .error err.message
 
 def edslInputReservedMessage : String :=
   LoweringError.message (.unsupported "(pending verified EDSL subset reification/lowering)")

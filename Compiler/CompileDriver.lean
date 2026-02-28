@@ -55,12 +55,7 @@ private def parseRequestedEDSLContracts (rawContracts : List String) :
   if rawContracts.isEmpty then
     .ok Compiler.Lowering.supportedEDSLContracts
   else
-    rawContracts.mapM fun raw =>
-      match Compiler.Lowering.parseSupportedEDSLContract? raw with
-      | some contract => .ok contract
-      | none =>
-          .error
-            s!"Unsupported --edsl-contract: {raw} (supported: {String.intercalate ", " Compiler.Lowering.supportedEDSLContractNames})"
+    rawContracts.mapM Compiler.Lowering.parseSupportedEDSLContract
 
 private def resolveSpecsForEDSLInput
     (libraryPaths : List String)

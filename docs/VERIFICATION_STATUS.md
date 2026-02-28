@@ -76,6 +76,9 @@ selection IDs:
 `supportedEDSLContractNames_nodup`.
 It also includes parsed-ID to lowering-boundary preservation:
 `lowerFromParsedSupportedContract_preserves_interpretSpec`.
+CLI parsing/lowering now uses centralized boundary helpers:
+`parseSupportedEDSLContract`,
+`lowerFromParsedSupportedContract`.
 Lowering API-boundary preservation lemmas are explicit for both transition
 entrypoints:
 `lowerFromEDSLSubset_supported_preserves_interpretSpec`,

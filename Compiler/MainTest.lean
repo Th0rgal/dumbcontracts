@@ -166,6 +166,14 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
       | some parsed => parsed == requested
       | none => false)
   expectTrue "supported --edsl-contract parser roundtrip is unique" parserRoundtripUnique
+  expectTrue "parsed supported --edsl-contract lowers to pinned target"
+    (match Compiler.Lowering.lowerFromParsedSupportedContract "counter" with
+    | .ok lowered => lowered.name == "Counter"
+    | .error _ => false)
+  expectTrue "unsupported --edsl-contract helper keeps deterministic diagnostic"
+    (match Compiler.Lowering.lowerFromParsedSupportedContract "does-not-exist" with
+    | .ok _ => false
+    | .error msg => contains msg "Unsupported --edsl-contract: does-not-exist")
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

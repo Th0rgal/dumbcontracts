@@ -885,6 +885,47 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [← hName]
   simpa using parseSupportedEDSLContract_roundtrip contract
 
+@[simp] theorem parseSupportedEDSLContract_eq_ok
+    (raw : String)
+    (contract : SupportedEDSLContract)
+    (hParse : parseSupportedEDSLContract? raw = some contract) :
+    parseSupportedEDSLContract raw = .ok contract := by
+  unfold parseSupportedEDSLContract
+  rw [hParse]
+
+@[simp] theorem lowerFromParsedSupportedContract_eq_ok
+    (raw : String)
+    (contract : SupportedEDSLContract)
+    (hParse : parseSupportedEDSLContract? raw = some contract) :
+    lowerFromParsedSupportedContract raw = .ok (lowerSupportedEDSLContract contract) := by
+  unfold lowerFromParsedSupportedContract
+  rw [parseSupportedEDSLContract_eq_ok raw contract hParse]
+  rfl
+
+/-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
+@[simp] theorem lowerParsedSupportedContract_preserves_interpretSpec
+    (raw : String)
+    (contract : SupportedEDSLContract)
+    (hParse : parseSupportedEDSLContract? raw = some contract)
+    (initialStorage : SpecStorage)
+    (tx : Compiler.DiffTestTypes.Transaction) :
+    interpretSpec
+      (match lowerFromParsedSupportedContract raw with
+      | .ok lowered => lowered
+      | .error _ => lowerSupportedEDSLContract contract)
+      initialStorage tx =
+    interpretSpec (lowerSupportedEDSLContract contract) initialStorage tx := by
+  simpa [lowerFromParsedSupportedContract_eq_ok raw contract hParse]
+
+/-- Unsupported CLI-selected IDs fail closed with the boundary diagnostic. -/
+@[simp] theorem lowerFromParsedSupportedContract_unknown_eq_error
+    (raw : String)
+    (hParse : parseSupportedEDSLContract? raw = none) :
+    lowerFromParsedSupportedContract raw = .error (unsupportedEDSLContractMessage raw) := by
+  unfold lowerFromParsedSupportedContract parseSupportedEDSLContract
+  rw [hParse]
+  rfl
+
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
     (raw : String)

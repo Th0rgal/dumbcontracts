@@ -1024,6 +1024,26 @@ parse-stage error through the centralized helper boundary. -/
   rw [lowerFromParsedSupportedContract_eq_error_of_parse_error raw err hParse]
   rfl
 
+/-- Non-empty selected IDs fail closed to any explicitly established parse-stage
+error when a tail selected ID fails parsing after a known-valid head ID. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error
+    (rawOk rawBad : String)
+    (rest : List String)
+    (contract : SupportedEDSLContract)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] (rawOk :: rawBad :: rest) = none)
+    (hParseOk : parseSupportedEDSLContract? rawOk = some contract)
+    (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
+    lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
+      .error err := by
+  have hNonEmpty : (rawOk :: rawBad :: rest) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawOk :: rawBad :: rest) hNoDup hNonEmpty]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
+  rfl
+
 /-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :
     lowerRequestedSupportedEDSLContracts supportedEDSLContractNames =

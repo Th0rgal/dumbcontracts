@@ -57,7 +57,7 @@ def simpleStorageSpec : CompilationModel := {
   fields := [
     { name := "storedData", ty := FieldType.uint256 }
   ]
-  constructor := none  -- No initialization needed
+  «constructor» := none  -- No initialization needed
   functions := [
     { name := "store"
       params := [{ name := "value", ty := ParamType.uint256 }]
@@ -87,7 +87,7 @@ def counterSpec : CompilationModel := {
   fields := [
     { name := "count", ty := FieldType.uint256 }
   ]
-  constructor := none
+  «constructor» := none
   functions := [
     { name := "increment"
       params := []
@@ -125,7 +125,7 @@ def ownedSpec : CompilationModel := {
   fields := [
     { name := "owner", ty := FieldType.address }
   ]
-  constructor := some ownerConstructor
+  «constructor» := some ownerConstructor
   functions := [
     { name := "transferOwnership"
       params := [{ name := "newOwner", ty := ParamType.address }]
@@ -156,7 +156,7 @@ def ledgerSpec : CompilationModel := {
   fields := [
     { name := "balances", ty := FieldType.mappingTyped (.simple .address) }
   ]
-  constructor := none
+  «constructor» := none
   functions := [
     { name := "deposit"
       params := [{ name := "amount", ty := ParamType.uint256 }]
@@ -210,7 +210,7 @@ def ownedCounterSpec : CompilationModel := {
     { name := "owner", ty := FieldType.address },
     { name := "count", ty := FieldType.uint256 }
   ]
-  constructor := some ownerConstructor
+  «constructor» := some ownerConstructor
   functions := [
     { name := "increment"
       params := []
@@ -268,7 +268,7 @@ def simpleTokenSpec : CompilationModel := {
     { name := "balances", ty := FieldType.mappingTyped (.simple .address) },
     { name := "totalSupply", ty := FieldType.uint256 }
   ]
-  constructor := some {
+  «constructor» := some {
     params := [{ name := "initialOwner", ty := ParamType.address }]
     body := [
       Stmt.setStorage "owner" (Expr.constructorArg 0),
@@ -345,7 +345,7 @@ def cryptoHashSpec : CompilationModel := {
   fields := [
     { name := "lastHash", ty := FieldType.uint256 }
   ]
-  constructor := none
+  «constructor» := none
   externals := [
     { name := "PoseidonT3_hash"
       params := [ParamType.uint256, ParamType.uint256]
@@ -401,7 +401,7 @@ def safeCounterSpec : CompilationModel := {
   fields := [
     { name := "count", ty := FieldType.uint256 }
   ]
-  constructor := none
+  «constructor» := none
   functions := [
     { name := "increment"
       params := []

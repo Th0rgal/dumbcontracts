@@ -18,17 +18,20 @@ from property_utils import ROOT, die
 EXCLUDED_CONTRACTS = {
     "ReentrancyExample",  # Inline proofs in Examples/, no separate Proofs/ dir
     "CryptoHash",         # Axiom-based, no separate proof structure
+    "MacroContracts",     # Aggregates macro-generated examples, not a standalone contract
 }
 
 # Contracts excluded from SpecCorrectness check (no compiler-level spec)
 EXCLUDED_FROM_SPEC_CORRECTNESS = {
     "ReentrancyExample",  # Has proofs but no compiler spec
     "CryptoHash",         # External-library contract, no separate proof structure
+    "MacroContracts",     # Bundle module, not a compiler target
 }
 
 # Contracts excluded from property test check
 EXCLUDED_FROM_PROPERTY_TESTS = {
     "CryptoHash",         # External-library contract, no property tests
+    "MacroContracts",     # Bundle module, not a deployable contract
 }
 
 # Expected files for each contract (relative to ROOT)

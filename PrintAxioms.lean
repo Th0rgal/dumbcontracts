@@ -681,6 +681,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_singleton_eq_ok
 #print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok
 #print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_singleton_eq_error
+#print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok
+#print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_cons_eq_error_of_tail_error
 #print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok
 #print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_default_eq
@@ -847,4 +849,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 722 theorems/lemmas (693 public, 29 private)
+-- Total: 724 theorems/lemmas (695 public, 29 private)

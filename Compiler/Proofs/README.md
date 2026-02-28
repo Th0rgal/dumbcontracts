@@ -37,6 +37,8 @@ Singleton selected-ID map traversal helper lemmas are also explicit:
 `lowerFromParsedSupportedContract_singleton_eq_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_error`,
+`lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok`,
+`lowerFromParsedSupportedContract_cons_eq_error_of_tail_error`,
 `lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`,
 `lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`.
 CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via

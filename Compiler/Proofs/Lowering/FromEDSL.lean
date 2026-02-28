@@ -964,6 +964,37 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [List.mapM_cons, hLower]
   rfl
 
+/-- A cons selected-ID map traversal reflects any established successful
+lowering at the head and tail. -/
+@[simp] theorem lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok
+    (rawHead : String)
+    (rawTail : List String)
+    (loweredHead : Compiler.CompilationModel.CompilationModel)
+    (loweredTail : List Compiler.CompilationModel.CompilationModel)
+    (hLowerHead : lowerFromParsedSupportedContract rawHead = .ok loweredHead)
+    (hLowerTail : rawTail.mapM lowerFromParsedSupportedContract = .ok loweredTail) :
+    (rawHead :: rawTail).mapM lowerFromParsedSupportedContract =
+      .ok (loweredHead :: loweredTail) := by
+  rw [List.mapM_cons]
+  rw [hLowerHead]
+  rw [hLowerTail]
+  rfl
+
+/-- A cons selected-ID map traversal fails closed to any established tail
+map-traversal lowering error once the head lowering succeeds. -/
+@[simp] theorem lowerFromParsedSupportedContract_cons_eq_error_of_tail_error
+    (rawHead : String)
+    (rawTail : List String)
+    (headContract : SupportedEDSLContract)
+    (err : String)
+    (hParseHead : parseSupportedEDSLContract? rawHead = some headContract)
+    (hTailError : rawTail.mapM lowerFromParsedSupportedContract = .error err) :
+    (rawHead :: rawTail).mapM lowerFromParsedSupportedContract = .error err := by
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawHead headContract hParseHead]
+  rw [hTailError]
+  rfl
+
 /-- A two-ID selected map traversal reflects any established successful lowerings. -/
 @[simp] theorem lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok
     (rawA rawB : String)
@@ -971,9 +1002,16 @@ theorem lower_safeCounter_decrement_reverts_at_zero
     (hLowerA : lowerFromParsedSupportedContract rawA = .ok loweredA)
     (hLowerB : lowerFromParsedSupportedContract rawB = .ok loweredB) :
     [rawA, rawB].mapM lowerFromParsedSupportedContract = .ok [loweredA, loweredB] := by
-  rw [List.mapM_cons, hLowerA]
-  rw [List.mapM_cons, hLowerB]
-  rfl
+  have hTailOk : [rawB].mapM lowerFromParsedSupportedContract = .ok [loweredB] := by
+    simpa using lowerFromParsedSupportedContract_singleton_eq_ok rawB loweredB hLowerB
+  simpa using
+    lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok
+      rawA
+      [rawB]
+      loweredA
+      [loweredB]
+      hLowerA
+      hTailOk
 
 /-- A two-ID selected map traversal lowers successfully when both IDs parse successfully. -/
 @[simp] theorem lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok
@@ -1141,10 +1179,14 @@ explicitly established tail map-traversal lowering error. -/
     simp
   have hLowerAll :
       (rawHead :: rawTail).mapM lowerFromParsedSupportedContract = .error err := by
-    rw [List.mapM_cons]
-    rw [lowerFromParsedSupportedContract_eq_ok rawHead headContract hParseHead]
-    rw [hTailError]
-    rfl
+    exact
+      lowerFromParsedSupportedContract_cons_eq_error_of_tail_error
+        rawHead
+        rawTail
+        headContract
+        err
+        hParseHead
+        hTailError
   exact lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
     (rawHead :: rawTail) err hNoDup hNonEmpty hLowerAll
 
@@ -1324,10 +1366,14 @@ successfully. -/
   have hLowerAll :
       (rawHead :: rawTail).mapM lowerFromParsedSupportedContract =
         .ok (loweredHeadContract :: loweredTailContracts) := by
-    rw [List.mapM_cons]
-    rw [hLowerHead]
-    rw [hTailOk]
-    rfl
+    exact
+      lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok
+        rawHead
+        rawTail
+        loweredHeadContract
+        loweredTailContracts
+        hLowerHead
+        hTailOk
   exact lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok
     (rawHead :: rawTail)
     (loweredHeadContract :: loweredTailContracts)

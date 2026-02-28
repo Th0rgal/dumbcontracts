@@ -80,6 +80,8 @@ Singleton selected-ID map traversal helpers are also explicit:
 `lowerFromParsedSupportedContract_singleton_eq_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_error`,
+`lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok`,
+`lowerFromParsedSupportedContract_cons_eq_error_of_tail_error`,
 `lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`,
 `lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`.
 CLI parsing/lowering now uses centralized boundary helpers:

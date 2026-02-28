@@ -59,6 +59,50 @@ private def testExec (stmts : List Stmt) : Option (EvalContext × ExecState) :=
 private def testExecFuel (fuel : Nat) (stmts : List Stmt) : Option (EvalContext × ExecState) :=
   execStmtsFuel fuel testCtx testFields testParamNames noExternalFns [] emptyState stmts
 
+private def iteInterpSpec : CompilationModel := {
+  name := "IteInterpSpec"
+  fields := []
+  constructor := none
+  functions := [
+    { name := "choose"
+      params := [{ name := "cond", ty := .uint256 }]
+      returnType := some .uint256
+      body := [
+        Stmt.ite (Expr.param "cond")
+          [Stmt.return (Expr.literal 11)]
+          [Stmt.return (Expr.literal 22)]
+      ]
+    }
+  ]
+  events := []
+}
+
+private def mapping2InterpSpec : CompilationModel := {
+  name := "Mapping2InterpSpec"
+  fields := [
+    { name := "allowances"
+      ty := .mappingTyped (.nested .address .address)
+      slot := some 5 }
+  ]
+  constructor := none
+  functions := [
+    { name := "setAllowance"
+      params := [{ name := "owner", ty := .address }, { name := "spender", ty := .address }, { name := "amount", ty := .uint256 }]
+      returnType := none
+      body := [
+        Stmt.setMapping2 "allowances" (Expr.param "owner") (Expr.param "spender") (Expr.param "amount"),
+        Stmt.stop
+      ]
+    },
+    { name := "allowance"
+      params := [{ name := "owner", ty := .address }, { name := "spender", ty := .address }]
+      returnType := some .uint256
+      body := [Stmt.return (Expr.mapping2 "allowances" (Expr.param "owner") (Expr.param "spender"))]
+    }
+  ]
+  events := []
+}
+
 /-! ## Category 1: Expressions — supported in basic path -/
 
 /-- Literal evaluation. -/
@@ -131,6 +175,13 @@ example : (testExec [
       [Stmt.return (Expr.literal 2)]
   ]).bind (fun (_, s) => s.returnValue) = some 1 := by native_decide
 
+/-- If/else branches correctly (else branch). -/
+example : (testExec [
+    Stmt.ite (Expr.literal 0)
+      [Stmt.return (Expr.literal 1)]
+      [Stmt.return (Expr.literal 2)]
+  ]).bind (fun (_, s) => s.returnValue) = some 2 := by native_decide
+
 /-- Event emission succeeds and stop halts. -/
 example : (testExec [
     Stmt.emit "Transfer" [Expr.caller, Expr.param "target", Expr.param "amount"],
@@ -171,17 +222,54 @@ example : (testExec [
     Stmt.externalCallBind ["r"] "ext" []
   ]).isNone = true := by native_decide
 
+/-! ## Category 7: interpretSpec smoke tests -/
+
+/-- interpretSpec executes Stmt.ite with then/else branch semantics. -/
+example :
+    let thenTx : Compiler.DiffTestTypes.Transaction := { sender := 7, functionName := "choose", args := [1] }
+    let elseTx : Compiler.DiffTestTypes.Transaction := { sender := 7, functionName := "choose", args := [0] }
+    let thenResult := interpretSpec iteInterpSpec SpecStorage.empty thenTx
+    let elseResult := interpretSpec iteInterpSpec SpecStorage.empty elseTx
+    thenResult.success &&
+      elseResult.success &&
+      thenResult.returnValue == some 11 &&
+      elseResult.returnValue == some 22 = true := by
+  native_decide
+
+/-- interpretSpec round-trips setMapping2/Expr.mapping2 read path. -/
+example :
+    let owner := 0xA11CE
+    let spender := 0xB0B
+    let amount := 777
+    let writeTx : Compiler.DiffTestTypes.Transaction := {
+      sender := owner
+      functionName := "setAllowance"
+      args := [owner, spender, amount]
+    }
+    let readTx : Compiler.DiffTestTypes.Transaction := {
+      sender := owner
+      functionName := "allowance"
+      args := [owner, spender]
+    }
+    let writeResult := interpretSpec mapping2InterpSpec SpecStorage.empty writeTx
+    let readResult := interpretSpec mapping2InterpSpec writeResult.finalStorage readTx
+    writeResult.success &&
+      readResult.success &&
+      readResult.returnValue == some amount = true := by
+  native_decide
+
 /-! ## Summary
 
-  22 native_decide proofs covering:
+  26 native_decide proofs covering:
   - 9 expression evaluations (literals, params, caller, msgValue, blockTimestamp,
     arithmetic with wrapping, comparison, bitwise)
   - 2 fallback-zero boundary checks (contractAddress, chainid)
-  - 6 basic-path statement tests (storage write+read, let/assign/return,
-    require pass/fail, ite, event emission + stop)
+  - 7 basic-path statement tests (storage write+read, let/assign/return,
+    require pass/fail, ite then/else, event emission + stop)
   - 2 basic-path unsupported boundary checks (forEach, internalCall)
   - 1 fuel-path forEach test
   - 2 not-modeled boundary checks (mstore, externalCallBind)
+  - 2 interpretSpec smoke tests (Stmt.ite branches + Expr.mapping2 round-trip)
 -/
 
 end Compiler.Proofs.InterpreterFeatureTest

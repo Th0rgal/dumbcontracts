@@ -22,6 +22,7 @@ inductive SupportedEDSLContract where
   | ownedCounter
   | simpleToken
   | safeCounter
+  | erc20
   deriving Repr, DecidableEq
 
 /-- Transitional representation of compilable EDSL input.
@@ -63,6 +64,7 @@ def lowerSupportedEDSLContract : SupportedEDSLContract → CompilationModel
   | .ownedCounter => Compiler.Specs.ownedCounterSpec
   | .simpleToken => Compiler.Specs.simpleTokenSpec
   | .safeCounter => Compiler.Specs.safeCounterSpec
+  | .erc20 => Compiler.Specs.erc20Spec
 
 /-- Ordered list used by the CLI when compiling `--input edsl`. -/
 def supportedEDSLContracts : List SupportedEDSLContract := [
@@ -72,7 +74,8 @@ def supportedEDSLContracts : List SupportedEDSLContract := [
   .ledger,
   .ownedCounter,
   .simpleToken,
-  .safeCounter
+  .safeCounter,
+  .erc20
 ]
 
 /-- CLI-stable identifier for each currently supported EDSL contract. -/
@@ -84,6 +87,7 @@ def supportedEDSLContractName : SupportedEDSLContract → String
   | .ownedCounter => "owned-counter"
   | .simpleToken => "simple-token"
   | .safeCounter => "safe-counter"
+  | .erc20 => "erc20"
 
 def supportedEDSLContractNames : List String :=
   supportedEDSLContracts.map supportedEDSLContractName

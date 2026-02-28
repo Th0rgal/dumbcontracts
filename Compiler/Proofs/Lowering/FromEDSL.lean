@@ -1,5 +1,6 @@
 import Compiler.Lowering.FromEDSL
 import Compiler.Proofs.SpecCorrectness.Counter
+import Compiler.Proofs.SpecCorrectness.ERC20
 import Compiler.Proofs.SpecCorrectness.Ledger
 import Compiler.Proofs.SpecCorrectness.Owned
 import Compiler.Proofs.SpecCorrectness.OwnedCounter
@@ -101,6 +102,9 @@ exactly at the lowering API boundary. -/
 
 @[simp] theorem lowerSupportedEDSLContract_safeCounter_eq :
     lowerSupportedEDSLContract .safeCounter = Compiler.Specs.safeCounterSpec := rfl
+
+@[simp] theorem lowerSupportedEDSLContract_erc20_eq :
+    lowerSupportedEDSLContract .erc20 = Compiler.Specs.erc20Spec := rfl
 
 /-- Transition bridge: lowering `.simpleStorage` preserves the existing
 EDSL-vs-CompilationModel correctness theorem for `store`. -/
@@ -848,6 +852,37 @@ theorem lower_safeCounter_decrement_reverts_at_zero
     · cases h_spec : (interpretSpec (lowerSupportedEDSLContract .safeCounter)
           (safeCounterEdslToSpecStorage state)
           { sender := sender, functionName := "decrement", args := [] }).success <;> simp_all
+
+/-! ### ERC20 bridge theorems
+
+ERC20 is the first supported EDSL contract using double-mapping fields
+(`allowances : mapping(address => mapping(address => uint256))`), `Stmt.ite`
+branching, and MAX_UINT256 infinite-allowance semantics. The pinning theorem
+(`lowerSupportedEDSLContract_erc20_eq`) above establishes that lowering `.erc20`
+is definitionally equal to `erc20Spec`. SpecCorrectness bridge theorems in
+`Compiler/Proofs/SpecCorrectness/ERC20.lean` connect the EDSL execution to the
+formal ERC20 spec. Full EDSL-to-`interpretSpec` lowering bridge theorems for
+ERC20 will follow as the SpecInterpreter gains ite/mapping2 support.
+-/
+
+/-- Transition bridge: lowering `.erc20` through `lowerFromEDSLSubset`
+produces `erc20Spec` deterministically. -/
+@[simp] theorem lowerFromEDSLSubset_erc20_eq :
+    lowerFromEDSLSubset (.supported .erc20) = .ok Compiler.Specs.erc20Spec := by
+  rfl
+
+/-- Transition bridge: lowering `.erc20` preserves `interpretSpec` semantics
+exactly at the lowering API boundary. -/
+@[simp] theorem lowerFromEDSLSubset_erc20_preserves_interpretSpec
+    (initialStorage : SpecStorage)
+    (tx : Compiler.DiffTestTypes.Transaction) :
+    interpretSpec
+      (match lowerFromEDSLSubset (.supported .erc20) with
+      | .ok lowered => lowered
+      | .error _ => lowerSupportedEDSLContract .erc20)
+      initialStorage tx =
+    interpretSpec Compiler.Specs.erc20Spec initialStorage tx := by
+  rfl
 
 /-- Supported-contract parser round-trips through the CLI-stable name map. -/
 @[simp] theorem parseSupportedEDSLContract_roundtrip

@@ -69,6 +69,14 @@ supported inputs:
 `lower_safeCounter_increment_reverts_at_max`,
 `lower_safeCounter_decrement_correct`,
 `lower_safeCounter_decrement_reverts_at_zero`.
+ERC20 is the first supported EDSL contract using double-mapping fields
+(`allowances`), `Stmt.ite` branching, and MAX_UINT256 infinite-allowance
+semantics. Lowering pinning and API-boundary preservation are proved:
+`lowerSupportedEDSLContract_erc20_eq`,
+`lowerFromEDSLSubset_erc20_eq`,
+`lowerFromEDSLSubset_erc20_preserves_interpretSpec`.
+Full EDSL-to-`interpretSpec` lowering bridge theorems for ERC20 follow as the
+SpecInterpreter gains ite/mapping2 support.
 The same module also includes parser-determinism lemmas for `--edsl-contract`
 selection IDs:
 `supportedEDSLContractName_injective`,
@@ -149,7 +157,7 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 
 ## Layer 1: EDSL ≡ CompilationModel (`CompilationModel`) ✅ **COMPLETE**
 
-**Status**: 8 contracts verified (7 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
+**Status**: 9 contracts verified (8 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
 
 **What This Layer Proves**: User-facing EDSL contracts satisfy their human-readable specifications.
 
@@ -166,9 +174,10 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 | OwnedCounter | 48 | ✅ Complete | `Verity/Proofs/OwnedCounter/` |
 | Ledger | 33 | ✅ Complete | `Verity/Proofs/Ledger/` |
 | SimpleToken | 61 | ✅ Complete | `Verity/Proofs/SimpleToken/` |
+| ERC20 | 19 | ✅ Complete | `Verity/Proofs/ERC20/` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
-| **Total** | **272** | **✅ 100%** | — |
+| **Total** | **291** | **✅ 100%** | — |
 
 > **Note**: Stdlib (159 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (431 total properties).
 
@@ -192,7 +201,7 @@ theorem increment_adds_one (state : ContractState) :
 
 ## Layer 2: CompilationModel (`CompilationModel`) → IR ✅ **COMPLETE**
 
-**Status**: All 7 compiled contracts have IR generation with preservation proofs
+**Status**: All 8 compiled contracts have IR generation with preservation proofs
 
 **What This Layer Proves**: Intermediate representation (IR) generation preserves CompilationModel semantics.
 
@@ -207,6 +216,7 @@ theorem increment_adds_one (state : ContractState) :
 | OwnedCounter | 5 | ✅ Proven | Complete |
 | Ledger | 4 | ✅ Proven | Complete |
 | SimpleToken | 6 | ✅ Proven | Complete |
+| ERC20 | 8 | ✅ Proven | Complete |
 
 ### Example Preservation Theorem
 
@@ -477,5 +487,5 @@ See `scripts/README.md` for:
 
 ---
 
-**Last Updated**: 2026-02-27
-**Status Summary**: Layers 1-3 complete (CompilationModel path), trust reduction in progress, single supported compiler path.
+**Last Updated**: 2026-02-28
+**Status Summary**: Layers 1-3 complete (CompilationModel path), trust reduction in progress, single supported compiler path. ERC20 added to supported EDSL subset with double-mapping and ite support.

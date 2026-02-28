@@ -330,6 +330,148 @@ def simpleTokenSpec : CompilationModel := {
 
 
 /-!
+## ERC20 Specification (Owner + Balances + Allowances + Supply)
+
+Full ERC-20 token with owner-controlled minting, transfer, approve,
+and transferFrom (with infinite allowance when MAX_UINT256).
+Uses double-mapping `allowances` field.
+-/
+
+/-- Maximum uint256 value (2^256 - 1), used for infinite-allowance semantics. -/
+private def maxUint256 : Nat := 2^256 - 1
+
+def erc20Spec : CompilationModel := {
+  name := "ERC20"
+  fields := [
+    { name := "owner", ty := FieldType.address },
+    { name := "totalSupply", ty := FieldType.uint256 },
+    { name := "balances", ty := FieldType.mappingTyped (.simple .address) },
+    { name := "allowances", ty := FieldType.mappingTyped (.nested .address .address) }
+  ]
+  constructor := some {
+    params := [{ name := "initialOwner", ty := ParamType.address }]
+    body := [
+      Stmt.setStorage "owner" (Expr.constructorArg 0),
+      Stmt.setStorage "totalSupply" (Expr.literal 0)
+    ]
+  }
+  functions := [
+    { name := "mint"
+      params := [
+        { name := "to", ty := ParamType.address },
+        { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        requireOwner,
+        Stmt.letVar "currentBalance" (Expr.mapping "balances" (Expr.param "to")),
+        Stmt.letVar "newBalance" (Expr.add (Expr.localVar "currentBalance") (Expr.param "amount")),
+        Stmt.require (Expr.ge (Expr.localVar "newBalance") (Expr.localVar "currentBalance")) "Balance overflow",
+        Stmt.letVar "currentSupply" (Expr.storage "totalSupply"),
+        Stmt.letVar "newSupply" (Expr.add (Expr.localVar "currentSupply") (Expr.param "amount")),
+        Stmt.require (Expr.ge (Expr.localVar "newSupply") (Expr.localVar "currentSupply")) "Supply overflow",
+        Stmt.setMapping "balances" (Expr.param "to") (Expr.localVar "newBalance"),
+        Stmt.setStorage "totalSupply" (Expr.localVar "newSupply"),
+        Stmt.stop
+      ]
+    },
+    { name := "transfer"
+      params := [
+        { name := "to", ty := ParamType.address },
+        { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        Stmt.letVar "senderBalance" (Expr.mapping "balances" Expr.caller),
+        Stmt.require (Expr.ge (Expr.localVar "senderBalance") (Expr.param "amount")) "Insufficient balance",
+        Stmt.ite (Expr.eq Expr.caller (Expr.param "to"))
+          [-- self-transfer: no-op
+           Stmt.stop]
+          [-- different recipient: update both balances
+           Stmt.letVar "recipientBalance" (Expr.mapping "balances" (Expr.param "to")),
+           Stmt.letVar "newRecipientBalance" (Expr.add (Expr.localVar "recipientBalance") (Expr.param "amount")),
+           Stmt.require (Expr.ge (Expr.localVar "newRecipientBalance") (Expr.localVar "recipientBalance")) "Recipient balance overflow",
+           Stmt.setMapping "balances" Expr.caller
+             (Expr.sub (Expr.localVar "senderBalance") (Expr.param "amount")),
+           Stmt.setMapping "balances" (Expr.param "to") (Expr.localVar "newRecipientBalance"),
+           Stmt.stop]
+      ]
+    },
+    { name := "approve"
+      params := [
+        { name := "spender", ty := ParamType.address },
+        { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        Stmt.setMapping2 "allowances" Expr.caller (Expr.param "spender") (Expr.param "amount"),
+        Stmt.stop
+      ]
+    },
+    { name := "transferFrom"
+      params := [
+        { name := "from", ty := ParamType.address },
+        { name := "to", ty := ParamType.address },
+        { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        Stmt.letVar "currentAllowance" (Expr.mapping2 "allowances" (Expr.param "from") Expr.caller),
+        Stmt.require (Expr.ge (Expr.localVar "currentAllowance") (Expr.param "amount")) "Insufficient allowance",
+        Stmt.letVar "fromBalance" (Expr.mapping "balances" (Expr.param "from")),
+        Stmt.require (Expr.ge (Expr.localVar "fromBalance") (Expr.param "amount")) "Insufficient balance",
+        Stmt.ite (Expr.eq (Expr.param "from") (Expr.param "to"))
+          []  -- self-transfer: no balance updates needed
+          [-- different: update both balances
+           Stmt.letVar "toBalance" (Expr.mapping "balances" (Expr.param "to")),
+           Stmt.letVar "newToBalance" (Expr.add (Expr.localVar "toBalance") (Expr.param "amount")),
+           Stmt.require (Expr.ge (Expr.localVar "newToBalance") (Expr.localVar "toBalance")) "Recipient balance overflow",
+           Stmt.setMapping "balances" (Expr.param "from")
+             (Expr.sub (Expr.localVar "fromBalance") (Expr.param "amount")),
+           Stmt.setMapping "balances" (Expr.param "to") (Expr.localVar "newToBalance")],
+        -- Deduct allowance unless MAX_UINT256 (infinite allowance convention)
+        Stmt.ite (Expr.eq (Expr.localVar "currentAllowance") (Expr.literal maxUint256))
+          []  -- infinite allowance: no deduction
+          [Stmt.setMapping2 "allowances" (Expr.param "from") Expr.caller
+             (Expr.sub (Expr.localVar "currentAllowance") (Expr.param "amount"))],
+        Stmt.stop
+      ]
+    },
+    { name := "balanceOf"
+      params := [{ name := "addr", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.mapping "balances" (Expr.param "addr"))
+      ]
+    },
+    { name := "allowance"
+      params := [
+        { name := "owner", ty := ParamType.address },
+        { name := "spender", ty := ParamType.address }
+      ]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.mapping2 "allowances" (Expr.param "owner") (Expr.param "spender"))
+      ]
+    },
+    { name := "totalSupply"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "totalSupply")
+      ]
+    },
+    { name := "owner"
+      params := []
+      returnType := some FieldType.address
+      body := [
+        Stmt.return (Expr.storage "owner")
+      ]
+    }
+  ]
+}
+
+/-!
 ## CryptoHash Specification (External Library Linking Demo)
 
 Demonstrates `Expr.externalCall` for linking external Yul libraries at
@@ -457,7 +599,8 @@ def allSpecs : List CompilationModel := [
   ledgerSpec,
   ownedCounterSpec,
   simpleTokenSpec,
-  safeCounterSpec
+  safeCounterSpec,
+  erc20Spec
 ]
 
 end Compiler.Specs

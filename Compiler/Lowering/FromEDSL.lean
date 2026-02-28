@@ -19,7 +19,10 @@ inductive LoweringError where
 
 def LoweringError.message : LoweringError → String
   | .unsupported details =>
-      "EDSL lowering boundary rejected the input: " ++ details
+      "EDSL input mode is active only for the curated supported subset. " ++
+      "For unsupported contracts, use --input model (manual CompilationModel path) " ++
+      "or select a supported EDSL contract with --edsl-contract. " ++
+      details
   | .requiresLinkedLibraries contractName =>
       s!"Contract '{contractName}' uses external call modules or linked libraries, " ++
       "which are not supported through --input edsl. " ++

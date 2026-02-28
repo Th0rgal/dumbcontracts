@@ -127,7 +127,7 @@ Every claim below is enforced by CI on every commit. Each one can be independent
 | Incomplete proofs (`sorry`) | 0 | `make verify` (Lean rejects sorry) |
 | Project-specific axioms | 1 ([documented](AXIOMS.md)) | `make axiom-report` |
 | Axiom dependency audit | 613 theorems checked | `make axiom-report` |
-| Foundry runtime tests | 404 across 35 suites | `make test-foundry` |
+| Foundry runtime tests | 416 across 36 suites | `make test-foundry` |
 | Property test coverage | 250/431 (58%) | `python3 scripts/check_property_coverage.py` |
 | CI validation scripts | 30 | `make check` |
 | Proof length enforcement | 92% under 30 lines | `python3 scripts/check_proof_length.py` |
@@ -192,7 +192,7 @@ One logical spec can have many implementations, and one implementation can have 
 | OwnedCounter | 48 | Cross-pattern composition, lockout proofs |
 | Ledger | 33 | Deposit/withdraw/transfer with balance conservation |
 | SimpleToken | 61 | Mint/transfer, supply conservation, storage isolation |
-| ERC20 | 19 | Foundation scaffold with initial spec/read-state proofs |
+| ERC20 | 19 | Complete: mint/transfer/approve/transferFrom with double-mapping allowances |
 | ERC721 | 11 | Foundation scaffold with token ownership/approval proof baseline |
 | ReentrancyExample | 4 | Reentrancy vulnerability vs safe withdrawal |
 
@@ -245,7 +245,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
 - **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today, and compiler `--input edsl` currently covers a curated supported subset via pinned lowering targets. Fully automatic verified EDSL reification/lowering remains in progress. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
 - **Lowering-boundary note**: Even before automatic EDSL reification is wired, the existing `--input model` path runs through `Compiler.Lowering.lowerModelPath` to keep one explicit lowering boundary.
-- **Lowering bridge note**: `Compiler/Proofs/Lowering/FromEDSL.lean` now provides transition bridge theorems for all currently supported `--input edsl` contracts (`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`, `simple-token`, `safe-counter`), including write/read bridges for mutating and getter entrypoints in that subset.
+- **Lowering bridge note**: `Compiler/Proofs/Lowering/FromEDSL.lean` now provides transition bridge theorems for all currently supported `--input edsl` contracts (`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`, `simple-token`, `safe-counter`, `erc20`), including write/read bridges for mutating and getter entrypoints in that subset.
   This includes mutating bridge coverage for `ledger.transfer`, `simple-token.mint`, and `simple-token.transfer` under their existing Layer-1 preconditions, plus explicit revert-path bridges for owner-gated, insufficient-balance, and safe-counter overflow/underflow cases.
   Getter-side read-only state-preservation bridges are also explicit for `simple-storage.retrieve`, `counter.getCount`, `owned.getOwner`, `ledger.getBalance`, `owned-counter` getters, `simple-token` getters, and `safe-counter.getCount`.
   The same proof module now also proves parser determinism for `--edsl-contract` IDs (injective name map, unique roundtrip, and no-duplicate supported name list), composes parsed IDs with lowering-boundary preservation (`lowerFromParsedSupportedContract_preserves_interpretSpec`), and includes singleton/cons/pair selected-ID map traversal helper lemmas (`lowerFromParsedSupportedContract_singleton_eq_ok`, `lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`, `lowerFromParsedSupportedContract_singleton_eq_error`, `lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok`, `lowerFromParsedSupportedContract_cons_eq_error_of_head_error`, `lowerFromParsedSupportedContract_cons_eq_error_of_tail_error`, `lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`, `lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`, `lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok`, `lowerFromParsedSupportedContract_append_eq_ok_of_parse_ok`) through the centralized parsing/lowering helpers (`parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, `lowerRequestedSupportedEDSLContracts`).

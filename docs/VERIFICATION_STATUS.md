@@ -301,7 +301,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 ### Current Coverage
 
 - **Total Properties**: 431
-- **Covered**: 220 (55%)
+- **Covered**: 250 (58%)
 - **Excluded**: 181 (all proof-only)
 - **Missing**: 0
 

@@ -1636,6 +1636,28 @@ when the head selected ID is unknown. -/
     (unsupportedEDSLContractMessage raw)
   simpa using lowerFromParsedSupportedContract_unknown_eq_error raw hParse
 
+/-- Duplicate-free selected IDs fail closed with the unsupported-ID diagnostic
+when any selected ID is unknown after an already parse-confirmed prefix. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error_of_prefix_parse_ok
+    (rawPrefix : List String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (prefixContracts : List SupportedEDSLContract)
+    (hNoDup : findDuplicateRawContract? [] (rawPrefix ++ rawBad :: rawSuffix) = none)
+    (hPrefixParse : SelectedIDsParseTo rawPrefix prefixContracts)
+    (hParseBad : parseSupportedEDSLContract? rawBad = none) :
+    lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawBad :: rawSuffix) =
+      .error (unsupportedEDSLContractMessage rawBad) := by
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_prefix_parse_ok
+    rawPrefix
+    rawBad
+    rawSuffix
+    prefixContracts
+    (unsupportedEDSLContractMessage rawBad)
+    hNoDup
+    hPrefixParse
+  simp [parseSupportedEDSLContract, hParseBad]
+
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when a tail selected ID is unknown after a known-valid head ID. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error
@@ -1647,15 +1669,17 @@ when a tail selected ID is unknown after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract? rawBad = none) :
     lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
       .error (unsupportedEDSLContractMessage rawBad) := by
-  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_parse_error
-      rawOk
+  have hPrefixParse : SelectedIDsParseTo [rawOk] [contract] := by
+    exact SelectedIDsParseTo.cons hParseOk SelectedIDsParseTo.nil
+  simpa using
+    lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error_of_prefix_parse_ok
+      [rawOk]
       rawBad
       rest
-      contract
-      (unsupportedEDSLContractMessage rawBad)
+      [contract]
       hNoDup
-      hParseOk
-  simp [parseSupportedEDSLContract, hParseBad]
+      hPrefixParse
+      hParseBad
 
 /-- Duplicate-free selected IDs fail closed with the unsupported-ID diagnostic
 when any selected ID is unknown after an already-lowered prefix. -/

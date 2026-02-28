@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 abstract contract YulTestBase is Test {
     function _yulDir() internal view returns (string memory) {
-        return vm.envOr("DIFFTEST_YUL_DIR", string("compiler/yul"));
+        return vm.envOr("DIFFTEST_YUL_DIR", string("artifacts/yul"));
     }
 
     // Edge-case values matching Lean's edgeUint256Values and DiffTestConfig._edgeUintValues():

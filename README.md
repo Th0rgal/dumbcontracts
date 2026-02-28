@@ -35,7 +35,7 @@ python3 scripts/generate_contract.py MyContract
 
 # 4. Compile to Yul/EVM
 lake build verity-compiler
-lake exe verity-compiler                      # Output in compiler/yul/
+lake exe verity-compiler                      # Output in artifacts/yul/
 lake exe verity-compiler --input model        # Explicit manual CompilationModel path
 lake exe verity-compiler --input edsl         # Curated supported EDSL subset path
 lake exe verity-compiler --input edsl --edsl-contract counter
@@ -63,7 +63,7 @@ contracts (for example `counter`, `simple-storage`, `owned-counter`).
 **With external libraries (e.g., Poseidon hash):**
 ```bash
 # Link your Yul library at compile time
-lake exe verity-compiler --link examples/external-libs/MyLib.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyLib.yul -o artifacts/yul
 ```
 
 **With deterministic Yul patch pass + coverage report:**
@@ -71,9 +71,9 @@ lake exe verity-compiler --link examples/external-libs/MyLib.yul -o compiler/yul
 lake exe verity-compiler \
   --enable-patches \
   --patch-max-iterations 2 \
-  --patch-report compiler/patch-report.tsv \
+  --patch-report artifacts/patch-report.tsv \
   --mapping-slot-scratch-base 128 \
-  -o compiler/yul-patched
+  -o artifacts/yul-patched
 ```
 
 `--mapping-slot-scratch-base` controls where compiler-generated `mappingSlot` helpers write temporary words before `keccak256`.
@@ -215,7 +215,7 @@ Verity supports linking external Yul libraries (e.g., cryptographic libraries) t
 lake exe verity-compiler \
     --link examples/external-libs/PoseidonT3.yul \
     --link examples/external-libs/PoseidonT4.yul \
-    -o compiler/yul
+    -o artifacts/yul
 ```
 
 **Minimal example:**
@@ -394,7 +394,7 @@ Stmt.letVar "h" (Expr.externalCall "poseidonHash" [Expr.param "a", Expr.param "b
 
 3. **Compile with linking**:
 ```bash
-lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o artifacts/yul
 ```
 
 The compiler validates function names, arities, and prevents name collisions. See [`examples/external-libs/README.md`](examples/external-libs/README.md) for detailed guidance.

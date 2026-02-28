@@ -97,12 +97,12 @@ class FoundryEnvSyncTests(unittest.TestCase):
                       FOUNDRY_PROFILE: "difftest"
                       DIFFTEST_RANDOM_SMALL: "100"
                       DIFFTEST_RANDOM_LARGE: "10000"
-                      DIFFTEST_YUL_DIR: "compiler/yul"
+                      DIFFTEST_YUL_DIR: "artifacts/yul"
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: forge test
 
               foundry-patched:
@@ -113,12 +113,12 @@ class FoundryEnvSyncTests(unittest.TestCase):
                       FOUNDRY_PROFILE: "difftest"
                       DIFFTEST_RANDOM_SMALL: "100"
                       DIFFTEST_RANDOM_LARGE: "10000"
-                      DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                      DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -129,12 +129,12 @@ class FoundryEnvSyncTests(unittest.TestCase):
                       FOUNDRY_PROFILE: "difftest"
                       DIFFTEST_RANDOM_SMALL: "100"
                       DIFFTEST_RANDOM_LARGE: "10000"
-                      DIFFTEST_YUL_DIR: "compiler/yul"
+                      DIFFTEST_YUL_DIR: "artifacts/yul"
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: forge test --no-match-test "Random10000"
             """
         )
@@ -201,14 +201,14 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - name: forge test
                     run: echo "not running tests"
                 env:
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
 
               foundry-patched:
                 runs-on: ubuntu-latest
@@ -217,13 +217,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: forge test --no-match-test "Random10000"
                 env:
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
 
               foundry-multi-seed:
                 runs-on: ubuntu-latest
@@ -232,13 +232,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: forge test --no-match-test "Random10000"
                 env:
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -279,13 +279,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: FOUNDRY_PROFILE=difftest forge test
 
               foundry-patched:
@@ -294,13 +294,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                 steps:
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: env FOUNDRY_PROFILE=difftest forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -309,13 +309,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
             """
         )
@@ -334,13 +334,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: env -i FOUNDRY_PROFILE=difftest forge test
 
               foundry-patched:
@@ -349,13 +349,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                 steps:
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: env -u FOO -- forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -364,13 +364,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: env -- DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
             """
         )
@@ -389,13 +389,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: command -- /usr/bin/env FOUNDRY_PROFILE=difftest forge test
 
               foundry-patched:
@@ -404,13 +404,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                 steps:
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: command -pv -- /usr/bin/env FOUNDRY_PROFILE=difftest forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -419,13 +419,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: command -Vp -- env DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
             """
         )
@@ -464,13 +464,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: time -p forge test
 
               foundry-patched:
@@ -479,13 +479,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                 steps:
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: timeout -k 5s 10m forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -494,13 +494,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: nice -n 10 forge test --no-match-test "Random10000"
             """
         )
@@ -519,13 +519,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: nohup setsid --wait -- forge test
 
               foundry-patched:
@@ -534,13 +534,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                 steps:
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: ionice --class=none --classdata=0 chrt --fifo 50 forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -549,13 +549,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: chrt --rr 50 ionice -c3 setsid -f forge test --no-match-test "Random10000"
             """
         )
@@ -594,13 +594,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: setsid --wait --ctty --fork forge test
 
               foundry-patched:
@@ -609,13 +609,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                 steps:
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: ionice -t --class=none --classdata=0 forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -624,13 +624,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: chrt --reset-on-fork --other 0 forge test --no-match-test "Random10000"
             """
         )
@@ -649,13 +649,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: setsid --session-leader forge test
 
               foundry-patched:
@@ -664,13 +664,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul-patched"
+                  DIFFTEST_YUL_DIR: "artifacts/yul-patched"
                 steps:
                   - name: Download patched Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul-patched
-                      path: compiler/yul-patched
+                      path: artifacts/yul-patched
                   - run: setsid --session-leader forge test --no-match-test "Random10000"
 
               foundry-multi-seed:
@@ -679,13 +679,13 @@ class FoundryEnvSyncTests(unittest.TestCase):
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
                   DIFFTEST_RANDOM_LARGE: "10000"
-                  DIFFTEST_YUL_DIR: "compiler/yul"
+                  DIFFTEST_YUL_DIR: "artifacts/yul"
                 steps:
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
                       name: generated-yul
-                      path: compiler/yul
+                      path: artifacts/yul
                   - run: setsid --session-leader forge test --no-match-test "Random10000"
             """
         )

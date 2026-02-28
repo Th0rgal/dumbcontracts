@@ -38,7 +38,7 @@ contract SelectorSanityTest is Test {
     }
 
     function _yulPath(string memory contractName) internal view returns (string memory) {
-        string memory yulDir = vm.envOr("DIFFTEST_YUL_DIR", string("compiler/yul"));
+        string memory yulDir = vm.envOr("DIFFTEST_YUL_DIR", string("artifacts/yul"));
         return string.concat(yulDir, "/", contractName, ".yul");
     }
 

@@ -12,11 +12,13 @@ The formal Layer 1/2/3 guarantees apply to this path.
 
 Compiler UX status:
 - `--input model` compiles the full `CompilationModel` set (including linked-library flows).
-- `--input edsl` compiles a curated supported EDSL subset through the same lowering boundary.
-- `--edsl-contract <id>` optionally narrows `--input edsl` to selected supported contracts.
+- `--input edsl` compiles any `CompilationModel` that passes the generalized structural
+  validation boundary (`lowerFromModel`). Models with non-empty `externals` are rejected;
+  all other models pass through unchanged.
+- `--edsl-contract <id>` optionally narrows `--input edsl` to the legacy curated subset.
 - linked-library flows remain fail-closed for `--input edsl` and require `--input model`.
-Both modes route through `Compiler.Lowering` helpers, keeping one centralized
-transition point for future automatic EDSL reification.
+Both modes route through `Compiler.Lowering` helpers, with the generalized
+`lowerFromModel` / `lowerModels` path replacing the old enum-based pinning.
 
 ## Verification Chain
 
@@ -32,22 +34,22 @@ Yul
 EVM Bytecode
 ```
 
-## Layer-1 Hybrid Transition Strategy
+## Layer-1 Lowering Boundary
 
-Layer 1 (EDSL ≡ CompilationModel) currently operates as a **hybrid**:
+Layer 1 (EDSL ≡ CompilationModel) uses a **generalized structural boundary**:
 
-- **Generated subset**: For contracts within the supported EDSL subset, the
-  `EDSL -> CompilationModel` correspondence is established by per-contract proofs
-  in `Compiler/Proofs/SpecCorrectness/` and `Verity/Proofs/`.
-- **Manual escape hatch**: Advanced or out-of-subset constructs (e.g., custom Yul
-  injection via linked libraries, ECM patterns, complex ABI encoding) are expressed
-  directly in the `CompilationModel` language. These are trusted at the
-  CompilationModel boundary — the compiler verifies IR/Yul generation from them,
-  but the correspondence to EDSL intent is the developer's responsibility.
-
-This hybrid approach is intentional during transition. The long-term direction is to
-expand the generated subset (and eventually automate `EDSL -> CompilationModel`
-generation), reducing the manual escape hatch surface over time.
+- **Generalized path**: `lowerFromModel` accepts any `CompilationModel` whose
+  `externals` list is empty (no linked-library dependencies). This is validated
+  structurally — not by contract identity. Seven preservation theorems prove
+  identity-on-success, `interpretSpec` semantic preservation, and decision
+  completeness (see `Compiler/Proofs/Lowering/FromEDSL.lean`).
+- **Legacy curated subset**: Per-contract bridge theorems in
+  `Compiler/Proofs/SpecCorrectness/` remain for backward compatibility. The
+  `--edsl-contract` CLI flag routes through this path.
+- **Manual escape hatch**: Contracts requiring linked libraries, ECM patterns, or
+  custom Yul injection must use `--input model` with `--link`. These are trusted at
+  the CompilationModel boundary — the compiler verifies IR/Yul generation, but the
+  correspondence to EDSL intent is the developer's responsibility.
 
 ## Current Verified Facts
 
@@ -139,7 +141,7 @@ High-level semantics can expose intermediate state in a reverted computation mod
 
 ## Security Audit Checklist
 
-1. Confirm deployment uses a supported input path (`--input model` for full model/external-link flows, or the curated `--input edsl` subset path).
+1. Confirm deployment uses a supported input path (`--input model` for full model/external-link flows, or `--input edsl` for models passing the generalized structural boundary).
 2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.
@@ -177,5 +179,5 @@ The following items are planned but not yet active:
 
 Until these are implemented and CI-gated, claims of exact `solc` Yul identity remain out of scope.
 
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-02-28
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

@@ -1015,6 +1015,30 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [lowerFromParsedSupportedContract_eq_ok rawB contractB hParseB]
   rfl
 
+/-- A duplicate-free selected triple of known IDs lowers to the expected ordered triple. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok
+    (rawA rawB rawC : String)
+    (contractA contractB contractC : SupportedEDSLContract)
+    (hNoDup : findDuplicateRawContract? [] [rawA, rawB, rawC] = none)
+    (hParseA : parseSupportedEDSLContract? rawA = some contractA)
+    (hParseB : parseSupportedEDSLContract? rawB = some contractB)
+    (hParseC : parseSupportedEDSLContract? rawC = some contractC) :
+    lowerRequestedSupportedEDSLContracts [rawA, rawB, rawC] =
+      .ok
+        [ lowerSupportedEDSLContract contractA
+        , lowerSupportedEDSLContract contractB
+        , lowerSupportedEDSLContract contractC
+        ] := by
+  have hNonEmpty : [rawA, rawB, rawC] ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq [rawA, rawB, rawC] hNoDup hNonEmpty]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawA contractA hParseA]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawB contractB hParseB]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawC contractC hParseC]
+  rfl
+
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when the head selected ID is unknown. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error

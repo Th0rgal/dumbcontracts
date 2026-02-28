@@ -81,6 +81,10 @@ private def expectOnlySelectedArtifacts
   let selectedAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-abi"
   let reversedSelectedOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-reversed-out"
   let reversedSelectedAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-reversed-abi"
+  let explicitAllOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-explicit-all-out"
+  let explicitAllAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-explicit-all-abi"
+  let explicitAllReversedOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-explicit-all-reversed-out"
+  let explicitAllReversedAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-explicit-all-reversed-abi"
   let missingLib := "/tmp/definitely-missing-library.yul"
   let failingAbi := s!"{abiDir}/CryptoHash.abi.json"
   let successfulAbi := s!"{abiDir}/SimpleStorage.abi.json"
@@ -95,6 +99,10 @@ private def expectOnlySelectedArtifacts
   IO.FS.createDirAll selectedAbiDir
   IO.FS.createDirAll reversedSelectedOutDir
   IO.FS.createDirAll reversedSelectedAbiDir
+  IO.FS.createDirAll explicitAllOutDir
+  IO.FS.createDirAll explicitAllAbiDir
+  IO.FS.createDirAll explicitAllReversedOutDir
+  IO.FS.createDirAll explicitAllReversedAbiDir
 
   -- Remove stale ABI outputs from previous runs so this check is deterministic.
   try IO.FS.removeFile failingAbi catch _ => pure ()
@@ -128,6 +136,37 @@ private def expectOnlySelectedArtifacts
 
   compileAllFromEDSLWithOptions edslOutDir false [] [] {} none (some edslAbiDir)
   expectSupportedSubsetParity modelOutDir edslOutDir modelAbiDir edslAbiDir
+  let allSupportedNames :=
+    Compiler.Lowering.supportedEDSLContracts.map Compiler.Lowering.supportedEDSLContractName
+  compileAllFromEDSLWithOptions
+    explicitAllOutDir
+    false
+    []
+    allSupportedNames
+    {}
+    none
+    (some explicitAllAbiDir)
+  expectSupportedSubsetParity modelOutDir explicitAllOutDir modelAbiDir explicitAllAbiDir
+  let allSupportedNamesReversed := allSupportedNames.reverse
+  compileAllFromEDSLWithOptions
+    explicitAllReversedOutDir
+    false
+    []
+    allSupportedNamesReversed
+    {}
+    none
+    (some explicitAllReversedAbiDir)
+  expectSupportedSubsetParity modelOutDir explicitAllReversedOutDir modelAbiDir explicitAllReversedAbiDir
+  for contract in Compiler.Lowering.supportedEDSLContracts do
+    let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
+    expectFileEquals
+      s!"default-vs-explicit-full order-invariant Yul: {spec.name}"
+      s!"{edslOutDir}/{spec.name}.yul"
+      s!"{explicitAllReversedOutDir}/{spec.name}.yul"
+    expectFileEquals
+      s!"default-vs-explicit-full order-invariant ABI: {spec.name}"
+      s!"{edslAbiDir}/{spec.name}.abi.json"
+      s!"{explicitAllReversedAbiDir}/{spec.name}.abi.json"
 
   compileAllFromEDSLWithOptions
     selectedOutDir

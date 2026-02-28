@@ -729,9 +729,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.supportedEDSLContractNames_nodup
 #print axioms Compiler.Proofs.Lowering.lowerModelPath_eq_ok
 #print axioms Compiler.Proofs.Lowering.lowerModelPath_preserves_interpretSpec
+#print axioms Compiler.Proofs.Lowering.lowerFromModel_ok_of_empty_externals
 #print axioms Compiler.Proofs.Lowering.lowerFromModel_ok_eq
 #print axioms Compiler.Proofs.Lowering.lowerFromModel_preserves_interpretSpec
-#print axioms Compiler.Proofs.Lowering.lowerFromModel_ok_of_empty_externals
 #print axioms Compiler.Proofs.Lowering.lowerFromModel_error_of_nonempty_externals
 #print axioms Compiler.Proofs.Lowering.lowerModels_ok_of_all_empty_externals
 #print axioms Compiler.Proofs.Lowering.lowerFromModel_ok_of_supported

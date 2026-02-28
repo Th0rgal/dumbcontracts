@@ -36,6 +36,8 @@ API boundary (`lowerFromParsedSupportedContract_preserves_interpretSpec`).
 CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via
 `parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, and
 `lowerRequestedSupportedEDSLContracts`.
+The centralized default-selection helper is also explicit in proofs via
+`lowerRequestedSupportedEDSLContracts_default_eq`.
 `Compiler/CompileDriver.lean` uses this same selected/default helper path directly,
 so runtime selected/default `--edsl-contract` behavior stays aligned with the
 proven parsing/lowering boundary.

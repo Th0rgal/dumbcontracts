@@ -926,6 +926,12 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [hParse]
   rfl
 
+/-- Empty selected-ID input follows the default canonical-name lowering path. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_default_eq :
+    lowerRequestedSupportedEDSLContracts [] =
+      supportedEDSLContractNames.mapM lowerFromParsedSupportedContract := by
+  rfl
+
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
     (raw : String)

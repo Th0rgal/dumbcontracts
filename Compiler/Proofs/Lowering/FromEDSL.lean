@@ -1840,16 +1840,23 @@ Preservation theorems for the generalized `lowerFromModel` path, which accepts
 any `CompilationModel` that does not require linked external libraries.
 -/
 
+/-- Models with empty externals always pass the generalized boundary. -/
+theorem lowerFromModel_ok_of_empty_externals
+    (model : Compiler.CompilationModel.CompilationModel)
+    (h : model.externals = []) :
+    lowerFromModel model = .ok model := by
+  unfold lowerFromModel modelRequiresLinkedLibraries
+  simp [h]
+
 /-- When `lowerFromModel` succeeds, the lowered model is the input model. -/
 theorem lowerFromModel_ok_eq
     (model : Compiler.CompilationModel.CompilationModel)
     (lowered : Compiler.CompilationModel.CompilationModel)
     (h : lowerFromModel model = .ok lowered) :
     lowered = model := by
-  unfold lowerFromModel modelRequiresLinkedLibraries at h
-  cases model.externals with
-  | nil => simp at h; exact h.symm
-  | cons _ _ => simp at h
+  unfold lowerFromModel at h
+  unfold modelRequiresLinkedLibraries at h
+  split at h <;> simp_all
 
 /-- Semantic preservation for the generalized lowering boundary: when
 `lowerFromModel` succeeds, `interpretSpec` semantics are preserved. -/
@@ -1863,22 +1870,15 @@ theorem lowerFromModel_preserves_interpretSpec
       interpretSpec model initialStorage tx := by
   rw [lowerFromModel_ok_eq model lowered h]
 
-/-- Models with empty externals always pass the generalized boundary. -/
-theorem lowerFromModel_ok_of_empty_externals
-    (model : Compiler.CompilationModel.CompilationModel)
-    (h : model.externals = []) :
-    lowerFromModel model = .ok model := by
-  simp [lowerFromModel, modelRequiresLinkedLibraries, h]
-
 /-- Models with non-empty externals are rejected at the generalized boundary. -/
 theorem lowerFromModel_error_of_nonempty_externals
     (model : Compiler.CompilationModel.CompilationModel)
-    (h : model.externals ≠ []) :
+    (ext : Compiler.CompilationModel.ExternalFunction)
+    (rest : List Compiler.CompilationModel.ExternalFunction)
+    (h : model.externals = ext :: rest) :
     lowerFromModel model = .error (.requiresLinkedLibraries model.name) := by
-  simp [lowerFromModel, modelRequiresLinkedLibraries]
-  cases model.externals with
-  | nil => exact absurd rfl h
-  | cons _ _ => rfl
+  unfold lowerFromModel modelRequiresLinkedLibraries
+  simp [h]
 
 /-- `lowerModels` succeeds when every model has empty externals. -/
 theorem lowerModels_ok_of_all_empty_externals
@@ -1888,13 +1888,14 @@ theorem lowerModels_ok_of_all_empty_externals
   induction models with
   | nil => rfl
   | cons hd tl ih =>
-    have h_hd : hd.externals = [] := h hd (List.mem_cons_self hd tl)
-    have h_tl : ∀ m ∈ tl, m.externals = [] := fun m hm => h m (List.mem_cons_of_mem hd hm)
-    simp only [lowerModels]
-    rw [List.mapM_cons]
-    rw [lowerFromModel_ok_of_empty_externals hd h_hd]
-    simp only [lowerModels] at ih
-    rw [ih h_tl]
+    have h_hd : hd.externals = [] := by
+      apply h; simp
+    have h_tl : ∀ m ∈ tl, m.externals = [] := by
+      intro m hm; apply h; simp [hm]
+    have ih' : tl.mapM lowerFromModel = .ok tl := ih h_tl
+    show (hd :: tl).mapM lowerFromModel = .ok (hd :: tl)
+    rw [List.mapM_cons, lowerFromModel_ok_of_empty_externals hd h_hd, ih']
+    rfl
 
 /-- The generalized boundary subsumes the curated subset: every curated
 contract's pinned spec passes `lowerFromModel` validation. -/

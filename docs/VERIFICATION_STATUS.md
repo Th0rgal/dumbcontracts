@@ -85,7 +85,8 @@ Singleton selected-ID map traversal helpers are also explicit:
 `lowerFromParsedSupportedContract_cons_eq_error_of_tail_error`,
 `lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`,
 `lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`,
-`lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok`.
+`lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok`,
+`lowerFromParsedSupportedContract_append_eq_error_of_parse_error`.
 CLI parsing/lowering now uses centralized boundary helpers:
 `parseSupportedEDSLContract`,
 `lowerFromParsedSupportedContract`,
@@ -113,6 +114,7 @@ Centralized selected/default helper behavior is also explicit in the proof surfa
 `lowerRequestedSupportedEDSLContracts_selected_head_eq_error_of_parse_error`,
 `lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error`,
 `lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_parse_error`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_prefix_parse_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,

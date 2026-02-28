@@ -1062,6 +1062,26 @@ is known to parse to a supported contract in order. -/
       rw [ih]
       rfl
 
+/-- Any append-position parse-stage failure propagates fail-closed through selected-ID
+map traversal once the strict prefix is known to parse successfully in order. -/
+@[simp] theorem lowerFromParsedSupportedContract_append_eq_error_of_parse_error
+    (rawPrefix : List String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (prefixContracts : List SupportedEDSLContract)
+    (err : String)
+    (hPrefixParse : SelectedIDsParseTo rawPrefix prefixContracts)
+    (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
+    (rawPrefix ++ rawBad :: rawSuffix).mapM lowerFromParsedSupportedContract = .error err := by
+  rw [List.mapM_append]
+  rw [lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok
+        rawPrefix
+        prefixContracts
+        hPrefixParse]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
+  rfl
+
 /-- Empty selected-ID input follows the default canonical-name lowering path. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_default_eq :
     lowerRequestedSupportedEDSLContracts [] =
@@ -1298,15 +1318,26 @@ error when a tail selected ID fails parsing after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
     lowerRequestedSupportedEDSLContracts (rawHead :: rawBad :: rawSuffix) =
       .error err := by
-  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error
-      rawHead
+  have hPrefixParse : SelectedIDsParseTo [rawHead] [headContract] := by
+    exact SelectedIDsParseTo.cons hParseHead SelectedIDsParseTo.nil
+  have hLowerAll :
+      (rawHead :: rawBad :: rawSuffix).mapM lowerFromParsedSupportedContract = .error err := by
+    simpa using lowerFromParsedSupportedContract_append_eq_error_of_parse_error
+      [rawHead]
       rawBad
       rawSuffix
-      headContract
+      [headContract]
       err
-      hNoDup
-      hParseHead
-  simpa using lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
+      hPrefixParse
+      hParseBad
+  have hNonEmpty : (rawHead :: rawBad :: rawSuffix) ≠ [] := by
+    simp
+  exact lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
+    (rawHead :: rawBad :: rawSuffix)
+    err
+    hNoDup
+    hNonEmpty
+    hLowerAll
 
 /-- Non-empty selected IDs fail closed to any explicitly established parse-stage
 error when a tail selected ID fails parsing after a known-valid head ID. -/
@@ -1347,6 +1378,35 @@ when every strictly preceding selected ID is already known to lower successfully
   apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
     rawPrefix rawBad rawSuffix loweredPrefixContracts err hNoDup hPrefixOk
   simpa using lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
+
+/-- Duplicate-free selected IDs fail closed to a parse-stage error at any append
+position once the strict prefix is known to parse successfully in order. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_prefix_parse_ok
+    (rawPrefix : List String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (prefixContracts : List SupportedEDSLContract)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] (rawPrefix ++ rawBad :: rawSuffix) = none)
+    (hPrefixParse : SelectedIDsParseTo rawPrefix prefixContracts)
+    (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
+    lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawBad :: rawSuffix) =
+      .error err := by
+  have hNonEmpty : (rawPrefix ++ rawBad :: rawSuffix) ≠ [] := by
+    simp
+  apply lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
+    (rawPrefix ++ rawBad :: rawSuffix)
+    err
+    hNoDup
+    hNonEmpty
+  exact lowerFromParsedSupportedContract_append_eq_error_of_parse_error
+    rawPrefix
+    rawBad
+    rawSuffix
+    prefixContracts
+    err
+    hPrefixParse
+    hParseBad
 
 /-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :

@@ -1178,6 +1178,29 @@ explicitly established lower-error at the head of the tail list. -/
 
 /-- Non-empty selected IDs fail closed to any explicitly established parse-stage
 error when a tail selected ID fails parsing after a known-valid head ID. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_parse_error
+    (rawHead : String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (headContract : SupportedEDSLContract)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] (rawHead :: rawBad :: rawSuffix) = none)
+    (hParseHead : parseSupportedEDSLContract? rawHead = some headContract)
+    (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
+    lowerRequestedSupportedEDSLContracts (rawHead :: rawBad :: rawSuffix) =
+      .error err := by
+  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error
+      rawHead
+      rawBad
+      rawSuffix
+      headContract
+      err
+      hNoDup
+      hParseHead
+  simpa using lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
+
+/-- Non-empty selected IDs fail closed to any explicitly established parse-stage
+error when a tail selected ID fails parsing after a known-valid head ID. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error
     (rawOk rawBad : String)
     (rest : List String)
@@ -1188,7 +1211,8 @@ error when a tail selected ID fails parsing after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
     lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
       .error err := by
-  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error
+  simpa using
+    lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_parse_error
       rawOk
       rawBad
       rest
@@ -1196,7 +1220,7 @@ error when a tail selected ID fails parsing after a known-valid head ID. -/
       err
       hNoDup
       hParseOk
-  simpa using lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
+      hParseBad
 
 /-- Duplicate-free selected IDs fail closed to a parse-stage error at any position
 when every strictly preceding selected ID is already known to lower successfully. -/
@@ -1464,7 +1488,7 @@ when a tail selected ID is unknown after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract? rawBad = none) :
     lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
       .error (unsupportedEDSLContractMessage rawBad) := by
-  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error
+  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_parse_error
       rawOk
       rawBad
       rest
@@ -1472,7 +1496,7 @@ when a tail selected ID is unknown after a known-valid head ID. -/
       (unsupportedEDSLContractMessage rawBad)
       hNoDup
       hParseOk
-  simpa using lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad
+  simp [parseSupportedEDSLContract, hParseBad]
 
 /-- Duplicate-free selected IDs fail closed with the unsupported-ID diagnostic
 when any selected ID is unknown after an already-lowered prefix. -/

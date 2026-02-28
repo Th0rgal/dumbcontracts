@@ -997,6 +997,25 @@ when the head selected ID is unknown. -/
   rw [lowerFromParsedSupportedContract_unknown_eq_error raw hParse]
   rfl
 
+/-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
+when a tail selected ID is unknown after a known-valid head ID. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error
+    (rawOk rawBad : String)
+    (rest : List String)
+    (contract : SupportedEDSLContract)
+    (hNoDup : findDuplicateRawContract? [] (rawOk :: rawBad :: rest) = none)
+    (hParseOk : parseSupportedEDSLContract? rawOk = some contract)
+    (hParseBad : parseSupportedEDSLContract? rawBad = none) :
+    lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
+      .error (unsupportedEDSLContractMessage rawBad) := by
+  have hNonEmpty : (rawOk :: rawBad :: rest) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawOk :: rawBad :: rest) hNoDup hNonEmpty]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad]
+  rfl
+
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
     (raw : String)

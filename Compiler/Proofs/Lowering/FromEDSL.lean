@@ -1285,6 +1285,35 @@ the middle selected ID parses to a supported contract. -/
 /-- Duplicate-free selected IDs with a known-good head ID lower to the expected
 ordered `head :: tail` list once the tail map traversal is already known to lower
 successfully. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_lower_ok
+    (rawHead : String)
+    (rawTail : List String)
+    (loweredHeadContract : Compiler.CompilationModel.CompilationModel)
+    (loweredTailContracts : List Compiler.CompilationModel.CompilationModel)
+    (hNoDup : findDuplicateRawContract? [] (rawHead :: rawTail) = none)
+    (hLowerHead : lowerFromParsedSupportedContract rawHead = .ok loweredHeadContract)
+    (hTailOk : rawTail.mapM lowerFromParsedSupportedContract = .ok loweredTailContracts) :
+    lowerRequestedSupportedEDSLContracts (rawHead :: rawTail) =
+      .ok (loweredHeadContract :: loweredTailContracts) := by
+  have hNonEmpty : (rawHead :: rawTail) ≠ [] := by
+    simp
+  have hLowerAll :
+      (rawHead :: rawTail).mapM lowerFromParsedSupportedContract =
+        .ok (loweredHeadContract :: loweredTailContracts) := by
+    rw [List.mapM_cons]
+    rw [hLowerHead]
+    rw [hTailOk]
+    rfl
+  exact lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok
+    (rawHead :: rawTail)
+    (loweredHeadContract :: loweredTailContracts)
+    hNoDup
+    hNonEmpty
+    hLowerAll
+
+/-- Duplicate-free selected IDs with a known-good head ID lower to the expected
+ordered `head :: tail` list once the tail map traversal is already known to lower
+successfully. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok
     (rawHead : String)
     (rawTail : List String)
@@ -1295,18 +1324,15 @@ successfully. -/
     (hTailOk : rawTail.mapM lowerFromParsedSupportedContract = .ok loweredTailContracts) :
     lowerRequestedSupportedEDSLContracts (rawHead :: rawTail) =
       .ok (lowerSupportedEDSLContract headContract :: loweredTailContracts) := by
-  simpa using
-    lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_split_ok
-      []
+  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_lower_ok
       rawHead
       rawTail
-      []
-      headContract
+      (lowerSupportedEDSLContract headContract)
       loweredTailContracts
       hNoDup
-      rfl
-      hParseHead
+      ?_
       hTailOk
+  exact lowerFromParsedSupportedContract_eq_ok rawHead headContract hParseHead
 
 /-- A singleton selected ID lowers successfully whenever its parser result is known. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok

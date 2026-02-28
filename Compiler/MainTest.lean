@@ -27,6 +27,20 @@ private def expectErrorContains (label : String) (args : List String) (needle : 
       throw (IO.userError s!"✗ {label}: expected '{needle}', got:\n{msg}")
     IO.println s!"✓ {label}"
 
+private def expectErrorSatisfies
+    (label : String)
+    (args : List String)
+    (predicate : String → Bool)
+    (expectation : String) : IO Unit := do
+  try
+    main args
+    throw (IO.userError s!"✗ {label}: expected failure, command succeeded")
+  catch e =>
+    let msg := e.toString
+    if !predicate msg then
+      throw (IO.userError s!"✗ {label}: expected {expectation}, got:\n{msg}")
+    IO.println s!"✓ {label}"
+
 private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   if !ok then
     throw (IO.userError s!"✗ {label}")
@@ -59,6 +73,13 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     "unknown --edsl-contract value"
     ["--input", "edsl", "--edsl-contract", "does-not-exist"]
     "Unsupported --edsl-contract: does-not-exist"
+  expectErrorSatisfies
+    "unknown --edsl-contract lists supported ids deterministically"
+    ["--input", "edsl", "--edsl-contract", "does-not-exist"]
+    (fun msg =>
+      contains msg
+        s!"(supported: {String.intercalate ", " Compiler.Lowering.supportedEDSLContractNames})")
+    "full ordered supported --edsl-contract list in diagnostic"
   expectErrorContains
     "duplicate --edsl-contract value"
     ["--input", "edsl", "--edsl-contract", "counter", "--edsl-contract", "counter"]

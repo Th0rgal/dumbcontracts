@@ -31,6 +31,9 @@ supported getter entrypoints. Parser-determinism lemmas are also included for
 `--edsl-contract` IDs (`supportedEDSLContractName_injective`,
 `parseSupportedEDSLContract_roundtrip_unique`,
 `supportedEDSLContractNames_nodup`).
+It also exposes API-boundary preservation lemmas for both transition entrypoints:
+`lowerFromEDSLSubset_supported_preserves_interpretSpec` and
+`lowerFromEDSLSubset_manualBridge_preserves_interpretSpec`.
 
 Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The re-export shim at `Verity/Specs/<Name>/Proofs.lean` imports Layer 1 spec-correctness proofs from `Compiler/Proofs/SpecCorrectness/<Name>.lean`.
 

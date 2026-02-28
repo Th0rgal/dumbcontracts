@@ -74,6 +74,10 @@ selection IDs:
 `supportedEDSLContractName_injective`,
 `parseSupportedEDSLContract_roundtrip_unique`,
 `supportedEDSLContractNames_nodup`.
+Lowering API-boundary preservation lemmas are explicit for both transition
+entrypoints:
+`lowerFromEDSLSubset_supported_preserves_interpretSpec`,
+`lowerFromEDSLSubset_manualBridge_preserves_interpretSpec`.
 
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 

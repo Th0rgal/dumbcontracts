@@ -53,6 +53,34 @@ is definitionally equal to the underlying `CompilationModel`. -/
     lowerFromEDSLSubset (.supported contract) = .ok (lowerSupportedEDSLContract contract) := by
   rfl
 
+/-- The supported-subset entrypoint preserves `interpretSpec` semantics
+exactly at the lowering API boundary. -/
+@[simp] theorem lowerFromEDSLSubset_supported_preserves_interpretSpec
+    (contract : SupportedEDSLContract)
+    (initialStorage : SpecStorage)
+    (tx : Compiler.DiffTestTypes.Transaction) :
+    interpretSpec
+      (match lowerFromEDSLSubset (.supported contract) with
+      | .ok lowered => lowered
+      | .error _ => lowerSupportedEDSLContract contract)
+      initialStorage tx =
+    interpretSpec (lowerSupportedEDSLContract contract) initialStorage tx := by
+  rfl
+
+/-- The manual-bridge entrypoint preserves `interpretSpec` semantics
+exactly at the lowering API boundary. -/
+@[simp] theorem lowerFromEDSLSubset_manualBridge_preserves_interpretSpec
+    (core : ContractCore)
+    (initialStorage : SpecStorage)
+    (tx : Compiler.DiffTestTypes.Transaction) :
+    interpretSpec
+      (match lowerFromEDSLSubset (.manualBridge core) with
+      | .ok lowered => lowered
+      | .error _ => lowerContractCore core)
+      initialStorage tx =
+    interpretSpec (lowerContractCore core) initialStorage tx := by
+  rfl
+
 @[simp] theorem lowerSupportedEDSLContract_simpleStorage_eq :
     lowerSupportedEDSLContract .simpleStorage = Compiler.Specs.simpleStorageSpec := rfl
 

@@ -619,6 +619,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lowerLiftModel_preserves_interpretSpec
 #print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_manualBridge_eq
 #print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_supported_eq
+#print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_supported_preserves_interpretSpec
+#print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_manualBridge_preserves_interpretSpec
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_simpleStorage_eq
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_counter_eq
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_owned_eq
@@ -804,4 +806,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 679 theorems/lemmas (650 public, 29 private)
+-- Total: 681 theorems/lemmas (652 public, 29 private)

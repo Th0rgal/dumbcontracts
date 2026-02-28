@@ -43,6 +43,7 @@ Singleton selected-ID map traversal helper lemmas are also explicit:
 `lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`,
 `lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`,
 `lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok`,
+`lowerFromParsedSupportedContract_append_eq_ok_of_parse_ok`,
 `lowerFromParsedSupportedContract_append_eq_error_of_parse_error`.
 CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via
 `parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, and
@@ -57,6 +58,7 @@ Centralized selected/default helper behavior is also explicit in proofs via
 `lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_lower_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_split_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_parse_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_lower_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_head_error`,

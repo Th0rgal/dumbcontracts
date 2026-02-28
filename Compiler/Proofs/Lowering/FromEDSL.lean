@@ -1062,6 +1062,33 @@ is known to parse to a supported contract in order. -/
       rw [ih]
       rfl
 
+/-- Parsed selected IDs lower to an ordered append decomposition when the strict
+prefix and strict suffix are known to parse successfully in order and the middle
+selected ID parses to a supported contract. -/
+@[simp] theorem lowerFromParsedSupportedContract_append_eq_ok_of_parse_ok
+    (rawPrefix : List String)
+    (rawMid : String)
+    (rawSuffix : List String)
+    (prefixContracts : List SupportedEDSLContract)
+    (midContract : SupportedEDSLContract)
+    (suffixContracts : List SupportedEDSLContract)
+    (hPrefixParse : SelectedIDsParseTo rawPrefix prefixContracts)
+    (hParseMid : parseSupportedEDSLContract? rawMid = some midContract)
+    (hSuffixParse : SelectedIDsParseTo rawSuffix suffixContracts) :
+    (rawPrefix ++ rawMid :: rawSuffix).mapM lowerFromParsedSupportedContract =
+      .ok
+        (prefixContracts.map lowerSupportedEDSLContract ++
+          lowerSupportedEDSLContract midContract ::
+            suffixContracts.map lowerSupportedEDSLContract) := by
+  rw [List.mapM_append]
+  rw [lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok
+      rawPrefix prefixContracts hPrefixParse]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawMid midContract hParseMid]
+  rw [lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok
+      rawSuffix suffixContracts hSuffixParse]
+  rfl
+
 /-- Any append-position parse-stage failure propagates fail-closed through selected-ID
 map traversal once the strict prefix is known to parse successfully in order. -/
 @[simp] theorem lowerFromParsedSupportedContract_append_eq_error_of_parse_error
@@ -1475,6 +1502,45 @@ the middle selected ID parses to a supported contract. -/
       hSuffixOk
   exact lowerFromParsedSupportedContract_eq_ok rawMid midContract hParseMid
 
+/-- Duplicate-free selected IDs lower to an ordered append decomposition when the
+strict prefix and strict suffix selected IDs are known to parse successfully in order
+and the middle selected ID parses to a supported contract. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_parse_ok
+    (rawPrefix : List String)
+    (rawMid : String)
+    (rawSuffix : List String)
+    (prefixContracts : List SupportedEDSLContract)
+    (midContract : SupportedEDSLContract)
+    (suffixContracts : List SupportedEDSLContract)
+    (hNoDup : findDuplicateRawContract? [] (rawPrefix ++ rawMid :: rawSuffix) = none)
+    (hPrefixParse : SelectedIDsParseTo rawPrefix prefixContracts)
+    (hParseMid : parseSupportedEDSLContract? rawMid = some midContract)
+    (hSuffixParse : SelectedIDsParseTo rawSuffix suffixContracts) :
+    lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawMid :: rawSuffix) =
+      .ok
+        (prefixContracts.map lowerSupportedEDSLContract ++
+          lowerSupportedEDSLContract midContract ::
+            suffixContracts.map lowerSupportedEDSLContract) := by
+  have hNonEmpty : (rawPrefix ++ rawMid :: rawSuffix) ≠ [] := by
+    simp
+  apply lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok
+    (rawPrefix ++ rawMid :: rawSuffix)
+    (prefixContracts.map lowerSupportedEDSLContract ++
+      lowerSupportedEDSLContract midContract ::
+        suffixContracts.map lowerSupportedEDSLContract)
+    hNoDup
+    hNonEmpty
+  exact lowerFromParsedSupportedContract_append_eq_ok_of_parse_ok
+    rawPrefix
+    rawMid
+    rawSuffix
+    prefixContracts
+    midContract
+    suffixContracts
+    hPrefixParse
+    hParseMid
+    hSuffixParse
+
 /-- Duplicate-free selected IDs with a known-good head ID lower to the expected
 ordered `head :: tail` list once the tail map traversal is already known to lower
 successfully. -/
@@ -1596,21 +1662,21 @@ successfully. -/
         , lowerSupportedEDSLContract contractB
         , lowerSupportedEDSLContract contractC
         ] := by
-  have hNonEmpty : ([rawA, rawB, rawC] : List String) ≠ [] := by simp
-  have hParseAll :
-      SelectedIDsParseTo [rawA, rawB, rawC] [contractA, contractB, contractC] := by
-    exact
-      SelectedIDsParseTo.cons
-        hParseA
-        (SelectedIDsParseTo.cons
-          hParseB
-          (SelectedIDsParseTo.cons hParseC SelectedIDsParseTo.nil))
-  exact lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok
-    [rawA, rawB, rawC]
-    [contractA, contractB, contractC]
+  have hPrefixParse : SelectedIDsParseTo [rawA] [contractA] := by
+    exact SelectedIDsParseTo.cons hParseA SelectedIDsParseTo.nil
+  have hSuffixParse : SelectedIDsParseTo [rawC] [contractC] := by
+    exact SelectedIDsParseTo.cons hParseC SelectedIDsParseTo.nil
+  exact lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_parse_ok
+    [rawA]
+    rawB
+    [rawC]
+    [contractA]
+    contractB
+    [contractC]
     hNoDup
-    hNonEmpty
-    hParseAll
+    hPrefixParse
+    hParseB
+    hSuffixParse
 
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when the head selected ID is unknown. -/

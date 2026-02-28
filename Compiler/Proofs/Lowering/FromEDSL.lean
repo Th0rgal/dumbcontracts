@@ -982,6 +982,22 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [lowerRequestedSupportedEDSLContracts_selected_eq supportedEDSLContractNames hNoDup hNonEmpty]
   rw [lowerRequestedSupportedEDSLContracts_default_eq]
 
+/-- A singleton selected canonical ID lowers to the expected singleton model list. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok
+    (contract : SupportedEDSLContract) :
+    lowerRequestedSupportedEDSLContracts [supportedEDSLContractName contract] =
+      .ok [lowerSupportedEDSLContract contract] := by
+  have hNoDup : findDuplicateRawContract? [] [supportedEDSLContractName contract] = none := by
+    simp [findDuplicateRawContract?]
+  have hNonEmpty : [supportedEDSLContractName contract] ≠ [] := by
+    simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq [supportedEDSLContractName contract] hNoDup hNonEmpty]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok
+    (supportedEDSLContractName contract) contract
+    (parseSupportedEDSLContract_roundtrip contract)]
+  rfl
+
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when the head selected ID is unknown. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error

@@ -290,6 +290,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 **Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.
+Revert-state caveat details are documented in [`docs/REVERT_STATE_MODEL.md`](docs/REVERT_STATE_MODEL.md).
 
 ## How Verity Compares
 

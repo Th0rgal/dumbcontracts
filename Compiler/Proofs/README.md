@@ -38,6 +38,8 @@ CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via
 `lowerRequestedSupportedEDSLContracts`.
 Centralized selected/default helper behavior is also explicit in proofs via
 `lowerRequestedSupportedEDSLContracts_default_eq`,
+`supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok`,
+`lowerRequestedSupportedEDSLContracts_default_eq_ok_supported`,
 `lowerRequestedSupportedEDSLContracts_duplicate_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_eq`,
 `lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,

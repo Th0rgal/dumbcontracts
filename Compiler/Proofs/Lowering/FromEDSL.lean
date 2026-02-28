@@ -932,6 +932,19 @@ theorem lower_safeCounter_decrement_reverts_at_zero
       supportedEDSLContractNames.mapM lowerFromParsedSupportedContract := by
   rfl
 
+/-- Canonical supported-contract IDs lower to the canonical supported-contract model list. -/
+@[simp] theorem supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok :
+    supportedEDSLContractNames.mapM lowerFromParsedSupportedContract =
+      .ok (supportedEDSLContracts.map lowerSupportedEDSLContract) := by
+  rfl
+
+/-- Empty selected-ID input lowers to the canonical supported-contract model list. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_default_eq_ok_supported :
+    lowerRequestedSupportedEDSLContracts [] =
+      .ok (supportedEDSLContracts.map lowerSupportedEDSLContract) := by
+  rw [lowerRequestedSupportedEDSLContracts_default_eq]
+  simpa using supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok
+
 /-- Duplicate selected IDs fail closed through the centralized helper boundary. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_duplicate_eq_error
     (rawContracts : List String)

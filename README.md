@@ -252,6 +252,8 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
   The same proof module now also proves parser determinism for `--edsl-contract` IDs (injective name map, unique roundtrip, and no-duplicate supported name list), and composes parsed IDs with lowering-boundary preservation (`lowerFromParsedSupportedContract_preserves_interpretSpec`) through the centralized parsing/lowering helpers (`parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, `lowerRequestedSupportedEDSLContracts`).
   It also includes centralized selected/default helper lemmas:
   `lowerRequestedSupportedEDSLContracts_default_eq`,
+  `supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok`,
+  `lowerRequestedSupportedEDSLContracts_default_eq_ok_supported`,
   `lowerRequestedSupportedEDSLContracts_duplicate_eq_error`,
   `lowerRequestedSupportedEDSLContracts_selected_eq`,
   `lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,

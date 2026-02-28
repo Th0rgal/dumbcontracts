@@ -1025,6 +1025,22 @@ parse-stage error through the centralized helper boundary. -/
   rfl
 
 /-- Non-empty selected IDs fail closed to any explicitly established parse-stage
+error when the head selected ID fails parsing. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_head_eq_error_of_parse_error
+    (rawBad : String)
+    (rest : List String)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] (rawBad :: rest) = none)
+    (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
+    lowerRequestedSupportedEDSLContracts (rawBad :: rest) =
+      .error err := by
+  have hNonEmpty : (rawBad :: rest) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawBad :: rest) hNoDup hNonEmpty]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
+  rfl
+
+/-- Non-empty selected IDs fail closed to any explicitly established parse-stage
 error when a tail selected ID fails parsing after a known-valid head ID. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error
     (rawOk rawBad : String)

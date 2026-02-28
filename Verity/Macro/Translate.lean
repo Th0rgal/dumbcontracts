@@ -181,9 +181,55 @@ partial def translatePureExpr
   | `(term| $n:num) => `(Compiler.CompilationModel.Expr.literal $n)
   | `(term| add $a $b) => `(Compiler.CompilationModel.Expr.add $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| sub $a $b) => `(Compiler.CompilationModel.Expr.sub $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| mul $a $b) => `(Compiler.CompilationModel.Expr.mul $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| div $a $b) => `(Compiler.CompilationModel.Expr.div $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| mod $a $b) => `(Compiler.CompilationModel.Expr.mod $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| bitAnd $a $b) => `(Compiler.CompilationModel.Expr.bitAnd $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| bitOr $a $b) => `(Compiler.CompilationModel.Expr.bitOr $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| bitXor $a $b) => `(Compiler.CompilationModel.Expr.bitXor $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| bitNot $a) => `(Compiler.CompilationModel.Expr.bitNot $(← translatePureExpr params locals a))
+  | `(term| shl $shift $value) => `(Compiler.CompilationModel.Expr.shl $(← translatePureExpr params locals shift) $(← translatePureExpr params locals value))
+  | `(term| shr $shift $value) => `(Compiler.CompilationModel.Expr.shr $(← translatePureExpr params locals shift) $(← translatePureExpr params locals value))
   | `(term| $a == $b) => `(Compiler.CompilationModel.Expr.eq $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| $a != $b) =>
+      `(Compiler.CompilationModel.Expr.logicalNot
+          (Compiler.CompilationModel.Expr.eq
+            $(← translatePureExpr params locals a)
+            $(← translatePureExpr params locals b)))
   | `(term| $a >= $b) => `(Compiler.CompilationModel.Expr.ge $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
-  | _ => throwErrorAt stx "unsupported expression in verity_contract body"
+  | `(term| $a > $b) => `(Compiler.CompilationModel.Expr.gt $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| $a < $b) => `(Compiler.CompilationModel.Expr.lt $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| $a <= $b) => `(Compiler.CompilationModel.Expr.le $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| and $a $b) => `(Compiler.CompilationModel.Expr.bitAnd $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| or $a $b) => `(Compiler.CompilationModel.Expr.bitOr $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| xor $a $b) => `(Compiler.CompilationModel.Expr.bitXor $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| not $a) => `(Compiler.CompilationModel.Expr.bitNot $(← translatePureExpr params locals a))
+  | `(term| mulDivDown $a $b $c) =>
+      `(Compiler.CompilationModel.Expr.mulDivDown
+          $(← translatePureExpr params locals a)
+          $(← translatePureExpr params locals b)
+          $(← translatePureExpr params locals c))
+  | `(term| mulDivUp $a $b $c) =>
+      `(Compiler.CompilationModel.Expr.mulDivUp
+          $(← translatePureExpr params locals a)
+          $(← translatePureExpr params locals b)
+          $(← translatePureExpr params locals c))
+  | `(term| wMulDown $a $b) =>
+      `(Compiler.CompilationModel.Expr.wMulDown
+          $(← translatePureExpr params locals a)
+          $(← translatePureExpr params locals b))
+  | `(term| wDivUp $a $b) =>
+      `(Compiler.CompilationModel.Expr.wDivUp
+          $(← translatePureExpr params locals a)
+          $(← translatePureExpr params locals b))
+  | `(term| min $a $b) => `(Compiler.CompilationModel.Expr.min $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| max $a $b) => `(Compiler.CompilationModel.Expr.max $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| ite $cond $thenVal $elseVal) =>
+      `(Compiler.CompilationModel.Expr.ite
+          $(← translatePureExpr params locals cond)
+          $(← translatePureExpr params locals thenVal)
+          $(← translatePureExpr params locals elseVal))
+  | _ => throwErrorAt stx "unsupported expression in verity_contract body (see #1003 for planned macro support expansions)"
 
 private def translateBindSource
     (fields : Array StorageFieldDecl)

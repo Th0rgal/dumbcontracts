@@ -134,6 +134,8 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     | .error err => err.message
   expectTrue "explicit unsupported EDSL subset input returns deterministic diagnostic"
     (contains unsupportedMsg "test unsupported feature")
+  expectTrue "unsupported EDSL subset diagnostic keeps curated-boundary guidance"
+    (contains unsupportedMsg "--edsl-contract")
   let supportedNames := Compiler.Lowering.supportedEDSLContractNames
   expectTrue "supported --edsl-contract names are unique"
     (supportedNames.eraseDups.length == supportedNames.length)

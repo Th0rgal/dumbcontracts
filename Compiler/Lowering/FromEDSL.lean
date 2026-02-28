@@ -39,8 +39,9 @@ inductive LoweringError where
 
 def LoweringError.message : LoweringError → String
   | .unsupported details =>
-      "EDSL input mode is reserved for verified automatic lowering and is not wired in this CLI yet. " ++
-      "Use --input model for now (manual CompilationModel path). " ++
+      "EDSL input mode is active only for the curated supported subset. " ++
+      "For unsupported contracts, use --input model (manual CompilationModel path) " ++
+      "or select a supported EDSL contract with --edsl-contract. " ++
       details
 
 /-- Transition helper: embeds today's manual compiler input into the future

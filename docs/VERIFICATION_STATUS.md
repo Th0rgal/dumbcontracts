@@ -199,9 +199,9 @@ theorem increment_adds_one (state : ContractState) :
 - **Proof Patterns**: Documented patterns for common verification tasks
 - **Feature Matrix**: Comprehensive interpreter support contract — see [`INTERPRETER_FEATURE_MATRIX.md`](INTERPRETER_FEATURE_MATRIX.md) and `artifacts/interpreter_feature_matrix.json`
 
-## Layer 2: CompilationModel (`CompilationModel`) → IR ✅ **COMPLETE**
+## Layer 2: CompilationModel (`CompilationModel`) → IR ✅ **7/9 COMPLETE**
 
-**Status**: All 8 compiled contracts have IR generation with preservation proofs
+**Status**: 7 contracts have full per-function IR preservation proofs; ERC20 and ERC721 have compilation success proofs (per-function preservation theorems pending)
 
 **What This Layer Proves**: Intermediate representation (IR) generation preserves CompilationModel semantics.
 
@@ -216,7 +216,8 @@ theorem increment_adds_one (state : ContractState) :
 | OwnedCounter | 5 | ✅ Proven | Complete |
 | Ledger | 4 | ✅ Proven | Complete |
 | SimpleToken | 6 | ✅ Proven | Complete |
-| ERC20 | 8 | ✅ Proven | Complete |
+| ERC20 | 8 | ⚙️ Compilation only | `compile_erc20Spec` proves compilation succeeds; per-function preservation pending |
+| ERC721 | 10 | ⚙️ Compilation only | `compile_erc721Spec` proves compilation succeeds; per-function preservation pending |
 
 ### Example Preservation Theorem
 
@@ -340,7 +341,8 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Coverage
 
-- All 7 compiled contracts have comprehensive differential test suites
+- 7 original contracts have comprehensive differential test suites (10,000 tests each)
+- ERC20 and ERC721: **not yet covered** by differential testing (random generation and spec interpretation pending)
 - Property tests extracted from theorems provide additional coverage
 - Edge cases: overflow, underflow, zero values, max values, access control
 
@@ -454,7 +456,7 @@ Current diagnostic coverage in compiler:
 ### Medium Term (3-6 months)
 
 - [ ] Yul → EVM bridge verification (or integrate existing EVM semantics)
-- [ ] Add 2-3 more realistic example contracts (ERC721, governance, etc.)
+- [ ] Add 2-3 more realistic example contracts (ERC721 has EDSL+CompilationModel spec, needs EDSL subset integration; governance, etc.)
 
 ### Long Term (6-12 months)
 
@@ -488,4 +490,4 @@ See `scripts/README.md` for:
 ---
 
 **Last Updated**: 2026-02-28
-**Status Summary**: Layers 1-3 complete (CompilationModel path), trust reduction in progress, single supported compiler path. ERC20 added to supported EDSL subset with double-mapping and ite support.
+**Status Summary**: Layer 2 IR preservation complete for 7 contracts, compilation-success-only for ERC20/ERC721. Layers 1 and 3 complete (CompilationModel path). ERC20 in supported EDSL subset; ERC721 has CompilationModel spec (not yet in EDSL subset). Difftest coverage limited to 7 original contracts.

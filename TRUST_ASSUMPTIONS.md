@@ -136,6 +136,8 @@ All backend profiles use identical wrapping arithmetic. See [`docs/ARITHMETIC_PR
 
 High-level semantics can expose intermediate state in a reverted computation model. EVM runtime reverts discard state. Contracts should preserve checks-before-effects discipline.
 
+See [`docs/REVERT_STATE_MODEL.md`](docs/REVERT_STATE_MODEL.md) for the precise modeling note and proof-author guidance.
+
 ## Security Audit Checklist
 
 1. Confirm deployment uses the supported EDSL-only CLI path (optionally narrowed with `--edsl-contract`), and treat linked-library flows as out of path.
@@ -158,6 +160,7 @@ If this file is stale, audit conclusions may be invalid.
 - [AUDIT.md](AUDIT.md)
 - [AXIOMS.md](AXIOMS.md)
 - [docs/ARITHMETIC_PROFILE.md](docs/ARITHMETIC_PROFILE.md)
+- [docs/REVERT_STATE_MODEL.md](docs/REVERT_STATE_MODEL.md)
 - [docs/EXTERNAL_CALL_MODULES.md](docs/EXTERNAL_CALL_MODULES.md)
 - [docs/SOLIDITY_PARITY_PROFILE.md](docs/SOLIDITY_PARITY_PROFILE.md)
 - [docs/PARITY_PACKS.md](docs/PARITY_PACKS.md)

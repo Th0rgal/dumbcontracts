@@ -54,7 +54,7 @@ def ownedCounterEdslToSpecStorage (state : ContractState) : SpecStorage :=
 
 /-- The `constructor` correctly initializes the owner -/
 theorem ownedCounter_constructor_correct (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let edslResult := (constructor initialOwner).run { state with sender := sender }
+    let edslResult := (Verity.Examples.OwnedCounter.constructor initialOwner).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := ""

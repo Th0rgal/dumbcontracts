@@ -1055,11 +1055,16 @@ error when the head selected ID fails parsing. -/
     (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
     lowerRequestedSupportedEDSLContracts (rawBad :: rest) =
       .error err := by
-  have hNonEmpty : (rawBad :: rest) ≠ [] := by simp
-  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawBad :: rest) hNoDup hNonEmpty]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
-  rfl
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
+      []
+      rawBad
+      rest
+      []
+      err
+      hNoDup
+      rfl
+  simpa using
+    lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
 
 /-- Non-empty selected IDs fail closed to any explicitly established parse-stage
 error when a tail selected ID fails parsing after a known-valid head ID. -/
@@ -1073,13 +1078,22 @@ error when a tail selected ID fails parsing after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
     lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
       .error err := by
-  have hNonEmpty : (rawOk :: rawBad :: rest) ≠ [] := by simp
-  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawOk :: rawBad :: rest) hNoDup hNonEmpty]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
-  rfl
+  have hPrefixOk :
+      [rawOk].mapM lowerFromParsedSupportedContract =
+        .ok [lowerSupportedEDSLContract contract] := by
+    rw [List.mapM_cons]
+    rw [lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk]
+    rfl
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
+      [rawOk]
+      rawBad
+      rest
+      [lowerSupportedEDSLContract contract]
+      err
+      hNoDup
+      hPrefixOk
+  simpa using
+    lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
 
 /-- Duplicate-free selected IDs fail closed to a parse-stage error at any position
 when every strictly preceding selected ID is already known to lower successfully. -/
@@ -1249,11 +1263,15 @@ when the head selected ID is unknown. -/
     (hParse : parseSupportedEDSLContract? raw = none) :
     lowerRequestedSupportedEDSLContracts (raw :: rest) =
       .error (unsupportedEDSLContractMessage raw) := by
-  have hNonEmpty : (raw :: rest) ≠ [] := by simp
-  rw [lowerRequestedSupportedEDSLContracts_selected_eq (raw :: rest) hNoDup hNonEmpty]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_unknown_eq_error raw hParse]
-  rfl
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
+      []
+      raw
+      rest
+      []
+      (unsupportedEDSLContractMessage raw)
+      hNoDup
+      rfl
+  simpa using lowerFromParsedSupportedContract_unknown_eq_error raw hParse
 
 /-- A singleton unknown selected ID fails closed with the same unsupported-ID diagnostic. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error
@@ -1277,13 +1295,21 @@ when a tail selected ID is unknown after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract? rawBad = none) :
     lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
       .error (unsupportedEDSLContractMessage rawBad) := by
-  have hNonEmpty : (rawOk :: rawBad :: rest) ≠ [] := by simp
-  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawOk :: rawBad :: rest) hNoDup hNonEmpty]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad]
-  rfl
+  have hPrefixOk :
+      [rawOk].mapM lowerFromParsedSupportedContract =
+        .ok [lowerSupportedEDSLContract contract] := by
+    rw [List.mapM_cons]
+    rw [lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk]
+    rfl
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
+      [rawOk]
+      rawBad
+      rest
+      [lowerSupportedEDSLContract contract]
+      (unsupportedEDSLContractMessage rawBad)
+      hNoDup
+      hPrefixOk
+  simpa using lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad
 
 /-- Duplicate-free selected IDs fail closed with the unsupported-ID diagnostic
 when any selected ID is unknown after an already-lowered prefix. -/

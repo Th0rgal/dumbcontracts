@@ -37,35 +37,13 @@ private def writePatchReport (path : String) (rows : List (String × Yul.PatchPa
 private def resolveSpecsForModelInput (libraryPaths : List String) : List CompilationModel :=
   if libraryPaths.isEmpty then Specs.allSpecs else Specs.allSpecs ++ [Specs.cryptoHashSpec]
 
-private def lowerRequestedEDSLContracts (rawContracts : List String) :
-    Except String (List CompilationModel) := do
-  let rec findDuplicate? (seen : Std.HashSet String) (remaining : List String) : Option String :=
-    match remaining with
-    | [] => none
-    | raw :: rest =>
-        if seen.contains raw then
-          some raw
-        else
-          findDuplicate? (seen.insert raw) rest
-  match findDuplicate? {} rawContracts with
-  | some dup =>
-      .error s!"Duplicate --edsl-contract value: {dup}"
-  | none =>
-      pure ()
-  let selectedRawContracts :=
-    if rawContracts.isEmpty then
-      Compiler.Lowering.supportedEDSLContractNames
-    else
-      rawContracts
-  selectedRawContracts.mapM Compiler.Lowering.lowerFromParsedSupportedContract
-
 private def resolveSpecsForEDSLInput
     (libraryPaths : List String)
     (rawContracts : List String) : Except String (List CompilationModel) := do
   if !libraryPaths.isEmpty then
     .error Compiler.Lowering.edslInputLinkedLibrariesUnsupportedMessage
   else
-    lowerRequestedEDSLContracts rawContracts
+    Compiler.Lowering.lowerRequestedSupportedEDSLContracts rawContracts
 
 private def writeContract
     (outDir : String)

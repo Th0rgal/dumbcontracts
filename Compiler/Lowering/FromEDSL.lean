@@ -99,6 +99,15 @@ def parseSupportedEDSLContract (raw : String) : Except String SupportedEDSLContr
   | some contract => .ok contract
   | none => .error (unsupportedEDSLContractMessage raw)
 
+def findDuplicateRawContract? (seen : List String) (remaining : List String) : Option String :=
+  match remaining with
+  | [] => none
+  | raw :: rest =>
+      if raw ∈ seen then
+        some raw
+      else
+        findDuplicateRawContract? (raw :: seen) rest
+
 /-- Lower a compilable EDSL-subset input to `CompilationModel`.
 This currently supports the explicit manual-bridge case and fails closed
 for unimplemented automatic reification cases. -/
@@ -118,6 +127,22 @@ def lowerFromParsedSupportedContract (raw : String) : Except String CompilationM
   match lowerFromEDSLSubset (.supported contract) with
   | .ok spec => .ok spec
   | .error err => .error err.message
+
+/-- Lower selected CLI supported-contract IDs through the parsed lowering boundary.
+If no IDs are provided, the full canonical supported list is lowered.
+Duplicate requested IDs fail closed with a deterministic diagnostic. -/
+def lowerRequestedSupportedEDSLContracts (rawContracts : List String) : Except String (List CompilationModel) := do
+  match findDuplicateRawContract? {} rawContracts with
+  | some dup =>
+      .error s!"Duplicate --edsl-contract value: {dup}"
+  | none =>
+      pure ()
+  let selectedRawContracts :=
+    if rawContracts.isEmpty then
+      supportedEDSLContractNames
+    else
+      rawContracts
+  selectedRawContracts.mapM lowerFromParsedSupportedContract
 
 def edslInputReservedMessage : String :=
   LoweringError.message (.unsupported "(pending verified EDSL subset reification/lowering)")

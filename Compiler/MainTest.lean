@@ -178,6 +178,18 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
       | .error _ => false)
   expectTrue "all canonical supported --edsl-contract IDs lower via centralized helper"
     allSupportedParsedAndLowered
+  expectTrue "selected/default EDSL helper lowers full canonical subset by default"
+    (match Compiler.Lowering.lowerRequestedSupportedEDSLContracts [] with
+    | .ok lowered =>
+        lowered.length == Compiler.Lowering.supportedEDSLContracts.length &&
+        (Compiler.Lowering.supportedEDSLContracts.zip lowered).all
+          (fun (contract, loweredContract) =>
+            loweredContract.name == (Compiler.Lowering.lowerSupportedEDSLContract contract).name)
+    | .error _ => false)
+  expectTrue "selected/default EDSL helper fails closed on duplicate IDs"
+    (match Compiler.Lowering.lowerRequestedSupportedEDSLContracts ["counter", "counter"] with
+    | .ok _ => false
+    | .error msg => contains msg "Duplicate --edsl-contract value: counter")
   expectTrue "unsupported --edsl-contract helper keeps deterministic diagnostic"
     (match Compiler.Lowering.lowerFromParsedSupportedContract "does-not-exist" with
     | .ok _ => false

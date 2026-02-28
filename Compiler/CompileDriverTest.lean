@@ -52,6 +52,23 @@ private def expectSupportedSubsetParity
       s!"{modelAbiDir}/{spec.name}.abi.json"
       s!"{edslAbiDir}/{spec.name}.abi.json"
 
+private def expectOnlySelectedArtifacts
+    (label : String)
+    (selected : List Compiler.Lowering.SupportedEDSLContract)
+    (outDir abiDir : String) : IO Unit := do
+  for contract in Compiler.Lowering.supportedEDSLContracts do
+    let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
+    let shouldExist := selected.contains contract
+    let yulExists ← fileExists s!"{outDir}/{spec.name}.yul"
+    let abiExists ← fileExists s!"{abiDir}/{spec.name}.abi.json"
+    if yulExists != shouldExist then
+      throw (IO.userError
+        s!"✗ {label}: unexpected Yul artifact presence for {spec.name} (expected={shouldExist}, found={yulExists})")
+    if abiExists != shouldExist then
+      throw (IO.userError
+        s!"✗ {label}: unexpected ABI artifact presence for {spec.name} (expected={shouldExist}, found={abiExists})")
+  IO.println s!"✓ {label}"
+
 #eval! (do
   let nonce ← IO.rand 0 1000000000
   let outDir := s!"/tmp/verity-compile-driver-test-{nonce}-out"
@@ -60,6 +77,8 @@ private def expectSupportedSubsetParity
   let edslOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-edsl-out"
   let modelAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-model-abi"
   let edslAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-edsl-abi"
+  let selectedOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-out"
+  let selectedAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-abi"
   let missingLib := "/tmp/definitely-missing-library.yul"
   let failingAbi := s!"{abiDir}/CryptoHash.abi.json"
   let successfulAbi := s!"{abiDir}/SimpleStorage.abi.json"
@@ -70,6 +89,8 @@ private def expectSupportedSubsetParity
   IO.FS.createDirAll edslOutDir
   IO.FS.createDirAll modelAbiDir
   IO.FS.createDirAll edslAbiDir
+  IO.FS.createDirAll selectedOutDir
+  IO.FS.createDirAll selectedAbiDir
 
   -- Remove stale ABI outputs from previous runs so this check is deterministic.
   try IO.FS.removeFile failingAbi catch _ => pure ()
@@ -103,6 +124,20 @@ private def expectSupportedSubsetParity
 
   compileAllFromEDSLWithOptions edslOutDir false [] [] {} none (some edslAbiDir)
   expectSupportedSubsetParity modelOutDir edslOutDir modelAbiDir edslAbiDir
+
+  compileAllFromEDSLWithOptions
+    selectedOutDir
+    false
+    []
+    ["simple-storage", "counter"]
+    {}
+    none
+    (some selectedAbiDir)
+  expectOnlySelectedArtifacts
+    "edsl multi-select emits only requested contract artifacts"
+    [Compiler.Lowering.SupportedEDSLContract.simpleStorage, Compiler.Lowering.SupportedEDSLContract.counter]
+    selectedOutDir
+    selectedAbiDir
 
   expectFailureContains
     "duplicate selected EDSL contracts fail closed"

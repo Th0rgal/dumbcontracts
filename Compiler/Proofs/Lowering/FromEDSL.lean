@@ -945,6 +945,16 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [List.mapM_cons, hLower]
   rfl
 
+/-- A singleton selected-ID map traversal lowers successfully when parsing succeeds. -/
+@[simp] theorem lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok
+    (raw : String)
+    (contract : SupportedEDSLContract)
+    (hParse : parseSupportedEDSLContract? raw = some contract) :
+    [raw].mapM lowerFromParsedSupportedContract =
+      .ok [lowerSupportedEDSLContract contract] := by
+  apply lowerFromParsedSupportedContract_singleton_eq_ok
+  exact lowerFromParsedSupportedContract_eq_ok raw contract hParse
+
 /-- A singleton selected-ID map traversal reflects any established fail-closed lowering error. -/
 @[simp] theorem lowerFromParsedSupportedContract_singleton_eq_error
     (raw : String)
@@ -1108,10 +1118,10 @@ error when a tail selected ID fails parsing after a known-valid head ID. -/
       [rawOk].mapM lowerFromParsedSupportedContract =
         .ok [lowerSupportedEDSLContract contract] := by
     simpa using
-      lowerFromParsedSupportedContract_singleton_eq_ok
+      lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok
         rawOk
-        (lowerSupportedEDSLContract contract)
-        (lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk)
+        contract
+        hParseOk
   apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
       [rawOk]
       rawBad
@@ -1233,12 +1243,14 @@ successfully. -/
       hParseHead
       hTailOk
 
-/-- A singleton selected canonical ID lowers to the expected singleton model list. -/
-@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok
-    (contract : SupportedEDSLContract) :
-    lowerRequestedSupportedEDSLContracts [supportedEDSLContractName contract] =
+/-- A singleton selected ID lowers successfully whenever its parser result is known. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok
+    (raw : String)
+    (contract : SupportedEDSLContract)
+    (hParse : parseSupportedEDSLContract? raw = some contract) :
+    lowerRequestedSupportedEDSLContracts [raw] =
       .ok [lowerSupportedEDSLContract contract] := by
-  have hNoDup : findDuplicateRawContract? [] [supportedEDSLContractName contract] = none := by
+  have hNoDup : findDuplicateRawContract? [] [raw] = none := by
     simp [findDuplicateRawContract?]
   have hTailOk :
       ([] : List String).mapM lowerFromParsedSupportedContract =
@@ -1246,13 +1258,23 @@ successfully. -/
     rfl
   simpa using
     lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok
-      (supportedEDSLContractName contract)
+      raw
       []
       contract
       []
       hNoDup
-      (parseSupportedEDSLContract_roundtrip contract)
+      hParse
       hTailOk
+
+/-- A singleton selected canonical ID lowers to the expected singleton model list. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok
+    (contract : SupportedEDSLContract) :
+    lowerRequestedSupportedEDSLContracts [supportedEDSLContractName contract] =
+      .ok [lowerSupportedEDSLContract contract] := by
+  exact lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok
+    (supportedEDSLContractName contract)
+    contract
+    (parseSupportedEDSLContract_roundtrip contract)
 
 /-- A duplicate-free selected pair of known IDs lowers to the expected ordered pair. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok
@@ -1267,10 +1289,10 @@ successfully. -/
       [rawB].mapM lowerFromParsedSupportedContract =
         .ok [lowerSupportedEDSLContract contractB] := by
     simpa using
-      lowerFromParsedSupportedContract_singleton_eq_ok
+      lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok
         rawB
-        (lowerSupportedEDSLContract contractB)
-        (lowerFromParsedSupportedContract_eq_ok rawB contractB hParseB)
+        contractB
+        hParseB
   simpa using
     lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok
       rawA
@@ -1358,10 +1380,10 @@ when a tail selected ID is unknown after a known-valid head ID. -/
       [rawOk].mapM lowerFromParsedSupportedContract =
         .ok [lowerSupportedEDSLContract contract] := by
     simpa using
-      lowerFromParsedSupportedContract_singleton_eq_ok
+      lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok
         rawOk
-        (lowerSupportedEDSLContract contract)
-        (lowerFromParsedSupportedContract_eq_ok rawOk contract hParseOk)
+        contract
+        hParseOk
   apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
       [rawOk]
       rawBad

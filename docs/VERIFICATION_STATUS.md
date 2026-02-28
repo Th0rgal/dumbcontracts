@@ -78,6 +78,7 @@ It also includes parsed-ID to lowering-boundary preservation:
 `lowerFromParsedSupportedContract_preserves_interpretSpec`.
 Singleton selected-ID map traversal helpers are also explicit:
 `lowerFromParsedSupportedContract_singleton_eq_ok`,
+`lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_error`.
 CLI parsing/lowering now uses centralized boundary helpers:
 `parseSupportedEDSLContract`,
@@ -104,6 +105,7 @@ Centralized selected/default helper behavior is also explicit in the proof surfa
 `lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok`,

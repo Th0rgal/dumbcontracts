@@ -35,6 +35,7 @@ The same module also composes parsed CLI IDs with lowering semantics at the
 API boundary (`lowerFromParsedSupportedContract_preserves_interpretSpec`).
 Singleton selected-ID map traversal helper lemmas are also explicit:
 `lowerFromParsedSupportedContract_singleton_eq_ok`,
+`lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_error`.
 CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via
 `parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, and
@@ -60,6 +61,7 @@ Centralized selected/default helper behavior is also explicit in proofs via
 `lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok`,

@@ -145,9 +145,9 @@ theorem owned_only_owner_can_transfer (state : ContractState) (newOwner : Addres
         h_success
   simpa [onlyOwner, isOwner, msgSender, getStorageAddr, Contract.run, Verity.bind, Verity.pure]
     using Verity.Proofs.Stdlib.Automation.owner_guard_success_implies_storageAddr_eq_sender
-      (slot := owner)
-      (msg := "Caller is not the owner")
-      (state := { state with sender := sender })
+      owner
+      "Caller is not the owner"
+      ({ state with sender := sender })
       h_onlyOwner_success
 
 /-- Constructor sets initial owner correctly -/

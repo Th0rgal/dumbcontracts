@@ -932,6 +932,32 @@ theorem lower_safeCounter_decrement_reverts_at_zero
       supportedEDSLContractNames.mapM lowerFromParsedSupportedContract := by
   rfl
 
+/-- Duplicate selected IDs fail closed through the centralized helper boundary. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_duplicate_eq_error
+    (rawContracts : List String)
+    (dup : String)
+    (hDup : findDuplicateRawContract? [] rawContracts = some dup) :
+    lowerRequestedSupportedEDSLContracts rawContracts =
+      .error s!"Duplicate --edsl-contract value: {dup}" := by
+  unfold lowerRequestedSupportedEDSLContracts
+  have hDup' : findDuplicateRawContract? ∅ rawContracts = some dup := by
+    simpa using hDup
+  rw [hDup']
+  rfl
+
+/-- Non-empty duplicate-free selected IDs lower exactly through parsed-ID map traversal. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_eq
+    (rawContracts : List String)
+    (hNoDup : findDuplicateRawContract? [] rawContracts = none)
+    (hNonEmpty : rawContracts ≠ []) :
+    lowerRequestedSupportedEDSLContracts rawContracts =
+      rawContracts.mapM lowerFromParsedSupportedContract := by
+  unfold lowerRequestedSupportedEDSLContracts
+  have hNoDup' : findDuplicateRawContract? ∅ rawContracts = none := by
+    simpa using hNoDup
+  rw [hNoDup']
+  simp [hNonEmpty]
+
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
     (raw : String)

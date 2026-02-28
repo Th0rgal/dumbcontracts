@@ -74,6 +74,8 @@ selection IDs:
 `supportedEDSLContractName_injective`,
 `parseSupportedEDSLContract_roundtrip_unique`,
 `supportedEDSLContractNames_nodup`.
+It also includes parsed-ID to lowering-boundary preservation:
+`lowerFromParsedSupportedContract_preserves_interpretSpec`.
 Lowering API-boundary preservation lemmas are explicit for both transition
 entrypoints:
 `lowerFromEDSLSubset_supported_preserves_interpretSpec`,

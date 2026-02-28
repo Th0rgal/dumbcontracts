@@ -876,6 +876,35 @@ theorem lower_safeCounter_decrement_reverts_at_zero
     cases hEq
     simpa using parseSupportedEDSLContract_roundtrip requested
 
+/-- Canonical supported contract names always parse to their constructor. -/
+@[simp] theorem parseSupportedEDSLContract_name_eq_implies_some
+    (raw : String)
+    (contract : SupportedEDSLContract)
+    (hName : supportedEDSLContractName contract = raw) :
+    parseSupportedEDSLContract? raw = some contract := by
+  rw [← hName]
+  simpa using parseSupportedEDSLContract_roundtrip contract
+
+/-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
+@[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
+    (raw : String)
+    (contract : SupportedEDSLContract)
+    (hParse : parseSupportedEDSLContract? raw = some contract)
+    (initialStorage : SpecStorage)
+    (tx : Compiler.DiffTestTypes.Transaction) :
+    interpretSpec
+      (match parseSupportedEDSLContract? raw with
+      | some parsed =>
+          match lowerFromEDSLSubset (.supported parsed) with
+          | .ok lowered => lowered
+          | .error _ => lowerSupportedEDSLContract contract
+      | none => lowerSupportedEDSLContract contract)
+      initialStorage tx =
+    interpretSpec (lowerSupportedEDSLContract contract) initialStorage tx := by
+  rw [hParse]
+  simpa using
+    (lowerFromEDSLSubset_supported_preserves_interpretSpec contract initialStorage tx)
+
 /-- CLI-stable supported-contract names are pairwise distinct. -/
 @[simp] theorem supportedEDSLContractNames_nodup :
     supportedEDSLContractNames.Nodup := by

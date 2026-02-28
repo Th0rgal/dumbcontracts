@@ -1060,6 +1060,26 @@ error when a tail selected ID fails parsing after a known-valid head ID. -/
   rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
   rfl
 
+/-- Duplicate-free selected IDs fail closed to a parse-stage error at any position
+when every strictly preceding selected ID is already known to lower successfully. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_parse_error
+    (rawPrefix : List String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (loweredPrefixContracts : List Compiler.CompilationModel.CompilationModel)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] (rawPrefix ++ rawBad :: rawSuffix) = none)
+    (hPrefixOk : rawPrefix.mapM lowerFromParsedSupportedContract = .ok loweredPrefixContracts)
+    (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
+    lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawBad :: rawSuffix) =
+      .error err := by
+  have hNonEmpty : (rawPrefix ++ rawBad :: rawSuffix) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawPrefix ++ rawBad :: rawSuffix) hNoDup hNonEmpty]
+  rw [List.mapM_append, hPrefixOk]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
+  rfl
+
 /-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :
     lowerRequestedSupportedEDSLContracts supportedEDSLContractNames =

@@ -1025,6 +1025,31 @@ map-traversal lowering error once the head lowering succeeds. -/
   exact lowerFromParsedSupportedContract_eq_ok rawA contractA hParseA
   exact lowerFromParsedSupportedContract_eq_ok rawB contractB hParseB
 
+/-- Ordered parse-success witness for selected contract IDs. -/
+inductive SelectedIDsParseTo : List String → List SupportedEDSLContract → Prop where
+  | nil : SelectedIDsParseTo [] []
+  | cons
+      (hParse : parseSupportedEDSLContract? raw = some contract)
+      (hTail : SelectedIDsParseTo rawTail contractTail) :
+      SelectedIDsParseTo (raw :: rawTail) (contract :: contractTail)
+
+/-- Selected-ID map traversal lowers successfully for any list once each selected ID
+is known to parse to a supported contract in order. -/
+@[simp] theorem lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok
+    (rawContracts : List String)
+    (contracts : List SupportedEDSLContract)
+    (hParseAll : SelectedIDsParseTo rawContracts contracts) :
+    rawContracts.mapM lowerFromParsedSupportedContract =
+      .ok (contracts.map lowerSupportedEDSLContract) := by
+  induction hParseAll with
+  | nil =>
+      rfl
+  | @cons raw contract rawTail contractTail hParse hRest ih =>
+      rw [List.mapM_cons]
+      rw [lowerFromParsedSupportedContract_eq_ok raw contract hParse]
+      rw [ih]
+      rfl
+
 /-- Empty selected-ID input follows the default canonical-name lowering path. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_default_eq :
     lowerRequestedSupportedEDSLContracts [] =
@@ -1082,6 +1107,26 @@ ordered `mapM` lowering result through the centralized helper boundary. -/
       .ok loweredContracts := by
   rw [lowerRequestedSupportedEDSLContracts_selected_eq rawContracts hNoDup hNonEmpty]
   exact hLowerAll
+
+/-- Non-empty duplicate-free selected IDs lower to the ordered supported-contract
+target list once each selected ID is known to parse successfully in order. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok
+    (rawContracts : List String)
+    (contracts : List SupportedEDSLContract)
+    (hNoDup : findDuplicateRawContract? [] rawContracts = none)
+    (hNonEmpty : rawContracts ≠ [])
+    (hParseAll : SelectedIDsParseTo rawContracts contracts) :
+    lowerRequestedSupportedEDSLContracts rawContracts =
+      .ok (contracts.map lowerSupportedEDSLContract) := by
+  apply lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok
+    rawContracts
+    (contracts.map lowerSupportedEDSLContract)
+    hNoDup
+    hNonEmpty
+  exact lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok
+    rawContracts
+    contracts
+    hParseAll
 
 /-- Non-empty duplicate-free selected IDs fail closed to any explicitly established
 ordered `mapM` lowering error through the centralized helper boundary. -/
@@ -1413,19 +1458,15 @@ successfully. -/
       .ok [lowerSupportedEDSLContract contract] := by
   have hNoDup : findDuplicateRawContract? [] [raw] = none := by
     simp [findDuplicateRawContract?]
-  have hTailOk :
-      ([] : List String).mapM lowerFromParsedSupportedContract =
-        .ok ([] : List Compiler.CompilationModel.CompilationModel) := by
-    rfl
-  simpa using
-    lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok
-      raw
-      []
-      contract
-      []
-      hNoDup
-      hParse
-      hTailOk
+  have hNonEmpty : ([raw] : List String) ≠ [] := by simp
+  have hParseAll : SelectedIDsParseTo [raw] [contract] := by
+    exact SelectedIDsParseTo.cons hParse SelectedIDsParseTo.nil
+  exact lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok
+    [raw]
+    [contract]
+    hNoDup
+    hNonEmpty
+    hParseAll
 
 /-- A singleton selected canonical ID lowers to the expected singleton model list. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok
@@ -1446,23 +1487,18 @@ successfully. -/
     (hParseB : parseSupportedEDSLContract? rawB = some contractB) :
     lowerRequestedSupportedEDSLContracts [rawA, rawB] =
       .ok [lowerSupportedEDSLContract contractA, lowerSupportedEDSLContract contractB] := by
-  have hTailOk :
-      [rawB].mapM lowerFromParsedSupportedContract =
-        .ok [lowerSupportedEDSLContract contractB] := by
-    simpa using
-      lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok
-        rawB
-        contractB
-        hParseB
-  simpa using
-    lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok
-      rawA
-      [rawB]
-      contractA
-      [lowerSupportedEDSLContract contractB]
-      hNoDup
-      hParseA
-      hTailOk
+  have hNonEmpty : ([rawA, rawB] : List String) ≠ [] := by simp
+  have hParseAll : SelectedIDsParseTo [rawA, rawB] [contractA, contractB] := by
+    exact
+      SelectedIDsParseTo.cons
+        hParseA
+        (SelectedIDsParseTo.cons hParseB SelectedIDsParseTo.nil)
+  exact lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok
+    [rawA, rawB]
+    [contractA, contractB]
+    hNoDup
+    hNonEmpty
+    hParseAll
 
 /-- A duplicate-free selected triple of known IDs lowers to the expected ordered triple. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok
@@ -1478,20 +1514,21 @@ successfully. -/
         , lowerSupportedEDSLContract contractB
         , lowerSupportedEDSLContract contractC
         ] := by
-  have hTailOk :
-      [rawB, rawC].mapM lowerFromParsedSupportedContract =
-        .ok [lowerSupportedEDSLContract contractB, lowerSupportedEDSLContract contractC] := by
-    exact lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok
-      rawB rawC contractB contractC hParseB hParseC
-  simpa using
-    lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok
-      rawA
-      [rawB, rawC]
-      contractA
-      [lowerSupportedEDSLContract contractB, lowerSupportedEDSLContract contractC]
-      hNoDup
-      hParseA
-      hTailOk
+  have hNonEmpty : ([rawA, rawB, rawC] : List String) ≠ [] := by simp
+  have hParseAll :
+      SelectedIDsParseTo [rawA, rawB, rawC] [contractA, contractB, contractC] := by
+    exact
+      SelectedIDsParseTo.cons
+        hParseA
+        (SelectedIDsParseTo.cons
+          hParseB
+          (SelectedIDsParseTo.cons hParseC SelectedIDsParseTo.nil))
+  exact lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok
+    [rawA, rawB, rawC]
+    [contractA, contractB, contractC]
+    hNoDup
+    hNonEmpty
+    hParseAll
 
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when the head selected ID is unknown. -/

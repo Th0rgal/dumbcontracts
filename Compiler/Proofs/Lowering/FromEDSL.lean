@@ -971,6 +971,19 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [hNoDup']
   simp [hNonEmpty]
 
+/-- Non-empty duplicate-free selected IDs lower to any explicitly established
+ordered `mapM` lowering result through the centralized helper boundary. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok
+    (rawContracts : List String)
+    (loweredContracts : List Compiler.CompilationModel.CompilationModel)
+    (hNoDup : findDuplicateRawContract? [] rawContracts = none)
+    (hNonEmpty : rawContracts ≠ [])
+    (hLowerAll : rawContracts.mapM lowerFromParsedSupportedContract = .ok loweredContracts) :
+    lowerRequestedSupportedEDSLContracts rawContracts =
+      .ok loweredContracts := by
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq rawContracts hNoDup hNonEmpty]
+  exact hLowerAll
+
 /-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :
     lowerRequestedSupportedEDSLContracts supportedEDSLContractNames =

@@ -151,4 +151,77 @@ def edslInputLinkedLibrariesUnsupportedMessage : String :=
   "Linked external Yul libraries are not yet supported through --input edsl. " ++
   "Use --input model when compiling specs that depend on --link (for example CryptoHash)."
 
+/-! ## Generalized selected-contract lowering (authoritative path)
+
+This path derives selectable `--edsl-contract` IDs directly from `Specs.allSpecs`
+and lowers those models through the existing lowering boundary, without enum pinning.
+-/
+
+abbrev EDSLContract := CompilationModel
+
+private def isAlphaNum (c : Char) : Bool :=
+  c.isAlpha || c.isDigit
+
+private def kebabFromSpecName (name : String) : String :=
+  let rec go (remaining : List Char) (prev : Option Char) (out : String) : String :=
+    match remaining with
+    | [] => out
+    | c :: rest =>
+        if isAlphaNum c then
+          let needsDash :=
+            match prev with
+            | some p => c.isUpper && (p.isLower || p.isDigit)
+            | none => false
+          let out := if needsDash then out.push '-' else out
+          go rest (some c) (out.push (Char.toLower c))
+        else
+          go rest prev (out.push '-')
+  go name.data none ""
+
+/-- CLI identifier for a lowered EDSL contract, derived from model name. -/
+def edslContractId (contract : EDSLContract) : String :=
+  kebabFromSpecName contract.name
+
+/-- Ordered list of all EDSL-compileable contracts. -/
+def edslContracts : List EDSLContract :=
+  Compiler.Specs.allSpecs
+
+/-- Ordered CLI-stable IDs derived from `edslContracts`. -/
+def edslContractIds : List String :=
+  edslContracts.map edslContractId
+
+def parseEDSLContract? (raw : String) : Option EDSLContract :=
+  edslContracts.find? (fun contract => edslContractId contract == raw)
+
+def unsupportedEDSLContractIdMessage (raw : String) : String :=
+  s!"Unsupported --edsl-contract: {raw} (supported: {String.intercalate ", " edslContractIds})"
+
+def parseEDSLContract (raw : String) : Except String EDSLContract :=
+  match parseEDSLContract? raw with
+  | some contract => .ok contract
+  | none => .error (unsupportedEDSLContractIdMessage raw)
+
+/-- Lower selected CLI EDSL-contract IDs through the generalized parsing boundary.
+If no IDs are provided, the full canonical EDSL list is lowered.
+Duplicate requested IDs fail closed with a deterministic diagnostic. -/
+def lowerRequestedEDSLContracts (rawContracts : List String) : Except String (List CompilationModel) := do
+  match findDuplicateRawContract? {} rawContracts with
+  | some dup =>
+      .error s!"Duplicate --edsl-contract value: {dup}"
+  | none =>
+      pure ()
+  let selectedRawContracts :=
+    if rawContracts.isEmpty then
+      edslContractIds
+    else
+      rawContracts
+  selectedRawContracts.mapM (fun raw => do
+    let contract ← parseEDSLContract raw
+    match lowerModelPath contract with
+    | .ok lowered => .ok lowered
+    | .error err => .error err.message)
+
+/- Back-compat aliases retained temporarily while proofs/tests are migrated. -/
+abbrev supportedEDSLContractIds : List String := edslContractIds
+
 end Compiler.Lowering

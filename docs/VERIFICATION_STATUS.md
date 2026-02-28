@@ -89,6 +89,7 @@ Centralized selected/default helper behavior is also explicit in the proof surfa
 `lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_full_eq_default`.
 `Compiler/CompileDriver.lean` now consumes this same selected/default helper path directly for
 selected/default `--edsl-contract` lowering, so parse+lower diagnostics and

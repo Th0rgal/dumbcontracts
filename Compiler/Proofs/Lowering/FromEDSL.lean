@@ -998,6 +998,23 @@ theorem lower_safeCounter_decrement_reverts_at_zero
     (parseSupportedEDSLContract_roundtrip contract)]
   rfl
 
+/-- A duplicate-free selected pair of known IDs lowers to the expected ordered pair. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok
+    (rawA rawB : String)
+    (contractA contractB : SupportedEDSLContract)
+    (hNoDup : findDuplicateRawContract? [] [rawA, rawB] = none)
+    (hParseA : parseSupportedEDSLContract? rawA = some contractA)
+    (hParseB : parseSupportedEDSLContract? rawB = some contractB) :
+    lowerRequestedSupportedEDSLContracts [rawA, rawB] =
+      .ok [lowerSupportedEDSLContract contractA, lowerSupportedEDSLContract contractB] := by
+  have hNonEmpty : [rawA, rawB] ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq [rawA, rawB] hNoDup hNonEmpty]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawA contractA hParseA]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_ok rawB contractB hParseB]
+  rfl
+
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when the head selected ID is unknown. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error

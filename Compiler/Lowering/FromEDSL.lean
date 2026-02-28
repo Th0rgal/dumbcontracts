@@ -20,7 +20,7 @@ inductive LoweringError where
 def LoweringError.message : LoweringError → String
   | .unsupported details =>
       "Unsupported EDSL lowering input. " ++
-      "Use --input model for manual CompilationModel input. " ++
+      "Use the generalized EDSL/macro path for compiler input. " ++
       details
 
 /-- Transition helper: embeds today's manual compiler input into the
@@ -51,7 +51,7 @@ def edslInputReservedMessage : String :=
 
 def edslInputLinkedLibrariesUnsupportedMessage : String :=
   "Linked external Yul libraries are not yet supported through --input edsl. " ++
-  "Use --input model when compiling specs that depend on --link (for example CryptoHash)."
+  "External-library specs cannot be compiled through the edsl-only CLI path."
 
 /-! ## Generalized selected-contract lowering (authoritative path)
 

@@ -61,38 +61,33 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
   expectErrorContains "missing --output value" ["--output"] "Missing value for --output"
   expectErrorContains "missing -o value" ["-o"] "Missing value for --output"
   expectErrorContains "missing --abi-output value" ["--abi-output"] "Missing value for --abi-output"
-  expectErrorContains "missing --input value" ["--input"] "Missing value for --input"
-  expectErrorContains "invalid --input value" ["--input", "ast"] "Invalid value for --input: ast"
+  expectErrorContains "removed --input flag is rejected" ["--input", "edsl"] "Unknown argument: --input"
   expectErrorContains "missing --edsl-contract value" ["--edsl-contract"] "Missing value for --edsl-contract"
   expectErrorContains
-    "--edsl-contract requires edsl input mode"
-    ["--edsl-contract", "counter"]
-    "--edsl-contract requires --input edsl"
-  expectErrorContains
     "unknown --edsl-contract value"
-    ["--input", "edsl", "--edsl-contract", "does-not-exist"]
+    ["--edsl-contract", "does-not-exist"]
     "Unsupported --edsl-contract: does-not-exist"
   expectErrorSatisfies
     "unknown --edsl-contract lists supported ids deterministically"
-    ["--input", "edsl", "--edsl-contract", "does-not-exist"]
+    ["--edsl-contract", "does-not-exist"]
     (fun msg =>
       contains msg
         s!"(supported: {String.intercalate ", " Compiler.Lowering.edslContractIds})")
     "full ordered supported --edsl-contract list in diagnostic"
   expectErrorContains
     "duplicate --edsl-contract value"
-    ["--input", "edsl", "--edsl-contract", "counter", "--edsl-contract", "counter"]
+    ["--edsl-contract", "counter", "--edsl-contract", "counter"]
     "Duplicate --edsl-contract value: counter"
   let nonce ← IO.monoMsNow
   let edslOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-out"
   IO.FS.createDirAll edslOutDir
-  main ["--input", "edsl", "--output", edslOutDir]
+  main ["--output", edslOutDir]
   let allArtifactsPresent ←
     Compiler.Lowering.edslContracts.allM (fun contract => fileExists (contractArtifactPath edslOutDir contract))
   expectTrue "edsl input mode compiles every generalized EDSL artifact" allArtifactsPresent
   let singleContractOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-single-contract-out"
   IO.FS.createDirAll singleContractOutDir
-  main ["--input", "edsl", "--edsl-contract", "counter", "--output", singleContractOutDir]
+  main ["--edsl-contract", "counter", "--output", singleContractOutDir]
   let selectedCounterArtifact ← fileExists s!"{singleContractOutDir}/Counter.yul"
   expectTrue "edsl input mode compiles explicitly selected contract" selectedCounterArtifact
   let nonSelectedContracts :=
@@ -104,7 +99,7 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
   expectTrue "edsl selected-contract mode does not emit non-selected artifacts" nonSelectedArtifactsAbsent
   expectErrorContains
     "edsl input mode rejects linked-library path"
-    ["--input", "edsl", "--link", "examples/external-libs/PoseidonT3.yul", "--output", edslOutDir]
+    ["--link", "examples/external-libs/PoseidonT3.yul", "--output", edslOutDir]
     "Linked external Yul libraries are not yet supported through --input edsl"
   expectErrorContains "missing --patch-report value" ["--patch-report"] "Missing value for --patch-report"
   expectErrorContains "missing --patch-max-iterations value" ["--patch-max-iterations"] "Missing value for --patch-max-iterations"

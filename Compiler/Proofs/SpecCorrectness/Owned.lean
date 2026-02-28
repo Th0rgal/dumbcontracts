@@ -45,7 +45,7 @@ def ownedEdslToSpecStorage (state : ContractState) : SpecStorage :=
 
 /-- The `constructor` correctly initializes the owner -/
 theorem owned_constructor_correct (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let edslResult := (constructor initialOwner).run { state with sender := sender }
+    let edslResult := (Verity.Examples.Owned.constructor initialOwner).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := ""  -- constructor has no name
@@ -152,7 +152,7 @@ theorem owned_only_owner_can_transfer (state : ContractState) (newOwner : Addres
 
 /-- Constructor sets initial owner correctly -/
 theorem owned_constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let finalState := (constructor initialOwner).runState { state with sender := sender }
+    let finalState := (Verity.Examples.Owned.constructor initialOwner).runState { state with sender := sender }
     finalState.storageAddr 0 = initialOwner := by
   simp [Verity.Examples.Owned.constructor, Contract.runState, setStorageAddr, Verity.Examples.Owned.owner]
 

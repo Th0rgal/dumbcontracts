@@ -66,7 +66,7 @@ def tokenEdslToSpecStorageWithAddrs (state : ContractState) (addrs : List Addres
 
 /-- The `constructor` correctly initializes owner and totalSupply -/
 theorem token_constructor_correct (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let edslResult := (constructor initialOwner).run { state with sender := sender }
+    let edslResult := (Verity.Examples.SimpleToken.constructor initialOwner).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := ""
@@ -79,7 +79,7 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
     specResult.finalStorage.getSlot 2 = (edslResult.getState.storage 2).val := by
   constructor
   · -- EDSL constructor succeeds
-    simp [constructor, Contract.run, ContractResult.isSuccess, setStorageAddr, setStorage,
+    simp [Verity.Examples.SimpleToken.constructor, Contract.run, ContractResult.isSuccess, setStorageAddr, setStorage,
       Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       Examples.SimpleToken.owner, Examples.SimpleToken.totalSupply]
   constructor
@@ -90,8 +90,8 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
   constructor
   · -- Owner slot matches
     have h_owner :
-        (ContractResult.getState
-          ((constructor initialOwner).run { state with sender := sender })).storageAddr 0 = initialOwner := by
+          (ContractResult.getState
+          ((Verity.Examples.SimpleToken.constructor initialOwner).run { state with sender := sender })).storageAddr 0 = initialOwner := by
       -- Use proven EDSL lemma
       simpa [Contract.run, ContractResult.getState, ContractResult.snd] using
         (constructor_sets_owner { state with sender := sender } initialOwner)
@@ -101,8 +101,8 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
       addressToNat_mod_eq, h_owner]
   · -- Total supply slot matches
     have h_supply :
-        (ContractResult.getState
-          ((constructor initialOwner).run { state with sender := sender })).storage 2 = 0 := by
+          (ContractResult.getState
+          ((Verity.Examples.SimpleToken.constructor initialOwner).run { state with sender := sender })).storage 2 = 0 := by
       simpa [Contract.run, ContractResult.getState, ContractResult.snd] using
         (constructor_sets_supply_zero { state with sender := sender } initialOwner)
     simp [interpretSpec, execConstructor, execStmts, execStmt, evalExpr,

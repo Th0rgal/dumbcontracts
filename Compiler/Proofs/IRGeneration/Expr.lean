@@ -1433,6 +1433,19 @@ theorem simpleToken_owner_correct (storedOwner storedSupply : Nat) (senderAddr :
     specStorageToIRState]
   · intro slot; by_cases hslot : slot = 0 <;> by_cases hslot' : slot = 2 <;> simp_all
 
+/-! ## ERC20: Compilation Success
+
+ERC20 exercises double-mapping storage (Expr.mapping2 / Stmt.setMapping2),
+conditional control flow (Stmt.ite), and MAX_UINT256 literal semantics.
+This lemma proves that compilation through Layer 2 succeeds.
+Per-function correctness theorems will follow the structural induction approach.
+-/
+
+/-- ERC20 compiles successfully through Layer 2. -/
+@[simp] lemma compile_erc20Spec :
+    ∃ ir, compile erc20Spec [0x40c10f19, 0xa9059cbb, 0x095ea7b3, 0x23b872dd, 0x70a08231, 0xdd62ed3e, 0x18160ddd, 0x8da5cb5b] = .ok ir :=
+  ⟨_, rfl⟩
+
 /-! ## General Preservation Theorem Template
 
 For any contract, we want to prove:

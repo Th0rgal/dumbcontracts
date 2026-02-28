@@ -54,6 +54,8 @@ ALLOWLIST: set[str] = {
     "sub_add_cancel_left",
     "ledger_deposit_correct",
     "safeDiv_result_le_numerator",
+    # ERC20: 3-line proof inflated by trailing doc comments before `end` scope
+    "compile_erc20Spec",
 }
 
 # Directories containing proof files to scan.

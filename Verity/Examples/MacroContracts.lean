@@ -9,6 +9,21 @@ open Verity
 open Verity.EVM.Uint256
 open Verity.Stdlib.Math
 
+def bitAnd (a b : Uint256) : Uint256 := Verity.Core.Uint256.and a b
+def bitOr (a b : Uint256) : Uint256 := Verity.Core.Uint256.or a b
+def bitXor (a b : Uint256) : Uint256 := Verity.Core.Uint256.xor a b
+
+def mulDivDown (a b c : Uint256) : Uint256 := div (mul a b) c
+def mulDivUp (a b c : Uint256) : Uint256 := div (add (mul a b) (sub c 1)) c
+
+def wMulDown (a b : Uint256) : Uint256 := mulDivDown a b 1000000000000000000
+def wDivUp (a b : Uint256) : Uint256 := mulDivUp a 1000000000000000000 b
+
+def min (a b : Uint256) : Uint256 := if a <= b then a else b
+def max (a b : Uint256) : Uint256 := if a >= b then a else b
+def ite (cond : Prop) [Decidable cond] (thenVal elseVal : Uint256) : Uint256 :=
+  if cond then thenVal else elseVal
+
 verity_contract SimpleStorage where
   storage
     storedData : Uint256 := slot 0
@@ -42,6 +57,22 @@ verity_contract Counter where
     acc := add acc delta
     acc := add acc delta
     return acc
+
+  function previewOps (x : Uint256, y : Uint256, z : Uint256) : Uint256 := do
+    let product := mul x y
+    let quotient := div product z
+    let remainder := mod product z
+    let lowBits := bitAnd product 255
+    let mixed := bitOr lowBits (bitXor x y)
+    let shifted := shl 2 mixed
+    let unshifted := shr 1 shifted
+    let bounded := min (max quotient remainder) unshifted
+    let scaledDown := mulDivDown bounded x z
+    let scaledUp := mulDivUp bounded y z
+    let wadDown := wMulDown scaledDown scaledUp
+    let wadUp := wDivUp wadDown z
+    let chosen := ite (x > y) wadUp (sub wadUp 1)
+    return chosen
 
 verity_contract Owned where
   storage

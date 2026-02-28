@@ -1007,6 +1007,27 @@ ordered `mapM` lowering error through the centralized helper boundary. -/
   rw [lowerRequestedSupportedEDSLContracts_selected_eq rawContracts hNoDup hNonEmpty]
   exact hLowerAll
 
+/-- Duplicate-free selected IDs fail closed with an arbitrary established lower-error
+at any append position once the strict prefix is already known to lower successfully. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
+    (rawPrefix : List String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (loweredPrefixContracts : List Compiler.CompilationModel.CompilationModel)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] (rawPrefix ++ rawBad :: rawSuffix) = none)
+    (hPrefixOk : rawPrefix.mapM lowerFromParsedSupportedContract = .ok loweredPrefixContracts)
+    (hLowerBad : lowerFromParsedSupportedContract rawBad = .error err) :
+    lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawBad :: rawSuffix) =
+      .error err := by
+  have hNonEmpty : (rawPrefix ++ rawBad :: rawSuffix) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq
+    (rawPrefix ++ rawBad :: rawSuffix) hNoDup hNonEmpty]
+  rw [List.mapM_append, hPrefixOk]
+  rw [List.mapM_cons]
+  rw [hLowerBad]
+  rfl
+
 /-- A singleton selected ID fails closed to any explicitly established
 parse-stage error through the centralized helper boundary. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error
@@ -1073,12 +1094,9 @@ when every strictly preceding selected ID is already known to lower successfully
     (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
     lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawBad :: rawSuffix) =
       .error err := by
-  have hNonEmpty : (rawPrefix ++ rawBad :: rawSuffix) ≠ [] := by simp
-  rw [lowerRequestedSupportedEDSLContracts_selected_eq (rawPrefix ++ rawBad :: rawSuffix) hNoDup hNonEmpty]
-  rw [List.mapM_append, hPrefixOk]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
-  rfl
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
+    rawPrefix rawBad rawSuffix loweredPrefixContracts err hNoDup hPrefixOk
+  simpa using lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
 
 /-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :
@@ -1205,13 +1223,10 @@ when any selected ID is unknown after an already-lowered prefix. -/
     (hParseBad : parseSupportedEDSLContract? rawBad = none) :
     lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawBad :: rawSuffix) =
       .error (unsupportedEDSLContractMessage rawBad) := by
-  have hNonEmpty : (rawPrefix ++ rawBad :: rawSuffix) ≠ [] := by simp
-  rw [lowerRequestedSupportedEDSLContracts_selected_eq
-    (rawPrefix ++ rawBad :: rawSuffix) hNoDup hNonEmpty]
-  rw [List.mapM_append, hPrefixOk]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad]
-  rfl
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error
+    rawPrefix rawBad rawSuffix loweredPrefixContracts
+    (unsupportedEDSLContractMessage rawBad) hNoDup hPrefixOk
+  simpa using lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad
 
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec

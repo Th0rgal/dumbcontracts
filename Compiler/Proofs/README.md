@@ -33,6 +33,8 @@ supported getter entrypoints. Parser-determinism lemmas are also included for
 `supportedEDSLContractNames_nodup`).
 The same module also composes parsed CLI IDs with lowering semantics at the
 API boundary (`lowerFromParsedSupportedContract_preserves_interpretSpec`).
+Unknown selected-ID diagnostics are centralized at parser level via
+`parseSupportedEDSLContract_eq_error_of_unknown`.
 Singleton selected-ID map traversal helper lemmas are also explicit:
 `lowerFromParsedSupportedContract_singleton_eq_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,

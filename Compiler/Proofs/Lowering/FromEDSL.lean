@@ -893,6 +893,13 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   unfold parseSupportedEDSLContract
   rw [hParse]
 
+@[simp] theorem parseSupportedEDSLContract_eq_error_of_unknown
+    (raw : String)
+    (hParse : parseSupportedEDSLContract? raw = none) :
+    parseSupportedEDSLContract raw = .error (unsupportedEDSLContractMessage raw) := by
+  unfold parseSupportedEDSLContract
+  rw [hParse]
+
 @[simp] theorem lowerFromParsedSupportedContract_eq_ok
     (raw : String)
     (contract : SupportedEDSLContract)
@@ -922,8 +929,8 @@ theorem lower_safeCounter_decrement_reverts_at_zero
     (raw : String)
     (hParse : parseSupportedEDSLContract? raw = none) :
     lowerFromParsedSupportedContract raw = .error (unsupportedEDSLContractMessage raw) := by
-  unfold lowerFromParsedSupportedContract parseSupportedEDSLContract
-  rw [hParse]
+  unfold lowerFromParsedSupportedContract
+  rw [parseSupportedEDSLContract_eq_error_of_unknown raw hParse]
   rfl
 
 /-- Parse-stage selected-ID failures propagate through parsed-ID lowering. -/
@@ -1741,7 +1748,7 @@ when any selected ID is unknown after an already parse-confirmed prefix. -/
     (unsupportedEDSLContractMessage rawBad)
     hNoDup
     hPrefixParse
-  simp [parseSupportedEDSLContract, hParseBad]
+  exact parseSupportedEDSLContract_eq_error_of_unknown rawBad hParseBad
 
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when a tail selected ID is unknown after a known-valid head ID. -/

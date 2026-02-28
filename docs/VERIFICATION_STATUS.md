@@ -76,6 +76,8 @@ selection IDs:
 `supportedEDSLContractNames_nodup`.
 It also includes parsed-ID to lowering-boundary preservation:
 `lowerFromParsedSupportedContract_preserves_interpretSpec`.
+Unknown selected-ID diagnostics are now centralized at parser level via:
+`parseSupportedEDSLContract_eq_error_of_unknown`.
 Singleton selected-ID map traversal helpers are also explicit:
 `lowerFromParsedSupportedContract_singleton_eq_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,

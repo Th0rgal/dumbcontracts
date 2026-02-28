@@ -79,6 +79,8 @@ private def expectOnlySelectedArtifacts
   let edslAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-edsl-abi"
   let selectedOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-out"
   let selectedAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-abi"
+  let reversedSelectedOutDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-reversed-out"
+  let reversedSelectedAbiDir := s!"/tmp/verity-compile-driver-test-{nonce}-selected-reversed-abi"
   let missingLib := "/tmp/definitely-missing-library.yul"
   let failingAbi := s!"{abiDir}/CryptoHash.abi.json"
   let successfulAbi := s!"{abiDir}/SimpleStorage.abi.json"
@@ -91,6 +93,8 @@ private def expectOnlySelectedArtifacts
   IO.FS.createDirAll edslAbiDir
   IO.FS.createDirAll selectedOutDir
   IO.FS.createDirAll selectedAbiDir
+  IO.FS.createDirAll reversedSelectedOutDir
+  IO.FS.createDirAll reversedSelectedAbiDir
 
   -- Remove stale ABI outputs from previous runs so this check is deterministic.
   try IO.FS.removeFile failingAbi catch _ => pure ()
@@ -138,6 +142,35 @@ private def expectOnlySelectedArtifacts
     [Compiler.Lowering.SupportedEDSLContract.simpleStorage, Compiler.Lowering.SupportedEDSLContract.counter]
     selectedOutDir
     selectedAbiDir
+  compileAllFromEDSLWithOptions
+    reversedSelectedOutDir
+    false
+    []
+    ["counter", "simple-storage"]
+    {}
+    none
+    (some reversedSelectedAbiDir)
+  expectOnlySelectedArtifacts
+    "edsl multi-select emits only requested contract artifacts (reversed arg order)"
+    [Compiler.Lowering.SupportedEDSLContract.simpleStorage, Compiler.Lowering.SupportedEDSLContract.counter]
+    reversedSelectedOutDir
+    reversedSelectedAbiDir
+  expectFileEquals
+    "edsl multi-select order-invariant Yul: SimpleStorage"
+    s!"{selectedOutDir}/SimpleStorage.yul"
+    s!"{reversedSelectedOutDir}/SimpleStorage.yul"
+  expectFileEquals
+    "edsl multi-select order-invariant ABI: SimpleStorage"
+    s!"{selectedAbiDir}/SimpleStorage.abi.json"
+    s!"{reversedSelectedAbiDir}/SimpleStorage.abi.json"
+  expectFileEquals
+    "edsl multi-select order-invariant Yul: Counter"
+    s!"{selectedOutDir}/Counter.yul"
+    s!"{reversedSelectedOutDir}/Counter.yul"
+  expectFileEquals
+    "edsl multi-select order-invariant ABI: Counter"
+    s!"{selectedAbiDir}/Counter.abi.json"
+    s!"{reversedSelectedAbiDir}/Counter.abi.json"
 
   expectFailureContains
     "duplicate selected EDSL contracts fail closed"

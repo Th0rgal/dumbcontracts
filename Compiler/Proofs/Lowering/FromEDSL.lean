@@ -984,6 +984,19 @@ ordered `mapM` lowering result through the centralized helper boundary. -/
   rw [lowerRequestedSupportedEDSLContracts_selected_eq rawContracts hNoDup hNonEmpty]
   exact hLowerAll
 
+/-- Non-empty duplicate-free selected IDs fail closed to any explicitly established
+ordered `mapM` lowering error through the centralized helper boundary. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
+    (rawContracts : List String)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] rawContracts = none)
+    (hNonEmpty : rawContracts ≠ [])
+    (hLowerAll : rawContracts.mapM lowerFromParsedSupportedContract = .error err) :
+    lowerRequestedSupportedEDSLContracts rawContracts =
+      .error err := by
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq rawContracts hNoDup hNonEmpty]
+  exact hLowerAll
+
 /-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :
     lowerRequestedSupportedEDSLContracts supportedEDSLContractNames =

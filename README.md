@@ -48,7 +48,7 @@ That proof module now includes transition bridge lemmas that connect lowered
 supported inputs to existing Layer-1 EDSL correctness theorems, including both
 write and read paths across the currently supported subset, including
 `simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`,
-`simple-token`, and `safe-counter`.
+`simple-token`, `safe-counter`, and `erc20`.
 It also includes explicit fail-path bridge coverage for owner-gated and
 insufficient-balance cases in `owned`, `owned-counter`, `ledger`, and
 `simple-token`, plus overflow/underflow fail-path bridges for `safe-counter`.
@@ -198,7 +198,6 @@ One logical spec can have many implementations, and one implementation can have 
 
 **Unverified examples**:
 - [CryptoHash](Verity/Examples/CryptoHash.lean) demonstrates external library linking via the [Linker](Compiler/Linker.lean) but has no specs or proofs.
-- [ERC20](Verity/Examples/ERC20.lean) is a new foundation scaffold with executable logic plus formal spec/invariant modules in `Verity/Specs/ERC20/`, with proof development tracked in [#69](https://github.com/Th0rgal/verity/issues/69).
 - [ERC721](Verity/Examples/ERC721.lean) is a new foundation scaffold with executable logic plus formal spec/invariant modules in `Verity/Specs/ERC721/`, with proof development tracked in [#73](https://github.com/Th0rgal/verity/issues/73).
 
 ### Using External Libraries (Linker)

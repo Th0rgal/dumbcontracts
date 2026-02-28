@@ -958,6 +958,17 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [hNoDup']
   simp [hNonEmpty]
 
+/-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :
+    lowerRequestedSupportedEDSLContracts supportedEDSLContractNames =
+      lowerRequestedSupportedEDSLContracts [] := by
+  have hNoDup : findDuplicateRawContract? [] supportedEDSLContractNames = none := by
+    decide
+  have hNonEmpty : supportedEDSLContractNames ≠ [] := by
+    decide
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq supportedEDSLContractNames hNoDup hNonEmpty]
+  rw [lowerRequestedSupportedEDSLContracts_default_eq]
+
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
     (raw : String)

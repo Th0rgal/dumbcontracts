@@ -628,6 +628,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_ownedCounter_eq
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_simpleToken_eq
 #print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_safeCounter_eq
+#print axioms Compiler.Proofs.Lowering.lowerSupportedEDSLContract_erc20_eq
 #print axioms Compiler.Proofs.Lowering.lower_simpleStorage_store_correct
 #print axioms Compiler.Proofs.Lowering.lower_simpleStorage_retrieve_correct
 #print axioms Compiler.Proofs.Lowering.lower_simpleStorage_retrieve_preserves_state
@@ -669,6 +670,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lower_safeCounter_increment_reverts_at_max
 #print axioms Compiler.Proofs.Lowering.lower_safeCounter_decrement_correct
 #print axioms Compiler.Proofs.Lowering.lower_safeCounter_decrement_reverts_at_zero
+#print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_erc20_eq
+#print axioms Compiler.Proofs.Lowering.lowerFromEDSLSubset_erc20_preserves_interpretSpec
 #print axioms Compiler.Proofs.Lowering.parseSupportedEDSLContract_roundtrip
 #print axioms Compiler.Proofs.Lowering.supportedEDSLContractName_injective
 #print axioms Compiler.Proofs.Lowering.parseSupportedEDSLContract_roundtrip_unique
@@ -860,4 +863,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 735 theorems/lemmas (706 public, 29 private)
+-- Total: 738 theorems/lemmas (709 public, 29 private)

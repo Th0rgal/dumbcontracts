@@ -95,6 +95,7 @@ Centralized selected/default helper behavior is also explicit in the proof surfa
 `lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok`,

@@ -1193,6 +1193,26 @@ when a tail selected ID is unknown after a known-valid head ID. -/
   rw [lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad]
   rfl
 
+/-- Duplicate-free selected IDs fail closed with the unsupported-ID diagnostic
+when any selected ID is unknown after an already-lowered prefix. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error
+    (rawPrefix : List String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (loweredPrefixContracts : List Compiler.CompilationModel.CompilationModel)
+    (hNoDup : findDuplicateRawContract? [] (rawPrefix ++ rawBad :: rawSuffix) = none)
+    (hPrefixOk : rawPrefix.mapM lowerFromParsedSupportedContract = .ok loweredPrefixContracts)
+    (hParseBad : parseSupportedEDSLContract? rawBad = none) :
+    lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawBad :: rawSuffix) =
+      .error (unsupportedEDSLContractMessage rawBad) := by
+  have hNonEmpty : (rawPrefix ++ rawBad :: rawSuffix) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq
+    (rawPrefix ++ rawBad :: rawSuffix) hNoDup hNonEmpty]
+  rw [List.mapM_append, hPrefixOk]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad]
+  rfl
+
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
     (raw : String)

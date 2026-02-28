@@ -79,6 +79,9 @@ It also includes parsed-ID to lowering-boundary preservation:
 CLI parsing/lowering now uses centralized boundary helpers:
 `parseSupportedEDSLContract`,
 `lowerFromParsedSupportedContract`.
+`Compiler/CompileDriver.lean` now consumes this same helper path directly for
+selected/default `--edsl-contract` lowering, so parse+lower diagnostics and
+behavior are sourced from one boundary implementation.
 Lowering API-boundary preservation lemmas are explicit for both transition
 entrypoints:
 `lowerFromEDSLSubset_supported_preserves_interpretSpec`,

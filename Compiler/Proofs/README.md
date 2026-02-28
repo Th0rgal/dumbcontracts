@@ -35,6 +35,9 @@ The same module also composes parsed CLI IDs with lowering semantics at the
 API boundary (`lowerFromParsedSupportedContract_preserves_interpretSpec`).
 CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via
 `parseSupportedEDSLContract` and `lowerFromParsedSupportedContract`.
+`Compiler/CompileDriver.lean` uses this same parsed-ID helper path directly,
+so runtime selected/default `--edsl-contract` behavior stays aligned with the
+proven parsing/lowering boundary.
 It also exposes API-boundary preservation lemmas for both transition entrypoints:
 `lowerFromEDSLSubset_supported_preserves_interpretSpec` and
 `lowerFromEDSLSubset_manualBridge_preserves_interpretSpec`.

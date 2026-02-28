@@ -170,6 +170,14 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     (match Compiler.Lowering.lowerFromParsedSupportedContract "counter" with
     | .ok lowered => lowered.name == "Counter"
     | .error _ => false)
+  let allSupportedParsedAndLowered :=
+    Compiler.Lowering.supportedEDSLContracts.all (fun contract =>
+      match Compiler.Lowering.lowerFromParsedSupportedContract
+          (Compiler.Lowering.supportedEDSLContractName contract) with
+      | .ok lowered => lowered.name == (Compiler.Lowering.lowerSupportedEDSLContract contract).name
+      | .error _ => false)
+  expectTrue "all canonical supported --edsl-contract IDs lower via centralized helper"
+    allSupportedParsedAndLowered
   expectTrue "unsupported --edsl-contract helper keeps deterministic diagnostic"
     (match Compiler.Lowering.lowerFromParsedSupportedContract "does-not-exist" with
     | .ok _ => false

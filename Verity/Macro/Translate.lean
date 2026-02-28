@@ -177,6 +177,9 @@ partial def translatePureExpr
     (stx : Term) : CommandElabM Term := do
   let stx := stripParens stx
   match stx with
+  | `(term| blockTimestamp) => `(Compiler.CompilationModel.Expr.blockTimestamp)
+  | `(term| contractAddress) => `(Compiler.CompilationModel.Expr.contractAddress)
+  | `(term| chainid) => `(Compiler.CompilationModel.Expr.chainid)
   | `(term| $id:ident) => lookupVarExpr params locals (toString id.getId)
   | `(term| $n:num) => `(Compiler.CompilationModel.Expr.literal $n)
   | `(term| add $a $b) => `(Compiler.CompilationModel.Expr.add $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
@@ -200,10 +203,20 @@ partial def translatePureExpr
   | `(term| $a > $b) => `(Compiler.CompilationModel.Expr.gt $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| $a < $b) => `(Compiler.CompilationModel.Expr.lt $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| $a <= $b) => `(Compiler.CompilationModel.Expr.le $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| logicalAnd $a $b) => `(Compiler.CompilationModel.Expr.logicalAnd $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| logicalOr $a $b) => `(Compiler.CompilationModel.Expr.logicalOr $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| logicalNot $a) => `(Compiler.CompilationModel.Expr.logicalNot $(← translatePureExpr params locals a))
   | `(term| and $a $b) => `(Compiler.CompilationModel.Expr.bitAnd $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| or $a $b) => `(Compiler.CompilationModel.Expr.bitOr $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| xor $a $b) => `(Compiler.CompilationModel.Expr.bitXor $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| not $a) => `(Compiler.CompilationModel.Expr.bitNot $(← translatePureExpr params locals a))
+  | `(term| mload $offset) =>
+      `(Compiler.CompilationModel.Expr.mload
+          $(← translatePureExpr params locals offset))
+  | `(term| keccak256 $offset $size) =>
+      `(Compiler.CompilationModel.Expr.keccak256
+          $(← translatePureExpr params locals offset)
+          $(← translatePureExpr params locals size))
   | `(term| mulDivDown $a $b $c) =>
       `(Compiler.CompilationModel.Expr.mulDivDown
           $(← translatePureExpr params locals a)

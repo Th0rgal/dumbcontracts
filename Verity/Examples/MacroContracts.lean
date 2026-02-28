@@ -23,6 +23,14 @@ def min (a b : Uint256) : Uint256 := if a <= b then a else b
 def max (a b : Uint256) : Uint256 := if a >= b then a else b
 def ite (cond : Prop) [Decidable cond] (thenVal elseVal : Uint256) : Uint256 :=
   if cond then thenVal else elseVal
+def logicalAnd (a b : Uint256) : Uint256 := if a != 0 && b != 0 then 1 else 0
+def logicalOr (a b : Uint256) : Uint256 := if a != 0 || b != 0 then 1 else 0
+def logicalNot (a : Uint256) : Uint256 := if a == 0 then 1 else 0
+def mload (offset : Uint256) : Uint256 := offset
+def keccak256 (offset size : Uint256) : Uint256 := add offset size
+def blockTimestamp : Uint256 := 0
+def contractAddress : Uint256 := 0
+def chainid : Uint256 := 0
 
 verity_contract SimpleStorage where
   storage
@@ -73,6 +81,18 @@ verity_contract Counter where
     let wadUp := wDivUp wadDown z
     let chosen := ite (x > y) wadUp (sub wadUp 1)
     return chosen
+
+  function previewEnvOps (x : Uint256, y : Uint256) : Uint256 := do
+    let ts := blockTimestamp
+    let self := contractAddress
+    let cid := chainid
+    let flagAnd := logicalAnd x y
+    let flagOr := logicalOr x y
+    let flagNot := logicalNot x
+    let hashInput := add (add ts self) cid
+    let memWord := mload hashInput
+    let digest := keccak256 memWord 64
+    return (add (add digest flagAnd) (add flagOr flagNot))
 
 verity_contract Owned where
   storage

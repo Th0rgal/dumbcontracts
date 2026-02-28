@@ -451,17 +451,64 @@ contract DifferentialERC20 is YulTestBase, DiffTestConfig, DifferentialTestBase 
             return;
         }
 
+        // Extract only the mappingChanges section to avoid reading values from
+        // mapping2Changes (allowances) as balance updates
+        string memory mappingSection = _extractSection(edslResult, "\"mappingChanges\":");
+        if (bytes(mappingSection).length == 0) return;
+
         // Check all relevant addresses for balance changes
         address[3] memory addrs = [sender, arg0Addr, arg1Addr];
         for (uint256 i = 0; i < 3; i++) {
             address addr = addrs[i];
             if (addr == address(0)) continue;
             string memory addrStr = _toLowerCase(vm.toString(addr));
-            if (contains(edslResult, addrStr) || contains(edslResult, vm.toString(addr))) {
-                uint256 value = _extractMappingValue(edslResult, vm.toString(addr));
+            if (contains(mappingSection, addrStr) || contains(mappingSection, vm.toString(addr))) {
+                uint256 value = _extractMappingValue(mappingSection, vm.toString(addr));
                 edslBalances[addr] = value;
             }
         }
+    }
+
+    /// @notice Extract a JSON array section by key, e.g. "mappingChanges":[...] -> "[...]"
+    function _extractSection(string memory json, string memory key) internal pure returns (string memory) {
+        bytes memory jsonBytes = bytes(json);
+        bytes memory keyBytes = bytes(key);
+
+        // Find the key
+        for (uint256 i = 0; i <= jsonBytes.length - keyBytes.length; i++) {
+            bool found = true;
+            for (uint256 j = 0; j < keyBytes.length; j++) {
+                if (jsonBytes[i + j] != keyBytes[j]) {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) {
+                // Find the matching '[' and ']'
+                uint256 start = i + keyBytes.length;
+                // Skip whitespace
+                while (start < jsonBytes.length && (jsonBytes[start] == ' ' || jsonBytes[start] == '\n')) {
+                    start++;
+                }
+                if (start >= jsonBytes.length || jsonBytes[start] != '[') return "";
+
+                // Find matching ']' accounting for nesting
+                uint256 depth = 1;
+                uint256 pos = start + 1;
+                while (pos < jsonBytes.length && depth > 0) {
+                    if (jsonBytes[pos] == '[') depth++;
+                    else if (jsonBytes[pos] == ']') depth--;
+                    pos++;
+                }
+                // Extract [start..pos) inclusive of brackets
+                bytes memory section = new bytes(pos - start);
+                for (uint256 k = 0; k < pos - start; k++) {
+                    section[k] = jsonBytes[start + k];
+                }
+                return string(section);
+            }
+        }
+        return "";
     }
 
     function _updateEDSLMapping2Storage(string memory edslResult) internal {

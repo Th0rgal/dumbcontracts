@@ -11,6 +11,7 @@ These scripts manage the relationship between proven Lean theorems and their cor
 - **`check_property_manifest.py`** - Verifies that `property_manifest.json` contains all property theorems from Lean proofs
 - **`check_property_coverage.py`** - Ensures all properties are either tested or explicitly excluded
 - **`report_property_coverage.py`** - Generates detailed coverage statistics
+- **`check_case_insensitive_path_conflicts.py`** - Fails when tracked file/directory paths collide under case-insensitive filesystems (e.g. `Compiler` vs `compiler`)
 
 ### Usage
 
@@ -142,7 +143,7 @@ python3 scripts/generate_evmyullean_adapter_report.py
 
 ## Selector & Yul Scripts
 
-- **`check_selectors.py`** - Verifies selector hash consistency across CompilationModel, compile selector tables, and generated Yul (`compiler/yul`); strips Lean comments/docstrings with the same shared string-aware parser used by storage checks; parses `ParamType` expressions recursively (including `bool`, tuple, array, and fixed-array forms) when extracting Solidity signatures; enforces compile selector table coverage for all specs except those with non-empty `externals`
+- **`check_selectors.py`** - Verifies selector hash consistency across CompilationModel, compile selector tables, and generated Yul (`artifacts/yul`); strips Lean comments/docstrings with the same shared string-aware parser used by storage checks; parses `ParamType` expressions recursively (including `bool`, tuple, array, and fixed-array forms) when extracting Solidity signatures; enforces compile selector table coverage for all specs except those with non-empty `externals`
 - **`check_selector_fixtures.py`** - Cross-checks selectors against solc-generated hashes; fixture signature extraction is comment/string-aware so commented examples/debug strings cannot create false selector expectations, scans full function headers (so visibility can appear after modifiers like `virtual`), includes only `public`/`external` selectors (matching `solc --hashes`), canonicalizes ABI-sensitive param forms (`function(...)`, `uint/int` aliases, user-defined `contract`/`enum`/`type` aliases, and struct params into canonical tuple signatures), parses both `solc --hashes` output layouts robustly (including nested tuple signatures), and enforces reverse completeness (every `solc --hashes` signature must be present in extracted fixtures)
 - **`check_yul_compiles.py`** - Ensures generated Yul code compiles with solc, fails closed when any requested `--dir` is missing/empty, can enforce filename-set parity between directories (e.g. legacy vs patched outputs), can compare bytecode parity between directories, and can enforce a checked baseline of known compare diffs via allowlist
 - **`check_gas_report.py`** - Validates `lake exe gas-report` output shape, arithmetic consistency of totals, and monotonicity under more conservative static analysis settings
@@ -151,19 +152,19 @@ python3 scripts/generate_evmyullean_adapter_report.py
 - **`check_gas_calibration.py`** - Compares static bounds (`lake exe gas-report`) against Foundry `--gas-report` measurements for `test/yul/*.t.sol`, requiring runtime bounds + transaction base gas to dominate observed max call gas, deploy bounds + creation/code-deposit overhead to dominate deployment gas, and every static-report contract to have both runtime + deployment Foundry measurements (unless explicitly allowlisted). Parsing is header-driven (not fixed-column) and strips ANSI color escapes to tolerate Foundry output-format drift. Accepts precomputed `--static-report` and `--foundry-report` files for deterministic replay/debugging.
 
 ```bash
-# Default: check compiler/yul
+# Default: check artifacts/yul
 python3 scripts/check_yul_compiles.py
 
 # Check multiple directories with filename-set parity enforcement
 python3 scripts/check_yul_compiles.py \
-  --dir compiler/yul \
-  --dir compiler/yul-patched \
-  --require-same-files compiler/yul compiler/yul-patched
+  --dir artifacts/yul \
+  --dir artifacts/yul-patched \
+  --require-same-files artifacts/yul artifacts/yul-patched
 
 # Check static gas model coverage against baseline + patched Yul outputs
 python3 scripts/check_gas_model_coverage.py \
-  --dir compiler/yul \
-  --dir compiler/yul-patched
+  --dir artifacts/yul \
+  --dir artifacts/yul-patched
 
 # Check patch-enabled static gas deltas (median/p90 non-regression + configurable improvement floor)
 python3 scripts/check_patch_gas_delta.py \
@@ -217,33 +218,34 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 1. Property manifest validation (`check_property_manifest.py`)
 2. Property coverage validation (`check_property_coverage.py`)
 3. Contract file structure validation (`check_contract_structure.py`)
-4. Axiom location validation (`check_axiom_locations.py`)
-5. Verification status artifact freshness (`generate_verification_status.py --check`)
-6. Documentation count validation (`check_doc_counts.py`)
-7. Solidity interop matrix sync (`check_interop_matrix_sync.py`)
-8. Verify workflow path-filter sync (`check_verify_paths_sync.py`)
-9. Verify checks/docs sync (`check_verify_checks_docs_sync.py`)
-10. Verify build/docs sync (`check_verify_build_docs_sync.py`)
-11. Verify CI job/docs sync (`check_verify_ci_jobs_docs_sync.py`)
-12. Verify multi-seed sync (`check_verify_multiseed_sync.py`)
-13. Verify foundry shard sync (`check_verify_foundry_shard_sync.py`)
-14. Verify foundry-patched sync (`check_verify_foundry_patched_sync.py`)
-15. Verify foundry job sync (`check_verify_foundry_job_sync.py`)
-16. Verify foundry-gas-calibration sync (`check_verify_foundry_gas_calibration_sync.py`)
-17. Verify artifact upload/download sync (`check_verify_artifact_sync.py`)
-18. Solc pin consistency (`check_solc_pin.py`)
-19. Property manifest sync (`check_property_manifest_sync.py`)
-20. Storage layout consistency (`check_storage_layout.py`)
-21. Lean hygiene (`check_lean_hygiene.py`)
-22. Static gas model builtin coverage (`check_gas_model_coverage.py`)
-23. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-24. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-25. Builtin list sync (Linker ↔ CompilationModel) (`check_builtin_list_sync.py`)
-26. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-27. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-28. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
-29. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
-30. Proof length limits (`check_proof_length.py`)
+4. Case-insensitive path collision guard (`check_case_insensitive_path_conflicts.py`)
+5. Axiom location validation (`check_axiom_locations.py`)
+6. Verification status artifact freshness (`generate_verification_status.py --check`)
+7. Documentation count validation (`check_doc_counts.py`)
+8. Solidity interop matrix sync (`check_interop_matrix_sync.py`)
+9. Verify workflow path-filter sync (`check_verify_paths_sync.py`)
+10. Verify checks/docs sync (`check_verify_checks_docs_sync.py`)
+11. Verify build/docs sync (`check_verify_build_docs_sync.py`)
+12. Verify CI job/docs sync (`check_verify_ci_jobs_docs_sync.py`)
+13. Verify multi-seed sync (`check_verify_multiseed_sync.py`)
+14. Verify foundry shard sync (`check_verify_foundry_shard_sync.py`)
+15. Verify foundry-patched sync (`check_verify_foundry_patched_sync.py`)
+16. Verify foundry job sync (`check_verify_foundry_job_sync.py`)
+17. Verify foundry-gas-calibration sync (`check_verify_foundry_gas_calibration_sync.py`)
+18. Verify artifact upload/download sync (`check_verify_artifact_sync.py`)
+19. Solc pin consistency (`check_solc_pin.py`)
+20. Property manifest sync (`check_property_manifest_sync.py`)
+21. Storage layout consistency (`check_storage_layout.py`)
+22. Lean hygiene (`check_lean_hygiene.py`)
+23. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+24. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+25. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+26. Builtin list sync (Linker ↔ CompilationModel) (`check_builtin_list_sync.py`)
+27. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+28. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+29. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+30. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
+31. Proof length limits (`check_proof_length.py`)
 
 **`build` job** (requires `lake build` artifacts):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)

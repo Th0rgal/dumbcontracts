@@ -31,8 +31,8 @@ def _ambient_argv(*args: str):
 class CliArgvInjectionTests(unittest.TestCase):
     def test_check_gas_model_coverage_parse_args_ignores_ambient_sys_argv(self) -> None:
         with _ambient_argv("--unexpected-harness-flag"):
-            parsed = check_gas_model_coverage.parse_args(["--dir", "compiler/yul"])
-        self.assertEqual(parsed.dirs, ["compiler/yul"])
+            parsed = check_gas_model_coverage.parse_args(["--dir", "artifacts/yul"])
+        self.assertEqual(parsed.dirs, ["artifacts/yul"])
 
     def test_check_patch_gas_delta_parse_args_ignores_ambient_sys_argv(self) -> None:
         with _ambient_argv("--unexpected-harness-flag"):
@@ -49,8 +49,8 @@ class CliArgvInjectionTests(unittest.TestCase):
 
     def test_check_yul_compiles_parse_args_ignores_ambient_sys_argv(self) -> None:
         with _ambient_argv("--unexpected-harness-flag"):
-            parsed = check_yul_compiles.parse_args(["--dir", "compiler/yul"])
-        self.assertEqual(parsed.dirs, ["compiler/yul"])
+            parsed = check_yul_compiles.parse_args(["--dir", "artifacts/yul"])
+        self.assertEqual(parsed.dirs, ["artifacts/yul"])
 
     def test_check_lean_warning_main_accepts_injected_argv(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

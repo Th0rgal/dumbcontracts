@@ -82,7 +82,7 @@ class VerifyArtifactSyncTests(unittest.TestCase):
                   - name: Upload generated Yul
                     uses: actions/upload-artifact@v4
                     with:
-                      path: compiler/generated
+                      path: artifacts/generated
                       name: generated-yul
               foundry:
                 runs-on: ubuntu-latest
@@ -90,7 +90,7 @@ class VerifyArtifactSyncTests(unittest.TestCase):
                   - name: Download generated Yul
                     uses: actions/download-artifact@v4
                     with:
-                      path: compiler/generated
+                      path: artifacts/generated
                       name: generated-yul
             """
         )

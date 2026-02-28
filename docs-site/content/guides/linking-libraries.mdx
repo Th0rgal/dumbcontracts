@@ -36,7 +36,7 @@ Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 **Step 4** — Compile with linking:
 ```bash
-lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o artifacts/yul
 ```
 
 Your proofs verify the contract logic (using placeholders). Real implementations are injected at compile time.
@@ -111,7 +111,7 @@ def myCompilationModel : CompilationModel := {
 ### 4. Compile with `--link`
 
 ```bash
-lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o artifacts/yul
 ```
 
 The compiler validates that:
@@ -166,7 +166,7 @@ function PoseidonT3_hash(a, b) -> result {
 lake exe verity-compiler \
     --link examples/external-libs/PoseidonT3.yul \
     --link examples/external-libs/PoseidonT4.yul \
-    -o compiler/yul
+    -o artifacts/yul
 ```
 
 ---
@@ -290,10 +290,10 @@ If your verified contract works with placeholders but fails with linked librarie
 
 ```bash
 # Generate Yul output to see how external calls are rendered
-lake exe verity-compiler --link examples/external-libs/MyLib.yul -o compiler/yul -v
+lake exe verity-compiler --link examples/external-libs/MyLib.yul -o artifacts/yul -v
 
-# Check the generated Yul in compiler/yul/
-cat compiler/yul/*.yul
+# Check the generated Yul in artifacts/yul/
+cat artifacts/yul/*.yul
 ```
 
 ---
@@ -305,7 +305,7 @@ lake exe verity-compiler [options]
 
 Options:
   --link <path>      Link external Yul library (can be used multiple times)
-  --output <dir>     Output directory (default: compiler/yul)
+  --output <dir>     Output directory (default: artifacts/yul)
   -o <dir>           Short form of --output
   --abi-output <dir> Output ABI JSON artifacts (<Contract>.abi.json)
   --backend-profile <semantic|solidity-parity-ordering|solidity-parity>

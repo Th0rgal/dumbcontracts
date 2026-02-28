@@ -27,7 +27,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="dirs",
         action="append",
         default=[],
-        help="Yul directory to scan (repeatable). Default: compiler/yul",
+        help="Yul directory to scan (repeatable). Default: artifacts/yul",
     )
     return parser.parse_args(argv)
 

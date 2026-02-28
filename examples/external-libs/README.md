@@ -29,7 +29,7 @@ Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 ### Step 3: Compile with linking
 
 ```bash
-lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o artifacts/yul
 ```
 
 That's it! The compiler validates your library and injects it into the generated Yul.
@@ -50,7 +50,7 @@ The key benefit: **prove with simple placeholders, deploy with real code**.
 **CLI Options:**
 ```bash
 --link <path>      # Link external Yul library (use multiple times for multiple libs)
--o <dir>           # Output directory (default: compiler/yul)
+-o <dir>           # Output directory (default: artifacts/yul)
 -v, --verbose      # Verbose output
 ```
 
@@ -95,7 +95,7 @@ Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 ### 4. Compile with Linking
 
 ```bash
-lake exe verity-compiler --link examples/external-libs/MyHash.yul -o compiler/yul
+lake exe verity-compiler --link examples/external-libs/MyHash.yul -o artifacts/yul
 ```
 
 ## Complete Guide

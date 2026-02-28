@@ -100,6 +100,9 @@ jobs:
       - name: Check contract file structure
         run: python3 scripts/check_contract_structure.py
 
+      - name: Check case-insensitive path conflicts
+        run: python3 scripts/check_case_insensitive_path_conflicts.py
+
       - name: Check axiom locations in AXIOMS.md
         run: python3 scripts/check_axiom_locations.py
 

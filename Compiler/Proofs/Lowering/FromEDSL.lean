@@ -926,6 +926,16 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [hParse]
   rfl
 
+/-- Parse-stage selected-ID failures propagate through parsed-ID lowering. -/
+@[simp] theorem lowerFromParsedSupportedContract_eq_error_of_parse_error
+    (raw : String)
+    (err : String)
+    (hParse : parseSupportedEDSLContract raw = .error err) :
+    lowerFromParsedSupportedContract raw = .error err := by
+  unfold lowerFromParsedSupportedContract
+  rw [hParse]
+  rfl
+
 /-- Empty selected-ID input follows the default canonical-name lowering path. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_default_eq :
     lowerRequestedSupportedEDSLContracts [] =
@@ -996,6 +1006,23 @@ ordered `mapM` lowering error through the centralized helper boundary. -/
       .error err := by
   rw [lowerRequestedSupportedEDSLContracts_selected_eq rawContracts hNoDup hNonEmpty]
   exact hLowerAll
+
+/-- A singleton selected ID fails closed to any explicitly established
+parse-stage error through the centralized helper boundary. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error
+    (raw : String)
+    (err : String)
+    (hParse : parseSupportedEDSLContract raw = .error err) :
+    lowerRequestedSupportedEDSLContracts [raw] = .error err := by
+  have hNoDup : findDuplicateRawContract? [] [raw] = none := by
+    simp [findDuplicateRawContract?]
+  have hNonEmpty : [raw] ≠ [] := by
+    simp
+  apply lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
+    [raw] err hNoDup hNonEmpty
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error raw err hParse]
+  rfl
 
 /-- Explicit full selected-ID input is definitionally equivalent to default selected-ID input. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_full_eq_default :

@@ -677,6 +677,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_eq_ok
 #print axioms Compiler.Proofs.Lowering.lowerParsedSupportedContract_preserves_interpretSpec
 #print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_unknown_eq_error
+#print axioms Compiler.Proofs.Lowering.lowerFromParsedSupportedContract_eq_error_of_parse_error
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_default_eq
 #print axioms Compiler.Proofs.Lowering.supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_default_eq_ok_supported
@@ -684,6 +685,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_selected_eq
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
+#print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_full_eq_default
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok
 #print axioms Compiler.Proofs.Lowering.lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok
@@ -826,4 +828,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 701 theorems/lemmas (672 public, 29 private)
+-- Total: 703 theorems/lemmas (674 public, 29 private)

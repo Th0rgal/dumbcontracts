@@ -562,6 +562,8 @@ private def storageConfigPrefix (s : String) : Option (String × String) :=
         some ("addr", value)
       else if normalized == "map" || normalized == "mapping" || normalized == "storagemap" then
         some ("map", value)
+      else if normalized == "map2" || normalized == "mapping2" || normalized == "storagemap2" then
+        some ("map2", value)
       else if normalized == "value" || normalized == "msgvalue" || normalized == "msg.value" then
         some ("value", value)
       else if normalized == "timestamp" || normalized == "blocktimestamp" || normalized == "block.timestamp" then
@@ -615,6 +617,28 @@ def parseStorageMap (storageStr : String) : Nat → Address → Uint256 :=
   fun slot key =>
     (mapping.find? (fun (s, k, _) => s == slot && k == key)).map (fun (_, _, v) => v) |>.getD 0
 
+-- Parse double-mapping storage from command line args
+-- Format: "slot:key1:key2:val,..."
+def parseStorageMap2 (storageStr : String) : Nat → Address → Address → Uint256 :=
+  let entries := storageStr.splitOn ","
+  let mapping := entries.foldl (fun acc entry =>
+    if entry.isEmpty then
+      acc
+    else
+      match entry.splitOn ":" with
+      | [slotStr, key1, key2, valStr] =>
+        match parseArgNat? slotStr, parseArgNat? valStr with
+        | some slot, some val =>
+          let valU : Uint256 := val
+          let key1Addr := Verity.Core.Address.ofNat (Compiler.Hex.addressToNat (normalizeAddress key1))
+          let key2Addr := Verity.Core.Address.ofNat (Compiler.Hex.addressToNat (normalizeAddress key2))
+          acc ++ [(slot, key1Addr, key2Addr, valU)]
+        | _, _ => acc
+      | _ => acc
+  ) []
+  fun slot key1 key2 =>
+    (mapping.find? (fun (s, k1, k2, _) => s == slot && k1 == key1 && k2 == key2)).map (fun (_, _, _, v) => v) |>.getD 0
+
 private def parseArgs (args : List String) : Except String (List Nat) :=
   let parsed := args.foldl (fun acc s =>
     match acc, parseArgNat? s with
@@ -644,13 +668,13 @@ private def splitTrailingStorageArgs (args : List String) : Except String (List 
     Except.ok (argStrs, configArgs)
 
 private def parseConfigArgs (configArgs : List String) :
-    Except String (Option String × Option String × Option String × Option Nat × Option Nat) :=
+    Except String (Option String × Option String × Option String × Option String × Option Nat × Option Nat) :=
   let rec go (args : List String)
-      (storageOpt addrOpt mapOpt : Option String)
+      (storageOpt addrOpt mapOpt map2Opt : Option String)
       (valueOpt timestampOpt : Option Nat) :
-      Except String (Option String × Option String × Option String × Option Nat × Option Nat) :=
+      Except String (Option String × Option String × Option String × Option String × Option Nat × Option Nat) :=
     match args with
-    | [] => Except.ok (storageOpt, addrOpt, mapOpt, valueOpt, timestampOpt)
+    | [] => Except.ok (storageOpt, addrOpt, mapOpt, map2Opt, valueOpt, timestampOpt)
     | s :: rest =>
       let (kind, value) := parseStorageConfig s
       match kind with
@@ -658,33 +682,38 @@ private def parseConfigArgs (configArgs : List String) :
         if storageOpt.isSome then
           Except.error "Multiple storage args provided"
         else
-          go rest (some value) addrOpt mapOpt valueOpt timestampOpt
+          go rest (some value) addrOpt mapOpt map2Opt valueOpt timestampOpt
       | "addr" =>
         if addrOpt.isSome then
           Except.error "Multiple address storage args provided"
         else
-          go rest storageOpt (some value) mapOpt valueOpt timestampOpt
+          go rest storageOpt (some value) mapOpt map2Opt valueOpt timestampOpt
       | "map" =>
         if mapOpt.isSome then
           Except.error "Multiple mapping storage args provided"
         else
-          go rest storageOpt addrOpt (some value) valueOpt timestampOpt
+          go rest storageOpt addrOpt (some value) map2Opt valueOpt timestampOpt
+      | "map2" =>
+        if map2Opt.isSome then
+          Except.error "Multiple double-mapping storage args provided"
+        else
+          go rest storageOpt addrOpt mapOpt (some value) valueOpt timestampOpt
       | "value" =>
         if valueOpt.isSome then
           Except.error "Multiple msg.value args provided"
         else
           match parseArgNat? value with
-          | some n => go rest storageOpt addrOpt mapOpt (some n) timestampOpt
+          | some n => go rest storageOpt addrOpt mapOpt map2Opt (some n) timestampOpt
           | none => Except.error "Invalid msg.value: expected decimal or 0x-prefixed hex integer"
       | "timestamp" =>
         if timestampOpt.isSome then
           Except.error "Multiple block.timestamp args provided"
         else
           match parseArgNat? value with
-          | some n => go rest storageOpt addrOpt mapOpt valueOpt (some n)
+          | some n => go rest storageOpt addrOpt mapOpt map2Opt valueOpt (some n)
           | none => Except.error "Invalid block.timestamp: expected decimal or 0x-prefixed hex integer"
       | _ => Except.error "Invalid config prefix"
-  go configArgs none none none none none
+  go configArgs none none none none none none
 
 def main (args : List String) : IO Unit := do
   match args with
@@ -692,7 +721,7 @@ def main (args : List String) : IO Unit := do
     let (argStrs, configArgs) ← match splitTrailingStorageArgs rest with
       | Except.ok vals => pure vals
       | Except.error msg => throw <| IO.userError msg
-    let (storageOpt, addrOpt, mapOpt, valueOpt, timestampOpt) ← match parseConfigArgs configArgs with
+    let (storageOpt, addrOpt, mapOpt, map2Opt, valueOpt, timestampOpt) ← match parseConfigArgs configArgs with
       | Except.ok vals => pure vals
       | Except.error msg => throw <| IO.userError msg
     -- Filter out empty strings from args (can happen when storage is empty)
@@ -718,13 +747,16 @@ def main (args : List String) : IO Unit := do
     let storageMapState := match mapOpt with
       | some s => parseStorageMap s
       | none => fun _ _ => 0 -- Default: empty mapping storage
+    let storageMap2State := match map2Opt with
+      | some s => parseStorageMap2 s
+      | none => fun _ _ _ => 0 -- Default: empty double-mapping storage
 
     let initialState : ContractState := {
       storage := storageState
       storageAddr := storageAddrState
       storageMap := storageMapState
       storageMapUint := fun _ _ => 0
-      storageMap2 := fun _ _ _ => 0
+      storageMap2 := storageMap2State
       sender := senderAddress
       thisAddress := Verity.Core.Address.ofNat 0xC0437AC7
       msgValue := valueOpt.getD 0
@@ -750,7 +782,7 @@ def main (args : List String) : IO Unit := do
       throw <| IO.userError
         s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20"
   | _ =>
-    IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...] [value=...] [timestamp=...]"
+    IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...] [map2=...] [value=...] [timestamp=...]"
     IO.println "Example: difftest-interpreter SimpleStorage store 0xAlice 42"
     IO.println "No-arg example: difftest-interpreter SimpleStorage retrieve 0xAlice"
     IO.println "With storage: difftest-interpreter SimpleStorage retrieve 0xAlice \"0:42\""

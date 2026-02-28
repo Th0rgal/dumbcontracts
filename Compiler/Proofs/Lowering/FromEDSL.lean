@@ -1080,6 +1080,17 @@ when the head selected ID is unknown. -/
   rw [lowerFromParsedSupportedContract_unknown_eq_error raw hParse]
   rfl
 
+/-- A singleton unknown selected ID fails closed with the same unsupported-ID diagnostic. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error
+    (raw : String)
+    (hParse : parseSupportedEDSLContract? raw = none) :
+    lowerRequestedSupportedEDSLContracts [raw] =
+      .error (unsupportedEDSLContractMessage raw) := by
+  have hNoDup : findDuplicateRawContract? [] [raw] = none := by
+    simp [findDuplicateRawContract?]
+  simpa using
+    lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error raw [] hNoDup hParse
+
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when a tail selected ID is unknown after a known-valid head ID. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error

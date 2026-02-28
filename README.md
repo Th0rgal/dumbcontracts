@@ -112,7 +112,7 @@ The `mappingPackedWord` forms perform masked/shifted packed read-modify-write at
 
 **Run tests:**
 ```bash
-FOUNDRY_PROFILE=difftest forge test           # 404 tests across 35 suites
+FOUNDRY_PROFILE=difftest forge test           # 416 tests across 36 suites
 ```
 
 ---
@@ -237,7 +237,7 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 
 Verity's restricted DSL prevents raw external calls for safety. Instead, call patterns are packaged as **External Call Modules (ECMs)** — reusable, typed, auditable Lean structures that the compiler can plug in without modification. Standard modules for ERC-20, EVM precompiles, and callbacks ship in [`Compiler/Modules/`](Compiler/Modules/README.md). Third parties can publish their own as separate Lean packages. See [`docs/EXTERNAL_CALL_MODULES.md`](docs/EXTERNAL_CALL_MODULES.md) for the full guide.
 
-431 theorems across 11 categories, all fully proven. 404 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axiom. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
+431 theorems across 11 categories, all fully proven. 416 Foundry tests across 36 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axiom. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
 
 ## What's Verified
 
@@ -339,7 +339,7 @@ FOUNDRY_PROFILE=difftest forge test
 <details>
 <summary><strong>Testing</strong></summary>
 
-**Foundry tests** (404 tests) validate EDSL = Yul = EVM execution:
+**Foundry tests** (416 tests) validate EDSL = Yul = EVM execution:
 
 ```bash
 FOUNDRY_PROFILE=difftest forge test                                          # run all

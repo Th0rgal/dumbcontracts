@@ -1,11 +1,24 @@
 import Verity.Core
 import Verity.EVM.Uint256
 import Verity.Macro
+import Verity.Stdlib.Math
 
 namespace Verity.Examples.MacroContracts
 
 open Verity
 open Verity.EVM.Uint256
+open Verity.Stdlib.Math
+
+verity_contract SimpleStorage where
+  storage
+    storedData : Uint256 := slot 0
+
+  function store (value : Uint256) : Unit := do
+    setStorage storedData value
+
+  function retrieve () : Uint256 := do
+    let current ← getStorage storedData
+    return current
 
 verity_contract Counter where
   storage
@@ -63,5 +76,23 @@ verity_contract Ledger where
   function getBalance (addr : Address) : Uint256 := do
     let currentBalance ← getMapping balances addr
     return currentBalance
+
+verity_contract SafeCounter where
+  storage
+    count : Uint256 := slot 0
+
+  function increment () : Unit := do
+    let current ← getStorage count
+    let newCount ← requireSomeUint (safeAdd current 1) "Overflow in increment"
+    setStorage count newCount
+
+  function decrement () : Unit := do
+    let current ← getStorage count
+    let newCount ← requireSomeUint (safeSub current 1) "Underflow in decrement"
+    setStorage count newCount
+
+  function getCount () : Uint256 := do
+    let current ← getStorage count
+    return current
 
 end Verity.Examples.MacroContracts

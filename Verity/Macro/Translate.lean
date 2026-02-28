@@ -215,6 +215,39 @@ private def translateBindSource
   | `(term| msgSender) => `(Compiler.CompilationModel.Expr.caller)
   | _ => throwErrorAt rhs "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMapping2/msgSender"
 
+private def translateSafeRequireBind
+    (params : Array ParamDecl)
+    (locals : Array String)
+    (varName : String)
+    (rhs : Term) : CommandElabM (Option (Array Term)) := do
+  let rhs := stripParens rhs
+  match rhs with
+  | `(term| requireSomeUint $optExpr:term $msg:term) =>
+      let msgLit ← strTerm <$> expectStringLiteral msg
+      let optExpr := stripParens optExpr
+      match optExpr with
+      | `(term| safeAdd $a:term $b:term) =>
+          let aExpr ← translatePureExpr params locals a
+          let bExpr ← translatePureExpr params locals b
+          let valueExpr : Term ← `(Compiler.CompilationModel.Expr.add $aExpr $bExpr)
+          let guardExpr : Term ← `(Compiler.CompilationModel.Expr.ge $valueExpr $aExpr)
+          pure (some #[
+            (← `(Compiler.CompilationModel.Stmt.require $guardExpr $msgLit)),
+            (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $valueExpr))
+          ])
+      | `(term| safeSub $a:term $b:term) =>
+          let aExpr ← translatePureExpr params locals a
+          let bExpr ← translatePureExpr params locals b
+          let valueExpr : Term ← `(Compiler.CompilationModel.Expr.sub $aExpr $bExpr)
+          let guardExpr : Term ← `(Compiler.CompilationModel.Expr.ge $aExpr $bExpr)
+          pure (some #[
+            (← `(Compiler.CompilationModel.Stmt.require $guardExpr $msgLit)),
+            (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $valueExpr))
+          ])
+      | _ =>
+          throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd or safeSub"
+  | _ => pure none
+
 private def translateEffectStmt
     (fields : Array StorageFieldDecl)
     (params : Array ParamDecl)
@@ -296,8 +329,12 @@ private partial def translateDoElem
       let varName := toString name.getId
       if locals.contains varName then
         throwErrorAt name s!"duplicate local variable '{varName}'"
-      let rhsExpr ← translateBindSource fields params locals rhs
-      pure (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))], locals.push varName)
+      let safeBind? ← translateSafeRequireBind params locals varName rhs
+      match safeBind? with
+      | some safeStmts => pure (safeStmts, locals.push varName)
+      | none =>
+          let rhsExpr ← translateBindSource fields params locals rhs
+          pure (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))], locals.push varName)
   | `(doElem| let $name:ident := $rhs:term) =>
       let varName := toString name.getId
       if locals.contains varName then

@@ -261,6 +261,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
   `lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_split_ok`,
   `lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok`,
   `lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_tail_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error`,
   `lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error`,
   `lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error`,
   `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_lower_error`,

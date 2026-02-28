@@ -1148,6 +1148,34 @@ explicitly established tail map-traversal lowering error. -/
   exact lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
     (rawHead :: rawTail) err hNoDup hNonEmpty hLowerAll
 
+/-- Duplicate-free selected IDs with a known-valid head ID fail closed to any
+explicitly established lower-error at the head of the tail list. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error
+    (rawHead : String)
+    (rawBad : String)
+    (rawSuffix : List String)
+    (headContract : SupportedEDSLContract)
+    (err : String)
+    (hNoDup : findDuplicateRawContract? [] (rawHead :: rawBad :: rawSuffix) = none)
+    (hParseHead : parseSupportedEDSLContract? rawHead = some headContract)
+    (hLowerBad : lowerFromParsedSupportedContract rawBad = .error err) :
+    lowerRequestedSupportedEDSLContracts (rawHead :: rawBad :: rawSuffix) =
+      .error err := by
+  have hTailError :
+      (rawBad :: rawSuffix).mapM lowerFromParsedSupportedContract = .error err := by
+    rw [List.mapM_cons]
+    rw [hLowerBad]
+    rfl
+  simpa using
+    lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_tail_error
+      rawHead
+      (rawBad :: rawSuffix)
+      headContract
+      err
+      hNoDup
+      hParseHead
+      hTailError
+
 /-- Non-empty selected IDs fail closed to any explicitly established parse-stage
 error when a tail selected ID fails parsing after a known-valid head ID. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error
@@ -1160,20 +1188,15 @@ error when a tail selected ID fails parsing after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract rawBad = .error err) :
     lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
       .error err := by
-  have hTailError :
-      (rawBad :: rest).mapM lowerFromParsedSupportedContract = .error err := by
-    rw [List.mapM_cons]
-    rw [lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad]
-    rfl
-  simpa using
-    lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_tail_error
+  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error
       rawOk
-      (rawBad :: rest)
+      rawBad
+      rest
       contract
       err
       hNoDup
       hParseOk
-      hTailError
+  simpa using lowerFromParsedSupportedContract_eq_error_of_parse_error rawBad err hParseBad
 
 /-- Duplicate-free selected IDs fail closed to a parse-stage error at any position
 when every strictly preceding selected ID is already known to lower successfully. -/
@@ -1415,21 +1438,15 @@ when a tail selected ID is unknown after a known-valid head ID. -/
     (hParseBad : parseSupportedEDSLContract? rawBad = none) :
     lowerRequestedSupportedEDSLContracts (rawOk :: rawBad :: rest) =
       .error (unsupportedEDSLContractMessage rawBad) := by
-  have hTailError :
-      (rawBad :: rest).mapM lowerFromParsedSupportedContract =
-        .error (unsupportedEDSLContractMessage rawBad) := by
-    rw [List.mapM_cons]
-    rw [lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad]
-    rfl
-  simpa using
-    lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_tail_error
+  apply lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error
       rawOk
-      (rawBad :: rest)
+      rawBad
+      rest
       contract
       (unsupportedEDSLContractMessage rawBad)
       hNoDup
       hParseOk
-      hTailError
+  simpa using lowerFromParsedSupportedContract_unknown_eq_error rawBad hParseBad
 
 /-- Duplicate-free selected IDs fail closed with the unsupported-ID diagnostic
 when any selected ID is unknown after an already-lowered prefix. -/

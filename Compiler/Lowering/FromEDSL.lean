@@ -395,6 +395,85 @@ Each model is independently validated. -/
 def lowerModels (models : List CompilationModel) : Except LoweringError (List CompilationModel) :=
   models.mapM lowerFromModel
 
+private def isAsciiUpper (c : Char) : Bool :=
+  c >= 'A' && c <= 'Z'
+
+private def isAsciiLower (c : Char) : Bool :=
+  c >= 'a' && c <= 'z'
+
+private def toAsciiLower (c : Char) : Char :=
+  if isAsciiUpper c then
+    Char.ofNat (c.toNat + ('a'.toNat - 'A'.toNat))
+  else
+    c
+
+private def shouldInsertHyphen (prev? : Option Char) (current : Char) (next? : Option Char) : Bool :=
+  if isAsciiUpper current then
+    match prev?, next? with
+    | some prev, some next =>
+        (isAsciiLower prev || prev.isDigit) || (isAsciiUpper prev && isAsciiLower next)
+    | some prev, none =>
+        isAsciiLower prev || prev.isDigit
+    | none, _ => false
+  else
+    false
+
+private partial def kebabChars (prev? : Option Char) : List Char → List Char
+  | [] => []
+  | c :: rest =>
+      (if shouldInsertHyphen prev? c rest.head? then ['-'] else []) ++
+        [toAsciiLower c] ++
+        kebabChars (some c) rest
+
+/-- CLI identifier for arbitrary EDSL specs (for `--edsl-contract`). -/
+def edslContractId (spec : CompilationModel) : String :=
+  String.mk (kebabChars none spec.name.toList)
+
+/-- Canonical list of CLI identifiers for all reifiable EDSL contracts. -/
+def edslContractIds : List String :=
+  Compiler.Specs.allSpecs.map edslContractId
+
+/-- Parse a CLI EDSL contract id by searching all specs structurally. -/
+def parseEDSLContract? (raw : String) : Option CompilationModel :=
+  Compiler.Specs.allSpecs.find? (fun spec => edslContractId spec == raw)
+
+/-- Deterministic unknown-contract diagnostic for `--edsl-contract`. -/
+def unsupportedRequestedEDSLContractMessage (raw : String) : String :=
+  s!"Unsupported --edsl-contract: {raw} (supported: {String.intercalate ", " edslContractIds})"
+
+/-- Parse and lower a selected CLI EDSL contract through generalized reification. -/
+def lowerFromParsedEDSLContract (raw : String) : Except String CompilationModel := do
+  let spec ←
+    match parseEDSLContract? raw with
+    | some spec => .ok spec
+    | none => .error (unsupportedRequestedEDSLContractMessage raw)
+  match lowerFromModel spec with
+  | .ok lowered => .ok lowered
+  | .error err => .error err.message
+
+private def findDuplicateEDSLContractId? (seen : List String) (remaining : List String) : Option String :=
+  match remaining with
+  | [] => none
+  | raw :: rest =>
+      if raw ∈ seen then
+        some raw
+      else
+        findDuplicateEDSLContractId? (raw :: seen) rest
+
+/-- Lower selected `--edsl-contract` values through the generalized path.
+If no IDs are provided, compiles all known EDSL specs.
+Duplicate IDs are rejected deterministically. -/
+def lowerRequestedEDSLContracts (rawContracts : List String) : Except String (List CompilationModel) := do
+  match findDuplicateEDSLContractId? {} rawContracts with
+  | some dup => .error s!"Duplicate --edsl-contract value: {dup}"
+  | none => pure ()
+  let selectedRawContracts :=
+    if rawContracts.isEmpty then
+      edslContractIds
+    else
+      rawContracts
+  selectedRawContracts.mapM lowerFromParsedEDSLContract
+
 /-!
 ## Legacy Curated Subset (Backward Compatibility)
 

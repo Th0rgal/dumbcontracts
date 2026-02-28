@@ -76,7 +76,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println "  -o <dir>           Short form of --output"
         IO.println "  --abi-output <dir> Output ABI JSON artifacts (one <Contract>.abi.json per spec)"
         IO.println "  --input <model|edsl> Input source mode (default: model)"
-        IO.println s!"  --edsl-contract <id> Restrict --input edsl to selected contracts (supported: {String.intercalate ", " Compiler.Lowering.supportedEDSLContractNames})"
+        IO.println s!"  --edsl-contract <id> Restrict --input edsl to selected contracts (supported: {String.intercalate ", " Compiler.Lowering.edslContractIds})"
         IO.println "  --backend-profile <semantic|solidity-parity-ordering|solidity-parity>"
         IO.println "  --parity-pack <id> Versioned parity-pack tuple (see docs/PARITY_PACKS.md)"
         IO.println "  --enable-patches   Enable deterministic Yul patch pass"

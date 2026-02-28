@@ -49,9 +49,9 @@ private def resolveSpecsForEDSLInput
     | .ok specs => .ok specs
     | .error err => .error err.message
   else
-    -- Specific contracts requested by name: use the curated subset path
-    -- for backward compatibility with existing --edsl-contract names.
-    Compiler.Lowering.lowerRequestedSupportedEDSLContracts rawContracts
+    -- Specific contracts requested by name: resolve from all specs and lower
+    -- through generalized reification (no curated enum pinning).
+    Compiler.Lowering.lowerRequestedEDSLContracts rawContracts
 
 private def writeContract
     (outDir : String)

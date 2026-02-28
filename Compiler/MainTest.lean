@@ -155,8 +155,37 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     | .error err => err.message
   expectTrue "explicit unsupported EDSL subset input returns deterministic diagnostic"
     (contains unsupportedMsg "test unsupported feature")
-  expectTrue "unsupported EDSL subset diagnostic keeps curated-boundary guidance"
-    (contains unsupportedMsg "--edsl-contract")
+  expectTrue "unsupported EDSL subset diagnostic points to manual model fallback"
+    (contains unsupportedMsg "--input model")
+  expectTrue "all non-linking specs reify through generalized EDSL path"
+    (Compiler.Specs.allSpecs.all (fun spec =>
+      match Compiler.Lowering.reifyEDSL spec with
+      | some _ => true
+      | none => false))
+  let unsupportedReifySpec : Compiler.CompilationModel.CompilationModel := {
+    name := "UnsupportedReifySmoke"
+    fields := [{ name := "x", ty := Compiler.CompilationModel.FieldType.uint256 }]
+    constructor := none
+    functions := [
+      { name := "f"
+        params := []
+        returnType := none
+        body := [
+          Compiler.CompilationModel.Stmt.letVar "y"
+            (Compiler.CompilationModel.Expr.externalCall
+              "PoseidonT3_hash"
+              [Compiler.CompilationModel.Expr.literal 1, Compiler.CompilationModel.Expr.literal 2]),
+          Compiler.CompilationModel.Stmt.setStorage "x" (Compiler.CompilationModel.Expr.localVar "y"),
+          Compiler.CompilationModel.Stmt.stop
+        ]
+      }
+    ]
+  }
+  expectTrue "generalized reifier fails closed on unsupported constructs"
+    (match Compiler.Lowering.lowerFromModel unsupportedReifySpec with
+    | .ok _ => false
+    | .error (.unsupported _) => true
+    | .error _ => false)
   let supportedNames := Compiler.Lowering.supportedEDSLContractNames
   expectTrue "supported --edsl-contract names are unique"
     (supportedNames.eraseDups.length == supportedNames.length)

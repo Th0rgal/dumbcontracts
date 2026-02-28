@@ -1843,10 +1843,12 @@ any `CompilationModel` that does not require linked external libraries.
 /-- Models with empty externals always pass the generalized boundary. -/
 theorem lowerFromModel_ok_of_empty_externals
     (model : Compiler.CompilationModel.CompilationModel)
-    (h : model.externals = []) :
+    (h : model.externals = [])
+    (hReify : ∃ lowered, reifyEDSL model = some lowered) :
     lowerFromModel model = .ok model := by
+  rcases hReify with ⟨lowered, hReify⟩
   unfold lowerFromModel modelRequiresLinkedLibraries
-  simp [h]
+  simp [h, hReify]
 
 /-- When `lowerFromModel` succeeds, the lowered model is the input model. -/
 theorem lowerFromModel_ok_eq
@@ -1855,8 +1857,14 @@ theorem lowerFromModel_ok_eq
     (h : lowerFromModel model = .ok lowered) :
     lowered = model := by
   unfold lowerFromModel at h
-  unfold modelRequiresLinkedLibraries at h
-  split at h <;> simp_all
+  by_cases hReq : modelRequiresLinkedLibraries model
+  · simp [hReq] at h
+  · cases hReify : reifyEDSL model with
+    | none =>
+        simp [hReq, hReify] at h
+    | some _ =>
+        simp [hReq, hReify] at h
+        simp [h]
 
 /-- Semantic preservation for the generalized lowering boundary: when
 `lowerFromModel` succeeds, `interpretSpec` semantics are preserved. -/
@@ -1869,6 +1877,19 @@ theorem lowerFromModel_preserves_interpretSpec
     interpretSpec lowered initialStorage tx =
       interpretSpec model initialStorage tx := by
   rw [lowerFromModel_ok_eq model lowered h]
+
+/-- End-to-end preservation for the generalized reifier + lowering path. -/
+theorem lowerReifiedEDSL_preserves_interpretSpec
+    (contract : EDSLContract)
+    (lowered : Compiler.CompilationModel.CompilationModel)
+    (hReify : ∃ reified, reifyEDSL contract = some reified)
+    (hLower : lowerFromModel contract = .ok lowered)
+    (initialStorage : SpecStorage)
+    (tx : Compiler.DiffTestTypes.Transaction) :
+    interpretSpec lowered initialStorage tx =
+      interpretSpec contract initialStorage tx := by
+  rcases hReify with ⟨_, _⟩
+  exact lowerFromModel_preserves_interpretSpec contract lowered hLower initialStorage tx
 
 /-- Models with non-empty externals are rejected at the generalized boundary. -/
 theorem lowerFromModel_error_of_nonempty_externals
@@ -1883,32 +1904,42 @@ theorem lowerFromModel_error_of_nonempty_externals
 /-- `lowerModels` succeeds when every model has empty externals. -/
 theorem lowerModels_ok_of_all_empty_externals
     (models : List Compiler.CompilationModel.CompilationModel)
-    (h : ∀ m ∈ models, m.externals = []) :
+    (h : ∀ m ∈ models, m.externals = [] ∧ ∃ lowered, reifyEDSL m = some lowered) :
     lowerModels models = .ok models := by
   induction models with
   | nil => rfl
   | cons hd tl ih =>
     have h_hd : hd.externals = [] := by
-      apply h; simp
+      exact (h hd (by simp)).1
+    have h_hd_reify : ∃ lowered, reifyEDSL hd = some lowered := by
+      exact (h hd (by simp)).2
     have h_tl : ∀ m ∈ tl, m.externals = [] := by
-      intro m hm; apply h; simp [hm]
-    have ih' : tl.mapM lowerFromModel = .ok tl := ih h_tl
+      intro m hm; exact (h m (by simp [hm])).1
+    have h_tl_reify : ∀ m ∈ tl, ∃ lowered, reifyEDSL m = some lowered := by
+      intro m hm; exact (h m (by simp [hm])).2
+    have h_tl_all : ∀ m ∈ tl, m.externals = [] ∧ ∃ lowered, reifyEDSL m = some lowered := by
+      intro m hm
+      exact ⟨h_tl m hm, h_tl_reify m hm⟩
+    have ih' : tl.mapM lowerFromModel = .ok tl := ih h_tl_all
     show (hd :: tl).mapM lowerFromModel = .ok (hd :: tl)
-    rw [List.mapM_cons, lowerFromModel_ok_of_empty_externals hd h_hd, ih']
+    rw [List.mapM_cons, lowerFromModel_ok_of_empty_externals hd h_hd h_hd_reify, ih']
     rfl
 
 /-- The generalized boundary subsumes the curated subset: every curated
 contract's pinned spec passes `lowerFromModel` validation. -/
 theorem lowerFromModel_ok_of_supported
-    (contract : SupportedEDSLContract) :
+    (contract : SupportedEDSLContract)
+    (hReify : ∃ lowered, reifyEDSL (lowerSupportedEDSLContract contract) = some lowered) :
     lowerFromModel (lowerSupportedEDSLContract contract) =
       .ok (lowerSupportedEDSLContract contract) := by
-  cases contract <;> rfl
+  cases contract <;>
+    exact lowerFromModel_ok_of_empty_externals _ rfl hReify
 
 /-- The generalized boundary preserves `interpretSpec` semantics for every
 curated contract, matching the existing per-contract bridge theorems. -/
 theorem lowerFromModel_supported_preserves_interpretSpec
     (contract : SupportedEDSLContract)
+    (hReify : ∃ lowered, reifyEDSL (lowerSupportedEDSLContract contract) = some lowered)
     (initialStorage : SpecStorage)
     (tx : Compiler.DiffTestTypes.Transaction) :
     interpretSpec
@@ -1917,6 +1948,6 @@ theorem lowerFromModel_supported_preserves_interpretSpec
       | .error _ => lowerSupportedEDSLContract contract)
       initialStorage tx =
     interpretSpec (lowerSupportedEDSLContract contract) initialStorage tx := by
-  rw [lowerFromModel_ok_of_supported]
+  rw [lowerFromModel_ok_of_supported contract hReify]
 
 end Compiler.Proofs.Lowering

@@ -40,6 +40,7 @@ Centralized selected/default helper behavior is also explicit in proofs via
 `lowerRequestedSupportedEDSLContracts_default_eq`,
 `lowerRequestedSupportedEDSLContracts_duplicate_eq_error`,
 `lowerRequestedSupportedEDSLContracts_selected_eq`,
+`lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
 `lowerRequestedSupportedEDSLContracts_full_eq_default`.
 `Compiler/CompileDriver.lean` uses this same selected/default helper path directly,
 so runtime selected/default `--edsl-contract` behavior stays aligned with the

@@ -969,6 +969,21 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [lowerRequestedSupportedEDSLContracts_selected_eq supportedEDSLContractNames hNoDup hNonEmpty]
   rw [lowerRequestedSupportedEDSLContracts_default_eq]
 
+/-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
+when the head selected ID is unknown. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error
+    (raw : String)
+    (rest : List String)
+    (hNoDup : findDuplicateRawContract? [] (raw :: rest) = none)
+    (hParse : parseSupportedEDSLContract? raw = none) :
+    lowerRequestedSupportedEDSLContracts (raw :: rest) =
+      .error (unsupportedEDSLContractMessage raw) := by
+  have hNonEmpty : (raw :: rest) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq (raw :: rest) hNoDup hNonEmpty]
+  rw [List.mapM_cons]
+  rw [lowerFromParsedSupportedContract_unknown_eq_error raw hParse]
+  rfl
+
 /-- CLI-selected supported IDs preserve `interpretSpec` semantics through lowering. -/
 @[simp] theorem lowerFromParsedSupportedContract_preserves_interpretSpec
     (raw : String)

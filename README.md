@@ -254,8 +254,9 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
   `lowerRequestedSupportedEDSLContracts_default_eq`,
   `lowerRequestedSupportedEDSLContracts_duplicate_eq_error`,
   `lowerRequestedSupportedEDSLContracts_selected_eq`,
+  `lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
   `lowerRequestedSupportedEDSLContracts_full_eq_default`,
-  proving empty-selection, duplicate fail-closed behavior, non-empty duplicate-free selected-ID lowering behavior, and explicit-full-list/default equivalence.
+  proving empty-selection, duplicate fail-closed behavior, unknown-ID fail-closed behavior on the selected path, non-empty duplicate-free selected-ID lowering behavior, and explicit-full-list/default equivalence.
   `Compiler/CompileDriver.lean` now consumes this same centralized selected/default helper path directly for `--edsl-contract` lowering, keeping runtime parse/lower behavior aligned with the proven boundary.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 

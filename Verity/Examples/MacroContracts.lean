@@ -36,6 +36,13 @@ verity_contract Counter where
     let current ← getStorage count
     return current
 
+  function previewAddTwice (delta : Uint256) : Uint256 := do
+    let base ← getStorage count
+    let mut acc := base
+    acc := add acc delta
+    acc := add acc delta
+    return acc
+
 verity_contract Owned where
   storage
     owner : Address := slot 0

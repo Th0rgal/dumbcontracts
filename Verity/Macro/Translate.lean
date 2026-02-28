@@ -313,63 +313,96 @@ private partial def translateDoElems
     (fields : Array StorageFieldDecl)
     (params : Array ParamDecl)
     (locals : Array String)
-    (elems : Array (TSyntax `doElem)) : CommandElabM (Array Term × Array String) := do
+    (mutableLocals : Array String)
+    (elems : Array (TSyntax `doElem)) : CommandElabM (Array Term × Array String × Array String) := do
   let mut branchLocals := locals
+  let mut branchMutableLocals := mutableLocals
   let mut stmts : Array Term := #[]
   for elem in elems do
-    let (newStmts, newLocals) ← translateDoElem fields params branchLocals elem
+    let (newStmts, newLocals, newMutableLocals) ←
+      translateDoElem fields params branchLocals branchMutableLocals elem
     stmts := stmts ++ newStmts
     branchLocals := newLocals
-  pure (stmts, branchLocals)
+    branchMutableLocals := newMutableLocals
+  pure (stmts, branchLocals, branchMutableLocals)
 
 private partial def translateDoSeqToStmtTerms
     (fields : Array StorageFieldDecl)
     (params : Array ParamDecl)
     (locals : Array String)
+    (mutableLocals : Array String)
     (doSeq : DoSeq) : CommandElabM (Array Term) := do
   match doSeq with
   | `(doSeq| $[$elems:doElem]*) =>
-      pure (← (translateDoElems fields params locals elems)).1
+      pure (← (translateDoElems fields params locals mutableLocals elems)).1
   | _ => throwErrorAt doSeq "unsupported branch body; expected do-sequence"
 
 private partial def translateDoElem
     (fields : Array StorageFieldDecl)
     (params : Array ParamDecl)
     (locals : Array String)
-    (elem : TSyntax `doElem) : CommandElabM (Array Term × Array String) := do
+    (mutableLocals : Array String)
+    (elem : TSyntax `doElem) : CommandElabM (Array Term × Array String × Array String) := do
   match elem with
+  | `(doElem| let mut $name:ident := $rhs:term) =>
+      let varName := toString name.getId
+      if locals.contains varName then
+        throwErrorAt name s!"duplicate local variable '{varName}'"
+      let rhsExpr ← translatePureExpr params locals rhs
+      pure
+        (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+          locals.push varName,
+          mutableLocals.push varName)
   | `(doElem| let $name:ident ← $rhs:term) =>
       let varName := toString name.getId
       if locals.contains varName then
         throwErrorAt name s!"duplicate local variable '{varName}'"
       let safeBind? ← translateSafeRequireBind params locals varName rhs
       match safeBind? with
-      | some safeStmts => pure (safeStmts, locals.push varName)
+      | some safeStmts => pure (safeStmts, locals.push varName, mutableLocals)
       | none =>
           let rhsExpr ← translateBindSource fields params locals rhs
-          pure (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))], locals.push varName)
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+              locals.push varName,
+              mutableLocals)
   | `(doElem| let $name:ident := $rhs:term) =>
       let varName := toString name.getId
       if locals.contains varName then
         throwErrorAt name s!"duplicate local variable '{varName}'"
       let rhsExpr ← translatePureExpr params locals rhs
-      pure (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))], locals.push varName)
+      pure
+        (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+          locals.push varName,
+          mutableLocals)
+  | `(doElem| $name:ident := $rhs:term) =>
+      let varName := toString name.getId
+      if !locals.contains varName then
+        throwErrorAt name s!"cannot assign unknown variable '{varName}'"
+      if !mutableLocals.contains varName then
+        throwErrorAt name s!"cannot assign immutable variable '{varName}'; declare it with 'let mut'"
+      let rhsExpr ← translatePureExpr params locals rhs
+      pure
+        (#[(← `(Compiler.CompilationModel.Stmt.assignVar $(strTerm varName) $rhsExpr))],
+          locals,
+          mutableLocals)
   | `(doElem| return $value:term) =>
-      pure (#[(← `(Compiler.CompilationModel.Stmt.return $(← translatePureExpr params locals value)))], locals)
+      pure (#[(← `(Compiler.CompilationModel.Stmt.return $(← translatePureExpr params locals value)))], locals, mutableLocals)
   | `(doElem| pure ()) =>
-      pure (#[], locals)
+      pure (#[], locals, mutableLocals)
   | `(doElem| if $cond:term then $thenBranch:doSeq else $elseBranch:doSeq) =>
       let condExpr ← translatePureExpr params locals cond
-      let thenStmts ← translateDoSeqToStmtTerms fields params locals thenBranch
-      let elseStmts ← translateDoSeqToStmtTerms fields params locals elseBranch
+      let thenStmts ← translateDoSeqToStmtTerms fields params locals mutableLocals thenBranch
+      let elseStmts ← translateDoSeqToStmtTerms fields params locals mutableLocals elseBranch
       pure
         (#[(← `(Compiler.CompilationModel.Stmt.ite
           $condExpr
           [ $[$thenStmts],* ]
           [ $[$elseStmts],* ]))],
-          locals)
+          locals,
+          mutableLocals)
   | `(doElem| $stmt:term) =>
-      pure (#[(← translateEffectStmt fields params locals stmt)], locals)
+      pure (#[(← translateEffectStmt fields params locals stmt)], locals, mutableLocals)
   | _ => throwErrorAt elem "unsupported do element"
 end
 
@@ -378,7 +411,7 @@ private def translateBodyToStmtTerms
     (fn : FunctionDecl) : CommandElabM (Array Term) := do
   match fn.body with
   | `(term| do $[$elems:doElem]*) =>
-      let stmts := (← translateDoElems fields fn.params #[] elems).1
+      let stmts := (← translateDoElems fields fn.params #[] #[] elems).1
       let mut stmts := stmts
       if fn.returnTy == .unit then
         stmts := stmts.push (← `(Compiler.CompilationModel.Stmt.stop))
@@ -390,7 +423,7 @@ private def translateConstructorBodyToStmtTerms
     (ctor : ConstructorDecl) : CommandElabM (Array Term) := do
   match ctor.body with
   | `(term| do $[$elems:doElem]*) =>
-      pure (← (translateDoElems fields ctor.params #[] elems)).1
+      pure (← (translateDoElems fields ctor.params #[] #[] elems)).1
   | _ => throwErrorAt ctor.body "constructor body must be a do block"
 
 def mkSuffixedIdent (base : Ident) (suffix : String) : CommandElabM Ident :=

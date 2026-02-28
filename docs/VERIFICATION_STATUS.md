@@ -18,6 +18,126 @@ Yul (EVM Assembly)
 EVM Bytecode
 ```
 
+Compiler UX status:
+- `--input model`: full current compiler path (`CompilationModel` set, including linked-library flows).
+- `--input edsl`: curated supported EDSL subset lowered through the same boundary API.
+- `--edsl-contract <id>`: optional selector for compiling a subset of supported EDSL contracts.
+- linked-library flows are intentionally fail-closed for `--input edsl` and remain on `--input model`.
+Both modes are routed through `Compiler.Lowering` so model-mode and EDSL-mode
+share one lowering API surface.
+`Compiler/Proofs/Lowering/FromEDSL.lean` now includes explicit transition bridge
+theorems that reuse existing Layer-1 EDSL correctness proofs through lowered
+supported inputs:
+`lower_simpleStorage_store_correct`,
+`lower_simpleStorage_retrieve_correct`,
+`lower_simpleStorage_retrieve_preserves_state`,
+`lower_counter_increment_correct`,
+`lower_counter_getCount_correct`,
+`lower_counter_getCount_preserves_state`,
+`lower_counter_decrement_correct`,
+`lower_owned_getOwner_correct`,
+`lower_owned_getOwner_preserves_state`,
+`lower_owned_transferOwnership_correct_as_owner`,
+`lower_owned_transferOwnership_reverts_as_nonowner`,
+`lower_ledger_deposit_correct`,
+`lower_ledger_withdraw_correct_sufficient`,
+`lower_ledger_withdraw_reverts_insufficient`,
+`lower_ledger_getBalance_correct`,
+`lower_ledger_getBalance_preserves_state`,
+`lower_ledger_transfer_correct_sufficient`,
+`lower_ledger_transfer_reverts_insufficient`,
+`lower_ownedCounter_getCount_correct`,
+`lower_ownedCounter_increment_correct_as_owner`,
+`lower_ownedCounter_increment_reverts_as_nonowner`,
+`lower_ownedCounter_decrement_correct_as_owner`,
+`lower_ownedCounter_decrement_reverts_as_nonowner`,
+`lower_ownedCounter_getOwner_correct`,
+`lower_ownedCounter_getters_preserve_state`,
+`lower_ownedCounter_transferOwnership_correct_as_owner`,
+`lower_ownedCounter_transferOwnership_reverts_as_nonowner`,
+`lower_simpleToken_getTotalSupply_correct`,
+`lower_simpleToken_balanceOf_correct`,
+`lower_simpleToken_getOwner_correct`,
+`lower_simpleToken_getters_preserve_state`,
+`lower_simpleToken_mint_correct_as_owner`,
+`lower_simpleToken_mint_reverts_as_nonowner`,
+`lower_simpleToken_transfer_correct_sufficient`,
+`lower_simpleToken_transfer_reverts_insufficient`,
+`lower_safeCounter_getCount_correct`,
+`lower_safeCounter_getCount_preserves_state`,
+`lower_safeCounter_increment_correct`,
+`lower_safeCounter_increment_reverts_at_max`,
+`lower_safeCounter_decrement_correct`,
+`lower_safeCounter_decrement_reverts_at_zero`.
+The same module also includes parser-determinism lemmas for `--edsl-contract`
+selection IDs:
+`supportedEDSLContractName_injective`,
+`parseSupportedEDSLContract_roundtrip_unique`,
+`supportedEDSLContractNames_nodup`.
+It also includes parsed-ID to lowering-boundary preservation:
+`lowerFromParsedSupportedContract_preserves_interpretSpec`.
+Unknown selected-ID diagnostics are now centralized at parser level via:
+`parseSupportedEDSLContract_eq_error_of_unknown`.
+Singleton selected-ID map traversal helpers are also explicit:
+`lowerFromParsedSupportedContract_singleton_eq_ok`,
+`lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,
+`lowerFromParsedSupportedContract_singleton_eq_error`,
+`lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok`,
+`lowerFromParsedSupportedContract_cons_eq_error_of_head_error`,
+`lowerFromParsedSupportedContract_cons_eq_error_of_tail_error`,
+`lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`,
+`lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`,
+`lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok`,
+`lowerFromParsedSupportedContract_append_eq_ok_of_parse_ok`,
+`lowerFromParsedSupportedContract_append_eq_error_of_parse_error`.
+CLI parsing/lowering now uses centralized boundary helpers:
+`parseSupportedEDSLContract`,
+`lowerFromParsedSupportedContract`,
+`lowerRequestedSupportedEDSLContracts`.
+Centralized selected/default helper behavior is also explicit in the proof surface:
+`lowerRequestedSupportedEDSLContracts_default_eq`,
+`supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok`,
+`lowerRequestedSupportedEDSLContracts_default_eq_ok_supported`,
+`lowerRequestedSupportedEDSLContracts_duplicate_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_eq`,
+`lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_lower_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_split_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_parse_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_lower_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_parse_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_head_error`,
+`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_tail_error`,
+`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error`,
+`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_parse_error`,
+`lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error`,
+`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_lower_error`,
+`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error`,
+`lowerRequestedSupportedEDSLContracts_selected_head_eq_error_of_parse_error`,
+`lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_parse_error`,
+`lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_prefix_parse_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error_of_prefix_parse_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error`,
+`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok`,
+`lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok`,
+`lowerRequestedSupportedEDSLContracts_full_eq_default`.
+`Compiler/CompileDriver.lean` now consumes this same selected/default helper path directly for
+selected/default `--edsl-contract` lowering, so parse+lower diagnostics and
+behavior are sourced from one boundary implementation.
+Lowering API-boundary preservation lemmas are explicit for both transition
+entrypoints:
+`lowerFromEDSLSubset_supported_preserves_interpretSpec`,
+`lowerFromEDSLSubset_manualBridge_preserves_interpretSpec`.
+
 ## Architecture Simplification (Issue #971) ✅ **COMPLETE**
 
 **Status**: Verity now maintains a single supported compiler path:
@@ -33,7 +153,7 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 
 **What This Layer Proves**: User-facing EDSL contracts satisfy their human-readable specifications.
 
-**Hybrid transition note**: Layer 1 currently uses a hybrid strategy: generated `EDSL -> CompilationModel` proofs cover the supported subset; advanced constructs (linked libraries, ECMs, custom ABI encoding) are expressed directly in `CompilationModel` and trusted at that boundary. See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for details.
+**Hybrid transition note**: Layer 1 currently uses a hybrid strategy: generated `EDSL -> CompilationModel` proofs cover the supported subset; advanced constructs (linked libraries, ECMs, custom ABI encoding) are expressed directly in `CompilationModel` and trusted at that boundary. Automatic compiler-lowered EDSL input is still pending. See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for details.
 
 ### Verified Contracts
 

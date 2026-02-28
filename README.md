@@ -36,7 +36,29 @@ python3 scripts/generate_contract.py MyContract
 # 4. Compile to Yul/EVM
 lake build verity-compiler
 lake exe verity-compiler                      # Output in compiler/yul/
+lake exe verity-compiler --input model        # Explicit manual CompilationModel path
+lake exe verity-compiler --input edsl         # Curated supported EDSL subset path
+lake exe verity-compiler --input edsl --edsl-contract counter
 ```
+
+`--input edsl` now compiles a curated supported subset through the lowering boundary in
+`Compiler/Lowering/FromEDSL.lean` and
+`Compiler/Proofs/Lowering/FromEDSL.lean`.
+That proof module now includes transition bridge lemmas that connect lowered
+supported inputs to existing Layer-1 EDSL correctness theorems, including both
+write and read paths across the currently supported subset, including
+`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`,
+`simple-token`, and `safe-counter`.
+It also includes explicit fail-path bridge coverage for owner-gated and
+insufficient-balance cases in `owned`, `owned-counter`, `ledger`, and
+`simple-token`, plus overflow/underflow fail-path bridges for `safe-counter`.
+Current lowering is still transition-stage: supported EDSL contracts are pinned to
+their current lowering targets, and advanced flows (for example linked-library
+`CryptoHash`) remain on `--input model`.
+Both `--input model` and `--input edsl` route through the same explicit lowering
+boundary API.
+`--edsl-contract <id>` can be repeated to compile only selected supported EDSL
+contracts (for example `counter`, `simple-storage`, `owned-counter`).
 
 **With external libraries (e.g., Poseidon hash):**
 ```bash
@@ -222,7 +244,53 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 - **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`CompilationModel`/`CompilationModel`).
 - **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
-- **Proof-chain note**: the `EDSL -> CompilationModel (CompilationModel) -> IR -> Yul` chain is verified with 1 axiom.
+- **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today, and compiler `--input edsl` currently covers a curated supported subset via pinned lowering targets. Fully automatic verified EDSL reification/lowering remains in progress. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
+- **Lowering-boundary note**: Even before automatic EDSL reification is wired, the existing `--input model` path runs through `Compiler.Lowering.lowerModelPath` to keep one explicit lowering boundary.
+- **Lowering bridge note**: `Compiler/Proofs/Lowering/FromEDSL.lean` now provides transition bridge theorems for all currently supported `--input edsl` contracts (`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`, `simple-token`, `safe-counter`), including write/read bridges for mutating and getter entrypoints in that subset.
+  This includes mutating bridge coverage for `ledger.transfer`, `simple-token.mint`, and `simple-token.transfer` under their existing Layer-1 preconditions, plus explicit revert-path bridges for owner-gated, insufficient-balance, and safe-counter overflow/underflow cases.
+  Getter-side read-only state-preservation bridges are also explicit for `simple-storage.retrieve`, `counter.getCount`, `owned.getOwner`, `ledger.getBalance`, `owned-counter` getters, `simple-token` getters, and `safe-counter.getCount`.
+  The same proof module now also proves parser determinism for `--edsl-contract` IDs (injective name map, unique roundtrip, and no-duplicate supported name list), composes parsed IDs with lowering-boundary preservation (`lowerFromParsedSupportedContract_preserves_interpretSpec`), and includes singleton/cons/pair selected-ID map traversal helper lemmas (`lowerFromParsedSupportedContract_singleton_eq_ok`, `lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`, `lowerFromParsedSupportedContract_singleton_eq_error`, `lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok`, `lowerFromParsedSupportedContract_cons_eq_error_of_head_error`, `lowerFromParsedSupportedContract_cons_eq_error_of_tail_error`, `lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`, `lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`, `lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok`, `lowerFromParsedSupportedContract_append_eq_ok_of_parse_ok`) through the centralized parsing/lowering helpers (`parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, `lowerRequestedSupportedEDSLContracts`).
+  Unknown selected-ID fail-closed behavior is also centralized at the parser boundary via `parseSupportedEDSLContract_eq_error_of_unknown`, and reused directly by parsed-ID and selected-ID unknown-path lowering lemmas.
+  It also includes append-position parse-error propagation helpers with parse-prefix witnesses:
+  `lowerFromParsedSupportedContract_append_eq_error_of_parse_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_prefix_parse_ok`.
+  It also includes centralized selected/default helper lemmas:
+  `lowerRequestedSupportedEDSLContracts_default_eq`,
+  `supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok`,
+  `lowerRequestedSupportedEDSLContracts_default_eq_ok_supported`,
+  `lowerRequestedSupportedEDSLContracts_duplicate_eq_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_eq`,
+  `lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_lower_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_split_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_parse_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_lower_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_parse_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_head_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_tail_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_parse_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_lower_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_head_eq_error_of_parse_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_parse_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error_of_prefix_parse_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error`,
+  `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok`,
+  `lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok`,
+  `lowerRequestedSupportedEDSLContracts_full_eq_default`,
+  proving empty-selection, duplicate fail-closed behavior, unknown-ID fail-closed behavior on the selected path, non-empty duplicate-free selected-ID lowering behavior, and explicit-full-list/default equivalence.
+  `Compiler/CompileDriver.lean` now consumes this same centralized selected/default helper path directly for `--edsl-contract` lowering, keeping runtime parse/lower behavior aligned with the proven boundary.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
 **Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.

@@ -1,5 +1,7 @@
 import Compiler.Main
 import Compiler.Linker
+import Compiler.Lowering.FromEDSL
+import Compiler.Specs
 
 namespace Compiler.MainTest
 
@@ -25,16 +27,86 @@ private def expectErrorContains (label : String) (args : List String) (needle : 
       throw (IO.userError s!"✗ {label}: expected '{needle}', got:\n{msg}")
     IO.println s!"✓ {label}"
 
+private def expectErrorSatisfies
+    (label : String)
+    (args : List String)
+    (predicate : String → Bool)
+    (expectation : String) : IO Unit := do
+  try
+    main args
+    throw (IO.userError s!"✗ {label}: expected failure, command succeeded")
+  catch e =>
+    let msg := e.toString
+    if !predicate msg then
+      throw (IO.userError s!"✗ {label}: expected {expectation}, got:\n{msg}")
+    IO.println s!"✓ {label}"
+
 private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   if !ok then
     throw (IO.userError s!"✗ {label}")
   IO.println s!"✓ {label}"
+
+private def fileExists (path : String) : IO Bool := do
+  try
+    let _ ← IO.FS.readFile path
+    pure true
+  catch _ =>
+    pure false
+
+private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering.SupportedEDSLContract) : String :=
+  let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
+  s!"{outDir}/{spec.name}.yul"
 
 #eval! do
   expectErrorContains "missing --link value" ["--link"] "Missing value for --link"
   expectErrorContains "missing --output value" ["--output"] "Missing value for --output"
   expectErrorContains "missing -o value" ["-o"] "Missing value for --output"
   expectErrorContains "missing --abi-output value" ["--abi-output"] "Missing value for --abi-output"
+  expectErrorContains "missing --input value" ["--input"] "Missing value for --input"
+  expectErrorContains "invalid --input value" ["--input", "ast"] "Invalid value for --input: ast"
+  expectErrorContains "missing --edsl-contract value" ["--edsl-contract"] "Missing value for --edsl-contract"
+  expectErrorContains
+    "--edsl-contract requires edsl input mode"
+    ["--edsl-contract", "counter"]
+    "--edsl-contract requires --input edsl"
+  expectErrorContains
+    "unknown --edsl-contract value"
+    ["--input", "edsl", "--edsl-contract", "does-not-exist"]
+    "Unsupported --edsl-contract: does-not-exist"
+  expectErrorSatisfies
+    "unknown --edsl-contract lists supported ids deterministically"
+    ["--input", "edsl", "--edsl-contract", "does-not-exist"]
+    (fun msg =>
+      contains msg
+        s!"(supported: {String.intercalate ", " Compiler.Lowering.supportedEDSLContractNames})")
+    "full ordered supported --edsl-contract list in diagnostic"
+  expectErrorContains
+    "duplicate --edsl-contract value"
+    ["--input", "edsl", "--edsl-contract", "counter", "--edsl-contract", "counter"]
+    "Duplicate --edsl-contract value: counter"
+  let nonce ← IO.monoMsNow
+  let edslOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-out"
+  IO.FS.createDirAll edslOutDir
+  main ["--input", "edsl", "--output", edslOutDir]
+  let allSupportedArtifactsPresent ←
+    Compiler.Lowering.supportedEDSLContracts.allM (fun contract => fileExists (contractArtifactPath edslOutDir contract))
+  expectTrue "edsl input mode compiles every supported subset artifact" allSupportedArtifactsPresent
+  let singleContractOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-single-contract-out"
+  IO.FS.createDirAll singleContractOutDir
+  main ["--input", "edsl", "--edsl-contract", "counter", "--output", singleContractOutDir]
+  let selectedCounterArtifact ← fileExists s!"{singleContractOutDir}/Counter.yul"
+  expectTrue "edsl input mode compiles explicitly selected contract" selectedCounterArtifact
+  let nonSelectedContracts :=
+    Compiler.Lowering.supportedEDSLContracts.filter
+      (fun contract => contract != Compiler.Lowering.SupportedEDSLContract.counter)
+  let nonSelectedArtifactFlags ←
+    nonSelectedContracts.mapM (fun contract => fileExists (contractArtifactPath singleContractOutDir contract))
+  let nonSelectedArtifactsAbsent := nonSelectedArtifactFlags.all (fun isPresent => !isPresent)
+  expectTrue "edsl selected-contract mode does not emit non-selected artifacts" nonSelectedArtifactsAbsent
+  expectErrorContains
+    "edsl input mode rejects linked-library path"
+    ["--input", "edsl", "--link", "examples/external-libs/PoseidonT3.yul", "--output", edslOutDir]
+    "Linked external Yul libraries are not yet supported through --input edsl"
   expectErrorContains "missing --patch-report value" ["--patch-report"] "Missing value for --patch-report"
   expectErrorContains "missing --patch-max-iterations value" ["--patch-max-iterations"] "Missing value for --patch-max-iterations"
   expectErrorContains "missing --backend-profile value" ["--backend-profile"] "Missing value for --backend-profile"
@@ -73,6 +145,55 @@ private def expectTrue (label : String) (ok : Bool) : IO Unit := do
     rewriteBundleId := "missing-rewrite-bundle" }
   expectTrue "parity pack proof composition rejects unknown rewrite bundle IDs"
     (!missingBundlePack.proofCompositionValid)
+  expectTrue "manual model path lowers successfully through EDSL boundary"
+    (match Compiler.Lowering.lowerModelPath Compiler.Specs.simpleStorageSpec with
+    | .ok lowered => lowered.name == Compiler.Specs.simpleStorageSpec.name
+    | .error _ => false)
+  let unsupportedMsg :=
+    match Compiler.Lowering.lowerFromEDSLSubset (.unsupported "(test unsupported feature)") with
+    | .ok _ => ""
+    | .error err => err.message
+  expectTrue "explicit unsupported EDSL subset input returns deterministic diagnostic"
+    (contains unsupportedMsg "test unsupported feature")
+  expectTrue "unsupported EDSL subset diagnostic keeps curated-boundary guidance"
+    (contains unsupportedMsg "--edsl-contract")
+  let supportedNames := Compiler.Lowering.supportedEDSLContractNames
+  expectTrue "supported --edsl-contract names are unique"
+    (supportedNames.eraseDups.length == supportedNames.length)
+  let parserRoundtripUnique :=
+    Compiler.Lowering.supportedEDSLContracts.all (fun requested =>
+      match Compiler.Lowering.parseSupportedEDSLContract? (Compiler.Lowering.supportedEDSLContractName requested) with
+      | some parsed => parsed == requested
+      | none => false)
+  expectTrue "supported --edsl-contract parser roundtrip is unique" parserRoundtripUnique
+  expectTrue "parsed supported --edsl-contract lowers to pinned target"
+    (match Compiler.Lowering.lowerFromParsedSupportedContract "counter" with
+    | .ok lowered => lowered.name == "Counter"
+    | .error _ => false)
+  let allSupportedParsedAndLowered :=
+    Compiler.Lowering.supportedEDSLContracts.all (fun contract =>
+      match Compiler.Lowering.lowerFromParsedSupportedContract
+          (Compiler.Lowering.supportedEDSLContractName contract) with
+      | .ok lowered => lowered.name == (Compiler.Lowering.lowerSupportedEDSLContract contract).name
+      | .error _ => false)
+  expectTrue "all canonical supported --edsl-contract IDs lower via centralized helper"
+    allSupportedParsedAndLowered
+  expectTrue "selected/default EDSL helper lowers full canonical subset by default"
+    (match Compiler.Lowering.lowerRequestedSupportedEDSLContracts [] with
+    | .ok lowered =>
+        lowered.length == Compiler.Lowering.supportedEDSLContracts.length &&
+        (Compiler.Lowering.supportedEDSLContracts.zip lowered).all
+          (fun (contract, loweredContract) =>
+            loweredContract.name == (Compiler.Lowering.lowerSupportedEDSLContract contract).name)
+    | .error _ => false)
+  expectTrue "selected/default EDSL helper fails closed on duplicate IDs"
+    (match Compiler.Lowering.lowerRequestedSupportedEDSLContracts ["counter", "counter"] with
+    | .ok _ => false
+    | .error msg => contains msg "Duplicate --edsl-contract value: counter")
+  expectTrue "unsupported --edsl-contract helper keeps deterministic diagnostic"
+    (match Compiler.Lowering.lowerFromParsedSupportedContract "does-not-exist" with
+    | .ok _ => false
+    | .error msg => contains msg "Unsupported --edsl-contract: does-not-exist")
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

@@ -224,6 +224,40 @@ def genSimpleTokenTx (rng : RNG) : RNG × Transaction :=
   | _ =>
       (rng, { sender := sender, functionName := "owner", args := [] })
 
+-- Generate random ERC20 transaction
+def genERC20Tx (rng : RNG) : RNG × Transaction :=
+  let (rng, sender) := genAddress rng
+  let (rng, choice) := genUint256 rng
+  match choice % 8 with
+  | 0 =>
+      let (rng, toAddr) := genAddress rng
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "mint", args := [addressToNatNormalized toAddr, amount] })
+  | 1 =>
+      let (rng, toAddr) := genAddress rng
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "transfer", args := [addressToNatNormalized toAddr, amount] })
+  | 2 =>
+      let (rng, spender) := genAddress rng
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "approve", args := [addressToNatNormalized spender, amount] })
+  | 3 =>
+      let (rng, fromAddr) := genAddress rng
+      let (rng, toAddr) := genAddress rng
+      let (rng, amount) := genUint256 rng
+      (rng, { sender := sender, functionName := "transferFrom", args := [addressToNatNormalized fromAddr, addressToNatNormalized toAddr, amount] })
+  | 4 =>
+      let (rng, addr) := genAddress rng
+      (rng, { sender := sender, functionName := "balanceOf", args := [addressToNatNormalized addr] })
+  | 5 =>
+      let (rng, ownerAddr) := genAddress rng
+      let (rng, spender) := genAddress rng
+      (rng, { sender := sender, functionName := "allowance", args := [addressToNatNormalized ownerAddr, addressToNatNormalized spender] })
+  | 6 =>
+      (rng, { sender := sender, functionName := "totalSupply", args := [] })
+  | _ =>
+      (rng, { sender := sender, functionName := "owner", args := [] })
+
 -- Generate random block timestamp (range: 0 to ~year 2100 in seconds)
 def genTimestamp (rng : RNG) : RNG × Nat :=
   let (rng', n) := rng.next
@@ -242,6 +276,7 @@ def genTransaction (contractType : ContractType) (rng : RNG) : Except String (RN
   | ContractType.ledger => Except.ok (genLedgerTx rng)
   | ContractType.ownedCounter => Except.ok (genOwnedCounterTx rng)
   | ContractType.simpleToken => Except.ok (genSimpleTokenTx rng)
+  | ContractType.erc20 => Except.ok (genERC20Tx rng)
   result.map fun (rng', tx) => (rng', { tx with blockTimestamp := timestamp })
 
 /-!
@@ -293,6 +328,7 @@ def main (args : List String) : IO Unit := do
       | "OwnedCounter" => some ContractType.ownedCounter
       | "SimpleToken" => some ContractType.simpleToken
       | "SafeCounter" => some ContractType.safeCounter
+      | "ERC20" => some ContractType.erc20
       | _ => none
     match contractTypeEnum? with
     | some contractTypeEnum =>
@@ -314,7 +350,7 @@ def main (args : List String) : IO Unit := do
           IO.println "]"
     | none =>
       throw <| IO.userError
-        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter"
+        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20"
   | _ =>
     IO.println "Usage: random-gen <contract> <count> <seed>"
     IO.println "Example: random-gen SimpleStorage 100 42"

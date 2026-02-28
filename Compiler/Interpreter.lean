@@ -19,6 +19,7 @@ import Verity.Examples.Owned
 import Verity.Examples.Ledger
 import Verity.Examples.OwnedCounter
 import Verity.Examples.SimpleToken
+import Verity.Examples.ERC20
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
@@ -44,6 +45,7 @@ structure ExecutionResult where
   storageChanges : List (Nat × Nat)  -- Changed slots: (slot, newValue)
   storageAddrChanges : List (Nat × Nat)  -- Changed address slots: (slot, newValue as Nat)
   mappingChanges : List (Nat × Address × Nat)  -- Changed mapping entries: (base slot, key, newValue)
+  mapping2Changes : List (Nat × Address × Address × Nat)  -- Changed double-mapping entries: (slot, key1, key2, value)
 
 /-!
 ## EDSL Interpreter
@@ -79,6 +81,19 @@ def extractMappingChanges (before after : ContractState) (keys : List (Nat × Ad
     let newVal := after.storageMap slot key
     if oldVal ≠ newVal then some (slot, key, newVal) else none
 
+private def dedupeMapping2Keys (keys : List (Nat × Address × Address)) : List (Nat × Address × Address) :=
+  let deduped := keys.foldl (fun acc key =>
+    if acc.contains key then acc else key :: acc
+  ) []
+  deduped.reverse
+
+def extractMapping2Changes (before after : ContractState) (keys : List (Nat × Address × Address)) : List (Nat × Address × Address × Nat) :=
+  let deduped := dedupeMapping2Keys keys
+  deduped.filterMap fun (slot, key1, key2) =>
+    let oldVal := before.storageMap2 slot key1 key2
+    let newVal := after.storageMap2 slot key1 key2
+    if oldVal ≠ newVal then some (slot, key1, key2, newVal) else none
+
 private def revertReturnValue (msg : String) : Nat :=
   if msg.isEmpty then 0 else errorStringSelectorWord
 
@@ -100,7 +115,8 @@ def resultToExecutionResult
     (initialState : ContractState)
     (slotsToCheck : List Nat)
     (addrSlotsToCheck : List Nat)
-    (mappingKeysToCheck : List (Nat × Address)) : ExecutionResult :=
+    (mappingKeysToCheck : List (Nat × Address))
+    (mapping2KeysToCheck : List (Nat × Address × Address) := []) : ExecutionResult :=
   match result with
   | ContractResult.success returnVal finalState =>
     let addrChanges := extractStorageAddrChanges initialState finalState addrSlotsToCheck
@@ -110,6 +126,7 @@ def resultToExecutionResult
       storageChanges := extractStorageChanges initialState finalState slotsToCheck
       storageAddrChanges := addrChanges.map (fun (slot, addr) => (slot, addressToNat addr))
       mappingChanges := extractMappingChanges initialState finalState mappingKeysToCheck
+      mapping2Changes := extractMapping2Changes initialState finalState mapping2KeysToCheck
     }
   | ContractResult.revert msg _finalState =>
     { success := false
@@ -118,6 +135,7 @@ def resultToExecutionResult
       storageChanges := []  -- No changes on revert
       storageAddrChanges := []
       mappingChanges := []
+      mapping2Changes := []
     }
 
 -- Helper: Convert ContractResult Uint256 to ContractResult Nat
@@ -140,30 +158,33 @@ private def runUnit
     (state : ContractState)
     (slotsToCheck : List Nat)
     (addrSlotsToCheck : List Nat)
-    (mappingKeysToCheck : List (Nat × Address)) : ExecutionResult :=
+    (mappingKeysToCheck : List (Nat × Address))
+    (mapping2KeysToCheck : List (Nat × Address × Address) := []) : ExecutionResult :=
   let result := contract.run state
-  resultToExecutionResult (unitResultToNat result) state slotsToCheck addrSlotsToCheck mappingKeysToCheck
+  resultToExecutionResult (unitResultToNat result) state slotsToCheck addrSlotsToCheck mappingKeysToCheck mapping2KeysToCheck
 
 private def runUint
     (contract : Contract Uint256)
     (state : ContractState)
     (slotsToCheck : List Nat)
     (addrSlotsToCheck : List Nat)
-    (mappingKeysToCheck : List (Nat × Address)) : ExecutionResult :=
+    (mappingKeysToCheck : List (Nat × Address))
+    (mapping2KeysToCheck : List (Nat × Address × Address) := []) : ExecutionResult :=
   let result := contract.run state
-  resultToExecutionResult (resultToNat result) state slotsToCheck addrSlotsToCheck mappingKeysToCheck
+  resultToExecutionResult (resultToNat result) state slotsToCheck addrSlotsToCheck mappingKeysToCheck mapping2KeysToCheck
 
 private def runAddress
     (contract : Contract Address)
     (state : ContractState)
     (slotsToCheck : List Nat)
     (addrSlotsToCheck : List Nat)
-    (mappingKeysToCheck : List (Nat × Address)) : ExecutionResult :=
+    (mappingKeysToCheck : List (Nat × Address))
+    (mapping2KeysToCheck : List (Nat × Address × Address) := []) : ExecutionResult :=
   let result := contract.run state
   let natResult : ContractResult Nat := match result with
     | ContractResult.success addr s => ContractResult.success (addressToNat addr) s
     | ContractResult.revert msg s => ContractResult.revert msg s
-  resultToExecutionResult natResult state slotsToCheck addrSlotsToCheck mappingKeysToCheck
+  resultToExecutionResult natResult state slotsToCheck addrSlotsToCheck mappingKeysToCheck mapping2KeysToCheck
 
 private def failureResult (msg : String) : ExecutionResult :=
   { success := false
@@ -172,6 +193,7 @@ private def failureResult (msg : String) : ExecutionResult :=
     storageChanges := []
     storageAddrChanges := []
     mappingChanges := []
+    mapping2Changes := []
   }
 
 private def invalidArgsResult : ExecutionResult :=
@@ -212,11 +234,35 @@ private def case1Address (name : String) (tx : Transaction) (f : Address → Exe
     f addr
   )
 
+private def withArgs3 (tx : Transaction) (f : Nat → Nat → Nat → ExecutionResult) : ExecutionResult :=
+  match tx.args with
+  | [arg1, arg2, arg3] => f arg1 arg2 arg3
+  | _ => invalidArgsResult
+
+private def case3 (name : String) (tx : Transaction) (f : Nat → Nat → Nat → ExecutionResult) : (String × (Unit → ExecutionResult)) :=
+  (name, fun _ => withArgs3 tx f)
+
 private def case2AddressNat (name : String) (tx : Transaction) (f : Address → Nat → ExecutionResult) :
     (String × (Unit → ExecutionResult)) :=
   case2 name tx (fun addrNat amount =>
     let addr := natToAddress addrNat
     f addr amount
+  )
+
+private def case2AddressAddress (name : String) (tx : Transaction) (f : Address → Address → ExecutionResult) :
+    (String × (Unit → ExecutionResult)) :=
+  case2 name tx (fun addr1Nat addr2Nat =>
+    let addr1 := natToAddress addr1Nat
+    let addr2 := natToAddress addr2Nat
+    f addr1 addr2
+  )
+
+private def case3AddressAddressNat (name : String) (tx : Transaction) (f : Address → Address → Nat → ExecutionResult) :
+    (String × (Unit → ExecutionResult)) :=
+  case3 name tx (fun addr1Nat addr2Nat amount =>
+    let addr1 := natToAddress addr1Nat
+    let addr2 := natToAddress addr2Nat
+    f addr1 addr2 amount
   )
 
 private def dispatch (tx : Transaction) (cases : List (String × (Unit → ExecutionResult))) : ExecutionResult :=
@@ -350,6 +396,39 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
     case0 "owner" tx (fun _ => runAddress SimpleToken.getOwner state [] [0] [])
   ]
 
+def interpretERC20 (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  dispatch tx [
+    case2AddressNat "mint" tx (fun toAddr amount =>
+      let recipientKey := (2, toAddr)
+      runUnit (ERC20.mint toAddr amount) state [1] [0] [recipientKey]
+    ),
+    case2AddressNat "transfer" tx (fun toAddr amount =>
+      let senderKey := (2, tx.sender)
+      let recipientKey := (2, toAddr)
+      runUnit (ERC20.transfer toAddr amount) state [] [] [senderKey, recipientKey]
+    ),
+    case2AddressNat "approve" tx (fun spender amount =>
+      let allowanceKey := (3, tx.sender, spender)
+      runUnit (ERC20.approve spender amount) state [] [] [] [allowanceKey]
+    ),
+    case3AddressAddressNat "transferFrom" tx (fun fromAddr toAddr amount =>
+      let senderKey := (2, fromAddr)
+      let recipientKey := (2, toAddr)
+      let allowanceKey := (3, fromAddr, tx.sender)
+      runUnit (ERC20.transferFrom fromAddr toAddr amount) state [] [] [senderKey, recipientKey] [allowanceKey]
+    ),
+    case1Address "balanceOf" tx (fun addr =>
+      let addrKey := (2, addr)
+      runUint (ERC20.balanceOf addr) state [] [] [addrKey]
+    ),
+    case2AddressAddress "allowance" tx (fun ownerAddr spender =>
+      let allowanceKey := (3, ownerAddr, spender)
+      runUint (ERC20.allowanceOf ownerAddr spender) state [] [] [] [allowanceKey]
+    ),
+    case0 "totalSupply" tx (fun _ => runUint ERC20.getTotalSupply state [1] [] []),
+    case0 "owner" tx (fun _ => runAddress ERC20.getOwner state [] [0] [])
+  ]
+
 /-!
 ## Generic Interpreter Interface
 
@@ -365,6 +444,7 @@ def interpret (contractType : ContractType) (tx : Transaction) (state : Contract
   | ContractType.ledger => interpretLedger tx state
   | ContractType.ownedCounter => interpretOwnedCounter tx state
   | ContractType.simpleToken => interpretSimpleToken tx state
+  | ContractType.erc20 => interpretERC20 tx state
 
 /-!
 ## JSON Serialization
@@ -416,12 +496,17 @@ def ExecutionResult.toJSON (r : ExecutionResult) : String :=
     acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"key\":\"" ++ addressToHexString key ++ "\",\"value\":" ++ toString val ++ "}"
   ) "["
   let mappingChangesStr := mappingChangesStr ++ "]"
+  let mapping2ChangesStr := r.mapping2Changes.foldl (fun acc (slot, key1, key2, val) =>
+    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"key1\":\"" ++ addressToHexString key1 ++ "\",\"key2\":\"" ++ addressToHexString key2 ++ "\",\"value\":" ++ toString val ++ "}"
+  ) "["
+  let mapping2ChangesStr := mapping2ChangesStr ++ "]"
   "{\"success\":" ++ successStr
     ++ ",\"returnValue\":" ++ returnStr
     ++ ",\"revertReason\":" ++ revertStr
     ++ ",\"storageChanges\":" ++ changesStr
     ++ ",\"storageAddrChanges\":" ++ addrChangesStr
     ++ ",\"mappingChanges\":" ++ mappingChangesStr
+    ++ ",\"mapping2Changes\":" ++ mapping2ChangesStr
     ++ "}"
 
 end Compiler.Interpreter
@@ -655,6 +740,7 @@ def main (args : List String) : IO Unit := do
       | "OwnedCounter" => some ContractType.ownedCounter
       | "SimpleToken" => some ContractType.simpleToken
       | "SafeCounter" => some ContractType.safeCounter
+      | "ERC20" => some ContractType.erc20
       | _ => none
     match contractTypeEnum? with
     | some contractTypeEnum =>
@@ -662,7 +748,7 @@ def main (args : List String) : IO Unit := do
       IO.println result.toJSON
     | none =>
       throw <| IO.userError
-        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter"
+        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20"
   | _ =>
     IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...] [value=...] [timestamp=...]"
     IO.println "Example: difftest-interpreter SimpleStorage store 0xAlice 42"

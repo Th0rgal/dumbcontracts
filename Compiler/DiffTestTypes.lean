@@ -38,6 +38,7 @@ inductive ContractType
   | ownedCounter
   | simpleToken
   | safeCounter
+  | erc20
   deriving Repr, DecidableEq
 
 end Compiler.DiffTestTypes

@@ -1030,10 +1030,10 @@ at any append position once the strict prefix is already known to lower successf
 
 /-- A singleton selected ID fails closed to any explicitly established
 parse-stage error through the centralized helper boundary. -/
-@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_lower_error
     (raw : String)
     (err : String)
-    (hParse : parseSupportedEDSLContract raw = .error err) :
+    (hLower : lowerFromParsedSupportedContract raw = .error err) :
     lowerRequestedSupportedEDSLContracts [raw] = .error err := by
   have hNoDup : findDuplicateRawContract? [] [raw] = none := by
     simp [findDuplicateRawContract?]
@@ -1041,9 +1041,18 @@ parse-stage error through the centralized helper boundary. -/
     simp
   apply lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error
     [raw] err hNoDup hNonEmpty
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_eq_error_of_parse_error raw err hParse]
+  rw [List.mapM_cons, hLower]
   rfl
+
+/-- A singleton selected ID fails closed to any explicitly established
+parse-stage error through the centralized helper boundary. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error
+    (raw : String)
+    (err : String)
+    (hParse : parseSupportedEDSLContract raw = .error err) :
+    lowerRequestedSupportedEDSLContracts [raw] = .error err := by
+  apply lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_lower_error raw err
+  simpa using lowerFromParsedSupportedContract_eq_error_of_parse_error raw err hParse
 
 /-- Non-empty selected IDs fail closed to any explicitly established parse-stage
 error when the head selected ID fails parsing. -/
@@ -1279,10 +1288,10 @@ when the head selected ID is unknown. -/
     (hParse : parseSupportedEDSLContract? raw = none) :
     lowerRequestedSupportedEDSLContracts [raw] =
       .error (unsupportedEDSLContractMessage raw) := by
-  have hNoDup : findDuplicateRawContract? [] [raw] = none := by
-    simp [findDuplicateRawContract?]
-  simpa using
-    lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error raw [] hNoDup hParse
+  apply lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_lower_error
+    raw
+    (unsupportedEDSLContractMessage raw)
+  simpa using lowerFromParsedSupportedContract_unknown_eq_error raw hParse
 
 /-- Non-empty selected IDs fail closed with the unsupported-ID diagnostic
 when a tail selected ID is unknown after a known-valid head ID. -/

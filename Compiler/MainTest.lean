@@ -53,9 +53,8 @@ private def fileExists (path : String) : IO Bool := do
   catch _ =>
     pure false
 
-private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering.SupportedEDSLContract) : String :=
-  let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
-  s!"{outDir}/{spec.name}.yul"
+private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering.EDSLContract) : String :=
+  s!"{outDir}/{contract.name}.yul"
 
 #eval! do
   expectErrorContains "missing --link value" ["--link"] "Missing value for --link"
@@ -78,7 +77,7 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     ["--input", "edsl", "--edsl-contract", "does-not-exist"]
     (fun msg =>
       contains msg
-        s!"(supported: {String.intercalate ", " Compiler.Lowering.supportedEDSLContractNames})")
+        s!"(supported: {String.intercalate ", " Compiler.Lowering.edslContractIds})")
     "full ordered supported --edsl-contract list in diagnostic"
   expectErrorContains
     "duplicate --edsl-contract value"
@@ -88,17 +87,17 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
   let edslOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-out"
   IO.FS.createDirAll edslOutDir
   main ["--input", "edsl", "--output", edslOutDir]
-  let allSupportedArtifactsPresent ←
-    Compiler.Lowering.supportedEDSLContracts.allM (fun contract => fileExists (contractArtifactPath edslOutDir contract))
-  expectTrue "edsl input mode compiles every supported subset artifact" allSupportedArtifactsPresent
+  let allArtifactsPresent ←
+    Compiler.Lowering.edslContracts.allM (fun contract => fileExists (contractArtifactPath edslOutDir contract))
+  expectTrue "edsl input mode compiles every generalized EDSL artifact" allArtifactsPresent
   let singleContractOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-single-contract-out"
   IO.FS.createDirAll singleContractOutDir
   main ["--input", "edsl", "--edsl-contract", "counter", "--output", singleContractOutDir]
   let selectedCounterArtifact ← fileExists s!"{singleContractOutDir}/Counter.yul"
   expectTrue "edsl input mode compiles explicitly selected contract" selectedCounterArtifact
   let nonSelectedContracts :=
-    Compiler.Lowering.supportedEDSLContracts.filter
-      (fun contract => contract != Compiler.Lowering.SupportedEDSLContract.counter)
+    Compiler.Lowering.edslContracts.filter
+      (fun contract => Compiler.Lowering.edslContractId contract != "counter")
   let nonSelectedArtifactFlags ←
     nonSelectedContracts.mapM (fun contract => fileExists (contractArtifactPath singleContractOutDir contract))
   let nonSelectedArtifactsAbsent := nonSelectedArtifactFlags.all (fun isPresent => !isPresent)
@@ -149,49 +148,32 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     (match Compiler.Lowering.lowerModelPath Compiler.Specs.simpleStorageSpec with
     | .ok lowered => lowered.name == Compiler.Specs.simpleStorageSpec.name
     | .error _ => false)
-  let unsupportedMsg :=
-    match Compiler.Lowering.lowerFromEDSLSubset (.unsupported "(test unsupported feature)") with
-    | .ok _ => ""
-    | .error err => err.message
-  expectTrue "explicit unsupported EDSL subset input returns deterministic diagnostic"
-    (contains unsupportedMsg "test unsupported feature")
-  expectTrue "unsupported EDSL subset diagnostic keeps curated-boundary guidance"
-    (contains unsupportedMsg "--edsl-contract")
-  let supportedNames := Compiler.Lowering.supportedEDSLContractNames
-  expectTrue "supported --edsl-contract names are unique"
-    (supportedNames.eraseDups.length == supportedNames.length)
+  let edslIds := Compiler.Lowering.edslContractIds
+  expectTrue "edsl-contract ids are unique"
+    (edslIds.eraseDups.length == edslIds.length)
   let parserRoundtripUnique :=
-    Compiler.Lowering.supportedEDSLContracts.all (fun requested =>
-      match Compiler.Lowering.parseSupportedEDSLContract? (Compiler.Lowering.supportedEDSLContractName requested) with
-      | some parsed => parsed == requested
+    Compiler.Lowering.edslContracts.all (fun requested =>
+      match Compiler.Lowering.parseEDSLContract? (Compiler.Lowering.edslContractId requested) with
+      | some parsed => parsed.name == requested.name
       | none => false)
-  expectTrue "supported --edsl-contract parser roundtrip is unique" parserRoundtripUnique
-  expectTrue "parsed supported --edsl-contract lowers to pinned target"
-    (match Compiler.Lowering.lowerFromParsedSupportedContract "counter" with
-    | .ok lowered => lowered.name == "Counter"
+  expectTrue "edsl-contract parser roundtrip is unique" parserRoundtripUnique
+  expectTrue "parsed --edsl-contract lowers through generalized helper"
+    (match Compiler.Lowering.lowerRequestedEDSLContracts ["counter"] with
+    | .ok lowered => lowered.length == 1 && (lowered.headD Compiler.Specs.simpleStorageSpec).name == "Counter"
     | .error _ => false)
-  let allSupportedParsedAndLowered :=
-    Compiler.Lowering.supportedEDSLContracts.all (fun contract =>
-      match Compiler.Lowering.lowerFromParsedSupportedContract
-          (Compiler.Lowering.supportedEDSLContractName contract) with
-      | .ok lowered => lowered.name == (Compiler.Lowering.lowerSupportedEDSLContract contract).name
-      | .error _ => false)
-  expectTrue "all canonical supported --edsl-contract IDs lower via centralized helper"
-    allSupportedParsedAndLowered
-  expectTrue "selected/default EDSL helper lowers full canonical subset by default"
-    (match Compiler.Lowering.lowerRequestedSupportedEDSLContracts [] with
+  expectTrue "selected/default EDSL helper lowers full canonical set by default"
+    (match Compiler.Lowering.lowerRequestedEDSLContracts [] with
     | .ok lowered =>
-        lowered.length == Compiler.Lowering.supportedEDSLContracts.length &&
-        (Compiler.Lowering.supportedEDSLContracts.zip lowered).all
-          (fun (contract, loweredContract) =>
-            loweredContract.name == (Compiler.Lowering.lowerSupportedEDSLContract contract).name)
+        lowered.length == Compiler.Lowering.edslContracts.length &&
+        (Compiler.Lowering.edslContracts.zip lowered).all
+          (fun (contract, loweredContract) => loweredContract.name == contract.name)
     | .error _ => false)
   expectTrue "selected/default EDSL helper fails closed on duplicate IDs"
-    (match Compiler.Lowering.lowerRequestedSupportedEDSLContracts ["counter", "counter"] with
+    (match Compiler.Lowering.lowerRequestedEDSLContracts ["counter", "counter"] with
     | .ok _ => false
     | .error msg => contains msg "Duplicate --edsl-contract value: counter")
   expectTrue "unsupported --edsl-contract helper keeps deterministic diagnostic"
-    (match Compiler.Lowering.lowerFromParsedSupportedContract "does-not-exist" with
+    (match Compiler.Lowering.lowerRequestedEDSLContracts ["does-not-exist"] with
     | .ok _ => false
     | .error msg => contains msg "Unsupported --edsl-contract: does-not-exist")
 

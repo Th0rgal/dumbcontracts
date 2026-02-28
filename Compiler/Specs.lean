@@ -6,6 +6,7 @@
 -/
 
 import Compiler.CompilationModel
+import Verity.Examples.MacroContracts
 
 namespace Compiler.Specs
 
@@ -451,13 +452,15 @@ matching selector.
 -/
 
 def allSpecs : List CompilationModel := [
-  simpleStorageSpec,
-  counterSpec,
-  ownedSpec,
-  ledgerSpec,
-  ownedCounterSpec,
-  simpleTokenSpec,
-  safeCounterSpec
+  -- Authoritative compiler input now comes from macro-generated contracts.
+  Verity.Examples.MacroContracts.SimpleStorage.spec,
+  Verity.Examples.MacroContracts.Counter.spec,
+  Verity.Examples.MacroContracts.Owned.spec,
+  Verity.Examples.MacroContracts.Ledger.spec,
+  Verity.Examples.MacroContracts.OwnedCounter.spec,
+  Verity.Examples.MacroContracts.SimpleToken.spec,
+  Verity.Examples.MacroContracts.SafeCounter.spec,
+  Verity.Examples.MacroContracts.ERC20.spec
 ]
 
 end Compiler.Specs

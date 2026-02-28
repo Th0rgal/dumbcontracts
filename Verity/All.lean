@@ -16,6 +16,7 @@ import Verity.Core.Uint256
 import Verity.Core.FiniteSet
 import Verity.EVM.Uint256
 import Verity.Stdlib.Math
+import Verity.Macro
 
 -- Common specifications
 import Verity.Specs.Common
@@ -40,6 +41,7 @@ import Verity.Examples.ERC20
 import Verity.Examples.ERC721
 import Verity.Examples.ReentrancyExample
 import Verity.Examples.CryptoHash
+import Verity.Examples.MacroContracts
 
 -- SimpleStorage: Spec, Invariants, Proofs
 import Verity.Specs.SimpleStorage.Spec

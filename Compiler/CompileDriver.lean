@@ -43,7 +43,7 @@ private def resolveSpecsForEDSLInput
   if !libraryPaths.isEmpty then
     .error Compiler.Lowering.edslInputLinkedLibrariesUnsupportedMessage
   else
-    Compiler.Lowering.lowerRequestedSupportedEDSLContracts rawContracts
+    Compiler.Lowering.lowerRequestedEDSLContracts rawContracts
 
 private def writeContract
     (outDir : String)

@@ -39,34 +39,32 @@ private def expectFileEquals (label : String) (lhs rhs : String) : IO Unit := do
     throw (IO.userError s!"✗ {label}: files differ\nlhs: {lhs}\nrhs: {rhs}")
   IO.println s!"✓ {label}"
 
-private def expectSupportedSubsetParity
+private def expectEDSLParity
     (modelOutDir edslOutDir modelAbiDir edslAbiDir : String) : IO Unit := do
-  for contract in Compiler.Lowering.supportedEDSLContracts do
-    let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
+  for contract in Compiler.Lowering.edslContracts do
     expectFileEquals
-      s!"supported subset Yul parity: {spec.name}"
-      s!"{modelOutDir}/{spec.name}.yul"
-      s!"{edslOutDir}/{spec.name}.yul"
+      s!"EDSL Yul parity: {contract.name}"
+      s!"{modelOutDir}/{contract.name}.yul"
+      s!"{edslOutDir}/{contract.name}.yul"
     expectFileEquals
-      s!"supported subset ABI parity: {spec.name}"
-      s!"{modelAbiDir}/{spec.name}.abi.json"
-      s!"{edslAbiDir}/{spec.name}.abi.json"
+      s!"EDSL ABI parity: {contract.name}"
+      s!"{modelAbiDir}/{contract.name}.abi.json"
+      s!"{edslAbiDir}/{contract.name}.abi.json"
 
 private def expectOnlySelectedArtifacts
     (label : String)
-    (selected : List Compiler.Lowering.SupportedEDSLContract)
+    (selectedIds : List String)
     (outDir abiDir : String) : IO Unit := do
-  for contract in Compiler.Lowering.supportedEDSLContracts do
-    let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
-    let shouldExist := selected.contains contract
-    let yulExists ← fileExists s!"{outDir}/{spec.name}.yul"
-    let abiExists ← fileExists s!"{abiDir}/{spec.name}.abi.json"
+  for contract in Compiler.Lowering.edslContracts do
+    let shouldExist := selectedIds.contains (Compiler.Lowering.edslContractId contract)
+    let yulExists ← fileExists s!"{outDir}/{contract.name}.yul"
+    let abiExists ← fileExists s!"{abiDir}/{contract.name}.abi.json"
     if yulExists != shouldExist then
       throw (IO.userError
-        s!"✗ {label}: unexpected Yul artifact presence for {spec.name} (expected={shouldExist}, found={yulExists})")
+        s!"✗ {label}: unexpected Yul artifact presence for {contract.name} (expected={shouldExist}, found={yulExists})")
     if abiExists != shouldExist then
       throw (IO.userError
-        s!"✗ {label}: unexpected ABI artifact presence for {spec.name} (expected={shouldExist}, found={abiExists})")
+        s!"✗ {label}: unexpected ABI artifact presence for {contract.name} (expected={shouldExist}, found={abiExists})")
   IO.println s!"✓ {label}"
 
 #eval! (do
@@ -135,38 +133,36 @@ private def expectOnlySelectedArtifacts
     s!"{edslAbiDir}/SimpleStorage.abi.json"
 
   compileAllFromEDSLWithOptions edslOutDir false [] [] {} none (some edslAbiDir)
-  expectSupportedSubsetParity modelOutDir edslOutDir modelAbiDir edslAbiDir
-  let allSupportedNames :=
-    Compiler.Lowering.supportedEDSLContracts.map Compiler.Lowering.supportedEDSLContractName
+  expectEDSLParity modelOutDir edslOutDir modelAbiDir edslAbiDir
+  let allEDSLNames := Compiler.Lowering.edslContractIds
   compileAllFromEDSLWithOptions
     explicitAllOutDir
     false
     []
-    allSupportedNames
+    allEDSLNames
     {}
     none
     (some explicitAllAbiDir)
-  expectSupportedSubsetParity modelOutDir explicitAllOutDir modelAbiDir explicitAllAbiDir
-  let allSupportedNamesReversed := allSupportedNames.reverse
+  expectEDSLParity modelOutDir explicitAllOutDir modelAbiDir explicitAllAbiDir
+  let allEDSLNamesReversed := allEDSLNames.reverse
   compileAllFromEDSLWithOptions
     explicitAllReversedOutDir
     false
     []
-    allSupportedNamesReversed
+    allEDSLNamesReversed
     {}
     none
     (some explicitAllReversedAbiDir)
-  expectSupportedSubsetParity modelOutDir explicitAllReversedOutDir modelAbiDir explicitAllReversedAbiDir
-  for contract in Compiler.Lowering.supportedEDSLContracts do
-    let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
+  expectEDSLParity modelOutDir explicitAllReversedOutDir modelAbiDir explicitAllReversedAbiDir
+  for contract in Compiler.Lowering.edslContracts do
     expectFileEquals
-      s!"default-vs-explicit-full order-invariant Yul: {spec.name}"
-      s!"{edslOutDir}/{spec.name}.yul"
-      s!"{explicitAllReversedOutDir}/{spec.name}.yul"
+      s!"default-vs-explicit-full order-invariant Yul: {contract.name}"
+      s!"{edslOutDir}/{contract.name}.yul"
+      s!"{explicitAllReversedOutDir}/{contract.name}.yul"
     expectFileEquals
-      s!"default-vs-explicit-full order-invariant ABI: {spec.name}"
-      s!"{edslAbiDir}/{spec.name}.abi.json"
-      s!"{explicitAllReversedAbiDir}/{spec.name}.abi.json"
+      s!"default-vs-explicit-full order-invariant ABI: {contract.name}"
+      s!"{edslAbiDir}/{contract.name}.abi.json"
+      s!"{explicitAllReversedAbiDir}/{contract.name}.abi.json"
 
   compileAllFromEDSLWithOptions
     selectedOutDir
@@ -178,7 +174,7 @@ private def expectOnlySelectedArtifacts
     (some selectedAbiDir)
   expectOnlySelectedArtifacts
     "edsl multi-select emits only requested contract artifacts"
-    [Compiler.Lowering.SupportedEDSLContract.simpleStorage, Compiler.Lowering.SupportedEDSLContract.counter]
+    ["simple-storage", "counter"]
     selectedOutDir
     selectedAbiDir
   compileAllFromEDSLWithOptions
@@ -191,7 +187,7 @@ private def expectOnlySelectedArtifacts
     (some reversedSelectedAbiDir)
   expectOnlySelectedArtifacts
     "edsl multi-select emits only requested contract artifacts (reversed arg order)"
-    [Compiler.Lowering.SupportedEDSLContract.simpleStorage, Compiler.Lowering.SupportedEDSLContract.counter]
+    ["simple-storage", "counter"]
     reversedSelectedOutDir
     reversedSelectedAbiDir
   expectFileEquals

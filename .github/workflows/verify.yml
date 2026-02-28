@@ -154,6 +154,9 @@ jobs:
       - name: Check storage layout consistency
         run: python3 scripts/check_storage_layout.py
 
+      - name: Check manual-spec quarantine boundary
+        run: python3 scripts/check_manual_spec_quarantine.py
+
       - name: Check Lean hygiene
         run: python3 scripts/check_lean_hygiene.py
 

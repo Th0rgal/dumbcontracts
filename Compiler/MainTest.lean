@@ -1,7 +1,6 @@
 import Compiler.Main
 import Compiler.Linker
 import Compiler.Lowering.FromEDSL
-import Compiler.Specs
 
 namespace Compiler.MainTest
 
@@ -139,10 +138,16 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     rewriteBundleId := "missing-rewrite-bundle" }
   expectTrue "parity pack proof composition rejects unknown rewrite bundle IDs"
     (!missingBundlePack.proofCompositionValid)
-  expectTrue "lowering boundary path succeeds for canonical spec artifacts"
-    (match Compiler.Lowering.lowerModelPath Compiler.Specs.simpleStorageSpec with
-    | .ok lowered => lowered.name == Compiler.Specs.simpleStorageSpec.name
-    | .error _ => false)
+  let selectedCounterContract :=
+    Compiler.Lowering.edslContracts.find?
+      (fun contract => Compiler.Lowering.edslContractId contract == "counter")
+  expectTrue "selected EDSL contract lowers successfully through boundary"
+    (match selectedCounterContract with
+    | some contract =>
+        match Compiler.Lowering.lowerModelPath contract with
+        | .ok lowered => lowered.name == contract.name
+        | .error _ => false
+    | none => false)
   let edslIds := Compiler.Lowering.edslContractIds
   expectTrue "edsl-contract ids are unique"
     (edslIds.eraseDups.length == edslIds.length)
@@ -154,7 +159,8 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
   expectTrue "edsl-contract parser roundtrip is unique" parserRoundtripUnique
   expectTrue "parsed --edsl-contract lowers through generalized helper"
     (match Compiler.Lowering.lowerRequestedEDSLContracts ["counter"] with
-    | .ok lowered => lowered.length == 1 && (lowered.headD Compiler.Specs.simpleStorageSpec).name == "Counter"
+    | .ok [lowered] => lowered.name == "Counter"
+    | .ok _ => false
     | .error _ => false)
   expectTrue "selected/default EDSL helper lowers full canonical set by default"
     (match Compiler.Lowering.lowerRequestedEDSLContracts [] with

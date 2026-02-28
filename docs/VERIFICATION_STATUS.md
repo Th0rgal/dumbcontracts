@@ -177,7 +177,7 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 | ERC20 | 19 | ✅ Complete | `Verity/Proofs/ERC20/` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
-| **Total** | **291** | **✅ 100%** | — |
+| **Total** | **272** | **✅ 100%** | — |
 
 > **Note**: Stdlib (159 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (431 total properties).
 

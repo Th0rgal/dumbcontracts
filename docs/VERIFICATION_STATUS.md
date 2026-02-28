@@ -330,7 +330,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Differential Testing ✅ **PRODUCTION READY**
 
-**Status**: Scaled to 80,000+ tests (10,000 per contract × 7 contracts) with 8-shard parallelization
+**Status**: Scaled to 80,000+ tests (10,000 per contract × 8 contracts) with 8-shard parallelization
 
 ### Features
 
@@ -341,8 +341,9 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Coverage
 
-- 7 original contracts have comprehensive differential test suites (10,000 tests each)
-- ERC20 and ERC721: **not yet covered** by differential testing (random generation and spec interpretation pending)
+- 8 contracts have comprehensive differential test suites (10,000 tests each): SimpleStorage, Counter, SafeCounter, Owned, Ledger, OwnedCounter, SimpleToken, ERC20
+- ERC20 includes double-mapping allowance tracking via `map2=` CLI support
+- ERC721: **not yet covered** by differential testing (random generation and spec interpretation pending)
 - Property tests extracted from theorems provide additional coverage
 - Edge cases: overflow, underflow, zero values, max values, access control
 
@@ -490,4 +491,4 @@ See `scripts/README.md` for:
 ---
 
 **Last Updated**: 2026-02-28
-**Status Summary**: Layer 2 IR preservation complete for 7 contracts, compilation-success-only for ERC20/ERC721. Layers 1 and 3 complete (CompilationModel path). ERC20 in supported EDSL subset; ERC721 has CompilationModel spec (not yet in EDSL subset). Difftest coverage limited to 7 original contracts.
+**Status Summary**: Layer 2 IR preservation complete for 7 contracts, compilation-success-only for ERC20/ERC721. Layers 1 and 3 complete (CompilationModel path). ERC20 in supported EDSL subset with full difftest coverage; ERC721 has CompilationModel spec (not yet in EDSL subset or difftest).

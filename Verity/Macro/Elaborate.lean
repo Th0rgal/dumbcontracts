@@ -13,7 +13,7 @@ set_option hygiene false
 
 @[command_elab verityContractCmd]
 def elabVerityContract : CommandElab := fun stx => do
-  let (contractName, fields, functions) ← parseContractSyntax stx
+  let (contractName, fields, ctor, functions) ← parseContractSyntax stx
 
   elabCommand (← `(namespace $contractName))
 
@@ -26,7 +26,7 @@ def elabVerityContract : CommandElab := fun stx => do
       elabCommand cmd
     elabCommand (← mkBridgeCommand fn.ident)
 
-  elabCommand (← mkSpecCommandPublic (toString contractName.getId) fields functions)
+  elabCommand (← mkSpecCommandPublic (toString contractName.getId) fields ctor functions)
 
   elabCommand (← `(end $contractName))
 

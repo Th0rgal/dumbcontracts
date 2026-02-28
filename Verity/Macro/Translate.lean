@@ -45,6 +45,10 @@ structure FunctionDecl where
   returnTy : ValueType
   body : Term
 
+structure ConstructorDecl where
+  params : Array ParamDecl
+  body : Term
+
 private def strTerm (s : String) : Term := ⟨Syntax.mkStrLit s⟩
 private def natTerm (n : Nat) : Term := ⟨Syntax.mkNumLit (toString n)⟩
 
@@ -134,6 +138,15 @@ private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
         body := body
       }
   | _ => throwErrorAt stx "invalid function declaration"
+
+private def parseConstructor (stx : Syntax) : CommandElabM ConstructorDecl := do
+  match stx with
+  | `(verityConstructor| constructor ($[$params:verityParam],*) := $body:term) =>
+      pure {
+        params := ← params.mapM parseParam
+        body := body
+      }
+  | _ => throwErrorAt stx "invalid constructor declaration"
 
 private partial def stripParens (stx : Term) : Term :=
   match stx with
@@ -372,6 +385,14 @@ private def translateBodyToStmtTerms
       pure stmts
   | _ => throwErrorAt fn.body "function body must be a do block"
 
+private def translateConstructorBodyToStmtTerms
+    (fields : Array StorageFieldDecl)
+    (ctor : ConstructorDecl) : CommandElabM (Array Term) := do
+  match ctor.body with
+  | `(term| do $[$elems:doElem]*) =>
+      pure (← (translateDoElems fields ctor.params #[] elems)).1
+  | _ => throwErrorAt ctor.body "constructor body must be a do block"
+
 def mkSuffixedIdent (base : Ident) (suffix : String) : CommandElabM Ident :=
   let rec appendSuffix : Name → Name
     | .anonymous => .str .anonymous suffix
@@ -438,20 +459,38 @@ private def mkFunctionCommands (fields : Array StorageFieldDecl) (fn : FunctionD
 private def mkSpecCommand
     (contractName : String)
     (fields : Array StorageFieldDecl)
+    (ctor : Option ConstructorDecl)
     (functions : Array FunctionDecl) : CommandElabM Cmd := do
   let fieldTerms ← fields.mapM mkModelFieldTerm
+  let constructorTerm ←
+    match ctor with
+    | none => `(none)
+    | some ctor =>
+        let ctorParams ← mkModelParamsTerm ctor.params
+        let ctorBodyTerms ← translateConstructorBodyToStmtTerms fields ctor
+        `(some {
+          params := $ctorParams
+          body := [ $[$ctorBodyTerms],* ]
+        })
   let functionModelIds ← functions.mapM fun fn => mkSuffixedIdent fn.ident "_model"
   `(command| def spec : Compiler.CompilationModel.CompilationModel := {
     name := $(strTerm contractName)
     fields := [ $[$fieldTerms],* ]
-    constructor := none
+    «constructor» := $constructorTerm
     functions := [ $[$functionModelIds],* ]
   })
 
-def parseContractSyntax (stx : Syntax) : CommandElabM (Ident × Array StorageFieldDecl × Array FunctionDecl) := do
+def parseContractSyntax
+    (stx : Syntax)
+    : CommandElabM (Ident × Array StorageFieldDecl × Option ConstructorDecl × Array FunctionDecl) := do
   match stx with
-  | `(command| verity_contract $contractName:ident where storage $[$storageFields:verityStorageField]* $[$functions:verityFunction]*) =>
-      pure (contractName, (← storageFields.mapM parseStorageField), (← functions.mapM parseFunction))
+  | `(command| verity_contract $contractName:ident where storage $[$storageFields:verityStorageField]* $[$ctor:verityConstructor]? $[$functions:verityFunction]*) =>
+      pure
+        ( contractName
+        , (← storageFields.mapM parseStorageField)
+        , (← ctor.mapM parseConstructor)
+        , (← functions.mapM parseFunction)
+        )
   | _ => throwErrorAt stx "invalid verity_contract declaration"
 
 def mkStorageDefCommandPublic (field : StorageFieldDecl) : CommandElabM Cmd :=
@@ -465,7 +504,8 @@ def mkFunctionCommandsPublic
 def mkSpecCommandPublic
     (contractName : String)
     (fields : Array StorageFieldDecl)
+    (ctor : Option ConstructorDecl)
     (functions : Array FunctionDecl) : CommandElabM Cmd :=
-  mkSpecCommand contractName fields functions
+  mkSpecCommand contractName fields ctor functions
 
 end Verity.Macro

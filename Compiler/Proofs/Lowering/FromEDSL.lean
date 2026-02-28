@@ -1133,6 +1133,31 @@ when every strictly preceding selected ID is already known to lower successfully
   rw [lowerRequestedSupportedEDSLContracts_default_eq]
 
 /-- Duplicate-free selected IDs lower to an ordered append decomposition when
+the prefix, middle, and suffix map traversals are already known to lower
+successfully. -/
+@[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_lower_ok
+    (rawPrefix : List String)
+    (rawMid : String)
+    (rawSuffix : List String)
+    (loweredPrefixContracts : List Compiler.CompilationModel.CompilationModel)
+    (loweredMidContract : Compiler.CompilationModel.CompilationModel)
+    (loweredSuffixContracts : List Compiler.CompilationModel.CompilationModel)
+    (hNoDup : findDuplicateRawContract? [] (rawPrefix ++ rawMid :: rawSuffix) = none)
+    (hPrefixOk : rawPrefix.mapM lowerFromParsedSupportedContract = .ok loweredPrefixContracts)
+    (hLowerMid : lowerFromParsedSupportedContract rawMid = .ok loweredMidContract)
+    (hSuffixOk : rawSuffix.mapM lowerFromParsedSupportedContract = .ok loweredSuffixContracts) :
+    lowerRequestedSupportedEDSLContracts (rawPrefix ++ rawMid :: rawSuffix) =
+      .ok (loweredPrefixContracts ++ loweredMidContract :: loweredSuffixContracts) := by
+  have hNonEmpty : (rawPrefix ++ rawMid :: rawSuffix) ≠ [] := by simp
+  rw [lowerRequestedSupportedEDSLContracts_selected_eq
+      (rawPrefix ++ rawMid :: rawSuffix) hNoDup hNonEmpty]
+  rw [List.mapM_append, hPrefixOk]
+  rw [List.mapM_cons]
+  rw [hLowerMid]
+  rw [hSuffixOk]
+  rfl
+
+/-- Duplicate-free selected IDs lower to an ordered append decomposition when
 the prefix and suffix map traversals are already known to lower successfully and
 the middle selected ID parses to a supported contract. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_split_ok
@@ -1150,14 +1175,18 @@ the middle selected ID parses to a supported contract. -/
       .ok
         (loweredPrefixContracts ++
           lowerSupportedEDSLContract midContract :: loweredSuffixContracts) := by
-  have hNonEmpty : (rawPrefix ++ rawMid :: rawSuffix) ≠ [] := by simp
-  rw [lowerRequestedSupportedEDSLContracts_selected_eq
-      (rawPrefix ++ rawMid :: rawSuffix) hNoDup hNonEmpty]
-  rw [List.mapM_append, hPrefixOk]
-  rw [List.mapM_cons]
-  rw [lowerFromParsedSupportedContract_eq_ok rawMid midContract hParseMid]
-  rw [hSuffixOk]
-  rfl
+  apply lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_lower_ok
+      rawPrefix
+      rawMid
+      rawSuffix
+      loweredPrefixContracts
+      (lowerSupportedEDSLContract midContract)
+      loweredSuffixContracts
+      hNoDup
+      hPrefixOk
+      ?_
+      hSuffixOk
+  exact lowerFromParsedSupportedContract_eq_ok rawMid midContract hParseMid
 
 /-- Duplicate-free selected IDs with a known-good head ID lower to the expected
 ordered `head :: tail` list once the tail map traversal is already known to lower

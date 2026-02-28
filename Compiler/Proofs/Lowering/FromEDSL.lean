@@ -964,6 +964,29 @@ theorem lower_safeCounter_decrement_reverts_at_zero
   rw [List.mapM_cons, hLower]
   rfl
 
+/-- A two-ID selected map traversal reflects any established successful lowerings. -/
+@[simp] theorem lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok
+    (rawA rawB : String)
+    (loweredA loweredB : Compiler.CompilationModel.CompilationModel)
+    (hLowerA : lowerFromParsedSupportedContract rawA = .ok loweredA)
+    (hLowerB : lowerFromParsedSupportedContract rawB = .ok loweredB) :
+    [rawA, rawB].mapM lowerFromParsedSupportedContract = .ok [loweredA, loweredB] := by
+  rw [List.mapM_cons, hLowerA]
+  rw [List.mapM_cons, hLowerB]
+  rfl
+
+/-- A two-ID selected map traversal lowers successfully when both IDs parse successfully. -/
+@[simp] theorem lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok
+    (rawA rawB : String)
+    (contractA contractB : SupportedEDSLContract)
+    (hParseA : parseSupportedEDSLContract? rawA = some contractA)
+    (hParseB : parseSupportedEDSLContract? rawB = some contractB) :
+    [rawA, rawB].mapM lowerFromParsedSupportedContract =
+      .ok [lowerSupportedEDSLContract contractA, lowerSupportedEDSLContract contractB] := by
+  apply lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok
+  exact lowerFromParsedSupportedContract_eq_ok rawA contractA hParseA
+  exact lowerFromParsedSupportedContract_eq_ok rawB contractB hParseB
+
 /-- Empty selected-ID input follows the default canonical-name lowering path. -/
 @[simp] theorem lowerRequestedSupportedEDSLContracts_default_eq :
     lowerRequestedSupportedEDSLContracts [] =
@@ -1320,11 +1343,8 @@ successfully. -/
   have hTailOk :
       [rawB, rawC].mapM lowerFromParsedSupportedContract =
         .ok [lowerSupportedEDSLContract contractB, lowerSupportedEDSLContract contractC] := by
-    rw [List.mapM_cons]
-    rw [lowerFromParsedSupportedContract_eq_ok rawB contractB hParseB]
-    rw [List.mapM_cons]
-    rw [lowerFromParsedSupportedContract_eq_ok rawC contractC hParseC]
-    rfl
+    exact lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok
+      rawB rawC contractB contractC hParseB hParseC
   simpa using
     lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok
       rawA

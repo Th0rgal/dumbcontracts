@@ -36,7 +36,9 @@ API boundary (`lowerFromParsedSupportedContract_preserves_interpretSpec`).
 Singleton selected-ID map traversal helper lemmas are also explicit:
 `lowerFromParsedSupportedContract_singleton_eq_ok`,
 `lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,
-`lowerFromParsedSupportedContract_singleton_eq_error`.
+`lowerFromParsedSupportedContract_singleton_eq_error`,
+`lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`,
+`lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`.
 CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via
 `parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, and
 `lowerRequestedSupportedEDSLContracts`.

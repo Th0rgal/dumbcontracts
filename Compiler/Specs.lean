@@ -472,6 +472,190 @@ def erc20Spec : CompilationModel := {
 }
 
 /-!
+## ERC721 Specification (NFT with approvals and operator support)
+
+Mirrors `Verity/Examples/ERC721.lean`. Features:
+- Uint256-keyed mappings (owners, tokenApprovals) via `Expr.mappingUint`
+- Double-mapping operator approvals via `Expr.mapping2`/`Stmt.setMapping2`
+- Conditional self-transfer via `Stmt.ite`
+- Triple-OR authorization check via nested `Expr.logicalOr`
+- Owner-gated minting with sequential token IDs
+-/
+
+/-- Address mask (2^160 - 1), used for word-to-address conversion. -/
+private def addressMask : Nat := 2^160 - 1
+
+def erc721Spec : CompilationModel := {
+  name := "ERC721"
+  fields := [
+    { name := "owner", ty := FieldType.address },
+    { name := "totalSupply", ty := FieldType.uint256 },
+    { name := "nextTokenId", ty := FieldType.uint256 },
+    { name := "balances", ty := FieldType.mappingTyped (.simple .address) },
+    { name := "owners", ty := FieldType.mappingTyped (.simple .uint256) },
+    { name := "tokenApprovals", ty := FieldType.mappingTyped (.simple .uint256) },
+    { name := "operatorApprovals", ty := FieldType.mappingTyped (.nested .address .address) }
+  ]
+  constructor := some {
+    params := [{ name := "initialOwner", ty := ParamType.address }]
+    body := [
+      Stmt.setStorage "owner" (Expr.constructorArg 0),
+      Stmt.setStorage "totalSupply" (Expr.literal 0),
+      Stmt.setStorage "nextTokenId" (Expr.literal 0)
+    ]
+  }
+  functions := [
+    { name := "balanceOf"
+      params := [{ name := "addr", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.mapping "balances" (Expr.param "addr"))
+      ]
+    },
+    { name := "ownerOf"
+      params := [{ name := "tokenId", ty := ParamType.uint256 }]
+      returnType := some FieldType.address
+      body := [
+        Stmt.letVar "ownerWord" (Expr.mappingUint "owners" (Expr.param "tokenId")),
+        Stmt.require (Expr.gt (Expr.localVar "ownerWord") (Expr.literal 0)) "Token does not exist",
+        Stmt.return (Expr.bitAnd (Expr.localVar "ownerWord") (Expr.literal addressMask))
+      ]
+    },
+    { name := "getApproved"
+      params := [{ name := "tokenId", ty := ParamType.uint256 }]
+      returnType := some FieldType.address
+      body := [
+        Stmt.letVar "ownerWord" (Expr.mappingUint "owners" (Expr.param "tokenId")),
+        Stmt.require (Expr.gt (Expr.localVar "ownerWord") (Expr.literal 0)) "Token does not exist",
+        Stmt.letVar "approvedWord" (Expr.mappingUint "tokenApprovals" (Expr.param "tokenId")),
+        Stmt.return (Expr.bitAnd (Expr.localVar "approvedWord") (Expr.literal addressMask))
+      ]
+    },
+    { name := "isApprovedForAll"
+      params := [
+        { name := "ownerAddr", ty := ParamType.address },
+        { name := "operator", ty := ParamType.address }
+      ]
+      returnType := some FieldType.uint256
+      body := [
+        -- Returns non-zero flag as uint256 (0 or 1 equivalent)
+        Stmt.return (Expr.mapping2 "operatorApprovals" (Expr.param "ownerAddr") (Expr.param "operator"))
+      ]
+    },
+    { name := "approve"
+      params := [
+        { name := "approved", ty := ParamType.address },
+        { name := "tokenId", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        -- Inline ownerOf: check token exists
+        Stmt.letVar "ownerWord" (Expr.mappingUint "owners" (Expr.param "tokenId")),
+        Stmt.require (Expr.gt (Expr.localVar "ownerWord") (Expr.literal 0)) "Token does not exist",
+        -- Require caller is token owner
+        Stmt.require (Expr.eq Expr.caller
+          (Expr.bitAnd (Expr.localVar "ownerWord") (Expr.literal addressMask))) "Not token owner",
+        Stmt.setMappingUint "tokenApprovals" (Expr.param "tokenId") (Expr.param "approved"),
+        Stmt.stop
+      ]
+    },
+    { name := "setApprovalForAll"
+      params := [
+        { name := "operator", ty := ParamType.address },
+        { name := "approved", ty := ParamType.bool }
+      ]
+      returnType := none
+      body := [
+        Stmt.setMapping2 "operatorApprovals" Expr.caller (Expr.param "operator") (Expr.param "approved"),
+        Stmt.stop
+      ]
+    },
+    { name := "mint"
+      params := [{ name := "to", ty := ParamType.address }]
+      returnType := some FieldType.uint256
+      body := [
+        requireOwner,
+        Stmt.require (Expr.gt (Expr.param "to") (Expr.literal 0)) "Invalid recipient",
+        Stmt.letVar "tokenId" (Expr.storage "nextTokenId"),
+        -- Check token not already minted
+        Stmt.letVar "currentOwnerWord" (Expr.mappingUint "owners" (Expr.localVar "tokenId")),
+        Stmt.require (Expr.eq (Expr.localVar "currentOwnerWord") (Expr.literal 0)) "Token already minted",
+        -- Update recipient balance
+        Stmt.letVar "recipientBalance" (Expr.mapping "balances" (Expr.param "to")),
+        Stmt.letVar "newRecipientBalance" (Expr.add (Expr.localVar "recipientBalance") (Expr.literal 1)),
+        Stmt.require (Expr.ge (Expr.localVar "newRecipientBalance") (Expr.localVar "recipientBalance")) "Balance overflow",
+        -- Update supply
+        Stmt.letVar "currentSupply" (Expr.storage "totalSupply"),
+        Stmt.letVar "newSupply" (Expr.add (Expr.localVar "currentSupply") (Expr.literal 1)),
+        Stmt.require (Expr.ge (Expr.localVar "newSupply") (Expr.localVar "currentSupply")) "Supply overflow",
+        -- Write storage
+        Stmt.setMappingUint "owners" (Expr.localVar "tokenId") (Expr.param "to"),
+        Stmt.setMapping "balances" (Expr.param "to") (Expr.localVar "newRecipientBalance"),
+        Stmt.setStorage "totalSupply" (Expr.localVar "newSupply"),
+        Stmt.setStorage "nextTokenId" (Expr.add (Expr.localVar "tokenId") (Expr.literal 1)),
+        Stmt.return (Expr.localVar "tokenId")
+      ]
+    },
+    { name := "transferFrom"
+      params := [
+        { name := "from", ty := ParamType.address },
+        { name := "to", ty := ParamType.address },
+        { name := "tokenId", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      body := [
+        Stmt.require (Expr.gt (Expr.param "to") (Expr.literal 0)) "Invalid recipient",
+        -- Inline ownerOf: check token exists
+        Stmt.letVar "ownerWord" (Expr.mappingUint "owners" (Expr.param "tokenId")),
+        Stmt.require (Expr.gt (Expr.localVar "ownerWord") (Expr.literal 0)) "Token does not exist",
+        -- Check from == tokenOwner
+        Stmt.letVar "tokenOwner" (Expr.bitAnd (Expr.localVar "ownerWord") (Expr.literal addressMask)),
+        Stmt.require (Expr.eq (Expr.localVar "tokenOwner") (Expr.param "from")) "From is not owner",
+        -- Authorization: sender == from || approved == sender || operatorApproval != 0
+        Stmt.letVar "approvedWord" (Expr.mappingUint "tokenApprovals" (Expr.param "tokenId")),
+        Stmt.letVar "operatorFlag" (Expr.mapping2 "operatorApprovals" (Expr.param "from") Expr.caller),
+        Stmt.letVar "authorized" (Expr.logicalOr
+          (Expr.logicalOr
+            (Expr.eq Expr.caller (Expr.param "from"))
+            (Expr.eq (Expr.localVar "approvedWord") Expr.caller))
+          (Expr.gt (Expr.localVar "operatorFlag") (Expr.literal 0))),
+        Stmt.require (Expr.localVar "authorized") "Not authorized",
+        -- Conditional balance update
+        Stmt.ite (Expr.eq (Expr.param "from") (Expr.param "to"))
+          []  -- self-transfer: no balance change
+          [-- different recipient: update both balances
+           Stmt.letVar "fromBalance" (Expr.mapping "balances" (Expr.param "from")),
+           Stmt.require (Expr.ge (Expr.localVar "fromBalance") (Expr.literal 1)) "Insufficient balance",
+           Stmt.letVar "toBalance" (Expr.mapping "balances" (Expr.param "to")),
+           Stmt.letVar "newToBalance" (Expr.add (Expr.localVar "toBalance") (Expr.literal 1)),
+           Stmt.require (Expr.ge (Expr.localVar "newToBalance") (Expr.localVar "toBalance")) "Balance overflow",
+           Stmt.setMapping "balances" (Expr.param "from")
+             (Expr.sub (Expr.localVar "fromBalance") (Expr.literal 1)),
+           Stmt.setMapping "balances" (Expr.param "to") (Expr.localVar "newToBalance")],
+        -- Update ownership and clear approval
+        Stmt.setMappingUint "owners" (Expr.param "tokenId") (Expr.param "to"),
+        Stmt.setMappingUint "tokenApprovals" (Expr.param "tokenId") (Expr.literal 0),
+        Stmt.stop
+      ]
+    },
+    { name := "totalSupply"
+      params := []
+      returnType := some FieldType.uint256
+      body := [
+        Stmt.return (Expr.storage "totalSupply")
+      ]
+    },
+    { name := "owner"
+      params := []
+      returnType := some FieldType.address
+      body := [
+        Stmt.return (Expr.storage "owner")
+      ]
+    }
+  ]
+}
+
+/-!
 ## CryptoHash Specification (External Library Linking Demo)
 
 Demonstrates `Expr.externalCall` for linking external Yul libraries at
@@ -600,7 +784,8 @@ def allSpecs : List CompilationModel := [
   ownedCounterSpec,
   simpleTokenSpec,
   safeCounterSpec,
-  erc20Spec
+  erc20Spec,
+  erc721Spec
 ]
 
 end Compiler.Specs

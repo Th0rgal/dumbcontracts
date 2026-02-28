@@ -56,6 +56,8 @@ ALLOWLIST: set[str] = {
     "safeDiv_result_le_numerator",
     # ERC20: 3-line proof inflated by trailing doc comments before `end` scope
     "compile_erc20Spec",
+    # ERC721: same pattern as ERC20
+    "compile_erc721Spec",
 }
 
 # Directories containing proof files to scan.

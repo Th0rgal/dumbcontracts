@@ -1446,6 +1446,19 @@ Per-function correctness theorems will follow the structural induction approach.
     ∃ ir, compile erc20Spec [0x40c10f19, 0xa9059cbb, 0x095ea7b3, 0x23b872dd, 0x70a08231, 0xdd62ed3e, 0x18160ddd, 0x8da5cb5b] = .ok ir :=
   ⟨_, rfl⟩
 
+/-! ## ERC721: Compilation Success
+
+ERC721 exercises uint256-keyed mappings (Expr.mappingUint / Stmt.setMappingUint),
+double-mapping operator approvals (Expr.mapping2 / Stmt.setMapping2),
+conditional self-transfer (Stmt.ite), triple-OR authorization (Expr.logicalOr),
+and word-to-address conversion (Expr.bitAnd with addressMask).
+-/
+
+/-- ERC721 compiles successfully through Layer 2. -/
+@[simp] lemma compile_erc721Spec :
+    ∃ ir, compile erc721Spec [0x70a08231, 0x6352211e, 0x081812fc, 0xe985e9c5, 0x095ea7b3, 0xa22cb465, 0x6a627842, 0x23b872dd, 0x18160ddd, 0x8da5cb5b] = .ok ir :=
+  ⟨_, rfl⟩
+
 /-! ## General Preservation Theorem Template
 
 For any contract, we want to prove:

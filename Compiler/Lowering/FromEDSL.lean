@@ -6,8 +6,7 @@ namespace Compiler.Lowering
 open Compiler.CompilationModel
 
 /-- Explicit core input artifact for the compiler lowering boundary.
-Today this wraps `CompilationModel`; future work can populate it from
-an elaborated contract AST. -/
+Today this wraps `CompilationModel`; the CLI exposes only the EDSL-driven path. -/
 structure ContractCore where
   model : CompilationModel
   deriving Repr
@@ -23,8 +22,7 @@ def LoweringError.message : LoweringError → String
       "Use the generalized EDSL/macro path for compiler input. " ++
       details
 
-/-- Transition helper: embeds today's manual compiler input into the
-lowering boundary. -/
+/-- Helper: embed compiler-facing contract data into the lowering boundary. -/
 def liftModel (model : CompilationModel) : ContractCore :=
   { model := model }
 
@@ -42,7 +40,7 @@ def findDuplicateRawContract? (seen : List String) (remaining : List String) : O
       else
         findDuplicateRawContract? (raw :: seen) rest
 
-/-- Current manual compilation path routed through the lowering boundary. -/
+/-- Lowering path routed through the shared lowering boundary. -/
 def lowerModelPath (model : CompilationModel) : Except LoweringError CompilationModel :=
   .ok (lowerContractCore (liftModel model))
 
@@ -50,7 +48,7 @@ def edslInputReservedMessage : String :=
   LoweringError.message (.unsupported "(pending extended verified EDSL elaboration/lowering)")
 
 def edslInputLinkedLibrariesUnsupportedMessage : String :=
-  "Linked external Yul libraries are not yet supported through --input edsl. " ++
+  "Linked external Yul libraries are not yet supported through the EDSL-only CLI path. " ++
   "External-library specs cannot be compiled through the edsl-only CLI path."
 
 /-! ## Generalized selected-contract lowering (authoritative path)

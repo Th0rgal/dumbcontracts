@@ -11,12 +11,11 @@ Verity uses a single supported compilation path:
 The formal Layer 1/2/3 guarantees apply to this path.
 
 Compiler UX status:
-- `--input model` compiles the full `CompilationModel` set (including linked-library flows).
-- `--input edsl` compiles a curated supported EDSL subset through the same lowering boundary.
-- `--edsl-contract <id>` optionally narrows `--input edsl` to selected supported contracts.
-- linked-library flows remain fail-closed for `--input edsl` and require `--input model`.
-Both modes route through `Compiler.Lowering` helpers, keeping one centralized
-transition point for future automatic EDSL reification.
+- the CLI compiles the canonical EDSL-generated contract set.
+- `--edsl-contract <id>` optionally narrows compilation to selected supported contracts.
+- linked-library flows remain fail-closed on this EDSL-only CLI path.
+Compilation is routed through `Compiler.Lowering` helpers, keeping one centralized
+boundary for generated EDSL artifacts.
 
 ## Verification Chain
 
@@ -139,7 +138,7 @@ High-level semantics can expose intermediate state in a reverted computation mod
 
 ## Security Audit Checklist
 
-1. Confirm deployment uses a supported input path (`--input model` for full model/external-link flows, or the curated `--input edsl` subset path).
+1. Confirm deployment uses the supported EDSL-only CLI path (optionally narrowed with `--edsl-contract`), and treat linked-library flows as out of path.
 2. Review `AXIOMS.md` and ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector checks, Yul compile checks, and storage-layout checks in CI.

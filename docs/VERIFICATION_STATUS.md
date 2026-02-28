@@ -19,12 +19,11 @@ EVM Bytecode
 ```
 
 Compiler UX status:
-- `--input model`: full current compiler path (`CompilationModel` set, including linked-library flows).
-- `--input edsl`: curated supported EDSL subset lowered through the same boundary API.
+- canonical CLI path: compile the EDSL-generated contract set.
 - `--edsl-contract <id>`: optional selector for compiling a subset of supported EDSL contracts.
-- linked-library flows are intentionally fail-closed for `--input edsl` and remain on `--input model`.
-Both modes are routed through `Compiler.Lowering` so model-mode and EDSL-mode
-share one lowering API surface.
+- linked-library flows are intentionally fail-closed on this EDSL-only path.
+Compilation is routed through `Compiler.Lowering` so parsing/lowering diagnostics
+stay centralized.
 `Compiler/Proofs/Lowering/FromEDSL.lean` now includes explicit transition bridge
 theorems that reuse existing Layer-1 EDSL correctness proofs through lowered
 supported inputs:

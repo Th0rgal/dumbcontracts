@@ -100,7 +100,7 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
   expectErrorContains
     "edsl input mode rejects linked-library path"
     ["--link", "examples/external-libs/PoseidonT3.yul", "--output", edslOutDir]
-    "Linked external Yul libraries are not yet supported through --input edsl"
+    "Linked external Yul libraries are not yet supported through the EDSL-only CLI path"
   expectErrorContains "missing --patch-report value" ["--patch-report"] "Missing value for --patch-report"
   expectErrorContains "missing --patch-max-iterations value" ["--patch-max-iterations"] "Missing value for --patch-max-iterations"
   expectErrorContains "missing --backend-profile value" ["--backend-profile"] "Missing value for --backend-profile"
@@ -139,7 +139,7 @@ private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering
     rewriteBundleId := "missing-rewrite-bundle" }
   expectTrue "parity pack proof composition rejects unknown rewrite bundle IDs"
     (!missingBundlePack.proofCompositionValid)
-  expectTrue "manual model path lowers successfully through EDSL boundary"
+  expectTrue "lowering boundary path succeeds for canonical spec artifacts"
     (match Compiler.Lowering.lowerModelPath Compiler.Specs.simpleStorageSpec with
     | .ok lowered => lowered.name == Compiler.Specs.simpleStorageSpec.name
     | .error _ => false)

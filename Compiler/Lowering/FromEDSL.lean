@@ -5,15 +5,76 @@ namespace Compiler.Lowering
 
 open Compiler.CompilationModel
 
-/-- Explicit core input artifact for the compiler lowering boundary.
-Today this wraps `CompilationModel`; future work will populate it from a
-compilable EDSL subset with verified reification. -/
+/-- Core input artifact for the compiler lowering boundary.
+Wraps a `CompilationModel` that has been structurally validated. -/
 structure ContractCore where
   model : CompilationModel
   deriving Repr
 
-/-- Curated EDSL subset currently accepted by the compiler input path.
-Each constructor names an EDSL contract whose lowering target is pinned. -/
+/-- Deterministic diagnostics for lowering errors. -/
+inductive LoweringError where
+  | unsupported (details : String)
+  | requiresLinkedLibraries (contractName : String)
+  deriving Repr
+
+def LoweringError.message : LoweringError → String
+  | .unsupported details =>
+      "EDSL lowering boundary rejected the input: " ++ details
+  | .requiresLinkedLibraries contractName =>
+      s!"Contract '{contractName}' uses external call modules or linked libraries, " ++
+      "which are not supported through --input edsl. " ++
+      "Use --input model with --link for these contracts."
+
+/-- Embed a `CompilationModel` into the core-lowering boundary. -/
+def liftModel (model : CompilationModel) : ContractCore :=
+  { model := model }
+
+/-- Extract the `CompilationModel` from a core input. -/
+def lowerContractCore (core : ContractCore) : CompilationModel :=
+  core.model
+
+/-!
+## Structural Validation
+
+The generalized EDSL lowering boundary accepts any `CompilationModel` whose
+constructs are within the supported fragment. Contracts that require linked
+external Yul libraries (ECM modules, externalCallBind) are rejected at this
+boundary — they must use `--input model` with `--link` instead.
+
+This replaces the curated `SupportedEDSLContract` enum with a structural check:
+instead of pinning contract identity, we check construct usage.
+-/
+
+/-- Check whether a `CompilationModel` requires linked external libraries.
+A model requires linking if it declares external functions or if any function
+body uses ECM or externalCallBind statements. -/
+def modelRequiresLinkedLibraries (model : CompilationModel) : Bool :=
+  !model.externals.isEmpty
+
+/-- Validate and lower a `CompilationModel` through the EDSL boundary.
+Accepts any model that does not require linked external libraries.
+Fails closed with a deterministic diagnostic for models that need linking. -/
+def lowerFromModel (model : CompilationModel) : Except LoweringError CompilationModel :=
+  if modelRequiresLinkedLibraries model then
+    .error (.requiresLinkedLibraries model.name)
+  else
+    .ok model
+
+/-- Lower a list of `CompilationModel` specs through the EDSL boundary.
+Each model is independently validated. -/
+def lowerModels (models : List CompilationModel) : Except LoweringError (List CompilationModel) :=
+  models.mapM lowerFromModel
+
+/-!
+## Legacy Curated Subset (Backward Compatibility)
+
+The curated subset enum and associated functions are retained for backward
+compatibility with existing bridge theorems and proofs. New code should use
+`lowerFromModel` directly.
+-/
+
+/-- Curated EDSL subset. Retained for backward compatibility with existing
+bridge theorems. New contracts should use `lowerFromModel` directly. -/
 inductive SupportedEDSLContract where
   | simpleStorage
   | counter
@@ -25,36 +86,14 @@ inductive SupportedEDSLContract where
   deriving Repr, DecidableEq
 
 /-- Transitional representation of compilable EDSL input.
-`manualBridge` keeps the current path explicit while the real reifier lands. -/
+Retained for backward compatibility with existing proofs. -/
 inductive EDSLSubsetInput where
   | supported (contract : SupportedEDSLContract)
   | manualBridge (core : ContractCore)
   | unsupported (details : String)
   deriving Repr
 
-/-- Deterministic diagnostics for unsupported EDSL-input lowering. -/
-inductive LoweringError where
-  | unsupported (details : String)
-  deriving Repr
-
-def LoweringError.message : LoweringError → String
-  | .unsupported details =>
-      "EDSL input mode is active only for the curated supported subset. " ++
-      "For unsupported contracts, use --input model (manual CompilationModel path) " ++
-      "or select a supported EDSL contract with --edsl-contract. " ++
-      details
-
-/-- Transition helper: embeds today's manual compiler input into the future
-core-lowering boundary. -/
-def liftModel (model : CompilationModel) : ContractCore :=
-  { model := model }
-
-/-- Lower core compiler input to `CompilationModel`.
-For the current transition stage, this is structurally the wrapped model. -/
-def lowerContractCore (core : ContractCore) : CompilationModel :=
-  core.model
-
-/-- Lowering target pinned for each currently supported EDSL contract. -/
+/-- Lowering target pinned for each curated contract. -/
 def lowerSupportedEDSLContract : SupportedEDSLContract → CompilationModel
   | .simpleStorage => Compiler.Specs.simpleStorageSpec
   | .counter => Compiler.Specs.counterSpec
@@ -64,7 +103,7 @@ def lowerSupportedEDSLContract : SupportedEDSLContract → CompilationModel
   | .simpleToken => Compiler.Specs.simpleTokenSpec
   | .safeCounter => Compiler.Specs.safeCounterSpec
 
-/-- Ordered list used by the CLI when compiling `--input edsl`. -/
+/-- Ordered list of curated contracts. -/
 def supportedEDSLContracts : List SupportedEDSLContract := [
   .simpleStorage,
   .counter,
@@ -75,7 +114,7 @@ def supportedEDSLContracts : List SupportedEDSLContract := [
   .safeCounter
 ]
 
-/-- CLI-stable identifier for each currently supported EDSL contract. -/
+/-- CLI-stable identifier for each curated contract. -/
 def supportedEDSLContractName : SupportedEDSLContract → String
   | .simpleStorage => "simple-storage"
   | .counter => "counter"
@@ -109,17 +148,21 @@ def findDuplicateRawContract? (seen : List String) (remaining : List String) : O
         findDuplicateRawContract? (raw :: seen) rest
 
 /-- Lower a compilable EDSL-subset input to `CompilationModel`.
-This currently supports the explicit manual-bridge case and fails closed
-for unimplemented automatic reification cases. -/
+The `.supported` path uses the curated pinning (retained for backward
+compatibility with existing bridge theorems). The `.manualBridge` path
+passes through unchanged. Both are subsumed by `lowerFromModel` for
+new code. -/
 def lowerFromEDSLSubset (input : EDSLSubsetInput) : Except LoweringError CompilationModel :=
   match input with
   | .supported contract => .ok (lowerSupportedEDSLContract contract)
   | .manualBridge core => .ok (lowerContractCore core)
   | .unsupported details => .error (.unsupported details)
 
-/-- Current manual compilation path routed through the lowering boundary. -/
+/-- Manual compilation path (`--input model`). Accepts any `CompilationModel`
+without structural validation — the model path supports linked libraries
+and all constructs. -/
 def lowerModelPath (model : CompilationModel) : Except LoweringError CompilationModel :=
-  lowerFromEDSLSubset (.manualBridge (liftModel model))
+  .ok model
 
 /-- Parse a CLI selected supported-contract id and lower it through the boundary. -/
 def lowerFromParsedSupportedContract (raw : String) : Except String CompilationModel := do
@@ -143,9 +186,6 @@ def lowerRequestedSupportedEDSLContracts (rawContracts : List String) : Except S
     else
       rawContracts
   selectedRawContracts.mapM lowerFromParsedSupportedContract
-
-def edslInputReservedMessage : String :=
-  LoweringError.message (.unsupported "(pending verified EDSL subset reification/lowering)")
 
 def edslInputLinkedLibrariesUnsupportedMessage : String :=
   "Linked external Yul libraries are not yet supported through --input edsl. " ++

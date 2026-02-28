@@ -42,7 +42,15 @@ private def resolveSpecsForEDSLInput
     (rawContracts : List String) : Except String (List CompilationModel) := do
   if !libraryPaths.isEmpty then
     .error Compiler.Lowering.edslInputLinkedLibrariesUnsupportedMessage
+  else if rawContracts.isEmpty then
+    -- No --edsl-contract specified: lower all non-linking specs through the
+    -- generalized boundary. This replaces the old curated subset default.
+    match Compiler.Lowering.lowerModels Specs.allSpecs with
+    | .ok specs => .ok specs
+    | .error err => .error err.message
   else
+    -- Specific contracts requested by name: use the curated subset path
+    -- for backward compatibility with existing --edsl-contract names.
     Compiler.Lowering.lowerRequestedSupportedEDSLContracts rawContracts
 
 private def writeContract

@@ -39,6 +39,10 @@ private def fileExists (path : String) : IO Bool := do
   catch _ =>
     pure false
 
+private def contractArtifactPath (outDir : String) (contract : Compiler.Lowering.SupportedEDSLContract) : String :=
+  let spec := Compiler.Lowering.lowerSupportedEDSLContract contract
+  s!"{outDir}/{spec.name}.yul"
+
 #eval! do
   expectErrorContains "missing --link value" ["--link"] "Missing value for --link"
   expectErrorContains "missing --output value" ["--output"] "Missing value for --output"
@@ -63,13 +67,21 @@ private def fileExists (path : String) : IO Bool := do
   let edslOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-out"
   IO.FS.createDirAll edslOutDir
   main ["--input", "edsl", "--output", edslOutDir]
-  let edslArtifact ← fileExists s!"{edslOutDir}/SimpleStorage.yul"
-  expectTrue "edsl input mode compiles supported subset artifact" edslArtifact
+  let allSupportedArtifactsPresent ←
+    Compiler.Lowering.supportedEDSLContracts.allM (fun contract => fileExists (contractArtifactPath edslOutDir contract))
+  expectTrue "edsl input mode compiles every supported subset artifact" allSupportedArtifactsPresent
   let singleContractOutDir := s!"/tmp/verity-main-test-{nonce}-edsl-single-contract-out"
   IO.FS.createDirAll singleContractOutDir
   main ["--input", "edsl", "--edsl-contract", "counter", "--output", singleContractOutDir]
-  let singleContractArtifact ← fileExists s!"{singleContractOutDir}/Counter.yul"
-  expectTrue "edsl input mode compiles explicitly selected contract" singleContractArtifact
+  let selectedCounterArtifact ← fileExists s!"{singleContractOutDir}/Counter.yul"
+  expectTrue "edsl input mode compiles explicitly selected contract" selectedCounterArtifact
+  let nonSelectedContracts :=
+    Compiler.Lowering.supportedEDSLContracts.filter
+      (fun contract => contract != Compiler.Lowering.SupportedEDSLContract.counter)
+  let nonSelectedArtifactFlags ←
+    nonSelectedContracts.mapM (fun contract => fileExists (contractArtifactPath singleContractOutDir contract))
+  let nonSelectedArtifactsAbsent := nonSelectedArtifactFlags.all (fun isPresent => !isPresent)
+  expectTrue "edsl selected-contract mode does not emit non-selected artifacts" nonSelectedArtifactsAbsent
   expectErrorContains
     "edsl input mode rejects linked-library path"
     ["--input", "edsl", "--link", "examples/external-libs/PoseidonT3.yul", "--output", edslOutDir]

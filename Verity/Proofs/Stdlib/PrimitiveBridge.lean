@@ -328,6 +328,29 @@ theorem getStorageAddr_matches_sload (s : StorageSlot Address) (state : Contract
     | .revert _ _ => False := by
   simp [getStorageAddr]
 
+/-- setStorageAddr correctness: writing an address to EDSL storage matches `sstore` semantics.
+
+The EDSL `setStorageAddr s v` updates `state.storageAddr` at slot `s.slot` to `v`,
+leaving all other address slots unchanged, and preserving `state.storage` (Uint256 slots).
+This is the write-side counterpart to `getStorageAddr_matches_sload`. -/
+theorem setStorageAddr_matches_sstore (s : StorageSlot Address) (v : Address) (state : ContractState) :
+    let edslResult := (setStorageAddr s v) state
+    match edslResult with
+    | .success () newState =>
+      -- The new storageAddr at slot s.slot equals v
+      newState.storageAddr s.slot = v ∧
+      -- Other address slots are unchanged
+      (∀ other, other ≠ s.slot → newState.storageAddr other = state.storageAddr other) ∧
+      -- Uint256 storage is unchanged
+      newState.storage = state.storage
+    | .revert _ _ => False := by
+  simp [setStorageAddr]
+  constructor
+  · simp [beq_iff_eq]
+  · constructor
+    · intro other hne; simp [beq_iff_eq, hne]
+    · rfl
+
 /-! ## Contract.run Unfolding
 
 The `Contract.run` entry point wraps the monadic execution. These lemmas

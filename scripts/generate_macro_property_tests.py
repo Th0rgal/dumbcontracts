@@ -137,12 +137,13 @@ def _sol_type(lean_ty: str) -> str:
     if ty.startswith("Array "):
         elem = ty[len("Array ") :].strip()
         return f"{_sol_type(elem)}[]"
-    # Fallback is deliberate: keep generator usable while making unknown mappings visible.
-    return "uint256"
+    raise ValueError(f"unsupported Lean type for Solidity signature mapping: {ty!r}")
 
 
 def _example_value(lean_ty: str) -> str:
     ty = _normalize_type(lean_ty)
+    if ty == "Uint256":
+        return "uint256(1)"
     if ty == "Address":
         return "alice"
     if ty == "Bool":
@@ -152,8 +153,14 @@ def _example_value(lean_ty: str) -> str:
     if ty == "Bytes":
         return "hex\"CAFE\""
     if ty.startswith("Array "):
+        elem = ty[len("Array ") :].strip()
+        if elem != "Uint256":
+            raise ValueError(
+                "unsupported Lean array element type for generated example value: "
+                f"{elem!r}"
+            )
         return "_singletonUintArray(1)"
-    return "uint256(1)"
+    raise ValueError(f"unsupported Lean type for generated example value: {ty!r}")
 
 
 def _sol_signature(fn: FunctionDecl) -> str:

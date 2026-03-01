@@ -73,6 +73,28 @@ class RenderTests(unittest.TestCase):
         self.assertIn("_singletonUintArray", rendered)
         self.assertIn('abi.encodeWithSignature("consume(uint256[])", _singletonUintArray(1))', rendered)
 
+    def test_render_unknown_type_fails_closed(self) -> None:
+        contract = gen.ContractDecl(
+            name="UnknownType",
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(
+                gen.FunctionDecl("mystery", (gen.ParamDecl("x", "String"),), "Unit"),
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "unsupported Lean type"):
+            gen.render_contract_test(contract)
+
+    def test_render_non_uint_array_fails_closed(self) -> None:
+        contract = gen.ContractDecl(
+            name="ArrayAddressConsumer",
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(
+                gen.FunctionDecl("consume", (gen.ParamDecl("values", "Array Address"),), "Unit"),
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "unsupported Lean array element type"):
+            gen.render_contract_test(contract)
+
 
 class CollectContractsTests(unittest.TestCase):
     def test_duplicate_contract_name_errors(self) -> None:

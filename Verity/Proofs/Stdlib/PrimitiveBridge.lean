@@ -24,6 +24,7 @@
 -/
 
 import Verity.Core
+import Verity.Stdlib.Math
 import Compiler.Proofs.YulGeneration.Builtins
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.Conversions
@@ -151,6 +152,36 @@ theorem uint256_mul_matches_builtin (a b : Uint256) :
       ((a.val * b.val) % evmModulus) := by
   simp [Uint256.mul, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, evmModulus]
   rfl
+
+/-! ## Safe Arithmetic Bridge
+
+The EDSL uses `safeAdd`/`safeSub` (Option Uint256) with `requireSomeUint`.
+The compiler generates overflow/underflow guards using `gt`/`lt` + `iszero` + `revert`.
+
+These lemmas characterize when safe operations succeed or fail.
+-/
+
+/-- safeAdd: when no overflow, returns Some (a + b). -/
+theorem safeAdd_no_overflow (a b : Uint256) (h : a.val + b.val ≤ MAX_UINT256) :
+    Verity.Stdlib.Math.safeAdd a b = some (Uint256.add a b) := by
+  simp [Verity.Stdlib.Math.safeAdd, MAX_UINT256]
+  exact show ¬(a.val + b.val > 2 ^ 256 - 1) from by omega
+
+/-- safeAdd: when overflow, returns None. -/
+theorem safeAdd_overflow (a b : Uint256) (h : a.val + b.val > MAX_UINT256) :
+    Verity.Stdlib.Math.safeAdd a b = none := by
+  simp [Verity.Stdlib.Math.safeAdd, MAX_UINT256, h]
+
+/-- safeSub: when no underflow, returns Some (a - b). -/
+theorem safeSub_no_underflow (a b : Uint256) (h : b.val ≤ a.val) :
+    Verity.Stdlib.Math.safeSub a b = some (Uint256.sub a b) := by
+  simp [Verity.Stdlib.Math.safeSub]
+  exact show ¬(b.val > a.val) from by omega
+
+/-- safeSub: when underflow, returns None. -/
+theorem safeSub_underflow (a b : Uint256) (h : b.val > a.val) :
+    Verity.Stdlib.Math.safeSub a b = none := by
+  simp [Verity.Stdlib.Math.safeSub, h]
 
 /-! ## Require Primitive
 
@@ -314,6 +345,17 @@ theorem calldataloadWord_uint256_second (selector : Nat) (a : Nat) (v : Uint256)
     calldataloadWord selector (a :: v.val :: rest) 36 = v.val := by
   simp [calldataloadWord, uint256_val_mod_evmModulus]
 
+/-- Calldataload at offset 4 for an Address argument with address mask.
+The compiler generates `and(calldataload(4), addressMask)` for Address params.
+Since Address.val < 2^160, `val % evmModulus = val` and `val &&& (2^160-1) = val`. -/
+theorem calldataloadWord_address_first (selector : Nat) (a : Address) (rest : List Nat) :
+    calldataloadWord selector (a.val :: rest) 4 % evmModulus &&& (2 ^ 160 - 1) = a.val := by
+  simp [calldataloadWord, address_val_mod_evmModulus]
+  calc a.val &&& (2 ^ 160 - 1)
+      = a.val % 2 ^ 160 := by
+        simpa using (Nat.and_two_pow_sub_one_eq_mod a.val 160)
+    _ = a.val := Nat.mod_eq_of_lt (by have := a.isLt; simp [ADDRESS_MODULUS] at this; exact this)
+
 /-! ## Address Storage Primitives
 
 Like getStorage/setStorage but for Address-typed slots.
@@ -327,6 +369,22 @@ theorem getStorageAddr_matches_sload (s : StorageSlot Address) (state : Contract
     | .success addr _ => addr = state.storageAddr s.slot
     | .revert _ _ => False := by
   simp [getStorageAddr]
+
+/-- setStorageAddr correctness: writing EDSL address storage produces the same
+storage update as `sstore(s.slot, addr.val)`. -/
+theorem setStorageAddr_matches_sstore (s : StorageSlot Address) (v : Address)
+    (state : ContractState) :
+    let edslResult := (setStorageAddr s v) state
+    match edslResult with
+    | .success () newState =>
+      newState.storageAddr s.slot = v ∧
+      (∀ other, other ≠ s.slot → newState.storageAddr other = state.storageAddr other)
+    | .revert _ _ => False := by
+  simp [setStorageAddr]
+  constructor
+  · simp [beq_iff_eq]
+  · intro other hne
+    simp [beq_iff_eq, hne]
 
 /-! ## Contract.run Unfolding
 

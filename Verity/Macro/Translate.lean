@@ -193,6 +193,8 @@ partial def translatePureExpr
   | `(term| blockTimestamp) => `(Compiler.CompilationModel.Expr.blockTimestamp)
   | `(term| contractAddress) => `(Compiler.CompilationModel.Expr.contractAddress)
   | `(term| chainid) => `(Compiler.CompilationModel.Expr.chainid)
+  | `(term| calldatasize) => `(Compiler.CompilationModel.Expr.calldatasize)
+  | `(term| returndataSize) => `(Compiler.CompilationModel.Expr.returndataSize)
   | `(term| $id:ident) => lookupVarExpr params locals (toString id.getId)
   | `(term| $n:num) => `(Compiler.CompilationModel.Expr.literal $n)
   | `(term| add $a $b) => `(Compiler.CompilationModel.Expr.add $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
@@ -226,10 +228,47 @@ partial def translatePureExpr
   | `(term| mload $offset) =>
       `(Compiler.CompilationModel.Expr.mload
           $(← translatePureExpr params locals offset))
+  | `(term| calldataload $offset) =>
+      `(Compiler.CompilationModel.Expr.calldataload
+          $(← translatePureExpr params locals offset))
+  | `(term| extcodesize $addr) =>
+      `(Compiler.CompilationModel.Expr.extcodesize
+          $(← translatePureExpr params locals addr))
   | `(term| keccak256 $offset $size) =>
       `(Compiler.CompilationModel.Expr.keccak256
           $(← translatePureExpr params locals offset)
           $(← translatePureExpr params locals size))
+  | `(term| call $gas $target $value $inOffset $inSize $outOffset $outSize) =>
+      `(Compiler.CompilationModel.Expr.call
+          $(← translatePureExpr params locals gas)
+          $(← translatePureExpr params locals target)
+          $(← translatePureExpr params locals value)
+          $(← translatePureExpr params locals inOffset)
+          $(← translatePureExpr params locals inSize)
+          $(← translatePureExpr params locals outOffset)
+          $(← translatePureExpr params locals outSize))
+  | `(term| staticcall $gas $target $inOffset $inSize $outOffset $outSize) =>
+      `(Compiler.CompilationModel.Expr.staticcall
+          $(← translatePureExpr params locals gas)
+          $(← translatePureExpr params locals target)
+          $(← translatePureExpr params locals inOffset)
+          $(← translatePureExpr params locals inSize)
+          $(← translatePureExpr params locals outOffset)
+          $(← translatePureExpr params locals outSize))
+  | `(term| delegatecall $gas $target $inOffset $inSize $outOffset $outSize) =>
+      `(Compiler.CompilationModel.Expr.delegatecall
+          $(← translatePureExpr params locals gas)
+          $(← translatePureExpr params locals target)
+          $(← translatePureExpr params locals inOffset)
+          $(← translatePureExpr params locals inSize)
+          $(← translatePureExpr params locals outOffset)
+          $(← translatePureExpr params locals outSize))
+  | `(term| arrayLength $name:term) =>
+      `(Compiler.CompilationModel.Expr.arrayLength $(strTerm (← expectStringOrIdent name)))
+  | `(term| arrayElement $name:term $index:term) =>
+      `(Compiler.CompilationModel.Expr.arrayElement
+          $(strTerm (← expectStringOrIdent name))
+          $(← translatePureExpr params locals index))
   | `(term| mulDivDown $a $b $c) =>
       `(Compiler.CompilationModel.Expr.mulDivDown
           $(← translatePureExpr params locals a)
@@ -413,9 +452,25 @@ private def translateEffectStmt
       `(Compiler.CompilationModel.Stmt.mstore
           $(← translatePureExpr params locals offset)
           $(← translatePureExpr params locals value))
+  | `(term| calldatacopy $destOffset:term $sourceOffset:term $size:term) =>
+      `(Compiler.CompilationModel.Stmt.calldatacopy
+          $(← translatePureExpr params locals destOffset)
+          $(← translatePureExpr params locals sourceOffset)
+          $(← translatePureExpr params locals size))
+  | `(term| returndataCopy $destOffset:term $sourceOffset:term $size:term) =>
+      `(Compiler.CompilationModel.Stmt.returndataCopy
+          $(← translatePureExpr params locals destOffset)
+          $(← translatePureExpr params locals sourceOffset)
+          $(← translatePureExpr params locals size))
+  | `(term| revertReturndata) =>
+      `(Compiler.CompilationModel.Stmt.revertReturndata)
   | `(term| returnValues $values:term) =>
       let valueExprs ← expectExprList params locals values
       `(Compiler.CompilationModel.Stmt.returnValues [ $[$valueExprs],* ])
+  | `(term| returnArray $name:term) =>
+      `(Compiler.CompilationModel.Stmt.returnArray $(strTerm (← expectStringOrIdent name)))
+  | `(term| returnBytes $name:term) =>
+      `(Compiler.CompilationModel.Stmt.returnBytes $(strTerm (← expectStringOrIdent name)))
   | `(term| returnStorageWords $name:term) =>
       `(Compiler.CompilationModel.Stmt.returnStorageWords $(strTerm (← expectStringOrIdent name)))
   | `(term| emit $eventName:term $args:term) =>
@@ -438,6 +493,15 @@ private def translateEffectStmt
       let targetFn := ← expectStringOrIdent fnName
       let argExprs ← expectExprList params locals args
       `(Compiler.CompilationModel.Stmt.internalCallAssign
+          [ $[$resultNameTerms],* ]
+          $(strTerm targetFn)
+          [ $[$argExprs],* ])
+  | `(term| externalCallBind $names:term $fnName:term $args:term) =>
+      let resultNames := ← expectStringList names
+      let resultNameTerms := resultNames.map strTerm
+      let targetFn := ← expectStringOrIdent fnName
+      let argExprs ← expectExprList params locals args
+      `(Compiler.CompilationModel.Stmt.externalCallBind
           [ $[$resultNameTerms],* ]
           $(strTerm targetFn)
           [ $[$argExprs],* ])
@@ -551,6 +615,21 @@ private partial def translateDoElem
           $condExpr
           [ $[$thenStmts],* ]
           [ $[$elseStmts],* ]))],
+          locals,
+          mutableLocals)
+  | `(doElem| forEach $name:term $count:term $body:term) =>
+      let loopVar := ← expectStringOrIdent name
+      let countExpr ← translatePureExpr params locals count
+      let bodyStmts ←
+        match stripParens body with
+        | `(term| do $[$inner:doElem]*) =>
+            pure (← (translateDoElems fields params (locals.push loopVar) mutableLocals inner)).1
+        | _ => throwErrorAt body "forEach body must be a do block"
+      pure
+        (#[(← `(Compiler.CompilationModel.Stmt.forEach
+            $(strTerm loopVar)
+            $countExpr
+            [ $[$bodyStmts],* ]))],
           locals,
           mutableLocals)
   | `(doElem| $stmt:term) =>

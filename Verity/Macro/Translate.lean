@@ -108,7 +108,7 @@ private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .uint256 => `(some Compiler.CompilationModel.FieldType.uint256)
   | .address => `(some Compiler.CompilationModel.FieldType.address)
   | .bytes32 => `(none)
-  | .bool => throwError "function return type Bool is not yet supported; use Uint256 (0/1) encoding"
+  | .bool => `(none)
 
 private def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
@@ -116,7 +116,7 @@ private def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
   | .uint256 => `([Compiler.CompilationModel.ParamType.uint256])
   | .address => `([Compiler.CompilationModel.ParamType.address])
   | .bytes32 => `([Compiler.CompilationModel.ParamType.bytes32])
-  | .bool => throwError "function return type Bool is not yet supported; use Uint256 (0/1) encoding"
+  | .bool => `([Compiler.CompilationModel.ParamType.bool])
 
 private def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with

@@ -179,6 +179,7 @@ python3 scripts/check_patch_gas_delta.py \
 
 - **`generate_contract.py`** - Generates all boilerplate files for a new contract
 - **`generate_macro_property_tests.py`** - Generates baseline `Property*.t.sol` suites from `verity_contract` declarations
+- **`check_macro_property_test_generation.py`** - Checks/regenerates deterministic macro-property stub artifacts in `artifacts/macro_property_tests`
 
 ```bash
 # Simple contract
@@ -202,6 +203,12 @@ python3 scripts/generate_macro_property_tests.py \
   --source Verity/Examples/MacroContracts.lean \
   --contract Counter \
   --stdout
+
+# Regenerate deterministic macro-property artifacts tracked in-repo
+python3 scripts/check_macro_property_test_generation.py
+
+# Fail-closed check for CI/local verification
+python3 scripts/check_macro_property_test_generation.py --check
 ```
 
 Creates 8 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
@@ -249,15 +256,16 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 18. Verify artifact upload/download sync (`check_verify_artifact_sync.py`)
 19. Solc pin consistency (`check_solc_pin.py`)
 20. Property manifest sync (`check_property_manifest_sync.py`)
-21. Storage layout consistency (`check_storage_layout.py`)
-22. Manual-spec quarantine boundary (`check_manual_spec_quarantine.py`)
-23. Lean hygiene (`check_lean_hygiene.py`)
-24. Static gas model builtin coverage (`check_gas_model_coverage.py`)
-25. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-26. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-27. Builtin list sync (Linker ↔ CompilationModel) (`check_builtin_list_sync.py`)
-28. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-29. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+21. Macro property-test artifact generation (`check_macro_property_test_generation.py --check`)
+22. Storage layout consistency (`check_storage_layout.py`)
+23. Manual-spec quarantine boundary (`check_manual_spec_quarantine.py`)
+24. Lean hygiene (`check_lean_hygiene.py`)
+25. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+26. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+27. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+28. Builtin list sync (Linker ↔ CompilationModel) (`check_builtin_list_sync.py`)
+29. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+30. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
 30. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 31. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
 32. Proof length limits (`check_proof_length.py`)

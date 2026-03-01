@@ -1362,7 +1362,8 @@ private partial def staticParamBindingNames (name : String) (ty : ParamType) : L
 private def dynamicParamBindingNames (name : String) : List String :=
   [s!"{name}_offset", s!"{name}_length", s!"{name}_data_offset"]
 
-private partial def isDynamicParamTypeForScope : ParamType → Bool
+mutual
+private def isDynamicParamTypeForScope : ParamType → Bool
   | ParamType.uint256 => false
   | ParamType.address => false
   | ParamType.bool => false
@@ -1370,7 +1371,16 @@ private partial def isDynamicParamTypeForScope : ParamType → Bool
   | ParamType.array _ => true
   | ParamType.bytes => true
   | ParamType.fixedArray elemTy _ => isDynamicParamTypeForScope elemTy
-  | ParamType.tuple elemTys => elemTys.any isDynamicParamTypeForScope
+  | ParamType.tuple elemTys => paramTypeListAnyDynamicForScope elemTys
+termination_by ty => sizeOf ty
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def paramTypeListAnyDynamicForScope : List ParamType → Bool
+  | [] => false
+  | ty :: rest => isDynamicParamTypeForScope ty || paramTypeListAnyDynamicForScope rest
+termination_by tys => sizeOf tys
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def isScalarParamTypeForScope : ParamType → Bool
   | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => true
@@ -1653,7 +1663,8 @@ private def isStorageWordArrayParam : ParamType → Bool
   | ParamType.array ParamType.uint256 => true
   | _ => false
 
-private partial def validateStmtParamReferences (fnName : String) (params : List Param) :
+mutual
+private def validateStmtParamReferences (fnName : String) (params : List Param) :
     Stmt → Except String Unit
   | Stmt.returnArray name =>
       match findParamType params name with
@@ -1680,13 +1691,26 @@ private partial def validateStmtParamReferences (fnName : String) (params : List
       | none =>
           throw s!"Compilation error: function '{fnName}' returnStorageWords references unknown parameter '{name}'"
   | Stmt.ite _ thenBranch elseBranch => do
-      thenBranch.forM (validateStmtParamReferences fnName params)
-      elseBranch.forM (validateStmtParamReferences fnName params)
+      validateStmtParamReferencesInList fnName params thenBranch
+      validateStmtParamReferencesInList fnName params elseBranch
   | Stmt.forEach _ _ body => do
-      body.forM (validateStmtParamReferences fnName params)
+      validateStmtParamReferencesInList fnName params body
   | _ => pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def validateReturnShapesInStmt (fnName : String)
+private def validateStmtParamReferencesInList (fnName : String) (params : List Param) :
+    List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateStmtParamReferences fnName params s
+      validateStmtParamReferencesInList fnName params ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
+
+mutual
+private def validateReturnShapesInStmt (fnName : String)
     (expectedReturns : List ParamType) (isInternal : Bool) : Stmt → Except String Unit
   | Stmt.return _ =>
       if isInternal then
@@ -1729,11 +1753,23 @@ private partial def validateReturnShapesInStmt (fnName : String)
       else
         throw s!"Compilation error: function '{fnName}' uses Stmt.returnStorageWords but declared returns are {repr expectedReturns}"
   | Stmt.ite _ thenBranch elseBranch => do
-      thenBranch.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
-      elseBranch.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
+      validateReturnShapesInStmtList fnName expectedReturns isInternal thenBranch
+      validateReturnShapesInStmtList fnName expectedReturns isInternal elseBranch
   | Stmt.forEach _ _ body =>
-      body.forM (validateReturnShapesInStmt fnName expectedReturns isInternal)
+      validateReturnShapesInStmtList fnName expectedReturns isInternal body
   | _ => pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateReturnShapesInStmtList (fnName : String)
+    (expectedReturns : List ParamType) (isInternal : Bool) : List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateReturnShapesInStmt fnName expectedReturns isInternal s
+      validateReturnShapesInStmtList fnName expectedReturns isInternal ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 mutual
   private def stmtListAlwaysReturnsOrReverts : List Stmt → Bool
@@ -1799,7 +1835,57 @@ private def exprReadsStateOrEnv : Expr → Bool
   | Expr.ite cond thenVal elseVal =>
       exprReadsStateOrEnv cond || exprReadsStateOrEnv thenVal || exprReadsStateOrEnv elseVal
 
-private partial def stmtWritesState : Stmt → Bool
+mutual
+private def exprWritesState : Expr → Bool
+  | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
+    Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
+    Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
+    Expr.logicalAnd a b | Expr.logicalOr a b |
+    Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
+      exprWritesState a || exprWritesState b
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+      exprWritesState a || exprWritesState b || exprWritesState c
+  | Expr.bitNot a | Expr.logicalNot a =>
+      exprWritesState a
+  | Expr.ite cond thenVal elseVal =>
+      exprWritesState cond || exprWritesState thenVal || exprWritesState elseVal
+  | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
+  | Expr.structMember _ key _ =>
+      exprWritesState key
+  | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
+  | Expr.structMember2 _ key1 key2 _ =>
+      exprWritesState key1 || exprWritesState key2
+  | Expr.call _ _ _ _ _ _ _ => true
+  | Expr.staticcall gas target inOffset inSize outOffset outSize =>
+      exprWritesState gas || exprWritesState target ||
+      exprWritesState inOffset || exprWritesState inSize ||
+      exprWritesState outOffset || exprWritesState outSize
+  | Expr.delegatecall _ _ _ _ _ _ => true
+  | Expr.mload offset =>
+      exprWritesState offset
+  | Expr.calldataload offset =>
+      exprWritesState offset
+  | Expr.keccak256 offset size =>
+      exprWritesState offset || exprWritesState size
+  | Expr.returndataOptionalBoolAt outOffset =>
+      exprWritesState outOffset
+  | Expr.externalCall _ _ | Expr.internalCall _ _ => true
+  | Expr.extcodesize addr =>
+      exprWritesState addr
+  | Expr.arrayElement _ index =>
+      exprWritesState index
+  | _ =>
+      false
+termination_by e => sizeOf e
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def exprListWritesState : List Expr → Bool
+  | [] => false
+  | e :: es => exprWritesState e || exprListWritesState es
+termination_by es => sizeOf es
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def stmtWritesState : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value =>
       exprWritesState value
   | Stmt.setStorage _ _
@@ -1809,13 +1895,13 @@ private partial def stmtWritesState : Stmt → Bool
   | Stmt.require cond _ =>
       exprWritesState cond
   | Stmt.requireError cond _ args =>
-      exprWritesState cond || args.any exprWritesState
+      exprWritesState cond || exprListWritesState args
   | Stmt.revertError _ args =>
-      args.any exprWritesState
+      exprListWritesState args
   | Stmt.return value =>
       exprWritesState value
   | Stmt.returnValues values =>
-      values.any exprWritesState
+      exprListWritesState values
   | Stmt.returnArray _ =>
       false
   | Stmt.returnBytes _ =>
@@ -1833,58 +1919,26 @@ private partial def stmtWritesState : Stmt → Bool
   | Stmt.stop =>
       false
   | Stmt.ite cond thenBranch elseBranch =>
-      exprWritesState cond || thenBranch.any stmtWritesState || elseBranch.any stmtWritesState
+      exprWritesState cond || stmtListWritesState thenBranch || stmtListWritesState elseBranch
   | Stmt.forEach _ count body =>
-      exprWritesState count || body.any stmtWritesState
+      exprWritesState count || stmtListWritesState body
   | Stmt.emit _ _ | Stmt.rawLog _ _ _
   | Stmt.internalCall _ _ | Stmt.internalCallAssign _ _ _
   | Stmt.externalCallBind _ _ _ => true
   | Stmt.ecm mod args =>
-      mod.writesState || args.any exprWritesState
-where
-  exprWritesState (expr : Expr) : Bool :=
-    match expr with
-    | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
-      Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
-      Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
-      Expr.logicalAnd a b | Expr.logicalOr a b |
-      Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b =>
-        exprWritesState a || exprWritesState b
-    | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
-        exprWritesState a || exprWritesState b || exprWritesState c
-    | Expr.bitNot a | Expr.logicalNot a =>
-        exprWritesState a
-    | Expr.ite cond thenVal elseVal =>
-        exprWritesState cond || exprWritesState thenVal || exprWritesState elseVal
-    | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
-    | Expr.structMember _ key _ =>
-        exprWritesState key
-    | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
-    | Expr.structMember2 _ key1 key2 _ =>
-        exprWritesState key1 || exprWritesState key2
-    | Expr.call _ _ _ _ _ _ _ => true
-    | Expr.staticcall gas target inOffset inSize outOffset outSize =>
-        exprWritesState gas || exprWritesState target ||
-        exprWritesState inOffset || exprWritesState inSize ||
-        exprWritesState outOffset || exprWritesState outSize
-    | Expr.delegatecall _ _ _ _ _ _ => true
-    | Expr.mload offset =>
-        exprWritesState offset
-    | Expr.calldataload offset =>
-        exprWritesState offset
-    | Expr.keccak256 offset size =>
-        exprWritesState offset || exprWritesState size
-    | Expr.returndataOptionalBoolAt outOffset =>
-        exprWritesState outOffset
-    | Expr.externalCall _ _ | Expr.internalCall _ _ => true
-    | Expr.extcodesize addr =>
-        exprWritesState addr
-    | Expr.arrayElement _ index =>
-        exprWritesState index
-    | _ =>
-        false
+      mod.writesState || exprListWritesState args
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def stmtReadsStateOrEnv : Stmt → Bool
+private def stmtListWritesState : List Stmt → Bool
+  | [] => false
+  | s :: ss => stmtWritesState s || stmtListWritesState ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
+
+mutual
+private def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       exprReadsStateOrEnv value
@@ -1907,14 +1961,23 @@ private partial def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _
   | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _ => true
   | Stmt.ite cond thenBranch elseBranch =>
-      exprReadsStateOrEnv cond || thenBranch.any stmtReadsStateOrEnv || elseBranch.any stmtReadsStateOrEnv
+      exprReadsStateOrEnv cond || stmtListReadsStateOrEnv thenBranch || stmtListReadsStateOrEnv elseBranch
   | Stmt.forEach _ count body =>
-      exprReadsStateOrEnv count || body.any stmtReadsStateOrEnv
+      exprReadsStateOrEnv count || stmtListReadsStateOrEnv body
   | Stmt.rawLog topics dataOffset dataSize =>
       topics.any exprReadsStateOrEnv || exprReadsStateOrEnv dataOffset || exprReadsStateOrEnv dataSize
   | Stmt.internalCall _ _ | Stmt.internalCallAssign _ _ _
   | Stmt.externalCallBind _ _ _ => true
   | Stmt.ecm mod args => mod.readsState || mod.writesState || args.any exprReadsStateOrEnv
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def stmtListReadsStateOrEnv : List Stmt → Bool
+  | [] => false
+  | s :: ss => stmtReadsStateOrEnv s || stmtListReadsStateOrEnv ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   if spec.isPayable && (spec.isView || spec.isPure) then
@@ -1936,16 +1999,28 @@ private def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := d
   spec.body.forM (validateStmtParamReferences spec.name spec.params)
   validateFunctionIdentifierReferences spec
 
-private partial def validateNoRuntimeReturnsInConstructorStmt : Stmt → Except String Unit
+mutual
+private def validateNoRuntimeReturnsInConstructorStmt : Stmt → Except String Unit
   | Stmt.return _ | Stmt.returnValues _ | Stmt.returnArray _
   | Stmt.returnBytes _ | Stmt.returnStorageWords _ =>
       throw "Compilation error: constructor must not return runtime data directly"
   | Stmt.ite _ thenBranch elseBranch => do
-      thenBranch.forM validateNoRuntimeReturnsInConstructorStmt
-      elseBranch.forM validateNoRuntimeReturnsInConstructorStmt
+      validateNoRuntimeReturnsInConstructorStmtList thenBranch
+      validateNoRuntimeReturnsInConstructorStmtList elseBranch
   | Stmt.forEach _ _ body =>
-      body.forM validateNoRuntimeReturnsInConstructorStmt
+      validateNoRuntimeReturnsInConstructorStmtList body
   | _ => pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateNoRuntimeReturnsInConstructorStmtList : List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateNoRuntimeReturnsInConstructorStmt s
+      validateNoRuntimeReturnsInConstructorStmtList ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def validateConstructorSpec (ctor : Option ConstructorSpec) : Except String Unit := do
   match ctor with
@@ -1975,7 +2050,8 @@ private def validateDirectParamCustomErrorArg
   | _ =>
       throw s!"Compilation error: function '{fnName}' custom error '{errorName}' parameter of type {repr expectedTy} currently requires direct parameter reference ({issue586Ref})."
 
-private partial def validateCustomErrorArgShapesInStmt (fnName : String) (params : List Param)
+mutual
+private def validateCustomErrorArgShapesInStmt (fnName : String) (params : List Param)
     (errors : List ErrorDef) : Stmt → Except String Unit
   | Stmt.requireError _ errorName args | Stmt.revertError errorName args => do
       let errorDef ←
@@ -1988,11 +2064,23 @@ private partial def validateCustomErrorArgShapesInStmt (fnName : String) (params
         if customErrorRequiresDirectParamRef ty then
           validateDirectParamCustomErrorArg fnName errorName params ty arg
   | Stmt.ite _ thenBranch elseBranch => do
-      thenBranch.forM (validateCustomErrorArgShapesInStmt fnName params errors)
-      elseBranch.forM (validateCustomErrorArgShapesInStmt fnName params errors)
+      validateCustomErrorArgShapesInStmtList fnName params errors thenBranch
+      validateCustomErrorArgShapesInStmtList fnName params errors elseBranch
   | Stmt.forEach _ _ body =>
-      body.forM (validateCustomErrorArgShapesInStmt fnName params errors)
+      validateCustomErrorArgShapesInStmtList fnName params errors body
   | _ => pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateCustomErrorArgShapesInStmtList (fnName : String) (params : List Param)
+    (errors : List ErrorDef) : List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateCustomErrorArgShapesInStmt fnName params errors s
+      validateCustomErrorArgShapesInStmtList fnName params errors ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def validateCustomErrorArgShapesInFunction (spec : FunctionSpec) (errors : List ErrorDef) :
     Except String Unit := do

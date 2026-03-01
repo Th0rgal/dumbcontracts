@@ -102,7 +102,8 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 - Enforcement: `scripts/check_axiom_locations.py` ensures this file tracks exact source location.
 - Compilation-path totalization work in `Compiler/CompilationModel.lean` does not
   add, remove, or modify Lean axioms; it only replaces `partial def` recursion
-  with explicit structural termination proofs.
+  with explicit structural termination proofs (including dynamic-param scope
+  checks, statement read/write analyzers, and statement-list validation walkers).
 
 ## Maintenance Rule
 

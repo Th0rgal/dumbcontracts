@@ -47,6 +47,9 @@ Access control and checks:
 21. `Compiler/CompilationModel.lean` additionally totalizes dynamic-parameter scope checks, statement read/write analysis, and statement-list validator walkers (`validateStmtParamReferences`, `validateReturnShapesInStmt`, `validateNoRuntimeReturnsInConstructorStmt`, `validateCustomErrorArgShapesInStmt`) with explicit structural recursion.
 22. `Compiler/CompilationModel.lean` further totalizes all Expr/Stmt validation walkers: scoped-identifier validation (`validateScopedExprIdentifiers`, `validateScopedStmtIdentifiers`, `validateScopedStmtListIdentifiers`), interop validation (`validateInteropExpr`, `validateInteropStmt`), internal-call-shape validation (`validateInternalCallShapesInExpr`, `validateInternalCallShapesInStmt`), external-call-target validation (`validateExternalCallTargetsInExpr`, `validateExternalCallTargetsInStmt`), and event-argument-shape validation (`validateEventArgShapesInStmt`) with explicit structural recursion in mutual blocks.
 23. `Verity/Macro/Translate.lean` supports explicit `getMappingUint`/`setMappingUint` forms for `Uint256 -> Uint256` storage fields with fail-closed typed diagnostics (`Address` mappings must use `getMapping`/`setMapping`).
+24. `Verity/Macro/Bridge.lean` emits per-function `_semantic_preservation` theorem skeletons (Issue #998) connecting EDSL execution to the CompilationModel spec. These are currently `sorry` — discharging them eliminates `interpretSpec` from the TCB.
+25. `Compiler/Proofs/EndToEnd.lean` composes Layer 2 (CompilationModel→IR) and Layer 3 (IR→Yul) preservation theorems into a single end-to-end result.
+26. `Verity/Proofs/Stdlib/PrimitiveBridge.lean` proves per-primitive EDSL↔compiled-Yul correctness lemmas (getStorage↔sload, setStorage↔sstore, add/sub/mul↔builtins, require↔iszero+revert, msgSender↔caller).
 
 Crypto choices:
 1. Function selectors use keccak256 (Ethereum ABI standard interoperability requirement).

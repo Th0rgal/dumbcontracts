@@ -109,6 +109,13 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 - Macro front-end extensions (including explicit `getMappingUint` /
   `setMappingUint` translation support in `Verity/Macro/Translate.lean`) do not
   add, remove, or modify Lean axioms.
+- The semantic bridge work (Issue #998: `Compiler/Proofs/EndToEnd.lean`,
+  `Verity/Proofs/Stdlib/PrimitiveBridge.lean`, `Verity/Macro/Bridge.lean`
+  semantic preservation theorems) does not add, remove, or modify Lean axioms.
+  The `sorry` placeholders in EndToEnd.lean and the macro-generated theorems are
+  proof obligations (not axioms) — they represent goals to be discharged, not
+  trusted assumptions. When discharged, they will *reduce* the TCB by eliminating
+  `interpretSpec`.
 
 ## Maintenance Rule
 

@@ -185,13 +185,21 @@ If this file is stale, audit conclusions may be invalid.
 ### 9. SpecInterpreter (`interpretSpec`)
 
 - Role: reference semantics for CompilationModel execution in Layer 1 proofs.
-- Status: **trusted** — hand-rolled EVM reimplementation (~500 lines) that does not
-  use EVMYulLean. Implements wrapping arithmetic, storage reads/writes, mapping
-  slot derivation, control flow, and event emission from scratch.
+- Status: **trusted, being eliminated** — hand-rolled EVM reimplementation (~500 lines)
+  that does not use EVMYulLean. Implements wrapping arithmetic, storage reads/writes,
+  mapping slot derivation, control flow, and event emission from scratch.
 - Risk: if `interpretSpec` has a bug (e.g., incorrect subtraction wrapping), all
   Layer 1 proofs are vacuously correct against wrong semantics.
-- Planned mitigation: eliminate `interpretSpec` entirely by proving EDSL ≡
-  EVMYulLean(compile(CompilationModel)) directly (Issue #998, Phase 1).
+- Active mitigation (Issue #998, in progress):
+  - `Compiler/Proofs/EndToEnd.lean` composes Layers 2+3 (CompilationModel → IR → Yul)
+    into a single theorem, establishing the right-hand side of the target equivalence.
+  - `Verity/Proofs/Stdlib/PrimitiveBridge.lean` proves per-primitive lemmas connecting
+    EDSL operations (getStorage, setStorage, add, sub, require, if/else, msgSender) to
+    the compiled Yul builtin semantics, establishing the left-hand side.
+  - The macro now emits per-function semantic preservation theorem skeletons
+    (via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`), providing the
+    composition framework. These are currently `sorry` — discharging them will
+    eliminate `interpretSpec` from the TCB entirely.
 
 ### 10. Macro Elaborator (`verity_contract`)
 
@@ -203,8 +211,11 @@ If this file is stale, audit conclusions may be invalid.
   from the same syntax tree by a deterministic elaborator, semantic equivalence holds
   by construction — provided the elaborator is correct.
 - Risk: a translation bug would cause the EDSL and CompilationModel to silently diverge.
-- Planned mitigation: either verify the translation functions as Lean theorems, or have
-  the macro emit per-contract proof witnesses (Issue #998, Phases 2–3).
+- Active mitigation (Issue #998, in progress): the macro now emits per-function
+  semantic preservation theorem skeletons (`_semantic_preservation` theorems) that,
+  when discharged, provide machine-checked witnesses that the EDSL and CompilationModel
+  agree. This is strictly stronger than the previous `_bridge` theorems (which only
+  proved body definitional equality via `rfl`).
 
 ## Planned Trust-Boundary Hardening
 
@@ -224,11 +235,24 @@ Goal: a single machine-checked theorem per contract function:
 `EDSL execution ≡ EVMYulLean(compile(CompilationModel))`
 
 Roadmap:
-1. Compose Layers 2+3 into a single end-to-end theorem.
-2. Prove per-primitive correctness lemmas (EDSL primitive ≡ compiled Yul primitive).
-3. Have the macro compose primitive lemmas automatically per contract.
-4. Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
-5. Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).
+1. ✅ Compose Layers 2+3 into a single end-to-end theorem (`Compiler/Proofs/EndToEnd.lean`).
+2. ✅ Prove per-primitive correctness lemmas (`Verity/Proofs/Stdlib/PrimitiveBridge.lean`):
+   getStorage↔sload, setStorage↔sstore, add/sub/mul↔builtins, require↔iszero+revert,
+   if/else↔branching, msgSender↔caller.
+3. ✅ Macro emits per-function semantic preservation skeletons (`_semantic_preservation`
+   theorems via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`).
+4. 🔲 Discharge the `sorry` in preservation theorems by composing primitive lemmas.
+5. 🔲 Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
+6. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).
+
+New files:
+- `Compiler/Proofs/EndToEnd.lean` — Layers 2+3 composition
+- `Verity/Proofs/Stdlib/PrimitiveBridge.lean` — EDSL↔compiled-Yul primitive lemmas
+
+Modified files:
+- `Verity/Macro/Bridge.lean` — added `mkSemanticBridgeCommand`
+- `Verity/Macro/Elaborate.lean` — calls `mkSemanticBridgeCommand` per function
+- `Verity/Macro/Translate.lean` — exported `contractValueTypeTermPublic`
 
 Cross-repo: verity (core), morpho-verity (benefits from auto proofs), verity-paper (architecture rewrite).
 

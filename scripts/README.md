@@ -178,6 +178,7 @@ python3 scripts/check_patch_gas_delta.py \
 ## Contract Scaffold Generator
 
 - **`generate_contract.py`** - Generates all boilerplate files for a new contract
+- **`generate_macro_property_tests.py`** - Generates baseline `Property*.t.sol` suites from `verity_contract` declarations
 
 ```bash
 # Simple contract
@@ -190,6 +191,17 @@ python3 scripts/generate_contract.py MyToken \
 
 # Preview without creating files
 python3 scripts/generate_contract.py MyContract --dry-run
+
+# Generate baseline property stubs from macro contracts
+python3 scripts/generate_macro_property_tests.py \
+  --source Verity/Examples/MacroContracts.lean \
+  --output-dir test/generated
+
+# Generate only one contract to stdout (for review)
+python3 scripts/generate_macro_property_tests.py \
+  --source Verity/Examples/MacroContracts.lean \
+  --contract Counter \
+  --stdout
 ```
 
 Creates 8 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).

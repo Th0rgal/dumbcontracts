@@ -1411,7 +1411,8 @@ private def paramScopeNames (params : List Param) : List String :=
 private def dynamicParamBases (params : List Param) : List String :=
   (params.filter (fun p => isDynamicParamTypeForScope p.ty)).map (·.name)
 
-private partial def validateScopedExprIdentifiers
+mutual
+private def validateScopedExprIdentifiers
     (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
     (localScope : List String) (constructorArgCount : Option Nat) : Expr → Except String Unit
   | Expr.param name =>
@@ -1489,7 +1490,7 @@ private partial def validateScopedExprIdentifiers
   | Expr.returndataOptionalBoolAt outOffset =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount outOffset
   | Expr.externalCall _ args | Expr.internalCall _ args =>
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
@@ -1532,9 +1533,20 @@ private partial def validateScopedExprIdentifiers
   | Expr.literal _ | Expr.storage _ | Expr.caller | Expr.contractAddress | Expr.chainid
   | Expr.msgValue | Expr.blockTimestamp | Expr.calldatasize | Expr.returndataSize =>
       pure ()
+termination_by e => sizeOf e
+decreasing_by all_goals simp_wf; all_goals omega
 
-mutual
-private partial def validateScopedStmtIdentifiers
+private def validateScopedExprIdentifiersList
+    (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
+    (localScope : List String) (constructorArgCount : Option Nat) : List Expr → Except String Unit
+  | [] => pure ()
+  | e :: es => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount e
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount es
+termination_by es => sizeOf es
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateScopedStmtIdentifiers
     (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
     (localScope : List String) (constructorArgCount : Option Nat) : Stmt → Except String (List String)
   | Stmt.letVar name value => do
@@ -1565,10 +1577,10 @@ private partial def validateScopedStmtIdentifiers
       pure localScope
   | Stmt.requireError cond _ args => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount cond
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
       pure localScope
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args => do
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
       pure localScope
   | Stmt.mstore offset value => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
@@ -1594,23 +1606,23 @@ private partial def validateScopedStmtIdentifiers
       let _ ← validateScopedStmtListIdentifiers context params paramScope dynamicParams (varName :: localScope) constructorArgCount body
       pure localScope
   | Stmt.internalCall _ args => do
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
       pure localScope
   | Stmt.internalCallAssign names _ args => do
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
       pure (names.reverse ++ localScope)
   | Stmt.rawLog topics dataOffset dataSize => do
-      topics.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount topics
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount dataOffset
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount dataSize
       pure localScope
   | Stmt.externalCallBind resultVars _ args => do
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
       pure (resultVars.reverse ++ localScope)
   | Stmt.ecm mod args => do
       if args.length != mod.numArgs then
         throw s!"Compilation error: {context} uses ECM '{mod.name}' with {args.length} arguments but it expects {mod.numArgs}"
-      args.forM (validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount)
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
       let mut scope := localScope
       for rv in mod.resultVars do
         if paramScope.contains rv then
@@ -1623,14 +1635,18 @@ private partial def validateScopedStmtIdentifiers
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
   | Stmt.revertReturndata | Stmt.stop =>
       pure localScope
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def validateScopedStmtListIdentifiers
+private def validateScopedStmtListIdentifiers
     (context : String) (params : List Param) (paramScope : List String) (dynamicParams : List String)
     (localScope : List String) (constructorArgCount : Option Nat) : List Stmt → Except String (List String)
   | [] => pure localScope
   | stmt :: rest => do
       let nextScope ← validateScopedStmtIdentifiers context params paramScope dynamicParams localScope constructorArgCount stmt
       validateScopedStmtListIdentifiers context params paramScope dynamicParams nextScope constructorArgCount rest
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
 end
 
 private def validateFunctionIdentifierReferences (spec : FunctionSpec) : Except String Unit := do
@@ -2137,7 +2153,8 @@ private def indexedDynamicArrayElemSupported (elemTy : ParamType) : Bool :=
   !eventIsDynamicType elemTy &&
     eventHeadWordSize elemTy > 0
 
-private partial def validateEventArgShapesInStmt (fnName : String) (params : List Param)
+mutual
+private def validateEventArgShapesInStmt (fnName : String) (params : List Param)
     (events : List EventDef) : Stmt → Except String Unit
   | Stmt.emit eventName args => do
       let eventDef ←
@@ -2267,11 +2284,23 @@ private partial def validateEventArgShapesInStmt (fnName : String) (params : Lis
                   throw s!"Compilation error: function '{fnName}' indexed composite event param '{eventParam.name}' in event '{eventName}' currently requires direct parameter reference ({issue586Ref})."
           | _ => pure ()
   | Stmt.ite _ thenBranch elseBranch => do
-      thenBranch.forM (validateEventArgShapesInStmt fnName params events)
-      elseBranch.forM (validateEventArgShapesInStmt fnName params events)
+      validateEventArgShapesInStmtList fnName params events thenBranch
+      validateEventArgShapesInStmtList fnName params events elseBranch
   | Stmt.forEach _ _ body =>
-      body.forM (validateEventArgShapesInStmt fnName params events)
+      validateEventArgShapesInStmtList fnName params events body
   | _ => pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateEventArgShapesInStmtList (fnName : String) (params : List Param)
+    (events : List EventDef) : List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateEventArgShapesInStmt fnName params events s
+      validateEventArgShapesInStmtList fnName params events ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def validateEventArgShapesInFunction (spec : FunctionSpec) (events : List EventDef) :
     Except String Unit := do
@@ -2502,7 +2531,8 @@ private def unsupportedInteropCallError (context : String) (name : String) : Exc
   else
     interopBuiltinCallUnsupportedError context name
 
-private partial def validateInteropExpr (context : String) : Expr → Except String Unit
+mutual
+private def validateInteropExpr (context : String) : Expr → Except String Unit
   | Expr.msgValue =>
       pure ()
   | Expr.call gas target value inOffset inSize outOffset outSize => do
@@ -2547,7 +2577,7 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
   | Expr.externalCall name args => do
       if isInteropBuiltinCallName name then
         unsupportedInteropCallError context name
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Expr.mapping _ key => validateInteropExpr context key
   | Expr.mappingWord _ key _ => validateInteropExpr context key
   | Expr.mappingPackedWord _ key _ _ => validateInteropExpr context key
@@ -2558,7 +2588,7 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
       validateInteropExpr context key2
   | Expr.mappingUint _ key => validateInteropExpr context key
   | Expr.internalCall _ args =>
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Expr.arrayElement _ index =>
       validateInteropExpr context index
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
@@ -2580,16 +2610,26 @@ private partial def validateInteropExpr (context : String) : Expr → Except Str
       validateInteropExpr context elseVal
   | _ =>
       pure ()
+termination_by e => sizeOf e
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def validateInteropStmt (context : String) : Stmt → Except String Unit
+private def validateInteropExprList (context : String) : List Expr → Except String Unit
+  | [] => pure ()
+  | e :: es => do
+      validateInteropExpr context e
+      validateInteropExprList context es
+termination_by es => sizeOf es
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateInteropStmt (context : String) : Stmt → Except String Unit
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       validateInteropExpr context value
   | Stmt.requireError cond _ args => do
       validateInteropExpr context cond
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Stmt.revertError _ args =>
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Stmt.mstore offset value => do
       validateInteropExpr context offset
       validateInteropExpr context value
@@ -2614,29 +2654,40 @@ private partial def validateInteropStmt (context : String) : Stmt → Except Str
       validateInteropExpr context value
   | Stmt.ite cond thenBranch elseBranch => do
       validateInteropExpr context cond
-      thenBranch.forM (validateInteropStmt context)
-      elseBranch.forM (validateInteropStmt context)
+      validateInteropStmtList context thenBranch
+      validateInteropStmtList context elseBranch
   | Stmt.forEach _ count body => do
       validateInteropExpr context count
-      body.forM (validateInteropStmt context)
+      validateInteropStmtList context body
   | Stmt.emit _ args =>
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Stmt.internalCall _ args =>
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Stmt.internalCallAssign _ _ args =>
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Stmt.externalCallBind _ _ args =>
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | Stmt.returnValues values =>
-      values.forM (validateInteropExpr context)
+      validateInteropExprList context values
   | Stmt.rawLog topics dataOffset dataSize => do
-      topics.forM (validateInteropExpr context)
+      validateInteropExprList context topics
       validateInteropExpr context dataOffset
       validateInteropExpr context dataSize
   | Stmt.ecm _ args =>
-      args.forM (validateInteropExpr context)
+      validateInteropExprList context args
   | _ =>
       pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateInteropStmtList (context : String) : List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateInteropStmt context s
+      validateInteropStmtList context ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def validateInteropFunctionSpec (spec : FunctionSpec) : Except String Unit := do
   spec.body.forM (validateInteropStmt s!"function '{spec.name}'")
@@ -2706,10 +2757,11 @@ private def findInternalFunctionByName (functions : List FunctionSpec)
   | _ =>
       throw s!"Compilation error: function '{callerName}' references ambiguous internal function '{calleeName}' ({issue625Ref})."
 
-private partial def validateInternalCallShapesInExpr
+mutual
+private def validateInternalCallShapesInExpr
     (functions : List FunctionSpec) (callerName : String) : Expr → Except String Unit
   | Expr.internalCall calleeName args => do
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
       let callee ← findInternalFunctionByName functions callerName calleeName
       if args.length != callee.params.length then
         throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
@@ -2784,17 +2836,28 @@ private partial def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName elseVal
   | _ =>
       pure ()
+termination_by e => sizeOf e
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def validateInternalCallShapesInStmt
+private def validateInternalCallShapesInExprList
+    (functions : List FunctionSpec) (callerName : String) : List Expr → Except String Unit
+  | [] => pure ()
+  | e :: es => do
+      validateInternalCallShapesInExpr functions callerName e
+      validateInternalCallShapesInExprList functions callerName es
+termination_by es => sizeOf es
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateInternalCallShapesInStmt
     (functions : List FunctionSpec) (callerName : String) : Stmt → Except String Unit
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       validateInternalCallShapesInExpr functions callerName value
   | Stmt.requireError cond _ args => do
       validateInternalCallShapesInExpr functions callerName cond
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
   | Stmt.revertError _ args =>
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
   | Stmt.mstore offset value => do
       validateInternalCallShapesInExpr functions callerName offset
       validateInternalCallShapesInExpr functions callerName value
@@ -2819,17 +2882,17 @@ private partial def validateInternalCallShapesInStmt
       validateInternalCallShapesInExpr functions callerName value
   | Stmt.ite cond thenBranch elseBranch => do
       validateInternalCallShapesInExpr functions callerName cond
-      thenBranch.forM (validateInternalCallShapesInStmt functions callerName)
-      elseBranch.forM (validateInternalCallShapesInStmt functions callerName)
+      validateInternalCallShapesInStmtList functions callerName thenBranch
+      validateInternalCallShapesInStmtList functions callerName elseBranch
   | Stmt.forEach _ count body => do
       validateInternalCallShapesInExpr functions callerName count
-      body.forM (validateInternalCallShapesInStmt functions callerName)
+      validateInternalCallShapesInStmtList functions callerName body
   | Stmt.emit _ args =>
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
   | Stmt.returnValues values =>
-      values.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName values
   | Stmt.internalCall calleeName args => do
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
       let callee ← findInternalFunctionByName functions callerName calleeName
       if args.length != callee.params.length then
         throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
@@ -2851,7 +2914,7 @@ private partial def validateInternalCallShapesInStmt
           throw s!"Compilation error: function '{callerName}' uses Stmt.internalCallAssign with duplicate target '{dup}' ({issue625Ref})."
       | none =>
           pure ()
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
       let callee ← findInternalFunctionByName functions callerName calleeName
       if args.length != callee.params.length then
         throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
@@ -2859,21 +2922,34 @@ private partial def validateInternalCallShapesInStmt
       if returns.length != names.length then
         throw s!"Compilation error: function '{callerName}' binds {names.length} values from internal function '{calleeName}', but callee returns {returns.length} ({issue625Ref})."
   | Stmt.rawLog topics dataOffset dataSize => do
-      topics.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName topics
       validateInternalCallShapesInExpr functions callerName dataOffset
       validateInternalCallShapesInExpr functions callerName dataSize
   | Stmt.externalCallBind _resultVars _ args =>
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
   | Stmt.ecm _ args =>
-      args.forM (validateInternalCallShapesInExpr functions callerName)
+      validateInternalCallShapesInExprList functions callerName args
   | _ =>
       pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateInternalCallShapesInStmtList
+    (functions : List FunctionSpec) (callerName : String) : List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateInternalCallShapesInStmt functions callerName s
+      validateInternalCallShapesInStmtList functions callerName ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def validateInternalCallShapesInFunction (functions : List FunctionSpec)
     (spec : FunctionSpec) : Except String Unit := do
   spec.body.forM (validateInternalCallShapesInStmt functions spec.name)
 
-private partial def validateExternalCallTargetsInExpr
+mutual
+private def validateExternalCallTargetsInExpr
     (externals : List ExternalFunction) (context : String) : Expr → Except String Unit
   | Expr.externalCall name args => do
       match externals.find? (fun ext => ext.name == name) with
@@ -2885,7 +2961,7 @@ private partial def validateExternalCallTargetsInExpr
           let returns ← externalFunctionReturns ext
           if returns.length != 1 then
             throw s!"Compilation error: {context} uses Expr.externalCall '{name}' but spec.externals declares {returns.length} return values; Expr.externalCall requires exactly 1 ({issue184Ref})."
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | Expr.call gas target value inOffset inSize outOffset outSize => do
       validateExternalCallTargetsInExpr externals context gas
       validateExternalCallTargetsInExpr externals context target
@@ -2934,7 +3010,7 @@ private partial def validateExternalCallTargetsInExpr
   | Expr.mappingUint _ key =>
       validateExternalCallTargetsInExpr externals context key
   | Expr.internalCall _ args =>
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | Expr.arrayElement _ index =>
       validateExternalCallTargetsInExpr externals context index
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
@@ -2956,17 +3032,28 @@ private partial def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context elseVal
   | _ =>
       pure ()
+termination_by e => sizeOf e
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def validateExternalCallTargetsInStmt
+private def validateExternalCallTargetsInExprList
+    (externals : List ExternalFunction) (context : String) : List Expr → Except String Unit
+  | [] => pure ()
+  | e :: es => do
+      validateExternalCallTargetsInExpr externals context e
+      validateExternalCallTargetsInExprList externals context es
+termination_by es => sizeOf es
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateExternalCallTargetsInStmt
     (externals : List ExternalFunction) (context : String) : Stmt → Except String Unit
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       validateExternalCallTargetsInExpr externals context value
   | Stmt.requireError cond _ args => do
       validateExternalCallTargetsInExpr externals context cond
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | Stmt.revertError _ args =>
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | Stmt.mstore offset value => do
       validateExternalCallTargetsInExpr externals context offset
       validateExternalCallTargetsInExpr externals context value
@@ -2991,19 +3078,19 @@ private partial def validateExternalCallTargetsInStmt
       validateExternalCallTargetsInExpr externals context value
   | Stmt.ite cond thenBranch elseBranch => do
       validateExternalCallTargetsInExpr externals context cond
-      thenBranch.forM (validateExternalCallTargetsInStmt externals context)
-      elseBranch.forM (validateExternalCallTargetsInStmt externals context)
+      validateExternalCallTargetsInStmtList externals context thenBranch
+      validateExternalCallTargetsInStmtList externals context elseBranch
   | Stmt.forEach _ count body => do
       validateExternalCallTargetsInExpr externals context count
-      body.forM (validateExternalCallTargetsInStmt externals context)
+      validateExternalCallTargetsInStmtList externals context body
   | Stmt.emit _ args =>
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | Stmt.internalCall _ args =>
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | Stmt.internalCallAssign _ _ args =>
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | Stmt.externalCallBind resultVars externalName args => do
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
       match externals.find? (fun ext => ext.name == externalName) with
       | none =>
           throw s!"Compilation error: {context} uses Stmt.externalCallBind with unknown external function '{externalName}'."
@@ -3024,15 +3111,27 @@ private partial def validateExternalCallTargetsInStmt
                   checkDuplicateVars (name :: seen) rest
           checkDuplicateVars [] resultVars
   | Stmt.returnValues values =>
-      values.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context values
   | Stmt.rawLog topics dataOffset dataSize => do
-      topics.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context topics
       validateExternalCallTargetsInExpr externals context dataOffset
       validateExternalCallTargetsInExpr externals context dataSize
   | Stmt.ecm _ args =>
-      args.forM (validateExternalCallTargetsInExpr externals context)
+      validateExternalCallTargetsInExprList externals context args
   | _ =>
       pure ()
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def validateExternalCallTargetsInStmtList
+    (externals : List ExternalFunction) (context : String) : List Stmt → Except String Unit
+  | [] => pure ()
+  | s :: ss => do
+      validateExternalCallTargetsInStmt externals context s
+      validateExternalCallTargetsInStmtList externals context ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def validateExternalCallTargetsInFunction
     (externals : List ExternalFunction) (spec : FunctionSpec) : Except String Unit := do

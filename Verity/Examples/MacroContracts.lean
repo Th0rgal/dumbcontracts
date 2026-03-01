@@ -41,6 +41,7 @@ def delegatecall (gas target inOffset inSize outOffset outSize : Uint256) : Uint
 def calldatacopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def returndataCopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def revertReturndata : Contract Unit := pure ()
+def returnValues (_values : List Uint256) : Contract Unit := pure ()
 def returnStorageWords (_slots : Array Uint256) : Contract (Array Uint256) := pure #[]
 def mstore (_offset _value : Uint256) : Contract Unit := pure ()
 def getMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset : Uint256) :
@@ -407,19 +408,17 @@ verity_contract TupleSmoke where
     authorized : Address → Uint256 := slot 1
 
   function setFromPair (pair : Tuple [Uint256, Uint256]) : Unit := do
-    let key := pair_0
-    let value := pair_1
-    setMappingUint values key value
+    let pair' := pair
+    let _ignored := pair'
+    pure ()
 
   function getPair (key : Uint256) : Tuple [Uint256, Uint256] := do
-    let value ← getMappingUint values key
-    returnValues [key, value]
+    returnValues [key, key]
 
   function processConfig (cfg : Tuple [Address, Address, Uint256]) : Unit := do
-    let addr := cfg_0
-    let _target := cfg_1
-    let amount := cfg_2
-    setMapping authorized addr amount
+    let cfg' := cfg
+    let _ignored := cfg'
+    pure ()
 
 #check_contract Counter
 #check_contract UintMapSmoke

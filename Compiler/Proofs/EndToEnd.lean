@@ -84,8 +84,9 @@ The gap between these two Yul execution entry points needs a bridging lemma.
 We capture this composition with the documented gap below.
 -/
 
-/-- Explicit bridge hypothesis for the param-load erasure step. -/
-def ParamLoadErasure (fn : IRFunction) (tx : IRTransaction) (state : IRState) : Prop :=
+/-- Explicit bridge hypothesis for the param-load erasure step.
+Scoped to this module because it is an internal bridge assumption. -/
+private def ParamLoadErasure (fn : IRFunction) (tx : IRTransaction) (state : IRState) : Prop :=
   let paramState := fn.params.zip tx.args |>.foldl
     (fun s (p, v) => s.setVar p.name v) state
   let yulTx : YulTransaction := {

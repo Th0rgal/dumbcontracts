@@ -25,6 +25,10 @@ boundary for generated EDSL artifacts.
   and all Expr/Stmt validation walkers (scoped-identifier, interop,
   internal-call-shape, external-call-target, event-argument-shape validation)
   in `Compiler/CompilationModel.lean`.
+- Macro translation now accepts explicit `getMappingUint` / `setMappingUint`
+  spellings for `Uint256 -> Uint256` storage fields (in addition to generic
+  mapping forms), with fail-closed type diagnostics; this is a syntax/front-end
+  extension and does not add new trusted components.
 
 ## Verification Chain
 

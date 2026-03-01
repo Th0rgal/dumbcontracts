@@ -106,6 +106,9 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
   checks, statement read/write analyzers, statement-list validation walkers,
   and all Expr/Stmt validation walkers: scoped-identifier, interop,
   internal-call-shape, external-call-target, and event-argument-shape).
+- Macro front-end extensions (including explicit `getMappingUint` /
+  `setMappingUint` translation support in `Verity/Macro/Translate.lean`) do not
+  add, remove, or modify Lean axioms.
 
 ## Maintenance Rule
 

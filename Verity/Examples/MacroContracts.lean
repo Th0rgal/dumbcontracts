@@ -352,6 +352,18 @@ verity_contract ERC20 where
     let currentOwner ← getStorageAddr ownerSlot
     return currentOwner
 
+verity_contract UintMapSmoke where
+  storage
+    values : Uint256 → Uint256 := slot 0
+
+  function setValue (key : Uint256, value : Uint256) : Unit := do
+    setMappingUint values key value
+
+  function getValue (key : Uint256) : Uint256 := do
+    let current ← getMappingUint values key
+    return current
+
 #check_contract Counter
+#check_contract UintMapSmoke
 
 end Verity.Examples.MacroContracts

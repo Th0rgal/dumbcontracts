@@ -143,12 +143,9 @@ def main() -> None:
             f"found {unsafe_count}: {unsafe_locations}"
         )
 
-    # Check 3: Expected sorry count matches actual
-    # Known sorry locations (Issue #998 semantic bridge):
-    #   - Verity/Macro/Bridge.lean:155  — macro-generated _semantic_preservation proof
-    #   - Compiler/Proofs/EndToEnd.lean:140  — layer3 var/memory state gap
-    #   - Compiler/Proofs/EndToEnd.lean:248  — genParamLoads var erasure gap
-    expected_sorry = 3
+    # Check 3: Expected sorry count matches actual.
+    # CI requires fully completed proofs in-tree.
+    expected_sorry = 0
     sorry_count = 0
     sorry_locations: list[str] = []
     for lean_file in ROOT.rglob("*.lean"):

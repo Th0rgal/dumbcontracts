@@ -5,7 +5,7 @@ description: Design decisions, iterations, and proof techniques
 
 # Research & Development
 
-**Compact core, built across 7 iterations. 469 theorems, all fully proven. 1 documented axiom, 0 sorry.**
+**Compact core, built across 7 iterations. 425 theorems, all fully proven. 1 documented axiom, 0 sorry.**
 
 ## Evolution
 
@@ -173,7 +173,7 @@ def ownedSpec : CompilationModel := {
 **Metrics**:
 - Manual IR eliminated in favor of generated IR from the spec
 - Time to add contract dropped significantly in practice
-- Test results: Foundry tests pass (441 as of 2026-02-18), Lean proofs verify (469 theorems as of 2026-02-19)
+- Test results: Foundry tests pass (441 as of 2026-02-18), Lean proofs verify (425 theorems as of 2026-02-19)
 - Code quality: More concise, optimized (expression inlining)
 
 **Features Achieved**:

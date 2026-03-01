@@ -5,7 +5,7 @@
   },
   "proofs": {
     "axioms": 1,
-    "sorry": 2
+    "sorry": 0
   },
   "schema_version": 1,
   "tests": {
@@ -16,9 +16,9 @@
   },
   "theorems": {
     "categories": 11,
-    "coverage_percent": 53,
+    "coverage_percent": 59,
     "covered": 250,
-    "excluded": 219,
+    "excluded": 175,
     "non_stdlib_total": 272,
     "per_contract": {
       "Counter": 28,
@@ -31,11 +31,11 @@
       "SafeCounter": 25,
       "SimpleStorage": 20,
       "SimpleToken": 61,
-      "Stdlib": 197
+      "Stdlib": 153
     },
-    "proven": 467,
-    "stdlib": 197,
-    "total": 469
+    "proven": 425,
+    "stdlib": 153,
+    "total": 425
   },
   "toolchain": {
     "lean": "leanprover/lean4:v4.22.0",

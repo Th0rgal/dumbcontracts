@@ -65,9 +65,9 @@ generation), reducing the manual escape hatch surface over time.
 
 Metrics tracked by repository tooling:
 
-- 469 theorems across 11 categories.
+- 425 theorems across 11 categories.
 - 250 theorems have corresponding Foundry property tests.
-- 53% runtime test coverage.
+- 59% runtime test coverage.
 
 (These values are validated by `scripts/check_doc_counts.py` against `artifacts/verification_status.json`.)
 

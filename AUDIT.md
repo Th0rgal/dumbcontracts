@@ -49,7 +49,7 @@ Access control and checks:
 23. `Verity/Macro/Translate.lean` supports explicit `getMappingUint`/`setMappingUint` forms for `Uint256 -> Uint256` storage fields with fail-closed typed diagnostics (`Address` mappings must use `getMapping`/`setMapping`).
 24. `Verity/Macro/Bridge.lean` emits per-function `_semantic_preservation` theorem skeletons (Issue #998) connecting EDSL execution to the CompilationModel spec. These are currently `sorry` — discharging them eliminates `interpretSpec` from the TCB.
 25. `Compiler/Proofs/EndToEnd.lean` composes Layer 2 (CompilationModel→IR) and Layer 3 (IR→Yul) preservation theorems into a single end-to-end result.
-26. `Verity/Proofs/Stdlib/PrimitiveBridge.lean` proves per-primitive EDSL↔compiled-Yul correctness lemmas (getStorage↔sload, setStorage↔sstore, add/sub/mul/div/mod↔builtins, lt/gt/eq↔comparisons, require↔iszero+revert, msgSender↔caller, Uint256/Address encoding, calddataload, Contract.run).
+26. `Verity/Proofs/Stdlib/PrimitiveBridge.lean` proves per-primitive EDSL↔compiled-Yul correctness lemmas (getStorage↔sload, setStorage↔sstore, add/sub/mul/div/mod↔builtins, lt/gt/eq↔comparisons, require↔iszero+revert, msgSender↔caller, Uint256/Address encoding, calldataload, Contract.run).
 27. `Compiler/Proofs/SemanticBridge.lean` states the target EDSL≡compiled-IR theorems for SimpleStorage (store, retrieve) and Counter (increment, decrement, getCount) and attempts full discharge via direct `simp` unfolding of both EDSL and IR execution — no `sorry` in these proofs.
 
 Crypto choices:

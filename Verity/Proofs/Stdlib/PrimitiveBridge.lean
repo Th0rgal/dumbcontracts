@@ -255,7 +255,7 @@ theorem pure_unfold {α : Type} (a : α) (state : ContractState) :
 
 These lemmas bridge the type-level Uint256 invariant (val < 2^256) with
 the EVM-level modular arithmetic (% evmModulus). They're crucial for
-calddataload proofs where the IR returns `value.val % evmModulus`.
+calldataload proofs where the IR returns `value.val % evmModulus`.
 -/
 
 /-- Any Uint256 value is within the EVM modulus range. -/
@@ -266,7 +266,7 @@ theorem uint256_val_lt_evmModulus (v : Uint256) :
   exact this
 
 /-- Modding a Uint256 value by evmModulus is a no-op.
-This is the key lemma used when calddataload returns `arg % evmModulus`. -/
+This is the key lemma used when calldataload returns `arg % evmModulus`. -/
 theorem uint256_val_mod_evmModulus (v : Uint256) :
     v.val % evmModulus = v.val :=
   Nat.mod_eq_of_lt (uint256_val_lt_evmModulus v)
@@ -287,32 +287,32 @@ theorem address_val_mod_evmModulus (a : Address) :
 
 /-! ## Calddataload Bridge
 
-The compiler generates `let param := calddataload(offset)` for each function
+The compiler generates `let param := calldataload(offset)` for each function
 parameter. Under the Verity builtin backend, this reads from `state.calldata`.
 
-These lemmas show the calddataload result matches the EDSL parameter value.
+These lemmas show the calldataload result matches the EDSL parameter value.
 -/
 
 /-- Calddataload at offset 4 returns the first argument (modulo evmModulus).
 For Uint256 arguments, the modulo is a no-op (via `uint256_val_mod_evmModulus`). -/
-theorem calddataloadWord_first_arg (selector : Nat) (a : Nat) (rest : List Nat) :
-    calddataloadWord selector (a :: rest) 4 = a % evmModulus := by
-  simp [calddataloadWord]
+theorem calldataloadWord_first_arg (selector : Nat) (a : Nat) (rest : List Nat) :
+    calldataloadWord selector (a :: rest) 4 = a % evmModulus := by
+  simp [calldataloadWord]
 
 /-- Calddataload at offset 4 for a Uint256 argument returns the value unchanged. -/
-theorem calddataloadWord_uint256_first (selector : Nat) (v : Uint256) (rest : List Nat) :
-    calddataloadWord selector (v.val :: rest) 4 = v.val := by
-  simp [calddataloadWord, uint256_val_mod_evmModulus]
+theorem calldataloadWord_uint256_first (selector : Nat) (v : Uint256) (rest : List Nat) :
+    calldataloadWord selector (v.val :: rest) 4 = v.val := by
+  simp [calldataloadWord, uint256_val_mod_evmModulus]
 
 /-- Calddataload at offset 36 returns the second argument (modulo evmModulus). -/
-theorem calddataloadWord_second_arg (selector : Nat) (a b : Nat) (rest : List Nat) :
-    calddataloadWord selector (a :: b :: rest) 36 = b % evmModulus := by
-  simp [calddataloadWord]
+theorem calldataloadWord_second_arg (selector : Nat) (a b : Nat) (rest : List Nat) :
+    calldataloadWord selector (a :: b :: rest) 36 = b % evmModulus := by
+  simp [calldataloadWord]
 
 /-- Calddataload at offset 36 for a Uint256 second argument. -/
-theorem calddataloadWord_uint256_second (selector : Nat) (a : Nat) (v : Uint256) (rest : List Nat) :
-    calddataloadWord selector (a :: v.val :: rest) 36 = v.val := by
-  simp [calddataloadWord, uint256_val_mod_evmModulus]
+theorem calldataloadWord_uint256_second (selector : Nat) (a : Nat) (v : Uint256) (rest : List Nat) :
+    calldataloadWord selector (a :: v.val :: rest) 36 = v.val := by
+  simp [calldataloadWord, uint256_val_mod_evmModulus]
 
 /-! ## Address Storage Primitives
 

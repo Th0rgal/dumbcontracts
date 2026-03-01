@@ -34,6 +34,7 @@ import Compiler.Specs
 import Verity.Core
 import Verity.Examples.SimpleStorage
 import Verity.Examples.Counter
+import Verity.Examples.Owned
 
 namespace Compiler.Proofs.SemanticBridge
 
@@ -323,6 +324,125 @@ theorem counter_getCount_semantic_bridge
     Compiler.Proofs.abstractLoadStorageOrMapping,
     Compiler.Proofs.storageAsMappings,
     IRState.setVar, IRState.getVar]
+
+/-! ## Target Theorems: Owned
+
+Owned uses Address-typed storage (slot 0 = owner address), so we need a
+different encoding that maps `state.storageAddr` to the IR Nat storage.
+The EDSL `ContractState` has separate `storage` (Uint256) and `storageAddr`
+(Address) fields; the IR uses a single `Nat → Nat` storage.
+-/
+
+/-- Encode EDSL Address storage as Nat storage for IR.
+Used for contracts that store Addresses (Owned, OwnedCounter, etc.). -/
+def encodeStorageAddr (state : ContractState) : Nat → Nat :=
+  fun slot => (state.storageAddr slot).val
+
+/-- Owned.getOwner: EDSL execution matches compiled IR execution.
+
+EDSL: getStorageAddr ⟨0⟩ → returns state.storageAddr 0
+IR:   mstore(0, sload(0)) → return(0, 32)
+
+Both produce: success=true, returnValue = (state.storageAddr 0).val. -/
+theorem owned_getOwner_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.Owned.getOwner) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x893d20e8
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorageAddr state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0x893d20e8
+    }
+    match edslResult with
+    | .success val s' =>
+        let irResult := interpretIR ownedIRContract tx irState
+        irResult.success = true ∧
+        irResult.returnValue = some val.val ∧
+        ∀ slot, (s'.storageAddr slot).val = irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  -- Both sides: read storage slot 0 (address), return it, storage unchanged.
+  simp [Verity.Examples.Owned.getOwner, Verity.Examples.Owned.owner,
+    Contract.run, getStorageAddr, bind, pure, encodeStorageAddr,
+    interpretIR, ownedIRContract,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar]
+
+/-- Owned.transferOwnership (as owner): EDSL execution matches compiled IR execution.
+
+When the caller IS the owner, both sides update slot 0 to the new owner address.
+
+EDSL: msgSender → getStorageAddr → require (sender == currentOwner) → setStorageAddr
+IR:   let newOwner := and(calddataload(4), addressMask)
+      if iszero(eq(caller(), sload(0))) { revert }
+      sstore(0, newOwner) → stop
+
+Both produce: success=true, storage[0] = newOwner.val, others unchanged. -/
+theorem owned_transferOwnership_semantic_bridge
+    (state : ContractState) (sender : Address) (newOwner : Address)
+    (hOwner : sender = state.storageAddr 0) :
+    let edslResult := Contract.run (Verity.Examples.Owned.transferOwnership newOwner)
+        { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xf2fde38b
+      args := [newOwner.val]
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorageAddr state
+      memory := fun _ => 0
+      calldata := [newOwner.val]
+      returnValue := none
+      sender := sender.val
+      selector := 0xf2fde38b
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR ownedIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (s'.storageAddr slot).val = irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  -- The EDSL path: msgSender → getStorageAddr → require (sender == owner) → setStorageAddr
+  -- With hOwner, the require succeeds, and we update slot 0.
+  -- The IR path: calddataload(4) & addressMask = newOwner.val (since Address < 2^160)
+  -- Then eq(caller(), sload(0)) = eq(sender.val, owner.val) = 1 (since hOwner)
+  -- iszero(1) = 0, so we don't revert. sstore(0, newOwner.val).
+  -- Address mask: and(newOwner.val, addressMask) = newOwner.val since Address < 2^160
+  have haddr : newOwner.val &&& addressMask = newOwner.val := by
+    simp only [addressMask]
+    have hlt : newOwner.val < 2 ^ 160 := by
+      have := newOwner.isLt; simp [ADDRESS_MODULUS] at this; exact this
+    calc newOwner.val &&& (2 ^ 160 - 1)
+        = newOwner.val % 2 ^ 160 := by
+          simpa using (Nat.and_two_pow_sub_one_eq_mod newOwner.val 160)
+      _ = newOwner.val := Nat.mod_eq_of_lt hlt
+  simp [Verity.Examples.Owned.transferOwnership, Verity.Examples.Owned.onlyOwner,
+    Verity.Examples.Owned.isOwner, Verity.Examples.Owned.owner,
+    Contract.run, getStorageAddr, setStorageAddr, msgSender, require,
+    bind, pure, hOwner, encodeStorageAddr,
+    interpretIR, ownedIRContract, ownedNotOwnerRevert,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    calldataloadWord,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar, haddr]
+  intro slot
+  by_cases h : slot = 0 <;> simp_all [beq_iff_eq]
 
 /-! ## Generic Bridge Template
 

@@ -239,10 +239,10 @@ Roadmap:
 2. ✅ Prove per-primitive correctness lemmas (`Verity/Proofs/Stdlib/PrimitiveBridge.lean`):
    getStorage↔sload, setStorage↔sstore, add/sub/mul/div/mod↔builtins, lt/gt/eq↔comparisons,
    require↔iszero+revert, if/else↔branching, msgSender↔caller,
-   Uint256/Address encoding, calddataload, Contract.run unfolding.
+   Uint256/Address encoding, calldataload, Contract.run unfolding.
 3. ✅ Macro emits per-function semantic preservation skeletons (`_semantic_preservation`
    theorems via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`).
-3b. ✅ SimpleStorage EDSL≡IR proofs fully discharged (`Compiler/Proofs/SemanticBridge.lean`).
+3b. ✅ SimpleStorage and Counter EDSL≡IR proofs fully discharged (`Compiler/Proofs/SemanticBridge.lean`).
 4. 🔲 Discharge the `sorry` in preservation theorems by composing primitive lemmas.
 5. 🔲 Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
 6. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).

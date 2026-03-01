@@ -104,6 +104,7 @@ def mkSemanticBridgeCommand
     let pIdent := p.ident
     match p.ty with
     | .uint256 => `(Verity.Core.Uint256.val $pIdent)
+    | .uint8 => `(Verity.Core.Uint256.val $pIdent)  -- Uint8 maps to Uint256 in EDSL
     | .address => `(Verity.Core.Address.val $pIdent)
     | .bool => `(if $pIdent then (1 : Nat) else (0 : Nat))
     | _ => `((0 : Nat))  -- Placeholder for other types

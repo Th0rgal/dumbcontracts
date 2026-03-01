@@ -26,7 +26,6 @@ import Verity.Specs.Common.Sum
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
 import Verity.Proofs.Stdlib.MappingAutomation
-import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.ListSum
 
 -- Example contracts (EDSL implementations)

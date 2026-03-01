@@ -1,4 +1,4 @@
-import Compiler.Proofs.SpecCorrectness.SimpleStorage
+import Verity.Proofs.SimpleStorage.Correctness
 
 /-
   Layer 2 proof re-export.

@@ -28,23 +28,11 @@ import Verity.Proofs.Stdlib.Automation
 import Verity.Proofs.Stdlib.ListSum
 import Verity.Proofs.Stdlib.MappingAutomation
 import Verity.Proofs.Stdlib.Math
-import Verity.Proofs.Stdlib.PrimitiveBridge
-import Verity.Proofs.Stdlib.SpecInterpreter
 import Compiler.Proofs.ArithmeticProfile
 import Compiler.Proofs.EndToEnd
 import Compiler.Proofs.IRGeneration.Conversions
-import Compiler.Proofs.Lowering.FromEDSL
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.SemanticBridge
-import Compiler.Proofs.SpecCorrectness.Counter
-import Compiler.Proofs.SpecCorrectness.ERC20
-import Compiler.Proofs.SpecCorrectness.ERC721
-import Compiler.Proofs.SpecCorrectness.Ledger
-import Compiler.Proofs.SpecCorrectness.Owned
-import Compiler.Proofs.SpecCorrectness.OwnedCounter
-import Compiler.Proofs.SpecCorrectness.SafeCounter
-import Compiler.Proofs.SpecCorrectness.SimpleStorage
-import Compiler.Proofs.SpecCorrectness.SimpleToken
 import Compiler.Proofs.YulGeneration.Equivalence
 
 -- Verity/Proofs/Counter/Basic.lean
@@ -456,12 +444,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.Stdlib.Automation.uint256_add_val
 #print axioms Verity.Proofs.Stdlib.Automation.uint256_sub_val
 #print axioms Verity.Proofs.Stdlib.Automation.uint256_sub_val_of_le
-#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getSlot_setSlot_same
-#print axioms Verity.Proofs.Stdlib.Automation.lookup_filter_ne
-#print axioms Verity.Proofs.Stdlib.Automation.lookup_cons_ne
-#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getSlot_setSlot_diff
-#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getMapping_setMapping_same
-#print axioms Verity.Proofs.Stdlib.Automation.SpecStorage_getMapping_setMapping_diff_slot
 #print axioms Verity.Proofs.Stdlib.Automation.safeSub_some_iff_ge
 #print axioms Verity.Proofs.Stdlib.Automation.safeSub_none_iff_lt
 #print axioms Verity.Proofs.Stdlib.Automation.safeSub_some_val
@@ -595,52 +577,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.Stdlib.Math.safeMul_result_bounded
 #print axioms Verity.Proofs.Stdlib.Math.safeDiv_result_le_numerator
 
--- Verity/Proofs/Stdlib/PrimitiveBridge.lean
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.getStorage_matches_sload
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.setStorage_matches_sstore
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_add_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_sub_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_mul_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeAdd_no_overflow
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeAdd_overflow
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeSub_no_underflow
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeSub_underflow
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.require_true_matches_noop
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.require_false_matches_revert
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.require_matches_iszero_revert
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.if_else_matches
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.msgSender_matches_caller
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.bind_unfold
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.pure_unfold
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_val_lt_evmModulus
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_val_mod_evmModulus
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.address_val_lt_evmModulus
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.address_val_mod_evmModulus
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_first_arg
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_uint256_first
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_second_arg
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_uint256_second
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_address_first
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.getStorageAddr_matches_sload
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.setStorageAddr_matches_sstore
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.contract_run_unfold
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.contract_run_success
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_lt_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_gt_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_eq_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_div_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_mod_matches_builtin
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.getMapping_unfold
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.setMapping_unfold
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.encodeMixedStorage_addr_slot
-#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.encodeMixedStorage_uint_slot
-
--- Verity/Proofs/Stdlib/SpecInterpreter.lean
-#print axioms Verity.Proofs.Stdlib.SpecInterpreter.dedupNatPreserve_go_nil_single
-#print axioms Verity.Proofs.Stdlib.SpecInterpreter.readStorageField_unpacked
-#print axioms Verity.Proofs.Stdlib.SpecInterpreter.readStorageField_missing
-#print axioms Verity.Proofs.Stdlib.SpecInterpreter.writeStorageField_unpacked_noAlias
-
 -- Compiler/Proofs/ArithmeticProfile.lean
 #print axioms Compiler.Proofs.ArithmeticProfile.modulus_is_2_pow_256
 #print axioms Compiler.Proofs.ArithmeticProfile.evmyullean_size_eq_verity_modulus
@@ -668,20 +604,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.EndToEnd.edsl_to_yul_template
 
 -- Compiler/Proofs/IRGeneration/Conversions.lean
-#print axioms Compiler.Proofs.IRGeneration.specStorageToIRState_storage
-#print axioms Compiler.Proofs.IRGeneration.specStorageToIRState_memory
 #print axioms Compiler.Proofs.IRGeneration.contractStateToIRState_memory
-
--- Compiler/Proofs/Lowering/FromEDSL.lean
-#print axioms Compiler.Proofs.Lowering.lowerContractCore_eq_model
-#print axioms Compiler.Proofs.Lowering.lowerContractCore_preserves_interpretSpec
-#print axioms Compiler.Proofs.Lowering.lowerLiftModel_eq
-#print axioms Compiler.Proofs.Lowering.lowerLiftModel_preserves_interpretSpec
-#print axioms Compiler.Proofs.Lowering.lowerModelPath_eq_ok
-#print axioms Compiler.Proofs.Lowering.lowerModelPath_preserves_interpretSpec
-#print axioms Compiler.Proofs.Lowering.parseEDSLContract_eq_ok_of_some
-#print axioms Compiler.Proofs.Lowering.parseEDSLContract_eq_error_of_none
-#print axioms Compiler.Proofs.Lowering.lowerRequestedEDSLContracts_default_eq
 
 -- Compiler/Proofs/MappingSlot.lean
 #print axioms Compiler.Proofs.abstractMappingSlot_eq_solidity
@@ -715,109 +638,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.SemanticBridge.simpleStorage_retrieve_edsl_to_yul
 #print axioms Compiler.Proofs.SemanticBridge.counter_increment_edsl_to_yul
 
--- Compiler/Proofs/SpecCorrectness/Counter.lean
--- #print axioms Compiler.Proofs.SpecCorrectness.evalExpr_decrement_eq  -- private
-#print axioms Compiler.Proofs.SpecCorrectness.counter_increment_correct
-#print axioms Compiler.Proofs.SpecCorrectness.counter_decrement_correct
-#print axioms Compiler.Proofs.SpecCorrectness.counter_getCount_correct
-#print axioms Compiler.Proofs.SpecCorrectness.counter_getCount_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.counter_increment_decrement_roundtrip
-#print axioms Compiler.Proofs.SpecCorrectness.counter_decrement_increment_roundtrip
-
--- Compiler/Proofs/SpecCorrectness/ERC20.lean
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_constructor_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_balanceOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_allowanceOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_getOwner_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_totalSupply_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_approve_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_mint_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_transfer_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_transfer_preserves_totalSupply_when_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.erc20_transfer_preserves_owner_when_sufficient
-
--- Compiler/Proofs/SpecCorrectness/ERC721.lean
-#print axioms Compiler.Proofs.SpecCorrectness.erc721_balanceOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc721_ownerOf_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc721_getApproved_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc721_isApprovedForAll_spec_correct
-#print axioms Compiler.Proofs.SpecCorrectness.erc721_setApprovalForAll_spec_correct
-
--- Compiler/Proofs/SpecCorrectness/Ledger.lean
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_deposit_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_withdraw_correct_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_withdraw_reverts_insufficient
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_transfer_correct_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_transfer_reverts_insufficient
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_getBalance_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_getBalance_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_deposit_increases
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_transfer_preserves_total
-#print axioms Compiler.Proofs.SpecCorrectness.ledger_deposit_isolates_other
-
--- Compiler/Proofs/SpecCorrectness/Owned.lean
-#print axioms Compiler.Proofs.SpecCorrectness.owned_constructor_correct
-#print axioms Compiler.Proofs.SpecCorrectness.owned_transferOwnership_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.owned_transferOwnership_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.owned_getOwner_correct
-#print axioms Compiler.Proofs.SpecCorrectness.owned_getOwner_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.owned_only_owner_can_transfer
-#print axioms Compiler.Proofs.SpecCorrectness.owned_constructor_sets_owner
-#print axioms Compiler.Proofs.SpecCorrectness.owned_transferOwnership_updates_owner
-
--- Compiler/Proofs/SpecCorrectness/OwnedCounter.lean
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_constructor_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_increment_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_increment_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_decrement_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_decrement_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_getCount_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_getOwner_correct
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_transferOwnership_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_transferOwnership_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_getters_preserve_state
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_only_owner_modifies
-#print axioms Compiler.Proofs.SpecCorrectness.ownedCounter_slots_independent
-
--- Compiler/Proofs/SpecCorrectness/SafeCounter.lean
--- #print axioms Compiler.Proofs.SpecCorrectness.lookup_count_newcount  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.lookup_newcount  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.lookup_count_single  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.add_one_val_eq_mod'  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.increment_spec_success_iff  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.increment_spec_storage  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.decrement_spec_success_iff  -- private
--- #print axioms Compiler.Proofs.SpecCorrectness.decrement_spec_storage  -- private
-#print axioms Compiler.Proofs.SpecCorrectness.safeIncrement_reverts_at_max
-#print axioms Compiler.Proofs.SpecCorrectness.safeIncrement_succeeds_below_max
-#print axioms Compiler.Proofs.SpecCorrectness.safeIncrement_correct
-#print axioms Compiler.Proofs.SpecCorrectness.safeDecrement_reverts_at_zero
-#print axioms Compiler.Proofs.SpecCorrectness.safeDecrement_succeeds_above_zero
-#print axioms Compiler.Proofs.SpecCorrectness.safeDecrement_correct
-#print axioms Compiler.Proofs.SpecCorrectness.safeGetCount_correct
-#print axioms Compiler.Proofs.SpecCorrectness.safeGetCount_preserves_state
-
--- Compiler/Proofs/SpecCorrectness/SimpleStorage.lean
-#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_store_correct
-#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_retrieve_correct
-#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_retrieve_preserves_state
-#print axioms Compiler.Proofs.SpecCorrectness.simpleStorage_store_retrieve_roundtrip
-
--- Compiler/Proofs/SpecCorrectness/SimpleToken.lean
-#print axioms Compiler.Proofs.SpecCorrectness.token_constructor_correct
-#print axioms Compiler.Proofs.SpecCorrectness.token_mint_correct_as_owner
-#print axioms Compiler.Proofs.SpecCorrectness.token_mint_reverts_as_nonowner
-#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_correct_sufficient
-#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_reverts_insufficient
-#print axioms Compiler.Proofs.SpecCorrectness.token_balanceOf_correct
-#print axioms Compiler.Proofs.SpecCorrectness.token_getTotalSupply_correct
-#print axioms Compiler.Proofs.SpecCorrectness.token_getOwner_correct
-#print axioms Compiler.Proofs.SpecCorrectness.token_getters_preserve_state
-#print axioms Compiler.Proofs.SpecCorrectness.token_mint_increases_supply
-#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_supply
-#print axioms Compiler.Proofs.SpecCorrectness.token_only_owner_mints
-#print axioms Compiler.Proofs.SpecCorrectness.token_transfer_preserves_total_balance
-
 -- Compiler/Proofs/YulGeneration/Equivalence.lean
 #print axioms Compiler.Proofs.YulGeneration.resultsMatch_of_execResultsAligned
 #print axioms Compiler.Proofs.YulGeneration.statesAligned_refl
@@ -833,4 +653,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 699 theorems/lemmas (670 public, 29 private)
+-- Total: 555 theorems/lemmas (535 public, 20 private)

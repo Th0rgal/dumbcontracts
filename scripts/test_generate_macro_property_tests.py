@@ -77,6 +77,10 @@ class RenderTests(unittest.TestCase):
         self.assertIn("function testAuto_Touch_NoUnexpectedRevert()", rendered)
         self.assertIn("function testTODO_Read_DecodeAndAssert()", rendered)
         self.assertIn('abi.encodeWithSignature("read(address)", alice)', rendered)
+        self.assertIn(
+            'assertEq(ret.length, 32, "read ABI return length mismatch (expected 32 bytes)");',
+            rendered,
+        )
 
     def test_render_array_param_adds_helper(self) -> None:
         contract = gen.ContractDecl(
@@ -117,6 +121,29 @@ class RenderTests(unittest.TestCase):
             ),
         )
         with self.assertRaisesRegex(ValueError, "unsupported Lean array element type"):
+            gen.render_contract_test(contract)
+
+    def test_render_dynamic_return_shape_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="ReturnsBytes",
+            constructor=None,
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(gen.FunctionDecl("blob", (), "Bytes"),),
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn(
+            'require(ret.length >= 64, "blob ABI return payload unexpectedly short");',
+            rendered,
+        )
+
+    def test_render_unknown_return_type_fails_closed(self) -> None:
+        contract = gen.ContractDecl(
+            name="UnknownReturn",
+            constructor=None,
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(gen.FunctionDecl("mystery", (), "String"),),
+        )
+        with self.assertRaisesRegex(ValueError, "unsupported Lean return type"):
             gen.render_contract_test(contract)
 
     def test_render_constructor_uses_deploy_with_args(self) -> None:

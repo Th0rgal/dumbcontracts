@@ -189,6 +189,23 @@ def _fn_camel(name: str) -> str:
     return name[:1].upper() + name[1:]
 
 
+def _return_shape_assertion(lean_ty: str, fn_name: str) -> str:
+    ty = _normalize_type(lean_ty)
+    if ty in {"Uint256", "Address", "Bool", "Bytes32"}:
+        return (
+            f'        assertEq(ret.length, 32, "{fn_name} ABI return length mismatch (expected 32 bytes)");'
+        )
+    if ty == "Bytes":
+        return (
+            f'        require(ret.length >= 64, "{fn_name} ABI return payload unexpectedly short");'
+        )
+    if ty.startswith("Array "):
+        return (
+            f'        require(ret.length >= 64, "{fn_name} ABI dynamic return payload unexpectedly short");'
+        )
+    raise ValueError(f"unsupported Lean return type for generated assertion: {ty!r}")
+
+
 def render_contract_test(contract: ContractDecl) -> str:
     tests: list[str] = []
     need_uint_array_helper = False
@@ -221,11 +238,13 @@ def render_contract_test(contract: ContractDecl) -> str:
     }}
 """
         else:
+            ret_assert = _return_shape_assertion(fn.return_type, fn.name)
             body = f"""    // Property {idx}: TODO decode and assert `{fn.name}` result
     function testTODO_{fn_camel}_DecodeAndAssert() public {{
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature({encode_args}));
         require(ok, \"{fn.name} reverted unexpectedly\");
+{ret_assert}
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }}

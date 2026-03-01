@@ -34,6 +34,7 @@ contract PropertySafeCounterTest is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getCount()"));
         require(ok, "getCount reverted unexpectedly");
+        assertEq(ret.length, 32, "getCount ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }

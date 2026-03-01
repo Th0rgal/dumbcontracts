@@ -23,7 +23,7 @@ private def jsonString (s : String) : String :=
 private def joinJsonFields (fields : List String) : String :=
   String.intercalate ", " fields
 
-private partial def abiTypeString : ParamType → String
+private def abiTypeString : ParamType → String
   | .uint256 => "uint256"
   | .address => "address"
   | .bool => "bool"
@@ -52,7 +52,6 @@ mutual
     | .array t => abiComponents? t
     | .fixedArray t _ => abiComponents? t
     | _ => none
-
   private partial def renderParam (name : String) (ty : ParamType) (indexed : Option Bool) : String :=
     let base := [
       s!"\"name\": {jsonString name}",

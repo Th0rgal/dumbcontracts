@@ -32,4 +32,13 @@ contract PropertyMappingWordSmokeTest is YulTestBase {
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
+    // Property 3: TODO decode and assert `isWord1NonZero` result
+    function testTODO_IsWord1NonZero_DecodeAndAssert() public {
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("isWord1NonZero(uint256)", uint256(1)));
+        require(ok, "isWord1NonZero reverted unexpectedly");
+        assertEq(ret.length, 32, "isWord1NonZero ABI return length mismatch (expected 32 bytes)");
+        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
+        ret;
+    }
 }

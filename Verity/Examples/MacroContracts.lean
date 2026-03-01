@@ -389,6 +389,10 @@ verity_contract MappingWordSmoke where
     let word ← getMappingWord words key 1
     return word
 
+  function isWord1NonZero (key : Uint256) : Bool := do
+    let word ← getMappingWord words key 1
+    return (word != 0)
+
 #check_contract Counter
 #check_contract UintMapSmoke
 #check_contract Bytes32Smoke

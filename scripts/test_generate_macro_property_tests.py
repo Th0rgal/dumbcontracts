@@ -136,6 +136,19 @@ class RenderTests(unittest.TestCase):
             rendered,
         )
 
+    def test_render_bool_return_shape_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="ReturnsBool",
+            constructor=None,
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(gen.FunctionDecl("isReady", (), "Bool"),),
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn(
+            'assertEq(ret.length, 32, "isReady ABI return length mismatch (expected 32 bytes)");',
+            rendered,
+        )
+
     def test_render_unknown_return_type_fails_closed(self) -> None:
         contract = gen.ContractDecl(
             name="UnknownReturn",

@@ -11,8 +11,8 @@
 
     ∀ slot, (edslFinalState.storage slot).val = irResult.finalStorage slot
 
-  For SimpleStorage, the proofs attempt full discharge (no sorry) via
-  direct simp unfolding of both EDSL and IR execution. For more complex
+  For SimpleStorage and Counter, the proofs attempt full discharge (no sorry)
+  via direct simp unfolding of both EDSL and IR execution. For more complex
   contracts, the proofs compose:
   1. Primitive bridge lemmas (PrimitiveBridge.lean)
   2. EndToEnd composition (EndToEnd.lean)
@@ -33,6 +33,7 @@ import Compiler.Proofs.EndToEnd
 import Compiler.Specs
 import Verity.Core
 import Verity.Examples.SimpleStorage
+import Verity.Examples.Counter
 
 namespace Compiler.Proofs.SemanticBridge
 
@@ -162,6 +163,161 @@ theorem simpleStorage_retrieve_semantic_bridge
   simp [Verity.Examples.retrieve, Verity.Examples.storedData, Contract.run,
     getStorage, bind, pure, encodeStorage,
     interpretIR, simpleStorageIRContract,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar]
+
+/-! ## Target Theorems: Counter
+
+Counter has three functions (increment, decrement, getCount) with no parameters.
+The EDSL uses `Uint256.add`/`Uint256.sub` which wrap at `modulus = 2^256`.
+The IR uses `add`/`sub` builtins which wrap at `evmModulus = 2^256`.
+Since `modulus = evmModulus`, the results match exactly.
+-/
+
+/-- Counter.increment: EDSL execution matches compiled IR execution.
+
+EDSL: getStorage 0 → add current 1 → setStorage 0 result
+IR:   sstore(0, add(sload(0), 1)) → stop
+
+Both produce: success=true, storage[0] = (old + 1) % 2^256, others unchanged. -/
+theorem counter_increment_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.Counter.increment) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xd09de08a
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0xd09de08a
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR counterIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (s'.storage slot).val = irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  -- Both sides: slot 0 updated to (old + 1) % 2^256, others unchanged.
+  -- Uint256.add wraps at modulus = 2^256 = evmModulus.
+  simp [Verity.Examples.Counter.increment, Verity.Examples.Counter.count,
+    Contract.run, getStorage, setStorage, bind,
+    Uint256.add, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS,
+    encodeStorage,
+    interpretIR, counterIRContract,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    Compiler.Constants.evmModulus,
+    IRState.setVar, IRState.getVar]
+  intro slot
+  by_cases h : slot = 0 <;> simp_all [beq_iff_eq]
+
+/-- Counter.decrement: EDSL execution matches compiled IR execution.
+
+EDSL: getStorage 0 → sub current 1 → setStorage 0 result
+IR:   sstore(0, sub(sload(0), 1)) → stop
+
+Both produce: success=true, storage[0] = (evmModulus + old - 1) % 2^256, others unchanged. -/
+theorem counter_decrement_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.Counter.decrement) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x2baeceb7
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0x2baeceb7
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR counterIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (s'.storage slot).val = irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  -- Both sides: slot 0 updated to sub semantics, others unchanged.
+  -- Uint256.sub wraps at modulus = 2^256 = evmModulus.
+  -- EDSL sub: if b ≤ a then (a-b) % mod else (mod - (b-a)) % mod
+  -- IR sub: (evmModulus + a - b) % evmModulus
+  -- These are equal (both represent two's complement subtraction).
+  -- Bridge the Uint256.sub result to the IR sub result.
+  have hsub : ∀ (v : Uint256),
+      (Uint256.sub v (Uint256.ofNat 1)).val =
+        (Compiler.Constants.evmModulus + v.val - (1 % (2 ^ 256))) % Compiler.Constants.evmModulus := by
+    intro v
+    simp [Uint256.sub, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, Compiler.Constants.evmModulus]
+    have hv := v.isLt
+    simp [Uint256.modulus, UINT256_MODULUS] at hv
+    by_cases hle : (1 % (2 ^ 256)) ≤ v.val
+    · simp [hle]; omega
+    · simp [hle]; omega
+  simp [Verity.Examples.Counter.decrement, Verity.Examples.Counter.count,
+    Contract.run, getStorage, setStorage, bind,
+    encodeStorage,
+    interpretIR, counterIRContract,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar, hsub]
+  intro slot
+  by_cases h : slot = 0 <;> simp_all [beq_iff_eq]
+
+/-- Counter.getCount: EDSL execution matches compiled IR execution.
+
+EDSL: getStorage 0 → return value
+IR:   mstore(0, sload(0)) → return(0, 32)
+
+Both produce: success=true, returnValue = (state.storage 0).val, storage unchanged. -/
+theorem counter_getCount_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.Counter.getCount) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xa87d942c
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0xa87d942c
+    }
+    match edslResult with
+    | .success val s' =>
+        let irResult := interpretIR counterIRContract tx irState
+        irResult.success = true ∧
+        irResult.returnValue = some val.val ∧
+        ∀ slot, (s'.storage slot).val = irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  -- Both sides: read storage slot 0, return it, storage unchanged.
+  simp [Verity.Examples.Counter.getCount, Verity.Examples.Counter.count,
+    Contract.run, getStorage, bind, pure, encodeStorage,
+    interpretIR, counterIRContract,
     execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
     evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
     Compiler.Proofs.abstractLoadStorageOrMapping,

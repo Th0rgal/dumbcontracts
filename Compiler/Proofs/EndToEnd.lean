@@ -425,8 +425,10 @@ and the macro-generated proof skeleton.
 - `yulBody_from_state_eq_yulBody` — modular proof delegating to the above + sorry (1)
 - `layer3_contract_preserves_semantics` — conditioned on hvars/hmemory
 - All `PrimitiveBridge.lean` lemmas (bind_unfold, pure_unfold, getStorage, setStorage,
-  uint256_add/sub/mul, require, if_else, msgSender)
-- `SemanticBridge.lean` — SimpleStorage store/retrieve proofs (pending build verification)
+  uint256_add/sub/mul/div/mod, lt/gt/eq comparisons, require, if_else, msgSender,
+  Uint256/Address encoding, calddataload, Contract.run)
+- `SemanticBridge.lean` — SimpleStorage (store, retrieve) and Counter (increment,
+  decrement, getCount) proofs (pending build verification)
 -/
 
 end Compiler.Proofs.EndToEnd

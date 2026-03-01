@@ -899,23 +899,160 @@ theorem ownedCounter_transferOwnership_semantic_bridge
   intro slot
   by_cases h0 : slot = 0 <;> simp_all [beq_iff_eq]
 
-/-! ## Generic Bridge Template
+/-! ## Composed End-to-End: EDSL → IR → Yul
 
-For contracts with N functions, we need N theorems of this shape.
-The macro-generated `_semantic_preservation` theorems provide the
-type-checked skeleton. This file provides the concrete IR-connected
-instances.
+These theorems compose the EDSL ≡ IR results (above) with the generic
+Layer 3 result (IR ≡ Yul from EndToEnd.lean) to obtain the full chain:
+
+  EDSL(f).run state ≡ Yul(compile(spec))(f, state)
+
+This is the *concrete* composition target of Issue #998. Once the Yul
+builtins ≡ EVMYulLean bridge (ArithmeticProfile.lean, EndToEnd.lean) is
+also composed, we have: EDSL ≡ EVMYulLean(compile(spec)).
 
 The composition chain for each function f:
   1. EDSL(f).run state ≡ IR(compile(f.spec)).exec irState
-     (this file, via primitive bridge lemmas)
+     (this file, via direct simp unfolding)
   2. IR(compile(spec)).exec ≡ Yul(emitYul(compile(spec))).exec
-     (EndToEnd.lean, via Layer 3)
+     (EndToEnd.lean, via `layer3_contract_preserves_semantics`)
   3. Yul builtins ≡ EVMYulLean builtins
-     (ArithmeticProfile.lean, for pure builtins)
-
-Composing 1+2+3 gives the target:
-  EDSL(f).run state ≡ EVMYulLean(compile(spec))(f, state)
+     (ArithmeticProfile.lean + EndToEnd.lean `pure_*_bridge`)
 -/
+
+/-- SimpleStorage.store full chain: EDSL → IR → Yul.
+
+When the EDSL store succeeds:
+1. The IR execution also succeeds with matching storage (from `simpleStorage_store_semantic_bridge`)
+2. The Yul execution matches the IR execution (from `layer3_contract_preserves_semantics`)
+
+This eliminates `interpretSpec` completely for SimpleStorage.store:
+the trust chain is now EDSL → IR → Yul, all machine-checked. -/
+theorem simpleStorage_store_edsl_to_yul
+    (state : ContractState) (sender : Address) (value : Uint256) :
+    let edslResult := Contract.run (Verity.Examples.store value) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x6057361d
+      args := [value.val]
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := [value.val]
+      returnValue := none
+      sender := sender.val
+      selector := 0x6057361d
+    }
+    match edslResult with
+    | .success _ s' =>
+        -- Layer 1+2: EDSL ≡ IR
+        let irResult := interpretIR simpleStorageIRContract tx irState
+        irResult.success = true ∧
+        (∀ slot, (s'.storage slot).val = irResult.finalStorage slot) ∧
+        -- Layer 3: IR ≡ Yul
+        Compiler.Proofs.YulGeneration.resultsMatch
+          (interpretIR simpleStorageIRContract tx irState)
+          (interpretYulFromIR simpleStorageIRContract tx irState)
+    | .revert _ _ => True
+    := by
+  -- Compose the EDSL ≡ IR proof with the IR ≡ Yul proof.
+  have h_edsl_ir := simpleStorage_store_semantic_bridge state sender value
+  have h_ir_yul := Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics
+    simpleStorageIRContract
+    { sender := sender.val, functionSelector := 0x6057361d, args := [value.val] }
+    { vars := [], storage := encodeStorage state, memory := fun _ => 0,
+      calldata := [value.val], returnValue := none, sender := sender.val, selector := 0x6057361d }
+    (by norm_num [selectorModulus])
+    rfl
+    rfl
+  -- The EDSL result determines the case split
+  simp only [Verity.Examples.store, Verity.Examples.storedData, Contract.run,
+    setStorage, bind] at h_edsl_ir ⊢
+  exact ⟨h_edsl_ir.1, h_edsl_ir.2, h_ir_yul⟩
+
+/-- SimpleStorage.retrieve full chain: EDSL → IR → Yul. -/
+theorem simpleStorage_retrieve_edsl_to_yul
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.retrieve) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x2e64cec1
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0x2e64cec1
+    }
+    match edslResult with
+    | .success val s' =>
+        let irResult := interpretIR simpleStorageIRContract tx irState
+        irResult.success = true ∧
+        irResult.returnValue = some val.val ∧
+        (∀ slot, (s'.storage slot).val = irResult.finalStorage slot) ∧
+        Compiler.Proofs.YulGeneration.resultsMatch
+          (interpretIR simpleStorageIRContract tx irState)
+          (interpretYulFromIR simpleStorageIRContract tx irState)
+    | .revert _ _ => True
+    := by
+  have h_edsl_ir := simpleStorage_retrieve_semantic_bridge state sender
+  have h_ir_yul := Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics
+    simpleStorageIRContract
+    { sender := sender.val, functionSelector := 0x2e64cec1, args := [] }
+    { vars := [], storage := encodeStorage state, memory := fun _ => 0,
+      calldata := [], returnValue := none, sender := sender.val, selector := 0x2e64cec1 }
+    (by norm_num [selectorModulus])
+    rfl
+    rfl
+  simp only [Verity.Examples.retrieve, Verity.Examples.storedData, Contract.run,
+    getStorage, bind, pure] at h_edsl_ir ⊢
+  exact ⟨h_edsl_ir.1, h_edsl_ir.2.1, h_edsl_ir.2.2, h_ir_yul⟩
+
+/-- Counter.increment full chain: EDSL → IR → Yul. -/
+theorem counter_increment_edsl_to_yul
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.Counter.increment) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xd09de08a
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0xd09de08a
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR counterIRContract tx irState
+        irResult.success = true ∧
+        (∀ slot, (s'.storage slot).val = irResult.finalStorage slot) ∧
+        Compiler.Proofs.YulGeneration.resultsMatch
+          (interpretIR counterIRContract tx irState)
+          (interpretYulFromIR counterIRContract tx irState)
+    | .revert _ _ => True
+    := by
+  have h_edsl_ir := counter_increment_semantic_bridge state sender
+  have h_ir_yul := Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics
+    counterIRContract
+    { sender := sender.val, functionSelector := 0xd09de08a, args := [] }
+    { vars := [], storage := encodeStorage state, memory := fun _ => 0,
+      calldata := [], returnValue := none, sender := sender.val, selector := 0xd09de08a }
+    (by norm_num [selectorModulus])
+    rfl
+    rfl
+  simp only [Verity.Examples.Counter.increment, Verity.Examples.Counter.count, Contract.run,
+    getStorage, setStorage, bind,
+    Uint256.add, Uint256.ofNat] at h_edsl_ir ⊢
+  exact ⟨h_edsl_ir.1, h_edsl_ir.2, h_ir_yul⟩
 
 end Compiler.Proofs.SemanticBridge

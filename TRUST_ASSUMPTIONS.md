@@ -252,9 +252,13 @@ Roadmap:
    fully discharged (`Compiler/Proofs/SemanticBridge.lean`). 16 functions total
    across 5 contracts. OwnedCounter demonstrates mixed-type multi-slot storage
    encoding (Address slot 0 + Uint256 slot 1) and access control composition.
-3c. ✅ Universal pure arithmetic bridge theorems in EndToEnd.lean
-   (add/sub/mul ↔ EVMYulLean fully proven via `Nat.add_mod`/`Nat.mul_mod`/`omega`;
-   div/mod stated with `sorry` — require Fin.div/Fin.mod unfolding + in-range preconditions).
+3c. ✅ Universal pure arithmetic bridge theorems in EndToEnd.lean — all 5 proven:
+   add/sub/mul via `Nat.add_mod`/`Nat.mul_mod`/`omega`;
+   div/mod via `Fin.div`/`Fin.mod` unfolding + in-range preconditions.
+3d. ✅ Composed EDSL→IR→Yul end-to-end proofs for SimpleStorage (store, retrieve)
+   and Counter (increment) in `SemanticBridge.lean`. These chain the EDSL≡IR proofs
+   with `layer3_contract_preserves_semantics` to yield the full chain without
+   `interpretSpec` in the TCB.
 4. 🔲 Discharge the `sorry` in preservation theorems by composing primitive lemmas.
 5. 🔲 Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
 6. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).

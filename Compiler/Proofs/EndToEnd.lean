@@ -411,16 +411,9 @@ and the macro-generated proof skeleton.
    - Depends on: the same gap as (1) but for arbitrary initial state
    - Impact: Low — the conditioned version is sufficient for all practical use cases
 
-3. **`pure_div_bridge`** (1 sorry) — Fin.div definitional unfolding
-   - Mathematically clear: both sides compute a/b for in-range inputs
-   - Requires navigating Fin.div's internal representation
-
-4. **`pure_mod_bridge`** (1 sorry) — Fin BEq + mod unfolding
-   - Same as div but with additional BEq guard on Fin values
-
 ### Other files:
 
-5. **`Verity/Macro/Bridge.lean` — `_semantic_preservation` theorems** (1 sorry per function)
+3. **`Verity/Macro/Bridge.lean` — `_semantic_preservation` theorems** (1 sorry per function)
    - States: EDSL execution agrees with CM function spec (weak form)
    - Depends on: Phase 4 primitive bridge lemma composition
    - Impact: Medium — these are the macro-generated skeletons
@@ -434,6 +427,8 @@ and the macro-generated proof skeleton.
 - **`pure_add_bridge`** — Verity add ≡ EVMYulLean add (via Nat.add_mod)
 - **`pure_sub_bridge`** — Verity sub ≡ EVMYulLean sub (via omega)
 - **`pure_mul_bridge`** — Verity mul ≡ EVMYulLean mul (via Nat.mul_mod)
+- **`pure_div_bridge`** — Verity div ≡ EVMYulLean div (via Fin.div unfolding + in-range)
+- **`pure_mod_bridge`** — Verity mod ≡ EVMYulLean mod (via Fin BEq + in-range)
 - All `PrimitiveBridge.lean` lemmas (bind_unfold, pure_unfold, getStorage, setStorage,
   uint256_add/sub/mul/div/mod, lt/gt/eq comparisons, require, if_else, msgSender,
   Uint256/Address encoding, calldataload, Contract.run, getMapping, setMapping,
@@ -526,19 +521,16 @@ theorem pure_div_bridge (a b : Nat) (ha : a < evmModulus) (hb : b < evmModulus) 
     evalBuiltinCall (fun _ => 0) 0 0 [] "div" [a, b] =
       Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean "div" [a, b] := by
   -- Verity: if b = 0 then some 0 else some (a / b)
-  -- EVMYulLean: some (UInt256.toNat (UInt256.div (ofNat a) (ofNat b)))
-  --   = some ((a % size) / (b % size))
-  -- With ha, hb: a % size = a, b % size = b, so EVMYulLean side = a / b
-  -- When b = 0: Fin.div gives ⟨a/0⟩ = ⟨0⟩, so both return 0
+  -- EVMYulLean UInt256.div: ⟨a.val / b.val⟩ (Fin.div)
+  -- Fin.div ⟨x, _⟩ ⟨y, _⟩ = ⟨x / y, _⟩
+  -- Fin.ofNat a = ⟨a % size, _⟩, with a < size: a % size = a
+  -- So EVMYulLean side = some (a / b). When b = 0: a / 0 = 0.
   simp only [evalBuiltinCall, Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean,
     EvmYul.UInt256.div, EvmYul.UInt256.ofNat, EvmYul.UInt256.toNat, EvmYul.UInt256.size,
-    Id.run, Fin.ofNat', evmModulus]
+    Id.run, Fin.ofNat', Fin.ofNat, Fin.div, evmModulus]
   simp only [evmModulus] at ha hb
-  have ha' : a % (2 ^ 256) = a := Nat.mod_eq_of_lt ha
-  have hb' : b % (2 ^ 256) = b := Nat.mod_eq_of_lt hb
-  sorry -- TODO: Complete Fin.div unfolding. The mathematical identity is clear:
-        -- both sides compute a/b (or 0 when b=0) for in-range inputs.
-        -- Requires navigating Fin.div's definitional unfolding in Lean 4.
+  -- After unfolding Fin.ofNat and Fin.div, both sides should be in terms of (a % size) / (b % size)
+  simp [Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb]
 
 /-- Universal bridge: Verity `mod` agrees with EVMYulLean `mod` for in-range inputs.
 
@@ -546,25 +538,21 @@ Same in-range requirement as div_bridge. -/
 theorem pure_mod_bridge (a b : Nat) (ha : a < evmModulus) (hb : b < evmModulus) :
     evalBuiltinCall (fun _ => 0) 0 0 [] "mod" [a, b] =
       Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean "mod" [a, b] := by
-  simp only [evalBuiltinCall, Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean]
-  simp only [EvmYul.UInt256.mod, EvmYul.UInt256.ofNat, EvmYul.UInt256.toNat, EvmYul.UInt256.size]
-  simp only [Id.run, Fin.ofNat']
+  -- Verity: if b = 0 then some 0 else some (a % b)
+  -- EVMYulLean UInt256.mod: if b.val == 0 then ⟨0⟩ else ⟨a.val % b.val⟩
+  -- Both return 0 for b=0 and a%b otherwise.
+  -- UInt256.mod uses BEq on Fin which compares .val fields.
+  simp only [evalBuiltinCall, Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean,
+    EvmYul.UInt256.mod, EvmYul.UInt256.ofNat, EvmYul.UInt256.toNat, EvmYul.UInt256.size,
+    Id.run, Fin.ofNat', Fin.ofNat, evmModulus]
   simp only [evmModulus] at ha hb
-  have ha' : a % (2 ^ 256) = a := Nat.mod_eq_of_lt ha
-  have hb' : b % (2 ^ 256) = b := Nat.mod_eq_of_lt hb
-  -- EVMYulLean mod: if b.val == 0 then ⟨0⟩ else ⟨a.val % b.val⟩
-  -- Verity mod: if b = 0 then 0 else a % b
+  simp [Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb]
+  -- After simp with mod_eq_of_lt, the Fin BEq check should reduce to a Nat equality check.
+  -- The guard `(⟨b, _⟩ : Fin size) == ⟨0, _⟩` reduces to `b == 0`.
+  -- by_cases on b = 0 handles both branches.
   by_cases h : b = 0
-  · subst h; simp
   · simp [h]
-    -- Both return a % b for b ≠ 0
-    -- Need: EVMYulLean side reduces to (a % size) % (b % size) = a % b
-    simp [ha', hb']
-    -- The BEq check on Fin: (b % size) == 0 should be false since b ≠ 0 and b < size
-    have hb_ne : ¬(⟨b % (2 ^ 256), by omega⟩ : Fin (2 ^ 256)) == (⟨0, by omega⟩ : Fin (2 ^ 256)) = true := by
-      simp [BEq.beq, Fin.instBEqFin, hb']
-      exact h
-    sorry -- TODO: Complete EVMYulLean mod unfolding — requires navigating BEq instance on Fin
+  · simp [h]
 
 /-! ## Full End-to-End Theorem Template
 

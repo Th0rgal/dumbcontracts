@@ -13,7 +13,7 @@ contract PropertyOwnedCounterTest is YulTestBase {
     address alice = address(0x1111);
 
     function setUp() public {
-        target = deployYul("OwnedCounter");
+        target = deployYulWithArgs("OwnedCounter", abi.encode(alice));
         require(target != address(0), "Deploy failed");
     }
 

@@ -41,11 +41,32 @@ class ParseContractsTests(unittest.TestCase):
         out = gen._split_params("to : Address, amount : Uint256")
         self.assertEqual([(p.name, p.lean_type) for p in out], [("to", "Address"), ("amount", "Uint256")])
 
+    def test_parse_constructor(self) -> None:
+        src = textwrap.dedent(
+            """
+            verity_contract Owned where
+              constructor (initialOwner : Address) := do
+                pure ()
+
+              function owner () : Address := do
+                return 0
+            """
+        )
+        parsed = gen.parse_contracts(src, Path("dummy.lean"))
+        owned = parsed["Owned"]
+        self.assertIsNotNone(owned.constructor)
+        assert owned.constructor is not None
+        self.assertEqual(
+            [(p.name, p.lean_type) for p in owned.constructor.params],
+            [("initialOwner", "Address")],
+        )
+
 
 class RenderTests(unittest.TestCase):
     def test_render_unit_and_non_unit_tests(self) -> None:
         contract = gen.ContractDecl(
             name="Sample",
+            constructor=None,
             source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
             functions=(
                 gen.FunctionDecl("touch", (), "Unit"),
@@ -60,6 +81,7 @@ class RenderTests(unittest.TestCase):
     def test_render_array_param_adds_helper(self) -> None:
         contract = gen.ContractDecl(
             name="ArrayConsumer",
+            constructor=None,
             source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
             functions=(
                 gen.FunctionDecl(
@@ -76,6 +98,7 @@ class RenderTests(unittest.TestCase):
     def test_render_unknown_type_fails_closed(self) -> None:
         contract = gen.ContractDecl(
             name="UnknownType",
+            constructor=None,
             source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
             functions=(
                 gen.FunctionDecl("mystery", (gen.ParamDecl("x", "String"),), "Unit"),
@@ -87,6 +110,7 @@ class RenderTests(unittest.TestCase):
     def test_render_non_uint_array_fails_closed(self) -> None:
         contract = gen.ContractDecl(
             name="ArrayAddressConsumer",
+            constructor=None,
             source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
             functions=(
                 gen.FunctionDecl("consume", (gen.ParamDecl("values", "Array Address"),), "Unit"),
@@ -94,6 +118,16 @@ class RenderTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "unsupported Lean array element type"):
             gen.render_contract_test(contract)
+
+    def test_render_constructor_uses_deploy_with_args(self) -> None:
+        contract = gen.ContractDecl(
+            name="Owned",
+            constructor=gen.ConstructorDecl(params=(gen.ParamDecl("initialOwner", "Address"),)),
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(gen.FunctionDecl("owner", (), "Address"),),
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn('target = deployYulWithArgs("Owned", abi.encode(alice));', rendered)
 
 
 class CollectContractsTests(unittest.TestCase):

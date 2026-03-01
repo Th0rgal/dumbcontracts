@@ -23,6 +23,7 @@ CONTRACT_RE = re.compile(r"^\s*verity_contract\s+([A-Za-z_][A-Za-z0-9_]*)\s+wher
 FUNCTION_RE = re.compile(
     r"^\s*function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*:\s*(.+?)\s*:=\s*",
 )
+CONSTRUCTOR_RE = re.compile(r"^\s*constructor\s*\(([^)]*)\)\s*:=\s*")
 PARAM_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+?)\s*$")
 
 
@@ -40,8 +41,14 @@ class FunctionDecl:
 
 
 @dataclass(frozen=True)
+class ConstructorDecl:
+    params: tuple[ParamDecl, ...]
+
+
+@dataclass(frozen=True)
 class ContractDecl:
     name: str
+    constructor: ConstructorDecl | None
     functions: tuple[FunctionDecl, ...]
     source: Path
 
@@ -68,18 +75,21 @@ def _split_params(params_src: str) -> tuple[ParamDecl, ...]:
 def parse_contracts(text: str, source: Path) -> dict[str, ContractDecl]:
     contracts: dict[str, ContractDecl] = {}
     current_name: str | None = None
+    current_constructor: ConstructorDecl | None = None
     current_functions: list[FunctionDecl] = []
 
     def flush_current() -> None:
-        nonlocal current_name, current_functions
+        nonlocal current_name, current_constructor, current_functions
         if current_name is None:
             return
         contracts[current_name] = ContractDecl(
             name=current_name,
+            constructor=current_constructor,
             functions=tuple(current_functions),
             source=source,
         )
         current_name = None
+        current_constructor = None
         current_functions = []
 
     for line in text.splitlines():
@@ -90,6 +100,13 @@ def parse_contracts(text: str, source: Path) -> dict[str, ContractDecl]:
             continue
 
         if current_name is None:
+            continue
+
+        ctor = CONSTRUCTOR_RE.match(line)
+        if ctor:
+            if current_constructor is not None:
+                raise ValueError(f"duplicate constructor in contract '{current_name}'")
+            current_constructor = ConstructorDecl(params=_split_params(ctor.group(1)))
             continue
 
         fm = FUNCTION_RE.match(line)
@@ -175,6 +192,16 @@ def _fn_camel(name: str) -> str:
 def render_contract_test(contract: ContractDecl) -> str:
     tests: list[str] = []
     need_uint_array_helper = False
+    set_up_line = f'target = deployYul("{contract.name}");'
+    if contract.constructor is not None and contract.constructor.params:
+        constructor_args = [_example_value(p.lean_type) for p in contract.constructor.params]
+        if any(_normalize_type(p.lean_type).startswith("Array ") for p in contract.constructor.params):
+            need_uint_array_helper = True
+        set_up_line = (
+            f'target = deployYulWithArgs("{contract.name}", abi.encode('
+            + ", ".join(constructor_args)
+            + "));"
+        )
 
     for idx, fn in enumerate(contract.functions, start=1):
         sig = _sol_signature(fn)
@@ -229,7 +256,7 @@ contract Property{contract.name}Test is YulTestBase {{
     address alice = address(0x1111);
 
     function setUp() public {{
-        target = deployYul("{contract.name}");
+        {set_up_line}
         require(target != address(0), "Deploy failed");
     }}
 

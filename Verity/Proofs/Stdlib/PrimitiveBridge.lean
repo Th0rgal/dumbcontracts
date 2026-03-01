@@ -33,7 +33,7 @@ import Compiler.Constants
 namespace Verity.Proofs.Stdlib.PrimitiveBridge
 
 open Verity
-open Verity.Core.Uint256
+open Verity.Core
 open Compiler.Proofs.IRGeneration
 open Compiler.Proofs.YulGeneration
 open Compiler.Constants (evmModulus)
@@ -92,11 +92,10 @@ theorem setStorage_matches_sstore (s : StorageSlot Uint256) (v : Uint256) (state
       -- Other slots are unchanged
       (∀ other, other ≠ s.slot → encodeStorage newState other = encodeStorage state other)
     | .revert _ _ => False := by
-  simp [setStorage, encodeStorage]
-  constructor
-  · simp [beq_iff_eq]
+  refine ⟨?_, ?_⟩
+  · simp [setStorage, encodeStorage, beq_iff_eq]
   · intro other hne
-    simp [beq_iff_eq, hne]
+    simp [setStorage, encodeStorage, beq_iff_eq, hne]
 
 /-! ## Arithmetic Primitives: add / sub
 
@@ -112,10 +111,10 @@ Both produce (a + b) % 2^256. The EDSL operates on Uint256 values
 (val < 2^256), while the builtin operates on arbitrary Nat values
 but wraps at evmModulus = 2^256. -/
 theorem uint256_add_matches_builtin (a b : Uint256) :
-    (Uint256.add a b).val =
+    (Verity.Core.Uint256.add a b).val =
       ((a.val + b.val) % evmModulus) := by
-  simp [Uint256.add, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, evmModulus]
-  rfl
+  simp [Verity.Core.Uint256.add, Verity.Core.Uint256.ofNat, Verity.Core.Uint256.modulus,
+    Verity.Core.UINT256_MODULUS, evmModulus]
 
 /-- EDSL Uint256.sub matches the compiled `sub` builtin.
 
@@ -129,14 +128,14 @@ Both produce the same result since:
   (evmModulus + a - b) % evmModulus = (modulus - (b - a)) % modulus when b > a
 -/
 theorem uint256_sub_matches_builtin (a b : Uint256) :
-    (Uint256.sub a b).val =
+    (Verity.Core.Uint256.sub a b).val =
       ((evmModulus + a.val - b.val) % evmModulus) := by
-  simp [Uint256.sub, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, evmModulus]
+  simp [Verity.Core.Uint256.sub, Verity.Core.Uint256.ofNat, Verity.Core.Uint256.modulus,
+    Verity.Core.UINT256_MODULUS, evmModulus]
   by_cases h : b.val ≤ a.val
   · -- No underflow case: result is (a - b) % modulus
     -- We need: (a - b) % modulus = (modulus + a - b) % modulus
     simp [h]
-    have hle : b.val ≤ evmModulus + a.val := Nat.le_add_left _ _
     omega
   · -- Underflow case: result is (modulus - (b - a)) % modulus
     -- Need: (2^256 - (b - a)) % 2^256 = (2^256 + a - b) % 2^256
@@ -148,10 +147,10 @@ theorem uint256_sub_matches_builtin (a b : Uint256) :
 
 /-- EDSL Uint256.mul matches the compiled `mul` builtin. -/
 theorem uint256_mul_matches_builtin (a b : Uint256) :
-    (Uint256.mul a b).val =
+    (Verity.Core.Uint256.mul a b).val =
       ((a.val * b.val) % evmModulus) := by
-  simp [Uint256.mul, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, evmModulus]
-  rfl
+  simp [Verity.Core.Uint256.mul, Verity.Core.Uint256.ofNat, Verity.Core.Uint256.modulus,
+    Verity.Core.UINT256_MODULUS, evmModulus]
 
 /-! ## Safe Arithmetic Bridge
 
@@ -162,21 +161,23 @@ These lemmas characterize when safe operations succeed or fail.
 -/
 
 /-- safeAdd: when no overflow, returns Some (a + b). -/
-theorem safeAdd_no_overflow (a b : Uint256) (h : a.val + b.val ≤ MAX_UINT256) :
-    Verity.Stdlib.Math.safeAdd a b = some (Uint256.add a b) := by
-  simp [Verity.Stdlib.Math.safeAdd, MAX_UINT256]
-  exact show ¬(a.val + b.val > 2 ^ 256 - 1) from by omega
+theorem safeAdd_no_overflow (a b : Uint256)
+    (h : a.val + b.val ≤ Verity.Stdlib.Math.MAX_UINT256) :
+    Verity.Stdlib.Math.safeAdd a b = some (a + b) := by
+  have hNot : ¬(a.val + b.val > Verity.Stdlib.Math.MAX_UINT256) := by omega
+  simp [Verity.Stdlib.Math.safeAdd, hNot]
 
 /-- safeAdd: when overflow, returns None. -/
-theorem safeAdd_overflow (a b : Uint256) (h : a.val + b.val > MAX_UINT256) :
+theorem safeAdd_overflow (a b : Uint256)
+    (h : a.val + b.val > Verity.Stdlib.Math.MAX_UINT256) :
     Verity.Stdlib.Math.safeAdd a b = none := by
-  simp [Verity.Stdlib.Math.safeAdd, MAX_UINT256, h]
+  simp [Verity.Stdlib.Math.safeAdd, h]
 
 /-- safeSub: when no underflow, returns Some (a - b). -/
 theorem safeSub_no_underflow (a b : Uint256) (h : b.val ≤ a.val) :
-    Verity.Stdlib.Math.safeSub a b = some (Uint256.sub a b) := by
-  simp [Verity.Stdlib.Math.safeSub]
-  exact show ¬(b.val > a.val) from by omega
+    Verity.Stdlib.Math.safeSub a b = some (a - b) := by
+  have hNot : ¬(b.val > a.val) := by omega
+  simp [Verity.Stdlib.Math.safeSub, hNot]
 
 /-- safeSub: when underflow, returns None. -/
 theorem safeSub_underflow (a b : Uint256) (h : b.val > a.val) :
@@ -274,7 +275,7 @@ theorem bind_unfold {α β : Type}
     (bind ma f) state = match ma state with
       | .success a s' => f a s'
       | .revert msg s' => .revert msg s' := by
-  simp [bind]
+  rfl
 
 /-- Pure (return) unfold: `pure a` always succeeds with value `a` and unchanged state.
 Companion to `bind_unfold` — together they handle all `do`-notation steps. -/
@@ -293,7 +294,7 @@ calldataload proofs where the IR returns `value.val % evmModulus`.
 theorem uint256_val_lt_evmModulus (v : Uint256) :
     v.val < evmModulus := by
   have := v.isLt
-  simp [Uint256.modulus, UINT256_MODULUS, evmModulus] at this ⊢
+  simp [Verity.Core.Uint256.modulus, Verity.Core.UINT256_MODULUS, evmModulus] at this ⊢
   exact this
 
 /-- Modding a Uint256 value by evmModulus is a no-op.
@@ -306,9 +307,9 @@ theorem uint256_val_mod_evmModulus (v : Uint256) :
 ADDRESS_MODULUS = 2^160 < 2^256 = evmModulus, so any address is in range. -/
 theorem address_val_lt_evmModulus (a : Address) :
     a.val < evmModulus := by
-  calc a.val < ADDRESS_MODULUS := a.isLt
+  calc a.val < Verity.Core.ADDRESS_MODULUS := a.isLt
     _ ≤ evmModulus := by
-        simp only [ADDRESS_MODULUS, evmModulus]
+        simp only [Verity.Core.ADDRESS_MODULUS, evmModulus]
         norm_num
 
 /-- Modding an Address value by evmModulus is a no-op. -/
@@ -354,7 +355,9 @@ theorem calldataloadWord_address_first (selector : Nat) (a : Address) (rest : Li
   calc a.val &&& (2 ^ 160 - 1)
       = a.val % 2 ^ 160 := by
         simpa using (Nat.and_two_pow_sub_one_eq_mod a.val 160)
-    _ = a.val := Nat.mod_eq_of_lt (by have := a.isLt; simp [ADDRESS_MODULUS] at this; exact this)
+    _ = a.val := Nat.mod_eq_of_lt (by
+      have ha := a.isLt
+      simpa [Verity.Core.ADDRESS_MODULUS] using ha)
 
 /-! ## Address Storage Primitives
 
@@ -380,11 +383,10 @@ theorem setStorageAddr_matches_sstore (s : StorageSlot Address) (v : Address)
       newState.storageAddr s.slot = v ∧
       (∀ other, other ≠ s.slot → newState.storageAddr other = state.storageAddr other)
     | .revert _ _ => False := by
-  simp [setStorageAddr]
-  constructor
-  · simp [beq_iff_eq]
+  refine ⟨?_, ?_⟩
+  · simp [setStorageAddr, beq_iff_eq]
   · intro other hne
-    simp [beq_iff_eq, hne]
+    simp [setStorageAddr, beq_iff_eq, hne]
 
 /-! ## Contract.run Unfolding
 
@@ -398,7 +400,7 @@ theorem contract_run_unfold {α : Type} (c : Contract α) (s : ContractState) :
     Contract.run c s = match c s with
       | .success a s' => .success a s'
       | .revert msg _ => .revert msg s := by
-  simp [Contract.run]
+  rfl
 
 /-- When the Contract succeeds, Contract.run preserves the result state. -/
 theorem contract_run_success {α : Type} (c : Contract α) (s : ContractState)
@@ -444,25 +446,25 @@ matching EVM semantics). The compiler generates `div(a, b)` and `mod(a, b)`.
 Both return 0 when dividing by zero, and `a / b` otherwise.
 The result fits in Uint256 since `a / b ≤ a < 2^256`. -/
 theorem uint256_div_matches_builtin (a b : Uint256) :
-    (Uint256.div a b).val =
+    (Verity.Core.Uint256.div a b).val =
       (if b.val = 0 then 0 else a.val / b.val) := by
-  simp [Uint256.div, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, evmModulus]
+  simp [Verity.Core.Uint256.div, Verity.Core.Uint256.ofNat, Verity.Core.Uint256.modulus,
+    Verity.Core.UINT256_MODULUS]
   by_cases h : b.val = 0
   · simp [h]
   · simp [h]
-    apply Nat.mod_eq_of_lt
     exact Nat.lt_of_le_of_lt (Nat.div_le_self a.val b.val) a.isLt
 
 /-- EDSL Uint256.mod matches the compiled `mod` builtin.
 Both return 0 when the divisor is zero, and `a % b` otherwise. -/
 theorem uint256_mod_matches_builtin (a b : Uint256) :
-    (Uint256.mod a b).val =
+    (Verity.Core.Uint256.mod a b).val =
       (if b.val = 0 then 0 else a.val % b.val) := by
-  simp [Uint256.mod, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, evmModulus]
+  simp [Verity.Core.Uint256.mod, Verity.Core.Uint256.ofNat, Verity.Core.Uint256.modulus,
+    Verity.Core.UINT256_MODULUS]
   by_cases h : b.val = 0
   · simp [h]
   · simp [h]
-    apply Nat.mod_eq_of_lt
     exact Nat.lt_of_lt_of_le (Nat.mod_lt a.val (Nat.pos_of_ne_zero h)) (le_of_lt b.isLt)
 
 /-! ## Mapping Primitives: getMapping / setMapping
@@ -490,8 +492,15 @@ state update on the storageMap field. -/
 theorem setMapping_unfold (s : StorageSlot (Address → Uint256)) (addr : Address)
     (v : Uint256) (state : ContractState) :
     (setMapping s addr v) state =
-      .success () { state with storageMap := fun slot key =>
-        if slot == s.slot && key == addr then v else state.storageMap slot key } := by
+      .success ()
+        { state with
+            storageMap := (fun slot key =>
+              if slot == s.slot && key == addr then v else state.storageMap slot key)
+            knownAddresses := (fun slot =>
+              if slot == s.slot then
+                (state.knownAddresses slot).insert addr
+              else
+                state.knownAddresses slot) } := by
   rfl
 
 /-! ## Multi-Slot State Encoding

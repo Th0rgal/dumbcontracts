@@ -163,6 +163,17 @@ private def expectStringLiteral (stx : Term) : CommandElabM String :=
   | some s => pure s
   | none => throwErrorAt stx "expected string literal"
 
+private def expectStringOrIdent (stx : Term) : CommandElabM String := do
+  match stripParens stx with
+  | `(term| $id:ident) => pure (toString id.getId)
+  | other => expectStringLiteral other
+
+private def expectStringList (stx : Term) : CommandElabM (Array String) := do
+  match stripParens stx with
+  | `(term| [ $[$xs],* ]) =>
+      xs.mapM expectStringOrIdent
+  | _ => throwErrorAt stx "expected list literal [..]"
+
 private def lookupVarExpr (params : Array ParamDecl) (locals : Array String) (name : String) : CommandElabM Term := do
   if params.any (fun p => p.name == name) then
     `(Compiler.CompilationModel.Expr.param $(strTerm name))
@@ -177,6 +188,8 @@ partial def translatePureExpr
     (stx : Term) : CommandElabM Term := do
   let stx := stripParens stx
   match stx with
+  | `(term| constructorArg $idx:num) =>
+      `(Compiler.CompilationModel.Expr.constructorArg $idx)
   | `(term| blockTimestamp) => `(Compiler.CompilationModel.Expr.blockTimestamp)
   | `(term| contractAddress) => `(Compiler.CompilationModel.Expr.contractAddress)
   | `(term| chainid) => `(Compiler.CompilationModel.Expr.chainid)
@@ -242,7 +255,38 @@ partial def translatePureExpr
           $(← translatePureExpr params locals cond)
           $(← translatePureExpr params locals thenVal)
           $(← translatePureExpr params locals elseVal))
+  | `(term| externalCall $name:term $args:term) =>
+      let extName := ← expectStringOrIdent name
+      let argsExprs ←
+        match stripParens args with
+        | `(term| [ $[$xs],* ]) => xs.mapM (translatePureExpr params locals)
+        | _ => throwErrorAt args "expected list literal [..]"
+      `(Compiler.CompilationModel.Expr.externalCall $(strTerm extName) [ $[$argsExprs],* ])
+  | `(term| structMember $field:term $key:term $member:term) =>
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      `(Compiler.CompilationModel.Expr.structMember
+          $(strTerm fieldName)
+          $(← translatePureExpr params locals key)
+          $(strTerm memberName))
+  | `(term| structMember2 $field:term $key1:term $key2:term $member:term) =>
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      `(Compiler.CompilationModel.Expr.structMember2
+          $(strTerm fieldName)
+          $(← translatePureExpr params locals key1)
+          $(← translatePureExpr params locals key2)
+          $(strTerm memberName))
   | _ => throwErrorAt stx "unsupported expression in verity_contract body (see #1003 for planned macro support expansions)"
+
+private def expectExprList
+    (params : Array ParamDecl)
+    (locals : Array String)
+    (stx : Term) : CommandElabM (Array Term) := do
+  match stripParens stx with
+  | `(term| [ $[$xs],* ]) =>
+      xs.mapM (translatePureExpr params locals)
+  | _ => throwErrorAt stx "expected list literal [..]"
 
 private def translateBindSource
     (fields : Array StorageFieldDecl)
@@ -365,6 +409,55 @@ private def translateEffectStmt
       | _ => throwErrorAt stx s!"field '{f.name}' is not a double mapping"
   | `(term| require $cond $msg) =>
       `(Compiler.CompilationModel.Stmt.require $(← translatePureExpr params locals cond) $(strTerm (← expectStringLiteral msg)))
+  | `(term| mstore $offset:term $value:term) =>
+      `(Compiler.CompilationModel.Stmt.mstore
+          $(← translatePureExpr params locals offset)
+          $(← translatePureExpr params locals value))
+  | `(term| returnValues $values:term) =>
+      let valueExprs ← expectExprList params locals values
+      `(Compiler.CompilationModel.Stmt.returnValues [ $[$valueExprs],* ])
+  | `(term| returnStorageWords $name:term) =>
+      `(Compiler.CompilationModel.Stmt.returnStorageWords $(strTerm (← expectStringOrIdent name)))
+  | `(term| emit $eventName:term $args:term) =>
+      let evName := ← expectStringOrIdent eventName
+      let argExprs ← expectExprList params locals args
+      `(Compiler.CompilationModel.Stmt.emit $(strTerm evName) [ $[$argExprs],* ])
+  | `(term| rawLog $topics:term $dataOffset:term $dataSize:term) =>
+      let topicExprs ← expectExprList params locals topics
+      `(Compiler.CompilationModel.Stmt.rawLog
+          [ $[$topicExprs],* ]
+          $(← translatePureExpr params locals dataOffset)
+          $(← translatePureExpr params locals dataSize))
+  | `(term| internalCall $fnName:term $args:term) =>
+      let targetFn := ← expectStringOrIdent fnName
+      let argExprs ← expectExprList params locals args
+      `(Compiler.CompilationModel.Stmt.internalCall $(strTerm targetFn) [ $[$argExprs],* ])
+  | `(term| internalCallAssign $names:term $fnName:term $args:term) =>
+      let resultNames := ← expectStringList names
+      let resultNameTerms := resultNames.map strTerm
+      let targetFn := ← expectStringOrIdent fnName
+      let argExprs ← expectExprList params locals args
+      `(Compiler.CompilationModel.Stmt.internalCallAssign
+          [ $[$resultNameTerms],* ]
+          $(strTerm targetFn)
+          [ $[$argExprs],* ])
+  | `(term| setStructMember $field:term $key:term $member:term $value:term) =>
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      `(Compiler.CompilationModel.Stmt.setStructMember
+          $(strTerm fieldName)
+          $(← translatePureExpr params locals key)
+          $(strTerm memberName)
+          $(← translatePureExpr params locals value))
+  | `(term| setStructMember2 $field:term $key1:term $key2:term $member:term $value:term) =>
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      `(Compiler.CompilationModel.Stmt.setStructMember2
+          $(strTerm fieldName)
+          $(← translatePureExpr params locals key1)
+          $(← translatePureExpr params locals key2)
+          $(strTerm memberName)
+          $(← translatePureExpr params locals value))
   | _ => throwErrorAt stx "unsupported statement in do block"
 
 mutual

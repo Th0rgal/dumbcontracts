@@ -363,7 +363,19 @@ verity_contract UintMapSmoke where
     let current ← getMappingUint values key
     return current
 
+verity_contract Bytes32Smoke where
+  storage
+    value : Uint256 := slot 0
+
+  function setDigest (digest : Bytes32) : Unit := do
+    setStorage value digest
+
+  function getDigest () : Bytes32 := do
+    let digest ← getStorage value
+    return digest
+
 #check_contract Counter
 #check_contract UintMapSmoke
+#check_contract Bytes32Smoke
 
 end Verity.Examples.MacroContracts

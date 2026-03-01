@@ -3,7 +3,7 @@
 -/
 
 import Verity.Specs.ERC20.Spec
-import Verity.Examples.ERC20
+import Verity.Examples.MacroContracts
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
 
@@ -11,10 +11,15 @@ namespace Verity.Proofs.ERC20
 
 open Verity
 open Verity.Specs.ERC20
-open Verity.Examples.ERC20
+open Verity.Examples.MacroContracts.ERC20
 open Verity.Stdlib.Math (MAX_UINT256 requireSomeUint)
 open Verity.Proofs.Stdlib.Math (safeAdd_some)
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne uint256_ge_val_le)
+
+local abbrev owner : StorageSlot Address := Verity.Examples.MacroContracts.ERC20.ownerSlot
+local abbrev totalSupply : StorageSlot Uint256 := Verity.Examples.MacroContracts.ERC20.totalSupplySlot
+local abbrev balances : StorageSlot (Address → Uint256) := Verity.Examples.MacroContracts.ERC20.balancesSlot
+local abbrev allowances : StorageSlot (Address → Address → Uint256) := Verity.Examples.MacroContracts.ERC20.allowancesSlot
 
 /-- `constructor` sets owner slot 0 and initializes supply slot 1. -/
 theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :

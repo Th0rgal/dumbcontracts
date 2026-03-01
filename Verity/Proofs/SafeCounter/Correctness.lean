@@ -15,7 +15,7 @@ namespace Verity.Proofs.SafeCounter.Correctness
 open Verity
 open Verity.Stdlib.Math
 open Verity.EVM.Uint256
-open Verity.Examples.SafeCounter
+open Verity.Examples.MacroContracts.SafeCounter
 open Verity.Specs.SafeCounter
 open Verity.Proofs.SafeCounter
 open Verity.Proofs.Stdlib.Automation

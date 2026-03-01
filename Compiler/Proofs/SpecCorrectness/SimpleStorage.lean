@@ -14,7 +14,7 @@
 
 import Compiler.Specs
 import Verity.Proofs.Stdlib.SpecInterpreter
-import Verity.Examples.SimpleStorage
+import Verity.Examples.MacroContracts
 
 namespace Compiler.Proofs.SpecCorrectness
 
@@ -24,6 +24,8 @@ open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity
 open Verity.Examples
 open Verity.Core.Uint256
+
+local abbrev simpleStorageSpec : CompilationModel := Verity.Examples.MacroContracts.SimpleStorage.spec
 
 /-!
 ## State Conversion

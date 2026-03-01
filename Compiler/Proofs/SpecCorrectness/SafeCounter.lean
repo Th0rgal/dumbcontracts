@@ -16,7 +16,7 @@
 import Compiler.Specs
 import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
-import Verity.Examples.SafeCounter
+import Verity.Examples.MacroContracts
 import Verity.Proofs.SafeCounter.Basic
 
 namespace Compiler.Proofs.SpecCorrectness
@@ -25,9 +25,11 @@ open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity
-open Verity.Examples.SafeCounter
+open Verity.Examples.MacroContracts.SafeCounter
 open Verity.Stdlib.Math
 open Verity.Proofs.Stdlib.Automation
+
+local abbrev safeCounterSpec : CompilationModel := Verity.Examples.MacroContracts.SafeCounter.spec
 
 /- State Conversion -/
 

@@ -16,7 +16,7 @@ import Verity.Proofs.OwnedCounter.Basic
 namespace Verity.Proofs.OwnedCounter.Isolation
 
 open Verity
-open Verity.Examples.OwnedCounter
+open Verity.Examples.MacroContracts.OwnedCounter
 open Verity.Specs.OwnedCounter
 open Verity.Proofs.OwnedCounter
 

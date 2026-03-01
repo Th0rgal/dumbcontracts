@@ -18,7 +18,7 @@
 import Compiler.Specs
 import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
-import Verity.Examples.Ledger
+import Verity.Examples.MacroContracts
 import Verity.Proofs.Ledger.Basic
 
 -- Increased heartbeats due to additional struct fields (mappings2, events, etc.)
@@ -32,7 +32,9 @@ open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256)
-open Verity.Examples.Ledger
+open Verity.Examples.MacroContracts.Ledger
+
+local abbrev ledgerSpec : CompilationModel := Verity.Examples.MacroContracts.Ledger.spec
 
 -- Address encoding lemmas are provided by Automation.
 

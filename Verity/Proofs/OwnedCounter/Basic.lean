@@ -12,11 +12,12 @@
 import Verity.Specs.OwnedCounter.Spec
 import Verity.Specs.OwnedCounter.Invariants
 import Verity.Proofs.Stdlib.Automation
+import Verity.Examples.MacroContracts
 
 namespace Verity.Proofs.OwnedCounter
 
 open Verity
-open Verity.Examples.OwnedCounter
+open Verity.Examples.MacroContracts.OwnedCounter
 open Verity.Specs.OwnedCounter
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 

@@ -15,6 +15,7 @@ import Verity.Core
 import Verity.Core.Semantics
 import Verity.Core.Uint256
 import Verity.Core.FiniteSet
+import Verity.Core.Free.TypedIR
 import Verity.EVM.Uint256
 import Verity.Stdlib.Math
 import Verity.Macro

@@ -195,7 +195,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:

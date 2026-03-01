@@ -42,6 +42,10 @@ def calldatacopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := 
 def returndataCopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def revertReturndata : Contract Unit := pure ()
 def mstore (_offset _value : Uint256) : Contract Unit := pure ()
+def getMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset : Uint256) :
+    Contract Uint256 := pure 0
+def setMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset _value : Uint256) :
+    Contract Unit := pure ()
 def forEach (_name : String) (_count : Uint256) (body : Contract Unit) : Contract Unit := body
 def blockTimestamp : Uint256 := 0
 def contractAddress : Uint256 := 0
@@ -374,8 +378,20 @@ verity_contract Bytes32Smoke where
     let digest ← getStorage value
     return digest
 
+verity_contract MappingWordSmoke where
+  storage
+    words : Uint256 → Uint256 := slot 0
+
+  function setWord1 (key : Uint256, value : Uint256) : Unit := do
+    setMappingWord words key 1 value
+
+  function getWord1 (key : Uint256) : Uint256 := do
+    let word ← getMappingWord words key 1
+    return word
+
 #check_contract Counter
 #check_contract UintMapSmoke
 #check_contract Bytes32Smoke
+#check_contract MappingWordSmoke
 
 end Verity.Examples.MacroContracts

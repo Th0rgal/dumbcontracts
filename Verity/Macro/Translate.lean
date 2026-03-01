@@ -390,6 +390,17 @@ private def translateBindSource
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
+  | `(term| getMappingWord $field:ident $key:term $wordOffset:num) =>
+      let f ← lookupStorageField fields (toString field.getId)
+      match f.ty with
+      | .mappingAddressToUint256 | .mappingUintToUint256 =>
+          `(Compiler.CompilationModel.Expr.mappingWord
+              $(strTerm f.name)
+              $(← translatePureExpr params locals key)
+              $wordOffset)
+      | .mapping2AddressToAddressToUint256 =>
+          throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2Word"
+      | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
   | `(term| getMapping2 $field:ident $key1:term $key2:term) =>
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with
@@ -402,7 +413,7 @@ private def translateBindSource
   | `(term| msgSender) => `(Compiler.CompilationModel.Expr.caller)
   | _ =>
       throwErrorAt rhs
-        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingUint/getMapping2/msgSender"
+        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingUint/getMappingWord/getMapping2/msgSender"
 
 private def translateSafeRequireBind
     (params : Array ParamDecl)
@@ -482,6 +493,18 @@ private def translateEffectStmt
           throwErrorAt stx s!"field '{f.name}' is Address-keyed; use setMapping"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt stx s!"field '{f.name}' is a double mapping; use setMapping2"
+      | .scalar _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
+  | `(term| setMappingWord $field:ident $key:term $wordOffset:num $value:term) =>
+      let f ← lookupStorageField fields (toString field.getId)
+      match f.ty with
+      | .mappingAddressToUint256 | .mappingUintToUint256 =>
+          `(Compiler.CompilationModel.Stmt.setMappingWord
+              $(strTerm f.name)
+              $(← translatePureExpr params locals key)
+              $wordOffset
+              $(← translatePureExpr params locals value))
+      | .mapping2AddressToAddressToUint256 =>
+          throwErrorAt stx s!"field '{f.name}' is a double mapping; use setMapping2Word"
       | .scalar _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
   | `(term| setMapping2 $field:ident $key1:term $key2:term $value:term) =>
       let f ← lookupStorageField fields (toString field.getId)

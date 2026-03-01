@@ -16,6 +16,9 @@ Compiler UX status:
 - linked-library flows remain fail-closed on this EDSL-only CLI path.
 Compilation is routed through `Compiler.Lowering` helpers, keeping one centralized
 boundary for generated EDSL artifacts.
+- Recursive `CompilationModel` safety analyzers on the active path are being
+  incrementally totalized (`partial def` -> `def` with explicit termination
+  proofs), reducing trusted operational behavior around non-termination.
 
 ## Verification Chain
 
@@ -179,5 +182,5 @@ The following items are planned but not yet active:
 
 Until these are implemented and CI-gated, claims of exact `solc` Yul identity remain out of scope.
 
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-03-01
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

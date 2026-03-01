@@ -43,6 +43,7 @@ Access control and checks:
 17. `scripts/check_yul_builtin_boundary.py` uses `scrub_lean_code` to strip comments and string literals before boundary checks.
 18. `scripts/check_mapping_slot_boundary.py` uses `scrub_lean_code` to strip comments and string literals before boundary checks.
 19. `scripts/check_evmyullean_capability_boundary.py` detects non-literal builtin dispatch patterns and reports them as fail-closed diagnostics.
+20. `Compiler/CompilationModel.lean` recursive validation walkers for unsafe logical call-like detection, array-element usage detection, return/revert reachability, and bind-name collection are totalized (`def` + explicit `termination_by`), reducing reliance on `partial def` in the active compilation path.
 
 Crypto choices:
 1. Function selectors use keccak256 (Ethereum ABI standard interoperability requirement).

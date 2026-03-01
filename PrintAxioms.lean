@@ -28,11 +28,14 @@ import Verity.Proofs.Stdlib.Automation
 import Verity.Proofs.Stdlib.ListSum
 import Verity.Proofs.Stdlib.MappingAutomation
 import Verity.Proofs.Stdlib.Math
+import Verity.Proofs.Stdlib.PrimitiveBridge
 import Verity.Proofs.Stdlib.SpecInterpreter
 import Compiler.Proofs.ArithmeticProfile
+import Compiler.Proofs.EndToEnd
 import Compiler.Proofs.IRGeneration.Conversions
 import Compiler.Proofs.Lowering.FromEDSL
 import Compiler.Proofs.MappingSlot
+import Compiler.Proofs.SemanticBridge
 import Compiler.Proofs.SpecCorrectness.Counter
 import Compiler.Proofs.SpecCorrectness.ERC20
 import Compiler.Proofs.SpecCorrectness.ERC721
@@ -592,6 +595,46 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.Stdlib.Math.safeMul_result_bounded
 #print axioms Verity.Proofs.Stdlib.Math.safeDiv_result_le_numerator
 
+-- Verity/Proofs/Stdlib/PrimitiveBridge.lean
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.getStorage_matches_sload
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.setStorage_matches_sstore
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_add_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_sub_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_mul_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeAdd_no_overflow
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeAdd_overflow
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeSub_no_underflow
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.safeSub_underflow
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.require_true_matches_noop
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.require_false_matches_revert
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.require_matches_iszero_revert
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.if_else_matches
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.msgSender_matches_caller
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.bind_unfold
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.pure_unfold
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_val_lt_evmModulus
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_val_mod_evmModulus
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.address_val_lt_evmModulus
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.address_val_mod_evmModulus
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_first_arg
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_uint256_first
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_second_arg
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_uint256_second
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.calldataloadWord_address_first
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.getStorageAddr_matches_sload
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.setStorageAddr_matches_sstore
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.contract_run_unfold
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.contract_run_success
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_lt_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_gt_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_eq_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_div_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.uint256_mod_matches_builtin
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.getMapping_unfold
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.setMapping_unfold
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.encodeMixedStorage_addr_slot
+#print axioms Verity.Proofs.Stdlib.PrimitiveBridge.encodeMixedStorage_uint_slot
+
 -- Verity/Proofs/Stdlib/SpecInterpreter.lean
 #print axioms Verity.Proofs.Stdlib.SpecInterpreter.dedupNatPreserve_go_nil_single
 #print axioms Verity.Proofs.Stdlib.SpecInterpreter.readStorageField_unpacked
@@ -606,6 +649,23 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.ArithmeticProfile.mul_wraps
 #print axioms Compiler.Proofs.ArithmeticProfile.div_by_zero
 #print axioms Compiler.Proofs.ArithmeticProfile.mod_by_zero
+
+-- Compiler/Proofs/EndToEnd.lean
+#print axioms Compiler.Proofs.EndToEnd.layer3_function_preserves_semantics
+#print axioms Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics
+#print axioms Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics_general
+#print axioms Compiler.Proofs.EndToEnd.interpretYulRuntime_eq_yulResultOfExec
+#print axioms Compiler.Proofs.EndToEnd.yulStateOfIR_eq_initial
+#print axioms Compiler.Proofs.EndToEnd.execYulStmts_paramState_eq_emptyVars
+#print axioms Compiler.Proofs.EndToEnd.yulBody_from_state_eq_yulBody
+#print axioms Compiler.Proofs.EndToEnd.layers2_3_ir_matches_yul
+#print axioms Compiler.Proofs.EndToEnd.simpleStorage_endToEnd
+#print axioms Compiler.Proofs.EndToEnd.pure_add_bridge
+#print axioms Compiler.Proofs.EndToEnd.pure_sub_bridge
+#print axioms Compiler.Proofs.EndToEnd.pure_mul_bridge
+#print axioms Compiler.Proofs.EndToEnd.pure_div_bridge
+#print axioms Compiler.Proofs.EndToEnd.pure_mod_bridge
+#print axioms Compiler.Proofs.EndToEnd.edsl_to_yul_template
 
 -- Compiler/Proofs/IRGeneration/Conversions.lean
 #print axioms Compiler.Proofs.IRGeneration.specStorageToIRState_storage
@@ -634,6 +694,26 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.abstractStoreMappingEntry_eq
 #print axioms Compiler.Proofs.abstractLoadStorageOrMapping_eq
 #print axioms Compiler.Proofs.abstractStoreStorageOrMapping_eq
+
+-- Compiler/Proofs/SemanticBridge.lean
+#print axioms Compiler.Proofs.SemanticBridge.simpleStorage_store_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.simpleStorage_retrieve_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.counter_increment_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.counter_decrement_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.counter_getCount_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.owned_getOwner_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.owned_transferOwnership_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.safeCounter_increment_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.safeCounter_decrement_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.safeCounter_getCount_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.ownedCounter_getCount_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.ownedCounter_getOwner_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.ownedCounter_increment_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.ownedCounter_decrement_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.ownedCounter_transferOwnership_semantic_bridge
+#print axioms Compiler.Proofs.SemanticBridge.simpleStorage_store_edsl_to_yul
+#print axioms Compiler.Proofs.SemanticBridge.simpleStorage_retrieve_edsl_to_yul
+#print axioms Compiler.Proofs.SemanticBridge.counter_increment_edsl_to_yul
 
 -- Compiler/Proofs/SpecCorrectness/Counter.lean
 -- #print axioms Compiler.Proofs.SpecCorrectness.evalExpr_decrement_eq  -- private
@@ -753,4 +833,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 628 theorems/lemmas (599 public, 29 private)
+-- Total: 699 theorems/lemmas (670 public, 29 private)

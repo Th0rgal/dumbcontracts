@@ -913,4 +913,17 @@ def mkSpecCommandPublic
     (functions : Array FunctionDecl) : CommandElabM Cmd :=
   mkSpecCommand contractName fields ctor functions
 
+/-- Public wrapper for `contractValueTypeTerm`, used by the semantic bridge
+    theorem generator in `Bridge.lean` (Issue #998). -/
+def contractValueTypeTermPublic (ty : ValueType) : CommandElabM Term :=
+  contractValueTypeTerm ty
+
+/-- Public wrapper for `strTerm`, used by the semantic bridge
+    theorem generator in `Bridge.lean` (Issue #998). -/
+def strTermPublic (s : String) : Term := strTerm s
+
+/-- Public wrapper for `natTerm`, used by the semantic bridge
+    theorem generator in `Bridge.lean` (Issue #998). -/
+def natTermPublic (n : Nat) : Term := natTerm n
+
 end Verity.Macro

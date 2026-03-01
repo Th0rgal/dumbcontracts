@@ -24,6 +24,7 @@ PROOF_ROOTS = [
 ]
 
 ALLOWLIST = {
+    Path("Compiler/Proofs/SemanticBridge.lean"),
     Path("Compiler/Proofs/SpecCorrectness/Counter.lean"),
     Path("Compiler/Proofs/SpecCorrectness/Ledger.lean"),
     Path("Compiler/Proofs/SpecCorrectness/Owned.lean"),

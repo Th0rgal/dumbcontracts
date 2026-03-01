@@ -1,5 +1,6 @@
 import Lean
 import Verity.Macro.Translate
+import Verity.Proofs.Stdlib.SpecInterpreter
 
 namespace Verity.Macro
 
@@ -18,5 +19,140 @@ def mkBridgeCommand (fnIdent : Ident) : CommandElabM Cmd := do
   `(command| theorem $bridgeName :
       (Compiler.CompilationModel.FunctionSpec.body ($modelName : Compiler.CompilationModel.FunctionSpec)) =
       $modelBodyName := rfl)
+
+/-- Build a SpecStorage term from storage field declarations.
+
+    For each field, generates the appropriate slot entry:
+    - Scalar Uint256 → `(slotNum, (state.storage slotNum).val)`
+    - Scalar Address → `(slotNum, (state.storageAddr slotNum).val)`
+    - Mappings are not included in the slot list (they use separate SpecStorage fields)
+
+    Note: `state` must be in scope as a `Verity.ContractState` when this term
+    is elaborated. -/
+private def mkSpecStorageTerm (fields : Array StorageFieldDecl) : CommandElabM Term := do
+  let mut slotTerms : Array Term := #[]
+  for field in fields do
+    let slotNumTerm := natTermPublic field.slotNum
+    match field.ty with
+    | .scalar .uint256 =>
+      slotTerms := slotTerms.push (← `(($slotNumTerm, (state.storage $slotNumTerm).val)))
+    | .scalar .address =>
+      slotTerms := slotTerms.push (← `(($slotNumTerm, (state.storageAddr $slotNumTerm).val)))
+    | .scalar .bytes32 =>
+      slotTerms := slotTerms.push (← `(($slotNumTerm, (state.storage $slotNumTerm).val)))
+    | _ =>
+      slotTerms := slotTerms  -- explicit no-op for mappings
+  `(Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.mk
+      [ $[$slotTerms],* ] [] [] [])
+
+/-- Generate a `def edslToSpecStorage` that converts `ContractState → SpecStorage`
+    based on the contract's declared storage fields.
+
+    The generated definition looks like:
+    ```
+    def edslToSpecStorage (state : Verity.ContractState) :
+        Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage :=
+      SpecStorage.mk [(0, (state.storage 0).val), ...] [] [] []
+    ``` -/
+def mkEdslToSpecStorageCommand (fields : Array StorageFieldDecl) : CommandElabM Cmd := do
+  let specStorageTerm ← mkSpecStorageTerm fields
+  `(command|
+    /-- Convert EDSL `ContractState` to `SpecStorage` for use in semantic
+        preservation theorems. Machine-generated from storage field declarations. -/
+    def edslToSpecStorage (state : Verity.ContractState)
+        : Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage :=
+      $specStorageTerm)
+
+/-- Semantic preservation theorem per function (Issue #998, Phase 3).
+
+    Emits a `sorry`-admitted theorem per function proving that the EDSL
+    function execution agrees with `interpretSpec` applied to the contract's
+    `CompilationModel` spec on all inputs.
+
+    **What it proves**: For any state, sender, and function parameters:
+    - If the EDSL succeeds with final state `s'`, then `interpretSpec` also
+      succeeds and all storage slots agree.
+    - If the EDSL reverts, then `interpretSpec` also reports failure.
+
+    **Why `sorry`**: Discharging requires composing primitive bridge lemmas
+    from `PrimitiveBridge.lean` for each do-notation step. Automating this
+    composition is Phase 4 work.
+
+    **Why `interpretSpec`**: The macro runs in contract-file context (e.g.
+    `MacroContracts.lean`) which does not import IR types or EVMYulLean.
+    The statement uses `interpretSpec` as the CM reference semantics.
+    Combined with Layers 2+3 (`EndToEnd.lean`), discharging these theorems
+    eliminates `interpretSpec` from the TCB entirely. -/
+def mkSemanticBridgeCommand
+    (contractIdent : Ident) (fields : Array StorageFieldDecl) (fnDecl : FunctionDecl)
+    : CommandElabM Cmd := do
+  let semanticName ← mkSuffixedIdent fnDecl.ident "_semantic_preservation"
+  let fnIdent := fnDecl.ident
+
+  -- Build parameter identifiers
+  let paramIdents : Array Ident := fnDecl.params.map fun p => p.ident
+
+  -- Build the EDSL function application: fn arg1 arg2 ...
+  let edslApp ← if paramIdents.isEmpty then
+    `($fnIdent)
+  else
+    let args := paramIdents
+    `($fnIdent $args*)
+
+  -- Build argument encoding list: [p1.val, p2.val, ...] as Nat values
+  let argNatTerms ← fnDecl.params.mapM fun p => do
+    let pIdent := p.ident
+    match p.ty with
+    | .uint256 => `(Verity.Core.Uint256.val $pIdent)
+    | .uint8 => `(Verity.Core.Uint256.val $pIdent)  -- Uint8 maps to Uint256 in EDSL
+    | .address => `(Verity.Core.Address.val $pIdent)
+    | .bool => `(if $pIdent then (1 : Nat) else (0 : Nat))
+    | _ => `((0 : Nat))  -- Placeholder for other types
+  let argListTerm ← `([ $[$argNatTerms],* ])
+
+  -- Build the function name string
+  let fnNameTerm := strTermPublic fnDecl.name
+
+  -- Build the core proposition (the theorem type)
+  -- Note: we use `∀ (slot_idx : Nat)` with an unlikely-to-clash name.
+  -- The `∀` is built in a sub-expression to work around quotation parsing.
+  let successBody ← `(specResult.success = true ∧
+      ∀ (slot_idx : Nat), (s'.storage slot_idx).val =
+        Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.getSlot
+          specResult.finalStorage slot_idx)
+  let mut body ← `(
+    let edslResult := Verity.Contract.run ($edslApp) { state with sender := sender }
+    let specResult := Verity.Proofs.Stdlib.SpecInterpreter.interpretSpec
+        spec
+        (edslToSpecStorage state)
+        { sender := sender
+          functionName := $fnNameTerm
+          args := $argListTerm
+          : Compiler.DiffTestTypes.Transaction }
+    match edslResult with
+    | .success _ s' => $successBody
+    | .revert _ _ => specResult.success = false)
+
+  -- Wrap function-specific parameters as ∀ binders (reverse so first param is outermost).
+  -- We use ∀ instead of theorem-level binders because Lean 4 quotation syntax
+  -- doesn't support splicing variable-length bracketedBinder arrays into `theorem`.
+  for p in fnDecl.params.reverse do
+    let pIdent := p.ident
+    let pTy ← contractValueTypeTermPublic p.ty
+    body ← `(∀ ($pIdent : $pTy), $body)
+
+  `(command|
+    /-- Semantic preservation: EDSL execution of `$fnIdent` matches
+        `interpretSpec` applied to the contract's CompilationModel spec.
+
+        Machine-generated (Issue #998 Phase 3). The `sorry` will be
+        discharged in Phase 4 by composing primitive bridge lemmas.
+
+        On EDSL success: `interpretSpec` succeeds and all storage slots
+        agree between the EDSL final state and the spec's final storage.
+        On EDSL revert: `interpretSpec` also reports failure. -/
+    theorem $semanticName
+        (state : Verity.ContractState) (sender : Verity.Address)
+        : $body := by sorry)
 
 end Verity.Macro

@@ -20,9 +20,11 @@ boundary for generated EDSL artifacts.
   incrementally totalized (`partial def` -> `def` with explicit termination
   proofs), reducing trusted operational behavior around non-termination.
 - Current totalization scope includes parameter-dynamicity checks,
-  state read/write analyzers, and statement-list validator walkers in
-  `Compiler/CompilationModel.lean` (return-shape, parameter-reference,
-  constructor return, and custom-error argument-shape validation).
+  state read/write analyzers, statement-list validator walkers (return-shape,
+  parameter-reference, constructor return, custom-error argument-shape),
+  and all Expr/Stmt validation walkers (scoped-identifier, interop,
+  internal-call-shape, external-call-target, event-argument-shape validation)
+  in `Compiler/CompilationModel.lean`.
 
 ## Verification Chain
 

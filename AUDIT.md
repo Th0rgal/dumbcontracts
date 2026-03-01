@@ -45,6 +45,7 @@ Access control and checks:
 19. `scripts/check_evmyullean_capability_boundary.py` detects non-literal builtin dispatch patterns and reports them as fail-closed diagnostics.
 20. `Compiler/CompilationModel.lean` recursive validation walkers for unsafe logical call-like detection, array-element usage detection, return/revert reachability, and bind-name collection are totalized (`def` + explicit `termination_by`), reducing reliance on `partial def` in the active compilation path.
 21. `Compiler/CompilationModel.lean` additionally totalizes dynamic-parameter scope checks, statement read/write analysis, and statement-list validator walkers (`validateStmtParamReferences`, `validateReturnShapesInStmt`, `validateNoRuntimeReturnsInConstructorStmt`, `validateCustomErrorArgShapesInStmt`) with explicit structural recursion.
+22. `Compiler/CompilationModel.lean` further totalizes all Expr/Stmt validation walkers: scoped-identifier validation (`validateScopedExprIdentifiers`, `validateScopedStmtIdentifiers`, `validateScopedStmtListIdentifiers`), interop validation (`validateInteropExpr`, `validateInteropStmt`), internal-call-shape validation (`validateInternalCallShapesInExpr`, `validateInternalCallShapesInStmt`), external-call-target validation (`validateExternalCallTargetsInExpr`, `validateExternalCallTargetsInStmt`), and event-argument-shape validation (`validateEventArgShapesInStmt`) with explicit structural recursion in mutual blocks.
 
 Crypto choices:
 1. Function selectors use keccak256 (Ethereum ABI standard interoperability requirement).

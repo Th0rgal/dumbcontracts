@@ -298,4 +298,6 @@ verity_contract ERC20 where
     let currentOwner ← getStorageAddr ownerSlot
     return currentOwner
 
+#check_contract Counter
+
 end Verity.Examples.MacroContracts

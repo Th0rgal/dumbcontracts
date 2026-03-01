@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""Fail closed on regressions while migrating proofs to macro-generated artifacts.
+
+Issue #997 tracks proof migration from legacy/manual references:
+- `Verity.Examples.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken,SafeCounter}`
+- `Compiler.Specs.*Spec` (legacy manual specs)
+
+This check enforces:
+1) No legacy references may appear outside the explicit temporary allowlist.
+2) Allowlisted files must still contain at least one legacy reference (stale entries fail).
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+from property_utils import ROOT, strip_lean_comments
+
+PROOF_ROOTS = [
+    ROOT / "Compiler" / "Proofs",
+    ROOT / "Verity" / "Proofs",
+]
+
+ALLOWLIST = {
+    Path("Compiler/Proofs/SpecCorrectness/Counter.lean"),
+    Path("Compiler/Proofs/SpecCorrectness/Ledger.lean"),
+    Path("Compiler/Proofs/SpecCorrectness/Owned.lean"),
+    Path("Compiler/Proofs/SpecCorrectness/OwnedCounter.lean"),
+    Path("Compiler/Proofs/SpecCorrectness/SafeCounter.lean"),
+    Path("Compiler/Proofs/SpecCorrectness/SimpleStorage.lean"),
+    Path("Compiler/Proofs/SpecCorrectness/SimpleToken.lean"),
+    Path("Verity/Proofs/Counter/Basic.lean"),
+    Path("Verity/Proofs/Counter/Correctness.lean"),
+    Path("Verity/Proofs/Ledger/Basic.lean"),
+    Path("Verity/Proofs/Ledger/Conservation.lean"),
+    Path("Verity/Proofs/Ledger/Correctness.lean"),
+    Path("Verity/Proofs/Owned/Basic.lean"),
+    Path("Verity/Proofs/Owned/Correctness.lean"),
+    Path("Verity/Proofs/OwnedCounter/Basic.lean"),
+    Path("Verity/Proofs/OwnedCounter/Correctness.lean"),
+    Path("Verity/Proofs/OwnedCounter/Isolation.lean"),
+    Path("Verity/Proofs/SafeCounter/Basic.lean"),
+    Path("Verity/Proofs/SafeCounter/Correctness.lean"),
+    Path("Verity/Proofs/SimpleStorage/Basic.lean"),
+    Path("Verity/Proofs/SimpleToken/Basic.lean"),
+    Path("Verity/Proofs/SimpleToken/Correctness.lean"),
+    Path("Verity/Proofs/SimpleToken/Isolation.lean"),
+    Path("Verity/Proofs/SimpleToken/Supply.lean"),
+}
+
+LEGACY_RE = re.compile(
+    r"\b(?:"
+    r"Verity\.Examples\.(?:Counter|SimpleStorage|Owned|Ledger|OwnedCounter|SimpleToken|SafeCounter)"
+    r"|Compiler\.Specs\.(?:counterSpec|simpleStorageSpec|ownedSpec|ledgerSpec|ownedCounterSpec|simpleTokenSpec|safeCounterSpec)"
+    r")\b"
+)
+
+
+def _strip_lean_strings(text: str) -> str:
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    in_string = False
+    raw_hashes: int | None = None
+
+    while i < n:
+        ch = text[i]
+        if raw_hashes is not None:
+            if ch == "\n":
+                out.append("\n")
+                i += 1
+                continue
+            if ch == '"':
+                j = i + 1
+                hashes = 0
+                while j < n and text[j] == "#" and hashes < raw_hashes:
+                    hashes += 1
+                    j += 1
+                if hashes == raw_hashes:
+                    out.append('"')
+                    out.extend("#" * hashes)
+                    i = j
+                    raw_hashes = None
+                    continue
+            out.append(" ")
+            i += 1
+            continue
+
+        if in_string:
+            if ch == "\n":
+                out.append("\n")
+                i += 1
+                continue
+            if ch == "\\" and i + 1 < n:
+                out.extend([" ", " "])
+                i += 2
+                continue
+            if ch == '"':
+                out.append('"')
+                in_string = False
+                i += 1
+                continue
+            out.append(" ")
+            i += 1
+            continue
+
+        if ch == '"':
+            out.append('"')
+            in_string = True
+            i += 1
+            continue
+
+        if ch == "r":
+            j = i + 1
+            hashes = 0
+            while j < n and text[j] == "#":
+                hashes += 1
+                j += 1
+            if j < n and text[j] == '"':
+                out.append("r")
+                out.extend("#" * hashes)
+                out.append('"')
+                i = j + 1
+                raw_hashes = hashes
+                continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def scrub_lean_code(text: str) -> str:
+    return _strip_lean_strings(strip_lean_comments(text))
+
+
+def _proof_files() -> list[Path]:
+    files: list[Path] = []
+    for root in PROOF_ROOTS:
+        files.extend(sorted(root.rglob("*.lean")))
+    return files
+
+
+def _find_legacy_refs(path: Path) -> list[str]:
+    text = scrub_lean_code(path.read_text(encoding="utf-8"))
+    return [m.group(0) for m in LEGACY_RE.finditer(text)]
+
+
+def main() -> int:
+    files = _proof_files()
+    errors: list[str] = []
+    found_allowlisted: set[Path] = set()
+
+    for file_path in files:
+        rel = file_path.relative_to(ROOT)
+        hits = _find_legacy_refs(file_path)
+        if not hits:
+            continue
+        unique_hits = sorted(set(hits))
+        if rel not in ALLOWLIST:
+            errors.append(
+                f"{rel}: unexpected legacy proof reference(s): {', '.join(unique_hits)}"
+            )
+            continue
+        found_allowlisted.add(rel)
+
+    stale_allowlist = sorted(ALLOWLIST - found_allowlisted)
+    for stale in stale_allowlist:
+        errors.append(
+            f"{stale}: stale allowlist entry (no legacy references found; remove from ALLOWLIST)"
+        )
+
+    if errors:
+        print("Spec-proof migration boundary check failed:", file=sys.stderr)
+        for error in errors:
+            print(f"- {error}", file=sys.stderr)
+        print(
+            "\nIssue #997 guard: keep legacy references confined to the explicit allowlist and "
+            "delete allowlist entries as proofs migrate to MacroContracts artifacts.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        "Spec-proof migration boundary check passed "
+        f"({len(ALLOWLIST)} allowlisted files; no out-of-bound legacy references)."
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

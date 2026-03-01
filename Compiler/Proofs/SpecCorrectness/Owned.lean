@@ -17,7 +17,7 @@
 import Compiler.Specs
 import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
-import Verity.Examples.Owned
+import Verity.Examples.MacroContracts
 import Verity.Proofs.Owned.Basic
 import Verity.Proofs.Owned.Correctness
 
@@ -28,7 +28,9 @@ open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation
 open Verity
-open Verity.Examples.Owned
+open Verity.Examples.MacroContracts.Owned
+
+local abbrev ownedSpec : CompilationModel := Verity.Examples.MacroContracts.Owned.spec
 
 /- State Conversion -/
 
@@ -45,7 +47,7 @@ def ownedEdslToSpecStorage (state : ContractState) : SpecStorage :=
 
 /-- The `constructor` correctly initializes the owner -/
 theorem owned_constructor_correct (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let edslResult := (Verity.Examples.Owned.constructor initialOwner).run { state with sender := sender }
+    let edslResult := (Verity.Examples.MacroContracts.Owned.constructor initialOwner).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := ""  -- constructor has no name
@@ -55,8 +57,8 @@ theorem owned_constructor_correct (state : ContractState) (initialOwner : Addres
     edslResult.isSuccess = true ∧
     specResult.success = true ∧
     specResult.finalStorage.getSlot 0 = Verity.Core.Address.val (edslResult.getState.storageAddr 0) := by
-  simp [Verity.Examples.Owned.constructor, Contract.run, ownedSpec, interpretSpec,
-    setStorageAddr, Verity.Examples.Owned.owner,
+  simp [Verity.Examples.MacroContracts.Owned.constructor, Contract.run, ownedSpec, interpretSpec,
+    setStorageAddr, Verity.Examples.MacroContracts.Owned.owner,
     execConstructor, execStmts, execStmt, evalExpr, SpecStorage.setSlot, SpecStorage.getSlot, SpecStorage.empty]
 
 /-- The `transferOwnership` function correctly transfers ownership when called by owner -/
@@ -119,8 +121,8 @@ theorem owned_getOwner_correct (state : ContractState) (sender : Address) :
     let specResult := interpretSpec ownedSpec (ownedEdslToSpecStorage state) specTx
     specResult.success = true ∧
     specResult.returnValue = some (Verity.Core.Address.val edslAddr) := by
-  simp [Verity.Examples.Owned.getOwner, Contract.runValue, ownedSpec, interpretSpec, ownedEdslToSpecStorage,
-    getStorageAddr, Verity.Examples.Owned.owner, execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot]
+  simp [Verity.Examples.MacroContracts.Owned.getOwner, Contract.runValue, ownedSpec, interpretSpec, ownedEdslToSpecStorage,
+    getStorageAddr, Verity.Examples.MacroContracts.Owned.owner, execFunction, execStmts, execStmt, evalExpr, SpecStorage.getSlot]
 
 /- Helper Properties -/
 
@@ -128,7 +130,7 @@ theorem owned_getOwner_correct (state : ContractState) (sender : Address) :
 theorem owned_getOwner_preserves_state (state : ContractState) (sender : Address) :
     let finalState := getOwner.runState { state with sender := sender }
     finalState.storageAddr 0 = state.storageAddr 0 := by
-  simp [Verity.Examples.Owned.getOwner, Contract.runState, getStorageAddr, Verity.Examples.Owned.owner]
+  simp [Verity.Examples.MacroContracts.Owned.getOwner, Contract.runState, getStorageAddr, Verity.Examples.MacroContracts.Owned.owner]
 
 /-- Only owner can transfer ownership -/
 theorem owned_only_owner_can_transfer (state : ContractState) (newOwner : Address) (sender : Address) :
@@ -152,14 +154,14 @@ theorem owned_only_owner_can_transfer (state : ContractState) (newOwner : Addres
 
 /-- Constructor sets initial owner correctly -/
 theorem owned_constructor_sets_owner (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let finalState := (Verity.Examples.Owned.constructor initialOwner).runState { state with sender := sender }
+    let finalState := (Verity.Examples.MacroContracts.Owned.constructor initialOwner).runState { state with sender := sender }
     finalState.storageAddr 0 = initialOwner := by
-  simp [Verity.Examples.Owned.constructor, Contract.runState, setStorageAddr, Verity.Examples.Owned.owner]
+  simp [Verity.Examples.MacroContracts.Owned.constructor, Contract.runState, setStorageAddr, Verity.Examples.MacroContracts.Owned.owner]
 
 /-- TransferOwnership updates owner when authorized -/
 theorem owned_transferOwnership_updates_owner (state : ContractState) (newOwner : Address) (sender : Address)
     (h : state.storageAddr 0 = sender) :
-    let finalState := (Verity.Examples.Owned.transferOwnership newOwner).runState { state with sender := sender }
+    let finalState := (Verity.Examples.MacroContracts.Owned.transferOwnership newOwner).runState { state with sender := sender }
     finalState.storageAddr 0 = newOwner := by
   have h_owner' : ({ state with sender := sender }).sender =
       ({ state with sender := sender }).storageAddr 0 := by simp [h]

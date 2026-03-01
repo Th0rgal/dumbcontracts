@@ -21,7 +21,7 @@ namespace Verity.Proofs.SimpleToken.Supply
 
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256)
-open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
+open Verity.Examples.MacroContracts.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken
 open Verity.Proofs.SimpleToken
 open Verity.Proofs.Stdlib.ListSum (countOcc countOccU countOccU_cons_eq countOccU_cons_ne

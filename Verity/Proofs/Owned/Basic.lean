@@ -10,11 +10,12 @@
 import Verity.Specs.Owned.Spec
 import Verity.Specs.Owned.Invariants
 import Verity.Proofs.Stdlib.Automation
+import Verity.Examples.MacroContracts
 
 namespace Verity.Proofs.Owned
 
 open Verity
-open Verity.Examples.Owned
+open Verity.Examples.MacroContracts.Owned
 open Verity.Specs.Owned
 open Verity.Proofs.Stdlib.Automation (wf_of_state_eq)
 

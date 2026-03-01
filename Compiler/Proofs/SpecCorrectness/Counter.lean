@@ -14,7 +14,7 @@
 
 import Compiler.Specs
 import Verity.Proofs.Stdlib.SpecInterpreter
-import Verity.Examples.Counter
+import Verity.Examples.MacroContracts
 
 namespace Compiler.Proofs.SpecCorrectness
 
@@ -22,9 +22,11 @@ open Compiler.CompilationModel
 open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity
-open Verity.Examples.Counter
+open Verity.Examples.MacroContracts.Counter
 open Verity.EVM.Uint256 (add sub)
 open Verity.Core.Uint256 (modulus val_ofNat)
+
+local abbrev counterSpec : CompilationModel := Verity.Examples.MacroContracts.Counter.spec
 
 /- State Conversion -/
 

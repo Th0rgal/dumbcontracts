@@ -18,7 +18,7 @@
 import Compiler.Specs
 import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
-import Verity.Examples.OwnedCounter
+import Verity.Examples.MacroContracts
 import Verity.Proofs.OwnedCounter.Basic
 
 namespace Compiler.Proofs.SpecCorrectness
@@ -28,8 +28,10 @@ open Compiler.Specs
 open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation
 open Verity
-open Verity.Examples.OwnedCounter
+open Verity.Examples.MacroContracts.OwnedCounter
 open Verity.Proofs.OwnedCounter
+
+local abbrev ownedCounterSpec : CompilationModel := Verity.Examples.MacroContracts.OwnedCounter.spec
 
 -- Address encoding lemmas are provided by Automation.
 
@@ -54,7 +56,7 @@ def ownedCounterEdslToSpecStorage (state : ContractState) : SpecStorage :=
 
 /-- The `constructor` correctly initializes the owner -/
 theorem ownedCounter_constructor_correct (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let edslResult := (Verity.Examples.OwnedCounter.constructor initialOwner).run { state with sender := sender }
+    let edslResult := (Verity.Examples.MacroContracts.OwnedCounter.constructor initialOwner).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := ""
@@ -64,8 +66,8 @@ theorem ownedCounter_constructor_correct (state : ContractState) (initialOwner :
     edslResult.isSuccess = true ∧
     specResult.success = true ∧
     specResult.finalStorage.getSlot 0 = (edslResult.getState.storageAddr 0).val := by
-  simp [Verity.Examples.OwnedCounter.constructor, Contract.run, ownedCounterSpec, interpretSpec,
-    setStorageAddr, Verity.Examples.OwnedCounter.owner,
+  simp [Verity.Examples.MacroContracts.OwnedCounter.constructor, Contract.run, ownedCounterSpec, interpretSpec,
+    setStorageAddr, Verity.Examples.MacroContracts.OwnedCounter.owner,
     execConstructor, execStmts, execStmt, evalExpr, SpecStorage.setSlot, SpecStorage.getSlot, SpecStorage.empty]
 
 /-- The `increment` function correctly increments when called by owner -/
@@ -191,8 +193,8 @@ theorem ownedCounter_getCount_correct (state : ContractState) (sender : Address)
     let specResult := interpretSpec ownedCounterSpec (ownedCounterEdslToSpecStorage state) specTx
     specResult.success = true ∧
     specResult.returnValue = some edslValue := by
-  simp [Verity.Examples.OwnedCounter.getCount, Contract.runValue, ownedCounterSpec, interpretSpec,
-    ownedCounterEdslToSpecStorage, getStorage, Verity.Examples.OwnedCounter.count, execFunction,
+  simp [Verity.Examples.MacroContracts.OwnedCounter.getCount, Contract.runValue, ownedCounterSpec, interpretSpec,
+    ownedCounterEdslToSpecStorage, getStorage, Verity.Examples.MacroContracts.OwnedCounter.count, execFunction,
     execStmts, execStmt, evalExpr, SpecStorage.getSlot]
 
 /-- The `getOwner` function correctly retrieves the owner address -/
@@ -206,8 +208,8 @@ theorem ownedCounter_getOwner_correct (state : ContractState) (sender : Address)
     let specResult := interpretSpec ownedCounterSpec (ownedCounterEdslToSpecStorage state) specTx
     specResult.success = true ∧
     specResult.returnValue = some edslAddr.val := by
-  simp [Verity.Examples.OwnedCounter.getOwner, Contract.runValue, ownedCounterSpec, interpretSpec,
-    ownedCounterEdslToSpecStorage, getStorageAddr, Verity.Examples.OwnedCounter.owner, execFunction,
+  simp [Verity.Examples.MacroContracts.OwnedCounter.getOwner, Contract.runValue, ownedCounterSpec, interpretSpec,
+    ownedCounterEdslToSpecStorage, getStorageAddr, Verity.Examples.MacroContracts.OwnedCounter.owner, execFunction,
     execStmts, execStmt, evalExpr, SpecStorage.getSlot]
 
 /-- The `transferOwnership` function correctly transfers ownership when called by owner -/
@@ -266,8 +268,8 @@ theorem ownedCounter_getters_preserve_state (state : ContractState) (sender : Ad
     let ownerState := getOwner.runState { state with sender := sender }
     countState.storage 1 = state.storage 1 ∧
     ownerState.storageAddr 0 = state.storageAddr 0 := by
-  simp [Verity.Examples.OwnedCounter.getCount, Verity.Examples.OwnedCounter.getOwner, Contract.runState,
-    getStorage, getStorageAddr, Verity.Examples.OwnedCounter.count, Verity.Examples.OwnedCounter.owner]
+  simp [Verity.Examples.MacroContracts.OwnedCounter.getCount, Verity.Examples.MacroContracts.OwnedCounter.getOwner, Contract.runState,
+    getStorage, getStorageAddr, Verity.Examples.MacroContracts.OwnedCounter.count, Verity.Examples.MacroContracts.OwnedCounter.owner]
 
 /-- Only owner can modify counter -/
 theorem ownedCounter_only_owner_modifies (state : ContractState) (sender : Address) :

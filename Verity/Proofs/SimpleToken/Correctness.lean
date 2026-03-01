@@ -16,10 +16,14 @@ namespace Verity.Proofs.SimpleToken.Correctness
 
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256 safeAdd requireSomeUint)
-open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
+open Verity.Examples.MacroContracts.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 open Verity.Proofs.SimpleToken
+
+local abbrev owner : StorageSlot Address := Verity.Examples.MacroContracts.SimpleToken.ownerSlot
+local abbrev balances : StorageSlot (Address → Uint256) := Verity.Examples.MacroContracts.SimpleToken.balancesSlot
+local abbrev totalSupply : StorageSlot Uint256 := Verity.Examples.MacroContracts.SimpleToken.totalSupplySlot
 
 /-! ## Guard Revert Proofs
 
@@ -32,8 +36,8 @@ This is critical for safety: unauthorized or invalid operations must fail.
 theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount : Uint256)
   (h_not_owner : s.sender ≠ s.storageAddr 0) :
   ∃ msg, (mint to amount).run s = ContractResult.revert msg s := by
-  simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner,
-    Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+  simp only [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner,
+    Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
     msgSender, getStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run]
@@ -44,7 +48,7 @@ theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount :
 theorem transfer_reverts_insufficient_balance (s : ContractState) (to : Address) (amount : Uint256)
   (h_insufficient : s.storageMap 1 s.sender < amount) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
-  simp only [transfer, Examples.SimpleToken.balances,
+  simp only [transfer, Examples.MacroContracts.SimpleToken.balancesSlot,
     msgSender, getMapping,
     Verity.require, Verity.bind, Bind.bind,
     Contract.run]

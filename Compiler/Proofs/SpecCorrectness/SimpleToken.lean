@@ -19,7 +19,7 @@
 import Compiler.Specs
 import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.Automation
-import Verity.Examples.SimpleToken
+import Verity.Examples.MacroContracts
 import Verity.Proofs.SimpleToken.Basic
 import Verity.Proofs.SimpleToken.Correctness
 
@@ -36,8 +36,13 @@ open Verity.Proofs.Stdlib.SpecInterpreter
 open Verity.Proofs.Stdlib.Automation
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256 safeAdd requireSomeUint)
-open Verity.Examples.SimpleToken
+open Verity.Examples.MacroContracts.SimpleToken
 open Verity.Proofs.SimpleToken
+
+local abbrev simpleTokenSpec : CompilationModel := Verity.Examples.MacroContracts.SimpleToken.spec
+local abbrev owner : StorageSlot Address := Verity.Examples.MacroContracts.SimpleToken.ownerSlot
+local abbrev balances : StorageSlot (Address → Uint256) := Verity.Examples.MacroContracts.SimpleToken.balancesSlot
+local abbrev totalSupply : StorageSlot Uint256 := Verity.Examples.MacroContracts.SimpleToken.totalSupplySlot
 
 /- State Conversion -/
 
@@ -66,7 +71,7 @@ def tokenEdslToSpecStorageWithAddrs (state : ContractState) (addrs : List Addres
 
 /-- The `constructor` correctly initializes owner and totalSupply -/
 theorem token_constructor_correct (state : ContractState) (initialOwner : Address) (sender : Address) :
-    let edslResult := (Verity.Examples.SimpleToken.constructor initialOwner).run { state with sender := sender }
+    let edslResult := (Verity.Examples.MacroContracts.SimpleToken.constructor initialOwner).run { state with sender := sender }
     let specTx : DiffTestTypes.Transaction := {
       sender := sender
       functionName := ""
@@ -79,9 +84,9 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
     specResult.finalStorage.getSlot 2 = (edslResult.getState.storage 2).val := by
   constructor
   · -- EDSL constructor succeeds
-    simp [Verity.Examples.SimpleToken.constructor, Contract.run, ContractResult.isSuccess, setStorageAddr, setStorage,
+    simp [Verity.Examples.MacroContracts.SimpleToken.constructor, Contract.run, ContractResult.isSuccess, setStorageAddr, setStorage,
       Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-      Examples.SimpleToken.owner, Examples.SimpleToken.totalSupply]
+      Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot]
   constructor
   · -- Spec constructor succeeds
     simp [interpretSpec, execConstructor, execStmts, execStmt, evalExpr,
@@ -91,7 +96,7 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
   · -- Owner slot matches
     have h_owner :
           (ContractResult.getState
-          ((Verity.Examples.SimpleToken.constructor initialOwner).run { state with sender := sender })).storageAddr 0 = initialOwner := by
+          ((Verity.Examples.MacroContracts.SimpleToken.constructor initialOwner).run { state with sender := sender })).storageAddr 0 = initialOwner := by
       -- Use proven EDSL lemma
       simpa [Contract.run, ContractResult.getState, ContractResult.snd] using
         (constructor_sets_owner { state with sender := sender } initialOwner)
@@ -102,7 +107,7 @@ theorem token_constructor_correct (state : ContractState) (initialOwner : Addres
   · -- Total supply slot matches
     have h_supply :
           (ContractResult.getState
-          ((Verity.Examples.SimpleToken.constructor initialOwner).run { state with sender := sender })).storage 2 = 0 := by
+          ((Verity.Examples.MacroContracts.SimpleToken.constructor initialOwner).run { state with sender := sender })).storage 2 = 0 := by
       simpa [Contract.run, ContractResult.getState, ContractResult.snd] using
         (constructor_sets_supply_zero { state with sender := sender } initialOwner)
     simp [interpretSpec, execConstructor, execStmts, execStmt, evalExpr,
@@ -135,9 +140,9 @@ theorem token_mint_correct_as_owner (state : ContractState) (to : Address) (amou
     simp [safeAdd, Verity.Core.Uint256.coe_ofNat, Nat.mod_eq_of_lt h_amount_lt, Nat.not_lt.mpr h_no_sup_overflow]
   constructor
   · -- EDSL success (checks-before-effects: both requireSomeUint before setMapping/setStorage)
-    simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
+    simp only [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner, Contract.run,
       msgSender, getStorageAddr, getMapping, setMapping, getStorage, setStorage,
-      Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+      Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
       Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       ContractResult.isSuccess, ContractResult.snd, ContractResult.fst,
       h, beq_self_eq_true, ite_true]
@@ -256,9 +261,9 @@ theorem token_mint_reverts_as_nonowner (state : ContractState) (to : Address) (a
   · -- EDSL reverts due to onlyOwner check
     have h_beq : (sender == state.storageAddr 0) = false :=
       address_beq_false_of_ne sender (state.storageAddr 0) (Ne.symm h)
-    simp [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, Contract.run,
+    simp [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner, Contract.run,
       msgSender, getStorageAddr, getMapping, setMapping, getStorage, setStorage,
-      Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+      Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
       Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
       ContractResult.isSuccess, h_beq]
   · -- Spec reverts due to require failing

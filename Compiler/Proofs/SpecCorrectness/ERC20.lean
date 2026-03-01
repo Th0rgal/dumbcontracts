@@ -5,7 +5,7 @@
 -/
 
 import Verity.Specs.ERC20.Spec
-import Verity.Examples.ERC20
+import Verity.Examples.MacroContracts
 import Verity.Proofs.ERC20.Basic
 import Verity.Proofs.ERC20.Correctness
 import Verity.Stdlib.Math
@@ -14,7 +14,12 @@ namespace Compiler.Proofs.SpecCorrectness
 
 open Verity
 open Verity.Specs.ERC20
-open Verity.Examples.ERC20
+open Verity.Examples.MacroContracts.ERC20
+
+local abbrev owner : StorageSlot Address := Verity.Examples.MacroContracts.ERC20.ownerSlot
+local abbrev totalSupply : StorageSlot Uint256 := Verity.Examples.MacroContracts.ERC20.totalSupplySlot
+local abbrev balances : StorageSlot (Address → Uint256) := Verity.Examples.MacroContracts.ERC20.balancesSlot
+local abbrev allowances : StorageSlot (Address → Address → Uint256) := Verity.Examples.MacroContracts.ERC20.allowancesSlot
 
 /-- Spec/EDSL agreement for `constructor`. -/
 theorem erc20_constructor_spec_correct (s : ContractState) (initialOwner : Address) :

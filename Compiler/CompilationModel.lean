@@ -137,6 +137,7 @@ Extended parameter types supporting arrays, bytes, and bytes32.
 
 inductive ParamType
   | uint256
+  | uint8
   | address
   | bool                                   -- Solidity bool (ABI-encoded as 32-byte 0/1)
   | bytes32                                -- Fixed 32-byte value
@@ -161,6 +162,7 @@ def FieldType.toIRType : FieldType → IRType
 
 def ParamType.toIRType : ParamType → IRType
   | uint256 => IRType.uint256
+  | uint8 => IRType.uint256
   | address => IRType.address
   | bool => IRType.uint256
   | bytes32 => IRType.uint256  -- bytes32 is a 256-bit value
@@ -1076,6 +1078,7 @@ mutual
   -- Map ParamType to its Solidity type string (used for event and function signatures)
   def paramTypeToSolidityString : ParamType → String
     | ParamType.uint256 => "uint256"
+    | ParamType.uint8 => "uint8"
     | ParamType.address => "address"
     | ParamType.bool => "bool"
     | ParamType.bytes32 => "bytes32"
@@ -1346,7 +1349,7 @@ end
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
       [name]
   | ParamType.fixedArray elemTy n =>
       (List.range n).flatMap (fun i => staticParamBindingNames s!"{name}_{i}" elemTy)
@@ -1365,6 +1368,7 @@ private def dynamicParamBindingNames (name : String) : List String :=
 mutual
 private def isDynamicParamTypeForScope : ParamType → Bool
   | ParamType.uint256 => false
+  | ParamType.uint8 => false
   | ParamType.address => false
   | ParamType.bool => false
   | ParamType.bytes32 => false
@@ -1383,7 +1387,7 @@ decreasing_by all_goals simp_wf; all_goals omega
 end
 
 private def isScalarParamTypeForScope : ParamType → Bool
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => true
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 => true
   | _ => false
 
 private def paramBindingNames (param : Param) : List String :=
@@ -2049,7 +2053,7 @@ private def validateConstructorSpec (ctor : Option ConstructorSpec) : Except Str
       validateConstructorIdentifierReferences ctor
 
 private def customErrorRequiresDirectParamRef : ParamType → Bool
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => false
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 => false
   | _ => true
 
 private def validateDirectParamCustomErrorArg
@@ -2107,6 +2111,7 @@ private def validateCustomErrorArgShapesInFunction (spec : FunctionSpec) (errors
 mutual
   def isDynamicParamType : ParamType → Bool
     | ParamType.uint256 => false
+    | ParamType.uint8 => false
     | ParamType.address => false
     | ParamType.bool => false
     | ParamType.bytes32 => false
@@ -2128,6 +2133,7 @@ end
 mutual
   def paramHeadSize : ParamType → Nat
     | ParamType.uint256 => 32
+    | ParamType.uint8 => 32
     | ParamType.address => 32
     | ParamType.bool => 32
     | ParamType.bytes32 => 32
@@ -2295,6 +2301,7 @@ private def validateEventArgShapesInFunction (spec : FunctionSpec) (events : Lis
 
 private def normalizeEventWord (ty : ParamType) (expr : YulExpr) : YulExpr :=
   match ty with
+  | ParamType.uint8 => YulExpr.call "and" [expr, YulExpr.lit 255]
   | ParamType.address => YulExpr.call "and" [expr, YulExpr.hex addressMask]
   | ParamType.bool => yulToBool expr
   | _ => expr
@@ -2302,7 +2309,7 @@ private def normalizeEventWord (ty : ParamType) (expr : YulExpr) : YulExpr :=
 private partial def staticCompositeLeaves (baseName : String) (ty : ParamType) :
     List (ParamType × YulExpr) :=
   match ty with
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
       [(ty, YulExpr.ident baseName)]
   | ParamType.fixedArray elemTy n =>
       (List.range n).flatMap fun i =>
@@ -2319,7 +2326,7 @@ private partial def staticCompositeLeaves (baseName : String) (ty : ParamType) :
 private partial def staticCompositeLeafTypeOffsets
     (baseOffset : Nat) (ty : ParamType) : List (Nat × ParamType) :=
   match ty with
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
       [(baseOffset, ty)]
   | ParamType.fixedArray elemTy n =>
       (List.range n).flatMap fun i =>
@@ -2344,7 +2351,7 @@ private partial def compileIndexedInPlaceEncoding
     (srcBase dstBase : YulExpr) (stem : String) :
     Except String (List YulStmt × YulExpr) := do
   match ty with
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
       let loaded := dynamicWordLoad dynamicSource srcBase
       pure ([
         YulStmt.expr (YulExpr.call "mstore" [dstBase, normalizeEventWord ty loaded])
@@ -3234,7 +3241,7 @@ private def compileMappingPackedSlotWrite (fields : List Field) (field : String)
 
 mutual
 private def supportedCustomErrorParamType : ParamType → Bool
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 | ParamType.bytes => true
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 | ParamType.bytes => true
   | ParamType.array elemTy => supportedCustomErrorParamType elemTy
   | ParamType.fixedArray elemTy _ => supportedCustomErrorParamType elemTy
   | ParamType.tuple elemTys => supportedCustomErrorParamTypes elemTys
@@ -3257,6 +3264,8 @@ private def encodeStaticCustomErrorArg (errorName : String) (ty : ParamType) (ar
   match ty with
   | ParamType.uint256 | ParamType.bytes32 =>
       pure argExpr
+  | ParamType.uint8 =>
+      pure (YulExpr.call "and" [argExpr, YulExpr.lit 255])
   | ParamType.address =>
       pure (YulExpr.call "and" [argExpr, YulExpr.hex addressMask])
   | ParamType.bool =>
@@ -3277,7 +3286,7 @@ private partial def compileUnindexedAbiEncode
     (srcBase dstBase : YulExpr) (stem : String) :
     Except String (List YulStmt × YulExpr) := do
   match ty with
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
       let loaded := dynamicWordLoad dynamicSource srcBase
       pure ([
         YulStmt.expr (YulExpr.call "mstore" [dstBase, normalizeEventWord ty loaded])
@@ -3534,7 +3543,7 @@ private def revertWithCustomError (dynamicSource : DynamicDataSource)
   let argsWithHeadOffsets := attachOffsets argsWithSources 4
   let argStores ← argsWithHeadOffsets.zipIdx.mapM fun ((ty, srcExpr, argExpr, headOffset), idx) => do
     match ty with
-    | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+    | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
         let encoded ← encodeStaticCustomErrorArg errorDef.name ty argExpr
         pure [YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit headOffset, encoded])]
     | ParamType.tuple _ | ParamType.fixedArray _ _ =>
@@ -4519,7 +4528,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
 end
 
 private def isScalarParamType : ParamType → Bool
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 => true
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 => true
   | _ => false
 
 private def genDynamicParamLoads
@@ -4583,6 +4592,8 @@ private def genScalarLoad
   match ty with
   | ParamType.uint256 =>
       [YulStmt.let_ name load]
+  | ParamType.uint8 =>
+      [YulStmt.let_ name (YulExpr.call "and" [load, YulExpr.lit 255])]
   | ParamType.bytes32 =>
       [YulStmt.let_ name load]
   | ParamType.address =>
@@ -4611,7 +4622,7 @@ private partial def genStaticTypeLoads
     (loadWord : YulExpr → YulExpr) (name : String) (ty : ParamType) (offset : Nat) :
     List YulStmt :=
   match ty with
-  | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+  | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
       genScalarLoad loadWord name ty offset
   | ParamType.fixedArray elemTy n =>
       (List.range n).flatMap fun i =>
@@ -4641,7 +4652,7 @@ private def genParamLoadsFrom
     | [] => []
     | param :: rest =>
       let stmts := match param.ty with
-        | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+        | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
           genScalarLoad loadWord param.name param.ty headOffset
         | ParamType.tuple elemTypes =>
           if isDynamicParamType param.ty then
@@ -4897,7 +4908,7 @@ private def constructorArgAliases (params : List Param) : List YulStmt :=
           YulExpr.ident s!"{param.name}_offset"
         else
           match param.ty with
-          | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
+          | ParamType.uint256 | ParamType.uint8 | ParamType.address | ParamType.bool | ParamType.bytes32 =>
               YulExpr.ident param.name
           | _ =>
               YulExpr.call "mload" [YulExpr.lit headOffset]

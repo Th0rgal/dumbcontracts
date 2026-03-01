@@ -16,6 +16,7 @@ abbrev DoSeq := TSyntax `Lean.Parser.Term.doSeq
 
 inductive ValueType where
   | uint256
+  | uint8
   | address
   | bytes32
   | bool
@@ -60,6 +61,7 @@ private def natTerm (n : Nat) : Term := ⟨Syntax.mkNumLit (toString n)⟩
 private partial def valueTypeFromSyntax (ty : Term) : CommandElabM ValueType := do
   match ty with
   | `(term| Uint256) => pure .uint256
+  | `(term| Uint8) => pure .uint8
   | `(term| Address) => pure .address
   | `(term| Bytes32) => pure .bytes32
   | `(term| Bool) => pure .bool
@@ -76,7 +78,7 @@ private partial def valueTypeFromSyntax (ty : Term) : CommandElabM ValueType := 
         throwErrorAt ty "tuple types must have at least 2 elements"
       pure (.tuple elems.toList)
   | `(term| Unit) => pure .unit
-  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bytes32, Bool, Bytes, Array <type>, Tuple [...], or Unit"
+  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Uint8, Address, Bytes32, Bool, Bytes, Array <type>, Tuple [...], or Unit"
 
 private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
   match ty with
@@ -97,6 +99,7 @@ private def natFromSyntax (stx : Syntax) : CommandElabM Nat :=
 private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
   match ty with
   | .scalar .uint256 => `(Compiler.CompilationModel.FieldType.uint256)
+  | .scalar .uint8 => throwError "storage fields cannot be Uint8; use Uint256 encoding"
   | .scalar .address => `(Compiler.CompilationModel.FieldType.address)
   | .scalar .bytes32 => throwError "storage fields cannot be Bytes32; use Uint256 encoding"
   | .scalar .bool => throwError "storage fields cannot be Bool; use Uint256 (0/1) encoding"
@@ -119,6 +122,7 @@ private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
 private partial def modelParamTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Compiler.CompilationModel.ParamType.uint256)
+  | .uint8 => `(Compiler.CompilationModel.ParamType.uint8)
   | .address => `(Compiler.CompilationModel.ParamType.address)
   | .bytes32 => `(Compiler.CompilationModel.ParamType.bytes32)
   | .bool => `(Compiler.CompilationModel.ParamType.bool)
@@ -134,6 +138,7 @@ private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .unit => `(none)
   | .uint256 => `(some Compiler.CompilationModel.FieldType.uint256)
+  | .uint8 => `(none)
   | .address => `(some Compiler.CompilationModel.FieldType.address)
   | .bytes32 => `(none)
   | .bool => `(none)
@@ -145,6 +150,7 @@ private partial def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .unit => `([])
   | .uint256 => `([Compiler.CompilationModel.ParamType.uint256])
+  | .uint8 => `([Compiler.CompilationModel.ParamType.uint8])
   | .address => `([Compiler.CompilationModel.ParamType.address])
   | .bytes32 => `([Compiler.CompilationModel.ParamType.bytes32])
   | .bool => `([Compiler.CompilationModel.ParamType.bool])
@@ -158,6 +164,7 @@ private partial def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
 private partial def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Uint256)
+  | .uint8 => `(Uint256)
   | .address => `(Address)
   | .bytes32 => `(Uint256)
   | .bool => `(Bool)
@@ -813,6 +820,7 @@ private def mkStorageDefCommand (field : StorageFieldDecl) : CommandElabM Cmd :=
   let storageTy ←
     match field.ty with
     | .scalar .uint256 => `(Uint256)
+    | .scalar .uint8 => throwError "storage field cannot be Uint8; use Uint256 encoding"
     | .scalar .address => `(Address)
     | .scalar .bytes32 => throwError "storage field cannot be Bytes32; use Uint256 encoding"
     | .scalar .bool => throwError "storage field cannot be Bool; use Uint256 (0/1) encoding"

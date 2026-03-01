@@ -184,6 +184,8 @@ def _sol_type(lean_ty: str) -> str:
     ty = _normalize_type(lean_ty)
     if ty == "Uint256":
         return "uint256"
+    if ty == "Uint8":
+        return "uint8"
     if ty == "Address":
         return "address"
     if ty == "Bool":
@@ -207,6 +209,8 @@ def _example_value(lean_ty: str) -> str:
     ty = _normalize_type(lean_ty)
     if ty == "Uint256":
         return "uint256(1)"
+    if ty == "Uint8":
+        return "uint8(27)"
     if ty == "Address":
         return "alice"
     if ty == "Bool":
@@ -244,7 +248,7 @@ def _fn_camel(name: str) -> str:
 
 def _return_shape_assertion(lean_ty: str, fn_name: str) -> str:
     ty = _normalize_type(lean_ty)
-    if ty in {"Uint256", "Address", "Bool", "Bytes32"}:
+    if ty in {"Uint256", "Uint8", "Address", "Bool", "Bytes32"}:
         return (
             f'        assertEq(ret.length, 32, "{fn_name} ABI return length mismatch (expected 32 bytes)");'
         )

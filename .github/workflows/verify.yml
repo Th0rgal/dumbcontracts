@@ -160,6 +160,9 @@ jobs:
       - name: Check manual-spec quarantine boundary
         run: python3 scripts/check_manual_spec_quarantine.py
 
+      - name: Check SpecCorrectness migration boundary
+        run: python3 scripts/check_spec_proof_migration_boundary.py
+
       - name: Check Lean hygiene
         run: python3 scripts/check_lean_hygiene.py
 

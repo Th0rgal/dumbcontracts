@@ -131,8 +131,10 @@ example : ∀ b : Compiler.Proofs.YulGeneration.BuiltinBackend,
 -- Cryptographic primitives: keccak256 is axiomatized (see AXIOMS.md).
 -- The mapping-slot derivation trusts the keccak FFI.
 --
--- Universal bridge equivalence: the EVMYulLean bridge smoke tests cover
--- concrete values. A universal proof (∀ n, Nat-modular n ≡ Fin-based n)
--- is a future task.
+-- Universal bridge equivalence: add/sub/mul are universally proven in
+-- EndToEnd.lean (pure_add_bridge, pure_sub_bridge, pure_mul_bridge).
+-- div/mod have proofs with in-range preconditions (pending Fin unfolding).
+-- These build on the smoke tests here by upgrading concrete-value checks to
+-- universally quantified theorems.
 
 end Compiler.Proofs.ArithmeticProfile

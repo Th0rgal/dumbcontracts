@@ -115,10 +115,10 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
   EDSL≡IR proofs for 16 functions across 5 contracts) does not add, remove, or
   modify Lean axioms. The `sorry` placeholders in EndToEnd.lean (2: paramState
   erasing and unconditioned version), the universal arithmetic bridge theorems
-  (5: add/sub/mul/div/mod ↔ EVMYulLean), and the macro-generated theorems are
-  proof obligations (not axioms) — they represent goals to be discharged, not
-  trusted assumptions. When discharged, they will *reduce* the TCB by eliminating
-  `interpretSpec`.
+  (2 remaining: div/mod ↔ EVMYulLean; add/sub/mul are now fully proven), and
+  the macro-generated theorems are proof obligations (not axioms) — they
+  represent goals to be discharged, not trusted assumptions. When discharged,
+  they will *reduce* the TCB by eliminating `interpretSpec`.
 
 ## Maintenance Rule
 

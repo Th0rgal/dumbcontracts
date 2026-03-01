@@ -40,6 +40,7 @@ contract PropertyLedgerTest is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getBalance(address)", alice));
         require(ok, "getBalance reverted unexpectedly");
+        assertEq(ret.length, 32, "getBalance ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }

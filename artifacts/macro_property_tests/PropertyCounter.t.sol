@@ -34,6 +34,7 @@ contract PropertyCounterTest is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getCount()"));
         require(ok, "getCount reverted unexpectedly");
+        assertEq(ret.length, 32, "getCount ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
@@ -42,6 +43,7 @@ contract PropertyCounterTest is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("previewAddTwice(uint256)", uint256(1)));
         require(ok, "previewAddTwice reverted unexpectedly");
+        assertEq(ret.length, 32, "previewAddTwice ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
@@ -50,6 +52,7 @@ contract PropertyCounterTest is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("previewOps(uint256,uint256,uint256)", uint256(1), uint256(1), uint256(1)));
         require(ok, "previewOps reverted unexpectedly");
+        assertEq(ret.length, 32, "previewOps ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
@@ -58,6 +61,7 @@ contract PropertyCounterTest is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("previewEnvOps(uint256,uint256)", uint256(1), uint256(1)));
         require(ok, "previewEnvOps reverted unexpectedly");
+        assertEq(ret.length, 32, "previewEnvOps ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
@@ -66,6 +70,7 @@ contract PropertyCounterTest is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("previewLowLevel(uint256,uint256)", uint256(1), uint256(1)));
         require(ok, "previewLowLevel reverted unexpectedly");
+        assertEq(ret.length, 32, "previewLowLevel ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }

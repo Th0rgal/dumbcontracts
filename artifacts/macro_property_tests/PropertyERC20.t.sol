@@ -46,6 +46,7 @@ contract PropertyERC20Test is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("balanceOf(address)", alice));
         require(ok, "balanceOf reverted unexpectedly");
+        assertEq(ret.length, 32, "balanceOf ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
@@ -54,6 +55,7 @@ contract PropertyERC20Test is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("allowanceOf(address,address)", alice, alice));
         require(ok, "allowanceOf reverted unexpectedly");
+        assertEq(ret.length, 32, "allowanceOf ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
@@ -62,6 +64,7 @@ contract PropertyERC20Test is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("totalSupply()"));
         require(ok, "totalSupply reverted unexpectedly");
+        assertEq(ret.length, 32, "totalSupply ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
@@ -70,6 +73,7 @@ contract PropertyERC20Test is YulTestBase {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("owner()"));
         require(ok, "owner reverted unexpectedly");
+        assertEq(ret.length, 32, "owner ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }

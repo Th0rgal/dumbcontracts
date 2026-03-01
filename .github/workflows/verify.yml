@@ -576,7 +576,7 @@ jobs:
   # Multi-seed testing to detect flakiness and seed-dependent failures
   foundry-multi-seed:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     needs: [changes, build]
     if: needs.changes.outputs.code == 'true'
     strategy:
@@ -609,13 +609,11 @@ jobs:
         run: |
           echo "::group::Testing with seed ${{ matrix.seed }}"
           echo "DIFFTEST_RANDOM_SEED=${{ matrix.seed }}"
-          # Skip Random10000 tests in multi-seed to avoid out-of-gas errors
-          # See issue #96 for details
-          forge test --no-match-test "Random10000"
+          forge test
           echo "::endgroup::"
 
       - name: Report seed-specific failure
         if: failure()
         run: |
           echo "::error::Tests failed with seed ${{ matrix.seed }}"
-          echo "::notice::Reproduce locally: FOUNDRY_PROFILE=difftest DIFFTEST_RANDOM_SEED=${{ matrix.seed }} forge test --no-match-test \"Random10000\" -vv"
+          echo "::notice::Reproduce locally: FOUNDRY_PROFILE=difftest DIFFTEST_RANDOM_SEED=${{ matrix.seed }} forge test -vv"

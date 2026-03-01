@@ -13,7 +13,7 @@ contract PropertyERC20Test is YulTestBase {
     address alice = address(0x1111);
 
     function setUp() public {
-        target = deployYul("ERC20");
+        target = deployYulWithArgs("ERC20", abi.encode(alice));
         require(target != address(0), "Deploy failed");
     }
 

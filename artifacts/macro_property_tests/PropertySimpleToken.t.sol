@@ -13,7 +13,7 @@ contract PropertySimpleTokenTest is YulTestBase {
     address alice = address(0x1111);
 
     function setUp() public {
-        target = deployYul("SimpleToken");
+        target = deployYulWithArgs("SimpleToken", abi.encode(alice));
         require(target != address(0), "Deploy failed");
     }
 

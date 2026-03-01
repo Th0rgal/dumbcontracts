@@ -1,6 +1,7 @@
 import Verity.Core.Free.TypedIR
 import Verity.Core.Free.TypedIRCompiler
 import Verity.Core.Free.TypedIRCompilerCorrectness
+import Verity.Core.Free.TypedIRLowering
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Specs
 
@@ -219,6 +220,44 @@ def simpleStorageIRFinalSlot : Option Nat :=
 example : simpleStorageTypedFinalSlot = simpleStorageIRFinalSlot := by
   native_decide
 
+private def tVarValueNat (state : Verity.Core.Free.TExecState.{0}) (v : TVar) : Nat :=
+  match v with
+  | ⟨id, .uint256⟩ => state.vars.uint256 id
+  | ⟨id, .address⟩ => state.vars.address id
+  | ⟨id, .bool⟩ => if state.vars.bool id then 1 else 0
+  | ⟨_, .unit⟩ => 0
+
+private def mkIRStateFromTyped (state : Verity.Core.Free.TExecState.{0}) (block : TBlock) : IRState :=
+  let initVars : List (String × Nat) :=
+    (block.params ++ block.locals).map (fun v => (tVarName v, tVarValueNat state v))
+  IRState.mk
+    initVars
+    (fun i => (state.world.storage i : Nat))
+    (fun _ => 0)
+    []
+    none
+    state.world.sender
+    0
+
+private def execLoweredSlot0 (fuel : Nat) (state : IRState) (block : TBlock) : Option Nat :=
+  match execIRStmts fuel state (lowerTBlock block) with
+  | .continue s => some (s.storage 0)
+  | .stop s => some (s.storage 0)
+  | .return _ s => some (s.storage 0)
+  | .revert _ => none
+
+/-- Golden test: lowering typed Counter block to Yul preserves storage-slot result. -/
+example :
+    execLoweredSlot0 64 (mkIRStateFromTyped counterTypedInit counterIncrementTBlock) counterIncrementTBlock =
+      counterTypedFinalSlot := by
+  native_decide
+
+/-- Golden test: lowering typed SimpleStorage block to Yul preserves storage-slot result. -/
+example :
+    execLoweredSlot0 64 (mkIRStateFromTyped simpleStorageTypedInit simpleStorageStoreTBlock) simpleStorageStoreTBlock =
+      simpleStorageTypedFinalSlot := by
+  native_decide
+
 def compiledCounterIncrementFinalSlot : Option Nat :=
   match compileFunctionNamed Compiler.Specs.counterSpec "increment" with
   | .error _ => none
@@ -248,6 +287,33 @@ def compiledSimpleStorageStoreFinalSlot : Option Nat :=
 
 /-- Golden test: CompilationModel->typed-IR compiler preserves SimpleStorage.store storage effect. -/
 example : compiledSimpleStorageStoreFinalSlot = simpleStorageIRFinalSlot := by
+  native_decide
+
+def compiledCounterLoweredFinalSlot : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.counterSpec "increment" with
+  | .error _ => none
+  | .ok block =>
+      execLoweredSlot0 256 (mkIRStateFromTyped counterTypedInit block) block
+
+/-- Golden test: compiled typed Counter block lowers to Yul with matching final storage. -/
+example : compiledCounterLoweredFinalSlot = compiledCounterIncrementFinalSlot := by
+  native_decide
+
+def compiledSimpleStorageLoweredFinalSlot : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.simpleStorageSpec "store" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [] => none
+      | valueParam :: _ =>
+          let init : Verity.Core.Free.TExecState.{0} :=
+            { world := simpleStorageTypedInitWorld
+              vars := { uint256 := fun
+                | i => if i = valueParam.id then 77 else 0 } }
+          execLoweredSlot0 256 (mkIRStateFromTyped init block) block
+
+/-- Golden test: compiled typed SimpleStorage block lowers to Yul with matching final storage. -/
+example : compiledSimpleStorageLoweredFinalSlot = compiledSimpleStorageStoreFinalSlot := by
   native_decide
 
 /-- Compiler correctness base lemma: list compilation composes by append. -/

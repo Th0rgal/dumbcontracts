@@ -68,7 +68,24 @@ example :
 /-- Context expressions read from world/environment. -/
 example :
     evalTExpr baseState TExpr.sender = (7 : Verity.Core.Address) := by
-  simp [baseState, evalTExpr, baseWorld]
+  simp [baseState, evalTExpr, baseWorld, Verity.Env.ofWorld]
+
+def envOverrideState : TExecState :=
+  { world := baseWorld
+    env := { sender := 99, thisAddress := 100, msgValue := 101, blockTimestamp := 102 }
+    vars := baseState.vars }
+
+/-- Context expressions read from explicit `TExecState.env`, not from world fields. -/
+example :
+    evalTExpr envOverrideState TExpr.sender = (99 : Verity.Core.Address) := by
+  simp [envOverrideState, evalTExpr]
+
+/-- Storage updates do not mutate explicit execution environment fields. -/
+example :
+    match evalTStmt envOverrideState (TStmt.setStorage 8 (TExpr.uintLit 55)) with
+    | .ok s' => s'.env.sender = (99 : Verity.Core.Address)
+    | .revert _ => False := by
+  simp [envOverrideState, evalTStmt, evalTStmtFuel, defaultEvalFuel]
 
 /-- Assignment updates the typed variable environment. -/
 example :
@@ -236,7 +253,7 @@ private def mkIRStateFromTyped (state : Verity.Core.Free.TExecState.{0}) (block 
     (fun _ => 0)
     []
     none
-    state.world.sender
+    state.env.sender
     0
 
 private def execLoweredSlot0 (fuel : Nat) (state : IRState) (block : TBlock) : Option Nat :=

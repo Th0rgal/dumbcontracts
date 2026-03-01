@@ -1,6 +1,7 @@
 import Verity.Core
 import Verity.Core.Address
 import Verity.Core.Uint256
+import Verity.Core.Semantics
 namespace Verity.Core.Free
 
 /-- Type universe for typed IR values. -/
@@ -105,9 +106,10 @@ def TVars.set (vars : TVars) (v : TVar) (value : Ty.denote v.ty) : TVars := by
 /-- Interpreter state for typed IR execution. -/
 structure TExecState where
   world : Verity.ContractState
+  env : Verity.Env := Verity.Env.ofWorld world
   vars : TVars := {}
 
-instance : Inhabited TExecState := ⟨{ world := Verity.defaultState }⟩
+instance : Inhabited TExecState := ⟨{ world := Verity.defaultState, env := Verity.Env.ofWorld Verity.defaultState }⟩
 
 /-- Statement/block evaluation result. -/
 inductive TExecResult where
@@ -158,10 +160,10 @@ def evalTExpr (s : TExecState) : TExpr ty → Ty.denote ty
       match evalTExpr s cond with
       | true => evalTExpr s thenExpr
       | false => evalTExpr s elseExpr
-  | .sender => s.world.sender
-  | .this => s.world.thisAddress
-  | .msgValue => s.world.msgValue
-  | .blockTimestamp => s.world.blockTimestamp
+  | .sender => s.env.sender
+  | .this => s.env.thisAddress
+  | .msgValue => s.env.msgValue
+  | .blockTimestamp => s.env.blockTimestamp
   | .getStorage slot => s.world.storage slot
   | .getStorageAddr slot => s.world.storageAddr slot
   | .getMapping slot key => s.world.storageMap slot (evalTExpr s key)

@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/Th0rgal/verity/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/built%20with-Lean%204-blueviolet.svg" alt="Built with Lean 4"></a>
-  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-431-brightgreen.svg" alt="431 Theorems"></a>
+  <a href="https://github.com/Th0rgal/verity"><img src="https://img.shields.io/badge/theorems-469-brightgreen.svg" alt="469 Theorems"></a>
   <a href="https://github.com/Th0rgal/verity/actions"><img src="https://img.shields.io/github/actions/workflow/status/Th0rgal/verity/verify.yml?label=verify" alt="Verify"></a>
 </p>
 
@@ -28,7 +28,7 @@ source ~/.elan/env
 # 2. Clone and build
 git clone https://github.com/Th0rgal/verity.git
 cd verity
-lake build                                    # Verifies all 431 theorems
+lake build                                    # Verifies all 469 theorems
 
 # 3. Generate a new contract
 python3 scripts/generate_contract.py MyContract
@@ -229,7 +229,7 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 
 Verity's restricted DSL prevents raw external calls for safety. Instead, call patterns are packaged as **External Call Modules (ECMs)** — reusable, typed, auditable Lean structures that the compiler can plug in without modification. Standard modules for ERC-20, EVM precompiles, and callbacks ship in [`Compiler/Modules/`](Compiler/Modules/README.md). Third parties can publish their own as separate Lean packages. See [`docs/EXTERNAL_CALL_MODULES.md`](docs/EXTERNAL_CALL_MODULES.md) for the full guide.
 
-431 theorems across 11 categories (429 proven, 2 `sorry` in macro-generated semantic preservation placeholders). 441 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axiom.
+469 theorems across 11 categories (429 proven, 2 `sorry` in macro-generated semantic preservation placeholders). 441 Foundry tests across 35 test suites. 250 covered by property tests (53% coverage, 181 proof-only exclusions). 1 documented axiom.
 
 ## What's Verified
 

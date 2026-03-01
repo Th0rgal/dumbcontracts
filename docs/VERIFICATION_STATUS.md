@@ -171,7 +171,7 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
 | **Total** | **272** | **✅ 100%** | — |
 
-> **Note**: Stdlib (159 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (431 total properties).
+> **Note**: Stdlib (197 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (469 total properties).
 
 ### Example Property
 
@@ -286,11 +286,11 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 58% coverage (250/431), 181 remaining exclusions all proof-only
+**Status**: 53% coverage (250/469), 181 remaining exclusions all proof-only
 
 ### Current Coverage
 
-- **Total Properties**: 431
+- **Total Properties**: 469
 - **Covered**: 220 (55%)
 - **Excluded**: 181 (all proof-only)
 - **Missing**: 0
@@ -307,7 +307,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 | SimpleToken | 85% (52/61) | 9 proof-only | ✅ High coverage |
 | Counter | 82% (23/28) | 5 proof-only | ✅ High coverage |
 | Ledger | 100% (33/33) | 0 | ✅ Complete |
-| Stdlib | 0% (0/159) | 159 proof-only | — Internal |
+| Stdlib | 0% (0/197) | 197 proof-only | — Internal |
 
 ### Exclusion Categories
 

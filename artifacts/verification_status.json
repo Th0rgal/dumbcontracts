@@ -16,7 +16,7 @@
   },
   "theorems": {
     "categories": 11,
-    "coverage_percent": 58,
+    "coverage_percent": 53,
     "covered": 250,
     "excluded": 181,
     "non_stdlib_total": 272,
@@ -31,11 +31,11 @@
       "SafeCounter": 25,
       "SimpleStorage": 20,
       "SimpleToken": 61,
-      "Stdlib": 159
+      "Stdlib": 197
     },
-    "proven": 429,
-    "stdlib": 159,
-    "total": 431
+    "proven": 467,
+    "stdlib": 197,
+    "total": 469
   },
   "toolchain": {
     "lean": "leanprover/lean4:v4.22.0",

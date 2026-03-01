@@ -54,6 +54,18 @@ ALLOWLIST: set[str] = {
     "sub_add_cancel_left",
     "ledger_deposit_correct",
     "safeDiv_result_le_numerator",
+    # Semantic bridge proofs (Issue #998) — hand-composed EDSL≡IR per function:
+    "simpleStorage_store_semantic_bridge",
+    "simpleStorage_retrieve_semantic_bridge",
+    "counter_decrement_semantic_bridge",
+    "owned_transferOwnership_semantic_bridge",
+    "safeCounter_increment_semantic_bridge",
+    "safeCounter_decrement_semantic_bridge",
+    "ownedCounter_decrement_semantic_bridge",
+    "ownedCounter_transferOwnership_semantic_bridge",
+    # End-to-end composition proofs (Issue #998) — compose Layers 2+3:
+    "simpleStorage_endToEnd",
+    "yulBody_from_state_eq_yulBody",
 }
 
 # Directories containing proof files to scan.

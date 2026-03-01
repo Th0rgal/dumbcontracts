@@ -195,7 +195,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 30
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
@@ -334,10 +334,84 @@ jobs:
           lake env lean PrintAxioms.lean 2>&1 | tee axiom-report-raw.log
           AXIOM_REPORT_FILE=axiom-report.md python3 scripts/check_axiom_report.py --log axiom-report-raw.log | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Generate proof length report
+        run: python3 scripts/check_proof_length.py --format=markdown >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate property coverage report
+        run: python3 scripts/report_property_coverage.py --format=markdown >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate storage layout report
+        run: python3 scripts/check_storage_layout.py --format=markdown >> $GITHUB_STEP_SUMMARY
+
+      - name: Save Lake packages cache
+        if: always() && steps.cache-lake.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .lake
+          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Verity/**/*.lean', 'Compiler/**/*.lean') }}
+
+      - name: Upload axiom dependency report
+        uses: actions/upload-artifact@v4
+        with:
+          name: axiom-dependency-report
+          path: |
+            axiom-report.md
+            axiom-report-raw.log
+
+  # Compiler executable + Yul generation + solc validation.
+  # Cached separately from proofs: only rebuilds when Compiler/ sources,
+  # lean-toolchain, or lake-manifest.json change.  Proof-only changes
+  # (Verity/**) never invalidate this cache.
+  build-compiler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache elan + Lean toolchain
+        id: cache-elan
+        uses: actions/cache@v4
+        with:
+          path: ~/.elan
+          key: elan-${{ hashFiles('lean-toolchain') }}
+
+      - name: Install elan
+        if: steps.cache-elan.outputs.cache-hit != 'true'
+        env:
+          ELAN_VERSION: "v4.1.2"
+          ELAN_INIT_SHA256: "4bacca9502cb89736fe63d2685abc2947cfbf34dc87673504f1bb4c43eda9264"
+        run: |
+          curl -sSfL "https://raw.githubusercontent.com/leanprover/elan/${ELAN_VERSION}/elan-init.sh" -o elan-init.sh
+          echo "${ELAN_INIT_SHA256}  elan-init.sh" | sha256sum -c -
+          bash elan-init.sh -y --default-toolchain none
+          rm elan-init.sh
+
+      - name: Add elan to PATH
+        run: echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Restore Lake compiler cache
+        id: cache-lake-compiler
+        uses: actions/cache/restore@v4
+        with:
+          path: .lake
+          key: lake-compiler-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean') }}
+          restore-keys: |
+            lake-compiler-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-
+            lake-compiler-${{ hashFiles('lean-toolchain') }}-
+
+      - name: Fetch mathlib compiled cache
+        run: lake exe cache get
+
       - name: Build compiler
+        env:
+          LEAN_NUM_THREADS: 4
         run: lake build verity-compiler
 
       - name: Build difftest interpreter
+        env:
+          LEAN_NUM_THREADS: 4
         run: lake build difftest-interpreter
 
       - name: Generate Yul (all contracts + CryptoHash with linked libraries)
@@ -423,21 +497,12 @@ jobs:
               print(f"| `{patch}` | {total} | {contracts[patch]} |")
           PY
 
-      - name: Generate proof length report
-        run: python3 scripts/check_proof_length.py --format=markdown >> $GITHUB_STEP_SUMMARY
-
-      - name: Generate property coverage report
-        run: python3 scripts/report_property_coverage.py --format=markdown >> $GITHUB_STEP_SUMMARY
-
-      - name: Generate storage layout report
-        run: python3 scripts/check_storage_layout.py --format=markdown >> $GITHUB_STEP_SUMMARY
-
-      - name: Save Lake packages cache
-        if: always() && steps.cache-lake.outputs.cache-hit != 'true'
+      - name: Save Lake compiler cache
+        if: always() && steps.cache-lake-compiler.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .lake
-          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Verity/**/*.lean', 'Compiler/**/*.lean') }}
+          key: lake-compiler-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean') }}
 
       - name: Upload generated Yul
         uses: actions/upload-artifact@v4
@@ -475,18 +540,10 @@ jobs:
           name: patch-coverage-report
           path: compiler/patch-report.tsv
 
-      - name: Upload axiom dependency report
-        uses: actions/upload-artifact@v4
-        with:
-          name: axiom-dependency-report
-          path: |
-            axiom-report.md
-            axiom-report-raw.log
-
   foundry-gas-calibration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [changes, build]
+    needs: [changes, build, build-compiler]
     if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -509,7 +566,7 @@ jobs:
   foundry:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [changes, build]
+    needs: [changes, build, build-compiler]
     if: needs.changes.outputs.code == 'true'
     strategy:
       fail-fast: false
@@ -546,7 +603,7 @@ jobs:
   foundry-patched:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [changes, build]
+    needs: [changes, build, build-compiler]
     if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -580,7 +637,7 @@ jobs:
   foundry-multi-seed:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [changes, build]
+    needs: [changes, build, build-compiler]
     if: needs.changes.outputs.code == 'true'
     strategy:
       fail-fast: false  # Test all seeds even if one fails

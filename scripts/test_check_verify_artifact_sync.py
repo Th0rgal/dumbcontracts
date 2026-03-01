@@ -97,6 +97,77 @@ class VerifyArtifactSyncTests(unittest.TestCase):
         rc, stderr = self._run_main(workflow)
         self.assertEqual(rc, 0, stderr)
 
+    def test_main_supports_split_producer_jobs(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              build:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Upload axiom report
+                    uses: actions/upload-artifact@v4
+                    with:
+                      name: axiom-report
+                      path: axiom-report.md
+              build-compiler:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Upload generated Yul
+                    uses: actions/upload-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+              foundry:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Download generated Yul
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+            """
+        )
+        rc, stderr = self._run_main(workflow)
+        self.assertEqual(rc, 0, stderr)
+
+    def test_main_rejects_missing_artifact_in_split(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on: {}
+            jobs:
+              build:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Upload axiom report
+                    uses: actions/upload-artifact@v4
+                    with:
+                      name: axiom-report
+                      path: axiom-report.md
+              build-compiler:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Upload generated Yul
+                    uses: actions/upload-artifact@v4
+                    with:
+                      name: generated-yul
+                      path: compiler/yul
+              foundry:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Download missing artifact
+                    uses: actions/download-artifact@v4
+                    with:
+                      name: no-such-artifact
+                      path: missing
+            """
+        )
+        rc, stderr = self._run_main(workflow)
+        self.assertEqual(rc, 1)
+        self.assertIn("no-such-artifact", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

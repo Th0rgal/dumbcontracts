@@ -416,12 +416,12 @@ and the macro-generated proof skeleton.
 
 ### Other files:
 
-3. **`Verity/Macro/Bridge.lean` — `_semantic_preservation` theorems** (1 sorry per function)
+3. **`Verity/Macro/Bridge.lean` — `_semantic_preservation` theorems** (1 unfinished proof per function)
    - States: EDSL execution agrees with CM function spec (weak form)
    - Depends on: Phase 4 primitive bridge lemma composition
    - Impact: Medium — these are the macro-generated skeletons
 
-### Fully proven in this file (no `sorry`):
+### Fully proven in this file (zero sorry):
 
 - `interpretYulRuntime_eq_yulResultOfExec` — result wrapping equivalence
 - `yulStateOfIR_eq_initial` — state equivalence under entry-point conditions

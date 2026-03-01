@@ -2153,8 +2153,7 @@ private def indexedDynamicArrayElemSupported (elemTy : ParamType) : Bool :=
   !eventIsDynamicType elemTy &&
     eventHeadWordSize elemTy > 0
 
-mutual
-private def validateEventArgShapesInStmt (fnName : String) (params : List Param)
+private partial def validateEventArgShapesInStmt (fnName : String) (params : List Param)
     (events : List EventDef) : Stmt → Except String Unit
   | Stmt.emit eventName args => do
       let eventDef ←
@@ -2284,23 +2283,11 @@ private def validateEventArgShapesInStmt (fnName : String) (params : List Param)
                   throw s!"Compilation error: function '{fnName}' indexed composite event param '{eventParam.name}' in event '{eventName}' currently requires direct parameter reference ({issue586Ref})."
           | _ => pure ()
   | Stmt.ite _ thenBranch elseBranch => do
-      validateEventArgShapesInStmtList fnName params events thenBranch
-      validateEventArgShapesInStmtList fnName params events elseBranch
+      thenBranch.forM (validateEventArgShapesInStmt fnName params events)
+      elseBranch.forM (validateEventArgShapesInStmt fnName params events)
   | Stmt.forEach _ _ body =>
-      validateEventArgShapesInStmtList fnName params events body
+      body.forM (validateEventArgShapesInStmt fnName params events)
   | _ => pure ()
-termination_by s => sizeOf s
-decreasing_by all_goals simp_wf; all_goals omega
-
-private def validateEventArgShapesInStmtList (fnName : String) (params : List Param)
-    (events : List EventDef) : List Stmt → Except String Unit
-  | [] => pure ()
-  | s :: ss => do
-      validateEventArgShapesInStmt fnName params events s
-      validateEventArgShapesInStmtList fnName params events ss
-termination_by ss => sizeOf ss
-decreasing_by all_goals simp_wf; all_goals omega
-end
 
 private def validateEventArgShapesInFunction (spec : FunctionSpec) (events : List EventDef) :
     Except String Unit := do

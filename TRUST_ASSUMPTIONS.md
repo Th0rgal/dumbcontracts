@@ -211,11 +211,10 @@ Goal: a single machine-checked theorem per contract function:
 
 Roadmap:
 1. ✅ Compose Layers 2+3 into a single end-to-end theorem (`Compiler/Proofs/EndToEnd.lean`).
-2. ✅ Prove per-primitive correctness lemmas (`Verity/Proofs/Stdlib/PrimitiveBridge.lean`):
-   getStorage↔sload, setStorage↔sstore, add/sub/mul/div/mod↔builtins, lt/gt/eq↔comparisons,
-   require↔iszero+revert, if/else↔branching, msgSender↔caller,
-   Uint256/Address encoding, calldataload, Contract.run unfolding,
-   getMapping/setMapping unfolding, mixed-type multi-slot encoding.
+2. ✅ Prove and reuse the required primitive/algebraic bridge lemmas inside
+   `Compiler/Proofs/EndToEnd.lean` and `Compiler/Proofs/SemanticBridge.lean`
+   (arithmetic/alignment and execution-bridge facts used by composed
+   EDSL→IR→Yul proofs).
 3. ✅ Macro emits per-function semantic preservation theorem skeletons
    (`_semantic_preservation` via `mkSemanticBridgeCommand`).
 3b. ✅ SimpleStorage, Counter, Owned, SafeCounter, and OwnedCounter EDSL≡IR proofs
@@ -233,7 +232,6 @@ Roadmap:
 
 New files:
 - `Compiler/Proofs/EndToEnd.lean` — Layers 2+3 composition
-- `Verity/Proofs/Stdlib/PrimitiveBridge.lean` — EDSL↔compiled-Yul primitive lemmas
 - `Compiler/Proofs/SemanticBridge.lean` — concrete IR-connected EDSL≡IR theorem targets
 
 Modified files:

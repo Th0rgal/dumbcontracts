@@ -110,8 +110,8 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
   `setMappingUint` translation support in `Verity/Macro/Translate.lean`) do not
   add, remove, or modify Lean axioms.
 - The semantic bridge work (Issue #998: `Compiler/Proofs/EndToEnd.lean`,
-  `Verity/Proofs/Stdlib/PrimitiveBridge.lean`, `Verity/Macro/Bridge.lean`
-  semantic preservation theorems, `Compiler/Proofs/SemanticBridge.lean` concrete
+  `Verity/Macro/Bridge.lean` semantic preservation theorems,
+  `Compiler/Proofs/SemanticBridge.lean` concrete
   EDSL≡IR proofs for 16 functions across 5 contracts + 3 composed EDSL→IR→Yul
   end-to-end proofs) does not add, remove, or modify Lean axioms. All 5
   universal arithmetic bridge theorems (add/sub/mul/div/mod ↔ EVMYulLean) are

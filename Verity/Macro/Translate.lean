@@ -17,6 +17,7 @@ abbrev DoSeq := TSyntax `Lean.Parser.Term.doSeq
 inductive ValueType where
   | uint256
   | address
+  | bool
   | unit
   deriving BEq
 
@@ -56,8 +57,9 @@ private def valueTypeFromSyntax (ty : Term) : CommandElabM ValueType := do
   match ty with
   | `(term| Uint256) => pure .uint256
   | `(term| Address) => pure .address
+  | `(term| Bool) => pure .bool
   | `(term| Unit) => pure .unit
-  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, or Unit"
+  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bool, or Unit"
 
 private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
   match ty with
@@ -75,6 +77,7 @@ private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
   match ty with
   | .scalar .uint256 => `(Compiler.CompilationModel.FieldType.uint256)
   | .scalar .address => `(Compiler.CompilationModel.FieldType.address)
+  | .scalar .bool => throwError "storage fields cannot be Bool; use Uint256 (0/1) encoding"
   | .scalar .unit => throwError "storage fields cannot be Unit"
   | .mappingAddressToUint256 =>
       `(Compiler.CompilationModel.FieldType.mappingTyped
@@ -92,6 +95,7 @@ private def modelParamTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Compiler.CompilationModel.ParamType.uint256)
   | .address => `(Compiler.CompilationModel.ParamType.address)
+  | .bool => `(Compiler.CompilationModel.ParamType.bool)
   | .unit => throwError "function parameters cannot be Unit"
 
 private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
@@ -99,11 +103,13 @@ private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .unit => `(none)
   | .uint256 => `(some Compiler.CompilationModel.FieldType.uint256)
   | .address => `(some Compiler.CompilationModel.FieldType.address)
+  | .bool => throwError "function return type Bool is not yet supported; use Uint256 (0/1) encoding"
 
 private def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Uint256)
   | .address => `(Address)
+  | .bool => `(Bool)
   | .unit => `(Unit)
 
 private def parseStorageField (stx : Syntax) : CommandElabM StorageFieldDecl := do
@@ -338,6 +344,7 @@ private def translateBindSource
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with
       | .scalar .uint256 => `(Compiler.CompilationModel.Expr.storage $(strTerm f.name))
+      | .scalar .bool => throwErrorAt rhs s!"field '{f.name}' is Bool; encode as Uint256 and use getStorage"
       | .scalar .address => throwErrorAt rhs s!"field '{f.name}' is Address; use getStorageAddr"
       | .scalar .unit => throwErrorAt rhs "invalid field type"
       | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
@@ -346,6 +353,7 @@ private def translateBindSource
       match f.ty with
       | .scalar .address => `(Compiler.CompilationModel.Expr.storage $(strTerm f.name))
       | .scalar .uint256 => throwErrorAt rhs s!"field '{f.name}' is Uint256; use getStorage"
+      | .scalar .bool => throwErrorAt rhs s!"field '{f.name}' is Bool; use getStorage"
       | .scalar .unit => throwErrorAt rhs "invalid field type"
       | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
   | `(term| getMapping $field:ident $key:term) =>
@@ -687,6 +695,7 @@ private def mkStorageDefCommand (field : StorageFieldDecl) : CommandElabM Cmd :=
     match field.ty with
     | .scalar .uint256 => `(Uint256)
     | .scalar .address => `(Address)
+    | .scalar .bool => throwError "storage field cannot be Bool; use Uint256 (0/1) encoding"
     | .scalar .unit => throwError "storage field cannot be Unit"
     | .mappingAddressToUint256 => `(Address → Uint256)
     | .mapping2AddressToAddressToUint256 => `(Address → Address → Uint256)

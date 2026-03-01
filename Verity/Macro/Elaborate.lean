@@ -28,9 +28,10 @@ def elabVerityContract : CommandElab := fun stx => do
 
   elabCommand (← mkSpecCommandPublic (toString contractName.getId) fields ctor functions)
 
-  -- Emit semantic preservation theorems AFTER spec generation, since the
-  -- theorems reference `spec` (the CompilationModel definition).
+  -- Emit edslToSpecStorage and semantic preservation theorems AFTER spec
+  -- generation, since the theorems reference `spec` and `edslToSpecStorage`.
   -- Issue #998 Phase 3: each theorem states EDSL ≡ interpretSpec(spec, ...).
+  elabCommand (← mkEdslToSpecStorageCommand fields)
   for fn in functions do
     elabCommand (← mkSemanticBridgeCommand contractName fields fn)
 

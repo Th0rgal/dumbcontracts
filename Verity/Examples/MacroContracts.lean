@@ -41,6 +41,7 @@ def delegatecall (gas target inOffset inSize outOffset outSize : Uint256) : Uint
 def calldatacopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def returndataCopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def revertReturndata : Contract Unit := pure ()
+def returnStorageWords (_slots : Array Uint256) : Contract (Array Uint256) := pure #[]
 def mstore (_offset _value : Uint256) : Contract Unit := pure ()
 def getMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset : Uint256) :
     Contract Uint256 := pure 0
@@ -393,9 +394,17 @@ verity_contract MappingWordSmoke where
     let word ← getMappingWord words key 1
     return (word != 0)
 
+verity_contract StorageWordsSmoke where
+  storage
+    sentinel : Uint256 := slot 0
+
+  function extSloadsLike (slots : Array Bytes32) : Array Uint256 := do
+    returnStorageWords slots
+
 #check_contract Counter
 #check_contract UintMapSmoke
 #check_contract Bytes32Smoke
 #check_contract MappingWordSmoke
+#check_contract StorageWordsSmoke
 
 end Verity.Examples.MacroContracts

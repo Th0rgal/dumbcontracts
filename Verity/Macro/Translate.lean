@@ -19,6 +19,8 @@ inductive ValueType where
   | address
   | bytes32
   | bool
+  | bytes
+  | array (elemTy : ValueType)
   | unit
   deriving BEq
 
@@ -54,14 +56,21 @@ structure ConstructorDecl where
 private def strTerm (s : String) : Term := ⟨Syntax.mkStrLit s⟩
 private def natTerm (n : Nat) : Term := ⟨Syntax.mkNumLit (toString n)⟩
 
-private def valueTypeFromSyntax (ty : Term) : CommandElabM ValueType := do
+private partial def valueTypeFromSyntax (ty : Term) : CommandElabM ValueType := do
   match ty with
   | `(term| Uint256) => pure .uint256
   | `(term| Address) => pure .address
   | `(term| Bytes32) => pure .bytes32
   | `(term| Bool) => pure .bool
+  | `(term| Bytes) => pure .bytes
+  | `(term| Array $elemTy:term) =>
+      let elem ← valueTypeFromSyntax elemTy
+      match elem with
+      | .unit => throwErrorAt ty "unsupported type '{ty}'; Array Unit is not allowed"
+      | .array _ => throwErrorAt ty "unsupported type '{ty}'; nested arrays are not supported"
+      | _ => pure (.array elem)
   | `(term| Unit) => pure .unit
-  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bytes32, Bool, or Unit"
+  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bytes32, Bool, Bytes, Array <type>, or Unit"
 
 private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
   match ty with
@@ -81,6 +90,8 @@ private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
   | .scalar .address => `(Compiler.CompilationModel.FieldType.address)
   | .scalar .bytes32 => throwError "storage fields cannot be Bytes32; use Uint256 encoding"
   | .scalar .bool => throwError "storage fields cannot be Bool; use Uint256 (0/1) encoding"
+  | .scalar .bytes => throwError "storage fields cannot be Bytes; use Uint256 encoding"
+  | .scalar (.array _) => throwError "storage fields cannot be Array; use mapping encodings"
   | .scalar .unit => throwError "storage fields cannot be Unit"
   | .mappingAddressToUint256 =>
       `(Compiler.CompilationModel.FieldType.mappingTyped
@@ -100,6 +111,9 @@ private def modelParamTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .address => `(Compiler.CompilationModel.ParamType.address)
   | .bytes32 => `(Compiler.CompilationModel.ParamType.bytes32)
   | .bool => `(Compiler.CompilationModel.ParamType.bool)
+  | .bytes => `(Compiler.CompilationModel.ParamType.bytes)
+  | .array elemTy => do
+      `(Compiler.CompilationModel.ParamType.array $(← modelParamTypeTerm elemTy))
   | .unit => throwError "function parameters cannot be Unit"
 
 private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
@@ -109,6 +123,8 @@ private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .address => `(some Compiler.CompilationModel.FieldType.address)
   | .bytes32 => `(none)
   | .bool => `(none)
+  | .bytes => `(none)
+  | .array _ => `(none)
 
 private def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
@@ -117,6 +133,9 @@ private def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
   | .address => `([Compiler.CompilationModel.ParamType.address])
   | .bytes32 => `([Compiler.CompilationModel.ParamType.bytes32])
   | .bool => `([Compiler.CompilationModel.ParamType.bool])
+  | .bytes => `([Compiler.CompilationModel.ParamType.bytes])
+  | .array elemTy => do
+      `([Compiler.CompilationModel.ParamType.array $(← modelParamTypeTerm elemTy)])
 
 private def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
@@ -124,6 +143,9 @@ private def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .address => `(Address)
   | .bytes32 => `(Uint256)
   | .bool => `(Bool)
+  | .bytes => `(ByteArray)
+  | .array elemTy => do
+      `(Array $(← contractValueTypeTerm elemTy))
   | .unit => `(Unit)
 
 private def parseStorageField (stx : Syntax) : CommandElabM StorageFieldDecl := do
@@ -759,6 +781,8 @@ private def mkStorageDefCommand (field : StorageFieldDecl) : CommandElabM Cmd :=
     | .scalar .address => `(Address)
     | .scalar .bytes32 => throwError "storage field cannot be Bytes32; use Uint256 encoding"
     | .scalar .bool => throwError "storage field cannot be Bool; use Uint256 (0/1) encoding"
+    | .scalar .bytes => throwError "storage field cannot be Bytes; use Uint256 encoding"
+    | .scalar (.array _) => throwError "storage field cannot be Array; use mapping encodings"
     | .scalar .unit => throwError "storage field cannot be Unit"
     | .mappingAddressToUint256 => `(Address → Uint256)
     | .mapping2AddressToAddressToUint256 => `(Address → Address → Uint256)

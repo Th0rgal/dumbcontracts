@@ -60,9 +60,27 @@ def _normalize_type(type_src: str) -> str:
 def _split_params(params_src: str) -> tuple[ParamDecl, ...]:
     if not params_src.strip():
         return ()
+    # Split on commas respecting bracket nesting (for Tuple [...] types)
+    depth = 0
+    parts: list[str] = []
+    current: list[str] = []
+    for ch in params_src:
+        if ch == "[":
+            depth += 1
+            current.append(ch)
+        elif ch == "]":
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    remaining = "".join(current).strip()
+    if remaining:
+        parts.append(remaining)
     out: list[ParamDecl] = []
-    for raw in params_src.split(","):
-        part = raw.strip()
+    for part in parts:
         if not part:
             continue
         m = PARAM_RE.match(part)
@@ -139,6 +157,29 @@ def collect_contracts(paths: list[Path]) -> dict[str, ContractDecl]:
     return all_contracts
 
 
+def _parse_tuple_elements(inner: str) -> list[str]:
+    """Parse the comma-separated element list inside Tuple [ ... ]."""
+    depth = 0
+    parts: list[str] = []
+    current: list[str] = []
+    for ch in inner:
+        if ch in "([":
+            depth += 1
+            current.append(ch)
+        elif ch in ")]":
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    remaining = "".join(current).strip()
+    if remaining:
+        parts.append(remaining)
+    return parts
+
+
 def _sol_type(lean_ty: str) -> str:
     ty = _normalize_type(lean_ty)
     if ty == "Uint256":
@@ -154,6 +195,11 @@ def _sol_type(lean_ty: str) -> str:
     if ty.startswith("Array "):
         elem = ty[len("Array ") :].strip()
         return f"{_sol_type(elem)}[]"
+    if ty.startswith("Tuple [") and ty.endswith("]"):
+        inner = ty[len("Tuple [") : -1]
+        elems = _parse_tuple_elements(inner)
+        sol_elems = ",".join(_sol_type(e) for e in elems)
+        return f"({sol_elems})"
     raise ValueError(f"unsupported Lean type for Solidity signature mapping: {ty!r}")
 
 
@@ -179,6 +225,11 @@ def _example_value(lean_ty: str) -> str:
             "unsupported Lean array element type for generated example value: "
             f"{elem!r}"
         )
+    if ty.startswith("Tuple [") and ty.endswith("]"):
+        inner = ty[len("Tuple [") : -1]
+        elems = _parse_tuple_elements(inner)
+        elem_vals = ", ".join(_example_value(e) for e in elems)
+        return f"abi.encode({elem_vals})"
     raise ValueError(f"unsupported Lean type for generated example value: {ty!r}")
 
 
@@ -204,6 +255,13 @@ def _return_shape_assertion(lean_ty: str, fn_name: str) -> str:
     if ty.startswith("Array "):
         return (
             f'        require(ret.length >= 64, "{fn_name} ABI dynamic return payload unexpectedly short");'
+        )
+    if ty.startswith("Tuple [") and ty.endswith("]"):
+        inner = ty[len("Tuple [") : -1]
+        n_elems = len(_parse_tuple_elements(inner))
+        expected_min = n_elems * 32
+        return (
+            f'        require(ret.length >= {expected_min}, "{fn_name} ABI tuple return payload unexpectedly short");'
         )
     raise ValueError(f"unsupported Lean return type for generated assertion: {ty!r}")
 

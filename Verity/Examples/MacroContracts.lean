@@ -41,6 +41,7 @@ def delegatecall (gas target inOffset inSize outOffset outSize : Uint256) : Uint
 def calldatacopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def returndataCopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def revertReturndata : Contract Unit := pure ()
+def returnValues (_values : List Uint256) : Contract Unit := pure ()
 def returnStorageWords (_slots : Array Uint256) : Contract (Array Uint256) := pure #[]
 def mstore (_offset _value : Uint256) : Contract Unit := pure ()
 def getMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset : Uint256) :
@@ -401,10 +402,29 @@ verity_contract StorageWordsSmoke where
   function extSloadsLike (slots : Array Bytes32) : Array Uint256 := do
     returnStorageWords slots
 
+verity_contract TupleSmoke where
+  storage
+    values : Uint256 → Uint256 := slot 0
+    authorized : Address → Uint256 := slot 1
+
+  function setFromPair (pair : Tuple [Uint256, Uint256]) : Unit := do
+    let pair' := pair
+    let _ignored := pair'
+    pure ()
+
+  function getPair (key : Uint256) : Tuple [Uint256, Uint256] := do
+    returnValues [key, key]
+
+  function processConfig (cfg : Tuple [Address, Address, Uint256]) : Unit := do
+    let cfg' := cfg
+    let _ignored := cfg'
+    pure ()
+
 #check_contract Counter
 #check_contract UintMapSmoke
 #check_contract Bytes32Smoke
 #check_contract MappingWordSmoke
 #check_contract StorageWordsSmoke
+#check_contract TupleSmoke
 
 end Verity.Examples.MacroContracts

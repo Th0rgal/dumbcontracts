@@ -251,6 +251,13 @@ private def execLoweredReturn (fuel : Nat) (state : IRState) (block : TBlock) : 
   | .return ret _ => some ret
   | _ => none
 
+private def execLoweredState (fuel : Nat) (state : IRState) (block : TBlock) : Option IRState :=
+  match execIRStmts fuel state (lowerTBlock block) with
+  | .continue s => some s
+  | .stop s => some s
+  | .return _ s => some s
+  | .revert _ => none
+
 /-- Golden test: lowering typed Counter block to Yul preserves storage-slot result. -/
 example :
     execLoweredSlot0 64 (mkIRStateFromTyped counterTypedInit counterIncrementTBlock) counterIncrementTBlock =
@@ -356,6 +363,40 @@ def compiledSimpleStorageLoweredFinalSlot : Option Nat :=
 
 /-- Golden test: compiled typed SimpleStorage block lowers to Yul with matching final storage. -/
 example : compiledSimpleStorageLoweredFinalSlot = compiledSimpleStorageStoreFinalSlot := by
+  native_decide
+
+def compiledSimpleStorageRetrieveReturn : Option Nat :=
+  let initWorld : Verity.ContractState :=
+    { simpleStorageTypedInitWorld with «storage» := fun i => if i = 0 then 77 else 0 }
+  let initTyped : TExecState := { world := initWorld }
+  match compileFunctionNamed Compiler.Specs.simpleStorageSpec "retrieve" with
+  | .error _ => none
+  | .ok block =>
+      execLoweredReturn 256 (mkIRStateFromTyped initTyped block) block
+
+/-- End-to-end SimpleStorage retrieve: typed IR pipeline returns slot-0 value. -/
+example : compiledSimpleStorageRetrieveReturn = some 77 := by
+  native_decide
+
+def compiledSimpleStorageStoreRetrieveRoundtrip : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.simpleStorageSpec "store",
+        compileFunctionNamed Compiler.Specs.simpleStorageSpec "retrieve" with
+  | .ok storeBlock, .ok retrieveBlock =>
+      match storeBlock.params with
+      | [] => none
+      | valueParam :: _ =>
+          let init : Verity.Core.Free.TExecState.{0} :=
+            { world := simpleStorageTypedInitWorld
+              vars := { uint256 := fun
+                | i => if i = valueParam.id then 99 else 0 } }
+          match execLoweredState 256 (mkIRStateFromTyped init storeBlock) storeBlock with
+          | none => none
+          | some postStore =>
+              execLoweredReturn 256 postStore retrieveBlock
+  | _, _ => none
+
+/-- End-to-end SimpleStorage store→retrieve roundtrip through typed IR pipeline. -/
+example : compiledSimpleStorageStoreRetrieveRoundtrip = some 99 := by
   native_decide
 
 /-- Compiler correctness base lemma: list compilation composes by append. -/

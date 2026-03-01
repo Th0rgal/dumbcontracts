@@ -26,8 +26,23 @@ def ite (cond : Prop) [Decidable cond] (thenVal elseVal : Uint256) : Uint256 :=
 def logicalAnd (a b : Uint256) : Uint256 := if a != 0 && b != 0 then 1 else 0
 def logicalOr (a b : Uint256) : Uint256 := if a != 0 || b != 0 then 1 else 0
 def logicalNot (a : Uint256) : Uint256 := if a == 0 then 1 else 0
+def calldatasize : Uint256 := 0
+def returndataSize : Uint256 := 0
+def calldataload (offset : Uint256) : Uint256 := offset
 def mload (offset : Uint256) : Uint256 := offset
+def extcodesize (addr : Uint256) : Uint256 := addr
 def keccak256 (offset size : Uint256) : Uint256 := add offset size
+def call (gas target value inOffset inSize outOffset outSize : Uint256) : Uint256 :=
+  add gas (add target (add value (add inOffset (add inSize (add outOffset outSize)))))
+def staticcall (gas target inOffset inSize outOffset outSize : Uint256) : Uint256 :=
+  add gas (add target (add inOffset (add inSize (add outOffset outSize))))
+def delegatecall (gas target inOffset inSize outOffset outSize : Uint256) : Uint256 :=
+  add gas (add target (add inOffset (add inSize (add outOffset outSize))))
+def calldatacopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
+def returndataCopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
+def revertReturndata : Contract Unit := pure ()
+def mstore (_offset _value : Uint256) : Contract Unit := pure ()
+def forEach (_name : String) (_count : Uint256) (body : Contract Unit) : Contract Unit := body
 def blockTimestamp : Uint256 := 0
 def contractAddress : Uint256 := 0
 def chainid : Uint256 := 0
@@ -93,6 +108,25 @@ verity_contract Counter where
     let memWord := mload hashInput
     let digest := keccak256 memWord 64
     return (add (add digest flagAnd) (add flagOr flagNot))
+
+  function previewLowLevel (target : Uint256, count : Uint256) : Uint256 := do
+    let cds := calldatasize
+    let head := calldataload 0
+    mstore 0 head
+    calldatacopy 32 4 32
+    let ok := call 50000 target 0 0 64 0 32
+    let okStatic := staticcall 50000 target 0 64 0 32
+    let okDelegate := delegatecall 50000 target 0 64 0 32
+    forEach "i" count (do
+      mstore 96 count
+      pure ())
+    if ok == 0 then
+      revertReturndata
+    else
+      pure ()
+    returndataCopy 0 0 32
+    let rds := returndataSize
+    return (add (add (add cds rds) okStatic) okDelegate)
 
 verity_contract Owned where
   storage

@@ -420,11 +420,24 @@ verity_contract TupleSmoke where
     let _ignored := cfg'
     pure ()
 
+verity_contract Uint8Smoke where
+  storage
+    sentinel : Uint256 := slot 0
+
+  function acceptSig (sig : Tuple [Uint8, Bytes32, Bytes32]) : Unit := do
+    let sig' := sig
+    let _ignored := sig'
+    pure ()
+
+  function sigV () : Uint8 := do
+    return 27
+
 #check_contract Counter
 #check_contract UintMapSmoke
 #check_contract Bytes32Smoke
 #check_contract MappingWordSmoke
 #check_contract StorageWordsSmoke
 #check_contract TupleSmoke
+#check_contract Uint8Smoke
 
 end Verity.Examples.MacroContracts

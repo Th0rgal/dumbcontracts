@@ -37,6 +37,7 @@ import Verity.Examples.SimpleStorage
 import Verity.Examples.Counter
 import Verity.Examples.Owned
 import Verity.Examples.SafeCounter
+import Verity.Examples.OwnedCounter
 
 namespace Compiler.Proofs.SemanticBridge
 
@@ -640,6 +641,263 @@ theorem safeCounter_getCount_semantic_bridge
     Compiler.Proofs.abstractLoadStorageOrMapping,
     Compiler.Proofs.storageAsMappings,
     IRState.setVar, IRState.getVar]
+
+/-! ## Target Theorems: OwnedCounter
+
+OwnedCounter combines two patterns: ownership (Address at slot 0) and
+counter (Uint256 at slot 1). This demonstrates multi-slot, mixed-type
+storage encoding and access control composition in semantic bridge proofs.
+
+The key challenge is the *mixed encoding*: slot 0 stores an Address
+(from `state.storageAddr`), slot 1 stores a Uint256 (from `state.storage`).
+We use `encodeOwnedCounterStorage` to merge both into a single `Nat → Nat`.
+-/
+
+/-- Encode OwnedCounter storage: slot 0 = owner (Address), slot 1 = count (Uint256). -/
+def encodeOwnedCounterStorage (state : ContractState) : Nat → Nat :=
+  fun slot =>
+    if slot = 0 then (state.storageAddr 0).val
+    else (state.storage slot).val
+
+/-- OwnedCounter.getCount: EDSL execution matches compiled IR execution.
+
+EDSL: getStorage ⟨1⟩ → returns state.storage 1
+IR:   mstore(0, sload(1)) → return(0, 32)
+
+Both produce: success=true, returnValue = (state.storage 1).val, storage unchanged. -/
+theorem ownedCounter_getCount_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.OwnedCounter.getCount) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xa87d942c
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeOwnedCounterStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0xa87d942c
+    }
+    match edslResult with
+    | .success val s' =>
+        let irResult := interpretIR ownedCounterIRContract tx irState
+        irResult.success = true ∧
+        irResult.returnValue = some val.val ∧
+        ∀ slot, (if slot = 0 then (s'.storageAddr 0).val else (s'.storage slot).val) =
+                irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  simp [Verity.Examples.OwnedCounter.getCount, Verity.Examples.OwnedCounter.count,
+    Contract.run, getStorage, bind, pure, encodeOwnedCounterStorage,
+    interpretIR, ownedCounterIRContract,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar]
+
+/-- OwnedCounter.getOwner: EDSL execution matches compiled IR execution.
+
+EDSL: getStorageAddr ⟨0⟩ → returns state.storageAddr 0
+IR:   mstore(0, sload(0)) → return(0, 32)
+
+Both produce: success=true, returnValue = (state.storageAddr 0).val. -/
+theorem ownedCounter_getOwner_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.OwnedCounter.getOwner) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x893d20e8
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeOwnedCounterStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0x893d20e8
+    }
+    match edslResult with
+    | .success val s' =>
+        let irResult := interpretIR ownedCounterIRContract tx irState
+        irResult.success = true ∧
+        irResult.returnValue = some val.val ∧
+        ∀ slot, (if slot = 0 then (s'.storageAddr 0).val else (s'.storage slot).val) =
+                irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  simp [Verity.Examples.OwnedCounter.getOwner, Verity.Examples.OwnedCounter.owner,
+    Contract.run, getStorageAddr, bind, pure, encodeOwnedCounterStorage,
+    interpretIR, ownedCounterIRContract,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar]
+
+/-- OwnedCounter.increment (as owner): EDSL execution matches compiled IR execution.
+
+When the caller IS the owner, both sides update slot 1 to (count + 1) % 2^256.
+
+EDSL: onlyOwner → getStorage 1 → add 1 → setStorage 1
+IR:   if iszero(eq(caller(), sload(0))) { revert }
+      sstore(1, add(sload(1), 1)) → stop -/
+theorem ownedCounter_increment_semantic_bridge
+    (state : ContractState) (sender : Address)
+    (hOwner : sender = state.storageAddr 0) :
+    let edslResult := Contract.run (Verity.Examples.OwnedCounter.increment) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xd09de08a
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeOwnedCounterStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0xd09de08a
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR ownedCounterIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (if slot = 0 then (s'.storageAddr 0).val else (s'.storage slot).val) =
+                irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  simp [Verity.Examples.OwnedCounter.increment, Verity.Examples.OwnedCounter.count,
+    Verity.Examples.OwnedCounter.onlyOwner, Verity.Examples.OwnedCounter.isOwner,
+    Verity.Examples.OwnedCounter.owner,
+    Contract.run, getStorage, setStorage, getStorageAddr, msgSender, require,
+    bind, pure, hOwner, encodeOwnedCounterStorage,
+    Uint256.add, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS,
+    interpretIR, ownedCounterIRContract, ownedNotOwnerRevert,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    Compiler.Constants.evmModulus,
+    IRState.setVar, IRState.getVar]
+  intro slot
+  by_cases h0 : slot = 0 <;> by_cases h1 : slot = 1 <;> simp_all [beq_iff_eq]
+
+/-- OwnedCounter.decrement (as owner): EDSL execution matches compiled IR execution.
+
+When the caller IS the owner, both sides update slot 1 to sub semantics. -/
+theorem ownedCounter_decrement_semantic_bridge
+    (state : ContractState) (sender : Address)
+    (hOwner : sender = state.storageAddr 0) :
+    let edslResult := Contract.run (Verity.Examples.OwnedCounter.decrement) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x2baeceb7
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeOwnedCounterStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0x2baeceb7
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR ownedCounterIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (if slot = 0 then (s'.storageAddr 0).val else (s'.storage slot).val) =
+                irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  have hsub : ∀ (v : Uint256),
+      (Uint256.sub v (Uint256.ofNat 1)).val =
+        (Compiler.Constants.evmModulus + v.val - (1 % (2 ^ 256))) % Compiler.Constants.evmModulus := by
+    intro v
+    simp [Uint256.sub, Uint256.ofNat, Uint256.modulus, UINT256_MODULUS, Compiler.Constants.evmModulus]
+    have hv := v.isLt
+    simp [Uint256.modulus, UINT256_MODULUS] at hv
+    by_cases hle : (1 % (2 ^ 256)) ≤ v.val
+    · simp [hle]; omega
+    · simp [hle]; omega
+  simp [Verity.Examples.OwnedCounter.decrement, Verity.Examples.OwnedCounter.count,
+    Verity.Examples.OwnedCounter.onlyOwner, Verity.Examples.OwnedCounter.isOwner,
+    Verity.Examples.OwnedCounter.owner,
+    Contract.run, getStorage, setStorage, getStorageAddr, msgSender, require,
+    bind, pure, hOwner, encodeOwnedCounterStorage,
+    interpretIR, ownedCounterIRContract, ownedNotOwnerRevert,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar, hsub]
+  intro slot
+  by_cases h0 : slot = 0 <;> by_cases h1 : slot = 1 <;> simp_all [beq_iff_eq]
+
+/-- OwnedCounter.transferOwnership (as owner): EDSL execution matches compiled IR execution.
+
+When the caller IS the owner, both sides update slot 0 to newOwner.val. -/
+theorem ownedCounter_transferOwnership_semantic_bridge
+    (state : ContractState) (sender : Address) (newOwner : Address)
+    (hOwner : sender = state.storageAddr 0) :
+    let edslResult := Contract.run (Verity.Examples.OwnedCounter.transferOwnership newOwner)
+        { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xf2fde38b
+      args := [newOwner.val]
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeOwnedCounterStorage state
+      memory := fun _ => 0
+      calldata := [newOwner.val]
+      returnValue := none
+      sender := sender.val
+      selector := 0xf2fde38b
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR ownedCounterIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (if slot = 0 then (s'.storageAddr 0).val else (s'.storage slot).val) =
+                irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  have haddr : newOwner.val &&& addressMask = newOwner.val := by
+    simp only [addressMask]
+    have hlt : newOwner.val < 2 ^ 160 := by
+      have := newOwner.isLt; simp [ADDRESS_MODULUS] at this; exact this
+    calc newOwner.val &&& (2 ^ 160 - 1)
+        = newOwner.val % 2 ^ 160 := by
+          simpa using (Nat.and_two_pow_sub_one_eq_mod newOwner.val 160)
+      _ = newOwner.val := Nat.mod_eq_of_lt hlt
+  simp [Verity.Examples.OwnedCounter.transferOwnership,
+    Verity.Examples.OwnedCounter.onlyOwner, Verity.Examples.OwnedCounter.isOwner,
+    Verity.Examples.OwnedCounter.owner,
+    Contract.run, getStorageAddr, setStorageAddr, msgSender, require,
+    bind, pure, hOwner, encodeOwnedCounterStorage,
+    interpretIR, ownedCounterIRContract, ownedNotOwnerRevert,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    calldataloadWord,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar, haddr]
+  intro slot
+  by_cases h0 : slot = 0 <;> simp_all [beq_iff_eq]
 
 /-! ## Generic Bridge Template
 

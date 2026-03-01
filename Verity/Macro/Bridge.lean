@@ -74,39 +74,40 @@ def mkSemanticBridgeCommand
     | _ => `((0 : Nat))  -- Placeholder for other types
   let argListTerm ← `([ $[$argNatTerms],* ])
 
+  -- Build the function name string for the CM side (matches strTerm fn.name in Translate.lean)
+  let fnNameTerm := strTermPublic fnDecl.name
+
   `(command|
     /-- Semantic preservation: EDSL execution of `$fnIdent` matches the compiled
         CompilationModel behavior for all inputs.
 
         Machine-generated skeleton (Issue #998 Phase 3). The `sorry` will be
-        discharged in Phase 4 by composing primitive bridge lemmas. -/
+        discharged in Phase 4 by composing primitive bridge lemmas.
+
+        **Theorem shape**: On EDSL success, the CM function model has a non-empty
+        body with matching parameter arity, AND the function name in the CM spec
+        matches the EDSL function name. On EDSL revert, no constraint (the CM
+        side would also revert for the same inputs).
+
+        **Concrete IR-connected version**: See `Compiler/Proofs/SemanticBridge.lean`
+        for the full EDSL ≡ IR theorem that references `interpretIR` directly.
+        That version is strictly stronger and is the one that eliminates
+        `interpretSpec` from the TCB. -/
     theorem $semanticName
         (state : Verity.ContractState) (sender : Verity.Address)
         $paramBinders*
         :
-        -- EDSL execution and the CM function spec, both generated from
-        -- the same verity_contract syntax tree by the macro elaborator.
         let edslResult := Verity.Contract.run ($edslApp) { state with sender := sender }
         let fnModel : Compiler.CompilationModel.FunctionSpec := $modelName
-        -- The encoded argument list matches the EDSL parameter encoding.
         let encodedArgs : List Nat := $argListTerm
-        -- Semantic equivalence: the EDSL execution and the CM spec describe
-        -- the same storage transformation. When discharged, this proves:
-        --   ∀ slot, (s'.storage slot).val =
-        --     irExec(compile(fnModel), encodedArgs, sender.val, initStorage).finalStorage slot
-        -- where irExec comes from the IR interpreter.
-        --
-        -- Since the contract file does not import IR types, we express
-        -- the target as: the EDSL function body (fnModel.body) and the
-        -- EDSL monadic function produce the same storage updates when
-        -- given the same initial state and arguments.
         match edslResult with
-        | .success _ s' =>
-            -- The CM function body was generated from the same syntax tree
-            -- as the EDSL function. The encoded arguments are well-formed.
-            -- These properties hold by macro construction.
+        | .success _ _s' =>
+            -- Structural compatibility: the CM function body is non-empty,
+            -- the encoded arguments match the CM parameter count, and the
+            -- function name agrees with the EDSL function name.
             fnModel.body.length > 0 ∧
-            encodedArgs.length = fnModel.params.length
+            encodedArgs.length = fnModel.params.length ∧
+            fnModel.name = $fnNameTerm
         | .revert _ _ => True
         := by
       sorry -- TODO(#998 Phase 4): Discharge via primitive bridge lemma composition.

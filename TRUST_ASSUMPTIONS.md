@@ -194,8 +194,11 @@ If this file is stale, audit conclusions may be invalid.
   - `Compiler/Proofs/EndToEnd.lean` composes Layers 2+3 (CompilationModel → IR → Yul)
     into a single theorem, establishing the right-hand side of the target equivalence.
   - `Verity/Proofs/Stdlib/PrimitiveBridge.lean` proves per-primitive lemmas connecting
-    EDSL operations (getStorage, setStorage, add, sub, require, if/else, msgSender) to
-    the compiled Yul builtin semantics, establishing the left-hand side.
+    EDSL operations (getStorage, setStorage, getStorageAddr, setStorageAddr,
+    getMapping, setMapping, add, sub, mul, div, mod, lt, gt, eq, require, if/else,
+    msgSender, safeAdd, safeSub, calldataload, Contract.run) to the compiled Yul
+    builtin semantics, establishing the left-hand side. Includes mixed-type
+    multi-slot encoding for contracts with both Address and Uint256 storage.
   - The macro now emits per-function semantic preservation theorem skeletons
     (via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`), providing the
     composition framework. These are currently `sorry` — discharging them will
@@ -239,11 +242,19 @@ Roadmap:
 2. ✅ Prove per-primitive correctness lemmas (`Verity/Proofs/Stdlib/PrimitiveBridge.lean`):
    getStorage↔sload, setStorage↔sstore, add/sub/mul/div/mod↔builtins, lt/gt/eq↔comparisons,
    require↔iszero+revert, if/else↔branching, msgSender↔caller,
-   Uint256/Address encoding, calldataload, Contract.run unfolding.
+   Uint256/Address encoding, calldataload, Contract.run unfolding,
+   getMapping/setMapping unfolding, mixed-type multi-slot encoding.
 3. ✅ Macro emits per-function semantic preservation skeletons (`_semantic_preservation`
    theorems via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`).
-3b. ✅ SimpleStorage, Counter, Owned, and SafeCounter EDSL≡IR proofs fully discharged
-   (`Compiler/Proofs/SemanticBridge.lean`). 11 functions total across 4 contracts.
+   Theorem asserts structural compatibility: non-empty body, matching param arity,
+   and function name agreement between EDSL and CM spec.
+3b. ✅ SimpleStorage, Counter, Owned, SafeCounter, and OwnedCounter EDSL≡IR proofs
+   fully discharged (`Compiler/Proofs/SemanticBridge.lean`). 16 functions total
+   across 5 contracts. OwnedCounter demonstrates mixed-type multi-slot storage
+   encoding (Address slot 0 + Uint256 slot 1) and access control composition.
+3c. ✅ Universal pure arithmetic bridge theorems stated in EndToEnd.lean
+   (add/sub/mul/div/mod ↔ EVMYulLean). Currently `sorry` — requires bridging
+   Nat-modular and Fin-based UInt256 representations.
 4. 🔲 Discharge the `sorry` in preservation theorems by composing primitive lemmas.
 5. 🔲 Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
 6. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).

@@ -111,8 +111,11 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
   add, remove, or modify Lean axioms.
 - The semantic bridge work (Issue #998: `Compiler/Proofs/EndToEnd.lean`,
   `Verity/Proofs/Stdlib/PrimitiveBridge.lean`, `Verity/Macro/Bridge.lean`
-  semantic preservation theorems) does not add, remove, or modify Lean axioms.
-  The `sorry` placeholders in EndToEnd.lean and the macro-generated theorems are
+  semantic preservation theorems, `Compiler/Proofs/SemanticBridge.lean` concrete
+  EDSL≡IR proofs for 16 functions across 5 contracts) does not add, remove, or
+  modify Lean axioms. The `sorry` placeholders in EndToEnd.lean (2: paramState
+  erasing and unconditioned version), the universal arithmetic bridge theorems
+  (5: add/sub/mul/div/mod ↔ EVMYulLean), and the macro-generated theorems are
   proof obligations (not axioms) — they represent goals to be discharged, not
   trusted assumptions. When discharged, they will *reduce* the TCB by eliminating
   `interpretSpec`.

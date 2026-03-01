@@ -32,7 +32,9 @@ def mkBridgeCommand (fnIdent : Ident) : CommandElabM Cmd := do
     { slots := [(0, (state.storage 0).val), (1, (state.storageAddr 1).val), ...]
       mappings := [], mappings2 := [], events := [] }
     ```
--/
+
+    Note: `state` must be in scope as a `Verity.ContractState` when this term
+    is elaborated. -/
 private def mkSpecStorageTerm (fields : Array StorageFieldDecl) : CommandElabM Term := do
   let mut slotTerms : Array Term := #[]
   for field in fields do
@@ -43,16 +45,52 @@ private def mkSpecStorageTerm (fields : Array StorageFieldDecl) : CommandElabM T
     | .scalar .address =>
       slotTerms := slotTerms.push (← `(($slotNumTerm, (state.storageAddr $slotNumTerm).val)))
     | .scalar .bytes32 =>
-      -- bytes32 stored as Uint256 under the hood
       slotTerms := slotTerms.push (← `(($slotNumTerm, (state.storage $slotNumTerm).val)))
     | _ =>
       -- Mappings and other complex types: skip for slot list
       -- (they use SpecStorage.mappings/mappings2 which we leave empty for now)
-      pure ()
+      slotTerms := slotTerms  -- explicit no-op to avoid monad confusion
   `({ slots := [ $[$slotTerms],* ]
       mappings := []
       mappings2 := []
       events := [] : Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage })
+
+/-- Build per-slot equality assertions for the success case.
+
+    For each declared storage field, generates an equality between the EDSL
+    final state and the interpretSpec final storage:
+    - Uint256 at slot n: `(s'.storage n).val = specResult.finalStorage.getSlot n`
+    - Address at slot n: `(s'.storageAddr n).val = specResult.finalStorage.getSlot n`
+
+    Returns the conjunction: `specResult.success = true ∧ eq0 ∧ eq1 ∧ ...`
+    Note: `s'` and `specResult` must be in scope when the result is elaborated. -/
+private def mkSuccessAssertion (fields : Array StorageFieldDecl) : CommandElabM Term := do
+  let mut slotEqTerms : Array Term := #[]
+  for field in fields do
+    let slotNumTerm := natTermPublic field.slotNum
+    match field.ty with
+    | .scalar .uint256 =>
+      slotEqTerms := slotEqTerms.push
+        (← `((s'.storage $slotNumTerm).val =
+             Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.getSlot
+               specResult.finalStorage $slotNumTerm))
+    | .scalar .address =>
+      slotEqTerms := slotEqTerms.push
+        (← `((s'.storageAddr $slotNumTerm).val =
+             Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.getSlot
+               specResult.finalStorage $slotNumTerm))
+    | .scalar .bytes32 =>
+      slotEqTerms := slotEqTerms.push
+        (← `((s'.storage $slotNumTerm).val =
+             Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.getSlot
+               specResult.finalStorage $slotNumTerm))
+    | _ =>
+      slotEqTerms := slotEqTerms  -- no-op for mappings
+  -- Build the conjunction: success = true ∧ slot0_eq ∧ slot1_eq ∧ ...
+  let mut conj ← `(specResult.success = true)
+  for eq in slotEqTerms do
+    conj ← `($conj ∧ $eq)
+  return conj
 
 /-- Semantic preservation theorem per function (Issue #998, Phase 3).
 
@@ -87,7 +125,7 @@ def mkSemanticBridgeCommand
   let fnIdent := fnDecl.ident
 
   -- Build parameter identifiers
-  let paramIdents : Array Ident ← fnDecl.params.mapM fun p => pure p.ident
+  let paramIdents : Array Ident := fnDecl.params.map fun p => p.ident
 
   -- Build the EDSL function application: fn arg1 arg2 ...
   let edslApp ← if paramIdents.isEmpty then
@@ -95,12 +133,6 @@ def mkSemanticBridgeCommand
   else
     let args := paramIdents
     `($fnIdent $args*)
-
-  -- Build parameter binder syntax: (p1 : Type1) (p2 : Type2) ...
-  let paramBinders ← fnDecl.params.mapM fun p => do
-    let pIdent := p.ident
-    let pTy ← contractValueTypeTermPublic p.ty
-    `(Lean.Parser.Term.instBinder| ($pIdent : $pTy))
 
   -- Build argument encoding list: [p1.val, p2.val, ...] as Nat values
   let argNatTerms ← fnDecl.params.mapM fun p => do
@@ -118,41 +150,30 @@ def mkSemanticBridgeCommand
   -- Build the SpecStorage conversion from EDSL ContractState
   let specStorageTerm ← mkSpecStorageTerm fields
 
-  -- Build per-slot equality assertions for the success case.
-  -- For each declared storage field, assert that the EDSL final state
-  -- matches interpretSpec's final storage on that slot.
-  let mut slotEqTerms : Array Term := #[]
-  for field in fields do
-    let slotNumTerm := natTermPublic field.slotNum
-    match field.ty with
-    | .scalar .uint256 =>
-      slotEqTerms := slotEqTerms.push
-        (← `((s'.storage $slotNumTerm).val =
-             Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.getSlot
-               specResult.finalStorage $slotNumTerm))
-    | .scalar .address =>
-      slotEqTerms := slotEqTerms.push
-        (← `((s'.storageAddr $slotNumTerm).val =
-             Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.getSlot
-               specResult.finalStorage $slotNumTerm))
-    | .scalar .bytes32 =>
-      slotEqTerms := slotEqTerms.push
-        (← `((s'.storage $slotNumTerm).val =
-             Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage.getSlot
-               specResult.finalStorage $slotNumTerm))
-    | _ =>
-      -- Mappings: skip for now (would need getMapping assertions)
-      pure ()
+  -- Build success and revert assertions
+  let successTerm ← mkSuccessAssertion fields
 
-  -- Build the conjunction of success assertions:
-  -- specResult.success = true ∧ slot0_eq ∧ slot1_eq ∧ ...
-  let successTerm ← if slotEqTerms.isEmpty then
-    `(specResult.success = true)
-  else
-    let mut conj ← `(specResult.success = true)
-    for eq in slotEqTerms do
-      conj ← `($conj ∧ $eq)
-    pure conj
+  -- Build the core proposition (the theorem type)
+  let mut body ← `(
+    let edslResult := Verity.Contract.run ($edslApp) { state with sender := sender }
+    let specStorage : Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage := $specStorageTerm
+    let specResult := Verity.Proofs.Stdlib.SpecInterpreter.interpretSpec
+        spec specStorage
+        { sender := sender
+          functionName := $fnNameTerm
+          args := $argListTerm
+          : Compiler.DiffTestTypes.Transaction }
+    match edslResult with
+    | .success _ s' => $successTerm
+    | .revert _ _ => specResult.success = false)
+
+  -- Wrap function-specific parameters as ∀ binders (reverse so first param is outermost).
+  -- We use ∀ instead of theorem-level binders because Lean 4 quotation syntax
+  -- doesn't support splicing variable-length bracketedBinder arrays into `theorem`.
+  for p in fnDecl.params.reverse do
+    let pIdent := p.ident
+    let pTy ← contractValueTypeTermPublic p.ty
+    body ← `(∀ ($pIdent : $pTy), $body)
 
   `(command|
     /-- Semantic preservation: EDSL execution of `$fnIdent` matches
@@ -166,19 +187,6 @@ def mkSemanticBridgeCommand
         On EDSL revert: `interpretSpec` also reports failure. -/
     theorem $semanticName
         (state : Verity.ContractState) (sender : Verity.Address)
-        $paramBinders*
-        :
-        let edslResult := Verity.Contract.run ($edslApp) { state with sender := sender }
-        let specStorage : Verity.Proofs.Stdlib.SpecInterpreter.SpecStorage := $specStorageTerm
-        let specResult := Verity.Proofs.Stdlib.SpecInterpreter.interpretSpec
-            spec specStorage
-            { sender := sender
-              functionName := $fnNameTerm
-              args := $argListTerm
-              : Compiler.DiffTestTypes.Transaction }
-        match edslResult with
-        | .success _ s' => $successTerm
-        | .revert _ _ => specResult.success = false
-        := by sorry)
+        : $body := by sorry)
 
 end Verity.Macro

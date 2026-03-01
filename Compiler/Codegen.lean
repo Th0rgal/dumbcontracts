@@ -282,31 +282,40 @@ private def contains (haystack needle : String) : Bool :=
           else go cs
     go h
 
-private partial def stmtContainsSwitchCaseCall (target : String) : YulStmt → Bool
-  | .comment _ => false
-  | .let_ _ _ => false
-  | .letMany _ _ => false
-  | .assign _ _ => false
-  | .expr _ => false
-  | .leave => false
-  | .if_ _ body => body.any (stmtContainsSwitchCaseCall target)
-  | .for_ init _ post body =>
-      init.any (stmtContainsSwitchCaseCall target) ||
-      post.any (stmtContainsSwitchCaseCall target) ||
-      body.any (stmtContainsSwitchCaseCall target)
-  | .switch _ cases default =>
-      let caseHit :=
-        cases.any (fun (_, body) =>
-          match body with
-          | [.expr (.call fn [])] => decide (fn = target)
-          | _ => false)
-      let defaultHit :=
-        match default with
-        | some body => body.any (stmtContainsSwitchCaseCall target)
-        | none => false
-      caseHit || defaultHit
-  | .block stmts => stmts.any (stmtContainsSwitchCaseCall target)
-  | .funcDef _ _ _ body => body.any (stmtContainsSwitchCaseCall target)
+mutual
+  private def stmtContainsSwitchCaseCall (target : String) : YulStmt → Bool
+    | .comment _ => false
+    | .let_ _ _ => false
+    | .letMany _ _ => false
+    | .assign _ _ => false
+    | .expr _ => false
+    | .leave => false
+    | .if_ _ body => stmtListContainsSwitchCaseCall target body
+    | .for_ init _ post body =>
+        stmtListContainsSwitchCaseCall target init ||
+        stmtListContainsSwitchCaseCall target post ||
+        stmtListContainsSwitchCaseCall target body
+    | .switch _ cases default =>
+        let caseHit :=
+          cases.any (fun (_, body) =>
+            match body with
+            | [.expr (.call fn [])] => decide (fn = target)
+            | _ => false)
+        let defaultHit :=
+          match default with
+          | some body => stmtListContainsSwitchCaseCall target body
+          | none => false
+        caseHit || defaultHit
+    | .block stmts => stmtListContainsSwitchCaseCall target stmts
+    | .funcDef _ _ _ body => stmtListContainsSwitchCaseCall target body
+  termination_by stmt => sizeOf stmt
+
+  private def stmtListContainsSwitchCaseCall (target : String) : List YulStmt → Bool
+    | [] => false
+    | stmt :: rest =>
+        stmtContainsSwitchCaseCall target stmt || stmtListContainsSwitchCaseCall target rest
+  termination_by stmts => sizeOf stmts
+end
 
 /-- Regression guard:
     expression/statement/block patching remains runtime-scoped (deploy is unchanged),

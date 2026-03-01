@@ -1054,17 +1054,23 @@ This mirrors how Solidity computes event signatures: keccak256("EventName(type1,
 At compile time we use a placeholder; CI validates the selector matches solc output.
 -/
 
--- Map ParamType to its Solidity type string (used for event and function signatures)
-partial def paramTypeToSolidityString : ParamType → String
-  | ParamType.uint256 => "uint256"
-  | ParamType.address => "address"
-  | ParamType.bool => "bool"
-  | ParamType.bytes32 => "bytes32"
-  | ParamType.tuple ts =>
-      "(" ++ String.intercalate "," (ts.map paramTypeToSolidityString) ++ ")"
-  | ParamType.array t => paramTypeToSolidityString t ++ "[]"
-  | ParamType.fixedArray t n => paramTypeToSolidityString t ++ "[" ++ toString n ++ "]"
-  | ParamType.bytes => "bytes"
+mutual
+  -- Map ParamType to its Solidity type string (used for event and function signatures)
+  def paramTypeToSolidityString : ParamType → String
+    | ParamType.uint256 => "uint256"
+    | ParamType.address => "address"
+    | ParamType.bool => "bool"
+    | ParamType.bytes32 => "bytes32"
+    | ParamType.tuple ts =>
+        "(" ++ String.intercalate "," (paramTypeListToSolidityStrings ts) ++ ")"
+    | ParamType.array t => paramTypeToSolidityString t ++ "[]"
+    | ParamType.fixedArray t n => paramTypeToSolidityString t ++ "[" ++ toString n ++ "]"
+    | ParamType.bytes => "bytes"
+
+  private def paramTypeListToSolidityStrings : List ParamType → List String
+    | [] => []
+    | ty :: rest => paramTypeToSolidityString ty :: paramTypeListToSolidityStrings rest
+end
 
 def eventSignature (eventDef : EventDef) : String :=
   let params := eventDef.params.map (fun p => paramTypeToSolidityString p.ty)
@@ -1952,30 +1958,48 @@ private def validateCustomErrorArgShapesInFunction (spec : FunctionSpec) (errors
     Except String Unit := do
   spec.body.forM (validateCustomErrorArgShapesInStmt spec.name spec.params errors)
 
-/-- Whether an ABI param type is dynamically sized (requires offset-based encoding).
-    Used by both event encoding and calldata parameter loading. -/
-partial def isDynamicParamType : ParamType → Bool
-  | ParamType.uint256 => false
-  | ParamType.address => false
-  | ParamType.bool => false
-  | ParamType.bytes32 => false
-  | ParamType.array _ => true
-  | ParamType.bytes => true
-  | ParamType.fixedArray elemTy _ => isDynamicParamType elemTy
-  | ParamType.tuple elemTys => elemTys.any isDynamicParamType
+-- Whether an ABI param type is dynamically sized (requires offset-based encoding).
+-- Used by both event encoding and calldata parameter loading.
+mutual
+  def isDynamicParamType : ParamType → Bool
+    | ParamType.uint256 => false
+    | ParamType.address => false
+    | ParamType.bool => false
+    | ParamType.bytes32 => false
+    | ParamType.array _ => true
+    | ParamType.bytes => true
+    | ParamType.fixedArray elemTy _ => isDynamicParamType elemTy
+    | ParamType.tuple elemTys => isDynamicParamTypeList elemTys
+  termination_by ty => sizeOf ty
 
-/-- ABI head size in bytes for a param type. Dynamic types occupy one 32-byte
-    offset word; static composites are the sum of their element head sizes.
-    Used by both event encoding and calldata parameter loading. -/
-partial def paramHeadSize : ParamType → Nat
-  | ty =>
-      if isDynamicParamType ty then
-        32
-      else
-        match ty with
-        | ParamType.fixedArray elemTy n => n * paramHeadSize elemTy
-        | ParamType.tuple elemTys => (elemTys.map paramHeadSize).foldl (· + ·) 0
-        | _ => 32
+  private def isDynamicParamTypeList : List ParamType → Bool
+    | [] => false
+    | ty :: rest => isDynamicParamType ty || isDynamicParamTypeList rest
+  termination_by tys => sizeOf tys
+end
+
+-- ABI head size in bytes for a param type. Dynamic types occupy one 32-byte
+-- offset word; static composites are the sum of their element head sizes.
+-- Used by both event encoding and calldata parameter loading.
+mutual
+  def paramHeadSize : ParamType → Nat
+    | ParamType.uint256 => 32
+    | ParamType.address => 32
+    | ParamType.bool => 32
+    | ParamType.bytes32 => 32
+    | ParamType.array _ => 32
+    | ParamType.bytes => 32
+    | ParamType.fixedArray elemTy n =>
+        if isDynamicParamType elemTy then 32 else n * paramHeadSize elemTy
+    | ParamType.tuple elemTys =>
+        if isDynamicParamTypeList elemTys then 32 else paramHeadSizeList elemTys
+  termination_by ty => sizeOf ty
+
+  private def paramHeadSizeList : List ParamType → Nat
+    | [] => 0
+    | ty :: rest => paramHeadSize ty + paramHeadSizeList rest
+  termination_by tys => sizeOf tys
+end
 
 -- Legacy aliases used throughout event encoding code.
 private def eventIsDynamicType := isDynamicParamType

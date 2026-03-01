@@ -13,12 +13,11 @@ import Verity.Specs.Ledger.Spec
 import Verity.Specs.Ledger.Invariants
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
-import Verity.Examples.MacroContracts
 
 namespace Verity.Proofs.Ledger
 
 open Verity
-open Verity.Examples.MacroContracts.Ledger
+open Verity.Examples.Ledger
 open Verity.Specs.Ledger
 open Verity.Stdlib.Math (safeAdd requireSomeUint MAX_UINT256)
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
@@ -175,7 +174,7 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
         if slot == 0 then ((s.knownAddresses slot).insert s.sender).insert to
         else s.knownAddresses slot,
       events := s.events } := by
-  simp only [transfer, Examples.MacroContracts.Ledger.balances,
+  simp only [transfer, Examples.Ledger.balances,
     msgSender, getMapping, setMapping,
     requireSomeUint,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
@@ -256,7 +255,7 @@ theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (
   (h_ne : s.sender ≠ to)
   (h_overflow : (s.storageMap 0 to : Nat) + (amount : Nat) > MAX_UINT256) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
-  simp [transfer, requireSomeUint, Examples.MacroContracts.Ledger.balances,
+  simp [transfer, requireSomeUint, Examples.Ledger.balances,
     msgSender, getMapping,
     Verity.require, Verity.bind, Bind.bind, Contract.run,
     uint256_ge_val_le h_balance, h_ne, beq_iff_eq,

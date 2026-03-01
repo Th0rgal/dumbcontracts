@@ -42,9 +42,9 @@ structure — the proof proceeds by mutual structural induction on expression si
 theorem evalIRExpr_eq_evalYulExpr (selector : Nat) (irState : IRState) (expr : YulExpr) :
     evalIRExpr irState expr = evalYulExpr (yulStateOfIR selector irState) expr := by
   match expr with
-  | .lit n => rfl
-  | .hex n => rfl
-  | .str _ => rfl
+  | .lit n => simp [evalIRExpr, evalYulExpr]
+  | .hex n => simp [evalIRExpr, evalYulExpr]
+  | .str _ => simp [evalIRExpr, evalYulExpr]
   | .ident name =>
       simp [evalIRExpr, evalYulExpr, IRState.getVar, YulState.getVar, yulStateOfIR]
   | .call func args =>
@@ -61,7 +61,7 @@ structural induction on the expression list. -/
 theorem evalIRExprs_eq_evalYulExprs (selector : Nat) (irState : IRState) (exprs : List YulExpr) :
     evalIRExprs irState exprs = evalYulExprs (yulStateOfIR selector irState) exprs := by
   match exprs with
-  | [] => rfl
+  | [] => simp [evalIRExprs, evalYulExprs]
   | e :: es =>
       simp only [evalIRExprs, evalYulExprs]
       rw [evalIRExpr_eq_evalYulExpr selector irState e]
@@ -84,6 +84,8 @@ decreasing_by
 
 end
 
+attribute [simp] evalIRExpr_eq_evalYulExpr evalIRExprs_eq_evalYulExprs evalIRCall_eq_evalYulCall
+
 /-! ## Proven Theorems -/
 
 theorem assign_equiv (selector : Nat) (fuel : Nat) (varName : String) (valueExpr : YulExpr)
@@ -100,7 +102,7 @@ theorem assign_equiv (selector : Nat) (fuel : Nat) (varName : String) (valueExpr
   cases fuel with
   | zero => contradiction
   | succ fuel' =>
-      unfold execIRStmtFuel execIRStmt execYulStmtFuel execYulFuel
+      simp [execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulFuel]
       -- Use lemma: evalIRExpr irState expr = evalYulExpr (yulStateOfIR selector irState) expr
       rw [evalIRExpr_eq_evalYulExpr]
       -- Now both sides are identical
@@ -114,186 +116,485 @@ theorem assign_equiv (selector : Nat) (fuel : Nat) (varName : String) (valueExpr
           unfold execResultsAligned statesAligned yulStateOfIR
           simp [IRState.setVar, YulState.setVar]
 
-/-! ### Storage Store Equivalence -/
+private theorem stmt_and_stmts_equiv :
+    ∀ fuel,
+      (∀ selector stmt irState yulState,
+        execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState) ∧
+      (∀ selector stmts irState yulState,
+        execIRStmts_equiv_execYulStmts_goal selector fuel stmts irState yulState) := by
+  intro fuel
+  induction fuel with
+  | zero =>
+      constructor
+      · intro selector stmt irState yulState halign
+        cases stmt <;>
+          simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+            execYulStmtFuel, execYulFuel, execResultsAligned, halign]
+      · intro selector stmts irState yulState halign
+        cases stmts <;>
+          simp [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+            execYulStmtsFuel, execYulFuel, execResultsAligned, halign]
+  | succ fuel ih =>
+      rcases ih with ⟨ihStmt, ihStmts⟩
+      constructor
+      · intro selector stmt irState yulState halign
+        unfold statesAligned at halign
+        subst halign
+        cases stmt with
+        | comment _ =>
+            simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel, execResultsAligned, statesAligned, yulStateOfIR]
+        | let_ name value =>
+            exact assign_equiv selector (fuel + 1) name value irState
+              (yulStateOfIR selector irState) rfl (by omega)
+        | letMany _ _ =>
+            simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel, execResultsAligned, statesAligned, yulStateOfIR]
+        | assign name value =>
+            exact assign_equiv selector (fuel + 1) name value irState
+              (yulStateOfIR selector irState) rfl (by omega)
+        | «leave» =>
+            simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel, execResultsAligned, statesAligned, yulStateOfIR]
+        | expr e =>
+            cases e with
+            | call func args =>
+                simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                  execYulStmtFuel, execYulFuel, beq_eq_decide]
+                repeat' rw [evalIRExpr_eq_evalYulExpr selector irState]
+                simp [execResultsAligned, statesAligned, yulStateOfIR, beq_eq_decide]
+            | lit val =>
+                simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                  execYulStmtFuel, execYulFuel, evalIRExpr, evalYulExpr,
+                  execResultsAligned, statesAligned, yulStateOfIR]
+            | hex val =>
+                simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                  execYulStmtFuel, execYulFuel, evalIRExpr, evalYulExpr,
+                  execResultsAligned, statesAligned, yulStateOfIR]
+            | str val =>
+                simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                  execYulStmtFuel, execYulFuel, evalIRExpr, evalYulExpr,
+                  execResultsAligned, statesAligned, yulStateOfIR]
+            | ident val =>
+                simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                  execYulStmtFuel, execYulFuel, evalIRExpr, evalYulExpr,
+                  IRState.getVar, YulState.getVar,
+                  execResultsAligned, statesAligned, yulStateOfIR]
+                cases hfind : List.find? (fun x => x.1 == val) irState.vars <;>
+                  simp [hfind, execResultsAligned, statesAligned, yulStateOfIR]
+        | if_ cond body =>
+            simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel]
+            rw [evalIRExpr_eq_evalYulExpr]
+            cases hcond : evalYulExpr (yulStateOfIR selector irState) cond with
+            | none =>
+                simp [hcond, execResultsAligned, statesAligned, yulStateOfIR]
+            | some c =>
+                simp [hcond]
+                by_cases hc : c = 0
+                · simp [hc, execResultsAligned, statesAligned, yulStateOfIR]
+                · simp [hc]
+                  exact ihStmts selector body irState (yulStateOfIR selector irState) rfl
+        | «switch» expr cases defaultCase =>
+            simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel, beq_eq_decide, statesAligned, yulStateOfIR]
+            rw [evalIRExpr_eq_evalYulExpr]
+            cases hEval : evalYulExpr (yulStateOfIR selector irState) expr with
+            | none =>
+                have hEval' :
+                    evalYulExpr
+                      { vars := irState.vars, storage := irState.storage, memory := irState.memory,
+                        calldata := irState.calldata, selector := irState.selector,
+                        returnValue := irState.returnValue, sender := irState.sender } expr = none := by
+                  simpa [yulStateOfIR] using hEval
+                simp [hEval', execResultsAligned, statesAligned, yulStateOfIR]
+            | some v =>
+                have hEval' :
+                    evalYulExpr
+                      { vars := irState.vars, storage := irState.storage, memory := irState.memory,
+                        calldata := irState.calldata, selector := irState.selector,
+                        returnValue := irState.returnValue, sender := irState.sender } expr = some v := by
+                  simpa [yulStateOfIR] using hEval
+                simp [hEval']
+                cases hFind : cases.find? (fun x => decide (x.fst = v)) with
+                | none =>
+                    have hFind' :
+                        List.find? (fun x => decide (x.fst = v)) cases = none := hFind
+                    simp [hFind']
+                    cases defaultCase with
+                    | none =>
+                        simp [execResultsAligned, statesAligned, yulStateOfIR]
+                    | some body =>
+                        simpa [hEval', hFind', execYulStmtsFuel, execIRStmtsFuel, execYulFuel] using
+                          ihStmts selector body irState (yulStateOfIR selector irState) rfl
+                | some pair =>
+                    cases pair with
+                    | mk _ body =>
+                        simpa [hEval', hFind, execYulStmtsFuel, execIRStmtsFuel, execYulFuel] using
+                          ihStmts selector body irState (yulStateOfIR selector irState) rfl
+        | for_ init cond post body =>
+            simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel]
+            have hInit := ihStmts selector init irState (yulStateOfIR selector irState) rfl
+            cases hIRInit : execIRStmtsFuel fuel irState init with
+            | «continue» irAfterInit =>
+                cases hYulInit : execYulStmtsFuel fuel (yulStateOfIR selector irState) init with
+                | «continue» yulAfterInit =>
+                    have hAlignedInit : statesAligned selector irAfterInit yulAfterInit := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    unfold statesAligned at hAlignedInit
+                    subst hAlignedInit
+                    have hCondEq : evalIRExpr irAfterInit cond =
+                        evalYulExpr (yulStateOfIR selector irAfterInit) cond :=
+                      evalIRExpr_eq_evalYulExpr selector irAfterInit cond
+                    cases hCondIR : evalIRExpr irAfterInit cond with
+                    | none =>
+                        have hCondYul : evalYulExpr (yulStateOfIR selector irAfterInit) cond = none := by
+                          symm
+                          simpa [hCondIR] using hCondEq
+                        simp [hIRInit, hYulInit, hCondIR, hCondYul,
+                          execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulStmtsFuel, execYulFuel,
+                          execResultsAligned, statesAligned, yulStateOfIR]
+                    | some v =>
+                        have hCondYul : evalYulExpr (yulStateOfIR selector irAfterInit) cond = some v := by
+                          symm
+                          simpa [hCondIR] using hCondEq
+                        by_cases hv : v = 0
+                        · simp [hIRInit, hYulInit, hCondIR, hCondYul, hv,
+                            execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulStmtsFuel, execYulFuel,
+                            execResultsAligned, statesAligned, yulStateOfIR]
+                        · have hBody :=
+                            ihStmts selector body irAfterInit (yulStateOfIR selector irAfterInit) rfl
+                          cases hIRBody : execIRStmtsFuel fuel irAfterInit body with
+                          | «continue» irAfterBody =>
+                              cases hYulBody : execYulStmtsFuel fuel (yulStateOfIR selector irAfterInit) body with
+                              | «continue» yulAfterBody =>
+                                  have hAlignedBody : statesAligned selector irAfterBody yulAfterBody := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  unfold statesAligned at hAlignedBody
+                                  subst hAlignedBody
+                                  have hPost :=
+                                    ihStmts selector post irAfterBody (yulStateOfIR selector irAfterBody) rfl
+                                  cases hIRPost : execIRStmtsFuel fuel irAfterBody post with
+                                  | «continue» irAfterPost =>
+                                      cases hYulPost : execYulStmtsFuel fuel (yulStateOfIR selector irAfterBody) post with
+                                      | «continue» yulAfterPost =>
+                                          have hAlignedPost : statesAligned selector irAfterPost yulAfterPost := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          unfold statesAligned at hAlignedPost
+                                          subst hAlignedPost
+                                          simpa [hIRInit, hYulInit, hCondIR, hCondYul, hv, hIRBody, hYulBody, hIRPost, hYulPost,
+                                            execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulStmtsFuel, execYulFuel] using
+                                            ihStmt selector (.for_ [] cond post body)
+                                              irAfterPost (yulStateOfIR selector irAfterPost) rfl
+                                      | «return» _ _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «stop» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «revert» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                  | «return» _ _ =>
+                                      cases hYulPost : execYulStmtsFuel fuel (yulStateOfIR selector irAfterBody) post with
+                                      | «return» _ _ =>
+                                          simpa [hIRInit, hYulInit, hCondIR, hCondYul, hv, hIRBody, hYulBody,
+                                            hIRPost, hYulPost, execIRStmtFuel, execIRStmt, execYulStmtFuel,
+                                            execYulStmtsFuel, execYulFuel] using hPost
+                                      | «continue» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «stop» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «revert» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                  | «stop» _ =>
+                                      cases hYulPost : execYulStmtsFuel fuel (yulStateOfIR selector irAfterBody) post with
+                                      | «stop» _ =>
+                                          simpa [hIRInit, hYulInit, hCondIR, hCondYul, hv, hIRBody, hYulBody,
+                                            hIRPost, hYulPost, execIRStmtFuel, execIRStmt, execYulStmtFuel,
+                                            execYulStmtsFuel, execYulFuel] using hPost
+                                      | «continue» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «return» _ _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «revert» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                  | «revert» _ =>
+                                      cases hYulPost : execYulStmtsFuel fuel (yulStateOfIR selector irAfterBody) post with
+                                      | «revert» _ =>
+                                          simpa [hIRInit, hYulInit, hCondIR, hCondYul, hv, hIRBody, hYulBody,
+                                            hIRPost, hYulPost, execIRStmtFuel, execIRStmt, execYulStmtFuel,
+                                            execYulStmtsFuel, execYulFuel] using hPost
+                                      | «continue» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «return» _ _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                                      | «stop» _ =>
+                                          have : False := by
+                                            simpa [execResultsAligned, hIRPost, hYulPost] using hPost
+                                          cases this
+                              | «return» _ _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «stop» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «revert» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                          | «return» _ _ =>
+                              cases hYulBody : execYulStmtsFuel fuel (yulStateOfIR selector irAfterInit) body with
+                              | «return» _ _ =>
+                                  simpa [hIRInit, hYulInit, hCondIR, hCondYul, hv, hIRBody, hYulBody,
+                                    execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulStmtsFuel, execYulFuel] using hBody
+                              | «continue» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «stop» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «revert» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                          | «stop» _ =>
+                              cases hYulBody : execYulStmtsFuel fuel (yulStateOfIR selector irAfterInit) body with
+                              | «stop» _ =>
+                                  simpa [hIRInit, hYulInit, hCondIR, hCondYul, hv, hIRBody, hYulBody,
+                                    execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulStmtsFuel, execYulFuel] using hBody
+                              | «continue» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «return» _ _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «revert» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                          | «revert» _ =>
+                              cases hYulBody : execYulStmtsFuel fuel (yulStateOfIR selector irAfterInit) body with
+                              | «revert» _ =>
+                                  simpa [hIRInit, hYulInit, hCondIR, hCondYul, hv, hIRBody, hYulBody,
+                                    execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulStmtsFuel, execYulFuel] using hBody
+                              | «continue» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «return» _ _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                              | «stop» _ =>
+                                  have : False := by
+                                    simpa [execResultsAligned, hIRBody, hYulBody] using hBody
+                                  cases this
+                | «return» _ _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «stop» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «revert» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+            | «return» retVal retState =>
+                cases hYulInit : execYulStmtsFuel fuel (yulStateOfIR selector irState) init with
+                | «continue» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «return» _ _ =>
+                    have hInit' :
+                        execResultsAligned selector (IRExecResult.return retVal retState)
+                          (execYulStmtsFuel fuel (yulStateOfIR selector irState) init) := by
+                      simpa [hIRInit] using hInit
+                    simpa [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                      execYulStmtFuel, execYulFuel, execYulStmtsFuel, hIRInit, hYulInit] using hInit'
+                | «stop» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «revert» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+            | «stop» retState =>
+                cases hYulInit : execYulStmtsFuel fuel (yulStateOfIR selector irState) init with
+                | «continue» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «return» _ _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «stop» _ =>
+                    have hInit' :
+                        execResultsAligned selector (IRExecResult.stop retState)
+                          (execYulStmtsFuel fuel (yulStateOfIR selector irState) init) := by
+                      simpa [hIRInit] using hInit
+                    simpa [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                      execYulStmtFuel, execYulFuel, execYulStmtsFuel, hIRInit, hYulInit] using hInit'
+                | «revert» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+            | «revert» retState =>
+                cases hYulInit : execYulStmtsFuel fuel (yulStateOfIR selector irState) init with
+                | «continue» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «return» _ _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «stop» _ =>
+                    have : False := by
+                      simpa [execResultsAligned, hIRInit, hYulInit] using hInit
+                    cases this
+                | «revert» _ =>
+                    have hInit' :
+                        execResultsAligned selector (IRExecResult.revert retState)
+                          (execYulStmtsFuel fuel (yulStateOfIR selector irState) init) := by
+                      simpa [hIRInit] using hInit
+                    simpa [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+                      execYulStmtFuel, execYulFuel, execYulStmtsFuel, hIRInit, hYulInit] using hInit'
+        | block stmts =>
+            simpa [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel] using
+              ihStmts selector stmts irState (yulStateOfIR selector irState) rfl
+        | funcDef _ _ _ _ =>
+            simp [execIRStmt_equiv_execYulStmt_goal, execIRStmtFuel, execIRStmt,
+              execYulStmtFuel, execYulFuel, execResultsAligned, statesAligned, yulStateOfIR]
+      · intro selector stmts irState yulState halign
+        unfold statesAligned at halign
+        subst halign
+        cases stmts with
+        | nil =>
+            simp [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+              execYulStmtsFuel, execYulFuel, execResultsAligned, statesAligned, yulStateOfIR]
+        | cons stmt rest =>
+            have hStmt := ihStmt selector stmt irState (yulStateOfIR selector irState) rfl
+            cases hIR : execIRStmtFuel fuel irState stmt with
+            | «continue» ir' =>
+                cases hYul : execYulStmtFuel fuel (yulStateOfIR selector irState) stmt with
+                | «continue» y' =>
+                    have hAligned' : statesAligned selector ir' y' := by
+                      simpa [execResultsAligned, hIR, hYul] using hStmt
+                    have hRest := ihStmts selector rest ir' y' hAligned'
+                    simpa [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+                      execYulStmtsFuel_cons, hIR, hYul] using hRest
+                | «return» _ _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «stop» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «revert» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+            | «return» _ _ =>
+                cases hYul : execYulStmtFuel fuel (yulStateOfIR selector irState) stmt with
+                | «return» _ _ =>
+                    simpa [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+                      execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
+                | «continue» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «stop» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «revert» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+            | «stop» _ =>
+                cases hYul : execYulStmtFuel fuel (yulStateOfIR selector irState) stmt with
+                | «stop» _ =>
+                    simpa [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+                      execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
+                | «continue» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «return» _ _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «revert» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+            | «revert» _ =>
+                cases hYul : execYulStmtFuel fuel (yulStateOfIR selector irState) stmt with
+                | «revert» _ =>
+                    simpa [execIRStmts_equiv_execYulStmts_goal, execIRStmtsFuel, execIRStmts,
+                      execYulStmtsFuel_cons, execResultsAligned, hIR, hYul] using hStmt
+                | «continue» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «return» _ _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
+                | «stop» _ =>
+                    have : False := by
+                      simp [execResultsAligned, hIR, hYul] at hStmt
+                    cases this
 
-theorem storageStore_equiv (selector : Nat) (fuel : Nat)
-    (slotExpr valExpr : YulExpr)
-    (irState : IRState) (yulState : YulState)
-    (halign : statesAligned selector irState yulState)
-    (hfuel : fuel > 0) :
-    execResultsAligned selector
-      (execIRStmtFuel fuel irState (YulStmt.expr (.call "sstore" [slotExpr, valExpr])))
-      (execYulStmtFuel fuel yulState (YulStmt.expr (.call "sstore" [slotExpr, valExpr]))) := by
-  -- Storage store follows same pattern
-  unfold statesAligned at halign
-  subst halign
-  cases fuel with
-  | zero => contradiction
-  | succ fuel' =>
-      unfold execIRStmtFuel execIRStmt execYulStmtFuel execYulFuel
-      -- Both eval the same expressions using our theorem
-      simp only [evalIRExpr_eq_evalYulExpr, evalIRExprs_eq_evalYulExprs]
-      -- Now both sides are syntactically identical
-      unfold execResultsAligned statesAligned yulStateOfIR
-      simp
-
-/-! ### Conditional (if) and Universal Statement Equivalence
-
-Proven mutually: `conditional_equiv` needs `all_stmts_equiv` for the body,
-and `all_stmts_equiv` needs `conditional_equiv` for `if_` statements.
--/
-
-mutual
+theorem all_stmts_equiv : ∀ selector fuel stmt irState yulState,
+    execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState := by
+  intro selector fuel stmt irState yulState
+  exact (stmt_and_stmts_equiv fuel).1 selector stmt irState yulState
 
 theorem conditional_equiv (selector : Nat) (fuel : Nat)
     (condExpr : YulExpr) (body : List YulStmt)
     (irState : IRState) (yulState : YulState)
     (halign : statesAligned selector irState yulState)
-    (hfuel : fuel > 0) :
+    (_hfuel : fuel > 0) :
     execResultsAligned selector
       (execIRStmtFuel fuel irState (YulStmt.if_ condExpr body))
       (execYulStmtFuel fuel yulState (YulStmt.if_ condExpr body)) := by
-  -- Conditional evaluates condition, then executes body if non-zero
-  unfold statesAligned at halign
-  subst halign
-  cases fuel with
-  | zero => contradiction
-  | succ fuel' =>
-      unfold execIRStmtFuel execIRStmt execYulStmtFuel execYulFuel
-      rw [evalIRExpr_eq_evalYulExpr]
-      cases h : evalYulExpr (yulStateOfIR selector irState) condExpr with
-      | none =>
-          -- Evaluation fails, both revert
-          unfold execResultsAligned
-          rfl
-      | some c =>
-          -- Evaluation succeeds with value c
-          simp [h]
-          by_cases hc : c = 0
-          · -- Condition is false (0), both continue without executing body
-            simp [hc]
-            unfold execResultsAligned statesAligned yulStateOfIR
-            rfl
-          · -- Condition is true (non-zero), both execute body
-            simp [hc]
-            -- Both call execIRStmtsFuel/execYulStmtsFuel on the body
-            -- Apply the composition theorem with all_stmts_equiv
-            exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
-              (fun sel f st irSt yulSt => all_stmts_equiv sel f st irSt yulSt)
-              selector fuel' body irState (yulStateOfIR selector irState) rfl
-
-/-! Universal dispatcher: dispatches to specific theorems based on statement type. -/
-
-theorem all_stmts_equiv : ∀ selector fuel stmt irState yulState,
-    execIRStmt_equiv_execYulStmt_goal selector fuel stmt irState yulState := by
-  intros selector fuel stmt irState yulState halign
-  -- Need fuel > 0 for the theorems to apply
-  cases fuel with
-  | zero =>
-      -- When fuel is 0, goal is trivial (both timeout/fail)
-      unfold execIRStmt_equiv_execYulStmt_goal
-      intro _
-      unfold execResultsAligned
-      cases stmt <;> simp [execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulFuel]
-  | succ fuel' =>
-      -- Dispatch to specific theorem based on statement type
-      cases stmt with
-      | comment _ =>
-          -- Trivial: both no-op
-          unfold execIRStmt_equiv_execYulStmt_goal execResultsAligned
-          intro hAlign
-          unfold statesAligned at hAlign
-          subst hAlign
-          simp [execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulFuel, yulStateOfIR]
-      | let_ name value =>
-          exact assign_equiv selector (fuel' + 1) name value irState yulState halign (by omega)
-      | assign name value =>
-          exact assign_equiv selector (fuel' + 1) name value irState yulState halign (by omega)
-      | expr e =>
-          -- Expression statements - dispatch based on expression type
-          cases e with
-          | call fname args =>
-              -- Handle specific builtin calls
-              match fname, args with
-              | "sstore", [slotExpr, valExpr] =>
-                  exact storageStore_equiv selector (fuel' + 1) slotExpr valExpr irState yulState halign (by omega)
-              | "return", [offsetExpr, sizeExpr] =>
-                  exact return_equiv selector (fuel' + 1) offsetExpr sizeExpr irState yulState halign (by omega)
-              | "revert", [offsetExpr, sizeExpr] =>
-                  exact revert_equiv selector (fuel' + 1) offsetExpr sizeExpr irState yulState halign (by omega)
-              | _, _ =>
-                  -- Generic handling: stop, mstore, and all other expression statements
-                  unfold execIRStmt_equiv_execYulStmt_goal execResultsAligned
-                  intro hAlign
-                  unfold statesAligned at hAlign
-                  subst hAlign
-                  simp [execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulFuel, yulStateOfIR, evalIRExpr_eq_evalYulExpr, evalIRExprs_eq_evalYulExprs]
-          | _ =>
-              -- Non-call expressions - generic handling
-              unfold execIRStmt_equiv_execYulStmt_goal execResultsAligned
-              intro hAlign
-              unfold statesAligned at hAlign
-              subst hAlign
-              simp [execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulFuel, yulStateOfIR, evalIRExpr_eq_evalYulExpr]
-      | if_ cond body =>
-          exact conditional_equiv selector (fuel' + 1) cond body irState yulState halign (by omega)
-      | switch expr cases default =>
-          -- Switch evaluates expr and matches against cases, with optional default
-          unfold execIRStmt_equiv_execYulStmt_goal execResultsAligned
-          intro hAlign
-          unfold statesAligned at hAlign
-          subst hAlign
-          unfold execIRStmtFuel execIRStmt execYulStmtFuel execYulFuel
-          rw [evalIRExpr_eq_evalYulExpr]
-          cases h : evalYulExpr (yulStateOfIR selector irState) expr with
-          | none =>
-              -- Evaluation fails, both revert
-              rfl
-          | some v =>
-              -- Evaluation succeeds with value v
-              simp [h]
-              -- Both use List.find? with the same predicate (x.fst = v)
-              -- The find? results will be identical, so we case split on the result
-              cases hfind : cases.find? (fun x => decide (x.fst = v)) with
-              | none =>
-                  -- No matching case found, use default
-                  simp [hfind]
-                  cases default with
-                  | none =>
-                      -- No default, both continue
-                      rfl
-                  | some body =>
-                      -- Execute default body - apply composition theorem
-                      exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
-                        (fun sel f st irSt yulSt => all_stmts_equiv sel f st irSt yulSt)
-                        selector fuel' body irState (yulStateOfIR selector irState) rfl
-              | some (val, body) =>
-                  -- Found matching case, execute its body - apply composition theorem
-                  simp [hfind]
-                  exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
-                    (fun sel f st irSt yulSt => all_stmts_equiv sel f st irSt yulSt)
-                    selector fuel' body irState (yulStateOfIR selector irState) rfl
-      | block stmts =>
-          -- Recursive: apply composition theorem
-          unfold execIRStmt_equiv_execYulStmt_goal
-          intro hAlign
-          unfold statesAligned at hAlign
-          subst hAlign
-          simp [execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulFuel]
-          exact execIRStmtsFuel_equiv_execYulStmtsFuel_of_stmt_equiv
-            (fun sel f st irSt yulSt => all_stmts_equiv sel f st irSt yulSt)
-            selector fuel' stmts irState (yulStateOfIR selector irState) rfl
-      | funcDef _ _ _ _ =>
-          -- No-op
-          unfold execIRStmt_equiv_execYulStmt_goal execResultsAligned
-          intro hAlign
-          unfold statesAligned at hAlign
-          subst hAlign
-          simp [execIRStmtFuel, execIRStmt, execYulStmtFuel, execYulFuel, yulStateOfIR]
-
-end
-
-/-! ### Return Statement Equivalence -/
+  simpa [execIRStmt_equiv_execYulStmt_goal] using
+    (all_stmts_equiv selector fuel (YulStmt.if_ condExpr body) irState yulState halign)
 
 theorem return_equiv (selector : Nat) (fuel : Nat)
     (offsetExpr sizeExpr : YulExpr)
@@ -303,18 +604,8 @@ theorem return_equiv (selector : Nat) (fuel : Nat)
     execResultsAligned selector
       (execIRStmtFuel fuel irState (YulStmt.expr (.call "return" [offsetExpr, sizeExpr])))
       (execYulStmtFuel fuel yulState (YulStmt.expr (.call "return" [offsetExpr, sizeExpr]))) := by
-  -- Return evaluates offset and size, then transitions to .return state
-  unfold statesAligned at halign
-  subst halign
-  cases fuel with
-  | zero => contradiction
-  | succ fuel' =>
-      unfold execIRStmtFuel execIRStmt execYulStmtFuel execYulFuel
-      simp only [evalIRExpr_eq_evalYulExpr, evalIRExprs_eq_evalYulExprs]
-      unfold execResultsAligned statesAligned yulStateOfIR
-      simp
-
-/-! ### Revert Statement Equivalence -/
+  simpa [execIRStmt_equiv_execYulStmt_goal] using
+    (all_stmts_equiv selector fuel (YulStmt.expr (.call "return" [offsetExpr, sizeExpr])) irState yulState halign)
 
 theorem revert_equiv (selector : Nat) (fuel : Nat)
     (offsetExpr sizeExpr : YulExpr)
@@ -324,16 +615,19 @@ theorem revert_equiv (selector : Nat) (fuel : Nat)
     execResultsAligned selector
       (execIRStmtFuel fuel irState (YulStmt.expr (.call "revert" [offsetExpr, sizeExpr])))
       (execYulStmtFuel fuel yulState (YulStmt.expr (.call "revert" [offsetExpr, sizeExpr]))) := by
-  -- Revert transitions to .revert state - both do the same
-  unfold statesAligned at halign
-  subst halign
-  cases fuel with
-  | zero => contradiction
-  | succ fuel' =>
-      unfold execIRStmtFuel execIRStmt execYulStmtFuel execYulFuel
-      -- Both return .revert regardless of evaluation
-      unfold execResultsAligned statesAligned yulStateOfIR
-      rfl
+  simpa [execIRStmt_equiv_execYulStmt_goal] using
+    (all_stmts_equiv selector fuel (YulStmt.expr (.call "revert" [offsetExpr, sizeExpr])) irState yulState halign)
+
+theorem storageStore_equiv (selector : Nat) (fuel : Nat)
+    (slotExpr valExpr : YulExpr)
+    (irState : IRState) (yulState : YulState)
+    (halign : statesAligned selector irState yulState)
+    (_hfuel : fuel > 0) :
+    execResultsAligned selector
+      (execIRStmtFuel fuel irState (YulStmt.expr (.call "sstore" [slotExpr, valExpr])))
+      (execYulStmtFuel fuel yulState (YulStmt.expr (.call "sstore" [slotExpr, valExpr]))) := by
+  simpa [execIRStmt_equiv_execYulStmt_goal] using
+    (all_stmts_equiv selector fuel (YulStmt.expr (.call "sstore" [slotExpr, valExpr])) irState yulState halign)
 
 
 end Compiler.Proofs.YulGeneration

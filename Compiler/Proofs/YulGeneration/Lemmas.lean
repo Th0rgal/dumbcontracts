@@ -15,34 +15,12 @@ set_option maxHeartbeats 1000000 in
 @[simp] theorem evalYulExpr_selectorExpr_semantics :
     ∀ state : YulState, evalYulExpr state selectorExpr = some (state.selector % selectorModulus) := by
   intro state
-  -- Unfold the selector expression and reduce calldataload/shr.
-  unfold selectorExpr
   have hpow : 0 < (2 ^ selectorShift) := by
     simpa using (Nat.pow_pos (a := 2) (n := selectorShift) (by decide : 0 < (2 : Nat)))
-  simp [evalYulExpr, evalYulExprs]
-  -- Evaluate the call arguments explicitly to avoid simp issues with match equations.
-  have hCalldata :
-      evalYulExpr state (YulExpr.call "calldataload" [YulExpr.lit 0]) =
-        some (selectorWord state.selector) := by
-    simp [evalYulExpr, evalYulCall, evalYulExprs, selectorWord]
-  have hArgs :
-      evalYulExprs state
-          [YulExpr.lit selectorShift, YulExpr.call "calldataload" [YulExpr.lit 0]] =
-        some [selectorShift, selectorWord state.selector] := by
-    simp [evalYulExprs, evalYulExpr, hCalldata]
-  -- Now discharge the "shr" call with the computed arguments.
-  have hShr :
-      (evalYulExprs state
-          [YulExpr.lit selectorShift, YulExpr.call "calldataload" [YulExpr.lit 0]]).bind
-        (fun argVals =>
-          match argVals with
-          | [shift, value] => some (value / 2 ^ shift)
-          | _ => none) =
-        some ((selectorWord state.selector) / (2 ^ selectorShift)) := by
-    simp [hArgs]
-  -- Normalize selectorWord to the 4-byte selector.
-  simpa [selectorExpr, evalYulExpr, evalYulCall, selectorWord,
-    selectorModulus, selectorShift, Nat.mul_div_right, hpow] using hShr
+  simp [selectorExpr, evalYulExpr, evalYulCall, evalYulExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    calldataloadWord, selectorWord, selectorModulus, selectorShift,
+    Nat.mul_div_right, hpow]
 
 @[simp]
 theorem execYulStmtFuel_switch_match_semantics

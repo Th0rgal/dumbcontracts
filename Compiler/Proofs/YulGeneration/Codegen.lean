@@ -36,53 +36,44 @@ theorem evalYulExpr_selectorExpr_eq (state : YulState)
 by
   simp [evalYulExpr_selectorExpr, Nat.mod_eq_of_lt hselector]
 
-theorem execYulFuel_mappingSlotFunc (fuel : Nat) (state : YulState) :
-    execYulFuel fuel state (YulExecTarget.stmt mappingSlotFunc) =
-      YulExecResult.continue state :=
-by
-  cases fuel <;> simp [mappingSlotFunc, execYulFuel]
-
-theorem execYulFuel_drop_mappingSlotFunc_buildSwitch
-    (fuel : Nat) (state : YulState) (fns : List IRFunction) :
-    execYulFuel (fuel + 1) state (YulExecTarget.stmts [mappingSlotFunc, buildSwitch fns]) =
-      execYulFuel fuel state (YulExecTarget.stmts [buildSwitch fns]) :=
-by
-  cases fuel with
-  | zero =>
-      simp [execYulFuel, execYulFuel_mappingSlotFunc]
-  | succ fuel =>
-      simp [execYulFuel, execYulFuel_mappingSlotFunc]
-
-theorem execYulStmts_runtimeCode_eq :
-    ∀ (contract : IRContract) (state : YulState) (fuel : Nat),
-      execYulStmtsFuel fuel state (Compiler.runtimeCode contract) =
-        execYulStmtsFuel fuel state [Compiler.buildSwitch contract.functions] :=
-by
-  intro contract state fuel
-  by_cases h : contract.usesMapping
-  · cases fuel with
-    | zero =>
-        simp [Compiler.runtimeCode, h, execYulStmtsFuel, execYulFuel]
-    | succ fuel =>
-        simp [Compiler.runtimeCode, h, execYulStmtsFuel]
-        simpa using
-          (execYulFuel_drop_mappingSlotFunc_buildSwitch fuel state contract.functions)
-  · simp [Compiler.runtimeCode, h, execYulStmtsFuel]
+/-- Dispatch body emitted for one external function case. -/
+def switchCaseBody (fn : IRFunction) : List YulStmt :=
+  let valueGuard := if fn.payable then [] else [Compiler.callvalueGuard]
+  [YulStmt.comment s!"{fn.name}()"] ++ valueGuard ++ [Compiler.calldatasizeGuard fn.params.length] ++ fn.body
 
 /-- Switch cases generated from IR functions. -/
 def switchCases (fns : List IRFunction) : List (Prod Nat (List YulStmt)) :=
-  fns.map (fun f =>
-    let body := [YulStmt.comment s!"{f.name}()"] ++
-      [Compiler.callvalueGuard] ++ [Compiler.calldatasizeGuard f.params.length] ++ f.body
-    (f.selector, body)
-  )
+  fns.map (fun f => (f.selector, switchCaseBody f))
 
-@[simp] theorem buildSwitch_eq (fns : List IRFunction) :
-    Compiler.buildSwitch fns =
-      YulStmt.switch selectorExpr (switchCases fns) (some [
-        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
-      ]) := by
-  simp [Compiler.buildSwitch, selectorExpr, switchCases, selectorShift]
+/-- Default dispatch body used by `buildSwitch`. -/
+def switchDefaultCase
+    (fallback : Option IREntrypoint)
+    (receive : Option IREntrypoint) : List YulStmt :=
+  match receive, fallback with
+  | none, none =>
+      [YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])]
+  | none, some fb =>
+      let valueGuard := if fb.payable then [] else [Compiler.callvalueGuard]
+      [YulStmt.comment "fallback()"] ++ valueGuard ++ fb.body
+  | some rc, none =>
+      let receiveGuard := if rc.payable then [] else [Compiler.callvalueGuard]
+      [YulStmt.block [
+        YulStmt.let_ "__is_empty_calldata" (YulExpr.call "eq" [YulExpr.call "calldatasize" [], YulExpr.lit 0]),
+        YulStmt.if_ (YulExpr.ident "__is_empty_calldata")
+          ([YulStmt.comment "receive()"] ++ receiveGuard ++ rc.body),
+        YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__is_empty_calldata"])
+          [YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])]
+      ]]
+  | some rc, some fb =>
+      let receiveGuard := if rc.payable then [] else [Compiler.callvalueGuard]
+      let fallbackGuard := if fb.payable then [] else [Compiler.callvalueGuard]
+      [YulStmt.block [
+        YulStmt.let_ "__is_empty_calldata" (YulExpr.call "eq" [YulExpr.call "calldatasize" [], YulExpr.lit 0]),
+        YulStmt.if_ (YulExpr.ident "__is_empty_calldata")
+          ([YulStmt.comment "receive()"] ++ receiveGuard ++ rc.body),
+        YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__is_empty_calldata"])
+          ([YulStmt.comment "fallback()"] ++ fallbackGuard ++ fb.body)
+      ]]
 
 /-- If the selector matches a case, the switch executes that case body (fueled). -/
 theorem execYulStmtFuel_switch_match
@@ -125,21 +116,20 @@ theorem find_switch_case_of_find_function
     (fns : List IRFunction) (sel : Nat) (fn : IRFunction)
     (hFind : fns.find? (fun f => f.selector == sel) = some fn) :
     (switchCases fns).find? (fun (c, _) => c = sel) =
-      some (fn.selector, [YulStmt.comment s!"{fn.name}()"] ++
-        [Compiler.callvalueGuard] ++ [Compiler.calldatasizeGuard fn.params.length] ++ fn.body) := by
+      some (fn.selector, switchCaseBody fn) := by
   induction fns with
   | nil =>
       simp at hFind
   | cons f rest ih =>
       by_cases hsel : f.selector = sel
       · have hselb : (f.selector == sel) = true := by
-          simp [beq_iff_eq, hsel]
+          simpa [hsel] using hsel
         have hFind' : some f = some fn := by
           simpa [List.find?, hselb] using hFind
         cases hFind'
         simp [switchCases, List.find?, hsel]
       · have hselb : (f.selector == sel) = false := by
-          simp [beq_iff_eq, hsel]
+          simp [hsel]
         have hFind' : rest.find? (fun f => f.selector == sel) = some fn := by
           simpa [List.find?, hselb] using hFind
         have ih' := ih hFind'
@@ -156,12 +146,12 @@ theorem find_switch_case_of_find_function_none
   | cons f rest ih =>
       by_cases hsel : f.selector = sel
       · have hselb : (f.selector == sel) = true := by
-          simp [beq_iff_eq, hsel]
+          simpa [hsel] using hsel
         have hFind' : (some f : Option IRFunction) = none := by
           simpa [List.find?, hselb] using hFind
         cases hFind'
       · have hselb : (f.selector == sel) = false := by
-          simp [beq_iff_eq, hsel]
+          simp [hsel]
         have hFind' : rest.find? (fun f => f.selector == sel) = none := by
           simpa [List.find?, hselb] using hFind
         have ih' := ih hFind'

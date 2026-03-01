@@ -165,6 +165,7 @@ mutual
 Total: uses explicit fuel parameter for recursion control.
 When fuel is 0, execution reverts (safe fallback). -/
 def execIRStmt : Nat → IRState → YulStmt → IRExecResult
+  | _, state, .funcDef _ _ _ _ => .continue state
   | 0, state, _ => .revert state  -- Out of fuel
   | Nat.succ fuel, state, stmt =>
       match stmt with
@@ -209,7 +210,7 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
                 .continue { state with memory := fun o => if o = offset then val else state.memory o }
               | _, _ => .revert state
           | .call "stop" [] => .stop state
-          | .call "revert" _ => .revert state
+          | .call "revert" [_, _] => .revert state
           | .call "return" [offsetExpr, sizeExpr] =>
               match evalIRExpr state offsetExpr, evalIRExpr state sizeExpr with
               | some offset, some size =>
@@ -218,7 +219,12 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
                 else
                   .return 0 state
               | _, _ => .revert state
-          | _ => .continue state  -- Other expressions are no-ops
+          | _ =>
+              -- Keep expression-statement behavior aligned with Yul:
+              -- evaluate the expression and revert on evaluation failure.
+              match evalIRExpr state e with
+              | some _ => .continue state
+              | none => .revert state
       | .if_ cond body =>
           match evalIRExpr state cond with
           | some c => if c ≠ 0 then execIRStmts fuel state body else .continue state

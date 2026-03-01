@@ -11,7 +11,6 @@
 import Verity.Proofs.Stdlib.Math
 import Verity.Specs.SafeCounter.Spec
 import Verity.Specs.SafeCounter.Invariants
-import Verity.Examples.MacroContracts
 
 namespace Verity.Proofs.SafeCounter
 
@@ -19,7 +18,7 @@ open Verity
 open Verity.Stdlib.Math
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none safeSub_some safeSub_none)
 open Verity.EVM.Uint256
-open Verity.Examples.MacroContracts.SafeCounter
+open Verity.Examples.SafeCounter
 open Verity.Specs.SafeCounter
 
 /-! ## getCount Correctness -/

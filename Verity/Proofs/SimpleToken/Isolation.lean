@@ -16,14 +16,10 @@ namespace Verity.Proofs.SimpleToken.Isolation
 
 open Verity
 open Verity.Stdlib.Math (safeAdd requireSomeUint)
-open Verity.Examples.MacroContracts.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
+open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken
 open Verity.Proofs.Stdlib.Automation (uint256_ge_val_le)
 open Verity.Proofs.SimpleToken
-
-local abbrev owner : StorageSlot Address := Verity.Examples.MacroContracts.SimpleToken.ownerSlot
-local abbrev balances : StorageSlot (Address → Uint256) := Verity.Examples.MacroContracts.SimpleToken.balancesSlot
-local abbrev totalSupply : StorageSlot Uint256 := Verity.Examples.MacroContracts.SimpleToken.totalSupplySlot
 
 /-! ## Constructor Isolation -/
 
@@ -34,7 +30,7 @@ private theorem constructor_isolation (s : ContractState) (initialOwner : Addres
   (∀ addr, ((constructor initialOwner).run s).snd.storageMap slot addr = s.storageMap slot addr) ∧
   (slot ≠ 0 → ((constructor initialOwner).run s).snd.storageAddr slot = s.storageAddr slot) := by
   simp only [constructor, setStorageAddr, setStorage,
-    Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
+    Examples.SimpleToken.owner, Examples.SimpleToken.totalSupply,
     Verity.bind, Bind.bind, Contract.run, ContractResult.snd]
   refine ⟨fun h_ne => ?_, fun _ => trivial, fun h_ne => ?_⟩ <;>
     simp [beq_iff_eq, h_ne]
@@ -66,8 +62,8 @@ private theorem mint_isolation (s : ContractState) (to : Address) (amount : Uint
   (slot ≠ 2 → ((mint to amount).run s).snd.storage slot = s.storage slot) ∧
   (slot ≠ 1 → ∀ addr, ((mint to amount).run s).snd.storageMap slot addr = s.storageMap slot addr) ∧
   (slot ≠ 0 → ((mint to amount).run s).snd.storageAddr slot = s.storageAddr slot) := by
-  simp only [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner,
-    Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
+  simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner,
+    Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
     msgSender, getStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd,
@@ -107,12 +103,12 @@ private theorem transfer_isolation (s : ContractState) (to : Address) (amount : 
   (((transfer to amount).run s).snd.storageAddr slot = s.storageAddr slot) := by
   by_cases h_eq : s.sender = to
   · have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
-    simp [transfer, Examples.MacroContracts.SimpleToken.balancesSlot,
+    simp [transfer, Examples.SimpleToken.balances,
       msgSender, getMapping,
       Verity.require, Verity.pure, Verity.bind, Bind.bind,
       Contract.run, ContractResult.snd, h_balance', h_eq]
   · refine ⟨?_, fun h_ne_slot addr => ?_, ?_⟩
-    all_goals simp [transfer, Examples.MacroContracts.SimpleToken.balancesSlot,
+    all_goals simp [transfer, Examples.SimpleToken.balances,
         msgSender, getMapping, setMapping, requireSomeUint,
         Verity.require, Verity.bind, Bind.bind, Pure.pure,
         Contract.run, ContractResult.snd,

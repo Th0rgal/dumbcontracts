@@ -12,7 +12,7 @@ import Verity.Proofs.OwnedCounter.Basic
 namespace Verity.Proofs.OwnedCounter.Correctness
 
 open Verity
-open Verity.Examples.MacroContracts.OwnedCounter
+open Verity.Examples.OwnedCounter
 open Verity.Specs.OwnedCounter
 open Verity.Proofs.OwnedCounter
 

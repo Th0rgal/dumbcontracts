@@ -6,12 +6,11 @@
 
 import Verity.Specs.Counter.Spec
 import Verity.Specs.Counter.Invariants
-import Verity.Examples.MacroContracts
 
 namespace Verity.Proofs.Counter
 
 open Verity
-open Verity.Examples.MacroContracts.Counter
+open Verity.Examples.Counter
 open Verity.Specs.Counter
 
 /-! ## Basic Lemmas about setStorage and getStorage

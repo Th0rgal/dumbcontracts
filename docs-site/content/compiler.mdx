@@ -604,20 +604,12 @@ FOUNDRY_PROFILE=difftest forge test
 
 ### Add New Contract
 
-1. **Define specification** in `Compiler/Specs.lean`:
+1. **Add a macro contract declaration** in `Verity/Examples/MacroContracts.lean`:
 ```lean
-def myCompilationModel : CompilationModel := {
-  name := "MyContract"
+verity_contract MyContract where
   fields := [/* ... */]
   constructor := /* ... */
   functions := [/* ... */]
-}
-
--- Add to allSpecs (selectors are auto-computed from function signatures)
-def allSpecs : List CompilationModel := [
-  /* ... */,
-  myCompilationModel
-]
 ```
 
 2. **Recompile**:
@@ -627,6 +619,9 @@ lake exe verity-compiler
 ```
 
 3. **Done!** Contract generated in `artifacts/yul/MyContract.yul`
+
+Legacy note: handwritten `Compiler.Specs.*Spec` definitions are retained only for
+migration/special workflows and are not the canonical CLI compile path.
 
 Time: **~5 minutes** (vs ~30 minutes manual IR)
 

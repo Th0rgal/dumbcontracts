@@ -29,7 +29,7 @@ python3 scripts/generate_contract.py MyRegistry --fields "data:mapping(uint256)"
 python3 scripts/generate_contract.py MyContract --dry-run
 ```
 
-This creates 7 scaffold files (EDSL, Spec, Invariants, Proofs re-export shim, Basic proofs, Correctness proofs, Property tests) and prints the manual steps for `All.lean` and `Compiler/Specs.lean`.
+This creates 7 scaffold files (EDSL, Spec, Invariants, Proofs re-export shim, Basic proofs, Correctness proofs, Property tests) and prints follow-up steps for `All.lean` plus canonical macro registration.
 
 ## Checklist
 
@@ -46,8 +46,9 @@ This creates 7 scaffold files (EDSL, Spec, Invariants, Proofs re-export shim, Ba
    - Prove correctness in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`
    - Each theorem states observable behavior (return values + storage deltas)
 
-4. **Compiler Spec + Layer 2 Proofs**
-   - Add compiler-level spec in `Compiler/Specs.lean`
+4. **Compiler Integration + Layer 2 Proofs**
+   - Add canonical `verity_contract` declaration in `Verity/Examples/MacroContracts.lean`
+   - Handwritten `Compiler.Specs.*Spec` definitions are legacy/migration scaffolding only
    - Prove `CompilationModel → IR` preservation in `Compiler/Proofs/SpecCorrectness/<Name>.lean`
    - `Verity/Specs/<Name>/Proofs.lean` is a re-export shim (imports from `Compiler/Proofs/SpecCorrectness/`)
 
@@ -81,7 +82,7 @@ test/Property<Name>.t.sol              # Property tests
 ## Common Pitfalls
 
 - **Storage slot mismatches** between spec, EDSL, and compiler
-- **Missing function entries** in `Compiler/Specs.lean` (selectors are auto-computed from function signatures)
+- **Missing macro declaration** in `Verity/Examples/MacroContracts.lean` (canonical `allSpecs` derives from these declarations)
 - **Mapping conversions** not mirrored between spec and proofs
 - **Property tag drift** — test tags must match lemma names exactly
 

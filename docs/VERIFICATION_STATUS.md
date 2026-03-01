@@ -351,8 +351,8 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Verified Components (Zero Trust)
 
-1. **EDSL → CompilationModel/CompilationModel**: Proven correct in Lean (Layer 1)
-2. **CompilationModel/CompilationModel → IR**: Proven correct in Lean (Layer 2)
+1. **EDSL → CompilationModel**: Proven correct in Lean (Layer 1)
+2. **CompilationModel → IR**: Proven correct in Lean (Layer 2)
 3. **IR → Yul**: Proven correct in Lean (Layer 3, 1 axiom)
 4. **IR Interpreter**: Used for differential testing, verified against specs
 5. **Property Tests**: Extracted from proven theorems, tested in Foundry

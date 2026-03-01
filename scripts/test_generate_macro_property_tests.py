@@ -239,6 +239,15 @@ class RenderTests(unittest.TestCase):
             "(address,address,uint256)",
         )
 
+    def test_sol_type_tuple_with_uint8(self) -> None:
+        self.assertEqual(
+            gen._sol_type("Tuple [Uint8, Bytes32, Bytes32]"),
+            "(uint8,bytes32,bytes32)",
+        )
+
+    def test_example_value_uint8(self) -> None:
+        self.assertEqual(gen._example_value("Uint8"), "uint8(27)")
+
 
 class CollectContractsTests(unittest.TestCase):
     def test_duplicate_contract_name_errors(self) -> None:

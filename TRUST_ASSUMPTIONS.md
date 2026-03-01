@@ -199,10 +199,11 @@ If this file is stale, audit conclusions may be invalid.
     msgSender, safeAdd, safeSub, calldataload, Contract.run) to the compiled Yul
     builtin semantics, establishing the left-hand side. Includes mixed-type
     multi-slot encoding for contracts with both Address and Uint256 storage.
-  - The macro now emits per-function semantic preservation theorem skeletons
-    (via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`), providing the
-    composition framework. These are currently `sorry` — discharging them will
-    eliminate `interpretSpec` from the TCB entirely.
+  - The macro now emits per-function semantic preservation theorems
+    (via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`) that state
+    real semantic equivalence: EDSL ≡ interpretSpec(spec, ...) for all inputs.
+    These are currently `sorry` — discharging them will eliminate `interpretSpec`
+    from the TCB entirely.
 
 ### 10. Macro Elaborator (`verity_contract`)
 
@@ -215,10 +216,11 @@ If this file is stale, audit conclusions may be invalid.
   by construction — provided the elaborator is correct.
 - Risk: a translation bug would cause the EDSL and CompilationModel to silently diverge.
 - Active mitigation (Issue #998, in progress): the macro now emits per-function
-  semantic preservation theorem skeletons (`_semantic_preservation` theorems) that,
-  when discharged, provide machine-checked witnesses that the EDSL and CompilationModel
-  agree. This is strictly stronger than the previous `_bridge` theorems (which only
-  proved body definitional equality via `rfl`).
+  `_semantic_preservation` theorems that state EDSL ≡ interpretSpec(spec, ...) —
+  a real semantic property, not a tautology. When discharged, these provide
+  machine-checked witnesses that the EDSL and CompilationModel agree on storage
+  behavior for all inputs. Combined with Layers 2+3 (EndToEnd.lean), this
+  eliminates both interpretSpec and the macro elaborator from the TCB.
 
 ## Planned Trust-Boundary Hardening
 
@@ -244,10 +246,12 @@ Roadmap:
    require↔iszero+revert, if/else↔branching, msgSender↔caller,
    Uint256/Address encoding, calldataload, Contract.run unfolding,
    getMapping/setMapping unfolding, mixed-type multi-slot encoding.
-3. ✅ Macro emits per-function semantic preservation skeletons (`_semantic_preservation`
+3. ✅ Macro emits per-function semantic preservation theorems (`_semantic_preservation`
    theorems via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`).
-   Theorem asserts structural compatibility: non-empty body, matching param arity,
-   and function name agreement between EDSL and CM spec.
+   Theorem states real semantic equivalence: EDSL execution ≡ interpretSpec(spec, ...)
+   on all inputs. On EDSL success, interpretSpec succeeds and all declared storage
+   slots agree. On EDSL revert, interpretSpec also reports failure. Proof is `sorry`
+   (Phase 4 will discharge by composing primitive bridge lemmas).
 3b. ✅ SimpleStorage, Counter, Owned, SafeCounter, and OwnedCounter EDSL≡IR proofs
    fully discharged (`Compiler/Proofs/SemanticBridge.lean`). 16 functions total
    across 5 contracts. OwnedCounter demonstrates mixed-type multi-slot storage
@@ -269,9 +273,12 @@ New files:
 - `Compiler/Proofs/SemanticBridge.lean` — concrete IR-connected EDSL≡IR theorem targets
 
 Modified files:
-- `Verity/Macro/Bridge.lean` — added `mkSemanticBridgeCommand`
-- `Verity/Macro/Elaborate.lean` — calls `mkSemanticBridgeCommand` per function
-- `Verity/Macro/Translate.lean` — exported `contractValueTypeTermPublic`, `strTermPublic`
+- `Verity/Macro/Bridge.lean` — `mkSemanticBridgeCommand` now states real EDSL ≡ interpretSpec
+  equivalence (previously a structural tautology); imports `SpecInterpreter`
+- `Verity/Macro/Elaborate.lean` — semantic bridge theorems emitted after `spec` generation
+  (since they reference the spec definition)
+- `Verity/Macro/Translate.lean` — exported `contractValueTypeTermPublic`, `strTermPublic`,
+  `natTermPublic`
 
 Cross-repo: verity (core), morpho-verity (benefits from auto proofs), verity-paper (architecture rewrite).
 

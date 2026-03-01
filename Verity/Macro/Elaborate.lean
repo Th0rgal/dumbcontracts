@@ -25,12 +25,14 @@ def elabVerityContract : CommandElab := fun stx => do
     for cmd in fnCmds do
       elabCommand cmd
     elabCommand (← mkBridgeCommand fn.ident)
-    -- Emit semantic preservation theorem skeleton (Issue #998, Phase 3).
-    -- This generates a per-function theorem connecting the EDSL execution
-    -- to the CompilationModel spec, replacing the interpretSpec dependency.
-    elabCommand (← mkSemanticBridgeCommand contractName fn)
 
   elabCommand (← mkSpecCommandPublic (toString contractName.getId) fields ctor functions)
+
+  -- Emit semantic preservation theorems AFTER spec generation, since the
+  -- theorems reference `spec` (the CompilationModel definition).
+  -- Issue #998 Phase 3: each theorem states EDSL ≡ interpretSpec(spec, ...).
+  for fn in functions do
+    elabCommand (← mkSemanticBridgeCommand contractName fields fn)
 
   elabCommand (← `(end $contractName))
 

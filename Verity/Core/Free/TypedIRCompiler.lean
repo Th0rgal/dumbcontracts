@@ -230,11 +230,21 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
       let elseStmts ← compileBranch fields elseBranch
       emit (.if_ condExpr thenStmts elseStmts)
   | .stop =>
-      emit (.expr TExpr.unitLit)
-  | .return _ =>
-      emit (.expr TExpr.unitLit)
-  | .returnValues _ =>
-      emit (.expr TExpr.unitLit)
+      emit .stop
+  | .return value => do
+      let rhs ← compileExpr fields value
+      let ret ← liftExcept <| asUInt256 rhs
+      emit (.returnUint ret)
+  | .returnValues values =>
+      match values with
+      | [] =>
+          emit .stop
+      | [value] => do
+          let rhs ← compileExpr fields value
+          let ret ← liftExcept <| asUInt256 rhs
+          emit (.returnUint ret)
+      | _ =>
+          throw "Typed IR compile error: multiple return values are not supported in phase 2.4"
   | stmt =>
       throw s!"Typed IR compile error: unsupported statement form in phase 2.1: {repr stmt}"
 

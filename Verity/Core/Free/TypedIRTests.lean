@@ -246,6 +246,11 @@ private def execLoweredSlot0 (fuel : Nat) (state : IRState) (block : TBlock) : O
   | .return _ s => some (s.storage 0)
   | .revert _ => none
 
+private def execLoweredReturn (fuel : Nat) (state : IRState) (block : TBlock) : Option Nat :=
+  match execIRStmts fuel state (lowerTBlock block) with
+  | .return ret _ => some ret
+  | _ => none
+
 /-- Golden test: lowering typed Counter block to Yul preserves storage-slot result. -/
 example :
     execLoweredSlot0 64 (mkIRStateFromTyped counterTypedInit counterIncrementTBlock) counterIncrementTBlock =
@@ -297,6 +302,43 @@ def compiledCounterLoweredFinalSlot : Option Nat :=
 
 /-- Golden test: compiled typed Counter block lowers to Yul with matching final storage. -/
 example : compiledCounterLoweredFinalSlot = compiledCounterIncrementFinalSlot := by
+  native_decide
+
+def compiledCounterDecrementFinalSlot : Option Nat :=
+  let initWorld : Verity.ContractState :=
+    { counterTypedInitWorld with «storage» := fun i => if i = 0 then 41 else 0 }
+  let initTyped : TExecState := { world := initWorld }
+  match compileFunctionNamed Compiler.Specs.counterSpec "decrement" with
+  | .error _ => none
+  | .ok block =>
+      match evalTBlock initTyped block with
+      | .ok s => some ((s.world.storage 0 : Verity.Core.Uint256) : Nat)
+      | .revert _ => none
+
+def compiledCounterDecrementLoweredFinalSlot : Option Nat :=
+  let initWorld : Verity.ContractState :=
+    { counterTypedInitWorld with «storage» := fun i => if i = 0 then 41 else 0 }
+  let initTyped : TExecState := { world := initWorld }
+  match compileFunctionNamed Compiler.Specs.counterSpec "decrement" with
+  | .error _ => none
+  | .ok block =>
+      execLoweredSlot0 256 (mkIRStateFromTyped initTyped block) block
+
+/-- End-to-end Counter decrement: typed IR lowering preserves storage effect. -/
+example : compiledCounterDecrementLoweredFinalSlot = compiledCounterDecrementFinalSlot := by
+  native_decide
+
+def compiledCounterGetCountReturn : Option Nat :=
+  let initWorld : Verity.ContractState :=
+    { counterTypedInitWorld with «storage» := fun i => if i = 0 then 41 else 0 }
+  let initTyped : TExecState := { world := initWorld }
+  match compileFunctionNamed Compiler.Specs.counterSpec "getCount" with
+  | .error _ => none
+  | .ok block =>
+      execLoweredReturn 256 (mkIRStateFromTyped initTyped block) block
+
+/-- End-to-end Counter getCount: typed IR pipeline returns slot-0 value. -/
+example : compiledCounterGetCountReturn = some 41 := by
   native_decide
 
 def compiledSimpleStorageLoweredFinalSlot : Option Nat :=

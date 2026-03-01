@@ -52,6 +52,8 @@ inductive TStmt where
   | setMapping (slot : Nat) (key : TExpr .address) (value : TExpr .uint256)
   | setMappingUint (slot : Nat) (key : TExpr .uint256) (value : TExpr .uint256)
   | if_ (cond : TExpr .bool) (thenBranch elseBranch : List TStmt)
+  | stop
+  | returnUint (value : TExpr .uint256)
   | expr (value : TExpr .unit)
   | revert (reason : String)
   deriving Repr
@@ -196,6 +198,8 @@ def evalTStmtFuel : Nat → TExecState → TStmt → TExecResult
       match evalTExpr s cond with
       | true => evalTStmtsFuel fuel s thenBranch
       | false => evalTStmtsFuel fuel s elseBranch
+  | Nat.succ _, s, .stop => .ok s
+  | Nat.succ _, s, .returnUint _ => .ok s
   | Nat.succ _, s, .expr value =>
       let _ := evalTExpr s value
       .ok s

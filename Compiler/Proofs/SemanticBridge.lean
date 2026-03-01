@@ -11,7 +11,7 @@
 
     ∀ slot, (edslFinalState.storage slot).val = irResult.finalStorage slot
 
-  For SimpleStorage, these proofs are fully discharged (no sorry) via
+  For SimpleStorage, the proofs attempt full discharge (no sorry) via
   direct simp unfolding of both EDSL and IR execution. For more complex
   contracts, the proofs compose:
   1. Primitive bridge lemmas (PrimitiveBridge.lean)
@@ -67,7 +67,7 @@ The trust chain becomes: EDSL ≡ IR ≡ Yul ≡ EVMYulLean (all machine-checked
 
 /-- SimpleStorage.store: EDSL execution matches compiled IR execution.
 
-This is the *target* theorem for Issue #998. When the `sorry` is discharged:
+This is the *target* theorem for Issue #998. When verified by the build:
 - `interpretSpec` is no longer needed for SimpleStorage.store
 - The trust chain becomes: EDSL ≡ IR ≡ Yul ≡ EVMYulLean (all machine-checked)
 

@@ -34,7 +34,7 @@ boundary for generated EDSL artifacts.
 
 ```
 EDSL
-  ↓ [Layer 1: FULLY VERIFIED — EDSL ≡ CompilationModel]
+  ↓ [Layer 1: VERIFIED per contract — EDSL ≡ CompilationModel (via interpretSpec; see §9–10)]
 CompilationModel (`CompilationModel`)
   ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
@@ -182,7 +182,33 @@ If this file is stale, audit conclusions may be invalid.
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)
 
-## Planned Trust-Boundary Hardening (Issue #967)
+### 9. SpecInterpreter (`interpretSpec`)
+
+- Role: reference semantics for CompilationModel execution in Layer 1 proofs.
+- Status: **trusted** — hand-rolled EVM reimplementation (~500 lines) that does not
+  use EVMYulLean. Implements wrapping arithmetic, storage reads/writes, mapping
+  slot derivation, control flow, and event emission from scratch.
+- Risk: if `interpretSpec` has a bug (e.g., incorrect subtraction wrapping), all
+  Layer 1 proofs are vacuously correct against wrong semantics.
+- Planned mitigation: eliminate `interpretSpec` entirely by proving EDSL ≡
+  EVMYulLean(compile(CompilationModel)) directly (Issue #998, Phase 1).
+
+### 10. Macro Elaborator (`verity_contract`)
+
+- Role: generates both the EDSL `Contract` monad value and the `CompilationModel`
+  from a single syntax tree.
+- Status: **trusted** — the `translatePureExpr`/`translateEffectStmt`/`translateDoElems`
+  functions in `Verity/Macro/Translate.lean` are unverified metaprograms.
+- Trust argument: since both the EDSL value and the CompilationModel are generated
+  from the same syntax tree by a deterministic elaborator, semantic equivalence holds
+  by construction — provided the elaborator is correct.
+- Risk: a translation bug would cause the EDSL and CompilationModel to silently diverge.
+- Planned mitigation: either verify the translation functions as Lean theorems, or have
+  the macro emit per-contract proof witnesses (Issue #998, Phases 2–3).
+
+## Planned Trust-Boundary Hardening
+
+### Issue #967 (Yul identity)
 
 The following items are planned but not yet active:
 
@@ -191,6 +217,20 @@ The following items are planned but not yet active:
 3. AST-level identity gates between Verity and `solc` Yul outputs.
 
 Until these are implemented and CI-gated, claims of exact `solc` Yul identity remain out of scope.
+
+### Issue #998 (Eliminate interpretSpec, end-to-end semantic bridge)
+
+Goal: a single machine-checked theorem per contract function:
+`EDSL execution ≡ EVMYulLean(compile(CompilationModel))`
+
+Roadmap:
+1. Compose Layers 2+3 into a single end-to-end theorem.
+2. Prove per-primitive correctness lemmas (EDSL primitive ≡ compiled Yul primitive).
+3. Have the macro compose primitive lemmas automatically per contract.
+4. Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
+5. Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).
+
+Cross-repo: verity (core), morpho-verity (benefits from auto proofs), verity-paper (architecture rewrite).
 
 **Last Updated**: 2026-03-01
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

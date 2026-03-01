@@ -118,7 +118,7 @@ Every claim below is enforced by CI on every commit. Each one can be independent
 | Claim | Value | Verify locally |
 |-------|-------|----------------|
 | Proven theorems | 431 | `make verify` |
-| Incomplete proofs (`sorry`) | 0 | `make verify` (Lean rejects sorry) |
+| Incomplete proofs (`sorry`) | 2 | `make verify` (Lean rejects sorry) |
 | Project-specific axioms | 1 ([documented](AXIOMS.md)) | `make axiom-report` |
 | Axiom dependency audit | 613 theorems checked | `make axiom-report` |
 | Foundry runtime tests | 404 across 35 suites | `make test-foundry` |
@@ -229,7 +229,7 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 
 Verity's restricted DSL prevents raw external calls for safety. Instead, call patterns are packaged as **External Call Modules (ECMs)** — reusable, typed, auditable Lean structures that the compiler can plug in without modification. Standard modules for ERC-20, EVM precompiles, and callbacks ship in [`Compiler/Modules/`](Compiler/Modules/README.md). Third parties can publish their own as separate Lean packages. See [`docs/EXTERNAL_CALL_MODULES.md`](docs/EXTERNAL_CALL_MODULES.md) for the full guide.
 
-431 theorems across 11 categories, all fully proven. 441 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axiom. 0 `sorry` — Ledger sum proofs completed in Conservation.lean ([#65](https://github.com/Th0rgal/verity/issues/65)).
+431 theorems across 11 categories (429 proven, 2 `sorry` in macro-generated semantic preservation placeholders). 441 Foundry tests across 35 test suites. 250 covered by property tests (58% coverage, 181 proof-only exclusions). 1 documented axiom.
 
 ## What's Verified
 

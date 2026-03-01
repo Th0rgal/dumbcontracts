@@ -194,18 +194,29 @@ bindings are identical because `YulState.setVar` prepends to the var list and
 `YulState.getVar` uses `List.find?` (first match wins, shadowing earlier entries). -/
 theorem yulBody_from_state_eq_yulBody
     (fn : IRFunction) (tx : IRTransaction) (state : IRState)
-    (hstorage : state.storage = state.storage)  -- trivially true; placeholder for rollback alignment
     (hcalldata : state.calldata = tx.args)
     (hsender : state.sender = tx.sender)
     (hselector : state.selector = tx.functionSelector)
-    (hreturn : state.returnValue = none) :
-    let paramState := fn.params.zip tx.args |>.foldl (fun s (p, v) => s.setVar p.name v) state
+    (hreturn : state.returnValue = none)
+    (hmemory : state.memory = fun _ => 0)
+    (hvars : state.vars = []) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (execIRFunction fn tx.args state)
       (interpretYulBody fn tx state) := by
   sorry -- Phase 4: requires showing execYulStmts is parametric in initial vars/memory
         -- when fn.body starts with let-bindings that cover all referenced variables.
-        -- Approach: define freeVars(stmts) and show genParamLoads(fn.params) ⊇ freeVars(bodyStmts)
+        --
+        -- With the hypotheses above (vars=[], memory=fun _ => 0), the initial
+        -- states for interpretYulBody and interpretYulBodyFromState are almost
+        -- identical: both have empty vars, zero memory, same storage/calldata/sender.
+        -- The remaining difference is that interpretYulBodyFromState's paramState
+        -- has vars set by fn.params.zip args, while interpretYulBody's
+        -- YulState.initial has vars=[]. But fn.body starts with calldataload
+        -- let-bindings that will produce the same variable bindings.
+        --
+        -- Alternative simpler approach: when state already has vars=[] and
+        -- memory=fun _ => 0, show yulStateOfIR sel state = YulState.initial yulTx state.storage
+        -- directly (modulo the returnValue field, which doesn't affect execution).
 
 /-! ## Layers 2+3 Composition: CompilationModel → Yul
 

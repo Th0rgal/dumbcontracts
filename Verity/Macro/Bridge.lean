@@ -114,7 +114,7 @@ def mkSemanticBridgeCommand
             -- 1. Unfold fnModel.body to the macro-generated statement list
             -- 2. Unfold the EDSL function into do-notation steps
             -- 3. Apply primitive lemmas (getStorage_matches_sload, etc.)
-            -- 4. Use bind_preserves_encoding to compose steps
+            -- 4. Use bind_unfold to compose steps
             -- The concrete IR-connected version is in SemanticBridge.lean.)
 
 end Verity.Macro

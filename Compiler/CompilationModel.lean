@@ -1133,7 +1133,7 @@ def functionStateMutability (spec : FunctionSpec) : String :=
 private def findParamType (params : List Param) (name : String) : Option ParamType :=
   (params.find? (fun p => p.name == name)).map (·.ty)
 
-private partial def exprContainsCallLike (expr : Expr) : Bool :=
+private def exprContainsCallLike (expr : Expr) : Bool :=
   match expr with
   | Expr.call _ _ _ _ _ _ _ => true
   | Expr.staticcall _ _ _ _ _ _ => true

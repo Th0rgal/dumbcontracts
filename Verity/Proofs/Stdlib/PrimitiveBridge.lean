@@ -230,18 +230,26 @@ sequential Yul statements. The key property is that if each step preserves
 the state encoding invariant, then the whole sequence does.
 -/
 
-/-- Bind preserves state encoding: if `ma` produces a new state that is
-consistently encoded, and `f` preserves the encoding for that new state,
-then `bind ma f` preserves the encoding. -/
-theorem bind_preserves_encoding {α β : Type}
+/-- Bind unfolding: the Contract monad's `bind` (>>=) sequences operations.
+When the first computation succeeds, the continuation runs on the new state.
+When it reverts, the revert propagates.
+
+This is the key structural lemma for composing primitive bridge proofs: each
+step in a `do` block is one bind, and the per-step lemma applies to that step's
+initial state. -/
+theorem bind_unfold {α β : Type}
     (ma : Contract α) (f : α → Contract β)
-    (state : ContractState)
-    (hma : ∀ a s', ma state = .success a s' →
-      encodeStorage s' = encodeStorage s' ∧ True)
-    : (bind ma f) state = match ma state with
+    (state : ContractState) :
+    (bind ma f) state = match ma state with
       | .success a s' => f a s'
       | .revert msg s' => .revert msg s' := by
   simp [bind]
+
+/-- Pure (return) unfold: `pure a` always succeeds with value `a` and unchanged state.
+Companion to `bind_unfold` — together they handle all `do`-notation steps. -/
+theorem pure_unfold {α : Type} (a : α) (state : ContractState) :
+    (pure a : Contract α) state = .success a state := by
+  rfl
 
 /-! ## Composition Summary
 
@@ -260,8 +268,7 @@ The composed theorem says:
   EDSL(increment).run state ≡ YulExec(compiled_increment) encodedState
 
 Each line's correctness follows from the corresponding primitive lemma.
-The bind/sequencing correctness (`bind_preserves_encoding`) stitches them
-together.
+The bind/sequencing correctness (`bind_unfold`) stitches them together.
 
 The full chain: EDSL ≡ compiledYul ≡ EVMYulLean is obtained by composing:
 1. These primitive lemmas (EDSL ≡ Verity-backend Yul builtins)

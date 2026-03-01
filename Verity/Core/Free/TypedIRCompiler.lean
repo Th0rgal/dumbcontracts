@@ -251,7 +251,10 @@ private def compileBranch (fields : List Field) (stmts : List Stmt) : CompileM (
   set { startState with body := #[] }
   compileStmts fields stmts
   let branchState ← get
-  set { startState with nextId := branchState.nextId }
+  -- Restore parent state but preserve branch-created locals so that
+  -- TBlock.locals remains a complete list of all variables in the body.
+  set { startState with nextId := branchState.nextId
+                        locals := branchState.locals }
   return branchState.body.toList
 
 end

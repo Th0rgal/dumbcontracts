@@ -1212,7 +1212,8 @@ private def validateArithDuplicatedOperandPurity (context : String) (duplicated 
   if duplicated.any exprContainsCallLike then
     throw s!"Compilation error: {context} uses an arithmetic helper (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before using them in arithmetic helpers."
 
-private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
+mutual
+private def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   match expr with
   | Expr.logicalAnd a b | Expr.logicalOr a b =>
       (exprContainsCallLike a || exprContainsCallLike b) ||
@@ -1247,7 +1248,7 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike inOffset || exprContainsUnsafeLogicalCallLike inSize ||
       exprContainsUnsafeLogicalCallLike outOffset || exprContainsUnsafeLogicalCallLike outSize
   | Expr.externalCall _ args | Expr.internalCall _ args =>
-      args.any exprContainsUnsafeLogicalCallLike
+      exprListAnyUnsafeLogicalCallLike args
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ =>
       exprContainsUnsafeLogicalCallLike key
@@ -1278,15 +1279,23 @@ private partial def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.blockTimestamp
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ =>
       false
+termination_by sizeOf expr
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
+private def exprListAnyUnsafeLogicalCallLike : List Expr → Bool
+  | [] => false
+  | e :: es => exprContainsUnsafeLogicalCallLike e || exprListAnyUnsafeLogicalCallLike es
+termination_by es => sizeOf es
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       exprContainsUnsafeLogicalCallLike value
   | Stmt.requireError cond _ args =>
-      exprContainsUnsafeLogicalCallLike cond || args.any exprContainsUnsafeLogicalCallLike
+      exprContainsUnsafeLogicalCallLike cond || exprListAnyUnsafeLogicalCallLike args
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
-      args.any exprContainsUnsafeLogicalCallLike
+      exprListAnyUnsafeLogicalCallLike args
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ =>
       false
   | Stmt.mstore offset value =>
@@ -1311,20 +1320,29 @@ private partial def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
       exprContainsUnsafeLogicalCallLike value
   | Stmt.ite cond thenBranch elseBranch =>
       exprContainsUnsafeLogicalCallLike cond ||
-      thenBranch.any stmtContainsUnsafeLogicalCallLike ||
-      elseBranch.any stmtContainsUnsafeLogicalCallLike
+      stmtListAnyUnsafeLogicalCallLike thenBranch ||
+      stmtListAnyUnsafeLogicalCallLike elseBranch
   | Stmt.forEach _ count body =>
-      exprContainsUnsafeLogicalCallLike count || body.any stmtContainsUnsafeLogicalCallLike
+      exprContainsUnsafeLogicalCallLike count || stmtListAnyUnsafeLogicalCallLike body
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
-      args.any exprContainsUnsafeLogicalCallLike
+      exprListAnyUnsafeLogicalCallLike args
   | Stmt.rawLog topics dataOffset dataSize =>
-      topics.any exprContainsUnsafeLogicalCallLike ||
+      exprListAnyUnsafeLogicalCallLike topics ||
       exprContainsUnsafeLogicalCallLike dataOffset ||
       exprContainsUnsafeLogicalCallLike dataSize
   | Stmt.externalCallBind _ _ args =>
-      args.any exprContainsUnsafeLogicalCallLike
+      exprListAnyUnsafeLogicalCallLike args
   | Stmt.ecm _ args =>
-      args.any exprContainsUnsafeLogicalCallLike
+      exprListAnyUnsafeLogicalCallLike args
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def stmtListAnyUnsafeLogicalCallLike : List Stmt → Bool
+  | [] => false
+  | s :: ss => stmtContainsUnsafeLogicalCallLike s || stmtListAnyUnsafeLogicalCallLike ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private partial def staticParamBindingNames (name : String) (ty : ParamType) : List String :=
   match ty with
@@ -1718,15 +1736,17 @@ private partial def validateReturnShapesInStmt (fnName : String)
   | _ => pure ()
 
 mutual
-  private partial def stmtListAlwaysReturnsOrReverts : List Stmt → Bool
+  private def stmtListAlwaysReturnsOrReverts : List Stmt → Bool
     | [] => false
     | stmt :: rest =>
         if stmtAlwaysReturnsOrReverts stmt then
           true
         else
           stmtListAlwaysReturnsOrReverts rest
+  termination_by ss => sizeOf ss
+  decreasing_by all_goals simp_wf; all_goals omega
 
-  private partial def stmtAlwaysReturnsOrReverts : Stmt → Bool
+  private def stmtAlwaysReturnsOrReverts : Stmt → Bool
     | Stmt.return _ | Stmt.returnValues _ | Stmt.returnArray _
     | Stmt.returnBytes _ | Stmt.returnStorageWords _
     | Stmt.revertError _ _ | Stmt.revertReturndata =>
@@ -1735,9 +1755,11 @@ mutual
         stmtListAlwaysReturnsOrReverts thenBranch && stmtListAlwaysReturnsOrReverts elseBranch
     | _ =>
         false
+  termination_by s => sizeOf s
+  decreasing_by all_goals simp_wf; all_goals omega
 end
 
-private partial def exprReadsStateOrEnv : Expr → Bool
+private def exprReadsStateOrEnv : Expr → Bool
   | Expr.literal _ => false
   | Expr.param _ => false
   | Expr.constructorArg _ => false
@@ -4481,7 +4503,7 @@ def genParamLoads (params : List Param) : List YulStmt :=
   genParamLoadsFrom (fun pos => YulExpr.call "calldataload" [pos]) (YulExpr.call "calldatasize" []) 4 4 params
 
 mutual
-private partial def collectStmtBindNames : Stmt → List String
+private def collectStmtBindNames : Stmt → List String
   | Stmt.letVar name _ => [name]
   | Stmt.ite _ thenBranch elseBranch =>
       collectStmtListBindNames thenBranch ++ collectStmtListBindNames elseBranch
@@ -4500,14 +4522,19 @@ private partial def collectStmtBindNames : Stmt → List String
   | Stmt.mstore _ _ | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata | Stmt.stop
   | Stmt.emit _ _ | Stmt.internalCall _ _ | Stmt.rawLog _ _ _ =>
       []
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def collectStmtListBindNames : List Stmt → List String
+private def collectStmtListBindNames : List Stmt → List String
   | [] => []
   | stmt :: rest =>
       collectStmtBindNames stmt ++ collectStmtListBindNames rest
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
 end
 
-private partial def exprUsesArrayElement : Expr → Bool
+mutual
+private def exprUsesArrayElement : Expr → Bool
   | Expr.arrayElement _ _ => true
   | Expr.mapping _ key => exprUsesArrayElement key
   | Expr.mappingWord _ key _ => exprUsesArrayElement key
@@ -4537,7 +4564,7 @@ private partial def exprUsesArrayElement : Expr → Bool
       exprUsesArrayElement offset || exprUsesArrayElement size
   | Expr.returndataOptionalBoolAt outOffset => exprUsesArrayElement outOffset
   | Expr.externalCall _ args | Expr.internalCall _ args =>
-      args.any exprUsesArrayElement
+      exprListUsesArrayElement args
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.mod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.lt a b | Expr.le a b |
@@ -4555,15 +4582,23 @@ private partial def exprUsesArrayElement : Expr → Bool
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.blockTimestamp
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ =>
       false
+termination_by e => sizeOf e
+decreasing_by all_goals simp_wf; all_goals omega
 
-private partial def stmtUsesArrayElement : Stmt → Bool
+private def exprListUsesArrayElement : List Expr → Bool
+  | [] => false
+  | e :: es => exprUsesArrayElement e || exprListUsesArrayElement es
+termination_by es => sizeOf es
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def stmtUsesArrayElement : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value |
     Stmt.return value | Stmt.require value _ =>
       exprUsesArrayElement value
   | Stmt.requireError cond _ args =>
-      exprUsesArrayElement cond || args.any exprUsesArrayElement
+      exprUsesArrayElement cond || exprListUsesArrayElement args
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
-      args.any exprUsesArrayElement
+      exprListUsesArrayElement args
   | Stmt.mstore offset value =>
       exprUsesArrayElement offset || exprUsesArrayElement value
   | Stmt.calldatacopy destOffset sourceOffset size =>
@@ -4577,21 +4612,30 @@ private partial def stmtUsesArrayElement : Stmt → Bool
   | Stmt.setStructMember2 _ key1 key2 _ value =>
       exprUsesArrayElement key1 || exprUsesArrayElement key2 || exprUsesArrayElement value
   | Stmt.ite cond thenBranch elseBranch =>
-      exprUsesArrayElement cond || thenBranch.any stmtUsesArrayElement || elseBranch.any stmtUsesArrayElement
+      exprUsesArrayElement cond || stmtListUsesArrayElement thenBranch || stmtListUsesArrayElement elseBranch
   | Stmt.forEach _ count body =>
-      exprUsesArrayElement count || body.any stmtUsesArrayElement
+      exprUsesArrayElement count || stmtListUsesArrayElement body
   | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args =>
-      args.any exprUsesArrayElement
+      exprListUsesArrayElement args
   | Stmt.rawLog topics dataOffset dataSize =>
-      topics.any exprUsesArrayElement || exprUsesArrayElement dataOffset || exprUsesArrayElement dataSize
+      exprListUsesArrayElement topics || exprUsesArrayElement dataOffset || exprUsesArrayElement dataSize
   | Stmt.externalCallBind _ _ args =>
-      args.any exprUsesArrayElement
+      exprListUsesArrayElement args
   | Stmt.ecm _ args =>
-      args.any exprUsesArrayElement
+      exprListUsesArrayElement args
   -- Leaf statements: no sub-expressions that could contain arrayElement.
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
   | Stmt.revertReturndata | Stmt.stop =>
       false
+termination_by s => sizeOf s
+decreasing_by all_goals simp_wf; all_goals omega
+
+private def stmtListUsesArrayElement : List Stmt → Bool
+  | [] => false
+  | s :: ss => stmtUsesArrayElement s || stmtListUsesArrayElement ss
+termination_by ss => sizeOf ss
+decreasing_by all_goals simp_wf; all_goals omega
+end
 
 private def functionUsesArrayElement (fn : FunctionSpec) : Bool :=
   fn.body.any stmtUsesArrayElement

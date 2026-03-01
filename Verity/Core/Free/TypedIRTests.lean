@@ -1,5 +1,6 @@
 import Verity.Core.Free.TypedIR
 import Verity.Core.Free.TypedIRCompiler
+import Verity.Core.Free.TypedIRCompilerCorrectness
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Specs
 
@@ -248,5 +249,13 @@ def compiledSimpleStorageStoreFinalSlot : Option Nat :=
 /-- Golden test: CompilationModel->typed-IR compiler preserves SimpleStorage.store storage effect. -/
 example : compiledSimpleStorageStoreFinalSlot = simpleStorageIRFinalSlot := by
   native_decide
+
+/-- Compiler correctness base lemma: list compilation composes by append. -/
+example (fields : List Compiler.CompilationModel.Field)
+    (pre post : List Compiler.CompilationModel.Stmt) :
+    compileStmts fields (pre ++ post) = (do
+      compileStmts fields pre
+      compileStmts fields post) :=
+  compileStmts_append fields pre post
 
 end Verity.Core.Free

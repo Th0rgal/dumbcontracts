@@ -238,11 +238,18 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
   | stmt =>
       throw s!"Typed IR compile error: unsupported statement form in phase 2.1: {repr stmt}"
 
+/-- Compile a statement list in source order.
+This structural recursion is the induction surface for generic correctness lemmas. -/
+def compileStmts (fields : List Field) : List Stmt → CompileM Unit
+  | [] => return ()
+  | stmt :: rest => do
+      compileStmt fields stmt
+      compileStmts fields rest
+
 private def compileBranch (fields : List Field) (stmts : List Stmt) : CompileM (List TStmt) := do
   let startState ← get
   set { startState with body := #[] }
-  for stmt in stmts do
-    compileStmt fields stmt
+  compileStmts fields stmts
   let branchState ← get
   set { startState with nextId := branchState.nextId }
   return branchState.body.toList
@@ -260,8 +267,7 @@ def compileFunctionToTBlock (spec : CompilationModel) (fn : FunctionSpec) : Exce
   let (_, st) ← ((do
       for p in fn.params do
         registerParam p
-      for stmt in fn.body do
-        compileStmt spec.fields stmt
+      compileStmts spec.fields fn.body
       return ()) : CompileM Unit).run {}
   return { params := st.params.toList
            locals := st.locals.toList

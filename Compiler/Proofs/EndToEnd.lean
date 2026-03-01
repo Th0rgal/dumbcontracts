@@ -86,7 +86,7 @@ We capture this composition with the documented gap below.
 
 /-- Explicit bridge hypothesis for the param-load erasure step.
 Scoped to this module because it is an internal bridge assumption. -/
-private def ParamLoadErasure (fn : IRFunction) (tx : IRTransaction) (state : IRState) : Prop :=
+private def paramLoadErasure (fn : IRFunction) (tx : IRTransaction) (state : IRState) : Prop :=
   let paramState := fn.params.zip tx.args |>.foldl
     (fun s (p, v) => s.setVar p.name v) state
   let yulTx : YulTransaction := {
@@ -122,7 +122,7 @@ theorem layer3_contract_preserves_semantics
     (hvars : initialState.vars = [])
     (hmemory : initialState.memory = fun _ => 0)
     (hparamErase : ∀ fn, fn ∈ contract.functions,
-      ParamLoadErasure fn tx
+      paramLoadErasure fn tx
         { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR contract tx initialState)
@@ -244,8 +244,8 @@ theorem execYulStmts_paramState_eq_emptyVars
     (hsender : state.sender = tx.sender)
     (hselector : state.selector = tx.functionSelector)
     (hreturn : state.returnValue = none)
-    (hparamErase : ParamLoadErasure fn tx state) :
-    ParamLoadErasure fn tx state :=
+    (hparamErase : paramLoadErasure fn tx state) :
+    paramLoadErasure fn tx state :=
   hparamErase
 
 /-- Bridging: the two Yul execution entry points produce the same result
@@ -265,7 +265,7 @@ theorem yulBody_from_state_eq_yulBody
     (hreturn : state.returnValue = none)
     (hmemory : state.memory = fun _ => 0)
     (hvars : state.vars = [])
-    (hparamErase : ParamLoadErasure fn tx state) :
+    (hparamErase : paramLoadErasure fn tx state) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (execIRFunction fn tx.args state)
       (interpretYulBody fn tx state) := by
@@ -340,7 +340,7 @@ theorem layers2_3_ir_matches_yul
     (hvars : initialState.vars = [])
     (hmemory : initialState.memory = fun _ => 0)
     (hparamErase : ∀ fn, fn ∈ irContract.functions,
-      ParamLoadErasure fn tx
+      paramLoadErasure fn tx
         { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR irContract tx initialState)
@@ -370,7 +370,7 @@ theorem simpleStorage_endToEnd
     (hvars : initialState.vars = [])
     (hmemory : initialState.memory = fun _ => 0)
     (hparamErase : ∀ fn, fn ∈ simpleStorageIRContract.functions,
-      ParamLoadErasure fn tx
+      paramLoadErasure fn tx
         { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR simpleStorageIRContract tx initialState)
@@ -588,7 +588,7 @@ theorem edsl_to_yul_template
     (hvars : initialState.vars = [])
     (hmemory : initialState.memory = fun _ => 0)
     (hparamErase : ∀ fn, fn ∈ irContract.functions,
-      ParamLoadErasure fn tx
+      paramLoadErasure fn tx
         { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     let irResult := interpretIR irContract tx initialState
     let yulResult := interpretYulFromIR irContract tx initialState

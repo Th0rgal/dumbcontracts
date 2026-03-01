@@ -17,6 +17,7 @@ abbrev DoSeq := TSyntax `Lean.Parser.Term.doSeq
 inductive ValueType where
   | uint256
   | address
+  | bytes32
   | bool
   | unit
   deriving BEq
@@ -57,9 +58,10 @@ private def valueTypeFromSyntax (ty : Term) : CommandElabM ValueType := do
   match ty with
   | `(term| Uint256) => pure .uint256
   | `(term| Address) => pure .address
+  | `(term| Bytes32) => pure .bytes32
   | `(term| Bool) => pure .bool
   | `(term| Unit) => pure .unit
-  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bool, or Unit"
+  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bytes32, Bool, or Unit"
 
 private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
   match ty with
@@ -77,6 +79,7 @@ private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
   match ty with
   | .scalar .uint256 => `(Compiler.CompilationModel.FieldType.uint256)
   | .scalar .address => `(Compiler.CompilationModel.FieldType.address)
+  | .scalar .bytes32 => throwError "storage fields cannot be Bytes32; use Uint256 encoding"
   | .scalar .bool => throwError "storage fields cannot be Bool; use Uint256 (0/1) encoding"
   | .scalar .unit => throwError "storage fields cannot be Unit"
   | .mappingAddressToUint256 =>
@@ -95,6 +98,7 @@ private def modelParamTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Compiler.CompilationModel.ParamType.uint256)
   | .address => `(Compiler.CompilationModel.ParamType.address)
+  | .bytes32 => `(Compiler.CompilationModel.ParamType.bytes32)
   | .bool => `(Compiler.CompilationModel.ParamType.bool)
   | .unit => throwError "function parameters cannot be Unit"
 
@@ -103,12 +107,22 @@ private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .unit => `(none)
   | .uint256 => `(some Compiler.CompilationModel.FieldType.uint256)
   | .address => `(some Compiler.CompilationModel.FieldType.address)
+  | .bytes32 => `(none)
+  | .bool => throwError "function return type Bool is not yet supported; use Uint256 (0/1) encoding"
+
+private def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
+  match ty with
+  | .unit => `([])
+  | .uint256 => `([Compiler.CompilationModel.ParamType.uint256])
+  | .address => `([Compiler.CompilationModel.ParamType.address])
+  | .bytes32 => `([Compiler.CompilationModel.ParamType.bytes32])
   | .bool => throwError "function return type Bool is not yet supported; use Uint256 (0/1) encoding"
 
 private def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Uint256)
   | .address => `(Address)
+  | .bytes32 => `(Uint256)
   | .bool => `(Bool)
   | .unit => `(Unit)
 
@@ -720,6 +734,7 @@ private def mkStorageDefCommand (field : StorageFieldDecl) : CommandElabM Cmd :=
     match field.ty with
     | .scalar .uint256 => `(Uint256)
     | .scalar .address => `(Address)
+    | .scalar .bytes32 => throwError "storage field cannot be Bytes32; use Uint256 encoding"
     | .scalar .bool => throwError "storage field cannot be Bool; use Uint256 (0/1) encoding"
     | .scalar .unit => throwError "storage field cannot be Unit"
     | .mappingAddressToUint256 => `(Address → Uint256)
@@ -750,6 +765,7 @@ private def mkFunctionCommands (fields : Array StorageFieldDecl) (fn : FunctionD
     name := $(strTerm fn.name)
     params := $modelParams
     returnType := $(← modelReturnTypeTerm fn.returnTy)
+    returns := $(← modelReturnsTerm fn.returnTy)
     body := $modelBodyName
   })
   pure #[fnCmd, bodyCmd, modelCmd]

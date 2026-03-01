@@ -20,4 +20,7 @@ syntax (name := verityContractCmd)
   (verityConstructor)?
   verityFunction+ : command
 
+syntax (name := checkContractCmd)
+  "#check_contract " ident : command
+
 end Verity.Macro

@@ -25,6 +25,7 @@ private def joinJsonFields (fields : List String) : String :=
 
 private def abiTypeString : ParamType → String
   | .uint256 => "uint256"
+  | .uint8 => "uint8"
   | .address => "address"
   | .bool => "bool"
   | .bytes32 => "bytes32"

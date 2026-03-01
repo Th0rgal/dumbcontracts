@@ -286,13 +286,13 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ## Property Test Coverage 🎯 **NEAR COMPLETE**
 
-**Status**: 53% coverage (250/469), 181 remaining exclusions all proof-only
+**Status**: 53% coverage (250/469), 219 remaining exclusions all proof-only
 
 ### Current Coverage
 
 - **Total Properties**: 469
 - **Covered**: 220 (55%)
-- **Excluded**: 181 (all proof-only)
+- **Excluded**: 219 (all proof-only)
 - **Missing**: 0
 
 ### Coverage by Contract
@@ -311,7 +311,7 @@ All 8 statement types (assign, storage load/store, mapping load/store, condition
 
 ### Exclusion Categories
 
-**Proof-Only Properties (181 exclusions)**: Internal proof machinery that cannot be tested in Foundry
+**Proof-Only Properties (219 exclusions)**: Internal proof machinery that cannot be tested in Foundry
 - Storage helpers: `setStorage_*`, `getStorage_*`, `setMapping_*`, `getMapping_*`
 - Internal helpers: `isOwner_*` functions tested implicitly
 - Low-level operations used only in proofs

@@ -18,7 +18,7 @@
     "categories": 11,
     "coverage_percent": 53,
     "covered": 250,
-    "excluded": 181,
+    "excluded": 219,
     "non_stdlib_total": 272,
     "per_contract": {
       "Counter": 28,

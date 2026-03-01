@@ -213,7 +213,11 @@ def evalTStmtsFuel : Nat → TExecState → List TStmt → TExecResult
   | 0, _, _ :: _ => .revert "out of fuel"
   | Nat.succ fuel, s, stmt :: rest =>
       match evalTStmtFuel fuel s stmt with
-      | .ok s' => evalTStmtsFuel fuel s' rest
+      | .ok s' =>
+          -- Terminal statements halt execution; remaining statements are dead code.
+          match stmt with
+          | .stop | .returnUint _ => .ok s'
+          | _ => evalTStmtsFuel fuel s' rest
       | .revert reason => .revert reason
 
 end

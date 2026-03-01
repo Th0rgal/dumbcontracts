@@ -231,7 +231,7 @@ Identifier rules (fail-fast validation):
 
 ## CI Integration
 
-Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
+Scripts run automatically in GitHub Actions (`verify.yml`) across 8 jobs:
 
 **`changes`** — Path filter that gates code-dependent jobs (doc-only PRs skip build/test)
 
@@ -270,20 +270,22 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 7 jobs:
 31. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
 32. Proof length limits (`check_proof_length.py`)
 
-**`build` job** (requires `lake build` artifacts):
+**`build` job** (proofs + axiom audit, ~30 min timeout):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)
-2. Static gas model coverage on generated Yul (baseline + patched) (`check_gas_model_coverage.py`)
-3. Keccak-256 self-test (`keccak256.py --self-test`)
-4. Selector hash verification (`check_selectors.py`)
-5. Yul compilation (baseline + patched) with filename-set parity check (`check_yul_compiles.py`)
-6. Selector fixture check (`check_selector_fixtures.py`)
-7. Static gas report invariants (`check_gas_report.py`)
-8. Save baseline + patch-enabled static gas report artifacts (`gas-report-static.tsv`, `gas-report-static-patched.tsv`)
-9. Patch gas delta non-regression + measurable improvement gate (`check_patch_gas_delta.py`)
-10. Proof length distribution report in workflow summary (`check_proof_length.py --format=markdown`)
-11. Coverage and storage layout reports in workflow summary (`report_property_coverage.py`, `check_storage_layout.py`)
+2. Proof length distribution report in workflow summary (`check_proof_length.py --format=markdown`)
+3. Coverage and storage layout reports in workflow summary (`report_property_coverage.py`, `check_storage_layout.py`)
 
-**`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-artifact static report + Foundry gas report (runtime + deployment)
+**`build-compiler` job** (compiler exe + Yul generation + solc, 120 min timeout — cached separately so proof-only changes never invalidate it):
+1. Static gas model coverage on generated Yul (baseline + patched) (`check_gas_model_coverage.py`)
+2. Keccak-256 self-test (`keccak256.py --self-test`)
+3. Selector hash verification (`check_selectors.py`)
+4. Yul compilation (baseline + patched) with filename-set parity check (`check_yul_compiles.py`)
+5. Selector fixture check (`check_selector_fixtures.py`)
+6. Static gas report invariants (`check_gas_report.py`)
+7. Save baseline + patch-enabled static gas report artifacts (`gas-report-static.tsv`, `gas-report-static-patched.tsv`)
+8. Patch gas delta non-regression + measurable improvement gate (`check_patch_gas_delta.py`)
+
+**`foundry-gas-calibration`** — Static-vs-Foundry gas calibration check (`check_gas_calibration.py`) using build-compiler-artifact static report + Foundry gas report (runtime + deployment)
 **`foundry`** — 8-shard parallel Foundry tests with seed 42
 **`foundry-patched`** — Patched-Yul smoke gate on differential/property harness (seed 42, single shard, no `Random10000`)
 **`foundry-multi-seed`** — 7-seed flakiness detection (seeds: 0, 1, 42, 123, 999, 12345, 67890)

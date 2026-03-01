@@ -176,23 +176,32 @@ def _duplicates(items: list[str]) -> list[str]:
     return sorted([name for name, count in counts.items() if count > 1])
 
 
+PRODUCER_JOBS = {"build", "build-compiler"}
+
+
 def main() -> int:
     verify_text = VERIFY_YML.read_text(encoding="utf-8")
     job_names = _extract_job_names(verify_text)
 
-    build_body = _extract_job_block(verify_text, "build")
-    upload_names = _extract_upload_names(build_body)
+    # Collect uploads from all producer jobs.
+    upload_names: list[str] = []
+    for producer in PRODUCER_JOBS:
+        if producer not in job_names:
+            continue
+        body = _extract_job_block(verify_text, producer)
+        upload_names.extend(_extract_upload_names(body))
+
     if not upload_names:
         raise ValueError(
-            "Could not locate any build upload-artifact names in "
-            f"{VERIFY_YML} build job"
+            "Could not locate any upload-artifact names in "
+            f"{VERIFY_YML} producer jobs ({', '.join(sorted(PRODUCER_JOBS))})"
         )
 
     upload_dupes = _duplicates(upload_names)
     errors: list[str] = []
     if upload_dupes:
         errors.append(
-            "build job has duplicate upload-artifact names: "
+            "producer jobs have duplicate upload-artifact names: "
             + ", ".join(upload_dupes)
         )
 
@@ -201,7 +210,7 @@ def main() -> int:
     consumed_summary: list[tuple[str, str]] = []
 
     for job in job_names:
-        if job == "build":
+        if job in PRODUCER_JOBS:
             continue
         body = _extract_job_block(verify_text, job)
         downloads = _extract_download_names(body)
@@ -220,7 +229,7 @@ def main() -> int:
 
     if consumed_missing:
         errors.append(
-            "Downloaded artifacts missing from build uploads:\n"
+            "Downloaded artifacts missing from producer uploads:\n"
             + "\n".join([f"  - {job}: {name}" for job, name in consumed_missing])
         )
 
@@ -229,7 +238,7 @@ def main() -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         print(
-            "\nBuild uploads found: "
+            "\nProducer uploads found: "
             + ", ".join(sorted(uploaded)),
             file=sys.stderr,
         )
@@ -241,7 +250,7 @@ def main() -> int:
 
     print(
         "verify artifact upload/download names are synchronized "
-        f"(build uploads: {len(upload_names)}, downstream downloads: {len(consumed_summary)})."
+        f"(producer uploads: {len(upload_names)}, downstream downloads: {len(consumed_summary)})."
     )
     return 0
 

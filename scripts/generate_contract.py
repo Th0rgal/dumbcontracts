@@ -1167,7 +1167,8 @@ Examples:
 
     print("3. Canonical registration:")
     print("   Add a `verity_contract` declaration in Verity/Examples/MacroContracts.lean.")
-    print("   `Compiler.Specs.allSpecs` is derived from macro declarations (no manual allSpecs edit).")
+    print("   Then add `<Name>.spec` from MacroContracts to `Compiler.Specs.allSpecs`.")
+    print("   (Automatic allSpecs derivation is planned but not implemented yet.)")
     print("   Manual `Compiler.Specs.*Spec` entries are legacy migration scaffolding only.")
     print()
 

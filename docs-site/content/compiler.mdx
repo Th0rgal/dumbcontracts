@@ -607,18 +607,26 @@ FOUNDRY_PROFILE=difftest forge test
 1. **Add a macro contract declaration** in `Verity/Examples/MacroContracts.lean`:
 ```lean
 verity_contract MyContract where
-  fields := [/* ... */]
-  constructor := /* ... */
-  functions := [/* ... */]
+  storage
+    value : Uint256 := slot 0
+  function setValue (x : Uint256) : Unit := do
+    setStorage value x
+  function getValue () : Uint256 := do
+    return (← getStorage value)
 ```
 
-2. **Recompile**:
+2. **Register it in** `Compiler/Specs.lean` **under** `allSpecs`:
+```lean
+Verity.Examples.MacroContracts.MyContract.spec
+```
+
+3. **Recompile**:
 ```bash
 lake build verity-compiler
 lake exe verity-compiler
 ```
 
-3. **Done!** Contract generated in `artifacts/yul/MyContract.yul`
+4. **Done!** Contract generated in `artifacts/yul/MyContract.yul`
 
 Legacy note: handwritten `Compiler.Specs.*Spec` definitions are retained only for
 migration/special workflows and are not the canonical CLI compile path.

@@ -366,11 +366,11 @@ verity_contract TipJar where
     tips : Uint256 -> Uint256 := slot 0
 
   function tip (amount : Uint256) : Unit := do
-    let sender := caller
+    let sender := msgSender
     let current ← getMapping tips sender
     setMapping tips sender (add current amount)
 
-  function getBalance (addr : Uint256) : Uint256 := do
+  function getBalance (addr : Address) : Uint256 := do
     return (← getMapping tips addr)
 ```
 

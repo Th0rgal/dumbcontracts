@@ -77,7 +77,7 @@ theorem evalIRCall_eq_evalYulCall (selector : Nat) (irState : IRState) (func : S
     evalIRCall irState func args = evalYulCall (yulStateOfIR selector irState) func args := by
   simp only [evalIRCall, evalYulCall]
   rw [evalIRExprs_eq_evalYulExprs selector irState args]
-  simp [yulStateOfIR, selectorWord]
+  rfl
 termination_by exprsSize args + 1
 decreasing_by
   simp [exprsSize, exprSize]

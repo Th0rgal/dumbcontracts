@@ -3,12 +3,13 @@
 -/
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
+import Compiler.DiffTestTypes
 
 namespace Compiler.Proofs.IRGeneration
 
 open Compiler
 open Verity
-open DiffTestTypes
+open Compiler.DiffTestTypes
 
 /-- Convert Address to Nat for IR execution. -/
 def addressToNat (addr : Address) : Nat := addr.val

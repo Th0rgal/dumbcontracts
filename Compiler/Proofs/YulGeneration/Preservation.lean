@@ -67,7 +67,7 @@ theorem yulCodegen_preserves_semantics
             some tx.functionSelector := by
         simpa [yulTx] using (evalYulExpr_selectorExpr_initial yulTx irState hselector)
       simp [interpretIR, hFind, interpretYulFromIR, interpretYulRuntime, irState,
-        execYulStmts, execYulStmtsFuel, execYulStmts_runtimeCode_eq,
+        execYulStmts, execYulStmtsFuel,
         emitYul_runtimeCode_eq, Compiler.runtimeCode, hcase, hsel]
   | some fn =>
       -- Use the function-body preservation hypothesis.
@@ -78,8 +78,7 @@ theorem yulCodegen_preserves_semantics
       -- The switch cases align with `find?` on selectors.
       have hcase :
           (switchCases contract.functions).find? (fun (c, _) => c = tx.functionSelector) =
-            some (fn.selector, [YulStmt.comment s!"{fn.name}()"] ++
-              [Compiler.callvalueGuard] ++ [Compiler.calldatasizeGuard fn.params.length] ++ fn.body) := by
+            some (fn.selector, switchCaseBody fn) := by
         exact find_switch_case_of_find_function contract.functions tx.functionSelector fn hFind
       -- Apply switch rule.
       have hsel :
@@ -89,7 +88,7 @@ theorem yulCodegen_preserves_semantics
       -- Unfold Yul runtime dispatch and reduce the switch.
       -- The runtime code is the switch (mapping helper is a no-op).
       simp [interpretIR, hFind, interpretYulFromIR, interpretYulRuntime, irState,
-        execYulStmts, execYulStmtsFuel, execYulStmts_runtimeCode_eq,
+        execYulStmts, execYulStmtsFuel,
         emitYul_runtimeCode_eq, Compiler.runtimeCode, hsel, hcase] at hmatch ⊢
       -- Finish by aligning the switch-selected body with the hypothesis.
       exact hmatch

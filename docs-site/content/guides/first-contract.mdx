@@ -358,32 +358,20 @@ grep -r "sorry" Verity/Specs/TipJar/ Verity/Proofs/TipJar/
 ### 5.1 Add Canonical Compiler Declaration
 
 Add your contract to `Verity/Examples/MacroContracts.lean` with `verity_contract`.
-`Compiler.Specs.allSpecs` is derived from these macro declarations:
+Then register `<Name>.spec` in `Compiler/Specs.lean` under `allSpecs`:
 
 ```lean
 verity_contract TipJar where
-  fields := [
-    { name := "tips", ty := FieldType.mappingTyped (.simple .address) }
-  ]
-  constructor := none
-  functions := [
-    { name := "tip"
-      params := [{ name := "amount", ty := ParamType.uint256 }]
-      returnType := none
-      body := [
-        Stmt.setMapping "tips" Expr.caller
-          (Expr.add (Expr.mapping "tips" Expr.caller) (Expr.param "amount")),
-        Stmt.stop
-      ]
-    },
-    { name := "getBalance"
-      params := [{ name := "addr", ty := ParamType.address }]
-      returnType := some FieldType.uint256
-      body := [
-        Stmt.return (Expr.mapping "tips" (Expr.param "addr"))
-      ]
-    }
-  ]
+  storage
+    tips : Uint256 -> Uint256 := slot 0
+
+  function tip (amount : Uint256) : Unit := do
+    let sender := caller
+    let current ← getMapping tips sender
+    setMapping tips sender (add current amount)
+
+  function getBalance (addr : Uint256) : Uint256 := do
+    return (← getMapping tips addr)
 ```
 
 ### 5.2 Legacy Note
@@ -397,7 +385,7 @@ Function selectors (the first 4 bytes of `keccak256("functionName(paramTypes)")`
 
 ### 5.3 Write Layer 2 Proofs
 
-Layer 2 proofs show that the `CompilationModel` you just wrote faithfully represents the EDSL implementation. Create `Compiler/Proofs/SpecCorrectness/TipJar.lean` (Lake discovers all `.lean` files under `Compiler/` automatically via `globs := #[.andSubmodules `Compiler]` in `lakefile.lean`, so no registration is needed):
+Layer 1 bridge proofs show that the `CompilationModel` faithfully represents the EDSL implementation. Create `Compiler/Proofs/SpecCorrectness/TipJar.lean` (Lake discovers all `.lean` files under `Compiler/` automatically via `globs := #[.andSubmodules `Compiler]` in `lakefile.lean`, so no registration is needed):
 
 ```lean
 /-

@@ -446,8 +446,8 @@ Yul libraries (PoseidonT3/T4). Use `lake exe verity-compiler --link ...` to
 compile it separately.
 
 **Adding a new contract (canonical path)**: add a `verity_contract` declaration
-in `Verity/Examples/MacroContracts.lean`. `allSpecs` is derived from those
-macro declarations.
+in `Verity/Examples/MacroContracts.lean`, then add the generated `<Name>.spec`
+to `allSpecs` below.
 
 Manual `Compiler.Specs.*Spec` definitions remain only for legacy proof migration
 and special cases (for example, linked-library workflows like `cryptoHashSpec`).

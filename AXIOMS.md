@@ -103,7 +103,9 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 - Compilation-path totalization work in `Compiler/CompilationModel.lean` does not
   add, remove, or modify Lean axioms; it only replaces `partial def` recursion
   with explicit structural termination proofs (including dynamic-param scope
-  checks, statement read/write analyzers, and statement-list validation walkers).
+  checks, statement read/write analyzers, statement-list validation walkers,
+  and all Expr/Stmt validation walkers: scoped-identifier, interop,
+  internal-call-shape, external-call-target, and event-argument-shape).
 
 ## Maintenance Rule
 

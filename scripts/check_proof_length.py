@@ -66,6 +66,9 @@ ALLOWLIST: set[str] = {
     # End-to-end composition proofs (Issue #998) — compose Layers 2+3:
     "simpleStorage_endToEnd",
     "yulBody_from_state_eq_yulBody",
+    # Statement equivalence core recursion proof (Lean 4.22 transport-heavy);
+    # decomposition planned after stabilization of helper lemmas.
+    "stmt_and_stmts_equiv",
 }
 
 # Directories containing proof files to scan.

@@ -26,12 +26,11 @@
 import Verity.Core
 import Verity.Stdlib.Math
 import Verity.EVM.Uint256
-import Verity.Proofs.Stdlib.SpecInterpreter
+import Compiler.CompilationModel
 
 namespace Verity.Proofs.Stdlib.Automation
 
 open Verity
-open Verity.Proofs.Stdlib.SpecInterpreter
 open Compiler.CompilationModel
 
 /-!
@@ -311,10 +310,10 @@ theorem getStorageAddr_runValue (slot : StorageSlot Address) (state : ContractSt
 
 -- Address values are always less than 2^160 (the address modulus).
 theorem addressToNat_lt_modulus (addr : Address) :
-    addr.val < addressModulus := addr.isLt
+    addr.val < Core.ADDRESS_MODULUS := addr.isLt
 
 @[simp] theorem addressToNat_mod_eq (addr : Address) :
-    addr.val % addressModulus = addr.val := by
+    addr.val % Core.ADDRESS_MODULUS = addr.val := by
   exact Nat.mod_eq_of_lt (addressToNat_lt_modulus addr)
 
 @[simp] theorem addressToNat_beq_self (addr : Address) :
@@ -583,95 +582,6 @@ theorem uint256_sub_val_of_le (a : Verity.Core.Uint256) (amount : Nat)
     exact Verity.EVM.Uint256.sub_eq_of_le h_le
   simp [Nat.mod_eq_of_lt h_amount_lt] at h_sub
   simpa using h_sub
-
--- getSlot from setSlot (same slot)
-theorem SpecStorage_getSlot_setSlot_same (storage : SpecStorage) (slot : Nat) (value : Nat) :
-    (storage.setSlot slot value).getSlot slot = value := by
-  simp [SpecStorage.getSlot, SpecStorage.setSlot]
-
-theorem lookup_filter_ne {β : Type} (k k' : Nat) (h : k ≠ k') (xs : List (Nat × β)) :
-    (xs.filter (fun kv => kv.1 ≠ k')).lookup k = xs.lookup k := by
-  induction xs with
-  | nil =>
-      simp
-  | cons kv xs ih =>
-      cases kv with
-      | mk k0 v0 =>
-          by_cases hk0 : k0 = k'
-          · -- Filter drops this head.
-            have hk0ne : k ≠ k0 := by
-              intro hkk
-              exact h (hkk.trans hk0)
-            calc
-              (List.filter (fun kv => kv.1 ≠ k') ((k0, v0) :: xs)).lookup k
-                  = (List.filter (fun kv => kv.1 ≠ k') xs).lookup k := by
-                      simp [List.filter, hk0]
-              _ = xs.lookup k := ih
-              _ = ((k0, v0) :: xs).lookup k := by
-                      have hk0false : (k == k0) = false := by
-                        exact (beq_eq_false_iff_ne.mpr hk0ne)
-                      simp [List.lookup, hk0false]
-          · -- Filter keeps this head.
-            by_cases hk : k = k0
-            · simp [List.filter, List.lookup, hk0, hk]
-            · calc
-                (List.filter (fun kv => kv.1 ≠ k') ((k0, v0) :: xs)).lookup k
-                    = (List.filter (fun kv => kv.1 ≠ k') xs).lookup k := by
-                        have hkfalse : (k == k0) = false := by
-                          exact (beq_eq_false_iff_ne.mpr hk)
-                        simp [List.filter, List.lookup, hk0, hkfalse]
-                _ = xs.lookup k := ih
-                _ = ((k0, v0) :: xs).lookup k := by
-                        have hkfalse : (k == k0) = false := by
-                          exact (beq_eq_false_iff_ne.mpr hk)
-                        simp [List.lookup, hkfalse]
-
--- lookup skips head when key is different
-theorem lookup_cons_ne {α β : Type} [BEq α] [LawfulBEq α]
-    (k k' : α) (v : β) (xs : List (α × β)) (h : k ≠ k') :
-    (List.lookup k ((k', v) :: xs)) = List.lookup k xs := by
-  have hfalse : (k == k') = false := by
-    exact (beq_eq_false_iff_ne.mpr h)
-  simp [List.lookup, hfalse]
-
--- getSlot from setSlot (different slot)
-theorem SpecStorage_getSlot_setSlot_diff (storage : SpecStorage) (slot1 slot2 : Nat) (value : Nat)
-    (h : slot1 ≠ slot2) :
-    (storage.setSlot slot1 value).getSlot slot2 = storage.getSlot slot2 := by
-  -- After unfolding: List.lookup slot2 ((slot1, value) :: filtered)
-  -- Since slot2 ≠ slot1, lookup skips head and searches in filtered list
-  -- Key lemma needed: List.lookup k (List.filter (·.1 ≠ k') xs) = List.lookup k xs when k ≠ k'
-  unfold SpecStorage.getSlot SpecStorage.setSlot
-  have h' : slot2 ≠ slot1 := by
-    intro h2
-    exact h h2.symm
-  have hfalse : (slot2 == slot1) = false := by
-    exact (beq_eq_false_iff_ne.mpr h')
-  have hpred : (fun x : Nat × Nat => !decide (x.1 = slot1)) = (fun x : Nat × Nat => decide (x.1 ≠ slot1)) := by
-    funext x
-    simp [decide_not]
-  simp [List.lookup, hfalse, hpred, lookup_filter_ne slot2 slot1 h']
-
--- getMapping from setMapping (same slot and key) - requires proof
-theorem SpecStorage_getMapping_setMapping_same (storage : SpecStorage) (slot : Nat) (key : Nat) (value : Nat) :
-    (storage.setMapping slot key value).getMapping slot key = value := by
-  simp [SpecStorage.getMapping, SpecStorage.setMapping, List.lookup]
-
--- getMapping preserves other slots - requires proof
-theorem SpecStorage_getMapping_setMapping_diff_slot (storage : SpecStorage) (slot1 slot2 : Nat) (key : Nat) (value : Nat)
-    (h : slot1 ≠ slot2) :
-    (storage.setMapping slot1 key value).getMapping slot2 key = storage.getMapping slot2 key := by
-  unfold SpecStorage.getMapping SpecStorage.setMapping
-  have h' : slot2 ≠ slot1 := by
-    intro h2
-    exact h h2.symm
-  have hfalse : (slot2 == slot1) = false := by
-    exact (beq_eq_false_iff_ne.mpr h')
-  have hpred : (fun x : Nat × List (Nat × Nat) => !decide (x.1 = slot1)) =
-      (fun x : Nat × List (Nat × Nat) => decide (x.1 ≠ slot1)) := by
-    funext x
-    simp [decide_not]
-  simp [List.lookup, hfalse, hpred, lookup_filter_ne slot2 slot1 h']
 
 /-!
 ## Safe Arithmetic Lemmas

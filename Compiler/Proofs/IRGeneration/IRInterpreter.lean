@@ -20,7 +20,6 @@ import Compiler.IR
 import Compiler.CompilationModel
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.YulGeneration.Builtins
-import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Core
 
 namespace Compiler.Proofs.IRGeneration
@@ -121,9 +120,18 @@ identical to the Yul version, enabling direct equivalence proofs without axioms.
 def evalIRCall (state : IRState) (func : String) : List YulExpr → Option Nat
   | args => do
     let argVals ← evalIRExprs state args
-    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend
-      Compiler.Proofs.YulGeneration.defaultBuiltinBackend
-      state.storage state.sender state.selector state.calldata func argVals
+    if func = "callvalue" then
+      match argVals with
+      | [] => some 0
+      | _ => none
+    else if func = "calldatasize" then
+      match argVals with
+      | [] => some (4 + state.calldata.length * 32)
+      | _ => none
+    else
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend
+        Compiler.Proofs.YulGeneration.defaultBuiltinBackend
+        state.storage state.sender state.selector state.calldata func argVals
 termination_by args => exprsSize args + 1
 decreasing_by
   omega
@@ -166,6 +174,7 @@ mutual
 Total: uses explicit fuel parameter for recursion control.
 When fuel is 0, execution reverts (safe fallback). -/
 def execIRStmt : Nat → IRState → YulStmt → IRExecResult
+  | _, state, .funcDef _ _ _ _ => .continue state
   | 0, state, _ => .revert state  -- Out of fuel
   | Nat.succ fuel, state, stmt =>
       match stmt with
@@ -210,7 +219,7 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
                 .continue { state with memory := fun o => if o = offset then val else state.memory o }
               | _, _ => .revert state
           | .call "stop" [] => .stop state
-          | .call "revert" _ => .revert state
+          | .call "revert" [_, _] => .revert state
           | .call "return" [offsetExpr, sizeExpr] =>
               match evalIRExpr state offsetExpr, evalIRExpr state sizeExpr with
               | some offset, some size =>
@@ -219,7 +228,12 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
                 else
                   .return 0 state
               | _, _ => .revert state
-          | _ => .continue state  -- Other expressions are no-ops
+          | _ =>
+              -- Keep expression-statement behavior aligned with Yul:
+              -- evaluate the expression and revert on evaluation failure.
+              match evalIRExpr state e with
+              | some _ => .continue state
+              | none => .revert state
       | .if_ cond body =>
           match evalIRExpr state cond with
           | some c => if c ≠ 0 then execIRStmts fuel state body else .continue state

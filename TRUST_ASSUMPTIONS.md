@@ -34,7 +34,7 @@ boundary for generated EDSL artifacts.
 
 ```
 EDSL
-  ↓ [Layer 1: VERIFIED per contract — EDSL ≡ CompilationModel (via interpretSpec; see §9–10)]
+  ↓ [Layer 1: VERIFIED per contract — EDSL ≡ CompilationModel/IR bridge]
 CompilationModel (`CompilationModel`)
   ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
@@ -46,16 +46,12 @@ EVM Bytecode
 
 ## Layer-1 Hybrid Transition Strategy
 
-Layer 1 (EDSL ≡ CompilationModel) currently operates as a **hybrid**:
+Layer 1 (EDSL ≡ CompilationModel) now uses the semantic bridge architecture:
 
-- **Generated subset**: For contracts within the supported EDSL subset, the
-  `EDSL -> CompilationModel` correspondence is established by per-contract proofs
-  in `Compiler/Proofs/SpecCorrectness/` and `Verity/Proofs/`.
-- **Manual escape hatch**: Advanced or out-of-subset constructs (e.g., custom Yul
-  injection via linked libraries, ECM patterns, complex ABI encoding) are expressed
-  directly in the `CompilationModel` language. These are trusted at the
-  CompilationModel boundary — the compiler verifies IR/Yul generation from them,
-  but the correspondence to EDSL intent is the developer's responsibility.
+- Contract-facing proofs live under `Verity/Proofs/`.
+- Cross-layer EDSL ≡ IR statements live in `Compiler/Proofs/SemanticBridge.lean`.
+- Legacy `SpecCorrectness/*` and `SpecInterpreter` paths are removed from the
+  trusted path.
 
 This hybrid approach is intentional during transition. The long-term direction is to
 expand the generated subset (and eventually automate `EDSL -> CompilationModel`
@@ -69,9 +65,9 @@ generation), reducing the manual escape hatch surface over time.
 
 Metrics tracked by repository tooling:
 
-- 469 theorems across 11 categories.
+- 425 theorems across 11 categories.
 - 250 theorems have corresponding Foundry property tests.
-- 53% runtime test coverage.
+- 59% runtime test coverage.
 
 (These values are validated by `scripts/check_doc_counts.py` against `artifacts/verification_status.json`.)
 
@@ -182,30 +178,7 @@ If this file is stale, audit conclusions may be invalid.
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)
 
-### 9. SpecInterpreter (`interpretSpec`)
-
-- Role: reference semantics for CompilationModel execution in Layer 1 proofs.
-- Status: **trusted, being eliminated** — hand-rolled EVM reimplementation (~500 lines)
-  that does not use EVMYulLean. Implements wrapping arithmetic, storage reads/writes,
-  mapping slot derivation, control flow, and event emission from scratch.
-- Risk: if `interpretSpec` has a bug (e.g., incorrect subtraction wrapping), all
-  Layer 1 proofs are vacuously correct against wrong semantics.
-- Active mitigation (Issue #998, in progress):
-  - `Compiler/Proofs/EndToEnd.lean` composes Layers 2+3 (CompilationModel → IR → Yul)
-    into a single theorem, establishing the right-hand side of the target equivalence.
-  - `Verity/Proofs/Stdlib/PrimitiveBridge.lean` proves per-primitive lemmas connecting
-    EDSL operations (getStorage, setStorage, getStorageAddr, setStorageAddr,
-    getMapping, setMapping, add, sub, mul, div, mod, lt, gt, eq, require, if/else,
-    msgSender, safeAdd, safeSub, calldataload, Contract.run) to the compiled Yul
-    builtin semantics, establishing the left-hand side. Includes mixed-type
-    multi-slot encoding for contracts with both Address and Uint256 storage.
-  - The macro now emits per-function semantic preservation theorems
-    (via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`) that state
-    real semantic equivalence: EDSL ≡ interpretSpec(spec, ...) for all inputs.
-    These are currently `sorry` — discharging them will eliminate `interpretSpec`
-    from the TCB entirely.
-
-### 10. Macro Elaborator (`verity_contract`)
+### 9. Macro Elaborator (`verity_contract`)
 
 - Role: generates both the EDSL `Contract` monad value and the `CompilationModel`
   from a single syntax tree.
@@ -215,12 +188,9 @@ If this file is stale, audit conclusions may be invalid.
   from the same syntax tree by a deterministic elaborator, semantic equivalence holds
   by construction — provided the elaborator is correct.
 - Risk: a translation bug would cause the EDSL and CompilationModel to silently diverge.
-- Active mitigation (Issue #998, in progress): the macro now emits per-function
-  `_semantic_preservation` theorems that state EDSL ≡ interpretSpec(spec, ...) —
-  a real semantic property, not a tautology. When discharged, these provide
-  machine-checked witnesses that the EDSL and CompilationModel agree on storage
-  behavior for all inputs. Combined with Layers 2+3 (EndToEnd.lean), this
-  eliminates both interpretSpec and the macro elaborator from the TCB.
+- Active mitigation (Issue #998, in progress): macro artifacts are now paired with
+  direct EDSL ≡ IR/Yul bridge statements in `Compiler/Proofs/SemanticBridge.lean`,
+  keeping the trusted path independent of `SpecInterpreter`.
 
 ## Planned Trust-Boundary Hardening
 
@@ -234,24 +204,19 @@ The following items are planned but not yet active:
 
 Until these are implemented and CI-gated, claims of exact `solc` Yul identity remain out of scope.
 
-### Issue #998 (Eliminate interpretSpec, end-to-end semantic bridge)
+### Issue #998 (Semantic bridge hardening)
 
 Goal: a single machine-checked theorem per contract function:
 `EDSL execution ≡ EVMYulLean(compile(CompilationModel))`
 
 Roadmap:
 1. ✅ Compose Layers 2+3 into a single end-to-end theorem (`Compiler/Proofs/EndToEnd.lean`).
-2. ✅ Prove per-primitive correctness lemmas (`Verity/Proofs/Stdlib/PrimitiveBridge.lean`):
-   getStorage↔sload, setStorage↔sstore, add/sub/mul/div/mod↔builtins, lt/gt/eq↔comparisons,
-   require↔iszero+revert, if/else↔branching, msgSender↔caller,
-   Uint256/Address encoding, calldataload, Contract.run unfolding,
-   getMapping/setMapping unfolding, mixed-type multi-slot encoding.
-3. ✅ Macro emits per-function semantic preservation theorems (`_semantic_preservation`
-   theorems via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`).
-   Theorem states real semantic equivalence: EDSL execution ≡ interpretSpec(spec, ...)
-   on all inputs. On EDSL success, interpretSpec succeeds and all declared storage
-   slots agree. On EDSL revert, interpretSpec also reports failure. Proof is `sorry`
-   (Phase 4 will discharge by composing primitive bridge lemmas).
+2. ✅ Prove and reuse the required primitive/algebraic bridge lemmas inside
+   `Compiler/Proofs/EndToEnd.lean` and `Compiler/Proofs/SemanticBridge.lean`
+   (arithmetic/alignment and execution-bridge facts used by composed
+   EDSL→IR→Yul proofs).
+3. ✅ Macro emits per-function semantic preservation theorem skeletons
+   (`_semantic_preservation` via `mkSemanticBridgeCommand`).
 3b. ✅ SimpleStorage, Counter, Owned, SafeCounter, and OwnedCounter EDSL≡IR proofs
    fully discharged (`Compiler/Proofs/SemanticBridge.lean`). 16 functions total
    across 5 contracts. OwnedCounter demonstrates mixed-type multi-slot storage
@@ -263,20 +228,16 @@ Roadmap:
    and Counter (increment) in `SemanticBridge.lean`. These chain the EDSL≡IR proofs
    with `layer3_contract_preserves_semantics` to yield the full chain without
    `interpretSpec` in the TCB.
-4. 🔲 Discharge the `sorry` in preservation theorems by composing primitive lemmas.
-5. 🔲 Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
-6. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).
+4. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).
 
 New files:
 - `Compiler/Proofs/EndToEnd.lean` — Layers 2+3 composition
-- `Verity/Proofs/Stdlib/PrimitiveBridge.lean` — EDSL↔compiled-Yul primitive lemmas
 - `Compiler/Proofs/SemanticBridge.lean` — concrete IR-connected EDSL≡IR theorem targets
 
 Modified files:
-- `Verity/Macro/Bridge.lean` — `mkSemanticBridgeCommand` now states real EDSL ≡ interpretSpec
-  equivalence (previously a structural tautology); imports `SpecInterpreter`
-- `Verity/Macro/Elaborate.lean` — semantic bridge theorems emitted after `spec` generation
-  (since they reference the spec definition)
+- `Verity/Macro/Bridge.lean` — semantic-preservation theorem generation no longer
+  depends on `SpecInterpreter`
+- `Verity/Macro/Elaborate.lean` — semantic bridge theorem emission flow updated
 - `Verity/Macro/Translate.lean` — exported `contractValueTypeTermPublic`, `strTermPublic`,
   `natTermPublic`
 

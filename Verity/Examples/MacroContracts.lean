@@ -151,6 +151,19 @@ verity_contract Owned where
     let currentOwner ← getStorageAddr owner
     return currentOwner
 
+namespace Owned
+
+def isOwner : Contract Bool := do
+  let sender ← msgSender
+  let currentOwner ← getStorageAddr owner
+  return sender == currentOwner
+
+def onlyOwner : Contract Unit := do
+  let ownerCheck ← isOwner
+  require ownerCheck "Caller is not the owner"
+
+end Owned
+
 verity_contract Ledger where
   storage
     balances : Address → Uint256 := slot 0
@@ -235,6 +248,19 @@ verity_contract OwnedCounter where
     let currentOwner ← getStorageAddr owner
     require (sender == currentOwner) "Caller is not the owner"
     setStorageAddr owner newOwner
+
+namespace OwnedCounter
+
+def isOwner : Contract Bool := do
+  let sender ← msgSender
+  let currentOwner ← getStorageAddr owner
+  return sender == currentOwner
+
+def onlyOwner : Contract Unit := do
+  let ownerCheck ← isOwner
+  require ownerCheck "Caller is not the owner"
+
+end OwnedCounter
 
 verity_contract SimpleToken where
   storage
@@ -357,6 +383,38 @@ verity_contract ERC20 where
   function owner () : Address := do
     let currentOwner ← getStorageAddr ownerSlot
     return currentOwner
+
+namespace SimpleToken
+
+abbrev getTotalSupply : Contract Uint256 := totalSupply
+abbrev getOwner : Contract Address := owner
+
+def isOwner : Contract Bool := do
+  let sender ← msgSender
+  let currentOwner ← getStorageAddr ownerSlot
+  return sender == currentOwner
+
+def onlyOwner : Contract Unit := do
+  let ownerCheck ← isOwner
+  require ownerCheck "Caller is not the owner"
+
+end SimpleToken
+
+namespace ERC20
+
+abbrev getTotalSupply : Contract Uint256 := totalSupply
+abbrev getOwner : Contract Address := owner
+
+def isOwner : Contract Bool := do
+  let sender ← msgSender
+  let currentOwner ← getStorageAddr ownerSlot
+  return sender == currentOwner
+
+def onlyOwner : Contract Unit := do
+  let ownerCheck ← isOwner
+  require ownerCheck "Caller is not the owner"
+
+end ERC20
 
 verity_contract UintMapSmoke where
   storage

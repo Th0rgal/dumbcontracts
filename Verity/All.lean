@@ -12,6 +12,7 @@
 
 -- Core & Stdlib
 import Verity.Core
+import Verity.Core.Semantics
 import Verity.Core.Uint256
 import Verity.Core.FiniteSet
 import Verity.EVM.Uint256
@@ -26,7 +27,6 @@ import Verity.Specs.Common.Sum
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
 import Verity.Proofs.Stdlib.MappingAutomation
-import Verity.Proofs.Stdlib.SpecInterpreter
 import Verity.Proofs.Stdlib.ListSum
 
 -- Example contracts (EDSL implementations)

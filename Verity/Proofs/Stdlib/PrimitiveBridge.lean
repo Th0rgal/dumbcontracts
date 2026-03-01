@@ -138,7 +138,12 @@ theorem uint256_sub_matches_builtin (a b : Uint256) :
     have hle : b.val ≤ evmModulus + a.val := Nat.le_add_left _ _
     omega
   · -- Underflow case: result is (modulus - (b - a)) % modulus
+    -- Need: (2^256 - (b - a)) % 2^256 = (2^256 + a - b) % 2^256
+    -- Both sides equal 2^256 - (b - a) since b - a < 2^256
     simp [h]
+    have hb_lt := b.isLt
+    have ha_lt := a.isLt
+    omega
 
 /-- EDSL Uint256.mul matches the compiled `mul` builtin. -/
 theorem uint256_mul_matches_builtin (a b : Uint256) :

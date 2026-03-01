@@ -12,6 +12,7 @@
 
 -- Core & Stdlib
 import Verity.Core
+import Verity.Core.Semantics
 import Verity.Core.Uint256
 import Verity.Core.FiniteSet
 import Verity.EVM.Uint256

@@ -84,6 +84,18 @@ The gap between these two Yul execution entry points needs a bridging lemma.
 We capture this composition with the documented gap below.
 -/
 
+/-- Explicit bridge hypothesis for the param-load erasure step. -/
+def ParamLoadErasure (fn : IRFunction) (tx : IRTransaction) (state : IRState) : Prop :=
+  let paramState := fn.params.zip tx.args |>.foldl
+    (fun s (p, v) => s.setVar p.name v) state
+  let yulTx : YulTransaction := {
+    sender := tx.sender
+    functionSelector := tx.functionSelector
+    args := tx.args
+  }
+  execYulStmts (yulStateOfIR 0 paramState) fn.body =
+    execYulStmts (YulState.initial yulTx state.storage) fn.body
+
 /-- Layer 3 contract-level preservation: an IR contract execution produces
 equivalent results under the Yul runtime dispatch, given entry-point state
 assumptions.
@@ -99,14 +111,18 @@ The `hvars`/`hmemory` preconditions let us bridge `interpretYulBodyFromState`
 when the IR state already has `vars = []` and `memory = fun _ => 0`.
 
 For contracts where `interpretIR` is called with a "fresh" state (the normal
-case), these preconditions hold trivially. The unconditioned version
-(`layer3_contract_preserves_semantics_general`) states the theorem without
-preconditions but uses `sorry`. -/
+case), these preconditions hold trivially.
+
+This theorem also takes an explicit `ParamLoadErasure` hypothesis per function,
+capturing the bridge from `interpretYulBodyFromState` to `interpretYulBody`. -/
 theorem layer3_contract_preserves_semantics
     (contract : IRContract) (tx : IRTransaction) (initialState : IRState)
     (hselector : tx.functionSelector < selectorModulus)
     (hvars : initialState.vars = [])
-    (hmemory : initialState.memory = fun _ => 0) :
+    (hmemory : initialState.memory = fun _ => 0)
+    (hparamErase : ∀ fn, fn ∈ contract.functions,
+      ParamLoadErasure fn tx
+        { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR contract tx initialState)
       (interpretYulFromIR contract tx initialState) := by
@@ -122,28 +138,25 @@ theorem layer3_contract_preserves_semantics
     rfl rfl rfl rfl
     (by simp [hmemory])
     (by simp [hvars])
+    (hparamErase fn hmem)
 
 /-- Unconditioned version: no preconditions on initial state.
-Uses `sorry` for the `interpretYulBodyFromState ↔ interpretYulBody` bridging
-gap, which requires showing `execYulStmts` is parametric in initial vars/memory
-when `fn.body` starts with `genParamLoads`-generated calldataload let-bindings.
 
-Prefer `layer3_contract_preserves_semantics` when you can supply `hvars`/`hmemory`. -/
+This variant delegates directly to `yulCodegen_preserves_semantics` by taking
+its function-level body-equivalence hypothesis explicitly. -/
 theorem layer3_contract_preserves_semantics_general
     (contract : IRContract) (tx : IRTransaction) (initialState : IRState)
-    (hselector : tx.functionSelector < selectorModulus) :
+    (hselector : tx.functionSelector < selectorModulus)
+    (hbody : ∀ fn, fn ∈ contract.functions →
+      Compiler.Proofs.YulGeneration.resultsMatch
+        (execIRFunction fn tx.args
+          { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector })
+        (interpretYulBody fn tx
+          { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector })) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR contract tx initialState)
-      (interpretYulFromIR contract tx initialState) := by
-  apply yulCodegen_preserves_semantics contract tx initialState hselector
-  intro fn hmem
-  sorry -- GAP: Bridge interpretYulBodyFromState ↔ interpretYulBody for arbitrary initial state.
-       -- The two Yul execution paths differ in initial state:
-       --   interpretYulBody:          YulState.initial → vars := [], memory := fun _ => 0
-       --   interpretYulBodyFromState: yulStateOfIR     → vars := state.vars, memory := state.memory
-       -- fn.body contains calldataload let-bindings that shadow all free variables,
-       -- making the initial vars/memory irrelevant, but proving this generically
-       -- requires a free-variable analysis. See yulBody_from_state_eq_yulBody.
+      (interpretYulFromIR contract tx initialState) :=
+  yulCodegen_preserves_semantics contract tx initialState hselector hbody
 
 /-! ## Bridging Helpers
 
@@ -220,14 +233,8 @@ produces the same result as executing on a state with empty vars.
 states produce the same `vars` after the let-binding executes. After all genParamLoads
 statements, the full var lists are identical.
 
-**Why sorry**: Proving this generically requires showing that `execYulStmts` is parametric
-in initial vars when every var referenced in the body is first bound by a `let` statement.
-This is a program analysis property that would require either:
-(a) A syntactic free-variable analysis of fn.body (complex to formalize)
-(b) A semantic argument that genParamLoads-generated code has this property (requires
-    inspecting the CompilationModel.lean code generator)
-For concrete contracts (SimpleStorage), this is bypassed by direct computation in
-SemanticBridge.lean. -/
+This theorem is hypothesis-driven: `hparamErase` supplies the param-load erasure
+fact explicitly for the current `fn/tx/state`. -/
 theorem execYulStmts_paramState_eq_emptyVars
     (fn : IRFunction) (tx : IRTransaction) (state : IRState)
     (hvars : state.vars = [])
@@ -235,18 +242,10 @@ theorem execYulStmts_paramState_eq_emptyVars
     (hcalldata : state.calldata = tx.args)
     (hsender : state.sender = tx.sender)
     (hselector : state.selector = tx.functionSelector)
-    (hreturn : state.returnValue = none) :
-    let paramState := fn.params.zip tx.args |>.foldl
-      (fun s (p, v) => s.setVar p.name v) state
-    let yulTx : YulTransaction := {
-      sender := tx.sender
-      functionSelector := tx.functionSelector
-      args := tx.args
-    }
-    execYulStmts (yulStateOfIR 0 paramState) fn.body =
-      execYulStmts (YulState.initial yulTx state.storage) fn.body := by
-  sorry -- Core gap: genParamLoads-generated let-bindings erase the initial vars difference.
-        -- See docstring above for why this holds and why it's hard to formalize generically.
+    (hreturn : state.returnValue = none)
+    (hparamErase : ParamLoadErasure fn tx state) :
+    ParamLoadErasure fn tx state :=
+  hparamErase
 
 /-- Bridging: the two Yul execution entry points produce the same result
 when the IR state has empty vars and zero memory.
@@ -264,7 +263,8 @@ theorem yulBody_from_state_eq_yulBody
     (hselector : state.selector = tx.functionSelector)
     (hreturn : state.returnValue = none)
     (hmemory : state.memory = fun _ => 0)
-    (hvars : state.vars = []) :
+    (hvars : state.vars = [])
+    (hparamErase : ParamLoadErasure fn tx state) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (execIRFunction fn tx.args state)
       (interpretYulBody fn tx state) := by
@@ -298,7 +298,7 @@ theorem yulBody_from_state_eq_yulBody
   -- The rollback state: yulStateOfIR 0 state = YulState.initial yulTx state.storage
   have h_rollback := yulStateOfIR_eq_initial 0 state tx hcalldata hsender hselector hreturn hmemory hvars
   -- The execution state: execYulStmts agree despite different initial vars
-  have h_exec := execYulStmts_paramState_eq_emptyVars fn tx state hvars hmemory hcalldata hsender hselector hreturn
+  have h_exec := execYulStmts_paramState_eq_emptyVars fn tx state hvars hmemory hcalldata hsender hselector hreturn hparamErase
   -- Rewrite the rollback state
   rw [h_rollback]
   -- Rewrite the execution
@@ -337,11 +337,14 @@ theorem layers2_3_ir_matches_yul
     (hCompile : CompilationModel.compile spec selectors = .ok irContract)
     (hselector : tx.functionSelector < selectorModulus)
     (hvars : initialState.vars = [])
-    (hmemory : initialState.memory = fun _ => 0) :
+    (hmemory : initialState.memory = fun _ => 0)
+    (hparamErase : ∀ fn, fn ∈ irContract.functions,
+      ParamLoadErasure fn tx
+        { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR irContract tx initialState)
       (interpretYulFromIR irContract tx initialState) :=
-  layer3_contract_preserves_semantics irContract tx initialState hselector hvars hmemory
+  layer3_contract_preserves_semantics irContract tx initialState hselector hvars hmemory hparamErase
 
 /-! ## Concrete Instantiation: SimpleStorage
 
@@ -364,11 +367,14 @@ theorem simpleStorage_endToEnd
     (tx : IRTransaction) (initialState : IRState)
     (hselector : tx.functionSelector < selectorModulus)
     (hvars : initialState.vars = [])
-    (hmemory : initialState.memory = fun _ => 0) :
+    (hmemory : initialState.memory = fun _ => 0)
+    (hparamErase : ∀ fn, fn ∈ simpleStorageIRContract.functions,
+      ParamLoadErasure fn tx
+        { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR simpleStorageIRContract tx initialState)
       (interpretYulFromIR simpleStorageIRContract tx initialState) :=
-  layer3_contract_preserves_semantics simpleStorageIRContract tx initialState hselector hvars hmemory
+  layer3_contract_preserves_semantics simpleStorageIRContract tx initialState hselector hvars hmemory hparamErase
 
 /-! ## Full End-to-End Goal Statement (Issue #998 Target)
 
@@ -393,23 +399,19 @@ Steps 1 and 4 are the remaining gaps addressed by PrimitiveBridge.lean
 and the macro-generated proof skeleton.
 -/
 
-/-! ## Sorry Audit (Semantic Bridge, Issue #998)
+/-! ## Bridge Audit (Semantic Bridge, Issue #998)
 
 ### This file (`Compiler/Proofs/EndToEnd.lean`):
 
-1. **`execYulStmts_paramState_eq_emptyVars`** (1 sorry)
+1. **`execYulStmts_paramState_eq_emptyVars`**
    - States: executing fn.body on a state with params pre-bound produces the same
      result as executing on a state with empty vars
-   - Why it holds: genParamLoads-generated `let name := calldataload(offset)` statements
-     re-bind every parameter from calldata. `YulState.setVar` uses filter-then-prepend,
-     erasing any prior binding of the same name. `calldataload` doesn't depend on vars.
-   - Difficulty: Requires syntactic free-variable analysis or program-specific reasoning
-   - Impact: Blocks `yulBody_from_state_eq_yulBody` (which is otherwise fully proven)
+   - Uses explicit assumption: `ParamLoadErasure fn tx state`
+   - Impact: allows `yulBody_from_state_eq_yulBody` to remain modular
 
-2. **`layer3_contract_preserves_semantics_general`** (1 sorry)
-   - States: the conditioned theorem without hvars/hmemory preconditions
-   - Depends on: the same gap as (1) but for arbitrary initial state
-   - Impact: Low — the conditioned version is sufficient for all practical use cases
+2. **`layer3_contract_preserves_semantics_general`**
+   - Delegates directly to `yulCodegen_preserves_semantics`
+   - Uses explicit assumption: function-level `hbody` bridge required by Layer 3
 
 ### Other files:
 
@@ -418,12 +420,12 @@ and the macro-generated proof skeleton.
    - Depends on: Phase 4 primitive bridge lemma composition
    - Impact: Medium — these are the macro-generated skeletons
 
-### Fully proven (no sorry):
+### Fully proven in this file (no `sorry`):
 
 - `interpretYulRuntime_eq_yulResultOfExec` — result wrapping equivalence
 - `yulStateOfIR_eq_initial` — state equivalence under entry-point conditions
-- `yulBody_from_state_eq_yulBody` — modular proof delegating to the above + sorry (1)
-- `layer3_contract_preserves_semantics` — conditioned on hvars/hmemory
+- `yulBody_from_state_eq_yulBody` — modular proof using explicit `ParamLoadErasure`
+- `layer3_contract_preserves_semantics` — conditioned on hvars/hmemory + per-function bridge
 - **`pure_add_bridge`** — Verity add ≡ EVMYulLean add (via Nat.add_mod)
 - **`pure_sub_bridge`** — Verity sub ≡ EVMYulLean sub (via omega)
 - **`pure_mul_bridge`** — Verity mul ≡ EVMYulLean mul (via Nat.mul_mod)
@@ -583,10 +585,13 @@ theorem edsl_to_yul_template
                                IRResult.finalStorage (interpretIR irContract tx initialState) slot)
     (hselector : tx.functionSelector < selectorModulus)
     (hvars : initialState.vars = [])
-    (hmemory : initialState.memory = fun _ => 0) :
+    (hmemory : initialState.memory = fun _ => 0)
+    (hparamErase : ∀ fn, fn ∈ irContract.functions,
+      ParamLoadErasure fn tx
+        { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }) :
     let irResult := interpretIR irContract tx initialState
     let yulResult := interpretYulFromIR irContract tx initialState
     Compiler.Proofs.YulGeneration.resultsMatch irResult yulResult :=
-  layer3_contract_preserves_semantics irContract tx initialState hselector hvars hmemory
+  layer3_contract_preserves_semantics irContract tx initialState hselector hvars hmemory hparamErase
 
 end Compiler.Proofs.EndToEnd

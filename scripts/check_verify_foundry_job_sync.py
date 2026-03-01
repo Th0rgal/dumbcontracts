@@ -160,9 +160,9 @@ def main() -> int:
             "foundry-patched job must keep '--no-match-test \"Random10000\"'."
         )
 
-    if '--no-match-test "Random10000"' not in multiseed_cmd:
+    if "--no-match-test" in multiseed_cmd:
         errors.append(
-            "foundry-multi-seed job must keep '--no-match-test \"Random10000\"'."
+            "foundry-multi-seed job must not use --no-match-test filtering (Random10000 coverage is required)."
         )
 
     if errors:

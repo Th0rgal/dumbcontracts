@@ -135,7 +135,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: forge test --no-match-test "Random10000"
+                  - run: forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -233,7 +233,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: forge test --no-match-test "Random10000"
+                  - run: forge test
                 env:
                   FOUNDRY_PROFILE: "difftest"
                   DIFFTEST_RANDOM_SMALL: "100"
@@ -316,7 +316,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
+                  - run: DIFFTEST_RANDOM_SEED=7 forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -371,7 +371,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: env -- DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
+                  - run: env -- DIFFTEST_RANDOM_SEED=7 forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -426,7 +426,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: command -Vp -- env DIFFTEST_RANDOM_SEED=7 forge test --no-match-test "Random10000"
+                  - run: command -Vp -- env DIFFTEST_RANDOM_SEED=7 forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -501,7 +501,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: nice -n 10 forge test --no-match-test "Random10000"
+                  - run: nice -n 10 forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -556,7 +556,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: chrt --rr 50 ionice -c3 setsid -f forge test --no-match-test "Random10000"
+                  - run: chrt --rr 50 ionice -c3 setsid -f forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -631,7 +631,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: chrt --reset-on-fork --other 0 forge test --no-match-test "Random10000"
+                  - run: chrt --reset-on-fork --other 0 forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)
@@ -686,7 +686,7 @@ class FoundryEnvSyncTests(unittest.TestCase):
                     with:
                       name: generated-yul
                       path: artifacts/yul
-                  - run: setsid --session-leader forge test --no-match-test "Random10000"
+                  - run: setsid --session-leader forge test
             """
         )
         rc, stderr = self._run_job_sync(workflow)

@@ -248,11 +248,12 @@ Roadmap:
 New files:
 - `Compiler/Proofs/EndToEnd.lean` — Layers 2+3 composition
 - `Verity/Proofs/Stdlib/PrimitiveBridge.lean` — EDSL↔compiled-Yul primitive lemmas
+- `Compiler/Proofs/SemanticBridge.lean` — concrete IR-connected EDSL≡IR theorem targets
 
 Modified files:
 - `Verity/Macro/Bridge.lean` — added `mkSemanticBridgeCommand`
 - `Verity/Macro/Elaborate.lean` — calls `mkSemanticBridgeCommand` per function
-- `Verity/Macro/Translate.lean` — exported `contractValueTypeTermPublic`
+- `Verity/Macro/Translate.lean` — exported `contractValueTypeTermPublic`, `strTermPublic`
 
 Cross-repo: verity (core), morpho-verity (benefits from auto proofs), verity-paper (architecture rewrite).
 

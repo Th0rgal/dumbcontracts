@@ -50,6 +50,7 @@ Access control and checks:
 24. `Verity/Macro/Bridge.lean` emits per-function `_semantic_preservation` theorem skeletons (Issue #998) connecting EDSL execution to the CompilationModel spec. These are currently `sorry` — discharging them eliminates `interpretSpec` from the TCB.
 25. `Compiler/Proofs/EndToEnd.lean` composes Layer 2 (CompilationModel→IR) and Layer 3 (IR→Yul) preservation theorems into a single end-to-end result.
 26. `Verity/Proofs/Stdlib/PrimitiveBridge.lean` proves per-primitive EDSL↔compiled-Yul correctness lemmas (getStorage↔sload, setStorage↔sstore, add/sub/mul↔builtins, require↔iszero+revert, msgSender↔caller).
+27. `Compiler/Proofs/SemanticBridge.lean` states the target EDSL≡compiled-IR theorems for SimpleStorage (store, retrieve) with `sorry` — to be discharged in Phase 4 by composing primitive bridge lemmas.
 
 Crypto choices:
 1. Function selectors use keccak256 (Ethereum ABI standard interoperability requirement).

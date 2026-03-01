@@ -5,8 +5,7 @@
   preservation theorems into a single end-to-end result:
 
     For any CompilationModel, evaluating the compiled Yul via the proof semantics
-    produces the same result as the IR semantics (which is in turn equivalent to
-    interpretSpec).
+    produces the same result as the IR semantics.
 
   This is the first step toward eliminating `interpretSpec` from the TCB
   (Issue #998). Once primitive-level EDSL ≡ compiled-Yul lemmas are proven,
@@ -54,7 +53,12 @@ We re-export the key results here for downstream composition.
 results under IR execution and fuel-based Yul execution.
 
 This is a re-export of `ir_function_body_equiv` from Preservation.lean,
-included here for composition convenience. -/
+included here for composition convenience.
+
+NOTE: This uses `interpretYulBodyFromState`, which executes the function body
+statements directly with IR-derived state. This is different from
+`interpretYulBody`, which uses `YulState.initial` (the runtime dispatch entry
+point). The gap is bridged in `yulCodegen_preserves_semantics`. -/
 theorem layer3_function_preserves_semantics
     (fn : IRFunction) (selector : Nat) (args : List Nat) (initialState : IRState) :
     Compiler.Proofs.YulGeneration.resultsMatch
@@ -64,10 +68,42 @@ theorem layer3_function_preserves_semantics
         initialState) :=
   ir_function_body_equiv fn selector args initialState
 
+/-! ## Layer 3 Contract-Level: IR → Yul (via runtime dispatch)
+
+The full Layer 3 theorem (`yulCodegen_preserves_semantics`) proves that
+executing an IR contract matches executing the emitted Yul runtime code.
+
+The existing theorem in Preservation.lean takes a `hbody` hypothesis that
+requires `interpretYulBody` (runtime-style Yul execution) to match
+`execIRFunction` (IR execution) for each function.
+
+`ir_function_body_equiv` proves the match against `interpretYulBodyFromState`
+(statement-level Yul execution), not `interpretYulBody` (runtime dispatch).
+The gap between these two Yul execution entry points needs a bridging lemma.
+
+We capture this composition with the documented gap below.
+-/
+
 /-- Layer 3 contract-level preservation: an IR contract execution produces
 equivalent results under the Yul runtime dispatch.
 
-Requires: selector is within the valid range (< 2^32). -/
+Requires:
+- `hselector`: selector is within the valid range (< 2^32)
+- The bridging lemma between `interpretYulBodyFromState` and
+  `interpretYulBody` (the `sorry` below)
+
+The `sorry` captures the gap between two Yul execution entry points:
+- `interpretYulBodyFromState`: executes fn.body statements on IR-derived state
+- `interpretYulBody`: executes fn.body via `interpretYulRuntime` (runtime dispatch)
+
+These differ in initial state setup:
+- `interpretYulBodyFromState` uses `yulStateOfIR selector state` (preserves vars)
+- `interpretYulBody` uses `YulState.initial yulTx state.storage` (empty vars)
+
+For function bodies that don't read pre-initialized vars (i.e., all macro-generated
+code), these produce the same results. A formal bridging lemma requires showing
+that `yulStateOfIR` and `YulState.initial` agree on the relevant state components
+after parameter initialization. -/
 theorem layer3_contract_preserves_semantics
     (contract : IRContract) (tx : IRTransaction) (initialState : IRState)
     (hselector : tx.functionSelector < selectorModulus) :
@@ -76,90 +112,82 @@ theorem layer3_contract_preserves_semantics
       (interpretYulFromIR contract tx initialState) := by
   apply yulCodegen_preserves_semantics contract tx initialState hselector
   intro fn hmem
-  -- For each function in the contract, we need to show IR execution matches
-  -- Yul execution. The existing `ir_function_body_equiv` proves this for
-  -- `interpretYulBodyFromState`. We need to bridge to `interpretYulBody`.
-  -- The gap is documented in Preservation.lean (lines 97-113): bridging
-  -- `interpretYulBodyFromState` (fuel-based) and `interpretYulBody`
-  -- (runtime-code-based entry point).
-  sorry -- TODO: Bridge `interpretYulBodyFromState` to `interpretYulBody`.
-         -- This requires showing that the two Yul execution entry points
-         -- (fuel-based statement execution vs runtime dispatch) produce
-         -- identical results for a given function body. The proof
-         -- infrastructure exists in Equivalence.lean but the final
-         -- composition lemma bridging these two entry points is not yet
-         -- written. See Preservation.lean lines 97-113 for the gap analysis.
+  -- Goal: resultsMatch (execIRFunction fn tx.args irState) (interpretYulBody fn tx irState)
+  -- where irState = { initialState with sender, calldata, selector }
+  --
+  -- We have from ir_function_body_equiv:
+  --   resultsMatch (execIRFunction fn args initialState')
+  --               (interpretYulBodyFromState fn selector (...) initialState')
+  --
+  -- We need to bridge interpretYulBodyFromState → interpretYulBody.
+  -- interpretYulBody fn tx state = interpretYulRuntime fn.body yulTx state.storage
+  -- interpretYulBodyFromState fn sel state rollback =
+  --   yulResultOfExecWithRollback (yulStateOfIR sel rollback) (execYulStmts (yulStateOfIR sel state) fn.body)
+  --
+  -- The bridging requires showing that for the initial state setup used by
+  -- yulCodegen_preserves_semantics (state with sender/calldata/selector),
+  -- both Yul execution paths produce the same result.
+  sorry -- GAP: Bridge interpretYulBodyFromState ↔ interpretYulBody.
+       -- This is provable for all macro-generated code because:
+       -- 1. yulStateOfIR preserves storage, sender, selector, calldata
+       -- 2. YulState.initial sets the same fields from YulTransaction
+       -- 3. The difference is only in vars initialization and memory,
+       --    which are both empty/zero at function entry
+       -- Formal proof requires showing execYulStmts on both states
+       -- produces the same result when fn.body only depends on
+       -- storage, sender, selector, and calldata (not pre-existing vars).
 
-/-! ## Layer 2+3 Composition: CompilationModel → Yul
+/-! ## Layers 2+3 Composition: CompilationModel → Yul
 
 These theorems compose the per-contract Layer 2 results with the generic
 Layer 3 result to obtain end-to-end preservation from CompilationModel
 semantics through to Yul execution semantics.
 -/
 
-/-- End-to-end preservation for a single IR function: if the Layer 2 proof
-establishes that `interpretIR` matches `interpretSpec` for a given function,
-then composing with Layer 3 shows that Yul execution also matches.
+/-- End-to-end: given a successfully compiled contract, IR execution matches
+Yul execution.
 
-This is the key composition theorem: it takes a Layer 2 result (IR matches spec)
-and a Layer 3 result (Yul matches IR) and produces IR matches Yul. The composed
-chain is: interpretSpec ≡ IR ≡ Yul.
+This is the key composition: it takes a compilation success proof and
+produces IR ≡ Yul. Combined with Layer 2 proofs (which show IR matches
+spec interpretation), this yields the full chain:
+  interpretSpec ≡ IR ≡ Yul
 
-NOTE: The `resultsMatch` used in Layer 2 (from IRGeneration.Conversions) is a
-different definition from the one in Layer 3 (from YulGeneration.Equivalence).
-Layer 2's `resultsMatch` compares IR results to SpecResults, while Layer 3's
-compares IR results to Yul results. The composition works by using the IR result
-as the common pivot point. -/
-
-/-- Given an IR contract that faithfully represents a CompilationModel spec,
-Yul execution of that contract produces the same observable result as IR
-execution.
-
-This is a direct consequence of Layer 3 (`layer3_contract_preserves_semantics`).
-The significance is that when combined with a Layer 2 proof (compile spec = ok ir,
-IR matches spec), we get the full chain: spec interpretation → IR → Yul.
--/
-theorem layers2_3_compose
+The remaining step (Issue #998) replaces interpretSpec ≡ IR with EDSL ≡ IR,
+eliminating interpretSpec from the TCB entirely. -/
+theorem layers2_3_ir_matches_yul
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (irContract : IRContract) (tx : IRTransaction) (initialState : IRState)
     (hCompile : CompilationModel.compile spec selectors = .ok irContract)
-    (hselector : tx.functionSelector < selectorModulus)
-    -- Layer 2 result: IR execution matches spec interpretation
-    (hLayer2 : ∀ specStorage specTx specResult,
-      interpretIR irContract tx initialState = specResult →
-      True)  -- Placeholder for the actual Layer 2 property
-    :
-    -- Conclusion: Yul execution matches IR execution (Layer 3)
+    (hselector : tx.functionSelector < selectorModulus) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR irContract tx initialState)
-      (interpretYulFromIR irContract tx initialState) := by
-  exact layer3_contract_preserves_semantics irContract tx initialState hselector
+      (interpretYulFromIR irContract tx initialState) :=
+  layer3_contract_preserves_semantics irContract tx initialState hselector
 
-/-! ## Concrete Instantiations
+/-! ## Concrete Instantiation: SimpleStorage
 
-Below we instantiate the end-to-end theorem for specific contracts,
-composing the concrete Layer 2 proofs from `IRGeneration/Expr.lean`
+Below we instantiate the end-to-end theorem for SimpleStorage,
+composing the concrete Layer 2 proof (`compile_simpleStorageSpec`)
 with the generic Layer 3 proof.
 -/
 
 /-- SimpleStorage end-to-end: compile → IR → Yul preserves semantics.
 
 Composes:
-- Layer 2: `compile_simpleStorageSpec` (compile succeeds)
+- Layer 2: `compile_simpleStorageSpec` (compilation succeeds, producing `simpleStorageIRContract`)
            `simpleStorage_store_correct` / `simpleStorage_retrieve_correct`
-           (from IRGeneration/Expr.lean)
+           (from IRGeneration/Expr.lean — these show IR ≡ interpretSpec)
 - Layer 3: `layer3_contract_preserves_semantics` (generic IR → Yul)
 
-The composed result says: for SimpleStorage, Yul execution produces the same
-observable storage effects as the spec interpretation.
--/
+The composed result: for SimpleStorage, Yul execution produces the same
+observable results as IR execution (which in turn matches interpretSpec). -/
 theorem simpleStorage_endToEnd
     (tx : IRTransaction) (initialState : IRState)
     (hselector : tx.functionSelector < selectorModulus) :
     Compiler.Proofs.YulGeneration.resultsMatch
       (interpretIR simpleStorageIRContract tx initialState)
-      (interpretYulFromIR simpleStorageIRContract tx initialState) := by
-  exact layer3_contract_preserves_semantics simpleStorageIRContract tx initialState hselector
+      (interpretYulFromIR simpleStorageIRContract tx initialState) :=
+  layer3_contract_preserves_semantics simpleStorageIRContract tx initialState hselector
 
 /-! ## Full End-to-End Goal Statement (Issue #998 Target)
 

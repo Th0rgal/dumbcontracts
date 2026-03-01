@@ -6,7 +6,7 @@
   interpreting the resulting IR.
 
   Unlike the macro-generated `_semantic_preservation` theorems (which live in the
-  contract namespace and avoid importing IR types), these theorems import the full
+  contract namespace and cannot import IR types), these theorems import the full
   IR execution machinery and state the precise equivalence:
 
     ∀ slot, (edslFinalState.storage slot).val = irResult.finalStorage slot
@@ -17,9 +17,10 @@
   3. ArithmeticProfile bridge (ArithmeticProfile.lean)
 
   **Why a separate file**: The macro-generated theorems cannot import
-  `Compiler.Proofs.IRGeneration.IRInterpreter` (it would create a circular
-  dependency and bloat every contract file). This file bridges the gap by
-  importing both the EDSL types and the IR execution types.
+  `Compiler.Proofs.IRGeneration.IRInterpreter` (it would transitively pull
+  in EVMYulLean and bloat every contract file). This file bridges the gap by
+  importing both the EDSL types and the IR execution types, stating the
+  theorems that directly reference `interpretIR`.
 
   Run: lake build Compiler.Proofs.SemanticBridge
 -/
@@ -53,11 +54,13 @@ def encodeStorage (state : ContractState) : Nat → Nat :=
 def encodeSender (state : ContractState) : Nat :=
   state.sender.val
 
-/-! ## Target Theorem: SimpleStorage.store
+/-! ## Target Theorems: SimpleStorage
 
-The full statement connecting EDSL execution to compiled IR execution.
-When discharged, this proves that `interpretSpec` is unnecessary for
-SimpleStorage.store — the EDSL and compiled IR agree directly.
+These theorems state the *real* equivalence: EDSL execution produces the
+same storage/return values as compiling the CompilationModel spec to IR
+and interpreting it. When discharged, `interpretSpec` is no longer needed.
+
+The trust chain becomes: EDSL ≡ IR ≡ Yul ≡ EVMYulLean (all machine-checked).
 -/
 
 /-- SimpleStorage.store: EDSL execution matches compiled IR execution.
@@ -67,72 +70,21 @@ This is the *target* theorem for Issue #998. When the `sorry` is discharged:
 - The trust chain becomes: EDSL ≡ IR ≡ Yul ≡ EVMYulLean (all machine-checked)
 
 Proof strategy:
-1. Unfold `store` into `setStorage storedData value`
-2. Apply `setStorage_matches_sstore` from PrimitiveBridge.lean
+1. Show `compile simpleStorageSpec selectors = .ok simpleStorageIRContract` by `rfl`
+2. Unfold `store value` into `setStorage storedData value`
 3. Show the IR compilation of the spec produces `sstore(0, value)` by `rfl`
 4. Show the IR interpreter executes `sstore(0, value)` to update slot 0
-5. Both sides agree: slot 0 = value.val, all other slots unchanged
--/
+5. Both sides agree: slot 0 = value.val, all other slots unchanged -/
 theorem simpleStorage_store_semantic_bridge
-    (state : ContractState) (sender : Address) (value : Uint256) :
-    let edslResult := Contract.run (Verity.Examples.store value) { state with sender := sender }
-    let irState := {
-      vars := []
-      storage := encodeStorage state
-      memory := fun _ => 0
-      calldata := [value.val]
-      returnValue := none
-      sender := encodeSender { state with sender := sender }
-      selector := 0x6057361d  -- store selector
-    } : IRState
-    -- When the EDSL succeeds, the IR execution produces matching storage
-    match edslResult with
-    | .success _ s' =>
-        -- EDSL storage matches the IR execution's storage at every slot.
-        -- The RHS here is the *target*: replace with irResult.finalStorage slot
-        -- once the full proof composes compile + interpretIR.
-        ∀ slot, (s'.storage slot).val = encodeStorage s' slot
-    | .revert _ _ => True
-    := by
-  -- The EDSL `store` always succeeds (it's just setStorage, no require)
-  simp [Verity.Examples.store, Contract.run, setStorage, bind, pure]
-  -- The storage update is straightforward — both sides encode the same state
-  intro slot
-  rfl
-
-/-- SimpleStorage.retrieve: EDSL execution matches compiled IR execution. -/
-theorem simpleStorage_retrieve_semantic_bridge
-    (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.retrieve) { state with sender := sender }
-    match edslResult with
-    | .success val s' =>
-        -- The retrieved value matches the encoded storage at slot 0
-        val.val = (encodeStorage state 0) ∧
-        -- State is unchanged
-        (∀ slot, (s'.storage slot).val = encodeStorage state slot)
-    | .revert _ _ => True
-    := by
-  simp [Verity.Examples.retrieve, Contract.run, getStorage, bind, pure, encodeStorage]
-  constructor
-  · rfl
-  · intro slot; rfl
-
-/-! ## Strong Target Theorems (with IR execution on the RHS)
-
-These theorems state the *real* target equivalence: EDSL storage matches
-the IR-compiled execution. The proof is `sorry` — this is the exact goal
-that Phase 4 will discharge by composing primitive bridge lemmas.
--/
-
-/-- Strong form: SimpleStorage.store EDSL execution matches compiled IR execution.
-
-This references `interpretIR` directly: the EDSL and the compiled IR
-produce the same storage at every slot. -/
-theorem simpleStorage_store_strong
     (state : ContractState) (sender : Address) (value : Uint256)
     (selectors : List Nat)
     (hSel : selectors = [0x6057361d, 0x2e64cec1]) :
     let edslResult := Contract.run (Verity.Examples.store value) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x6057361d
+      args := [value.val]
+    }
     let irState : IRState := {
       vars := []
       storage := encodeStorage state
@@ -141,11 +93,6 @@ theorem simpleStorage_store_strong
       returnValue := none
       sender := sender.val
       selector := 0x6057361d
-    }
-    let tx : IRTransaction := {
-      sender := sender.val
-      functionSelector := 0x6057361d
-      args := [value.val]
     }
     match edslResult with
     | .success _ s' =>
@@ -165,8 +112,12 @@ theorem simpleStorage_store_strong
         -- 4. Both update slot 0 to value.val, leaving others unchanged
         -- 5. QED by ext on storage functions
 
-/-- Strong form: SimpleStorage.retrieve EDSL execution matches compiled IR. -/
-theorem simpleStorage_retrieve_strong
+/-- SimpleStorage.retrieve: EDSL execution matches compiled IR execution.
+
+When discharged, this proves that `interpretSpec` is unnecessary for
+SimpleStorage.retrieve — the EDSL and compiled IR agree directly on
+both the return value and the final storage. -/
+theorem simpleStorage_retrieve_semantic_bridge
     (state : ContractState) (sender : Address)
     (selectors : List Nat)
     (hSel : selectors = [0x6057361d, 0x2e64cec1]) :

@@ -910,4 +910,8 @@ def mkSpecCommandPublic
 def contractValueTypeTermPublic (ty : ValueType) : CommandElabM Term :=
   contractValueTypeTerm ty
 
+/-- Public wrapper for `strTerm`, used by the semantic bridge
+    theorem generator in `Bridge.lean` (Issue #998). -/
+def strTermPublic (s : String) : Term := strTerm s
+
 end Verity.Macro

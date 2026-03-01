@@ -93,9 +93,9 @@ theorem setStorage_matches_sstore (s : StorageSlot Uint256) (v : Uint256) (state
     | .revert _ _ => False := by
   simp [setStorage, encodeStorage]
   constructor
-  · simp [BEq.beq, instBEqNat, Nat.beq_eq]
+  · simp [beq_iff_eq]
   · intro other hne
-    simp [BEq.beq, instBEqNat, Nat.beq_eq, hne]
+    simp [beq_iff_eq, hne]
 
 /-! ## Arithmetic Primitives: add / sub
 

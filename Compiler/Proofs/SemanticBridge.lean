@@ -12,7 +12,7 @@
     ∀ slot, (edslFinalState.storage slot).val = irResult.finalStorage slot
 
   For SimpleStorage, Counter, Owned, and SafeCounter, the proofs attempt full
-  discharge (no sorry) via direct simp unfolding of both EDSL and IR execution.
+  discharge (zero sorry) via direct simp unfolding of both EDSL and IR execution.
   SafeCounter demonstrates the case-split approach for success/revert paths.
   For more complex contracts, the proofs compose:
   1. Primitive bridge lemmas (PrimitiveBridge.lean)

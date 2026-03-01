@@ -80,6 +80,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_property_manifest_sync.py`** - Ensures `property_manifest.json` stays in sync with actual Lean theorems (detects added/removed theorems)
 - **`check_storage_layout.py`** - Validates storage slot consistency across EDSL, Spec, and Compiler layers; strips Lean comments/docstrings with a shared string-aware parser (so `--` and `/- -/` inside string literals are preserved), detects intra-contract slot collisions, derives Spec slot usage from `Verity/Specs/*/Spec.lean` literal state accesses, and enforces Spec↔EDSL slot/type parity for compiled non-external contracts
 - **`check_manual_spec_quarantine.py`** - Enforces issue #999 quarantine boundaries: canonical compiler/lowering/gas/CLI paths must not reference manual `Compiler.Specs.*Spec` symbols (except explicit compatibility allowlist entries such as `cryptoHashSpec`); Lean source checks are comment/string-aware so comment-only or string-literal decoys cannot satisfy checks
+- **`check_spec_proof_migration_boundary.py`** - Enforces issue #997 anti-regression boundary: legacy proof references (`Verity.Examples.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken,SafeCounter}` and manual `Compiler.Specs.*Spec` names) are allowed only in an explicit temporary allowlist, and stale allowlist entries fail closed once migrated
 - **`check_mapping_slot_boundary.py`** - Enforces the mapping-slot abstraction boundary for proof interpreters: no proof semantics file may import `MappingEncoding`; builtin dispatch in `Compiler/Proofs/YulGeneration/Builtins.lean` must route through `abstractMappingSlot`/`abstractLoadStorageOrMapping`; runtime interpreters must import `MappingSlot`, use `abstractStoreStorageOrMapping`/`abstractStoreMappingEntry`, avoid legacy mapping internals (`mappingTag`/`encodeMappingSlot`/`decodeMappingSlot`/`encodeNestedMappingSlot`/`normalizeMappingBaseSlot`) including local aliases, and must not define a separate execution-state `mappings` table (`IRState`/`YulState` remain flat-storage only); also enforces explicit backend-scope markers (`activeMappingSlotBackend := .keccak`), presence of keccak helpers (`abiEncodeMappingSlot`, `solidityMappingSlot`), keccak routing through `solidityMappingSlot`, flat-storage keccak routing in `abstractLoadMappingEntry`/`abstractStoreMappingEntry`, smoke-test avoidance of legacy tagged helpers, and matching trust-boundary documentation in `TRUST_ASSUMPTIONS.md`; Lean source checks are comment/string-aware so comment-only or string-literal decoys cannot satisfy required markers
 - **`check_yul_builtin_boundary.py`** - Enforces a centralized Yul builtin semantics boundary: runtime interpreters must import `Compiler/Proofs/YulGeneration/Builtins.lean`, call `evalBuiltinCall` or `evalBuiltinCallWithBackend`, and avoid inline builtin dispatch branches (`func = "add"`, `func = "sload"`, etc.); Lean source checks are comment/string-aware so comment-only or string-literal decoys cannot satisfy required call markers
 - **`check_builtin_list_sync.py`** - Ensures `Compiler/Linker.lean` `yulBuiltins` stays synchronized with `Compiler/CompilationModel.lean` (`interopBuiltinCallNames ∪ isLowLevelCallName`) while allowing expected Linker-only Yul-object builtins (`datasize`, `dataoffset`, `datacopy`); Lean source checks are comment-aware so commented decoy `def` lines cannot satisfy extraction
@@ -125,6 +126,7 @@ python3 scripts/check_verify_artifact_sync.py
 # Run locally after modifying storage slots or adding contracts
 python3 scripts/check_storage_layout.py
 python3 scripts/check_manual_spec_quarantine.py
+python3 scripts/check_spec_proof_migration_boundary.py
 
 # After a lake build, enforce warning non-regression
 python3 scripts/check_lean_warning_regression.py --log lake-build.log
@@ -259,16 +261,17 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 8 jobs:
 21. Macro property-test artifact generation (`check_macro_property_test_generation.py --check`)
 22. Storage layout consistency (`check_storage_layout.py`)
 23. Manual-spec quarantine boundary (`check_manual_spec_quarantine.py`)
-24. Lean hygiene (`check_lean_hygiene.py`)
-25. Static gas model builtin coverage (`check_gas_model_coverage.py`)
-26. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
-27. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
-28. Builtin list sync (Linker ↔ CompilationModel) (`check_builtin_list_sync.py`)
-29. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
-30. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
-30. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
-31. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
-32. Proof length limits (`check_proof_length.py`)
+24. SpecCorrectness migration boundary (`check_spec_proof_migration_boundary.py`)
+25. Lean hygiene (`check_lean_hygiene.py`)
+26. Static gas model builtin coverage (`check_gas_model_coverage.py`)
+27. Mapping-slot abstraction boundary (`check_mapping_slot_boundary.py`)
+28. Yul builtin abstraction boundary (`check_yul_builtin_boundary.py`)
+29. Builtin list sync (Linker ↔ CompilationModel) (`check_builtin_list_sync.py`)
+30. EVMYulLean capability boundary (`check_evmyullean_capability_boundary.py`)
+31. EVMYulLean capability + unsupported-node report freshness (`generate_evmyullean_capability_report.py --check`)
+32. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
+33. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
+34. Proof length limits (`check_proof_length.py`)
 
 **`build` job** (proofs + axiom audit, ~30 min timeout):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)

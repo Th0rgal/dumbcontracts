@@ -19,6 +19,10 @@ boundary for generated EDSL artifacts.
 - Recursive `CompilationModel` safety analyzers on the active path are being
   incrementally totalized (`partial def` -> `def` with explicit termination
   proofs), reducing trusted operational behavior around non-termination.
+- Current totalization scope includes parameter-dynamicity checks,
+  state read/write analyzers, and statement-list validator walkers in
+  `Compiler/CompilationModel.lean` (return-shape, parameter-reference,
+  constructor return, and custom-error argument-shape validation).
 
 ## Verification Chain
 

@@ -1,4 +1,5 @@
 import Verity.Core.Free.TypedIR
+import Compiler.Proofs.IRGeneration.IRInterpreter
 
 namespace Verity.Core.Free
 
@@ -96,5 +97,89 @@ example :
         locals := []
         body := [TStmt.revert "halt"] } = .revert "halt" := by
   simp [evalTBlock, evalTStmts, evalTStmtsFuel, evalTStmtFuel, defaultEvalFuel]
+
+open Compiler.Yul
+open Compiler.Proofs.IRGeneration
+
+def counterTmp : TVar := { id := 10, ty := .uint256 }
+
+/-- Typed IR block equivalent to Counter.increment (`count := count + 1`). -/
+def counterIncrementTBlock : TBlock where
+  params := []
+  locals := [counterTmp]
+  body :=
+    [ TStmt.let_ counterTmp (TExpr.getStorage 0)
+    , TStmt.assign counterTmp (TExpr.add (TExpr.var counterTmp) (TExpr.uintLit 1))
+    , TStmt.setStorage 0 (TExpr.var counterTmp)
+    ]
+
+/-- Existing untyped IR program equivalent to `counterIncrementTBlock`. -/
+def counterIncrementIR : List YulStmt :=
+  [ .let_ "tmp" (.call "sload" [.lit 0])
+  , .assign "tmp" (.call "add" [.ident "tmp", .lit 1])
+  , .expr (.call "sstore" [.lit 0, .ident "tmp"])
+  ]
+
+def counterTypedInit : TExecState :=
+  { world := { Verity.defaultState with
+      storage := fun i => if i = 0 then 41 else 0 } }
+
+def counterIRInit : IRState :=
+  { (IRState.initial 0) with
+      storage := fun i => if i = 0 then 41 else 0 }
+
+def counterTypedFinalSlot : Option Nat :=
+  match evalTBlock counterTypedInit counterIncrementTBlock with
+  | .ok s => some ((s.world.storage 0 : Verity.Core.Uint256) : Nat)
+  | .revert _ => none
+
+def counterIRFinalSlot : Option Nat :=
+  match execIRStmts 32 counterIRInit counterIncrementIR with
+  | .continue s => some (s.storage 0)
+  | _ => none
+
+/-- Golden test: typed Counter increment matches existing IR evaluation. -/
+example : counterTypedFinalSlot = counterIRFinalSlot := by
+  native_decide
+
+def simpleStorageValue : TVar := { id := 20, ty := .uint256 }
+
+/-- Typed IR block equivalent to SimpleStorage.store(v). -/
+def simpleStorageStoreTBlock : TBlock where
+  params := [simpleStorageValue]
+  locals := []
+  body := [TStmt.setStorage 0 (TExpr.var simpleStorageValue)]
+
+/-- Existing untyped IR program equivalent to `simpleStorageStoreTBlock`. -/
+def simpleStorageStoreIR : List YulStmt :=
+  [ .expr (.call "sstore" [.lit 0, .ident "value"]) ]
+
+def simpleStorageTypedInit : TExecState :=
+  { world := { Verity.defaultState with
+      storage := fun i => if i = 0 then 5 else 0 }
+    vars := { uint256 := fun
+      | 20 => 77
+      | _ => 0 } }
+
+def simpleStorageIRInit : IRState :=
+  (IRState.initial 0).setVar "value" 77
+
+def simpleStorageIRInitWithStorage : IRState :=
+  { simpleStorageIRInit with
+      storage := fun i => if i = 0 then 5 else 0 }
+
+def simpleStorageTypedFinalSlot : Option Nat :=
+  match evalTBlock simpleStorageTypedInit simpleStorageStoreTBlock with
+  | .ok s => some ((s.world.storage 0 : Verity.Core.Uint256) : Nat)
+  | .revert _ => none
+
+def simpleStorageIRFinalSlot : Option Nat :=
+  match execIRStmts 16 simpleStorageIRInitWithStorage simpleStorageStoreIR with
+  | .continue s => some (s.storage 0)
+  | _ => none
+
+/-- Golden test: typed SimpleStorage store matches existing IR evaluation. -/
+example : simpleStorageTypedFinalSlot = simpleStorageIRFinalSlot := by
+  native_decide
 
 end Verity.Core.Free

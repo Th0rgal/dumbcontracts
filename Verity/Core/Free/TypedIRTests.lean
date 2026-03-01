@@ -1,5 +1,7 @@
 import Verity.Core.Free.TypedIR
+import Verity.Core.Free.TypedIRCompiler
 import Compiler.Proofs.IRGeneration.IRInterpreter
+import Compiler.Specs
 
 namespace Verity.Core.Free
 
@@ -120,13 +122,30 @@ def counterIncrementIR : List YulStmt :=
   , .expr (.call "sstore" [.lit 0, .ident "tmp"])
   ]
 
+def counterTypedInitWorld : Verity.ContractState :=
+  { «storage» := fun i => if i = 0 then 41 else 0
+    storageAddr := fun _ => 0
+    storageMap := fun _ _ => 0
+    storageMapUint := fun _ _ => 0
+    storageMap2 := fun _ _ _ => 0
+    sender := 0
+    thisAddress := 0
+    msgValue := 0
+    blockTimestamp := 0
+    knownAddresses := fun _ => Verity.Core.FiniteAddressSet.empty
+    events := [] }
+
 def counterTypedInit : TExecState :=
-  { world := { Verity.defaultState with
-      storage := fun i => if i = 0 then 41 else 0 } }
+  { world := counterTypedInitWorld }
 
 def counterIRInit : IRState :=
-  { (IRState.initial 0) with
-      storage := fun i => if i = 0 then 41 else 0 }
+  { vars := []
+    «storage» := fun i => if i = 0 then 41 else 0
+    memory := fun _ => 0
+    calldata := []
+    returnValue := none
+    sender := 0
+    selector := 0 }
 
 def counterTypedFinalSlot : Option Nat :=
   match evalTBlock counterTypedInit counterIncrementTBlock with
@@ -154,9 +173,21 @@ def simpleStorageStoreTBlock : TBlock where
 def simpleStorageStoreIR : List YulStmt :=
   [ .expr (.call "sstore" [.lit 0, .ident "value"]) ]
 
+def simpleStorageTypedInitWorld : Verity.ContractState :=
+  { «storage» := fun i => if i = 0 then 5 else 0
+    storageAddr := fun _ => 0
+    storageMap := fun _ _ => 0
+    storageMapUint := fun _ _ => 0
+    storageMap2 := fun _ _ _ => 0
+    sender := 0
+    thisAddress := 0
+    msgValue := 0
+    blockTimestamp := 0
+    knownAddresses := fun _ => Verity.Core.FiniteAddressSet.empty
+    events := [] }
+
 def simpleStorageTypedInit : TExecState :=
-  { world := { Verity.defaultState with
-      storage := fun i => if i = 0 then 5 else 0 }
+  { world := simpleStorageTypedInitWorld
     vars := { uint256 := fun
       | 20 => 77
       | _ => 0 } }
@@ -165,8 +196,13 @@ def simpleStorageIRInit : IRState :=
   (IRState.initial 0).setVar "value" 77
 
 def simpleStorageIRInitWithStorage : IRState :=
-  { simpleStorageIRInit with
-      storage := fun i => if i = 0 then 5 else 0 }
+  { vars := simpleStorageIRInit.vars
+    «storage» := fun i => if i = 0 then 5 else 0
+    memory := simpleStorageIRInit.memory
+    calldata := simpleStorageIRInit.calldata
+    returnValue := simpleStorageIRInit.returnValue
+    sender := simpleStorageIRInit.sender
+    selector := simpleStorageIRInit.selector }
 
 def simpleStorageTypedFinalSlot : Option Nat :=
   match evalTBlock simpleStorageTypedInit simpleStorageStoreTBlock with
@@ -180,6 +216,37 @@ def simpleStorageIRFinalSlot : Option Nat :=
 
 /-- Golden test: typed SimpleStorage store matches existing IR evaluation. -/
 example : simpleStorageTypedFinalSlot = simpleStorageIRFinalSlot := by
+  native_decide
+
+def compiledCounterIncrementFinalSlot : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.counterSpec "increment" with
+  | .error _ => none
+  | .ok block =>
+      match evalTBlock counterTypedInit block with
+      | .ok s => some ((s.world.storage 0 : Verity.Core.Uint256) : Nat)
+      | .revert _ => none
+
+/-- Golden test: CompilationModel->typed-IR compiler preserves Counter.increment storage effect. -/
+example : compiledCounterIncrementFinalSlot = counterIRFinalSlot := by
+  native_decide
+
+def compiledSimpleStorageStoreFinalSlot : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.simpleStorageSpec "store" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [] => none
+      | valueParam :: _ =>
+          let init : TExecState :=
+            { world := simpleStorageTypedInitWorld
+              vars := { uint256 := fun
+                | i => if i = valueParam.id then 77 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some ((s.world.storage 0 : Verity.Core.Uint256) : Nat)
+          | .revert _ => none
+
+/-- Golden test: CompilationModel->typed-IR compiler preserves SimpleStorage.store storage effect. -/
+example : compiledSimpleStorageStoreFinalSlot = simpleStorageIRFinalSlot := by
   native_decide
 
 end Verity.Core.Free

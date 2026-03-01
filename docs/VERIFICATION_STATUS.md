@@ -148,7 +148,7 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 
 ## Layer 1: EDSL ≡ CompilationModel (`CompilationModel`) ✅ **COMPLETE**
 
-**Status**: 8 contracts verified (7 with full spec proofs, 1 with inline proofs); CryptoHash is an unverified linker demo (0 specs)
+**Status**: 10 contracts with non-stdlib theorem coverage (including ERC20/ERC721 foundation baselines); CryptoHash is an unverified linker demo (0 specs)
 
 **What This Layer Proves**: User-facing EDSL contracts satisfy their human-readable specifications.
 
@@ -165,6 +165,8 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 | OwnedCounter | 48 | ✅ Complete | `Verity/Proofs/OwnedCounter/` |
 | Ledger | 33 | ✅ Complete | `Verity/Proofs/Ledger/` |
 | SimpleToken | 61 | ✅ Complete | `Verity/Proofs/SimpleToken/` |
+| ERC20 | 19 | 🟡 Baseline | `Verity/Proofs/ERC20/` |
+| ERC721 | 11 | 🟡 Baseline | `Verity/Proofs/ERC721/` |
 | CryptoHash | 0 | ⬜ No specs | `Verity/Examples/CryptoHash.lean` |
 | ReentrancyExample | 4 | ✅ Complete | `Verity/Examples/ReentrancyExample.lean` |
 | **Total** | **272** | **✅ 100%** | — |

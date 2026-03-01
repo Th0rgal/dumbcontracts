@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Generate Foundry property-test stubs from `verity_contract` declarations.
+
+This script scans Lean sources for macro contracts declared with `verity_contract` and emits
+baseline Foundry suites (`Property<Contract>.t.sol`) with one test per function.
+
+Goals:
+- Keep generation deterministic and fail-closed on missing contracts.
+- Provide immediately runnable stubs for mutating functions.
+- Emit explicit TODO assertions for getter/non-Unit functions.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+from property_utils import ROOT
+
+CONTRACT_RE = re.compile(r"^\s*verity_contract\s+([A-Za-z_][A-Za-z0-9_]*)\s+where\s*$")
+FUNCTION_RE = re.compile(
+    r"^\s*function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*:\s*(.+?)\s*:=\s*",
+)
+PARAM_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+?)\s*$")
+
+
+@dataclass(frozen=True)
+class ParamDecl:
+    name: str
+    lean_type: str
+
+
+@dataclass(frozen=True)
+class FunctionDecl:
+    name: str
+    params: tuple[ParamDecl, ...]
+    return_type: str
+
+
+@dataclass(frozen=True)
+class ContractDecl:
+    name: str
+    functions: tuple[FunctionDecl, ...]
+    source: Path
+
+
+def _normalize_type(type_src: str) -> str:
+    return " ".join(type_src.strip().split())
+
+
+def _split_params(params_src: str) -> tuple[ParamDecl, ...]:
+    if not params_src.strip():
+        return ()
+    out: list[ParamDecl] = []
+    for raw in params_src.split(","):
+        part = raw.strip()
+        if not part:
+            continue
+        m = PARAM_RE.match(part)
+        if not m:
+            raise ValueError(f"invalid parameter declaration: {part!r}")
+        out.append(ParamDecl(name=m.group(1), lean_type=_normalize_type(m.group(2))))
+    return tuple(out)
+
+
+def parse_contracts(text: str, source: Path) -> dict[str, ContractDecl]:
+    contracts: dict[str, ContractDecl] = {}
+    current_name: str | None = None
+    current_functions: list[FunctionDecl] = []
+
+    def flush_current() -> None:
+        nonlocal current_name, current_functions
+        if current_name is None:
+            return
+        contracts[current_name] = ContractDecl(
+            name=current_name,
+            functions=tuple(current_functions),
+            source=source,
+        )
+        current_name = None
+        current_functions = []
+
+    for line in text.splitlines():
+        cm = CONTRACT_RE.match(line)
+        if cm:
+            flush_current()
+            current_name = cm.group(1)
+            continue
+
+        if current_name is None:
+            continue
+
+        fm = FUNCTION_RE.match(line)
+        if fm:
+            fn_name = fm.group(1)
+            params_src = fm.group(2)
+            ret_ty = _normalize_type(fm.group(3))
+            current_functions.append(
+                FunctionDecl(
+                    name=fn_name,
+                    params=_split_params(params_src),
+                    return_type=ret_ty,
+                )
+            )
+
+    flush_current()
+    return contracts
+
+
+def collect_contracts(paths: list[Path]) -> dict[str, ContractDecl]:
+    all_contracts: dict[str, ContractDecl] = {}
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        parsed = parse_contracts(text, path)
+        for name, contract in parsed.items():
+            if name in all_contracts:
+                prev = all_contracts[name].source
+                raise ValueError(f"duplicate contract '{name}' in {prev} and {contract.source}")
+            all_contracts[name] = contract
+    return all_contracts
+
+
+def _sol_type(lean_ty: str) -> str:
+    ty = _normalize_type(lean_ty)
+    if ty == "Uint256":
+        return "uint256"
+    if ty == "Address":
+        return "address"
+    if ty == "Bool":
+        return "bool"
+    if ty == "Bytes32":
+        return "bytes32"
+    if ty == "Bytes":
+        return "bytes"
+    if ty.startswith("Array "):
+        elem = ty[len("Array ") :].strip()
+        return f"{_sol_type(elem)}[]"
+    # Fallback is deliberate: keep generator usable while making unknown mappings visible.
+    return "uint256"
+
+
+def _example_value(lean_ty: str) -> str:
+    ty = _normalize_type(lean_ty)
+    if ty == "Address":
+        return "alice"
+    if ty == "Bool":
+        return "true"
+    if ty == "Bytes32":
+        return "bytes32(uint256(0xBEEF))"
+    if ty == "Bytes":
+        return "hex\"CAFE\""
+    if ty.startswith("Array "):
+        return "_singletonUintArray(1)"
+    return "uint256(1)"
+
+
+def _sol_signature(fn: FunctionDecl) -> str:
+    param_types = ",".join(_sol_type(p.lean_type) for p in fn.params)
+    return f"{fn.name}({param_types})"
+
+
+def _fn_camel(name: str) -> str:
+    return name[:1].upper() + name[1:]
+
+
+def render_contract_test(contract: ContractDecl) -> str:
+    tests: list[str] = []
+    need_uint_array_helper = False
+
+    for idx, fn in enumerate(contract.functions, start=1):
+        sig = _sol_signature(fn)
+        call_args = [_example_value(p.lean_type) for p in fn.params]
+        if any(_normalize_type(p.lean_type).startswith("Array ") for p in fn.params):
+            need_uint_array_helper = True
+
+        encode_args = ", ".join([f'"{sig}"', *call_args]) if call_args else f'"{sig}"'
+        fn_camel = _fn_camel(fn.name)
+
+        if _normalize_type(fn.return_type) == "Unit":
+            body = f"""    // Property {idx}: {fn.name} has no unexpected revert
+    function testAuto_{fn_camel}_NoUnexpectedRevert() public {{
+        vm.prank(alice);
+        (bool ok,) = target.call(abi.encodeWithSignature({encode_args}));
+        require(ok, \"{fn.name} reverted unexpectedly\");
+    }}
+"""
+        else:
+            body = f"""    // Property {idx}: TODO decode and assert `{fn.name}` result
+    function testTODO_{fn_camel}_DecodeAndAssert() public {{
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature({encode_args}));
+        require(ok, \"{fn.name} reverted unexpectedly\");
+        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
+        ret;
+    }}
+"""
+        tests.append(body)
+
+    helper = ""
+    if need_uint_array_helper:
+        helper = """
+    function _singletonUintArray(uint256 x) internal pure returns (uint256[] memory arr) {
+        arr = new uint256[](1);
+        arr[0] = x;
+    }
+"""
+
+    return f"""// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.33;
+
+import "./yul/YulTestBase.sol";
+
+/**
+ * @title Property{contract.name}Test
+ * @notice Auto-generated baseline property stubs from `verity_contract` declarations.
+ * @dev Source: {contract.source.relative_to(ROOT)}
+ */
+contract Property{contract.name}Test is YulTestBase {{
+    address target;
+    address alice = address(0x1111);
+
+    function setUp() public {{
+        target = deployYul("{contract.name}");
+        require(target != address(0), "Deploy failed");
+    }}
+
+{''.join(tests)}{helper}}}
+"""
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate Property*.t.sol baseline tests from verity_contract declarations."
+    )
+    parser.add_argument(
+        "--source",
+        action="append",
+        default=[],
+        help=(
+            "Lean source path to scan (relative to repo root). "
+            "Repeat flag for multiple files. Defaults to Verity/Examples/MacroContracts.lean."
+        ),
+    )
+    parser.add_argument(
+        "--contract",
+        action="append",
+        default=[],
+        help="Only generate for the named contract (repeatable). Defaults to all discovered contracts.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="test/generated",
+        help="Output directory for generated Property*.t.sol files (default: test/generated).",
+    )
+    parser.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Print generated file content to stdout instead of writing files.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    source_paths = args.source or ["Verity/Examples/MacroContracts.lean"]
+    paths = [ROOT / p for p in source_paths]
+
+    missing_sources = [str(p) for p in paths if not p.exists()]
+    if missing_sources:
+        raise SystemExit(f"source file(s) not found: {', '.join(missing_sources)}")
+
+    contracts = collect_contracts(paths)
+    if not contracts:
+        raise SystemExit("no verity_contract declarations found")
+
+    selected_names = args.contract or sorted(contracts.keys())
+    unknown = [name for name in selected_names if name not in contracts]
+    if unknown:
+        known = ", ".join(sorted(contracts.keys()))
+        raise SystemExit(f"unknown contract(s): {', '.join(unknown)}; known: {known}")
+
+    output_dir = ROOT / args.output_dir
+    if not args.stdout:
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    generated = 0
+    for name in selected_names:
+        rendered = render_contract_test(contracts[name])
+        filename = f"Property{name}.t.sol"
+        if args.stdout:
+            print(f"// ===== {filename} =====")
+            print(rendered)
+        else:
+            (output_dir / filename).write_text(rendered, encoding="utf-8")
+        generated += 1
+
+    if not args.stdout:
+        print(f"Generated {generated} file(s) in {output_dir.relative_to(ROOT)}")
+
+
+if __name__ == "__main__":
+    main()

@@ -601,7 +601,7 @@ private def pickFreshName (base : String) (usedNames : List String) : String :=
     go 1 usedNames.length
 
 mutual
-private partial def collectExprNames : Expr → List String
+private def collectExprNames : Expr → List String
   | Expr.literal _ => []
   | Expr.param name => [name]
   | Expr.constructorArg _ => []
@@ -667,12 +667,22 @@ private partial def collectExprNames : Expr → List String
   | Expr.min a b => collectExprNames a ++ collectExprNames b
   | Expr.max a b => collectExprNames a ++ collectExprNames b
   | Expr.ite cond thenVal elseVal => collectExprNames cond ++ collectExprNames thenVal ++ collectExprNames elseVal
+termination_by expr => sizeOf expr
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 
-private partial def collectExprListNames : List Expr → List String
+private def collectExprListNames : List Expr → List String
   | [] => []
   | expr :: rest => collectExprNames expr ++ collectExprListNames rest
+termination_by exprs => sizeOf exprs
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
+end
 
-private partial def collectStmtNames : Stmt → List String
+mutual
+private def collectStmtNames : Stmt → List String
   | Stmt.letVar name value => name :: collectExprNames value
   | Stmt.assignVar name value => name :: collectExprNames value
   | Stmt.setStorage field value => field :: collectExprNames value
@@ -716,10 +726,18 @@ private partial def collectStmtNames : Stmt → List String
       resultVars ++ externalName :: collectExprListNames args
   | Stmt.ecm mod args =>
       mod.resultVars ++ collectExprListNames args
+termination_by stmt => sizeOf stmt
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 
-private partial def collectStmtListNames : List Stmt → List String
+private def collectStmtListNames : List Stmt → List String
   | [] => []
   | stmt :: rest => collectStmtNames stmt ++ collectStmtListNames rest
+termination_by stmts => sizeOf stmts
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 end
 
 -- Compile expression to Yul (using mutual recursion for lists)
@@ -3018,11 +3036,25 @@ private def compileMappingPackedSlotWrite (fields : List Field) (field : String)
             ]
     | none => throw s!"Compilation error: unknown mapping field '{field}' in {label}"
 
-private partial def supportedCustomErrorParamType : ParamType → Bool
+mutual
+private def supportedCustomErrorParamType : ParamType → Bool
   | ParamType.uint256 | ParamType.address | ParamType.bool | ParamType.bytes32 | ParamType.bytes => true
   | ParamType.array elemTy => supportedCustomErrorParamType elemTy
   | ParamType.fixedArray elemTy _ => supportedCustomErrorParamType elemTy
-  | ParamType.tuple elemTys => elemTys.all supportedCustomErrorParamType
+  | ParamType.tuple elemTys => supportedCustomErrorParamTypes elemTys
+termination_by ty => sizeOf ty
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
+
+private def supportedCustomErrorParamTypes : List ParamType → Bool
+  | [] => true
+  | ty :: tys => supportedCustomErrorParamType ty && supportedCustomErrorParamTypes tys
+termination_by tys => sizeOf tys
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
+end
 
 private def encodeStaticCustomErrorArg (errorName : String) (ty : ParamType) (argExpr : YulExpr) :
     Except String YulExpr :=
@@ -3038,7 +3070,7 @@ private def encodeStaticCustomErrorArg (errorName : String) (ty : ParamType) (ar
 
 /-- Compute the ABI head size (in bytes) for a list of member types.
 Static members take their flattened word count × 32; dynamic members take 32 (offset word). -/
-private partial def abiHeadSize (tys : List ParamType) : Nat :=
+private def abiHeadSize (tys : List ParamType) : Nat :=
   tys.foldl (fun acc ty => acc + eventHeadWordSize ty) 0
 
 /-- Recursively ABI-encode a dynamic composite type into memory at `dstBase`.

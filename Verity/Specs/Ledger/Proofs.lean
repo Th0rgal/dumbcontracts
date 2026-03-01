@@ -1,4 +1,4 @@
-import Compiler.Proofs.SpecCorrectness.Ledger
+import Verity.Proofs.Ledger.Correctness
 
 /-
   Layer 2 proof re-export.

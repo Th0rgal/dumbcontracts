@@ -21,13 +21,6 @@ EXCLUDED_CONTRACTS = {
     "MacroContracts",     # Aggregates macro-generated examples, not a standalone contract
 }
 
-# Contracts excluded from SpecCorrectness check (no compiler-level spec)
-EXCLUDED_FROM_SPEC_CORRECTNESS = {
-    "ReentrancyExample",  # Has proofs but no compiler spec
-    "CryptoHash",         # External-library contract, no separate proof structure
-    "MacroContracts",     # Bundle module, not a compiler target
-}
-
 # Contracts excluded from property test check
 EXCLUDED_FROM_PROPERTY_TESTS = {
     "CryptoHash",         # External-library contract, no property tests
@@ -154,16 +147,6 @@ def main() -> None:
         prop_test = ROOT / "test" / f"Property{name}.t.sol"
         if not prop_test.exists():
             msg = f"{name}: missing test/Property{name}.t.sol"
-            print(f"  MISSING {msg}")
-            all_issues.append(msg)
-
-    # Check SpecCorrectness files
-    for name in all_examples:
-        if name in EXCLUDED_FROM_SPEC_CORRECTNESS:
-            continue
-        spec_proof = ROOT / "Compiler" / "Proofs" / "SpecCorrectness" / f"{name}.lean"
-        if not spec_proof.exists():
-            msg = f"{name}: missing Compiler/Proofs/SpecCorrectness/{name}.lean"
             print(f"  MISSING {msg}")
             all_issues.append(msg)
 

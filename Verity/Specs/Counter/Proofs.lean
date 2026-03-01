@@ -1,4 +1,4 @@
-import Compiler.Proofs.SpecCorrectness.Counter
+import Verity.Proofs.Counter.Correctness
 
 /-
   Layer 2 proof re-export.

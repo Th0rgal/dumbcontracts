@@ -8,7 +8,7 @@ Creates the complete file structure needed to add a new contract:
   - Layer 2 proof re-export (Verity/Specs/{Name}/Proofs.lean)
   - Basic proofs (Verity/Proofs/{Name}/Basic.lean)
   - Correctness proofs (Verity/Proofs/{Name}/Correctness.lean)
-  - Spec correctness scaffold (Compiler/Proofs/SpecCorrectness/{Name}.lean)
+  - Contract proof scaffolds (Verity/Proofs/{Name}/*)
   - Compiler spec entry (printed to stdout for manual insertion)
   - Property tests (test/Property{Name}.t.sol)
 
@@ -647,38 +647,12 @@ end Verity.Specs.{cfg.name}
 
 def gen_spec_proofs(cfg: ContractConfig) -> str:
     """Generate Verity/Specs/{Name}/Proofs.lean — Layer 2 proof re-export."""
-    return f"""import Compiler.Proofs.SpecCorrectness.{cfg.name}
+    return f"""import Verity.Proofs.{cfg.name}.Correctness
 
 /-
   Layer 2 proof re-export.
   This keeps the user-facing path stable while reusing the core proof module.
 -/
-"""
-
-
-def gen_spec_correctness(cfg: ContractConfig) -> str:
-    """Generate Compiler/Proofs/SpecCorrectness/{Name}.lean scaffold."""
-    return f"""/-
-  Compiler.Proofs.SpecCorrectness.{cfg.name}
-
-  TODO:
-  - Define EDSL->Spec state conversion
-  - Prove each spec function matches EDSL semantics
--/
-
-import Compiler.Specs
-import Verity.Examples.{cfg.name}
-
-namespace Compiler.Proofs.SpecCorrectness
-
-open Compiler.CompilationModel
-open Compiler.Specs
-open Verity
-open Verity.Examples.{cfg.name}
-
--- TODO: Add per-function correctness theorems.
-
-end Compiler.Proofs.SpecCorrectness
 """
 
 
@@ -1050,10 +1024,6 @@ def scaffold_files(cfg: ContractConfig) -> List[tuple[Path, str]]:
         (ROOT / "Verity" / "Specs" / name / "Proofs.lean", gen_spec_proofs(cfg)),
         (ROOT / "Verity" / "Proofs" / name / "Basic.lean", gen_basic_proofs(cfg)),
         (ROOT / "Verity" / "Proofs" / name / "Correctness.lean", gen_correctness_proofs(cfg)),
-        (
-            ROOT / "Compiler" / "Proofs" / "SpecCorrectness" / f"{name}.lean",
-            gen_spec_correctness(cfg),
-        ),
         (ROOT / "test" / f"Property{name}.t.sol", gen_property_tests(cfg)),
     ]
 

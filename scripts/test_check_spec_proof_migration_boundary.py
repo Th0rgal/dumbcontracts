@@ -61,11 +61,11 @@ class SpecProofMigrationBoundaryTests(unittest.TestCase):
     def test_accepts_allowlisted_legacy_reference(self) -> None:
         rc, stderr = self._run_check(
             {
-                "Compiler/Proofs/SpecCorrectness/Counter.lean": (
+                "Verity/Proofs/Counter/Basic.lean": (
                     "def x := Compiler.Specs.counterSpec\n"
                 )
             },
-            allowlist={"Compiler/Proofs/SpecCorrectness/Counter.lean"},
+            allowlist={"Verity/Proofs/Counter/Basic.lean"},
         )
         self.assertEqual(rc, 0, stderr)
 

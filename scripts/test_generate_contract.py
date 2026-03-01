@@ -242,7 +242,7 @@ class GenerateContractBasicProofScaffoldTests(unittest.TestCase):
 
 
 class GenerateContractStructureScaffoldTests(unittest.TestCase):
-    def test_scaffold_files_include_spec_correctness(self) -> None:
+    def test_scaffold_files_do_not_include_legacy_spec_correctness(self) -> None:
         cfg = ContractConfig(
             name="AuditProbe",
             fields=[Field(name="storedValue", ty="uint256")],
@@ -255,7 +255,7 @@ class GenerateContractStructureScaffoldTests(unittest.TestCase):
         )
         paths = {str(path) for path, _ in scaffold_files(cfg)}
 
-        self.assertIn(
+        self.assertNotIn(
             str((SCRIPT_DIR.parent / "Compiler" / "Proofs" / "SpecCorrectness" / "AuditProbe.lean")),
             paths,
         )

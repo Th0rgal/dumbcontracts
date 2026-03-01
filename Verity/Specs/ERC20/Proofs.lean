@@ -1,4 +1,4 @@
-import Compiler.Proofs.SpecCorrectness.ERC20
+import Verity.Proofs.ERC20.Correctness
 
 /-
   Layer 2 proof re-export.

@@ -1,4 +1,4 @@
-import Compiler.Proofs.SpecCorrectness.SimpleToken
+import Verity.Proofs.SimpleToken.Correctness
 
 /-
   Layer 2 proof re-export.

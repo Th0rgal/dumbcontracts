@@ -211,7 +211,7 @@ python3 scripts/check_macro_property_test_generation.py
 python3 scripts/check_macro_property_test_generation.py --check
 ```
 
-Creates 8 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual steps (All.lean imports, Compiler/Specs.lean entry).
+Creates 8 files: EDSL implementation, Spec, Invariants, Proofs re-export, Basic proofs, Correctness proofs, SpecCorrectness scaffold, and Property tests. Prints instructions for manual follow-up (All.lean imports, canonical macro registration in `Verity/Examples/MacroContracts.lean`).
 
 Identifier rules (fail-fast validation):
 - Contract name: PascalCase alphanumeric (existing rule), e.g. `MyToken`

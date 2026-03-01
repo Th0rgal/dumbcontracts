@@ -192,8 +192,6 @@ One logical spec can have many implementations, and one implementation can have 
 
 **Unverified examples**:
 - [CryptoHash](Verity/Examples/CryptoHash.lean) demonstrates external library linking via the [Linker](Compiler/Linker.lean) but has no specs or proofs.
-- [ERC20](Verity/Examples/ERC20.lean) is a new foundation scaffold with executable logic plus formal spec/invariant modules in `Verity/Specs/ERC20/`, with proof development tracked in [#69](https://github.com/Th0rgal/verity/issues/69).
-- [ERC721](Verity/Examples/ERC721.lean) is a new foundation scaffold with executable logic plus formal spec/invariant modules in `Verity/Specs/ERC721/`, with proof development tracked in [#73](https://github.com/Th0rgal/verity/issues/73).
 
 ### Using External Libraries (Linker)
 
@@ -201,7 +199,7 @@ Verity supports linking external Yul libraries (e.g., cryptographic libraries) t
 
 **The pattern:**
 1. Write a simple Lean placeholder (e.g., `add a b` for a hash function)
-2. Add an `externalCall` in your compilation model (`CompilationModel`/`CompilationModel`)
+2. Add an `externalCall` in your compilation model (`CompilationModel`)
 3. Link your production Yul library at compile time
 
 ```bash
@@ -219,7 +217,7 @@ lake exe verity-compiler \
 def myHash (a b : Uint256) : Contract Uint256 := do
   return (a + b)  -- simple placeholder
 
--- 2. CompilationModel/CompilationModel calls the real library
+-- 2. CompilationModel calls the real library
 Stmt.letVar "h" (Expr.externalCall "myHash" [Expr.param "a", Expr.param "b"])
 
 -- 3. Compile with: lake exe verity-compiler --link examples/external-libs/MyHash.yul
@@ -235,7 +233,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 
 ## What's Verified
 
-- **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`CompilationModel`/`CompilationModel`).
+- **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`CompilationModel`).
 - **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
 - **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today, and the CLI compiles through the EDSL/macro lowering boundary with optional `--edsl-contract` selection. Fully automatic verified EDSL reification/lowering remains in progress. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.

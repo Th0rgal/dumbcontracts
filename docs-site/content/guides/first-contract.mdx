@@ -355,13 +355,13 @@ grep -r "sorry" Verity/Specs/TipJar/ Verity/Proofs/TipJar/
 
 ## Phase 5: Add to Compiler (15 minutes)
 
-### 5.1 Add Compiler Spec
+### 5.1 Add Canonical Compiler Declaration
 
-Add your contract to `Compiler/Specs.lean`:
+Add your contract to `Verity/Examples/MacroContracts.lean` with `verity_contract`.
+`Compiler.Specs.allSpecs` is derived from these macro declarations:
 
 ```lean
-def tipJarSpec : CompilationModel := {
-  name := "TipJar"
+verity_contract TipJar where
   fields := [
     { name := "tips", ty := FieldType.mappingTyped (.simple .address) }
   ]
@@ -384,21 +384,14 @@ def tipJarSpec : CompilationModel := {
       ]
     }
   ]
-}
 ```
 
-### 5.2 Register Your Contract
+### 5.2 Legacy Note
 
-Add your contract to the `allSpecs` list in `Compiler/Specs.lean`:
+Handwritten `Compiler.Specs.*Spec` definitions are retained for proof-migration and
+special workflows only; they are not the canonical CLI compile path.
 
-```lean
-def allSpecs : List CompilationModel := [
-  -- ... existing contracts ...,
-  tipJarSpec
-]
-```
-
-Function selectors (the first 4 bytes of `keccak256("functionName(paramTypes)")`) are computed automatically by `computeSelectors` during compilation — you do not need to list them manually.
+Function selectors (the first 4 bytes of `keccak256("functionName(paramTypes)")`) are computed automatically by `computeSelectors` during compilation.
 
 > **Tip**: Run `python3 scripts/check_selectors.py` to verify that the auto-computed selectors match `solc --hashes` output. You can also compute selectors manually with `python3 scripts/keccak256.py "tip(uint256)" "getBalance(address)"`.
 

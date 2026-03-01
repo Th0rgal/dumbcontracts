@@ -937,7 +937,7 @@ def _gen_test_helpers(cfg: ContractConfig) -> str:
 
 
 def gen_compiler_spec(cfg: ContractConfig) -> str:
-    """Generate Compiler/Specs.lean entry (printed for manual insertion)."""
+    """Generate a legacy Compiler/Specs.lean entry for migration/special workflows."""
     fields_str = ",\n    ".join(
         f'{{ name := "{f.name}", ty := {f.compiler_field_type} }}'
         for f in cfg.fields
@@ -1161,14 +1161,14 @@ Examples:
     print(gen_all_lean_imports(cfg))
     print()
 
-    name_lower = cfg.name[0].lower() + cfg.name[1:]
-    print("2. Add compiler spec to Compiler/Specs.lean:")
+    print("2. Legacy bridge (optional): add compiler spec to Compiler/Specs.lean if needed:")
     print(gen_compiler_spec(cfg))
     print()
 
-    print(f"3. Register in allSpecs (Compiler/Specs.lean):")
-    print(f"   Find 'def allSpecs' and add '{name_lower}Spec' to the list.")
-    print(f"   Selectors are computed automatically by computeSelectors during compilation.")
+    print("3. Canonical registration:")
+    print("   Add a `verity_contract` declaration in Verity/Examples/MacroContracts.lean.")
+    print("   `Compiler.Specs.allSpecs` is derived from macro declarations (no manual allSpecs edit).")
+    print("   Manual `Compiler.Specs.*Spec` entries are legacy migration scaffolding only.")
     print()
 
     print(f"4. Create differential tests (not scaffolded):")

@@ -11,9 +11,10 @@
 
     ∀ slot, (edslFinalState.storage slot).val = irResult.finalStorage slot
 
-  For SimpleStorage and Counter, the proofs attempt full discharge (no sorry)
-  via direct simp unfolding of both EDSL and IR execution. For more complex
-  contracts, the proofs compose:
+  For SimpleStorage, Counter, Owned, and SafeCounter, the proofs attempt full
+  discharge (no sorry) via direct simp unfolding of both EDSL and IR execution.
+  SafeCounter demonstrates the case-split approach for success/revert paths.
+  For more complex contracts, the proofs compose:
   1. Primitive bridge lemmas (PrimitiveBridge.lean)
   2. EndToEnd composition (EndToEnd.lean)
   3. ArithmeticProfile bridge (ArithmeticProfile.lean)
@@ -35,6 +36,7 @@ import Verity.Core
 import Verity.Examples.SimpleStorage
 import Verity.Examples.Counter
 import Verity.Examples.Owned
+import Verity.Examples.SafeCounter
 
 namespace Compiler.Proofs.SemanticBridge
 
@@ -384,7 +386,7 @@ theorem owned_getOwner_semantic_bridge
 When the caller IS the owner, both sides update slot 0 to the new owner address.
 
 EDSL: msgSender → getStorageAddr → require (sender == currentOwner) → setStorageAddr
-IR:   let newOwner := and(calddataload(4), addressMask)
+IR:   let newOwner := and(calldataload(4), addressMask)
       if iszero(eq(caller(), sload(0))) { revert }
       sstore(0, newOwner) → stop
 
@@ -417,7 +419,7 @@ theorem owned_transferOwnership_semantic_bridge
     := by
   -- The EDSL path: msgSender → getStorageAddr → require (sender == owner) → setStorageAddr
   -- With hOwner, the require succeeds, and we update slot 0.
-  -- The IR path: calddataload(4) & addressMask = newOwner.val (since Address < 2^160)
+  -- The IR path: calldataload(4) & addressMask = newOwner.val (since Address < 2^160)
   -- Then eq(caller(), sload(0)) = eq(sender.val, owner.val) = 1 (since hOwner)
   -- iszero(1) = 0, so we don't revert. sstore(0, newOwner.val).
   -- Address mask: and(newOwner.val, addressMask) = newOwner.val since Address < 2^160
@@ -443,6 +445,201 @@ theorem owned_transferOwnership_semantic_bridge
     IRState.setVar, IRState.getVar, haddr]
   intro slot
   by_cases h : slot = 0 <;> simp_all [beq_iff_eq]
+
+/-! ## Target Theorems: SafeCounter
+
+SafeCounter uses checked arithmetic (safeAdd/safeSub) with requireSomeUint.
+The IR generates overflow/underflow guards using gt/lt + iszero + revert.
+
+The key challenge: both success and revert paths must be bridged.
+- Success: safeAdd returns Some → IR gt check passes → sstore
+- Revert: safeAdd returns None → IR gt check fails → revert
+
+These proofs handle the `by_cases` split on whether overflow/underflow occurs.
+-/
+
+/-- SafeCounter.increment: EDSL execution matches compiled IR execution.
+
+When no overflow (current < MAX_UINT256): both sides succeed, slot 0 = current + 1.
+When overflow (current = MAX_UINT256): both sides revert.
+
+EDSL: getStorage → safeAdd → requireSomeUint → setStorage
+IR:   let count := sload(0)
+      let newCount := add(count, 1)
+      if iszero(gt(newCount, count)) { revert("Overflow") }
+      sstore(0, newCount) → stop -/
+theorem safeCounter_increment_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.SafeCounter.increment) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xd09de08a
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0xd09de08a
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR safeCounterIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (s'.storage slot).val = irResult.finalStorage slot
+    | .revert _ _ =>
+        let irResult := interpretIR safeCounterIRContract tx irState
+        irResult.success = false
+    := by
+  -- Case split on whether overflow occurs.
+  -- safeAdd (state.storage 0) 1 = none iff (state.storage 0).val + 1 > MAX_UINT256
+  -- i.e., (state.storage 0).val = 2^256 - 1 (MAX_UINT256)
+  simp only [Verity.Examples.SafeCounter.increment, Verity.Examples.SafeCounter.count,
+    Contract.run, getStorage, bind, pure,
+    Verity.Stdlib.Math.requireSomeUint, Verity.Stdlib.Math.safeAdd,
+    Uint256.add, Uint256.ofNat, require,
+    encodeStorage,
+    interpretIR, safeCounterIRContract, safeCounterOverflowRevert,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    Compiler.Constants.evmModulus,
+    Uint256.modulus, UINT256_MODULUS, MAX_UINT256,
+    setStorage,
+    IRState.setVar, IRState.getVar]
+  -- After simp, the goal should reduce to case analysis on the overflow condition.
+  -- The EDSL checks (a.val + 1) > MAX and the IR checks gt(add(a, 1), a).
+  -- Both conditions are equivalent: overflow iff a.val = 2^256 - 1.
+  have hv := (state.storage 0).isLt
+  simp [Uint256.modulus, UINT256_MODULUS] at hv
+  -- Case split: did overflow occur?
+  by_cases hmax : (state.storage 0).val = 2 ^ 256 - 1
+  · -- Overflow case: both EDSL and IR revert
+    simp [hmax]
+  · -- No overflow case: both EDSL and IR succeed
+    have hlt : (state.storage 0).val < 2 ^ 256 - 1 := by omega
+    have hno_wrap : ((state.storage 0).val + 1) % (2 ^ 256) = (state.storage 0).val + 1 := by
+      apply Nat.mod_eq_of_lt; omega
+    simp [show ¬((state.storage 0).val + 1 > 2 ^ 256 - 1) from by omega, hno_wrap]
+    intro slot
+    by_cases h : slot = 0 <;> simp_all [beq_iff_eq]
+
+/-- SafeCounter.decrement: EDSL execution matches compiled IR execution.
+
+When no underflow (current > 0): both sides succeed, slot 0 = current - 1.
+When underflow (current = 0): both sides revert.
+
+EDSL: getStorage → safeSub → requireSomeUint → setStorage
+IR:   let count := sload(0)
+      if lt(count, 1) { revert("Underflow") }
+      sstore(0, sub(count, 1)) → stop -/
+theorem safeCounter_decrement_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.SafeCounter.decrement) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0x2baeceb7
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0x2baeceb7
+    }
+    match edslResult with
+    | .success _ s' =>
+        let irResult := interpretIR safeCounterIRContract tx irState
+        irResult.success = true ∧
+        ∀ slot, (s'.storage slot).val = irResult.finalStorage slot
+    | .revert _ _ =>
+        let irResult := interpretIR safeCounterIRContract tx irState
+        irResult.success = false
+    := by
+  -- Case split on whether underflow occurs.
+  -- safeSub (state.storage 0) 1 = none iff 1 > (state.storage 0).val
+  -- i.e., (state.storage 0).val = 0
+  simp only [Verity.Examples.SafeCounter.decrement, Verity.Examples.SafeCounter.count,
+    Contract.run, getStorage, bind, pure,
+    Verity.Stdlib.Math.requireSomeUint, Verity.Stdlib.Math.safeSub,
+    Uint256.sub, Uint256.ofNat, require,
+    encodeStorage,
+    interpretIR, safeCounterIRContract, safeCounterUnderflowRevert,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.abstractStoreStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    Compiler.Constants.evmModulus,
+    Uint256.modulus, UINT256_MODULUS,
+    setStorage,
+    IRState.setVar, IRState.getVar]
+  have hv := (state.storage 0).isLt
+  simp [Uint256.modulus, UINT256_MODULUS] at hv
+  -- Case split: did underflow occur?
+  by_cases hzero : (state.storage 0).val = 0
+  · -- Underflow case: both EDSL and IR revert
+    simp [hzero]
+  · -- No underflow case: both EDSL and IR succeed
+    have hpos : 0 < (state.storage 0).val := by omega
+    have hno_wrap : (state.storage 0).val - 1 < 2 ^ 256 := by omega
+    simp [show ¬(1 > (state.storage 0).val) from by omega,
+          show ¬((state.storage 0).val < 1 % (2 ^ 256)) from by omega]
+    -- The IR sub: (evmModulus + a - 1) % evmModulus = a - 1 when a > 0
+    have hsub_mod : ((2 ^ 256 + (state.storage 0).val - 1 % (2 ^ 256)) % (2 ^ 256)) =
+        (state.storage 0).val - 1 := by omega
+    simp [hsub_mod]
+    -- The EDSL sub: since 1 ≤ a, Uint256.sub returns (a - 1) % modulus = a - 1
+    have hedsl_sub : (1 % (2 ^ 256)) ≤ (state.storage 0).val := by omega
+    simp [hedsl_sub]
+    have hedsl_mod : ((state.storage 0).val - 1 % (2 ^ 256)) % (2 ^ 256) = (state.storage 0).val - 1 := by
+      omega
+    simp [hedsl_mod]
+    intro slot
+    by_cases h : slot = 0 <;> simp_all [beq_iff_eq]
+
+/-- SafeCounter.getCount: identical to Counter.getCount (no overflow checks needed). -/
+theorem safeCounter_getCount_semantic_bridge
+    (state : ContractState) (sender : Address) :
+    let edslResult := Contract.run (Verity.Examples.SafeCounter.getCount) { state with sender := sender }
+    let tx : IRTransaction := {
+      sender := sender.val
+      functionSelector := 0xa87d942c
+      args := []
+    }
+    let irState : IRState := {
+      vars := []
+      storage := encodeStorage state
+      memory := fun _ => 0
+      calldata := []
+      returnValue := none
+      sender := sender.val
+      selector := 0xa87d942c
+    }
+    match edslResult with
+    | .success val s' =>
+        let irResult := interpretIR safeCounterIRContract tx irState
+        irResult.success = true ∧
+        irResult.returnValue = some val.val ∧
+        ∀ slot, (s'.storage slot).val = irResult.finalStorage slot
+    | .revert _ _ => True
+    := by
+  simp [Verity.Examples.SafeCounter.getCount, Verity.Examples.SafeCounter.count,
+    Contract.run, getStorage, bind, pure, encodeStorage,
+    interpretIR, safeCounterIRContract,
+    execIRFunction, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    evalBuiltinCallWithBackend, defaultBuiltinBackend, evalBuiltinCall,
+    Compiler.Proofs.abstractLoadStorageOrMapping,
+    Compiler.Proofs.storageAsMappings,
+    IRState.setVar, IRState.getVar]
 
 /-! ## Generic Bridge Template
 

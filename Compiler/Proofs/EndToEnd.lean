@@ -427,8 +427,9 @@ and the macro-generated proof skeleton.
 - All `PrimitiveBridge.lean` lemmas (bind_unfold, pure_unfold, getStorage, setStorage,
   uint256_add/sub/mul/div/mod, lt/gt/eq comparisons, require, if_else, msgSender,
   Uint256/Address encoding, calldataload, Contract.run)
-- `SemanticBridge.lean` — SimpleStorage (store, retrieve) and Counter (increment,
-  decrement, getCount) proofs (pending build verification)
+- `SemanticBridge.lean` — SimpleStorage (store, retrieve), Counter (increment,
+  decrement, getCount), Owned (getOwner, transferOwnership), and SafeCounter
+  (increment, decrement, getCount) — 11 proofs total (pending build verification)
 -/
 
 end Compiler.Proofs.EndToEnd

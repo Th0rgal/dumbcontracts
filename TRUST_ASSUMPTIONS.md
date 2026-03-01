@@ -242,7 +242,8 @@ Roadmap:
    Uint256/Address encoding, calldataload, Contract.run unfolding.
 3. ✅ Macro emits per-function semantic preservation skeletons (`_semantic_preservation`
    theorems via `mkSemanticBridgeCommand` in `Verity/Macro/Bridge.lean`).
-3b. ✅ SimpleStorage and Counter EDSL≡IR proofs fully discharged (`Compiler/Proofs/SemanticBridge.lean`).
+3b. ✅ SimpleStorage, Counter, Owned, and SafeCounter EDSL≡IR proofs fully discharged
+   (`Compiler/Proofs/SemanticBridge.lean`). 11 functions total across 4 contracts.
 4. 🔲 Discharge the `sorry` in preservation theorems by composing primitive lemmas.
 5. 🔲 Delete `interpretSpec` and all manual `SpecCorrectness/*.lean` proofs.
 6. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).

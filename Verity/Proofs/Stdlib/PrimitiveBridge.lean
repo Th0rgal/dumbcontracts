@@ -285,7 +285,7 @@ theorem address_val_mod_evmModulus (a : Address) :
     a.val % evmModulus = a.val :=
   Nat.mod_eq_of_lt (address_val_lt_evmModulus a)
 
-/-! ## Calddataload Bridge
+/-! ## Calldataload Bridge
 
 The compiler generates `let param := calldataload(offset)` for each function
 parameter. Under the Verity builtin backend, this reads from `state.calldata`.
@@ -293,23 +293,23 @@ parameter. Under the Verity builtin backend, this reads from `state.calldata`.
 These lemmas show the calldataload result matches the EDSL parameter value.
 -/
 
-/-- Calddataload at offset 4 returns the first argument (modulo evmModulus).
+/-- Calldataload at offset 4 returns the first argument (modulo evmModulus).
 For Uint256 arguments, the modulo is a no-op (via `uint256_val_mod_evmModulus`). -/
 theorem calldataloadWord_first_arg (selector : Nat) (a : Nat) (rest : List Nat) :
     calldataloadWord selector (a :: rest) 4 = a % evmModulus := by
   simp [calldataloadWord]
 
-/-- Calddataload at offset 4 for a Uint256 argument returns the value unchanged. -/
+/-- Calldataload at offset 4 for a Uint256 argument returns the value unchanged. -/
 theorem calldataloadWord_uint256_first (selector : Nat) (v : Uint256) (rest : List Nat) :
     calldataloadWord selector (v.val :: rest) 4 = v.val := by
   simp [calldataloadWord, uint256_val_mod_evmModulus]
 
-/-- Calddataload at offset 36 returns the second argument (modulo evmModulus). -/
+/-- Calldataload at offset 36 returns the second argument (modulo evmModulus). -/
 theorem calldataloadWord_second_arg (selector : Nat) (a b : Nat) (rest : List Nat) :
     calldataloadWord selector (a :: b :: rest) 36 = b % evmModulus := by
   simp [calldataloadWord]
 
-/-- Calddataload at offset 36 for a Uint256 second argument. -/
+/-- Calldataload at offset 36 for a Uint256 second argument. -/
 theorem calldataloadWord_uint256_second (selector : Nat) (a : Nat) (v : Uint256) (rest : List Nat) :
     calldataloadWord selector (a :: v.val :: rest) 36 = v.val := by
   simp [calldataloadWord, uint256_val_mod_evmModulus]

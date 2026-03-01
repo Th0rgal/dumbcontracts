@@ -171,12 +171,14 @@ def _example_value(lean_ty: str) -> str:
         return "hex\"CAFE\""
     if ty.startswith("Array "):
         elem = ty[len("Array ") :].strip()
-        if elem != "Uint256":
-            raise ValueError(
-                "unsupported Lean array element type for generated example value: "
-                f"{elem!r}"
-            )
-        return "_singletonUintArray(1)"
+        if elem == "Uint256":
+            return "_singletonUintArray(1)"
+        if elem == "Bytes32":
+            return "_singletonBytes32Array(bytes32(uint256(0xBEEF)))"
+        raise ValueError(
+            "unsupported Lean array element type for generated example value: "
+            f"{elem!r}"
+        )
     raise ValueError(f"unsupported Lean type for generated example value: {ty!r}")
 
 
@@ -209,11 +211,16 @@ def _return_shape_assertion(lean_ty: str, fn_name: str) -> str:
 def render_contract_test(contract: ContractDecl) -> str:
     tests: list[str] = []
     need_uint_array_helper = False
+    need_bytes32_array_helper = False
     set_up_line = f'target = deployYul("{contract.name}");'
     if contract.constructor is not None and contract.constructor.params:
         constructor_args = [_example_value(p.lean_type) for p in contract.constructor.params]
-        if any(_normalize_type(p.lean_type).startswith("Array ") for p in contract.constructor.params):
-            need_uint_array_helper = True
+        for p in contract.constructor.params:
+            p_ty = _normalize_type(p.lean_type)
+            if p_ty == "Array Uint256":
+                need_uint_array_helper = True
+            if p_ty == "Array Bytes32":
+                need_bytes32_array_helper = True
         set_up_line = (
             f'target = deployYulWithArgs("{contract.name}", abi.encode('
             + ", ".join(constructor_args)
@@ -223,8 +230,12 @@ def render_contract_test(contract: ContractDecl) -> str:
     for idx, fn in enumerate(contract.functions, start=1):
         sig = _sol_signature(fn)
         call_args = [_example_value(p.lean_type) for p in fn.params]
-        if any(_normalize_type(p.lean_type).startswith("Array ") for p in fn.params):
-            need_uint_array_helper = True
+        for p in fn.params:
+            p_ty = _normalize_type(p.lean_type)
+            if p_ty == "Array Uint256":
+                need_uint_array_helper = True
+            if p_ty == "Array Bytes32":
+                need_bytes32_array_helper = True
 
         encode_args = ", ".join([f'"{sig}"', *call_args]) if call_args else f'"{sig}"'
         fn_camel = _fn_camel(fn.name)
@@ -253,9 +264,16 @@ def render_contract_test(contract: ContractDecl) -> str:
 
     helper = ""
     if need_uint_array_helper:
-        helper = """
+        helper += """
     function _singletonUintArray(uint256 x) internal pure returns (uint256[] memory arr) {
         arr = new uint256[](1);
+        arr[0] = x;
+    }
+"""
+    if need_bytes32_array_helper:
+        helper += """
+    function _singletonBytes32Array(bytes32 x) internal pure returns (bytes32[] memory arr) {
+        arr = new bytes32[](1);
         arr[0] = x;
     }
 """

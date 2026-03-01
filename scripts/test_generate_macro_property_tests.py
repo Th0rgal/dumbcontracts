@@ -99,6 +99,26 @@ class RenderTests(unittest.TestCase):
         self.assertIn("_singletonUintArray", rendered)
         self.assertIn('abi.encodeWithSignature("consume(uint256[])", _singletonUintArray(1))', rendered)
 
+    def test_render_bytes32_array_param_adds_helper(self) -> None:
+        contract = gen.ContractDecl(
+            name="ArrayConsumer",
+            constructor=None,
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "consume",
+                    (gen.ParamDecl("values", "Array Bytes32"),),
+                    "Unit",
+                ),
+            ),
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("_singletonBytes32Array", rendered)
+        self.assertIn(
+            'abi.encodeWithSignature("consume(bytes32[])", _singletonBytes32Array(bytes32(uint256(0xBEEF))))',
+            rendered,
+        )
+
     def test_render_unknown_type_fails_closed(self) -> None:
         contract = gen.ContractDecl(
             name="UnknownType",

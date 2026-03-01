@@ -190,6 +190,56 @@ class RenderTests(unittest.TestCase):
         self.assertIn('target = deployYulWithArgs("Owned", abi.encode(alice));', rendered)
 
 
+    def test_render_tuple_param_sol_signature(self) -> None:
+        contract = gen.ContractDecl(
+            name="TupleConsumer",
+            constructor=None,
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "submit",
+                    (gen.ParamDecl("cfg", "Tuple [Address, Address, Uint256]"),),
+                    "Unit",
+                ),
+            ),
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn('"submit((address,address,uint256))"', rendered)
+        self.assertIn("abi.encode(alice, alice, uint256(1))", rendered)
+
+    def test_render_tuple_return_shape_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="TupleReturn",
+            constructor=None,
+            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "getPair",
+                    (),
+                    "Tuple [Uint256, Uint256]",
+                ),
+            ),
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn(
+            'require(ret.length >= 64, "getPair ABI tuple return payload unexpectedly short");',
+            rendered,
+        )
+
+    def test_parse_tuple_params(self) -> None:
+        out = gen._split_params("cfg : Tuple [Address, Uint256], amount : Uint256")
+        self.assertEqual(
+            [(p.name, p.lean_type) for p in out],
+            [("cfg", "Tuple [Address, Uint256]"), ("amount", "Uint256")],
+        )
+
+    def test_sol_type_tuple(self) -> None:
+        self.assertEqual(
+            gen._sol_type("Tuple [Address, Address, Uint256]"),
+            "(address,address,uint256)",
+        )
+
+
 class CollectContractsTests(unittest.TestCase):
     def test_duplicate_contract_name_errors(self) -> None:
         with tempfile.TemporaryDirectory() as td:

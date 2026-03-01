@@ -21,6 +21,7 @@ inductive ValueType where
   | bool
   | bytes
   | array (elemTy : ValueType)
+  | tuple (elemTys : List ValueType)
   | unit
   deriving BEq
 
@@ -69,15 +70,24 @@ private partial def valueTypeFromSyntax (ty : Term) : CommandElabM ValueType := 
       | .unit => throwErrorAt ty "unsupported type '{ty}'; Array Unit is not allowed"
       | .array _ => throwErrorAt ty "unsupported type '{ty}'; nested arrays are not supported"
       | _ => pure (.array elem)
+  | `(term| Tuple [ $[$elemTys:term],* ]) =>
+      let elems ← elemTys.mapM valueTypeFromSyntax
+      if elems.size < 2 then
+        throwErrorAt ty "tuple types must have at least 2 elements"
+      pure (.tuple elems.toList)
   | `(term| Unit) => pure .unit
-  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bytes32, Bool, Bytes, Array <type>, or Unit"
+  | _ => throwErrorAt ty "unsupported type '{ty}'; expected Uint256, Address, Bytes32, Bool, Bytes, Array <type>, Tuple [...], or Unit"
 
 private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
   match ty with
   | `(term| Address → Uint256) => pure .mappingAddressToUint256
   | `(term| Address → Address → Uint256) => pure .mapping2AddressToAddressToUint256
   | `(term| Uint256 → Uint256) => pure .mappingUintToUint256
-  | _ => pure (.scalar (← valueTypeFromSyntax ty))
+  | _ =>
+      let vt ← valueTypeFromSyntax ty
+      match vt with
+      | .tuple _ => throwErrorAt ty "storage fields cannot be Tuple; use mapping encodings"
+      | _ => pure (.scalar vt)
 
 private def natFromSyntax (stx : Syntax) : CommandElabM Nat :=
   match stx.isNatLit? with
@@ -92,6 +102,7 @@ private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
   | .scalar .bool => throwError "storage fields cannot be Bool; use Uint256 (0/1) encoding"
   | .scalar .bytes => throwError "storage fields cannot be Bytes; use Uint256 encoding"
   | .scalar (.array _) => throwError "storage fields cannot be Array; use mapping encodings"
+  | .scalar (.tuple _) => throwError "storage fields cannot be Tuple; use mapping encodings"
   | .scalar .unit => throwError "storage fields cannot be Unit"
   | .mappingAddressToUint256 =>
       `(Compiler.CompilationModel.FieldType.mappingTyped
@@ -105,7 +116,7 @@ private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
       `(Compiler.CompilationModel.FieldType.mappingTyped
           (Compiler.CompilationModel.MappingType.simple Compiler.CompilationModel.MappingKeyType.uint256))
 
-private def modelParamTypeTerm (ty : ValueType) : CommandElabM Term :=
+private partial def modelParamTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Compiler.CompilationModel.ParamType.uint256)
   | .address => `(Compiler.CompilationModel.ParamType.address)
@@ -114,6 +125,9 @@ private def modelParamTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .bytes => `(Compiler.CompilationModel.ParamType.bytes)
   | .array elemTy => do
       `(Compiler.CompilationModel.ParamType.array $(← modelParamTypeTerm elemTy))
+  | .tuple elemTys => do
+      let elemTerms ← elemTys.mapM modelParamTypeTerm
+      `(Compiler.CompilationModel.ParamType.tuple [ $[$elemTerms.toArray],* ])
   | .unit => throwError "function parameters cannot be Unit"
 
 private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
@@ -125,8 +139,9 @@ private def modelReturnTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .bool => `(none)
   | .bytes => `(none)
   | .array _ => `(none)
+  | .tuple _ => `(none)
 
-private def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
+private partial def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .unit => `([])
   | .uint256 => `([Compiler.CompilationModel.ParamType.uint256])
@@ -136,8 +151,11 @@ private def modelReturnsTerm (ty : ValueType) : CommandElabM Term :=
   | .bytes => `([Compiler.CompilationModel.ParamType.bytes])
   | .array elemTy => do
       `([Compiler.CompilationModel.ParamType.array $(← modelParamTypeTerm elemTy)])
+  | .tuple elemTys => do
+      let elemTerms ← elemTys.mapM modelParamTypeTerm
+      `([ $[$elemTerms.toArray],* ])
 
-private def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
+private partial def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   match ty with
   | .uint256 => `(Uint256)
   | .address => `(Address)
@@ -146,6 +164,7 @@ private def contractValueTypeTerm (ty : ValueType) : CommandElabM Term :=
   | .bytes => `(ByteArray)
   | .array elemTy => do
       `(Array $(← contractValueTypeTerm elemTy))
+  | .tuple _ => `(Unit)
   | .unit => `(Unit)
 
 private def parseStorageField (stx : Syntax) : CommandElabM StorageFieldDecl := do
@@ -216,8 +235,24 @@ private def expectStringList (stx : Term) : CommandElabM (Array String) := do
       xs.mapM expectStringOrIdent
   | _ => throwErrorAt stx "expected list literal [..]"
 
+private def isTupleComponentRef (params : Array ParamDecl) (name : String) : Bool :=
+  -- Check if `name` matches `<paramName>_<digit>` for a tuple-typed param
+  match name.splitOn "_" with
+  | [baseName, indexStr] =>
+      match indexStr.toNat? with
+      | some idx =>
+          params.any fun p =>
+            p.name == baseName &&
+            match p.ty with
+            | .tuple elemTys => idx < elemTys.length
+            | _ => false
+      | none => false
+  | _ => false
+
 private def lookupVarExpr (params : Array ParamDecl) (locals : Array String) (name : String) : CommandElabM Term := do
   if params.any (fun p => p.name == name) then
+    `(Compiler.CompilationModel.Expr.param $(strTerm name))
+  else if isTupleComponentRef params name then
     `(Compiler.CompilationModel.Expr.param $(strTerm name))
   else if locals.contains name then
     `(Compiler.CompilationModel.Expr.localVar $(strTerm name))
@@ -783,6 +818,7 @@ private def mkStorageDefCommand (field : StorageFieldDecl) : CommandElabM Cmd :=
     | .scalar .bool => throwError "storage field cannot be Bool; use Uint256 (0/1) encoding"
     | .scalar .bytes => throwError "storage field cannot be Bytes; use Uint256 encoding"
     | .scalar (.array _) => throwError "storage field cannot be Array; use mapping encodings"
+    | .scalar (.tuple _) => throwError "storage field cannot be Tuple; use mapping encodings"
     | .scalar .unit => throwError "storage field cannot be Unit"
     | .mappingAddressToUint256 => `(Address → Uint256)
     | .mapping2AddressToAddressToUint256 => `(Address → Address → Uint256)

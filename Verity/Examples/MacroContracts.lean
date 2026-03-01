@@ -401,10 +401,31 @@ verity_contract StorageWordsSmoke where
   function extSloadsLike (slots : Array Bytes32) : Array Uint256 := do
     returnStorageWords slots
 
+verity_contract TupleSmoke where
+  storage
+    values : Uint256 → Uint256 := slot 0
+    authorized : Address → Uint256 := slot 1
+
+  function setFromPair (pair : Tuple [Uint256, Uint256]) : Unit := do
+    let key := pair_0
+    let value := pair_1
+    setMappingUint values key value
+
+  function getPair (key : Uint256) : Tuple [Uint256, Uint256] := do
+    let value ← getMappingUint values key
+    returnValues [key, value]
+
+  function processConfig (cfg : Tuple [Address, Address, Uint256]) : Unit := do
+    let addr := cfg_0
+    let _target := cfg_1
+    let amount := cfg_2
+    setMapping authorized addr amount
+
 #check_contract Counter
 #check_contract UintMapSmoke
 #check_contract Bytes32Smoke
 #check_contract MappingWordSmoke
 #check_contract StorageWordsSmoke
+#check_contract TupleSmoke
 
 end Verity.Examples.MacroContracts

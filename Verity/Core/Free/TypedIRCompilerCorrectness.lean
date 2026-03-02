@@ -315,6 +315,38 @@ def execCompiledRequireBinaryLiteralGuard
   | .ge => execCompiledRequireGeLiterals fields init n m message
   | .le => execCompiledRequireLeLiterals fields init n m message
 
+/-- Clause payload for list-level semantic preservation over supported
+single-guard `require` literals. -/
+structure RequireBinaryLiteralClause where
+  guard : RequireBinaryLiteralGuard
+  lhs : Nat
+  rhs : Nat
+  message : String
+deriving DecidableEq, Repr
+
+/-- Source semantics dispatcher for a list of supported single-guard
+`require` literal clauses. Evaluation short-circuits on revert. -/
+def execSourceRequireBinaryLiteralClauses
+    (init : TExecState) (clauses : List RequireBinaryLiteralClause) : TExecResult :=
+  match clauses with
+  | [] => .ok init
+  | clause :: rest =>
+      match execSourceRequireBinaryLiteralGuard clause.guard init clause.lhs clause.rhs clause.message with
+      | .ok st => execSourceRequireBinaryLiteralClauses st rest
+      | .revert reason => .revert reason
+
+/-- Compiled semantics dispatcher for a list of supported single-guard
+`require` literal clauses. Evaluation short-circuits on revert. -/
+def execCompiledRequireBinaryLiteralClauses
+    (fields : List Field) (init : TExecState) (clauses : List RequireBinaryLiteralClause) : TExecResult :=
+  match clauses with
+  | [] => .ok init
+  | clause :: rest =>
+      match execCompiledRequireBinaryLiteralGuard
+          clause.guard fields init clause.lhs clause.rhs clause.message with
+      | .ok st => execCompiledRequireBinaryLiteralClauses fields st rest
+      | .revert reason => .revert reason
+
 /-- Semantic-preservation theorem for the supported 2.2 subset:
 compiling and running `setStorage fieldName (literal n)` matches direct source execution,
 under explicit field-resolution assumptions. -/
@@ -621,5 +653,19 @@ theorem compile_require_binary_literal_guard_semantics
       compile_require_gt_literals_semantics,
       compile_require_ge_literals_semantics,
       compile_require_le_literals_semantics]
+
+/-- Structural-induction semantic-preservation theorem for sequences of
+supported single-guard `require` literal clauses. -/
+theorem compile_require_binary_literal_clauses_semantics
+    (fields : List Field) (init : TExecState) (clauses : List RequireBinaryLiteralClause) :
+    execCompiledRequireBinaryLiteralClauses fields init clauses =
+      execSourceRequireBinaryLiteralClauses init clauses := by
+  induction clauses generalizing init with
+  | nil =>
+      simp [execCompiledRequireBinaryLiteralClauses, execSourceRequireBinaryLiteralClauses]
+  | cons clause rest ih =>
+      simp [execCompiledRequireBinaryLiteralClauses, execSourceRequireBinaryLiteralClauses,
+        compile_require_binary_literal_guard_semantics, ih]
+      rfl
 
 end Verity.Core.Free

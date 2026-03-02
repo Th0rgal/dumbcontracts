@@ -588,4 +588,58 @@ example :
     OwnedCounter.transferOwnership_modelBody := by
   simpa using OwnedCounter.transferOwnership_semantic_preservation
 
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.deposit_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.deposit_modelBody := by
+  simpa using Ledger.deposit_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.withdraw_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.withdraw_modelBody := by
+  simpa using Ledger.withdraw_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.transfer_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.transfer_modelBody := by
+  simpa using Ledger.transfer_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.getBalance_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.getBalance_modelBody := by
+  simpa using Ledger.getBalance_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.mint_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.mint_modelBody := by
+  simpa using SimpleToken.mint_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.transfer_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.transfer_modelBody := by
+  simpa using SimpleToken.transfer_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.balanceOf_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.balanceOf_modelBody := by
+  simpa using SimpleToken.balanceOf_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.totalSupply_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.totalSupply_modelBody := by
+  simpa using SimpleToken.totalSupply_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.owner_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.owner_modelBody := by
+  simpa using SimpleToken.owner_semantic_preservation
+
 end Verity.Examples.MacroContracts

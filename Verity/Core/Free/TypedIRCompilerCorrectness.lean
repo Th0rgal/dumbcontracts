@@ -228,6 +228,36 @@ def execCompiledIteEqReturnLiterals
   | .error err => .revert err
   | .ok (_, st) => evalTStmts init st.body.toList
 
+/-- Direct source semantics for a broader supported nested-branch subset:
+`ite (eq (literal n) (literal m))
+     [ite (eq (literal p) (literal q))
+          [return (literal thenVal)]
+          [return (literal elseVal)]]
+     [return (literal outerElseVal)]`
+halts via nested return-driven control flow. -/
+def execSourceIteEqThenIteEqReturnLiterals
+    (init : TExecState)
+    (n m p q thenVal elseVal outerElseVal : Nat) : TExecResult :=
+  if (n : Verity.Core.Uint256) == (m : Verity.Core.Uint256) then
+    execSourceIteEqReturnLiterals init p q thenVal elseVal
+  else
+    execSourceReturnLiteral init outerElseVal
+
+/-- Compile + execute a broader supported nested-branch subset through typed IR. -/
+def execCompiledIteEqThenIteEqReturnLiterals
+    (fields : List Field) (init : TExecState)
+    (n m p q thenVal elseVal outerElseVal : Nat) : TExecResult :=
+  match (compileStmts fields
+      [Stmt.ite
+        (Expr.eq (Expr.literal n) (Expr.literal m))
+        [Stmt.ite
+          (Expr.eq (Expr.literal p) (Expr.literal q))
+          [Stmt.return (Expr.literal thenVal)]
+          [Stmt.return (Expr.literal elseVal)]]
+        [Stmt.return (Expr.literal outerElseVal)] ]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
 /-- Direct source semantics for a broader supported require subset:
 `require (eq (literal n) (literal m)) message`
 halts with revert on guard failure and leaves state unchanged otherwise. -/
@@ -640,6 +670,31 @@ theorem compile_ite_eq_return_literals_semantics
   by_cases hEq : (n : Verity.Core.Uint256) = (m : Verity.Core.Uint256)
   · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEq]
   · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEq]
+
+/-- Semantic-preservation theorem for a broader supported nested-branch subset:
+compiling and running
+`ite (eq (literal n) (literal m))
+     [ite (eq (literal p) (literal q))
+          [return (literal thenVal)]
+          [return (literal elseVal)]]
+     [return (literal outerElseVal)]`
+matches direct source nested-branch semantics. -/
+theorem compile_ite_eq_then_ite_eq_return_literals_semantics
+    (fields : List Field)
+    (init : TExecState) (n m p q thenVal elseVal outerElseVal : Nat) :
+    execCompiledIteEqThenIteEqReturnLiterals
+        fields init n m p q thenVal elseVal outerElseVal =
+      execSourceIteEqThenIteEqReturnLiterals
+        init n m p q thenVal elseVal outerElseVal := by
+  simp [execCompiledIteEqThenIteEqReturnLiterals,
+    execSourceIteEqThenIteEqReturnLiterals,
+    execSourceIteEqReturnLiterals, compileStmts_single_ite_eq_then_ite_eq_return_literals_run,
+    execSourceReturnLiteral, evalTStmts, defaultEvalFuel]
+  by_cases hEqOuter : (n : Verity.Core.Uint256) = (m : Verity.Core.Uint256)
+  · by_cases hEqInner : (p : Verity.Core.Uint256) = (q : Verity.Core.Uint256)
+    · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEqOuter, hEqInner]
+    · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEqOuter, hEqInner]
+  · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEqOuter]
 
 /-- Semantic-preservation theorem for a broader supported require subset:
 compiling and running `require (eq (literal n) (literal m)) message`
@@ -1125,6 +1180,38 @@ def execCompiledRequireFamilyClausesThenIteEqReturnLiterals
       execCompiledIteEqReturnLiterals fields st n m thenVal elseVal
   | .revert reason => .revert reason
 
+/-- Source semantics for a broader supported sequencing subset:
+run a list of supported unified `require` guard-family clauses, then perform
+`ite (eq (literal n) (literal m))
+     [ite (eq (literal p) (literal q))
+          [return (literal thenVal)]
+          [return (literal elseVal)]]
+     [return (literal outerElseVal)]` only on success. -/
+def execSourceRequireFamilyClausesThenIteEqThenIteEqReturnLiterals
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (n m p q thenVal elseVal outerElseVal : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st =>
+      execSourceIteEqThenIteEqReturnLiterals st n m p q thenVal elseVal outerElseVal
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same broader supported sequencing subset:
+run compiled unified `require` guard-family clause-list semantics, then run
+compiled
+`ite (eq (literal n) (literal m))
+     [ite (eq (literal p) (literal q))
+          [return (literal thenVal)]
+          [return (literal elseVal)]]
+     [return (literal outerElseVal)]` on success. -/
+def execCompiledRequireFamilyClausesThenIteEqThenIteEqReturnLiterals
+    (fields : List Field) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause)
+    (n m p q thenVal elseVal outerElseVal : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st =>
+      execCompiledIteEqThenIteEqReturnLiterals fields st n m p q thenVal elseVal outerElseVal
+  | .revert reason => .revert reason
+
 /-- Sequencing semantic-preservation theorem for a broader supported subset:
 for unified `require` guard-family clause lists followed by `setStorage literal`,
 compiled execution matches direct source sequencing semantics under explicit
@@ -1228,6 +1315,25 @@ theorem compile_require_family_clauses_then_ite_eq_return_literals_semantics
     execSourceRequireFamilyClausesThenIteEqReturnLiterals,
     compile_require_literal_guard_family_clauses_semantics,
     compile_ite_eq_return_literals_semantics]
+  rfl
+
+/-- Sequencing semantic-preservation theorem for a broader supported subset:
+for unified `require` guard-family clause lists followed by nested
+`ite(eq(literal,literal))` with return-only leaves, compiled execution matches
+direct source sequencing semantics. -/
+theorem compile_require_family_clauses_then_ite_eq_then_ite_eq_return_literals_semantics
+    (fields : List Field)
+    (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause)
+    (n m p q thenVal elseVal outerElseVal : Nat) :
+    execCompiledRequireFamilyClausesThenIteEqThenIteEqReturnLiterals
+        fields init clauses n m p q thenVal elseVal outerElseVal =
+      execSourceRequireFamilyClausesThenIteEqThenIteEqReturnLiterals
+        init clauses n m p q thenVal elseVal outerElseVal := by
+  simp [execCompiledRequireFamilyClausesThenIteEqThenIteEqReturnLiterals,
+    execSourceRequireFamilyClausesThenIteEqThenIteEqReturnLiterals,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_ite_eq_then_ite_eq_return_literals_semantics]
   rfl
 
 /-- Source semantics for a broader supported sequencing subset:
@@ -1585,6 +1691,8 @@ inductive RequireFamilyClausesTail (fields : List Field) where
         some ({ name := fieldName, ty := FieldType.uint256 }, slot))
   | iteEqReturnLiterals
       (n m thenVal elseVal : Nat)
+  | iteEqThenIteEqReturnLiterals
+      (n m p q thenVal elseVal outerElseVal : Nat)
   | returnLiteral (retVal : Nat)
   | letReturnLocalLiteral (tmp : String) (retVal : Nat)
   | letSetStorageLocalLiteral
@@ -1631,6 +1739,9 @@ def execSourceRequireFamilyClausesThenTail
   | .iteEqReturnLiterals n m thenVal elseVal =>
       execSourceRequireFamilyClausesThenIteEqReturnLiterals
         init clauses n m thenVal elseVal
+  | .iteEqThenIteEqReturnLiterals n m p q thenVal elseVal outerElseVal =>
+      execSourceRequireFamilyClausesThenIteEqThenIteEqReturnLiterals
+        init clauses n m p q thenVal elseVal outerElseVal
   | .returnLiteral retVal =>
       execSourceRequireFamilyClausesThenReturnLiteral init clauses retVal
   | .letReturnLocalLiteral _ retVal =>
@@ -1669,6 +1780,9 @@ def execCompiledRequireFamilyClausesThenTail
   | .iteEqReturnLiterals n m thenVal elseVal =>
       execCompiledRequireFamilyClausesThenIteEqReturnLiterals
         fields init clauses n m thenVal elseVal
+  | .iteEqThenIteEqReturnLiterals n m p q thenVal elseVal outerElseVal =>
+      execCompiledRequireFamilyClausesThenIteEqThenIteEqReturnLiterals
+        fields init clauses n m p q thenVal elseVal outerElseVal
   | .returnLiteral retVal =>
       execCompiledRequireFamilyClausesThenReturnLiteral fields init clauses retVal
   | .letReturnLocalLiteral tmp retVal =>
@@ -1721,6 +1835,10 @@ theorem compile_require_family_clauses_then_tail_semantics
       simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
         using compile_require_family_clauses_then_ite_eq_return_literals_semantics
           fields init clauses n m thenVal elseVal
+  | iteEqThenIteEqReturnLiterals n m p q thenVal elseVal outerElseVal =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_ite_eq_then_ite_eq_return_literals_semantics
+          fields init clauses n m p q thenVal elseVal outerElseVal
   | returnLiteral retVal =>
       simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
         using compile_require_family_clauses_then_return_literal_semantics fields init clauses retVal
@@ -1895,6 +2013,9 @@ inductive SupportedStmtFragment (fields : List Field) where
   | requireClausesThenIteEqReturnLiterals
       (clauses : List RequireLiteralGuardFamilyClause)
       (n m thenVal elseVal : Nat)
+  | requireClausesThenIteEqThenIteEqReturnLiterals
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (n m p q thenVal elseVal outerElseVal : Nat)
   | requireClausesThenReturnLiteral
       (clauses : List RequireLiteralGuardFamilyClause) (retVal : Nat)
   | requireClausesThenLetReturnLocalLiteral
@@ -1950,6 +2071,10 @@ def SupportedStmtFragment.toRequireFamilyClausesTailProgram
   | .requireClausesThenIteEqReturnLiterals clauses n m thenVal elseVal =>
       { clauses := clauses
         tail := .iteEqReturnLiterals n m thenVal elseVal }
+  | .requireClausesThenIteEqThenIteEqReturnLiterals
+      clauses n m p q thenVal elseVal outerElseVal =>
+      { clauses := clauses
+        tail := .iteEqThenIteEqReturnLiterals n m p q thenVal elseVal outerElseVal }
   | .requireClausesThenReturnLiteral clauses retVal =>
       { clauses := clauses
         tail := .returnLiteral retVal }
@@ -2022,6 +2147,12 @@ def RequireFamilyClausesTail.toStmts
       [Stmt.ite (Expr.eq (Expr.literal n) (Expr.literal m))
           [Stmt.return (Expr.literal thenVal)]
           [Stmt.return (Expr.literal elseVal)]]
+  | .iteEqThenIteEqReturnLiterals n m p q thenVal elseVal outerElseVal =>
+      [Stmt.ite (Expr.eq (Expr.literal n) (Expr.literal m))
+          [Stmt.ite (Expr.eq (Expr.literal p) (Expr.literal q))
+            [Stmt.return (Expr.literal thenVal)]
+            [Stmt.return (Expr.literal elseVal)]]
+          [Stmt.return (Expr.literal outerElseVal)]]
   | .returnLiteral retVal =>
       [Stmt.return (Expr.literal retVal)]
   | .letReturnLocalLiteral tmp retVal =>

@@ -41,6 +41,7 @@ inductive TExpr : Ty → Type where
   | getStorage (slot : Nat) : TExpr .uint256
   | getStorageAddr (slot : Nat) : TExpr .address
   | getMapping (slot : Nat) (key : TExpr .address) : TExpr .uint256
+  | getMapping2 (slot : Nat) (key1 key2 : TExpr .address) : TExpr .uint256
   | getMappingUint (slot : Nat) (key : TExpr .uint256) : TExpr .uint256
   deriving Repr
 
@@ -51,6 +52,7 @@ inductive TStmt where
   | setStorage (slot : Nat) (value : TExpr .uint256)
   | setStorageAddr (slot : Nat) (value : TExpr .address)
   | setMapping (slot : Nat) (key : TExpr .address) (value : TExpr .uint256)
+  | setMapping2 (slot : Nat) (key1 key2 : TExpr .address) (value : TExpr .uint256)
   | setMappingUint (slot : Nat) (key : TExpr .uint256) (value : TExpr .uint256)
   | if_ (cond : TExpr .bool) (thenBranch elseBranch : List TStmt)
   | stop
@@ -168,6 +170,7 @@ def evalTExpr (s : TExecState) : TExpr ty → Ty.denote ty
   | .getStorage slot => s.world.storage slot
   | .getStorageAddr slot => s.world.storageAddr slot
   | .getMapping slot key => s.world.storageMap slot (evalTExpr s key)
+  | .getMapping2 slot key1 key2 => s.world.storageMap2 slot (evalTExpr s key1) (evalTExpr s key2)
   | .getMappingUint slot key => s.world.storageMapUint slot (evalTExpr s key)
 
 /-- Check whether a statement is an EVM-halting terminal (`stop`, `return`). -/
@@ -197,6 +200,13 @@ def evalTStmtFuel : Nat → TExecState → TStmt → TExecResult
       let v := evalTExpr s value
       .ok { s with world := { s.world with
         storageMap := fun i addr => if i == slot && addr == k then v else s.world.storageMap i addr } }
+  | Nat.succ _, s, .setMapping2 slot key1 key2 value =>
+      let k1 := evalTExpr s key1
+      let k2 := evalTExpr s key2
+      let v := evalTExpr s value
+      .ok { s with world := { s.world with
+        storageMap2 := fun i addr1 addr2 =>
+          if i == slot && addr1 == k1 && addr2 == k2 then v else s.world.storageMap2 i addr1 addr2 } }
   | Nat.succ _, s, .setMappingUint slot key value =>
       let k := evalTExpr s key
       let v := evalTExpr s value

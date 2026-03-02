@@ -124,6 +124,14 @@ private def compileExpr (fields : List Field) : Expr → CompileM SomeTExpr
           return ⟨Ty.uint256, TExpr.getMappingUint slot keyUint⟩
       | none =>
           throw s!"Typed IR compile error: unknown mapping field '{field}'"
+  | .mapping2 field key1 key2 => do
+      let key1Expr ← liftExcept <| asAddress (← compileExpr fields key1)
+      let key2Expr ← liftExcept <| asAddress (← compileExpr fields key2)
+      match findFieldSlot fields field with
+      | some slot =>
+          return ⟨Ty.uint256, TExpr.getMapping2 slot key1Expr key2Expr⟩
+      | none =>
+          throw s!"Typed IR compile error: unknown mapping field '{field}'"
   | .caller => return ⟨Ty.address, TExpr.sender⟩
   | .contractAddress => return ⟨Ty.address, TExpr.this⟩
   | .msgValue => return ⟨Ty.uint256, TExpr.msgValue⟩
@@ -232,6 +240,13 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
       let valueExpr ← liftExcept <| asUInt256 (← compileExpr fields value)
       match findFieldSlot fields fieldName with
       | some slot => emit (.setMappingUint slot keyExpr valueExpr)
+      | none => throw s!"Typed IR compile error: unknown mapping field '{fieldName}'"
+  | .setMapping2 fieldName key1 key2 value => do
+      let key1Expr ← liftExcept <| asAddress (← compileExpr fields key1)
+      let key2Expr ← liftExcept <| asAddress (← compileExpr fields key2)
+      let valueExpr ← liftExcept <| asUInt256 (← compileExpr fields value)
+      match findFieldSlot fields fieldName with
+      | some slot => emit (.setMapping2 slot key1Expr key2Expr valueExpr)
       | none => throw s!"Typed IR compile error: unknown mapping field '{fieldName}'"
   | .require cond message => do
       let condExpr ← liftExcept <| asBool (← compileExpr fields cond)

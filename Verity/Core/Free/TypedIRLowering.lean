@@ -40,6 +40,9 @@ def lowerTExpr : {ty : Ty} → TExpr ty → YulExpr
   | _, .getStorageAddr slot => .call "sload" [.lit slot]
   | _, .getMapping slot key =>
       .call "sload" [.call "mappingSlot" [.lit slot, lowerTExpr key]]
+  | _, .getMapping2 slot key1 key2 =>
+      let innerSlot := .call "mappingSlot" [.lit slot, lowerTExpr key1]
+      .call "sload" [.call "mappingSlot" [innerSlot, lowerTExpr key2]]
   | _, .getMappingUint slot key =>
       .call "sload" [.call "mappingSlot" [.lit slot, lowerTExpr key]]
 
@@ -56,6 +59,11 @@ where
     | .setMapping slot key value =>
         [ .expr (.call "sstore"
             [.call "mappingSlot" [.lit slot, lowerTExpr key], lowerTExpr value])
+        ]
+    | .setMapping2 slot key1 key2 value =>
+        let innerSlot := .call "mappingSlot" [.lit slot, lowerTExpr key1]
+        [ .expr (.call "sstore"
+            [.call "mappingSlot" [innerSlot, lowerTExpr key2], lowerTExpr value])
         ]
     | .setMappingUint slot key value =>
         [ .expr (.call "sstore"

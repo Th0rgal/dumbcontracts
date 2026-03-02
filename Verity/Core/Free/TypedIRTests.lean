@@ -722,6 +722,158 @@ example : compilesOk Compiler.Specs.simpleTokenSpec "balanceOf" = true := by nat
 example : compilesOk Compiler.Specs.simpleTokenSpec "totalSupply" = true := by native_decide
 example : compilesOk Compiler.Specs.simpleTokenSpec "owner" = true := by native_decide
 
+private def erc20Spec : Compiler.CompilationModel.CompilationModel :=
+  Verity.Examples.MacroContracts.ERC20.spec
+
+private def maxUint256 : Nat :=
+  115792089237316195423570985008687907853269984665640564039457584007913129639935
+
+/-- Smoke test: all ERC20 spec functions compile to typed IR. -/
+example : compilesOk erc20Spec "mint" = true := by native_decide
+example : compilesOk erc20Spec "transfer" = true := by native_decide
+example : compilesOk erc20Spec "approve" = true := by native_decide
+example : compilesOk erc20Spec "transferFrom" = true := by native_decide
+example : compilesOk erc20Spec "balanceOf" = true := by native_decide
+example : compilesOk erc20Spec "allowanceOf" = true := by native_decide
+example : compilesOk erc20Spec "totalSupply" = true := by native_decide
+example : compilesOk erc20Spec "owner" = true := by native_decide
+
+/-- End-to-end ERC20.transferFrom (normal path): updates balances and decrements allowance. -/
+def compiledERC20TransferFromSuccess : Option (Nat × Nat × Nat) :=
+  match compileFunctionNamed erc20Spec "approve",
+        compileFunctionNamed erc20Spec "transferFrom" with
+  | .ok approveBlock, .ok transferFromBlock =>
+      match approveBlock.params, transferFromBlock.params with
+      | [spenderParam, approveAmountParam], [fromParam, toParam, transferAmountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun i addr =>
+                if i == 2 && addr == 11 then 100
+                else if i == 2 && addr == 33 then 50
+                else 0
+              sender := 11 }
+          let approveInit : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = spenderParam.id then 22 else 0
+                        uint256 := fun i =>
+                          if i = approveAmountParam.id then 40 else 0 } }
+          match evalTBlock approveInit approveBlock with
+          | .revert _ => none
+          | .ok postApprove =>
+              let transferInit : TExecState :=
+                { world := { postApprove.world with sender := 22 }
+                  vars := { address := fun i =>
+                              if i = fromParam.id then 11
+                              else if i = toParam.id then 33
+                              else 0
+                            uint256 := fun i =>
+                              if i = transferAmountParam.id then 30 else 0 } }
+              match evalTBlock transferInit transferFromBlock with
+              | .ok s =>
+                  some (s.world.storageMap 2 11, s.world.storageMap 2 33, s.world.storageMap2 3 11 22)
+              | .revert _ => none
+      | _, _ => none
+  | _, _ => none
+
+/-- ERC20.transferFrom amount=30 after approve(40): from 100→70, to 50→80, allowance 40→10. -/
+example : compiledERC20TransferFromSuccess = some (70, 80, 10) := by native_decide
+
+/-- End-to-end ERC20.transferFrom (infinite allowance path): allowance is preserved. -/
+def compiledERC20TransferFromInfiniteAllowance : Option (Nat × Nat × Nat) :=
+  match compileFunctionNamed erc20Spec "transferFrom" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [fromParam, toParam, amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun i addr =>
+                if i == 2 && addr == 11 then 100
+                else if i == 2 && addr == 33 then 50
+                else 0
+              storageMap2 := fun i ownerAddr spenderAddr =>
+                if i == 3 && ownerAddr == 11 && spenderAddr == 22 then maxUint256 else 0
+              sender := 22 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = fromParam.id then 11
+                          else if i = toParam.id then 33
+                          else 0
+                        uint256 := fun i =>
+                          if i = amountParam.id then 30 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some (s.world.storageMap 2 11, s.world.storageMap 2 33, s.world.storageMap2 3 11 22)
+          | .revert _ => none
+      | _ => none
+
+/-- ERC20.transferFrom with infinite allowance keeps allowance max while moving balances. -/
+example : compiledERC20TransferFromInfiniteAllowance = some (70, 80, maxUint256) := by
+  native_decide
+
+/-- End-to-end ERC20.transferFrom self-transfer branch: balances unchanged, allowance decremented. -/
+def compiledERC20TransferFromSelfTransfer : Option (Nat × Nat) :=
+  match compileFunctionNamed erc20Spec "transferFrom" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [fromParam, toParam, amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun i addr =>
+                if i == 2 && addr == 11 then 100 else 0
+              storageMap2 := fun i ownerAddr spenderAddr =>
+                if i == 3 && ownerAddr == 11 && spenderAddr == 22 then 40 else 0
+              sender := 22 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = fromParam.id then 11
+                          else if i = toParam.id then 11
+                          else 0
+                        uint256 := fun i =>
+                          if i = amountParam.id then 30 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some (s.world.storageMap 2 11, s.world.storageMap2 3 11 22)
+          | .revert _ => none
+      | _ => none
+
+/-- ERC20.transferFrom(from=to=11): balance stays 100 and allowance 40→10. -/
+example : compiledERC20TransferFromSelfTransfer = some (100, 10) := by native_decide
+
+/-- End-to-end ERC20.transferFrom (revert path): insufficient allowance reverts. -/
+def compiledERC20TransferFromInsufficientAllowanceReverts : Bool :=
+  match compileFunctionNamed erc20Spec "transferFrom" with
+  | .error _ => false
+  | .ok block =>
+      match block.params with
+      | [fromParam, toParam, amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun i addr =>
+                if i == 2 && addr == 11 then 100
+                else if i == 2 && addr == 33 then 50
+                else 0
+              storageMap2 := fun i ownerAddr spenderAddr =>
+                if i == 3 && ownerAddr == 11 && spenderAddr == 22 then 20 else 0
+              sender := 22 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = fromParam.id then 11
+                          else if i = toParam.id then 33
+                          else 0
+                        uint256 := fun i =>
+                          if i = amountParam.id then 30 else 0 } }
+          match evalTBlock init block with
+          | .ok _ => false
+          | .revert _ => true
+      | _ => false
+
+/-- ERC20.transferFrom amount=30 with allowance=20 reverts. -/
+example : compiledERC20TransferFromInsufficientAllowanceReverts = true := by native_decide
+
 /-- Smoke test: all SafeCounter spec functions compile to typed IR. -/
 example : compilesOk Compiler.Specs.safeCounterSpec "increment" = true := by native_decide
 example : compilesOk Compiler.Specs.safeCounterSpec "decrement" = true := by native_decide

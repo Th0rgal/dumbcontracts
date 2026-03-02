@@ -642,4 +642,52 @@ example :
     SimpleToken.owner_modelBody := by
   simpa using SimpleToken.owner_semantic_preservation
 
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.mint_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.mint_modelBody := by
+  simpa using ERC20.mint_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.transfer_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.transfer_modelBody := by
+  simpa using ERC20.transfer_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.approve_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.approve_modelBody := by
+  simpa using ERC20.approve_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.transferFrom_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.transferFrom_modelBody := by
+  simpa using ERC20.transferFrom_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.balanceOf_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.balanceOf_modelBody := by
+  simpa using ERC20.balanceOf_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.allowanceOf_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.allowanceOf_modelBody := by
+  simpa using ERC20.allowanceOf_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.totalSupply_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.totalSupply_modelBody := by
+  simpa using ERC20.totalSupply_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.owner_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.owner_modelBody := by
+  simpa using ERC20.owner_semantic_preservation
+
 end Verity.Examples.MacroContracts

@@ -620,6 +620,69 @@ example : compilesOk Compiler.Specs.simpleTokenSpec "balanceOf" = true := by nat
 example : compilesOk Compiler.Specs.simpleTokenSpec "totalSupply" = true := by native_decide
 example : compilesOk Compiler.Specs.simpleTokenSpec "owner" = true := by native_decide
 
+/-- Smoke test: all SafeCounter spec functions compile to typed IR. -/
+example : compilesOk Compiler.Specs.safeCounterSpec "increment" = true := by native_decide
+example : compilesOk Compiler.Specs.safeCounterSpec "decrement" = true := by native_decide
+example : compilesOk Compiler.Specs.safeCounterSpec "getCount" = true := by native_decide
+
+/-- End-to-end SafeCounter.increment (happy path): count 5 → 6. -/
+def compiledSafeCounterIncrementSuccess : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.safeCounterSpec "increment" with
+  | .error _ => none
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with «storage» := fun i => if i = 0 then 5 else 0 }
+      let init : TExecState := { world := initWorld }
+      match evalTBlock init block with
+      | .ok s => some (s.world.storage 0)
+      | .revert _ => none
+
+/-- SafeCounter.increment(count=5): count 5→6. -/
+example : compiledSafeCounterIncrementSuccess = some 6 := by native_decide
+
+/-- End-to-end SafeCounter.decrement (happy path): count 5 → 4. -/
+def compiledSafeCounterDecrementSuccess : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.safeCounterSpec "decrement" with
+  | .error _ => none
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with «storage» := fun i => if i = 0 then 5 else 0 }
+      let init : TExecState := { world := initWorld }
+      match evalTBlock init block with
+      | .ok s => some (s.world.storage 0)
+      | .revert _ => none
+
+/-- SafeCounter.decrement(count=5): count 5→4. -/
+example : compiledSafeCounterDecrementSuccess = some 4 := by native_decide
+
+/-- End-to-end SafeCounter.decrement (underflow): count=0 reverts. -/
+def compiledSafeCounterDecrementUnderflow : Bool :=
+  match compileFunctionNamed Compiler.Specs.safeCounterSpec "decrement" with
+  | .error _ => false
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with «storage» := fun _ => 0 }
+      let init : TExecState := { world := initWorld }
+      match evalTBlock init block with
+      | .ok _ => false
+      | .revert _ => true
+
+/-- SafeCounter.decrement(count=0): reverts with "Underflow in decrement". -/
+example : compiledSafeCounterDecrementUnderflow = true := by native_decide
+
+/-- End-to-end SafeCounter.getCount: returns stored count via lowered pipeline. -/
+def compiledSafeCounterGetCountReturn : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.safeCounterSpec "getCount" with
+  | .error _ => none
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with «storage» := fun i => if i = 0 then 42 else 0 }
+      let init : TExecState := { world := initWorld }
+      execLoweredReturn 256 (mkIRStateFromTyped init block) block
+
+/-- SafeCounter.getCount returns stored count (42) through the full pipeline. -/
+example : compiledSafeCounterGetCountReturn = some 42 := by native_decide
+
 /-- Compiler correctness base lemma: list compilation composes by append. -/
 example (fields : List Compiler.CompilationModel.Field)
     (pre post : List Compiler.CompilationModel.Stmt) :

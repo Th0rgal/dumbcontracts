@@ -620,4 +620,26 @@ theorem compileStmts_single_require_ge_literals_run
   simp [compileStmts, compileStmt, compileExpr, emit]
   rfl
 
+/-- Single-statement compilation shape for a broader supported require subset:
+`require (le (literal n) (literal m)) message`
+lowers to one typed `if_` with guard `not (lt m n)` and an else-branch `revert`,
+from an empty compile state. -/
+theorem compileStmts_single_require_le_literals_run
+    (fields : List Field) (message : String) (n m : Nat) :
+    (compileStmts fields
+      [Stmt.require (Expr.le (Expr.literal n) (Expr.literal m)) message]).run {} =
+      Except.ok ((),
+        { nextId := 0
+          vars := []
+          params := #[]
+          locals := #[]
+          body := #[
+            TStmt.if_
+              (TExpr.not (TExpr.lt (TExpr.uintLit m) (TExpr.uintLit n)))
+              []
+              [TStmt.revert message]
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, emit]
+  rfl
+
 end Verity.Core.Free

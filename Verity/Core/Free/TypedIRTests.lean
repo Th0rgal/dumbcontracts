@@ -522,6 +522,90 @@ def compiledLedgerDepositResult : Option Nat :=
 /-- Ledger.deposit(amount=50): sender balance 100→150. -/
 example : compiledLedgerDepositResult = some 150 := by native_decide
 
+/-- End-to-end Ledger.withdraw (happy path): sufficient balance succeeds. -/
+def compiledLedgerWithdrawSuccess : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.ledgerSpec "withdraw" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun slot addr =>
+                if slot == 0 && addr == 1 then 100 else 0
+              sender := 1 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { uint256 := fun i =>
+                          if i = amountParam.id then 30 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some (s.world.storageMap 0 1)
+          | .revert _ => none
+      | _ => none
+
+/-- Ledger.withdraw(amount=30): sender balance 100→70 (require passes). -/
+example : compiledLedgerWithdrawSuccess = some 70 := by native_decide
+
+/-- End-to-end Ledger.withdraw (revert path): insufficient balance reverts. -/
+def compiledLedgerWithdrawReverts : Bool :=
+  match compileFunctionNamed Compiler.Specs.ledgerSpec "withdraw" with
+  | .error _ => false
+  | .ok block =>
+      match block.params with
+      | [amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun slot addr =>
+                if slot == 0 && addr == 1 then 10 else 0
+              sender := 1 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { uint256 := fun i =>
+                          if i = amountParam.id then 50 else 0 } }
+          match evalTBlock init block with
+          | .ok _ => false
+          | .revert _ => true
+      | _ => false
+
+/-- Ledger.withdraw(amount=50) with balance=10: reverts with "Insufficient balance". -/
+example : compiledLedgerWithdrawReverts = true := by native_decide
+
+/-- End-to-end OwnedCounter.increment (happy path): owner can increment. -/
+def compiledOwnedCounterIncrementSuccess : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.ownedCounterSpec "increment" with
+  | .error _ => none
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with
+          storageAddr := fun i => if i = 0 then 42 else 0
+          «storage» := fun i => if i = 1 then 10 else 0
+          sender := 42 }
+      let init : TExecState := { world := initWorld }
+      match evalTBlock init block with
+      | .ok s => some (s.world.storage 1)
+      | .revert _ => none
+
+/-- OwnedCounter.increment by owner (42): count 10→11. -/
+example : compiledOwnedCounterIncrementSuccess = some 11 := by native_decide
+
+/-- End-to-end OwnedCounter.increment (revert path): non-owner is rejected. -/
+def compiledOwnedCounterIncrementReverts : Bool :=
+  match compileFunctionNamed Compiler.Specs.ownedCounterSpec "increment" with
+  | .error _ => false
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with
+          storageAddr := fun i => if i = 0 then 42 else 0
+          «storage» := fun i => if i = 1 then 10 else 0
+          sender := 99 }
+      let init : TExecState := { world := initWorld }
+      match evalTBlock init block with
+      | .ok _ => false
+      | .revert _ => true
+
+/-- OwnedCounter.increment by non-owner (99): reverts. -/
+example : compiledOwnedCounterIncrementReverts = true := by native_decide
+
 /-- Smoke test: all OwnedCounter spec functions compile to typed IR. -/
 example : compilesOk Compiler.Specs.ownedCounterSpec "increment" = true := by native_decide
 example : compilesOk Compiler.Specs.ownedCounterSpec "decrement" = true := by native_decide

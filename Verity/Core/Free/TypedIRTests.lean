@@ -247,9 +247,17 @@ private def tVarValueNat (state : Verity.Core.Free.TExecState.{0}) (v : TVar) : 
 private def mkIRStateFromTyped (state : Verity.Core.Free.TExecState.{0}) (block : TBlock) : IRState :=
   let initVars : List (String × Nat) :=
     (block.params ++ block.locals).map (fun v => (tVarName v, tVarValueNat state v))
+  -- Merge typed storage fields into flat EVM storage.  In the EVM there is a
+  -- single `sload`/`sstore` namespace; the typed IR model splits it into
+  -- `storage` (uint256) and `storageAddr` (address) for type safety.  Each
+  -- slot is used by at most one field type, so we overlay the non-default value.
+  let flatStorage : Nat → Nat := fun i =>
+    let u : Nat := state.world.storage i
+    let a : Nat := state.world.storageAddr i
+    if a != 0 then a else u
   IRState.mk
     initVars
-    (fun i => (state.world.storage i : Nat))
+    flatStorage
     (fun _ => 0)
     []
     none

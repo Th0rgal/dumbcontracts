@@ -1075,4 +1075,18 @@ example (fields : List Compiler.CompilationModel.Field)
             vars := init.vars.set { id := 0, ty := Ty.uint256 } (n : Verity.Core.Uint256) }) :=
   compile_let_setStorage_local_literal_semantics fields fieldName tmp slotIdx init n hfind
 
+example (fields : List Compiler.CompilationModel.Field)
+    (fieldName tmp : String) (slotIdx : Nat)
+    (init : TExecState) (n m : Nat)
+    (hfind : Compiler.CompilationModel.findFieldWithResolvedSlot fields fieldName =
+      some (({ name := fieldName, ty := Compiler.CompilationModel.FieldType.uint256 } : Compiler.CompilationModel.Field), slotIdx)) :
+    execCompiledLetAssignSetStorageLocalLiteral fields fieldName tmp init n m =
+      .ok
+        ({ init with
+            world := execSourceSetStorageLiteral init.world slotIdx m
+            vars := TVars.set
+              (TVars.set init.vars { id := 0, ty := Ty.uint256 } (n : Verity.Core.Uint256))
+              { id := 1, ty := Ty.uint256 } (m : Verity.Core.Uint256) }) :=
+  compile_let_assign_setStorage_local_literal_semantics fields fieldName tmp slotIdx init n m hfind
+
 end Verity.Core.Free

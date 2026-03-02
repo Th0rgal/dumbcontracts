@@ -106,6 +106,7 @@ These CI-critical scripts validate cross-layer consistency:
 - **`check_lean_hygiene.py`** - Validates proof hygiene (`#eval/#check/#print/#reduce`, `native_decide`, `sorry`) and exactly 1 `allowUnsafeReducibility`; parsing is comment/string-aware (including Lean raw strings) via shared Lean lexer utilities
 - **`check_lean_warning_regression.py`** - Enforces Lean warning non-regression from `lake build` output against `artifacts/lean_warning_baseline.json` (allows warning reduction, blocks warning increases by total/file/message), with strict baseline schema enforcement (required keys, no null counters, no boolean-as-integer coercions) and fail-closed UTF-8 log decoding
 - **`check_proof_length.py`** - Enforces proof length limits: soft limit at 30 lines, hard limit at 50 lines with an explicit allowlist for pre-existing long proofs; reports proof length distribution as a CI summary table (`--format=markdown`); comment/string-aware via shared Lean lexer utilities
+- **`check_issue_1060_integrity.py`** - Enforces non-inflated completion evidence for issue #1060 ledger entries (`artifacts/issue_1060_progress.json`): every `complete` item must include acceptance criteria, changed files, verification commands/results (including `lake build`), test evidence, theorem evidence for semantic-proof items, and non-weakened obligation mapping for removed `sorry` goals
 
 ```bash
 # Run locally before submitting documentation changes
@@ -272,6 +273,7 @@ Scripts run automatically in GitHub Actions (`verify.yml`) across 8 jobs:
 32. EVMYulLean adapter report freshness (`generate_evmyullean_adapter_report.py --check`)
 33. PrintAxioms.lean freshness (`generate_print_axioms.py --check`)
 34. Proof length limits (`check_proof_length.py`)
+35. Issue #1060 integrity ledger validation (`check_issue_1060_integrity.py`)
 
 **`build` job** (proofs + axiom audit, ~30 min timeout):
 1. Lean warning non-regression (`check_lean_warning_regression.py` over `lake-build.log`)

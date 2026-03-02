@@ -1,0 +1,217 @@
+{
+  "issue": "#1060",
+  "pr": "#1065",
+  "baseline_sorry": 0,
+  "items": {
+    "0.1": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "0.2": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "1.1": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "1.2": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "1.3": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "2.1": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "2.2": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "2.3": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "2.4": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "2.5": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "3.1": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "3.2": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "3.3": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "3.4": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "3.5": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "4.1": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "4.2": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "4.3": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "4.4": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "4.5": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    },
+    "4.6": {
+      "status": "open",
+      "acceptance_criteria": [],
+      "files_changed": [],
+      "verification_commands": [],
+      "verification_results": [],
+      "evidence": { "theorems": [], "tests": [] },
+      "obligation_delta": { "removed_sorries": [] },
+      "notes": ""
+    }
+  }
+}

@@ -65,6 +65,11 @@ example :
       Verity.Core.Uint256.add 5 8 := by
   simp [baseState, x, y, evalTExpr, TVars.get]
 
+/-- One-step evaluator reductions are available through the dedicated `ir_step` simp set. -/
+example :
+    evalTBlock baseState { params := [], locals := [], body := [] } = .ok baseState := by
+  simp only [ir_step]
+
 /-- Context expressions read from world/environment. -/
 example :
     evalTExpr baseState TExpr.sender = (7 : Verity.Core.Address) := by

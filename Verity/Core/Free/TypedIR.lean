@@ -2,6 +2,7 @@ import Verity.Core
 import Verity.Core.Address
 import Verity.Core.Uint256
 import Verity.Core.Semantics
+import Verity.Core.Free.IRStepAttr
 namespace Verity.Core.Free
 
 /-- Type universe for typed IR values. -/
@@ -264,35 +265,35 @@ def evalTStmts (s : TExecState) (stmts : List TStmt) : TExecResult :=
 def evalTBlock (s : TExecState) (block : TBlock) : TExecResult :=
   evalTStmts s block.body
 
-@[simp] theorem evalTExpr_var (s : TExecState) (v : TVar) :
+@[simp, ir_step] theorem evalTExpr_var (s : TExecState) (v : TVar) :
     evalTExpr s (TExpr.var v) = s.vars.get v := rfl
 
-@[simp] theorem evalTExpr_uintLit (s : TExecState) (value : Verity.Core.Uint256) :
+@[simp, ir_step] theorem evalTExpr_uintLit (s : TExecState) (value : Verity.Core.Uint256) :
     evalTExpr s (TExpr.uintLit value) = value := rfl
 
-@[simp] theorem evalTExpr_boolLit (s : TExecState) (value : Bool) :
+@[simp, ir_step] theorem evalTExpr_boolLit (s : TExecState) (value : Bool) :
     evalTExpr s (TExpr.boolLit value) = value := rfl
 
-@[simp] theorem evalTExpr_add (s : TExecState) (lhs rhs : TExpr .uint256) :
+@[simp, ir_step] theorem evalTExpr_add (s : TExecState) (lhs rhs : TExpr .uint256) :
     evalTExpr s (TExpr.add lhs rhs) =
       Verity.Core.Uint256.add (evalTExpr s lhs) (evalTExpr s rhs) := rfl
 
-@[simp] theorem evalTExpr_ite (s : TExecState) {ty : Ty}
+@[simp, ir_step] theorem evalTExpr_ite (s : TExecState) {ty : Ty}
     (cond : TExpr .bool) (thenExpr elseExpr : TExpr ty) :
     evalTExpr s (TExpr.ite cond thenExpr elseExpr) =
       match evalTExpr s cond with
       | true => evalTExpr s thenExpr
       | false => evalTExpr s elseExpr := rfl
 
-@[simp] theorem evalTStmt_revert (s : TExecState) (reason : String) :
+@[simp, ir_step] theorem evalTStmt_revert (s : TExecState) (reason : String) :
     evalTStmt s (.revert reason) = .revert reason := by
   simp [evalTStmt, defaultEvalFuel, evalTStmtFuel]
 
-@[simp] theorem evalTStmts_nil (s : TExecState) :
+@[simp, ir_step] theorem evalTStmts_nil (s : TExecState) :
     evalTStmts s [] = .ok s := by
   simp [evalTStmts, evalTStmtsFuel]
 
-@[simp] theorem evalTBlock_body (s : TExecState) (block : TBlock) :
+@[simp, ir_step] theorem evalTBlock_body (s : TExecState) (block : TBlock) :
     evalTBlock s block = evalTStmts s block.body := rfl
 
 @[simp] theorem TVars.get_set_same (vars : TVars) (v : TVar) (value : Ty.denote v.ty) :

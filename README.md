@@ -117,12 +117,12 @@ Every claim below is enforced by CI on every commit. Each one can be independent
 
 | Claim | Value | Verify locally |
 |-------|-------|----------------|
-| Proven theorems | 431 | `make verify` |
-| Incomplete proofs (`sorry`) | 51 (2 hand-written + ~49 macro-generated) | `make verify` (Lean rejects sorry) |
+| Proven theorems | 425 | `make verify` |
+| Incomplete proofs (`sorry`) | 0 | `make verify` (Lean rejects sorry) |
 | Project-specific axioms | 1 ([documented](AXIOMS.md)) | `make axiom-report` |
 | Axiom dependency audit | 613 theorems checked | `make axiom-report` |
-| Foundry runtime tests | 404 across 35 suites | `make test-foundry` |
-| Property test coverage | 250/431 (58%) | `python3 scripts/check_property_coverage.py` |
+| Foundry runtime tests | 441 across 35 suites | `make test-foundry` |
+| Property test coverage | 250/425 (59%) | `python3 scripts/check_property_coverage.py` |
 | CI validation scripts | 30 | `make check` |
 | Proof length enforcement | 92% under 30 lines | `python3 scripts/check_proof_length.py` |
 
@@ -229,7 +229,7 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 
 Verity's restricted DSL prevents raw external calls for safety. Instead, call patterns are packaged as **External Call Modules (ECMs)** — reusable, typed, auditable Lean structures that the compiler can plug in without modification. Standard modules for ERC-20, EVM precompiles, and callbacks ship in [`Compiler/Modules/`](Compiler/Modules/README.md). Third parties can publish their own as separate Lean packages. See [`docs/EXTERNAL_CALL_MODULES.md`](docs/EXTERNAL_CALL_MODULES.md) for the full guide.
 
-425 theorems across 11 categories (429 proven, 0 `sorry`: 2 hand-written in EndToEnd.lean bridging lemmas + ~49 macro-generated via Bridge.lean, one per function in verity_contract blocks). 441 Foundry tests across 35 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom.
+425 theorems across 11 categories (425 proven, 0 `sorry`). 441 Foundry tests across 35 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom.
 
 ## What's Verified
 

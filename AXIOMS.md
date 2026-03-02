@@ -115,10 +115,7 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
   EDSL≡IR proofs for 16 functions across 5 contracts + 3 composed EDSL→IR→Yul
   end-to-end proofs) does not add, remove, or modify Lean axioms. All 5
   universal arithmetic bridge theorems (add/sub/mul/div/mod ↔ EVMYulLean) are
-  now fully proven. The remaining `sorry` placeholders in EndToEnd.lean
-  (2: paramState erasing and unconditioned version) and macro theorem skeletons
-  are proof obligations (not axioms) — they represent goals to be discharged,
-  not trusted assumptions.
+  fully proven, and the bridge layer now carries zero `sorry` placeholders.
 
 ## Maintenance Rule
 
@@ -126,4 +123,4 @@ Any commit that adds, removes, renames, or moves an axiom must update this file 
 
 If this file is stale, trust analysis is stale.
 
-**Last Updated**: 2026-03-01
+**Last Updated**: 2026-03-02

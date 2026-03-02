@@ -4,7 +4,7 @@
 Validates:
 1. No debug commands (#eval, #check, #print, #reduce) in proof files
 2. Exactly 1 allowUnsafeReducibility (documented trust assumption)
-3. Expected sorry count matches (tracked sorry for semantic bridge work)
+3. Expected sorry count matches enforced zero-sorry baseline
 4. No native_decide in proof files outside smoke tests (kernel bypass)
 
 Usage:

@@ -133,7 +133,8 @@
         "Add append/composition preservation for supported `(require-clause-list + tail)` program lists from arbitrary initial execution states, for both source and compiled semantics, and connect them under one generic semantic-preservation theorem.",
         "Define an explicit supported statement-fragment grammar and prove one generic list-level semantic-preservation theorem over that grammar, reducing dependence on ad-hoc wrapper structures while preserving existing obligations.",
         "Add one semantic-preservation theorem stated over arbitrary raw `List Stmt` with an explicit declared-fragment witness (`SupportedStmtList`), connecting back to the generic fragment semantics without deleting existing obligations.",
-        "Add one direct semantic-preservation theorem over arbitrary raw supported `List Stmt` (no existential decomposition in the theorem conclusion), using the declared-fragment witness only as an assumption."
+        "Add one direct semantic-preservation theorem over arbitrary raw supported `List Stmt` (no existential decomposition in the theorem conclusion), using the declared-fragment witness only as an assumption.",
+        "Extend the declared supported statement-fragment constructors and generic semantics dispatch to include both `require`-only clause lists and clause-list sequencing into `ite(eq(literal,literal))` with literal `setStorage` branches."
       ],
       "files_changed": [
         "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
@@ -147,10 +148,10 @@
         "python3 scripts/check_issue_1060_integrity.py"
       ],
       "verification_results": [
-        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T12:39:56Z artifact_sha256=working-tree]",
-        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T12:39:56Z artifact_sha256=working-tree]",
-        "pass: lake build [run_id=2026-03-02T12:39:56Z artifact_sha256=working-tree]",
-        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T12:39:56Z artifact_sha256=working-tree]"
+        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]",
+        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]",
+        "pass: lake build [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]"
       ],
       "evidence": {
         "theorems": [
@@ -365,9 +366,19 @@
             "statement_summary": "Structural-induction theorem: for lists of unified require guard-family clauses (`binary`, `andEqLt`, `orEqLt`), compiled evaluation equals source evaluation with identical short-circuit revert behavior."
           },
           {
+            "name": "compile_require_family_clauses_then_noop_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "Sequencing theorem: for unified require guard-family clause lists with no continuation tail, compiled execution matches source clause-list short-circuit semantics."
+          },
+          {
             "name": "compile_require_family_clauses_then_setStorage_literal_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "Sequencing theorem: for unified require guard-family clause lists followed by setStorage-literal, compiled execution matches source clause-list short-circuit semantics plus storage update under explicit field-resolution assumptions."
+          },
+          {
+            "name": "compile_require_family_clauses_then_ite_eq_setStorage_literals_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "Sequencing theorem: for unified require guard-family clause lists followed by ite(eq(literal,literal)) with literal-storage branches, compiled execution matches source clause-list short-circuit semantics plus branch-selected storage update under explicit field-resolution assumptions."
           },
           {
             "name": "compile_require_family_clauses_then_return_literal_semantics",
@@ -500,7 +511,9 @@
           "TypedIRTests: example instantiating compile_require_family_then_setStorage_literal_semantics over arbitrary family/fields/fieldName/slot/init/n/m/p/q/message/writeVal assumptions",
           "TypedIRTests: example instantiating compile_require_family_then_return_literal_semantics over arbitrary family/fields/init/n/m/p/q/message/retVal",
           "TypedIRTests: example instantiating compile_require_literal_guard_family_clauses_semantics over arbitrary fields/init/guard-family clauses",
+          "TypedIRTests: example instantiating compile_require_family_clauses_then_noop_semantics over arbitrary fields/init/guard-family clauses",
           "TypedIRTests: example instantiating compile_require_family_clauses_then_setStorage_literal_semantics over arbitrary fields/fieldName/slot/init/guard-family clauses/writeVal assumptions",
+          "TypedIRTests: example instantiating compile_require_family_clauses_then_ite_eq_setStorage_literals_semantics over arbitrary fields/fieldName/slot/init/guard-family clauses/n/m/thenVal/elseVal assumptions",
           "TypedIRTests: example instantiating compile_require_family_clauses_then_return_literal_semantics over arbitrary fields/init/guard-family clauses/retVal",
           "TypedIRTests: example instantiating compile_require_family_clauses_then_let_return_local_literal_semantics over arbitrary fields/tmp/init/guard-family clauses/retVal",
           "TypedIRTests: example instantiating compile_require_family_clauses_then_let_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot/init/guard-family clauses/n assumptions",
@@ -521,9 +534,9 @@
         "removed_sorries": [],
         "removed_or_reframed_obligations": []
       },
-      "notes": "Status remains partial. Added a direct raw List Stmt semantic-preservation theorem (`compile_supported_stmt_list_direct_semantics`) over supported lists with no existential decomposition in the conclusion, plus focused test instantiation. Remaining uncovered scope is broader supported statement constructor integration into one fully fragment-wide raw-list theorem.",
+      "notes": "Status remains partial. Extended the declared supported statement-fragment grammar and generic tail semantics with `require`-only clause lists and clause-list sequencing into `ite(eq)` literal-storage branches, with focused theorem/test instantiations and no obligation reduction.",
       "uncovered_fragments": [
-        "Broader supported statement constructors are not yet integrated into one fully fragment-wide direct raw statement-list theorem."
+        "General nested/heterogeneous `Stmt.ite` programs beyond the declared literal-equality guard and literal-`setStorage` branch form are not yet part of the declared supported fragment grammar."
       ]
     },
     "2.3": {

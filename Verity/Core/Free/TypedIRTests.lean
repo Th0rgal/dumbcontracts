@@ -1354,6 +1354,26 @@ example (family : RequireLiteralGuardFamily)
 
 example (fields : List Compiler.CompilationModel.Field)
     (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) :
+    execCompiledRequireFamilyClausesThenNoop fields init clauses =
+      execSourceRequireFamilyClausesThenNoop init clauses :=
+  compile_require_family_clauses_then_noop_semantics fields init clauses
+
+example (fields : List Compiler.CompilationModel.Field)
+    (fieldName : String) (slotIdx : Nat) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause)
+    (n m thenVal elseVal : Nat)
+    (hfind : Compiler.CompilationModel.findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := Compiler.CompilationModel.FieldType.uint256 }, slotIdx)) :
+    execCompiledRequireFamilyClausesThenIteEqSetStorageLiterals
+        fields fieldName init clauses n m thenVal elseVal =
+      execSourceRequireFamilyClausesThenIteEqSetStorageLiterals
+        init clauses slotIdx n m thenVal elseVal :=
+  compile_require_family_clauses_then_ite_eq_setStorage_literals_semantics
+    fields fieldName slotIdx init clauses n m thenVal elseVal hfind
+
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState)
     (clauses : List RequireLiteralGuardFamilyClause)
     (tail : RequireFamilyClausesTail fields) :
     execCompiledRequireFamilyClausesThenTail fields init clauses tail =

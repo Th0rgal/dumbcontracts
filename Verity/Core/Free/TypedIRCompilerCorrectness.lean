@@ -830,6 +830,32 @@ theorem compile_require_literal_guard_family_clauses_semantics
       rfl
 
 /-- Source semantics for a broader supported sequencing subset:
+run a list of supported unified `require` guard-family clauses, then execute
+no additional statements. -/
+def execSourceRequireFamilyClausesThenNoop
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause) : TExecResult :=
+  execSourceRequireLiteralGuardFamilyClauses init clauses
+
+/-- Compiled semantics for the same broader supported sequencing subset:
+run compiled unified `require` guard-family clause-list semantics, then execute
+no additional statements. -/
+def execCompiledRequireFamilyClausesThenNoop
+    (fields : List Field) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) : TExecResult :=
+  execCompiledRequireLiteralGuardFamilyClauses fields init clauses
+
+/-- Sequencing semantic-preservation theorem for a broader supported subset:
+for unified `require` guard-family clause lists with no continuation tail,
+compiled execution matches direct source sequencing semantics. -/
+theorem compile_require_family_clauses_then_noop_semantics
+    (fields : List Field) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) :
+    execCompiledRequireFamilyClausesThenNoop fields init clauses =
+      execSourceRequireFamilyClausesThenNoop init clauses := by
+  simpa [execCompiledRequireFamilyClausesThenNoop, execSourceRequireFamilyClausesThenNoop]
+    using compile_require_literal_guard_family_clauses_semantics fields init clauses
+
+/-- Source semantics for a broader supported sequencing subset:
 run a list of supported unified `require` guard-family clauses, then perform
 `setStorage fieldName (literal writeVal)` only on success. -/
 def execSourceRequireFamilyClausesThenSetStorageLiteral
@@ -847,6 +873,35 @@ def execCompiledRequireFamilyClausesThenSetStorageLiteral
     (clauses : List RequireLiteralGuardFamilyClause) (writeVal : Nat) : TExecResult :=
   match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
   | .ok st => execCompiledSetStorageLiteral fields fieldName st writeVal
+  | .revert reason => .revert reason
+
+/-- Source semantics for a broader supported sequencing subset:
+run a list of supported unified `require` guard-family clauses, then perform
+`ite (eq (literal n) (literal m))
+     [setStorage fieldName (literal thenVal)]
+     [setStorage fieldName (literal elseVal)]` only on success. -/
+def execSourceRequireFamilyClausesThenIteEqSetStorageLiterals
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (slot : Nat) (n m thenVal elseVal : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st =>
+      .ok
+        { st with
+            world := execSourceIteEqSetStorageLiterals st.world slot n m thenVal elseVal }
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same broader supported sequencing subset:
+run compiled unified `require` guard-family clause-list semantics, then run
+compiled
+`ite (eq (literal n) (literal m))
+     [setStorage fieldName (literal thenVal)]
+     [setStorage fieldName (literal elseVal)]` on success. -/
+def execCompiledRequireFamilyClausesThenIteEqSetStorageLiterals
+    (fields : List Field) (fieldName : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause)
+    (n m thenVal elseVal : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledIteEqSetStorageLiterals fields fieldName st n m thenVal elseVal
   | .revert reason => .revert reason
 
 /-- Sequencing semantic-preservation theorem for a broader supported subset:
@@ -867,6 +922,28 @@ theorem compile_require_family_clauses_then_setStorage_literal_semantics
     execSourceRequireFamilyClausesThenSetStorageLiteral,
     compile_require_literal_guard_family_clauses_semantics,
     compile_setStorage_literal_semantics, hfind]
+  rfl
+
+/-- Sequencing semantic-preservation theorem for a broader supported subset:
+for unified `require` guard-family clause lists followed by
+`ite(eq(literal,literal))` with literal-storage branches, compiled execution
+matches direct source sequencing semantics under explicit field-resolution
+assumptions. -/
+theorem compile_require_family_clauses_then_ite_eq_setStorage_literals_semantics
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause)
+    (n m thenVal elseVal : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledRequireFamilyClausesThenIteEqSetStorageLiterals
+        fields fieldName init clauses n m thenVal elseVal =
+      execSourceRequireFamilyClausesThenIteEqSetStorageLiterals
+        init clauses slot n m thenVal elseVal := by
+  simp [execCompiledRequireFamilyClausesThenIteEqSetStorageLiterals,
+    execSourceRequireFamilyClausesThenIteEqSetStorageLiterals,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_ite_eq_setStorage_literals_semantics, hfind]
   rfl
 
 /-- Source semantics for a broader supported sequencing subset:
@@ -1203,7 +1280,13 @@ theorem compile_require_family_clauses_then_let_assign_mul_setStorage_local_lite
 /-- Supported continuation family after a unified `require` guard-family
 clause list for generic sequencing preservation in roadmap item 2.2. -/
 inductive RequireFamilyClausesTail (fields : List Field) where
+  | noOp
   | setStorageLiteral (fieldName : String) (slot : Nat) (writeVal : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | iteEqSetStorageLiterals
+      (fieldName : String) (slot : Nat)
+      (n m thenVal elseVal : Nat)
       (hfind : findFieldWithResolvedSlot fields fieldName =
         some ({ name := fieldName, ty := FieldType.uint256 }, slot))
   | returnLiteral (retVal : Nat)
@@ -1236,8 +1319,13 @@ def execSourceRequireFamilyClausesThenTail
     (clauses : List RequireLiteralGuardFamilyClause)
     (tail : RequireFamilyClausesTail fields) : TExecResult :=
   match tail with
+  | .noOp =>
+      execSourceRequireFamilyClausesThenNoop init clauses
   | .setStorageLiteral _ slot writeVal _ =>
       execSourceRequireFamilyClausesThenSetStorageLiteral init clauses slot writeVal
+  | .iteEqSetStorageLiterals _ slot n m thenVal elseVal _ =>
+      execSourceRequireFamilyClausesThenIteEqSetStorageLiterals
+        init clauses slot n m thenVal elseVal
   | .returnLiteral retVal =>
       execSourceRequireFamilyClausesThenReturnLiteral init clauses retVal
   | .letReturnLocalLiteral _ retVal =>
@@ -1260,8 +1348,13 @@ def execCompiledRequireFamilyClausesThenTail
     (clauses : List RequireLiteralGuardFamilyClause)
     (tail : RequireFamilyClausesTail fields) : TExecResult :=
   match tail with
+  | .noOp =>
+      execCompiledRequireFamilyClausesThenNoop fields init clauses
   | .setStorageLiteral fieldName _ writeVal _ =>
       execCompiledRequireFamilyClausesThenSetStorageLiteral fields fieldName init clauses writeVal
+  | .iteEqSetStorageLiterals fieldName _ n m thenVal elseVal _ =>
+      execCompiledRequireFamilyClausesThenIteEqSetStorageLiterals
+        fields fieldName init clauses n m thenVal elseVal
   | .returnLiteral retVal =>
       execCompiledRequireFamilyClausesThenReturnLiteral fields init clauses retVal
   | .letReturnLocalLiteral tmp retVal =>
@@ -1291,10 +1384,17 @@ theorem compile_require_family_clauses_then_tail_semantics
     execCompiledRequireFamilyClausesThenTail fields init clauses tail =
       execSourceRequireFamilyClausesThenTail fields init clauses tail := by
   cases tail with
+  | noOp =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_noop_semantics fields init clauses
   | setStorageLiteral fieldName slot writeVal hfind =>
       simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
         using compile_require_family_clauses_then_setStorage_literal_semantics
           fields fieldName slot init clauses writeVal hfind
+  | iteEqSetStorageLiterals fieldName slot n m thenVal elseVal hfind =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_ite_eq_setStorage_literals_semantics
+          fields fieldName slot init clauses n m thenVal elseVal hfind
   | returnLiteral retVal =>
       simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
         using compile_require_family_clauses_then_return_literal_semantics fields init clauses retVal
@@ -1441,9 +1541,17 @@ theorem compile_require_family_clauses_tail_programs_append_semantics
 /-- Explicit statement-fragment grammar for the currently supported generic 2.2
 subset: one require-clause-list prefix followed by one supported continuation. -/
 inductive SupportedStmtFragment (fields : List Field) where
+  | requireClausesOnly
+      (clauses : List RequireLiteralGuardFamilyClause)
   | requireClausesThenSetStorageLiteral
       (clauses : List RequireLiteralGuardFamilyClause)
       (fieldName : String) (slot : Nat) (writeVal : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | requireClausesThenIteEqSetStorageLiterals
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (fieldName : String) (slot : Nat)
+      (n m thenVal elseVal : Nat)
       (hfind : findFieldWithResolvedSlot fields fieldName =
         some ({ name := fieldName, ty := FieldType.uint256 }, slot))
   | requireClausesThenReturnLiteral
@@ -1481,9 +1589,15 @@ inductive SupportedStmtFragment (fields : List Field) where
 def SupportedStmtFragment.toRequireFamilyClausesTailProgram
     {fields : List Field} :
     SupportedStmtFragment fields → RequireFamilyClausesTailProgram fields
+  | .requireClausesOnly clauses =>
+      { clauses := clauses
+        tail := .noOp }
   | .requireClausesThenSetStorageLiteral clauses fieldName slot writeVal hfind =>
       { clauses := clauses
         tail := .setStorageLiteral fieldName slot writeVal hfind }
+  | .requireClausesThenIteEqSetStorageLiterals clauses fieldName slot n m thenVal elseVal hfind =>
+      { clauses := clauses
+        tail := .iteEqSetStorageLiterals fieldName slot n m thenVal elseVal hfind }
   | .requireClausesThenReturnLiteral clauses retVal =>
       { clauses := clauses
         tail := .returnLiteral retVal }
@@ -1536,8 +1650,14 @@ def RequireLiteralGuardFamilyClause.toStmt (clause : RequireLiteralGuardFamilyCl
 def RequireFamilyClausesTail.toStmts
     {fields : List Field} (tail : RequireFamilyClausesTail fields) : List Stmt :=
   match tail with
+  | .noOp =>
+      []
   | .setStorageLiteral fieldName _ writeVal _ =>
       [Stmt.setStorage fieldName (Expr.literal writeVal)]
+  | .iteEqSetStorageLiterals fieldName _ n m thenVal elseVal _ =>
+      [Stmt.ite (Expr.eq (Expr.literal n) (Expr.literal m))
+          [Stmt.setStorage fieldName (Expr.literal thenVal)]
+          [Stmt.setStorage fieldName (Expr.literal elseVal)]]
   | .returnLiteral retVal =>
       [Stmt.return (Expr.literal retVal)]
   | .letReturnLocalLiteral tmp retVal =>

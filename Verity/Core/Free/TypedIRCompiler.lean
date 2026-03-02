@@ -594,6 +594,33 @@ theorem compileStmts_single_ite_eq_return_then_setStorage_literal_run
   simp [compileStmts, compileStmt, compileExpr, compileBranch, fieldTypeToTy, hfind, emit]
   rfl
 
+/-- Single-statement compilation shape for a broader supported branch subset:
+`ite (eq (literal n) (literal m))
+     [return (literal thenVal)]
+     [return (literal elseVal)]`
+lowers to one typed `if_` with two typed `returnUint` branches, from an empty
+compile state. -/
+theorem compileStmts_single_ite_eq_return_literals_run
+    (fields : List Field) (n m thenVal elseVal : Nat) :
+    (compileStmts fields
+      [Stmt.ite
+        (Expr.eq (Expr.literal n) (Expr.literal m))
+        [Stmt.return (Expr.literal thenVal)]
+        [Stmt.return (Expr.literal elseVal)] ]).run {} =
+      Except.ok ((),
+        { nextId := 0
+          vars := []
+          params := #[]
+          locals := #[]
+          body := #[
+            TStmt.if_
+              (TExpr.eq (TExpr.uintLit n) (TExpr.uintLit m))
+              [TStmt.returnUint (TExpr.uintLit thenVal)]
+              [TStmt.returnUint (TExpr.uintLit elseVal)]
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileBranch, emit]
+  rfl
+
 /-- Single-statement compilation shape for a broader supported require subset:
 `require (eq (literal n) (literal m)) message`
 lowers to one typed `if_` with an else-branch `revert`, from an empty compile state. -/

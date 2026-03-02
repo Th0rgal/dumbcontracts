@@ -1401,6 +1401,17 @@ example (fields : List Compiler.CompilationModel.Field)
 example (fields : List Compiler.CompilationModel.Field)
     (init : TExecState)
     (clauses : List RequireLiteralGuardFamilyClause)
+    (n m thenVal elseVal : Nat) :
+    execCompiledRequireFamilyClausesThenIteEqReturnLiterals
+        fields init clauses n m thenVal elseVal =
+      execSourceRequireFamilyClausesThenIteEqReturnLiterals
+        init clauses n m thenVal elseVal :=
+  compile_require_family_clauses_then_ite_eq_return_literals_semantics
+    fields init clauses n m thenVal elseVal
+
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause)
     (tail : RequireFamilyClausesTail fields) :
     execCompiledRequireFamilyClausesThenTail fields init clauses tail =
       execSourceRequireFamilyClausesThenTail fields init clauses tail :=

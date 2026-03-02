@@ -76,6 +76,22 @@ The site automatically serves markdown to AI agents through:
 3. Set output directory: `.next`
 4. Deploy
 
+#### Skip deployments for draft PRs
+
+This project uses `vercel.json` with an `ignoreCommand`:
+
+- `docs-site/scripts/vercel-ignore-draft-pr.sh`
+
+Behavior:
+
+- Draft PR: skips preview deployment
+- Ready-for-review PR: runs deployment
+- Non-PR deployment: runs deployment
+
+Required environment variable in Vercel:
+
+- `GITHUB_TOKEN` with `repo:read` access (for private repos) so the script can query PR draft status.
+
 ### Manual
 
 ```bash

@@ -98,19 +98,22 @@
       "acceptance_criteria": [
         "Prove list-compilation composition for compileStmts by structural induction.",
         "Strengthen append theorem so it can be instantiated from any initial CompileState.",
-        "Do not claim source-to-typed semantic preservation completeness without a theorem artifact."
+        "Add a non-trivial semantic-preservation theorem artifact for a supported compilation subset without weakening obligations."
       ],
       "files_changed": [
+        "Verity/Core/Free/TypedIRCompiler.lean",
         "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
         "Verity/Core/Free/TypedIRTests.lean",
         "artifacts/issue_1060_progress.json"
       ],
       "verification_commands": [
+        "lake build Verity.Core.Free.TypedIRCompiler",
         "lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests",
         "lake build",
         "python3 scripts/check_issue_1060_integrity.py"
       ],
       "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIRCompiler",
         "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests",
         "pass: lake build",
         "pass: python3 scripts/check_issue_1060_integrity.py"
@@ -126,16 +129,27 @@
             "name": "compileStmts_append_from",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "The append-composition theorem holds when run from any initial CompileState."
+          },
+          {
+            "name": "compileStmts_single_setStorage_literal_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "statement_summary": "Single-statement compilation for setStorage literal emits the expected typed setStorage write under explicit field-resolution assumptions."
+          },
+          {
+            "name": "compile_setStorage_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "For the supported setStorage-literal subset, compiled typed-IR execution matches direct source-level storage update semantics."
           }
         ],
         "tests": [
-          "TypedIRTests: example instantiating compileStmts_append_from over arbitrary fields/pre/post/state"
+          "TypedIRTests: example instantiating compileStmts_append_from over arbitrary fields/pre/post/state",
+          "TypedIRTests: example instantiating compile_setStorage_literal_semantics over arbitrary fields/fieldName/slot assumptions"
         ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "Addressed blocking PR feedback by reclassifying 2.2 as partial. This slice strengthens theorem usability but does not yet close full source-vs-typed semantic preservation."
+      "notes": "2.2 remains partial: this slice adds semantic-preservation proof for the supported setStorage-literal subset under explicit field-resolution assumptions, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
     },
     "2.3": {
       "status": "open",

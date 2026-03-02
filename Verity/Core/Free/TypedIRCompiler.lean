@@ -325,4 +325,17 @@ def compileFunctionNamed (spec : CompilationModel) (functionName : String) : Exc
   | some fn => compileFunctionToTBlock spec fn
   | none => throw s!"Typed IR compile error: function '{functionName}' not found in spec '{spec.name}'"
 
+/-- Single-statement compilation shape for the supported subset:
+`setStorage fieldName (literal n)` lowers to one typed `setStorage` when the
+field resolves to a uint256 slot. -/
+theorem compileStmts_single_setStorage_literal_run
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (n : Nat) (st : CompileState)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    (compileStmts fields [Stmt.setStorage fieldName (Expr.literal n)]).run st =
+      Except.ok ((), { st with body := st.body.push (TStmt.setStorage slot (TExpr.uintLit n)) }) := by
+  simp [compileStmts, compileStmt, compileExpr, fieldTypeToTy, hfind, emit]
+  rfl
+
 end Verity.Core.Free

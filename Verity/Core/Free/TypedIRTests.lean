@@ -1054,4 +1054,13 @@ example (fields : List Compiler.CompilationModel.Field)
           compileStmts fields post).run st) :=
   compileStmts_append_from fields pre post st
 
+example (fields : List Compiler.CompilationModel.Field)
+    (fieldName : String) (slotIdx : Nat)
+    (init : TExecState) (n : Nat)
+    (hfind : Compiler.CompilationModel.findFieldWithResolvedSlot fields fieldName =
+      some (({ name := fieldName, ty := Compiler.CompilationModel.FieldType.uint256 } : Compiler.CompilationModel.Field), slotIdx)) :
+    execCompiledSetStorageLiteral fields fieldName init n =
+      .ok { init with world := execSourceSetStorageLiteral init.world slotIdx n } :=
+  compile_setStorage_literal_semantics fields fieldName slotIdx init n hfind
+
 end Verity.Core.Free

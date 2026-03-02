@@ -28,9 +28,7 @@ contract ERC20DiffModel {
         uint256 senderBal = _balances[msg.sender];
         require(senderBal >= amount, "Insufficient balance");
 
-        if (msg.sender == to) {
-            return;
-        }
+        if (msg.sender == to) return;
 
         _balances[msg.sender] = senderBal - amount;
         _balances[to] += amount;
@@ -61,6 +59,10 @@ contract ERC20DiffModel {
         return _balances[addr];
     }
 
+    function allowanceOf(address ownerAddr, address spender) external view returns (uint256) {
+        return _allowances[ownerAddr][spender];
+    }
+
     function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
@@ -70,14 +72,11 @@ contract ERC20DiffModel {
     }
 }
 
-/**
- * @title DifferentialERC20
- * @notice Differential parity checks between Solidity model and Lean interpreter.
- */
 contract DifferentialERC20 is DiffTestConfig, DifferentialTestBase {
     ERC20DiffModel private token;
 
     mapping(address => uint256) private edslBalances; // slot 2
+    mapping(address => mapping(address => uint256)) private edslAllowances; // slot 3
     mapping(uint256 => uint256) private edslStorage; // slot 1 => totalSupply
     mapping(uint256 => address) private edslStorageAddr; // slot 0 => owner
 
@@ -87,11 +86,159 @@ contract DifferentialERC20 is DiffTestConfig, DifferentialTestBase {
         edslStorageAddr[0] = address(this);
     }
 
+    function _runInterpreter(
+        string memory functionName,
+        address sender,
+        address arg0,
+        address arg1,
+        uint256 arg2,
+        string memory mapState,
+        string memory map2State
+    ) internal returns (string memory) {
+        string[] memory inputs = new string[](3);
+        inputs[0] = "bash";
+        inputs[1] = "-c";
+
+        bytes32 functionSig = keccak256(bytes(functionName));
+        string memory argsStr = "";
+
+        if (
+            functionSig == keccak256(bytes("mint"))
+                || functionSig == keccak256(bytes("transfer"))
+                || functionSig == keccak256(bytes("approve"))
+        ) {
+            argsStr = string.concat(vm.toString(uint256(uint160(arg0))), " ", vm.toString(arg2));
+        } else if (functionSig == keccak256(bytes("transferFrom"))) {
+            argsStr = string.concat(
+                vm.toString(uint256(uint160(arg0))),
+                " ",
+                vm.toString(uint256(uint160(arg1))),
+                " ",
+                vm.toString(arg2)
+            );
+        } else if (functionSig == keccak256(bytes("balanceOf"))) {
+            argsStr = vm.toString(uint256(uint160(arg0)));
+        } else if (functionSig == keccak256(bytes("allowanceOf"))) {
+            argsStr = string.concat(vm.toString(uint256(uint160(arg0))), " ", vm.toString(uint256(uint160(arg1))));
+        }
+
+        string memory storageStr = string.concat("storage=1:", vm.toString(edslStorage[1]));
+        string memory addrStr = string.concat("addr=0:", _addressToString(edslStorageAddr[0]));
+        string memory mapStr = bytes(mapState).length > 0 ? string.concat(" map=\"", mapState, "\"") : "";
+        string memory map2Str = bytes(map2State).length > 0 ? string.concat(" map2=\"", map2State, "\"") : "";
+
+        inputs[2] = string.concat(
+            _interpreterPreamble(),
+            " ERC20 ",
+            functionName,
+            " ",
+            _addressToString(sender),
+            bytes(argsStr).length > 0 ? string.concat(" ", argsStr) : "",
+            " ",
+            storageStr,
+            " ",
+            addrStr,
+            mapStr,
+            map2Str,
+            " value=0 timestamp=",
+            vm.toString(block.timestamp)
+        );
+
+        return string(vm.ffi(inputs));
+    }
+
+    function _buildMapState(address a, address b, address c) internal view returns (string memory) {
+        address[3] memory keys = [a, b, c];
+        string memory out = "";
+        bool first = true;
+
+        for (uint256 i = 0; i < keys.length; i++) {
+            address k = keys[i];
+            bool seen = false;
+            for (uint256 j = 0; j < i; j++) {
+                if (keys[j] == k) {
+                    seen = true;
+                    break;
+                }
+            }
+            if (seen || edslBalances[k] == 0) continue;
+            if (!first) out = string.concat(out, ",");
+            out = string.concat(out, "2:", _toLowerCase(vm.toString(k)), ":", vm.toString(edslBalances[k]));
+            first = false;
+        }
+
+        return out;
+    }
+
+    function _buildMap2State(address ownerAddr, address spenderA, address spenderB) internal view returns (string memory) {
+        string memory out = "";
+        bool first = true;
+
+        uint256 valA = edslAllowances[ownerAddr][spenderA];
+        if (valA > 0) {
+            out = string.concat(
+                "3:",
+                _toLowerCase(vm.toString(ownerAddr)),
+                ":",
+                _toLowerCase(vm.toString(spenderA)),
+                ":",
+                vm.toString(valA)
+            );
+            first = false;
+        }
+
+        if (spenderB != spenderA) {
+            uint256 valB = edslAllowances[ownerAddr][spenderB];
+            if (valB > 0) {
+                if (!first) out = string.concat(out, ",");
+                out = string.concat(
+                    out,
+                    "3:",
+                    _toLowerCase(vm.toString(ownerAddr)),
+                    ":",
+                    _toLowerCase(vm.toString(spenderB)),
+                    ":",
+                    vm.toString(valB)
+                );
+            }
+        }
+
+        return out;
+    }
+
+    function _updateStateFromEDSL(
+        string memory edslResult,
+        address sender,
+        address arg0,
+        address arg1
+    ) internal {
+        (bool hasSupply, uint256 supplyVal) = _extractStorageChange(edslResult, 1);
+        if (hasSupply) edslStorage[1] = supplyVal;
+
+        (bool hasOwner, uint256 ownerNat) = _extractStorageAddrChange(edslResult, 0);
+        if (hasOwner) edslStorageAddr[0] = address(uint160(ownerNat));
+
+        (bool senderChanged, uint256 senderBal) = _extractMappingChange(edslResult, 2, sender);
+        if (senderChanged) edslBalances[sender] = senderBal;
+        (bool arg0Changed, uint256 arg0Bal) = _extractMappingChange(edslResult, 2, arg0);
+        if (arg0Changed) edslBalances[arg0] = arg0Bal;
+        (bool arg1Changed, uint256 arg1Bal) = _extractMappingChange(edslResult, 2, arg1);
+        if (arg1Changed) edslBalances[arg1] = arg1Bal;
+
+        (bool aChanged, uint256 allowanceA) = _extractMapping2Change(edslResult, 3, sender, arg0);
+        if (aChanged) edslAllowances[sender][arg0] = allowanceA;
+        (bool bChanged, uint256 allowanceB) = _extractMapping2Change(edslResult, 3, arg0, sender);
+        if (bChanged) edslAllowances[arg0][sender] = allowanceB;
+        (bool cChanged, uint256 allowanceC) = _extractMapping2Change(edslResult, 3, arg0, arg1);
+        if (cChanged) edslAllowances[arg0][arg1] = allowanceC;
+    }
+
     function executeDifferentialTest(
         string memory functionName,
         address sender,
-        address arg0Addr,
-        uint256 arg1
+        address arg0,
+        address arg1,
+        uint256 arg2
     ) internal returns (bool) {
         vm.prank(sender);
 
@@ -100,25 +247,23 @@ contract DifferentialERC20 is DiffTestConfig, DifferentialTestBase {
 
         bytes32 functionSig = keccak256(bytes(functionName));
         if (functionSig == keccak256(bytes("mint"))) {
-            (evmSuccess, evmReturnData) = address(token).call(
-                abi.encodeWithSignature("mint(address,uint256)", arg0Addr, arg1)
-            );
+            (evmSuccess, evmReturnData) = address(token).call(abi.encodeWithSignature("mint(address,uint256)", arg0, arg2));
         } else if (functionSig == keccak256(bytes("transfer"))) {
+            (evmSuccess, evmReturnData) = address(token).call(abi.encodeWithSignature("transfer(address,uint256)", arg0, arg2));
+        } else if (functionSig == keccak256(bytes("approve"))) {
+            (evmSuccess, evmReturnData) = address(token).call(abi.encodeWithSignature("approve(address,uint256)", arg0, arg2));
+        } else if (functionSig == keccak256(bytes("transferFrom"))) {
             (evmSuccess, evmReturnData) = address(token).call(
-                abi.encodeWithSignature("transfer(address,uint256)", arg0Addr, arg1)
+                abi.encodeWithSignature("transferFrom(address,address,uint256)", arg0, arg1, arg2)
             );
         } else if (functionSig == keccak256(bytes("balanceOf"))) {
-            (evmSuccess, evmReturnData) = address(token).call(
-                abi.encodeWithSignature("balanceOf(address)", arg0Addr)
-            );
+            (evmSuccess, evmReturnData) = address(token).call(abi.encodeWithSignature("balanceOf(address)", arg0));
+        } else if (functionSig == keccak256(bytes("allowanceOf"))) {
+            (evmSuccess, evmReturnData) = address(token).call(abi.encodeWithSignature("allowanceOf(address,address)", arg0, arg1));
         } else if (functionSig == keccak256(bytes("totalSupply"))) {
-            (evmSuccess, evmReturnData) = address(token).call(
-                abi.encodeWithSignature("totalSupply()")
-            );
+            (evmSuccess, evmReturnData) = address(token).call(abi.encodeWithSignature("totalSupply()"));
         } else if (functionSig == keccak256(bytes("owner"))) {
-            (evmSuccess, evmReturnData) = address(token).call(
-                abi.encodeWithSignature("owner()")
-            );
+            (evmSuccess, evmReturnData) = address(token).call(abi.encodeWithSignature("owner()"));
         } else {
             revert("Unknown function");
         }
@@ -133,18 +278,19 @@ contract DifferentialERC20 is DiffTestConfig, DifferentialTestBase {
             }
         }
 
-        uint256 evmTotalSupply = token.totalSupply();
-        address evmOwner = token.owner();
-        uint256 evmSenderBalance = token.balanceOf(sender);
-        uint256 evmRecipientBalance = token.balanceOf(arg0Addr);
-
-        string memory edslResult = _runInterpreter(functionName, sender, arg0Addr, arg1, _buildMapState(sender, arg0Addr));
+        string memory edslResult = _runInterpreter(
+            functionName,
+            sender,
+            arg0,
+            arg1,
+            arg2,
+            _buildMapState(sender, arg0, arg1),
+            _buildMap2State(arg0, sender, arg1)
+        );
         bool edslSuccess = contains(edslResult, "\"success\":true");
 
         if (evmSuccess != edslSuccess) {
             console2.log("MISMATCH success");
-            console2.log("  EVM:", evmSuccess);
-            console2.log("  EDSL:", edslSuccess);
             testsFailed++;
             return false;
         }
@@ -164,6 +310,7 @@ contract DifferentialERC20 is DiffTestConfig, DifferentialTestBase {
             }
         } else if (
             functionSig == keccak256(bytes("balanceOf"))
+                || functionSig == keccak256(bytes("allowanceOf"))
                 || functionSig == keccak256(bytes("totalSupply"))
         ) {
             if (evmReturnValue != edslReturnValue) {
@@ -173,38 +320,40 @@ contract DifferentialERC20 is DiffTestConfig, DifferentialTestBase {
             }
         }
 
-        (bool hasSupply, uint256 supplyVal) = _extractStorageChange(edslResult, 1);
-        if (hasSupply) {
-            edslStorage[1] = supplyVal;
-        }
+        _updateStateFromEDSL(edslResult, sender, arg0, arg1);
 
-        (bool hasOwner, uint256 ownerNat) = _extractStorageAddrChange(edslResult, 0);
-        if (hasOwner) {
-            edslStorageAddr[0] = address(uint160(ownerNat));
-        }
-
-        _updateMappingState(edslResult, sender, arg0Addr);
-
-        if (evmTotalSupply != edslStorage[1]) {
+        if (token.totalSupply() != edslStorage[1]) {
             console2.log("MISMATCH totalSupply state");
             testsFailed++;
             return false;
         }
-
-        if (evmOwner != edslStorageAddr[0]) {
+        if (token.owner() != edslStorageAddr[0]) {
             console2.log("MISMATCH owner state");
             testsFailed++;
             return false;
         }
-
-        if (evmSenderBalance != edslBalances[sender]) {
+        if (token.balanceOf(sender) != edslBalances[sender]) {
             console2.log("MISMATCH sender balance");
             testsFailed++;
             return false;
         }
-
-        if (evmRecipientBalance != edslBalances[arg0Addr]) {
-            console2.log("MISMATCH recipient balance");
+        if (token.balanceOf(arg0) != edslBalances[arg0]) {
+            console2.log("MISMATCH arg0 balance");
+            testsFailed++;
+            return false;
+        }
+        if (token.balanceOf(arg1) != edslBalances[arg1]) {
+            console2.log("MISMATCH arg1 balance");
+            testsFailed++;
+            return false;
+        }
+        if (token.allowanceOf(arg0, sender) != edslAllowances[arg0][sender]) {
+            console2.log("MISMATCH allowance (arg0,sender)");
+            testsFailed++;
+            return false;
+        }
+        if (token.allowanceOf(arg0, arg1) != edslAllowances[arg0][arg1]) {
+            console2.log("MISMATCH allowance (arg0,arg1)");
             testsFailed++;
             return false;
         }
@@ -213,89 +362,36 @@ contract DifferentialERC20 is DiffTestConfig, DifferentialTestBase {
         return true;
     }
 
-    function _runInterpreter(
-        string memory functionName,
-        address sender,
-        address arg0Addr,
-        uint256 arg1,
-        string memory mapState
-    ) internal returns (string memory) {
-        string[] memory inputs = new string[](3);
-        inputs[0] = "bash";
-        inputs[1] = "-c";
+    function testDifferential_MintApproveTransferFromAndViews() public {
+        address alice = address(0xA11CE);
+        address bob = address(0xB0B);
 
-        bytes32 functionSig = keccak256(bytes(functionName));
-        string memory argsStr;
-        if (functionSig == keccak256(bytes("mint")) || functionSig == keccak256(bytes("transfer"))) {
-            argsStr = string.concat(vm.toString(uint256(uint160(arg0Addr))), " ", vm.toString(arg1));
-        } else if (functionSig == keccak256(bytes("balanceOf"))) {
-            argsStr = vm.toString(uint256(uint160(arg0Addr)));
-        } else {
-            argsStr = "";
-        }
-
-        string memory storageStr = string.concat("storage=1:", vm.toString(edslStorage[1]));
-        string memory addrStr = string.concat("addr=0:", _addressToString(edslStorageAddr[0]));
-        string memory mapStr = bytes(mapState).length > 0 ? string.concat(" map=\"", mapState, "\"") : "";
-
-        inputs[2] = string.concat(
-            _interpreterPreamble(),
-            " ERC20 ",
-            functionName,
-            " ",
-            _addressToString(sender),
-            bytes(argsStr).length > 0 ? string.concat(" ", argsStr) : "",
-            " ",
-            storageStr,
-            " ",
-            addrStr,
-            mapStr,
-            " value=0 timestamp=",
-            vm.toString(block.timestamp)
-        );
-
-        return string(vm.ffi(inputs));
+        assertTrue(executeDifferentialTest("mint", address(this), alice, address(0), 100));
+        assertTrue(executeDifferentialTest("approve", alice, bob, address(0), 60));
+        assertTrue(executeDifferentialTest("allowanceOf", address(this), alice, bob, 0));
+        assertTrue(executeDifferentialTest("transferFrom", bob, alice, bob, 40));
+        assertTrue(executeDifferentialTest("allowanceOf", address(this), alice, bob, 0));
+        assertTrue(executeDifferentialTest("balanceOf", address(this), alice, address(0), 0));
+        assertTrue(executeDifferentialTest("balanceOf", address(this), bob, address(0), 0));
+        assertTrue(executeDifferentialTest("totalSupply", address(this), address(0), address(0), 0));
     }
 
-    function _buildMapState(address sender, address other) internal view returns (string memory) {
-        string memory out = "";
-        bool first = true;
+    function testDifferential_MaxAllowanceTransferFromParity() public {
+        address alice = address(0xAA11CE);
+        address spender = address(0xBEEF);
+        address bob = address(0xB0B);
 
-        if (edslBalances[sender] > 0) {
-            out = string.concat("2:", _toLowerCase(vm.toString(sender)), ":", vm.toString(edslBalances[sender]));
-            first = false;
-        }
-
-        if (edslBalances[other] > 0 && other != sender) {
-            if (!first) {
-                out = string.concat(out, ",");
-            }
-            out = string.concat(out, "2:", _toLowerCase(vm.toString(other)), ":", vm.toString(edslBalances[other]));
-        }
-
-        return out;
+        assertTrue(executeDifferentialTest("mint", address(this), alice, address(0), 90));
+        assertTrue(executeDifferentialTest("approve", alice, spender, address(0), type(uint256).max));
+        assertTrue(executeDifferentialTest("transferFrom", spender, alice, bob, 25));
+        assertTrue(executeDifferentialTest("allowanceOf", address(this), alice, spender, 0));
     }
 
-    function _updateMappingState(string memory edslResult, address sender, address other) internal {
-        if (contains(edslResult, _toLowerCase(vm.toString(sender))) || contains(edslResult, vm.toString(sender))) {
-            edslBalances[sender] = _extractMappingValue(edslResult, vm.toString(sender));
-        }
-        if (other != sender && (contains(edslResult, _toLowerCase(vm.toString(other))) || contains(edslResult, vm.toString(other)))) {
-            edslBalances[other] = _extractMappingValue(edslResult, vm.toString(other));
-        }
-    }
+    function testDifferential_RevertParity() public {
+        address alice = address(0xA11CE);
+        address bob = address(0xB0B);
 
-    function testDifferential_MintTransferAndViews() public {
-        assertTrue(executeDifferentialTest("owner", address(this), address(0), 0));
-        assertTrue(executeDifferentialTest("totalSupply", address(this), address(0), 0));
-        assertTrue(executeDifferentialTest("mint", address(this), address(0xA11CE), 100));
-        assertTrue(executeDifferentialTest("transfer", address(0xA11CE), address(0xB0B), 40));
-        assertTrue(executeDifferentialTest("balanceOf", address(this), address(0xA11CE), 0));
-        assertTrue(executeDifferentialTest("balanceOf", address(this), address(0xB0B), 0));
-        assertTrue(executeDifferentialTest("totalSupply", address(this), address(0), 0));
-    }
-
-    function testDifferential_OwnerOnlyMintRevertParity() public {
-        assertTrue(executeDifferentialTest("mint", address(0xB0B), address(0xCA401), 7));
+        assertTrue(executeDifferentialTest("mint", address(0xDEAD), alice, address(0), 7));
+        assertTrue(executeDifferentialTest("transferFrom", bob, alice, bob, 1));
     }
 }

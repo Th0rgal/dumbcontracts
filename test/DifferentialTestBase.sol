@@ -361,6 +361,119 @@ abstract contract DifferentialTestBase {
     }
 
     /**
+     * @notice Extract mapping change from EDSL JSON by (slot, address-key)
+     * @dev Expects objects encoded as {"slot":S,"key":"0x..","value":V}
+     */
+    function _extractMappingChange(string memory json, uint256 slot, address key)
+        internal
+        pure
+        returns (bool found, uint256 value)
+    {
+        string memory keyStr = _toLowerCase(_addressToString(key));
+        bytes memory pattern = bytes(
+            string.concat(
+                "\"slot\":",
+                _uintToString(slot),
+                ",\"key\":\"",
+                keyStr,
+                "\",\"value\":"
+            )
+        );
+        bytes memory jsonBytes = bytes(json);
+        if (jsonBytes.length < pattern.length) return (false, 0);
+
+        for (uint256 i = 0; i <= jsonBytes.length - pattern.length; i++) {
+            bool matches = true;
+            for (uint256 j = 0; j < pattern.length; j++) {
+                if (jsonBytes[i + j] != pattern[j]) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                return (true, _extractNumber(json, i + pattern.length));
+            }
+        }
+        return (false, 0);
+    }
+
+    /**
+     * @notice Extract mappingUint change from EDSL JSON by (slot, uint-key)
+     * @dev Expects objects encoded as {"slot":S,"key":K,"value":V}
+     */
+    function _extractMappingUintChange(string memory json, uint256 slot, uint256 key)
+        internal
+        pure
+        returns (bool found, uint256 value)
+    {
+        bytes memory pattern = bytes(
+            string.concat(
+                "\"slot\":",
+                _uintToString(slot),
+                ",\"key\":",
+                _uintToString(key),
+                ",\"value\":"
+            )
+        );
+        bytes memory jsonBytes = bytes(json);
+        if (jsonBytes.length < pattern.length) return (false, 0);
+
+        for (uint256 i = 0; i <= jsonBytes.length - pattern.length; i++) {
+            bool matches = true;
+            for (uint256 j = 0; j < pattern.length; j++) {
+                if (jsonBytes[i + j] != pattern[j]) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                return (true, _extractNumber(json, i + pattern.length));
+            }
+        }
+        return (false, 0);
+    }
+
+    /**
+     * @notice Extract mapping2 change from EDSL JSON by (slot, key1, key2)
+     * @dev Expects objects encoded as {"slot":S,"key1":"0x..","key2":"0x..","value":V}
+     */
+    function _extractMapping2Change(string memory json, uint256 slot, address key1, address key2)
+        internal
+        pure
+        returns (bool found, uint256 value)
+    {
+        string memory key1Str = _toLowerCase(_addressToString(key1));
+        string memory key2Str = _toLowerCase(_addressToString(key2));
+        bytes memory pattern = bytes(
+            string.concat(
+                "\"slot\":",
+                _uintToString(slot),
+                ",\"key1\":\"",
+                key1Str,
+                "\",\"key2\":\"",
+                key2Str,
+                "\",\"value\":"
+            )
+        );
+        bytes memory jsonBytes = bytes(json);
+        if (jsonBytes.length < pattern.length) return (false, 0);
+
+        for (uint256 i = 0; i <= jsonBytes.length - pattern.length; i++) {
+            bool matches = true;
+            for (uint256 j = 0; j < pattern.length; j++) {
+                if (jsonBytes[i + j] != pattern[j]) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                return (true, _extractNumber(json, i + pattern.length));
+            }
+        }
+        return (false, 0);
+    }
+
+    /**
      * @notice Parse hex address string to uint256
      */
     function _parseHexAddress(string memory hexStr) internal pure returns (uint256) {

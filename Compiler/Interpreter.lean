@@ -19,6 +19,8 @@ import Verity.Examples.Owned
 import Verity.Examples.Ledger
 import Verity.Examples.OwnedCounter
 import Verity.Examples.SimpleToken
+import Verity.Examples.ERC20
+import Verity.Examples.ERC721
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
@@ -351,6 +353,51 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
   ]
 
 /-!
+## ERC20 Interpreter
+-/
+
+def interpretERC20 (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  dispatch tx [
+    case2AddressNat "mint" tx (fun toAddr amount =>
+      -- Track owner slot 0, totalSupply slot 1, and recipient balance in slot-2 mapping.
+      let recipientKey := (2, toAddr)
+      runUnit (ERC20.mint toAddr amount) state [1] [0] [recipientKey]
+    ),
+    case2AddressNat "transfer" tx (fun toAddr amount =>
+      -- Track sender/recipient balances in slot-2 mapping.
+      let senderKey := (2, tx.sender)
+      let recipientKey := (2, toAddr)
+      runUnit (ERC20.transfer toAddr amount) state [] [] [senderKey, recipientKey]
+    ),
+    case1Address "balanceOf" tx (fun addr =>
+      let addrKey := (2, addr)
+      runUint (ERC20.balanceOf addr) state [] [] [addrKey]
+    ),
+    case0 "totalSupply" tx (fun _ => runUint ERC20.getTotalSupply state [1] [] []),
+    case0 "owner" tx (fun _ => runAddress ERC20.getOwner state [] [0] [])
+  ]
+
+/-!
+## ERC721 Interpreter
+-/
+
+def interpretERC721 (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  dispatch tx [
+    case1Address "mint" tx (fun toAddr =>
+      -- Track owner slot 0, counters (slots 1/2), and recipient balance in slot-3 mapping.
+      let recipientKey := (3, toAddr)
+      runUint (ERC721.mint toAddr) state [1, 2] [0] [recipientKey]
+    ),
+    case1Address "balanceOf" tx (fun addr =>
+      let addrKey := (3, addr)
+      runUint (ERC721.balanceOf addr) state [] [] [addrKey]
+    ),
+    case0 "owner" tx (fun _ => runAddress (getStorageAddr ERC721.owner) state [] [0] []),
+    case0 "totalSupply" tx (fun _ => runUint (getStorage ERC721.totalSupply) state [1] [] []),
+    case0 "nextTokenId" tx (fun _ => runUint (getStorage ERC721.nextTokenId) state [2] [] [])
+  ]
+
+/-!
 ## Generic Interpreter Interface
 
 For use by the differential testing harness.
@@ -655,14 +702,19 @@ def main (args : List String) : IO Unit := do
       | "OwnedCounter" => some ContractType.ownedCounter
       | "SimpleToken" => some ContractType.simpleToken
       | "SafeCounter" => some ContractType.safeCounter
+      | "ERC20" => none
+      | "ERC721" => none
       | _ => none
-    match contractTypeEnum? with
-    | some contractTypeEnum =>
-      let result := interpret contractTypeEnum tx initialState
-      IO.println result.toJSON
+    let result := match contractType with
+      | "ERC20" => some (interpretERC20 tx initialState)
+      | "ERC721" => some (interpretERC721 tx initialState)
+      | _ => contractTypeEnum?.map (fun contractTypeEnum => interpret contractTypeEnum tx initialState)
+    match result with
+    | some out =>
+      IO.println out.toJSON
     | none =>
       throw <| IO.userError
-        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter"
+        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20, ERC721"
   | _ =>
     IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...] [value=...] [timestamp=...]"
     IO.println "Example: difftest-interpreter SimpleStorage store 0xAlice 42"

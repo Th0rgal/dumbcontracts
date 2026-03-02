@@ -1232,4 +1232,28 @@ theorem compileStmts_let_storage_return_local_run
     bindVar, pushLocal, lookupVar, fieldTypeToTy, hfind, emit]
   rfl
 
+/-- Single-statement compilation shape for direct storage return (uint256):
+`return (storage fieldName)` lowers to one typed `returnUint (getStorage slot)`. -/
+theorem compileStmts_single_return_storage_run
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (st : CompileState)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    (compileStmts fields [Stmt.return (Expr.storage fieldName)]).run st =
+      Except.ok ((), { st with body := st.body.push (TStmt.returnUint (TExpr.getStorage slot)) }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileStorageRead, fieldTypeToTy, hfind, emit]
+  rfl
+
+/-- Single-statement compilation shape for direct storage return (address):
+`return (storage fieldName)` lowers to one typed `returnAddr (getStorageAddr slot)`. -/
+theorem compileStmts_single_return_storage_addr_run
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (st : CompileState)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.address }, slot)) :
+    (compileStmts fields [Stmt.return (Expr.storage fieldName)]).run st =
+      Except.ok ((), { st with body := st.body.push (TStmt.returnAddr (TExpr.getStorageAddr slot)) }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileStorageRead, fieldTypeToTy, hfind, emit]
+  rfl
+
 end Verity.Core.Free

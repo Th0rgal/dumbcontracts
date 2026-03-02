@@ -166,6 +166,34 @@ def execCompiledLetStorageReturnLocal
   | .error err => .revert err
   | .ok (_, st) => evalTStmts init st.body.toList
 
+/-- Direct source semantics for the `return (storage field)` pattern (uint256):
+reads storage slot and halts. -/
+def execSourceReturnStorage
+    (init : TExecState) (_slot : Nat) : TExecResult :=
+  .ok init
+
+/-- Compile + execute the `return (storage field)` pattern (uint256). -/
+def execCompiledReturnStorage
+    (fields : List Field) (fieldName : String)
+    (init : TExecState) : TExecResult :=
+  match (compileStmts fields [Stmt.return (Expr.storage fieldName)]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
+/-- Direct source semantics for the `return (storage field)` pattern (address):
+reads address storage slot and halts. -/
+def execSourceReturnStorageAddr
+    (init : TExecState) (_slot : Nat) : TExecResult :=
+  .ok init
+
+/-- Compile + execute the `return (storage field)` pattern (address). -/
+def execCompiledReturnStorageAddr
+    (fields : List Field) (fieldName : String)
+    (init : TExecState) : TExecResult :=
+  match (compileStmts fields [Stmt.return (Expr.storage fieldName)]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
 /-- Direct source semantics for the supported return subset:
 `return (literal n)` halts without mutating state. -/
 def execSourceReturnLiteral (init : TExecState) (_n : Nat) : TExecResult :=
@@ -951,6 +979,32 @@ theorem compile_let_storage_return_local_semantics
       execSourceLetStorageReturnLocal init slot := by
   simp [execCompiledLetStorageReturnLocal, execSourceLetStorageReturnLocal,
     compileStmts_let_storage_return_local_run, hfind,
+    evalTStmts, defaultEvalFuel]
+  simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
+
+/-- Semantic-preservation theorem for `return (storage field)` (uint256). -/
+theorem compile_return_storage_semantics
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (init : TExecState)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledReturnStorage fields fieldName init =
+      execSourceReturnStorage init slot := by
+  simp [execCompiledReturnStorage, execSourceReturnStorage,
+    compileStmts_single_return_storage_run, hfind,
+    evalTStmts, defaultEvalFuel]
+  simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
+
+/-- Semantic-preservation theorem for `return (storage field)` (address). -/
+theorem compile_return_storage_addr_semantics
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (init : TExecState)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.address }, slot)) :
+    execCompiledReturnStorageAddr fields fieldName init =
+      execSourceReturnStorageAddr init slot := by
+  simp [execCompiledReturnStorageAddr, execSourceReturnStorageAddr,
+    compileStmts_single_return_storage_addr_run, hfind,
     evalTStmts, defaultEvalFuel]
   simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
 
@@ -2643,6 +2697,38 @@ def execCompiledRequireFamilyClausesThenLetStorageReturnLocal
   | .ok st => execCompiledLetStorageReturnLocal fields fieldName tmp st
   | .revert reason => .revert reason
 
+/-- Source semantics for `require` clauses followed by `return (storage field)` (uint256). -/
+def execSourceRequireFamilyClausesThenReturnStorage
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (slot : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st => execSourceReturnStorage st slot
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for `require` clauses followed by `return (storage field)` (uint256). -/
+def execCompiledRequireFamilyClausesThenReturnStorage
+    (fields : List Field) (fieldName : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledReturnStorage fields fieldName st
+  | .revert reason => .revert reason
+
+/-- Source semantics for `require` clauses followed by `return (storage field)` (address). -/
+def execSourceRequireFamilyClausesThenReturnStorageAddr
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (slot : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st => execSourceReturnStorageAddr st slot
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for `require` clauses followed by `return (storage field)` (address). -/
+def execCompiledRequireFamilyClausesThenReturnStorageAddr
+    (fields : List Field) (fieldName : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledReturnStorageAddr fields fieldName st
+  | .revert reason => .revert reason
+
 /-- Sequencing theorem: for unified `require` guard-family clause lists followed by
 `letVar tmp (storage field); setStorage field (add (localVar tmp) (literal m)); stop`,
 compiled execution matches source sequencing semantics. -/
@@ -2693,6 +2779,38 @@ theorem compile_require_family_clauses_then_let_storage_return_local_semantics
     execSourceRequireFamilyClausesThenLetStorageReturnLocal,
     compile_require_literal_guard_family_clauses_semantics,
     compile_let_storage_return_local_semantics, hfind]
+
+/-- Sequencing theorem: `require` clauses followed by `return (storage field)` (uint256). -/
+theorem compile_require_family_clauses_then_return_storage_semantics
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledRequireFamilyClausesThenReturnStorage
+        fields fieldName init clauses =
+      execSourceRequireFamilyClausesThenReturnStorage
+        init clauses slot := by
+  simp [execCompiledRequireFamilyClausesThenReturnStorage,
+    execSourceRequireFamilyClausesThenReturnStorage,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_return_storage_semantics, hfind]
+  split <;> simp_all
+
+/-- Sequencing theorem: `require` clauses followed by `return (storage field)` (address). -/
+theorem compile_require_family_clauses_then_return_storage_addr_semantics
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.address }, slot)) :
+    execCompiledRequireFamilyClausesThenReturnStorageAddr
+        fields fieldName init clauses =
+      execSourceRequireFamilyClausesThenReturnStorageAddr
+        init clauses slot := by
+  simp [execCompiledRequireFamilyClausesThenReturnStorageAddr,
+    execSourceRequireFamilyClausesThenReturnStorageAddr,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_return_storage_addr_semantics, hfind]
+  split <;> simp_all
 
 /-- Sequencing semantic-preservation theorem for a broader supported subset:
 for unified `require` guard-family clause lists followed by `return literal`,
@@ -2942,6 +3060,14 @@ inductive RequireFamilyClausesTail (fields : List Field) where
       (fieldName tmp : String) (slot : Nat)
       (hfind : findFieldWithResolvedSlot fields fieldName =
         some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | returnStorage
+      (fieldName : String) (slot : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | returnStorageAddr
+      (fieldName : String) (slot : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.address }, slot))
 
 /-- Source semantics dispatcher for the supported continuation family after
 unified `require` guard-family clause lists. -/
@@ -3021,6 +3147,10 @@ def execSourceRequireFamilyClausesThenTail
       execSourceRequireFamilyClausesThenLetStorageSetStorageSubLocalStop init clauses slot m
   | .letStorageReturnLocal _ _ slot _ =>
       execSourceRequireFamilyClausesThenLetStorageReturnLocal init clauses slot
+  | .returnStorage _ slot _ =>
+      execSourceRequireFamilyClausesThenReturnStorage init clauses slot
+  | .returnStorageAddr _ slot _ =>
+      execSourceRequireFamilyClausesThenReturnStorageAddr init clauses slot
 
 /-- Compiled semantics dispatcher for the supported continuation family after
 unified `require` guard-family clause lists. -/
@@ -3108,6 +3238,12 @@ def execCompiledRequireFamilyClausesThenTail
   | .letStorageReturnLocal fieldName tmp _ _ =>
       execCompiledRequireFamilyClausesThenLetStorageReturnLocal
         fields fieldName tmp init clauses
+  | .returnStorage fieldName _ _ =>
+      execCompiledRequireFamilyClausesThenReturnStorage
+        fields fieldName init clauses
+  | .returnStorageAddr fieldName _ _ =>
+      execCompiledRequireFamilyClausesThenReturnStorageAddr
+        fields fieldName init clauses
 
 /-- Generic sequencing semantic-preservation theorem over the supported tail
 family after unified `require` guard-family clause lists. -/
@@ -3232,6 +3368,14 @@ theorem compile_require_family_clauses_then_tail_semantics
       simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
         using compile_require_family_clauses_then_let_storage_return_local_semantics
           fields fieldName tmp slot init clauses hfind
+  | returnStorage fieldName slot hfind =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_return_storage_semantics
+          fields fieldName slot init clauses hfind
+  | returnStorageAddr fieldName slot hfind =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_return_storage_addr_semantics
+          fields fieldName slot init clauses hfind
 
 /-- Program fragment in the currently supported 2.2 generic family:
 one unified require-clause list followed by one supported tail. -/
@@ -3474,6 +3618,16 @@ inductive SupportedStmtFragment (fields : List Field) where
       (fieldName tmp : String) (slot : Nat)
       (hfind : findFieldWithResolvedSlot fields fieldName =
         some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | requireClausesThenReturnStorage
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (fieldName : String) (slot : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | requireClausesThenReturnStorageAddr
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (fieldName : String) (slot : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.address }, slot))
 
 /-- Encode an explicit supported statement fragment into the generic
 `(require-clause-list + tail)` program representation. -/
@@ -3574,6 +3728,12 @@ def SupportedStmtFragment.toRequireFamilyClausesTailProgram
   | .requireClausesThenLetStorageReturnLocal clauses fieldName tmp slot hfind =>
       { clauses := clauses
         tail := .letStorageReturnLocal fieldName tmp slot hfind }
+  | .requireClausesThenReturnStorage clauses fieldName slot hfind =>
+      { clauses := clauses
+        tail := .returnStorage fieldName slot hfind }
+  | .requireClausesThenReturnStorageAddr clauses fieldName slot hfind =>
+      { clauses := clauses
+        tail := .returnStorageAddr fieldName slot hfind }
 
 /-- Encode one unified `require` guard-family clause into a source `Stmt.require`. -/
 def RequireLiteralGuardFamilyClause.toStmt (clause : RequireLiteralGuardFamilyClause) : Stmt :=
@@ -3728,6 +3888,10 @@ def RequireFamilyClausesTail.toStmts
       [ Stmt.letVar tmp (Expr.storage fieldName)
       , Stmt.return (Expr.localVar tmp)
       ]
+  | .returnStorage fieldName _ _ =>
+      [Stmt.return (Expr.storage fieldName)]
+  | .returnStorageAddr fieldName _ _ =>
+      [Stmt.return (Expr.storage fieldName)]
 
 /-- Encode one supported `(require-clause-list + tail)` program into raw source
 statement lists. -/
@@ -3883,5 +4047,65 @@ theorem counter_getCount_correctness (init : TExecState) :
       execCompiledSupportedStmtFragments counterFields init fragments =
         execSourceSupportedStmtFragments counterFields init fragments :=
   compile_supported_stmt_list_semantics counterFields init _ counter_getCount_supported
+
+-- ============================================================================
+-- SimpleStorage fields and correctness theorems
+-- ============================================================================
+
+/-- SimpleStorage fields used for bridge theorem instantiation. -/
+def simpleStorageFields : List Field :=
+  [{ name := "storedData", ty := FieldType.uint256 }]
+
+/-- SimpleStorage field resolution: `storedData` maps to slot 0. -/
+theorem simpleStorageFieldResolution :
+    findFieldWithResolvedSlot simpleStorageFields "storedData" =
+      some ({ name := "storedData", ty := FieldType.uint256 }, 0) := by
+  rfl
+
+/-- SimpleStorage.retrieve body belongs to the supported statement fragment grammar. -/
+theorem simpleStorage_retrieve_supported :
+    SupportedStmtList simpleStorageFields
+      [Stmt.return (Expr.storage "storedData")] := by
+  exact ⟨[.requireClausesThenReturnStorage
+    [] "storedData" 0 simpleStorageFieldResolution], rfl⟩
+
+/-- SimpleStorage.retrieve compilation correctness: compiled and source semantics match. -/
+theorem simpleStorage_retrieve_correctness (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment simpleStorageFields),
+      supportedStmtFragmentsToStmts fragments =
+        [Stmt.return (Expr.storage "storedData")] ∧
+      execCompiledSupportedStmtFragments simpleStorageFields init fragments =
+        execSourceSupportedStmtFragments simpleStorageFields init fragments :=
+  compile_supported_stmt_list_semantics simpleStorageFields init _ simpleStorage_retrieve_supported
+
+-- ============================================================================
+-- Owned fields and correctness theorems
+-- ============================================================================
+
+/-- Owned fields used for bridge theorem instantiation. -/
+def ownedFields : List Field :=
+  [{ name := "owner", ty := FieldType.address }]
+
+/-- Owned field resolution: `owner` maps to slot 0. -/
+theorem ownedFieldResolution :
+    findFieldWithResolvedSlot ownedFields "owner" =
+      some ({ name := "owner", ty := FieldType.address }, 0) := by
+  rfl
+
+/-- Owned.getOwner body belongs to the supported statement fragment grammar. -/
+theorem owned_getOwner_supported :
+    SupportedStmtList ownedFields
+      [Stmt.return (Expr.storage "owner")] := by
+  exact ⟨[.requireClausesThenReturnStorageAddr
+    [] "owner" 0 ownedFieldResolution], rfl⟩
+
+/-- Owned.getOwner compilation correctness: compiled and source semantics match. -/
+theorem owned_getOwner_correctness (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment ownedFields),
+      supportedStmtFragmentsToStmts fragments =
+        [Stmt.return (Expr.storage "owner")] ∧
+      execCompiledSupportedStmtFragments ownedFields init fragments =
+        execSourceSupportedStmtFragments ownedFields init fragments :=
+  compile_supported_stmt_list_semantics ownedFields init _ owned_getOwner_supported
 
 end Verity.Core.Free

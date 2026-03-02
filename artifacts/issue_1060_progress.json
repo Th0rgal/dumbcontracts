@@ -1137,19 +1137,121 @@
       "notes": "Extended the supported fragment grammar with 3 new storage-read patterns required by Counter contract (letVar(storage); setStorage(add/sub); stop and letVar(storage); return). SupportedStmtFragment now has 27 constructors."
     },
     "3.3": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "SupportedStmtFragment extended with 2 new constructors: requireClausesThenReturnStorage (uint256) and requireClausesThenReturnStorageAddr (address).",
+        "RequireFamilyClausesTail extended with 2 matching tail constructors: returnStorage and returnStorageAddr.",
+        "Compilation-shape theorems prove SSA output for return(storage field) patterns in both uint256 and address types.",
+        "Semantic-preservation theorems prove source/compiled equivalence for return-storage and return-storage-addr patterns.",
+        "Sequencing theorems compose require-family prefix with return-storage tails.",
+        "Generic dispatchers (source, compiled, tail theorem) wired for both new tails.",
+        "simpleStorage_retrieve_supported, owned_getOwner_supported witness SupportedStmtList membership.",
+        "simpleStorage_retrieve_correctness, owned_getOwner_correctness derive compilation correctness from the generic theorem.",
+        "Field definitions and resolution theorems for simpleStorageFields and ownedFields.",
+        "lake build succeeds with no errors (only known linter warnings)."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRCompiler.lean",
+        "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+        "Verity/Core/Free/TypedIRTests.lean"
+      ],
+      "verification_commands": [
+        "lake build",
+        "python3 scripts/check_issue_1060_integrity.py",
+        "python3 scripts/check_proof_length.py"
+      ],
+      "verification_results": [
+        "pass: lake build [run_id=3.3-build, artifact_sha256=2df03ec7e08b39b2]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=3.3-integrity]",
+        "pass: python3 scripts/check_proof_length.py [run_id=3.3-proof-length, 804 proofs scanned, 0 new violations]"
+      ],
       "evidence": {
-        "theorems": [],
-        "tests": []
+        "theorems": [
+          {
+            "name": "compileStmts_single_return_storage_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape for return(storage field) uint256 pattern",
+            "statement_summary": "Compiling [return (storage fieldName)] with uint256 field type emits a single TStmt.returnUint(getStorage slot) from empty compile state."
+          },
+          {
+            "name": "compileStmts_single_return_storage_addr_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape for return(storage field) address pattern",
+            "statement_summary": "Compiling [return (storage fieldName)] with address field type emits a single TStmt.returnAddr(getStorageAddr slot) from empty compile state."
+          },
+          {
+            "name": "compile_return_storage_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for return(storage field) uint256",
+            "statement_summary": "Source and compiled semantics agree for the return(storage field) pattern when the field has uint256 type."
+          },
+          {
+            "name": "compile_return_storage_addr_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for return(storage field) address",
+            "statement_summary": "Source and compiled semantics agree for the return(storage field) pattern when the field has address type."
+          },
+          {
+            "name": "compile_require_family_clauses_then_return_storage_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Sequencing theorem for require-clauses + return-storage uint256",
+            "statement_summary": "Compiled execution of require-family clauses followed by return(storage field) (uint256) matches source semantics."
+          },
+          {
+            "name": "compile_require_family_clauses_then_return_storage_addr_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Sequencing theorem for require-clauses + return-storage address",
+            "statement_summary": "Compiled execution of require-family clauses followed by return(storage field) (address) matches source semantics."
+          },
+          {
+            "name": "simpleStorageFieldResolution",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "SimpleStorage field resolution: storedData → slot 0",
+            "statement_summary": "findFieldWithResolvedSlot simpleStorageFields 'storedData' resolves to ({name := 'storedData', ty := FieldType.uint256}, 0)."
+          },
+          {
+            "name": "simpleStorage_retrieve_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "SimpleStorage.retrieve body is in SupportedStmtList",
+            "statement_summary": "The SimpleStorage retrieve body [return (storage 'storedData')] belongs to SupportedStmtList simpleStorageFields."
+          },
+          {
+            "name": "simpleStorage_retrieve_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "SimpleStorage.retrieve compilation correctness from generic theorem",
+            "statement_summary": "SimpleStorage.retrieve compilation correctness: source and compiled semantics are equal, derived from the generic compile_supported_stmt_list_semantics theorem."
+          },
+          {
+            "name": "ownedFieldResolution",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Owned field resolution: owner → slot 0",
+            "statement_summary": "findFieldWithResolvedSlot ownedFields 'owner' resolves to ({name := 'owner', ty := FieldType.address}, 0)."
+          },
+          {
+            "name": "owned_getOwner_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Owned.getOwner body is in SupportedStmtList",
+            "statement_summary": "The Owned getOwner body [return (storage 'owner')] belongs to SupportedStmtList ownedFields."
+          },
+          {
+            "name": "owned_getOwner_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Owned.getOwner compilation correctness from generic theorem",
+            "statement_summary": "Owned.getOwner compilation correctness: source and compiled semantics are equal, derived from the generic compile_supported_stmt_list_semantics theorem."
+          }
+        ],
+        "tests": [
+          {
+            "name": "simpleStorage_owned_bridge_test_examples",
+            "file": "Verity/Core/Free/TypedIRTests.lean",
+            "description": "2 test examples exercising SimpleStorage.retrieve and Owned.getOwner correctness derivations from generic theorems"
+          }
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Extended the supported fragment grammar with 2 new return-storage patterns (returnStorage for uint256, returnStorageAddr for address). SupportedStmtFragment now has 27 constructors. Proved compilation correctness for SimpleStorage.retrieve and Owned.getOwner parameterless getter functions. SimpleStorage.store and Owned.transferOwnership require param-based patterns which are deferred to future items (3.4+)."
     },
     "3.4": {
       "status": "open",

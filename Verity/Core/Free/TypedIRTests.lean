@@ -1629,4 +1629,24 @@ example (init : TExecState) :
         execSourceSupportedStmtFragments counterFields init fragments :=
   counter_getCount_correctness init
 
+open Compiler.CompilationModel in
+/-- SimpleStorage.retrieve compilation correctness follows from the generic theorem. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment simpleStorageFields),
+      supportedStmtFragmentsToStmts fragments =
+        [Stmt.return (Expr.storage "storedData")] ∧
+      execCompiledSupportedStmtFragments simpleStorageFields init fragments =
+        execSourceSupportedStmtFragments simpleStorageFields init fragments :=
+  simpleStorage_retrieve_correctness init
+
+open Compiler.CompilationModel in
+/-- Owned.getOwner compilation correctness follows from the generic theorem. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment ownedFields),
+      supportedStmtFragmentsToStmts fragments =
+        [Stmt.return (Expr.storage "owner")] ∧
+      execCompiledSupportedStmtFragments ownedFields init fragments =
+        execSourceSupportedStmtFragments ownedFields init fragments :=
+  owned_getOwner_correctness init
+
 end Verity.Core.Free

@@ -1258,6 +1258,16 @@ example (fields : List Compiler.CompilationModel.Field)
   compile_require_family_clauses_then_return_literal_semantics
     fields init clauses retVal
 
+example (fields : List Compiler.CompilationModel.Field)
+    (tmp : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (retVal : Nat) :
+    execCompiledRequireFamilyClausesThenLetReturnLocalLiteral
+        fields tmp init clauses retVal =
+      execSourceRequireFamilyClausesThenLetReturnLocalLiteral
+        init clauses retVal :=
+  compile_require_family_clauses_then_let_return_local_literal_semantics
+    fields tmp init clauses retVal
+
 example (family : RequireLiteralGuardFamily)
     (fields : List Compiler.CompilationModel.Field)
     (fieldName : String) (slotIdx : Nat) (init : TExecState)

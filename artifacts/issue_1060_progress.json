@@ -121,7 +121,8 @@
         "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause executes before `return (literal retVal)`, preserving short-circuit revert vs halting semantics.",
         "Extend semantic-preservation coverage to lists of unified require guard-family clauses (`binary`, `logicalAnd(eq,lt)`, `logicalOr(eq,lt)`) via structural induction, preserving short-circuit revert behavior.",
         "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `setStorage fieldName (literal writeVal)`, preserving clause-list short-circuit revert behavior and subsequent storage update under explicit field-resolution assumptions.",
-        "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `return (literal retVal)`, preserving clause-list short-circuit revert vs halting semantics."
+        "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `return (literal retVal)`, preserving clause-list short-circuit revert vs halting semantics.",
+        "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `letVar tmp (literal retVal); return (localVar tmp)`, preserving clause-list short-circuit revert behavior together with local-binding return semantics."
       ],
       "files_changed": [
         "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
@@ -361,6 +362,11 @@
             "name": "compile_require_family_clauses_then_return_literal_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "Sequencing theorem: for unified require guard-family clause lists followed by return-literal, compiled execution matches source clause-list short-circuit semantics and halting behavior."
+          },
+          {
+            "name": "compile_require_family_clauses_then_let_return_local_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "Sequencing theorem: for unified require guard-family clause lists followed by letVar-literal then return-localVar, compiled execution matches source clause-list short-circuit semantics together with local-binding return behavior."
           }
         ],
         "tests": [
@@ -389,13 +395,14 @@
           "TypedIRTests: example instantiating compile_require_family_then_return_literal_semantics over arbitrary family/fields/init/n/m/p/q/message/retVal",
           "TypedIRTests: example instantiating compile_require_literal_guard_family_clauses_semantics over arbitrary fields/init/guard-family clauses",
           "TypedIRTests: example instantiating compile_require_family_clauses_then_setStorage_literal_semantics over arbitrary fields/fieldName/slot/init/guard-family clauses/writeVal assumptions",
-          "TypedIRTests: example instantiating compile_require_family_clauses_then_return_literal_semantics over arbitrary fields/init/guard-family clauses/retVal"
+          "TypedIRTests: example instantiating compile_require_family_clauses_then_return_literal_semantics over arbitrary fields/init/guard-family clauses/retVal",
+          "TypedIRTests: example instantiating compile_require_family_clauses_then_let_return_local_literal_semantics over arbitrary fields/tmp/init/guard-family clauses/retVal"
         ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "2.2 remains partial: this slice adds sequencing semantic preservation for unified require guard-family clause lists followed by `return literal` via `compile_require_family_clauses_then_return_literal_semantics`, without deleting prior obligations. Full source-vs-typed semantic preservation over the broader supported statement fragment is still pending."
+      "notes": "2.2 remains partial: this slice adds sequencing semantic preservation for unified require guard-family clause lists followed by `letVar tmp (literal retVal); return (localVar tmp)` via `compile_require_family_clauses_then_let_return_local_literal_semantics`, without deleting prior obligations. Full source-vs-typed semantic preservation over the broader supported statement fragment is still pending."
     },
     "2.3": {
       "status": "open",

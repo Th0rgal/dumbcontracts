@@ -152,7 +152,7 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust-boundar
 
 **What This Layer Proves**: User-facing EDSL contracts satisfy their human-readable specifications.
 
-**Hybrid transition note**: Layer 1 currently uses a hybrid strategy: generated `EDSL -> CompilationModel` proofs cover the supported subset; advanced constructs (linked libraries, ECMs, custom ABI encoding) are expressed directly in `CompilationModel` and trusted at that boundary. Automatic compiler-lowered EDSL input is still pending. See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for details.
+**Hybrid architecture note**: Layer 1 uses a hybrid strategy: generated `EDSL -> CompilationModel` proofs cover the supported subset; advanced constructs (linked libraries, ECMs, custom ABI encoding) are expressed directly in `CompilationModel` and trusted at that boundary. For supported contracts, this is the active canonical path. See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for details.
 
 ### Verified Contracts
 

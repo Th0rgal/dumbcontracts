@@ -1021,19 +1021,120 @@
       "notes": "Backfilled during 0.2 stabilization slice. Env separation existed since commit 8b437409."
     },
     "3.2": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "SupportedStmtFragment extended with 3 new constructors for storage-read patterns (letStorageSetStorageAddLocalStop, letStorageSetStorageSubLocalStop, letStorageReturnLocal).",
+        "RequireFamilyClausesTail extended with 3 matching tail constructors.",
+        "Compilation-shape theorems prove SSA output for each storage-read pattern.",
+        "Semantic-preservation theorems prove source/compiled equivalence for each pattern.",
+        "Sequencing theorems compose require-family prefix with storage-read tails.",
+        "Generic dispatchers (source, compiled, tail theorem) wired for all 3 new tails.",
+        "counter_increment_supported, counter_decrement_supported, counter_getCount_supported witness SupportedStmtList membership.",
+        "counter_increment_correctness, counter_decrement_correctness, counter_getCount_correctness derive compilation correctness from the generic theorem.",
+        "lake build succeeds with no errors (only known simpa linter warning)."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRCompiler.lean",
+        "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+        "Verity/Core/Free/TypedIRTests.lean"
+      ],
+      "verification_commands": [
+        "lake build",
+        "python3 scripts/check_issue_1060_integrity.py",
+        "python3 scripts/check_proof_length.py"
+      ],
+      "verification_results": [
+        "pass: lake build [run_id=3.2-build, artifact_sha256=35ebaa6c6ee7ea06]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=3.2-integrity]",
+        "pass: python3 scripts/check_proof_length.py [run_id=3.2-proof-length, 792 proofs scanned, 0 new violations]"
+      ],
       "evidence": {
-        "theorems": [],
-        "tests": []
+        "theorems": [
+          {
+            "name": "compileStmts_let_storage_setStorage_add_local_stop_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape for letVar(storage) ; setStorage(add) ; stop pattern",
+            "statement_summary": "Compiling [letVar tmp (storage fieldName), setStorage fieldName (add (localVar tmp) (literal m)), stop] emits SSA let-getStorage, add, setStorage, stop sequence from empty compile state."
+          },
+          {
+            "name": "compileStmts_let_storage_setStorage_sub_local_stop_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape for letVar(storage) ; setStorage(sub) ; stop pattern",
+            "statement_summary": "Compiling [letVar tmp (storage fieldName), setStorage fieldName (sub (localVar tmp) (literal m)), stop] emits SSA let-getStorage, sub, setStorage, stop sequence from empty compile state."
+          },
+          {
+            "name": "compileStmts_let_storage_return_local_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape for letVar(storage) ; return(localVar) pattern",
+            "statement_summary": "Compiling [letVar tmp (storage fieldName), return (localVar tmp)] emits SSA let-getStorage, return-var sequence from empty compile state."
+          },
+          {
+            "name": "compile_let_storage_setStorage_add_local_stop_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for storage-read/add/setStorage/stop",
+            "statement_summary": "Source and compiled semantics agree for the storage-read, add-literal, setStorage, stop pattern."
+          },
+          {
+            "name": "compile_let_storage_setStorage_sub_local_stop_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for storage-read/sub/setStorage/stop",
+            "statement_summary": "Source and compiled semantics agree for the storage-read, sub-literal, setStorage, stop pattern."
+          },
+          {
+            "name": "compile_let_storage_return_local_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for storage-read/return",
+            "statement_summary": "Source and compiled semantics agree for the storage-read, return-localVar pattern."
+          },
+          {
+            "name": "counter_increment_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Counter.increment body is in SupportedStmtList",
+            "statement_summary": "The Counter increment body [letVar current (storage count), setStorage count (add (localVar current) (literal 1)), stop] belongs to SupportedStmtList counterFields."
+          },
+          {
+            "name": "counter_decrement_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Counter.decrement body is in SupportedStmtList",
+            "statement_summary": "The Counter decrement body [letVar current (storage count), setStorage count (sub (localVar current) (literal 1)), stop] belongs to SupportedStmtList counterFields."
+          },
+          {
+            "name": "counter_getCount_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Counter.getCount body is in SupportedStmtList",
+            "statement_summary": "The Counter getCount body [letVar current (storage count), return (localVar current)] belongs to SupportedStmtList counterFields."
+          },
+          {
+            "name": "counter_increment_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Counter.increment compilation correctness from generic theorem",
+            "statement_summary": "Counter.increment compilation correctness: source and compiled semantics are equal, derived from the generic compile_supported_stmt_list_semantics theorem."
+          },
+          {
+            "name": "counter_decrement_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Counter.decrement compilation correctness from generic theorem",
+            "statement_summary": "Counter.decrement compilation correctness: source and compiled semantics are equal, derived from the generic compile_supported_stmt_list_semantics theorem."
+          },
+          {
+            "name": "counter_getCount_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Counter.getCount compilation correctness from generic theorem",
+            "statement_summary": "Counter.getCount compilation correctness: source and compiled semantics are equal, derived from the generic compile_supported_stmt_list_semantics theorem."
+          }
+        ],
+        "tests": [
+          {
+            "name": "counter_bridge_test_examples",
+            "file": "Verity/Core/Free/TypedIRTests.lean",
+            "description": "6 test examples exercising Counter bridge theorems (3 SupportedStmtList witnesses + 3 correctness derivations)"
+          }
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Extended the supported fragment grammar with 3 new storage-read patterns required by Counter contract (letVar(storage); setStorage(add/sub); stop and letVar(storage); return). SupportedStmtFragment now has 27 constructors."
     },
     "3.3": {
       "status": "open",

@@ -1571,4 +1571,62 @@ example (fields : List Compiler.CompilationModel.Field)
       execSourceSupportedStmtList fields init stmts hSupported :=
   compile_supported_stmt_list_direct_semantics fields init stmts hSupported
 
+open Compiler.CompilationModel in
+/-- Counter.increment body belongs to the supported fragment. -/
+example : SupportedStmtList counterFields
+    [ Stmt.letVar "current" (Expr.storage "count")
+    , Stmt.setStorage "count" (Expr.add (Expr.localVar "current") (Expr.literal 1))
+    , Stmt.stop ] :=
+  counter_increment_supported
+
+open Compiler.CompilationModel in
+/-- Counter.decrement body belongs to the supported fragment. -/
+example : SupportedStmtList counterFields
+    [ Stmt.letVar "current" (Expr.storage "count")
+    , Stmt.setStorage "count" (Expr.sub (Expr.localVar "current") (Expr.literal 1))
+    , Stmt.stop ] :=
+  counter_decrement_supported
+
+open Compiler.CompilationModel in
+/-- Counter.getCount body belongs to the supported fragment. -/
+example : SupportedStmtList counterFields
+    [ Stmt.letVar "current" (Expr.storage "count")
+    , Stmt.return (Expr.localVar "current") ] :=
+  counter_getCount_supported
+
+open Compiler.CompilationModel in
+/-- Counter.increment compilation correctness follows from the generic theorem. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment counterFields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "current" (Expr.storage "count")
+        , Stmt.setStorage "count" (Expr.add (Expr.localVar "current") (Expr.literal 1))
+        , Stmt.stop ] ∧
+      execCompiledSupportedStmtFragments counterFields init fragments =
+        execSourceSupportedStmtFragments counterFields init fragments :=
+  counter_increment_correctness init
+
+open Compiler.CompilationModel in
+/-- Counter.decrement compilation correctness follows from the generic theorem. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment counterFields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "current" (Expr.storage "count")
+        , Stmt.setStorage "count" (Expr.sub (Expr.localVar "current") (Expr.literal 1))
+        , Stmt.stop ] ∧
+      execCompiledSupportedStmtFragments counterFields init fragments =
+        execSourceSupportedStmtFragments counterFields init fragments :=
+  counter_decrement_correctness init
+
+open Compiler.CompilationModel in
+/-- Counter.getCount compilation correctness follows from the generic theorem. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment counterFields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "current" (Expr.storage "count")
+        , Stmt.return (Expr.localVar "current") ] ∧
+      execCompiledSupportedStmtFragments counterFields init fragments =
+        execSourceSupportedStmtFragments counterFields init fragments :=
+  counter_getCount_correctness init
+
 end Verity.Core.Free

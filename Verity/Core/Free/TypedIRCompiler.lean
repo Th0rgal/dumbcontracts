@@ -1154,4 +1154,82 @@ theorem compileStmts_single_require_or_eq_lt_literals_run
   simp [compileStmts, compileStmt, compileExpr, emit]
   rfl
 
+/-- Three-statement compilation shape for Counter.increment pattern:
+`letVar tmp (storage field); setStorage field (add (localVar tmp) (literal m)); stop`
+lowers to one SSA `let_` (from getStorage), one `setStorage` (with add), and one `stop`. -/
+theorem compileStmts_let_storage_setStorage_add_local_stop_run
+    (fields : List Field) (fieldName tmp : String) (slot : Nat) (m : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    (compileStmts fields
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.setStorage fieldName (Expr.add (Expr.localVar tmp) (Expr.literal m))
+      , Stmt.stop
+      ]).run {} =
+      Except.ok ((),
+        { nextId := 1
+          vars := [(tmp, { id := 0, ty := Ty.uint256 })]
+          params := #[]
+          locals := #[{ id := 0, ty := Ty.uint256 }]
+          body := #[
+            TStmt.let_ { id := 0, ty := Ty.uint256 } (TExpr.getStorage slot),
+            TStmt.setStorage slot
+              (TExpr.add (TExpr.var { id := 0, ty := Ty.uint256 }) (TExpr.uintLit m)),
+            TStmt.stop
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileStorageRead, emitSSABind, freshVar,
+    bindVar, pushLocal, lookupVar, fieldTypeToTy, hfind, emit]
+  rfl
+
+/-- Three-statement compilation shape for Counter.decrement pattern:
+`letVar tmp (storage field); setStorage field (sub (localVar tmp) (literal m)); stop`
+lowers to one SSA `let_` (from getStorage), one `setStorage` (with sub), and one `stop`. -/
+theorem compileStmts_let_storage_setStorage_sub_local_stop_run
+    (fields : List Field) (fieldName tmp : String) (slot : Nat) (m : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    (compileStmts fields
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.setStorage fieldName (Expr.sub (Expr.localVar tmp) (Expr.literal m))
+      , Stmt.stop
+      ]).run {} =
+      Except.ok ((),
+        { nextId := 1
+          vars := [(tmp, { id := 0, ty := Ty.uint256 })]
+          params := #[]
+          locals := #[{ id := 0, ty := Ty.uint256 }]
+          body := #[
+            TStmt.let_ { id := 0, ty := Ty.uint256 } (TExpr.getStorage slot),
+            TStmt.setStorage slot
+              (TExpr.sub (TExpr.var { id := 0, ty := Ty.uint256 }) (TExpr.uintLit m)),
+            TStmt.stop
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileStorageRead, emitSSABind, freshVar,
+    bindVar, pushLocal, lookupVar, fieldTypeToTy, hfind, emit]
+  rfl
+
+/-- Two-statement compilation shape for Counter.getCount pattern:
+`letVar tmp (storage field); return (localVar tmp)`
+lowers to one SSA `let_` (from getStorage) and one typed `returnUint`. -/
+theorem compileStmts_let_storage_return_local_run
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    (compileStmts fields
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.return (Expr.localVar tmp)
+      ]).run {} =
+      Except.ok ((),
+        { nextId := 1
+          vars := [(tmp, { id := 0, ty := Ty.uint256 })]
+          params := #[]
+          locals := #[{ id := 0, ty := Ty.uint256 }]
+          body := #[
+            TStmt.let_ { id := 0, ty := Ty.uint256 } (TExpr.getStorage slot),
+            TStmt.returnUint (TExpr.var { id := 0, ty := Ty.uint256 })
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileStorageRead, emitSSABind, freshVar,
+    bindVar, pushLocal, lookupVar, fieldTypeToTy, hfind, emit]
+  rfl
+
 end Verity.Core.Free

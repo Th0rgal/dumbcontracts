@@ -100,6 +100,72 @@ def execCompiledLetAssignMulSetStorageLocalLiteral
   | .error err => .revert err
   | .ok (_, st) => evalTStmts init st.body.toList
 
+/-- Direct source semantics for the storage-read + add + setStorage + stop pattern:
+`letVar tmp (storage field); setStorage field (add (localVar tmp) (literal m)); stop`
+reads storage slot, adds `m`, writes back. -/
+def execSourceLetStorageSetStorageAddLocalStop
+    (init : TExecState) (slot : Nat) (m : Nat) : TExecResult :=
+  .ok { init with
+    world := execSourceSetStorageLiteral init.world slot
+      ((init.world.storage slot : Verity.Core.Uint256).add (m : Verity.Core.Uint256))
+    vars := TVars.set init.vars { id := 0, ty := Ty.uint256 }
+      (init.world.storage slot) }
+
+/-- Compile + execute the storage-read + add + setStorage + stop pattern. -/
+def execCompiledLetStorageSetStorageAddLocalStop
+    (fields : List Field) (fieldName tmp : String)
+    (init : TExecState) (m : Nat) : TExecResult :=
+  match (compileStmts fields
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.setStorage fieldName (Expr.add (Expr.localVar tmp) (Expr.literal m))
+      , Stmt.stop
+      ]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
+/-- Direct source semantics for the storage-read + sub + setStorage + stop pattern:
+`letVar tmp (storage field); setStorage field (sub (localVar tmp) (literal m)); stop`
+reads storage slot, subtracts `m`, writes back. -/
+def execSourceLetStorageSetStorageSubLocalStop
+    (init : TExecState) (slot : Nat) (m : Nat) : TExecResult :=
+  .ok { init with
+    world := execSourceSetStorageLiteral init.world slot
+      ((init.world.storage slot : Verity.Core.Uint256).sub (m : Verity.Core.Uint256))
+    vars := TVars.set init.vars { id := 0, ty := Ty.uint256 }
+      (init.world.storage slot) }
+
+/-- Compile + execute the storage-read + sub + setStorage + stop pattern. -/
+def execCompiledLetStorageSetStorageSubLocalStop
+    (fields : List Field) (fieldName tmp : String)
+    (init : TExecState) (m : Nat) : TExecResult :=
+  match (compileStmts fields
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.setStorage fieldName (Expr.sub (Expr.localVar tmp) (Expr.literal m))
+      , Stmt.stop
+      ]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
+/-- Direct source semantics for the storage-read + return pattern:
+`letVar tmp (storage field); return (localVar tmp)`
+reads storage slot and halts. -/
+def execSourceLetStorageReturnLocal
+    (init : TExecState) (slot : Nat) : TExecResult :=
+  .ok { init with
+    vars := TVars.set init.vars { id := 0, ty := Ty.uint256 }
+      (init.world.storage slot) }
+
+/-- Compile + execute the storage-read + return pattern. -/
+def execCompiledLetStorageReturnLocal
+    (fields : List Field) (fieldName tmp : String)
+    (init : TExecState) : TExecResult :=
+  match (compileStmts fields
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.return (Expr.localVar tmp)
+      ]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
 /-- Direct source semantics for the supported return subset:
 `return (literal n)` halts without mutating state. -/
 def execSourceReturnLiteral (init : TExecState) (_n : Nat) : TExecResult :=
@@ -836,6 +902,56 @@ theorem compile_let_assign_mul_setStorage_local_literal_semantics
                 ((n : Verity.Core.Uint256).mul (m : Verity.Core.Uint256)) }) := by
   simp [execCompiledLetAssignMulSetStorageLocalLiteral, execSourceSetStorageLiteral,
     compileStmts_let_assign_mul_literal_setStorage_local_run, hfind, evalTStmts, defaultEvalFuel]
+  simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
+
+/-- Semantic-preservation theorem for the storage-read + add + setStorage + stop pattern:
+compiling and running
+`letVar tmp (storage field); setStorage field (add (localVar tmp) (literal m)); stop`
+computes the expected state. -/
+theorem compile_let_storage_setStorage_add_local_stop_semantics
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (init : TExecState) (m : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledLetStorageSetStorageAddLocalStop fields fieldName tmp init m =
+      execSourceLetStorageSetStorageAddLocalStop init slot m := by
+  simp [execCompiledLetStorageSetStorageAddLocalStop,
+    execSourceLetStorageSetStorageAddLocalStop, execSourceSetStorageLiteral,
+    compileStmts_let_storage_setStorage_add_local_stop_run, hfind,
+    evalTStmts, defaultEvalFuel]
+  simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
+
+/-- Semantic-preservation theorem for the storage-read + sub + setStorage + stop pattern:
+compiling and running
+`letVar tmp (storage field); setStorage field (sub (localVar tmp) (literal m)); stop`
+computes the expected state. -/
+theorem compile_let_storage_setStorage_sub_local_stop_semantics
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (init : TExecState) (m : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledLetStorageSetStorageSubLocalStop fields fieldName tmp init m =
+      execSourceLetStorageSetStorageSubLocalStop init slot m := by
+  simp [execCompiledLetStorageSetStorageSubLocalStop,
+    execSourceLetStorageSetStorageSubLocalStop, execSourceSetStorageLiteral,
+    compileStmts_let_storage_setStorage_sub_local_stop_run, hfind,
+    evalTStmts, defaultEvalFuel]
+  simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
+
+/-- Semantic-preservation theorem for the storage-read + return pattern:
+compiling and running
+`letVar tmp (storage field); return (localVar tmp)`
+computes the expected state. -/
+theorem compile_let_storage_return_local_semantics
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (init : TExecState)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledLetStorageReturnLocal fields fieldName tmp init =
+      execSourceLetStorageReturnLocal init slot := by
+  simp [execCompiledLetStorageReturnLocal, execSourceLetStorageReturnLocal,
+    compileStmts_let_storage_return_local_run, hfind,
+    evalTStmts, defaultEvalFuel]
   simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
 
 /-- Semantic-preservation theorem for a broader supported subset:
@@ -2476,6 +2592,108 @@ def execCompiledRequireFamilyClausesThenLetAssignMulSetStorageLocalLiteral
   | .ok st => execCompiledLetAssignMulSetStorageLocalLiteral fields fieldName tmp st n m
   | .revert reason => .revert reason
 
+/-- Source semantics for unified `require` guard-family clause lists
+followed by `letVar tmp (storage field); setStorage field (add (localVar tmp) (literal m)); stop`. -/
+def execSourceRequireFamilyClausesThenLetStorageSetStorageAddLocalStop
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (slot : Nat) (m : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st => execSourceLetStorageSetStorageAddLocalStop st slot m
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same pattern. -/
+def execCompiledRequireFamilyClausesThenLetStorageSetStorageAddLocalStop
+    (fields : List Field) (fieldName tmp : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (m : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledLetStorageSetStorageAddLocalStop fields fieldName tmp st m
+  | .revert reason => .revert reason
+
+/-- Source semantics for unified `require` guard-family clause lists
+followed by `letVar tmp (storage field); setStorage field (sub (localVar tmp) (literal m)); stop`. -/
+def execSourceRequireFamilyClausesThenLetStorageSetStorageSubLocalStop
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (slot : Nat) (m : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st => execSourceLetStorageSetStorageSubLocalStop st slot m
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same pattern. -/
+def execCompiledRequireFamilyClausesThenLetStorageSetStorageSubLocalStop
+    (fields : List Field) (fieldName tmp : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (m : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledLetStorageSetStorageSubLocalStop fields fieldName tmp st m
+  | .revert reason => .revert reason
+
+/-- Source semantics for unified `require` guard-family clause lists
+followed by `letVar tmp (storage field); return (localVar tmp)`. -/
+def execSourceRequireFamilyClausesThenLetStorageReturnLocal
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (slot : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st => execSourceLetStorageReturnLocal st slot
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same pattern. -/
+def execCompiledRequireFamilyClausesThenLetStorageReturnLocal
+    (fields : List Field) (fieldName tmp : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledLetStorageReturnLocal fields fieldName tmp st
+  | .revert reason => .revert reason
+
+/-- Sequencing theorem: for unified `require` guard-family clause lists followed by
+`letVar tmp (storage field); setStorage field (add (localVar tmp) (literal m)); stop`,
+compiled execution matches source sequencing semantics. -/
+theorem compile_require_family_clauses_then_let_storage_setStorage_add_local_stop_semantics
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause) (m : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledRequireFamilyClausesThenLetStorageSetStorageAddLocalStop
+        fields fieldName tmp init clauses m =
+      execSourceRequireFamilyClausesThenLetStorageSetStorageAddLocalStop
+        init clauses slot m := by
+  simp [execCompiledRequireFamilyClausesThenLetStorageSetStorageAddLocalStop,
+    execSourceRequireFamilyClausesThenLetStorageSetStorageAddLocalStop,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_let_storage_setStorage_add_local_stop_semantics, hfind]
+
+/-- Sequencing theorem: for unified `require` guard-family clause lists followed by
+`letVar tmp (storage field); setStorage field (sub (localVar tmp) (literal m)); stop`,
+compiled execution matches source sequencing semantics. -/
+theorem compile_require_family_clauses_then_let_storage_setStorage_sub_local_stop_semantics
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause) (m : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledRequireFamilyClausesThenLetStorageSetStorageSubLocalStop
+        fields fieldName tmp init clauses m =
+      execSourceRequireFamilyClausesThenLetStorageSetStorageSubLocalStop
+        init clauses slot m := by
+  simp [execCompiledRequireFamilyClausesThenLetStorageSetStorageSubLocalStop,
+    execSourceRequireFamilyClausesThenLetStorageSetStorageSubLocalStop,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_let_storage_setStorage_sub_local_stop_semantics, hfind]
+
+/-- Sequencing theorem: for unified `require` guard-family clause lists followed by
+`letVar tmp (storage field); return (localVar tmp)`,
+compiled execution matches source sequencing semantics. -/
+theorem compile_require_family_clauses_then_let_storage_return_local_semantics
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledRequireFamilyClausesThenLetStorageReturnLocal
+        fields fieldName tmp init clauses =
+      execSourceRequireFamilyClausesThenLetStorageReturnLocal
+        init clauses slot := by
+  simp [execCompiledRequireFamilyClausesThenLetStorageReturnLocal,
+    execSourceRequireFamilyClausesThenLetStorageReturnLocal,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_let_storage_return_local_semantics, hfind]
+
 /-- Sequencing semantic-preservation theorem for a broader supported subset:
 for unified `require` guard-family clause lists followed by `return literal`,
 compiled execution matches direct source sequencing semantics. -/
@@ -2712,6 +2930,18 @@ inductive RequireFamilyClausesTail (fields : List Field) where
       (fieldName tmp : String) (slot : Nat) (n m : Nat)
       (hfind : findFieldWithResolvedSlot fields fieldName =
         some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | letStorageSetStorageAddLocalStop
+      (fieldName tmp : String) (slot : Nat) (m : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | letStorageSetStorageSubLocalStop
+      (fieldName tmp : String) (slot : Nat) (m : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | letStorageReturnLocal
+      (fieldName tmp : String) (slot : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
 
 /-- Source semantics dispatcher for the supported continuation family after
 unified `require` guard-family clause lists. -/
@@ -2785,6 +3015,12 @@ def execSourceRequireFamilyClausesThenTail
       execSourceRequireFamilyClausesThenLetAssignSubSetStorageLocalLiteral init clauses slot n m
   | .letAssignMulSetStorageLocalLiteral _ _ slot n m _ =>
       execSourceRequireFamilyClausesThenLetAssignMulSetStorageLocalLiteral init clauses slot n m
+  | .letStorageSetStorageAddLocalStop _ _ slot m _ =>
+      execSourceRequireFamilyClausesThenLetStorageSetStorageAddLocalStop init clauses slot m
+  | .letStorageSetStorageSubLocalStop _ _ slot m _ =>
+      execSourceRequireFamilyClausesThenLetStorageSetStorageSubLocalStop init clauses slot m
+  | .letStorageReturnLocal _ _ slot _ =>
+      execSourceRequireFamilyClausesThenLetStorageReturnLocal init clauses slot
 
 /-- Compiled semantics dispatcher for the supported continuation family after
 unified `require` guard-family clause lists. -/
@@ -2863,6 +3099,15 @@ def execCompiledRequireFamilyClausesThenTail
   | .letAssignMulSetStorageLocalLiteral fieldName tmp _ n m _ =>
       execCompiledRequireFamilyClausesThenLetAssignMulSetStorageLocalLiteral
         fields fieldName tmp init clauses n m
+  | .letStorageSetStorageAddLocalStop fieldName tmp _ m _ =>
+      execCompiledRequireFamilyClausesThenLetStorageSetStorageAddLocalStop
+        fields fieldName tmp init clauses m
+  | .letStorageSetStorageSubLocalStop fieldName tmp _ m _ =>
+      execCompiledRequireFamilyClausesThenLetStorageSetStorageSubLocalStop
+        fields fieldName tmp init clauses m
+  | .letStorageReturnLocal fieldName tmp _ _ =>
+      execCompiledRequireFamilyClausesThenLetStorageReturnLocal
+        fields fieldName tmp init clauses
 
 /-- Generic sequencing semantic-preservation theorem over the supported tail
 family after unified `require` guard-family clause lists. -/
@@ -2975,6 +3220,18 @@ theorem compile_require_family_clauses_then_tail_semantics
       simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
         using compile_require_family_clauses_then_let_assign_mul_setStorage_local_literal_semantics
           fields fieldName tmp slot init clauses n m hfind
+  | letStorageSetStorageAddLocalStop fieldName tmp slot m hfind =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_let_storage_setStorage_add_local_stop_semantics
+          fields fieldName tmp slot init clauses m hfind
+  | letStorageSetStorageSubLocalStop fieldName tmp slot m hfind =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_let_storage_setStorage_sub_local_stop_semantics
+          fields fieldName tmp slot init clauses m hfind
+  | letStorageReturnLocal fieldName tmp slot hfind =>
+      simpa [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail]
+        using compile_require_family_clauses_then_let_storage_return_local_semantics
+          fields fieldName tmp slot init clauses hfind
 
 /-- Program fragment in the currently supported 2.2 generic family:
 one unified require-clause list followed by one supported tail. -/
@@ -3202,6 +3459,21 @@ inductive SupportedStmtFragment (fields : List Field) where
       (fieldName tmp : String) (slot : Nat) (n m : Nat)
       (hfind : findFieldWithResolvedSlot fields fieldName =
         some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | requireClausesThenLetStorageSetStorageAddLocalStop
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (fieldName tmp : String) (slot : Nat) (m : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | requireClausesThenLetStorageSetStorageSubLocalStop
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (fieldName tmp : String) (slot : Nat) (m : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
+  | requireClausesThenLetStorageReturnLocal
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (fieldName tmp : String) (slot : Nat)
+      (hfind : findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot))
 
 /-- Encode an explicit supported statement fragment into the generic
 `(require-clause-list + tail)` program representation. -/
@@ -3293,6 +3565,15 @@ def SupportedStmtFragment.toRequireFamilyClausesTailProgram
   | .requireClausesThenLetAssignMulSetStorageLocalLiteral clauses fieldName tmp slot n m hfind =>
       { clauses := clauses
         tail := .letAssignMulSetStorageLocalLiteral fieldName tmp slot n m hfind }
+  | .requireClausesThenLetStorageSetStorageAddLocalStop clauses fieldName tmp slot m hfind =>
+      { clauses := clauses
+        tail := .letStorageSetStorageAddLocalStop fieldName tmp slot m hfind }
+  | .requireClausesThenLetStorageSetStorageSubLocalStop clauses fieldName tmp slot m hfind =>
+      { clauses := clauses
+        tail := .letStorageSetStorageSubLocalStop fieldName tmp slot m hfind }
+  | .requireClausesThenLetStorageReturnLocal clauses fieldName tmp slot hfind =>
+      { clauses := clauses
+        tail := .letStorageReturnLocal fieldName tmp slot hfind }
 
 /-- Encode one unified `require` guard-family clause into a source `Stmt.require`. -/
 def RequireLiteralGuardFamilyClause.toStmt (clause : RequireLiteralGuardFamilyClause) : Stmt :=
@@ -3433,6 +3714,20 @@ def RequireFamilyClausesTail.toStmts
       , Stmt.assignVar tmp (Expr.mul (Expr.localVar tmp) (Expr.literal m))
       , Stmt.setStorage fieldName (Expr.localVar tmp)
       ]
+  | .letStorageSetStorageAddLocalStop fieldName tmp _ m _ =>
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.setStorage fieldName (Expr.add (Expr.localVar tmp) (Expr.literal m))
+      , Stmt.stop
+      ]
+  | .letStorageSetStorageSubLocalStop fieldName tmp _ m _ =>
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.setStorage fieldName (Expr.sub (Expr.localVar tmp) (Expr.literal m))
+      , Stmt.stop
+      ]
+  | .letStorageReturnLocal fieldName tmp _ _ =>
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.return (Expr.localVar tmp)
+      ]
 
 /-- Encode one supported `(require-clause-list + tail)` program into raw source
 statement lists. -/
@@ -3517,5 +3812,76 @@ theorem compile_supported_stmt_list_direct_semantics
       execSourceSupportedStmtList fields init stmts hSupported := by
   simp [execCompiledSupportedStmtList, execSourceSupportedStmtList,
     compile_supported_stmt_fragments_semantics]
+
+/-- Counter fields used for bridge theorem instantiation. -/
+def counterFields : List Field :=
+  [{ name := "count", ty := FieldType.uint256 }]
+
+/-- Counter field resolution: `count` maps to slot 0. -/
+theorem counterFieldResolution :
+    findFieldWithResolvedSlot counterFields "count" =
+      some ({ name := "count", ty := FieldType.uint256 }, 0) := by
+  rfl
+
+/-- Counter.increment body belongs to the supported statement fragment grammar. -/
+theorem counter_increment_supported :
+    SupportedStmtList counterFields
+      [ Stmt.letVar "current" (Expr.storage "count")
+      , Stmt.setStorage "count" (Expr.add (Expr.localVar "current") (Expr.literal 1))
+      , Stmt.stop ] := by
+  exact ⟨[.requireClausesThenLetStorageSetStorageAddLocalStop
+    [] "count" "current" 0 1 counterFieldResolution], rfl⟩
+
+/-- Counter.decrement body belongs to the supported statement fragment grammar. -/
+theorem counter_decrement_supported :
+    SupportedStmtList counterFields
+      [ Stmt.letVar "current" (Expr.storage "count")
+      , Stmt.setStorage "count" (Expr.sub (Expr.localVar "current") (Expr.literal 1))
+      , Stmt.stop ] := by
+  exact ⟨[.requireClausesThenLetStorageSetStorageSubLocalStop
+    [] "count" "current" 0 1 counterFieldResolution], rfl⟩
+
+/-- Counter.getCount body belongs to the supported statement fragment grammar. -/
+theorem counter_getCount_supported :
+    SupportedStmtList counterFields
+      [ Stmt.letVar "current" (Expr.storage "count")
+      , Stmt.return (Expr.localVar "current") ] := by
+  exact ⟨[.requireClausesThenLetStorageReturnLocal
+    [] "count" "current" 0 counterFieldResolution], rfl⟩
+
+/-- Counter.increment compilation correctness: compiled and source semantics match
+for the increment function body. -/
+theorem counter_increment_correctness (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment counterFields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "current" (Expr.storage "count")
+        , Stmt.setStorage "count" (Expr.add (Expr.localVar "current") (Expr.literal 1))
+        , Stmt.stop ] ∧
+      execCompiledSupportedStmtFragments counterFields init fragments =
+        execSourceSupportedStmtFragments counterFields init fragments :=
+  compile_supported_stmt_list_semantics counterFields init _ counter_increment_supported
+
+/-- Counter.decrement compilation correctness: compiled and source semantics match
+for the decrement function body. -/
+theorem counter_decrement_correctness (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment counterFields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "current" (Expr.storage "count")
+        , Stmt.setStorage "count" (Expr.sub (Expr.localVar "current") (Expr.literal 1))
+        , Stmt.stop ] ∧
+      execCompiledSupportedStmtFragments counterFields init fragments =
+        execSourceSupportedStmtFragments counterFields init fragments :=
+  compile_supported_stmt_list_semantics counterFields init _ counter_decrement_supported
+
+/-- Counter.getCount compilation correctness: compiled and source semantics match
+for the getCount function body. -/
+theorem counter_getCount_correctness (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment counterFields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "current" (Expr.storage "count")
+        , Stmt.return (Expr.localVar "current") ] ∧
+      execCompiledSupportedStmtFragments counterFields init fragments =
+        execSourceSupportedStmtFragments counterFields init fragments :=
+  compile_supported_stmt_list_semantics counterFields init _ counter_getCount_supported
 
 end Verity.Core.Free

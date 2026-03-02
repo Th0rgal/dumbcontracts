@@ -1236,6 +1236,18 @@ example (fields : List Compiler.CompilationModel.Field)
       execSourceRequireLiteralGuardFamilyClauses init clauses :=
   compile_require_literal_guard_family_clauses_semantics fields init clauses
 
+example (fields : List Compiler.CompilationModel.Field)
+    (fieldName : String) (slotIdx : Nat) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (writeVal : Nat)
+    (hfind : Compiler.CompilationModel.findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := Compiler.CompilationModel.FieldType.uint256 }, slotIdx)) :
+    execCompiledRequireFamilyClausesThenSetStorageLiteral
+        fields fieldName init clauses writeVal =
+      execSourceRequireFamilyClausesThenSetStorageLiteral
+        init clauses slotIdx writeVal :=
+  compile_require_family_clauses_then_setStorage_literal_semantics
+    fields fieldName slotIdx init clauses writeVal hfind
+
 example (family : RequireLiteralGuardFamily)
     (fields : List Compiler.CompilationModel.Field)
     (fieldName : String) (slotIdx : Nat) (init : TExecState)

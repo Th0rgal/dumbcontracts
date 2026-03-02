@@ -829,6 +829,46 @@ theorem compile_require_literal_guard_family_clauses_semantics
         compile_require_literal_guard_family_semantics, ih]
       rfl
 
+/-- Source semantics for a broader supported sequencing subset:
+run a list of supported unified `require` guard-family clauses, then perform
+`setStorage fieldName (literal writeVal)` only on success. -/
+def execSourceRequireFamilyClausesThenSetStorageLiteral
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause) (slot : Nat)
+    (writeVal : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st => .ok { st with world := execSourceSetStorageLiteral st.world slot writeVal }
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same broader supported sequencing subset:
+run compiled unified `require` guard-family clause-list semantics, then run
+compiled `setStorage fieldName (literal writeVal)` on success. -/
+def execCompiledRequireFamilyClausesThenSetStorageLiteral
+    (fields : List Field) (fieldName : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (writeVal : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledSetStorageLiteral fields fieldName st writeVal
+  | .revert reason => .revert reason
+
+/-- Sequencing semantic-preservation theorem for a broader supported subset:
+for unified `require` guard-family clause lists followed by `setStorage literal`,
+compiled execution matches direct source sequencing semantics under explicit
+field-resolution assumptions. -/
+theorem compile_require_family_clauses_then_setStorage_literal_semantics
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (writeVal : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledRequireFamilyClausesThenSetStorageLiteral
+        fields fieldName init clauses writeVal =
+      execSourceRequireFamilyClausesThenSetStorageLiteral
+        init clauses slot writeVal := by
+  simp [execCompiledRequireFamilyClausesThenSetStorageLiteral,
+    execSourceRequireFamilyClausesThenSetStorageLiteral,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_setStorage_literal_semantics, hfind]
+  rfl
+
 /-- Sequencing semantic-preservation theorem for a broader supported subset:
 for unified `require` guard families followed by `return literal`,
 compiled execution matches direct source sequencing semantics. -/

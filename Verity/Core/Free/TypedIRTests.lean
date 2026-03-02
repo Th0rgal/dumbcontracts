@@ -1242,4 +1242,15 @@ example (family : RequireLiteralGuardFamily)
   compile_require_family_then_setStorage_literal_semantics
     family fields fieldName slotIdx init n m p q message writeVal hfind
 
+example (family : RequireLiteralGuardFamily)
+    (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState)
+    (n m p q : Nat) (message : String) (retVal : Nat) :
+    execCompiledRequireFamilyThenReturnLiteral
+        family fields init n m p q message retVal =
+      execSourceRequireFamilyThenReturnLiteral
+        family init n m p q message retVal :=
+  compile_require_family_then_return_literal_semantics
+    family fields init n m p q message retVal
+
 end Verity.Core.Free

@@ -755,4 +755,43 @@ theorem compile_require_family_then_setStorage_literal_semantics
     hfind]
   rfl
 
+/-- Source semantics for a broader supported sequencing subset:
+run one supported `require` guard-family clause, then execute
+`return (literal retVal)` only on success. -/
+def execSourceRequireFamilyThenReturnLiteral
+    (family : RequireLiteralGuardFamily)
+    (init : TExecState)
+    (n m p q : Nat) (message : String) (retVal : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamily family init n m p q message with
+  | .ok st => execSourceReturnLiteral st retVal
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same broader supported sequencing subset:
+run compiled one-clause `require` guard-family semantics, then run
+compiled `return (literal retVal)` on success. -/
+def execCompiledRequireFamilyThenReturnLiteral
+    (family : RequireLiteralGuardFamily)
+    (fields : List Field) (init : TExecState)
+    (n m p q : Nat) (message : String) (retVal : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamily family fields init n m p q message with
+  | .ok st => execCompiledReturnLiteral fields st retVal
+  | .revert reason => .revert reason
+
+/-- Sequencing semantic-preservation theorem for a broader supported subset:
+for unified `require` guard families followed by `return literal`,
+compiled execution matches direct source sequencing semantics. -/
+theorem compile_require_family_then_return_literal_semantics
+    (family : RequireLiteralGuardFamily)
+    (fields : List Field)
+    (init : TExecState)
+    (n m p q : Nat) (message : String) (retVal : Nat) :
+    execCompiledRequireFamilyThenReturnLiteral
+        family fields init n m p q message retVal =
+      execSourceRequireFamilyThenReturnLiteral
+        family init n m p q message retVal := by
+  simp [execCompiledRequireFamilyThenReturnLiteral,
+    execSourceRequireFamilyThenReturnLiteral,
+    compile_require_literal_guard_family_semantics, compile_return_literal_semantics]
+  rfl
+
 end Verity.Core.Free

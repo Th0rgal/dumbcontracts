@@ -35,6 +35,16 @@ class CheckContractStructureDifferentialTests(unittest.TestCase):
         issues = check_contract_structure.check_differential_tests(["Counter"])
         self.assertEqual(issues, [])
 
+    def test_erc20_and_erc721_are_now_required(self) -> None:
+        issues = check_contract_structure.check_differential_tests(["ERC20", "ERC721"])
+        self.assertEqual(
+            issues,
+            [
+                "ERC20: missing test/DifferentialERC20.t.sol",
+                "ERC721: missing test/DifferentialERC721.t.sol",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

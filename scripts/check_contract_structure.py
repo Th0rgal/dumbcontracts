@@ -32,8 +32,6 @@ EXCLUDED_FROM_DIFFERENTIAL_TESTS = {
     "CryptoHash",         # External-library oracle behavior is not differential-tested
     "MacroContracts",     # Bundle module, not a deployable contract
     "ReentrancyExample",  # Reentrancy model requires dedicated external-call harnessing
-    "ERC20",              # Covered by property tests; dedicated differential suite deferred
-    "ERC721",             # Covered by property tests; dedicated differential suite deferred
 }
 
 # Expected files for each contract (relative to ROOT)

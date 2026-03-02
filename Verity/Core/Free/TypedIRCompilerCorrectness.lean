@@ -869,6 +869,42 @@ theorem compile_require_family_clauses_then_setStorage_literal_semantics
     compile_setStorage_literal_semantics, hfind]
   rfl
 
+/-- Source semantics for a broader supported sequencing subset:
+run a list of supported unified `require` guard-family clauses, then perform
+`return (literal retVal)` only on success. -/
+def execSourceRequireFamilyClausesThenReturnLiteral
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (retVal : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st => execSourceReturnLiteral st retVal
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same broader supported sequencing subset:
+run compiled unified `require` guard-family clause-list semantics, then run
+compiled `return (literal retVal)` on success. -/
+def execCompiledRequireFamilyClausesThenReturnLiteral
+    (fields : List Field) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (retVal : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledReturnLiteral fields st retVal
+  | .revert reason => .revert reason
+
+/-- Sequencing semantic-preservation theorem for a broader supported subset:
+for unified `require` guard-family clause lists followed by `return literal`,
+compiled execution matches direct source sequencing semantics. -/
+theorem compile_require_family_clauses_then_return_literal_semantics
+    (fields : List Field) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (retVal : Nat) :
+    execCompiledRequireFamilyClausesThenReturnLiteral
+        fields init clauses retVal =
+      execSourceRequireFamilyClausesThenReturnLiteral
+        init clauses retVal := by
+  simp [execCompiledRequireFamilyClausesThenReturnLiteral,
+    execSourceRequireFamilyClausesThenReturnLiteral,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_return_literal_semantics]
+  rfl
+
 /-- Sequencing semantic-preservation theorem for a broader supported subset:
 for unified `require` guard families followed by `return literal`,
 compiled execution matches direct source sequencing semantics. -/

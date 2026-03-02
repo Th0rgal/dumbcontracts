@@ -1248,6 +1248,16 @@ example (fields : List Compiler.CompilationModel.Field)
   compile_require_family_clauses_then_setStorage_literal_semantics
     fields fieldName slotIdx init clauses writeVal hfind
 
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (retVal : Nat) :
+    execCompiledRequireFamilyClausesThenReturnLiteral
+        fields init clauses retVal =
+      execSourceRequireFamilyClausesThenReturnLiteral
+        init clauses retVal :=
+  compile_require_family_clauses_then_return_literal_semantics
+    fields init clauses retVal
+
 example (family : RequireLiteralGuardFamily)
     (fields : List Compiler.CompilationModel.Field)
     (fieldName : String) (slotIdx : Nat) (init : TExecState)

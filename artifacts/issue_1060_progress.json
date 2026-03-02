@@ -110,7 +110,8 @@
         "Extend semantic-preservation coverage to a require subset where `require (lt (literal n) (literal m)) message` preserves source guard/revert behavior.",
         "Extend semantic-preservation coverage to a require subset where `require (gt (literal n) (literal m)) message` preserves source guard/revert behavior.",
         "Extend semantic-preservation coverage to a require subset where `require (ge (literal n) (literal m)) message` preserves source guard/revert behavior.",
-        "Extend semantic-preservation coverage to a require subset where `require (le (literal n) (literal m)) message` preserves source guard/revert behavior."
+        "Extend semantic-preservation coverage to a require subset where `require (le (literal n) (literal m)) message` preserves source guard/revert behavior.",
+        "Extend semantic-preservation coverage to a composite-guard require subset where `require (logicalAnd (eq (literal n) (literal m)) (lt (literal p) (literal q))) message` preserves source short-circuit guard/revert behavior."
       ],
       "files_changed": [
         "Verity/Core/Free/TypedIRCompiler.lean",
@@ -281,6 +282,16 @@
             "name": "compile_require_le_literals_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "For the supported require-le-literals subset, compiled typed-IR execution preserves direct source require semantics (state unchanged when n <= m, revert otherwise)."
+          },
+          {
+            "name": "compileStmts_single_require_and_eq_lt_literals_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "statement_summary": "Single-statement compilation for require(logicalAnd(eq(literal,literal), lt(literal,literal)), message) emits the expected typed if_ with a typed and-guard and revert else-branch from empty compile state."
+          },
+          {
+            "name": "compile_require_and_eq_lt_literals_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "For the supported composite require guard subset (eq && lt over literals), compiled typed-IR execution preserves direct source short-circuit require semantics."
           }
         ],
         "tests": [
@@ -298,13 +309,14 @@
           "TypedIRTests: example instantiating compile_require_lt_literals_semantics over arbitrary fields/init/n/m/message",
           "TypedIRTests: example instantiating compile_require_gt_literals_semantics over arbitrary fields/init/n/m/message",
           "TypedIRTests: example instantiating compile_require_ge_literals_semantics over arbitrary fields/init/n/m/message",
-          "TypedIRTests: example instantiating compile_require_le_literals_semantics over arbitrary fields/init/n/m/message"
+          "TypedIRTests: example instantiating compile_require_le_literals_semantics over arbitrary fields/init/n/m/message",
+          "TypedIRTests: example instantiating compile_require_and_eq_lt_literals_semantics over arbitrary fields/init/n/m/p/q/message"
         ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence with a require theorem for `require (le (literal n) (literal m)) message`, in addition to prior require-ge/require-gt/require-lt/require-eq, branch (`ite eq`), return, and arithmetic subsets, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
+      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence with a composite-guard require theorem for `require (logicalAnd (eq (literal n) (literal m)) (lt (literal p) (literal q))) message`, in addition to prior require-le/require-ge/require-gt/require-lt/require-eq, branch (`ite eq`), return, and arithmetic subsets, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
     },
     "2.3": {
       "status": "open",

@@ -1292,6 +1292,18 @@ example (fields : List Compiler.CompilationModel.Field)
   compile_require_family_clauses_then_let_assign_sub_setStorage_local_literal_semantics
     fields fieldName tmp slotIdx init clauses n m hfind
 
+example (fields : List Compiler.CompilationModel.Field)
+    (fieldName tmp : String) (slotIdx : Nat) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (n m : Nat)
+    (hfind : Compiler.CompilationModel.findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := Compiler.CompilationModel.FieldType.uint256 }, slotIdx)) :
+    execCompiledRequireFamilyClausesThenLetAssignMulSetStorageLocalLiteral
+        fields fieldName tmp init clauses n m =
+      execSourceRequireFamilyClausesThenLetAssignMulSetStorageLocalLiteral
+        init clauses slotIdx n m :=
+  compile_require_family_clauses_then_let_assign_mul_setStorage_local_literal_semantics
+    fields fieldName tmp slotIdx init clauses n m hfind
+
 example (family : RequireLiteralGuardFamily)
     (fields : List Compiler.CompilationModel.Field)
     (fieldName : String) (slotIdx : Nat) (init : TExecState)

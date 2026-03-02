@@ -874,6 +874,94 @@ def compiledERC20TransferFromInsufficientAllowanceReverts : Bool :=
 /-- ERC20.transferFrom amount=30 with allowance=20 reverts. -/
 example : compiledERC20TransferFromInsufficientAllowanceReverts = true := by native_decide
 
+private def erc721Spec : Compiler.CompilationModel.CompilationModel :=
+  Verity.Examples.MacroContracts.ERC721.spec
+
+/-- Smoke test: core ERC721 spec functions compile to typed IR. -/
+example : compilesOk erc721Spec "mint" = true := by native_decide
+example : compilesOk erc721Spec "transferFrom" = true := by native_decide
+example : compilesOk erc721Spec "ownerOf" = true := by native_decide
+example : compilesOk erc721Spec "approve" = true := by native_decide
+example : compilesOk erc721Spec "getApproved" = true := by native_decide
+
+/-- End-to-end ERC721 mint + approve + transferFrom success path. -/
+def compiledERC721ApproveTransferSuccess : Option (Nat × Nat × Nat × Nat) :=
+  match compileFunctionNamed erc721Spec "mint",
+        compileFunctionNamed erc721Spec "approve",
+        compileFunctionNamed erc721Spec "transferFrom" with
+  | .ok mintBlock, .ok approveBlock, .ok transferBlock =>
+      match mintBlock.params, approveBlock.params, transferBlock.params with
+      | [mintToParam], [approvedParam, approveTokenParam], [fromParam, toParam, transferTokenParam] =>
+          let mintInitWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageAddr := fun i => if i == 0 then 9 else 0
+              sender := 9 }
+          let mintInit : TExecState :=
+            { world := mintInitWorld
+              vars := { uint256 := fun i => if i = mintToParam.id then 11 else 0 } }
+          match evalTBlock mintInit mintBlock with
+          | .revert _ => none
+          | .ok postMint =>
+              let approveInit : TExecState :=
+                { world := postMint.world
+                  vars := { uint256 := fun i =>
+                              if i = approvedParam.id then 33
+                              else if i = approveTokenParam.id then 0
+                              else 0 } }
+              match evalTBlock approveInit approveBlock with
+              | .revert _ => none
+              | .ok postApprove =>
+                  let transferInit : TExecState :=
+                    { world := postApprove.world
+                      vars := { uint256 := fun i =>
+                                  if i = fromParam.id then 11
+                                  else if i = toParam.id then 33
+                                  else if i = transferTokenParam.id then 0
+                                  else 0 } }
+                  match evalTBlock transferInit transferBlock with
+                  | .revert _ => none
+                  | .ok s =>
+                      some (s.world.storageMapUint 3 0, s.world.storageMapUint 4 0, s.world.storage 1,
+                        s.world.storage 2)
+      | _, _, _ => none
+  | _, _, _ => none
+
+/-- ERC721 tokenId 0 transfers owner 11→33; approval clears; supply=1 and nextTokenId=1. -/
+example : compiledERC721ApproveTransferSuccess = some (33, 0, 1, 1) := by native_decide
+
+/-- End-to-end ERC721.transferFrom unauthorized caller reverts. -/
+def compiledERC721TransferUnauthorizedReverts : Bool :=
+  match compileFunctionNamed erc721Spec "mint",
+        compileFunctionNamed erc721Spec "transferFrom" with
+  | .ok mintBlock, .ok transferBlock =>
+      match mintBlock.params, transferBlock.params with
+      | [mintToParam], [fromParam, toParam, transferTokenParam] =>
+          let mintInitWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageAddr := fun i => if i == 0 then 9 else 0
+              sender := 9 }
+          let mintInit : TExecState :=
+            { world := mintInitWorld
+              vars := { uint256 := fun i => if i = mintToParam.id then 11 else 0 } }
+          match evalTBlock mintInit mintBlock with
+          | .revert _ => false
+          | .ok postMint =>
+              let transferInit : TExecState :=
+                { world := postMint.world
+                  vars := { uint256 := fun i =>
+                              if i = fromParam.id then 22
+                              else if i = toParam.id then 33
+                              else if i = transferTokenParam.id then 0
+                              else 0 } }
+              match evalTBlock transferInit transferBlock with
+              | .ok _ => false
+              | .revert _ => true
+      | _, _ => false
+  | _, _ => false
+
+/-- ERC721.transferFrom without owner/approval authorization reverts. -/
+example : compiledERC721TransferUnauthorizedReverts = true := by native_decide
+
 /-- Smoke test: all SafeCounter spec functions compile to typed IR. -/
 example : compilesOk Compiler.Specs.safeCounterSpec "increment" = true := by native_decide
 example : compilesOk Compiler.Specs.safeCounterSpec "decrement" = true := by native_decide

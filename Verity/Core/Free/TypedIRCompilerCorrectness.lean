@@ -281,6 +281,40 @@ def execCompiledRequireOrEqLtLiterals
   | .error err => .revert err
   | .ok (_, st) => evalTStmts init st.body.toList
 
+/-- Guard family for generalized single-guard `require` literal semantic preservation. -/
+inductive RequireBinaryLiteralGuard where
+  | eq
+  | notEq
+  | lt
+  | gt
+  | ge
+  | le
+deriving DecidableEq, Repr
+
+/-- Source semantics dispatcher for generalized single-guard `require` literals. -/
+def execSourceRequireBinaryLiteralGuard
+    (guard : RequireBinaryLiteralGuard)
+    (init : TExecState) (n m : Nat) (message : String) : TExecResult :=
+  match guard with
+  | .eq => execSourceRequireEqLiterals init n m message
+  | .notEq => execSourceRequireNotEqLiterals init n m message
+  | .lt => execSourceRequireLtLiterals init n m message
+  | .gt => execSourceRequireGtLiterals init n m message
+  | .ge => execSourceRequireGeLiterals init n m message
+  | .le => execSourceRequireLeLiterals init n m message
+
+/-- Compiled semantics dispatcher for generalized single-guard `require` literals. -/
+def execCompiledRequireBinaryLiteralGuard
+    (guard : RequireBinaryLiteralGuard)
+    (fields : List Field) (init : TExecState) (n m : Nat) (message : String) : TExecResult :=
+  match guard with
+  | .eq => execCompiledRequireEqLiterals fields init n m message
+  | .notEq => execCompiledRequireNotEqLiterals fields init n m message
+  | .lt => execCompiledRequireLtLiterals fields init n m message
+  | .gt => execCompiledRequireGtLiterals fields init n m message
+  | .ge => execCompiledRequireGeLiterals fields init n m message
+  | .le => execCompiledRequireLeLiterals fields init n m message
+
 /-- Semantic-preservation theorem for the supported 2.2 subset:
 compiling and running `setStorage fieldName (literal n)` matches direct source execution,
 under explicit field-resolution assumptions. -/
@@ -571,5 +605,21 @@ theorem compile_require_or_eq_lt_literals_semantics
     · have hLtNat : q % Verity.Core.Uint256.modulus ≤ p % Verity.Core.Uint256.modulus := by
         exact Nat.not_lt.mp (by simpa [Verity.Core.Uint256.lt_def] using hLt)
       simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEq, hLt, hLtNat]
+
+/-- Generalized semantic-preservation theorem for single-guard `require` over
+supported binary literal guards (`eq`, `notEq`, `lt`, `gt`, `ge`, `le`). -/
+theorem compile_require_binary_literal_guard_semantics
+    (guard : RequireBinaryLiteralGuard)
+    (fields : List Field) (init : TExecState) (n m : Nat) (message : String) :
+    execCompiledRequireBinaryLiteralGuard guard fields init n m message =
+      execSourceRequireBinaryLiteralGuard guard init n m message := by
+  cases guard <;>
+    simp [execCompiledRequireBinaryLiteralGuard, execSourceRequireBinaryLiteralGuard,
+      compile_require_eq_literals_semantics,
+      compile_require_not_eq_literals_semantics,
+      compile_require_lt_literals_semantics,
+      compile_require_gt_literals_semantics,
+      compile_require_ge_literals_semantics,
+      compile_require_le_literals_semantics]
 
 end Verity.Core.Free

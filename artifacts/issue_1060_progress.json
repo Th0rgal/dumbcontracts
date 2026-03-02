@@ -113,7 +113,8 @@
         "Extend semantic-preservation coverage to a require subset where `require (le (literal n) (literal m)) message` preserves source guard/revert behavior.",
         "Extend semantic-preservation coverage to a require subset where `require (logicalNot (eq (literal n) (literal m))) message` preserves source guard/revert behavior.",
         "Extend semantic-preservation coverage to a composite-guard require subset where `require (logicalAnd (eq (literal n) (literal m)) (lt (literal p) (literal q))) message` preserves source short-circuit guard/revert behavior.",
-        "Extend semantic-preservation coverage to a composite-guard require subset where `require (logicalOr (eq (literal n) (literal m)) (lt (literal p) (literal q))) message` preserves source short-circuit guard/revert behavior."
+        "Extend semantic-preservation coverage to a composite-guard require subset where `require (logicalOr (eq (literal n) (literal m)) (lt (literal p) (literal q))) message` preserves source short-circuit guard/revert behavior.",
+        "Generalize single-guard require semantic preservation into one theorem over a guard family (`eq`, `notEq`, `lt`, `gt`, `ge`, `le`) without deleting existing specialized obligations."
       ],
       "files_changed": [
         "Verity/Core/Free/TypedIRCompiler.lean",
@@ -314,6 +315,11 @@
             "name": "compile_require_or_eq_lt_literals_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "For the supported composite require guard subset (eq || lt over literals), compiled typed-IR execution preserves direct source short-circuit require semantics."
+          },
+          {
+            "name": "compile_require_binary_literal_guard_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "Generalized theorem: for guard family `eq/notEq/lt/gt/ge/le`, compiled single-guard require execution equals source require semantics."
           }
         ],
         "tests": [
@@ -333,6 +339,7 @@
           "TypedIRTests: example instantiating compile_require_gt_literals_semantics over arbitrary fields/init/n/m/message",
           "TypedIRTests: example instantiating compile_require_ge_literals_semantics over arbitrary fields/init/n/m/message",
           "TypedIRTests: example instantiating compile_require_le_literals_semantics over arbitrary fields/init/n/m/message",
+          "TypedIRTests: example instantiating compile_require_binary_literal_guard_semantics over arbitrary guard/fields/init/n/m/message",
           "TypedIRTests: example instantiating compile_require_and_eq_lt_literals_semantics over arbitrary fields/init/n/m/p/q/message",
           "TypedIRTests: example instantiating compile_require_or_eq_lt_literals_semantics over arbitrary fields/init/n/m/p/q/message"
         ]
@@ -340,7 +347,7 @@
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence with a require-not-eq theorem for `require (logicalNot (eq (literal n) (literal m))) message`, in addition to prior require-logicalOr/require-logicalAnd/require-le/require-ge/require-gt/require-lt/require-eq, branch (`ite eq`), return, and arithmetic subsets, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
+      "notes": "2.2 remains partial: this slice adds guard-family generalization via `compile_require_binary_literal_guard_semantics` over `eq/notEq/lt/gt/ge/le` while retaining all specialized require/branch/return/arithmetic subset obligations. It still does not provide a full source-vs-typed semantic-preservation theorem for the broader supported statement fragment."
     },
     "2.3": {
       "status": "open",

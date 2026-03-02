@@ -1197,6 +1197,13 @@ example (fields : List Compiler.CompilationModel.Field)
       execSourceRequireLeLiterals init n m message :=
   compile_require_le_literals_semantics fields init n m message
 
+example (guard : RequireBinaryLiteralGuard)
+    (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState) (n m : Nat) (message : String) :
+    execCompiledRequireBinaryLiteralGuard guard fields init n m message =
+      execSourceRequireBinaryLiteralGuard guard init n m message :=
+  compile_require_binary_literal_guard_semantics guard fields init n m message
+
 example (fields : List Compiler.CompilationModel.Field)
     (init : TExecState) (n m p q : Nat) (message : String) :
     execCompiledRequireAndEqLtLiterals fields init n m p q message =

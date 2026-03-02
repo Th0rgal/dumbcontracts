@@ -487,6 +487,55 @@ def compiledOwnedTransferOwnershipBlock : Option TBlock :=
 example : compiledOwnedTransferOwnershipBlock.isSome = true := by
   native_decide
 
+/-- Helper: check that compilation succeeds. -/
+private def compilesOk (spec : Compiler.CompilationModel.CompilationModel) (fn : String) : Bool :=
+  match compileFunctionNamed spec fn with
+  | .ok _ => true
+  | .error _ => false
+
+/-- Smoke test: all Ledger spec functions compile to typed IR. -/
+example : compilesOk Compiler.Specs.ledgerSpec "deposit" = true := by native_decide
+example : compilesOk Compiler.Specs.ledgerSpec "withdraw" = true := by native_decide
+example : compilesOk Compiler.Specs.ledgerSpec "getBalance" = true := by native_decide
+
+/-- End-to-end Ledger.deposit: increases sender balance via mapping write. -/
+def compiledLedgerDepositResult : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.ledgerSpec "deposit" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun slot addr =>
+                if slot == 0 && addr == 1 then 100 else 0
+              sender := 1 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { uint256 := fun i =>
+                          if i = amountParam.id then 50 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some (s.world.storageMap 0 1)
+          | .revert _ => none
+      | _ => none
+
+/-- Ledger.deposit(amount=50): sender balance 100→150. -/
+example : compiledLedgerDepositResult = some 150 := by native_decide
+
+/-- Smoke test: all OwnedCounter spec functions compile to typed IR. -/
+example : compilesOk Compiler.Specs.ownedCounterSpec "increment" = true := by native_decide
+example : compilesOk Compiler.Specs.ownedCounterSpec "decrement" = true := by native_decide
+example : compilesOk Compiler.Specs.ownedCounterSpec "getCount" = true := by native_decide
+example : compilesOk Compiler.Specs.ownedCounterSpec "getOwner" = true := by native_decide
+example : compilesOk Compiler.Specs.ownedCounterSpec "transferOwnership" = true := by native_decide
+
+/-- Smoke test: all SimpleToken spec functions compile to typed IR. -/
+example : compilesOk Compiler.Specs.simpleTokenSpec "mint" = true := by native_decide
+example : compilesOk Compiler.Specs.simpleTokenSpec "transfer" = true := by native_decide
+example : compilesOk Compiler.Specs.simpleTokenSpec "balanceOf" = true := by native_decide
+example : compilesOk Compiler.Specs.simpleTokenSpec "totalSupply" = true := by native_decide
+example : compilesOk Compiler.Specs.simpleTokenSpec "owner" = true := by native_decide
+
 /-- Compiler correctness base lemma: list compilation composes by append. -/
 example (fields : List Compiler.CompilationModel.Field)
     (pre post : List Compiler.CompilationModel.Stmt) :

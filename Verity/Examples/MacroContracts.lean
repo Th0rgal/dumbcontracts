@@ -540,4 +540,52 @@ example :
     Owned.getOwner_modelBody := by
   simpa using Owned.getOwner_semantic_preservation
 
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SafeCounter.increment_model : Compiler.CompilationModel.FunctionSpec)) =
+    SafeCounter.increment_modelBody := by
+  simpa using SafeCounter.increment_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SafeCounter.decrement_model : Compiler.CompilationModel.FunctionSpec)) =
+    SafeCounter.decrement_modelBody := by
+  simpa using SafeCounter.decrement_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SafeCounter.getCount_model : Compiler.CompilationModel.FunctionSpec)) =
+    SafeCounter.getCount_modelBody := by
+  simpa using SafeCounter.getCount_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.increment_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.increment_modelBody := by
+  simpa using OwnedCounter.increment_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.decrement_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.decrement_modelBody := by
+  simpa using OwnedCounter.decrement_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.getCount_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.getCount_modelBody := by
+  simpa using OwnedCounter.getCount_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.getOwner_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.getOwner_modelBody := by
+  simpa using OwnedCounter.getOwner_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.transferOwnership_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.transferOwnership_modelBody := by
+  simpa using OwnedCounter.transferOwnership_semantic_preservation
+
 end Verity.Examples.MacroContracts

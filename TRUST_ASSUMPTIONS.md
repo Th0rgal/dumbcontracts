@@ -34,7 +34,7 @@ boundary for generated EDSL artifacts.
 
 ```
 EDSL
-  ↓ [Layer 1: VERIFIED per contract — EDSL ≡ CompilationModel/IR bridge]
+  ↓ [Layer 1: VERIFIED — generic typed-IR compilation correctness + EDSL ≡ CompilationModel bridge]
 CompilationModel (`CompilationModel`)
   ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR

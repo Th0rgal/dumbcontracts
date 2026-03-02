@@ -245,10 +245,10 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
 
 ## What's Verified
 
-- **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`CompilationModel`).
+- **Layer 1 (framework + per contract)**: EDSL behavior matches its compilation model (`CompilationModel`). For the supported contract suite, a single generic typed-IR compilation-correctness theorem eliminates per-contract manual proofs.
 - **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
-- **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today, and the CLI compiles through the EDSL/macro lowering boundary with optional `--edsl-contract` selection. Fully automatic verified EDSL reification/lowering remains in progress. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
+- **Proof-chain note**: Layer 1 equivalence is proven for all supported contracts via the generic typed-IR compilation-correctness theorem (`TypedIRCompilerCorrectness.lean`), and the CLI compiles through the EDSL/macro lowering boundary with optional `--edsl-contract` selection. Coverage expansion to additional DSL forms (try/catch, create/create2, dynamic arrays) is planned future work. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
 - **Lowering-boundary note**: Lowering remains centralized in `Compiler.Lowering.lowerModelPath`, and CLI selection now routes through `lowerRequestedEDSLContracts`.
 - **Lowering bridge note**: `Compiler/Proofs/Lowering/FromEDSL.lean` provides transition bridge theorems for all currently supported EDSL contracts (`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`, `simple-token`, `safe-counter`), including write/read bridges for mutating and getter entrypoints in that subset.
   This includes mutating bridge coverage for `ledger.transfer`, `simple-token.mint`, and `simple-token.transfer` under their existing Layer-1 preconditions, plus explicit revert-path bridges for owner-gated, insufficient-balance, and safe-counter overflow/underflow cases.
@@ -297,7 +297,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
   `Compiler/CompileDriver.lean` now consumes this same centralized selected/default helper path directly for `--edsl-contract` lowering, keeping runtime parse/lower behavior aligned with the proven boundary.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
-**Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.
+**Layer-1 architecture note**: Layer 1 uses macro-generated bridge theorems backed by a generic typed-IR compilation-correctness theorem for the supported contract suite. Advanced constructs (linked libraries, ECMs, custom ABI) are expressed directly in `CompilationModel` and trusted at that boundary. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.
 Revert-state caveat details are documented in [`docs/REVERT_STATE_MODEL.md`](docs/REVERT_STATE_MODEL.md).

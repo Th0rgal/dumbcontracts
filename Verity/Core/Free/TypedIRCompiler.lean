@@ -534,6 +534,36 @@ theorem compileStmts_single_ite_eq_setStorage_literals_run
   simp [compileStmts, compileStmt, compileExpr, compileBranch, fieldTypeToTy, hfind, emit]
   rfl
 
+/-- Single-statement compilation shape for a broader supported branch subset:
+`ite (eq (literal n) (literal m))
+     [setStorage fieldName (literal thenVal)]
+     [return (literal elseVal)]`
+lowers to one typed `if_` with heterogeneous `setStorage`/`return` branches,
+from an empty compile state. -/
+theorem compileStmts_single_ite_eq_setStorage_then_return_literal_run
+    (fields : List Field) (fieldName : String) (slot : Nat)
+    (n m thenVal elseVal : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    (compileStmts fields
+      [Stmt.ite
+        (Expr.eq (Expr.literal n) (Expr.literal m))
+        [Stmt.setStorage fieldName (Expr.literal thenVal)]
+        [Stmt.return (Expr.literal elseVal)] ]).run {} =
+      Except.ok ((),
+        { nextId := 0
+          vars := []
+          params := #[]
+          locals := #[]
+          body := #[
+            TStmt.if_
+              (TExpr.eq (TExpr.uintLit n) (TExpr.uintLit m))
+              [TStmt.setStorage slot (TExpr.uintLit thenVal)]
+              [TStmt.returnUint (TExpr.uintLit elseVal)]
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileBranch, fieldTypeToTy, hfind, emit]
+  rfl
+
 /-- Single-statement compilation shape for a broader supported require subset:
 `require (eq (literal n) (literal m)) message`
 lowers to one typed `if_` with an else-branch `revert`, from an empty compile state. -/

@@ -134,9 +134,12 @@
         "Define an explicit supported statement-fragment grammar and prove one generic list-level semantic-preservation theorem over that grammar, reducing dependence on ad-hoc wrapper structures while preserving existing obligations.",
         "Add one semantic-preservation theorem stated over arbitrary raw `List Stmt` with an explicit declared-fragment witness (`SupportedStmtList`), connecting back to the generic fragment semantics without deleting existing obligations.",
         "Add one direct semantic-preservation theorem over arbitrary raw supported `List Stmt` (no existential decomposition in the theorem conclusion), using the declared-fragment witness only as an assumption.",
-        "Extend the declared supported statement-fragment constructors and generic semantics dispatch to include both `require`-only clause lists and clause-list sequencing into `ite(eq(literal,literal))` with literal `setStorage` branches."
+        "Extend the declared supported statement-fragment constructors and generic semantics dispatch to include both `require`-only clause lists and clause-list sequencing into `ite(eq(literal,literal))` with literal `setStorage` branches.",
+        "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `ite (eq (literal n) (literal m)) [setStorage fieldName (literal thenVal)] [return (literal elseVal)]`, preserving clause-list short-circuit revert behavior together with heterogeneous branch storage/return semantics under explicit field-resolution assumptions.",
+        "Extend the declared supported statement-fragment constructors and generic tail dispatch to include the heterogeneous `ite(eq)` continuation with `setStorage` true branch and `return` false branch."
       ],
       "files_changed": [
+        "Verity/Core/Free/TypedIRCompiler.lean",
         "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
         "Verity/Core/Free/TypedIRTests.lean",
         "artifacts/issue_1060_progress.json"
@@ -148,10 +151,10 @@
         "python3 scripts/check_issue_1060_integrity.py"
       ],
       "verification_results": [
-        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]",
-        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]",
-        "pass: lake build [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]",
-        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T12:45:50Z artifact_sha256=working-tree]"
+        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T12:51:29Z artifact_sha256=working-tree]",
+        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T12:51:29Z artifact_sha256=working-tree; non-blocking warning: unnecessary simpa]",
+        "pass: lake build [run_id=2026-03-02T12:51:29Z artifact_sha256=working-tree; non-blocking warning: unnecessary simpa]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T12:51:29Z artifact_sha256=working-tree]"
       ],
       "evidence": {
         "theorems": [
@@ -484,6 +487,21 @@
             "name": "compile_supported_stmt_list_direct_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "For arbitrary raw statement lists in the declared supported fragment, compiled and source semantics are directly equal without existential decomposition in the conclusion."
+          },
+          {
+            "name": "compileStmts_single_ite_eq_setStorage_then_return_literal_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "statement_summary": "Single-statement compilation for ite(eq(literal,literal)) with setStorage-then/return-else branches emits the expected typed if_ with heterogeneous branch statements from empty compile state."
+          },
+          {
+            "name": "compile_ite_eq_setStorage_then_return_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "For the supported heterogeneous branch subset, compiled typed-IR execution preserves source semantics for ite(eq) with setStorage true branch and return false branch under explicit field-resolution assumptions."
+          },
+          {
+            "name": "compile_require_family_clauses_then_ite_eq_setStorage_then_return_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "For unified require-family clause lists sequenced before heterogeneous ite(eq) (setStorage true branch, return false branch), compiled execution preserves source short-circuit/revert and branch behavior under explicit field-resolution assumptions."
           }
         ],
         "tests": [
@@ -526,17 +544,22 @@
           "TypedIRTests: example instantiating compile_require_family_clauses_tail_programs_append_semantics over arbitrary fields/init/pre/post supported require-clause-list plus tail fragment lists",
           "TypedIRTests: example instantiating compile_supported_stmt_fragments_semantics over arbitrary fields/init/lists of explicit supported statement fragments",
           "TypedIRTests example instantiating compile_supported_stmt_list_semantics",
-          "TypedIRTests example instantiating compile_supported_stmt_list_direct_semantics"
+          "TypedIRTests example instantiating compile_supported_stmt_list_direct_semantics",
+          {
+            "name": "TypedIRTests example instantiating compile_require_family_clauses_then_ite_eq_setStorage_then_return_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRTests.lean",
+            "assertion_summary": "Checks clause-list sequencing semantic preservation for heterogeneous ite(eq) continuation with setStorage true branch and return false branch under explicit field-resolution assumptions."
+          }
         ]
       },
       "obligation_delta": {
         "added_sorries": [],
         "removed_sorries": [],
-        "removed_or_reframed_obligations": []
+        "reframed_or_deleted_obligations": []
       },
-      "notes": "Status remains partial. Extended the declared supported statement-fragment grammar and generic tail semantics with `require`-only clause lists and clause-list sequencing into `ite(eq)` literal-storage branches, with focused theorem/test instantiations and no obligation reduction.",
+      "notes": "Status remains partial. Added heterogeneous branch semantic-preservation coverage for clause-list sequencing into `ite(eq)` with `setStorage` true branch and `return` false branch, and integrated it into the generic tail/fragment dispatch surface without reducing obligations.",
       "uncovered_fragments": [
-        "General nested/heterogeneous `Stmt.ite` programs beyond the declared literal-equality guard and literal-`setStorage` branch form are not yet part of the declared supported fragment grammar."
+        "General nested/heterogeneous `Stmt.ite` programs beyond the declared literal-equality guard and the currently declared literal branch continuations (`setStorage/setStorage` and `setStorage/return`) are not yet part of the supported fragment grammar."
       ]
     },
     "2.3": {

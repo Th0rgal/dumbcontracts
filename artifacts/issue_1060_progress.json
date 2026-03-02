@@ -4,94 +4,206 @@
   "baseline_sorry": 0,
   "items": {
     "0.1": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "Canonical progress ledger `artifacts/issue_1060_progress.json` exists and is validated by `scripts/check_issue_1060_integrity.py`.",
+        "Integrity check script validates schema, status constraints, evidence/theorem artifact existence, obligation tracking, and execution markers.",
+        "Integrity check enforces single-active-item constraint and complete-item evidence requirements."
+      ],
+      "files_changed": [
+        "scripts/check_issue_1060_integrity.py",
+        "artifacts/issue_1060_progress.json"
+      ],
+      "verification_commands": [
+        "python3 scripts/check_issue_1060_integrity.py",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: python3 scripts/check_issue_1060_integrity.py [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          {
+            "name": "test_check_issue_1060_integrity.py",
+            "file": "scripts/test_check_issue_1060_integrity.py",
+            "assertion_summary": "Unit tests for the integrity check script validating schema, status, evidence, and obligation fields."
+          }
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. Script existed since branch init but was not recorded in canonical ledger."
     },
     "0.2": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "CI `build` job passes on PR #1065.",
+        "`scripts/check_proof_length.py` enforces proof-length soft/hard limits with an explicit allowlist.",
+        "`failure-hints` workflow JS syntax is valid.",
+        "Canonical ledger items with verified code artifacts are backfilled with proper evidence, eliminating reporting-integrity mismatch flagged in reviews.",
+        "Issue #1060 generated tracker block matches canonical ledger state."
+      ],
+      "files_changed": [
+        ".github/workflows/verify.yml",
+        "scripts/check_proof_length.py",
+        "artifacts/issue_1060_progress.json"
+      ],
+      "verification_commands": [
+        "python3 scripts/check_proof_length.py",
+        "python3 scripts/check_issue_1060_integrity.py",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: python3 scripts/check_proof_length.py [artifact_sha256=1e54597bd2967c]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          {
+            "name": "test_check_proof_length.py",
+            "file": "scripts/test_check_proof_length.py",
+            "assertion_summary": "Unit tests for proof-length enforcement script."
+          }
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "CI automation hardening complete. Proof-length allowlist for `compile_require_family_clauses_then_tail_semantics` is tracked under item 2.2 uncovered fragments. Reporting-integrity backfill for items 0.1, 1.1-1.3, 2.1, 2.3-2.5, 3.1 done in this stabilization slice."
     },
     "1.1": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "Typed IR AST defines `Ty` (type universe), `TVar` (SSA variable), `TExpr` (GADT expression), `TStmt` (statement), and `TBlock` (block) in `Verity/Core/Free/TypedIR.lean`.",
+        "Types are statically tracked: `TExpr : Ty -> Type` ensures ill-typed expressions are unrepresentable.",
+        "SSA variables carry globally unique `id : Nat` and static `ty : Ty`.",
+        "Storage operations (`setStorage`, `setMapping`, `setMapping2`, `setMappingUint`) are first-class statements."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIR.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIR",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIR [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: TVar/TExpr/TStmt type-sanity examples (lines 16-132 of TypedIRTests.lean)",
+          "TypedIRTests: counterIncrementTBlock and simpleStorageStoreTBlock block definitions exercise full AST surface"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. AST existed since commit 98626feb."
     },
     "1.2": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "Typed IR interpreter defines `TVars` (partitioned variable environment), `TExecState` (world + env + vars), `TExecResult` (ok/revert), and fuel-bounded evaluators `evalTExpr`, `evalTStmtFuel`, `evalTStmtsFuel`, `evalTStmt`, `evalTStmts`, `evalTBlock`.",
+        "Terminal statement detection (`isTerminalStmt`) halts evaluation after `stop`/`returnUint`/`returnAddr`.",
+        "Env is an explicit parameter in `TExecState`, separate from `world` (ContractState).",
+        "Default fuel is 1024; evaluators are well-founded via fuel countdown."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIR.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIR",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIR [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: Counter.increment evaluation golden test (evalTBlock counterTypedInit counterIncrementTBlock)",
+          "TypedIRTests: SimpleStorage.store evaluation golden test (evalTBlock simpleStorageTypedInit simpleStorageStoreTBlock)",
+          "TypedIRTests: evalTExpr simp lemmas (evalTExpr_var, evalTExpr_uintLit, evalTExpr_boolLit, evalTExpr_add, evalTExpr_ite)"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. Interpreter existed since commit 45574591."
     },
     "1.3": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "`TypedIRTests.lean` contains golden parity tests comparing typed IR evaluation against untyped IR for Counter.increment and SimpleStorage.store.",
+        "Tests use `native_decide` to verify evaluation results match expected storage values.",
+        "Tests cover expression sanity, statement typing, block construction, evaluation, and end-to-end storage effects."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRTests.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIRTests",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIRTests [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: Counter typed IR golden parity (evalTBlock counterTypedInit counterIncrementTBlock matches counterIRFinalSlot)",
+          "TypedIRTests: SimpleStorage typed IR golden parity (evalTBlock simpleStorageTypedInit simpleStorageStoreTBlock matches simpleStorageIRFinalSlot)",
+          "TypedIRTests: 124 total example declarations covering Counter, SimpleStorage, Ledger, Owned, OwnedCounter, SafeCounter, ERC20, ERC721"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. Golden tests existed since commit 02b57bb3."
     },
     "2.1": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "SSA compiler defines `CompileState` (nextId, vars, params, locals, body), `CompileM` (StateT CompileState (Except String)), and `freshVar` for linear SSA variable allocation.",
+        "`compileExpr` and `compileStmt` (mutual recursion) compile source expressions and statements to typed IR.",
+        "`compileStmts` compiles statement lists via structural recursion suitable for induction proofs.",
+        "`compileFunctionToTBlock` compiles a `CompilationModel` function to a `TBlock`.",
+        "`compileFunctionNamed` provides named-function lookup and compilation."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRCompiler.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIRCompiler",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIRCompiler [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: compileFunctionNamed counterSpec increment compilation and evaluation golden test",
+          "TypedIRTests: compileFunctionNamed simpleStorageSpec store compilation and evaluation golden test",
+          "TypedIRTests: compileFunctionNamed counterSpec decrement, getCount compilation tests",
+          "TypedIRTests: compileFunctionNamed simpleStorageSpec retrieve compilation test",
+          "TypedIRTests: compileFunctionNamed ledgerSpec, ownedSpec, ownedCounterSpec, safeCounterSpec compilation tests"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. SSA compiler existed since commit f5273e6c."
     },
     "2.2": {
       "status": "partial",
@@ -786,64 +898,129 @@
       ]
     },
     "2.3": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "`TypedIRLowering.lean` defines `lowerTExpr`, `lowerTStmts`, and `lowerTBlock` converting typed IR to Yul AST.",
+        "Conditional lowering uses `switch` (not nested if-else) to evaluate condition once, avoiding re-evaluation side-effect bugs.",
+        "All typed IR expression and statement constructors are covered in lowering.",
+        "Mapping storage operations lower to `mappingSlot`-based `sload`/`sstore` patterns."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRLowering.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIRLowering",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIRLowering [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: Counter lowering golden test (execLoweredSlot0 counterIncrementTBlock matches counterTypedFinalSlot)",
+          "TypedIRTests: SimpleStorage lowering golden test (execLoweredSlot0 simpleStorageStoreTBlock matches simpleStorageTypedFinalSlot)"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. Lowering existed since commit a7a62b24."
     },
     "2.4": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "Counter.increment compiles from `CompilationModel` -> typed IR -> evaluated, matching untyped IR golden reference.",
+        "Counter.decrement and Counter.getCount also compile and evaluate correctly.",
+        "Compiled Counter block lowers to Yul with matching final storage (end-to-end: CompilationModel -> typed IR -> Yul)."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRTests.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIRTests",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIRTests [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: compiledCounterIncrementFinalSlot = counterIRFinalSlot (CompilationModel -> typed IR evaluation golden parity)",
+          "TypedIRTests: compiledCounterLoweredFinalSlot = compiledCounterIncrementFinalSlot (typed IR -> Yul lowering golden parity)",
+          "TypedIRTests: compiledCounterDecrementFinalSlot = counterDecrementExpectedSlot",
+          "TypedIRTests: compiledCounterGetCountResult = counterGetCountExpectedResult"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. End-to-end Counter tests existed since commit 752a9196."
     },
     "2.5": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "SimpleStorage.store compiles from `CompilationModel` -> typed IR -> evaluated, matching untyped IR golden reference.",
+        "SimpleStorage.retrieve also compiles and evaluates correctly.",
+        "Both store and retrieve can be compiled in sequence and evaluated together."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRTests.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIRTests",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIRTests [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: compiledSimpleStorageStoreFinalSlot = simpleStorageIRFinalSlot (CompilationModel -> typed IR evaluation golden parity)",
+          "TypedIRTests: compileFunctionNamed simpleStorageSpec retrieve compilation and evaluation test",
+          "TypedIRTests: SimpleStorage store + retrieve sequential compilation test"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. End-to-end SimpleStorage tests existed since commit d251badb."
     },
     "3.1": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "`TExecState` has `env : Verity.Env` as an explicit field, separate from `world : Verity.ContractState`.",
+        "Env is constructed via `Verity.Env.ofWorld` by default but can be independently parameterized.",
+        "Interpreter functions (`evalTExpr`, `evalTStmtFuel`, etc.) thread `TExecState.env` for context reads (sender, this, msgValue, blockTimestamp) independently of storage state.",
+        "Compilation correctness theorems are parameterized over arbitrary `init : TExecState` with separate world/env fields."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIR.lean"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIR",
+        "lake build"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIR [artifact_sha256=1e54597bd2967c]",
+        "pass: lake build [artifact_sha256=1e54597bd2967c] (CI build job passed on PR #1065)"
+      ],
       "evidence": {
         "theorems": [],
-        "tests": []
+        "tests": [
+          "TypedIRTests: TExecState construction with explicit env field in counterTypedInit and simpleStorageTypedInit",
+          "TypedIRTests: Context expression tests (sender, blockTimestamp) read from env independently of world"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "Backfilled during 0.2 stabilization slice. Env separation existed since commit 8b437409."
     },
     "3.2": {
       "status": "open",

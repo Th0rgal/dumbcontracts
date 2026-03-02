@@ -106,7 +106,7 @@ The `mappingPackedWord` forms perform masked/shifted packed read-modify-write at
 
 **Run tests:**
 ```bash
-FOUNDRY_PROFILE=difftest forge test           # 443 tests across 37 suites
+FOUNDRY_PROFILE=difftest forge test           # 445 tests across 37 suites
 ```
 
 ---
@@ -121,7 +121,7 @@ Every claim below is enforced by CI on every commit. Each one can be independent
 | Incomplete proofs (`sorry`) | 0 | `make verify` (Lean rejects sorry) |
 | Project-specific axioms | 1 ([documented](AXIOMS.md)) | `make axiom-report` |
 | Axiom dependency audit | 613 theorems checked | `make axiom-report` |
-| Foundry runtime tests | 443 across 37 suites | `make test-foundry` |
+| Foundry runtime tests | 445 across 37 suites | `make test-foundry` |
 | Property test coverage | 250/425 (59%) | `python3 scripts/check_property_coverage.py` |
 | CI validation scripts | 30 | `make check` |
 | Proof length enforcement | 92% under 30 lines | `python3 scripts/check_proof_length.py` |
@@ -241,7 +241,7 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 
 Verity's restricted DSL prevents raw external calls for safety. Instead, call patterns are packaged as **External Call Modules (ECMs)** — reusable, typed, auditable Lean structures that the compiler can plug in without modification. Standard modules for ERC-20, EVM precompiles, and callbacks ship in [`Compiler/Modules/`](Compiler/Modules/README.md). Third parties can publish their own as separate Lean packages. See [`docs/EXTERNAL_CALL_MODULES.md`](docs/EXTERNAL_CALL_MODULES.md) for the full guide.
 
-425 theorems across 11 categories (425 proven, 0 `sorry`). 443 Foundry tests across 37 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom.
+425 theorems across 11 categories (425 proven, 0 `sorry`). 445 Foundry tests across 37 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom.
 
 ## What's Verified
 
@@ -344,7 +344,7 @@ FOUNDRY_PROFILE=difftest forge test
 <details>
 <summary><strong>Testing</strong></summary>
 
-**Foundry tests** (443 tests) validate EDSL = Yul = EVM execution:
+**Foundry tests** (445 tests) validate EDSL = Yul = EVM execution:
 
 ```bash
 FOUNDRY_PROFILE=difftest forge test                                          # run all

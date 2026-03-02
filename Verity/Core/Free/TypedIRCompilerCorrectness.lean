@@ -112,6 +112,20 @@ def execCompiledReturnLiteral
   | .error err => .revert err
   | .ok (_, st) => evalTStmts init st.body.toList
 
+/-- Direct source semantics for a broader supported subset:
+`letVar tmp (literal n); return (localVar tmp)` binds `tmp` then halts. -/
+def execSourceLetReturnLocalLiteral (init : TExecState) (n : Nat) : TExecResult :=
+  .ok ({ init with vars := init.vars.set { id := 0, ty := Ty.uint256 } (n : Verity.Core.Uint256) })
+
+/-- Compile + execute a broader supported subset statement sequence:
+`letVar tmp (literal n); return (localVar tmp)`. -/
+def execCompiledLetReturnLocalLiteral
+    (fields : List Field) (tmp : String) (init : TExecState) (n : Nat) : TExecResult :=
+  match (compileStmts fields
+      [Stmt.letVar tmp (Expr.literal n), Stmt.return (Expr.localVar tmp)]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
 /-- Semantic-preservation theorem for the supported 2.2 subset:
 compiling and running `setStorage fieldName (literal n)` matches direct source execution,
 under explicit field-resolution assumptions. -/
@@ -236,6 +250,17 @@ theorem compile_return_literal_semantics
     execCompiledReturnLiteral fields init n = execSourceReturnLiteral init n := by
   simp [execCompiledReturnLiteral, execSourceReturnLiteral,
     compileStmts_single_return_literal_run, evalTStmts, defaultEvalFuel]
+  simp [evalTStmtsFuel, evalTStmtFuel]
+
+/-- Semantic-preservation theorem for a broader supported subset:
+compiling and running `letVar tmp (literal n); return (localVar tmp)`
+matches direct source let-then-return semantics. -/
+theorem compile_let_return_local_literal_semantics
+    (fields : List Field) (tmp : String) (init : TExecState) (n : Nat) :
+    execCompiledLetReturnLocalLiteral fields tmp init n =
+      execSourceLetReturnLocalLiteral init n := by
+  simp [execCompiledLetReturnLocalLiteral, execSourceLetReturnLocalLiteral,
+    compileStmts_let_return_local_literal_run, evalTStmts, defaultEvalFuel]
   simp [evalTStmtsFuel, evalTStmtFuel]
 
 end Verity.Core.Free

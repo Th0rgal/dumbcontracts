@@ -1145,4 +1145,10 @@ example (fields : List Compiler.CompilationModel.Field)
     execCompiledReturnLiteral fields init n = execSourceReturnLiteral init n :=
   compile_return_literal_semantics fields init n
 
+example (fields : List Compiler.CompilationModel.Field)
+    (tmp : String) (init : TExecState) (n : Nat) :
+    execCompiledLetReturnLocalLiteral fields tmp init n =
+      execSourceLetReturnLocalLiteral init n :=
+  compile_let_return_local_literal_semantics fields tmp init n
+
 end Verity.Core.Free

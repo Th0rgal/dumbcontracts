@@ -485,4 +485,24 @@ theorem compileStmts_single_return_literal_run
   simp [compileStmts, compileStmt, compileExpr, emit]
   rfl
 
+/-- Two-statement compilation shape for a broader supported subset:
+`letVar tmp (literal n); return (localVar tmp)` lowers to one SSA `let_`
+followed by one typed `returnUint`, from an empty compile state. -/
+theorem compileStmts_let_return_local_literal_run
+    (fields : List Field) (tmp : String) (n : Nat) :
+    (compileStmts fields
+      [Stmt.letVar tmp (Expr.literal n), Stmt.return (Expr.localVar tmp)]).run {} =
+      Except.ok ((),
+        { nextId := 1
+          vars := [(tmp, { id := 0, ty := Ty.uint256 })]
+          params := #[]
+          locals := #[{ id := 0, ty := Ty.uint256 }]
+          body := #[
+            TStmt.let_ { id := 0, ty := Ty.uint256 } (TExpr.uintLit n),
+            TStmt.returnUint (TExpr.var { id := 0, ty := Ty.uint256 })
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, emitSSABind, freshVar, bindVar, pushLocal,
+    lookupVar, emit]
+  rfl
+
 end Verity.Core.Free

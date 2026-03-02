@@ -1173,4 +1173,10 @@ example (fields : List Compiler.CompilationModel.Field)
       execSourceRequireLtLiterals init n m message :=
   compile_require_lt_literals_semantics fields init n m message
 
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState) (n m : Nat) (message : String) :
+    execCompiledRequireGeLiterals fields init n m message =
+      execSourceRequireGeLiterals init n m message :=
+  compile_require_ge_literals_semantics fields init n m message
+
 end Verity.Core.Free

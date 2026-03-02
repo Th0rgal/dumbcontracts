@@ -179,6 +179,20 @@ def execCompiledRequireLtLiterals
   | .error err => .revert err
   | .ok (_, st) => evalTStmts init st.body.toList
 
+/-- Direct source semantics for a broader supported require subset:
+`require (ge (literal n) (literal m)) message`
+halts with revert on guard failure and leaves state unchanged otherwise. -/
+def execSourceRequireGeLiterals (init : TExecState) (n m : Nat) (message : String) : TExecResult :=
+  if ¬ ((n : Verity.Core.Uint256) < (m : Verity.Core.Uint256)) then .ok init else .revert message
+
+/-- Compile + execute a broader supported require subset statement through typed IR. -/
+def execCompiledRequireGeLiterals
+    (fields : List Field) (init : TExecState) (n m : Nat) (message : String) : TExecResult :=
+  match (compileStmts fields
+      [Stmt.require (Expr.ge (Expr.literal n) (Expr.literal m)) message]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
 /-- Semantic-preservation theorem for the supported 2.2 subset:
 compiling and running `setStorage fieldName (literal n)` matches direct source execution,
 under explicit field-resolution assumptions. -/
@@ -358,6 +372,23 @@ theorem compile_require_lt_literals_semantics
       execSourceRequireLtLiterals init n m message := by
   simp [execCompiledRequireLtLiterals, execSourceRequireLtLiterals,
     compileStmts_single_require_lt_literals_run, evalTStmts, defaultEvalFuel]
+  by_cases hLt : (n : Verity.Core.Uint256) < (m : Verity.Core.Uint256)
+  · have hNat : n % Verity.Core.Uint256.modulus < m % Verity.Core.Uint256.modulus := by
+      simpa [Verity.Core.Uint256.lt_def] using hLt
+    simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hLt, hNat]
+  · have hNat : m % Verity.Core.Uint256.modulus ≤ n % Verity.Core.Uint256.modulus := by
+      exact Nat.not_lt.mp (by simpa [Verity.Core.Uint256.lt_def] using hLt)
+    simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hLt, hNat]
+
+/-- Semantic-preservation theorem for a broader supported require subset:
+compiling and running `require (ge (literal n) (literal m)) message`
+matches direct source require semantics. -/
+theorem compile_require_ge_literals_semantics
+    (fields : List Field) (init : TExecState) (n m : Nat) (message : String) :
+    execCompiledRequireGeLiterals fields init n m message =
+      execSourceRequireGeLiterals init n m message := by
+  simp [execCompiledRequireGeLiterals, execSourceRequireGeLiterals,
+    compileStmts_single_require_ge_literals_run, evalTStmts, defaultEvalFuel]
   by_cases hLt : (n : Verity.Core.Uint256) < (m : Verity.Core.Uint256)
   · have hNat : n % Verity.Core.Uint256.modulus < m % Verity.Core.Uint256.modulus := by
       simpa [Verity.Core.Uint256.lt_def] using hLt

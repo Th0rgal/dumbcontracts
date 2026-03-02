@@ -7,6 +7,7 @@
 -/
 
 import Verity.Core
+import Verity.Core.Semantics
 import Verity.EVM.Uint256
 
 namespace Verity.Examples.ReentrancyExample
@@ -66,31 +67,37 @@ def deposit (amount : Uint256) : Contract Unit := fun s =>
   let s2 := setStorageSlot totalSupply (supply + amount) s1
   ContractResult.success () s2
 
--- Vulnerable withdraw (single reentrant attempt modeled inline)
-def withdraw (amount : Uint256) : Contract Unit := fun s =>
+def withdrawWithEnv (env : Verity.Env) (amount : Uint256) : Contract Unit := fun s =>
   let bal := s.storageMap balances.slot s.sender
   if decide (bal ≥ amount) then
     let supply := s.storage totalSupply.slot
     let s1 := setStorageSlot totalSupply (sub supply amount) s
-    -- Reentrant call effect: totalSupply decremented again
-    let supply2 := s1.storage totalSupply.slot
-    let s2 := setStorageSlot totalSupply (sub supply2 amount) s1
+    let didReenter := env.callOracle "VulnerableBank.withdraw" [amount, bal, supply]
+    -- Reentrant call effect (oracle-controlled): totalSupply decremented again
+    let s2 :=
+      if didReenter == 0 then s1
+      else
+        let supply2 := s1.storage totalSupply.slot
+        setStorageSlot totalSupply (sub supply2 amount) s1
     -- Balance updated once (using the original balance)
     let s3 := setMappingSlot balances s.sender (sub bal amount) s2
     ContractResult.success () s3
   else
     ContractResult.revert "Insufficient balance" s
 
+def withdraw (amount : Uint256) : Contract Unit := fun s =>
+  (withdrawWithEnv (Verity.Env.ofWorld s) amount) s
+
 /-
 COUNTEREXAMPLE: Proof that vulnerability exists
 -/
 
 theorem vulnerable_attack_exists :
-  ∃ (s : ContractState),
+  ∃ (s : ContractState) (env : Verity.Env),
     s.storageMap balances.slot 0xA77AC = (Verity.EVM.MAX_UINT256 : Uint256) ∧
     s.storage totalSupply.slot = (Verity.EVM.MAX_UINT256 : Uint256) ∧
     supplyInvariant s [0xA77AC] ∧
-    let s' := (withdraw (Verity.EVM.MAX_UINT256 : Uint256)).runState s;
+    let s' := (withdrawWithEnv env (Verity.EVM.MAX_UINT256 : Uint256)).runState s;
     ¬ supplyInvariant s' [0xA77AC] := by
   -- Choose a concrete attacker and amount. We use MAX_UINT256 so that
   -- `0 - amount` wraps to 1, making the mismatch obvious.
@@ -106,7 +113,13 @@ theorem vulnerable_attack_exists :
     , msgValue := 0
     , blockTimestamp := 0
     , knownAddresses := fun _ => Core.FiniteAddressSet.empty }
-  refine ⟨s, ?_⟩
+  let env : Verity.Env :=
+    { sender := s.sender
+    , thisAddress := s.thisAddress
+    , msgValue := s.msgValue
+    , blockTimestamp := s.blockTimestamp
+    , callOracle := fun _ _ => 1 }
+  refine ⟨s, env, ?_⟩
   constructor
   · simp [s, balances]
   constructor
@@ -114,11 +127,9 @@ theorem vulnerable_attack_exists :
   constructor
   · simp [s, supplyInvariant, balances, totalSupply]
   ·
-    have h_cond : decide ((Verity.EVM.MAX_UINT256 : Uint256) ≥ (Verity.EVM.MAX_UINT256 : Uint256)) = true := by
-      simp
     have h_neq : (1 : Uint256) ≠ (0 : Uint256) := by decide
     -- After simplification, the invariant reduces to `1 = 0`, which is false.
-    simp [supplyInvariant, balances, totalSupply, s]
+    simp [supplyInvariant, balances, totalSupply, s, env]
     exact h_neq
 
 /-
@@ -128,13 +139,13 @@ We can show the universal statement is FALSE by using the counterexample.
 -/
 
 theorem withdraw_maintains_supply_UNPROVABLE :
-  ¬ (∀ (s : ContractState),
+  ¬ (∀ (s : ContractState) (env : Verity.Env),
       supplyInvariant s [0xA77AC] →
-      let s' := (withdraw (Verity.EVM.MAX_UINT256 : Uint256)).runState s;
+      let s' := (withdrawWithEnv env (Verity.EVM.MAX_UINT256 : Uint256)).runState s;
       supplyInvariant s' [0xA77AC]) := by
   intro h
-  rcases vulnerable_attack_exists with ⟨s, _h_bal, _h_sup, h_inv, h_not⟩
-  have h' := h s h_inv
+  rcases vulnerable_attack_exists with ⟨s, env, _h_bal, _h_sup, h_inv, h_not⟩
+  have h' := h s env h_inv
   exact h_not h'
 
 end VulnerableBank
@@ -147,16 +158,19 @@ as a no-op, so the invariant is preserved.
 
 namespace SafeBank
 
--- Safe withdraw (no reentrancy effect on state)
-def withdraw (amount : Uint256) : Contract Unit := fun s =>
+def withdrawWithEnv (env : Verity.Env) (amount : Uint256) : Contract Unit := fun s =>
   let bal := s.storageMap balances.slot s.sender
   if decide (bal ≥ amount) then
     let supply := s.storage totalSupply.slot
     let s1 := setMappingSlot balances s.sender (sub bal amount) s
     let s2 := setStorageSlot totalSupply (sub supply amount) s1
+    let _ := env.callOracle "SafeBank.withdraw" [amount, bal, supply]
     ContractResult.success () s2
   else
     ContractResult.revert "Insufficient balance" s
+
+def withdraw (amount : Uint256) : Contract Unit := fun s =>
+  (withdrawWithEnv (Verity.Env.ofWorld s) amount) s
 
 -- Deposit (for completeness)
 def deposit (amount : Uint256) : Contract Unit := fun s =>
@@ -180,23 +194,17 @@ theorem withdraw_maintains_supply (amount : Uint256) :
   have h_eq : s.storage totalSupply.slot = s.storageMap balances.slot s.sender := by
     simp [supplyInvariant] at h_inv
     exact h_inv
-  have h_cond : decide (s.storageMap balances.slot s.sender ≥ amount) = true := by
-    exact decide_eq_true_iff.mpr h_bal
-  have h_cond' : amount.val ≤ (s.storageMap balances.slot s.sender).val := by
-    exact h_bal
-  have h_cond'' : amount.val ≤ (s.storageMap 2 s.sender).val := by
-    have h_cond'' := h_cond'
-    simp [balances] at h_cond''
-    exact h_cond''
+  have h_cond2 : amount.val ≤ (s.storageMap 2 s.sender).val := by
+    simpa [balances] using h_bal
   -- Unfold the effect of withdraw and use the pre-state equality.
   have h_left :
       ((withdraw amount).runState s).storage totalSupply.slot =
         sub (s.storage totalSupply.slot) amount := by
-    simp [Contract.runState, withdraw, setStorageSlot, setMappingSlot, balances, totalSupply, h_cond'']
+    simp [Contract.runState, withdraw, withdrawWithEnv, h_cond2, setStorageSlot, setMappingSlot, balances, totalSupply]
   have h_right :
       ((withdraw amount).runState s).storageMap balances.slot s.sender =
         sub (s.storageMap balances.slot s.sender) amount := by
-    simp [Contract.runState, withdraw, setStorageSlot, setMappingSlot, balances, totalSupply, h_cond'']
+    simp [Contract.runState, withdraw, withdrawWithEnv, h_cond2, setStorageSlot, setMappingSlot, balances, totalSupply]
   -- Reduce to the same subtraction on both sides.
   have h_mid : sub (s.storage totalSupply.slot) amount =
       sub (s.storageMap balances.slot s.sender) amount := by

@@ -130,6 +130,18 @@ See [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md) for the full trust model and [C
 
 ---
 
+## Hybrid Migration Status
+
+Issue [#1060](https://github.com/Th0rgal/verity/issues/1060) is delivered on this branch:
+
+- the typed IR pipeline is the canonical compilation path for the supported contract suite;
+- macro-generated bridge theorems now expose concrete semantic-preservation facts;
+- compilation-correctness `sorry` placeholders on the active path are eliminated.
+
+For current guarantees and trust boundaries, use `TRUST_ASSUMPTIONS.md` and `AXIOMS.md` as the canonical references.
+
+---
+
 Verity is a Lean 4 framework that lets you write smart contracts in a domain specific language, prove key properties, and compile to EVM bytecode.
 
 The project has three contract artifacts. Keep them separate:

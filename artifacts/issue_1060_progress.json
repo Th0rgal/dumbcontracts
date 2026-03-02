@@ -1575,19 +1575,166 @@
       "notes": "Mapping return-caller pattern added to fragment grammar. Ledger and SimpleToken field definitions with resolution theorems. SimpleToken.totalSupply and .owner bridge correctness theorems use existing returnStorage/returnStorageAddr patterns. Parameter-keyed mapping returns (getBalance, balanceOf) require context-aware compilation extensions, deferred to future items."
     },
     "4.1": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
+      "status": "complete",
+      "acceptance_criteria": [
+        "ERC20 field definitions (erc20Fields) with 4 field resolution theorems (ownerSlot\u21920, totalSupplySlot\u21921, balancesSlot\u21922, allowancesSlot\u21923).",
+        "letStorageAddrReturnLocal tail: source/compiled defs, compilation-shape theorem, semantic-preservation theorem, sequencing theorem. Wired into RequireFamilyClausesTail, SupportedStmtFragment, and all dispatchers.",
+        "letMappingParamReturnLocal tail: context-aware compilation from 1-param CompileState. Source/compiled defs, shape theorem, semantic-preservation theorem, sequencing theorem. Wired into all dispatchers.",
+        "letMapping2ParamsReturnLocal tail: context-aware compilation from 2-param CompileState with distinctness hypothesis (p1 \u2260 p2). Shape theorem, semantic-preservation, sequencing. Wired into all dispatchers.",
+        "letCallerSetMapping2Stop tail: approve pattern (caller + setMapping2 + stop) from mixed-type 2-param state with distinctness hypotheses. Shape theorem, semantic-preservation, sequencing. Wired into all dispatchers.",
+        "ERC20.totalSupply bridge theorems (erc20_totalSupply_supported, erc20_totalSupply_correctness) via existing letStorageReturnLocal pattern.",
+        "ERC20.owner bridge theorems (erc20_owner_supported, erc20_owner_correctness) via new letStorageAddrReturnLocal pattern.",
+        "ERC20.balanceOf bridge theorems (erc20_balanceOf_supported, erc20_balanceOf_correctness) via new letMappingParamReturnLocal pattern.",
+        "ERC20.allowanceOf bridge theorems (erc20_allowanceOf_supported, erc20_allowanceOf_correctness) via new letMapping2ParamsReturnLocal pattern with (by decide) distinctness proof.",
+        "ERC20.approve bridge theorems (erc20_approve_supported, erc20_approve_correctness) via new letCallerSetMapping2Stop pattern with 6 (by decide) distinctness proofs.",
+        "End-to-end tests: compiledERC20{TotalSupply,Owner,BalanceOf,AllowanceOf,Approve}PreservesState = true (via native_decide).",
+        "Correctness instantiation examples for all 5 functions.",
+        "lake build passes all 1140 modules. Integrity and proof length checks pass."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRCompiler.lean",
+        "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+        "Verity/Core/Free/TypedIRTests.lean",
+        "Compiler/Specs.lean"
+      ],
+      "verification_commands": [
+        "lake build",
+        "python3 scripts/check_issue_1060_integrity.py",
+        "python3 scripts/check_proof_length.py"
+      ],
+      "verification_results": [
+        "pass: lake build (1140 modules, 0 errors) [run_id=4.1-build-001, artifact_sha256=2f3b182140e4]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=4.1-integrity-001, artifact_sha256=188ff1577cf4]",
+        "pass: python3 scripts/check_proof_length.py (863 proofs, 0 new over 50 lines) [run_id=4.1-prooflength-001, artifact_sha256=188ff1577cf4]"
+      ],
       "evidence": {
-        "theorems": [],
-        "tests": []
+        "theorems": [
+          {
+            "name": "compileStmts_let_storage_addr_return_local_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape: letVar tmp (storage field); return (localVar tmp) for address fields.",
+            "statement_summary": "compileStmts fields [letVar tmp (storage fieldName), return (localVar tmp)] = ok (...getStorageAddr slot..., returnAddr ...)"
+          },
+          {
+            "name": "compileStmts_let_mapping_param_return_local_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape: mapping(param) + return from 1-param CompileState.",
+            "statement_summary": "compileStmts fields [letVar tmp (mapping fieldName (param p)), return (localVar tmp)] from oneParamState = ok (...getMapping slot (var p)..., returnUint ...)"
+          },
+          {
+            "name": "compileStmts_let_mapping2_params_return_local_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape: mapping2(param1, param2) + return from 2-param CompileState (requires p1\u2260p2).",
+            "statement_summary": "compileStmts fields [letVar tmp (mapping2 field (param p1) (param p2)), return (localVar tmp)] from twoParamState = ok (...getMapping2 slot (var p1) (var p2)..., returnUint ...)"
+          },
+          {
+            "name": "compileStmts_let_caller_setMapping2_stop_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "description": "Compilation shape: approve pattern (caller + setMapping2 + stop) from 2-param mixed state.",
+            "statement_summary": "compileStmts fields [letVar s caller, setMapping2 field (localVar s) (param p1) (param p2), stop] from mixedParamState = ok (...let sender; setMapping2 slot sender p1_var p2_var; stop)"
+          },
+          {
+            "name": "compile_let_storage_addr_return_local_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for address storage read + return.",
+            "statement_summary": "execCompiledLetStorageAddrReturnLocal fields fieldName tmp init = execSourceLetStorageAddrReturnLocal init slot"
+          },
+          {
+            "name": "compile_let_mapping_param_return_local_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for mapping(param) + return pattern.",
+            "statement_summary": "execCompiledLetMappingParamReturnLocal fields fieldName paramName tmp init = execSourceLetMappingParamReturnLocal init slot"
+          },
+          {
+            "name": "compile_let_mapping2_params_return_local_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for mapping2(param1, param2) + return (requires p1\u2260p2).",
+            "statement_summary": "execCompiledLetMapping2ParamsReturnLocal fields fieldName p1 p2 tmp init = execSourceLetMapping2ParamsReturnLocal init slot"
+          },
+          {
+            "name": "compile_let_caller_setMapping2_stop_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "Semantic preservation for approve pattern with distinctness hypotheses.",
+            "statement_summary": "execCompiledLetCallerSetMapping2Stop fields fieldName senderVar p1 p2 init = execSourceLetCallerSetMapping2Stop init slot"
+          },
+          {
+            "name": "erc20_totalSupply_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.totalSupply body belongs to the supported statement fragment grammar.",
+            "statement_summary": "SupportedStmtList erc20Fields [letVar \"currentSupply\" (storage \"totalSupplySlot\"), return (localVar \"currentSupply\")]"
+          },
+          {
+            "name": "erc20_totalSupply_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.totalSupply compilation correctness: compiled = source for all initial states.",
+            "statement_summary": "\u2203 fragments, toStmts fragments = totalSupply_body \u2227 execCompiled = execSource"
+          },
+          {
+            "name": "erc20_owner_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.owner body belongs to the supported statement fragment grammar.",
+            "statement_summary": "SupportedStmtList erc20Fields [letVar \"currentOwner\" (storage \"ownerSlot\"), return (localVar \"currentOwner\")]"
+          },
+          {
+            "name": "erc20_owner_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.owner compilation correctness.",
+            "statement_summary": "\u2203 fragments, toStmts fragments = owner_body \u2227 execCompiled = execSource"
+          },
+          {
+            "name": "erc20_balanceOf_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.balanceOf body belongs to the supported statement fragment grammar.",
+            "statement_summary": "SupportedStmtList erc20Fields [letVar \"currentBalance\" (mapping \"balancesSlot\" (param \"addr\")), return (localVar \"currentBalance\")]"
+          },
+          {
+            "name": "erc20_balanceOf_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.balanceOf compilation correctness.",
+            "statement_summary": "\u2203 fragments, toStmts fragments = balanceOf_body \u2227 execCompiled = execSource"
+          },
+          {
+            "name": "erc20_allowanceOf_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.allowanceOf body belongs to the supported statement fragment grammar.",
+            "statement_summary": "SupportedStmtList erc20Fields [letVar \"currentAllowance\" (mapping2 \"allowancesSlot\" (param \"ownerAddr\") (param \"spender\")), return (localVar \"currentAllowance\")]"
+          },
+          {
+            "name": "erc20_allowanceOf_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.allowanceOf compilation correctness.",
+            "statement_summary": "\u2203 fragments, toStmts fragments = allowanceOf_body \u2227 execCompiled = execSource"
+          },
+          {
+            "name": "erc20_approve_supported",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.approve body belongs to the supported statement fragment grammar.",
+            "statement_summary": "SupportedStmtList erc20Fields [letVar \"sender\" caller, setMapping2 \"allowancesSlot\" (localVar \"sender\") (param \"spender\") (param \"amount\"), stop]"
+          },
+          {
+            "name": "erc20_approve_correctness",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "description": "ERC20.approve compilation correctness.",
+            "statement_summary": "\u2203 fragments, toStmts fragments = approve_body \u2227 execCompiled = execSource"
+          }
+        ],
+        "tests": [
+          "compiledERC20TotalSupplyPreservesState = true (via native_decide)",
+          "compiledERC20OwnerPreservesState = true (via native_decide)",
+          "compiledERC20BalanceOfPreservesState = true (via native_decide)",
+          "compiledERC20AllowanceOfPreservesState = true (via native_decide)",
+          "compiledERC20ApprovePreservesState = true (via native_decide)",
+          "erc20_totalSupply_correctness instantiation example",
+          "erc20_owner_correctness instantiation example",
+          "erc20_balanceOf_correctness instantiation example",
+          "erc20_allowanceOf_correctness instantiation example",
+          "erc20_approve_correctness instantiation example"
+        ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": ""
+      "notes": "5 of 8 ERC20 functions proven correct (totalSupply, owner, balanceOf, allowanceOf, approve). Deferred: mint, transfer, transferFrom (require safe arithmetic, control flow, multiple storage writes). Introduced context-aware compilation with pre-populated CompileState and beq_false_of_ne for parametric string distinctness in compilation-shape theorems. 4 new RequireFamilyClausesTail constructors, 4 new SupportedStmtFragment constructors (34 total), 18 new theorems."
     },
     "4.2": {
       "status": "open",

@@ -454,6 +454,9 @@ and special cases (for example, linked-library workflows like `cryptoHashSpec`).
 Selectors are still auto-computed by `computeSelectors`.
 -/
 
+/-- ERC20 spec alias for test/proof convenience. Uses the macro-generated spec. -/
+def erc20Spec : CompilationModel := Verity.Examples.MacroContracts.ERC20.spec
+
 def allSpecs : List CompilationModel := [
   -- Authoritative compiler input now comes from macro-generated contracts.
   Verity.Examples.MacroContracts.SimpleStorage.spec,

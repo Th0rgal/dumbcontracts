@@ -1321,4 +1321,132 @@ theorem compileStmts_single_return_mapping_caller_run
   simp [compileStmts, compileStmt, compileExpr, asAddress, hSlot, emit, liftExcept]
   rfl
 
+/-- Two-statement compilation shape for address storage read + return:
+`letVar tmp (storage field); return (localVar tmp)` (address variant)
+lowers to one SSA `let_` (from getStorageAddr) and one typed `returnAddr`. -/
+theorem compileStmts_let_storage_addr_return_local_run
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.address }, slot)) :
+    (compileStmts fields
+      [ Stmt.letVar tmp (Expr.storage fieldName)
+      , Stmt.return (Expr.localVar tmp)
+      ]).run {} =
+      Except.ok ((),
+        { nextId := 1
+          vars := [(tmp, { id := 0, ty := Ty.address })]
+          params := #[]
+          locals := #[{ id := 0, ty := Ty.address }]
+          body := #[
+            TStmt.let_ { id := 0, ty := Ty.address } (TExpr.getStorageAddr slot),
+            TStmt.returnAddr (TExpr.var { id := 0, ty := Ty.address })
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, compileStorageRead, emitSSABind, freshVar,
+    bindVar, pushLocal, lookupVar, fieldTypeToTy, hfind, emit]
+  rfl
+
+/-- Helper: lookupVar finds a variable at the head of the vars list. -/
+private theorem lookupVar_head (name : String) (v : TVar) (rest : List (String × TVar))
+    (st : CompileState) (h : st.vars = (name, v) :: rest) :
+    (lookupVar name).run st = Except.ok (v, st) := by
+  simp [lookupVar, h]; rfl
+
+/-- Two-statement compilation shape for mapping(param) read + return from 1-param state. -/
+theorem compileStmts_let_mapping_param_return_local_run
+    (fields : List Field) (fieldName paramName tmp : String) (slot : Nat)
+    (hSlot : findFieldSlot fields fieldName = some slot) :
+    (compileStmts fields
+      [ Stmt.letVar tmp (Expr.mapping fieldName (Expr.param paramName))
+      , Stmt.return (Expr.localVar tmp)
+      ]).run
+      (CompileState.mk 1
+        [(paramName, { id := 0, ty := Ty.address })]
+        #[{ id := 0, ty := Ty.address }]
+        #[] #[]) =
+      Except.ok ((),
+        { nextId := 2
+          vars := [(tmp, { id := 1, ty := Ty.uint256 }),
+                   (paramName, { id := 0, ty := Ty.address })]
+          params := #[{ id := 0, ty := Ty.address }]
+          locals := #[{ id := 1, ty := Ty.uint256 }]
+          body := #[
+            TStmt.let_ { id := 1, ty := Ty.uint256 }
+              (TExpr.getMapping slot (TExpr.var { id := 0, ty := Ty.address })),
+            TStmt.returnUint (TExpr.var { id := 1, ty := Ty.uint256 })
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, emitSSABind, freshVar,
+    bindVar, pushLocal, lookupVar, asAddress, liftExcept, hSlot, emit,
+    List.find?]; rfl
+
+/-- Two-statement compilation shape for mapping2(param1, param2) read + return from 2-param state. -/
+theorem compileStmts_let_mapping2_params_return_local_run
+    (fields : List Field) (fieldName p1 p2 tmp : String) (slot : Nat)
+    (hSlot : findFieldSlot fields fieldName = some slot)
+    (hp : p1 ≠ p2) :
+    (compileStmts fields
+      [ Stmt.letVar tmp (Expr.mapping2 fieldName (Expr.param p1) (Expr.param p2))
+      , Stmt.return (Expr.localVar tmp)
+      ]).run
+      (CompileState.mk 2
+        [(p2, { id := 1, ty := Ty.address }),
+         (p1, { id := 0, ty := Ty.address })]
+        #[{ id := 0, ty := Ty.address }, { id := 1, ty := Ty.address }]
+        #[] #[]) =
+      Except.ok ((),
+        { nextId := 3
+          vars := [(tmp, { id := 2, ty := Ty.uint256 }),
+                   (p2, { id := 1, ty := Ty.address }),
+                   (p1, { id := 0, ty := Ty.address })]
+          params := #[{ id := 0, ty := Ty.address }, { id := 1, ty := Ty.address }]
+          locals := #[{ id := 2, ty := Ty.uint256 }]
+          body := #[
+            TStmt.let_ { id := 2, ty := Ty.uint256 }
+              (TExpr.getMapping2 slot
+                (TExpr.var { id := 0, ty := Ty.address })
+                (TExpr.var { id := 1, ty := Ty.address })),
+            TStmt.returnUint (TExpr.var { id := 2, ty := Ty.uint256 })
+          ] }) := by
+  have hne : (p2 == p1) = false := beq_false_of_ne hp.symm
+  simp [compileStmts, compileStmt, compileExpr, emitSSABind, freshVar,
+    bindVar, pushLocal, lookupVar, asAddress, liftExcept, hSlot, emit,
+    List.find?, hne]; rfl
+
+/-- Three-statement compilation shape for approve pattern. -/
+theorem compileStmts_let_caller_setMapping2_stop_run
+    (fields : List Field) (fieldName senderVar p1 p2 : String) (slot : Nat)
+    (hSlot : findFieldSlot fields fieldName = some slot)
+    (h1 : senderVar ≠ p2) (h2 : senderVar ≠ p1) (h3 : p2 ≠ p1)
+    (h4 : p1 ≠ p2) (h5 : p1 ≠ senderVar) (h6 : p2 ≠ senderVar) :
+    (compileStmts fields
+      [ Stmt.letVar senderVar Expr.caller
+      , Stmt.setMapping2 fieldName (Expr.localVar senderVar) (Expr.param p1) (Expr.param p2)
+      , Stmt.stop
+      ]).run
+      (CompileState.mk 2
+        [(p2, { id := 1, ty := Ty.uint256 }),
+         (p1, { id := 0, ty := Ty.address })]
+        #[{ id := 0, ty := Ty.address }, { id := 1, ty := Ty.uint256 }]
+        #[] #[]) =
+      Except.ok ((),
+        { nextId := 3
+          vars := [(senderVar, { id := 2, ty := Ty.address }),
+                   (p2, { id := 1, ty := Ty.uint256 }),
+                   (p1, { id := 0, ty := Ty.address })]
+          params := #[{ id := 0, ty := Ty.address }, { id := 1, ty := Ty.uint256 }]
+          locals := #[{ id := 2, ty := Ty.address }]
+          body := #[
+            TStmt.let_ { id := 2, ty := Ty.address } TExpr.sender,
+            TStmt.setMapping2 slot
+              (TExpr.var { id := 2, ty := Ty.address })
+              (TExpr.var { id := 0, ty := Ty.address })
+              (TExpr.var { id := 1, ty := Ty.uint256 }),
+            TStmt.stop
+          ] }) := by
+  have hne1 : (senderVar == p2) = false := beq_false_of_ne h1
+  have hne2 : (senderVar == p1) = false := beq_false_of_ne h2
+  have hne3 : (p2 == p1) = false := beq_false_of_ne h3
+  simp [compileStmts, compileStmt, compileExpr, emitSSABind, freshVar,
+    bindVar, pushLocal, lookupVar, asAddress, asUInt256, liftExcept, hSlot, emit,
+    List.find?, hne1, hne2, hne3]; rfl
+
 end Verity.Core.Free

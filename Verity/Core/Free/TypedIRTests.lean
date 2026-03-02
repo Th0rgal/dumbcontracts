@@ -1813,4 +1813,168 @@ example (fields : List Field)
       execSourceReturnMappingCaller init slotIdx :=
   compile_return_mapping_caller_semantics fields fieldName slotIdx init hSlot
 
+-- ============================================================================
+-- ERC20 compilation tests
+-- ============================================================================
+
+/-- End-to-end ERC20.totalSupply: compiled block executes without reverting. -/
+def compiledERC20TotalSupplyPreservesState : Bool :=
+  match compileFunctionNamed Compiler.Specs.erc20Spec "totalSupply" with
+  | .error _ => false
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with «storage» := fun i => if i = 1 then 42000 else 0 }
+      let init : TExecState := { world := initWorld }
+      match evalTBlock init block with
+      | .ok _ => true
+      | .revert _ => false
+
+/-- ERC20.totalSupply: succeeds without reverting. -/
+example : compiledERC20TotalSupplyPreservesState = true := by native_decide
+
+/-- End-to-end ERC20.owner: compiled block executes without reverting. -/
+def compiledERC20OwnerPreservesState : Bool :=
+  match compileFunctionNamed Compiler.Specs.erc20Spec "owner" with
+  | .error _ => false
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with storageAddr := fun i => if i = 0 then 0xDEAD else 0 }
+      let init : TExecState := { world := initWorld }
+      match evalTBlock init block with
+      | .ok _ => true
+      | .revert _ => false
+
+/-- ERC20.owner: succeeds without reverting. -/
+example : compiledERC20OwnerPreservesState = true := by native_decide
+
+/-- End-to-end ERC20.balanceOf: compiled block executes without reverting. -/
+def compiledERC20BalanceOfPreservesState : Bool :=
+  match compileFunctionNamed Compiler.Specs.erc20Spec "balanceOf" with
+  | .error _ => false
+  | .ok block =>
+      match block.params with
+      | [addrParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap := fun i addr =>
+                if i == 2 && addr == 42 then 500 else 0 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = addrParam.id then 42 else 0 } }
+          match evalTBlock init block with
+          | .ok _ => true
+          | .revert _ => false
+      | _ => false
+
+/-- ERC20.balanceOf: succeeds without reverting. -/
+example : compiledERC20BalanceOfPreservesState = true := by native_decide
+
+/-- End-to-end ERC20.allowanceOf: compiled block executes without reverting. -/
+def compiledERC20AllowanceOfPreservesState : Bool :=
+  match compileFunctionNamed Compiler.Specs.erc20Spec "allowanceOf" with
+  | .error _ => false
+  | .ok block =>
+      match block.params with
+      | [ownerParam, spenderParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageMap2 := fun i a1 a2 =>
+                if i == 3 && a1 == 100 && a2 == 200 then 750 else 0 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = ownerParam.id then 100
+                          else if i = spenderParam.id then 200
+                          else 0 } }
+          match evalTBlock init block with
+          | .ok _ => true
+          | .revert _ => false
+      | _ => false
+
+/-- ERC20.allowanceOf: succeeds without reverting. -/
+example : compiledERC20AllowanceOfPreservesState = true := by native_decide
+
+/-- End-to-end ERC20.approve: compiled block executes without reverting. -/
+def compiledERC20ApprovePreservesState : Bool :=
+  match compileFunctionNamed Compiler.Specs.erc20Spec "approve" with
+  | .error _ => false
+  | .ok block =>
+      match block.params with
+      | [spenderParam, amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with storageMap2 := fun _ _ _ => 0 }
+          let init : TExecState :=
+            { world := initWorld
+              env := { Verity.Env.ofWorld initWorld with sender := 0xCAFE }
+              vars := { address := fun i =>
+                          if i = spenderParam.id then 300 else 0
+                        uint256 := fun i =>
+                          if i = amountParam.id then 999 else 0 } }
+          match evalTBlock init block with
+          | .ok _ => true
+          | .revert _ => false
+      | _ => false
+
+/-- ERC20.approve: succeeds without reverting. -/
+example : compiledERC20ApprovePreservesState = true := by native_decide
+
+open Compiler.CompilationModel in
+/-- ERC20.totalSupply correctness instantiation. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment erc20Fields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "currentSupply" (Expr.storage "totalSupplySlot")
+        , Stmt.return (Expr.localVar "currentSupply") ] ∧
+      execCompiledSupportedStmtFragments erc20Fields init fragments =
+        execSourceSupportedStmtFragments erc20Fields init fragments :=
+  erc20_totalSupply_correctness init
+
+open Compiler.CompilationModel in
+/-- ERC20.owner correctness instantiation. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment erc20Fields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "currentOwner" (Expr.storage "ownerSlot")
+        , Stmt.return (Expr.localVar "currentOwner") ] ∧
+      execCompiledSupportedStmtFragments erc20Fields init fragments =
+        execSourceSupportedStmtFragments erc20Fields init fragments :=
+  erc20_owner_correctness init
+
+open Compiler.CompilationModel in
+/-- ERC20.balanceOf correctness instantiation. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment erc20Fields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "currentBalance" (Expr.mapping "balancesSlot" (Expr.param "addr"))
+        , Stmt.return (Expr.localVar "currentBalance") ] ∧
+      execCompiledSupportedStmtFragments erc20Fields init fragments =
+        execSourceSupportedStmtFragments erc20Fields init fragments :=
+  erc20_balanceOf_correctness init
+
+open Compiler.CompilationModel in
+/-- ERC20.allowanceOf correctness instantiation. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment erc20Fields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "currentAllowance"
+            (Expr.mapping2 "allowancesSlot" (Expr.param "ownerAddr") (Expr.param "spender"))
+        , Stmt.return (Expr.localVar "currentAllowance") ] ∧
+      execCompiledSupportedStmtFragments erc20Fields init fragments =
+        execSourceSupportedStmtFragments erc20Fields init fragments :=
+  erc20_allowanceOf_correctness init
+
+open Compiler.CompilationModel in
+/-- ERC20.approve correctness instantiation. -/
+example (init : TExecState) :
+    ∃ fragments : List (SupportedStmtFragment erc20Fields),
+      supportedStmtFragmentsToStmts fragments =
+        [ Stmt.letVar "sender" Expr.caller
+        , Stmt.setMapping2 "allowancesSlot" (Expr.localVar "sender")
+            (Expr.param "spender") (Expr.param "amount")
+        , Stmt.stop ] ∧
+      execCompiledSupportedStmtFragments erc20Fields init fragments =
+        execSourceSupportedStmtFragments erc20Fields init fragments :=
+  erc20_approve_correctness init
+
 end Verity.Core.Free

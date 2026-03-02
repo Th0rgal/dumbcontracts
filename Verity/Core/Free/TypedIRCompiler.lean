@@ -338,4 +338,27 @@ theorem compileStmts_single_setStorage_literal_run
   simp [compileStmts, compileStmt, compileExpr, fieldTypeToTy, hfind, emit]
   rfl
 
+/-- Two-statement compilation shape for a broader supported subset:
+`letVar tmp (literal n); setStorage fieldName (localVar tmp)` lowers to one SSA `let_`
+followed by one typed `setStorage`, from an empty compile state. -/
+theorem compileStmts_let_literal_setStorage_local_run
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (n : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    (compileStmts fields
+      [Stmt.letVar tmp (Expr.literal n), Stmt.setStorage fieldName (Expr.localVar tmp)]).run {} =
+      Except.ok ((),
+        { nextId := 1
+          vars := [(tmp, { id := 0, ty := Ty.uint256 })]
+          params := #[]
+          locals := #[{ id := 0, ty := Ty.uint256 }]
+          body := #[
+            TStmt.let_ { id := 0, ty := Ty.uint256 } (TExpr.uintLit n),
+            TStmt.setStorage slot (TExpr.var { id := 0, ty := Ty.uint256 })
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, emitSSABind, freshVar, bindVar, pushLocal,
+    lookupVar, fieldTypeToTy, hfind, emit]
+  rfl
+
 end Verity.Core.Free

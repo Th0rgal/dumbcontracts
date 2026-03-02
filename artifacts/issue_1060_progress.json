@@ -139,17 +139,28 @@
             "name": "compile_setStorage_literal_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "For the supported setStorage-literal subset, compiled typed-IR execution matches direct source-level storage update semantics."
+          },
+          {
+            "name": "compileStmts_let_literal_setStorage_local_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "statement_summary": "Two-statement compilation for letVar-literal followed by setStorage-localVar emits the expected SSA let and typed setStorage sequence from empty compile state."
+          },
+          {
+            "name": "compile_let_setStorage_local_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "For the supported letVar/setStorage-local subset, compiled typed-IR execution preserves source storage-update semantics and records the expected SSA variable binding effect."
           }
         ],
         "tests": [
           "TypedIRTests: example instantiating compileStmts_append_from over arbitrary fields/pre/post/state",
-          "TypedIRTests: example instantiating compile_setStorage_literal_semantics over arbitrary fields/fieldName/slot assumptions"
+          "TypedIRTests: example instantiating compile_setStorage_literal_semantics over arbitrary fields/fieldName/slot assumptions",
+          "TypedIRTests: example instantiating compile_let_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions"
         ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "2.2 remains partial: this slice adds semantic-preservation proof for the supported setStorage-literal subset under explicit field-resolution assumptions, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
+      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence from direct setStorage-literal to a broader two-statement subset (letVar literal; setStorage localVar) under explicit field-resolution assumptions, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
     },
     "2.3": {
       "status": "open",

@@ -70,6 +70,10 @@ where
         [ .expr (.call "mstore" [.lit 0, lowerTExpr value])
         , .expr (.call "return" [.lit 0, .lit 32])
         ]
+    | .returnAddr value =>
+        [ .expr (.call "mstore" [.lit 0, lowerTExpr value])
+        , .expr (.call "return" [.lit 0, .lit 32])
+        ]
     | .expr value => [.expr (lowerTExpr value)]
     | .revert _reason => [.expr (.call "revert" [.lit 0, .lit 0])]
 

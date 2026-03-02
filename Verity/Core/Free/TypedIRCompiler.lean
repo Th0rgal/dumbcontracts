@@ -245,16 +245,22 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
       emit .stop
   | .return value => do
       let rhs ← compileExpr fields value
-      let ret ← liftExcept <| asUInt256 rhs
-      emit (.returnUint ret)
+      match rhs with
+      | ⟨Ty.uint256, expr⟩ => emit (.returnUint expr)
+      | ⟨Ty.address, expr⟩ => emit (.returnAddr expr)
+      | ⟨Ty.bool, expr⟩ => emit (.returnUint (TExpr.ite expr (TExpr.uintLit 1) (TExpr.uintLit 0)))
+      | ⟨ty, _⟩ => throw s!"Typed IR compile error: unsupported return type {repr ty}"
   | .returnValues values =>
       match values with
       | [] =>
           emit .stop
       | [value] => do
           let rhs ← compileExpr fields value
-          let ret ← liftExcept <| asUInt256 rhs
-          emit (.returnUint ret)
+          match rhs with
+          | ⟨Ty.uint256, expr⟩ => emit (.returnUint expr)
+          | ⟨Ty.address, expr⟩ => emit (.returnAddr expr)
+          | ⟨Ty.bool, expr⟩ => emit (.returnUint (TExpr.ite expr (TExpr.uintLit 1) (TExpr.uintLit 0)))
+          | ⟨ty, _⟩ => throw s!"Typed IR compile error: unsupported return type {repr ty}"
       | _ =>
           throw "Typed IR compile error: multiple return values are not supported in phase 2.4"
   | stmt =>

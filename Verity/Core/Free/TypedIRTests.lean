@@ -455,6 +455,38 @@ def compiledLedgerTransferResult : Option (Nat × Nat) :=
 example : compiledLedgerTransferResult = some (70, 80) := by
   native_decide
 
+/-- Smoke test: Owned.getOwner compiles successfully (exercises returnAddr path). -/
+def compiledOwnedGetOwnerBlock : Option TBlock :=
+  match compileFunctionNamed Compiler.Specs.ownedSpec "getOwner" with
+  | .ok block => some block
+  | .error _ => none
+
+example : compiledOwnedGetOwnerBlock.isSome = true := by
+  native_decide
+
+/-- End-to-end Owned.getOwner: returns the stored owner address via typed IR lowering. -/
+def compiledOwnedGetOwnerReturn : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.ownedSpec "getOwner" with
+  | .error _ => none
+  | .ok block =>
+      let initWorld : Verity.ContractState :=
+        { Verity.defaultState with storageAddr := fun i => if i = 0 then 42 else 0 }
+      let init : TExecState := { world := initWorld }
+      execLoweredReturn 256 (mkIRStateFromTyped init block) block
+
+/-- Owned.getOwner returns stored owner address (42) through the full pipeline. -/
+example : compiledOwnedGetOwnerReturn = some 42 := by
+  native_decide
+
+/-- Smoke test: Owned.transferOwnership compiles successfully (exercises requireOwner + setStorageAddr). -/
+def compiledOwnedTransferOwnershipBlock : Option TBlock :=
+  match compileFunctionNamed Compiler.Specs.ownedSpec "transferOwnership" with
+  | .ok block => some block
+  | .error _ => none
+
+example : compiledOwnedTransferOwnershipBlock.isSome = true := by
+  native_decide
+
 /-- Compiler correctness base lemma: list compilation composes by append. -/
 example (fields : List Compiler.CompilationModel.Field)
     (pre post : List Compiler.CompilationModel.Stmt) :

@@ -55,6 +55,7 @@ inductive TStmt where
   | if_ (cond : TExpr .bool) (thenBranch elseBranch : List TStmt)
   | stop
   | returnUint (value : TExpr .uint256)
+  | returnAddr (value : TExpr .address)
   | expr (value : TExpr .unit)
   | revert (reason : String)
   deriving Repr
@@ -202,6 +203,7 @@ def evalTStmtFuel : Nat → TExecState → TStmt → TExecResult
       | false => evalTStmtsFuel fuel s elseBranch
   | Nat.succ _, s, .stop => .ok s
   | Nat.succ _, s, .returnUint _ => .ok s
+  | Nat.succ _, s, .returnAddr _ => .ok s
   | Nat.succ _, s, .expr value =>
       let _ := evalTExpr s value
       .ok s
@@ -216,7 +218,7 @@ def evalTStmtsFuel : Nat → TExecState → List TStmt → TExecResult
       | .ok s' =>
           -- Terminal statements halt execution; remaining statements are dead code.
           match stmt with
-          | .stop | .returnUint _ => .ok s'
+          | .stop | .returnUint _ | .returnAddr _ => .ok s'
           | _ => evalTStmtsFuel fuel s' rest
       | .revert reason => .revert reason
 

@@ -1250,4 +1250,74 @@ theorem compile_require_family_clauses_tail_programs_semantics
         execSourceRequireFamilyClausesTailPrograms,
         compile_require_family_clauses_then_tail_semantics, ih]
 
+/-- Structural append theorem for source semantics over lists of supported
+2.2 generic fragments `(require-clause-list + tail)`, specialized to any
+initial execution state. -/
+theorem execSourceRequireFamilyClausesTailPrograms_append_from
+    (fields : List Field) (init : TExecState)
+    (pre post : List (RequireFamilyClausesTailProgram fields)) :
+    execSourceRequireFamilyClausesTailPrograms fields init (pre ++ post) =
+      match execSourceRequireFamilyClausesTailPrograms fields init pre with
+      | .ok st => execSourceRequireFamilyClausesTailPrograms fields st post
+      | .revert reason => .revert reason := by
+  induction pre generalizing init with
+  | nil =>
+      simp [execSourceRequireFamilyClausesTailPrograms]
+  | cons program rest ih =>
+      cases hstep : execSourceRequireFamilyClausesThenTail fields init program.clauses program.tail with
+      | ok st =>
+          simp [execSourceRequireFamilyClausesTailPrograms, hstep, ih]
+      | revert reason =>
+          simp [execSourceRequireFamilyClausesTailPrograms, hstep]
+
+/-- Structural append theorem for compiled semantics over lists of supported
+2.2 generic fragments `(require-clause-list + tail)`, specialized to any
+initial execution state. -/
+theorem execCompiledRequireFamilyClausesTailPrograms_append_from
+    (fields : List Field) (init : TExecState)
+    (pre post : List (RequireFamilyClausesTailProgram fields)) :
+    execCompiledRequireFamilyClausesTailPrograms fields init (pre ++ post) =
+      match execCompiledRequireFamilyClausesTailPrograms fields init pre with
+      | .ok st => execCompiledRequireFamilyClausesTailPrograms fields st post
+      | .revert reason => .revert reason := by
+  induction pre generalizing init with
+  | nil =>
+      simp [execCompiledRequireFamilyClausesTailPrograms]
+  | cons program rest ih =>
+      cases hstep : execCompiledRequireFamilyClausesThenTail fields init program.clauses program.tail with
+      | ok st =>
+          simp [execCompiledRequireFamilyClausesTailPrograms, hstep, ih]
+      | revert reason =>
+          simp [execCompiledRequireFamilyClausesTailPrograms, hstep]
+
+/-- Generic append/composition semantic-preservation theorem over lists of
+supported 2.2 fragments `(require-clause-list + tail)`. -/
+theorem compile_require_family_clauses_tail_programs_append_semantics
+    (fields : List Field) (init : TExecState)
+    (pre post : List (RequireFamilyClausesTailProgram fields)) :
+    execCompiledRequireFamilyClausesTailPrograms fields init (pre ++ post) =
+      execSourceRequireFamilyClausesTailPrograms fields init (pre ++ post) := by
+  calc
+    execCompiledRequireFamilyClausesTailPrograms fields init (pre ++ post)
+        =
+          match execCompiledRequireFamilyClausesTailPrograms fields init pre with
+          | .ok st => execCompiledRequireFamilyClausesTailPrograms fields st post
+          | .revert reason => .revert reason := by
+            simpa using
+              execCompiledRequireFamilyClausesTailPrograms_append_from fields init pre post
+    _ =
+          match execSourceRequireFamilyClausesTailPrograms fields init pre with
+          | .ok st => execSourceRequireFamilyClausesTailPrograms fields st post
+          | .revert reason => .revert reason := by
+            simpa [compile_require_family_clauses_tail_programs_semantics] using
+              congrArg
+                (fun r =>
+                  match r with
+                  | .ok st => execCompiledRequireFamilyClausesTailPrograms fields st post
+                  | .revert reason => .revert reason)
+                (compile_require_family_clauses_tail_programs_semantics fields init pre)
+    _ = execSourceRequireFamilyClausesTailPrograms fields init (pre ++ post) := by
+          simpa using
+            (execSourceRequireFamilyClausesTailPrograms_append_from fields init pre post).symm
+
 end Verity.Core.Free

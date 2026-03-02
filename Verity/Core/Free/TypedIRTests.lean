@@ -1343,4 +1343,11 @@ example (fields : List Compiler.CompilationModel.Field)
       execSourceRequireFamilyClausesTailPrograms fields init programs :=
   compile_require_family_clauses_tail_programs_semantics fields init programs
 
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState)
+    (pre post : List (RequireFamilyClausesTailProgram fields)) :
+    execCompiledRequireFamilyClausesTailPrograms fields init (pre ++ post) =
+      execSourceRequireFamilyClausesTailPrograms fields init (pre ++ post) :=
+  compile_require_family_clauses_tail_programs_append_semantics fields init pre post
+
 end Verity.Core.Free

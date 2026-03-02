@@ -1161,4 +1161,10 @@ example (fields : List Compiler.CompilationModel.Field)
   compile_ite_eq_setStorage_literals_semantics
     fields fieldName slotIdx init n m thenVal elseVal hfind
 
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState) (n m : Nat) (message : String) :
+    execCompiledRequireEqLiterals fields init n m message =
+      execSourceRequireEqLiterals init n m message :=
+  compile_require_eq_literals_semantics fields init n m message
+
 end Verity.Core.Free

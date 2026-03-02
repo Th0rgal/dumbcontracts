@@ -534,4 +534,25 @@ theorem compileStmts_single_ite_eq_setStorage_literals_run
   simp [compileStmts, compileStmt, compileExpr, compileBranch, fieldTypeToTy, hfind, emit]
   rfl
 
+/-- Single-statement compilation shape for a broader supported require subset:
+`require (eq (literal n) (literal m)) message`
+lowers to one typed `if_` with an else-branch `revert`, from an empty compile state. -/
+theorem compileStmts_single_require_eq_literals_run
+    (fields : List Field) (message : String) (n m : Nat) :
+    (compileStmts fields
+      [Stmt.require (Expr.eq (Expr.literal n) (Expr.literal m)) message]).run {} =
+      Except.ok ((),
+        { nextId := 0
+          vars := []
+          params := #[]
+          locals := #[]
+          body := #[
+            TStmt.if_
+              (TExpr.eq (TExpr.uintLit n) (TExpr.uintLit m))
+              []
+              [TStmt.revert message]
+          ] }) := by
+  simp [compileStmts, compileStmt, compileExpr, emit]
+  rfl
+
 end Verity.Core.Free

@@ -495,6 +495,52 @@ def compiledOwnedTransferOwnershipBlock : Option TBlock :=
 example : compiledOwnedTransferOwnershipBlock.isSome = true := by
   native_decide
 
+/-- End-to-end Owned.transferOwnership (happy path): owner transfers ownership. -/
+def compiledOwnedTransferOwnershipSuccess : Option Nat :=
+  match compileFunctionNamed Compiler.Specs.ownedSpec "transferOwnership" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [newOwnerParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageAddr := fun i => if i = 0 then 42 else 0
+              sender := 42 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = newOwnerParam.id then 99 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some (s.world.storageAddr 0 : Nat)
+          | .revert _ => none
+      | _ => none
+
+/-- Owned.transferOwnership(newOwner=99) by owner (42): owner slot becomes 99. -/
+example : compiledOwnedTransferOwnershipSuccess = some 99 := by native_decide
+
+/-- End-to-end Owned.transferOwnership (revert path): non-owner is rejected. -/
+def compiledOwnedTransferOwnershipReverts : Bool :=
+  match compileFunctionNamed Compiler.Specs.ownedSpec "transferOwnership" with
+  | .error _ => false
+  | .ok block =>
+      match block.params with
+      | [newOwnerParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageAddr := fun i => if i = 0 then 42 else 0
+              sender := 99 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = newOwnerParam.id then 99 else 0 } }
+          match evalTBlock init block with
+          | .ok _ => false
+          | .revert _ => true
+      | _ => false
+
+/-- Owned.transferOwnership by non-owner (99): reverts with "Not owner". -/
+example : compiledOwnedTransferOwnershipReverts = true := by native_decide
+
 /-- Helper: check that compilation succeeds. -/
 private def compilesOk (spec : Compiler.CompilationModel.CompilationModel) (fn : String) : Bool :=
   match compileFunctionNamed spec fn with
@@ -620,6 +666,54 @@ example : compilesOk Compiler.Specs.ownedCounterSpec "decrement" = true := by na
 example : compilesOk Compiler.Specs.ownedCounterSpec "getCount" = true := by native_decide
 example : compilesOk Compiler.Specs.ownedCounterSpec "getOwner" = true := by native_decide
 example : compilesOk Compiler.Specs.ownedCounterSpec "transferOwnership" = true := by native_decide
+
+/-- End-to-end OwnedCounter.transferOwnership (happy path): owner transfers ownership, count unchanged. -/
+def compiledOwnedCounterTransferOwnershipSuccess : Option (Nat × Nat) :=
+  match compileFunctionNamed Compiler.Specs.ownedCounterSpec "transferOwnership" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [newOwnerParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageAddr := fun i => if i = 0 then 42 else 0
+              «storage» := fun i => if i = 1 then 10 else 0
+              sender := 42 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = newOwnerParam.id then 99 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some ((s.world.storageAddr 0 : Nat), s.world.storage 1)
+          | .revert _ => none
+      | _ => none
+
+/-- OwnedCounter.transferOwnership(newOwner=99) by owner (42): owner→99, count stays 10. -/
+example : compiledOwnedCounterTransferOwnershipSuccess = some (99, 10) := by native_decide
+
+/-- End-to-end OwnedCounter.transferOwnership (revert path): non-owner is rejected. -/
+def compiledOwnedCounterTransferOwnershipReverts : Bool :=
+  match compileFunctionNamed Compiler.Specs.ownedCounterSpec "transferOwnership" with
+  | .error _ => false
+  | .ok block =>
+      match block.params with
+      | [newOwnerParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              storageAddr := fun i => if i = 0 then 42 else 0
+              «storage» := fun i => if i = 1 then 10 else 0
+              sender := 77 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = newOwnerParam.id then 99 else 0 } }
+          match evalTBlock init block with
+          | .ok _ => false
+          | .revert _ => true
+      | _ => false
+
+/-- OwnedCounter.transferOwnership by non-owner (77): reverts. -/
+example : compiledOwnedCounterTransferOwnershipReverts = true := by native_decide
 
 /-- Smoke test: all SimpleToken spec functions compile to typed IR. -/
 example : compilesOk Compiler.Specs.simpleTokenSpec "mint" = true := by native_decide

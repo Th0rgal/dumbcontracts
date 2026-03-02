@@ -140,10 +140,10 @@
         "python3 scripts/check_issue_1060_integrity.py"
       ],
       "verification_results": [
-        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T12:05:08Z artifact_sha256=15138f2]",
-        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T12:05:08Z artifact_sha256=15138f2]",
-        "pass: lake build [run_id=2026-03-02T12:05:08Z artifact_sha256=15138f2]",
-        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T12:05:08Z artifact_sha256=15138f2]"
+        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T12:05:54Z artifact_sha256=7676d71]",
+        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T12:05:54Z artifact_sha256=7676d71]",
+        "pass: lake build [run_id=2026-03-02T12:05:54Z artifact_sha256=7676d71]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T12:05:54Z artifact_sha256=7676d71]"
       ],
       "evidence": {
         "theorems": [

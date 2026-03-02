@@ -66,6 +66,8 @@ private def fieldTypeToTy : FieldType → Except String Ty
 private def asUInt256 (e : SomeTExpr) : Except String (TExpr Ty.uint256) :=
   match e with
   | ⟨Ty.uint256, expr⟩ => Except.ok expr
+  -- EVM treats booleans as 0/1 words; coerce via ite to preserve typed-IR invariants.
+  | ⟨Ty.bool, expr⟩ => Except.ok (TExpr.ite expr (TExpr.uintLit 1) (TExpr.uintLit 0))
   | ⟨ty, _⟩ => Except.error s!"Typed IR compile error: expected uint256 expression, got {repr ty}"
 
 private def asAddress (e : SomeTExpr) : Except String (TExpr Ty.address) :=

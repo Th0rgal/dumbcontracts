@@ -416,6 +416,45 @@ def compiledSimpleStorageStoreRetrieveRoundtrip : Option Nat :=
 example : compiledSimpleStorageStoreRetrieveRoundtrip = some 99 := by
   native_decide
 
+/-- Smoke test: Ledger.transfer compiles successfully (exercises bool→uint256 coercion). -/
+def compiledLedgerTransferBlock : Option TBlock :=
+  match compileFunctionNamed Compiler.Specs.ledgerSpec "transfer" with
+  | .ok block => some block
+  | .error _ => none
+
+example : compiledLedgerTransferBlock.isSome = true := by
+  native_decide
+
+/-- End-to-end Ledger.transfer: non-self transfer updates both balances correctly. -/
+def compiledLedgerTransferResult : Option (Nat × Nat) :=
+  match compileFunctionNamed Compiler.Specs.ledgerSpec "transfer" with
+  | .error _ => none
+  | .ok block =>
+      match block.params with
+      | [toParam, amountParam] =>
+          let initWorld : Verity.ContractState :=
+            { Verity.defaultState with
+              -- sender (address 1) has balance 100 in mapping slot 0
+              storageMap := fun slot addr =>
+                if slot == 0 && addr == 1 then 100
+                else if slot == 0 && addr == 2 then 50
+                else 0
+              sender := 1 }
+          let init : TExecState :=
+            { world := initWorld
+              vars := { address := fun i =>
+                          if i = toParam.id then 2 else 0
+                        uint256 := fun i =>
+                          if i = amountParam.id then 30 else 0 } }
+          match evalTBlock init block with
+          | .ok s => some (s.world.storageMap 0 1, s.world.storageMap 0 2)
+          | .revert _ => none
+      | _ => none
+
+/-- Ledger.transfer(to=2, amount=30): sender balance 100→70, recipient balance 50→80. -/
+example : compiledLedgerTransferResult = some (70, 80) := by
+  native_decide
+
 /-- Compiler correctness base lemma: list compilation composes by append. -/
 example (fields : List Compiler.CompilationModel.Field)
     (pre post : List Compiler.CompilationModel.Stmt) :

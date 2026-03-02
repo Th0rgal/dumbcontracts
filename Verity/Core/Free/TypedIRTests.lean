@@ -1,4 +1,5 @@
 import Verity.Core.Free.TypedIR
+import Verity.Core.Free.ContractStep
 import Verity.Core.Free.TypedIRCompiler
 import Verity.Core.Free.TypedIRCompilerCorrectness
 import Verity.Core.Free.TypedIRLowering
@@ -68,7 +69,13 @@ example :
 /-- One-step evaluator reductions are available through the dedicated `ir_step` simp set. -/
 example :
     evalTBlock baseState { params := [], locals := [], body := [] } = .ok baseState := by
-  simp only [ir_step]
+  contract_step
+
+/-- `contract_step` also simplifies single-step expression reductions. -/
+example :
+    evalTExpr baseState (TExpr.var x) = (5 : Verity.Core.Uint256) := by
+  contract_step
+  simp [baseState, x, TVars.get]
 
 /-- Context expressions read from world/environment. -/
 example :

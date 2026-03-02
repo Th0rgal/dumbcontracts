@@ -516,4 +516,28 @@ example :
     Counter.getCount_modelBody := by
   simpa using Counter.getCount_semantic_preservation
 
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleStorage.store_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleStorage.store_modelBody := by
+  simpa using SimpleStorage.store_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleStorage.retrieve_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleStorage.retrieve_modelBody := by
+  simpa using SimpleStorage.retrieve_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Owned.transferOwnership_model : Compiler.CompilationModel.FunctionSpec)) =
+    Owned.transferOwnership_modelBody := by
+  simpa using Owned.transferOwnership_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Owned.getOwner_model : Compiler.CompilationModel.FunctionSpec)) =
+    Owned.getOwner_modelBody := by
+  simpa using Owned.getOwner_semantic_preservation
+
 end Verity.Examples.MacroContracts

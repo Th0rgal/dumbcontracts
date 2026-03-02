@@ -101,7 +101,8 @@
         "Add a non-trivial semantic-preservation theorem artifact for a supported compilation subset without weakening obligations.",
         "Extend semantic-preservation coverage to the supported letVar/assignVar/setStorage(localVar) subset with explicit field-resolution assumptions.",
         "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses add(localVar,tmpLiteral) before setStorage.",
-        "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses sub(localVar,tmpLiteral) before setStorage."
+        "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses sub(localVar,tmpLiteral) before setStorage.",
+        "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses mul(localVar,tmpLiteral) before setStorage."
       ],
       "files_changed": [
         "Verity/Core/Free/TypedIRCompiler.lean",
@@ -182,6 +183,16 @@
             "name": "compile_let_assign_sub_setStorage_local_literal_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "For the supported arithmetic letVar/assignVar-sub/setStorage-local subset, compiled typed-IR execution preserves source storage-update semantics (n - m) and the expected SSA rebinding effect."
+          },
+          {
+            "name": "compileStmts_let_assign_mul_literal_setStorage_local_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "statement_summary": "Three-statement compilation for letVar-literal; assignVar-mul(localVar,literal); setStorage-localVar emits the expected SSA let rebinding with typed multiplication and typed setStorage sequence from empty compile state."
+          },
+          {
+            "name": "compile_let_assign_mul_setStorage_local_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "For the supported arithmetic letVar/assignVar-mul/setStorage-local subset, compiled typed-IR execution preserves source storage-update semantics (n * m) and the expected SSA rebinding effect."
           }
         ],
         "tests": [
@@ -190,13 +201,14 @@
           "TypedIRTests: example instantiating compile_let_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
           "TypedIRTests: example instantiating compile_let_assign_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
           "TypedIRTests: example instantiating compile_let_assign_add_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
-          "TypedIRTests: example instantiating compile_let_assign_sub_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions"
+          "TypedIRTests: example instantiating compile_let_assign_sub_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
+          "TypedIRTests: example instantiating compile_let_assign_mul_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions"
         ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence to arithmetic three-statement subsets for both add and sub rebinding (letVar literal; assignVar op(localVar,literal); setStorage localVar) under explicit field-resolution assumptions, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
+      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence to arithmetic three-statement subsets for add/sub/mul rebinding (letVar literal; assignVar op(localVar,literal); setStorage localVar) under explicit field-resolution assumptions, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
     },
     "2.3": {
       "status": "open",

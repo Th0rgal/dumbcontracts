@@ -1169,6 +1169,12 @@ example (fields : List Compiler.CompilationModel.Field)
 
 example (fields : List Compiler.CompilationModel.Field)
     (init : TExecState) (n m : Nat) (message : String) :
+    execCompiledRequireNotEqLiterals fields init n m message =
+      execSourceRequireNotEqLiterals init n m message :=
+  compile_require_not_eq_literals_semantics fields init n m message
+
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState) (n m : Nat) (message : String) :
     execCompiledRequireLtLiterals fields init n m message =
       execSourceRequireLtLiterals init n m message :=
   compile_require_lt_literals_semantics fields init n m message

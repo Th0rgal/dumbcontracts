@@ -166,6 +166,20 @@ def execCompiledRequireEqLiterals
   | .ok (_, st) => evalTStmts init st.body.toList
 
 /-- Direct source semantics for a broader supported require subset:
+`require (logicalNot (eq (literal n) (literal m))) message`
+halts with revert on guard failure and leaves state unchanged otherwise. -/
+def execSourceRequireNotEqLiterals (init : TExecState) (n m : Nat) (message : String) : TExecResult :=
+  if ¬ ((n : Verity.Core.Uint256) == (m : Verity.Core.Uint256)) then .ok init else .revert message
+
+/-- Compile + execute a broader supported require subset statement through typed IR. -/
+def execCompiledRequireNotEqLiterals
+    (fields : List Field) (init : TExecState) (n m : Nat) (message : String) : TExecResult :=
+  match (compileStmts fields
+      [Stmt.require (Expr.logicalNot (Expr.eq (Expr.literal n) (Expr.literal m))) message]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
+/-- Direct source semantics for a broader supported require subset:
 `require (lt (literal n) (literal m)) message`
 halts with revert on guard failure and leaves state unchanged otherwise. -/
 def execSourceRequireLtLiterals (init : TExecState) (n m : Nat) (message : String) : TExecResult :=
@@ -433,6 +447,19 @@ theorem compile_require_eq_literals_semantics
       execSourceRequireEqLiterals init n m message := by
   simp [execCompiledRequireEqLiterals, execSourceRequireEqLiterals,
     compileStmts_single_require_eq_literals_run, evalTStmts, defaultEvalFuel]
+  by_cases hEq : (n : Verity.Core.Uint256) = (m : Verity.Core.Uint256)
+  · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEq]
+  · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEq]
+
+/-- Semantic-preservation theorem for a broader supported require subset:
+compiling and running `require (logicalNot (eq (literal n) (literal m))) message`
+matches direct source require semantics. -/
+theorem compile_require_not_eq_literals_semantics
+    (fields : List Field) (init : TExecState) (n m : Nat) (message : String) :
+    execCompiledRequireNotEqLiterals fields init n m message =
+      execSourceRequireNotEqLiterals init n m message := by
+  simp [execCompiledRequireNotEqLiterals, execSourceRequireNotEqLiterals,
+    compileStmts_single_require_not_eq_literals_run, evalTStmts, defaultEvalFuel]
   by_cases hEq : (n : Verity.Core.Uint256) = (m : Verity.Core.Uint256)
   · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEq]
   · simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr, hEq]

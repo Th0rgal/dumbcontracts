@@ -476,4 +476,13 @@ theorem compileStmts_let_assign_mul_literal_setStorage_local_run
     lookupVar, fieldTypeToTy, hfind, emit]
   rfl
 
+/-- Single-statement compilation shape for a broader supported subset:
+`return (literal n)` lowers to one typed `returnUint`, from any initial compile state. -/
+theorem compileStmts_single_return_literal_run
+    (fields : List Field) (n : Nat) (st : CompileState) :
+    (compileStmts fields [Stmt.return (Expr.literal n)]).run st =
+      Except.ok ((), { st with body := st.body.push (TStmt.returnUint (TExpr.uintLit n)) }) := by
+  simp [compileStmts, compileStmt, compileExpr, emit]
+  rfl
+
 end Verity.Core.Free

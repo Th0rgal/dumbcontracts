@@ -102,7 +102,8 @@
         "Extend semantic-preservation coverage to the supported letVar/assignVar/setStorage(localVar) subset with explicit field-resolution assumptions.",
         "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses add(localVar,tmpLiteral) before setStorage.",
         "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses sub(localVar,tmpLiteral) before setStorage.",
-        "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses mul(localVar,tmpLiteral) before setStorage."
+        "Extend semantic-preservation coverage to an arithmetic subset where assignVar rebinding uses mul(localVar,tmpLiteral) before setStorage.",
+        "Extend semantic-preservation coverage to a return subset where `return (literal n)` preserves source halting semantics."
       ],
       "files_changed": [
         "Verity/Core/Free/TypedIRCompiler.lean",
@@ -193,6 +194,16 @@
             "name": "compile_let_assign_mul_setStorage_local_literal_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "For the supported arithmetic letVar/assignVar-mul/setStorage-local subset, compiled typed-IR execution preserves source storage-update semantics (n * m) and the expected SSA rebinding effect."
+          },
+          {
+            "name": "compileStmts_single_return_literal_run",
+            "file": "Verity/Core/Free/TypedIRCompiler.lean",
+            "statement_summary": "Single-statement compilation for return literal emits the expected typed returnUint statement from any initial compile state."
+          },
+          {
+            "name": "compile_return_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "For the supported return-literal subset, compiled typed-IR execution preserves direct source return semantics (state unchanged, halting)."
           }
         ],
         "tests": [
@@ -202,13 +213,14 @@
           "TypedIRTests: example instantiating compile_let_assign_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
           "TypedIRTests: example instantiating compile_let_assign_add_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
           "TypedIRTests: example instantiating compile_let_assign_sub_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
-          "TypedIRTests: example instantiating compile_let_assign_mul_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions"
+          "TypedIRTests: example instantiating compile_let_assign_mul_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot assumptions",
+          "TypedIRTests: example instantiating compile_return_literal_semantics over arbitrary fields/init/n"
         ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence to arithmetic three-statement subsets for add/sub/mul rebinding (letVar literal; assignVar op(localVar,literal); setStorage localVar) under explicit field-resolution assumptions, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
+      "notes": "2.2 remains partial: this slice extends semantic-preservation evidence with a return-literal halting theorem, in addition to arithmetic three-statement subsets for add/sub/mul rebinding (letVar literal; assignVar op(localVar,literal); setStorage localVar) under explicit field-resolution assumptions, but does not yet prove full source-vs-typed semantics for the broader supported statement fragment."
     },
     "2.3": {
       "status": "open",

@@ -1140,4 +1140,9 @@ example (fields : List Compiler.CompilationModel.Field)
   compile_let_assign_mul_setStorage_local_literal_semantics
     fields fieldName tmp slotIdx init n m hfind
 
+example (fields : List Compiler.CompilationModel.Field)
+    (init : TExecState) (n : Nat) :
+    execCompiledReturnLiteral fields init n = execSourceReturnLiteral init n :=
+  compile_return_literal_semantics fields init n
+
 end Verity.Core.Free

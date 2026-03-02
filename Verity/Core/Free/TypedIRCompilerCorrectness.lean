@@ -100,6 +100,18 @@ def execCompiledLetAssignMulSetStorageLocalLiteral
   | .error err => .revert err
   | .ok (_, st) => evalTStmts init st.body.toList
 
+/-- Direct source semantics for the supported return subset:
+`return (literal n)` halts without mutating state. -/
+def execSourceReturnLiteral (init : TExecState) (_n : Nat) : TExecResult :=
+  .ok init
+
+/-- Compile + execute the supported return subset statement through typed IR. -/
+def execCompiledReturnLiteral
+    (fields : List Field) (init : TExecState) (n : Nat) : TExecResult :=
+  match (compileStmts fields [Stmt.return (Expr.literal n)]).run {} with
+  | .error err => .revert err
+  | .ok (_, st) => evalTStmts init st.body.toList
+
 /-- Semantic-preservation theorem for the supported 2.2 subset:
 compiling and running `setStorage fieldName (literal n)` matches direct source execution,
 under explicit field-resolution assumptions. -/
@@ -216,5 +228,14 @@ theorem compile_let_assign_mul_setStorage_local_literal_semantics
   simp [execCompiledLetAssignMulSetStorageLocalLiteral, execSourceSetStorageLiteral,
     compileStmts_let_assign_mul_literal_setStorage_local_run, hfind, evalTStmts, defaultEvalFuel]
   simp [evalTStmtsFuel, evalTStmtFuel, evalTExpr]
+
+/-- Semantic-preservation theorem for a broader supported subset:
+compiling and running `return (literal n)` matches direct source return semantics. -/
+theorem compile_return_literal_semantics
+    (fields : List Field) (init : TExecState) (n : Nat) :
+    execCompiledReturnLiteral fields init n = execSourceReturnLiteral init n := by
+  simp [execCompiledReturnLiteral, execSourceReturnLiteral,
+    compileStmts_single_return_literal_run, evalTStmts, defaultEvalFuel]
+  simp [evalTStmtsFuel, evalTStmtFuel]
 
 end Verity.Core.Free

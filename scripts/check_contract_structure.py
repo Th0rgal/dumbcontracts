@@ -27,6 +27,13 @@ EXCLUDED_FROM_PROPERTY_TESTS = {
     "MacroContracts",     # Bundle module, not a deployable contract
 }
 
+# Contracts excluded from differential test check
+EXCLUDED_FROM_DIFFERENTIAL_TESTS = {
+    "CryptoHash",         # External-library oracle behavior is not differential-tested
+    "MacroContracts",     # Bundle module, not a deployable contract
+    "ReentrancyExample",  # Reentrancy model requires dedicated external-call harnessing
+}
+
 # Expected files for each contract (relative to ROOT)
 EXPECTED_STRUCTURE = [
     "Verity/Specs/{name}/Spec.lean",
@@ -115,6 +122,18 @@ def check_all_lean_imports_exist() -> list[str]:
     return issues
 
 
+def check_differential_tests(all_examples: list[str]) -> list[str]:
+    """Check that each eligible contract has a Differential test suite."""
+    issues: list[str] = []
+    for name in all_examples:
+        if name in EXCLUDED_FROM_DIFFERENTIAL_TESTS:
+            continue
+        diff_test = ROOT / "test" / f"Differential{name}.t.sol"
+        if not diff_test.exists():
+            issues.append(f"{name}: missing test/Differential{name}.t.sol")
+    return issues
+
+
 def main() -> None:
     contracts = find_contracts()
     if not contracts:
@@ -149,6 +168,12 @@ def main() -> None:
             msg = f"{name}: missing test/Property{name}.t.sol"
             print(f"  MISSING {msg}")
             all_issues.append(msg)
+
+    # Check differential test files
+    differential_issues = check_differential_tests(all_examples)
+    for issue in differential_issues:
+        print(f"  MISSING {issue}")
+    all_issues.extend(differential_issues)
 
     # Check All.lean imports
     import_issues = check_all_lean_imports(contracts)

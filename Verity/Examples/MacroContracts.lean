@@ -384,6 +384,57 @@ verity_contract ERC20 where
     let currentOwner ← getStorageAddr ownerSlot
     return currentOwner
 
+verity_contract ERC721 where
+  storage
+    ownerSlot : Address := slot 0
+    totalSupplySlot : Uint256 := slot 1
+    nextTokenIdSlot : Uint256 := slot 2
+    ownersSlot : Uint256 → Uint256 := slot 3
+    tokenApprovalsSlot : Uint256 → Uint256 := slot 4
+
+  constructor (initialOwner : Address) := do
+    setStorageAddr ownerSlot initialOwner
+    setStorage totalSupplySlot 0
+    setStorage nextTokenIdSlot 0
+
+  function ownerOf (tokenId : Uint256) : Uint256 := do
+    let ownerWord ← getMappingUint ownersSlot tokenId
+    require (ownerWord != 0) "Token does not exist"
+    return ownerWord
+
+  function getApproved (tokenId : Uint256) : Uint256 := do
+    let approvedWord ← getMappingUint tokenApprovalsSlot tokenId
+    return approvedWord
+
+  function approve (approved : Uint256, tokenId : Uint256) : Unit := do
+    setMappingUint tokenApprovalsSlot tokenId approved
+
+  function mint (to : Uint256) : Uint256 := do
+    let sender ← msgSender
+    let currentOwner ← getStorageAddr ownerSlot
+    require (sender == currentOwner) "Caller is not the owner"
+    let tokenId ← getStorage nextTokenIdSlot
+    let currentOwnerWord ← getMappingUint ownersSlot tokenId
+    require (currentOwnerWord == 0) "Token already minted"
+    let currentSupply ← getStorage totalSupplySlot
+    let newSupply ← requireSomeUint (safeAdd currentSupply 1) "Supply overflow"
+    setMappingUint ownersSlot tokenId to
+    setStorage totalSupplySlot newSupply
+    setStorage nextTokenIdSlot (add tokenId 1)
+    return tokenId
+
+  function transferFrom (fromAddr : Uint256, to : Uint256, tokenId : Uint256) : Unit := do
+    let ownerWord ← getMappingUint ownersSlot tokenId
+    require (ownerWord != 0) "Token does not exist"
+    require (ownerWord == fromAddr) "From is not owner"
+    let approvedWord ← getMappingUint tokenApprovalsSlot tokenId
+    if approvedWord == 0 then
+      pure ()
+    else
+      require (approvedWord == to) "Not authorized"
+    setMappingUint ownersSlot tokenId to
+    setMappingUint tokenApprovalsSlot tokenId 0
+
 namespace SimpleToken
 
 abbrev getTotalSupply : Contract Uint256 := totalSupply
@@ -497,5 +548,245 @@ verity_contract Uint8Smoke where
 #check_contract StorageWordsSmoke
 #check_contract TupleSmoke
 #check_contract Uint8Smoke
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.increment_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.increment_modelBody := by
+  simpa using Counter.increment_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.increment_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.increment_modelBody := by
+  simpa using Counter.increment_bridge
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.decrement_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.decrement_modelBody := by
+  simpa using Counter.decrement_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.decrement_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.decrement_modelBody := by
+  simpa using Counter.decrement_bridge
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.getCount_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.getCount_modelBody := by
+  simpa using Counter.getCount_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.getCount_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.getCount_modelBody := by
+  simpa using Counter.getCount_bridge
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleStorage.store_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleStorage.store_modelBody := by
+  simpa using SimpleStorage.store_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleStorage.retrieve_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleStorage.retrieve_modelBody := by
+  simpa using SimpleStorage.retrieve_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Owned.transferOwnership_model : Compiler.CompilationModel.FunctionSpec)) =
+    Owned.transferOwnership_modelBody := by
+  simpa using Owned.transferOwnership_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Owned.getOwner_model : Compiler.CompilationModel.FunctionSpec)) =
+    Owned.getOwner_modelBody := by
+  simpa using Owned.getOwner_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SafeCounter.increment_model : Compiler.CompilationModel.FunctionSpec)) =
+    SafeCounter.increment_modelBody := by
+  simpa using SafeCounter.increment_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SafeCounter.decrement_model : Compiler.CompilationModel.FunctionSpec)) =
+    SafeCounter.decrement_modelBody := by
+  simpa using SafeCounter.decrement_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SafeCounter.getCount_model : Compiler.CompilationModel.FunctionSpec)) =
+    SafeCounter.getCount_modelBody := by
+  simpa using SafeCounter.getCount_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.increment_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.increment_modelBody := by
+  simpa using OwnedCounter.increment_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.decrement_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.decrement_modelBody := by
+  simpa using OwnedCounter.decrement_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.getCount_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.getCount_modelBody := by
+  simpa using OwnedCounter.getCount_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.getOwner_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.getOwner_modelBody := by
+  simpa using OwnedCounter.getOwner_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (OwnedCounter.transferOwnership_model : Compiler.CompilationModel.FunctionSpec)) =
+    OwnedCounter.transferOwnership_modelBody := by
+  simpa using OwnedCounter.transferOwnership_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.deposit_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.deposit_modelBody := by
+  simpa using Ledger.deposit_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.withdraw_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.withdraw_modelBody := by
+  simpa using Ledger.withdraw_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.transfer_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.transfer_modelBody := by
+  simpa using Ledger.transfer_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Ledger.getBalance_model : Compiler.CompilationModel.FunctionSpec)) =
+    Ledger.getBalance_modelBody := by
+  simpa using Ledger.getBalance_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.mint_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.mint_modelBody := by
+  simpa using SimpleToken.mint_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.transfer_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.transfer_modelBody := by
+  simpa using SimpleToken.transfer_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.balanceOf_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.balanceOf_modelBody := by
+  simpa using SimpleToken.balanceOf_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.totalSupply_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.totalSupply_modelBody := by
+  simpa using SimpleToken.totalSupply_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (SimpleToken.owner_model : Compiler.CompilationModel.FunctionSpec)) =
+    SimpleToken.owner_modelBody := by
+  simpa using SimpleToken.owner_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.mint_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.mint_modelBody := by
+  simpa using ERC20.mint_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.transfer_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.transfer_modelBody := by
+  simpa using ERC20.transfer_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.approve_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.approve_modelBody := by
+  simpa using ERC20.approve_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.transferFrom_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.transferFrom_modelBody := by
+  simpa using ERC20.transferFrom_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.balanceOf_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.balanceOf_modelBody := by
+  simpa using ERC20.balanceOf_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.allowanceOf_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.allowanceOf_modelBody := by
+  simpa using ERC20.allowanceOf_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.totalSupply_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.totalSupply_modelBody := by
+  simpa using ERC20.totalSupply_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC20.owner_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC20.owner_modelBody := by
+  simpa using ERC20.owner_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC721.mint_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC721.mint_modelBody := by
+  simpa using ERC721.mint_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC721.transferFrom_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC721.transferFrom_modelBody := by
+  simpa using ERC721.transferFrom_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC721.ownerOf_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC721.ownerOf_modelBody := by
+  simpa using ERC721.ownerOf_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC721.approve_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC721.approve_modelBody := by
+  simpa using ERC721.approve_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (ERC721.getApproved_model : Compiler.CompilationModel.FunctionSpec)) =
+    ERC721.getApproved_modelBody := by
+  simpa using ERC721.getApproved_semantic_preservation
 
 end Verity.Examples.MacroContracts

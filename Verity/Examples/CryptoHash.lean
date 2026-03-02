@@ -8,6 +8,7 @@
 -/
 
 import Verity.Core
+import Verity.Core.Semantics
 import Verity.EVM.Uint256
 
 namespace Verity.Examples.CryptoHash
@@ -35,13 +36,13 @@ For now, we demonstrate the pattern with a simple addition-based placeholder.
 
 -- Placeholder hash: just add the inputs (for proving)
 -- In production: linked via `lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul`
-def hashTwo (a b : Uint256) : Contract Uint256 := do
-  return add a b
+def hashTwo (a b : Uint256) : Contract Uint256 := fun s =>
+  ContractResult.success ((Verity.Env.ofWorld s).callOracle "PoseidonT3_hash" [a, b]) s
 
 -- Placeholder hash for three inputs
 -- In production: linked via `lake exe verity-compiler --link examples/external-libs/PoseidonT4.yul`
-def hashThree (a b c : Uint256) : Contract Uint256 := do
-  return add (add a b) c
+def hashThree (a b c : Uint256) : Contract Uint256 := fun s =>
+  ContractResult.success ((Verity.Env.ofWorld s).callOracle "PoseidonT4_hash" [a, b, c]) s
 
 -- Store hash of two values
 def storeHashTwo (a b : Uint256) : Contract Unit := do
@@ -68,5 +69,15 @@ def exampleUsage : Contract Uint256 := do
   thisAddress := 0xC2470
 }).getValue?
 -- Expected output: some 300 (with placeholder hash: 100 + 200)
+
+example :
+    (hashTwo 10 7).run defaultState = ContractResult.success (17 : Uint256) defaultState := by
+  simp [Contract.run, hashTwo, Verity.Env.ofWorld, Verity.Env.defaultCallOracle]
+  decide
+
+example :
+    (hashThree 5 6 7).run defaultState = ContractResult.success (18 : Uint256) defaultState := by
+  simp [Contract.run, hashThree, Verity.Env.ofWorld, Verity.Env.defaultCallOracle]
+  decide
 
 end Verity.Examples.CryptoHash

@@ -32,6 +32,7 @@ Do:
 
 - Read files before editing.
 - Run `lake build`.
+- For issue #1060 runs, update `artifacts/issue_1060_progress.json` and run `python3 scripts/check_issue_1060_integrity.py` before claiming completion.
 - Use `[Category]` prefixes.
 - Update `docs/ROADMAP.md` for architecture changes.
 - Keep `AUDIT.md`, `TRUST_ASSUMPTIONS.md`, and `AXIOMS.md` in sync.
@@ -94,3 +95,4 @@ FOUNDRY_PROFILE=difftest forge test
 - Layer 3 proofs are complete.
 - For new contracts, scaffold with `python3 scripts/generate_contract.py <Name>` and follow `/add-contract`.
 - For compiler changes, read `Compiler/Specs.lean` and verify proofs still build.
+- For strict non-inflation #1060 execution protocol, use `docs/ISSUE_1060_AGENT_PROMPT.md`.

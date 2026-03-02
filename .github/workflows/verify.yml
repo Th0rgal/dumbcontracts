@@ -193,6 +193,9 @@ jobs:
       - name: Check proof length limits
         run: python3 scripts/check_proof_length.py
 
+      - name: Check issue #1060 integrity ledger
+        run: python3 scripts/check_issue_1060_integrity.py
+
       - name: Run Python unit tests
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 

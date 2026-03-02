@@ -170,6 +170,11 @@ def evalTExpr (s : TExecState) : TExpr ty → Ty.denote ty
   | .getMapping slot key => s.world.storageMap slot (evalTExpr s key)
   | .getMappingUint slot key => s.world.storageMapUint slot (evalTExpr s key)
 
+/-- Check whether a statement is an EVM-halting terminal (`stop`, `return`). -/
+private def isTerminalStmt : TStmt → Bool
+  | .stop | .returnUint _ | .returnAddr _ => true
+  | _ => false
+
 mutual
 
 /-- Fuel-bounded evaluator for a single typed IR statement. -/
@@ -217,9 +222,17 @@ def evalTStmtsFuel : Nat → TExecState → List TStmt → TExecResult
       match evalTStmtFuel fuel s stmt with
       | .ok s' =>
           -- Terminal statements halt execution; remaining statements are dead code.
-          match stmt with
-          | .stop | .returnUint _ | .returnAddr _ => .ok s'
-          | _ => evalTStmtsFuel fuel s' rest
+          -- For `if_`, check the taken branch: a terminal inside it must also
+          -- halt the outer sequence, matching EVM semantics where `stop`/`return`
+          -- are global halts, not scoped to the current block.
+          let halts := match stmt with
+            | .stop | .returnUint _ | .returnAddr _ => true
+            | .if_ cond thenBranch elseBranch =>
+                let branch := if evalTExpr s cond then thenBranch else elseBranch
+                branch.any isTerminalStmt
+            | _ => false
+          if halts then .ok s'
+          else evalTStmtsFuel fuel s' rest
       | .revert reason => .revert reason
 
 end

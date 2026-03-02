@@ -228,7 +228,9 @@ def evalTStmtsFuel : Nat → TExecState → List TStmt → TExecResult
           let halts := match stmt with
             | .stop | .returnUint _ | .returnAddr _ => true
             | .if_ cond thenBranch elseBranch =>
-                let branch := if evalTExpr s cond then thenBranch else elseBranch
+                let branch := match evalTExpr s cond with
+                  | true => thenBranch
+                  | false => elseBranch
                 branch.any isTerminalStmt
             | _ => false
           if halts then .ok s'

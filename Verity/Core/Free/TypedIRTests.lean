@@ -443,9 +443,9 @@ def compiledLedgerTransferResult : Option (Nat × Nat) :=
           let initWorld : Verity.ContractState :=
             { Verity.defaultState with
               -- sender (address 1) has balance 100 in mapping slot 0
-              storageMap := fun slot addr =>
-                if slot == 0 && addr == 1 then 100
-                else if slot == 0 && addr == 2 then 50
+              storageMap := fun i addr =>
+                if i == 0 && addr == 1 then 100
+                else if i == 0 && addr == 2 then 50
                 else 0
               sender := 1 }
           let init : TExecState :=
@@ -561,8 +561,8 @@ def compiledLedgerDepositResult : Option Nat :=
       | [amountParam] =>
           let initWorld : Verity.ContractState :=
             { Verity.defaultState with
-              storageMap := fun slot addr =>
-                if slot == 0 && addr == 1 then 100 else 0
+              storageMap := fun i addr =>
+                if i == 0 && addr == 1 then 100 else 0
               sender := 1 }
           let init : TExecState :=
             { world := initWorld
@@ -585,8 +585,8 @@ def compiledLedgerWithdrawSuccess : Option Nat :=
       | [amountParam] =>
           let initWorld : Verity.ContractState :=
             { Verity.defaultState with
-              storageMap := fun slot addr =>
-                if slot == 0 && addr == 1 then 100 else 0
+              storageMap := fun i addr =>
+                if i == 0 && addr == 1 then 100 else 0
               sender := 1 }
           let init : TExecState :=
             { world := initWorld
@@ -609,8 +609,8 @@ def compiledLedgerWithdrawReverts : Bool :=
       | [amountParam] =>
           let initWorld : Verity.ContractState :=
             { Verity.defaultState with
-              storageMap := fun slot addr =>
-                if slot == 0 && addr == 1 then 10 else 0
+              storageMap := fun i addr =>
+                if i == 0 && addr == 1 then 10 else 0
               sender := 1 }
           let init : TExecState :=
             { world := initWorld

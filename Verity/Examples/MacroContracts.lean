@@ -498,4 +498,22 @@ verity_contract Uint8Smoke where
 #check_contract TupleSmoke
 #check_contract Uint8Smoke
 
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.increment_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.increment_modelBody := by
+  simpa using Counter.increment_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.decrement_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.decrement_modelBody := by
+  simpa using Counter.decrement_semantic_preservation
+
+example :
+    (Compiler.CompilationModel.FunctionSpec.body
+      (Counter.getCount_model : Compiler.CompilationModel.FunctionSpec)) =
+    Counter.getCount_modelBody := by
+  simpa using Counter.getCount_semantic_preservation
+
 end Verity.Examples.MacroContracts

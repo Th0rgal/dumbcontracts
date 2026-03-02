@@ -62,8 +62,13 @@ where
             [.call "mappingSlot" [.lit slot, lowerTExpr key], lowerTExpr value])
         ]
     | .if_ cond thenBranch elseBranch =>
-        [ .if_ (lowerTExpr cond) (lowerTStmts thenBranch)
-        , .if_ (.call "iszero" [lowerTExpr cond]) (lowerTStmts elseBranch)
+        -- Use switch to evaluate the condition exactly once.  The previous
+        -- two-if pattern re-evaluated `cond` after the then-branch, which
+        -- could observe state mutations (e.g. sstore) and incorrectly
+        -- fall into the else-branch.
+        [ .switch (lowerTExpr cond)
+            [(1, lowerTStmts thenBranch)]
+            (some (lowerTStmts elseBranch))
         ]
     | .stop => [.expr (.call "stop" [])]
     | .returnUint value =>

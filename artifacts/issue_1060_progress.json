@@ -123,7 +123,8 @@
         "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `setStorage fieldName (literal writeVal)`, preserving clause-list short-circuit revert behavior and subsequent storage update under explicit field-resolution assumptions.",
         "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `return (literal retVal)`, preserving clause-list short-circuit revert vs halting semantics.",
         "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `letVar tmp (literal retVal); return (localVar tmp)`, preserving clause-list short-circuit revert behavior together with local-binding return semantics.",
-        "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `letVar tmp (literal n); assignVar tmp (add (localVar tmp) (literal m)); setStorage fieldName (localVar tmp)`, preserving clause-list short-circuit revert behavior together with arithmetic rebinding/storage semantics under explicit field-resolution assumptions."
+        "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `letVar tmp (literal n); assignVar tmp (add (localVar tmp) (literal m)); setStorage fieldName (localVar tmp)`, preserving clause-list short-circuit revert behavior together with arithmetic rebinding/storage semantics under explicit field-resolution assumptions.",
+        "Extend semantic-preservation coverage to a sequencing subset where a unified require guard-family clause list executes before `letVar tmp (literal n); assignVar tmp (sub (localVar tmp) (literal m)); setStorage fieldName (localVar tmp)`, preserving clause-list short-circuit revert behavior together with arithmetic rebinding/storage semantics under explicit field-resolution assumptions."
       ],
       "files_changed": [
         "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
@@ -137,10 +138,10 @@
         "python3 scripts/check_issue_1060_integrity.py"
       ],
       "verification_results": [
-        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T12:55:00Z artifact_sha256=4e7f3c2a9b]",
-        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T12:55:00Z artifact_sha256=4e7f3c2a9b]",
-        "pass: lake build [run_id=2026-03-02T12:55:00Z artifact_sha256=4e7f3c2a9b]",
-        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T12:55:00Z artifact_sha256=4e7f3c2a9b]"
+        "pass: lake build Verity.Core.Free.TypedIRCompiler [run_id=2026-03-02T11:55:44Z artifact_sha256=8ef1e405e9]",
+        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests [run_id=2026-03-02T11:55:44Z artifact_sha256=8ef1e405e9]",
+        "pass: lake build [run_id=2026-03-02T11:55:44Z artifact_sha256=8ef1e405e9]",
+        "pass: python3 scripts/check_issue_1060_integrity.py [run_id=2026-03-02T11:55:44Z artifact_sha256=8ef1e405e9]"
       ],
       "evidence": {
         "theorems": [
@@ -373,6 +374,11 @@
             "name": "compile_require_family_clauses_then_let_assign_add_setStorage_local_literal_semantics",
             "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
             "statement_summary": "Sequencing theorem: for unified require guard-family clause lists followed by letVar/assignVar-add/setStorage-localVar, compiled execution matches source clause-list short-circuit semantics together with arithmetic rebinding/storage behavior under explicit field-resolution assumptions."
+          },
+          {
+            "name": "compile_require_family_clauses_then_let_assign_sub_setStorage_local_literal_semantics",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "Sequencing theorem: for unified require guard-family clause lists followed by letVar/assignVar-sub/setStorage-localVar, compiled execution matches source clause-list short-circuit semantics together with arithmetic rebinding/storage behavior under explicit field-resolution assumptions."
           }
         ],
         "tests": [
@@ -403,13 +409,14 @@
           "TypedIRTests: example instantiating compile_require_family_clauses_then_setStorage_literal_semantics over arbitrary fields/fieldName/slot/init/guard-family clauses/writeVal assumptions",
           "TypedIRTests: example instantiating compile_require_family_clauses_then_return_literal_semantics over arbitrary fields/init/guard-family clauses/retVal",
           "TypedIRTests: example instantiating compile_require_family_clauses_then_let_return_local_literal_semantics over arbitrary fields/tmp/init/guard-family clauses/retVal",
-          "TypedIRTests: example instantiating compile_require_family_clauses_then_let_assign_add_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot/init/guard-family clauses/n/m assumptions"
+          "TypedIRTests: example instantiating compile_require_family_clauses_then_let_assign_add_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot/init/guard-family clauses/n/m assumptions",
+          "TypedIRTests: example instantiating compile_require_family_clauses_then_let_assign_sub_setStorage_local_literal_semantics over arbitrary fields/fieldName/tmp/slot/init/guard-family clauses/n/m assumptions"
         ]
       },
       "obligation_delta": {
         "removed_sorries": []
       },
-      "notes": "2.2 remains partial: this slice adds sequencing semantic preservation for unified require guard-family clause lists followed by `letVar tmp (literal n); assignVar tmp (add (localVar tmp) (literal m)); setStorage fieldName (localVar tmp)` via `compile_require_family_clauses_then_let_assign_add_setStorage_local_literal_semantics`, without deleting prior obligations. Full source-vs-typed semantic preservation over the broader supported statement fragment is still pending."
+      "notes": "2.2 remains partial: this slice adds sequencing semantic preservation for unified require guard-family clause lists followed by `letVar tmp (literal n); assignVar tmp (sub (localVar tmp) (literal m)); setStorage fieldName (localVar tmp)` via `compile_require_family_clauses_then_let_assign_sub_setStorage_local_literal_semantics`, without deleting prior obligations. Full source-vs-typed semantic preservation over the broader supported statement fragment is still pending."
     },
     "2.3": {
       "status": "open",

@@ -154,6 +154,16 @@ private def compileExpr (fields : List Field) : Expr → CompileM SomeTExpr
       let a' ← liftExcept <| asUInt256 (← compileExpr fields a)
       let b' ← liftExcept <| asUInt256 (← compileExpr fields b)
       return ⟨Ty.bool, TExpr.not (TExpr.lt b' a')⟩
+  | .eq a b => do
+      let a' ← compileExpr fields a
+      let b' ← compileExpr fields b
+      match a', b' with
+      | ⟨Ty.uint256, aExpr⟩, ⟨Ty.uint256, bExpr⟩ => return ⟨Ty.bool, TExpr.eq aExpr bExpr⟩
+      | ⟨Ty.address, aExpr⟩, ⟨Ty.address, bExpr⟩ => return ⟨Ty.bool, TExpr.eq aExpr bExpr⟩
+      | ⟨Ty.bool, aExpr⟩, ⟨Ty.bool, bExpr⟩ => return ⟨Ty.bool, TExpr.eq aExpr bExpr⟩
+      | ⟨Ty.unit, aExpr⟩, ⟨Ty.unit, bExpr⟩ => return ⟨Ty.bool, TExpr.eq aExpr bExpr⟩
+      | ⟨aTy, _⟩, ⟨bTy, _⟩ =>
+          throw s!"Typed IR compile error: eq operand type mismatch ({repr aTy} vs {repr bTy})"
   | .logicalAnd a b => do
       let a' ← liftExcept <| asBool (← compileExpr fields a)
       let b' ← liftExcept <| asBool (← compileExpr fields b)

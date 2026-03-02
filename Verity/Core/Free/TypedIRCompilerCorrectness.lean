@@ -15,4 +15,13 @@ theorem compileStmts_append (fields : List Field) (pre post : List Stmt) :
   | cons stmt rest ih =>
       simp [compileStmts, ih]
 
+/-- `compileStmts_append` specialized to any initial compiler state. -/
+theorem compileStmts_append_from (fields : List Field) (pre post : List Stmt)
+    (st : CompileState) :
+    (compileStmts fields (pre ++ post)).run st =
+      ((do
+          compileStmts fields pre
+          compileStmts fields post).run st) := by
+  simpa using congrArg (fun m => m.run st) (compileStmts_append fields pre post)
+
 end Verity.Core.Free

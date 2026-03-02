@@ -9,8 +9,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "0.2": {
@@ -19,8 +24,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "1.1": {
@@ -29,8 +39,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "1.2": {
@@ -39,8 +54,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "1.3": {
@@ -49,8 +69,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "2.1": {
@@ -59,19 +84,58 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "2.2": {
-      "status": "open",
-      "acceptance_criteria": [],
-      "files_changed": [],
-      "verification_commands": [],
-      "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
-      "notes": ""
+      "status": "partial",
+      "acceptance_criteria": [
+        "Prove list-compilation composition for compileStmts by structural induction.",
+        "Strengthen append theorem so it can be instantiated from any initial CompileState.",
+        "Do not claim source-to-typed semantic preservation completeness without a theorem artifact."
+      ],
+      "files_changed": [
+        "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+        "Verity/Core/Free/TypedIRTests.lean",
+        "artifacts/issue_1060_progress.json"
+      ],
+      "verification_commands": [
+        "lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests",
+        "lake build",
+        "python3 scripts/check_issue_1060_integrity.py"
+      ],
+      "verification_results": [
+        "pass: lake build Verity.Core.Free.TypedIRCompilerCorrectness Verity.Core.Free.TypedIRTests",
+        "pass: lake build",
+        "pass: python3 scripts/check_issue_1060_integrity.py"
+      ],
+      "evidence": {
+        "theorems": [
+          {
+            "name": "compileStmts_append",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "Compiling pre ++ post is equivalent to sequentially compiling pre then post."
+          },
+          {
+            "name": "compileStmts_append_from",
+            "file": "Verity/Core/Free/TypedIRCompilerCorrectness.lean",
+            "statement_summary": "The append-composition theorem holds when run from any initial CompileState."
+          }
+        ],
+        "tests": [
+          "TypedIRTests: example instantiating compileStmts_append_from over arbitrary fields/pre/post/state"
+        ]
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
+      "notes": "Addressed blocking PR feedback by reclassifying 2.2 as partial. This slice strengthens theorem usability but does not yet close full source-vs-typed semantic preservation."
     },
     "2.3": {
       "status": "open",
@@ -79,8 +143,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "2.4": {
@@ -89,8 +158,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "2.5": {
@@ -99,8 +173,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "3.1": {
@@ -109,8 +188,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "3.2": {
@@ -119,8 +203,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "3.3": {
@@ -129,8 +218,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "3.4": {
@@ -139,8 +233,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "3.5": {
@@ -149,8 +248,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "4.1": {
@@ -159,8 +263,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "4.2": {
@@ -169,8 +278,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "4.3": {
@@ -179,8 +293,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "4.4": {
@@ -189,8 +308,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "4.5": {
@@ -199,8 +323,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     },
     "4.6": {
@@ -209,8 +338,13 @@
       "files_changed": [],
       "verification_commands": [],
       "verification_results": [],
-      "evidence": { "theorems": [], "tests": [] },
-      "obligation_delta": { "removed_sorries": [] },
+      "evidence": {
+        "theorems": [],
+        "tests": []
+      },
+      "obligation_delta": {
+        "removed_sorries": []
+      },
       "notes": ""
     }
   }

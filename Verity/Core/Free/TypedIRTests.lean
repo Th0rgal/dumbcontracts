@@ -1045,4 +1045,13 @@ example (fields : List Compiler.CompilationModel.Field)
       compileStmts fields post) :=
   compileStmts_append fields pre post
 
+example (fields : List Compiler.CompilationModel.Field)
+    (pre post : List Compiler.CompilationModel.Stmt)
+    (st : CompileState) :
+    (compileStmts fields (pre ++ post)).run st =
+      ((do
+          compileStmts fields pre
+          compileStmts fields post).run st) :=
+  compileStmts_append_from fields pre post st
+
 end Verity.Core.Free

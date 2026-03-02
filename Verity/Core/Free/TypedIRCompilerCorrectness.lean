@@ -909,6 +909,36 @@ def execCompiledRequireFamilyClausesThenLetReturnLocalLiteral
   | .ok st => execCompiledLetReturnLocalLiteral fields tmp st retVal
   | .revert reason => .revert reason
 
+/-- Source semantics for a broader supported sequencing subset:
+run a list of supported unified `require` guard-family clauses, then perform
+`letVar tmp (literal n); assignVar tmp (add (localVar tmp) (literal m));
+ setStorage fieldName (localVar tmp)` only on success. -/
+def execSourceRequireFamilyClausesThenLetAssignAddSetStorageLocalLiteral
+    (init : TExecState) (clauses : List RequireLiteralGuardFamilyClause)
+    (slot : Nat) (n m : Nat) : TExecResult :=
+  match execSourceRequireLiteralGuardFamilyClauses init clauses with
+  | .ok st =>
+      .ok
+        ({ st with
+            world := execSourceSetStorageLiteral st.world slot
+              ((n : Verity.Core.Uint256).add (m : Verity.Core.Uint256))
+            vars := TVars.set
+              (TVars.set st.vars { id := 0, ty := Ty.uint256 } (n : Verity.Core.Uint256))
+              { id := 1, ty := Ty.uint256 }
+                ((n : Verity.Core.Uint256).add (m : Verity.Core.Uint256)) })
+  | .revert reason => .revert reason
+
+/-- Compiled semantics for the same broader supported sequencing subset:
+run compiled unified `require` guard-family clause-list semantics, then run
+compiled `letVar tmp (literal n); assignVar tmp (add (localVar tmp) (literal m));
+ setStorage fieldName (localVar tmp)` on success. -/
+def execCompiledRequireFamilyClausesThenLetAssignAddSetStorageLocalLiteral
+    (fields : List Field) (fieldName tmp : String) (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (n m : Nat) : TExecResult :=
+  match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
+  | .ok st => execCompiledLetAssignAddSetStorageLocalLiteral fields fieldName tmp st n m
+  | .revert reason => .revert reason
+
 /-- Sequencing semantic-preservation theorem for a broader supported subset:
 for unified `require` guard-family clause lists followed by `return literal`,
 compiled execution matches direct source sequencing semantics. -/
@@ -957,5 +987,25 @@ theorem compile_require_family_clauses_then_let_return_local_literal_semantics
     execSourceRequireFamilyClausesThenLetReturnLocalLiteral,
     compile_require_literal_guard_family_clauses_semantics,
     compile_let_return_local_literal_semantics]
+
+/-- Sequencing semantic-preservation theorem for a broader supported subset:
+for unified `require` guard-family clause lists followed by
+`letVar tmp (literal n); assignVar tmp (add (localVar tmp) (literal m));
+ setStorage fieldName (localVar tmp)`, compiled execution matches direct source
+sequencing semantics under explicit field-resolution assumptions. -/
+theorem compile_require_family_clauses_then_let_assign_add_setStorage_local_literal_semantics
+    (fields : List Field) (fieldName tmp : String) (slot : Nat)
+    (init : TExecState)
+    (clauses : List RequireLiteralGuardFamilyClause) (n m : Nat)
+    (hfind : findFieldWithResolvedSlot fields fieldName =
+      some ({ name := fieldName, ty := FieldType.uint256 }, slot)) :
+    execCompiledRequireFamilyClausesThenLetAssignAddSetStorageLocalLiteral
+        fields fieldName tmp init clauses n m =
+      execSourceRequireFamilyClausesThenLetAssignAddSetStorageLocalLiteral
+        init clauses slot n m := by
+  simp [execCompiledRequireFamilyClausesThenLetAssignAddSetStorageLocalLiteral,
+    execSourceRequireFamilyClausesThenLetAssignAddSetStorageLocalLiteral,
+    compile_require_literal_guard_family_clauses_semantics,
+    compile_let_assign_add_setStorage_local_literal_semantics, hfind]
 
 end Verity.Core.Free

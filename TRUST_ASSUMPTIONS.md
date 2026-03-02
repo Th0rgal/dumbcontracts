@@ -34,7 +34,7 @@ boundary for generated EDSL artifacts.
 
 ```
 EDSL
-  ↓ [Layer 1: VERIFIED per contract — EDSL ≡ CompilationModel/IR bridge]
+  ↓ [Layer 1: VERIFIED — generic typed-IR compilation correctness + EDSL ≡ CompilationModel bridge]
 CompilationModel (`CompilationModel`)
   ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
@@ -44,18 +44,18 @@ Yul
 EVM Bytecode
 ```
 
-## Layer-1 Hybrid Transition Strategy
+## Layer-1 Bridge Architecture
 
-Layer 1 (EDSL ≡ CompilationModel) now uses the semantic bridge architecture:
+Layer 1 (EDSL ≡ CompilationModel) uses the semantic bridge architecture:
 
 - Contract-facing proofs live under `Verity/Proofs/`.
 - Cross-layer EDSL ≡ IR statements live in `Compiler/Proofs/SemanticBridge.lean`.
 - Legacy `SpecCorrectness/*` and `SpecInterpreter` paths are removed from the
   trusted path.
 
-This hybrid approach is intentional during transition. The long-term direction is to
-expand the generated subset (and eventually automate `EDSL -> CompilationModel`
-generation), reducing the manual escape hatch surface over time.
+This is the active, maintained architecture for the supported contract suite.
+Remaining roadmap work in this area is coverage expansion for additional DSL forms,
+not a trust-boundary redesign.
 
 ## Current Verified Facts
 
@@ -188,9 +188,9 @@ If this file is stale, audit conclusions may be invalid.
   from the same syntax tree by a deterministic elaborator, semantic equivalence holds
   by construction — provided the elaborator is correct.
 - Risk: a translation bug would cause the EDSL and CompilationModel to silently diverge.
-- Active mitigation (Issue #998, in progress): macro artifacts are now paired with
-  direct EDSL ≡ IR/Yul bridge statements in `Compiler/Proofs/SemanticBridge.lean`,
-  keeping the trusted path independent of `SpecInterpreter`.
+- Mitigation status (Issue #998 / #1060): macro artifacts are paired with direct
+  EDSL ≡ IR/Yul bridge statements in `Compiler/Proofs/SemanticBridge.lean`,
+  keeping the trusted path independent of `SpecInterpreter` on the supported path.
 
 ## Planned Trust-Boundary Hardening
 
@@ -230,18 +230,5 @@ Roadmap:
    `interpretSpec` in the TCB.
 4. 🔲 Expand DSL coverage (dynamic arrays, structs, try/catch, create/create2).
 
-New files:
-- `Compiler/Proofs/EndToEnd.lean` — Layers 2+3 composition
-- `Compiler/Proofs/SemanticBridge.lean` — concrete IR-connected EDSL≡IR theorem targets
-
-Modified files:
-- `Verity/Macro/Bridge.lean` — semantic-preservation theorem generation no longer
-  depends on `SpecInterpreter`
-- `Verity/Macro/Elaborate.lean` — semantic bridge theorem emission flow updated
-- `Verity/Macro/Translate.lean` — exported `contractValueTypeTermPublic`, `strTermPublic`,
-  `natTermPublic`
-
-Cross-repo: verity (core), morpho-verity (benefits from auto proofs), verity-paper (architecture rewrite).
-
-**Last Updated**: 2026-03-01
+**Last Updated**: 2026-03-02
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

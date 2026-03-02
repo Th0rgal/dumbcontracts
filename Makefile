@@ -5,7 +5,9 @@
 
 .PHONY: help setup setup-elan setup-solc setup-foundry \
         verify test test-foundry test-python axiom-report \
-        compile generate-yul check all clean
+        compile generate-yul check ci-fast ci-fast-build ci-fast-changed \
+        pr-sync pr-sync-build pr-fast pr-fast-build post-1060-comment sync-1060-trackers \
+        refresh-status install-fast-hook all clean
 
 # Pinned versions (must match .github/workflows/verify.yml)
 ELAN_VERSION     := v4.1.2
@@ -85,22 +87,57 @@ generate-yul: compile ## Compile all contracts to Yul
 
 test: test-python ## Run fast tests (Python validators)
 
-test-python: ## Run Python unit tests (140 tests, ~4s)
+test-python: ## Run Python unit tests
 	python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
 test-foundry: ## Run Foundry differential tests (requires solc + forge + generated Yul)
 	FOUNDRY_PROFILE=difftest forge test
 
-check: ## Run all CI validation scripts (no Lean build required)
-	@echo "Running CI validation scripts..."
+check: ## Run local CI-equivalent validation subset (no Lean build)
+	@echo "Running local CI-equivalent validation subset..."
 	python3 scripts/check_property_manifest.py
 	python3 scripts/check_property_coverage.py
 	python3 scripts/check_contract_structure.py
 	python3 scripts/check_axiom_locations.py
 	python3 scripts/check_doc_counts.py
 	python3 scripts/check_lean_hygiene.py
+	python3 scripts/check_verify_sync.py
 	python3 scripts/generate_print_axioms.py --check
 	@echo "All checks passed."
+
+ci-fast: ## Fast local gate for issue #1060 progress runs (no Lean build)
+	scripts/run_1060_fast_gate.sh
+
+ci-fast-build: ## Fast local gate + Lean build for issue #1060 progress runs
+	scripts/run_1060_fast_gate.sh --with-build
+
+ci-fast-changed: ## Changed-files-aware fast gate (base ref: BASE=origin/main)
+	scripts/run_1060_fast_gate.sh --changed-only --base-ref $(if $(BASE),$(BASE),origin/main)
+
+pr-sync: ## Run strict PR #1065 startup sync sequence + fast gate
+	scripts/run_1060_pr_sync.sh
+
+pr-sync-build: ## Run strict PR #1065 startup sync + fast gate + Lean build
+	scripts/run_1060_pr_sync.sh --with-build
+
+pr-fast: ## Backward-compatible alias for pr-sync
+	scripts/run_1060_pr_fast.sh
+
+pr-fast-build: ## Backward-compatible alias for pr-sync-build
+	scripts/run_1060_pr_fast.sh --with-build
+
+post-1060-comment: ## Post PR #1065 progress comment (usage: make post-1060-comment ITEM=2.2 [DRY_RUN=1])
+	@if [ -z "$(ITEM)" ]; then echo "ITEM is required, e.g. make post-1060-comment ITEM=2.2"; exit 1; fi
+	scripts/post_1060_progress_comment.sh $(ITEM) $(if $(DRY_RUN),--dry-run,)
+
+sync-1060-trackers: ## Sync PR/issue roadmap trackers from artifacts/issue_1060_progress.json
+	python3 scripts/sync_1060_trackers.py $(if $(DRY_RUN),--dry-run,)
+
+refresh-status: ## Regenerate verification artifact and auto-fix doc counts
+	scripts/refresh_verification_artifacts.sh
+
+install-fast-hook: ## Install a pre-push hook that runs the issue #1060 fast gate
+	scripts/install_pre_push_fast_gate.sh
 
 # ---------------------------------------------------------------------------
 # Full pipeline

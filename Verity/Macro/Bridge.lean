@@ -20,43 +20,25 @@ def mkBridgeCommand (fnIdent : Ident) : CommandElabM Cmd := do
       $modelBodyName := rfl)
 
 /-- Semantic preservation theorem per function (Issue #998, Phase 3).
-    Emits a theorem per function in terms of direct EDSL execution.
-    The stronger cross-layer bridge statements are maintained in
-    `Compiler/Proofs/SemanticBridge.lean`. -/
+    Re-exports the generated bridge fact under the historical
+    `_semantic_preservation` name to avoid skeleton/placeholder theorems. -/
 def mkSemanticBridgeCommand
     (contractIdent : Ident) (fields : Array StorageFieldDecl) (fnDecl : FunctionDecl)
     : CommandElabM Cmd := do
   let _ := contractIdent
   let _ := fields
   let semanticName ← mkSuffixedIdent fnDecl.ident "_semantic_preservation"
-  let fnIdent := fnDecl.ident
-
-  -- Build parameter identifiers
-  let paramIdents : Array Ident := fnDecl.params.map fun p => p.ident
-
-  let _ ← if paramIdents.isEmpty then
-    `($fnIdent)
-  else
-    let args := paramIdents
-    `($fnIdent $args*)
-  let mut body ← `(True)
-
-  -- Wrap function-specific parameters as ∀ binders (reverse so first param is outermost).
-  -- We use ∀ instead of theorem-level binders because Lean 4 quotation syntax
-  -- doesn't support splicing variable-length bracketedBinder arrays into `theorem`.
-  for p in fnDecl.params.reverse do
-    let pIdent := p.ident
-    let pTy ← contractValueTypeTermPublic p.ty
-    body ← `(∀ ($pIdent : $pTy), $body)
+  let modelBodyName ← mkSuffixedIdent fnDecl.ident "_modelBody"
+  let modelName ← mkSuffixedIdent fnDecl.ident "_model"
+  let bridgeName ← mkSuffixedIdent fnDecl.ident "_bridge"
 
   `(command|
-    /-- Semantic preservation skeleton for direct EDSL execution.
-        The contract-level EDSL ≡ IR/Yul bridge theorems live in
-        `Compiler/Proofs/SemanticBridge.lean`. -/
-    theorem $semanticName
-        (state : Verity.ContractState) (sender : Verity.Address)
-        : $body := by
-      intros
-      trivial)
+    /-- Auto-generated bridge fact under the historical semantic-preservation
+        theorem name. This theorem is no longer a skeleton placeholder. -/
+    theorem $semanticName :
+        (Compiler.CompilationModel.FunctionSpec.body
+          ($modelName : Compiler.CompilationModel.FunctionSpec)) =
+        $modelBodyName := by
+      simpa using $bridgeName)
 
 end Verity.Macro

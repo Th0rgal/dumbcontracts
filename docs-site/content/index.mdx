@@ -34,7 +34,7 @@ This project uses Lean to:
 - Implement the contracts (executable code)
 - Prove the implementations satisfy the specifications (theorems)
 
-**Current status**: A compact EDSL core, 9 example contracts, 425 machine-checked theorems across the EDSL and compiler, and automatic compilation to EVM bytecode. 441 Foundry tests across 35 suites. 1 documented axiom (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)), 0 `sorry` — all proofs complete including Ledger sum conservation ([#65](https://github.com/Th0rgal/verity/issues/65)). Foundry tests include unit, property, and differential checks with multi-seed coverage.
+**Current status**: A compact EDSL core, 9 example contracts, 425 machine-checked theorems across the EDSL and compiler, and automatic compilation to EVM bytecode. 447 Foundry tests across 37 suites. 1 documented axiom (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)), 0 `sorry` — all proofs complete including Ledger sum conservation ([#65](https://github.com/Th0rgal/verity/issues/65)). Foundry tests include unit, property, and differential checks with multi-seed coverage.
 
 ## The Three-Layer Structure
 
@@ -81,7 +81,7 @@ The Lean compiler verifies every proof. If a proof is wrong, compilation fails.
 - **User-facing specs**: `Verity/Specs/<Name>/Spec.lean` (+ `Invariants.lean`)
 - **Implementations (EDSL)**: `Verity/Examples/<Name>.lean`
 - **Layer 1 proofs (EDSL correctness)**: `Verity/Proofs/<Name>/Basic.lean` + `Correctness.lean`
-- **Layer 2 proof re-export**: `Verity/Specs/<Name>/Proofs.lean` (imports from `Compiler/Proofs/SpecCorrectness/`)
+- **Compilation correctness**: `Verity/Core/Free/TypedIRCompilerCorrectness.lean` (generic theorem) + `Compiler/Proofs/SemanticBridge.lean`
 - **Reusable proof infrastructure**: `Verity/Proofs/Stdlib/` (spec interpreter + automation)
 - **Compiler specs (for codegen)**: `Compiler/Specs.lean` (separate from user specs)
 - **Compiler proofs**: `Compiler/Proofs/` (IR generation + Yul preservation)

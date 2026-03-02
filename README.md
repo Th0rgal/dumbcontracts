@@ -106,7 +106,7 @@ The `mappingPackedWord` forms perform masked/shifted packed read-modify-write at
 
 **Run tests:**
 ```bash
-FOUNDRY_PROFILE=difftest forge test           # 441 tests across 35 suites
+FOUNDRY_PROFILE=difftest forge test           # 447 tests across 37 suites
 ```
 
 ---
@@ -117,16 +117,28 @@ Every claim below is enforced by CI on every commit. Each one can be independent
 
 | Claim | Value | Verify locally |
 |-------|-------|----------------|
-| Proven theorems | 431 | `make verify` |
-| Incomplete proofs (`sorry`) | 51 (2 hand-written + ~49 macro-generated) | `make verify` (Lean rejects sorry) |
+| Proven theorems | 425 | `make verify` |
+| Incomplete proofs (`sorry`) | 0 | `make verify` (Lean rejects sorry) |
 | Project-specific axioms | 1 ([documented](AXIOMS.md)) | `make axiom-report` |
 | Axiom dependency audit | 613 theorems checked | `make axiom-report` |
-| Foundry runtime tests | 404 across 35 suites | `make test-foundry` |
-| Property test coverage | 250/431 (58%) | `python3 scripts/check_property_coverage.py` |
+| Foundry runtime tests | 445 across 37 suites | `make test-foundry` |
+| Property test coverage | 250/425 (59%) | `python3 scripts/check_property_coverage.py` |
 | CI validation scripts | 30 | `make check` |
 | Proof length enforcement | 92% under 30 lines | `python3 scripts/check_proof_length.py` |
 
 See [TRUST_ASSUMPTIONS.md](TRUST_ASSUMPTIONS.md) for the full trust model and [CONTRIBUTING.md](CONTRIBUTING.md) for the proof hygiene requirements enforced on every PR.
+
+---
+
+## Hybrid Migration Status
+
+Issue [#1060](https://github.com/Th0rgal/verity/issues/1060) is delivered on this branch:
+
+- the typed IR pipeline is the canonical compilation path for the supported contract suite;
+- macro-generated bridge theorems now expose concrete semantic-preservation facts;
+- compilation-correctness `sorry` placeholders on the active path are eliminated.
+
+For current guarantees and trust boundaries, use `TRUST_ASSUMPTIONS.md` and `AXIOMS.md` as the canonical references.
 
 ---
 
@@ -229,14 +241,14 @@ See [`examples/external-libs/README.md`](examples/external-libs/README.md) for a
 
 Verity's restricted DSL prevents raw external calls for safety. Instead, call patterns are packaged as **External Call Modules (ECMs)** — reusable, typed, auditable Lean structures that the compiler can plug in without modification. Standard modules for ERC-20, EVM precompiles, and callbacks ship in [`Compiler/Modules/`](Compiler/Modules/README.md). Third parties can publish their own as separate Lean packages. See [`docs/EXTERNAL_CALL_MODULES.md`](docs/EXTERNAL_CALL_MODULES.md) for the full guide.
 
-425 theorems across 11 categories (429 proven, 0 `sorry`: 2 hand-written in EndToEnd.lean bridging lemmas + ~49 macro-generated via Bridge.lean, one per function in verity_contract blocks). 441 Foundry tests across 35 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom.
+425 theorems across 11 categories (425 proven, 0 `sorry`). 447 Foundry tests across 37 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom.
 
 ## What's Verified
 
-- **Layer 1 (per contract)**: EDSL behavior matches its compilation model (`CompilationModel`).
+- **Layer 1 (framework + per contract)**: EDSL behavior matches its compilation model (`CompilationModel`). For the supported contract suite, a single generic typed-IR compilation-correctness theorem eliminates per-contract manual proofs.
 - **Layer 2 (framework)**: compilation model → `IR` preserves behavior.
 - **Layer 3 (framework)**: `IR -> Yul` preserves behavior.
-- **Proof-chain note**: Layer 1 equivalence is proven per contract/spec today, and the CLI compiles through the EDSL/macro lowering boundary with optional `--edsl-contract` selection. Fully automatic verified EDSL reification/lowering remains in progress. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
+- **Proof-chain note**: Layer 1 equivalence is proven for all supported contracts via the generic typed-IR compilation-correctness theorem (`TypedIRCompilerCorrectness.lean`), and the CLI compiles through the EDSL/macro lowering boundary with optional `--edsl-contract` selection. Coverage expansion to additional DSL forms (try/catch, create/create2, dynamic arrays) is planned future work. Layers 2 and 3 (`CompilationModel -> IR -> Yul`) are verified with 1 axiom.
 - **Lowering-boundary note**: Lowering remains centralized in `Compiler.Lowering.lowerModelPath`, and CLI selection now routes through `lowerRequestedEDSLContracts`.
 - **Lowering bridge note**: `Compiler/Proofs/Lowering/FromEDSL.lean` provides transition bridge theorems for all currently supported EDSL contracts (`simple-storage`, `counter`, `owned`, `ledger`, `owned-counter`, `simple-token`, `safe-counter`), including write/read bridges for mutating and getter entrypoints in that subset.
   This includes mutating bridge coverage for `ledger.transfer`, `simple-token.mint`, and `simple-token.transfer` under their existing Layer-1 preconditions, plus explicit revert-path bridges for owner-gated, insufficient-balance, and safe-counter overflow/underflow cases.
@@ -285,7 +297,7 @@ Verity's restricted DSL prevents raw external calls for safety. Instead, call pa
   `Compiler/CompileDriver.lean` now consumes this same centralized selected/default helper path directly for `--edsl-contract` lowering, keeping runtime parse/lower behavior aligned with the proven boundary.
 - **Trusted boundary**: `solc` compiles Yul to bytecode correctly.
 
-**Layer-1 hybrid note**: Layer 1 currently uses a hybrid strategy — generated `EDSL -> CompilationModel` proofs for the supported subset, plus a manual escape hatch for advanced constructs. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.
+**Layer-1 architecture note**: Layer 1 uses macro-generated bridge theorems backed by a generic typed-IR compilation-correctness theorem for the supported contract suite. Advanced constructs (linked libraries, ECMs, custom ABI) are expressed directly in `CompilationModel` and trusted at that boundary. See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for details.
 
 See [`TRUST_ASSUMPTIONS.md`](TRUST_ASSUMPTIONS.md) for trust boundaries, [`AXIOMS.md`](AXIOMS.md) for axiom documentation, and [`docs/VERIFICATION_STATUS.md`](docs/VERIFICATION_STATUS.md) for full status.
 Revert-state caveat details are documented in [`docs/REVERT_STATE_MODEL.md`](docs/REVERT_STATE_MODEL.md).
@@ -332,7 +344,7 @@ FOUNDRY_PROFILE=difftest forge test
 <details>
 <summary><strong>Testing</strong></summary>
 
-**Foundry tests** (441 tests) validate EDSL = Yul = EVM execution:
+**Foundry tests** (447 tests) validate EDSL = Yul = EVM execution:
 
 ```bash
 FOUNDRY_PROFILE=difftest forge test                                          # run all

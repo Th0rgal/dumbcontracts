@@ -588,16 +588,14 @@ import Compiler.Proofs.YulGeneration.Equivalence
 
 -- Compiler/Proofs/EndToEnd.lean
 #print axioms Compiler.Proofs.EndToEnd.layer3_function_preserves_semantics
-#print axioms Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics
-#print axioms Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics_general
 #print axioms Compiler.Proofs.EndToEnd.interpretYulRuntime_eq_yulResultOfExec
 #print axioms Compiler.Proofs.EndToEnd.yulStateOfIR_eq_initial
 #print axioms Compiler.Proofs.EndToEnd.execYulStmts_paramState_eq_emptyVars
 #print axioms Compiler.Proofs.EndToEnd.yulBody_from_state_eq_yulBody
+#print axioms Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics
+#print axioms Compiler.Proofs.EndToEnd.layer3_contract_preserves_semantics_general
 #print axioms Compiler.Proofs.EndToEnd.layers2_3_ir_matches_yul
 #print axioms Compiler.Proofs.EndToEnd.simpleStorage_endToEnd
--- pure_*_bridge proofs removed: evalBuiltinCall refactor caused heartbeat timeouts
--- See ArithmeticProfile.lean for concrete smoke tests
 
 -- Compiler/Proofs/IRGeneration/Conversions.lean
 #print axioms Compiler.Proofs.IRGeneration.contractStateToIRState_memory
@@ -650,4 +648,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 556 theorems/lemmas (536 public, 20 private)
+-- Total: 550 theorems/lemmas (530 public, 20 private)

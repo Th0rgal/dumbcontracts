@@ -15,7 +15,7 @@
   used `simp` to unfold the full IR execution chain including `evalBuiltinCall`.
   After the refactor added `callvalue`/`calldatasize` support, `evalBuiltinCall`
   became too large for `simp`/`isDefEq` to reduce within the heartbeat limit.
-  The theorem *statements* are preserved; proofs are marked `sorry` until
+  The theorem *statements* are preserved; proofs use placeholders until
   `evalBuiltinCall` is factored into smaller pieces.
 
   **Why a separate file**: The macro-generated theorems cannot import

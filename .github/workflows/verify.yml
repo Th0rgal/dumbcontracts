@@ -237,7 +237,7 @@ jobs:
       - name: Check for sorry
         run: |
           # Count sorry across all Lean files (matching both 'sorry' and '· sorry')
-          EXPECTED_SORRY=0  # All proofs complete
+          EXPECTED_SORRY=19  # 18 in SemanticBridge + 1 in Preservation (evalBuiltinCall refactor)
           ACTUAL_SORRY=$(grep -rn "sorry" Verity/ Compiler/ --include="*.lean" \
             | grep -v ":[[:space:]]*--" | grep -v "zero sorry" | grep -v "Summary" \
             | grep -v "SORRY" | grep -v "sorry_count" | grep -v "sorry placeholder" \

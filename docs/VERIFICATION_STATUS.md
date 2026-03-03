@@ -110,6 +110,29 @@ Key files: [`StatementEquivalence.lean`](../Compiler/Proofs/YulGeneration/Statem
 
 **Status**: Scaled to 90,000+ tests (10,000 per contract x 9 contracts) with 8-shard CI parallelization. Randomized inputs covering edge cases, comparing EDSL interpreter output against Solidity-compiled EVM execution.
 
+## Solidity Interop Support Matrix (Issue #586)
+
+This matrix tracks migration-critical Solidity interoperability features and current implementation status.
+
+Status legend:
+- `supported`: usable end-to-end
+- `partial`: implemented with functional limits or incomplete proof/test coverage
+- `unsupported`: not implemented as a first-class feature
+
+| Feature | Spec support | Codegen support | Proof status | Test status | Current status |
+|---|---|---|---|---|---|
+| Custom errors + typed revert payloads | partial | partial | n/a | partial | partial |
+| Low-level calls (`call` / `staticcall` / `delegatecall`) with returndata | partial | partial | n/a | partial | partial |
+| `fallback` / `receive` / payable entrypoint modeling | partial | partial | n/a | partial | partial |
+| Event ABI parity for indexed dynamic/tuple payloads | supported | supported | supported | supported | supported |
+| Storage layout controls (packing + explicit slots) | partial | partial | partial | partial | partial |
+| ABI JSON artifact generation | partial | partial | n/a | partial | partial |
+
+Diagnostics policy for unsupported constructs:
+1. Report the exact unsupported construct at compile time.
+2. Suggest the nearest supported migration pattern.
+3. Link to the owning tracking issue.
+
 ## Trust Assumptions
 
 See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust model and [`AXIOMS.md`](../AXIOMS.md) for axiom documentation.

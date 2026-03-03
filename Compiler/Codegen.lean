@@ -43,7 +43,7 @@ private def yulReturnRuntime : YulStmt :=
     YulExpr.call "datasize" [YulExpr.str "runtime"]
   ])
 
-private def mappingSlotFuncAt (scratchBase : Nat) : YulStmt :=
+def mappingSlotFuncAt (scratchBase : Nat) : YulStmt :=
   let keyPtr := scratchBase
   let slotPtr := scratchBase + 32
   YulStmt.funcDef "mappingSlot" ["baseSlot", "key"] ["slot"] [
@@ -105,7 +105,7 @@ private def insertBy [LT β] [DecidableRel (α := β) (· < ·)] (key : α → �
 private def insertionSortBy [LT β] [DecidableRel (α := β) (· < ·)] (key : α → β) (xs : List α) : List α :=
   xs.foldl (fun acc x => insertBy key x acc) []
 
-private def buildSwitch
+def buildSwitch
     (funcs : List IRFunction)
     (fallback : Option IREntrypoint := none)
     (receive : Option IREntrypoint := none)

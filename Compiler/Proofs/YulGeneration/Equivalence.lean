@@ -209,6 +209,25 @@ theorem execYulStmtsFuel_cons
       | .revert s => .revert s := by
   rfl
 
+theorem execYulStmtFuel_for
+    (fuel : Nat) (state : YulState) (init : List YulStmt) (cond : YulExpr) (post body : List YulStmt) :
+    execYulStmtFuel (Nat.succ fuel) state (YulStmt.for_ init cond post body) =
+      match execYulStmtsFuel fuel state init with
+      | .continue s' =>
+          match evalYulExpr s' cond with
+          | some v =>
+              if v = 0 then .continue s'
+              else
+                match execYulStmtsFuel fuel s' body with
+                | .continue s'' =>
+                    match execYulStmtsFuel fuel s'' post with
+                    | .continue s''' => execYulStmtFuel fuel s''' (.for_ [] cond post body)
+                    | other => other
+                | other => other
+          | none => .revert s'
+      | other => other := by
+  rfl
+
 /-! ## Backward-Compatible Aliases
 
 Since `execIRStmt` and `execIRStmts` in IRInterpreter.lean are now total

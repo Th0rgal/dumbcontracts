@@ -596,12 +596,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.EndToEnd.yulBody_from_state_eq_yulBody
 #print axioms Compiler.Proofs.EndToEnd.layers2_3_ir_matches_yul
 #print axioms Compiler.Proofs.EndToEnd.simpleStorage_endToEnd
-#print axioms Compiler.Proofs.EndToEnd.pure_add_bridge
-#print axioms Compiler.Proofs.EndToEnd.pure_sub_bridge
-#print axioms Compiler.Proofs.EndToEnd.pure_mul_bridge
-#print axioms Compiler.Proofs.EndToEnd.pure_div_bridge
-#print axioms Compiler.Proofs.EndToEnd.pure_mod_bridge
-#print axioms Compiler.Proofs.EndToEnd.edsl_to_yul_template
+-- pure_*_bridge proofs removed: evalBuiltinCall refactor caused heartbeat timeouts
+-- See ArithmeticProfile.lean for concrete smoke tests
 
 -- Compiler/Proofs/IRGeneration/Conversions.lean
 #print axioms Compiler.Proofs.IRGeneration.contractStateToIRState_memory

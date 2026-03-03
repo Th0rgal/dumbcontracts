@@ -158,4 +158,56 @@ theorem find_switch_case_of_find_function_none
         simpa [switchCases, List.find?, hsel] using ih'
 
 
+/-! ## Runtime code reduction lemmas -/
+
+/-- Function definitions are no-ops in execution. -/
+@[simp] theorem execYulStmtFuel_funcDef (fuel : Nat) (state : YulState)
+    (name : String) (params ret : List String) (body : List YulStmt) :
+    execYulStmtFuel fuel state (YulStmt.funcDef name params ret body) =
+      YulExecResult.continue state := by
+  cases fuel <;> simp [execYulStmtFuel, execYulFuel]
+
+/-- `execYulFuel` on a funcDef target gives `.continue state` for any fuel. -/
+@[simp] theorem execYulFuel_funcDef (fuel : Nat) (state : YulState)
+    (name : String) (params ret : List String) (body : List YulStmt) :
+    execYulFuel fuel state (.stmt (YulStmt.funcDef name params ret body)) =
+      YulExecResult.continue state := by
+  cases fuel <;> simp [execYulFuel]
+
+/-- Stepping through a funcDef in a statement list consumes one fuel unit. -/
+@[simp] theorem execYulStmtsFuel_cons_funcDef (fuel : Nat) (state : YulState)
+    (name : String) (params ret : List String) (body rest : List YulStmt) :
+    execYulStmtsFuel (Nat.succ fuel) state (YulStmt.funcDef name params ret body :: rest) =
+      execYulStmtsFuel fuel state rest := by
+  simp only [execYulStmtsFuel, execYulFuel]
+  rw [execYulFuel_funcDef]
+
+/-- Executing funcDef statements followed by a suffix: the funcDefs are no-ops
+and each one burns one fuel unit. -/
+theorem execYulStmtsFuel_funcDefs_then_suffix (fuel : Nat) (state : YulState)
+    (prefix_ : List YulStmt) (suffix_ : List YulStmt)
+    (hFuncDefs : ∀ s ∈ prefix_, ∃ nm p r b, s = YulStmt.funcDef nm p r b) :
+    execYulStmtsFuel (prefix_.length + fuel) state (prefix_ ++ suffix_) =
+      execYulStmtsFuel fuel state suffix_ := by
+  induction prefix_ generalizing state with
+  | nil => simp
+  | cons h t ih =>
+      have hmem : h ∈ h :: t := .head t
+      obtain ⟨nm, p, r, b, rfl⟩ := hFuncDefs h hmem
+      simp only [List.cons_append, List.length_cons]
+      conv_lhs => rw [show t.length + 1 + fuel = Nat.succ (t.length + fuel) from by omega]
+      rw [execYulStmtsFuel_cons_funcDef]
+      exact ih state (fun s hs => hFuncDefs s (List.mem_cons_of_mem _ hs))
+
+/-- Variant with `fuel ≥ prefix_.length` instead of exact `prefix_.length + fuel`. -/
+theorem execYulStmtsFuel_funcDefs_then_suffix_ge (fuel : Nat) (state : YulState)
+    (prefix_ : List YulStmt) (suffix_ : List YulStmt)
+    (hFuncDefs : ∀ s ∈ prefix_, ∃ nm p r b, s = YulStmt.funcDef nm p r b)
+    (hFuel : fuel ≥ prefix_.length) :
+    execYulStmtsFuel fuel state (prefix_ ++ suffix_) =
+      execYulStmtsFuel (fuel - prefix_.length) state suffix_ := by
+  have : fuel = prefix_.length + (fuel - prefix_.length) := by omega
+  conv_lhs => rw [this]
+  exact execYulStmtsFuel_funcDefs_then_suffix _ state prefix_ suffix_ hFuncDefs
+
 end Compiler.Proofs.YulGeneration

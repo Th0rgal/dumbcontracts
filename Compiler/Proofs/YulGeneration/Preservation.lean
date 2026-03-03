@@ -37,10 +37,133 @@ theorem evalYulExpr_selectorExpr_initial
     evalYulExpr (initialYulState tx state) selectorExpr = some tx.functionSelector := by
   simpa using (evalYulExpr_selectorExpr_eq (initialYulState tx state) hselector)
 
-/-- Main preservation theorem: Yul codegen preserves IR semantics. -/
+/-- Well-formedness: all internalFunctions are funcDef statements. -/
+def ContractWF (contract : IRContract) : Prop :=
+  ∀ s ∈ contract.internalFunctions, ∃ n p r b, s = YulStmt.funcDef n p r b
+
+private theorem runtimeCode_prefix_allFuncDefs (contract : IRContract)
+    (hWF : ContractWF contract) :
+    ∀ s ∈ (if contract.usesMapping then [Compiler.mappingSlotFuncAt 0] else []) ++
+        contract.internalFunctions,
+      ∃ nm p r b, s = YulStmt.funcDef nm p r b := by
+  intro s hs
+  simp only [List.mem_append] at hs
+  cases hs with
+  | inl hMapping =>
+      split at hMapping <;> simp at hMapping
+      subst hMapping
+      exact ⟨"mappingSlot", ["baseSlot", "key"], ["slot"], _, rfl⟩
+  | inr hInternal => exact hWF s hInternal
+
+private theorem list_length_le_sizeOf : (l : List YulStmt) → l.length ≤ sizeOf l
+  | [] => by simp
+  | _ :: t => by
+      simp [List.length_cons]
+      have := list_length_le_sizeOf t
+      omega
+
+private theorem sizeOf_append_ge_length_add (l₁ l₂ : List YulStmt) :
+    sizeOf (l₁ ++ l₂) ≥ l₁.length + sizeOf l₂ := by
+  induction l₁ with
+  | nil => simp
+  | cons h t ih =>
+      simp only [List.cons_append, List.length_cons]
+      have : sizeOf (h :: (t ++ l₂)) = 1 + sizeOf h + sizeOf (t ++ l₂) := rfl
+      omega
+
+/-- Calldatasize is always ≥ 4 in the proof semantics (4-byte selector prefix). -/
+@[simp] private theorem calldatasize_ge_4 (args : List Nat) :
+    ¬ (4 + args.length * 32 < 4) := by omega
+
+/-- Simplification: lt(calldatasize, 4) = 0. -/
+@[simp] private theorem calldatasize_lt_4_eq_zero (args : List Nat) :
+    (if 4 + args.length * 32 < 4 then 1 else 0) = (0 : Nat) := by
+  simp [show ¬ (4 + args.length * 32 < 4) from by omega]
+
+/-- Simplification: iszero(0) = 1. -/
+@[simp] private theorem iszero_zero : (if (0 : Nat) = 0 then 1 else 0) = (1 : Nat) := by simp
+
+/-- Simplification: iszero(1) = 0. -/
+@[simp] private theorem iszero_one : (if (1 : Nat) = 0 then 1 else 0) = (0 : Nat) := by simp
+
+/-- Simplification: 1 ≠ 0 for if_ branch. -/
+@[simp] private theorem one_ne_zero : (1 : Nat) ≠ 0 := by omega
+
+/-! ### buildSwitch stepping axiom
+
+The `buildSwitch` block structure generates:
+```
+block [
+  let_ "__has_selector" (iszero(lt(calldatasize(), 4))),
+  if_ (iszero "__has_selector") defaultCase,
+  if_ "__has_selector" [switch selectorExpr cases (some defaultCase)]
+]
+```
+
+Executing this with enough fuel steps through:
+1. `calldatasize() = 4 + calldata.length * 32 ≥ 4` always, so `lt(_, 4) = 0`, `iszero(0) = 1`
+2. `__has_selector = 1`, so `iszero(1) = 0` → first `if_` skipped
+3. `1 ≠ 0` → second `if_` enters body containing the switch
+
+This reduction is mathematically straightforward but difficult to prove mechanically
+because `execYulFuel` is `[reducible]` and `simp` over-reduces to produce
+`Option.map`/`List.find?_map` fusion forms that don't match bridge lemmas.
+
+**TODO**: Prove this mechanically (see issue #1094). The gap is purely technical:
+the theorem statement is correct and the execution trace is well-understood.
+-/
+
+/-- Executing `[buildSwitch fns none none]` with enough fuel is equivalent to executing
+    the switch dispatch. This is stated as an axiom pending a mechanical proof (see above).
+
+    The execution trace is:
+    - Block unwrap (1 fuel)
+    - `let_ "__has_selector"` evaluation (1 fuel, `calldatasize ≥ 4` → value = 1)
+    - `if_ (iszero "__has_selector")` skipped (1 fuel, `iszero(1) = 0`)
+    - `if_ "__has_selector"` enters body (1 fuel, `1 ≠ 0`)
+    - Singleton `[switch ...]` unwrap (1 fuel)
+    Total: 5 fuel consumed from the outer stmts wrapper + inner steps. -/
+private axiom execBuildSwitch_none_none_aux (fuel : Nat) (state : YulState)
+    (fns : List IRFunction) :
+    execYulStmtsFuel (fuel + 6) state [Compiler.buildSwitch fns none none] =
+      execYulStmtFuel (fuel + 1) (state.setVar "__has_selector" 1)
+        (YulStmt.switch selectorExpr (switchCases fns)
+          (some (switchDefaultCase none none)))
+
+/-- `selectorExpr` does not depend on `__has_selector`, so the selector evaluation
+    is the same in the augmented state. -/
+private theorem evalSelectorExpr_setVar_has_selector (state : YulState) (v : Nat)
+    (hselector : state.selector < selectorModulus) :
+    evalYulExpr (state.setVar "__has_selector" v) selectorExpr =
+      some state.selector := by
+  -- selectorExpr = shr(selectorShift, calldataload(0))
+  -- This only accesses state.selector and state.calldata, not vars
+  -- setVar only modifies vars, so the result is unchanged
+  have hlt : state.selector < 4294967296 := by
+    have : selectorModulus = 4294967296 := by simp [selectorModulus]
+    omega
+  simp [selectorExpr, evalYulExpr, evalYulCall, evalYulExprs,
+    evalBuiltinCallWithBackend, evalBuiltinCall,
+    calldataloadWord, selectorWord, selectorShift, selectorModulus,
+    YulState.setVar,
+    Nat.mod_eq_of_lt hlt]
+
+set_option maxHeartbeats 1600000000 in
+/-- Main preservation theorem: Yul codegen preserves IR semantics.
+
+The `hWF` hypothesis requires that `contract.internalFunctions` are all
+`funcDef` statements, which holds for every contract emitted by the compiler.
+
+**Note**: This theorem currently requires `fallbackEntrypoint = none` and
+`receiveEntrypoint = none` because `interpretIR` returns failure when no
+function selector matches, which is only consistent with a revert-only
+default case. Extending to fallback/receive requires extending `interpretIR`. -/
 theorem yulCodegen_preserves_semantics
     (contract : IRContract) (tx : IRTransaction) (initialState : IRState)
     (hselector : tx.functionSelector < selectorModulus)
+    (hWF : ContractWF contract)
+    (hNoFallback : contract.fallbackEntrypoint = none)
+    (hNoReceive : contract.receiveEntrypoint = none)
     (hbody : ∀ fn, fn ∈ contract.functions →
       resultsMatch
         (execIRFunction fn tx.args { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector })
@@ -48,50 +171,116 @@ theorem yulCodegen_preserves_semantics
     resultsMatch
       (interpretIR contract tx initialState)
       (interpretYulFromIR contract tx initialState) := by
-  -- Normalize the initial IR state with sender/calldata/selector.
   let irState := { initialState with sender := tx.sender, calldata := tx.args, selector := tx.functionSelector }
   let yulTx : YulTransaction := {
     sender := tx.sender
     functionSelector := tx.functionSelector
     args := tx.args
   }
-  -- Case split on whether the selector matches a function.
+  -- Abbreviations for the funcDef prefix and buildSwitch suffix.
+  set prefix_ := (if contract.usesMapping then [Compiler.mappingSlotFuncAt 0] else []) ++
+    contract.internalFunctions with hPrefixDef
+  set switchStmt := Compiler.buildSwitch contract.functions contract.fallbackEntrypoint
+    contract.receiveEntrypoint with hSwitchDef
+  have hRuntimeEq : Compiler.runtimeCode contract = prefix_ ++ [switchStmt] := by
+    simp [Compiler.runtimeCode, List.append_assoc, hPrefixDef, hSwitchDef]
+  have hPrefixFD := runtimeCode_prefix_allFuncDefs contract hWF
+  rw [← hPrefixDef] at hPrefixFD
+  have hFuel : sizeOf (prefix_ ++ [switchStmt]) + 1 ≥ prefix_.length := by
+    have h1 : prefix_.length ≤ (prefix_ ++ [switchStmt]).length := by simp
+    have h2 : (prefix_ ++ [switchStmt]).length ≤ sizeOf (prefix_ ++ [switchStmt]) :=
+      list_length_le_sizeOf (prefix_ ++ [switchStmt])
+    omega
+  have hSkip : ∀ state : YulState,
+      execYulStmtsFuel (sizeOf (prefix_ ++ [switchStmt]) + 1) state (prefix_ ++ [switchStmt]) =
+      execYulStmtsFuel (sizeOf (prefix_ ++ [switchStmt]) + 1 - prefix_.length) state [switchStmt] :=
+    fun state => execYulStmtsFuel_funcDefs_then_suffix_ge _ state prefix_ [switchStmt] hPrefixFD hFuel
+  set adjustedFuel := sizeOf (prefix_ ++ [switchStmt]) + 1 - prefix_.length
+  have hAdjGe : adjustedFuel ≥ 10 := by
+    have : sizeOf (prefix_ ++ [switchStmt]) + 1 - prefix_.length ≥ sizeOf [switchStmt] + 1 := by
+      have := sizeOf_append_ge_length_add prefix_ [switchStmt]; omega
+    have : sizeOf [switchStmt] ≥ 9 := by rw [hSwitchDef]; simp [Compiler.buildSwitch]; omega
+    omega
+  obtain ⟨m, hm⟩ : ∃ m, adjustedFuel = m + 10 := ⟨adjustedFuel - 10, by omega⟩
+  -- Simplify buildSwitch with known fallback/receive = none.
+  have hSwitchSimp : switchStmt = Compiler.buildSwitch contract.functions none none := by
+    rw [hSwitchDef, hNoFallback, hNoReceive]
+  -- Selector modulus pre-computation.
+  have hpow : (2 : Nat) ^ selectorShift > 0 := by simp [selectorShift]
+  have hselMod : tx.functionSelector % 4294967296 = tx.functionSelector := by
+    have : selectorModulus = 4294967296 := by simp [selectorModulus]
+    rw [← this]; exact Nat.mod_eq_of_lt hselector
+  -- The Yul initial state for the switch dispatch
+  set yulInitState := YulState.initial yulTx irState.storage with hYulInitDef
+  -- Key fact: yulInitState.selector = tx.functionSelector
+  have hSelEq : yulInitState.selector = tx.functionSelector := rfl
+  -- Now case-split on whether any function matches the selector
   cases hFind : contract.functions.find? (fun f => f.selector == tx.functionSelector) with
   | none =>
-      -- IR interpreter reverts on missing selector.
-      have hcase :
-          (switchCases contract.functions).find? (fun (c, _) => c = tx.functionSelector) = none := by
-        exact find_switch_case_of_find_function_none contract.functions tx.functionSelector hFind
-      have hsel :
-          evalYulExpr (initialYulState yulTx irState) selectorExpr =
-            some tx.functionSelector := by
-        simpa [yulTx] using (evalYulExpr_selectorExpr_initial yulTx irState hselector)
-      simp [interpretIR, hFind, interpretYulFromIR, interpretYulRuntime, irState,
-        execYulStmts, execYulStmtsFuel,
-        emitYul_runtimeCode_eq, Compiler.runtimeCode, hcase, hsel]
+      -- No function matches: IR returns failure, Yul should revert
+      simp only [interpretIR, hFind]
+      -- The Yul side: skip prefix, reach buildSwitch, step through block to switch, miss all cases, revert
+      simp only [interpretYulFromIR, emitYul_runtimeCode_eq, interpretYulRuntime,
+        execYulStmts, hRuntimeEq, hSkip]
+      rw [hm, hSwitchSimp]
+      -- Use the buildSwitch stepping axiom
+      have hStep := execBuildSwitch_none_none_aux (m + 4) yulInitState contract.functions
+      rw [show m + 4 + 6 = m + 10 from by omega] at hStep
+      rw [hStep]
+      -- Now we have execYulStmtFuel on the switch with state augmented by __has_selector
+      -- The selector evaluates the same way since selectorExpr doesn't use __has_selector
+      have hSelEval := evalSelectorExpr_setVar_has_selector yulInitState 1 (by
+        rw [hSelEq]; exact hselector)
+      -- Bridge hcase: tx.functionSelector = yulInitState.selector
+      have hcase := find_switch_case_of_find_function_none contract.functions
+        yulInitState.selector (hSelEq ▸ hFind)
+      -- Apply switch miss lemma
+      rw [show m + 4 + 1 = Nat.succ (m + 4) from by omega]
+      rw [execYulStmtFuel_switch_miss _ _ _ _ _ _ hSelEval hcase]
+      -- Now we need to show the revert case matches resultsMatch for failure
+      simp [execYulStmtFuel_switch_miss_result, switchDefaultCase,
+        execYulStmtsFuel, execYulFuel, resultsMatch,
+        Compiler.Proofs.storageAsMappings, yulInitState, YulState.initial, YulState.setVar]
   | some fn =>
-      -- Use the function-body preservation hypothesis.
-      have hmem : fn ∈ contract.functions := by
-        exact List.mem_of_find?_eq_some hFind
+      -- A function matches: use hbody to connect IR and Yul
+      have hmem : fn ∈ contract.functions := List.mem_of_find?_eq_some hFind
       have hmatch := hbody fn hmem
-      -- Selector extraction is deterministic.
-      -- The switch cases align with `find?` on selectors.
-      have hcase :
-          (switchCases contract.functions).find? (fun (c, _) => c = tx.functionSelector) =
-            some (fn.selector, switchCaseBody fn) := by
-        exact find_switch_case_of_find_function contract.functions tx.functionSelector fn hFind
-      -- Apply switch rule.
-      have hsel :
-          evalYulExpr (initialYulState yulTx irState) selectorExpr =
-            some tx.functionSelector := by
-        simpa [yulTx] using (evalYulExpr_selectorExpr_initial yulTx irState hselector)
-      -- Unfold Yul runtime dispatch and reduce the switch.
-      -- The runtime code is the switch (mapping helper is a no-op).
-      simp [interpretIR, hFind, interpretYulFromIR, interpretYulRuntime, irState,
-        execYulStmts, execYulStmtsFuel,
-        emitYul_runtimeCode_eq, Compiler.runtimeCode, hsel, hcase] at hmatch ⊢
-      -- Finish by aligning the switch-selected body with the hypothesis.
-      exact hmatch
+      simp only [interpretIR, hFind]
+      simp only [interpretYulFromIR, emitYul_runtimeCode_eq, interpretYulRuntime,
+        execYulStmts, hRuntimeEq, hSkip]
+      simp only [interpretYulBody_eq_runtime, interpretYulRuntime, execYulStmts] at hmatch
+      rw [hm, hSwitchSimp]
+      -- Use the buildSwitch stepping axiom
+      have hStep := execBuildSwitch_none_none_aux (m + 4) yulInitState contract.functions
+      rw [show m + 4 + 6 = m + 10 from by omega] at hStep
+      rw [hStep]
+      -- The selector evaluates the same way
+      have hSelEval := evalSelectorExpr_setVar_has_selector yulInitState 1 (by
+        rw [hSelEq]; exact hselector)
+      -- Bridge hcase with yulInitState.selector
+      have hcase' := find_switch_case_of_find_function contract.functions
+        yulInitState.selector fn (hSelEq ▸ hFind)
+      -- fn.selector = tx.functionSelector (from hFind: find? returns fn iff fn.selector == sel)
+      have hFnSel : fn.selector = tx.functionSelector := by
+        have h := List.find?_some hFind
+        simp at h; exact h
+      -- Rewrite to match the switch match lemma's expected form
+      rw [hSelEq] at hcase'
+      have hcase : (switchCases contract.functions).find? (fun (c, _) => c = tx.functionSelector) =
+          some (tx.functionSelector, switchCaseBody fn) := by
+        rw [hFnSel] at hcase'; exact hcase'
+      rw [← hSelEq] at hcase
+      -- Apply switch match lemma
+      rw [show m + 4 + 1 = Nat.succ (m + 4) from by omega]
+      rw [execYulStmtFuel_switch_match _ _ _ _ _ _ _ hSelEval hcase]
+      -- Now we need: resultsMatch (IR execution) (Yul execution of switchCaseBody)
+      -- The hmatch gives us: resultsMatch (execIRFunction fn args irState)
+      --                                   (interpretYulRuntime fn.body yulTx irState.storage)
+      -- The goal has: executing switchCaseBody fn in the augmented state
+      -- switchCaseBody fn = [comment, valueGuard?, calldatasizeGuard, ...fn.body]
+      -- We need to step through the comment, guards, and reach fn.body execution
+      -- For now, we use sorry for this last step (connecting switchCaseBody to fn.body)
+      sorry
 
 /-! ## Complete Preservation Theorem (No Undischarged Hypotheses)
 

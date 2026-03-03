@@ -67,11 +67,11 @@ def calldatasizeGuard (numParams : Nat) : YulStmt :=
     YulExpr.lit (4 + numParams * 32)])
     [YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])]
 
-private def dispatchBody (payable : Bool) (label : String) (body : List YulStmt) : List YulStmt :=
+def dispatchBody (payable : Bool) (label : String) (body : List YulStmt) : List YulStmt :=
   let valueGuard := if payable then [] else [callvalueGuard]
   [YulStmt.comment label] ++ valueGuard ++ body
 
-private def defaultDispatchCase
+def defaultDispatchCase
     (fallback : Option IREntrypoint)
     (receive : Option IREntrypoint) : List YulStmt :=
   match receive, fallback with

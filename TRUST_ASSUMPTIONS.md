@@ -44,8 +44,8 @@ All three layers are proven in Lean. The single axiom is `keccak256_first_4_byte
 - **Trust**: Semantic correctness of linked code. Compiler validates names, arities, collisions.
 
 ### 4. Mapping Slot Derivation
-- **Role**: `keccak256(abi.encode(key, baseSlot))` for Solidity-compatible storage.
-- **Trust**: keccak implementation correctness + collision resistance (same as Solidity/EVM).
+- **Role**: `keccak256(abi.encode(key, baseSlot))` for Solidity-compatible storage (`activeMappingSlotBackend = .keccak`).
+- **Trust**: external keccak implementation (`ffi.KEC` via EVMYul FFI) + standard collision-resistance assumptions (same trust class as Solidity/EVM).
 - **Mitigation**: Abstraction-boundary CI, selector/hash cross-checks.
 
 ### 5. EVM/Yul Semantics and Gas

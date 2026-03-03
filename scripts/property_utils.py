@@ -401,3 +401,84 @@ def strip_lean_comments(text: str) -> str:
         i += 1
 
     return "".join(out)
+
+
+def _strip_lean_strings(text: str) -> str:
+    """Replace string literal contents with spaces, preserving line structure."""
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    in_string = False
+    raw_hashes: int | None = None
+
+    while i < n:
+        ch = text[i]
+
+        if raw_hashes is not None:
+            if ch == "\n":
+                out.append("\n")
+                i += 1
+                continue
+            if ch == '"':
+                j = i + 1
+                hashes = 0
+                while j < n and text[j] == "#" and hashes < raw_hashes:
+                    hashes += 1
+                    j += 1
+                if hashes == raw_hashes:
+                    out.append('"')
+                    out.extend("#" * hashes)
+                    i = j
+                    raw_hashes = None
+                    continue
+            out.append(" ")
+            i += 1
+            continue
+
+        if in_string:
+            if ch == "\n":
+                out.append("\n")
+                i += 1
+                continue
+            if ch == "\\" and i + 1 < n:
+                out.extend([" ", " "])
+                i += 2
+                continue
+            if ch == '"':
+                out.append('"')
+                in_string = False
+                i += 1
+                continue
+            out.append(" ")
+            i += 1
+            continue
+
+        if ch == '"':
+            out.append('"')
+            in_string = True
+            i += 1
+            continue
+
+        if ch == "r":
+            j = i + 1
+            hashes = 0
+            while j < n and text[j] == "#":
+                hashes += 1
+                j += 1
+            if j < n and text[j] == '"':
+                out.append("r")
+                out.extend("#" * hashes)
+                out.append('"')
+                i = j + 1
+                raw_hashes = hashes
+                continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def scrub_lean_code(text: str) -> str:
+    """Remove comments and string literal contents from Lean source text."""
+    return _strip_lean_strings(strip_lean_comments(text))

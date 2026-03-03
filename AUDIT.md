@@ -8,7 +8,7 @@ Components and flow:
 3. `Compiler/Codegen.lean` lowers IR to Yul AST.
 4. `Compiler/Yul/PrettyPrint.lean` renders Yul text.
 5. `solc` compiles Yul to EVM bytecode.
-6. AST types (`Verity/AST.lean`) and denotation proofs (`Verity/Denote.lean`) are retained as proof artifacts; the AST compiler backend (`--ast`) has been removed.
+6. The AST compiler backend (`--ast`) has been removed; the active path is `CompilationModel`.
 
 Trust changes:
 1. Lean proofs stop at generated Yul; `solc` correctness is trusted.
@@ -29,28 +29,21 @@ Access control and checks:
 3. `scripts/workflow_jobs.py` centralizes top-level `jobs:` parsing (quoted and unquoted keys) for workflow-sync checkers, so cross-job boundary extraction is explicit and shared.
 4. `scripts/check_lean_warning_regression.py` validates baseline schema/invariants and fails on mismatch. Uses `type(value) is not int` to reject booleans, raises `ValueError` on malformed UTF-8 log input, and validates `by_file`/`by_message` counter fields strictly.
 5. `scripts/check_doc_counts.py` uses `_expect_int` with `type(value) is not int` to reject booleans in integer metric fields.
-6. `scripts/check_verify_artifact_sync.py` uses step-level `with:` block parsing that is key-order independent.
-7. `scripts/check_verify_checks_docs_sync.py` uses `extract_run_commands_from_job_body` which handles both single-line and multiline `run: |` commands.
-8. `scripts/check_verify_foundry_patched_sync.py` uses `extract_literal_from_mapping_blocks` to scope `DIFFTEST_*` extraction to `env:` blocks only.
-9. `scripts/check_verify_foundry_job_sync.py` uses `extract_literal_from_mapping_blocks` to scope `FOUNDRY_PROFILE`/`DIFFTEST_*` extraction to `env:` blocks only.
-10. `scripts/check_verify_foundry_shard_sync.py` uses `extract_literal_from_mapping_blocks` to scope `DIFFTEST_SHARD_COUNT`/`DIFFTEST_RANDOM_SEED` extraction to `env:` blocks only.
-11. `scripts/check_verify_foundry_gas_calibration_sync.py` uses step-scoped parsing for `FOUNDRY_PROFILE` and artifact names.
-12. `scripts/check_verify_multiseed_sync.py` scopes seed extraction to `strategy.matrix.seed`.
-13. `scripts/check_verify_paths_sync.py` scopes path-filter extraction to `jobs.changes`.
-14. `scripts/check_interop_matrix_sync.py` detects duplicate normalized feature rows with explicit error reporting.
-15. `scripts/check_builtin_list_sync.py` strips Lean comments before `def` extraction, preventing comment-decoy bypass.
-16. `scripts/check_solc_pin.py` collects all `SOLC_*` matches via `finditer` and fails on conflicting values across occurrences.
-17. `scripts/check_yul_builtin_boundary.py` uses `scrub_lean_code` to strip comments and string literals before boundary checks.
-18. `scripts/check_mapping_slot_boundary.py` uses `scrub_lean_code` to strip comments and string literals before boundary checks.
-19. `scripts/check_evmyullean_capability_boundary.py` detects non-literal builtin dispatch patterns and reports them as fail-closed diagnostics.
-20. `Compiler/CompilationModel.lean` recursive validation walkers for unsafe logical call-like detection, array-element usage detection, return/revert reachability, and bind-name collection are totalized (`def` + explicit `termination_by`), reducing reliance on `partial def` in the active compilation path.
-21. `Compiler/CompilationModel.lean` additionally totalizes dynamic-parameter scope checks, statement read/write analysis, and statement-list validator walkers (`validateStmtParamReferences`, `validateReturnShapesInStmt`, `validateNoRuntimeReturnsInConstructorStmt`, `validateCustomErrorArgShapesInStmt`) with explicit structural recursion.
-22. `Compiler/CompilationModel.lean` further totalizes all Expr/Stmt validation walkers: scoped-identifier validation (`validateScopedExprIdentifiers`, `validateScopedStmtIdentifiers`, `validateScopedStmtListIdentifiers`), interop validation (`validateInteropExpr`, `validateInteropStmt`), internal-call-shape validation (`validateInternalCallShapesInExpr`, `validateInternalCallShapesInStmt`), external-call-target validation (`validateExternalCallTargetsInExpr`, `validateExternalCallTargetsInStmt`), and event-argument-shape validation (`validateEventArgShapesInStmt`) with explicit structural recursion in mutual blocks.
-23. `Verity/Macro/Translate.lean` supports explicit `getMappingUint`/`setMappingUint` forms for `Uint256 -> Uint256` storage fields with fail-closed typed diagnostics (`Address` mappings must use `getMapping`/`setMapping`).
-24. `Verity/Macro/Bridge.lean` emits per-function `_semantic_preservation` theorem skeletons for macro-generated contracts without depending on `SpecInterpreter`.
-25. `Compiler/Proofs/EndToEnd.lean` composes Layer 2 (CompilationModel→IR) and Layer 3 (IR→Yul) preservation theorems into a single end-to-end result. All 5 universal pure arithmetic bridge theorems proven (add/sub/mul via `Nat.add_mod`/`Nat.mul_mod`/`omega`; div/mod via `Fin.div`/`Fin.mod` unfolding + in-range preconditions).
-26. Primitive/algebraic bridge facts needed by semantic hardening are now carried by `Compiler/Proofs/EndToEnd.lean` and `Compiler/Proofs/SemanticBridge.lean` and reused by composed EDSL→IR→Yul proofs.
-27. `Compiler/Proofs/SemanticBridge.lean` states the target EDSL≡compiled-IR theorems for SimpleStorage (store, retrieve), Counter (increment, decrement, getCount), Owned (getOwner, transferOwnership), SafeCounter (increment, decrement, getCount), and OwnedCounter (getCount, getOwner, increment, decrement, transferOwnership) and attempts full discharge via direct `simp` unfolding of both EDSL and IR execution — no `sorry` in these proofs. Owned demonstrates Address-typed storage encoding; SafeCounter demonstrates success/revert case-split for checked arithmetic; OwnedCounter demonstrates mixed-type multi-slot encoding and access control composition. Additionally, composed EDSL→IR→Yul end-to-end proofs for SimpleStorage (store, retrieve) and Counter (increment) chain the EDSL≡IR proofs with Layer 3 preservation.
+6. `scripts/check_verify_sync.py` is the unified table-driven validator for all workflow invariants (job order, commands, path filters, foundry settings, artifact producers), driven by `scripts/verify_sync_spec.json`.
+7. `scripts/check_interop_matrix_sync.py` detects duplicate normalized feature rows with explicit error reporting.
+8. `scripts/check_builtin_list_sync.py` strips Lean comments before `def` extraction, preventing comment-decoy bypass.
+9. `scripts/check_solc_pin.py` collects all `SOLC_*` matches via `finditer` and fails on conflicting values across occurrences.
+10. `scripts/check_yul_builtin_boundary.py` uses `scrub_lean_code` to strip comments and string literals before boundary checks.
+11. `scripts/check_mapping_slot_boundary.py` uses `scrub_lean_code` to strip comments and string literals before boundary checks.
+12. `scripts/check_evmyullean_capability_boundary.py` detects non-literal builtin dispatch patterns and reports them as fail-closed diagnostics.
+13. `Compiler/CompilationModel.lean` recursive validation walkers for unsafe logical call-like detection, array-element usage detection, return/revert reachability, and bind-name collection are totalized (`def` + explicit `termination_by`), reducing reliance on `partial def` in the active compilation path.
+14. `Compiler/CompilationModel.lean` additionally totalizes dynamic-parameter scope checks, statement read/write analysis, and statement-list validator walkers (`validateStmtParamReferences`, `validateReturnShapesInStmt`, `validateNoRuntimeReturnsInConstructorStmt`, `validateCustomErrorArgShapesInStmt`) with explicit structural recursion.
+15. `Compiler/CompilationModel.lean` further totalizes all Expr/Stmt validation walkers: scoped-identifier validation (`validateScopedExprIdentifiers`, `validateScopedStmtIdentifiers`, `validateScopedStmtListIdentifiers`), interop validation (`validateInteropExpr`, `validateInteropStmt`), internal-call-shape validation (`validateInternalCallShapesInExpr`, `validateInternalCallShapesInStmt`), external-call-target validation (`validateExternalCallTargetsInExpr`, `validateExternalCallTargetsInStmt`), and event-argument-shape validation (`validateEventArgShapesInStmt`) with explicit structural recursion in mutual blocks.
+16. `Verity/Macro/Translate.lean` supports explicit `getMappingUint`/`setMappingUint` forms for `Uint256 -> Uint256` storage fields with fail-closed typed diagnostics (`Address` mappings must use `getMapping`/`setMapping`).
+17. `Verity/Macro/Bridge.lean` emits per-function `_semantic_preservation` theorem skeletons for macro-generated contracts.
+18. `Compiler/Proofs/EndToEnd.lean` composes Layer 2 (CompilationModel→IR) and Layer 3 (IR→Yul) preservation theorems into a single end-to-end result. All 5 universal pure arithmetic bridge theorems proven (add/sub/mul via `Nat.add_mod`/`Nat.mul_mod`/`omega`; div/mod via `Fin.div`/`Fin.mod` unfolding + in-range preconditions).
+19. Primitive/algebraic bridge facts needed by semantic hardening are now carried by `Compiler/Proofs/EndToEnd.lean` and `Compiler/Proofs/SemanticBridge.lean` and reused by composed EDSL→IR→Yul proofs.
+20. `Compiler/Proofs/SemanticBridge.lean` states the target EDSL≡compiled-IR theorems for SimpleStorage (store, retrieve), Counter (increment, decrement, getCount), Owned (getOwner, transferOwnership), SafeCounter (increment, decrement, getCount), and OwnedCounter (getCount, getOwner, increment, decrement, transferOwnership) and attempts full discharge via direct `simp` unfolding of both EDSL and IR execution — no `sorry` in these proofs. Owned demonstrates Address-typed storage encoding; SafeCounter demonstrates success/revert case-split for checked arithmetic; OwnedCounter demonstrates mixed-type multi-slot encoding and access control composition. Additionally, composed EDSL→IR→Yul end-to-end proofs for SimpleStorage (store, retrieve) and Counter (increment) chain the EDSL≡IR proofs with Layer 3 preservation.
 
 Crypto choices:
 1. Function selectors use keccak256 (Ethereum ABI standard interoperability requirement).
@@ -67,7 +60,7 @@ Crypto choices:
 ## Known risks
 
 1. `solc` is trusted and outside Lean proof scope.
-2. AST denotation proofs are retained as proof artifacts but are not part of the active compilation path.
+2. The AST compiler backend has been removed; only the `CompilationModel` path is active.
 3. Linked external Yul libraries remain trusted dependencies and must be audited separately.
 4. Gas bounds are engineering checks, not semantic security proofs.
 

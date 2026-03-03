@@ -11,13 +11,11 @@ Machine-readable version: [`artifacts/interpreter_feature_matrix.json`](../artif
 
 | Interpreter | File | Entry Point | Purpose |
 |---|---|---|---|
-| **SpecInterpreter (basic)** | `Verity/Proofs/Stdlib/SpecInterpreter.lean` | `execStmts` | Layer-1 proofs (no loops/calls) |
-| **SpecInterpreter (fuel)** | `Verity/Proofs/Stdlib/SpecInterpreter.lean` | `execStmtsFuel` | Layer-1 proofs (full construct set) |
-| **IRInterpreter** | `Compiler/Proofs/IRGeneration/IRInterpreter.lean` | `evalStmts` | Layer-2 preservation proofs |
+| **IRInterpreter** | `Compiler/Proofs/IRGeneration/IRInterpreter.lean` | `execIRStmts` | Layer-2 preservation proofs |
+| **YulSemantics** | `Compiler/Proofs/YulGeneration/Semantics.lean` | `execYulFuel` | Layer-3 Yul execution semantics |
 | **EVMYulLean bridge** | `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanBridgeTest.lean` | `evalBuiltinCallViaEvmYulLean` | Pure builtin evaluation via EVMYulLean UInt256 |
 
-**Default path**: `SpecInterpreter (fuel)` — supports the full CompilationModel construct set.
-The basic path is used only for proofs that do not require loops or internal calls.
+The `SpecInterpreter` has been removed. EDSL semantics are now defined directly in `Verity/Core.lean` via the `Contract` monad and composed with IR/Yul layers through `SemanticBridge` proofs.
 
 ---
 
@@ -147,13 +145,9 @@ Legend: **ok** = native evaluation, **del** = delegated to Verity path (bridge r
 
 ## Known Limitations
 
-1. **Linear memory**: The SpecInterpreter does not model `mload`/`mstore`/`keccak256(mem)`. The IRInterpreter has single-word memory support. Full linear memory coverage requires EVMYulLean semantic integration.
+1. **Linear memory**: The IRInterpreter has single-word memory support. Full linear memory coverage requires EVMYulLean semantic integration.
 
-2. **Low-level calls**: `call`/`staticcall`/`delegatecall` expressions return 0 in the SpecInterpreter. `externalCallBind` and `ecm` statements revert. These are compiler-only features validated by Foundry testing.
-
-3. **Basic vs fuel path**: Contracts using `forEach`, `internalCall`, or `internalCallAssign` must use `execStmtsFuel`. The basic `execStmts` reverts on these constructs.
-
-4. **Expr.internalCall**: Returns 0 in the basic path (function lookup requires threading the functions parameter through mutual recursion). Use the fuel-based path.
+2. **Low-level calls**: `call`/`staticcall`/`delegatecall` and `externalCallBind`/`ecm` are compiler-only features validated by Foundry testing, not modeled in proof interpreters.
 
 ---
 

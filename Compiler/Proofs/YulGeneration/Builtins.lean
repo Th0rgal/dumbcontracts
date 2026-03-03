@@ -117,6 +117,85 @@ def evalBuiltinCall
   else
     none
 
+/-! ## Per-Builtin Simp Lemmas
+
+These lemmas let `simp` reduce specific `evalBuiltinCall` invocations without
+unfolding the entire 20-branch if-then-else chain. This is necessary because
+the full chain exceeds heartbeat limits in large proof terms (Issue #1089).
+
+Each lemma reduces to `rfl` after `simp [evalBuiltinCall]` resolves the
+string comparisons in the if-chain. -/
+
+@[simp] theorem evalBuiltinCall_mappingSlot (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (base key : Nat) :
+    evalBuiltinCall storage sender selector calldata "mappingSlot" [base, key] =
+      some (Compiler.Proofs.abstractMappingSlot base key) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_sload (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (slot : Nat) :
+    evalBuiltinCall storage sender selector calldata "sload" [slot] =
+      some (Compiler.Proofs.abstractLoadStorageOrMapping storage slot) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_add (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a b : Nat) :
+    evalBuiltinCall storage sender selector calldata "add" [a, b] =
+      some ((a + b) % evmModulus) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_sub (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a b : Nat) :
+    evalBuiltinCall storage sender selector calldata "sub" [a, b] =
+      some ((evmModulus + a - b) % evmModulus) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_mul (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a b : Nat) :
+    evalBuiltinCall storage sender selector calldata "mul" [a, b] =
+      some ((a * b) % evmModulus) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_lt (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a b : Nat) :
+    evalBuiltinCall storage sender selector calldata "lt" [a, b] =
+      some (if a < b then 1 else 0) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_gt (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a b : Nat) :
+    evalBuiltinCall storage sender selector calldata "gt" [a, b] =
+      some (if a > b then 1 else 0) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_eq (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a b : Nat) :
+    evalBuiltinCall storage sender selector calldata "eq" [a, b] =
+      some (if a = b then 1 else 0) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_iszero (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a : Nat) :
+    evalBuiltinCall storage sender selector calldata "iszero" [a] =
+      some (if a = 0 then 1 else 0) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_and (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (a b : Nat) :
+    evalBuiltinCall storage sender selector calldata "and" [a, b] =
+      some (a &&& b) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_caller (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "caller" [] =
+      some sender := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_calldataload (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (offset : Nat) :
+    evalBuiltinCall storage sender selector calldata "calldataload" [offset] =
+      some (calldataloadWord selector calldata offset) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_callvalue (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "callvalue" [] =
+      some 0 := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_calldatasize (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "calldatasize" [] =
+      some (4 + calldata.length * 32) := by
+  simp [evalBuiltinCall]
+
 inductive BuiltinBackend where
   | verity
   | evmYulLean
@@ -138,5 +217,13 @@ def evalBuiltinCallWithBackend
   | .evmYulLean =>
       Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallViaEvmYulLean
         storage sender selector calldata func argVals
+
+@[simp] theorem evalBuiltinCallWithBackend_verity
+    (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) (func : String) (argVals : List Nat) :
+    evalBuiltinCallWithBackend .verity storage sender selector calldata func argVals =
+      evalBuiltinCall storage sender selector calldata func argVals := by
+  simp [evalBuiltinCallWithBackend]
+
+@[simp] theorem defaultBuiltinBackend_eq : defaultBuiltinBackend = BuiltinBackend.verity := rfl
 
 end Compiler.Proofs.YulGeneration

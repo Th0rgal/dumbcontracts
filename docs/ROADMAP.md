@@ -190,14 +190,11 @@ Reference docs:
 
 **Goal**: Demonstrate scalability beyond toy examples.
 
-**Proposed Contracts**:
-1. **ERC721** (NFT standard)
-   - Complex state management (owner mapping, approvals, metadata)
-   - Transfer safety checks
-   - Enumeration extensions
-   - **Effort**: 2-3 weeks
+**Completed Contracts**:
+1. **ERC721** (NFT standard) — implemented with 11 theorems, differential + property tests
 
-2. **Governance** (voting/proposals)
+**Proposed Contracts**:
+1. **Governance** (voting/proposals)
    - Proposal lifecycle (created → active → executed)
    - Vote tallying
    - Timelock enforcement
@@ -261,7 +258,7 @@ Reference docs:
 **Milestone**: First real-world verified contract deployment
 
 **Work Items**:
-- Add ERC721 example contract (2-3 weeks)
+- ~~Add ERC721 example contract~~ (done — 11 theorems)
 - Strengthen differential testing coverage (ongoing)
 - Comprehensive documentation and tutorials (1 month)
 - Performance optimization (ongoing)

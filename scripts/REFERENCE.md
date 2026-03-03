@@ -6,26 +6,10 @@ This document is the long-form reference for script responsibilities.
 
 - `check_verify_sync.py`: unified table-driven validator for workflow invariants.
 - `verify_sync_spec.json`: expected job order, command lists, path filters, foundry settings, and artifact producers.
-- Legacy compatibility checks (non-authoritative):
-  - `check_verify_paths_sync.py`
-  - `check_verify_checks_docs_sync.py`
-  - `check_verify_build_docs_sync.py`
-  - `check_verify_ci_jobs_docs_sync.py`
-  - `check_verify_multiseed_sync.py`
-  - `check_verify_foundry_shard_sync.py`
-  - `check_verify_foundry_patched_sync.py`
-  - `check_verify_foundry_job_sync.py`
-  - `check_verify_foundry_gas_calibration_sync.py`
-  - `check_verify_artifact_sync.py`
 
 ## Issue #1060 automation
 
-- `run_1060_pr_sync.sh`: strict startup sequence (repo setup, fetch, PR status/checks/review feedback, branch sync, merge `origin/main`, fast gate).
-- `run_1060_pr_fast.sh`: compatibility wrapper forwarding to `run_1060_pr_sync.sh`.
-- `run_1060_fast_gate.sh`: local gate for #1060 runs.
-- `check_issue_1060_integrity.py`: ledger schema + anti-inflation + repository-fact checks.
-- `post_1060_progress_comment.sh`: idempotent PR progress comment upsert by marker.
-- `sync_1060_trackers.py`: generate PR/issue tracker checkboxes from `issue_1060_progress.json`.
+- `check_issue_1060_integrity.py`: ledger schema + anti-inflation + repository-fact checks (run in CI).
 
 ## Artifacts and documentation consistency
 

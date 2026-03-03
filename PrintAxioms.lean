@@ -30,7 +30,6 @@ import Verity.Proofs.Stdlib.MappingAutomation
 import Verity.Proofs.Stdlib.Math
 import Compiler.Proofs.ArithmeticProfile
 import Compiler.Proofs.EndToEnd
-import Compiler.Proofs.IRGeneration.Conversions
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.SemanticBridge
 import Compiler.Proofs.YulGeneration.Equivalence
@@ -597,9 +596,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.EndToEnd.layers2_3_ir_matches_yul
 #print axioms Compiler.Proofs.EndToEnd.simpleStorage_endToEnd
 
--- Compiler/Proofs/IRGeneration/Conversions.lean
-#print axioms Compiler.Proofs.IRGeneration.contractStateToIRState_memory
-
 -- Compiler/Proofs/MappingSlot.lean
 #print axioms Compiler.Proofs.abstractMappingSlot_eq_solidity
 #print axioms Compiler.Proofs.abstractMappingTag_eq_zero
@@ -648,4 +644,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 550 theorems/lemmas (530 public, 20 private)
+-- Total: 549 theorems/lemmas (529 public, 20 private)

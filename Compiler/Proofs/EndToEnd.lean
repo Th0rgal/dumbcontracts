@@ -32,7 +32,6 @@
 
 import Compiler.Proofs.YulGeneration.Preservation
 import Compiler.Proofs.IRGeneration.Expr
-import Compiler.Proofs.IRGeneration.Conversions
 
 namespace Compiler.Proofs.EndToEnd
 

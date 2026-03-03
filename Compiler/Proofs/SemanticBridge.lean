@@ -28,7 +28,6 @@
 -/
 
 import Compiler.Proofs.IRGeneration.IRInterpreter
-import Compiler.Proofs.IRGeneration.Conversions
 import Compiler.Proofs.EndToEnd
 import Compiler.Specs
 import Verity.Core

@@ -728,11 +728,9 @@ theorem ownedCounter_transferOwnership_semantic_bridge
     evalBuiltinCallWithBackend, defaultBuiltinBackend,
     calldataloadWord, selectorWord, selectorModulus, selectorShift,
     IRState.setVar, IRState.getVar,
-    Compiler.Proofs.abstractStoreStorageOrMapping,
-    Compiler.Proofs.storageAsMappings,
     Compiler.Constants.addressMask]
   subst hOwner
-  simp [beq_iff_eq]
+  simp
   intro «slot»
   by_cases h : «slot» = 0 <;> simp_all [beq_iff_eq]
 

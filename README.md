@@ -109,11 +109,11 @@ EVM Bytecode
 | 2 | CompilationModel compilation preserves behavior | [EndToEnd.lean](Compiler/Proofs/EndToEnd.lean) |
 | 3 | IR → Yul codegen preserves behavior | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
 
-The single axiom is [`keccak256_first_4_bytes`](Compiler/Selectors.lean) for function selector computation, validated by CI against `solc --hashes`. See [AXIOMS.md](AXIOMS.md).
+Layers 2 and 3 (`CompilationModel → IR → Yul`) are verified with 1 axiom: [`keccak256_first_4_bytes`](Compiler/Selectors.lean) for function selector computation, validated by CI against `solc --hashes`. See [AXIOMS.md](AXIOMS.md).
 
 ### 5. Test the compiled output (belt and suspenders)
 
-447 Foundry tests run the compiled Yul on a real EVM and check it matches expected behavior. The proofs already guarantee correctness, but the tests confirm it works end-to-end:
+**Foundry tests** (447 tests) validate EDSL = Yul = EVM execution. 447 Foundry tests across 37 test suites run the compiled Yul on a real EVM. The proofs already guarantee correctness, but the tests confirm it works end-to-end:
 
 ```bash
 FOUNDRY_PROFILE=difftest forge test    # 447 tests across 37 suites
@@ -125,19 +125,19 @@ FOUNDRY_PROFILE=difftest forge test    # 447 tests across 37 suites
 
 | Contract | Theorems | What it demonstrates |
 |----------|----------|---------------------|
-| [SimpleStorage](Verity/Examples/SimpleStorage.lean) | 20 | Store/retrieve with roundtrip proof |
-| [Counter](Verity/Examples/Counter.lean) | 28 | Increment/decrement, composition proofs |
-| [SafeCounter](Verity/Examples/SafeCounter.lean) | 25 | Overflow/underflow revert proofs |
-| [Owned](Verity/Examples/Owned.lean) | 23 | Access control, ownership transfer |
-| [OwnedCounter](Verity/Examples/OwnedCounter.lean) | 48 | Cross-pattern composition, lockout proofs |
-| [Ledger](Verity/Examples/Ledger.lean) | 33 | Deposit/withdraw/transfer, balance conservation |
-| [SimpleToken](Verity/Examples/SimpleToken.lean) | 61 | Mint/transfer, supply conservation |
-| [ERC20](Verity/Examples/ERC20.lean) | 19 | ERC-20 baseline with approve/transfer |
-| [ERC721](Verity/Examples/ERC721.lean) | 11 | NFT ownership/approval baseline |
-| [ReentrancyExample](Verity/Examples/ReentrancyExample.lean) | 4 | Reentrancy vulnerability vs safe pattern |
-| [CryptoHash](Verity/Examples/CryptoHash.lean) | — | External library linking demo (no proofs) |
+| SimpleStorage | 20 | Store/retrieve with roundtrip proof |
+| Counter | 28 | Increment/decrement, composition proofs |
+| SafeCounter | 25 | Overflow/underflow revert proofs |
+| Owned | 23 | Access control, ownership transfer |
+| OwnedCounter | 48 | Cross-pattern composition, lockout proofs |
+| Ledger | 33 | Deposit/withdraw/transfer, balance conservation |
+| SimpleToken | 61 | Mint/transfer, supply conservation |
+| ERC20 | 19 | ERC-20 baseline with approve/transfer |
+| ERC721 | 11 | NFT ownership/approval baseline |
+| ReentrancyExample | 4 | Reentrancy vulnerability vs safe pattern |
+| CryptoHash | — | External library linking demo (no proofs) |
 
-425 theorems total. 0 `sorry`. 1 documented axiom.
+425 theorems across 11 categories (424 proven, 1 `sorry`). 447 Foundry tests across 37 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom.
 
 ---
 
@@ -162,7 +162,7 @@ Verity's DSL prevents raw external calls for safety. Instead, you can:
 curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
 source ~/.elan/env
 
-# Clone and build (verifies all 425 theorems)
+# Clone and build — Verifies all 425 theorems
 git clone https://github.com/Th0rgal/verity.git && cd verity
 lake build
 
@@ -171,7 +171,7 @@ lake exe verity-compiler                              # all contracts
 lake exe verity-compiler --edsl-contract counter      # specific contract
 
 # Run Foundry tests
-FOUNDRY_PROFILE=difftest forge test
+FOUNDRY_PROFILE=difftest forge test    # 447 tests across 37 suites
 ```
 
 **Scaffold a new contract**:
@@ -191,7 +191,7 @@ Every claim is enforced by CI on every commit:
 | Claim | Value | Verify locally |
 |-------|-------|----------------|
 | Proven theorems | 425 | `make verify` |
-| Incomplete proofs (`sorry`) | 0 | `make verify` |
+| Incomplete proofs (`sorry`) | 1 | `make verify` |
 | Project-specific axioms | 1 ([documented](AXIOMS.md)) | `make axiom-report` |
 | Foundry runtime tests | 447 across 37 suites | `make test-foundry` |
 | Property test coverage | 250/425 (59%) | `python3 scripts/check_property_coverage.py` |

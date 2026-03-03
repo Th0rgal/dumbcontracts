@@ -35,8 +35,9 @@ EVM Bytecode
 | ERC721 | 11 | Baseline | `Verity/Proofs/ERC721/` |
 | ReentrancyExample | 4 | Complete | `Verity/Examples/ReentrancyExample.lean` |
 | CryptoHash | 0 | No specs | `Verity/Examples/CryptoHash.lean` |
-| Stdlib | 153 | Internal | `Verity/Proofs/Stdlib/` |
-| **Total** | **425** | | |
+| **Total** | **272** | **✅ 100%** | — |
+
+> **Note**: Stdlib (153 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (425 total properties).
 
 Layer 1 uses macro-generated bridge theorems backed by a generic typed-IR compilation-correctness theorem ([`TypedIRCompilerCorrectness.lean`](../Verity/Core/Free/TypedIRCompilerCorrectness.lean)). Advanced constructs (linked libraries, ECMs, custom ABI) are expressed directly in `CompilationModel` and trusted at that boundary.
 
@@ -93,13 +94,21 @@ Key files: [`StatementEquivalence.lean`](../Compiler/Proofs/YulGeneration/Statem
 | Owned | 87% (20/23) | 3 proof-only |
 | SimpleToken | 85% (52/61) | 9 proof-only |
 | Counter | 82% (23/28) | 5 proof-only |
-| Stdlib | 0% (0/153) | 153 internal |
+| Stdlib | 0% (0/153) | 153 proof-only |
 
-**Total**: 250/425 (59%). All 175 exclusions are proof-only properties that cannot be tested in Foundry.
+**Status**: 59% coverage (250/425), 175 remaining exclusions all proof-only
+
+- **Total Properties**: 425
+- **Covered**: 250
+- **Excluded**: 175 (all proof-only)
+
+**Proof-Only Properties (175 exclusions)**: Internal proof machinery that cannot be tested in Foundry.
+
+1 `sorry` remaining (macro-generated semantic preservation placeholders).
 
 ## Differential Testing
 
-Production-ready: 90,000+ tests (10,000 per contract x 9 contracts) with 8-shard CI parallelization. Randomized inputs covering edge cases, comparing EDSL interpreter output against Solidity-compiled EVM execution.
+**Status**: Scaled to 90,000+ tests (10,000 per contract x 9 contracts) with 8-shard CI parallelization. Randomized inputs covering edge cases, comparing EDSL interpreter output against Solidity-compiled EVM execution.
 
 ## Trust Assumptions
 

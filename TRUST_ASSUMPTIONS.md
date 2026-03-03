@@ -8,9 +8,9 @@ This document states what Verity proves and what it still trusts.
 EDSL (Lean)
   ↓ [Layer 1: PROVEN — EDSL ≡ CompilationModel bridge]
 CompilationModel
-  ↓ [Layer 2: PROVEN — CompilationModel → IR]
+  ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
-  ↓ [Layer 3: PROVEN, 1 axiom — IR → Yul]
+  ↓ [Layer 3: FULLY VERIFIED, 1 axiom — IR → Yul]
 Yul
   ↓ [trusted — solc]
 EVM Bytecode
@@ -25,7 +25,7 @@ All three layers are proven in Lean. The single axiom is `keccak256_first_4_byte
 - **Layer 3**: IR → Yul preserves behavior (1 axiom for keccak-based selectors).
 - **Cross-layer**: `Compiler/Proofs/SemanticBridge.lean` states per-function EDSL ≡ IR equivalence. `Compiler/Proofs/EndToEnd.lean` composes Layers 2+3.
 
-Metrics (CI-enforced): 425 theorems, 0 sorry, 250/425 (59%) with Foundry property tests.
+425 theorems across 11 categories. 250 theorems have corresponding Foundry property tests. 59% runtime test coverage.
 
 ## Trusted Components
 

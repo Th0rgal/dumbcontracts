@@ -9,7 +9,40 @@ require evmyul from git
 
 @[default_target]
 lean_lib «Verity» where
-  globs := #[.andSubmodules `Verity]
+  globs := #[
+    .one `Verity,
+    .andSubmodules `Verity.Core,
+    .andSubmodules `Verity.EVM,
+    .andSubmodules `Verity.Macro,
+    .andSubmodules `Verity.Stdlib,
+    .one `Verity.Specs.Common,
+    .andSubmodules `Verity.Specs.Common,
+    .andSubmodules `Verity.Proofs.Stdlib
+  ]
+
+lean_lib «Examples» where
+  globs := #[
+    .one `Verity.All,
+    .andSubmodules `Verity.Examples,
+    .andSubmodules `Verity.Specs.Counter,
+    .andSubmodules `Verity.Specs.ERC20,
+    .andSubmodules `Verity.Specs.ERC721,
+    .andSubmodules `Verity.Specs.Ledger,
+    .andSubmodules `Verity.Specs.Owned,
+    .andSubmodules `Verity.Specs.OwnedCounter,
+    .andSubmodules `Verity.Specs.SafeCounter,
+    .andSubmodules `Verity.Specs.SimpleStorage,
+    .andSubmodules `Verity.Specs.SimpleToken,
+    .andSubmodules `Verity.Proofs.Counter,
+    .andSubmodules `Verity.Proofs.ERC20,
+    .andSubmodules `Verity.Proofs.ERC721,
+    .andSubmodules `Verity.Proofs.Ledger,
+    .andSubmodules `Verity.Proofs.Owned,
+    .andSubmodules `Verity.Proofs.OwnedCounter,
+    .andSubmodules `Verity.Proofs.SafeCounter,
+    .andSubmodules `Verity.Proofs.SimpleStorage,
+    .andSubmodules `Verity.Proofs.SimpleToken
+  ]
 
 lean_lib «Compiler» where
   globs := #[.andSubmodules `Compiler]

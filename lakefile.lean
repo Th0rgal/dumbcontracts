@@ -12,35 +12,35 @@ lean_lib «Verity» where
   globs := #[
     .one `Verity,
     .andSubmodules `Verity.Core,
-    .andSubmodules `Verity.EVM,
+    .submodules `Verity.EVM,
     .andSubmodules `Verity.Macro,
-    .andSubmodules `Verity.Stdlib,
+    .submodules `Verity.Stdlib,
     .andSubmodules `Verity.Specs.Common,
-    .andSubmodules `Verity.Proofs.Stdlib
+    .submodules `Verity.Proofs.Stdlib
   ]
 
 lean_lib «Examples» where
   globs := #[
     .one `Verity.All,
-    .andSubmodules `Verity.Examples,
-    .andSubmodules `Verity.Specs.Counter,
-    .andSubmodules `Verity.Specs.ERC20,
-    .andSubmodules `Verity.Specs.ERC721,
-    .andSubmodules `Verity.Specs.Ledger,
-    .andSubmodules `Verity.Specs.Owned,
-    .andSubmodules `Verity.Specs.OwnedCounter,
-    .andSubmodules `Verity.Specs.SafeCounter,
-    .andSubmodules `Verity.Specs.SimpleStorage,
-    .andSubmodules `Verity.Specs.SimpleToken,
-    .andSubmodules `Verity.Proofs.Counter,
-    .andSubmodules `Verity.Proofs.ERC20,
-    .andSubmodules `Verity.Proofs.ERC721,
-    .andSubmodules `Verity.Proofs.Ledger,
-    .andSubmodules `Verity.Proofs.Owned,
-    .andSubmodules `Verity.Proofs.OwnedCounter,
-    .andSubmodules `Verity.Proofs.SafeCounter,
-    .andSubmodules `Verity.Proofs.SimpleStorage,
-    .andSubmodules `Verity.Proofs.SimpleToken
+    .submodules `Verity.Examples,
+    .submodules `Verity.Specs.Counter,
+    .submodules `Verity.Specs.ERC20,
+    .submodules `Verity.Specs.ERC721,
+    .submodules `Verity.Specs.Ledger,
+    .submodules `Verity.Specs.Owned,
+    .submodules `Verity.Specs.OwnedCounter,
+    .submodules `Verity.Specs.SafeCounter,
+    .submodules `Verity.Specs.SimpleStorage,
+    .submodules `Verity.Specs.SimpleToken,
+    .submodules `Verity.Proofs.Counter,
+    .submodules `Verity.Proofs.ERC20,
+    .submodules `Verity.Proofs.ERC721,
+    .submodules `Verity.Proofs.Ledger,
+    .submodules `Verity.Proofs.Owned,
+    .submodules `Verity.Proofs.OwnedCounter,
+    .submodules `Verity.Proofs.SafeCounter,
+    .submodules `Verity.Proofs.SimpleStorage,
+    .submodules `Verity.Proofs.SimpleToken
   ]
 
 lean_lib «Compiler» where

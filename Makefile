@@ -102,6 +102,7 @@ check: ## Run local CI-equivalent validation subset (no Lean build)
 	python3 scripts/check_lean_hygiene.py
 	python3 scripts/check_verify_sync.py
 	python3 scripts/generate_print_axioms.py --check
+	python3 scripts/check_issue_1060_integrity.py
 	@echo "All checks passed."
 
 refresh-status: ## Regenerate verification artifact and auto-fix doc counts

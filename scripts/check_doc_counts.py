@@ -25,7 +25,7 @@ from property_utils import (
     collect_covered,
     load_exclusions,
     load_manifest,
-    strip_lean_comments,
+    scrub_lean_code,
 )
 
 
@@ -45,7 +45,7 @@ def _count_lean_lines(pattern: str) -> int:
         if not d.exists():
             continue
         for lean in d.rglob("*.lean"):
-            text = strip_lean_comments(lean.read_text(encoding="utf-8"))
+            text = scrub_lean_code(lean.read_text(encoding="utf-8"))
             for line in text.splitlines():
                 if matcher.match(line):
                     count += 1
@@ -96,7 +96,7 @@ def get_sorry_count() -> int:
         if not d.exists():
             continue
         for lean in d.rglob("*.lean"):
-            text = strip_lean_comments(lean.read_text(encoding="utf-8"))
+            text = scrub_lean_code(lean.read_text(encoding="utf-8"))
             for line in text.splitlines():
                 if matcher.search(line):
                     count += 1

@@ -538,6 +538,12 @@ jobs:
         with:
           name: static-gas-report
 
+      - name: Download generated Yul
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-yul
+          path: compiler/yul
+
       - name: Setup Foundry environment
         uses: ./.github/actions/setup-foundry
 

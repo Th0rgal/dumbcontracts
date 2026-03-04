@@ -278,6 +278,11 @@ def execIRStmts (fuel : Nat) (state : IRState) : List YulStmt → IRExecResult
 
 end -- mutual
 
+@[simp] theorem execIRStmt_stop_succ (fuel : Nat) (state : IRState) :
+    execIRStmt (Nat.succ fuel) state (YulStmt.expr (YulExpr.call "stop" [])) =
+      .stop state := by
+  simp [execIRStmt]
+
 /-! ## IR Function Execution -/
 
 structure IRTransaction where

@@ -2,7 +2,7 @@
 """Fail closed on regressions while migrating proofs to macro-generated artifacts.
 
 Issue #997 tracks proof migration from legacy/manual references:
-- `Verity.Examples.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken,SafeCounter}`
+- `Verity.Examples.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken}`
 - `Compiler.Specs.*Spec` (legacy manual specs)
 
 This check enforces:
@@ -27,8 +27,8 @@ ALLOWLIST: set[Path] = set()
 
 LEGACY_RE = re.compile(
     r"\b(?:"
-    r"Verity\.Examples\.(?:Counter|SimpleStorage|Owned|Ledger|OwnedCounter|SimpleToken|SafeCounter)"
-    r"|Compiler\.Specs\.(?:counterSpec|simpleStorageSpec|ownedSpec|ledgerSpec|ownedCounterSpec|simpleTokenSpec|safeCounterSpec)"
+    r"Verity\.Examples\.(?:Counter|SimpleStorage|Owned|Ledger|OwnedCounter|SimpleToken)"
+    r"|Compiler\.Specs\.(?:counterSpec|simpleStorageSpec|ownedSpec|ledgerSpec|ownedCounterSpec|simpleTokenSpec)"
     r")\b"
 )
 

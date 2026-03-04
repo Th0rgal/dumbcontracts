@@ -13,7 +13,6 @@
 
 import Compiler.Constants
 import Verity.Examples.SimpleStorage
-import Verity.Examples.SafeCounter
 import Verity.Examples.Owned
 import Verity.Examples.MacroContracts.Tokens
 import Verity.Examples.MacroContracts.Core
@@ -346,6 +345,14 @@ abbrev getCount := Verity.Examples.MacroContracts.Counter.getCount
 
 end Counter
 
+namespace SafeCounter
+
+abbrev increment := Verity.Examples.MacroContracts.SafeCounter.increment
+abbrev decrement := Verity.Examples.MacroContracts.SafeCounter.decrement
+abbrev getCount := Verity.Examples.MacroContracts.SafeCounter.getCount
+
+end SafeCounter
+
 namespace Owned
 
 abbrev transferOwnership := Verity.Examples.Owned.transferOwnership
@@ -415,9 +422,9 @@ def interpretCounter (tx : Transaction) (state : ContractState) : ExecutionResul
 
 def interpretSafeCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
   dispatch tx [
-    case0 "increment" tx (fun _ => runUnit SafeCounter.increment state [0] [] []),
-    case0 "decrement" tx (fun _ => runUnit SafeCounter.decrement state [0] [] []),
-    case0 "getCount" tx (fun _ => runUint SafeCounter.getCount state [0] [] [])
+    case0 "increment" tx (fun _ => runUnit Compat.SafeCounter.increment state [0] [] []),
+    case0 "decrement" tx (fun _ => runUnit Compat.SafeCounter.decrement state [0] [] []),
+    case0 "getCount" tx (fun _ => runUint Compat.SafeCounter.getCount state [0] [] [])
   ]
 
 /-!

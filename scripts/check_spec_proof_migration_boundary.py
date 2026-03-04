@@ -25,10 +25,6 @@ PROOF_ROOTS = [
 
 ALLOWLIST = {
     Path("Compiler/Proofs/SemanticBridge.lean"),
-    Path("Verity/Proofs/SimpleToken/Basic.lean"),
-    Path("Verity/Proofs/SimpleToken/Correctness.lean"),
-    Path("Verity/Proofs/SimpleToken/Isolation.lean"),
-    Path("Verity/Proofs/SimpleToken/Supply.lean"),
 }
 
 LEGACY_RE = re.compile(

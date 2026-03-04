@@ -9,7 +9,7 @@
   - Invariant preservation
 -/
 
-import Verity.Examples.SimpleToken
+import Verity.Examples.MacroContracts.Tokens
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
 import Verity.Specs.SimpleToken.Spec
@@ -24,96 +24,100 @@ open Verity
 open Verity.Stdlib.Math
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none)
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne uint256_ge_val_le wf_of_state_eq)
-open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
+open Verity.Examples.MacroContracts.SimpleToken (mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken
+
+def simpleTokenConstructor (initialOwner : Address) : Contract Unit := do
+  setStorageAddr Examples.MacroContracts.SimpleToken.ownerSlot initialOwner
+  setStorage Examples.MacroContracts.SimpleToken.totalSupplySlot 0
 
 /-! ## Basic Lemmas for Storage Operations -/
 
 /-- setStorageAddr updates the owner address -/
 theorem setStorageAddr_updates_owner (s : ContractState) (addr : Address) :
-  let slot : StorageSlot Address := Examples.SimpleToken.owner
-  let s' := ((setStorageAddr slot addr).run s).snd
+  let slotIdx : StorageSlot Address := Examples.MacroContracts.SimpleToken.ownerSlot
+  let s' := ((setStorageAddr slotIdx addr).run s).snd
   s'.storageAddr 0 = addr := by
-  simp [setStorageAddr, Examples.SimpleToken.owner]
+  simp [setStorageAddr, Examples.MacroContracts.SimpleToken.ownerSlot]
 
 /-- setStorage updates the total supply -/
 theorem setStorage_updates_supply (s : ContractState) (value : Uint256) :
-  let slot : StorageSlot Uint256 := Examples.SimpleToken.totalSupply
-  let s' := ((setStorage slot value).run s).snd
+  let slotIdx : StorageSlot Uint256 := Examples.MacroContracts.SimpleToken.totalSupplySlot
+  let s' := ((setStorage slotIdx value).run s).snd
   s'.storage 2 = value := by
-  simp [setStorage, Examples.SimpleToken.totalSupply]
+  simp [setStorage, Examples.MacroContracts.SimpleToken.totalSupplySlot]
 
 /-- setMapping updates a balance -/
 theorem setMapping_updates_balance (s : ContractState) (addr : Address) (value : Uint256) :
-  let slot : StorageSlot (Address → Uint256) := Examples.SimpleToken.balances
-  let s' := ((setMapping slot addr value).run s).snd
+  let slotIdx : StorageSlot (Address → Uint256) := Examples.MacroContracts.SimpleToken.balancesSlot
+  let s' := ((setMapping slotIdx addr value).run s).snd
   s'.storageMap 1 addr = value := by
-  simp [setMapping, Examples.SimpleToken.balances]
+  simp [setMapping, Examples.MacroContracts.SimpleToken.balancesSlot]
 
 /-- getMapping reads a balance -/
 theorem getMapping_reads_balance (s : ContractState) (addr : Address) :
-  let slot : StorageSlot (Address → Uint256) := Examples.SimpleToken.balances
-  let result := ((getMapping slot addr).run s).fst
+  let slotIdx : StorageSlot (Address → Uint256) := Examples.MacroContracts.SimpleToken.balancesSlot
+  let result := ((getMapping slotIdx addr).run s).fst
   result = s.storageMap 1 addr := by
-  simp [getMapping, Examples.SimpleToken.balances]
+  simp [getMapping, Examples.MacroContracts.SimpleToken.balancesSlot]
 
 /-- getStorage reads total supply -/
 theorem getStorage_reads_supply (s : ContractState) :
-  let slot : StorageSlot Uint256 := Examples.SimpleToken.totalSupply
-  let result := ((getStorage slot).run s).fst
+  let slotIdx : StorageSlot Uint256 := Examples.MacroContracts.SimpleToken.totalSupplySlot
+  let result := ((getStorage slotIdx).run s).fst
   result = s.storage 2 := by
-  simp [getStorage, Examples.SimpleToken.totalSupply]
+  simp [getStorage, Examples.MacroContracts.SimpleToken.totalSupplySlot]
 
 /-- getStorageAddr reads owner -/
 theorem getStorageAddr_reads_owner (s : ContractState) :
-  let slot : StorageSlot Address := Examples.SimpleToken.owner
-  let result := ((getStorageAddr slot).run s).fst
+  let slotIdx : StorageSlot Address := Examples.MacroContracts.SimpleToken.ownerSlot
+  let result := ((getStorageAddr slotIdx).run s).fst
   result = s.storageAddr 0 := by
-  simp [getStorageAddr, Examples.SimpleToken.owner]
+  simp [getStorageAddr, Examples.MacroContracts.SimpleToken.ownerSlot]
 
 /-- setMapping preserves other addresses -/
 theorem setMapping_preserves_other_addresses (s : ContractState) (slot_val : StorageSlot (Address → Uint256))
   (addr value : _) (other_addr : Address) (h : other_addr ≠ addr) :
   let s' := ((setMapping slot_val addr value).run s).snd
-  s'.storageMap slot_val.slot other_addr = s.storageMap slot_val.slot other_addr := by
+  s'.storageMap slot_val.«slot» other_addr = s.storageMap slot_val.«slot» other_addr := by
   simp [setMapping, h]
 
 /-! ## Constructor Correctness -/
 
 theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
-  let s' := ((constructor initialOwner).run s).snd
+  let s' := ((simpleTokenConstructor initialOwner).run s).snd
   constructor_spec initialOwner s s' := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · rfl
   · rfl
-  · intro slot h_neq
-    simp only [constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner,
-      Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
+  · intro slotIdx h_neq
+    simp only [simpleTokenConstructor, setStorageAddr, setStorage, Examples.MacroContracts.SimpleToken.ownerSlot,
+      Examples.MacroContracts.SimpleToken.totalSupplySlot, bind, Bind.bind, Contract.run, ContractResult.snd]
     split
     · next h =>
-      have : slot = 0 := beq_iff_eq.mp h
+      have : slotIdx = 0 := beq_iff_eq.mp h
       exact absurd this h_neq
     · rfl
-  · intro slot h_neq
-    simp only [constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner,
-      Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
+  · intro slotIdx h_neq
+    simp only [simpleTokenConstructor, setStorageAddr, setStorage, Examples.MacroContracts.SimpleToken.ownerSlot,
+      Examples.MacroContracts.SimpleToken.totalSupplySlot, bind, Bind.bind, Contract.run, ContractResult.snd]
     split
     · next h =>
-      have : slot = 2 := beq_iff_eq.mp h
+      have : slotIdx = 2 := beq_iff_eq.mp h
       exact absurd this h_neq
     · rfl
   · rfl
   ·
-    simp [Specs.sameContext, constructor, setStorageAddr, setStorage, Examples.SimpleToken.owner,
-      Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd]
+    simp [Specs.sameContext, simpleTokenConstructor, setStorageAddr, setStorage, Examples.MacroContracts.SimpleToken.ownerSlot,
+      Examples.MacroContracts.SimpleToken.totalSupplySlot, bind, Bind.bind, Contract.run, ContractResult.snd]
 
 theorem constructor_sets_owner (s : ContractState) (initialOwner : Address) :
-  let s' := ((constructor initialOwner).run s).snd
+  let s' := ((simpleTokenConstructor initialOwner).run s).snd
   s'.storageAddr 0 = initialOwner := by
   have h := constructor_meets_spec s initialOwner; simp [constructor_spec] at h; exact h.1
 
 theorem constructor_sets_supply_zero (s : ContractState) (initialOwner : Address) :
-  let s' := ((constructor initialOwner).run s).snd
+  let s' := ((simpleTokenConstructor initialOwner).run s).snd
   s'.storage 2 = 0 := by
   have h := constructor_meets_spec s initialOwner; simp [constructor_spec] at h; exact h.2.1
 
@@ -129,7 +133,7 @@ on overflow, matching Solidity ^0.8 checked arithmetic semantics.
 -- Helper: isOwner returns true when sender is owner
 theorem isOwner_true_when_owner (s : ContractState) (h : s.sender = s.storageAddr 0) :
   ((isOwner).run s).fst = true := by
-  simp [isOwner, msgSender, getStorageAddr, Examples.SimpleToken.owner, bind, Bind.bind, Contract.run, pure, Pure.pure, ContractResult.fst, h]
+  simp [isOwner, msgSender, getStorageAddr, Examples.MacroContracts.SimpleToken.ownerSlot, bind, Bind.bind, Contract.run, pure, Pure.pure, ContractResult.fst, h]
 
 -- Helper: unfold mint when owner guard passes and no overflow
 private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256)
@@ -137,26 +141,27 @@ private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256
   (h_no_bal_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256)
   (h_no_sup_overflow : (s.storage 2 : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   (mint to amount).run s = ContractResult.success ()
-    { storage := fun slot => if (slot == 2) = true then EVM.Uint256.add (s.storage 2) amount else s.storage slot,
+    { «storage» := fun slotIdx =>
+        if (slotIdx == 2) = true then EVM.Uint256.add (s.storage 2) amount else s.storage slotIdx,
       storageAddr := s.storageAddr,
-      storageMap := fun slot addr =>
-        if (slot == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
-        else s.storageMap slot addr,
+      storageMap := fun slotIdx addr =>
+        if (slotIdx == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
+        else s.storageMap slotIdx addr,
       storageMapUint := s.storageMapUint,
       storageMap2 := s.storageMap2,
       sender := s.sender,
       thisAddress := s.thisAddress,
       msgValue := s.msgValue,
       blockTimestamp := s.blockTimestamp,
-      knownAddresses := fun slot =>
-        if slot == 1 then (s.knownAddresses slot).insert to
-        else s.knownAddresses slot,
+      knownAddresses := fun slotIdx =>
+        if slotIdx == 1 then (s.knownAddresses slotIdx).insert to
+        else s.knownAddresses slotIdx,
       events := s.events } := by
   have h_safe_bal := safeAdd_some (s.storageMap 1 to) amount h_no_bal_overflow
   have h_safe_sup := safeAdd_some (s.storage 2) amount h_no_sup_overflow
   -- Unfold mint (checks-before-effects ordering: both requireSomeUint before mutations)
-  simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner,
-    Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+  simp only [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner,
+    Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
     msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
@@ -189,9 +194,9 @@ theorem mint_meets_spec_when_owner (s : ContractState) (to : Address) (amount : 
   · simp -- supply updated
   · refine ⟨?_, ?_⟩
     · intro addr h_neq; simp [h_neq] -- other balances preserved
-    · intro slot h_neq; intro addr; simp [h_neq] -- other mapping slots
+    · intro slotIdx h_neq; intro addr; simp [h_neq] -- other mapping slots
   · trivial -- owner preserved
-  · intro slot h_neq; simp [h_neq] -- other uint storage
+  · intro slotIdx h_neq; simp [h_neq] -- other uint storage
   · exact Specs.sameContext_rfl _
 
 theorem mint_increases_balance (s : ContractState) (to : Address) (amount : Uint256)
@@ -218,8 +223,8 @@ theorem mint_reverts_balance_overflow (s : ContractState) (to : Address) (amount
   (h_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) > MAX_UINT256) :
   ∃ msg, (mint to amount).run s = ContractResult.revert msg s := by
   have h_none := safeAdd_none (s.storageMap 1 to) amount h_overflow
-  simp [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, requireSomeUint,
-    Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+  simp [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner, requireSomeUint,
+    Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
     msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
@@ -235,8 +240,8 @@ theorem mint_reverts_supply_overflow (s : ContractState) (to : Address) (amount 
   ∃ msg, (mint to amount).run s = ContractResult.revert msg s := by
   have h_safe_bal := safeAdd_some (s.storageMap 1 to) amount h_no_bal_overflow
   have h_none := safeAdd_none (s.storage 2) amount h_overflow
-  simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner, requireSomeUint,
-    Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+  simp only [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner, requireSomeUint,
+    Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
     msgSender, getStorageAddr, setStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
@@ -258,7 +263,7 @@ private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount 
   (h_eq : s.sender = to) :
   (transfer to amount).run s = ContractResult.success () s := by
   have h_balance' := uint256_ge_val_le (h_eq ▸ h_balance)
-  simp [transfer, Examples.SimpleToken.balances,
+  simp [transfer, Examples.MacroContracts.SimpleToken.balancesSlot,
     msgSender, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
@@ -270,25 +275,25 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
   (h_ne : s.sender ≠ to)
   (h_no_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   (transfer to amount).run s = ContractResult.success ()
-    { storage := s.storage,
+    { «storage» := s.storage,
       storageAddr := s.storageAddr,
-      storageMap := fun slot addr =>
-        if (slot == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
-        else if (slot == 1 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 1 s.sender) amount
-        else s.storageMap slot addr,
+      storageMap := fun slotIdx addr =>
+        if (slotIdx == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
+        else if (slotIdx == 1 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 1 s.sender) amount
+        else s.storageMap slotIdx addr,
       storageMapUint := s.storageMapUint,
       storageMap2 := s.storageMap2,
       sender := s.sender,
       thisAddress := s.thisAddress,
       msgValue := s.msgValue,
       blockTimestamp := s.blockTimestamp,
-      knownAddresses := fun slot =>
-        if slot == 1 then ((s.knownAddresses slot).insert s.sender).insert to
-        else s.knownAddresses slot,
+      knownAddresses := fun slotIdx =>
+        if slotIdx == 1 then ((s.knownAddresses slotIdx).insert s.sender).insert to
+        else s.knownAddresses slotIdx,
       events := s.events } := by
   have h_balance' := uint256_ge_val_le h_balance
   have h_safe := safeAdd_some (s.storageMap 1 to) amount h_no_overflow
-  simp only [transfer, Examples.SimpleToken.balances,
+  simp only [transfer, Examples.MacroContracts.SimpleToken.balancesSlot,
     msgSender, getMapping, setMapping,
     requireSomeUint,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
@@ -299,7 +304,7 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
   -- The two ContractState records differ in storageMap and knownAddresses
   congr 1
   -- knownAddresses: simplify nested if slot = 1
-  funext slot
+  funext slotIdx
   split <;> simp [*]
 
 theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (amount : Uint256)
@@ -331,7 +336,7 @@ theorem transfer_meets_spec_when_sufficient (s : ContractState) (to : Address) (
     · simp [h_ne'] -- other balances/slots preserved
       refine ⟨?_, ?_⟩
       · intro addr h_ne_sender h_ne_to; simp [h_ne_sender, h_ne_to]
-      · intro slot h_neq addr'; simp [h_neq]
+      · intro slotIdx h_neq addr'; simp [h_neq]
     · -- owner preserved
       trivial
     · simp [Specs.sameStorageAddrContext, Specs.sameStorage, Specs.sameStorageAddr, Specs.sameContext]
@@ -378,7 +383,7 @@ theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
   have h_balance' := uint256_ge_val_le h_balance
   have h_none := safeAdd_none (s.storageMap 1 to) amount h_overflow
-  simp [transfer, requireSomeUint, Examples.SimpleToken.balances,
+  simp [transfer, requireSomeUint, Examples.MacroContracts.SimpleToken.balancesSlot,
     msgSender, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, ContractResult.snd, ContractResult.fst,
@@ -389,7 +394,9 @@ theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (
 theorem balanceOf_meets_spec (s : ContractState) (addr : Address) :
   let result := ((balanceOf addr).run s).fst
   balanceOf_spec addr result s := by
-  simp [balanceOf, balanceOf_spec, getMapping, Examples.SimpleToken.balances]
+  unfold balanceOf
+  simp [balanceOf_spec, getMapping, Examples.MacroContracts.SimpleToken.balancesSlot,
+    Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
 
 theorem balanceOf_returns_balance (s : ContractState) (addr : Address) :
   let result := ((balanceOf addr).run s).fst
@@ -399,12 +406,16 @@ theorem balanceOf_returns_balance (s : ContractState) (addr : Address) :
 theorem balanceOf_preserves_state (s : ContractState) (addr : Address) :
   let s' := ((balanceOf addr).run s).snd
   s' = s := by
-  simp [balanceOf, getMapping]
+  unfold balanceOf
+  simp [getMapping, Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
 
 theorem getTotalSupply_meets_spec (s : ContractState) :
   let result := ((getTotalSupply).run s).fst
   getTotalSupply_spec result s := by
-  simp [getTotalSupply, getTotalSupply_spec, getStorage, Examples.SimpleToken.totalSupply]
+  unfold getTotalSupply
+  simp [getTotalSupply_spec, Examples.MacroContracts.SimpleToken.totalSupply,
+    getStorage, Examples.MacroContracts.SimpleToken.totalSupplySlot,
+    Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
 
 theorem getTotalSupply_returns_supply (s : ContractState) :
   let result := ((getTotalSupply).run s).fst
@@ -414,12 +425,18 @@ theorem getTotalSupply_returns_supply (s : ContractState) :
 theorem getTotalSupply_preserves_state (s : ContractState) :
   let s' := ((getTotalSupply).run s).snd
   s' = s := by
-  simp [getTotalSupply, getStorage]
+  unfold getTotalSupply
+  simp [Examples.MacroContracts.SimpleToken.totalSupply,
+    getStorage, Examples.MacroContracts.SimpleToken.totalSupplySlot,
+    Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
 
 theorem getOwner_meets_spec (s : ContractState) :
   let result := ((getOwner).run s).fst
   getOwner_spec result s := by
-  simp [getOwner, getOwner_spec, getStorageAddr, Examples.SimpleToken.owner]
+  unfold getOwner
+  simp [getOwner_spec, Examples.MacroContracts.SimpleToken.owner,
+    getStorageAddr, Examples.MacroContracts.SimpleToken.ownerSlot,
+    Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
 
 theorem getOwner_returns_owner (s : ContractState) :
   let result := ((getOwner).run s).fst
@@ -429,31 +446,34 @@ theorem getOwner_returns_owner (s : ContractState) :
 theorem getOwner_preserves_state (s : ContractState) :
   let s' := ((getOwner).run s).snd
   s' = s := by
-  simp [getOwner, getStorageAddr]
+  unfold getOwner
+  simp [Examples.MacroContracts.SimpleToken.owner,
+    getStorageAddr, Examples.MacroContracts.SimpleToken.ownerSlot,
+    Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
 
 /-! ## Composition Properties -/
 
 theorem constructor_getTotalSupply_correct (s : ContractState) (initialOwner : Address) :
-  let s' := ((constructor initialOwner).run s).snd
+  let s' := ((simpleTokenConstructor initialOwner).run s).snd
   let result := ((getTotalSupply).run s').fst
   constructor_getTotalSupply_spec initialOwner s result := by
   have h_constr := constructor_sets_supply_zero s initialOwner
-  have h_get := getTotalSupply_returns_supply (((constructor initialOwner).run s).snd)
+  have h_get := getTotalSupply_returns_supply (((simpleTokenConstructor initialOwner).run s).snd)
   simp [constructor_getTotalSupply_spec]
   rw [h_get, h_constr]
 
 theorem constructor_getOwner_correct (s : ContractState) (initialOwner : Address) :
-  let s' := ((constructor initialOwner).run s).snd
+  let s' := ((simpleTokenConstructor initialOwner).run s).snd
   let result := ((getOwner).run s').fst
   result = initialOwner := by
-  simp only [constructor, getOwner, setStorageAddr, setStorage, getStorageAddr, Examples.SimpleToken.owner, Examples.SimpleToken.totalSupply, bind, Bind.bind, Contract.run, ContractResult.snd, ContractResult.fst]
+  simp only [simpleTokenConstructor, getOwner, setStorageAddr, setStorage, getStorageAddr, Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot, bind, Bind.bind, Contract.run, ContractResult.snd, ContractResult.fst]
   rfl
 
 /-! ## Invariant Preservation -/
 
 theorem constructor_preserves_wellformedness (s : ContractState) (initialOwner : Address)
   (h : WellFormedState s) (h_owner : initialOwner ≠ 0) :
-  let s' := ((constructor initialOwner).run s).snd
+  let s' := ((simpleTokenConstructor initialOwner).run s).snd
   WellFormedState s' := by
   have h_spec := constructor_meets_spec s initialOwner
   simp [constructor_spec] at h_spec

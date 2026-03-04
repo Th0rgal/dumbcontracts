@@ -21,7 +21,7 @@ namespace Verity.Proofs.SimpleToken.Supply
 
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256)
-open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
+open Verity.Examples.MacroContracts.SimpleToken (mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken
 open Verity.Proofs.SimpleToken
 open Verity.Proofs.Stdlib.ListSum (countOcc countOccU countOccU_cons_eq countOccU_cons_ne
@@ -48,20 +48,20 @@ private theorem map_sum_zero_of_all_zero
     a state with all-zero balance mapping. -/
 theorem constructor_establishes_supply_bounds (s : ContractState) (initialOwner : Address)
   (h_zero : ∀ addr : Address, s.storageMap 1 addr = 0) :
-  let s' := ((constructor initialOwner).run s).snd
+  let s' := ((simpleTokenConstructor initialOwner).run s).snd
   supply_bounds_balances s' := by
   simp [supply_bounds_balances]
   intro addrs
   have h_spec := constructor_meets_spec s initialOwner
   simp [constructor_spec] at h_spec
   obtain ⟨_, h_supply_zero, _, _, h_map, _, _⟩ := h_spec
-  have h_all_zero : ∀ addr, ((constructor initialOwner).run s).snd.storageMap 1 addr = 0 := by
+  have h_all_zero : ∀ addr, ((simpleTokenConstructor initialOwner).run s).snd.storageMap 1 addr = 0 := by
     intro addr; rw [h_map]; exact h_zero addr
-  have h_sum : sum_balances ((constructor initialOwner).run s).snd addrs = 0 := by
+  have h_sum : sum_balances ((simpleTokenConstructor initialOwner).run s).snd addrs = 0 := by
     simpa [sum_balances] using
       map_sum_zero_of_all_zero
-        (fun addr => ((constructor initialOwner).run s).snd.storageMap 1 addr) h_all_zero addrs
-  have h_supply_zero' : ((constructor initialOwner).run s).snd.storage 2 = 0 := h_supply_zero
+        (fun addr => ((simpleTokenConstructor initialOwner).run s).snd.storageMap 1 addr) h_all_zero addrs
+  have h_supply_zero' : ((simpleTokenConstructor initialOwner).run s).snd.storage 2 = 0 := h_supply_zero
   simp [h_sum, h_supply_zero']
 
 /-! ## Mint: Exact Sum Equation -/
@@ -154,7 +154,7 @@ Helper lemma:
 1. map_sum_zero_of_all_zero — helper for zero-sum lists
 
 Supply conservation:
-2. constructor_establishes_supply_bounds — constructor establishes invariant (all lists)
+2. constructor_establishes_supply_bounds — simpleTokenConstructor establishes invariant (all lists)
 3. mint_sum_equation — exact sum change: new = old + count(to) * amount
 4. mint_sum_singleton_to — for unique to: new_sum = old_sum + amount
 5. transfer_sum_equation — exact conservation: new + count(sender)*amt = old + count(to)*amt

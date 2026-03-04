@@ -16,7 +16,7 @@ import Verity.Examples.SimpleStorage
 import Verity.Examples.Counter
 import Verity.Examples.SafeCounter
 import Verity.Examples.Owned
-import Verity.Examples.SimpleToken
+import Verity.Examples.MacroContracts.Tokens
 import Verity.Examples.MacroContracts.Core
 import Verity.Examples.ERC20
 import Verity.Examples.ERC721
@@ -364,6 +364,16 @@ abbrev transfer := Verity.Examples.MacroContracts.Ledger.transfer
 abbrev getBalance := Verity.Examples.MacroContracts.Ledger.getBalance
 
 end Ledger
+
+namespace SimpleToken
+
+abbrev mint := Verity.Examples.MacroContracts.SimpleToken.mint
+abbrev transfer := Verity.Examples.MacroContracts.SimpleToken.transfer
+abbrev balanceOf := Verity.Examples.MacroContracts.SimpleToken.balanceOf
+abbrev getTotalSupply := Verity.Examples.MacroContracts.SimpleToken.getTotalSupply
+abbrev getOwner := Verity.Examples.MacroContracts.SimpleToken.getOwner
+
+end SimpleToken
 end Compat
 
 /-!
@@ -475,21 +485,21 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
     case2AddressNat "mint" tx (fun toAddr amount =>
       -- Track: storage slot 2 (totalSupply), owner slot 0, mapping for recipient
       let recipientKey := (1, toAddr)
-      runUnit (SimpleToken.mint toAddr amount) state [2] [0] [recipientKey]
+      runUnit (Compat.SimpleToken.mint toAddr amount) state [2] [0] [recipientKey]
     ),
     case2AddressNat "transfer" tx (fun toAddr amount =>
       -- Track mapping changes for both sender and recipient
       let senderKey := (1, tx.sender)
       let recipientKey := (1, toAddr)
-      runUnit (SimpleToken.transfer toAddr amount) state [] [] [senderKey, recipientKey]
+      runUnit (Compat.SimpleToken.transfer toAddr amount) state [] [] [senderKey, recipientKey]
     ),
     case1Address "balanceOf" tx (fun addr =>
       -- Track mapping for the queried address
       let addrKey := (1, addr)
-      runUint (SimpleToken.balanceOf addr) state [] [] [addrKey]
+      runUint (Compat.SimpleToken.balanceOf addr) state [] [] [addrKey]
     ),
-    case0 "totalSupply" tx (fun _ => runUint SimpleToken.getTotalSupply state [2] [] []),
-    case0 "owner" tx (fun _ => runAddress SimpleToken.getOwner state [] [0] [])
+    case0 "totalSupply" tx (fun _ => runUint Compat.SimpleToken.getTotalSupply state [2] [] []),
+    case0 "owner" tx (fun _ => runAddress Compat.SimpleToken.getOwner state [] [0] [])
   ]
 
 /-!

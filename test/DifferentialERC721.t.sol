@@ -592,7 +592,6 @@ contract DifferentialERC721 is YulTestBase, DiffTestConfig, DifferentialTestBase
         bool first = true;
         for (uint256 i = 0; i < _actors.length; i++) {
             for (uint256 j = 0; j < _actors.length; j++) {
-                if (i == j) continue;
                 if (!edslOperatorApprovals[_actors[i]][_actors[j]]) continue;
                 if (!first) out = string.concat(out, ",");
                 out = string.concat(

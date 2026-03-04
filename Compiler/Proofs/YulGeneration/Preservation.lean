@@ -165,17 +165,9 @@ private theorem evalSelectorExpr_setVar_has_selector (state : YulState) (v : Nat
     (hselector : state.selector < selectorModulus) :
     evalYulExpr (state.setVar "__has_selector" v) selectorExpr =
       some state.selector := by
-  -- selectorExpr = shr(selectorShift, calldataload(0))
-  -- This only accesses state.selector and state.calldata, not vars
-  -- setVar only modifies vars, so the result is unchanged
-  have hlt : state.selector < 4294967296 := by
-    have : selectorModulus = 4294967296 := by simp [selectorModulus]
-    omega
-  simp [selectorExpr, evalYulExpr, evalYulCall, evalYulExprs,
-    evalBuiltinCallWithBackend, evalBuiltinCall,
-    calldataloadWord, selectorWord, selectorShift, selectorModulus,
-    YulState.setVar,
-    Nat.mod_eq_of_lt hlt]
+  -- Keep this bridge local and avoid unfolding the full builtin evaluator.
+  simpa using (evalYulExpr_selectorExpr_eq (state.setVar "__has_selector" v) (by
+    simpa [YulState.setVar] using hselector))
 
 set_option maxHeartbeats 1600000000 in
 /-- Main preservation theorem: Yul codegen preserves IR semantics.

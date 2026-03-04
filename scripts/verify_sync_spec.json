@@ -6,11 +6,24 @@
     "README.md",
     "TRUST_ASSUMPTIONS.md"
   ],
+  "compiler_paths": [
+    ".github/actions/**",
+    ".github/workflows/verify.yml",
+    "Compiler/**",
+    "Compiler.lean",
+    "examples/**",
+    "scripts/**",
+    "lakefile.lean",
+    "lake-manifest.json",
+    "lean-toolchain",
+    "foundry.toml"
+  ],
   "expected_jobs": [
     "changes",
     "checks",
     "build",
     "build-compiler",
+    "lean-profile",
     "foundry-gas-calibration",
     "foundry",
     "foundry-patched",

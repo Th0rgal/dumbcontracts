@@ -16,6 +16,7 @@ import generate_macro_property_tests as generator
 from property_utils import ROOT
 
 DEFAULT_SOURCE = ROOT / "Verity" / "Examples" / "MacroContracts.lean"
+DEFAULT_SOURCE_DIR = ROOT / "Verity" / "Examples" / "MacroContracts"
 DEFAULT_OUTPUT_DIR = ROOT / "artifacts" / "macro_property_tests"
 
 
@@ -100,7 +101,8 @@ def main() -> int:
         default=[],
         help=(
             "Lean source path to scan (relative to repo root). "
-            "Repeat flag for multiple files. Defaults to Verity/Examples/MacroContracts.lean."
+            "Repeat flag for multiple files. Defaults to Verity/Examples/MacroContracts/*.lean "
+            "(falling back to Verity/Examples/MacroContracts.lean for legacy layout)."
         ),
     )
     parser.add_argument(
@@ -121,7 +123,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    source_paths = [ROOT / p for p in (args.source or [str(DEFAULT_SOURCE.relative_to(ROOT))])]
+    if args.source:
+        source_paths = [ROOT / p for p in args.source]
+    else:
+        source_paths = sorted(DEFAULT_SOURCE_DIR.glob("*.lean"))
+        if not source_paths:
+            source_paths = [DEFAULT_SOURCE]
     missing_sources = [str(p.relative_to(ROOT)) for p in source_paths if not p.exists()]
     if missing_sources:
         print(

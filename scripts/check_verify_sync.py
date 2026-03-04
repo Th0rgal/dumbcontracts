@@ -109,12 +109,12 @@ def _extract_pr_paths(text: str) -> list[str]:
     )
 
 
-def _extract_changes_filter_paths(text: str) -> list[str]:
+def _extract_changes_filter_paths(text: str, filter_name: str) -> list[str]:
     changes_body = extract_job_body(text, "changes", VERIFY_YML)
     return _extract_list_block(
         changes_body,
-        r"^\s*filters:\s*\|\n(?:^\s+.*\n)*?^\s*code:\n(?P<block>(?:^\s*-\s+.*\n)+)",
-        "changes.filter.code",
+        rf"^\s*filters:\s*\|\n(?:^\s+.*\n)*?^\s*{re.escape(filter_name)}:\n(?P<block>(?:^\s*-\s+.*\n)+)",
+        f"changes.filter.{filter_name}",
     )
 
 
@@ -330,12 +330,14 @@ def check_paths(snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
     push_paths = _extract_push_paths(snapshot.workflow_text)
     pr_paths = _extract_pr_paths(snapshot.workflow_text)
-    changes_paths = _extract_changes_filter_paths(snapshot.workflow_text)
+    changes_paths = _extract_changes_filter_paths(snapshot.workflow_text, "code")
+    compiler_changes_paths = _extract_changes_filter_paths(snapshot.workflow_text, "compiler")
 
     for label, values in [
         ("on.push.paths", push_paths),
         ("on.pull_request.paths", pr_paths),
         ("changes.filter.code", changes_paths),
+        ("changes.filter.compiler", compiler_changes_paths),
     ]:
         dup = _duplicates(values)
         if dup:
@@ -350,6 +352,14 @@ def check_paths(snapshot: Snapshot, spec: dict) -> CheckResult:
 
     expected_changes = [p for p in push_paths if p not in set(check_only)]
     errors.extend(_compare_lists("changes.filter.code", changes_paths, "expected push minus check_only", expected_changes))
+    errors.extend(
+        _compare_lists(
+            "changes.filter.compiler",
+            compiler_changes_paths,
+            "spec compiler paths",
+            spec["compiler_paths"],
+        )
+    )
 
     return CheckResult("paths", errors)
 

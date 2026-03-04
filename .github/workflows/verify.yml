@@ -63,6 +63,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      compiler: ${{ steps.filter.outputs.compiler }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -78,6 +79,17 @@ jobs:
               - 'Compiler.lean'
               - 'examples/**'
               - 'test/**'
+              - 'scripts/**'
+              - 'lakefile.lean'
+              - 'lake-manifest.json'
+              - 'lean-toolchain'
+              - 'foundry.toml'
+            compiler:
+              - '.github/actions/**'
+              - '.github/workflows/verify.yml'
+              - 'Compiler/**'
+              - 'Compiler.lean'
+              - 'examples/**'
               - 'scripts/**'
               - 'lakefile.lean'
               - 'lake-manifest.json'
@@ -209,10 +221,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .lake
-          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Verity/**/*.lean', 'Compiler/**/*.lean') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
           restore-keys: |
-            lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-
-            lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
+            lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
 
       - name: Fetch mathlib compiled cache
         run: lake exe cache get
@@ -330,7 +341,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .lake
-          key: lake-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Verity/**/*.lean', 'Compiler/**/*.lean') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
 
       - name: Upload axiom dependency report
         uses: actions/upload-artifact@v4
@@ -348,7 +359,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 150
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.compiler == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -378,14 +389,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .lake
-          key: lake-compiler-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean') }}
+          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
           restore-keys: |
-            lake-compiler-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-
-            lake-compiler-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
-
-      - name: Clear stale Lake cache on partial hit
-        if: steps.cache-lake-compiler.outputs.cache-hit != 'true'
-        run: rm -rf .lake
+            lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
 
       - name: Fetch mathlib compiled cache
         run: lake exe cache get
@@ -489,7 +495,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .lake
-          key: lake-compiler-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean') }}
+          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
 
       - name: Upload generated Yul
         uses: actions/upload-artifact@v4
@@ -526,6 +532,60 @@ jobs:
         with:
           name: patch-coverage-report
           path: compiler/patch-report.tsv
+
+  # Optional Lean typechecking profiler (workflow_dispatch only).
+  lean-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' && needs.changes.outputs.code == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache elan + Lean toolchain
+        id: cache-elan
+        uses: actions/cache@v4
+        with:
+          path: ~/.elan
+          key: elan-${{ hashFiles('lean-toolchain') }}
+
+      - name: Install elan
+        if: steps.cache-elan.outputs.cache-hit != 'true'
+        env:
+          ELAN_VERSION: "v4.1.2"
+          ELAN_INIT_SHA256: "4bacca9502cb89736fe63d2685abc2947cfbf34dc87673504f1bb4c43eda9264"
+        run: |
+          curl -sSfL "https://raw.githubusercontent.com/leanprover/elan/${ELAN_VERSION}/elan-init.sh" -o elan-init.sh
+          echo "${ELAN_INIT_SHA256}  elan-init.sh" | sha256sum -c -
+          bash elan-init.sh -y --default-toolchain none
+          rm elan-init.sh
+
+      - name: Add elan to PATH
+        run: echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Restore Lake cache
+        id: cache-lake
+        uses: actions/cache/restore@v4
+        with:
+          path: .lake
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
+          restore-keys: |
+            lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
+
+      - name: Fetch mathlib compiled cache
+        run: lake exe cache get
+
+      - name: Profile Lean module timings
+        run: python3 scripts/profile_lean_modules.py --output lean-perf-queue.md
+
+      - name: Publish Lean profiling summary
+        run: cat lean-perf-queue.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Lean perf queue
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-perf-queue
+          path: lean-perf-queue.md
 
   foundry-gas-calibration:
     runs-on: ubuntu-latest

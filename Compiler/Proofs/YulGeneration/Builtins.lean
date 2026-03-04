@@ -139,4 +139,20 @@ def evalBuiltinCallWithBackend
       Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallViaEvmYulLean
         storage sender selector calldata func argVals
 
+@[simp] theorem evalBuiltinCall_callvalue_nil
+    (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "callvalue" [] = some 0 := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_calldatasize_nil
+    (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "calldatasize" [] =
+      some (4 + calldata.length * 32) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_caller_nil
+    (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "caller" [] = some sender := by
+  simp [evalBuiltinCall]
+
 end Compiler.Proofs.YulGeneration

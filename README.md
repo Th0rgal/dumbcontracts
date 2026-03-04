@@ -182,6 +182,22 @@ python3 scripts/generate_contract.py MyToken --fields "balances:mapping,totalSup
 
 This creates: implementation, spec, invariants, proofs, and Foundry test files.
 
+### Faster Lean Iteration
+
+Use targeted builds while iterating on proofs, then run the full build before push:
+
+```bash
+make verify-targeted   # hotspot modules only
+make verify            # full lake build
+```
+
+To track typechecking hotspots, generate the performance queue:
+
+```bash
+make profile-lean
+# writes docs/LEAN_PERF_QUEUE.md (top slow modules + action queue)
+```
+
 ---
 
 ## Verification guarantees

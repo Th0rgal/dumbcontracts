@@ -4,7 +4,7 @@
 # Run `make setup` to install all tooling, then `make verify` to check all proofs.
 
 .PHONY: help setup setup-elan setup-solc setup-foundry \
-        verify test test-foundry test-python axiom-report \
+        verify verify-targeted profile-lean test test-foundry test-python axiom-report \
         compile generate-yul check \
         refresh-status all clean
 
@@ -65,6 +65,14 @@ setup-foundry: ## Install Foundry (forge, cast, anvil)
 
 verify: ## Verify all proofs (lake build)
 	lake build
+
+verify-targeted: ## Fast local iteration on hotspot modules before full verify
+	lake build Compiler.Proofs.SemanticBridge
+	lake build Compiler.Proofs.YulGeneration.Preservation
+	lake build Compiler.Proofs.EndToEnd
+
+profile-lean: ## Profile Lean module build time and update docs/LEAN_PERF_QUEUE.md
+	python3 scripts/profile_lean_modules.py --output docs/LEAN_PERF_QUEUE.md
 
 axiom-report: ## Generate axiom dependency report for all 550 theorems
 	lake env lean PrintAxioms.lean 2>&1 | tee axiom-report-raw.log

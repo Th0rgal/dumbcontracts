@@ -1,0 +1,7 @@
+# Hot modules for Lean performance profiling
+Compiler.Proofs.SemanticBridge
+Compiler.Proofs.YulGeneration.Preservation
+Compiler.Proofs.YulGeneration.StatementEquivalence
+Verity.Core.Free.TypedIRCompilerCorrectness
+Compiler.Proofs.EndToEnd
+Compiler.MainTest

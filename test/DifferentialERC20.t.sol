@@ -611,6 +611,14 @@ contract DifferentialERC20 is YulTestBase, DiffTestConfig, DifferentialTestBase 
                 return false;
             }
         }
+        for (uint256 i = 0; i < _actors.length; i++) {
+            for (uint256 j = 0; j < _actors.length; j++) {
+                if (token.allowanceOf(_actors[i], _actors[j]) != edslAllowances[_actors[i]][_actors[j]]) {
+                    testsFailed++;
+                    return false;
+                }
+            }
+        }
 
         testsPassed++;
         return true;

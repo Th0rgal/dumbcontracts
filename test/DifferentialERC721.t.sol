@@ -758,6 +758,27 @@ contract DifferentialERC721 is YulTestBase, DiffTestConfig, DifferentialTestBase
                 return false;
             }
         }
+        uint256 mintedCount = edslStorage[2]; // nextTokenId == number of minted tokens
+        for (uint256 t = 0; t < mintedCount; t++) {
+            (bool ownerOk, address ownerVal) = _ownerOfModel(t);
+            if (ownerOk && ownerVal != edslOwners[t]) {
+                testsFailed++;
+                return false;
+            }
+            (bool apprOk, address apprVal) = _getApprovedModel(t);
+            if (apprOk && apprVal != edslTokenApprovals[t]) {
+                testsFailed++;
+                return false;
+            }
+        }
+        for (uint256 i = 0; i < _actors.length; i++) {
+            for (uint256 j = 0; j < _actors.length; j++) {
+                if (nft.isApprovedForAll(_actors[i], _actors[j]) != edslOperatorApprovals[_actors[i]][_actors[j]]) {
+                    testsFailed++;
+                    return false;
+                }
+            }
+        }
 
         testsPassed++;
         return true;

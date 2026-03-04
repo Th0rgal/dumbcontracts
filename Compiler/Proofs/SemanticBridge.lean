@@ -128,6 +128,7 @@ theorem spec_to_ir_preserves_semantics
 
 /-! ## Target Theorems: SimpleStorage -/
 
+set_option maxHeartbeats 1000000000 in
 theorem simpleStorage_store_semantic_bridge
     (state : ContractState) (sender : Address) (value : Uint256) :
     let edslResult := Contract.run (Verity.Examples.store value) { state with sender := sender }
@@ -141,7 +142,14 @@ theorem simpleStorage_store_semantic_bridge
         ∧
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
-    := by sorry
+    := by
+  have hmod : value.val % evmModulus = value.val := by
+    exact Nat.mod_eq_of_lt (by
+      simpa [evmModulus, Verity.Core.UINT256_MODULUS] using value.isLt)
+  simp [Contract.run, Verity.Examples.store, Verity.Examples.storedData, setStorage, mkIRTransaction, mkIRState,
+    interpretIR, simpleStorageIRContract, execIRFunction, execIRStmts, execIRStmt,
+    evalIRExpr, evalIRCall, evalIRExprs, IRState.getVar, IRState.setVar,
+    encodeStorage, encodeEvents, hmod]
 
 theorem simpleStorage_retrieve_semantic_bridge
     (state : ContractState) (sender : Address) :

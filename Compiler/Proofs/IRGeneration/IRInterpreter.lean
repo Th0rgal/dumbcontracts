@@ -283,6 +283,16 @@ end -- mutual
       .stop state := by
   simp [execIRStmt]
 
+@[simp] theorem execIRStmt_stop_one_add (fuel : Nat) (state : IRState) :
+    execIRStmt (1 + fuel) state (YulStmt.expr (YulExpr.call "stop" [])) =
+      .stop state := by
+  simpa [Nat.add_comm] using execIRStmt_stop_succ fuel state
+
+@[simp] theorem execIRStmt_stop_one_add_add (a b : Nat) (state : IRState) :
+    execIRStmt (1 + a + b) state (YulStmt.expr (YulExpr.call "stop" [])) =
+      .stop state := by
+  simpa [Nat.add_assoc] using execIRStmt_stop_one_add (a + b) state
+
 @[simp] theorem execIRStmt_sstore_lit_lit_succ
     (fuel : Nat) (state : IRState) (slot val : Nat) :
     execIRStmt (Nat.succ fuel) state

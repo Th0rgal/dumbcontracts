@@ -600,6 +600,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 
 -- Compiler/Proofs/IRGeneration/IRInterpreter.lean
 #print axioms Compiler.Proofs.IRGeneration.execIRStmt_stop_succ
+#print axioms Compiler.Proofs.IRGeneration.execIRStmt_stop_one_add
+#print axioms Compiler.Proofs.IRGeneration.execIRStmt_stop_one_add_add
 #print axioms Compiler.Proofs.IRGeneration.execIRStmt_sstore_lit_lit_succ
 #print axioms Compiler.Proofs.IRGeneration.execIRStmts_single_stop_succ_succ
 
@@ -661,4 +663,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 560 theorems/lemmas (539 public, 21 private)
+-- Total: 562 theorems/lemmas (541 public, 21 private)

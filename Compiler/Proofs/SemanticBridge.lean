@@ -170,7 +170,6 @@ theorem simpleStorage_store_semantic_bridge
           (1 + (1 + (1 + sizeOf "sstore" + (2 + (1 + (1 + sizeOf "value") + 1)))) +
             (1 + (1 + (1 + sizeOf "stop")))))
         stopState)
-  simp [stopState, hstop]
   intro x
   by_cases hx : x = 0
   · subst hx

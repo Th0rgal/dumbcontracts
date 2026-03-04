@@ -171,4 +171,16 @@ def evalBuiltinCallWithBackend
       some (value % evmModulus) := by
   simp [evalBuiltinCallWithBackend]
 
+@[simp] theorem evalBuiltinCall_sload_single
+    (storage : Nat → Nat) (sender selector : Nat) (slot : Nat) :
+    evalBuiltinCall storage sender selector [] "sload" [slot] =
+      some (Compiler.Proofs.abstractLoadStorageOrMapping storage slot) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCallWithBackend_sload_single
+    (storage : Nat → Nat) (sender selector : Nat) (slot : Nat) :
+    evalBuiltinCallWithBackend defaultBuiltinBackend storage sender selector [] "sload" [slot] =
+      some (Compiler.Proofs.abstractLoadStorageOrMapping storage slot) := by
+  simp [evalBuiltinCallWithBackend]
+
 end Compiler.Proofs.YulGeneration

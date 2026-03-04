@@ -32,9 +32,9 @@ import Compiler.Proofs.EndToEnd
 import Compiler.Specs
 import Verity.Core
 import Verity.Examples.SimpleStorage
+import Verity.Examples.MacroContracts.Core
 import Verity.Examples.Counter
 import Verity.Examples.Owned
-import Verity.Examples.SafeCounter
 import Verity.Examples.OwnedCounter
 
 namespace Compiler.Proofs.SemanticBridge
@@ -292,7 +292,8 @@ theorem owned_transferOwnership_semantic_bridge
 
 theorem safeCounter_increment_semantic_bridge
     (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.SafeCounter.increment) { state with sender := sender }
+    let edslResult := Contract.run (Verity.Examples.MacroContracts.SafeCounter.increment)
+      { state with sender := sender }
     let tx := mkIRTransaction sender 0xd09de08a []
     let irState := mkIRState state sender 0xd09de08a [] encodeStorage
     match edslResult with
@@ -309,7 +310,8 @@ theorem safeCounter_increment_semantic_bridge
 
 theorem safeCounter_decrement_semantic_bridge
     (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.SafeCounter.decrement) { state with sender := sender }
+    let edslResult := Contract.run (Verity.Examples.MacroContracts.SafeCounter.decrement)
+      { state with sender := sender }
     let tx := mkIRTransaction sender 0x2baeceb7 []
     let irState := mkIRState state sender 0x2baeceb7 [] encodeStorage
     match edslResult with
@@ -326,7 +328,8 @@ theorem safeCounter_decrement_semantic_bridge
 
 theorem safeCounter_getCount_semantic_bridge
     (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.SafeCounter.getCount) { state with sender := sender }
+    let edslResult := Contract.run (Verity.Examples.MacroContracts.SafeCounter.getCount)
+      { state with sender := sender }
     let tx := mkIRTransaction sender 0xa87d942c []
     let irState := mkIRState state sender 0xa87d942c [] encodeStorage
     match edslResult with

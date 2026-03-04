@@ -5,13 +5,14 @@
 import Verity.Specs.Common
 import Verity.Stdlib.Math
 import Verity.EVM.Uint256
-import Verity.Examples.SafeCounter
+import Verity.Examples.MacroContracts.Core
 
 namespace Verity.Specs.SafeCounter
 
 open Verity
 open Verity.Stdlib.Math
 open Verity.EVM.Uint256
+open Verity.Examples.MacroContracts.SafeCounter
 
 /-! ## Operation Specifications -/
 

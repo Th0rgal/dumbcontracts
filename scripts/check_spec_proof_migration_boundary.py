@@ -33,8 +33,6 @@ ALLOWLIST = {
     Path("Verity/Proofs/OwnedCounter/Basic.lean"),
     Path("Verity/Proofs/OwnedCounter/Correctness.lean"),
     Path("Verity/Proofs/OwnedCounter/Isolation.lean"),
-    Path("Verity/Proofs/SafeCounter/Basic.lean"),
-    Path("Verity/Proofs/SafeCounter/Correctness.lean"),
     Path("Verity/Proofs/SimpleStorage/Basic.lean"),
     Path("Verity/Proofs/SimpleToken/Basic.lean"),
     Path("Verity/Proofs/SimpleToken/Correctness.lean"),

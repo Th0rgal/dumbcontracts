@@ -14,7 +14,6 @@
 import Compiler.Constants
 import Verity.Examples.MacroContracts.Tokens
 import Verity.Examples.MacroContracts.Core
-import Verity.Examples.ERC20
 import Verity.Examples.ERC721
 import Verity.Examples.CryptoHash
 import Compiler.DiffTestTypes
@@ -393,6 +392,19 @@ abbrev getTotalSupply := Verity.Examples.MacroContracts.SimpleToken.getTotalSupp
 abbrev getOwner := Verity.Examples.MacroContracts.SimpleToken.getOwner
 
 end SimpleToken
+
+namespace ERC20
+
+abbrev mint := Verity.Examples.MacroContracts.ERC20.mint
+abbrev transfer := Verity.Examples.MacroContracts.ERC20.transfer
+abbrev approve := Verity.Examples.MacroContracts.ERC20.approve
+abbrev transferFrom := Verity.Examples.MacroContracts.ERC20.transferFrom
+abbrev balanceOf := Verity.Examples.MacroContracts.ERC20.balanceOf
+abbrev allowanceOf := Verity.Examples.MacroContracts.ERC20.allowanceOf
+abbrev getTotalSupply := Verity.Examples.MacroContracts.ERC20.getTotalSupply
+abbrev getOwner := Verity.Examples.MacroContracts.ERC20.getOwner
+
+end ERC20
 end Compat
 
 /-!
@@ -530,33 +542,33 @@ def interpretERC20 (tx : Transaction) (state : ContractState) : ExecutionResult 
     case2AddressNat "mint" tx (fun toAddr amount =>
       -- Track owner slot 0, totalSupply slot 1, and recipient balance in slot-2 mapping.
       let recipientKey := (2, toAddr)
-      runUnit (ERC20.mint toAddr amount) state [1] [0] [recipientKey]
+      runUnit (Compat.ERC20.mint toAddr amount) state [1] [0] [recipientKey]
     ),
     case2AddressNat "transfer" tx (fun toAddr amount =>
       -- Track sender/recipient balances in slot-2 mapping.
       let senderKey := (2, tx.sender)
       let recipientKey := (2, toAddr)
-      runUnit (ERC20.transfer toAddr amount) state [] [] [senderKey, recipientKey]
+      runUnit (Compat.ERC20.transfer toAddr amount) state [] [] [senderKey, recipientKey]
     ),
     case2AddressNat "approve" tx (fun spender amount =>
       let allowanceKey := (3, tx.sender, spender)
-      runUnit (ERC20.approve spender amount) state [] [] [] [] [allowanceKey]
+      runUnit (Compat.ERC20.approve spender amount) state [] [] [] [] [allowanceKey]
     ),
     case3AddressAddressNat "transferFrom" tx (fun fromAddr toAddr amount =>
       let fromKey := (2, fromAddr)
       let toKey := (2, toAddr)
       let allowanceKey := (3, fromAddr, tx.sender)
-      runUnit (ERC20.transferFrom fromAddr toAddr amount) state [] [] [fromKey, toKey] [] [allowanceKey]
+      runUnit (Compat.ERC20.transferFrom fromAddr toAddr amount) state [] [] [fromKey, toKey] [] [allowanceKey]
     ),
     case1Address "balanceOf" tx (fun addr =>
       let addrKey := (2, addr)
-      runUint (ERC20.balanceOf addr) state [] [] [addrKey]
+      runUint (Compat.ERC20.balanceOf addr) state [] [] [addrKey]
     ),
     case2AddressAddress "allowanceOf" tx (fun ownerAddr spender =>
-      runUint (ERC20.allowanceOf ownerAddr spender) state [] [] []
+      runUint (Compat.ERC20.allowanceOf ownerAddr spender) state [] [] []
     ),
-    case0 "totalSupply" tx (fun _ => runUint ERC20.getTotalSupply state [1] [] []),
-    case0 "owner" tx (fun _ => runAddress ERC20.getOwner state [] [0] [])
+    case0 "totalSupply" tx (fun _ => runUint Compat.ERC20.getTotalSupply state [1] [] []),
+    case0 "owner" tx (fun _ => runAddress Compat.ERC20.getOwner state [] [0] [])
   ]
 
 /-!

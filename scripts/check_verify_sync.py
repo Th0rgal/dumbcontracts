@@ -361,6 +361,16 @@ def check_jobs(snapshot: Snapshot, spec: dict) -> CheckResult:
     )
 
 
+def _extract_non_script_python_commands(run_commands: list[str]) -> list[str]:
+    """Extract python3 commands that are NOT 'python3 scripts/...' from run commands."""
+    result: list[str] = []
+    for cmd in run_commands:
+        stripped = cmd.strip().strip('"').strip("'")
+        if stripped.startswith("python3 ") and not stripped.startswith("python3 scripts/"):
+            result.append(stripped)
+    return result
+
+
 def check_python_commands(snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
     errors.extend(
@@ -371,6 +381,19 @@ def check_python_commands(snapshot: Snapshot, spec: dict) -> CheckResult:
             spec["expected_checks_commands"],
         )
     )
+    expected_other = spec.get("expected_checks_other_commands", [])
+    if expected_other:
+        workflow_other = _extract_non_script_python_commands(
+            snapshot.run_commands("checks")
+        )
+        errors.extend(
+            _compare_lists(
+                "checks other python commands",
+                workflow_other,
+                "spec checks other commands",
+                expected_other,
+            )
+        )
     errors.extend(
         _compare_lists(
             "build python scripts",

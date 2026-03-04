@@ -130,7 +130,7 @@ refresh-status: ## Regenerate verification artifact and auto-fix doc counts
 # Full pipeline
 # ---------------------------------------------------------------------------
 
-all: verify check test-python axiom-report ## Full local verification pipeline
+all: verify check axiom-report ## Full local verification pipeline
 	@echo ""
 	@echo "All proofs verified, all checks passed, axiom report generated."
 

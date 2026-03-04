@@ -283,6 +283,19 @@ end -- mutual
       .stop state := by
   simp [execIRStmt]
 
+@[simp] theorem execIRStmt_sstore_lit_lit_succ
+    (fuel : Nat) (state : IRState) (slot val : Nat) :
+    execIRStmt (Nat.succ fuel) state
+      (YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, YulExpr.lit val])) =
+      .continue { state with
+        storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage slot val } := by
+  simp [execIRStmt, evalIRExpr]
+
+@[simp] theorem execIRStmts_single_stop_succ_succ (fuel : Nat) (state : IRState) :
+    execIRStmts (Nat.succ (Nat.succ fuel)) state [YulStmt.expr (YulExpr.call "stop" [])] =
+      .stop state := by
+  simp [execIRStmts, execIRStmt]
+
 /-! ## IR Function Execution -/
 
 structure IRTransaction where

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Fail closed if canonical compiler paths reference quarantined manual specs.
+"""Fail closed if canonical compiler paths reference quarantined manual artifacts.
 
-Issue #999 keeps legacy/manual specs available for compatibility and proof migration,
-but canonical compile/lowering/gas/CLI paths must not depend on manual `*Spec`
-artifacts (except explicit compatibility allowlist entries).
+Issue #999 keeps legacy/manual artifacts available for compatibility and proof
+migration, but canonical compile/lowering/gas/CLI paths must not depend on
+manual `*Spec` artifacts or legacy hand-written `Verity.Examples.*` contracts
+(except explicit compatibility allowlist entries).
 """
 
 from __future__ import annotations
@@ -31,6 +32,23 @@ QUALIFIED_SPEC_RE = re.compile(
     r"\b(?P<qual>(?:Compiler\.)?Specs\.(?P<name>[A-Za-z_][A-Za-z0-9_']*Spec))\b"
 )
 
+LEGACY_EXAMPLE_MODULES = {
+    "Counter",
+    "SimpleStorage",
+    "SafeCounter",
+    "Owned",
+    "OwnedCounter",
+    "Ledger",
+    "SimpleToken",
+}
+
+LEGACY_IMPORT_RE = re.compile(
+    r"\bimport\s+Verity\.Examples\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
+)
+LEGACY_QUALIFIED_RE = re.compile(
+    r"\bVerity\.Examples\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\."
+)
+
 
 def find_disallowed_references(content: str) -> list[str]:
     disallowed: list[str] = []
@@ -39,6 +57,14 @@ def find_disallowed_references(content: str) -> list[str]:
         if qualified in ALLOWED_QUALIFIED_SPEC_REFERENCES:
             continue
         disallowed.append(qualified)
+    for match in LEGACY_IMPORT_RE.finditer(content):
+        name = match.group("name")
+        if name in LEGACY_EXAMPLE_MODULES:
+            disallowed.append(f"import Verity.Examples.{name}")
+    for match in LEGACY_QUALIFIED_RE.finditer(content):
+        name = match.group("name")
+        if name in LEGACY_EXAMPLE_MODULES:
+            disallowed.append(f"Verity.Examples.{name}.*")
     return disallowed
 
 
@@ -61,14 +87,15 @@ def main() -> int:
         for err in errors:
             print(f"- {err}", file=sys.stderr)
         print(
-            "\nCanonical compiler paths must not reference manual Compiler.Specs.*Spec symbols. "
-            "Route canonical flows through generated EDSL contracts and Specs.allSpecs.",
+            "\nCanonical compiler paths must not reference manual Compiler.Specs.*Spec symbols "
+            "or legacy Verity.Examples contract modules. Route canonical flows through generated "
+            "EDSL contracts and Specs.allSpecs.",
             file=sys.stderr,
         )
         return 1
 
     print(
-        "Manual-spec quarantine check passed "
+        "Manual-artifact quarantine check passed "
         f"({len(CANONICAL_FILES)} canonical files; only allowlisted compatibility specs used)."
     )
     return 0

@@ -68,6 +68,32 @@ class ManualSpecQuarantineTests(unittest.TestCase):
         )
         self.assertEqual(rc, 0, stderr)
 
+    def test_fails_on_legacy_example_import(self) -> None:
+        rc, stderr = self._run_check(
+            {
+                "Compiler/Main.lean": "import Verity.Examples.Counter\n",
+            }
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("import Verity.Examples.Counter", stderr)
+
+    def test_fails_on_legacy_example_qualified_reference(self) -> None:
+        rc, stderr = self._run_check(
+            {
+                "Compiler/Main.lean": "def bad := Verity.Examples.Owned.transferOwnership\n",
+            }
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("Verity.Examples.Owned.*", stderr)
+
+    def test_allows_macro_example_import(self) -> None:
+        rc, stderr = self._run_check(
+            {
+                "Compiler/Main.lean": "import Verity.Examples.MacroContracts\n",
+            }
+        )
+        self.assertEqual(rc, 0, stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

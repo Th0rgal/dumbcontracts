@@ -137,7 +137,7 @@ FOUNDRY_PROFILE=difftest forge test    # 475 tests across 38 suites
 | ReentrancyExample | 4 | Reentrancy vulnerability vs safe pattern |
 | CryptoHash | — | External library linking demo (no proofs) |
 
-425 theorems across 11 categories. 475 Foundry tests across 38 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom. 15 `sorry` placeholders (18 in cross-layer bridge proofs, 1 in Yul preservation — see [VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)).
+425 theorems across 11 categories. 475 Foundry tests across 38 test suites. 250 covered by property tests (59% coverage, 175 proof-only exclusions). 1 documented axiom. 18 `sorry` placeholders (18 in cross-layer bridge proofs, 1 in Yul preservation — see [VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md)).
 
 ---
 
@@ -181,22 +181,6 @@ python3 scripts/generate_contract.py MyToken --fields "balances:mapping,totalSup
 ```
 
 This creates: implementation, spec, invariants, proofs, and Foundry test files.
-
-### Faster Lean Iteration
-
-Use targeted builds while iterating on proofs, then run the full build before push:
-
-```bash
-make verify-targeted   # hotspot modules only
-make verify            # full lake build
-```
-
-To track typechecking hotspots, generate the performance queue:
-
-```bash
-make profile-lean
-# writes docs/LEAN_PERF_QUEUE.md (top slow modules + action queue)
-```
 
 ---
 

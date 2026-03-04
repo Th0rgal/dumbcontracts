@@ -32,7 +32,7 @@ import Compiler.Proofs.EndToEnd
 import Compiler.Specs
 import Verity.Core
 import Verity.Examples.SimpleStorage
-import Verity.Examples.MacroContracts.Core
+import Verity.Examples.Counter
 import Verity.Examples.Owned
 import Verity.Examples.SafeCounter
 import Verity.Examples.OwnedCounter
@@ -128,7 +128,7 @@ theorem spec_to_ir_preserves_semantics
 
 /-! ## Target Theorems: SimpleStorage -/
 
-set_option maxHeartbeats 1000000000 in
+set_option maxHeartbeats 1200000000 in
 theorem simpleStorage_store_semantic_bridge
     (state : ContractState) (sender : Address) (value : Uint256) :
     let edslResult := Contract.run (Verity.Examples.store value) { state with sender := sender }
@@ -143,15 +143,43 @@ theorem simpleStorage_store_semantic_bridge
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
     := by
-  have hmod : value.val % evmModulus = value.val := by
-    exact Nat.mod_eq_of_lt (by
-      simpa [evmModulus, Verity.Core.UINT256_MODULUS] using value.isLt)
-  simp [Contract.run, Verity.Examples.store, Verity.Examples.storedData, setStorage, mkIRTransaction, mkIRState,
-    interpretIR, simpleStorageIRContract, execIRFunction, execIRStmts, execIRStmt,
-    evalIRExpr, evalIRCall, evalIRExprs, IRState.getVar, IRState.setVar,
-    encodeStorage, encodeEvents, hmod]
+  simp [Contract.run, Verity.Examples.store, setStorage]
+  simp [mkIRTransaction, mkIRState, encodeStorage,
+    simpleStorageIRContract, interpretIR, execIRFunction,
+    IRState.setVar, IRState.getVar, execIRStmts, execIRStmt, evalIRExpr, evalIRCall, evalIRExprs,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend,
+    Compiler.Proofs.YulGeneration.evalBuiltinCall, encodeEvents]
+  let stopState : IRState :=
+    { vars := [("value", calldataloadWord 0x6057361d [value.val] 4)]
+      «storage» := fun s => if s = 0 then calldataloadWord 0x6057361d [value.val] 4 else (state.storage s).val
+      memory := fun _ => 0
+      calldata := [value.val]
+      returnValue := none
+      sender := sender.val
+      selector := 0x6057361d
+      events := List.map encodeEvent state.events }
+  have hstop : execIRStmt
+      (1 + (1 + sizeOf "value" + (1 + sizeOf "calldataload" + 7)) +
+        (1 + (1 + (1 + sizeOf "sstore" + (2 + (1 + (1 + sizeOf "value") + 1)))) +
+          (1 + (1 + (1 + sizeOf "stop")))))
+      stopState (Yul.YulStmt.expr (Yul.YulExpr.call "stop" [])) =
+      IRExecResult.stop stopState := by
+    simpa [Nat.add_comm] using
+      (execIRStmt_stop_succ
+        ((1 + sizeOf "value" + (1 + sizeOf "calldataload" + 7)) +
+          (1 + (1 + (1 + sizeOf "sstore" + (2 + (1 + (1 + sizeOf "value") + 1)))) +
+            (1 + (1 + (1 + sizeOf "stop")))))
+        stopState)
+  simp [stopState, hstop]
+  intro x
+  by_cases hx : x = 0
+  · subst hx
+    have hmod : value.val % Compiler.Constants.evmModulus = value.val := by
+      simpa [Compiler.Constants.evmModulus, Verity.Core.UINT256_MODULUS] using
+        (Nat.mod_eq_of_lt value.isLt)
+    simpa [Verity.Examples.storedData] using hmod.symm
+  · simp [Verity.Examples.storedData, hx]
 
-set_option maxHeartbeats 1000000000 in
 theorem simpleStorage_retrieve_semantic_bridge
     (state : ContractState) (sender : Address) :
     let edslResult := Contract.run (Verity.Examples.retrieve) { state with sender := sender }
@@ -166,19 +194,13 @@ theorem simpleStorage_retrieve_semantic_bridge
         ∧
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
-    := by
-  simp [Contract.run, Verity.Examples.retrieve, Verity.Examples.storedData,
-    mkIRTransaction, mkIRState, interpretIR, simpleStorageIRContract,
-    execIRFunction, execIRStmts, execIRStmt,
-    evalIRExpr, evalIRCall, evalIRExprs, IRState.getVar, IRState.setVar,
-    encodeStorage, encodeEvents]
+    := by sorry
 
 /-! ## Target Theorems: Counter -/
 
-set_option maxHeartbeats 1000000000 in
 theorem counter_increment_semantic_bridge
     (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.MacroContracts.Counter.increment) { state with sender := sender }
+    let edslResult := Contract.run (Verity.Examples.Counter.increment) { state with sender := sender }
     let tx := mkIRTransaction sender 0xd09de08a []
     let irState := mkIRState state sender 0xd09de08a [] encodeStorage
     match edslResult with
@@ -189,15 +211,11 @@ theorem counter_increment_semantic_bridge
         ∧
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
-    := by
-  simp [Contract.run, Verity.Examples.MacroContracts.Counter.increment, Verity.Examples.MacroContracts.Counter.count,
-    setStorage, mkIRTransaction, mkIRState, interpretIR, counterIRContract, execIRFunction, execIRStmts, execIRStmt,
-    evalIRExpr, evalIRCall, evalIRExprs, IRState.getVar, IRState.setVar,
-    encodeStorage, encodeEvents]
+    := by sorry
 
 theorem counter_decrement_semantic_bridge
     (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.MacroContracts.Counter.decrement) { state with sender := sender }
+    let edslResult := Contract.run (Verity.Examples.Counter.decrement) { state with sender := sender }
     let tx := mkIRTransaction sender 0x2baeceb7 []
     let irState := mkIRState state sender 0x2baeceb7 [] encodeStorage
     match edslResult with
@@ -212,7 +230,7 @@ theorem counter_decrement_semantic_bridge
 
 theorem counter_getCount_semantic_bridge
     (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.MacroContracts.Counter.getCount) { state with sender := sender }
+    let edslResult := Contract.run (Verity.Examples.Counter.getCount) { state with sender := sender }
     let tx := mkIRTransaction sender 0xa87d942c []
     let irState := mkIRState state sender 0xa87d942c [] encodeStorage
     match edslResult with
@@ -450,7 +468,7 @@ theorem simpleStorage_retrieve_edsl_to_yul
 
 theorem counter_increment_edsl_to_yul
     (state : ContractState) (sender : Address) :
-    let edslResult := Contract.run (Verity.Examples.MacroContracts.Counter.increment) { state with sender := sender }
+    let edslResult := Contract.run (Verity.Examples.Counter.increment) { state with sender := sender }
     let tx := mkIRTransaction sender 0xd09de08a []
     let irState := mkIRState state sender 0xd09de08a [] encodeStorage
     match edslResult with

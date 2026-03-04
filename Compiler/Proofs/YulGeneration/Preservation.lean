@@ -260,15 +260,12 @@ theorem yulCodegen_preserves_semantics
       -- Bridge hcase with yulInitState.selector
       have hcase' := find_switch_case_of_find_function contract.functions
         yulInitState.selector fn (hSelEq ▸ hFind)
-      -- fn.selector = tx.functionSelector (from hFind: find? returns fn iff fn.selector == sel)
-      have hFnSel : fn.selector = tx.functionSelector := by
-        have h := List.find?_some hFind
-        simp at h; exact h
-      -- Rewrite to match the switch match lemma's expected form
-      rw [hSelEq] at hcase'
+      -- Rewrite to the transaction selector shape expected by the switch-match lemma.
       have hcase : (switchCases contract.functions).find? (fun (c, _) => c = tx.functionSelector) =
           some (tx.functionSelector, switchCaseBody fn) := by
-        rw [hFnSel] at hcase'; exact hcase'
+        simpa [hSelEq] using
+          (find_switch_case_of_find_function_eq_selector contract.functions yulInitState.selector fn
+            (hSelEq ▸ hFind))
       rw [← hSelEq] at hcase
       -- Apply switch match lemma
       rw [show m + 4 + 1 = Nat.succ (m + 4) from by omega]

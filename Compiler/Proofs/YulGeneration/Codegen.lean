@@ -135,6 +135,20 @@ theorem find_switch_case_of_find_function
         have ih' := ih hFind'
         simpa [switchCases, List.find?, hsel] using ih'
 
+/-- Selector-specialized variant: if `find?` hits `fn` at `sel`, the switch case
+lookup returns the same selector `sel` paired with `switchCaseBody fn`. -/
+theorem find_switch_case_of_find_function_eq_selector
+    (fns : List IRFunction) (sel : Nat) (fn : IRFunction)
+    (hFind : fns.find? (fun f => f.selector == sel) = some fn) :
+    (switchCases fns).find? (fun (c, _) => c = sel) =
+      some (sel, switchCaseBody fn) := by
+  have hCase := find_switch_case_of_find_function fns sel fn hFind
+  have hSel : fn.selector = sel := by
+    have h := List.find?_some hFind
+    simp at h
+    exact h
+  simpa [hSel] using hCase
+
 theorem find_switch_case_of_find_function_none
     (fns : List IRFunction) (sel : Nat)
     (hFind : fns.find? (fun f => f.selector == sel) = none) :

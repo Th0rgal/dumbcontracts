@@ -5874,4 +5874,218 @@ theorem erc721_approve_correctness (init : TExecState) :
         execSourceSupportedStmtFragments erc721Fields init fragments :=
   compile_supported_stmt_list_semantics erc721Fields init _ erc721_approve_supported
 
+-- ============================================================================
+-- Constructor-level witness coverage (audit #1075)
+-- ============================================================================
+
+/-- Concrete witness for `requireClausesOnly` constructor. -/
+theorem witness_requireClausesOnly_supported :
+    SupportedStmtList simpleTokenFields [] := by
+  exact ⟨[.requireClausesOnly []], rfl⟩
+
+/-- Concrete witness for `requireClausesThenSetStorageLiteral` constructor. -/
+theorem witness_requireClausesThenSetStorageLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.setStorage "totalSupply" (Expr.literal 7)] := by
+  exact ⟨[.requireClausesThenSetStorageLiteral
+    [] "totalSupply" 2 7 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqSetStorageLiterals` constructor. -/
+theorem witness_requireClausesThenIteEqSetStorageLiterals_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.setStorage "totalSupply" (Expr.literal 3)]
+        [Stmt.setStorage "totalSupply" (Expr.literal 4)]] := by
+  exact ⟨[.requireClausesThenIteEqSetStorageLiterals
+    [] "totalSupply" 2 1 2 3 4 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqSetStorageThenReturnLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqSetStorageThenReturnLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.setStorage "totalSupply" (Expr.literal 3)]
+        [Stmt.return (Expr.literal 4)]] := by
+  exact ⟨[.requireClausesThenIteEqSetStorageThenReturnLiteral
+    [] "totalSupply" 2 1 2 3 4 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqReturnThenSetStorageLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqReturnThenSetStorageLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.return (Expr.literal 3)]
+        [Stmt.setStorage "totalSupply" (Expr.literal 4)]] := by
+  exact ⟨[.requireClausesThenIteEqReturnThenSetStorageLiteral
+    [] "totalSupply" 2 1 2 3 4 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqReturnLiterals` constructor. -/
+theorem witness_requireClausesThenIteEqReturnLiterals_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.return (Expr.literal 3)]
+        [Stmt.return (Expr.literal 4)]] := by
+  exact ⟨[.requireClausesThenIteEqReturnLiterals [] 1 2 3 4], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqReturnLiterals` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqReturnLiterals_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.return (Expr.literal 3)]
+          [Stmt.return (Expr.literal 4)]]
+        [Stmt.return (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqReturnLiterals [] 1 2 5 6 3 4 9], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqSetStorageLiteralsThenReturnLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqSetStorageLiteralsThenReturnLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.setStorage "totalSupply" (Expr.literal 3)]
+          [Stmt.setStorage "totalSupply" (Expr.literal 4)]]
+        [Stmt.return (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqSetStorageLiteralsThenReturnLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqReturnLiteralsThenSetStorageLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqReturnLiteralsThenSetStorageLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.return (Expr.literal 3)]
+          [Stmt.return (Expr.literal 4)]]
+        [Stmt.setStorage "totalSupply" (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqReturnLiteralsThenSetStorageLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqReturnLiteralsThenSetStorageLiteralThenReturnLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqReturnLiteralsThenSetStorageLiteralThenReturnLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.return (Expr.literal 3)]
+          [Stmt.return (Expr.literal 4)]]
+        [Stmt.setStorage "totalSupply" (Expr.literal 8), Stmt.return (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqReturnLiteralsThenSetStorageLiteralThenReturnLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 8 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqSetStorageLiteralsThenSetStorageLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqSetStorageLiteralsThenSetStorageLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.setStorage "totalSupply" (Expr.literal 3)]
+          [Stmt.setStorage "totalSupply" (Expr.literal 4)]]
+        [Stmt.setStorage "totalSupply" (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqSetStorageLiteralsThenSetStorageLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqSetStorageThenReturnLiteralThenReturnLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqSetStorageThenReturnLiteralThenReturnLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.setStorage "totalSupply" (Expr.literal 3)]
+          [Stmt.return (Expr.literal 4)]]
+        [Stmt.return (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqSetStorageThenReturnLiteralThenReturnLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqSetStorageThenReturnLiteralThenSetStorageLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqSetStorageThenReturnLiteralThenSetStorageLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.setStorage "totalSupply" (Expr.literal 3)]
+          [Stmt.return (Expr.literal 4)]]
+        [Stmt.setStorage "totalSupply" (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqSetStorageThenReturnLiteralThenSetStorageLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqReturnThenSetStorageLiteralThenReturnLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqReturnThenSetStorageLiteralThenReturnLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.return (Expr.literal 3)]
+          [Stmt.setStorage "totalSupply" (Expr.literal 4)]]
+        [Stmt.return (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqReturnThenSetStorageLiteralThenReturnLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenIteEqThenIteEqReturnThenSetStorageLiteralThenSetStorageLiteral` constructor. -/
+theorem witness_requireClausesThenIteEqThenIteEqReturnThenSetStorageLiteralThenSetStorageLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.ite (Expr.eq (Expr.literal 1) (Expr.literal 2))
+        [Stmt.ite (Expr.eq (Expr.literal 5) (Expr.literal 6))
+          [Stmt.return (Expr.literal 3)]
+          [Stmt.setStorage "totalSupply" (Expr.literal 4)]]
+        [Stmt.setStorage "totalSupply" (Expr.literal 9)]] := by
+  exact ⟨[.requireClausesThenIteEqThenIteEqReturnThenSetStorageLiteralThenSetStorageLiteral
+    [] "totalSupply" 2 1 2 5 6 3 4 9 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenReturnLiteral` constructor. -/
+theorem witness_requireClausesThenReturnLiteral_supported :
+    SupportedStmtList simpleTokenFields [Stmt.return (Expr.literal 42)] := by
+  exact ⟨[.requireClausesThenReturnLiteral [] 42], rfl⟩
+
+/-- Concrete witness for `requireClausesThenLetReturnLocalLiteral` constructor. -/
+theorem witness_requireClausesThenLetReturnLocalLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.letVar "tmp" (Expr.literal 42), Stmt.return (Expr.localVar "tmp")] := by
+  exact ⟨[.requireClausesThenLetReturnLocalLiteral [] "tmp" 42], rfl⟩
+
+/-- Concrete witness for `requireClausesThenLetSetStorageLocalLiteral` constructor. -/
+theorem witness_requireClausesThenLetSetStorageLocalLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.letVar "tmp" (Expr.literal 1), Stmt.setStorage "totalSupply" (Expr.localVar "tmp")] := by
+  exact ⟨[.requireClausesThenLetSetStorageLocalLiteral
+    [] "totalSupply" "tmp" 2 1 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenLetAssignSetStorageLocalLiteral` constructor. -/
+theorem witness_requireClausesThenLetAssignSetStorageLocalLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [ Stmt.letVar "tmp" (Expr.literal 1)
+      , Stmt.assignVar "tmp" (Expr.literal 2)
+      , Stmt.setStorage "totalSupply" (Expr.localVar "tmp")
+      ] := by
+  exact ⟨[.requireClausesThenLetAssignSetStorageLocalLiteral
+    [] "totalSupply" "tmp" 2 1 2 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenLetAssignAddSetStorageLocalLiteral` constructor. -/
+theorem witness_requireClausesThenLetAssignAddSetStorageLocalLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [ Stmt.letVar "tmp" (Expr.literal 1)
+      , Stmt.assignVar "tmp" (Expr.add (Expr.localVar "tmp") (Expr.literal 2))
+      , Stmt.setStorage "totalSupply" (Expr.localVar "tmp")
+      ] := by
+  exact ⟨[.requireClausesThenLetAssignAddSetStorageLocalLiteral
+    [] "totalSupply" "tmp" 2 1 2 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenLetAssignSubSetStorageLocalLiteral` constructor. -/
+theorem witness_requireClausesThenLetAssignSubSetStorageLocalLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [ Stmt.letVar "tmp" (Expr.literal 1)
+      , Stmt.assignVar "tmp" (Expr.sub (Expr.localVar "tmp") (Expr.literal 2))
+      , Stmt.setStorage "totalSupply" (Expr.localVar "tmp")
+      ] := by
+  exact ⟨[.requireClausesThenLetAssignSubSetStorageLocalLiteral
+    [] "totalSupply" "tmp" 2 1 2 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenLetAssignMulSetStorageLocalLiteral` constructor. -/
+theorem witness_requireClausesThenLetAssignMulSetStorageLocalLiteral_supported :
+    SupportedStmtList simpleTokenFields
+      [ Stmt.letVar "tmp" (Expr.literal 1)
+      , Stmt.assignVar "tmp" (Expr.mul (Expr.localVar "tmp") (Expr.literal 2))
+      , Stmt.setStorage "totalSupply" (Expr.localVar "tmp")
+      ] := by
+  exact ⟨[.requireClausesThenLetAssignMulSetStorageLocalLiteral
+    [] "totalSupply" "tmp" 2 1 2 simpleTokenTotalSupplyFieldResolution], rfl⟩
+
+/-- Concrete witness for `requireClausesThenReturnMappingCaller` constructor. -/
+theorem witness_requireClausesThenReturnMappingCaller_supported :
+    SupportedStmtList simpleTokenFields
+      [Stmt.return (Expr.mapping "balances" Expr.caller)] := by
+  exact ⟨[.requireClausesThenReturnMappingCaller
+    [] "balances" 1 simpleTokenBalancesFieldSlot], rfl⟩
+
 end Verity.Core.Free

@@ -12,7 +12,6 @@
 -/
 
 import Compiler.Constants
-import Verity.Examples.SimpleStorage
 import Verity.Examples.MacroContracts.Tokens
 import Verity.Examples.MacroContracts.Core
 import Verity.Examples.ERC20
@@ -336,6 +335,13 @@ These keep interpreter call-sites stable while contract implementations move
 from `Verity.Examples.*` to `Verity.Examples.MacroContracts.*`.
 -/
 namespace Compat
+namespace SimpleStorage
+
+abbrev store := Verity.Examples.MacroContracts.SimpleStorage.store
+abbrev retrieve := Verity.Examples.MacroContracts.SimpleStorage.retrieve
+
+end SimpleStorage
+
 namespace Counter
 
 abbrev increment := Verity.Examples.MacroContracts.Counter.increment
@@ -399,9 +405,9 @@ Demonstrate how to wrap EDSL contract for differential testing.
 def interpretSimpleStorage (tx : Transaction) (state : ContractState) : ExecutionResult :=
   dispatch tx [
     case1 "store" tx (fun value =>
-      runUnit (store value) state [0] [] []  -- Check slot 0
+      runUnit (Compat.SimpleStorage.store value) state [0] [] []  -- Check slot 0
     ),
-    case0 "retrieve" tx (fun _ => runUint retrieve state [0] [] [])
+    case0 "retrieve" tx (fun _ => runUint Compat.SimpleStorage.retrieve state [0] [] [])
   ]
 
 /-!

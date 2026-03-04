@@ -29,6 +29,7 @@ from workflow_jobs import (
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_YML = ROOT / ".github" / "workflows" / "verify.yml"
+MAKEFILE = ROOT / "Makefile"
 MULTISEED_SCRIPT = ROOT / "scripts" / "test_multiple_seeds.sh"
 SPEC_PATH = ROOT / "scripts" / "verify_sync_spec.json"
 
@@ -360,6 +361,16 @@ def check_jobs(snapshot: Snapshot, spec: dict) -> CheckResult:
     )
 
 
+def _extract_non_script_python_commands(run_commands: list[str]) -> list[str]:
+    """Extract python3 commands that are NOT 'python3 scripts/...' from run commands."""
+    result: list[str] = []
+    for cmd in run_commands:
+        stripped = cmd.strip().strip('"').strip("'")
+        if stripped.startswith("python3 ") and not stripped.startswith("python3 scripts/"):
+            result.append(stripped)
+    return result
+
+
 def check_python_commands(snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
     errors.extend(
@@ -370,6 +381,19 @@ def check_python_commands(snapshot: Snapshot, spec: dict) -> CheckResult:
             spec["expected_checks_commands"],
         )
     )
+    expected_other = spec.get("expected_checks_other_commands", [])
+    if expected_other:
+        workflow_other = _extract_non_script_python_commands(
+            snapshot.run_commands("checks")
+        )
+        errors.extend(
+            _compare_lists(
+                "checks other python commands",
+                workflow_other,
+                "spec checks other commands",
+                expected_other,
+            )
+        )
     errors.extend(
         _compare_lists(
             "build python scripts",
@@ -529,6 +553,40 @@ def check_artifacts(snapshot: Snapshot, spec: dict) -> CheckResult:
     return CheckResult("artifacts", errors)
 
 
+def _extract_makefile_check_commands() -> list[str]:
+    """Extract python3 commands from the Makefile 'check' target."""
+    text = MAKEFILE.read_text(encoding="utf-8")
+    in_check = False
+    commands: list[str] = []
+    for line in text.splitlines():
+        if re.match(r"^check:", line):
+            in_check = True
+            continue
+        if in_check:
+            if line and not line[0].isspace():
+                break
+            stripped = line.strip()
+            if stripped.startswith("python3 "):
+                commands.append(stripped)
+    return commands
+
+
+def check_makefile(_snapshot: Snapshot, spec: dict) -> CheckResult:
+    errors: list[str] = []
+    makefile_commands = _extract_makefile_check_commands()
+    expected = [f"python3 scripts/{cmd}" for cmd in spec["expected_checks_commands"]]
+    expected.extend(spec.get("expected_checks_other_commands", []))
+    errors.extend(
+        _compare_lists(
+            "Makefile check commands",
+            makefile_commands,
+            "spec checks commands",
+            expected,
+        )
+    )
+    return CheckResult("makefile", errors)
+
+
 def _checks() -> dict[str, callable]:
     return {
         "paths": check_paths,
@@ -537,6 +595,7 @@ def _checks() -> dict[str, callable]:
         "multiseed": check_multiseed,
         "foundry": check_foundry,
         "artifacts": check_artifacts,
+        "makefile": check_makefile,
     }
 
 

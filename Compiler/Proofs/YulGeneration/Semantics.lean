@@ -41,6 +41,7 @@ structure YulState where
   selector : Nat
   returnValue : Option Nat
   sender : Nat
+  events : List (List Nat) := []
   deriving Nonempty
 
 structure YulTransaction where
@@ -49,15 +50,28 @@ structure YulTransaction where
   args : List Nat
   deriving Repr
 
-/-- Initial state for Yul execution -/
-def YulState.initial (tx : YulTransaction) (storage : Nat → Nat) : YulState :=
+/-- Initial state for Yul execution. -/
+def YulState.initial (tx : YulTransaction) (storage : Nat → Nat)
+    (events : List (List Nat) := []) : YulState :=
   { vars := []
     storage := storage
     memory := fun _ => 0
     calldata := tx.args
     selector := tx.functionSelector
     returnValue := none
-    sender := tx.sender }
+    sender := tx.sender
+    events := events }
+
+def isLogBuiltin (func : String) : Bool :=
+  func = "log0" || func = "log1" || func = "log2" || func = "log3" || func = "log4"
+
+def expectedLogArgCount (func : String) : Option Nat :=
+  if func = "log0" then some 2
+  else if func = "log1" then some 3
+  else if func = "log2" then some 4
+  else if func = "log3" then some 5
+  else if func = "log4" then some 6
+  else none
 
 /-- Lookup variable in state -/
 def YulState.getVar (s : YulState) (name : String) : Option Nat :=
@@ -189,6 +203,19 @@ def execYulFuel : Nat → YulState → YulExecTarget → YulExecResult
                         .return 0 state
                   | _, _ => .revert state
               | .call "revert" [_, _] => .revert state
+              | .call func args =>
+                  if isLogBuiltin func then
+                    match expectedLogArgCount func, evalYulExprs state args with
+                    | some expected, some vals =>
+                        if vals.length = expected then
+                          .continue { state with events := state.events ++ [vals] }
+                        else
+                          .revert state
+                    | _, _ => .revert state
+                  else
+                    match evalYulExpr state e with
+                    | some _ => .continue state
+                    | none => .revert state
               | _ =>
                   match evalYulExpr state e with
                   | some _ => .continue state
@@ -258,36 +285,41 @@ structure YulResult where
   returnValue : Option Nat
   finalStorage : Nat → Nat
   finalMappings : Nat → Nat → Nat
+  events : List (List Nat)
 
 /-- Execute a Yul runtime program with selector-aware calldata -/
 noncomputable def interpretYulRuntime (runtimeCode : List YulStmt) (tx : YulTransaction)
-    (storage : Nat → Nat) : YulResult :=
-  let initialState := YulState.initial tx storage
+    (storage : Nat → Nat) (events : List (List Nat) := []) : YulResult :=
+  let initialState := YulState.initial tx storage events
   match execYulStmts initialState runtimeCode with
   | .continue s =>
       { success := true
         returnValue := s.returnValue
         finalStorage := s.storage
-        finalMappings := Compiler.Proofs.storageAsMappings s.storage }
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
   | .return v s =>
       { success := true
         returnValue := some v
         finalStorage := s.storage
-        finalMappings := Compiler.Proofs.storageAsMappings s.storage }
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
   | .stop s =>
       { success := true
         returnValue := none
         finalStorage := s.storage
-        finalMappings := Compiler.Proofs.storageAsMappings s.storage }
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
   | .revert _ =>
       { success := false
         returnValue := none
         finalStorage := storage
-        finalMappings := Compiler.Proofs.storageAsMappings storage }
+        finalMappings := Compiler.Proofs.storageAsMappings storage
+        events := initialState.events }
 
 /-- Interpret a Yul object by executing its runtime code. -/
 noncomputable def interpretYulObject (obj : YulObject) (tx : YulTransaction)
-    (storage : Nat → Nat) : YulResult :=
-  interpretYulRuntime obj.runtimeCode tx storage
+    (storage : Nat → Nat) (events : List (List Nat) := []) : YulResult :=
+  interpretYulRuntime obj.runtimeCode tx storage events
 
 end Compiler.Proofs.YulGeneration

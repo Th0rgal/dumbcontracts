@@ -21,6 +21,7 @@ import Verity.Examples.OwnedCounter
 import Verity.Examples.SimpleToken
 import Verity.Examples.ERC20
 import Verity.Examples.ERC721
+import Verity.Examples.CryptoHash
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
@@ -553,6 +554,19 @@ def interpretERC721 (tx : Transaction) (state : ContractState) : ExecutionResult
     case0 "nextTokenId" tx (fun _ => runUint (getStorage ERC721.nextTokenId) state [2] [] [])
   ]
 
+def interpretCryptoHash (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  dispatch tx [
+    case2 "storeHashTwo" tx (fun a b =>
+      runUnit (CryptoHash.storeHashTwo a b) state [0] [] []
+    ),
+    case3 "storeHashThree" tx (fun a b c =>
+      runUnit (CryptoHash.storeHashThree a b c) state [0] [] []
+    ),
+    case0 "getLastHash" tx (fun _ =>
+      runUint CryptoHash.getLastHash state [0] [] []
+    )
+  ]
+
 /-!
 ## Generic Interpreter Interface
 
@@ -938,17 +952,19 @@ def main (args : List String) : IO Unit := do
       | "SafeCounter" => some ContractType.safeCounter
       | "ERC20" => none
       | "ERC721" => none
+      | "CryptoHash" => none
       | _ => none
     let result := match contractType with
       | "ERC20" => some (interpretERC20 tx initialState)
       | "ERC721" => some (interpretERC721 tx initialState)
+      | "CryptoHash" => some (interpretCryptoHash tx initialState)
       | _ => contractTypeEnum?.map (fun contractTypeEnum => interpret contractTypeEnum tx initialState)
     match result with
     | some out =>
       IO.println out.toJSON
     | none =>
       throw <| IO.userError
-        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20, ERC721"
+        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20, ERC721, CryptoHash"
   | _ =>
     IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...] [mapuint=...] [map2=...] [value=...] [timestamp=...]"
     IO.println "Example: difftest-interpreter SimpleStorage store 0xAlice 42"

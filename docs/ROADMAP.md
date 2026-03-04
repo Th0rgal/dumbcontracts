@@ -174,13 +174,13 @@ Reference docs:
 
 | # | Property | Description |
 |---|----------|-------------|
-| 1 | ~~`Spec_deposit_sum_equation`~~ | ✅ Deposit increases total by amount |
-| 2 | ~~`Spec_withdraw_sum_equation`~~ | ✅ Withdraw decreases total by amount |
-| 3 | ~~`Spec_transfer_sum_preservation`~~ | ✅ Transfer preserves total |
-| 4 | ~~`Spec_deposit_sum_singleton_sender`~~ | ✅ Singleton set deposit property |
-| 5 | ~~`Spec_withdraw_sum_singleton_sender`~~ | ✅ Singleton set withdraw property |
-| 6 | ~~`Spec_transfer_sum_preserved_unique`~~ | ✅ Transfer with unique addresses preserves sum |
-| 7 | ~~`Spec_deposit_withdraw_sum_cancel`~~ | ✅ Deposit then withdraw cancels out |
+| 1 | ~~`deposit_sum_equation`~~ | ✅ Deposit increases total by amount |
+| 2 | ~~`withdraw_sum_equation`~~ | ✅ Withdraw decreases total by amount |
+| 3 | ~~`transfer_sum_preservation`~~ | ✅ Transfer preserves total |
+| 4 | ~~`deposit_sum_singleton_sender`~~ | ✅ Singleton set deposit property |
+| 5 | ~~`withdraw_sum_singleton_sender`~~ | ✅ Singleton set withdraw property |
+| 6 | ~~`transfer_sum_preserved_unique`~~ | ✅ Transfer with unique addresses preserves sum |
+| 7 | ~~`deposit_withdraw_sum_cancel`~~ | ✅ Deposit then withdraw cancels out |
 
 ---
 

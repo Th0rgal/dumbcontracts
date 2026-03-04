@@ -52,15 +52,15 @@ def totalBalance (s : ContractState) : Uint256 :=
   sumBalances 0 (s.knownAddresses 0) s.storageMap
 
 /-- Spec: deposit increases total balance by amount -/
-def Spec_deposit_sum_equation (amount : Uint256) (s s' : ContractState) : Prop :=
+def deposit_sum_equation (amount : Uint256) (s s' : ContractState) : Prop :=
   totalBalance s' = add (totalBalance s) amount
 
 /-- Spec: withdraw decreases total balance by amount -/
-def Spec_withdraw_sum_equation (amount : Uint256) (s s' : ContractState) : Prop :=
+def withdraw_sum_equation (amount : Uint256) (s s' : ContractState) : Prop :=
   totalBalance s' = sub (totalBalance s) amount
 
 /-- Spec: transfer preserves total balance -/
-def Spec_transfer_sum_preservation (_to : Address) (_amount : Uint256) (s s' : ContractState) : Prop :=
+def transfer_sum_preservation (_to : Address) (_amount : Uint256) (s s' : ContractState) : Prop :=
   totalBalance s' = totalBalance s
 
 end Verity.Specs.Ledger

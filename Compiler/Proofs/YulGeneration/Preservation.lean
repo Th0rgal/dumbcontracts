@@ -89,6 +89,35 @@ private theorem sizeOf_append_ge_length_add (l₁ l₂ : List YulStmt) :
 /-- Simplification: 1 ≠ 0 for if_ branch. -/
 @[simp] private theorem one_ne_zero : (1 : Nat) ≠ 0 := by omega
 
+/-- `callvalueGuard` never reverts in the proof semantics because `callvalue() = 0`. -/
+private theorem exec_callvalueGuard_noop (fuel : Nat) (state : YulState) :
+    execYulStmtsFuel (fuel + 2) state [Compiler.callvalueGuard] =
+      YulExecResult.continue state := by
+  have hs : fuel + 2 = Nat.succ (Nat.succ fuel) := by omega
+  rw [hs]
+  have hCallvalue : evalYulExpr state (YulExpr.call "callvalue" []) = some 0 := by
+    simp [evalYulExpr, evalYulCall, evalYulExprs,
+      evalBuiltinCallWithBackend, evalBuiltinCall]
+  simp [Compiler.callvalueGuard, execYulStmtsFuel, execYulFuel, hCallvalue]
+
+/-- If calldata has enough words for `numParams`, `calldatasizeGuard` is a no-op. -/
+private theorem exec_calldatasizeGuard_noop
+    (fuel : Nat) (state : YulState) (numParams : Nat)
+    (hArity : numParams ≤ state.calldata.length) :
+    execYulStmtsFuel (fuel + 2) state [Compiler.calldatasizeGuard numParams] =
+      YulExecResult.continue state := by
+  have hCmp : ¬ (4 + state.calldata.length * 32 < 4 + numParams * 32) := by
+    omega
+  have hs : fuel + 2 = Nat.succ (Nat.succ fuel) := by omega
+  rw [hs]
+  have hLt :
+      evalYulExpr state
+        (YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit (4 + numParams * 32)]) =
+          some (if 4 + state.calldata.length * 32 < 4 + numParams * 32 then 1 else 0) := by
+    simp [evalYulExpr, evalYulCall, evalYulExprs,
+      evalBuiltinCallWithBackend, evalBuiltinCall]
+  simp [Compiler.calldatasizeGuard, execYulStmtsFuel, execYulFuel, hLt, hCmp]
+
 /-! ### buildSwitch stepping axiom
 
 The `buildSwitch` block structure generates:

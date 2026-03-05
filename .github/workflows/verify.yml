@@ -168,6 +168,9 @@ jobs:
       - name: Check Yul builtin abstraction boundary
         run: python3 scripts/check_yul_builtin_boundary.py
 
+      - name: Check active rewrite-rule proof metadata
+        run: python3 scripts/check_rewrite_proof_metadata.py
+
       - name: Check builtin list sync (Linker ↔ CompilationModel)
         run: python3 scripts/check_builtin_list_sync.py
 

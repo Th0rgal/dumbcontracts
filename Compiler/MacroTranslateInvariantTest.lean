@@ -1,4 +1,6 @@
 import Compiler.ABI
+import Compiler.Proofs.IRGeneration.IRInterpreter
+import Compiler.Proofs.YulGeneration.Equivalence
 import Compiler.Selector
 import Compiler.Hex
 import Contracts.MacroContracts.Core
@@ -10,6 +12,8 @@ namespace Compiler.MacroTranslateInvariantTest
 open Compiler
 open Compiler.CompilationModel
 open Compiler.Hex
+open Compiler.Proofs.IRGeneration
+open Compiler.Proofs.YulGeneration
 
 private def contains (haystack needle : String) : Bool :=
   let h := haystack.toList
@@ -55,6 +59,168 @@ private def canonicalFieldSlots (spec : CompilationModel) : List Nat :=
 private def writeSlots (spec : CompilationModel) : List Nat :=
   let indexed := List.zip (List.range spec.fields.length) spec.fields
   indexed.flatMap (fun (idx, field) => field.slot.getD idx :: field.aliasSlots)
+
+private def isMappingLike : FieldType → Bool
+  | .mappingTyped _ => true
+  | .mappingStruct _ _ => true
+  | .mappingStruct2 _ _ _ => true
+  | _ => false
+
+private def mappingBaseSlots (spec : CompilationModel) : List Nat :=
+  let indexed := List.zip (List.range spec.fields.length) spec.fields
+  indexed.filterMap (fun (idx, field) =>
+    if isMappingLike field.ty then some (field.slot.getD idx) else none)
+
+private def seedFromName (name : String) : Nat :=
+  name.toList.foldl (fun acc ch => acc * 131 + ch.toNat) 0
+
+private def rngMask : Nat := (2 ^ 64) - 1
+
+private def nextSeed (seed : Nat) : Nat :=
+  ((seed * 6364136223846793005) + 1442695040888963407) &&& rngMask
+
+private def randBound (seed bound : Nat) : Nat × Nat :=
+  let seed' := nextSeed seed
+  if bound = 0 then (0, seed') else (seed' % bound, seed')
+
+private def randWord (seed : Nat) : Nat × Nat :=
+  let s1 := nextSeed seed
+  let s2 := nextSeed s1
+  (((s1 &&& rngMask) <<< 64) + (s2 &&& rngMask), s2)
+
+private def genArgs (count : Nat) (seed : Nat) : List Nat × Nat :=
+  match count with
+  | 0 => ([], seed)
+  | n + 1 =>
+      let (v, seed') := randWord seed
+      let (rest, seed'') := genArgs n seed'
+      (v :: rest, seed'')
+
+private def mkRandomTx (extFns : List FunctionSpec) (selectors : List Nat)
+    (seed : Nat) : IRTransaction × Nat :=
+  if extFns.isEmpty then
+    ({ sender := 0, functionSelector := 0, args := [] }, nextSeed seed)
+  else
+    let (fnIdx, seed1) := randBound seed extFns.length
+    let fn := extFns.getD fnIdx { name := "", params := [], returnType := none, returns := [], body := [] }
+    let selector := selectors.getD fnIdx 0
+    let (sender, seed2) := randWord seed1
+    let (args, seed3) := genArgs fn.params.length seed2
+    ({ sender := sender, functionSelector := selector, args := args }, seed3)
+
+private def seededStorage (seed : Nat) (slotIdx : Nat) : Nat :=
+  let mix := seed + slotIdx * 0x9e3779b97f4a7c15 + 0xbf58476d1ce4e5b9
+  mix % (2 ^ 256)
+
+private def observedSlotsForTx (spec : CompilationModel) (_tx : IRTransaction) : List Nat :=
+  (canonicalFieldSlots spec ++ writeSlots spec).eraseDups
+
+private def mappingKeyCandidatesForTx (_spec : CompilationModel) (_tx : IRTransaction) : List (Prod Nat Nat) :=
+  []
+
+private def mkIRResultFromExec (rollback : IRState) (r : IRExecResult) : IRResult :=
+  match r with
+  | .continue s =>
+      { success := true
+        returnValue := s.returnValue
+        finalStorage := s.storage
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
+  | .return v s =>
+      { success := true
+        returnValue := some v
+        finalStorage := s.storage
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
+  | .stop s =>
+      { success := true
+        returnValue := none
+        finalStorage := s.storage
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
+  | .revert _ =>
+      { success := false
+        returnValue := none
+        finalStorage := rollback.storage
+        finalMappings := Compiler.Proofs.storageAsMappings rollback.storage
+        events := rollback.events }
+
+private def mkYulResultFromExec (rollback : YulState) (r : YulExecResult) : YulResult :=
+  match r with
+  | .continue s =>
+      { success := true
+        returnValue := s.returnValue
+        finalStorage := s.storage
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
+  | .return v s =>
+      { success := true
+        returnValue := some v
+        finalStorage := s.storage
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
+  | .stop s =>
+      { success := true
+        returnValue := none
+        finalStorage := s.storage
+        finalMappings := Compiler.Proofs.storageAsMappings s.storage
+        events := s.events }
+  | .revert _ =>
+      { success := false
+        returnValue := none
+        finalStorage := rollback.storage
+        finalMappings := Compiler.Proofs.storageAsMappings rollback.storage
+        events := rollback.events }
+
+private def withTxContext (state : IRState) (tx : IRTransaction) : IRState :=
+  IRState.mk state.vars state.storage state.memory tx.args state.returnValue tx.sender tx.functionSelector state.events
+
+private def execIRFunctionFuelResult (fn : IRFunction) (args : List Nat) (initialState : IRState)
+    (fuel : Nat) : IRResult :=
+  let stateWithParams := fn.params.zip args |>.foldl (fun s (p, v) => s.setVar p.name v) initialState
+  mkIRResultFromExec initialState (execIRStmts fuel stateWithParams fn.body)
+
+private def interpretIRFuelResult (contract : IRContract) (tx : IRTransaction) (initialState : IRState)
+    (fuel : Nat) : IRResult :=
+  let state := withTxContext initialState tx
+  match contract.functions.find? (fun f => f.selector == tx.functionSelector) with
+  | some fn => execIRFunctionFuelResult fn tx.args state fuel
+  | none =>
+      { success := false
+        returnValue := none
+        finalStorage := state.storage
+        finalMappings := Compiler.Proofs.storageAsMappings state.storage
+        events := state.events }
+
+private def interpretYulFromIRFuelResult (contract : IRContract) (tx : IRTransaction) (state : IRState)
+    (fuel : Nat) : YulResult :=
+  let yulTx : YulTransaction := { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+  let yulInit := YulState.initial yulTx state.storage state.events
+  mkYulResultFromExec yulInit (execYulStmtsFuel fuel yulInit (Compiler.runtimeCode contract))
+
+private def diffCheckTx (spec : CompilationModel) (ir : IRContract)
+    (tx : IRTransaction) (seed : Nat) : Bool :=
+  let initState : IRState :=
+    IRState.mk [] (seededStorage seed) (fun _ => 0) [] none tx.sender 0 []
+  let irResult := interpretIRFuelResult ir tx initState 800
+  let yulResult := interpretYulFromIRFuelResult ir tx initState 800
+  let slots := observedSlotsForTx spec tx
+  let mappingKeys := mappingKeyCandidatesForTx spec tx
+  resultsMatchOn slots mappingKeys irResult yulResult
+
+private def runRandomDiffChecks (spec : CompilationModel) (ir : IRContract)
+    (extFns : List FunctionSpec) (selectors : List Nat) (count : Nat) : IO Unit := do
+  let rec loop (remaining : Nat) (seed : Nat) (idx : Nat) : IO Unit := do
+    if remaining = 0 then
+      pure ()
+    else
+      let (tx, seed') := mkRandomTx extFns selectors seed
+      let ok := diffCheckTx spec ir tx (seed + idx + 1)
+      expectTrue
+        s!"{spec.name}: randomized IR↔Yul differential check {idx + 1}/{count}"
+        ok
+      loop (remaining - 1) seed' (idx + 1)
+  loop count (seedFromName spec.name) 0
 
 private def macroSpecs : List CompilationModel :=
   [ Contracts.MacroContracts.SimpleStorage.spec
@@ -185,6 +351,10 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
         (irFnNames == fnNames)
       expectTrue s!"{spec.name}: IR selectors preserve canonical selector order"
         (irSelectors == selectors)
+      if (mappingBaseSlots spec).isEmpty then
+        runRandomDiffChecks spec ir extFns selectors 8
+      else
+        IO.println s!"ℹ {spec.name}: skipping randomized IR↔Yul checks (mapping keccak path requires runtime FFI in #eval)"
   | .error err =>
       throw (IO.userError s!"✗ {spec.name}: compileChecked failed: {err}")
 

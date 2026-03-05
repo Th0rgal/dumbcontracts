@@ -2,7 +2,7 @@
 """Fail closed on regressions while migrating proofs to macro-generated artifacts.
 
 Issue #997 tracks proof migration from legacy/manual references:
-- `Verity.Examples.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken,SafeCounter}`
+- `Verity.Examples.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken}`
 - `Compiler.Specs.*Spec` (legacy manual specs)
 
 This check enforces:
@@ -23,31 +23,12 @@ PROOF_ROOTS = [
     ROOT / "Verity" / "Proofs",
 ]
 
-ALLOWLIST = {
-    Path("Compiler/Proofs/SemanticBridge.lean"),
-    Path("Verity/Proofs/Counter/Basic.lean"),
-    Path("Verity/Proofs/Counter/Correctness.lean"),
-    Path("Verity/Proofs/Ledger/Basic.lean"),
-    Path("Verity/Proofs/Ledger/Conservation.lean"),
-    Path("Verity/Proofs/Ledger/Correctness.lean"),
-    Path("Verity/Proofs/Owned/Basic.lean"),
-    Path("Verity/Proofs/Owned/Correctness.lean"),
-    Path("Verity/Proofs/OwnedCounter/Basic.lean"),
-    Path("Verity/Proofs/OwnedCounter/Correctness.lean"),
-    Path("Verity/Proofs/OwnedCounter/Isolation.lean"),
-    Path("Verity/Proofs/SafeCounter/Basic.lean"),
-    Path("Verity/Proofs/SafeCounter/Correctness.lean"),
-    Path("Verity/Proofs/SimpleStorage/Basic.lean"),
-    Path("Verity/Proofs/SimpleToken/Basic.lean"),
-    Path("Verity/Proofs/SimpleToken/Correctness.lean"),
-    Path("Verity/Proofs/SimpleToken/Isolation.lean"),
-    Path("Verity/Proofs/SimpleToken/Supply.lean"),
-}
+ALLOWLIST: set[Path] = set()
 
 LEGACY_RE = re.compile(
     r"\b(?:"
-    r"Verity\.Examples\.(?:Counter|SimpleStorage|Owned|Ledger|OwnedCounter|SimpleToken|SafeCounter)"
-    r"|Compiler\.Specs\.(?:counterSpec|simpleStorageSpec|ownedSpec|ledgerSpec|ownedCounterSpec|simpleTokenSpec|safeCounterSpec)"
+    r"Verity\.Examples\.(?:Counter|SimpleStorage|Owned|Ledger|OwnedCounter|SimpleToken)"
+    r"|Compiler\.Specs\.(?:counterSpec|simpleStorageSpec|ownedSpec|ledgerSpec|ownedCounterSpec|simpleTokenSpec)"
     r")\b"
 )
 

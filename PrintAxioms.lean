@@ -30,8 +30,10 @@ import Verity.Proofs.Stdlib.MappingAutomation
 import Verity.Proofs.Stdlib.Math
 import Compiler.Proofs.ArithmeticProfile
 import Compiler.Proofs.EndToEnd
+import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.SemanticBridge
+import Compiler.Proofs.YulGeneration.Builtins
 import Compiler.Proofs.YulGeneration.Equivalence
 
 -- Verity/Proofs/Counter/Basic.lean
@@ -183,9 +185,11 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.OwnedCounter.constructor_meets_spec
 #print axioms Verity.Proofs.OwnedCounter.constructor_sets_owner
 #print axioms Verity.Proofs.OwnedCounter.constructor_preserves_count
+-- #print axioms Verity.Proofs.OwnedCounter.getCount_run  -- private
 #print axioms Verity.Proofs.OwnedCounter.getCount_meets_spec
 #print axioms Verity.Proofs.OwnedCounter.getCount_returns_count
 #print axioms Verity.Proofs.OwnedCounter.getCount_preserves_state
+-- #print axioms Verity.Proofs.OwnedCounter.getOwner_run  -- private
 #print axioms Verity.Proofs.OwnedCounter.getOwner_meets_spec
 #print axioms Verity.Proofs.OwnedCounter.getOwner_returns_owner
 #print axioms Verity.Proofs.OwnedCounter.getOwner_preserves_state
@@ -235,6 +239,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.OwnedCounter.Isolation.transferOwnership_preserves_map_storage
 
 -- Verity/Proofs/SafeCounter/Basic.lean
+-- #print axioms Verity.Proofs.SafeCounter.getCount_run  -- private
 #print axioms Verity.Proofs.SafeCounter.getCount_meets_spec
 #print axioms Verity.Proofs.SafeCounter.getCount_returns_count
 #print axioms Verity.Proofs.SafeCounter.getCount_preserves_state
@@ -596,6 +601,15 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.EndToEnd.layers2_3_ir_matches_yul
 #print axioms Compiler.Proofs.EndToEnd.simpleStorage_endToEnd
 
+-- Compiler/Proofs/IRGeneration/IRInterpreter.lean
+#print axioms Compiler.Proofs.IRGeneration.execIRStmt_stop_succ
+#print axioms Compiler.Proofs.IRGeneration.execIRStmt_stop_one_add
+#print axioms Compiler.Proofs.IRGeneration.execIRStmt_stop_one_add_add
+#print axioms Compiler.Proofs.IRGeneration.execIRStmt_sstore_lit_lit_succ
+#print axioms Compiler.Proofs.IRGeneration.execIRStmt_sstore_lit_expr_succ_of_eval
+#print axioms Compiler.Proofs.IRGeneration.execIRStmts_sstore_lit_expr_then_stop_succ_succ_succ_of_eval
+#print axioms Compiler.Proofs.IRGeneration.execIRStmts_single_stop_succ_succ
+
 -- Compiler/Proofs/MappingSlot.lean
 #print axioms Compiler.Proofs.abstractMappingSlot_eq_solidity
 #print axioms Compiler.Proofs.abstractMappingTag_eq_zero
@@ -629,6 +643,16 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.SemanticBridge.simpleStorage_retrieve_edsl_to_yul
 #print axioms Compiler.Proofs.SemanticBridge.counter_increment_edsl_to_yul
 
+-- Compiler/Proofs/YulGeneration/Builtins.lean
+#print axioms Compiler.Proofs.YulGeneration.evalBuiltinCall_callvalue_nil
+#print axioms Compiler.Proofs.YulGeneration.evalBuiltinCall_calldatasize_nil
+#print axioms Compiler.Proofs.YulGeneration.evalBuiltinCall_caller_nil
+#print axioms Compiler.Proofs.YulGeneration.calldataloadWord_offset4
+#print axioms Compiler.Proofs.YulGeneration.evalBuiltinCall_calldataload_offset4_single
+#print axioms Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend_calldataload_offset4_single
+#print axioms Compiler.Proofs.YulGeneration.evalBuiltinCall_sload_single
+#print axioms Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend_sload_single
+
 -- Compiler/Proofs/YulGeneration/Equivalence.lean
 #print axioms Compiler.Proofs.YulGeneration.resultsMatch_of_execResultsAligned
 #print axioms Compiler.Proofs.YulGeneration.statesAligned_refl
@@ -646,4 +670,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 551 theorems/lemmas (530 public, 21 private)
+-- Total: 569 theorems/lemmas (545 public, 24 private)

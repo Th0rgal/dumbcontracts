@@ -16,7 +16,7 @@ namespace Verity.Proofs.SimpleToken.Correctness
 
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256 safeAdd requireSomeUint)
-open Verity.Examples.SimpleToken (constructor mint transfer balanceOf getTotalSupply getOwner isOwner)
+open Verity.Examples.MacroContracts.SimpleToken (mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Verity.Specs.SimpleToken
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 open Verity.Proofs.SimpleToken
@@ -32,8 +32,8 @@ This is critical for safety: unauthorized or invalid operations must fail.
 theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount : Uint256)
   (h_not_owner : s.sender ≠ s.storageAddr 0) :
   ∃ msg, (mint to amount).run s = ContractResult.revert msg s := by
-  simp only [mint, Verity.Examples.SimpleToken.onlyOwner, isOwner,
-    Examples.SimpleToken.owner, Examples.SimpleToken.balances, Examples.SimpleToken.totalSupply,
+  simp only [mint, Verity.Examples.MacroContracts.SimpleToken.onlyOwner, isOwner,
+    Examples.MacroContracts.SimpleToken.ownerSlot, Examples.MacroContracts.SimpleToken.balancesSlot, Examples.MacroContracts.SimpleToken.totalSupplySlot,
     msgSender, getStorageAddr, getStorage, setStorage, getMapping, setMapping,
     Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
     Contract.run]
@@ -44,7 +44,7 @@ theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount :
 theorem transfer_reverts_insufficient_balance (s : ContractState) (to : Address) (amount : Uint256)
   (h_insufficient : s.storageMap 1 s.sender < amount) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
-  simp only [transfer, Examples.SimpleToken.balances,
+  simp only [transfer, Examples.MacroContracts.SimpleToken.balancesSlot,
     msgSender, getMapping,
     Verity.require, Verity.bind, Bind.bind,
     Contract.run]
@@ -53,7 +53,7 @@ theorem transfer_reverts_insufficient_balance (s : ContractState) (to : Address)
 /-! ## Invariant Preservation
 
 These prove that WellFormedState is preserved by all state-modifying operations.
-Combined with Basic.lean's proofs for constructor/reads, this gives full coverage.
+Combined with Basic.lean's proofs for simpleTokenConstructor/reads, this gives full coverage.
 -/
 
 /-- Mint preserves well-formedness when caller is owner and no overflow.
@@ -81,7 +81,7 @@ theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (am
 
 /-! ## Owner Stability
 
-These prove that only the constructor sets the owner — mint and transfer
+These prove that only the simpleTokenConstructor sets the owner — mint and transfer
 never change it. This is a critical access control property.
 -/
 

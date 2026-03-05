@@ -278,6 +278,52 @@ def execIRStmts (fuel : Nat) (state : IRState) : List YulStmt → IRExecResult
 
 end -- mutual
 
+@[simp] theorem execIRStmt_stop_succ (fuel : Nat) (state : IRState) :
+    execIRStmt (Nat.succ fuel) state (YulStmt.expr (YulExpr.call "stop" [])) =
+      .stop state := by
+  simp [execIRStmt]
+
+@[simp] theorem execIRStmt_stop_one_add (fuel : Nat) (state : IRState) :
+    execIRStmt (1 + fuel) state (YulStmt.expr (YulExpr.call "stop" [])) =
+      .stop state := by
+  simp [execIRStmt_stop_succ, Nat.add_comm]
+
+@[simp] theorem execIRStmt_stop_one_add_add (a b : Nat) (state : IRState) :
+    execIRStmt (1 + a + b) state (YulStmt.expr (YulExpr.call "stop" [])) =
+      .stop state := by
+  simp [execIRStmt_stop_one_add, Nat.add_assoc]
+
+@[simp] theorem execIRStmt_sstore_lit_lit_succ
+    (fuel : Nat) (state : IRState) (slot val : Nat) :
+    execIRStmt (Nat.succ fuel) state
+      (YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, YulExpr.lit val])) =
+      .continue { state with
+        storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage slot val } := by
+  simp [execIRStmt, evalIRExpr]
+
+theorem execIRStmt_sstore_lit_expr_succ_of_eval
+    (fuel : Nat) (state : IRState) (slot : Nat) (valExpr : YulExpr) (val : Nat)
+    (hval : evalIRExpr state valExpr = some val) :
+    execIRStmt (Nat.succ fuel) state
+      (YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valExpr])) =
+      .continue { state with
+        storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage slot val } := by
+  simp [execIRStmt, evalIRExpr, hval]
+
+theorem execIRStmts_sstore_lit_expr_then_stop_succ_succ_succ_of_eval
+    (fuel : Nat) (state : IRState) (slot : Nat) (valExpr : YulExpr) (val : Nat)
+    (hval : evalIRExpr state valExpr = some val) :
+    execIRStmts (Nat.succ (Nat.succ (Nat.succ fuel))) state
+      [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valExpr]), YulStmt.expr (YulExpr.call "stop" [])] =
+      .stop { state with
+        storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage slot val } := by
+  simp [execIRStmts, execIRStmt, evalIRExpr, hval]
+
+@[simp] theorem execIRStmts_single_stop_succ_succ (fuel : Nat) (state : IRState) :
+    execIRStmts (Nat.succ (Nat.succ fuel)) state [YulStmt.expr (YulExpr.call "stop" [])] =
+      .stop state := by
+  simp [execIRStmts, execIRStmt]
+
 /-! ## IR Function Execution -/
 
 structure IRTransaction where

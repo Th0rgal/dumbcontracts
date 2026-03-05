@@ -15,7 +15,7 @@ namespace Verity.Proofs.SafeCounter.Correctness
 open Verity
 open Verity.Stdlib.Math
 open Verity.EVM.Uint256
-open Verity.Examples.SafeCounter
+open Verity.Examples.MacroContracts.SafeCounter
 open Verity.Specs.SafeCounter
 open Verity.Proofs.SafeCounter
 open Verity.Proofs.Stdlib.Automation
@@ -47,16 +47,16 @@ theorem increment_preserves_storage_isolated (s : ContractState)
   (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256) :
   let s' := ((increment).run s).snd
   storage_isolated s s' := by
-  simp [storage_isolated]; intro slot h_ne
-  exact increment_preserves_other_slots s h_no_overflow slot h_ne
+  simp [storage_isolated]; intro k h_ne
+  exact increment_preserves_other_slots s h_no_overflow k h_ne
 
 /-- decrement preserves storage isolation. -/
 theorem decrement_preserves_storage_isolated (s : ContractState)
   (h_no_underflow : s.storage 0 ≥ 1) :
   let s' := ((decrement).run s).snd
   storage_isolated s s' := by
-  simp [storage_isolated]; intro slot h_ne
-  exact decrement_preserves_other_slots s h_no_underflow slot h_ne
+  simp [storage_isolated]; intro k h_ne
+  exact decrement_preserves_other_slots s h_no_underflow k h_ne
 
 /-- getCount preserves context (trivially, read-only). -/
 theorem getCount_preserves_context (s : ContractState) :

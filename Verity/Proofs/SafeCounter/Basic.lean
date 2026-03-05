@@ -18,23 +18,30 @@ open Verity
 open Verity.Stdlib.Math
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none safeSub_some safeSub_none)
 open Verity.EVM.Uint256
-open Verity.Examples.SafeCounter
+open Verity.Examples.MacroContracts.SafeCounter
 open Verity.Specs.SafeCounter
 
 /-! ## getCount Correctness -/
 
+private theorem getCount_run (s : ContractState) :
+  (getCount).run s = ContractResult.success (s.storage 0) s := by
+  simp [getCount, count, getStorage, Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
+
 theorem getCount_meets_spec (s : ContractState) :
   let result := ((getCount).run s).fst
   getCount_spec result s := by
-  simp [getCount, getStorage, count, getCount_spec, Contract.run, ContractResult.fst]
+  rw [getCount_run s]
+  simp [getCount_spec]
 
 theorem getCount_returns_count (s : ContractState) :
   ((getCount).run s).fst = s.storage 0 := by
-  simp [getCount, getStorage, count, Contract.run, ContractResult.fst]
+  rw [getCount_run s]
+  simp
 
 theorem getCount_preserves_state (s : ContractState) :
   ((getCount).run s).snd = s := by
-  simp [getCount, getStorage, count, Contract.run, ContractResult.snd]
+  rw [getCount_run s]
+  simp
 
 /-! ## Increment Correctness -/
 
@@ -46,7 +53,7 @@ theorem evm_add_eq_of_no_overflow (a b : Uint256) (_h : (a : Nat) + (b : Nat) �
 private theorem increment_unfold (s : ContractState)
   (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256) :
   (increment).run s = ContractResult.success ()
-    { storage := fun slot => if (slot == 0) = true then s.storage 0 + 1 else s.storage slot,
+    { «storage» := fun k => if (k == 0) = true then s.storage 0 + 1 else s.storage k,
       storageAddr := s.storageAddr,
       storageMap := s.storageMap,
       storageMapUint := s.storageMapUint,
@@ -70,7 +77,7 @@ theorem increment_meets_spec (s : ContractState)
   simp only [ContractResult.snd, increment_spec]
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · simp [evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
-  · intro slot h_ne; simp [beq_iff_eq, h_ne]
+  · intro k h_ne; simp [beq_iff_eq, h_ne]
   · rfl
   · rfl
   · exact Specs.sameContext_rfl _
@@ -84,9 +91,9 @@ theorem increment_adds_one (s : ContractState)
 
 theorem increment_preserves_other_slots (s : ContractState)
   (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256)
-  (slot : Nat) (h_ne : slot ≠ 0) :
+  (k : Nat) (h_ne : k ≠ 0) :
   let s' := ((increment).run s).snd
-  s'.storage slot = s.storage slot := by
+  s'.storage k = s.storage k := by
   rw [increment_unfold s h_no_overflow]
   simp [ContractResult.snd, beq_iff_eq, h_ne]
 
@@ -104,7 +111,7 @@ theorem increment_reverts_overflow (s : ContractState)
 private theorem decrement_unfold (s : ContractState)
   (h_no_underflow : (s.storage 0 : Nat) ≥ 1) :
   (decrement).run s = ContractResult.success ()
-    { storage := fun slot => if (slot == 0) = true then s.storage 0 - 1 else s.storage slot,
+    { «storage» := fun k => if (k == 0) = true then s.storage 0 - 1 else s.storage k,
       storageAddr := s.storageAddr,
       storageMap := s.storageMap,
       storageMapUint := s.storageMapUint,
@@ -128,7 +135,7 @@ theorem decrement_meets_spec (s : ContractState)
   simp only [ContractResult.snd, decrement_spec]
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · simp [HSub.hSub, sub]
-  · intro slot h_ne; simp [beq_iff_eq, h_ne]
+  · intro k h_ne; simp [beq_iff_eq, h_ne]
   · rfl
   · rfl
   · exact Specs.sameContext_rfl _
@@ -142,9 +149,9 @@ theorem decrement_subtracts_one (s : ContractState)
 
 theorem decrement_preserves_other_slots (s : ContractState)
   (h_no_underflow : (s.storage 0 : Nat) ≥ 1)
-  (slot : Nat) (h_ne : slot ≠ 0) :
+  (k : Nat) (h_ne : k ≠ 0) :
   let s' := ((decrement).run s).snd
-  s'.storage slot = s.storage slot := by
+  s'.storage k = s.storage k := by
   rw [decrement_unfold s h_no_underflow]
   simp [ContractResult.snd, beq_iff_eq, h_ne]
 
@@ -202,8 +209,7 @@ theorem increment_getCount_correct (s : ContractState)
   let s' := ((increment).run s).snd
   ((getCount).run s').fst = add (s.storage 0) 1 := by
   rw [increment_unfold s h_no_overflow]
-  simp [ContractResult.snd, getCount, getStorage, count, Contract.run, ContractResult.fst,
-    evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
+  simp [getCount_run, ContractResult.snd, evm_add_eq_of_no_overflow (s.storage 0) 1 h_no_overflow]
 
 /-! ## Summary of Proven Properties
 

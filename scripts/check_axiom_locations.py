@@ -25,7 +25,7 @@ def main() -> None:
     # Match patterns like: ### N. `axiom_name`
     # followed by **Location**: `path/to/File.lean:NN`
     axiom_blocks = re.findall(
-        r"### \d+\.\s+`(\w+)`\s*\n\n"
+        r"### \d+\.\s+`([^`]+)`(?:[^\n]*)\n\n"
         r"\*\*Location\*\*:\s*`([^:]+):(\d+)`",
         text,
     )
@@ -49,7 +49,7 @@ def main() -> None:
         # Find actual line number for this axiom
         actual_line = None
         for i, line in enumerate(lines, 1):
-            if re.match(rf"^axiom\s+{re.escape(axiom_name)}\b", line):
+            if re.match(rf"^(private |protected )?axiom\s+{re.escape(axiom_name)}\b", line):
                 actual_line = i
                 break
 

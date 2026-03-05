@@ -65,6 +65,7 @@ ALLOWLIST: set[str] = {
     "ownedCounter_transferOwnership_semantic_bridge",
     # End-to-end composition proofs (Issue #998) — compose Layers 2+3:
     "simpleStorage_endToEnd",
+    "simpleStorage_retrieve_edsl_to_yul",
     "yulBody_from_state_eq_yulBody",
     # Statement equivalence core recursion proof (Lean 4.22 transport-heavy);
     # decomposition planned after stabilization of helper lemmas.
@@ -80,6 +81,9 @@ ALLOWLIST: set[str] = {
     "compileStmts_letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop_run",
     "compileStmts_letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop_run",
     "compileStmts_letCallerLetMapping2IteParamReqSetMapping2Stop_run",
+    # Guard no-op bridge for switch-case execution (Issue #1094 follow-up):
+    # long due explicit Yul expression reduction over reducible exec semantics.
+    "exec_calldatasizeGuard_noop",
 }
 
 # Directories containing proof files to scan.

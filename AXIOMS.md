@@ -36,6 +36,62 @@ Selector hashing is modeled as an external cryptographic primitive rather than r
 
 **Risk**: Low.
 
+### 2. `execBuildSwitch_none_none_aux` (private)
+
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:236`
+
+**Statement**:
+```lean
+private axiom execBuildSwitch_none_none_aux (fuel : Nat) (state : YulState)
+    (fns : List IRFunction) :
+    execYulStmtsFuel (fuel + 6) state [Compiler.buildSwitch fns none none] =
+      execYulStmtFuel (fuel + 1) (state.setVar "__has_selector" 1)
+        (YulStmt.switch selectorExpr (switchCases fns)
+          (some (switchDefaultCase none none)))
+```
+
+**Purpose**:
+Bridges a remaining mechanical fueled-step normalization gap in Yul-preservation dispatch proofs.
+
+**Elimination path**:
+Replace with a theorem using the accumulated local normalization lemmas in `Preservation.lean`.
+
+**Risk**: Medium (proof-kernel assumption in preservation proof module).
+
+### 3. `resultsMatch_switchCaseBody_of_resultsMatch_body` (private)
+
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:297`
+
+**Statement**:
+```lean
+private axiom resultsMatch_switchCaseBody_of_resultsMatch_body
+    (fn : IRFunction) (tx : IRTransaction) (irState : IRState) (fuel : Nat) :
+    resultsMatch
+      (execIRFunction fn tx.args irState)
+      (interpretYulRuntime fn.body
+        { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+        irState.storage irState.events) →
+    resultsMatch
+      (execIRFunction fn tx.args irState)
+      (yulResultOfExecWithRollback
+        (YulState.initial
+          { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+          irState.storage irState.events)
+        (execYulStmtsFuel fuel
+          ((YulState.initial
+            { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+            irState.storage irState.events).setVar "__has_selector" 1)
+          (switchCaseBody fn)))
+```
+
+**Purpose**:
+Bridges the remaining `switchCaseBody` dispatch-context alignment step in preservation.
+
+**Elimination path**:
+Replace with a theorem that discharges the context/fuel bridge directly in `Preservation.lean`.
+
+**Risk**: Medium (proof-kernel assumption in preservation proof module).
+
 ## Trusted Cryptographic Primitive (Non-Axiom)
 
 ### `ffi.KEC` (keccak256 via EVMYul FFI)
@@ -89,7 +145,7 @@ scoped to contracts that use the module.
 
 The repository removed prior axioms related to IR and Yul expression and statement equivalence and address injectivity by making interpreters total and by using a bounded-nat `Address` representation.
 
-These removals reduced the active Lean axiom surface to one item.
+These removals reduced prior axiom debt, but preservation still carries two private bridge axioms.
 
 ## Non-Axiom: Arithmetic Semantics
 
@@ -97,7 +153,7 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 
 ## Trust Summary
 
-- Active axioms: 1
+- Active axioms: 3
 - Production blockers from axioms: 0
 - Enforcement: `scripts/check_axiom_locations.py` ensures this file tracks exact source location.
 - Compilation-path totalization work in `Compiler/CompilationModel.lean` does not
@@ -112,10 +168,9 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 - The semantic bridge and typed-IR migration work (Issues #998 and #1060:
   `Compiler/Proofs/EndToEnd.lean`, `Compiler/Proofs/SemanticBridge.lean`,
   `Verity/Macro/Bridge.lean`, and the `Verity/Core/Free/TypedIR*` pipeline)
-  does not add, remove, or modify Lean axioms. `SemanticBridge.lean` contains
-  18 `sorry` placeholders in proof terms (theorem statements are preserved;
-  proofs are blocked by heartbeat limits after the `evalBuiltinCall` refactor).
-  The typed-IR compilation path (`TypedIRCompiler*.lean`) carries zero `sorry`.
+  does not add, remove, or modify Lean axioms. `SemanticBridge.lean` now has
+  zero `sorry`. The typed-IR compilation path (`TypedIRCompiler*.lean`) also
+  has zero `sorry`.
 
 ## Maintenance Rule
 
@@ -123,4 +178,4 @@ Any commit that adds, removes, renames, or moves an axiom must update this file 
 
 If this file is stale, trust analysis is stale.
 
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-03-05

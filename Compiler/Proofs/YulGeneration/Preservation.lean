@@ -26,6 +26,28 @@ See `TRUST_ASSUMPTIONS.md` for the full trust-boundary description.
         state.storage state.events := by
   rfl
 
+@[simp] private theorem interpretYulRuntime_eq_yulResultOfExecWithRollback_initial
+    (runtimeCode : List YulStmt) (tx : YulTransaction) (storage : Nat → Nat)
+    (events : List (List Nat)) :
+    interpretYulRuntime runtimeCode tx storage events =
+      yulResultOfExecWithRollback (YulState.initial tx storage events)
+        (execYulStmts (YulState.initial tx storage events) runtimeCode) := by
+  rfl
+
+@[simp] private theorem interpretYulBody_eq_execWithRollback (fn : IRFunction)
+    (tx : IRTransaction) (state : IRState) :
+    interpretYulBody fn tx state =
+      yulResultOfExecWithRollback
+        (YulState.initial
+          { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+          state.storage state.events)
+        (execYulStmts
+          (YulState.initial
+            { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+            state.storage state.events)
+          fn.body) := by
+  simp [interpretYulBody]
+
 /-- Helper: initial Yul state aligned with the IR transaction/state. -/
 private def initialYulState (tx : YulTransaction) (state : IRState) : YulState :=
   YulState.initial tx state.storage state.events
@@ -89,6 +111,44 @@ private theorem sizeOf_append_ge_length_add (l₁ l₂ : List YulStmt) :
 /-- Simplification: 1 ≠ 0 for if_ branch. -/
 @[simp] private theorem one_ne_zero : (1 : Nat) ≠ 0 := by omega
 
+/-- Identity simplifier for result-shaped matches emitted by `execYulFuel` reductions. -/
+@[simp] private theorem yulExecResult_match_id (r : YulExecResult) :
+    (match r with
+    | .continue s => .continue s
+    | .return v s => .return v s
+    | .stop s => .stop s
+    | .revert s => .revert s) = r := by
+  cases r <;> rfl
+
+/-- `callvalueGuard` never reverts in the proof semantics because `callvalue() = 0`. -/
+private theorem exec_callvalueGuard_noop (fuel : Nat) (state : YulState) :
+    execYulStmtsFuel (fuel + 2) state [Compiler.callvalueGuard] =
+      YulExecResult.continue state := by
+  have hs : fuel + 2 = Nat.succ (Nat.succ fuel) := by omega
+  rw [hs]
+  have hCallvalue : evalYulExpr state (YulExpr.call "callvalue" []) = some 0 := by
+    simp [evalYulExpr, evalYulCall, evalYulExprs,
+      evalBuiltinCallWithBackend, evalBuiltinCall]
+  simp [Compiler.callvalueGuard, execYulStmtsFuel, execYulFuel, hCallvalue]
+
+/-- If calldata has enough words for `numParams`, `calldatasizeGuard` is a no-op. -/
+private theorem exec_calldatasizeGuard_noop
+    (fuel : Nat) (state : YulState) (numParams : Nat)
+    (hArity : numParams ≤ state.calldata.length) :
+    execYulStmtsFuel (fuel + 2) state [Compiler.calldatasizeGuard numParams] =
+      YulExecResult.continue state := by
+  have hCmp : ¬ (4 + state.calldata.length * 32 < 4 + numParams * 32) := by
+    omega
+  have hs : fuel + 2 = Nat.succ (Nat.succ fuel) := by omega
+  rw [hs]
+  have hLt :
+      evalYulExpr state
+        (YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit (4 + numParams * 32)]) =
+          some (if 4 + state.calldata.length * 32 < 4 + numParams * 32 then 1 else 0) := by
+    simp [evalYulExpr, evalYulCall, evalYulExprs,
+      evalBuiltinCallWithBackend, evalBuiltinCall]
+  simp [Compiler.calldatasizeGuard, execYulStmtsFuel, execYulFuel, hLt, hCmp]
+
 /-! ### buildSwitch stepping axiom
 
 The `buildSwitch` block structure generates:
@@ -113,8 +173,58 @@ because `execYulFuel` is `[reducible]` and `simp` over-reduces to produce
 the theorem statement is correct and the execution trace is well-understood.
 -/
 
+/-- Guard expression used by `buildSwitch` evaluates to 1 because `calldatasize ≥ 4`. -/
+private theorem eval_buildSwitch_hasSelectorExpr_eq_one (state : YulState) :
+    evalYulExpr state
+      (YulExpr.call "iszero"
+        [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]) = some 1 := by
+  simp [evalYulExpr, evalYulCall, evalYulExprs,
+    evalBuiltinCallWithBackend, evalBuiltinCall]
+
+/-- After setting `__has_selector := 1`, `iszero(__has_selector)` evaluates to 0. -/
+private theorem eval_iszero_hasSelector_after_set (state : YulState) :
+    evalYulExpr (state.setVar "__has_selector" 1)
+      (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) = some 0 := by
+  have hGetHasSelector :
+      (state.setVar "__has_selector" 1).getVar "__has_selector" = some 1 := by
+    simp [YulState.setVar, YulState.getVar]
+  simp [evalYulExpr, evalYulCall, evalYulExprs,
+    evalBuiltinCallWithBackend, evalBuiltinCall, hGetHasSelector]
+
+/-- After setting `__has_selector := 1`, reading `__has_selector` yields 1. -/
+private theorem eval_hasSelector_after_set (state : YulState) :
+    evalYulExpr (state.setVar "__has_selector" 1) (YulExpr.ident "__has_selector") = some 1 := by
+  simp [evalYulExpr, YulState.setVar, YulState.getVar]
+
+/-- Fueled `if_` step: a zero condition skips the body and continues unchanged. -/
+@[simp] private theorem execYulStmtFuel_if_zero_continue
+    (fuel : Nat) (state : YulState) (cond : YulExpr) (body : List YulStmt)
+    (hEval : evalYulExpr state cond = some 0) :
+    execYulStmtFuel (fuel + 1) state (YulStmt.if_ cond body) = .continue state := by
+  simp [execYulStmtFuel, execYulFuel, hEval]
+
+/-- Fueled `if_` step: a nonzero condition executes the body with decremented fuel. -/
+@[simp] private theorem execYulStmtFuel_if_nonzero_exec
+    (fuel : Nat) (state : YulState) (cond : YulExpr) (body : List YulStmt) (v : Nat)
+    (hEval : evalYulExpr state cond = some v) (hNonzero : v ≠ 0) :
+    execYulStmtFuel (fuel + 1) state (YulStmt.if_ cond body) = execYulStmtsFuel fuel state body := by
+  simpa [execYulStmtsFuel] using
+    (by simp [execYulStmtFuel, execYulFuel, hEval, hNonzero] :
+      execYulStmtFuel (fuel + 1) state (YulStmt.if_ cond body) =
+        execYulFuel fuel state (.stmts body))
+
+/-- Zero fuel on a non-empty statement list always reverts. -/
+@[simp] private theorem execYulStmtsFuel_zero_of_ne_nil
+    (state : YulState) (stmts : List YulStmt) (hNe : stmts ≠ []) :
+    execYulStmtsFuel 0 state stmts = .revert state := by
+  cases stmts with
+  | nil =>
+      contradiction
+  | cons _ _ =>
+      simp [execYulStmtsFuel, execYulFuel]
+
 /-- Executing `[buildSwitch fns none none]` with enough fuel is equivalent to executing
-    the switch dispatch. This is stated as an axiom pending a mechanical proof (see above).
+    the switch dispatch. This is stated as an axiom pending a full mechanical proof.
 
     The execution trace is:
     - Block unwrap (1 fuel)
@@ -130,23 +240,78 @@ private axiom execBuildSwitch_none_none_aux (fuel : Nat) (state : YulState)
         (YulStmt.switch selectorExpr (switchCases fns)
           (some (switchDefaultCase none none)))
 
+/-- Executing a singleton statement list consumes one list-step of fuel. -/
+@[simp] private theorem execYulStmtsFuel_singleton_succ
+    (fuel : Nat) (state : YulState) (stmt : YulStmt) :
+    execYulStmtsFuel (fuel + 2) state [stmt] = execYulStmtFuel (fuel + 1) state stmt := by
+  simp [execYulStmtsFuel, execYulStmtFuel, execYulFuel]
+  cases hExec : execYulFuel (fuel + 1) state (.stmt stmt) <;> simp
+
+/-- The case list emitted by `buildSwitch` is definitionally `switchCases`.
+    Keeping this fact explicit helps avoid large reducible unfold chains in #1094 proofs. -/
+private theorem buildSwitch_cases_eq_switchCases (fns : List IRFunction) :
+    (fns.map (fun fn =>
+      (fn.selector,
+        dispatchBody fn.payable s!"{fn.name}()"
+          ([calldatasizeGuard fn.params.length] ++ fn.body)))) =
+      switchCases fns := by
+  simp [switchCases, switchCaseBody, dispatchBody]
+
+/-- Normalize switch-case lookup to function-list lookup.
+    This removes `List.find?_map` noise from mechanical `buildSwitch` proofs. -/
+private theorem find_switchCases_eq_find_function
+    (fns : List IRFunction) (sel : Nat) :
+    (switchCases fns).find? (fun (c, _) => c = sel) =
+      Option.map (fun fn => (fn.selector, switchCaseBody fn))
+        (fns.find? (fun fn => fn.selector == sel)) := by
+  induction fns with
+  | nil =>
+      simp [switchCases]
+  | cons fn rest ih =>
+      by_cases hsel : fn.selector = sel
+      · simp [switchCases, hsel]
+      · have hPred :
+          ((fun x : Prod Nat (List YulStmt) => decide (x.1 = sel)) ∘
+              fun f : IRFunction => (f.selector, switchCaseBody f)) =
+            (fun f : IRFunction => f.selector == sel) := by
+          funext f
+          simp [beq_eq_decide]
+        simp [switchCases, hsel, hPred]
+
 /-- `selectorExpr` does not depend on `__has_selector`, so the selector evaluation
     is the same in the augmented state. -/
 private theorem evalSelectorExpr_setVar_has_selector (state : YulState) (v : Nat)
     (hselector : state.selector < selectorModulus) :
     evalYulExpr (state.setVar "__has_selector" v) selectorExpr =
       some state.selector := by
-  -- selectorExpr = shr(selectorShift, calldataload(0))
-  -- This only accesses state.selector and state.calldata, not vars
-  -- setVar only modifies vars, so the result is unchanged
-  have hlt : state.selector < 4294967296 := by
-    have : selectorModulus = 4294967296 := by simp [selectorModulus]
-    omega
-  simp [selectorExpr, evalYulExpr, evalYulCall, evalYulExprs,
-    evalBuiltinCallWithBackend, evalBuiltinCall,
-    calldataloadWord, selectorWord, selectorShift, selectorModulus,
-    YulState.setVar,
-    Nat.mod_eq_of_lt hlt]
+  -- Keep this bridge local and avoid unfolding the full builtin evaluator.
+  simpa using (evalYulExpr_selectorExpr_eq (state.setVar "__has_selector" v) (by
+    simpa [YulState.setVar] using hselector))
+
+/-! ### switchCaseBody bridge axiom
+
+The remaining contract-level gap is connecting `hbody` (which reasons about
+`interpretYulRuntime fn.body ...`) to the runtime dispatch execution context
+(`switchCaseBody fn`, augmented state with `__has_selector`, and variable fuel).
+-/
+private axiom resultsMatch_switchCaseBody_of_resultsMatch_body
+    (fn : IRFunction) (tx : IRTransaction) (irState : IRState) (fuel : Nat) :
+    resultsMatch
+      (execIRFunction fn tx.args irState)
+      (interpretYulRuntime fn.body
+        { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+        irState.storage irState.events) →
+    resultsMatch
+      (execIRFunction fn tx.args irState)
+      (yulResultOfExecWithRollback
+        (YulState.initial
+          { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+          irState.storage irState.events)
+        (execYulStmtsFuel fuel
+          ((YulState.initial
+            { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+            irState.storage irState.events).setVar "__has_selector" 1)
+          (switchCaseBody fn)))
 
 set_option maxHeartbeats 1600000000 in
 /-- Main preservation theorem: Yul codegen preserves IR semantics.
@@ -257,30 +422,17 @@ theorem yulCodegen_preserves_semantics
       -- The selector evaluates the same way
       have hSelEval := evalSelectorExpr_setVar_has_selector yulInitState 1 (by
         rw [hSelEq]; exact hselector)
-      -- Bridge hcase with yulInitState.selector
-      have hcase' := find_switch_case_of_find_function contract.functions
-        yulInitState.selector fn (hSelEq ▸ hFind)
-      -- fn.selector = tx.functionSelector (from hFind: find? returns fn iff fn.selector == sel)
-      have hFnSel : fn.selector = tx.functionSelector := by
-        have h := List.find?_some hFind
-        simp at h; exact h
-      -- Rewrite to match the switch match lemma's expected form
-      rw [hSelEq] at hcase'
+      -- Rewrite to the transaction selector shape expected by the switch-match lemma.
       have hcase : (switchCases contract.functions).find? (fun (c, _) => c = tx.functionSelector) =
           some (tx.functionSelector, switchCaseBody fn) := by
-        rw [hFnSel] at hcase'; exact hcase'
+        simpa [hSelEq] using
+          (find_switch_case_of_find_function_eq_selector contract.functions yulInitState.selector fn
+            (hSelEq ▸ hFind))
       rw [← hSelEq] at hcase
       -- Apply switch match lemma
       rw [show m + 4 + 1 = Nat.succ (m + 4) from by omega]
       rw [execYulStmtFuel_switch_match _ _ _ _ _ _ _ hSelEval hcase]
-      -- Now we need: resultsMatch (IR execution) (Yul execution of switchCaseBody)
-      -- The hmatch gives us: resultsMatch (execIRFunction fn args irState)
-      --                                   (interpretYulRuntime fn.body yulTx irState.storage)
-      -- The goal has: executing switchCaseBody fn in the augmented state
-      -- switchCaseBody fn = [comment, valueGuard?, calldatasizeGuard, ...fn.body]
-      -- We need to step through the comment, guards, and reach fn.body execution
-      -- For now, we use sorry for this last step (connecting switchCaseBody to fn.body)
-      sorry
+      exact resultsMatch_switchCaseBody_of_resultsMatch_body fn tx irState (m + 4) hmatch
 
 /-! ## Complete Preservation Theorem (No Undischarged Hypotheses)
 

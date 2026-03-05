@@ -12,16 +12,10 @@
 -/
 
 import Compiler.Constants
-import Verity.Examples.SimpleStorage
-import Verity.Examples.Counter
-import Verity.Examples.SafeCounter
-import Verity.Examples.Owned
-import Verity.Examples.Ledger
-import Verity.Examples.OwnedCounter
-import Verity.Examples.SimpleToken
-import Verity.Examples.ERC20
-import Verity.Examples.ERC721
-import Verity.Examples.CryptoHash
+import Verity.Examples.MacroContracts.Tokens
+import Verity.Examples.MacroContracts.Core
+import Verity.Examples.MacroContracts.Compat.ERC721
+import Verity.Examples.MacroContracts.Compat.CryptoHash
 import Compiler.DiffTestTypes
 import Compiler.Hex
 
@@ -58,17 +52,17 @@ Execute contracts using their verified EDSL definitions.
 
 -- Helper: Extract storage changes from before/after states
 def extractStorageChanges (before after : ContractState) (slots : List Nat) : List (Nat × Nat) :=
-  slots.filterMap fun slot =>
-    let oldVal := before.storage slot
-    let newVal := after.storage slot
-    if oldVal ≠ newVal then some (slot, newVal) else none
+  slots.filterMap fun slotIdx =>
+    let oldVal := before.storage slotIdx
+    let newVal := after.storage slotIdx
+    if oldVal ≠ newVal then some (slotIdx, newVal) else none
 
 -- Helper: Extract address storage changes from before/after states
 def extractStorageAddrChanges (before after : ContractState) (slots : List Nat) : List (Nat × Address) :=
-  slots.filterMap fun slot =>
-    let oldVal := before.storageAddr slot
-    let newVal := after.storageAddr slot
-    if oldVal ≠ newVal then some (slot, newVal) else none
+  slots.filterMap fun slotIdx =>
+    let oldVal := before.storageAddr slotIdx
+    let newVal := after.storageAddr slotIdx
+    if oldVal ≠ newVal then some (slotIdx, newVal) else none
 
 -- Helper: Extract mapping changes from before/after states
 private def dedupeMappingKeys (keys : List (Nat × Address)) : List (Nat × Address) :=
@@ -79,10 +73,10 @@ private def dedupeMappingKeys (keys : List (Nat × Address)) : List (Nat × Addr
 
 def extractMappingChanges (before after : ContractState) (keys : List (Nat × Address)) : List (Nat × Address × Nat) :=
   let deduped := dedupeMappingKeys keys
-  deduped.filterMap fun (slot, key) =>
-    let oldVal := before.storageMap slot key
-    let newVal := after.storageMap slot key
-    if oldVal ≠ newVal then some (slot, key, newVal) else none
+  deduped.filterMap fun (slotIdx, key) =>
+    let oldVal := before.storageMap slotIdx key
+    let newVal := after.storageMap slotIdx key
+    if oldVal ≠ newVal then some (slotIdx, key, newVal) else none
 
 private def dedupeMappingUintKeys (keys : List (Nat × Uint256)) : List (Nat × Uint256) :=
   let deduped := keys.foldl (fun acc key =>
@@ -93,10 +87,10 @@ private def dedupeMappingUintKeys (keys : List (Nat × Uint256)) : List (Nat × 
 def extractMappingUintChanges (before after : ContractState) (keys : List (Nat × Uint256)) :
     List (Nat × Nat × Nat) :=
   let deduped := dedupeMappingUintKeys keys
-  deduped.filterMap fun (slot, key) =>
-    let oldVal := before.storageMapUint slot key
-    let newVal := after.storageMapUint slot key
-    if oldVal ≠ newVal then some (slot, key.val, newVal.val) else none
+  deduped.filterMap fun (slotIdx, key) =>
+    let oldVal := before.storageMapUint slotIdx key
+    let newVal := after.storageMapUint slotIdx key
+    if oldVal ≠ newVal then some (slotIdx, key.val, newVal.val) else none
 
 private def dedupeMapping2Keys (keys : List (Nat × Address × Address)) : List (Nat × Address × Address) :=
   let deduped := keys.foldl (fun acc key =>
@@ -107,10 +101,10 @@ private def dedupeMapping2Keys (keys : List (Nat × Address × Address)) : List 
 def extractMapping2Changes (before after : ContractState) (keys : List (Nat × Address × Address)) :
     List (Nat × Address × Address × Nat) :=
   let deduped := dedupeMapping2Keys keys
-  deduped.filterMap fun (slot, key1, key2) =>
-    let oldVal := before.storageMap2 slot key1 key2
-    let newVal := after.storageMap2 slot key1 key2
-    if oldVal ≠ newVal then some (slot, key1, key2, newVal.val) else none
+  deduped.filterMap fun (slotIdx, key1, key2) =>
+    let oldVal := before.storageMap2 slotIdx key1 key2
+    let newVal := after.storageMap2 slotIdx key1 key2
+    if oldVal ≠ newVal then some (slotIdx, key1, key2, newVal.val) else none
 
 private def revertReturnValue (msg : String) : Nat :=
   if msg.isEmpty then 0 else errorStringSelectorWord
@@ -143,7 +137,7 @@ def resultToExecutionResult
       returnValue := some returnVal
       revertReason := none
       storageChanges := extractStorageChanges initialState finalState slotsToCheck
-      storageAddrChanges := addrChanges.map (fun (slot, addr) => (slot, addressToNat addr))
+      storageAddrChanges := addrChanges.map (fun (slotIdx, addr) => (slotIdx, addressToNat addr))
       mappingChanges := extractMappingChanges initialState finalState mappingKeysToCheck
       mappingUintChanges := extractMappingUintChanges initialState finalState mappingUintKeysToCheck
       mapping2Changes := extractMapping2Changes initialState finalState mapping2KeysToCheck
@@ -334,6 +328,110 @@ private def dispatch (tx : Transaction) (cases : List (String × (Unit → Execu
   | none => unknownFunctionResult
 
 /-!
+Compatibility shims for per-contract migration.
+
+These keep interpreter call-sites stable while contract implementations move
+from `Verity.Examples.*` to `Verity.Examples.MacroContracts.*`.
+-/
+namespace Compat
+namespace SimpleStorage
+
+abbrev store := Verity.Examples.MacroContracts.SimpleStorage.store
+abbrev retrieve := Verity.Examples.MacroContracts.SimpleStorage.retrieve
+
+end SimpleStorage
+
+namespace Counter
+
+abbrev increment := Verity.Examples.MacroContracts.Counter.increment
+abbrev decrement := Verity.Examples.MacroContracts.Counter.decrement
+abbrev getCount := Verity.Examples.MacroContracts.Counter.getCount
+
+end Counter
+
+namespace SafeCounter
+
+abbrev increment := Verity.Examples.MacroContracts.SafeCounter.increment
+abbrev decrement := Verity.Examples.MacroContracts.SafeCounter.decrement
+abbrev getCount := Verity.Examples.MacroContracts.SafeCounter.getCount
+
+end SafeCounter
+
+namespace Owned
+
+abbrev transferOwnership := Verity.Examples.MacroContracts.Owned.transferOwnership
+abbrev getOwner := Verity.Examples.MacroContracts.Owned.getOwner
+
+end Owned
+
+namespace OwnedCounter
+
+abbrev increment := Verity.Examples.MacroContracts.OwnedCounter.increment
+abbrev decrement := Verity.Examples.MacroContracts.OwnedCounter.decrement
+abbrev getCount := Verity.Examples.MacroContracts.OwnedCounter.getCount
+abbrev getOwner := Verity.Examples.MacroContracts.OwnedCounter.getOwner
+abbrev transferOwnership := Verity.Examples.MacroContracts.OwnedCounter.transferOwnership
+
+end OwnedCounter
+
+namespace Ledger
+
+abbrev deposit := Verity.Examples.MacroContracts.Ledger.deposit
+abbrev withdraw := Verity.Examples.MacroContracts.Ledger.withdraw
+abbrev transfer := Verity.Examples.MacroContracts.Ledger.transfer
+abbrev getBalance := Verity.Examples.MacroContracts.Ledger.getBalance
+
+end Ledger
+
+namespace SimpleToken
+
+abbrev mint := Verity.Examples.MacroContracts.SimpleToken.mint
+abbrev transfer := Verity.Examples.MacroContracts.SimpleToken.transfer
+abbrev balanceOf := Verity.Examples.MacroContracts.SimpleToken.balanceOf
+abbrev getTotalSupply := Verity.Examples.MacroContracts.SimpleToken.getTotalSupply
+abbrev getOwner := Verity.Examples.MacroContracts.SimpleToken.getOwner
+
+end SimpleToken
+
+namespace ERC20
+
+abbrev mint := Verity.Examples.MacroContracts.ERC20.mint
+abbrev transfer := Verity.Examples.MacroContracts.ERC20.transfer
+abbrev approve := Verity.Examples.MacroContracts.ERC20.approve
+abbrev transferFrom := Verity.Examples.MacroContracts.ERC20.transferFrom
+abbrev balanceOf := Verity.Examples.MacroContracts.ERC20.balanceOf
+abbrev allowanceOf := Verity.Examples.MacroContracts.ERC20.allowanceOf
+abbrev getTotalSupply := Verity.Examples.MacroContracts.ERC20.getTotalSupply
+abbrev getOwner := Verity.Examples.MacroContracts.ERC20.getOwner
+
+end ERC20
+
+namespace ERC721
+
+abbrev mint := Verity.Examples.MacroContracts.Compat.ERC721.mint
+abbrev balanceOf := Verity.Examples.MacroContracts.Compat.ERC721.balanceOf
+abbrev ownerOf := Verity.Examples.MacroContracts.Compat.ERC721.ownerOf
+abbrev approve := Verity.Examples.MacroContracts.Compat.ERC721.approve
+abbrev getApproved := Verity.Examples.MacroContracts.Compat.ERC721.getApproved
+abbrev setApprovalForAll := Verity.Examples.MacroContracts.Compat.ERC721.setApprovalForAll
+abbrev isApprovedForAll := Verity.Examples.MacroContracts.Compat.ERC721.isApprovedForAll
+abbrev transferFrom := Verity.Examples.MacroContracts.Compat.ERC721.transferFrom
+abbrev owner : StorageSlot Address := Verity.Examples.MacroContracts.Compat.ERC721.owner
+abbrev totalSupply : StorageSlot Uint256 := Verity.Examples.MacroContracts.Compat.ERC721.totalSupply
+abbrev nextTokenId : StorageSlot Uint256 := Verity.Examples.MacroContracts.Compat.ERC721.nextTokenId
+
+end ERC721
+
+namespace CryptoHash
+
+abbrev storeHashTwo := Verity.Examples.MacroContracts.Compat.CryptoHash.storeHashTwo
+abbrev storeHashThree := Verity.Examples.MacroContracts.Compat.CryptoHash.storeHashThree
+abbrev getLastHash := Verity.Examples.MacroContracts.Compat.CryptoHash.getLastHash
+
+end CryptoHash
+end Compat
+
+/-!
 ## Example: SimpleStorage Interpreter
 
 Demonstrate how to wrap EDSL contract for differential testing.
@@ -343,9 +441,9 @@ Demonstrate how to wrap EDSL contract for differential testing.
 def interpretSimpleStorage (tx : Transaction) (state : ContractState) : ExecutionResult :=
   dispatch tx [
     case1 "store" tx (fun value =>
-      runUnit (store value) state [0] [] []  -- Check slot 0
+      runUnit (Compat.SimpleStorage.store value) state [0] [] []  -- Check slot 0
     ),
-    case0 "retrieve" tx (fun _ => runUint retrieve state [0] [] [])
+    case0 "retrieve" tx (fun _ => runUint Compat.SimpleStorage.retrieve state [0] [] [])
   ]
 
 /-!
@@ -354,9 +452,9 @@ def interpretSimpleStorage (tx : Transaction) (state : ContractState) : Executio
 
 def interpretCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
   dispatch tx [
-    case0 "increment" tx (fun _ => runUnit Counter.increment state [0] [] []),
-    case0 "decrement" tx (fun _ => runUnit Counter.decrement state [0] [] []),
-    case0 "getCount" tx (fun _ => runUint Counter.getCount state [0] [] [])
+    case0 "increment" tx (fun _ => runUnit Compat.Counter.increment state [0] [] []),
+    case0 "decrement" tx (fun _ => runUnit Compat.Counter.decrement state [0] [] []),
+    case0 "getCount" tx (fun _ => runUint Compat.Counter.getCount state [0] [] [])
   ]
 
 /-!
@@ -365,9 +463,9 @@ def interpretCounter (tx : Transaction) (state : ContractState) : ExecutionResul
 
 def interpretSafeCounter (tx : Transaction) (state : ContractState) : ExecutionResult :=
   dispatch tx [
-    case0 "increment" tx (fun _ => runUnit SafeCounter.increment state [0] [] []),
-    case0 "decrement" tx (fun _ => runUnit SafeCounter.decrement state [0] [] []),
-    case0 "getCount" tx (fun _ => runUint SafeCounter.getCount state [0] [] [])
+    case0 "increment" tx (fun _ => runUnit Compat.SafeCounter.increment state [0] [] []),
+    case0 "decrement" tx (fun _ => runUnit Compat.SafeCounter.decrement state [0] [] []),
+    case0 "getCount" tx (fun _ => runUint Compat.SafeCounter.getCount state [0] [] [])
   ]
 
 /-!
@@ -377,9 +475,9 @@ def interpretSafeCounter (tx : Transaction) (state : ContractState) : ExecutionR
 def interpretOwned (tx : Transaction) (state : ContractState) : ExecutionResult :=
   dispatch tx [
     case1Address "transferOwnership" tx (fun newOwnerAddr =>
-      runUnit (Owned.transferOwnership newOwnerAddr) state [] [0] []
+      runUnit (Compat.Owned.transferOwnership newOwnerAddr) state [] [0] []
     ),
-    case0 "getOwner" tx (fun _ => runAddress Owned.getOwner state [] [0] [])
+    case0 "getOwner" tx (fun _ => runAddress Compat.Owned.getOwner state [] [0] [])
   ]
 
 /-!
@@ -391,23 +489,23 @@ def interpretLedger (tx : Transaction) (state : ContractState) : ExecutionResult
     case1 "deposit" tx (fun amount =>
       -- Track mapping changes for sender's balance
       let senderKey := (0, tx.sender)
-      runUnit (Ledger.deposit amount) state [] [] [senderKey]
+      runUnit (Compat.Ledger.deposit amount) state [] [] [senderKey]
     ),
     case1 "withdraw" tx (fun amount =>
       -- Track mapping changes for sender's balance
       let senderKey := (0, tx.sender)
-      runUnit (Ledger.withdraw amount) state [] [] [senderKey]
+      runUnit (Compat.Ledger.withdraw amount) state [] [] [senderKey]
     ),
     case2AddressNat "transfer" tx (fun toAddr amount =>
       -- Track mapping changes for both sender and recipient
       let senderKey := (0, tx.sender)
       let recipientKey := (0, toAddr)
-      runUnit (Ledger.transfer toAddr amount) state [] [] [senderKey, recipientKey]
+      runUnit (Compat.Ledger.transfer toAddr amount) state [] [] [senderKey, recipientKey]
     ),
     case1Address "getBalance" tx (fun addr =>
       -- Track mapping for the queried address
       let addrKey := (0, addr)
-      runUint (Ledger.getBalance addr) state [] [] [addrKey]
+      runUint (Compat.Ledger.getBalance addr) state [] [] [addrKey]
     )
   ]
 
@@ -419,17 +517,17 @@ def interpretOwnedCounter (tx : Transaction) (state : ContractState) : Execution
   dispatch tx [
     case0 "increment" tx (fun _ =>
       -- Track both storage slots: 0 (owner address) and 1 (count)
-      runUnit OwnedCounter.increment state [1] [0] []
+      runUnit Compat.OwnedCounter.increment state [1] [0] []
     ),
     case0 "decrement" tx (fun _ =>
       -- Track both storage slots: 0 (owner address) and 1 (count)
-      runUnit OwnedCounter.decrement state [1] [0] []
+      runUnit Compat.OwnedCounter.decrement state [1] [0] []
     ),
-    case0 "getCount" tx (fun _ => runUint OwnedCounter.getCount state [1] [] []),
-    case0 "getOwner" tx (fun _ => runAddress OwnedCounter.getOwner state [] [0] []),
+    case0 "getCount" tx (fun _ => runUint Compat.OwnedCounter.getCount state [1] [] []),
+    case0 "getOwner" tx (fun _ => runAddress Compat.OwnedCounter.getOwner state [] [0] []),
     case1Address "transferOwnership" tx (fun newOwnerAddr =>
       -- Track owner address storage slot 0
-      runUnit (OwnedCounter.transferOwnership newOwnerAddr) state [] [0] []
+      runUnit (Compat.OwnedCounter.transferOwnership newOwnerAddr) state [] [0] []
     )
   ]
 
@@ -442,21 +540,21 @@ def interpretSimpleToken (tx : Transaction) (state : ContractState) : ExecutionR
     case2AddressNat "mint" tx (fun toAddr amount =>
       -- Track: storage slot 2 (totalSupply), owner slot 0, mapping for recipient
       let recipientKey := (1, toAddr)
-      runUnit (SimpleToken.mint toAddr amount) state [2] [0] [recipientKey]
+      runUnit (Compat.SimpleToken.mint toAddr amount) state [2] [0] [recipientKey]
     ),
     case2AddressNat "transfer" tx (fun toAddr amount =>
       -- Track mapping changes for both sender and recipient
       let senderKey := (1, tx.sender)
       let recipientKey := (1, toAddr)
-      runUnit (SimpleToken.transfer toAddr amount) state [] [] [senderKey, recipientKey]
+      runUnit (Compat.SimpleToken.transfer toAddr amount) state [] [] [senderKey, recipientKey]
     ),
     case1Address "balanceOf" tx (fun addr =>
       -- Track mapping for the queried address
       let addrKey := (1, addr)
-      runUint (SimpleToken.balanceOf addr) state [] [] [addrKey]
+      runUint (Compat.SimpleToken.balanceOf addr) state [] [] [addrKey]
     ),
-    case0 "totalSupply" tx (fun _ => runUint SimpleToken.getTotalSupply state [2] [] []),
-    case0 "owner" tx (fun _ => runAddress SimpleToken.getOwner state [] [0] [])
+    case0 "totalSupply" tx (fun _ => runUint Compat.SimpleToken.getTotalSupply state [2] [] []),
+    case0 "owner" tx (fun _ => runAddress Compat.SimpleToken.getOwner state [] [0] [])
   ]
 
 /-!
@@ -468,33 +566,33 @@ def interpretERC20 (tx : Transaction) (state : ContractState) : ExecutionResult 
     case2AddressNat "mint" tx (fun toAddr amount =>
       -- Track owner slot 0, totalSupply slot 1, and recipient balance in slot-2 mapping.
       let recipientKey := (2, toAddr)
-      runUnit (ERC20.mint toAddr amount) state [1] [0] [recipientKey]
+      runUnit (Compat.ERC20.mint toAddr amount) state [1] [0] [recipientKey]
     ),
     case2AddressNat "transfer" tx (fun toAddr amount =>
       -- Track sender/recipient balances in slot-2 mapping.
       let senderKey := (2, tx.sender)
       let recipientKey := (2, toAddr)
-      runUnit (ERC20.transfer toAddr amount) state [] [] [senderKey, recipientKey]
+      runUnit (Compat.ERC20.transfer toAddr amount) state [] [] [senderKey, recipientKey]
     ),
     case2AddressNat "approve" tx (fun spender amount =>
       let allowanceKey := (3, tx.sender, spender)
-      runUnit (ERC20.approve spender amount) state [] [] [] [] [allowanceKey]
+      runUnit (Compat.ERC20.approve spender amount) state [] [] [] [] [allowanceKey]
     ),
     case3AddressAddressNat "transferFrom" tx (fun fromAddr toAddr amount =>
       let fromKey := (2, fromAddr)
       let toKey := (2, toAddr)
       let allowanceKey := (3, fromAddr, tx.sender)
-      runUnit (ERC20.transferFrom fromAddr toAddr amount) state [] [] [fromKey, toKey] [] [allowanceKey]
+      runUnit (Compat.ERC20.transferFrom fromAddr toAddr amount) state [] [] [fromKey, toKey] [] [allowanceKey]
     ),
     case1Address "balanceOf" tx (fun addr =>
       let addrKey := (2, addr)
-      runUint (ERC20.balanceOf addr) state [] [] [addrKey]
+      runUint (Compat.ERC20.balanceOf addr) state [] [] [addrKey]
     ),
     case2AddressAddress "allowanceOf" tx (fun ownerAddr spender =>
-      runUint (ERC20.allowanceOf ownerAddr spender) state [] [] []
+      runUint (Compat.ERC20.allowanceOf ownerAddr spender) state [] [] []
     ),
-    case0 "totalSupply" tx (fun _ => runUint ERC20.getTotalSupply state [1] [] []),
-    case0 "owner" tx (fun _ => runAddress ERC20.getOwner state [] [0] [])
+    case0 "totalSupply" tx (fun _ => runUint Compat.ERC20.getTotalSupply state [1] [] []),
+    case0 "owner" tx (fun _ => runAddress Compat.ERC20.getOwner state [] [0] [])
   ]
 
 /-!
@@ -509,37 +607,37 @@ def interpretERC721 (tx : Transaction) (state : ContractState) : ExecutionResult
       let mintedTokenId : Uint256 := state.storage 2
       let recipientKey := (3, toAddr)
       let ownerWordKey := (4, mintedTokenId)
-      runUint (ERC721.mint toAddr) state [1, 2] [0] [recipientKey] [ownerWordKey]
+      runUint (Compat.ERC721.mint toAddr) state [1, 2] [0] [recipientKey] [ownerWordKey]
     ),
     case1Address "balanceOf" tx (fun addr =>
       let addrKey := (3, addr)
-      runUint (ERC721.balanceOf addr) state [] [] [addrKey]
+      runUint (Compat.ERC721.balanceOf addr) state [] [] [addrKey]
     ),
     case1 "ownerOf" tx (fun tokenId =>
       let tokenIdU : Uint256 := tokenId
       let ownerKey := (4, tokenIdU)
-      runAddress (ERC721.ownerOf tokenIdU) state [] [] [] [ownerKey]
+      runAddress (Compat.ERC721.ownerOf tokenIdU) state [] [] [] [ownerKey]
     ),
     case2AddressNat "approve" tx (fun approved tokenId =>
       let tokenIdU : Uint256 := tokenId
       let ownerKey := (4, tokenIdU)
       let approvalKey := (5, tokenIdU)
-      runUnit (ERC721.approve approved tokenIdU) state [] [] [] [ownerKey, approvalKey]
+      runUnit (Compat.ERC721.approve approved tokenIdU) state [] [] [] [ownerKey, approvalKey]
     ),
     case1 "getApproved" tx (fun tokenId =>
       let tokenIdU : Uint256 := tokenId
       let ownerKey := (4, tokenIdU)
       let approvalKey := (5, tokenIdU)
-      runAddress (ERC721.getApproved tokenIdU) state [] [] [] [ownerKey, approvalKey]
+      runAddress (Compat.ERC721.getApproved tokenIdU) state [] [] [] [ownerKey, approvalKey]
     ),
     case2AddressNat "setApprovalForAll" tx (fun operator approvedWord =>
       let ownerAddr := tx.sender
       let approvalKey := (6, ownerAddr, operator)
-      runUnit (ERC721.setApprovalForAll operator (approvedWord != 0)) state [] [] [] [] [approvalKey]
+      runUnit (Compat.ERC721.setApprovalForAll operator (approvedWord != 0)) state [] [] [] [] [approvalKey]
     ),
     case2AddressAddress "isApprovedForAll" tx (fun ownerAddr operator =>
       let approvalKey := (6, ownerAddr, operator)
-      runBool (ERC721.isApprovedForAll ownerAddr operator) state [] [] [] [] [approvalKey]
+      runBool (Compat.ERC721.isApprovedForAll ownerAddr operator) state [] [] [] [] [approvalKey]
     ),
     case3AddressAddressNat "transferFrom" tx (fun fromAddr toAddr tokenId =>
       let tokenIdU : Uint256 := tokenId
@@ -547,23 +645,23 @@ def interpretERC721 (tx : Transaction) (state : ContractState) : ExecutionResult
       let toKey := (3, toAddr)
       let ownerKey := (4, tokenIdU)
       let approvalKey := (5, tokenIdU)
-      runUnit (ERC721.transferFrom fromAddr toAddr tokenIdU) state [] [] [fromKey, toKey] [ownerKey, approvalKey]
+      runUnit (Compat.ERC721.transferFrom fromAddr toAddr tokenIdU) state [] [] [fromKey, toKey] [ownerKey, approvalKey]
     ),
-    case0 "owner" tx (fun _ => runAddress (getStorageAddr ERC721.owner) state [] [0] []),
-    case0 "totalSupply" tx (fun _ => runUint (getStorage ERC721.totalSupply) state [1] [] []),
-    case0 "nextTokenId" tx (fun _ => runUint (getStorage ERC721.nextTokenId) state [2] [] [])
+    case0 "owner" tx (fun _ => runAddress (getStorageAddr Compat.ERC721.owner) state [] [0] []),
+    case0 "totalSupply" tx (fun _ => runUint (getStorage Compat.ERC721.totalSupply) state [1] [] []),
+    case0 "nextTokenId" tx (fun _ => runUint (getStorage Compat.ERC721.nextTokenId) state [2] [] [])
   ]
 
 def interpretCryptoHash (tx : Transaction) (state : ContractState) : ExecutionResult :=
   dispatch tx [
     case2 "storeHashTwo" tx (fun a b =>
-      runUnit (CryptoHash.storeHashTwo a b) state [0] [] []
+      runUnit (Compat.CryptoHash.storeHashTwo a b) state [0] [] []
     ),
     case3 "storeHashThree" tx (fun a b c =>
-      runUnit (CryptoHash.storeHashThree a b c) state [0] [] []
+      runUnit (Compat.CryptoHash.storeHashThree a b c) state [0] [] []
     ),
     case0 "getLastHash" tx (fun _ =>
-      runUint CryptoHash.getLastHash state [0] [] []
+      runUint Compat.CryptoHash.getLastHash state [0] [] []
     )
   ]
 
@@ -621,25 +719,25 @@ def ExecutionResult.toJSON (r : ExecutionResult) : String :=
   let revertStr := match r.revertReason with
     | some msg => "\"" ++ escapeJsonString msg ++ "\""
     | none => "null"
-  let changesStr := r.storageChanges.foldl (fun acc (slot, val) =>
-    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"value\":" ++ toString val ++ "}"
+  let changesStr := r.storageChanges.foldl (fun acc (slotIdx, val) =>
+    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slotIdx ++ ",\"value\":" ++ toString val ++ "}"
   ) "["
   let changesStr := changesStr ++ "]"
-  let addrChangesStr := r.storageAddrChanges.foldl (fun acc (slot, val) =>
-    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"value\":" ++ toString val ++ "}"
+  let addrChangesStr := r.storageAddrChanges.foldl (fun acc (slotIdx, val) =>
+    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slotIdx ++ ",\"value\":" ++ toString val ++ "}"
   ) "["
   let addrChangesStr := addrChangesStr ++ "]"
-  let mappingChangesStr := r.mappingChanges.foldl (fun acc (slot, key, val) =>
-    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"key\":\"" ++ addressToHexString key ++ "\",\"value\":" ++ toString val ++ "}"
+  let mappingChangesStr := r.mappingChanges.foldl (fun acc (slotIdx, key, val) =>
+    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slotIdx ++ ",\"key\":\"" ++ addressToHexString key ++ "\",\"value\":" ++ toString val ++ "}"
   ) "["
   let mappingChangesStr := mappingChangesStr ++ "]"
-  let mappingUintChangesStr := r.mappingUintChanges.foldl (fun acc (slot, key, val) =>
-    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slot ++ ",\"key\":" ++ toString key ++ ",\"value\":" ++ toString val ++ "}"
+  let mappingUintChangesStr := r.mappingUintChanges.foldl (fun acc (slotIdx, key, val) =>
+    acc ++ (if acc == "[" then "" else ",") ++ "{\"slot\":" ++ toString slotIdx ++ ",\"key\":" ++ toString key ++ ",\"value\":" ++ toString val ++ "}"
   ) "["
   let mappingUintChangesStr := mappingUintChangesStr ++ "]"
-  let mapping2ChangesStr := r.mapping2Changes.foldl (fun acc (slot, key1, key2, val) =>
+  let mapping2ChangesStr := r.mapping2Changes.foldl (fun acc (slotIdx, key1, key2, val) =>
     acc ++ (if acc == "[" then "" else ",")
-      ++ "{\"slot\":" ++ toString slot
+      ++ "{\"slot\":" ++ toString slotIdx
       ++ ",\"key1\":\"" ++ addressToHexString key1 ++ "\""
       ++ ",\"key2\":\"" ++ addressToHexString key2 ++ "\""
       ++ ",\"value\":" ++ toString val ++ "}"
@@ -682,11 +780,11 @@ private def parseSlotPairs (storageStr : String) (parseVal : String → Option �
     else match pair.splitOn ":" with
       | [slotStr, valStr] =>
         match parseArgNat? slotStr, parseVal valStr with
-        | some slot, some val => acc ++ [(slot, val)]
+        | some slotIdx, some val => acc ++ [(slotIdx, val)]
         | _, _ => acc
       | _ => acc
   ) []
-  fun slot => (entries.find? (fun (s, _) => s == slot)).map Prod.snd |>.getD default
+  fun slotIdx => (entries.find? (fun (s, _) => s == slotIdx)).map Prod.snd |>.getD default
 
 -- Parse storage state: "slot0:value0,slot1:value1,..."
 def parseStorage (storageStr : String) : Nat → Uint256 :=
@@ -745,25 +843,25 @@ def parseStorageMap (storageStr : String) : Nat → Address → Uint256 :=
       match entry.splitOn ":" with
       | [slotStr, key, valStr] =>
         match parseArgNat? slotStr, parseArgNat? valStr with
-        | some slot, some val =>
+        | some slotIdx, some val =>
           let valU : Uint256 := val
           let keyAddr := Verity.Core.Address.ofNat (Compiler.Hex.addressToNat (normalizeAddress key))
-          acc ++ [(slot, keyAddr, valU)]
+          acc ++ [(slotIdx, keyAddr, valU)]
         | _, _ => acc
       | [slotStr, rest] =>
         match rest.splitOn "=" with
         | [key, valStr] =>
           match parseArgNat? slotStr, parseArgNat? valStr with
-          | some slot, some val =>
+          | some slotIdx, some val =>
             let valU : Uint256 := val
             let keyAddr := Verity.Core.Address.ofNat (Compiler.Hex.addressToNat (normalizeAddress key))
-            acc ++ [(slot, keyAddr, valU)]
+            acc ++ [(slotIdx, keyAddr, valU)]
           | _, _ => acc
         | _ => acc
       | _ => acc
   ) []
-  fun slot key =>
-    (mapping.find? (fun (s, k, _) => s == slot && k == key)).map (fun (_, _, v) => v) |>.getD 0
+  fun slotIdx key =>
+    (mapping.find? (fun (s, k, _) => s == slotIdx && k == key)).map (fun (_, _, v) => v) |>.getD 0
 
 def parseStorageMapUint (storageStr : String) : Nat → Uint256 → Uint256 :=
   let entries := storageStr.splitOn ","
@@ -774,21 +872,21 @@ def parseStorageMapUint (storageStr : String) : Nat → Uint256 → Uint256 :=
       match entry.splitOn ":" with
       | [slotStr, keyStr, valStr] =>
         match parseArgNat? slotStr, parseArgNat? keyStr, parseArgNat? valStr with
-        | some slot, some key, some val =>
-          acc ++ [(slot, (key : Uint256), (val : Uint256))]
+        | some slotIdx, some key, some val =>
+          acc ++ [(slotIdx, (key : Uint256), (val : Uint256))]
         | _, _, _ => acc
       | [slotStr, rest] =>
         match rest.splitOn "=" with
         | [keyStr, valStr] =>
           match parseArgNat? slotStr, parseArgNat? keyStr, parseArgNat? valStr with
-          | some slot, some key, some val =>
-            acc ++ [(slot, (key : Uint256), (val : Uint256))]
+          | some slotIdx, some key, some val =>
+            acc ++ [(slotIdx, (key : Uint256), (val : Uint256))]
           | _, _, _ => acc
         | _ => acc
       | _ => acc
   ) []
-  fun slot key =>
-    (mapping.find? (fun (s, k, _) => s == slot && k == key)).map (fun (_, _, v) => v) |>.getD 0
+  fun slotIdx key =>
+    (mapping.find? (fun (s, k, _) => s == slotIdx && k == key)).map (fun (_, _, v) => v) |>.getD 0
 
 def parseStorageMap2 (storageStr : String) : Nat → Address → Address → Uint256 :=
   let entries := storageStr.splitOn ","
@@ -799,15 +897,15 @@ def parseStorageMap2 (storageStr : String) : Nat → Address → Address → Uin
       match entry.splitOn ":" with
       | [slotStr, key1Str, key2Str, valStr] =>
         match parseArgNat? slotStr, parseArgNat? valStr with
-        | some slot, some val =>
+        | some slotIdx, some val =>
           let key1 := Verity.Core.Address.ofNat (Compiler.Hex.addressToNat (normalizeAddress key1Str))
           let key2 := Verity.Core.Address.ofNat (Compiler.Hex.addressToNat (normalizeAddress key2Str))
-          acc ++ [(slot, key1, key2, (val : Uint256))]
+          acc ++ [(slotIdx, key1, key2, (val : Uint256))]
         | _, _ => acc
       | _ => acc
   ) []
-  fun slot key1 key2 =>
-    (mapping.find? (fun (s, k1, k2, _) => s == slot && k1 == key1 && k2 == key2)).map (fun (_, _, _, v) => v) |>.getD 0
+  fun slotIdx key1 key2 =>
+    (mapping.find? (fun (s, k1, k2, _) => s == slotIdx && k1 == key1 && k2 == key2)).map (fun (_, _, _, v) => v) |>.getD 0
 
 private def parseArgs (args : List String) : Except String (List Nat) :=
   let parsed := args.foldl (fun acc s =>
@@ -930,7 +1028,7 @@ def main (args : List String) : IO Unit := do
       | none => fun _ _ _ => 0 -- Default: empty 2-key mapping storage
 
     let initialState : ContractState := {
-      storage := storageState
+      «storage» := storageState
       storageAddr := storageAddrState
       storageMap := storageMapState
       storageMapUint := storageMapUintState

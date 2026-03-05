@@ -139,4 +139,48 @@ def evalBuiltinCallWithBackend
       Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallViaEvmYulLean
         storage sender selector calldata func argVals
 
+@[simp] theorem evalBuiltinCall_callvalue_nil
+    (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "callvalue" [] = some 0 := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_calldatasize_nil
+    (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "calldatasize" [] =
+      some (4 + calldata.length * 32) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCall_caller_nil
+    (storage : Nat → Nat) (sender selector : Nat) (calldata : List Nat) :
+    evalBuiltinCall storage sender selector calldata "caller" [] = some sender := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem calldataloadWord_offset4
+    (selector : Nat) (calldata : List Nat) :
+    calldataloadWord selector calldata 4 = calldata.getD 0 0 % evmModulus := by
+  simp [calldataloadWord]
+
+@[simp] theorem evalBuiltinCall_calldataload_offset4_single
+    (storage : Nat → Nat) (sender selector value : Nat) :
+    evalBuiltinCall storage sender selector [value] "calldataload" [4] = some (value % evmModulus) := by
+  simp [evalBuiltinCall, calldataloadWord]
+
+@[simp] theorem evalBuiltinCallWithBackend_calldataload_offset4_single
+    (storage : Nat → Nat) (sender selector value : Nat) :
+    evalBuiltinCallWithBackend defaultBuiltinBackend storage sender selector [value] "calldataload" [4] =
+      some (value % evmModulus) := by
+  simp [evalBuiltinCallWithBackend]
+
+@[simp] theorem evalBuiltinCall_sload_single
+    (storage : Nat → Nat) (sender selector : Nat) (slot : Nat) :
+    evalBuiltinCall storage sender selector [] "sload" [slot] =
+      some (Compiler.Proofs.abstractLoadStorageOrMapping storage slot) := by
+  simp [evalBuiltinCall]
+
+@[simp] theorem evalBuiltinCallWithBackend_sload_single
+    (storage : Nat → Nat) (sender selector : Nat) (slot : Nat) :
+    evalBuiltinCallWithBackend defaultBuiltinBackend storage sender selector [] "sload" [slot] =
+      some (Compiler.Proofs.abstractLoadStorageOrMapping storage slot) := by
+  simp [evalBuiltinCallWithBackend]
+
 end Compiler.Proofs.YulGeneration

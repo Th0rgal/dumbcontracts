@@ -54,7 +54,7 @@ def _count_lean_lines(pattern: str) -> int:
 
 def get_axiom_count() -> int:
     """Count axiom declarations in Lean files."""
-    return _count_lean_lines(r"^axiom\s+")
+    return _count_lean_lines(r"^(private |protected )?axiom\s+")
 
 
 def get_test_counts() -> tuple[int, int]:
@@ -809,7 +809,8 @@ def main(argv: list[str] | None = None) -> None:
             required=[
                 "**What are axioms?** Statements assumed true without proof. This project uses 1 documented axiom: `keccak256_first_4_bytes` for selector hashing (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md))."
             ],
-            forbidden=["address injectivity", "0 `sorry`"],
+            # Avoid matching valid counts like "10 `sorry` placeholders".
+            forbidden=["address injectivity", " 0 `sorry`"],
         )
     )
 

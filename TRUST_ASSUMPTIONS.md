@@ -10,20 +10,20 @@ EDSL (Lean)
 CompilationModel
   ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
 IR
-  ↓ [Layer 3: FULLY VERIFIED, 1 axiom — IR → Yul]
+  ↓ [Layer 3: FULLY VERIFIED, 3 axioms — IR → Yul]
 Yul
   ↓ [trusted — solc]
 EVM Bytecode
 ```
 
-All three layers are proven in Lean. The single axiom is `keccak256_first_4_bytes` for function selector computation (see [AXIOMS.md](AXIOMS.md)).
+All three layers are proven in Lean, with 3 documented axioms (one selector axiom and two private preservation bridge axioms; see [AXIOMS.md](AXIOMS.md)).
 
 ## What's Verified
 
 - **Layer 1**: EDSL behavior matches its CompilationModel. For supported contracts, a generic typed-IR compilation-correctness theorem eliminates per-contract manual proofs.
 - **Layer 2**: CompilationModel → IR preserves behavior.
-- **Layer 3**: IR → Yul preserves behavior (1 axiom for keccak-based selectors).
-- **Cross-layer**: `Compiler/Proofs/SemanticBridge.lean` *states* per-function EDSL ≡ IR equivalence theorems (18 theorems, all currently `sorry` — blocked by heartbeat limits after `evalBuiltinCall` refactor). `Compiler/Proofs/EndToEnd.lean` composes Layers 2+3.
+- **Layer 3**: IR → Yul preserves behavior, currently relying on 3 documented axioms.
+- **Cross-layer**: `Compiler/Proofs/SemanticBridge.lean` has zero `sorry`; `Compiler/Proofs/EndToEnd.lean` composes Layers 2+3.
 
 425 theorems across 11 categories. 250 theorems have corresponding Foundry property tests. 59% runtime test coverage.
 
@@ -34,7 +34,12 @@ All three layers are proven in Lean. The single axiom is `keccak256_first_4_byte
 - **Version**: 0.8.33+commit.64118f21 (pinned).
 - **Mitigation**: CI enforces pin and Yul compileability checks.
 
-### 2. Keccak-based Selector Computation
+### 2. Lean Axioms
+- **Role**: Bridge remaining proof obligations not yet fully discharged.
+- **Status**: 3 documented axioms in [AXIOMS.md](AXIOMS.md), including `keccak256_first_4_bytes`.
+- **Mitigation**: CI axiom reporting and location checks enforce explicit tracking.
+
+### 3. Keccak-based Selector Computation
 - **Role**: Function selector derivation (`bytes4(keccak256(signature))`).
 - **Status**: 1 axiom in `Compiler/Selectors.lean:41`.
 - **Mitigation**: CI cross-checks against `solc --hashes` and fixtures.

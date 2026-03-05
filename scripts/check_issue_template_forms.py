@@ -17,7 +17,14 @@ TOP_LEVEL_KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):")
 
 def _iter_form_files(template_dir: Path) -> list[Path]:
     files = sorted(template_dir.glob("*.yml")) + sorted(template_dir.glob("*.yaml"))
-    return sorted(set(files))
+    return sorted({path for path in files if path.name != "config.yml"})
+
+
+def _render_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
 
 
 def _collect_top_level_keys(text: str) -> set[str]:
@@ -63,8 +70,7 @@ def check_issue_template_forms(template_dir: Path) -> int:
     failures: list[str] = []
     for form in forms:
         for issue in _check_form(form):
-            rel = form.relative_to(ROOT)
-            failures.append(f"{rel}: {issue}")
+            failures.append(f"{_render_path(form)}: {issue}")
 
     if failures:
         print("issue template form check failed:", file=sys.stderr)

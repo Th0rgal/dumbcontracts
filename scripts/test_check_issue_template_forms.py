@@ -60,6 +60,21 @@ body:
     def test_fails_when_no_forms_exist(self) -> None:
         self.assertEqual(check.check_issue_template_forms(self.forms_dir), 1)
 
+    def test_ignores_config_yml(self) -> None:
+        (self.forms_dir / "config.yml").write_text(
+            "blank_issues_enabled: false\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(check.check_issue_template_forms(self.forms_dir), 1)
+
+    def test_handles_non_repo_path_on_failure(self) -> None:
+        path = self.forms_dir / "bad.yml"
+        path.write_text(
+            "name: Bad\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(check.check_issue_template_forms(self.forms_dir), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

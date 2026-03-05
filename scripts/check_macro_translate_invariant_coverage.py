@@ -78,7 +78,7 @@ def main() -> int:
         print(f"invariant suite file not found: {invariant_suite}", file=sys.stderr)
         return 1
 
-    contract_sources = sorted(contracts_dir.glob("*.lean"))
+    contract_sources = sorted(contracts_dir.rglob("*.lean"))
     if not contract_sources:
         print(f"no .lean files found under: {contracts_dir}", file=sys.stderr)
         return 1

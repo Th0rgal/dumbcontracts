@@ -87,6 +87,7 @@ jobs:
             compiler:
               - '.github/actions/**'
               - '.github/workflows/verify.yml'
+              - 'Verity/**'
               - 'Compiler/**'
               - 'Compiler.lean'
               - 'examples/**'
@@ -222,7 +223,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean', 'Verity/**/*.lean') }}
           restore-keys: |
             lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
 
@@ -251,16 +252,17 @@ jobs:
 
       - name: Check for sorry
         run: |
-          # Count sorry across all Lean files (matching both 'sorry' and '· sorry')
-          EXPECTED_SORRY=19  # 18 in SemanticBridge + 1 in Preservation (evalBuiltinCall refactor)
+          # Count sorry across all Lean files (matching both 'sorry' and '· sorry').
+          # Baseline is zero: any sorry is a failure.
+          EXPECTED_SORRY=0
           ACTUAL_SORRY=$(grep -rn "sorry" Verity/ Compiler/ --include="*.lean" \
             | grep -v ":[[:space:]]*--" | grep -v "zero sorry" | grep -v "Summary" \
             | grep -v "SORRY" | grep -v "sorry_count" | grep -v "sorry placeholder" \
             | grep -v "No sorry" | grep -v "all proofs are complete" \
             | wc -l)
           echo "Found $ACTUAL_SORRY sorry statement(s) (expected $EXPECTED_SORRY)"
-          if [ "$ACTUAL_SORRY" -gt "$EXPECTED_SORRY" ]; then
-            echo "ERROR: New sorry introduced ($ACTUAL_SORRY found, $EXPECTED_SORRY expected)"
+          if [ "$ACTUAL_SORRY" -ne "$EXPECTED_SORRY" ]; then
+            echo "ERROR: Unexpected sorry count ($ACTUAL_SORRY found, $EXPECTED_SORRY expected)"
             grep -rn "sorry" Verity/ Compiler/ --include="*.lean" \
               | grep -v ":[[:space:]]*--" | grep -v "zero sorry" | grep -v "Summary" \
               | grep -v "SORRY" | grep -v "sorry_count" | grep -v "sorry placeholder" \
@@ -273,8 +275,8 @@ jobs:
         run: |
           echo "Checking for axioms in Compiler/ and Verity/..."
 
-          # Find all axioms across both directories (excluding commented lines)
-          grep -rn "^axiom " Compiler/ Verity/ --include="*.lean" | tee axioms.txt || true
+          # Find all axioms across both directories (including private/protected axioms).
+          grep -rnE "^(private |protected )?axiom " Compiler/ Verity/ --include="*.lean" | tee axioms.txt || true
 
           # Count axioms
           AXIOM_COUNT=$(wc -l < axioms.txt 2>/dev/null | tr -d ' ')
@@ -295,7 +297,7 @@ jobs:
             echo "Verifying all axioms are documented..."
 
             # Extract axiom names from grep output
-            AXIOM_NAMES=$(sed 's/.*:axiom \([a-zA-Z0-9_]*\).*/\1/' axioms.txt | sort -u)
+            AXIOM_NAMES=$(sed -E 's/.*:(private |protected )?axiom ([a-zA-Z0-9_]*).*/\2/' axioms.txt | sort -u)
 
             UNDOCUMENTED=""
             for axiom_name in $AXIOM_NAMES; do
@@ -342,7 +344,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean', 'Verity/**/*.lean') }}
 
       - name: Upload axiom dependency report
         uses: actions/upload-artifact@v4
@@ -390,9 +392,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .lake
-          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
+          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean', 'Verity/**/*.lean') }}
           restore-keys: |
             lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
+
+      - name: Clear stale Lake cache on partial hit
+        if: steps.cache-lake-compiler.outputs.cache-hit != 'true'
+        run: rm -rf .lake
 
       - name: Fetch mathlib compiled cache
         run: lake exe cache get

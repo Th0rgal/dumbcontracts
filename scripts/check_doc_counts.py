@@ -54,7 +54,7 @@ def _count_lean_lines(pattern: str) -> int:
 
 def get_axiom_count() -> int:
     """Count axiom declarations in Lean files."""
-    return _count_lean_lines(r"^axiom\s+")
+    return _count_lean_lines(r"^(private |protected )?axiom\s+")
 
 
 def get_test_counts() -> tuple[int, int]:

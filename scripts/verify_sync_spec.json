@@ -9,6 +9,7 @@
   "compiler_paths": [
     ".github/actions/**",
     ".github/workflows/verify.yml",
+    "Verity/**",
     "Compiler/**",
     "Compiler.lean",
     "examples/**",

@@ -208,6 +208,16 @@ private axiom execBuildSwitch_none_none_aux (fuel : Nat) (state : YulState)
         (YulStmt.switch selectorExpr (switchCases fns)
           (some (switchDefaultCase none none)))
 
+/-- The case list emitted by `buildSwitch` is definitionally `switchCases`.
+    Keeping this fact explicit helps avoid large reducible unfold chains in #1094 proofs. -/
+private theorem buildSwitch_cases_eq_switchCases (fns : List IRFunction) :
+    (fns.map (fun fn =>
+      (fn.selector,
+        dispatchBody fn.payable s!"{fn.name}()"
+          ([calldatasizeGuard fn.params.length] ++ fn.body)))) =
+      switchCases fns := by
+  simp [switchCases, switchCaseBody, dispatchBody]
+
 /-- Normalize switch-case lookup to function-list lookup.
     This removes `List.find?_map` noise from mechanical `buildSwitch` proofs. -/
 private theorem find_switchCases_eq_find_function

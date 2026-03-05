@@ -21,6 +21,8 @@ def lowerTExpr : {ty : Ty} → TExpr ty → YulExpr
   | _, .add lhs rhs => .call "add" [lowerTExpr lhs, lowerTExpr rhs]
   | _, .sub lhs rhs => .call "sub" [lowerTExpr lhs, lowerTExpr rhs]
   | _, .mul lhs rhs => .call "mul" [lowerTExpr lhs, lowerTExpr rhs]
+  | _, .div lhs rhs => .call "div" [lowerTExpr lhs, lowerTExpr rhs]
+  | _, .mod lhs rhs => .call "mod" [lowerTExpr lhs, lowerTExpr rhs]
   | _, .eq lhs rhs => .call "eq" [lowerTExpr lhs, lowerTExpr rhs]
   | _, .lt lhs rhs => .call "lt" [lowerTExpr lhs, lowerTExpr rhs]
   | _, .and lhs rhs => .call "and" [lowerTExpr lhs, lowerTExpr rhs]

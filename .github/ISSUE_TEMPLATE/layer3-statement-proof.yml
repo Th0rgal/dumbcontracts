@@ -1,5 +1,5 @@
 name: Layer 3 Statement Equivalence Proof
-about: Track a concrete IR <-> Yul statement-equivalence proof task
+description: Track a concrete IR <-> Yul statement-equivalence proof task
 title: "[Layer 3] Prove "
 labels: [layer-3, proof, lean, help-wanted]
 body:

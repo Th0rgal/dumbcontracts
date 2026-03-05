@@ -1,5 +1,5 @@
 name: Trust Reduction Work
-about: Reduce Yul <-> EVM trust assumptions
+description: Reduce Yul <-> EVM trust assumptions
 title: "[Trust Reduction] "
 labels: [lean, help-wanted]
 body:

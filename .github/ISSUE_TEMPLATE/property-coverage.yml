@@ -1,5 +1,5 @@
 name: Property Coverage Work
-about: Improve contract property verification coverage
+description: Improve contract property verification coverage
 title: "[Property Coverage] "
 labels: [proof, lean, help-wanted]
 body:

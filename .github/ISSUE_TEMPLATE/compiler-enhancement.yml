@@ -1,5 +1,5 @@
 name: Compiler Enhancement
-about: Propose a concrete compiler feature or improvement
+description: Propose a concrete compiler feature or improvement
 title: "[Compiler Enhancement] "
 labels: [enhancement, lean]
 body:

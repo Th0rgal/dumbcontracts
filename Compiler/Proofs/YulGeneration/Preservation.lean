@@ -208,6 +208,27 @@ private axiom execBuildSwitch_none_none_aux (fuel : Nat) (state : YulState)
         (YulStmt.switch selectorExpr (switchCases fns)
           (some (switchDefaultCase none none)))
 
+/-- Normalize switch-case lookup to function-list lookup.
+    This removes `List.find?_map` noise from mechanical `buildSwitch` proofs. -/
+private theorem find_switchCases_eq_find_function
+    (fns : List IRFunction) (sel : Nat) :
+    (switchCases fns).find? (fun (c, _) => c = sel) =
+      Option.map (fun fn => (fn.selector, switchCaseBody fn))
+        (fns.find? (fun fn => fn.selector == sel)) := by
+  induction fns with
+  | nil =>
+      simp [switchCases]
+  | cons fn rest ih =>
+      by_cases hsel : fn.selector = sel
+      · simp [switchCases, hsel]
+      · have hPred :
+          ((fun x : Prod Nat (List YulStmt) => decide (x.1 = sel)) ∘
+              fun f : IRFunction => (f.selector, switchCaseBody f)) =
+            (fun f : IRFunction => f.selector == sel) := by
+          funext f
+          simp [beq_eq_decide]
+        simp [switchCases, hsel, hPred]
+
 /-- `selectorExpr` does not depend on `__has_selector`, so the selector evaluation
     is the same in the augmented state. -/
 private theorem evalSelectorExpr_setVar_has_selector (state : YulState) (v : Nat)

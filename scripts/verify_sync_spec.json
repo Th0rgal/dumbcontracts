@@ -54,6 +54,7 @@
     "check_gas_model_coverage.py",
     "check_mapping_slot_boundary.py",
     "check_yul_builtin_boundary.py",
+    "check_rewrite_proof_metadata.py",
     "check_builtin_list_sync.py",
     "check_evmyullean_capability_boundary.py",
     "generate_evmyullean_capability_report.py --check",
@@ -91,12 +92,23 @@
     "no_match_test": "Random10000"
   },
   "expected_foundry_multi_seed": {
-    "seeds": [0, 1, 42, 123, 999, 12345, 67890]
+    "seeds": [
+      0,
+      1,
+      42,
+      123,
+      999,
+      12345,
+      67890
+    ]
   },
   "expected_foundry_gas_calibration": {
     "profile": "difftest",
     "artifact": "static-gas-report",
     "command": "python3 scripts/check_gas_calibration.py --static-report gas-report-static.tsv"
   },
-  "artifact_producer_jobs": ["build", "build-compiler"]
+  "artifact_producer_jobs": [
+    "build",
+    "build-compiler"
+  ]
 }

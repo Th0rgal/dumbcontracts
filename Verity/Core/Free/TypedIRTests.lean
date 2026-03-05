@@ -736,7 +736,7 @@ example : compilesOk Compiler.Specs.simpleTokenSpec "totalSupply" = true := by n
 example : compilesOk Compiler.Specs.simpleTokenSpec "owner" = true := by native_decide
 
 private def erc20Spec : Compiler.CompilationModel.CompilationModel :=
-  Verity.Examples.MacroContracts.ERC20.spec
+  Contracts.MacroContracts.ERC20.spec
 
 private def maxUint256 : Nat :=
   115792089237316195423570985008687907853269984665640564039457584007913129639935
@@ -888,7 +888,7 @@ def compiledERC20TransferFromInsufficientAllowanceReverts : Bool :=
 example : compiledERC20TransferFromInsufficientAllowanceReverts = true := by native_decide
 
 private def erc721Spec : Compiler.CompilationModel.CompilationModel :=
-  Verity.Examples.MacroContracts.ERC721.spec
+  Contracts.MacroContracts.ERC721.spec
 
 /-- Smoke test: core ERC721 spec functions compile to typed IR. -/
 example : compilesOk erc721Spec "mint" = true := by native_decide

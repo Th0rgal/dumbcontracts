@@ -20,9 +20,9 @@ class SpecProofMigrationBoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=SCRIPT_DIR.parent) as tmpdir:
             root = Path(tmpdir)
             compiler_proofs = root / "Compiler" / "Proofs"
-            verity_proofs = root / "Verity" / "Proofs"
+            contracts_dir = root / "Contracts"
             compiler_proofs.mkdir(parents=True, exist_ok=True)
-            verity_proofs.mkdir(parents=True, exist_ok=True)
+            contracts_dir.mkdir(parents=True, exist_ok=True)
 
             for rel, content in files.items():
                 path = root / rel
@@ -33,7 +33,7 @@ class SpecProofMigrationBoundaryTests(unittest.TestCase):
             old_roots = guard.PROOF_ROOTS
             old_allowlist = guard.ALLOWLIST
             guard.ROOT = root
-            guard.PROOF_ROOTS = [compiler_proofs, verity_proofs]
+            guard.PROOF_ROOTS = [compiler_proofs, contracts_dir]
             guard.ALLOWLIST = {Path(p) for p in allowlist}
             try:
                 stderr = io.StringIO()
@@ -48,8 +48,8 @@ class SpecProofMigrationBoundaryTests(unittest.TestCase):
     def test_rejects_non_allowlisted_legacy_reference(self) -> None:
         rc, stderr = self._run_check(
             {
-                "Verity/Proofs/NewContract/Basic.lean": (
-                    "import Verity.Examples.Counter\n"
+                "Contracts/NewContract/Proofs/Basic.lean": (
+                    "import Contracts.Counter.Contract\n"
                     "def x := 1\n"
                 )
             },
@@ -61,18 +61,18 @@ class SpecProofMigrationBoundaryTests(unittest.TestCase):
     def test_accepts_allowlisted_legacy_reference(self) -> None:
         rc, stderr = self._run_check(
             {
-                "Verity/Proofs/Counter/Basic.lean": (
+                "Contracts/Counter/Proofs/Basic.lean": (
                     "def x := Compiler.Specs.counterSpec\n"
                 )
             },
-            allowlist={"Verity/Proofs/Counter/Basic.lean"},
+            allowlist={"Contracts/Counter/Proofs/Basic.lean"},
         )
         self.assertEqual(rc, 0, stderr)
 
     def test_fails_on_stale_allowlist_entry(self) -> None:
         rc, stderr = self._run_check(
-            {"Verity/Proofs/Counter/Basic.lean": "def ok := 42\n"},
-            allowlist={"Verity/Proofs/Counter/Basic.lean"},
+            {"Contracts/Counter/Proofs/Basic.lean": "def ok := 42\n"},
+            allowlist={"Contracts/Counter/Proofs/Basic.lean"},
         )
         self.assertEqual(rc, 1)
         self.assertIn("stale allowlist entry", stderr)
@@ -80,8 +80,8 @@ class SpecProofMigrationBoundaryTests(unittest.TestCase):
     def test_ignores_comment_and_string_decoys(self) -> None:
         rc, stderr = self._run_check(
             {
-                "Verity/Proofs/Counter/Basic.lean": (
-                    "-- Verity.Examples.Counter\n"
+                "Contracts/Counter/Proofs/Basic.lean": (
+                    "-- Contracts.Counter.Contract\n"
                     "def msg := \"Compiler.Specs.counterSpec\"\n"
                 )
             },

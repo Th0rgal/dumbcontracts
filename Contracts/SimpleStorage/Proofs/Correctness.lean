@@ -1,13 +1,101 @@
-import Verity.Proofs.SimpleStorage.Correctness
+/-
+  Advanced correctness proofs for SimpleStorage contract.
+
+  Proves deeper properties beyond Basic.lean:
+  - store_retrieve_roundtrip (matching exact spec form)
+  - Standalone invariant proofs matching Invariants.lean definitions
+  - Retrieve preserves well-formedness
+-/
+
+import Contracts.SimpleStorage.Proofs.Basic
+import Verity.Proofs.Stdlib.Automation
 
 namespace Contracts.SimpleStorage.Proofs.Correctness
 
-abbrev store_retrieve_roundtrip_holds := Verity.Proofs.SimpleStorage.Correctness.store_retrieve_roundtrip_holds
-abbrev store_preserves_storage_isolated := Verity.Proofs.SimpleStorage.Correctness.store_preserves_storage_isolated
-abbrev store_preserves_addr_storage := Verity.Proofs.SimpleStorage.Correctness.store_preserves_addr_storage
-abbrev store_preserves_map_storage := Verity.Proofs.SimpleStorage.Correctness.store_preserves_map_storage
-abbrev store_preserves_context := Verity.Proofs.SimpleStorage.Correctness.store_preserves_context
-abbrev retrieve_preserves_context := Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_context
-abbrev retrieve_preserves_wellformedness := Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_wellformedness
+open Verity
+open Contracts.MacroContracts.SimpleStorage
+open Contracts.SimpleStorage.Spec
+open Contracts.SimpleStorage.Proofs
+open Verity.Proofs.Stdlib.Automation (wf_of_state_eq)
+open Contracts.SimpleStorage.Invariants
+
+/-! ## Roundtrip Specification
+
+Prove store_retrieve_roundtrip in its exact spec form from Spec.lean:
+for any s_after_store satisfying store_spec, retrieve returns the stored value.
+-/
+
+/-- The foundational roundtrip property: any state satisfying store_spec
+    will yield the stored value on retrieve. -/
+theorem store_retrieve_roundtrip_holds (value : Uint256) (s : ContractState) :
+  store_retrieve_roundtrip value s := by
+  intro s_after h_spec
+  simp [retrieve_spec]
+  simp [store_spec] at h_spec
+  exact h_spec.1.symm
+
+/-! ## Standalone Invariant Proofs
+
+Prove that store satisfies each invariant from Invariants.lean individually.
+-/
+
+/-- store preserves storage isolation: slot 0 update doesn't affect other slots. -/
+theorem store_preserves_storage_isolated (s : ContractState) (value : Uint256) (slotIdx : Nat) :
+  let s' := ((store value).run s).snd
+  storage_isolated s s' slotIdx := by
+  simp [storage_isolated]; intro h_ne
+  have h := store_meets_spec s value; simp [store_spec] at h; exact h.2.1 slotIdx h_ne
+
+/-- store preserves address storage. -/
+theorem store_preserves_addr_storage (s : ContractState) (value : Uint256) :
+  let s' := ((store value).run s).snd
+  addr_storage_unchanged s s' := by
+  simp [addr_storage_unchanged]
+  have h := store_meets_spec s value; simp [store_spec] at h; exact h.2.2.1
+
+/-- store preserves mapping storage. -/
+theorem store_preserves_map_storage (s : ContractState) (value : Uint256) :
+  let s' := ((store value).run s).snd
+  map_storage_unchanged s s' := by
+  simp [map_storage_unchanged]
+  have h := store_meets_spec s value; simp [store_spec] at h; exact h.2.2.2.1
+
+/-- store preserves context (sender, thisAddress). -/
+theorem store_preserves_context (s : ContractState) (value : Uint256) :
+  let s' := ((store value).run s).snd
+  context_preserved s s' := by
+  have h := store_meets_spec s value
+  simp [store_spec] at h
+  simpa [Specs.sameContext, context_preserved] using h.2.2.2.2
+
+/-- retrieve preserves all state (read-only, trivially preserves everything). -/
+theorem retrieve_preserves_context (s : ContractState) :
+  let s' := ((retrieve).run s).snd
+  context_preserved s s' := by
+  simp [retrieve_preserves_state s]
+
+/-- retrieve preserves well-formedness. -/
+theorem retrieve_preserves_wellformedness (s : ContractState) (h : WellFormedState s) :
+  let s' := ((retrieve).run s).snd
+  WellFormedState s' :=
+  wf_of_state_eq _ _ _ (retrieve_preserves_state s) h
+
+/-! ## Summary
+
+All 7 theorems fully proven with zero sorry:
+
+Roundtrip:
+1. store_retrieve_roundtrip_holds
+
+Standalone invariants:
+2. store_preserves_storage_isolated
+3. store_preserves_addr_storage
+4. store_preserves_map_storage
+5. store_preserves_context
+6. retrieve_preserves_context
+
+Well-formedness:
+7. retrieve_preserves_wellformedness
+-/
 
 end Contracts.SimpleStorage.Proofs.Correctness

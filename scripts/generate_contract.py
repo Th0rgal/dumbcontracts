@@ -2,13 +2,13 @@
 """Generate scaffold files for a new Verity contract.
 
 Creates the complete file structure needed to add a new contract:
-  - EDSL implementation (Verity/Examples/{Name}.lean)
-  - Formal specification (Verity/Specs/{Name}/Spec.lean)
-  - State invariants (Verity/Specs/{Name}/Invariants.lean)
-  - Layer 2 proof re-export (Verity/Specs/{Name}/Proofs.lean)
-  - Basic proofs (Verity/Proofs/{Name}/Basic.lean)
-  - Correctness proofs (Verity/Proofs/{Name}/Correctness.lean)
-  - Contract proof scaffolds (Verity/Proofs/{Name}/*)
+  - EDSL implementation (Contracts/{Name}/Contract.lean)
+  - Formal specification (Contracts/{Name}/Spec.lean)
+  - State invariants (Contracts/{Name}/Invariants.lean)
+  - Layer 2 proof re-export (Contracts/{Name}/Proofs.lean -- re-export)
+  - Basic proofs (Contracts/{Name}/Proofs/Basic.lean)
+  - Correctness proofs (Contracts/{Name}/Proofs/Correctness.lean)
+  - Contract proof scaffolds (Contracts/{Name}/Proofs/*)
   - Compiler spec entry (printed to stdout for manual insertion)
   - Property tests (test/Property{Name}.t.sol)
 
@@ -477,7 +477,7 @@ def _needs_uint256_import(cfg: ContractConfig) -> bool:
 
 
 def gen_example(cfg: ContractConfig) -> str:
-    """Generate Verity/Examples/{Name}.lean"""
+    """Generate Contracts/{Name}/Contract.lean"""
     imports = ["import Verity.Core"]
     opens = ["open Verity"]
     if _needs_uint256_import(cfg):
@@ -531,7 +531,7 @@ def gen_example(cfg: ContractConfig) -> str:
 
 {chr(10).join(imports)}
 
-namespace Verity.Examples.{cfg.name}
+namespace Contracts.{cfg.name}
 
 {chr(10).join(opens)}
 
@@ -539,12 +539,12 @@ namespace Verity.Examples.{cfg.name}
 {chr(10).join(storage_lines)}
 
 {chr(10).join(func_lines)}
-end Verity.Examples.{cfg.name}
+end Contracts.{cfg.name}
 """
 
 
 def gen_spec(cfg: ContractConfig) -> str:
-    """Generate Verity/Specs/{Name}/Spec.lean"""
+    """Generate Contracts/{Name}/Spec.lean"""
     spec_defs = []
     for fn in cfg.functions:
         is_getter = _getter_prefix(fn.name) is not None
@@ -584,17 +584,17 @@ def gen_spec(cfg: ContractConfig) -> str:
 
 {chr(10).join(imports)}
 
-namespace Verity.Specs.{cfg.name}
+namespace Contracts.{cfg.name}.Spec
 
 {chr(10).join(opens)}
 
 {chr(10).join(spec_defs)}
-end Verity.Specs.{cfg.name}
+end Contracts.{cfg.name}.Spec
 """
 
 
 def gen_invariants(cfg: ContractConfig) -> str:
-    """Generate Verity/Specs/{Name}/Invariants.lean"""
+    """Generate Contracts/{Name}/Invariants.lean"""
     # Build isolation predicates based on fields
     # Address fields use storageAddr, uint256 fields use storage, mappings use storageMap
     slot_isolation = []
@@ -627,7 +627,7 @@ def gen_invariants(cfg: ContractConfig) -> str:
 
 import Verity.Specs.Common
 
-namespace Verity.Specs.{cfg.name}
+namespace Contracts.{cfg.name}.Spec
 
 open Verity
 
@@ -641,13 +641,13 @@ structure WellFormedState (s : ContractState) : Prop where
 -- Context preservation: operations don't change sender/address
 abbrev context_preserved := Specs.sameContext
 
-end Verity.Specs.{cfg.name}
+end Contracts.{cfg.name}.Spec
 """
 
 
 def gen_spec_proofs(cfg: ContractConfig) -> str:
-    """Generate Verity/Specs/{Name}/Proofs.lean — Layer 2 proof re-export."""
-    return f"""import Verity.Proofs.{cfg.name}.Correctness
+    """Generate Contracts/{Name}/Proofs.lean — Layer 2 proof re-export."""
+    return f"""import Contracts.{cfg.name}.Proofs.Correctness
 
 /-
   Layer 2 proof re-export.
@@ -657,7 +657,7 @@ def gen_spec_proofs(cfg: ContractConfig) -> str:
 
 
 def gen_basic_proofs(cfg: ContractConfig) -> str:
-    """Generate Verity/Proofs/{Name}/Basic.lean"""
+    """Generate Contracts/{Name}/Proofs/Basic.lean"""
     proof_stubs = []
     for fn in cfg.functions:
         is_getter = _getter_prefix(fn.name) is not None
@@ -690,14 +690,14 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
         proof_stubs.append("")
 
     imports = [
-        f"import Verity.Examples.{cfg.name}",
-        f"import Verity.Specs.{cfg.name}.Spec",
-        f"import Verity.Specs.{cfg.name}.Invariants",
+        f"import Contracts.{cfg.name}.Contract",
+        f"import Contracts.{cfg.name}.Spec",
+        f"import Contracts.{cfg.name}.Invariants",
     ]
     opens = [
         "open Verity",
-        f"open Verity.Examples.{cfg.name}",
-        f"open Verity.Specs.{cfg.name}",
+        f"open Contracts.{cfg.name}",
+        f"open Contracts.{cfg.name}.Spec",
     ]
     if _needs_uint256_import(cfg):
         imports.insert(1, "import Verity.EVM.Uint256")
@@ -713,17 +713,17 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
 
 {chr(10).join(imports)}
 
-namespace Verity.Proofs.{cfg.name}
+namespace Contracts.{cfg.name}.Proofs
 
 {chr(10).join(opens)}
 
 {chr(10).join(proof_stubs)}
-end Verity.Proofs.{cfg.name}
+end Contracts.{cfg.name}.Proofs
 """
 
 
 def gen_correctness_proofs(cfg: ContractConfig) -> str:
-    """Generate Verity/Proofs/{Name}/Correctness.lean"""
+    """Generate Contracts/{Name}/Proofs/Correctness.lean"""
     return f"""/-
   {cfg.name}: Advanced Correctness Proofs
 
@@ -735,19 +735,19 @@ def gen_correctness_proofs(cfg: ContractConfig) -> str:
   Status: Scaffold — proofs need implementation.
 -/
 
-import Verity.Proofs.{cfg.name}.Basic
+import Contracts.{cfg.name}.Proofs.Basic
 
-namespace Verity.Proofs.{cfg.name}.Correctness
+namespace Contracts.{cfg.name}.Proofs.Correctness
 
 open Verity
-open Verity.Examples.{cfg.name}
-open Verity.Specs.{cfg.name}
-open Verity.Proofs.{cfg.name}
+open Contracts.{cfg.name}
+open Contracts.{cfg.name}.Spec
+open Contracts.{cfg.name}.Proofs
 
 -- TODO: Add advanced correctness proofs
--- See Verity/Proofs/SimpleStorage/Correctness.lean for reference
+-- See Contracts/SimpleStorage/Proofs/Correctness.lean for reference
 
-end Verity.Proofs.{cfg.name}.Correctness
+end Contracts.{cfg.name}.Proofs.Correctness
 """
 
 
@@ -779,7 +779,7 @@ import "./yul/YulTestBase.sol";
 /**
  * @title Property{cfg.name}Test
  * @notice Property-based tests extracted from formally verified Lean theorems
- * @dev Maps theorems from Verity/Proofs/{cfg.name}/ to executable tests
+ * @dev Maps theorems from Contracts/{cfg.name}/Proofs/ to executable tests
  *
  * This file contains property tests corresponding to proven theorems:
  *
@@ -1006,24 +1006,24 @@ def {name_lower}Spec : CompilationModel := {{
 def gen_all_lean_imports(cfg: ContractConfig) -> str:
     """Generate import lines for Verity/All.lean."""
     return f"""
-import Verity.Examples.{cfg.name}
-import Verity.Specs.{cfg.name}.Spec
-import Verity.Specs.{cfg.name}.Invariants
-import Verity.Specs.{cfg.name}.Proofs
-import Verity.Proofs.{cfg.name}.Basic
-import Verity.Proofs.{cfg.name}.Correctness"""
+import Contracts.{cfg.name}.Contract
+import Contracts.{cfg.name}.Spec
+import Contracts.{cfg.name}.Invariants
+import Contracts.{cfg.name}.Proofs
+import Contracts.{cfg.name}.Proofs.Basic
+import Contracts.{cfg.name}.Proofs.Correctness"""
 
 
 def scaffold_files(cfg: ContractConfig) -> List[tuple[Path, str]]:
     """Return all scaffold outputs for this contract."""
     name = cfg.name
     return [
-        (ROOT / "Verity" / "Examples" / f"{name}.lean", gen_example(cfg)),
-        (ROOT / "Verity" / "Specs" / name / "Spec.lean", gen_spec(cfg)),
-        (ROOT / "Verity" / "Specs" / name / "Invariants.lean", gen_invariants(cfg)),
-        (ROOT / "Verity" / "Specs" / name / "Proofs.lean", gen_spec_proofs(cfg)),
-        (ROOT / "Verity" / "Proofs" / name / "Basic.lean", gen_basic_proofs(cfg)),
-        (ROOT / "Verity" / "Proofs" / name / "Correctness.lean", gen_correctness_proofs(cfg)),
+        (ROOT / "Contracts" / name / "Contract.lean", gen_example(cfg)),
+        (ROOT / "Contracts" / name / "Spec.lean", gen_spec(cfg)),
+        (ROOT / "Contracts" / name / "Invariants.lean", gen_invariants(cfg)),
+        (ROOT / "Contracts" / name / "Proofs.lean", gen_spec_proofs(cfg)),
+        (ROOT / "Contracts" / name / "Proofs" / "Basic.lean", gen_basic_proofs(cfg)),
+        (ROOT / "Contracts" / name / "Proofs" / "Correctness.lean", gen_correctness_proofs(cfg)),
         (ROOT / "test" / f"Property{name}.t.sol", gen_property_tests(cfg)),
     ]
 
@@ -1136,7 +1136,7 @@ Examples:
     print()
 
     print("3. Canonical registration:")
-    print("   Add a `verity_contract` declaration in Verity/Examples/MacroContracts.lean.")
+    print("   Add a `verity_contract` declaration in Contracts/MacroContracts/.")
     print("   Then add `<Name>.spec` from MacroContracts to `Compiler.Specs.allSpecs`.")
     print("   (Automatic allSpecs derivation is planned but not implemented yet.)")
     print("   Manual `Compiler.Specs.*Spec` entries are legacy migration scaffolding only.")

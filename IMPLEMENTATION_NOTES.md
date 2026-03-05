@@ -1,10 +1,10 @@
 # Sum Properties Proof Strategy
 
-> **Status**: ✅ Complete — all 7/7 sum properties proven with zero `sorry` in `Verity/Proofs/Ledger/Conservation.lean`.
+> **Status**: ✅ Complete — all 7/7 sum properties proven with zero `sorry` in `Contracts/Ledger/Proofs/Conservation.lean`.
 
 ## Overview
 
-The 7 sum properties in `Verity/Proofs/Ledger/Conservation.lean` prove invariants like "total supply = sum of all balances" using `List.countOcc` for exact sum equations.
+The 7 sum properties in `Contracts/Ledger/Proofs/Conservation.lean` prove invariants like "total supply = sum of all balances" using `List.countOcc` for exact sum equations.
 
 ## Proof Approach
 

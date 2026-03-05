@@ -32,7 +32,7 @@ Verity is a **formally verified smart contract compiler** written in [Lean 4](ht
 Contracts look like Lean `do`-notation with storage declarations:
 
 ```lean
--- Verity/Examples/Counter.lean
+-- Contracts/Counter/Contract.lean
 def count : StorageSlot Uint256 := ⟨0⟩
 
 def increment : Contract Unit := do
@@ -48,7 +48,7 @@ def getCount : Contract Uint256 := do
 The `verity_contract` [macro](Verity/Macro/Elaborate.lean) can also generate these definitions from a more concise syntax:
 
 ```lean
--- Verity/Examples/MacroContracts.lean
+-- Contracts/MacroContracts/Counter.lean
 verity_contract Counter where
   storage
     count : Uint256 := slot 0
@@ -63,7 +63,7 @@ verity_contract Counter where
 Specs are plain Lean predicates describing what the contract should do:
 
 ```lean
--- Verity/Specs/Counter/Spec.lean
+-- Contracts/Counter/Spec.lean
 def increment_spec (s s' : ContractState) : Prop :=
   s'.storage 0 = add (s.storage 0) 1 ∧
   storageUnchangedExcept 0 s s' ∧
@@ -77,7 +77,7 @@ This says: after `increment`, slot 0 increased by 1, no other slot changed, and 
 Proofs show the contract satisfies its spec. Lean's type checker verifies them:
 
 ```lean
--- Verity/Proofs/Counter/Basic.lean
+-- Contracts/Counter/Proofs/Basic.lean
 theorem increment_meets_spec (s : ContractState) :
     let s' := ((increment).run s).snd
     increment_spec s s' := by
@@ -233,11 +233,13 @@ Verity is not a replacement for these tools. It's for cases where you need mathe
 verity/
 ├── Verity/              # EDSL framework
 │   ├── Core/            #   Core types: Contract monad, ContractState, Uint256
-│   ├── Examples/        #   Verified contract implementations
-│   ├── Specs/           #   Formal specifications (what contracts should do)
-│   ├── Proofs/          #   Correctness proofs (contracts meet specs)
 │   ├── Macro/           #   verity_contract macro elaborator
 │   └── Stdlib/          #   Proven helper lemmas (arithmetic, automation)
+├── Contracts/           # Verified contract implementations
+│   ├── <Name>/Contract.lean   #   Contract implementation
+│   ├── <Name>/Spec.lean       #   Formal specification
+│   ├── <Name>/Proofs/*.lean   #   Correctness proofs
+│   └── MacroContracts/  #   Macro-generated contract examples
 ├── Compiler/            # Compilation pipeline
 │   ├── CompilationModel.lean  # Declarative compiler-facing contract model
 │   ├── Proofs/          #   Compilation correctness proofs (Layers 1-3)

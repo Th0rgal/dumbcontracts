@@ -30,7 +30,7 @@ def main() -> None:
 
     # Check 1: No debug commands in proof files
     debug_commands = ["#eval", "#check", "#print", "#reduce"]
-    proof_dirs = [ROOT / "Compiler" / "Proofs", ROOT / "Verity" / "Proofs"]
+    proof_dirs = [ROOT / "Compiler" / "Proofs", ROOT / "Verity" / "Proofs", ROOT / "Contracts"]
     for proof_dir in proof_dirs:
         for lean_file in proof_dir.rglob("*.lean"):
             rel = lean_file.relative_to(ROOT)

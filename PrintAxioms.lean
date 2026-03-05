@@ -2,28 +2,28 @@
 -- Runs #print axioms on all top-level theorems/lemmas in proof directories.
 -- Regenerate with: python3 scripts/generate_print_axioms.py
 
-import Verity.Proofs.Counter.Basic
-import Verity.Proofs.Counter.Correctness
-import Verity.Proofs.ERC20.Basic
-import Verity.Proofs.ERC20.Correctness
-import Verity.Proofs.ERC721.Basic
-import Verity.Proofs.ERC721.Correctness
-import Verity.Proofs.Ledger.Basic
-import Verity.Proofs.Ledger.Conservation
-import Verity.Proofs.Ledger.Correctness
-import Verity.Proofs.Owned.Basic
-import Verity.Proofs.Owned.Correctness
-import Verity.Proofs.OwnedCounter.Basic
-import Verity.Proofs.OwnedCounter.Correctness
-import Verity.Proofs.OwnedCounter.Isolation
-import Verity.Proofs.SafeCounter.Basic
-import Verity.Proofs.SafeCounter.Correctness
-import Verity.Proofs.SimpleStorage.Basic
-import Verity.Proofs.SimpleStorage.Correctness
-import Verity.Proofs.SimpleToken.Basic
-import Verity.Proofs.SimpleToken.Correctness
-import Verity.Proofs.SimpleToken.Isolation
-import Verity.Proofs.SimpleToken.Supply
+import Contracts.Counter.Proofs.Basic
+import Contracts.Counter.Proofs.Correctness
+import Contracts.ERC20.Proofs.Basic
+import Contracts.ERC20.Proofs.Correctness
+import Contracts.ERC721.Proofs.Basic
+import Contracts.ERC721.Proofs.Correctness
+import Contracts.Ledger.Proofs.Basic
+import Contracts.Ledger.Proofs.Conservation
+import Contracts.Ledger.Proofs.Correctness
+import Contracts.Owned.Proofs.Basic
+import Contracts.Owned.Proofs.Correctness
+import Contracts.OwnedCounter.Proofs.Basic
+import Contracts.OwnedCounter.Proofs.Correctness
+import Contracts.OwnedCounter.Proofs.Isolation
+import Contracts.SafeCounter.Proofs.Basic
+import Contracts.SafeCounter.Proofs.Correctness
+import Contracts.SimpleStorage.Proofs.Basic
+import Contracts.SimpleStorage.Proofs.Correctness
+import Contracts.SimpleToken.Proofs.Basic
+import Contracts.SimpleToken.Proofs.Correctness
+import Contracts.SimpleToken.Proofs.Isolation
+import Contracts.SimpleToken.Proofs.Supply
 import Verity.Proofs.Stdlib.Automation
 import Verity.Proofs.Stdlib.ListSum
 import Verity.Proofs.Stdlib.MappingAutomation
@@ -36,339 +36,339 @@ import Compiler.Proofs.SemanticBridge
 import Compiler.Proofs.YulGeneration.Builtins
 import Compiler.Proofs.YulGeneration.Equivalence
 
--- Verity/Proofs/Counter/Basic.lean
-#print axioms Verity.Proofs.Counter.setStorage_updates_count
-#print axioms Verity.Proofs.Counter.getStorage_reads_count
-#print axioms Verity.Proofs.Counter.setStorage_preserves_other_slots
-#print axioms Verity.Proofs.Counter.setStorage_preserves_context
-#print axioms Verity.Proofs.Counter.setStorage_preserves_addr_storage
-#print axioms Verity.Proofs.Counter.setStorage_preserves_map_storage
-#print axioms Verity.Proofs.Counter.increment_meets_spec
-#print axioms Verity.Proofs.Counter.increment_adds_one
-#print axioms Verity.Proofs.Counter.decrement_meets_spec
-#print axioms Verity.Proofs.Counter.decrement_subtracts_one
-#print axioms Verity.Proofs.Counter.getCount_meets_spec
-#print axioms Verity.Proofs.Counter.getCount_reads_count_value
-#print axioms Verity.Proofs.Counter.increment_getCount_correct
-#print axioms Verity.Proofs.Counter.decrement_getCount_correct
-#print axioms Verity.Proofs.Counter.increment_twice_adds_two
-#print axioms Verity.Proofs.Counter.increment_decrement_cancel
-#print axioms Verity.Proofs.Counter.increment_preserves_wellformedness
-#print axioms Verity.Proofs.Counter.decrement_preserves_wellformedness
-#print axioms Verity.Proofs.Counter.getCount_preserves_state
+-- Contracts/Counter/Proofs/Basic.lean
+#print axioms Contracts.Counter.Proofs.setStorage_updates_count
+#print axioms Contracts.Counter.Proofs.getStorage_reads_count
+#print axioms Contracts.Counter.Proofs.setStorage_preserves_other_slots
+#print axioms Contracts.Counter.Proofs.setStorage_preserves_context
+#print axioms Contracts.Counter.Proofs.setStorage_preserves_addr_storage
+#print axioms Contracts.Counter.Proofs.setStorage_preserves_map_storage
+#print axioms Contracts.Counter.Proofs.increment_meets_spec
+#print axioms Contracts.Counter.Proofs.increment_adds_one
+#print axioms Contracts.Counter.Proofs.decrement_meets_spec
+#print axioms Contracts.Counter.Proofs.decrement_subtracts_one
+#print axioms Contracts.Counter.Proofs.getCount_meets_spec
+#print axioms Contracts.Counter.Proofs.getCount_reads_count_value
+#print axioms Contracts.Counter.Proofs.increment_getCount_correct
+#print axioms Contracts.Counter.Proofs.decrement_getCount_correct
+#print axioms Contracts.Counter.Proofs.increment_twice_adds_two
+#print axioms Contracts.Counter.Proofs.increment_decrement_cancel
+#print axioms Contracts.Counter.Proofs.increment_preserves_wellformedness
+#print axioms Contracts.Counter.Proofs.decrement_preserves_wellformedness
+#print axioms Contracts.Counter.Proofs.getCount_preserves_state
 
--- Verity/Proofs/Counter/Correctness.lean
-#print axioms Verity.Proofs.Counter.Correctness.increment_state_preserved_except_count
-#print axioms Verity.Proofs.Counter.Correctness.decrement_state_preserved_except_count
-#print axioms Verity.Proofs.Counter.Correctness.getCount_state_preserved
-#print axioms Verity.Proofs.Counter.Correctness.increment_getCount_meets_spec
-#print axioms Verity.Proofs.Counter.Correctness.decrement_getCount_meets_spec
-#print axioms Verity.Proofs.Counter.Correctness.two_increments_meets_spec
-#print axioms Verity.Proofs.Counter.Correctness.increment_decrement_meets_cancel
-#print axioms Verity.Proofs.Counter.Correctness.getCount_preserves_wellformedness
-#print axioms Verity.Proofs.Counter.Correctness.decrement_at_zero_wraps_max
+-- Contracts/Counter/Proofs/Correctness.lean
+#print axioms Contracts.Counter.Proofs.Correctness.increment_state_preserved_except_count
+#print axioms Contracts.Counter.Proofs.Correctness.decrement_state_preserved_except_count
+#print axioms Contracts.Counter.Proofs.Correctness.getCount_state_preserved
+#print axioms Contracts.Counter.Proofs.Correctness.increment_getCount_meets_spec
+#print axioms Contracts.Counter.Proofs.Correctness.decrement_getCount_meets_spec
+#print axioms Contracts.Counter.Proofs.Correctness.two_increments_meets_spec
+#print axioms Contracts.Counter.Proofs.Correctness.increment_decrement_meets_cancel
+#print axioms Contracts.Counter.Proofs.Correctness.getCount_preserves_wellformedness
+#print axioms Contracts.Counter.Proofs.Correctness.decrement_at_zero_wraps_max
 
--- Verity/Proofs/ERC20/Basic.lean
-#print axioms Verity.Proofs.ERC20.constructor_meets_spec
-#print axioms Verity.Proofs.ERC20.approve_meets_spec
-#print axioms Verity.Proofs.ERC20.balanceOf_meets_spec
-#print axioms Verity.Proofs.ERC20.allowanceOf_meets_spec
-#print axioms Verity.Proofs.ERC20.totalSupply_meets_spec
-#print axioms Verity.Proofs.ERC20.getOwner_meets_spec
--- #print axioms Verity.Proofs.ERC20.mint_unfold  -- private
-#print axioms Verity.Proofs.ERC20.mint_meets_spec_when_owner
-#print axioms Verity.Proofs.ERC20.mint_increases_balance_when_owner
-#print axioms Verity.Proofs.ERC20.mint_increases_supply_when_owner
--- #print axioms Verity.Proofs.ERC20.transfer_unfold_self  -- private
--- #print axioms Verity.Proofs.ERC20.transfer_unfold_other  -- private
-#print axioms Verity.Proofs.ERC20.transfer_meets_spec_when_sufficient
-#print axioms Verity.Proofs.ERC20.transfer_decreases_sender_balance_when_sufficient
-#print axioms Verity.Proofs.ERC20.transfer_increases_recipient_balance_when_sufficient
+-- Contracts/ERC20/Proofs/Basic.lean
+#print axioms Contracts.ERC20.Proofs.constructor_meets_spec
+#print axioms Contracts.ERC20.Proofs.approve_meets_spec
+#print axioms Contracts.ERC20.Proofs.balanceOf_meets_spec
+#print axioms Contracts.ERC20.Proofs.allowanceOf_meets_spec
+#print axioms Contracts.ERC20.Proofs.totalSupply_meets_spec
+#print axioms Contracts.ERC20.Proofs.getOwner_meets_spec
+-- #print axioms Contracts.ERC20.Proofs.mint_unfold  -- private
+#print axioms Contracts.ERC20.Proofs.mint_meets_spec_when_owner
+#print axioms Contracts.ERC20.Proofs.mint_increases_balance_when_owner
+#print axioms Contracts.ERC20.Proofs.mint_increases_supply_when_owner
+-- #print axioms Contracts.ERC20.Proofs.transfer_unfold_self  -- private
+-- #print axioms Contracts.ERC20.Proofs.transfer_unfold_other  -- private
+#print axioms Contracts.ERC20.Proofs.transfer_meets_spec_when_sufficient
+#print axioms Contracts.ERC20.Proofs.transfer_decreases_sender_balance_when_sufficient
+#print axioms Contracts.ERC20.Proofs.transfer_increases_recipient_balance_when_sufficient
 
--- Verity/Proofs/ERC20/Correctness.lean
-#print axioms Verity.Proofs.ERC20.balanceOf_preserves_state
-#print axioms Verity.Proofs.ERC20.allowanceOf_preserves_state
-#print axioms Verity.Proofs.ERC20.getTotalSupply_preserves_state
-#print axioms Verity.Proofs.ERC20.getOwner_preserves_state
-#print axioms Verity.Proofs.ERC20.approve_is_balance_neutral_holds
-#print axioms Verity.Proofs.ERC20.transfer_preserves_totalSupply_when_sufficient
-#print axioms Verity.Proofs.ERC20.transfer_preserves_owner_when_sufficient
+-- Contracts/ERC20/Proofs/Correctness.lean
+#print axioms Contracts.ERC20.Proofs.balanceOf_preserves_state
+#print axioms Contracts.ERC20.Proofs.allowanceOf_preserves_state
+#print axioms Contracts.ERC20.Proofs.getTotalSupply_preserves_state
+#print axioms Contracts.ERC20.Proofs.getOwner_preserves_state
+#print axioms Contracts.ERC20.Proofs.approve_is_balance_neutral_holds
+#print axioms Contracts.ERC20.Proofs.transfer_preserves_totalSupply_when_sufficient
+#print axioms Contracts.ERC20.Proofs.transfer_preserves_owner_when_sufficient
 
--- Verity/Proofs/ERC721/Basic.lean
-#print axioms Verity.Proofs.ERC721.constructor_meets_spec
-#print axioms Verity.Proofs.ERC721.balanceOf_meets_spec
-#print axioms Verity.Proofs.ERC721.ownerOf_meets_spec
-#print axioms Verity.Proofs.ERC721.getApproved_meets_spec
-#print axioms Verity.Proofs.ERC721.isApprovedForAll_meets_spec
-#print axioms Verity.Proofs.ERC721.setApprovalForAll_meets_spec
+-- Contracts/ERC721/Proofs/Basic.lean
+#print axioms Contracts.ERC721.Proofs.constructor_meets_spec
+#print axioms Contracts.ERC721.Proofs.balanceOf_meets_spec
+#print axioms Contracts.ERC721.Proofs.ownerOf_meets_spec
+#print axioms Contracts.ERC721.Proofs.getApproved_meets_spec
+#print axioms Contracts.ERC721.Proofs.isApprovedForAll_meets_spec
+#print axioms Contracts.ERC721.Proofs.setApprovalForAll_meets_spec
 
--- Verity/Proofs/ERC721/Correctness.lean
-#print axioms Verity.Proofs.ERC721.balanceOf_preserves_state
-#print axioms Verity.Proofs.ERC721.ownerOf_preserves_state
-#print axioms Verity.Proofs.ERC721.getApproved_preserves_state
-#print axioms Verity.Proofs.ERC721.isApprovedForAll_preserves_state
-#print axioms Verity.Proofs.ERC721.setApprovalForAll_is_balance_neutral_holds
+-- Contracts/ERC721/Proofs/Correctness.lean
+#print axioms Contracts.ERC721.Proofs.balanceOf_preserves_state
+#print axioms Contracts.ERC721.Proofs.ownerOf_preserves_state
+#print axioms Contracts.ERC721.Proofs.getApproved_preserves_state
+#print axioms Contracts.ERC721.Proofs.isApprovedForAll_preserves_state
+#print axioms Contracts.ERC721.Proofs.setApprovalForAll_is_balance_neutral_holds
 
--- Verity/Proofs/Ledger/Basic.lean
-#print axioms Verity.Proofs.Ledger.getBalance_meets_spec
-#print axioms Verity.Proofs.Ledger.getBalance_returns_balance
-#print axioms Verity.Proofs.Ledger.getBalance_preserves_state
--- #print axioms Verity.Proofs.Ledger.deposit_unfold  -- private
-#print axioms Verity.Proofs.Ledger.deposit_meets_spec
-#print axioms Verity.Proofs.Ledger.deposit_increases_balance
-#print axioms Verity.Proofs.Ledger.deposit_preserves_other_balances
--- #print axioms Verity.Proofs.Ledger.withdraw_unfold  -- private
-#print axioms Verity.Proofs.Ledger.withdraw_meets_spec
-#print axioms Verity.Proofs.Ledger.withdraw_decreases_balance
-#print axioms Verity.Proofs.Ledger.withdraw_reverts_insufficient
--- #print axioms Verity.Proofs.Ledger.transfer_unfold_self  -- private
--- #print axioms Verity.Proofs.Ledger.transfer_unfold_other  -- private
-#print axioms Verity.Proofs.Ledger.transfer_meets_spec
-#print axioms Verity.Proofs.Ledger.transfer_self_preserves_balance
-#print axioms Verity.Proofs.Ledger.transfer_decreases_sender
-#print axioms Verity.Proofs.Ledger.transfer_increases_recipient
-#print axioms Verity.Proofs.Ledger.transfer_reverts_insufficient
-#print axioms Verity.Proofs.Ledger.transfer_reverts_recipient_overflow
-#print axioms Verity.Proofs.Ledger.deposit_preserves_non_mapping
-#print axioms Verity.Proofs.Ledger.withdraw_preserves_non_mapping
-#print axioms Verity.Proofs.Ledger.deposit_preserves_wellformedness
-#print axioms Verity.Proofs.Ledger.withdraw_preserves_wellformedness
-#print axioms Verity.Proofs.Ledger.deposit_getBalance_correct
+-- Contracts/Ledger/Proofs/Basic.lean
+#print axioms Contracts.Ledger.Proofs.getBalance_meets_spec
+#print axioms Contracts.Ledger.Proofs.getBalance_returns_balance
+#print axioms Contracts.Ledger.Proofs.getBalance_preserves_state
+-- #print axioms Contracts.Ledger.Proofs.deposit_unfold  -- private
+#print axioms Contracts.Ledger.Proofs.deposit_meets_spec
+#print axioms Contracts.Ledger.Proofs.deposit_increases_balance
+#print axioms Contracts.Ledger.Proofs.deposit_preserves_other_balances
+-- #print axioms Contracts.Ledger.Proofs.withdraw_unfold  -- private
+#print axioms Contracts.Ledger.Proofs.withdraw_meets_spec
+#print axioms Contracts.Ledger.Proofs.withdraw_decreases_balance
+#print axioms Contracts.Ledger.Proofs.withdraw_reverts_insufficient
+-- #print axioms Contracts.Ledger.Proofs.transfer_unfold_self  -- private
+-- #print axioms Contracts.Ledger.Proofs.transfer_unfold_other  -- private
+#print axioms Contracts.Ledger.Proofs.transfer_meets_spec
+#print axioms Contracts.Ledger.Proofs.transfer_self_preserves_balance
+#print axioms Contracts.Ledger.Proofs.transfer_decreases_sender
+#print axioms Contracts.Ledger.Proofs.transfer_increases_recipient
+#print axioms Contracts.Ledger.Proofs.transfer_reverts_insufficient
+#print axioms Contracts.Ledger.Proofs.transfer_reverts_recipient_overflow
+#print axioms Contracts.Ledger.Proofs.deposit_preserves_non_mapping
+#print axioms Contracts.Ledger.Proofs.withdraw_preserves_non_mapping
+#print axioms Contracts.Ledger.Proofs.deposit_preserves_wellformedness
+#print axioms Contracts.Ledger.Proofs.withdraw_preserves_wellformedness
+#print axioms Contracts.Ledger.Proofs.deposit_getBalance_correct
 
--- Verity/Proofs/Ledger/Conservation.lean
-#print axioms Verity.Proofs.Ledger.Conservation.deposit_sum_equation
-#print axioms Verity.Proofs.Ledger.Conservation.deposit_sum_singleton_sender
-#print axioms Verity.Proofs.Ledger.Conservation.withdraw_sum_equation
-#print axioms Verity.Proofs.Ledger.Conservation.withdraw_sum_singleton_sender
-#print axioms Verity.Proofs.Ledger.Conservation.transfer_sum_equation
-#print axioms Verity.Proofs.Ledger.Conservation.transfer_sum_preserved_unique
-#print axioms Verity.Proofs.Ledger.Conservation.deposit_withdraw_sum_cancel
+-- Contracts/Ledger/Proofs/Conservation.lean
+#print axioms Contracts.Ledger.Proofs.Conservation.deposit_sum_equation
+#print axioms Contracts.Ledger.Proofs.Conservation.deposit_sum_singleton_sender
+#print axioms Contracts.Ledger.Proofs.Conservation.withdraw_sum_equation
+#print axioms Contracts.Ledger.Proofs.Conservation.withdraw_sum_singleton_sender
+#print axioms Contracts.Ledger.Proofs.Conservation.transfer_sum_equation
+#print axioms Contracts.Ledger.Proofs.Conservation.transfer_sum_preserved_unique
+#print axioms Contracts.Ledger.Proofs.Conservation.deposit_withdraw_sum_cancel
 
--- Verity/Proofs/Ledger/Correctness.lean
-#print axioms Verity.Proofs.Ledger.Correctness.transfer_preserves_wellformedness
-#print axioms Verity.Proofs.Ledger.Correctness.transfer_preserves_non_mapping
-#print axioms Verity.Proofs.Ledger.Correctness.withdraw_getBalance_correct
-#print axioms Verity.Proofs.Ledger.Correctness.transfer_getBalance_sender_correct
-#print axioms Verity.Proofs.Ledger.Correctness.transfer_getBalance_recipient_correct
-#print axioms Verity.Proofs.Ledger.Correctness.deposit_withdraw_cancel
+-- Contracts/Ledger/Proofs/Correctness.lean
+#print axioms Contracts.Ledger.Proofs.Correctness.transfer_preserves_wellformedness
+#print axioms Contracts.Ledger.Proofs.Correctness.transfer_preserves_non_mapping
+#print axioms Contracts.Ledger.Proofs.Correctness.withdraw_getBalance_correct
+#print axioms Contracts.Ledger.Proofs.Correctness.transfer_getBalance_sender_correct
+#print axioms Contracts.Ledger.Proofs.Correctness.transfer_getBalance_recipient_correct
+#print axioms Contracts.Ledger.Proofs.Correctness.deposit_withdraw_cancel
 
--- Verity/Proofs/Owned/Basic.lean
-#print axioms Verity.Proofs.Owned.setStorageAddr_updates_owner
-#print axioms Verity.Proofs.Owned.getStorageAddr_reads_owner
-#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_other_slots
-#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_uint_storage
-#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_map_storage
-#print axioms Verity.Proofs.Owned.setStorageAddr_preserves_context
-#print axioms Verity.Proofs.Owned.constructor_meets_spec
-#print axioms Verity.Proofs.Owned.constructor_sets_owner
-#print axioms Verity.Proofs.Owned.getOwner_meets_spec
-#print axioms Verity.Proofs.Owned.getOwner_returns_owner
-#print axioms Verity.Proofs.Owned.getOwner_preserves_state
-#print axioms Verity.Proofs.Owned.isOwner_meets_spec
-#print axioms Verity.Proofs.Owned.isOwner_returns_correct_value
-#print axioms Verity.Proofs.Owned.transferOwnership_unfold
-#print axioms Verity.Proofs.Owned.transferOwnership_meets_spec_when_owner
-#print axioms Verity.Proofs.Owned.transferOwnership_changes_owner_when_allowed
-#print axioms Verity.Proofs.Owned.constructor_getOwner_correct
-#print axioms Verity.Proofs.Owned.constructor_preserves_wellformedness
-#print axioms Verity.Proofs.Owned.getOwner_preserves_wellformedness
+-- Contracts/Owned/Proofs/Basic.lean
+#print axioms Contracts.Owned.Proofs.setStorageAddr_updates_owner
+#print axioms Contracts.Owned.Proofs.getStorageAddr_reads_owner
+#print axioms Contracts.Owned.Proofs.setStorageAddr_preserves_other_slots
+#print axioms Contracts.Owned.Proofs.setStorageAddr_preserves_uint_storage
+#print axioms Contracts.Owned.Proofs.setStorageAddr_preserves_map_storage
+#print axioms Contracts.Owned.Proofs.setStorageAddr_preserves_context
+#print axioms Contracts.Owned.Proofs.constructor_meets_spec
+#print axioms Contracts.Owned.Proofs.constructor_sets_owner
+#print axioms Contracts.Owned.Proofs.getOwner_meets_spec
+#print axioms Contracts.Owned.Proofs.getOwner_returns_owner
+#print axioms Contracts.Owned.Proofs.getOwner_preserves_state
+#print axioms Contracts.Owned.Proofs.isOwner_meets_spec
+#print axioms Contracts.Owned.Proofs.isOwner_returns_correct_value
+#print axioms Contracts.Owned.Proofs.transferOwnership_unfold
+#print axioms Contracts.Owned.Proofs.transferOwnership_meets_spec_when_owner
+#print axioms Contracts.Owned.Proofs.transferOwnership_changes_owner_when_allowed
+#print axioms Contracts.Owned.Proofs.constructor_getOwner_correct
+#print axioms Contracts.Owned.Proofs.constructor_preserves_wellformedness
+#print axioms Contracts.Owned.Proofs.getOwner_preserves_wellformedness
 
--- Verity/Proofs/Owned/Correctness.lean
-#print axioms Verity.Proofs.Owned.Correctness.transferOwnership_reverts_when_not_owner
-#print axioms Verity.Proofs.Owned.Correctness.transferOwnership_preserves_wellformedness
-#print axioms Verity.Proofs.Owned.Correctness.constructor_transferOwnership_getOwner
-#print axioms Verity.Proofs.Owned.Correctness.transferred_owner_cannot_act
+-- Contracts/Owned/Proofs/Correctness.lean
+#print axioms Contracts.Owned.Proofs.Correctness.transferOwnership_reverts_when_not_owner
+#print axioms Contracts.Owned.Proofs.Correctness.transferOwnership_preserves_wellformedness
+#print axioms Contracts.Owned.Proofs.Correctness.constructor_transferOwnership_getOwner
+#print axioms Contracts.Owned.Proofs.Correctness.transferred_owner_cannot_act
 
--- Verity/Proofs/OwnedCounter/Basic.lean
--- #print axioms Verity.Proofs.OwnedCounter.onlyOwner_reverts  -- private
--- #print axioms Verity.Proofs.OwnedCounter.guarded_reverts  -- private
-#print axioms Verity.Proofs.OwnedCounter.constructor_meets_spec
-#print axioms Verity.Proofs.OwnedCounter.constructor_sets_owner
-#print axioms Verity.Proofs.OwnedCounter.constructor_preserves_count
--- #print axioms Verity.Proofs.OwnedCounter.getCount_run  -- private
-#print axioms Verity.Proofs.OwnedCounter.getCount_meets_spec
-#print axioms Verity.Proofs.OwnedCounter.getCount_returns_count
-#print axioms Verity.Proofs.OwnedCounter.getCount_preserves_state
--- #print axioms Verity.Proofs.OwnedCounter.getOwner_run  -- private
-#print axioms Verity.Proofs.OwnedCounter.getOwner_meets_spec
-#print axioms Verity.Proofs.OwnedCounter.getOwner_returns_owner
-#print axioms Verity.Proofs.OwnedCounter.getOwner_preserves_state
-#print axioms Verity.Proofs.OwnedCounter.isOwner_correct
-#print axioms Verity.Proofs.OwnedCounter.increment_unfold
-#print axioms Verity.Proofs.OwnedCounter.increment_meets_spec_when_owner
-#print axioms Verity.Proofs.OwnedCounter.increment_adds_one_when_owner
-#print axioms Verity.Proofs.OwnedCounter.increment_reverts_when_not_owner
-#print axioms Verity.Proofs.OwnedCounter.decrement_unfold
-#print axioms Verity.Proofs.OwnedCounter.decrement_meets_spec_when_owner
-#print axioms Verity.Proofs.OwnedCounter.decrement_subtracts_one_when_owner
-#print axioms Verity.Proofs.OwnedCounter.decrement_reverts_when_not_owner
-#print axioms Verity.Proofs.OwnedCounter.transferOwnership_unfold
-#print axioms Verity.Proofs.OwnedCounter.transferOwnership_meets_spec_when_owner
-#print axioms Verity.Proofs.OwnedCounter.transferOwnership_changes_owner
-#print axioms Verity.Proofs.OwnedCounter.transferOwnership_reverts_when_not_owner
-#print axioms Verity.Proofs.OwnedCounter.increment_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.decrement_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.transferOwnership_preserves_count
-#print axioms Verity.Proofs.OwnedCounter.constructor_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.increment_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.decrement_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.constructor_increment_getCount
+-- Contracts/OwnedCounter/Proofs/Basic.lean
+-- #print axioms Contracts.OwnedCounter.Proofs.onlyOwner_reverts  -- private
+-- #print axioms Contracts.OwnedCounter.Proofs.guarded_reverts  -- private
+#print axioms Contracts.OwnedCounter.Proofs.constructor_meets_spec
+#print axioms Contracts.OwnedCounter.Proofs.constructor_sets_owner
+#print axioms Contracts.OwnedCounter.Proofs.constructor_preserves_count
+-- #print axioms Contracts.OwnedCounter.Proofs.getCount_run  -- private
+#print axioms Contracts.OwnedCounter.Proofs.getCount_meets_spec
+#print axioms Contracts.OwnedCounter.Proofs.getCount_returns_count
+#print axioms Contracts.OwnedCounter.Proofs.getCount_preserves_state
+-- #print axioms Contracts.OwnedCounter.Proofs.getOwner_run  -- private
+#print axioms Contracts.OwnedCounter.Proofs.getOwner_meets_spec
+#print axioms Contracts.OwnedCounter.Proofs.getOwner_returns_owner
+#print axioms Contracts.OwnedCounter.Proofs.getOwner_preserves_state
+#print axioms Contracts.OwnedCounter.Proofs.isOwner_correct
+#print axioms Contracts.OwnedCounter.Proofs.increment_unfold
+#print axioms Contracts.OwnedCounter.Proofs.increment_meets_spec_when_owner
+#print axioms Contracts.OwnedCounter.Proofs.increment_adds_one_when_owner
+#print axioms Contracts.OwnedCounter.Proofs.increment_reverts_when_not_owner
+#print axioms Contracts.OwnedCounter.Proofs.decrement_unfold
+#print axioms Contracts.OwnedCounter.Proofs.decrement_meets_spec_when_owner
+#print axioms Contracts.OwnedCounter.Proofs.decrement_subtracts_one_when_owner
+#print axioms Contracts.OwnedCounter.Proofs.decrement_reverts_when_not_owner
+#print axioms Contracts.OwnedCounter.Proofs.transferOwnership_unfold
+#print axioms Contracts.OwnedCounter.Proofs.transferOwnership_meets_spec_when_owner
+#print axioms Contracts.OwnedCounter.Proofs.transferOwnership_changes_owner
+#print axioms Contracts.OwnedCounter.Proofs.transferOwnership_reverts_when_not_owner
+#print axioms Contracts.OwnedCounter.Proofs.increment_preserves_owner
+#print axioms Contracts.OwnedCounter.Proofs.decrement_preserves_owner
+#print axioms Contracts.OwnedCounter.Proofs.transferOwnership_preserves_count
+#print axioms Contracts.OwnedCounter.Proofs.constructor_preserves_wellformedness
+#print axioms Contracts.OwnedCounter.Proofs.increment_preserves_wellformedness
+#print axioms Contracts.OwnedCounter.Proofs.decrement_preserves_wellformedness
+#print axioms Contracts.OwnedCounter.Proofs.constructor_increment_getCount
 
--- Verity/Proofs/OwnedCounter/Correctness.lean
--- #print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_sender_not_new_owner  -- private
-#print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_then_increment_reverts
-#print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_then_decrement_reverts
-#print axioms Verity.Proofs.OwnedCounter.Correctness.transfer_then_transfer_reverts
-#print axioms Verity.Proofs.OwnedCounter.Correctness.transferOwnership_preserves_wellformedness
-#print axioms Verity.Proofs.OwnedCounter.Correctness.increment_survives_transfer
+-- Contracts/OwnedCounter/Proofs/Correctness.lean
+-- #print axioms Contracts.OwnedCounter.Proofs.Correctness.transfer_sender_not_new_owner  -- private
+#print axioms Contracts.OwnedCounter.Proofs.Correctness.transfer_then_increment_reverts
+#print axioms Contracts.OwnedCounter.Proofs.Correctness.transfer_then_decrement_reverts
+#print axioms Contracts.OwnedCounter.Proofs.Correctness.transfer_then_transfer_reverts
+#print axioms Contracts.OwnedCounter.Proofs.Correctness.transferOwnership_preserves_wellformedness
+#print axioms Contracts.OwnedCounter.Proofs.Correctness.increment_survives_transfer
 
--- Verity/Proofs/OwnedCounter/Isolation.lean
-#print axioms Verity.Proofs.OwnedCounter.Isolation.increment_count_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.Isolation.decrement_count_preserves_owner
-#print axioms Verity.Proofs.OwnedCounter.Isolation.constructor_owner_preserves_count
-#print axioms Verity.Proofs.OwnedCounter.Isolation.transferOwnership_owner_preserves_count
-#print axioms Verity.Proofs.OwnedCounter.Isolation.constructor_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.increment_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.decrement_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.transferOwnership_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.getCount_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.getOwner_context_preserved
-#print axioms Verity.Proofs.OwnedCounter.Isolation.constructor_preserves_map_storage
-#print axioms Verity.Proofs.OwnedCounter.Isolation.increment_preserves_map_storage
-#print axioms Verity.Proofs.OwnedCounter.Isolation.decrement_preserves_map_storage
-#print axioms Verity.Proofs.OwnedCounter.Isolation.transferOwnership_preserves_map_storage
+-- Contracts/OwnedCounter/Proofs/Isolation.lean
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.increment_count_preserves_owner
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.decrement_count_preserves_owner
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.constructor_owner_preserves_count
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.transferOwnership_owner_preserves_count
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.constructor_context_preserved
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.increment_context_preserved
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.decrement_context_preserved
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.transferOwnership_context_preserved
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.getCount_context_preserved
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.getOwner_context_preserved
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.constructor_preserves_map_storage
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.increment_preserves_map_storage
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.decrement_preserves_map_storage
+#print axioms Contracts.OwnedCounter.Proofs.Isolation.transferOwnership_preserves_map_storage
 
--- Verity/Proofs/SafeCounter/Basic.lean
--- #print axioms Verity.Proofs.SafeCounter.getCount_run  -- private
-#print axioms Verity.Proofs.SafeCounter.getCount_meets_spec
-#print axioms Verity.Proofs.SafeCounter.getCount_returns_count
-#print axioms Verity.Proofs.SafeCounter.getCount_preserves_state
-#print axioms Verity.Proofs.SafeCounter.evm_add_eq_of_no_overflow
--- #print axioms Verity.Proofs.SafeCounter.increment_unfold  -- private
-#print axioms Verity.Proofs.SafeCounter.increment_meets_spec
-#print axioms Verity.Proofs.SafeCounter.increment_adds_one
-#print axioms Verity.Proofs.SafeCounter.increment_preserves_other_slots
-#print axioms Verity.Proofs.SafeCounter.increment_reverts_overflow
--- #print axioms Verity.Proofs.SafeCounter.decrement_unfold  -- private
-#print axioms Verity.Proofs.SafeCounter.decrement_meets_spec
-#print axioms Verity.Proofs.SafeCounter.decrement_subtracts_one
-#print axioms Verity.Proofs.SafeCounter.decrement_preserves_other_slots
-#print axioms Verity.Proofs.SafeCounter.decrement_reverts_underflow
-#print axioms Verity.Proofs.SafeCounter.increment_preserves_wellformedness
-#print axioms Verity.Proofs.SafeCounter.decrement_preserves_wellformedness
-#print axioms Verity.Proofs.SafeCounter.increment_preserves_bounds
-#print axioms Verity.Proofs.SafeCounter.decrement_preserves_bounds
-#print axioms Verity.Proofs.SafeCounter.increment_getCount_correct
+-- Contracts/SafeCounter/Proofs/Basic.lean
+-- #print axioms Contracts.SafeCounter.Proofs.getCount_run  -- private
+#print axioms Contracts.SafeCounter.Proofs.getCount_meets_spec
+#print axioms Contracts.SafeCounter.Proofs.getCount_returns_count
+#print axioms Contracts.SafeCounter.Proofs.getCount_preserves_state
+#print axioms Contracts.SafeCounter.Proofs.evm_add_eq_of_no_overflow
+-- #print axioms Contracts.SafeCounter.Proofs.increment_unfold  -- private
+#print axioms Contracts.SafeCounter.Proofs.increment_meets_spec
+#print axioms Contracts.SafeCounter.Proofs.increment_adds_one
+#print axioms Contracts.SafeCounter.Proofs.increment_preserves_other_slots
+#print axioms Contracts.SafeCounter.Proofs.increment_reverts_overflow
+-- #print axioms Contracts.SafeCounter.Proofs.decrement_unfold  -- private
+#print axioms Contracts.SafeCounter.Proofs.decrement_meets_spec
+#print axioms Contracts.SafeCounter.Proofs.decrement_subtracts_one
+#print axioms Contracts.SafeCounter.Proofs.decrement_preserves_other_slots
+#print axioms Contracts.SafeCounter.Proofs.decrement_reverts_underflow
+#print axioms Contracts.SafeCounter.Proofs.increment_preserves_wellformedness
+#print axioms Contracts.SafeCounter.Proofs.decrement_preserves_wellformedness
+#print axioms Contracts.SafeCounter.Proofs.increment_preserves_bounds
+#print axioms Contracts.SafeCounter.Proofs.decrement_preserves_bounds
+#print axioms Contracts.SafeCounter.Proofs.increment_getCount_correct
 
--- Verity/Proofs/SafeCounter/Correctness.lean
-#print axioms Verity.Proofs.SafeCounter.Correctness.increment_preserves_context
-#print axioms Verity.Proofs.SafeCounter.Correctness.decrement_preserves_context
-#print axioms Verity.Proofs.SafeCounter.Correctness.increment_preserves_storage_isolated
-#print axioms Verity.Proofs.SafeCounter.Correctness.decrement_preserves_storage_isolated
-#print axioms Verity.Proofs.SafeCounter.Correctness.getCount_preserves_context
-#print axioms Verity.Proofs.SafeCounter.Correctness.getCount_preserves_wellformedness
-#print axioms Verity.Proofs.SafeCounter.Correctness.increment_decrement_cancel
-#print axioms Verity.Proofs.SafeCounter.Correctness.decrement_getCount_correct
+-- Contracts/SafeCounter/Proofs/Correctness.lean
+#print axioms Contracts.SafeCounter.Proofs.Correctness.increment_preserves_context
+#print axioms Contracts.SafeCounter.Proofs.Correctness.decrement_preserves_context
+#print axioms Contracts.SafeCounter.Proofs.Correctness.increment_preserves_storage_isolated
+#print axioms Contracts.SafeCounter.Proofs.Correctness.decrement_preserves_storage_isolated
+#print axioms Contracts.SafeCounter.Proofs.Correctness.getCount_preserves_context
+#print axioms Contracts.SafeCounter.Proofs.Correctness.getCount_preserves_wellformedness
+#print axioms Contracts.SafeCounter.Proofs.Correctness.increment_decrement_cancel
+#print axioms Contracts.SafeCounter.Proofs.Correctness.decrement_getCount_correct
 
--- Verity/Proofs/SimpleStorage/Basic.lean
-#print axioms Verity.Proofs.SimpleStorage.setStorage_updates_slot
-#print axioms Verity.Proofs.SimpleStorage.getStorage_reads_slot
-#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_other_slots
-#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_sender
-#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_address
-#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_addr_storage
-#print axioms Verity.Proofs.SimpleStorage.setStorage_preserves_map_storage
-#print axioms Verity.Proofs.SimpleStorage.store_meets_spec
-#print axioms Verity.Proofs.SimpleStorage.retrieve_meets_spec
-#print axioms Verity.Proofs.SimpleStorage.store_retrieve_correct
-#print axioms Verity.Proofs.SimpleStorage.store_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleStorage.retrieve_preserves_state
-#print axioms Verity.Proofs.SimpleStorage.retrieve_twice_idempotent
+-- Contracts/SimpleStorage/Proofs/Basic.lean
+#print axioms Contracts.SimpleStorage.Proofs.setStorage_updates_slot
+#print axioms Contracts.SimpleStorage.Proofs.getStorage_reads_slot
+#print axioms Contracts.SimpleStorage.Proofs.setStorage_preserves_other_slots
+#print axioms Contracts.SimpleStorage.Proofs.setStorage_preserves_sender
+#print axioms Contracts.SimpleStorage.Proofs.setStorage_preserves_address
+#print axioms Contracts.SimpleStorage.Proofs.setStorage_preserves_addr_storage
+#print axioms Contracts.SimpleStorage.Proofs.setStorage_preserves_map_storage
+#print axioms Contracts.SimpleStorage.Proofs.store_meets_spec
+#print axioms Contracts.SimpleStorage.Proofs.retrieve_meets_spec
+#print axioms Contracts.SimpleStorage.Proofs.store_retrieve_correct
+#print axioms Contracts.SimpleStorage.Proofs.store_preserves_wellformedness
+#print axioms Contracts.SimpleStorage.Proofs.retrieve_preserves_state
+#print axioms Contracts.SimpleStorage.Proofs.retrieve_twice_idempotent
 
--- Verity/Proofs/SimpleStorage/Correctness.lean
-#print axioms Verity.Proofs.SimpleStorage.Correctness.store_retrieve_roundtrip_holds
-#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_storage_isolated
-#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_addr_storage
-#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_map_storage
-#print axioms Verity.Proofs.SimpleStorage.Correctness.store_preserves_context
-#print axioms Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_context
-#print axioms Verity.Proofs.SimpleStorage.Correctness.retrieve_preserves_wellformedness
+-- Contracts/SimpleStorage/Proofs/Correctness.lean
+#print axioms Contracts.SimpleStorage.Proofs.Correctness.store_retrieve_roundtrip_holds
+#print axioms Contracts.SimpleStorage.Proofs.Correctness.store_preserves_storage_isolated
+#print axioms Contracts.SimpleStorage.Proofs.Correctness.store_preserves_addr_storage
+#print axioms Contracts.SimpleStorage.Proofs.Correctness.store_preserves_map_storage
+#print axioms Contracts.SimpleStorage.Proofs.Correctness.store_preserves_context
+#print axioms Contracts.SimpleStorage.Proofs.Correctness.retrieve_preserves_context
+#print axioms Contracts.SimpleStorage.Proofs.Correctness.retrieve_preserves_wellformedness
 
--- Verity/Proofs/SimpleToken/Basic.lean
-#print axioms Verity.Proofs.SimpleToken.setStorageAddr_updates_owner
-#print axioms Verity.Proofs.SimpleToken.setStorage_updates_supply
-#print axioms Verity.Proofs.SimpleToken.setMapping_updates_balance
-#print axioms Verity.Proofs.SimpleToken.getMapping_reads_balance
-#print axioms Verity.Proofs.SimpleToken.getStorage_reads_supply
-#print axioms Verity.Proofs.SimpleToken.getStorageAddr_reads_owner
-#print axioms Verity.Proofs.SimpleToken.setMapping_preserves_other_addresses
-#print axioms Verity.Proofs.SimpleToken.constructor_meets_spec
-#print axioms Verity.Proofs.SimpleToken.constructor_sets_owner
-#print axioms Verity.Proofs.SimpleToken.constructor_sets_supply_zero
-#print axioms Verity.Proofs.SimpleToken.isOwner_true_when_owner
--- #print axioms Verity.Proofs.SimpleToken.mint_unfold  -- private
-#print axioms Verity.Proofs.SimpleToken.mint_meets_spec_when_owner
-#print axioms Verity.Proofs.SimpleToken.mint_increases_balance
-#print axioms Verity.Proofs.SimpleToken.mint_increases_supply
-#print axioms Verity.Proofs.SimpleToken.mint_reverts_balance_overflow
-#print axioms Verity.Proofs.SimpleToken.mint_reverts_supply_overflow
--- #print axioms Verity.Proofs.SimpleToken.transfer_unfold_self  -- private
--- #print axioms Verity.Proofs.SimpleToken.transfer_unfold_other  -- private
-#print axioms Verity.Proofs.SimpleToken.transfer_meets_spec_when_sufficient
-#print axioms Verity.Proofs.SimpleToken.transfer_preserves_supply_when_sufficient
-#print axioms Verity.Proofs.SimpleToken.transfer_decreases_sender_balance
-#print axioms Verity.Proofs.SimpleToken.transfer_increases_recipient_balance
-#print axioms Verity.Proofs.SimpleToken.transfer_self_preserves_balance
-#print axioms Verity.Proofs.SimpleToken.transfer_reverts_recipient_overflow
-#print axioms Verity.Proofs.SimpleToken.balanceOf_meets_spec
-#print axioms Verity.Proofs.SimpleToken.balanceOf_returns_balance
-#print axioms Verity.Proofs.SimpleToken.balanceOf_preserves_state
-#print axioms Verity.Proofs.SimpleToken.getTotalSupply_meets_spec
-#print axioms Verity.Proofs.SimpleToken.getTotalSupply_returns_supply
-#print axioms Verity.Proofs.SimpleToken.getTotalSupply_preserves_state
-#print axioms Verity.Proofs.SimpleToken.getOwner_meets_spec
-#print axioms Verity.Proofs.SimpleToken.getOwner_returns_owner
-#print axioms Verity.Proofs.SimpleToken.getOwner_preserves_state
-#print axioms Verity.Proofs.SimpleToken.constructor_getTotalSupply_correct
-#print axioms Verity.Proofs.SimpleToken.constructor_getOwner_correct
-#print axioms Verity.Proofs.SimpleToken.constructor_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.balanceOf_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.getTotalSupply_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.getOwner_preserves_wellformedness
+-- Contracts/SimpleToken/Proofs/Basic.lean
+#print axioms Contracts.SimpleToken.Proofs.setStorageAddr_updates_owner
+#print axioms Contracts.SimpleToken.Proofs.setStorage_updates_supply
+#print axioms Contracts.SimpleToken.Proofs.setMapping_updates_balance
+#print axioms Contracts.SimpleToken.Proofs.getMapping_reads_balance
+#print axioms Contracts.SimpleToken.Proofs.getStorage_reads_supply
+#print axioms Contracts.SimpleToken.Proofs.getStorageAddr_reads_owner
+#print axioms Contracts.SimpleToken.Proofs.setMapping_preserves_other_addresses
+#print axioms Contracts.SimpleToken.Proofs.constructor_meets_spec
+#print axioms Contracts.SimpleToken.Proofs.constructor_sets_owner
+#print axioms Contracts.SimpleToken.Proofs.constructor_sets_supply_zero
+#print axioms Contracts.SimpleToken.Proofs.isOwner_true_when_owner
+-- #print axioms Contracts.SimpleToken.Proofs.mint_unfold  -- private
+#print axioms Contracts.SimpleToken.Proofs.mint_meets_spec_when_owner
+#print axioms Contracts.SimpleToken.Proofs.mint_increases_balance
+#print axioms Contracts.SimpleToken.Proofs.mint_increases_supply
+#print axioms Contracts.SimpleToken.Proofs.mint_reverts_balance_overflow
+#print axioms Contracts.SimpleToken.Proofs.mint_reverts_supply_overflow
+-- #print axioms Contracts.SimpleToken.Proofs.transfer_unfold_self  -- private
+-- #print axioms Contracts.SimpleToken.Proofs.transfer_unfold_other  -- private
+#print axioms Contracts.SimpleToken.Proofs.transfer_meets_spec_when_sufficient
+#print axioms Contracts.SimpleToken.Proofs.transfer_preserves_supply_when_sufficient
+#print axioms Contracts.SimpleToken.Proofs.transfer_decreases_sender_balance
+#print axioms Contracts.SimpleToken.Proofs.transfer_increases_recipient_balance
+#print axioms Contracts.SimpleToken.Proofs.transfer_self_preserves_balance
+#print axioms Contracts.SimpleToken.Proofs.transfer_reverts_recipient_overflow
+#print axioms Contracts.SimpleToken.Proofs.balanceOf_meets_spec
+#print axioms Contracts.SimpleToken.Proofs.balanceOf_returns_balance
+#print axioms Contracts.SimpleToken.Proofs.balanceOf_preserves_state
+#print axioms Contracts.SimpleToken.Proofs.getTotalSupply_meets_spec
+#print axioms Contracts.SimpleToken.Proofs.getTotalSupply_returns_supply
+#print axioms Contracts.SimpleToken.Proofs.getTotalSupply_preserves_state
+#print axioms Contracts.SimpleToken.Proofs.getOwner_meets_spec
+#print axioms Contracts.SimpleToken.Proofs.getOwner_returns_owner
+#print axioms Contracts.SimpleToken.Proofs.getOwner_preserves_state
+#print axioms Contracts.SimpleToken.Proofs.constructor_getTotalSupply_correct
+#print axioms Contracts.SimpleToken.Proofs.constructor_getOwner_correct
+#print axioms Contracts.SimpleToken.Proofs.constructor_preserves_wellformedness
+#print axioms Contracts.SimpleToken.Proofs.balanceOf_preserves_wellformedness
+#print axioms Contracts.SimpleToken.Proofs.getTotalSupply_preserves_wellformedness
+#print axioms Contracts.SimpleToken.Proofs.getOwner_preserves_wellformedness
 
--- Verity/Proofs/SimpleToken/Correctness.lean
-#print axioms Verity.Proofs.SimpleToken.Correctness.mint_reverts_when_not_owner
-#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_reverts_insufficient_balance
-#print axioms Verity.Proofs.SimpleToken.Correctness.mint_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_preserves_wellformedness
-#print axioms Verity.Proofs.SimpleToken.Correctness.mint_preserves_owner
-#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_preserves_owner
-#print axioms Verity.Proofs.SimpleToken.Correctness.mint_then_balanceOf_correct
-#print axioms Verity.Proofs.SimpleToken.Correctness.mint_then_getTotalSupply_correct
-#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_then_balanceOf_sender_correct
-#print axioms Verity.Proofs.SimpleToken.Correctness.transfer_then_balanceOf_recipient_correct
+-- Contracts/SimpleToken/Proofs/Correctness.lean
+#print axioms Contracts.SimpleToken.Proofs.Correctness.mint_reverts_when_not_owner
+#print axioms Contracts.SimpleToken.Proofs.Correctness.transfer_reverts_insufficient_balance
+#print axioms Contracts.SimpleToken.Proofs.Correctness.mint_preserves_wellformedness
+#print axioms Contracts.SimpleToken.Proofs.Correctness.transfer_preserves_wellformedness
+#print axioms Contracts.SimpleToken.Proofs.Correctness.mint_preserves_owner
+#print axioms Contracts.SimpleToken.Proofs.Correctness.transfer_preserves_owner
+#print axioms Contracts.SimpleToken.Proofs.Correctness.mint_then_balanceOf_correct
+#print axioms Contracts.SimpleToken.Proofs.Correctness.mint_then_getTotalSupply_correct
+#print axioms Contracts.SimpleToken.Proofs.Correctness.transfer_then_balanceOf_sender_correct
+#print axioms Contracts.SimpleToken.Proofs.Correctness.transfer_then_balanceOf_recipient_correct
 
--- Verity/Proofs/SimpleToken/Isolation.lean
--- #print axioms Verity.Proofs.SimpleToken.Isolation.constructor_isolation  -- private
-#print axioms Verity.Proofs.SimpleToken.Isolation.constructor_supply_storage_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.constructor_balance_mapping_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.constructor_owner_addr_isolated
--- #print axioms Verity.Proofs.SimpleToken.Isolation.mint_isolation  -- private
-#print axioms Verity.Proofs.SimpleToken.Isolation.mint_supply_storage_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.mint_balance_mapping_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.mint_owner_addr_isolated
--- #print axioms Verity.Proofs.SimpleToken.Isolation.transfer_isolation  -- private
-#print axioms Verity.Proofs.SimpleToken.Isolation.transfer_supply_storage_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.transfer_balance_mapping_isolated
-#print axioms Verity.Proofs.SimpleToken.Isolation.transfer_owner_addr_isolated
+-- Contracts/SimpleToken/Proofs/Isolation.lean
+-- #print axioms Contracts.SimpleToken.Proofs.Isolation.constructor_isolation  -- private
+#print axioms Contracts.SimpleToken.Proofs.Isolation.constructor_supply_storage_isolated
+#print axioms Contracts.SimpleToken.Proofs.Isolation.constructor_balance_mapping_isolated
+#print axioms Contracts.SimpleToken.Proofs.Isolation.constructor_owner_addr_isolated
+-- #print axioms Contracts.SimpleToken.Proofs.Isolation.mint_isolation  -- private
+#print axioms Contracts.SimpleToken.Proofs.Isolation.mint_supply_storage_isolated
+#print axioms Contracts.SimpleToken.Proofs.Isolation.mint_balance_mapping_isolated
+#print axioms Contracts.SimpleToken.Proofs.Isolation.mint_owner_addr_isolated
+-- #print axioms Contracts.SimpleToken.Proofs.Isolation.transfer_isolation  -- private
+#print axioms Contracts.SimpleToken.Proofs.Isolation.transfer_supply_storage_isolated
+#print axioms Contracts.SimpleToken.Proofs.Isolation.transfer_balance_mapping_isolated
+#print axioms Contracts.SimpleToken.Proofs.Isolation.transfer_owner_addr_isolated
 
--- Verity/Proofs/SimpleToken/Supply.lean
--- #print axioms Verity.Proofs.SimpleToken.Supply.map_sum_zero_of_all_zero  -- private
-#print axioms Verity.Proofs.SimpleToken.Supply.constructor_establishes_supply_bounds
-#print axioms Verity.Proofs.SimpleToken.Supply.mint_sum_equation
-#print axioms Verity.Proofs.SimpleToken.Supply.mint_sum_singleton_to
-#print axioms Verity.Proofs.SimpleToken.Supply.transfer_sum_equation
-#print axioms Verity.Proofs.SimpleToken.Supply.transfer_sum_preserved_unique
+-- Contracts/SimpleToken/Proofs/Supply.lean
+-- #print axioms Contracts.SimpleToken.Proofs.Supply.map_sum_zero_of_all_zero  -- private
+#print axioms Contracts.SimpleToken.Proofs.Supply.constructor_establishes_supply_bounds
+#print axioms Contracts.SimpleToken.Proofs.Supply.mint_sum_equation
+#print axioms Contracts.SimpleToken.Proofs.Supply.mint_sum_singleton_to
+#print axioms Contracts.SimpleToken.Proofs.Supply.transfer_sum_equation
+#print axioms Contracts.SimpleToken.Proofs.Supply.transfer_sum_preserved_unique
 
 -- Verity/Proofs/Stdlib/Automation.lean
 #print axioms Verity.Proofs.Stdlib.Automation.findIdx_owner_ownedCounter

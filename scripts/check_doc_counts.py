@@ -104,9 +104,9 @@ def get_sorry_count() -> int:
 
 
 def get_contract_count() -> int:
-    """Count example contracts in Verity/Examples/."""
-    examples_dir = ROOT / "Verity" / "Examples"
-    return len(list(examples_dir.glob("*.lean")))
+    """Count example contracts in Contracts/."""
+    contracts_dir = ROOT / "Contracts"
+    return len([d for d in contracts_dir.iterdir() if d.is_dir()])
 
 
 def get_diff_test_total() -> int:
@@ -627,7 +627,7 @@ def main(argv: list[str] | None = None) -> None:
         solidity_contract_checks.append((
             f"solidity README {contract} count",
             re.compile(
-                rf"`Verity/Examples/{re.escape(contract)}\.lean`\s*\|\s*(\d+) theorems"
+                rf"`Contracts/{re.escape(contract)}/Contract\.lean`\s*\|\s*(\d+) theorems"
             ),
             str(count),
         ))

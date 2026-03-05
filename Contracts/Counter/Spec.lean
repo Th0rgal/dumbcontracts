@@ -1,13 +1,52 @@
-import Verity.Specs.Counter.Spec
+/-
+  Formal specifications for Counter operations.
+-/
+
+import Verity.Specs.Common
+import Verity.EVM.Uint256
+import Contracts.MacroContracts.Core
 
 namespace Contracts.Counter.Spec
 
-abbrev increment_spec := Verity.Specs.Counter.increment_spec
-abbrev decrement_spec := Verity.Specs.Counter.decrement_spec
-abbrev getCount_spec := Verity.Specs.Counter.getCount_spec
-abbrev increment_getCount_spec := Verity.Specs.Counter.increment_getCount_spec
-abbrev decrement_getCount_spec := Verity.Specs.Counter.decrement_getCount_spec
-abbrev increment_decrement_cancel := Verity.Specs.Counter.increment_decrement_cancel
-abbrev two_increments_spec := Verity.Specs.Counter.two_increments_spec
+open Verity
+open Verity.Specs
+open Contracts.MacroContracts.Counter
+open Verity.EVM.Uint256
+
+/-! ## Operation Specifications -/
+
+/-- Increment: increases count by 1 -/
+def increment_spec (s s' : ContractState) : Prop :=
+  s'.storage 0 = add (s.storage 0) 1 ∧
+  storageUnchangedExcept 0 s s' ∧
+  sameAddrMapContext s s'
+
+/-- Decrement: decreases count by 1 -/
+def decrement_spec (s s' : ContractState) : Prop :=
+  s'.storage 0 = sub (s.storage 0) 1 ∧
+  storageUnchangedExcept 0 s s' ∧
+  sameAddrMapContext s s'
+
+/-- getCount: returns the current count -/
+def getCount_spec (result : Uint256) (s : ContractState) : Prop :=
+  result = s.storage 0
+
+/-! ## Combined Specifications -/
+
+/-- Increment followed by getCount returns the incremented value -/
+def increment_getCount_spec (s : ContractState) (result : Uint256) : Prop :=
+  result = add (s.storage 0) 1
+
+/-- Decrement followed by getCount returns the decremented value -/
+def decrement_getCount_spec (s : ContractState) (result : Uint256) : Prop :=
+  result = sub (s.storage 0) 1
+
+/-- Increment then decrement returns to original value -/
+def increment_decrement_cancel (s s' : ContractState) : Prop :=
+  s'.storage 0 = s.storage 0
+
+/-- Two increments add 2 to the count -/
+def two_increments_spec (s s' : ContractState) : Prop :=
+  s'.storage 0 = add (add (s.storage 0) 1) 1
 
 end Contracts.Counter.Spec

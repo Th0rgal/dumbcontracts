@@ -1,16 +1,21 @@
-import Verity.Examples.OwnedCounter
+import Contracts.MacroContracts.Core
 
-namespace Contracts.OwnedCounter.Contract
+namespace Contracts.OwnedCounter
 
-abbrev owner := Verity.Examples.OwnedCounter.owner
-abbrev count := Verity.Examples.OwnedCounter.count
-abbrev increment := Verity.Examples.OwnedCounter.increment
-abbrev decrement := Verity.Examples.OwnedCounter.decrement
-abbrev getCount := Verity.Examples.OwnedCounter.getCount
-abbrev getOwner := Verity.Examples.OwnedCounter.getOwner
-abbrev transferOwnership := Verity.Examples.OwnedCounter.transferOwnership
-abbrev isOwner := Verity.Examples.OwnedCounter.isOwner
-abbrev onlyOwner := Verity.Examples.OwnedCounter.onlyOwner
-abbrev «constructor» := Verity.Examples.OwnedCounter.constructor
+open Verity
 
-end Contracts.OwnedCounter.Contract
+def owner : StorageSlot Address := ⟨0⟩
+def count : StorageSlot Uint256 := ⟨1⟩
+
+abbrev increment := Contracts.MacroContracts.OwnedCounter.increment
+abbrev decrement := Contracts.MacroContracts.OwnedCounter.decrement
+abbrev getCount := Contracts.MacroContracts.OwnedCounter.getCount
+abbrev getOwner := Contracts.MacroContracts.OwnedCounter.getOwner
+abbrev transferOwnership := Contracts.MacroContracts.OwnedCounter.transferOwnership
+abbrev isOwner := Contracts.MacroContracts.OwnedCounter.isOwner
+abbrev onlyOwner := Contracts.MacroContracts.OwnedCounter.onlyOwner
+
+def «constructor» (initialOwner : Address) : Contract Unit := do
+  setStorageAddr owner initialOwner
+
+end Contracts.OwnedCounter

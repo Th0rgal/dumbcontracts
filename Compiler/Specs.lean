@@ -53,7 +53,7 @@ def requireOwner : Stmt :=
 -/
 
 /-- Legacy compatibility alias. Canonical source is macro-generated. -/
-def simpleStorageSpec : CompilationModel := Verity.Examples.MacroContracts.SimpleStorage.spec
+def simpleStorageSpec : CompilationModel := Contracts.MacroContracts.SimpleStorage.spec
 
 
 /-!
@@ -312,7 +312,7 @@ def simpleTokenSpec : CompilationModel := {
 ## CryptoHash Specification (External Library Linking Demo)
 
 Demonstrates `Expr.externalCall` for linking external Yul libraries at
-compile time.  The EDSL placeholder in `Verity/Examples/CryptoHash.lean`
+compile time.  The EDSL placeholder in `Contracts/CryptoHash/Contract.lean`
 uses simple addition; the CompilationModel below calls the real library
 functions (`PoseidonT3_hash`, `PoseidonT4_hash`) which are injected by
 the Linker when you pass `--link examples/external-libs/PoseidonT3.yul`.
@@ -424,7 +424,7 @@ Yul libraries (PoseidonT3/T4). Use `lake exe verity-compiler --link ...` to
 compile it separately.
 
 **Adding a new contract (canonical path)**: add a `verity_contract` declaration
-in `Verity/Examples/MacroContracts.lean`, then add the generated `<Name>.spec`
+in `Contracts/MacroContracts/`, then add the generated `<Name>.spec`
 to `allSpecs` below.
 
 Manual `Compiler.Specs.*Spec` definitions remain only for legacy proof migration
@@ -433,21 +433,21 @@ Selectors are still auto-computed by `computeSelectors`.
 -/
 
 /-- ERC20 spec alias for test/proof convenience. Uses the macro-generated spec. -/
-def erc20Spec : CompilationModel := Verity.Examples.MacroContracts.ERC20.spec
+def erc20Spec : CompilationModel := Contracts.MacroContracts.ERC20.spec
 
 /-- ERC721 spec alias for test/proof convenience. Uses the macro-generated spec. -/
-def erc721Spec : CompilationModel := Verity.Examples.MacroContracts.ERC721.spec
+def erc721Spec : CompilationModel := Contracts.MacroContracts.ERC721.spec
 
 def allSpecs : List CompilationModel := [
   -- Authoritative compiler input now comes from macro-generated contracts.
-  Verity.Examples.MacroContracts.SimpleStorage.spec,
-  Verity.Examples.MacroContracts.Counter.spec,
-  Verity.Examples.MacroContracts.Owned.spec,
-  Verity.Examples.MacroContracts.Ledger.spec,
-  Verity.Examples.MacroContracts.OwnedCounter.spec,
-  Verity.Examples.MacroContracts.SimpleToken.spec,
-  Verity.Examples.MacroContracts.SafeCounter.spec,
-  Verity.Examples.MacroContracts.ERC20.spec
+  Contracts.MacroContracts.SimpleStorage.spec,
+  Contracts.MacroContracts.Counter.spec,
+  Contracts.MacroContracts.Owned.spec,
+  Contracts.MacroContracts.Ledger.spec,
+  Contracts.MacroContracts.OwnedCounter.spec,
+  Contracts.MacroContracts.SimpleToken.spec,
+  Contracts.MacroContracts.SafeCounter.spec,
+  Contracts.MacroContracts.ERC20.spec
 ]
 
 end Compiler.Specs

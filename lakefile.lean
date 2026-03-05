@@ -19,7 +19,7 @@ lean_lib «Verity» where
     .submodules `Verity.Proofs.Stdlib
   ]
 
-lean_lib «Examples» where
+lean_lib «Contracts» where
   globs := #[
     .one `Contracts,
     .andSubmodules `Contracts.MacroContracts,
@@ -27,26 +27,13 @@ lean_lib «Examples» where
     .andSubmodules `Contracts.SimpleStorage,
     .andSubmodules `Contracts.Owned,
     .andSubmodules `Contracts.OwnedCounter,
-    .one `Verity.All,
-    .submodules `Verity.Examples,
-    .submodules `Verity.Specs.Counter,
-    .submodules `Verity.Specs.ERC20,
-    .submodules `Verity.Specs.ERC721,
-    .submodules `Verity.Specs.Ledger,
-    .submodules `Verity.Specs.Owned,
-    .submodules `Verity.Specs.OwnedCounter,
-    .submodules `Verity.Specs.SafeCounter,
-    .submodules `Verity.Specs.SimpleStorage,
-    .submodules `Verity.Specs.SimpleToken,
-    .submodules `Verity.Proofs.Counter,
-    .submodules `Verity.Proofs.ERC20,
-    .submodules `Verity.Proofs.ERC721,
-    .submodules `Verity.Proofs.Ledger,
-    .submodules `Verity.Proofs.Owned,
-    .submodules `Verity.Proofs.OwnedCounter,
-    .submodules `Verity.Proofs.SafeCounter,
-    .submodules `Verity.Proofs.SimpleStorage,
-    .submodules `Verity.Proofs.SimpleToken
+    .andSubmodules `Contracts.SafeCounter,
+    .andSubmodules `Contracts.Ledger,
+    .andSubmodules `Contracts.ERC20,
+    .andSubmodules `Contracts.ERC721,
+    .andSubmodules `Contracts.SimpleToken,
+    .andSubmodules `Contracts.CryptoHash,
+    .andSubmodules `Contracts.ReentrancyExample
   ]
 
 lean_lib «Compiler» where

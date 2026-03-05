@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate that all contracts have the expected file structure.
 
-For each contract found in Verity/Examples/, verify that the
+For each contract found in Contracts/, verify that the
 corresponding Spec, Invariants, and Proof files exist. This catches
 incomplete contract additions early.
 
@@ -36,24 +36,25 @@ EXCLUDED_FROM_DIFFERENTIAL_TESTS = {
 
 # Expected files for each contract (relative to ROOT)
 EXPECTED_STRUCTURE = [
-    "Verity/Specs/{name}/Spec.lean",
-    "Verity/Specs/{name}/Invariants.lean",
-    "Verity/Specs/{name}/Proofs.lean",
-    "Verity/Proofs/{name}/Basic.lean",
-    "Verity/Proofs/{name}/Correctness.lean",
+    "Contracts/{name}/Contract.lean",
+    "Contracts/{name}/Spec.lean",
+    "Contracts/{name}/Invariants.lean",
+    "Contracts/{name}/Proofs.lean",
+    "Contracts/{name}/Proofs/Basic.lean",
+    "Contracts/{name}/Proofs/Correctness.lean",
 ]
 
 
 def find_contracts() -> list[str]:
-    """Find all contract names from Verity/Examples/."""
-    examples_dir = ROOT / "Verity" / "Examples"
-    if not examples_dir.is_dir():
-        die(f"Examples directory not found: {examples_dir}")
+    """Find all contract names from Contracts/."""
+    contracts_dir = ROOT / "Contracts"
+    if not contracts_dir.is_dir():
+        die(f"Contracts directory not found: {contracts_dir}")
 
     contracts = []
-    for f in sorted(examples_dir.iterdir()):
-        if f.suffix == ".lean" and f.stem not in EXCLUDED_CONTRACTS:
-            contracts.append(f.stem)
+    for f in sorted(contracts_dir.iterdir()):
+        if f.is_dir() and f.name not in EXCLUDED_CONTRACTS:
+            contracts.append(f.name)
     return contracts
 
 
@@ -71,7 +72,7 @@ def check_all_lean_imports(contracts: list[str]) -> list[str]:
     """Check that All.lean imports all required modules for each contract.
 
     For each contract, verifies imports corresponding to EXPECTED_STRUCTURE
-    (Spec, Invariants, Proofs, Basic, Correctness).
+    (Contract, Spec, Invariants, Proofs, Proofs/Basic, Proofs/Correctness).
     """
     all_lean = ROOT / "Verity" / "All.lean"
     if not all_lean.exists():
@@ -106,9 +107,9 @@ def check_all_lean_imports_exist() -> list[str]:
     for line in all_lean.read_text().splitlines():
         stripped = line.strip()
         # Skip comments and blank lines
-        if not stripped.startswith("import Verity."):
+        if not stripped.startswith("import Verity.") and not stripped.startswith("import Contracts."):
             continue
-        # "import Verity.Core" → "Verity/Core.lean"
+        # "import Verity.Core" → "Verity/Core.lean", "import Contracts.Counter.Contract" → "Contracts/Counter/Contract.lean"
         module = stripped.removeprefix("import ").split()[0]
         file_path = ROOT / (module.replace(".", "/") + ".lean")
         if not file_path.exists():
@@ -132,7 +133,7 @@ def check_differential_tests(all_examples: list[str]) -> list[str]:
 def main() -> None:
     contracts = find_contracts()
     if not contracts:
-        die("No contracts found in Verity/Examples/")
+        die("No contracts found in Contracts/")
 
     print(f"Checking {len(contracts)} contracts for complete file structure...")
     print(f"  (Excluding: {', '.join(sorted(EXCLUDED_CONTRACTS))})")
@@ -152,8 +153,8 @@ def main() -> None:
 
     # Check property test files
     all_examples = [
-        f.stem for f in sorted((ROOT / "Verity" / "Examples").iterdir())
-        if f.suffix == ".lean"
+        f.name for f in sorted((ROOT / "Contracts").iterdir())
+        if f.is_dir()
     ]
     for name in all_examples:
         if name in EXCLUDED_FROM_PROPERTY_TESTS:

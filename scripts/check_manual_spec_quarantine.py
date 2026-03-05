@@ -3,7 +3,7 @@
 
 Issue #999 keeps legacy/manual artifacts available for compatibility and proof
 migration, but canonical compile/lowering/gas/CLI paths must not depend on
-manual `*Spec` artifacts or legacy hand-written `Verity.Examples.*` contracts
+manual `*Spec` artifacts or legacy hand-written `Contracts.<Name>.Contract` contracts
 (except explicit compatibility allowlist entries).
 """
 
@@ -43,10 +43,10 @@ LEGACY_EXAMPLE_MODULES = {
 }
 
 LEGACY_IMPORT_RE = re.compile(
-    r"\bimport\s+Verity\.Examples\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
+    r"\bimport\s+Contracts\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\.Contract\b"
 )
 LEGACY_QUALIFIED_RE = re.compile(
-    r"\bVerity\.Examples\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\."
+    r"\bContracts\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\."
 )
 
 
@@ -60,11 +60,11 @@ def find_disallowed_references(content: str) -> list[str]:
     for match in LEGACY_IMPORT_RE.finditer(content):
         name = match.group("name")
         if name in LEGACY_EXAMPLE_MODULES:
-            disallowed.append(f"import Verity.Examples.{name}")
+            disallowed.append(f"import Contracts.{name}.Contract")
     for match in LEGACY_QUALIFIED_RE.finditer(content):
         name = match.group("name")
         if name in LEGACY_EXAMPLE_MODULES:
-            disallowed.append(f"Verity.Examples.{name}.*")
+            disallowed.append(f"Contracts.{name}.*")
     return disallowed
 
 
@@ -88,7 +88,7 @@ def main() -> int:
             print(f"- {err}", file=sys.stderr)
         print(
             "\nCanonical compiler paths must not reference manual Compiler.Specs.*Spec symbols "
-            "or legacy Verity.Examples contract modules. Route canonical flows through generated "
+            "or legacy Contracts.<Name>.Contract modules. Route canonical flows through generated "
             "EDSL contracts and Specs.allSpecs.",
             file=sys.stderr,
         )

@@ -91,7 +91,7 @@ PROOF_DIRS = [
     ROOT / "Compiler" / "Proofs",
     ROOT / "Verity" / "Proofs",
     ROOT / "Verity" / "Core",
-    ROOT / "Verity" / "Examples",
+    ROOT / "Contracts",
 ]
 
 

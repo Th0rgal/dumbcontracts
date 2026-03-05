@@ -144,6 +144,11 @@ def parse_contracts(text: str, source: Path) -> dict[str, ContractDecl]:
     return contracts
 
 
+def discover_macro_contract_sources(macro_dir: Path) -> list[Path]:
+    """Return all Lean macro-contract sources under `macro_dir` recursively."""
+    return sorted(macro_dir.rglob("*.lean"))
+
+
 def collect_contracts(paths: list[Path]) -> dict[str, ContractDecl]:
     all_contracts: dict[str, ContractDecl] = {}
     for path in paths:
@@ -373,7 +378,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help=(
             "Lean source path to scan (relative to repo root). "
-            "Repeat flag for multiple files. Defaults to Contracts/MacroContracts/*.lean."
+            "Repeat flag for multiple files. Defaults to Contracts/MacroContracts/**/*.lean."
         ),
     )
     parser.add_argument(
@@ -401,10 +406,9 @@ def main() -> None:
         paths = [ROOT / p for p in args.source]
     else:
         macro_dir = ROOT / "Contracts" / "MacroContracts"
-        paths = sorted(macro_dir.glob("*.lean"))
+        paths = discover_macro_contract_sources(macro_dir)
         if not paths:
             raise SystemExit(f"no Lean files found in {macro_dir}")
-
 
     missing_sources = [str(p) for p in paths if not p.exists()]
     if missing_sources:

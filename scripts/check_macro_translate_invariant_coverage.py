@@ -14,7 +14,9 @@ DEFAULT_CONTRACTS_DIR = ROOT / "Contracts" / "MacroContracts"
 DEFAULT_INVARIANT_FILE = ROOT / "Compiler" / "MacroTranslateInvariantTest.lean"
 
 CONTRACT_RE = re.compile(r"\bverity_contract\s+([A-Za-z_][A-Za-z0-9_]*)\s+where\b")
-SUITE_ENTRY_RE = re.compile(r"\bContracts\.MacroContracts\.([A-Za-z_][A-Za-z0-9_]*)\.spec\b")
+SUITE_ENTRY_RE = re.compile(
+    r"\bContracts\.MacroContracts(?:\.[A-Za-z_][A-Za-z0-9_]*)*\.([A-Za-z_][A-Za-z0-9_]*)\.spec\b"
+)
 
 
 def _collect_contracts(sources: list[Path]) -> set[str]:

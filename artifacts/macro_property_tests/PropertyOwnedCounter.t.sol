@@ -6,7 +6,7 @@ import "./yul/YulTestBase.sol";
 /**
  * @title PropertyOwnedCounterTest
  * @notice Auto-generated baseline property stubs from `verity_contract` declarations.
- * @dev Source: Verity/Examples/MacroContracts/Core.lean
+ * @dev Source: Contracts/MacroContracts/Core.lean
  */
 contract PropertyOwnedCounterTest is YulTestBase {
     address target;

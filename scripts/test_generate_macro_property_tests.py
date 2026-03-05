@@ -260,6 +260,20 @@ class CollectContractsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "duplicate contract 'X'"):
                 gen.collect_contracts([a, b])
 
+    def test_discover_macro_contract_sources_recurses(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Nested").mkdir(parents=True, exist_ok=True)
+            top = root / "Top.lean"
+            nested = root / "Nested" / "Inner.lean"
+            skip = root / "README.md"
+            top.write_text("verity_contract Top where\n  storage\n", encoding="utf-8")
+            nested.write_text("verity_contract Inner where\n  storage\n", encoding="utf-8")
+            skip.write_text("not lean", encoding="utf-8")
+
+            found = gen.discover_macro_contract_sources(root)
+            self.assertEqual(found, [nested, top])
+
 
 if __name__ == "__main__":
     unittest.main()

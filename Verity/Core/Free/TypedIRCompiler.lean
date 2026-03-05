@@ -286,6 +286,15 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
           | ⟨ty, _⟩ => throw s!"Typed IR compile error: unsupported return type {repr ty}"
       | _ =>
           throw "Typed IR compile error: multiple return values are not supported in phase 2.4"
+  | .emit _ args => do
+      -- Typed IR currently models event emission via raw EVM log opcodes.
+      -- We compile `emit` to a topic-only `rawLog` with empty data payload.
+      if args.length > 4 then
+        throw s!"Typed IR compile error: emit supports at most 4 arguments, got {args.length}"
+      let topicExprs ← args.mapM (fun arg => do
+        let argExpr ← compileExpr fields arg
+        liftExcept <| asUInt256 argExpr)
+      emit (.rawLog topicExprs (TExpr.uintLit 0) (TExpr.uintLit 0))
   | .rawLog topics dataOffset dataSize => do
       if topics.length > 4 then
         throw s!"Typed IR compile error: rawLog supports at most 4 topics, got {topics.length}"

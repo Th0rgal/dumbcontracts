@@ -142,6 +142,35 @@ def compileRawLogTooManyTopicsFails : Bool :=
   | .ok _ => false
   | .error msg => msg = "Typed IR compile error: rawLog supports at most 4 topics, got 5"
 
+def compileEmitSucceeds : Bool :=
+  match (compileStmts []
+      [Compiler.CompilationModel.Stmt.emit "Transfer"
+        [Compiler.CompilationModel.Expr.literal 1, Compiler.CompilationModel.Expr.literal 2]]).run {} with
+  | .ok _ => true
+  | .error _ => false
+
+def compileEmitLoweringShapeOk : Bool :=
+  match (compileStmts []
+      [Compiler.CompilationModel.Stmt.emit "Transfer"
+        [Compiler.CompilationModel.Expr.literal 1, Compiler.CompilationModel.Expr.literal 2]]).run {} with
+  | .ok st =>
+      match lowerTStmts st.2.body.toList with
+      | [.expr (.call "log2" [.lit 0, .lit 0, .lit 1, .lit 2])] => true
+      | _ => false
+  | .error _ => false
+
+def compileEmitTooManyArgsFails : Bool :=
+  match (compileStmts []
+      [Compiler.CompilationModel.Stmt.emit "BigEvent"
+        [ Compiler.CompilationModel.Expr.literal 1
+        , Compiler.CompilationModel.Expr.literal 2
+        , Compiler.CompilationModel.Expr.literal 3
+        , Compiler.CompilationModel.Expr.literal 4
+        , Compiler.CompilationModel.Expr.literal 5
+        ]]).run {} with
+  | .ok _ => false
+  | .error msg => msg = "Typed IR compile error: emit supports at most 4 arguments, got 5"
+
 /-- Typed-IR compiler accepts source-level `Expr.div`. -/
 example : compileDivExprSucceeds = true := by native_decide
 
@@ -156,6 +185,15 @@ example : compileRawLogLoweringShapeOk = true := by native_decide
 
 /-- Typed-IR compiler rejects `rawLog` with more than 4 topics. -/
 example : compileRawLogTooManyTopicsFails = true := by native_decide
+
+/-- Typed-IR compiler accepts source-level `Stmt.emit`. -/
+example : compileEmitSucceeds = true := by native_decide
+
+/-- Typed-IR compiler lowers `Stmt.emit` to `rawLog`/`logN` with empty data payload. -/
+example : compileEmitLoweringShapeOk = true := by native_decide
+
+/-- Typed-IR compiler rejects `Stmt.emit` with more than 4 args. -/
+example : compileEmitTooManyArgsFails = true := by native_decide
 
 /-- Context expressions read from world/environment. -/
 example :

@@ -89,6 +89,15 @@ private theorem sizeOf_append_ge_length_add (l₁ l₂ : List YulStmt) :
 /-- Simplification: 1 ≠ 0 for if_ branch. -/
 @[simp] private theorem one_ne_zero : (1 : Nat) ≠ 0 := by omega
 
+/-- Identity simplifier for result-shaped matches emitted by `execYulFuel` reductions. -/
+@[simp] private theorem yulExecResult_match_id (r : YulExecResult) :
+    (match r with
+    | .continue s => .continue s
+    | .return v s => .return v s
+    | .stop s => .stop s
+    | .revert s => .revert s) = r := by
+  cases r <;> rfl
+
 /-- `callvalueGuard` never reverts in the proof semantics because `callvalue() = 0`. -/
 private theorem exec_callvalueGuard_noop (fuel : Nat) (state : YulState) :
     execYulStmtsFuel (fuel + 2) state [Compiler.callvalueGuard] =
@@ -142,8 +151,26 @@ because `execYulFuel` is `[reducible]` and `simp` over-reduces to produce
 the theorem statement is correct and the execution trace is well-understood.
 -/
 
+/-- Guard expression used by `buildSwitch` evaluates to 1 because `calldatasize ≥ 4`. -/
+private theorem eval_buildSwitch_hasSelectorExpr_eq_one (state : YulState) :
+    evalYulExpr state
+      (YulExpr.call "iszero"
+        [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]) = some 1 := by
+  simp [evalYulExpr, evalYulCall, evalYulExprs,
+    evalBuiltinCallWithBackend, evalBuiltinCall]
+
+/-- After setting `__has_selector := 1`, `iszero(__has_selector)` evaluates to 0. -/
+private theorem eval_iszero_hasSelector_after_set (state : YulState) :
+    evalYulExpr (state.setVar "__has_selector" 1)
+      (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) = some 0 := by
+  have hGetHasSelector :
+      (state.setVar "__has_selector" 1).getVar "__has_selector" = some 1 := by
+    simp [YulState.setVar, YulState.getVar]
+  simp [evalYulExpr, evalYulCall, evalYulExprs,
+    evalBuiltinCallWithBackend, evalBuiltinCall, hGetHasSelector]
+
 /-- Executing `[buildSwitch fns none none]` with enough fuel is equivalent to executing
-    the switch dispatch. This is stated as an axiom pending a mechanical proof (see above).
+    the switch dispatch. This is stated as an axiom pending a full mechanical proof.
 
     The execution trace is:
     - Block unwrap (1 fuel)

@@ -41,55 +41,7 @@ These simp lemmas keep field/parameter lookup deterministic in spec-correctness 
 -/
 
 -- Field-level findIdx simp lemmas are generated per `verity_contract` by the macro
--- elaborator (Issue #1155). Keep only shared parameter-list normalizers here.
-
-@[simp] theorem findIdx_param_newOwner :
-    List.findIdx? (fun x => x == "newOwner") ["newOwner"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_newOwner_decide :
-    List.findIdx? (fun x => decide (x = "newOwner")) ["newOwner"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_initialOwner :
-    List.findIdx? (fun x => x == "initialOwner") ["initialOwner"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_initialOwner_decide :
-    List.findIdx? (fun x => decide (x = "initialOwner")) ["initialOwner"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_to_to_amount :
-    List.findIdx? (fun x => x == "to") ["to", "amount"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_to_to_amount_decide :
-    List.findIdx? (fun x => decide (x = "to")) ["to", "amount"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_amount_to_amount :
-    List.findIdx? (fun x => x == "amount") ["to", "amount"] = some 1 := by
-  decide
-
-@[simp] theorem findIdx_param_amount_to_amount_decide :
-    List.findIdx? (fun x => decide (x = "amount")) ["to", "amount"] = some 1 := by
-  decide
-
-@[simp] theorem findIdx_param_addr :
-    List.findIdx? (fun x => x == "addr") ["addr"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_addr_decide :
-    List.findIdx? (fun x => decide (x = "addr")) ["addr"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_amount_single :
-    List.findIdx? (fun x => x == "amount") ["amount"] = some 0 := by
-  decide
-
-@[simp] theorem findIdx_param_amount_single_decide :
-    List.findIdx? (fun x => decide (x = "amount")) ["amount"] = some 0 := by
-  decide
+-- elaborator (Issue #1155), including parameter-list lemmas for constructors/functions.
 
 /-!
 ## Contract Result Lemmas

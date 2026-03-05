@@ -77,6 +77,11 @@ private def macroSpecs : List CompilationModel :=
 #check Contracts.MacroContracts.OwnedCounter.findIdx_owner_OwnedCounter_decide
 #check Contracts.MacroContracts.SimpleToken.findIdx_balancesSlot_SimpleToken
 #check Contracts.MacroContracts.SimpleToken.findIdx_balancesSlot_SimpleToken_decide
+-- Regression: `verity_contract` elaboration emits parameter-level findIdx simp lemmas.
+#check Contracts.MacroContracts.OwnedCounter.findIdx_param_initialOwner_constructor_OwnedCounter
+#check Contracts.MacroContracts.OwnedCounter.findIdx_param_newOwner_transferOwnership_OwnedCounter
+#check Contracts.MacroContracts.Ledger.findIdx_param_to_transfer_Ledger
+#check Contracts.MacroContracts.Ledger.findIdx_param_amount_transfer_Ledger_decide
 
 private def checkSpec (spec : CompilationModel) : IO Unit := do
   let extFns := externalFunctions spec

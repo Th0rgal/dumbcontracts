@@ -32,6 +32,10 @@ def elabVerityContract : CommandElab := fun stx => do
   for cmd in findIdxSimpCmds do
     elabCommand cmd
 
+  let findIdxParamSimpCmds ← mkFindIdxParamSimpCommandsPublic contractName ctor functions
+  for cmd in findIdxParamSimpCmds do
+    elabCommand cmd
+
   -- Emit per-function semantic preservation theorem skeletons after spec generation.
   for fn in functions do
     elabCommand (← mkSemanticBridgeCommand contractName fields fn)

@@ -6095,4 +6095,52 @@ theorem witness_requireClausesThenReturnMappingCaller_supported :
   exact ⟨[.requireClausesThenReturnMappingCaller
     [] "balances" 1 simpleTokenBalancesFieldSlot], rfl⟩
 
+/-- Field layout for admin-pattern witness coverage. -/
+def adminPatternFields : List Field :=
+  [{ name := "owner", ty := FieldType.address },
+   { name := "feeRecipient", ty := FieldType.address }]
+
+/-- `owner` resolves to slot 0 as an address field. -/
+theorem adminPatternOwnerFieldResolution :
+    findFieldWithResolvedSlot adminPatternFields "owner" =
+      some ({ name := "owner", ty := FieldType.address }, 0) := by
+  rfl
+
+/-- `feeRecipient` resolves to slot 1 as an address field. -/
+theorem adminPatternFeeRecipientFieldResolution :
+    findFieldWithResolvedSlot adminPatternFields "feeRecipient" =
+      some ({ name := "feeRecipient", ty := FieldType.address }, 1) := by
+  rfl
+
+/-- Concrete witness for owner-change admin pattern (`setOwner`-style). -/
+theorem witness_letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop_owner_supported :
+    SupportedStmtList adminPatternFields
+      [ Stmt.letVar "sender" Expr.caller
+      , Stmt.letVar "ownerVar" (Expr.storage "owner")
+      , Stmt.require (Expr.eq (Expr.localVar "sender") (Expr.localVar "ownerVar")) "not owner"
+      , Stmt.require (Expr.logicalNot (Expr.eq (Expr.param "newOwner") (Expr.localVar "ownerVar")))
+          "already owner"
+      , Stmt.setStorage "owner" (Expr.param "newOwner")
+      , Stmt.stop ] := by
+  exact ⟨[.letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop
+    "owner" "sender" "ownerVar" "newOwner" "not owner" "already owner" 0
+    adminPatternOwnerFieldResolution (by decide) (by decide) (by decide)], rfl⟩
+
+/-- Concrete witness for fee-recipient update admin pattern (`setFeeRecipient`-style). -/
+theorem witness_letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop_feeRecipient_supported :
+    SupportedStmtList adminPatternFields
+      [ Stmt.letVar "sender" Expr.caller
+      , Stmt.letVar "currentFeeRecipient" (Expr.storage "feeRecipient")
+      , Stmt.require (Expr.eq (Expr.localVar "sender") (Expr.localVar "currentFeeRecipient"))
+          "not fee recipient"
+      , Stmt.require
+          (Expr.logicalNot (Expr.eq (Expr.param "newFeeRecipient") (Expr.localVar "currentFeeRecipient")))
+          "already fee recipient"
+      , Stmt.setStorage "feeRecipient" (Expr.param "newFeeRecipient")
+      , Stmt.stop ] := by
+  exact ⟨[.letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop
+    "feeRecipient" "sender" "currentFeeRecipient" "newFeeRecipient"
+    "not fee recipient" "already fee recipient" 1
+    adminPatternFeeRecipientFieldResolution (by decide) (by decide) (by decide)], rfl⟩
+
 end Verity.Core.Free

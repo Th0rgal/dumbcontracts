@@ -49,6 +49,7 @@
     "check_issue_templates.py",
     "check_macro_property_test_generation.py --check",
     "check_macro_translate_invariant_coverage.py",
+    "check_macro_roundtrip_fuzz_coverage.py",
     "check_storage_layout.py",
     "check_manual_spec_quarantine.py",
     "check_spec_proof_migration_boundary.py",

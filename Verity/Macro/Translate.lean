@@ -916,6 +916,53 @@ private def mkFindIdxFieldSimpCommands
     idx := idx + 1
   pure cmds
 
+private def mkFindIdxParamSimpCommandsForScope
+    (contractName : String)
+    (scopeName : String)
+    (params : Array ParamDecl) : CommandElabM (Array Cmd) := do
+  let paramNameTerms : Array Term := params.map (fun p => strTerm p.name)
+  let paramListTerm : Term ← `(([ $[$paramNameTerms],* ] : List String))
+  let mut cmds : Array Cmd := #[]
+  let mut idx := 0
+  for param in params do
+    let baseName := s!"findIdx_param_{param.name}_{scopeName}_{contractName}"
+    let theoremName := mkIdent (Name.mkSimple baseName)
+    let theoremNameDecide := mkIdent (Name.mkSimple (baseName ++ "_decide"))
+    let idxTerm := natTerm idx
+    let paramNameTerm := strTerm param.name
+
+    let eqCmd : Cmd ← `(command|
+      @[simp] theorem $theoremName :
+          List.findIdx? (fun x => x == $paramNameTerm)
+            $paramListTerm = some $idxTerm := by
+        decide)
+    cmds := cmds.push eqCmd
+
+    let decideCmd : Cmd ← `(command|
+      @[simp] theorem $theoremNameDecide :
+          List.findIdx? (fun x => decide (x = $paramNameTerm))
+            $paramListTerm = some $idxTerm := by
+        decide)
+    cmds := cmds.push decideCmd
+    idx := idx + 1
+  pure cmds
+
+private def mkFindIdxParamSimpCommands
+    (contractIdent : Ident)
+    (ctor : Option ConstructorDecl)
+    (functions : Array FunctionDecl) : CommandElabM (Array Cmd) := do
+  let contractName := toString contractIdent.getId
+  let mut cmds : Array Cmd := #[]
+  match ctor with
+  | some ctorDecl =>
+      let ctorCmds ← mkFindIdxParamSimpCommandsForScope contractName "constructor" ctorDecl.params
+      cmds := cmds ++ ctorCmds
+  | none => pure ()
+  for fn in functions do
+    let fnCmds ← mkFindIdxParamSimpCommandsForScope contractName fn.name fn.params
+    cmds := cmds ++ fnCmds
+  pure cmds
+
 def parseContractSyntax
     (stx : Syntax)
     : CommandElabM (Ident × Array StorageFieldDecl × Option ConstructorDecl × Array FunctionDecl) := do
@@ -948,6 +995,12 @@ def mkFindIdxFieldSimpCommandsPublic
     (contractIdent : Ident)
     (fields : Array StorageFieldDecl) : CommandElabM (Array Cmd) :=
   mkFindIdxFieldSimpCommands contractIdent fields
+
+def mkFindIdxParamSimpCommandsPublic
+    (contractIdent : Ident)
+    (ctor : Option ConstructorDecl)
+    (functions : Array FunctionDecl) : CommandElabM (Array Cmd) :=
+  mkFindIdxParamSimpCommands contractIdent ctor functions
 
 /-- Public wrapper for `contractValueTypeTerm`, used by the semantic bridge
     theorem generator in `Bridge.lean` (Issue #998). -/

@@ -26,6 +26,28 @@ See `TRUST_ASSUMPTIONS.md` for the full trust-boundary description.
         state.storage state.events := by
   rfl
 
+@[simp] private theorem interpretYulRuntime_eq_yulResultOfExecWithRollback_initial
+    (runtimeCode : List YulStmt) (tx : YulTransaction) (storage : Nat → Nat)
+    (events : List (List Nat)) :
+    interpretYulRuntime runtimeCode tx storage events =
+      yulResultOfExecWithRollback (YulState.initial tx storage events)
+        (execYulStmts (YulState.initial tx storage events) runtimeCode) := by
+  rfl
+
+@[simp] private theorem interpretYulBody_eq_execWithRollback (fn : IRFunction)
+    (tx : IRTransaction) (state : IRState) :
+    interpretYulBody fn tx state =
+      yulResultOfExecWithRollback
+        (YulState.initial
+          { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+          state.storage state.events)
+        (execYulStmts
+          (YulState.initial
+            { sender := tx.sender, functionSelector := tx.functionSelector, args := tx.args }
+            state.storage state.events)
+          fn.body) := by
+  simp [interpretYulBody]
+
 /-- Helper: initial Yul state aligned with the IR transaction/state. -/
 private def initialYulState (tx : YulTransaction) (state : IRState) : YulState :=
   YulState.initial tx state.storage state.events

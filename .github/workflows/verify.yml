@@ -152,6 +152,9 @@ jobs:
       - name: Check macro invariant suite coverage
         run: python3 scripts/check_macro_translate_invariant_coverage.py
 
+      - name: Check macro round-trip fuzz suite coverage
+        run: python3 scripts/check_macro_roundtrip_fuzz_coverage.py
+
       - name: Check storage layout consistency
         run: python3 scripts/check_storage_layout.py
 

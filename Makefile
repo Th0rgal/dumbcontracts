@@ -117,6 +117,7 @@ check: ## Run local CI-equivalent checks job (no Lean build, no solc)
 	python3 scripts/check_issue_templates.py
 	python3 scripts/check_macro_property_test_generation.py --check
 	python3 scripts/check_macro_translate_invariant_coverage.py
+	python3 scripts/check_macro_roundtrip_fuzz_coverage.py
 	python3 scripts/check_storage_layout.py
 	python3 scripts/check_manual_spec_quarantine.py
 	python3 scripts/check_spec_proof_migration_boundary.py

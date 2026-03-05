@@ -148,6 +148,14 @@ private def compileExpr (fields : List Field) : Expr → CompileM SomeTExpr
       let a' ← liftExcept <| asUInt256 (← compileExpr fields a)
       let b' ← liftExcept <| asUInt256 (← compileExpr fields b)
       return ⟨Ty.uint256, TExpr.mul a' b'⟩
+  | .div a b => do
+      let a' ← liftExcept <| asUInt256 (← compileExpr fields a)
+      let b' ← liftExcept <| asUInt256 (← compileExpr fields b)
+      return ⟨Ty.uint256, TExpr.div a' b'⟩
+  | .mod a b => do
+      let a' ← liftExcept <| asUInt256 (← compileExpr fields a)
+      let b' ← liftExcept <| asUInt256 (← compileExpr fields b)
+      return ⟨Ty.uint256, TExpr.mod a' b'⟩
   | .lt a b => do
       let a' ← liftExcept <| asUInt256 (← compileExpr fields a)
       let b' ← liftExcept <| asUInt256 (← compileExpr fields b)

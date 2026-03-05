@@ -29,6 +29,8 @@ inductive TExpr : Ty → Type where
   | add (lhs rhs : TExpr .uint256) : TExpr .uint256
   | sub (lhs rhs : TExpr .uint256) : TExpr .uint256
   | mul (lhs rhs : TExpr .uint256) : TExpr .uint256
+  | div (lhs rhs : TExpr .uint256) : TExpr .uint256
+  | mod (lhs rhs : TExpr .uint256) : TExpr .uint256
   | eq {ty : Ty} (lhs rhs : TExpr ty) : TExpr .bool
   | lt (lhs rhs : TExpr .uint256) : TExpr .bool
   | and (lhs rhs : TExpr .bool) : TExpr .bool
@@ -140,6 +142,14 @@ def evalTExpr (s : TExecState) : TExpr ty → Ty.denote ty
       let l : Verity.Core.Uint256 := evalTExpr s lhs
       let r : Verity.Core.Uint256 := evalTExpr s rhs
       Verity.Core.Uint256.mul l r
+  | .div lhs rhs =>
+      let l : Verity.Core.Uint256 := evalTExpr s lhs
+      let r : Verity.Core.Uint256 := evalTExpr s rhs
+      Verity.Core.Uint256.div l r
+  | .mod lhs rhs =>
+      let l : Verity.Core.Uint256 := evalTExpr s lhs
+      let r : Verity.Core.Uint256 := evalTExpr s rhs
+      Verity.Core.Uint256.mod l r
   | .eq (ty := .uint256) lhs rhs =>
       let l : Verity.Core.Uint256 := evalTExpr s lhs
       let r : Verity.Core.Uint256 := evalTExpr s rhs
@@ -277,6 +287,14 @@ def evalTBlock (s : TExecState) (block : TBlock) : TExecResult :=
 @[simp, ir_step] theorem evalTExpr_add (s : TExecState) (lhs rhs : TExpr .uint256) :
     evalTExpr s (TExpr.add lhs rhs) =
       Verity.Core.Uint256.add (evalTExpr s lhs) (evalTExpr s rhs) := rfl
+
+@[simp, ir_step] theorem evalTExpr_div (s : TExecState) (lhs rhs : TExpr .uint256) :
+    evalTExpr s (TExpr.div lhs rhs) =
+      Verity.Core.Uint256.div (evalTExpr s lhs) (evalTExpr s rhs) := rfl
+
+@[simp, ir_step] theorem evalTExpr_mod (s : TExecState) (lhs rhs : TExpr .uint256) :
+    evalTExpr s (TExpr.mod lhs rhs) =
+      Verity.Core.Uint256.mod (evalTExpr s lhs) (evalTExpr s rhs) := rfl
 
 @[simp, ir_step] theorem evalTExpr_ite (s : TExecState) {ty : Ty}
     (cond : TExpr .bool) (thenExpr elseExpr : TExpr ty) :

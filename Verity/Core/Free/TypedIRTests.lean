@@ -66,6 +66,18 @@ example :
       Verity.Core.Uint256.add 5 8 := by
   simp [baseState, x, y, evalTExpr, TVars.get]
 
+/-- `evalTExpr` division matches Uint256 semantics (divide by zero returns zero). -/
+example :
+    evalTExpr baseState (TExpr.div (TExpr.uintLit 42) (TExpr.uintLit 0)) =
+      (0 : Verity.Core.Uint256) := by
+  simp [evalTExpr, Verity.Core.Uint256.div]
+
+/-- `evalTExpr` modulo matches Uint256 semantics (mod by zero returns zero). -/
+example :
+    evalTExpr baseState (TExpr.mod (TExpr.uintLit 10) (TExpr.uintLit 0)) =
+      (0 : Verity.Core.Uint256) := by
+  simp [evalTExpr, Verity.Core.Uint256.mod]
+
 /-- One-step evaluator reductions are available through the dedicated `ir_step` simp set. -/
 example :
     evalTBlock baseState { params := [], locals := [], body := [] } = .ok baseState := by
@@ -76,6 +88,30 @@ example :
     evalTExpr baseState (TExpr.var x) = (5 : Verity.Core.Uint256) := by
   contract_step
   simp [baseState, x, TVars.get]
+
+def compileDivExprSucceeds : Bool :=
+  match (compileStmts []
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.div
+          (Compiler.CompilationModel.Expr.literal 10)
+          (Compiler.CompilationModel.Expr.literal 3))]).run {} with
+  | .ok _ => true
+  | .error _ => false
+
+def compileModExprSucceeds : Bool :=
+  match (compileStmts []
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.mod
+          (Compiler.CompilationModel.Expr.literal 10)
+          (Compiler.CompilationModel.Expr.literal 3))]).run {} with
+  | .ok _ => true
+  | .error _ => false
+
+/-- Typed-IR compiler accepts source-level `Expr.div`. -/
+example : compileDivExprSucceeds = true := by native_decide
+
+/-- Typed-IR compiler accepts source-level `Expr.mod`. -/
+example : compileModExprSucceeds = true := by native_decide
 
 /-- Context expressions read from world/environment. -/
 example :
@@ -133,6 +169,18 @@ example :
 
 open Compiler.Yul
 open Compiler.Proofs.IRGeneration
+
+/-- Lowering emits a Yul `div` call for typed division. -/
+example :
+    lowerTExpr (TExpr.div (TExpr.uintLit 10) (TExpr.uintLit 3)) =
+      .call "div" [.lit 10, .lit 3] := by
+  rfl
+
+/-- Lowering emits a Yul `mod` call for typed modulo. -/
+example :
+    lowerTExpr (TExpr.mod (TExpr.uintLit 10) (TExpr.uintLit 3)) =
+      .call "mod" [.lit 10, .lit 3] := by
+  rfl
 
 def counterTmp : TVar := { id := 10, ty := .uint256 }
 

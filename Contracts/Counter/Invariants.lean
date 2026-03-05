@@ -40,7 +40,7 @@ abbrev context_preserved := Specs.sameContext
     Everything except slot 0 remains unchanged
 -/
 def state_preserved_except_count (s s' : ContractState) : Prop :=
-  storage_isolated s s' 0 ∧
+  (∀ slot, storage_isolated s s' slot) ∧
   addr_storage_unchanged s s' ∧
   map_storage_unchanged s s' ∧
   context_preserved s s'

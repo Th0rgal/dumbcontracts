@@ -1,9 +1,11 @@
-import Verity.Examples.SimpleStorage
+import Contracts.MacroContracts.Core
 
-namespace Contracts.SimpleStorage.Contract
+namespace Contracts.SimpleStorage
 
-abbrev storedData := Verity.Examples.SimpleStorage.storedData
-abbrev store := Verity.Examples.SimpleStorage.store
-abbrev retrieve := Verity.Examples.SimpleStorage.retrieve
+open Verity
 
-end Contracts.SimpleStorage.Contract
+abbrev storedData := Contracts.MacroContracts.SimpleStorage.storedData
+abbrev store := Contracts.MacroContracts.SimpleStorage.store
+abbrev retrieve := Contracts.MacroContracts.SimpleStorage.retrieve
+
+end Contracts.SimpleStorage

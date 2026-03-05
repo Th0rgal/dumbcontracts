@@ -194,6 +194,6 @@ External libraries are **outside the formal verification boundary**. Your Lean p
 
 ## Related Files
 
-- [CryptoHash Example](../Verity/Examples/CryptoHash.lean) - Shows placeholder usage
+- [CryptoHash Example](../Contracts/CryptoHash/Contract.lean) - Shows placeholder usage
 - [Linker Module](../Compiler/Linker.lean) - Full linker implementation
 - [CompilationModel](../Compiler/CompilationModel.lean) - External call syntax

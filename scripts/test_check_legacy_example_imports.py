@@ -26,6 +26,7 @@ class LegacyExampleImportGuardTests(unittest.TestCase):
             root = Path(tmpdir)
             (root / "Compiler").mkdir(parents=True, exist_ok=True)
             (root / "Verity").mkdir(parents=True, exist_ok=True)
+            (root / "Contracts").mkdir(parents=True, exist_ok=True)
             for rel, content in files.items():
                 path = root / rel
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,7 +42,7 @@ class LegacyExampleImportGuardTests(unittest.TestCase):
             old_extra_scan = guard.EXTRA_SCAN_FILES
             guard.ROOT = root
             guard.ALLOWLIST_PATH = allowlist_path
-            guard.SCAN_ROOTS = [root / "Compiler", root / "Verity"]
+            guard.SCAN_ROOTS = [root / "Compiler", root / "Verity", root / "Contracts"]
             guard.EXTRA_SCAN_FILES = []
             try:
                 stderr = io.StringIO()
@@ -56,7 +57,7 @@ class LegacyExampleImportGuardTests(unittest.TestCase):
 
     def test_rejects_non_allowlisted_import(self) -> None:
         rc, stderr = self._run_check(
-            files={"Compiler/Main.lean": "import Verity.Examples.Counter\n"},
+            files={"Compiler/Main.lean": "import Contracts.Counter.Contract\n"},
             allowlist="",
         )
         self.assertEqual(rc, 1)
@@ -64,7 +65,7 @@ class LegacyExampleImportGuardTests(unittest.TestCase):
 
     def test_accepts_allowlisted_import(self) -> None:
         rc, stderr = self._run_check(
-            files={"Verity/All.lean": "import Verity.Examples.Counter\n"},
+            files={"Verity/All.lean": "import Contracts.Counter.Contract\n"},
             allowlist="Verity/All.lean: Counter\n",
         )
         self.assertEqual(rc, 0, stderr)
@@ -81,8 +82,8 @@ class LegacyExampleImportGuardTests(unittest.TestCase):
         rc, stderr = self._run_check(
             files={
                 "Compiler/Main.lean": (
-                    "-- import Verity.Examples.Counter\n"
-                    'def msg := "import Verity.Examples.Counter"\n'
+                    "-- import Contracts.Counter.Contract\n"
+                    'def msg := "import Contracts.Counter.Contract"\n'
                 )
             },
             allowlist="",

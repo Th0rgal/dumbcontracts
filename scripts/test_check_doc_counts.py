@@ -82,28 +82,28 @@ class CheckDocCountsMultiMatchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "README.md"
             path.write_text(
-                "| `Counter.sol` | `Verity/Examples/Counter.lean` | 28 theorems |\n"
-                "| `SafeCounter.sol` | `Verity/Examples/SafeCounter.lean` | 25 theorems |\n"
-                "| `OwnedCounter.sol` | `Verity/Examples/OwnedCounter.lean` | 48 theorems |\n",
+                "| `Counter.sol` | `Contracts/Counter/Contract.lean` | 28 theorems |\n"
+                "| `SafeCounter.sol` | `Contracts/SafeCounter/Contract.lean` | 25 theorems |\n"
+                "| `OwnedCounter.sol` | `Contracts/OwnedCounter/Contract.lean` | 48 theorems |\n",
                 encoding="utf-8",
             )
             checks = [
                 (
                     "counter",
-                    re.compile(r"`Verity/Examples/Counter\.lean`\s*\|\s*(\d+) theorems"),
+                    re.compile(r"`Contracts/Counter/Contract\.lean`\s*\|\s*(\d+) theorems"),
                     "28",
                 ),
                 (
                     "safe counter",
                     re.compile(
-                        r"`Verity/Examples/SafeCounter\.lean`\s*\|\s*(\d+) theorems"
+                        r"`Contracts/SafeCounter/Contract\.lean`\s*\|\s*(\d+) theorems"
                     ),
                     "25",
                 ),
                 (
                     "owned counter",
                     re.compile(
-                        r"`Verity/Examples/OwnedCounter\.lean`\s*\|\s*(\d+) theorems"
+                        r"`Contracts/OwnedCounter/Contract\.lean`\s*\|\s*(\d+) theorems"
                     ),
                     "48",
                 ),

@@ -1,12 +1,17 @@
-import Verity.Examples.Owned
+import Contracts.MacroContracts.Core
 
-namespace Contracts.Owned.Contract
+namespace Contracts.Owned
 
-abbrev owner := Verity.Examples.Owned.owner
-abbrev transferOwnership := Verity.Examples.Owned.transferOwnership
-abbrev getOwner := Verity.Examples.Owned.getOwner
-abbrev isOwner := Verity.Examples.Owned.isOwner
-abbrev onlyOwner := Verity.Examples.Owned.onlyOwner
-abbrev «constructor» := Verity.Examples.Owned.constructor
+open Verity
 
-end Contracts.Owned.Contract
+def owner : StorageSlot Address := ⟨0⟩
+
+abbrev transferOwnership := Contracts.MacroContracts.Owned.transferOwnership
+abbrev getOwner := Contracts.MacroContracts.Owned.getOwner
+abbrev isOwner := Contracts.MacroContracts.Owned.isOwner
+abbrev onlyOwner := Contracts.MacroContracts.Owned.onlyOwner
+
+def «constructor» (initialOwner : Address) : Contract Unit := do
+  setStorageAddr owner initialOwner
+
+end Contracts.Owned

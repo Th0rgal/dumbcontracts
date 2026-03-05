@@ -18,23 +18,23 @@ EVM Bytecode
 
 ## Layer 1: EDSL ≡ CompilationModel — COMPLETE
 
-**What it proves**: The EDSL `Contract` monad execution is equivalent to `CompilationModel` interpretation for all supported contracts. Per-contract proofs under `Verity/Proofs/` then show these contracts satisfy their human-readable specifications.
+**What it proves**: The EDSL `Contract` monad execution is equivalent to `CompilationModel` interpretation for all supported contracts. Per-contract proofs under `Contracts/<Name>/Proofs/` then show these contracts satisfy their human-readable specifications.
 
 ### Verified Contracts
 
 | Contract | Properties | Status | Location |
 |----------|------------|--------|----------|
-| SimpleStorage | 20 | Complete | `Verity/Proofs/SimpleStorage/` |
-| Counter | 28 | Complete | `Verity/Proofs/Counter/` |
-| SafeCounter | 25 | Complete | `Verity/Proofs/SafeCounter/` |
-| Owned | 23 | Complete | `Verity/Proofs/Owned/` |
-| OwnedCounter | 48 | Complete | `Verity/Proofs/OwnedCounter/` |
-| Ledger | 33 | Complete | `Verity/Proofs/Ledger/` |
-| SimpleToken | 61 | Complete | `Verity/Proofs/SimpleToken/` |
-| ERC20 | 19 | Baseline | `Verity/Proofs/ERC20/` |
-| ERC721 | 11 | Baseline | `Verity/Proofs/ERC721/` |
-| ReentrancyExample | 4 | Complete | `Verity/Examples/ReentrancyExample.lean` |
-| CryptoHash | 0 | No specs | `Verity/Examples/CryptoHash.lean` |
+| SimpleStorage | 20 | Complete | `Contracts/SimpleStorage/Proofs/` |
+| Counter | 28 | Complete | `Contracts/Counter/Proofs/` |
+| SafeCounter | 25 | Complete | `Contracts/SafeCounter/Proofs/` |
+| Owned | 23 | Complete | `Contracts/Owned/Proofs/` |
+| OwnedCounter | 48 | Complete | `Contracts/OwnedCounter/Proofs/` |
+| Ledger | 33 | Complete | `Contracts/Ledger/Proofs/` |
+| SimpleToken | 61 | Complete | `Contracts/SimpleToken/Proofs/` |
+| ERC20 | 19 | Baseline | `Contracts/ERC20/Proofs/` |
+| ERC721 | 11 | Baseline | `Contracts/ERC721/Proofs/` |
+| ReentrancyExample | 4 | Complete | `Contracts/ReentrancyExample/Contract.lean` |
+| CryptoHash | 0 | No specs | `Contracts/CryptoHash/Contract.lean` |
 | **Total** | **272** | **✅ 100%** | — |
 
 > **Note**: Stdlib (153 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (425 total properties).

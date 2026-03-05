@@ -1,11 +1,29 @@
-import Verity.Specs.SimpleStorage.Invariants
+/-
+  State invariants for SimpleStorage contract.
+-/
+
+import Verity.Specs.Common
 
 namespace Contracts.SimpleStorage.Invariants
 
-abbrev WellFormedState := Verity.Specs.SimpleStorage.WellFormedState
-abbrev storage_isolated := Verity.Specs.SimpleStorage.storage_isolated
-abbrev addr_storage_unchanged := Verity.Specs.SimpleStorage.addr_storage_unchanged
-abbrev map_storage_unchanged := Verity.Specs.SimpleStorage.map_storage_unchanged
-abbrev context_preserved := Verity.Specs.SimpleStorage.context_preserved
+open Verity
+
+/-- Basic well-formedness: addresses are nonzero -/
+structure WellFormedState (s : ContractState) : Prop where
+  sender_nonzero : s.sender ≠ 0
+  contract_nonzero : s.thisAddress ≠ 0
+
+/-- Storage slot isolation: operations on slot 0 don't affect other slots -/
+def storage_isolated (s s' : ContractState) (slot : Nat) : Prop :=
+  slot ≠ 0 → s'.storage slot = s.storage slot
+
+/-- Address storage unchanged by Uint256 storage operations -/
+abbrev addr_storage_unchanged := Specs.sameStorageAddr
+
+/-- Mapping storage unchanged by Uint256 storage operations -/
+abbrev map_storage_unchanged := Specs.sameStorageMap
+
+/-- Context preservation -/
+abbrev context_preserved := Specs.sameContext
 
 end Contracts.SimpleStorage.Invariants

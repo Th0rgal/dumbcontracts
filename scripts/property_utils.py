@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "test" / "property_manifest.json"
 EXCLUSIONS = ROOT / "test" / "property_exclusions.json"
 TEST_DIR = ROOT / "test"
-PROOFS_DIR = ROOT / "Verity" / "Proofs"
-EXAMPLES_DIR = ROOT / "Verity" / "Examples"
+PROOFS_DIR = ROOT / "Contracts"
+EXAMPLES_DIR = ROOT / "Contracts"
 YUL_DIR = ROOT / "compiler" / "yul"
 
 # Regex patterns for extracting property tags from test files
@@ -246,34 +246,40 @@ def collect_theorems(path: Path, *, include_helpers: bool = False) -> list[str]:
 def extract_manifest_from_proofs() -> dict[str, list[str]]:
     """Extract theorem names from Lean proof files.
 
-    Scans Verity/Proofs/ directories and Verity/Examples/ files
-    that contain inline theorems (e.g., ReentrancyExample).
+    Scans Contracts/<Contract>/Proofs/ directories and Contracts/<Contract>/Contract.lean
+    files that contain inline theorems (e.g., ReentrancyExample).
 
     Returns:
         Dictionary mapping contract names to sorted, deduplicated lists of theorem names.
     """
     if not PROOFS_DIR.exists():
-        raise SystemExit(f"Missing proofs dir: {PROOFS_DIR}")
+        raise SystemExit(f"Missing contracts dir: {PROOFS_DIR}")
     manifest: dict[str, list[str]] = {}
     for contract_dir in sorted(PROOFS_DIR.iterdir()):
         if not contract_dir.is_dir():
             continue
         contract = _require_contract_identifier(contract_dir.name, contract_dir)
-        theorems: list[str] = []
-        for lean in sorted(contract_dir.rglob("*.lean")):
-            theorems.extend(collect_theorems(lean))
-        if theorems:
-            manifest[contract] = sorted(dict.fromkeys(theorems))
-
-    # Also scan Examples/ for contracts with inline theorems (no separate Proofs dir)
-    if EXAMPLES_DIR.exists():
-        for lean in sorted(EXAMPLES_DIR.glob("*.lean")):
-            contract = _require_contract_identifier(lean.stem, lean)
-            if contract in manifest:
-                continue  # Already found via Proofs/
-            theorems = collect_theorems(lean)
+        proofs_subdir = contract_dir / "Proofs"
+        if proofs_subdir.is_dir():
+            theorems: list[str] = []
+            for lean in sorted(proofs_subdir.rglob("*.lean")):
+                theorems.extend(collect_theorems(lean))
             if theorems:
                 manifest[contract] = sorted(dict.fromkeys(theorems))
+
+    # Also scan Contracts/<Contract>/Contract.lean for contracts with inline theorems (no separate Proofs dir)
+    if EXAMPLES_DIR.exists():
+        for contract_dir in sorted(EXAMPLES_DIR.iterdir()):
+            if not contract_dir.is_dir():
+                continue
+            contract = _require_contract_identifier(contract_dir.name, contract_dir)
+            if contract in manifest:
+                continue  # Already found via Proofs/
+            contract_lean = contract_dir / "Contract.lean"
+            if contract_lean.exists():
+                theorems = collect_theorems(contract_lean)
+                if theorems:
+                    manifest[contract] = sorted(dict.fromkeys(theorems))
 
     return manifest
 

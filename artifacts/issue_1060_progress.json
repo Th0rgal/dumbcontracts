@@ -1846,8 +1846,8 @@
       ],
       "files_changed": [
         "Verity/Core/Semantics.lean",
-        "Verity/Examples/CryptoHash.lean",
-        "Verity/Examples/ReentrancyExample.lean",
+        "Contracts/CryptoHash/Contract.lean",
+        "Contracts/ReentrancyExample/Contract.lean",
         "Compiler/CompilationModel.lean",
         "Compiler/Specs.lean",
         "Compiler/Modules/Calls.lean"
@@ -1868,25 +1868,25 @@
         "theorems": [
           {
             "name": "vulnerable_attack_exists",
-            "file": "Verity/Examples/ReentrancyExample.lean",
+            "file": "Contracts/ReentrancyExample/Contract.lean",
             "description": "Existential witness: a state exists where reentrancy via callOracle violates the supply invariant",
             "statement_summary": "∃ s, supplyInvariant s ∧ ¬ supplyInvariant (withdrawWithEnv reenteringEnv amount s)"
           },
           {
             "name": "withdraw_maintains_supply_UNPROVABLE",
-            "file": "Verity/Examples/ReentrancyExample.lean",
+            "file": "Contracts/ReentrancyExample/Contract.lean",
             "description": "The universal safety claim is FALSE for the vulnerable pattern — refuted by counterexample",
             "statement_summary": "¬ ∀ env s, supplyInvariant s → supplyInvariant (withdrawWithEnv env amount s)"
           },
           {
             "name": "withdraw_maintains_supply",
-            "file": "Verity/Examples/ReentrancyExample.lean",
+            "file": "Contracts/ReentrancyExample/Contract.lean",
             "description": "Safe withdrawal pattern universally preserves supply invariant regardless of oracle behavior",
             "statement_summary": "∀ env s, supplyInvariant s → s.balance ≥ amount → supplyInvariant (SafeBank.withdrawWithEnv env amount s)"
           },
           {
             "name": "deposit_maintains_supply",
-            "file": "Verity/Examples/ReentrancyExample.lean",
+            "file": "Contracts/ReentrancyExample/Contract.lean",
             "description": "Deposit preserves supply invariant",
             "statement_summary": "∀ s, supplyInvariant s → supplyInvariant (deposit amount s)"
           }
@@ -1894,12 +1894,12 @@
         "tests": [
           {
             "name": "hashTwo_default_oracle",
-            "file": "Verity/Examples/CryptoHash.lean",
+            "file": "Contracts/CryptoHash/Contract.lean",
             "description": "hashTwo(10, 7) returns 17 via default sum oracle (native_decide)"
           },
           {
             "name": "hashThree_default_oracle",
-            "file": "Verity/Examples/CryptoHash.lean",
+            "file": "Contracts/CryptoHash/Contract.lean",
             "description": "hashThree(5, 6, 7) returns 18 via default sum oracle (native_decide)"
           }
         ]

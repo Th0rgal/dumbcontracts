@@ -2,9 +2,9 @@
 """Validate storage layout consistency across EDSL, Spec, and Compiler layers.
 
 Extracts storage slot definitions from:
-1. EDSL layer:     Verity/Examples/*.lean  (StorageSlot definitions)
-2. Spec layer:     Verity/Specs/*/Spec.lean (StorageSlot definitions)
-3. Compiler layer: Compiler/Specs.lean            (CompilationModel field lists)
+1. EDSL layer:     Contracts/*/Contract.lean  (StorageSlot definitions)
+2. Spec layer:     Contracts/*/Spec.lean      (StorageSlot definitions)
+3. Compiler layer: Compiler/Specs.lean        (CompilationModel field lists)
 
 Checks:
 - No intra-contract slot collisions within any layer
@@ -42,7 +42,7 @@ SPEC_NAME_RE = re.compile(r'name\s*:=\s*"(\w+)"')
 #   namespace <name>
 NAMESPACE_RE = re.compile(r"^namespace\s+(\S+)", re.MULTILINE)
 
-# Spec slot references in Verity/Specs/*/Spec.lean:
+# Spec slot references in Contracts/*/Spec.lean:
 #   s.storage <slot>, s'.storage <slot>
 #   s.storageAddr <slot>, s'.storageAddr <slot>
 #   s.storageMap <slot> <addr>, s'.storageMap <slot> <addr>
@@ -335,7 +335,7 @@ def check_spec_edsl_consistency(
     for contract in required_contracts:
         if contract not in edsl:
             errors.append(
-                f"Spec-EDSL: {contract} in Compiler but missing from Verity/Examples"
+                f"Spec-EDSL: {contract} in Compiler but missing from Contracts/"
             )
             continue
         if contract not in spec:
@@ -427,21 +427,30 @@ def generate_report(
 def main():
     errors: list[str] = []
 
-    # 1. Extract EDSL slots from Examples (use filename as contract name)
+    # 1. Extract EDSL slots from Contracts (use directory name as contract name)
     edsl_all: dict[str, list[tuple[str, str, int]]] = {}
-    examples_dir = ROOT / "Verity" / "Examples"
-    for lean_file in sorted(examples_dir.glob("*.lean")):
+    contracts_dir = ROOT / "Contracts"
+    for contract_dir in sorted(contracts_dir.iterdir()):
+        if not contract_dir.is_dir():
+            continue
+        lean_file = contract_dir / "Contract.lean"
+        if not lean_file.exists():
+            continue
         result = extract_edsl_slots(lean_file)
-        # Use filename stem as contract name (more reliable than namespace)
+        # Use directory name as contract name
         for _key, slots in result.items():
             if slots:
-                edsl_all[lean_file.stem] = slots
+                edsl_all[contract_dir.name] = slots
 
     # 2. Extract Spec slots from literal state accesses in Spec.lean files
     spec_all: dict[str, list[tuple[str, str, int]]] = {}
-    specs_dir = ROOT / "Verity" / "Specs"
-    for spec_file in sorted(specs_dir.glob("*/Spec.lean")):
-        contract_name = spec_file.parent.name
+    for contract_dir in sorted(contracts_dir.iterdir()):
+        if not contract_dir.is_dir():
+            continue
+        spec_file = contract_dir / "Spec.lean"
+        if not spec_file.exists():
+            continue
+        contract_name = contract_dir.name
         slots, spec_errors = extract_spec_slots(spec_file)
         errors.extend(spec_errors)
         if slots:

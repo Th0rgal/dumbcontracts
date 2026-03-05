@@ -2,7 +2,7 @@
 """Fail closed on regressions while migrating proofs to macro-generated artifacts.
 
 Issue #997 tracks proof migration from legacy/manual references:
-- `Verity.Examples.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken}`
+- `Contracts.{Counter,SimpleStorage,Owned,Ledger,OwnedCounter,SimpleToken}` (was `Verity.Examples.*`)
 - `Compiler.Specs.*Spec` (legacy manual specs)
 
 This check enforces:
@@ -20,14 +20,14 @@ from property_utils import ROOT, scrub_lean_code
 
 PROOF_ROOTS = [
     ROOT / "Compiler" / "Proofs",
-    ROOT / "Verity" / "Proofs",
+    ROOT / "Contracts",
 ]
 
 ALLOWLIST: set[Path] = set()
 
 LEGACY_RE = re.compile(
     r"\b(?:"
-    r"Verity\.Examples\.(?:Counter|SimpleStorage|Owned|Ledger|OwnedCounter|SimpleToken)"
+    r"Contracts\.(?:Counter|SimpleStorage|Owned|Ledger|OwnedCounter|SimpleToken)(?:\.Contract)?"
     r"|Compiler\.Specs\.(?:counterSpec|simpleStorageSpec|ownedSpec|ledgerSpec|ownedCounterSpec|simpleTokenSpec)"
     r")\b"
 )
@@ -36,7 +36,14 @@ LEGACY_RE = re.compile(
 def _proof_files() -> list[Path]:
     files: list[Path] = []
     for root in PROOF_ROOTS:
-        files.extend(sorted(root.rglob("*.lean")))
+        if root == ROOT / "Contracts":
+            # Scan Contracts/*/Proofs/ directories
+            for contract_dir in sorted(root.iterdir()):
+                proofs_dir = contract_dir / "Proofs"
+                if proofs_dir.is_dir():
+                    files.extend(sorted(proofs_dir.rglob("*.lean")))
+        else:
+            files.extend(sorted(root.rglob("*.lean")))
     return files
 
 

@@ -15,8 +15,8 @@ from pathlib import Path
 import generate_macro_property_tests as generator
 from property_utils import ROOT
 
-DEFAULT_SOURCE = ROOT / "Verity" / "Examples" / "MacroContracts.lean"
-DEFAULT_SOURCE_DIR = ROOT / "Verity" / "Examples" / "MacroContracts"
+DEFAULT_SOURCE = ROOT / "Contracts" / "MacroContracts" / "Core.lean"
+DEFAULT_SOURCE_DIR = ROOT / "Contracts" / "MacroContracts"
 DEFAULT_OUTPUT_DIR = ROOT / "artifacts" / "macro_property_tests"
 
 
@@ -101,8 +101,7 @@ def main() -> int:
         default=[],
         help=(
             "Lean source path to scan (relative to repo root). "
-            "Repeat flag for multiple files. Defaults to Verity/Examples/MacroContracts/*.lean "
-            "(falling back to Verity/Examples/MacroContracts.lean for legacy layout)."
+            "Repeat flag for multiple files. Defaults to Contracts/MacroContracts/*.lean."
         ),
     )
     parser.add_argument(

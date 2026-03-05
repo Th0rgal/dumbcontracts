@@ -67,7 +67,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="Sample",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(
                 gen.FunctionDecl("touch", (), "Unit"),
                 gen.FunctionDecl("read", (gen.ParamDecl("who", "Address"),), "Uint256"),
@@ -86,7 +86,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="ArrayConsumer",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(
                 gen.FunctionDecl(
                     "consume",
@@ -103,7 +103,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="ArrayConsumer",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(
                 gen.FunctionDecl(
                     "consume",
@@ -123,7 +123,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="UnknownType",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(
                 gen.FunctionDecl("mystery", (gen.ParamDecl("x", "String"),), "Unit"),
             ),
@@ -135,7 +135,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="ArrayAddressConsumer",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(
                 gen.FunctionDecl("consume", (gen.ParamDecl("values", "Array Address"),), "Unit"),
             ),
@@ -147,7 +147,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="ReturnsBytes",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(gen.FunctionDecl("blob", (), "Bytes"),),
         )
         rendered = gen.render_contract_test(contract)
@@ -160,7 +160,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="ReturnsBool",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(gen.FunctionDecl("isReady", (), "Bool"),),
         )
         rendered = gen.render_contract_test(contract)
@@ -173,7 +173,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="UnknownReturn",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(gen.FunctionDecl("mystery", (), "String"),),
         )
         with self.assertRaisesRegex(ValueError, "unsupported Lean return type"):
@@ -183,7 +183,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="Owned",
             constructor=gen.ConstructorDecl(params=(gen.ParamDecl("initialOwner", "Address"),)),
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(gen.FunctionDecl("owner", (), "Address"),),
         )
         rendered = gen.render_contract_test(contract)
@@ -194,7 +194,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="TupleConsumer",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(
                 gen.FunctionDecl(
                     "submit",
@@ -211,7 +211,7 @@ class RenderTests(unittest.TestCase):
         contract = gen.ContractDecl(
             name="TupleReturn",
             constructor=None,
-            source=gen.ROOT / "Verity/Examples/MacroContracts.lean",
+            source=gen.ROOT / "Contracts/MacroContracts/Contract.lean",
             functions=(
                 gen.FunctionDecl(
                     "getPair",

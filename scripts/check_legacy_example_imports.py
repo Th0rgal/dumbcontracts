@@ -2,7 +2,7 @@
 """Fail closed on reintroduction of legacy migrated-contract imports.
 
 Issue #1143:
-- For migrated contracts, block `import Verity.Examples.<Contract>` in active code.
+- For migrated contracts, block `import Contracts.<Contract>.Contract` in active code.
 - Allow explicit temporary exemptions through a documented allowlist.
 - Fail when allowlist entries become stale.
 """
@@ -29,7 +29,7 @@ MIGRATED_CONTRACTS = {
 }
 
 IMPORT_RE = re.compile(
-    r"^\s*import\s+Verity\.Examples\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b",
+    r"^\s*import\s+Contracts\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\.Contract\b",
     flags=re.MULTILINE,
 )
 
@@ -37,6 +37,7 @@ ALLOWLIST_PATH = ROOT / "scripts" / "legacy_example_import_allowlist.txt"
 SCAN_ROOTS = [
     ROOT / "Compiler",
     ROOT / "Verity",
+    ROOT / "Contracts",
 ]
 EXTRA_SCAN_FILES = [
     ROOT / "Compiler.lean",
@@ -115,7 +116,7 @@ def main() -> int:
         allowed = allowlist.get(rel, set())
         disallowed = sorted(imports - allowed)
         if disallowed:
-            rendered = ", ".join(f"Verity.Examples.{name}" for name in disallowed)
+            rendered = ", ".join(f"Contracts.{name}.Contract" for name in disallowed)
             errors.append(f"{rel}: unexpected legacy migrated-contract import(s): {rendered}")
 
         used_allowlist[rel].update(imports & allowed)
@@ -127,7 +128,7 @@ def main() -> int:
             continue
         stale_modules = sorted(allowed_modules - used_allowlist.get(rel, set()))
         if stale_modules:
-            rendered = ", ".join(f"Verity.Examples.{name}" for name in stale_modules)
+            rendered = ", ".join(f"Contracts.{name}.Contract" for name in stale_modules)
             errors.append(
                 f"{rel}: stale allowlist module(s) with no matching import(s): {rendered}"
             )

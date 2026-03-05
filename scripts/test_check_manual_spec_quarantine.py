@@ -71,25 +71,25 @@ class ManualSpecQuarantineTests(unittest.TestCase):
     def test_fails_on_legacy_example_import(self) -> None:
         rc, stderr = self._run_check(
             {
-                "Compiler/Main.lean": "import Verity.Examples.Counter\n",
+                "Compiler/Main.lean": "import Contracts.Counter.Contract\n",
             }
         )
         self.assertEqual(rc, 1)
-        self.assertIn("import Verity.Examples.Counter", stderr)
+        self.assertIn("import Contracts.Counter.Contract", stderr)
 
     def test_fails_on_legacy_example_qualified_reference(self) -> None:
         rc, stderr = self._run_check(
             {
-                "Compiler/Main.lean": "def bad := Verity.Examples.Owned.transferOwnership\n",
+                "Compiler/Main.lean": "def bad := Contracts.Owned.transferOwnership\n",
             }
         )
         self.assertEqual(rc, 1)
-        self.assertIn("Verity.Examples.Owned.*", stderr)
+        self.assertIn("Contracts.Owned.*", stderr)
 
     def test_allows_macro_example_import(self) -> None:
         rc, stderr = self._run_check(
             {
-                "Compiler/Main.lean": "import Verity.Examples.MacroContracts\n",
+                "Compiler/Main.lean": "import Contracts.MacroContracts.Core\n",
             }
         )
         self.assertEqual(rc, 0, stderr)

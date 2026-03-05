@@ -373,7 +373,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help=(
             "Lean source path to scan (relative to repo root). "
-            "Repeat flag for multiple files. Defaults to Verity/Examples/MacroContracts.lean."
+            "Repeat flag for multiple files. Defaults to Contracts/MacroContracts/*.lean."
         ),
     )
     parser.add_argument(
@@ -397,8 +397,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    source_paths = args.source or ["Verity/Examples/MacroContracts.lean"]
-    paths = [ROOT / p for p in source_paths]
+    if args.source:
+        paths = [ROOT / p for p in args.source]
+    else:
+        macro_dir = ROOT / "Contracts" / "MacroContracts"
+        paths = sorted(macro_dir.glob("*.lean"))
+        if not paths:
+            raise SystemExit(f"no Lean files found in {macro_dir}")
+
 
     missing_sources = [str(p) for p in paths if not p.exists()]
     if missing_sources:

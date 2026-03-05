@@ -6,7 +6,7 @@ Formal verification proofs for the Verity compiler, proving correctness across t
 
 ## Verification Layers
 
-- **Layer 1: EDSL ≡ CompilationModel (`CompilationModel`)** — User contracts satisfy their compilation models (`Verity/Proofs/<Name>/` + `Compiler/Proofs/SemanticBridge.lean`). The hybrid typed-IR pipeline (`Verity/Core/Free/TypedIRCompilerCorrectness.lean`) provides a generic compilation-correctness theorem; macro-generated bridge theorems eliminate `sorry` for the supported subset.
+- **Layer 1: EDSL ≡ CompilationModel (`CompilationModel`)** — User contracts satisfy their compilation models (`Contracts/<Name>/Proofs/` + `Compiler/Proofs/SemanticBridge.lean`). The hybrid typed-IR pipeline (`Verity/Core/Free/TypedIRCompilerCorrectness.lean`) provides a generic compilation-correctness theorem; macro-generated bridge theorems eliminate `sorry` for the supported subset.
 - **Layer 2: CompilationModel (`CompilationModel`) → IR** — IR generation preserves compilation-model semantics (`Compiler/Proofs/IRGeneration/`).
 - **Layer 3: IR → Yul** — All statement equivalence proofs proven (`Compiler/Proofs/YulGeneration/`).
 
@@ -94,13 +94,13 @@ It also exposes API-boundary preservation lemmas for both transition entrypoints
 `lowerFromEDSLSubset_supported_preserves_interpretSpec` and
 `lowerFromEDSLSubset_manualBridge_preserves_interpretSpec`.
 
-Layer 1 proofs live in `Verity/Proofs/<Name>/Basic.lean` and `Correctness.lean`. The typed-IR compilation correctness pipeline is in `Verity/Core/Free/TypedIRCompilerCorrectness.lean`, with cross-layer bridge proofs in `Compiler/Proofs/SemanticBridge.lean`.
+Layer 1 proofs live in `Contracts/<Name>/Proofs/Basic.lean` and `Correctness.lean`. The typed-IR compilation correctness pipeline is in `Verity/Core/Free/TypedIRCompilerCorrectness.lean`, with cross-layer bridge proofs in `Compiler/Proofs/SemanticBridge.lean`.
 
 ## Build
 
 ```bash
 lake build                                      # Build everything
-lake build Verity.Specs.SimpleStorage.Proofs    # Build one contract's proofs
+lake build Contracts.SimpleStorage.Proofs    # Build one contract's proofs
 ```
 
 All proofs complete — no `sorry` warnings expected.

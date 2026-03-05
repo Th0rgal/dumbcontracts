@@ -1,0 +1,122 @@
+/-
+  Advanced correctness proofs for SafeCounter contract.
+
+  Proves deeper properties beyond Basic.lean:
+  - Standalone invariant proofs matching Invariants.lean definitions
+  - Composition: increment → decrement cancellation
+  - Composition: decrement → getCount
+-/
+
+import Contracts.SafeCounter.Proofs.Basic
+import Verity.Proofs.Stdlib.Automation
+
+namespace Contracts.SafeCounter.Proofs.Correctness
+
+open Verity
+open Verity.Stdlib.Math
+open Verity.EVM.Uint256
+open Contracts.MacroContracts.SafeCounter
+open Contracts.SafeCounter.Spec
+open Contracts.SafeCounter.Proofs
+open Verity.Proofs.Stdlib.Automation
+open Contracts.SafeCounter.Invariants
+
+/-! ## Standalone Invariant Proofs
+
+Prove context_preserved and storage_isolated as standalone theorems
+matching the Invariants.lean definitions.
+-/
+
+/-- increment preserves context (sender, thisAddress). -/
+theorem increment_preserves_context (s : ContractState)
+  (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256) :
+  let s' := ((increment).run s).snd
+  context_preserved s s' := by
+  have h := increment_meets_spec s h_no_overflow; simp [increment_spec] at h
+  exact ⟨h.2.2.2.2.1, h.2.2.2.2.2⟩
+
+/-- decrement preserves context (sender, thisAddress). -/
+theorem decrement_preserves_context (s : ContractState)
+  (h_no_underflow : s.storage 0 ≥ 1) :
+  let s' := ((decrement).run s).snd
+  context_preserved s s' := by
+  have h := decrement_meets_spec s h_no_underflow; simp [decrement_spec] at h
+  exact ⟨h.2.2.2.2.1, h.2.2.2.2.2⟩
+
+/-- increment preserves storage isolation. -/
+theorem increment_preserves_storage_isolated (s : ContractState)
+  (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256) :
+  let s' := ((increment).run s).snd
+  storage_isolated s s' := by
+  simp [storage_isolated]; intro k h_ne
+  exact increment_preserves_other_slots s h_no_overflow k h_ne
+
+/-- decrement preserves storage isolation. -/
+theorem decrement_preserves_storage_isolated (s : ContractState)
+  (h_no_underflow : s.storage 0 ≥ 1) :
+  let s' := ((decrement).run s).snd
+  storage_isolated s s' := by
+  simp [storage_isolated]; intro k h_ne
+  exact decrement_preserves_other_slots s h_no_underflow k h_ne
+
+/-- getCount preserves context (trivially, read-only). -/
+theorem getCount_preserves_context (s : ContractState) :
+  let s' := ((getCount).run s).snd
+  context_preserved s s' := by
+  simp [getCount_preserves_state s]
+
+/-- getCount preserves well-formedness. -/
+theorem getCount_preserves_wellformedness (s : ContractState) (h : WellFormedState s) :
+  let s' := ((getCount).run s).snd
+  WellFormedState s' :=
+  wf_of_state_eq _ _ _ (getCount_preserves_state s) h
+
+/-! ## Composition: increment → decrement cancellation -/
+
+/-- Increment then decrement returns to original count value.
+    Requires no overflow on increment. -/
+theorem increment_decrement_cancel (s : ContractState)
+  (h_no_overflow : (s.storage 0 : Nat) + 1 ≤ MAX_UINT256) :
+  let s' := ((increment).run s).snd
+  let s'' := ((decrement).run s').snd
+  s''.storage 0 = s.storage 0 := by
+  have h_inc := increment_adds_one s h_no_overflow
+  have h_add : add (s.storage 0) 1 = s.storage 0 + 1 := rfl
+  have h_val : ((s.storage 0 + 1 : Uint256) : Nat) = (s.storage 0 : Nat) + 1 :=
+    Verity.Core.Uint256.add_eq_of_lt (lt_modulus_of_le_max_uint256 _ h_no_overflow)
+  have h_ge : ((increment).run s).snd.storage 0 ≥ 1 := by
+    rw [h_inc, h_add]
+    simp only [Verity.Core.Uint256.le_def, Verity.Core.Uint256.val_one, h_val]
+    exact Nat.le_add_left _ _
+  have h_dec := decrement_subtracts_one ((increment).run s).snd h_ge
+  simp only [h_dec, h_inc, h_add]
+  exact Verity.Core.Uint256.sub_add_cancel (s.storage 0) 1
+
+/-! ## Composition: decrement → getCount -/
+
+/-- decrement followed by getCount returns count - 1. -/
+theorem decrement_getCount_correct (s : ContractState)
+  (h_no_underflow : s.storage 0 ≥ 1) :
+  let s' := ((decrement).run s).snd
+  ((getCount).run s').fst = sub (s.storage 0) 1 := by
+  have h_dec := decrement_subtracts_one s h_no_underflow
+  simpa only [h_dec] using getCount_returns_count ((decrement).run s).snd
+
+/-! ## Summary
+
+All 8 theorems fully proven with zero sorry:
+
+Standalone invariants:
+1. increment_preserves_context
+2. decrement_preserves_context
+3. increment_preserves_storage_isolated
+4. decrement_preserves_storage_isolated
+5. getCount_preserves_context
+6. getCount_preserves_wellformedness
+
+Composition:
+7. increment_decrement_cancel
+8. decrement_getCount_correct
+-/
+
+end Contracts.SafeCounter.Proofs.Correctness

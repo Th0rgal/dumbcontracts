@@ -24,7 +24,7 @@ namespace Compiler.Interpreter
 open Compiler.Constants (errorStringSelectorWord addressModulus)
 
 open Verity
-open Verity.Examples
+open Contracts.MacroContracts
 open Compiler.DiffTestTypes
 open Compiler.Hex
 
@@ -331,102 +331,102 @@ private def dispatch (tx : Transaction) (cases : List (String × (Unit → Execu
 Compatibility shims for per-contract migration.
 
 These keep interpreter call-sites stable while contract implementations move
-from `Verity.Examples.*` to `Verity.Examples.MacroContracts.*`.
+from the old `Verity.Examples.*` namespace to `Contracts.MacroContracts.*`.
 -/
 namespace Compat
 namespace SimpleStorage
 
-abbrev store := Verity.Examples.MacroContracts.SimpleStorage.store
-abbrev retrieve := Verity.Examples.MacroContracts.SimpleStorage.retrieve
+abbrev store := Contracts.MacroContracts.SimpleStorage.store
+abbrev retrieve := Contracts.MacroContracts.SimpleStorage.retrieve
 
 end SimpleStorage
 
 namespace Counter
 
-abbrev increment := Verity.Examples.MacroContracts.Counter.increment
-abbrev decrement := Verity.Examples.MacroContracts.Counter.decrement
-abbrev getCount := Verity.Examples.MacroContracts.Counter.getCount
+abbrev increment := Contracts.MacroContracts.Counter.increment
+abbrev decrement := Contracts.MacroContracts.Counter.decrement
+abbrev getCount := Contracts.MacroContracts.Counter.getCount
 
 end Counter
 
 namespace SafeCounter
 
-abbrev increment := Verity.Examples.MacroContracts.SafeCounter.increment
-abbrev decrement := Verity.Examples.MacroContracts.SafeCounter.decrement
-abbrev getCount := Verity.Examples.MacroContracts.SafeCounter.getCount
+abbrev increment := Contracts.MacroContracts.SafeCounter.increment
+abbrev decrement := Contracts.MacroContracts.SafeCounter.decrement
+abbrev getCount := Contracts.MacroContracts.SafeCounter.getCount
 
 end SafeCounter
 
 namespace Owned
 
-abbrev transferOwnership := Verity.Examples.MacroContracts.Owned.transferOwnership
-abbrev getOwner := Verity.Examples.MacroContracts.Owned.getOwner
+abbrev transferOwnership := Contracts.MacroContracts.Owned.transferOwnership
+abbrev getOwner := Contracts.MacroContracts.Owned.getOwner
 
 end Owned
 
 namespace OwnedCounter
 
-abbrev increment := Verity.Examples.MacroContracts.OwnedCounter.increment
-abbrev decrement := Verity.Examples.MacroContracts.OwnedCounter.decrement
-abbrev getCount := Verity.Examples.MacroContracts.OwnedCounter.getCount
-abbrev getOwner := Verity.Examples.MacroContracts.OwnedCounter.getOwner
-abbrev transferOwnership := Verity.Examples.MacroContracts.OwnedCounter.transferOwnership
+abbrev increment := Contracts.MacroContracts.OwnedCounter.increment
+abbrev decrement := Contracts.MacroContracts.OwnedCounter.decrement
+abbrev getCount := Contracts.MacroContracts.OwnedCounter.getCount
+abbrev getOwner := Contracts.MacroContracts.OwnedCounter.getOwner
+abbrev transferOwnership := Contracts.MacroContracts.OwnedCounter.transferOwnership
 
 end OwnedCounter
 
 namespace Ledger
 
-abbrev deposit := Verity.Examples.MacroContracts.Ledger.deposit
-abbrev withdraw := Verity.Examples.MacroContracts.Ledger.withdraw
-abbrev transfer := Verity.Examples.MacroContracts.Ledger.transfer
-abbrev getBalance := Verity.Examples.MacroContracts.Ledger.getBalance
+abbrev deposit := Contracts.MacroContracts.Ledger.deposit
+abbrev withdraw := Contracts.MacroContracts.Ledger.withdraw
+abbrev transfer := Contracts.MacroContracts.Ledger.transfer
+abbrev getBalance := Contracts.MacroContracts.Ledger.getBalance
 
 end Ledger
 
 namespace SimpleToken
 
-abbrev mint := Verity.Examples.MacroContracts.SimpleToken.mint
-abbrev transfer := Verity.Examples.MacroContracts.SimpleToken.transfer
-abbrev balanceOf := Verity.Examples.MacroContracts.SimpleToken.balanceOf
-abbrev getTotalSupply := Verity.Examples.MacroContracts.SimpleToken.getTotalSupply
-abbrev getOwner := Verity.Examples.MacroContracts.SimpleToken.getOwner
+abbrev mint := Contracts.MacroContracts.SimpleToken.mint
+abbrev transfer := Contracts.MacroContracts.SimpleToken.transfer
+abbrev balanceOf := Contracts.MacroContracts.SimpleToken.balanceOf
+abbrev getTotalSupply := Contracts.MacroContracts.SimpleToken.getTotalSupply
+abbrev getOwner := Contracts.MacroContracts.SimpleToken.getOwner
 
 end SimpleToken
 
 namespace ERC20
 
-abbrev mint := Verity.Examples.MacroContracts.ERC20.mint
-abbrev transfer := Verity.Examples.MacroContracts.ERC20.transfer
-abbrev approve := Verity.Examples.MacroContracts.ERC20.approve
-abbrev transferFrom := Verity.Examples.MacroContracts.ERC20.transferFrom
-abbrev balanceOf := Verity.Examples.MacroContracts.ERC20.balanceOf
-abbrev allowanceOf := Verity.Examples.MacroContracts.ERC20.allowanceOf
-abbrev getTotalSupply := Verity.Examples.MacroContracts.ERC20.getTotalSupply
-abbrev getOwner := Verity.Examples.MacroContracts.ERC20.getOwner
+abbrev mint := Contracts.MacroContracts.ERC20.mint
+abbrev transfer := Contracts.MacroContracts.ERC20.transfer
+abbrev approve := Contracts.MacroContracts.ERC20.approve
+abbrev transferFrom := Contracts.MacroContracts.ERC20.transferFrom
+abbrev balanceOf := Contracts.MacroContracts.ERC20.balanceOf
+abbrev allowanceOf := Contracts.MacroContracts.ERC20.allowanceOf
+abbrev getTotalSupply := Contracts.MacroContracts.ERC20.getTotalSupply
+abbrev getOwner := Contracts.MacroContracts.ERC20.getOwner
 
 end ERC20
 
 namespace ERC721
 
-abbrev mint := Verity.Examples.MacroContracts.ERC721Addressed.mint
-abbrev balanceOf := Verity.Examples.MacroContracts.ERC721Addressed.balanceOf
-abbrev ownerOf := Verity.Examples.MacroContracts.ERC721Addressed.ownerOf
-abbrev approve := Verity.Examples.MacroContracts.ERC721Addressed.approve
-abbrev getApproved := Verity.Examples.MacroContracts.ERC721Addressed.getApproved
-abbrev setApprovalForAll := Verity.Examples.MacroContracts.ERC721Addressed.setApprovalForAll
-abbrev isApprovedForAll := Verity.Examples.MacroContracts.ERC721Addressed.isApprovedForAll
-abbrev transferFrom := Verity.Examples.MacroContracts.ERC721Addressed.transferFrom
-abbrev owner : StorageSlot Address := Verity.Examples.MacroContracts.ERC721Addressed.owner
-abbrev totalSupply : StorageSlot Uint256 := Verity.Examples.MacroContracts.ERC721Addressed.totalSupply
-abbrev nextTokenId : StorageSlot Uint256 := Verity.Examples.MacroContracts.ERC721Addressed.nextTokenId
+abbrev mint := Contracts.MacroContracts.ERC721Addressed.mint
+abbrev balanceOf := Contracts.MacroContracts.ERC721Addressed.balanceOf
+abbrev ownerOf := Contracts.MacroContracts.ERC721Addressed.ownerOf
+abbrev approve := Contracts.MacroContracts.ERC721Addressed.approve
+abbrev getApproved := Contracts.MacroContracts.ERC721Addressed.getApproved
+abbrev setApprovalForAll := Contracts.MacroContracts.ERC721Addressed.setApprovalForAll
+abbrev isApprovedForAll := Contracts.MacroContracts.ERC721Addressed.isApprovedForAll
+abbrev transferFrom := Contracts.MacroContracts.ERC721Addressed.transferFrom
+abbrev owner : StorageSlot Address := Contracts.MacroContracts.ERC721Addressed.owner
+abbrev totalSupply : StorageSlot Uint256 := Contracts.MacroContracts.ERC721Addressed.totalSupply
+abbrev nextTokenId : StorageSlot Uint256 := Contracts.MacroContracts.ERC721Addressed.nextTokenId
 
 end ERC721
 
 namespace CryptoHash
 
-abbrev storeHashTwo := Verity.Examples.MacroContracts.Compat.CryptoHash.storeHashTwo
-abbrev storeHashThree := Verity.Examples.MacroContracts.Compat.CryptoHash.storeHashThree
-abbrev getLastHash := Verity.Examples.MacroContracts.Compat.CryptoHash.getLastHash
+abbrev storeHashTwo := Contracts.MacroContracts.Compat.CryptoHash.storeHashTwo
+abbrev storeHashThree := Contracts.MacroContracts.Compat.CryptoHash.storeHashThree
+abbrev getLastHash := Contracts.MacroContracts.Compat.CryptoHash.getLastHash
 
 end CryptoHash
 end Compat

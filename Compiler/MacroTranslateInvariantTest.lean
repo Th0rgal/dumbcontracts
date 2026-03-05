@@ -98,13 +98,23 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
   expectTrue s!"{spec.name}: write slots are unique (canonical + alias)" (allDistinct writes)
 
   let selectors ← Selector.computeSelectors spec
+  expectTrue s!"{spec.name}: selectors are unique" (allDistinct selectors)
   expectTrue s!"{spec.name}: selector count matches external function count"
     (selectors.length == extFns.length)
 
   let compileResult ← Selector.compileChecked spec selectors
   match compileResult with
-  | .ok _ =>
+  | .ok ir =>
       IO.println s!"✓ {spec.name}: compileChecked succeeds with canonical selectors"
+      let irFns := ir.functions
+      let irFnNames := irFns.map (·.name)
+      let irSelectors := irFns.map (·.selector)
+      expectTrue s!"{spec.name}: IR external function count matches spec external function count"
+        (irFns.length == extFns.length)
+      expectTrue s!"{spec.name}: IR external function names preserve spec order"
+        (irFnNames == fnNames)
+      expectTrue s!"{spec.name}: IR selectors preserve canonical selector order"
+        (irSelectors == selectors)
   | .error err =>
       throw (IO.userError s!"✗ {spec.name}: compileChecked failed: {err}")
 

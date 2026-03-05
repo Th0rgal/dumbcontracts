@@ -213,6 +213,13 @@ private axiom execBuildSwitch_none_none_aux (fuel : Nat) (state : YulState)
         (YulStmt.switch selectorExpr (switchCases fns)
           (some (switchDefaultCase none none)))
 
+/-- Executing a singleton statement list consumes one list-step of fuel. -/
+@[simp] private theorem execYulStmtsFuel_singleton_succ
+    (fuel : Nat) (state : YulState) (stmt : YulStmt) :
+    execYulStmtsFuel (fuel + 2) state [stmt] = execYulStmtFuel (fuel + 1) state stmt := by
+  simp [execYulStmtsFuel, execYulStmtFuel, execYulFuel]
+  cases hExec : execYulFuel (fuel + 1) state (.stmt stmt) <;> simp
+
 /-- The case list emitted by `buildSwitch` is definitionally `switchCases`.
     Keeping this fact explicit helps avoid large reducible unfold chains in #1094 proofs. -/
 private theorem buildSwitch_cases_eq_switchCases (fns : List IRFunction) :

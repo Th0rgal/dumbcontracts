@@ -101,7 +101,7 @@ def main() -> int:
         default=[],
         help=(
             "Lean source path to scan (relative to repo root). "
-            "Repeat flag for multiple files. Defaults to Contracts/MacroContracts/*.lean."
+            "Repeat flag for multiple files. Defaults to Contracts/MacroContracts/**/*.lean."
         ),
     )
     parser.add_argument(
@@ -125,7 +125,7 @@ def main() -> int:
     if args.source:
         source_paths = [ROOT / p for p in args.source]
     else:
-        source_paths = sorted(DEFAULT_SOURCE_DIR.glob("*.lean"))
+        source_paths = generator.discover_macro_contract_sources(DEFAULT_SOURCE_DIR)
         if not source_paths:
             source_paths = [DEFAULT_SOURCE]
     missing_sources = [str(p.relative_to(ROOT)) for p in source_paths if not p.exists()]

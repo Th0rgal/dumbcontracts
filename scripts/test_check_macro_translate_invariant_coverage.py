@@ -121,8 +121,32 @@ class MacroTranslateInvariantCoverageTests(unittest.TestCase):
                     "--invariant-suite",
                     str(suite),
                 ],
-            ):
+                ):
                 self.assertEqual(check.main(), 0)
+
+    def test_accepts_nested_module_path_suite_entry(self) -> None:
+        with tempfile.TemporaryDirectory(dir=check.ROOT) as tmpdir:
+            root = Path(tmpdir)
+            contracts_dir = root / "Contracts"
+            contracts_dir.mkdir(parents=True, exist_ok=True)
+            (contracts_dir / "Core.lean").write_text(
+                """
+                verity_contract NestedCounter where
+                  storage
+                """,
+                encoding="utf-8",
+            )
+            suite = root / "MacroTranslateInvariantTest.lean"
+            suite.write_text(
+                """
+                private def macroSpecs :=
+                  [ Contracts.MacroContracts.Compat.Nested.NestedCounter.spec ]
+                """,
+                encoding="utf-8",
+            )
+
+            rc = check._check_coverage([contracts_dir / "Core.lean"], suite)
+            self.assertEqual(rc, 0)
 
 
 if __name__ == "__main__":

@@ -209,75 +209,11 @@ jobs:
       - name: Run Python unit tests
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
-  # Fast external pre-check with AXLE verify_proof API.
-  # This is advisory acceleration, not a replacement for local trusted Lean checks.
-  axle_verify_proof:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check AXLE API key availability
-        id: axle-key
-        env:
-          AXLE_API_KEY: ${{ secrets.AXLE_API_KEY }}
-        run: |
-          if [ -z "${AXLE_API_KEY}" ]; then
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "AXLE_API_KEY is not configured for this run."
-          else
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: dorny/paths-filter@v3
-        id: lean-filter
-        if: steps.axle-key.outputs.present == 'true'
-        with:
-          list-files: csv
-          filters: |
-            lean:
-              - 'Verity/**/*.lean'
-              - 'Verity.lean'
-              - 'Compiler/**/*.lean'
-              - 'Compiler.lean'
-
-      - name: Run AXLE verify_proof pre-check
-        id: axle-run
-        continue-on-error: true
-        if: steps.axle-key.outputs.present == 'true' && steps.lean-filter.outputs.lean == 'true'
-        env:
-          AXLE_API_KEY: ${{ secrets.AXLE_API_KEY }}
-        run: |
-          python3 scripts/axle_verify_proof_ci.py \
-            --files-csv "${{ steps.lean-filter.outputs.lean_files }}"
-
-      - name: AXLE pre-check failed (non-blocking)
-        if: steps.axle-run.outcome == 'failure'
-        run: |
-          echo "::warning::AXLE verify_proof pre-check failed; continuing with trusted local Lean gates."
-          {
-            echo "### AXLE pre-check"
-            echo ""
-            echo "AXLE verify_proof pre-check failed in this run."
-            echo "Trusted local Lean and Foundry jobs remain the required merge gate."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: No Lean file changes
-        if: steps.axle-key.outputs.present == 'true' && steps.lean-filter.outputs.lean != 'true'
-        run: echo "No changed Lean files; AXLE verify_proof pre-check skipped."
-
-      - name: No AXLE API key
-        if: steps.axle-key.outputs.present != 'true'
-        run: |
-          echo "AXLE verify_proof pre-check skipped: AXLE_API_KEY is unavailable."
-
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: [changes, axle_verify_proof]
-    if: needs.changes.outputs.code == 'true' && (needs.axle_verify_proof.result == 'success' || needs.axle_verify_proof.result == 'skipped')
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -307,7 +243,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean', 'Verity/**/*.lean') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
           restore-keys: |
             lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
 
@@ -433,7 +369,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean', 'Verity/**/*.lean') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
 
       - name: Upload axiom dependency report
         uses: actions/upload-artifact@v4
@@ -450,8 +386,8 @@ jobs:
   build-compiler:
     runs-on: ubuntu-latest
     timeout-minutes: 240
-    needs: [changes, axle_verify_proof]
-    if: needs.changes.outputs.compiler == 'true' && (needs.axle_verify_proof.result == 'success' || needs.axle_verify_proof.result == 'skipped')
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -481,7 +417,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .lake
-          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean') }}
+          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
           restore-keys: |
             lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
 
@@ -626,7 +562,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .lake
-          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('Compiler/**/*.lean') }}
+          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
 
       - name: Upload generated Yul
         uses: actions/upload-artifact@v4
@@ -871,7 +807,7 @@ jobs:
 
   failure-hints:
     runs-on: ubuntu-latest
-    needs: [checks, axle_verify_proof, build, build-compiler, foundry-gas-calibration, foundry, foundry-patched, foundry-multi-seed]
+    needs: [checks, build, build-compiler, foundry-gas-calibration, foundry, foundry-patched, foundry-multi-seed]
     if: always() && github.event_name == 'pull_request' && contains(join(needs.*.result, ','), 'failure')
     permissions:
       contents: read

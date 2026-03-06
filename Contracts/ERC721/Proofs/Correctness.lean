@@ -41,7 +41,8 @@ theorem setApprovalForAll_is_balance_neutral_holds
     (s : ContractState) (operator : Address) (approved : Bool) :
     setApprovalForAll_is_balance_neutral s ((Contracts.MacroContracts.ERC721Addressed.setApprovalForAll operator approved).runState s) := by
   have h := setApprovalForAll_meets_spec s operator approved
-  rcases h with ⟨_, _, _, h_storage, h_storageAddr, h_storageMap, h_storageMapUint, _⟩
+  rcases h with ⟨_, _, h_frame⟩
+  rcases h_frame with ⟨h_storage, h_storageAddr, h_storageMap, h_storageMapUint, _⟩
   exact ⟨h_storage, h_storageAddr, h_storageMap, h_storageMapUint⟩
 
 end Contracts.ERC721.Proofs

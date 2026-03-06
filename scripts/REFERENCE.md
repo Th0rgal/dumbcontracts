@@ -15,6 +15,7 @@ This document is the long-form reference for script responsibilities.
 ## Artifacts and documentation consistency
 
 - `generate_verification_status.py`: refresh/check `artifacts/verification_status.json`.
+- `check_verification_status_doc.py`: keep `docs/VERIFICATION_STATUS.md` aligned with the artifact-backed live totals.
 - `verification_metrics.py`: shared metric collection and strict artifact validation.
 - `refresh_verification_artifacts.sh`: regenerate and validate the verification artifact.
 

@@ -9,5 +9,6 @@ python3 scripts/generate_verification_status.py
 
 echo "[refresh] Validating refreshed artifacts"
 python3 scripts/generate_verification_status.py --check
+python3 scripts/check_verification_status_doc.py
 
 echo "[refresh] PASS"

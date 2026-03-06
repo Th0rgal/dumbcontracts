@@ -113,10 +113,10 @@ Layers 2 and 3 (`CompilationModel → IR → Yul`) are verified with 2 axioms (o
 
 ### 5. Test the compiled output (belt and suspenders)
 
-**Foundry tests** (475 tests) validate EDSL = Yul = EVM execution. 475 Foundry tests across 38 test suites run the compiled Yul on a real EVM. The proofs already guarantee correctness, but the tests confirm it works end-to-end:
+**Foundry tests** (478 tests) validate EDSL = Yul = EVM execution. 478 Foundry tests across 38 test suites run the compiled Yul on a real EVM. The proofs already guarantee correctness, but the tests confirm it works end-to-end:
 
 ```bash
-FOUNDRY_PROFILE=difftest forge test    # 475 tests across 38 suites
+FOUNDRY_PROFILE=difftest forge test    # 478 tests across 38 suites
 ```
 
 ---
@@ -137,7 +137,7 @@ FOUNDRY_PROFILE=difftest forge test    # 475 tests across 38 suites
 | ReentrancyExample | 5 | Reentrancy vulnerability vs safe pattern |
 | CryptoHash | — | External library linking demo (no proofs) |
 
-273 theorems across 10 categories. 475 Foundry tests across 38 test suites. 250 covered by property tests (92% coverage, 23 proof-only exclusions). 2 documented axioms. 0 `sorry` placeholders.
+273 theorems across 10 categories. 478 Foundry tests across 38 test suites. 251 covered by property tests (92% coverage, 22 proof-only exclusions). 2 documented axioms. 0 `sorry` placeholders.
 
 ---
 
@@ -171,7 +171,7 @@ lake exe verity-compiler                              # all contracts
 lake exe verity-compiler --edsl-contract counter      # specific contract
 
 # Run Foundry tests
-FOUNDRY_PROFILE=difftest forge test    # 475 tests across 38 suites
+FOUNDRY_PROFILE=difftest forge test    # 478 tests across 38 suites
 ```
 
 **Scaffold a new contract**:
@@ -248,7 +248,7 @@ verity/
 │   │   └── YulGeneration/           # IR → Yul preservation
 │   ├── Yul/             #   Yul code generation
 │   └── Modules/         #   External Call Modules (ECMs)
-├── test/                # Foundry tests (475 tests)
+├── test/                # Foundry tests (478 tests)
 ├── artifacts/yul/       # Compiled Yul output
 └── scripts/             # CI validation scripts
 ```

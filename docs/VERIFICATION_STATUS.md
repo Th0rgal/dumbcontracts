@@ -96,13 +96,13 @@ Key files: [`StatementEquivalence.lean`](../Compiler/Proofs/YulGeneration/Statem
 | Counter | 82% (23/28) | 5 proof-only |
 | Stdlib | 0% (0/0) | 0 proof-only |
 
-**Status**: 92% coverage (250/273), 23 remaining exclusions all proof-only
+**Status**: 92% coverage (251/273), 22 remaining exclusions all proof-only
 
 - **Total Properties**: 273
 - **Covered**: 250
-- **Excluded**: 23 (all proof-only)
+- **Excluded**: 22 (all proof-only)
 
-**Proof-Only Properties (23 exclusions)**: Internal proof machinery that cannot be tested in Foundry.
+**Proof-Only Properties (22 exclusions)**: Internal proof machinery that cannot be tested in Foundry.
 
 0 `sorry` remaining across `Compiler/**/*.lean` and `Verity/**/*.lean` proof modules.
 

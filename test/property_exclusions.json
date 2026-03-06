@@ -17,9 +17,6 @@
     "isOwner_correct",
     "transferOwnership_unfold"
   ],
-  "ReentrancyExample": [
-    "nonReentrant_blocks_when_locked"
-  ],
   "SimpleStorage": [
     "store_preserves_wellformedness"
   ],

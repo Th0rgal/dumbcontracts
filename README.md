@@ -27,25 +27,9 @@ Verity is a **formally verified smart contract compiler** written in [Lean 4](ht
 
 ## How it works
 
-### 1. Write a contract in the EDSL
+### 1. Write a contract
 
-Contracts look like Lean `do`-notation with storage declarations:
-
-```lean
--- Contracts/Counter/Contract.lean
-def count : StorageSlot Uint256 := ⟨0⟩
-
-def increment : Contract Unit := do
-  let current ← getStorage count
-  setStorage count (add current 1)
-
-def getCount : Contract Uint256 := do
-  getStorage count
-```
-
-`Contract α` is a state monad: `ContractState → ContractResult α`. Operations like `getStorage`, `setStorage`, `require` manipulate blockchain state (storage slots, sender address, etc).
-
-The `verity_contract` [macro](Verity/Macro/Elaborate.lean) can also generate these definitions from a more concise syntax:
+Contracts are written using the `verity_contract` [macro](Verity/Macro/Elaborate.lean), which generates both an executable Lean specification (`Contract` monad) and a declarative compilation model (`CompilationModel`) from one definition, with a machine-checked proof that they agree:
 
 ```lean
 -- Contracts/MacroContracts/Counter.lean
@@ -57,6 +41,8 @@ verity_contract Counter where
     let current ← getStorage count
     setStorage count (add current 1)
 ```
+
+Under the hood, this generates a `Contract α` state monad (`ContractState → ContractResult α`) with operations like `getStorage`, `setStorage`, and `require` that manipulate blockchain state.
 
 ### 2. Write a spec
 
@@ -97,7 +83,7 @@ EDSL contract (Lean)
 CompilationModel (declarative IR spec)
   ↓  Layer 2: CompilationModel → IR        [PROVEN]
 Intermediate Representation
-  ↓  Layer 3: IR → Yul                     [PROVEN, 2 axioms]
+  ↓  Layer 3: IR → Yul                     [PROVEN, 1 axiom]
 Yul
   ↓  solc (trusted external compiler)
 EVM Bytecode
@@ -137,7 +123,7 @@ FOUNDRY_PROFILE=difftest forge test    # 478 tests across 38 suites
 | ReentrancyExample | 5 | Reentrancy vulnerability vs safe pattern |
 | CryptoHash | — | External library linking demo (no proofs) |
 
-273 theorems across 10 categories. 478 Foundry tests across 38 test suites. 251 covered by property tests (92% coverage, 22 proof-only exclusions). 2 documented axioms. 0 `sorry` placeholders.
+273 theorems across 10 categories. 478 Foundry tests across 38 test suites. 251 covered by property tests (92% coverage, 22 proof-only exclusions). 1 documented axiom. 0 `sorry` placeholders.
 
 ---
 
@@ -167,8 +153,8 @@ git clone https://github.com/Th0rgal/verity.git && cd verity
 lake build
 
 # Compile contracts to Yul
-lake exe verity-compiler                              # all contracts
-lake exe verity-compiler --edsl-contract counter      # specific contract
+lake exe verity-compiler --manifest packages/verity-examples/contracts.manifest
+lake exe verity-compiler --module Contracts.MacroContracts.Counter  # specific contract
 
 # Run Foundry tests
 FOUNDRY_PROFILE=difftest forge test    # 478 tests across 38 suites
@@ -186,15 +172,14 @@ This creates: implementation, spec, invariants, proofs, and Foundry test files.
 
 ## Verification guarantees
 
-Every claim is enforced by CI on every commit:
+Every claim is enforced by CI on every commit. Run `make check` locally to validate, or see [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md) for current per-contract status and coverage tables.
 
-| Claim | Value | Verify locally |
-|-------|-------|----------------|
-| Tracked theorems | 425 across 11 categories | `make verify` |
-| Incomplete proofs (`sorry`) | 0 | `python3 scripts/check_lean_hygiene.py` |
-| Project-specific axioms | 2 ([documented](AXIOMS.md)) | `make axiom-report` |
-| Foundry runtime tests | 475 across 38 suites | `make test-foundry` |
-| Property test coverage | 250/425 (59%) | `python3 scripts/check_property_coverage.py` |
+| Claim | Verify locally |
+|-------|----------------|
+| All proofs type-check, zero `sorry` | `make verify` |
+| Zero undocumented axioms | `make axiom-report` |
+| Foundry runtime tests pass | `make test-foundry` |
+| All CI checks pass | `make check` |
 
 ---
 
@@ -236,19 +221,19 @@ verity/
 │   ├── Macro/           #   verity_contract macro elaborator
 │   └── Stdlib/          #   Proven helper lemmas (arithmetic, automation)
 ├── Contracts/           # Verified contract implementations
-│   ├── <Name>/Contract.lean   #   Contract implementation
 │   ├── <Name>/Spec.lean       #   Formal specification
 │   ├── <Name>/Proofs/*.lean   #   Correctness proofs
-│   └── MacroContracts/  #   Macro-generated contract examples
+│   └── MacroContracts/  #   Macro-generated contract definitions
 ├── Compiler/            # Compilation pipeline
-│   ├── CompilationModel.lean  # Declarative compiler-facing contract model
+│   ├── CompilationModel/      # Declarative compiler-facing model (types, validation, codegen)
 │   ├── Proofs/          #   Compilation correctness proofs (Layers 1-3)
 │   │   ├── SemanticBridge.lean      # EDSL ≡ IR bridge theorems
 │   │   ├── EndToEnd.lean            # Layers 2+3 composition
 │   │   └── YulGeneration/           # IR → Yul preservation
 │   ├── Yul/             #   Yul code generation
 │   └── Modules/         #   External Call Modules (ECMs)
-├── test/                # Foundry tests (478 tests)
+├── packages/            # Independent sub-packages (verity-edsl, verity-compiler, verity-examples)
+├── test/                # Foundry tests
 ├── artifacts/yul/       # Compiled Yul output
 └── scripts/             # CI validation scripts
 ```

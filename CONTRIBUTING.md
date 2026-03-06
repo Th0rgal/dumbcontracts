@@ -248,7 +248,7 @@ Tag format: `/// Property: exact_theorem_name`
 
 **New contracts**: Use `python3 scripts/generate_contract.py <Name>` to scaffold all boilerplate files, then follow the `SimpleStorage` pattern: Spec → Invariants → Implementation → Proofs → Tests
 
-**Compiler changes**: Check [Compiler/Specs.lean](Compiler/Specs.lean), ensure proofs still build
+**Compiler changes**: Ensure `lake build` and `make check` pass
 
 ## Adding Axioms
 

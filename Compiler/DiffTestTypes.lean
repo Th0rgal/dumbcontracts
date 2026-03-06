@@ -1,8 +1,8 @@
 /-
   Compiler.DiffTestTypes: Shared Types for Differential Testing
 
-  Common types used by both RandomGen and Interpreter modules.
-  Extracted to avoid duplication and resolve conflicting main function issue.
+  Common types used by the differential-test interpreter and related fixtures.
+  Extracted to keep the transaction and contract enumerations in one place.
 -/
 
 import Verity.Core

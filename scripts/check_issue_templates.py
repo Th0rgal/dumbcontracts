@@ -24,6 +24,11 @@ LOG_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 ]
 
 
+def _yaml_files(templates_dir: Path) -> list[Path]:
+    files = sorted(templates_dir.glob("*.yml")) + sorted(templates_dir.glob("*.yaml"))
+    return sorted({path for path in files if path.is_file()})
+
+
 def _find_log_artifacts(path: Path) -> list[str]:
     findings: list[str] = []
     for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -35,11 +40,10 @@ def _find_log_artifacts(path: Path) -> list[str]:
 
 
 def _template_files(templates_dir: Path) -> list[Path]:
-    files = sorted(templates_dir.glob("*.yml")) + sorted(templates_dir.glob("*.yaml"))
     return sorted(
         {
             path
-            for path in files
+            for path in _yaml_files(templates_dir)
             if path.is_file() and path.name not in {"config.yml", "config.yaml"}
         }
     )
@@ -87,6 +91,11 @@ def check_issue_templates(templates_dir: Path) -> int:
         print(f"issue template directory not found: {templates_dir}", file=sys.stderr)
         return 1
 
+    yaml_files = _yaml_files(templates_dir)
+    if not yaml_files:
+        print(f"no YAML issue templates found under: {templates_dir}", file=sys.stderr)
+        return 1
+
     templates = _template_files(templates_dir)
     if not templates:
         print(f"no issue form templates found under: {templates_dir}", file=sys.stderr)
@@ -96,7 +105,8 @@ def check_issue_templates(templates_dir: Path) -> int:
     for template in templates:
         for issue in _check_form(template):
             failures.append(f"{_render_path(template)}: {issue}")
-        failures.extend(_find_log_artifacts(template))
+    for path in yaml_files:
+        failures.extend(_find_log_artifacts(path))
 
     if failures:
         print("issue template validation failed:", file=sys.stderr)

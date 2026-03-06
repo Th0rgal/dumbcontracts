@@ -263,7 +263,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [changes, axle-verify-proof]
-    if: needs.changes.outputs.code == 'true' && (needs.axle-verify-proof.result == 'success' || needs.axle-verify-proof.result == 'skipped')
+    if: needs.changes.outputs.code == 'true' && (needs['axle-verify-proof'].result == 'success' || needs['axle-verify-proof'].result == 'skipped')
     steps:
       - uses: actions/checkout@v4
 
@@ -437,7 +437,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     needs: [changes, axle-verify-proof]
-    if: needs.changes.outputs.compiler == 'true' && (needs.axle-verify-proof.result == 'success' || needs.axle-verify-proof.result == 'skipped')
+    if: needs.changes.outputs.compiler == 'true' && (needs['axle-verify-proof'].result == 'success' || needs['axle-verify-proof'].result == 'skipped')
     steps:
       - uses: actions/checkout@v4
 

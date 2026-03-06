@@ -9,7 +9,7 @@ import Compiler.Linker
 import Compiler.Selector
 import Compiler.Selectors
 import Compiler.ParityPacks
-import Compiler.RandomGen
+
 import Compiler.CompilationModel
 import Compiler.Lowering.FromEDSL
 import Compiler.ModuleInput

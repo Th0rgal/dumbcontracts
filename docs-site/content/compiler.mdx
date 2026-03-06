@@ -615,15 +615,15 @@ verity_contract MyContract where
     return (← getStorage value)
 ```
 
-2. **Register it in** `Compiler/Specs.lean` **under** `allSpecs`:
-```lean
-Verity.Examples.MacroContracts.MyContract.spec
+2. **Add the module to** `packages/verity-examples/contracts.manifest`:
+```
+Contracts.MacroContracts.MyContract
 ```
 
 3. **Recompile**:
 ```bash
 lake build verity-compiler
-lake exe verity-compiler
+lake exe verity-compiler --manifest packages/verity-examples/contracts.manifest
 ```
 
 4. **Done!** Contract generated in `artifacts/yul/MyContract.yul`

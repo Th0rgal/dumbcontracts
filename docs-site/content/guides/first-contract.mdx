@@ -357,8 +357,8 @@ grep -r "sorry" Verity/Specs/TipJar/ Verity/Proofs/TipJar/
 
 ### 5.1 Add Canonical Compiler Declaration
 
-Add your contract to `Verity/Examples/MacroContracts.lean` with `verity_contract`.
-Then register `<Name>.spec` in `Compiler/Specs.lean` under `allSpecs`:
+Add your contract to `Contracts/MacroContracts/<Name>.lean` with `verity_contract`.
+Then add the module to `packages/verity-examples/contracts.manifest`:
 
 ```lean
 verity_contract TipJar where

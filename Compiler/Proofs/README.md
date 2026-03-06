@@ -29,7 +29,7 @@ insufficient-balance behaviors in `Owned`, `OwnedCounter`, `Ledger`, and
 `SimpleToken`, plus overflow/underflow revert coverage in `SafeCounter`.
 Getter-side read-only state-preservation bridges are also explicit for
 supported getter entrypoints. Parser-determinism lemmas are also included for
-`--edsl-contract` IDs (`supportedEDSLContractName_injective`,
+contract selection IDs (`supportedEDSLContractName_injective`,
 `parseSupportedEDSLContract_roundtrip_unique`,
 `supportedEDSLContractNames_nodup`).
 The same module also composes parsed CLI IDs with lowering semantics at the
@@ -88,7 +88,7 @@ Centralized selected/default helper behavior is also explicit in proofs via
 `lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok`,
 `lowerRequestedSupportedEDSLContracts_full_eq_default`.
 `Compiler/CompileDriver.lean` uses this same selected/default helper path directly,
-so runtime selected/default `--edsl-contract` behavior stays aligned with the
+so runtime selected/default contract selection behavior stays aligned with the
 proven parsing/lowering boundary.
 It also exposes API-boundary preservation lemmas for both transition entrypoints:
 `lowerFromEDSLSubset_supported_preserves_interpretSpec` and

@@ -83,8 +83,8 @@ test/Property<Name>.t.sol              # Property tests
 
 - **Storage slot mismatches** between spec, EDSL, and compiler
 - **Missing canonical registration**:
-  - Add macro declaration in `Verity/Examples/MacroContracts.lean`
-  - Add `<Name>.spec` entry to `Compiler.Specs.allSpecs` in `Compiler/Specs.lean`
+  - Add macro declaration in `Contracts/MacroContracts/<Name>.lean`
+  - Add the module to `packages/verity-examples/contracts.manifest`
 - **Mapping conversions** not mirrored between spec and proofs
 - **Property tag drift** — test tags must match lemma names exactly
 

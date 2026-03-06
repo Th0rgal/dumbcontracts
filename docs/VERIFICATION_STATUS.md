@@ -46,7 +46,6 @@ Layer 1 uses macro-generated bridge theorems backed by a generic typed-IR compil
 `Compiler/Proofs/Lowering/FromEDSL.lean` provides transition bridge theorems for all supported EDSL contracts (SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter), covering:
 - Write/read bridges for mutating and getter entrypoints
 - Explicit revert-path bridges (owner-gated, insufficient-balance, overflow/underflow)
-- Parser determinism for `--edsl-contract` selection IDs
 
 ## Layer 2: CompilationModel → IR — COMPLETE
 

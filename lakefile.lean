@@ -50,9 +50,6 @@ lean_exe «verity-compiler» where
 lean_exe «difftest-interpreter» where
   root := `Compiler.Interpreter
 
-lean_exe «random-gen» where
-  root := `Compiler.RandomGen
-
 lean_exe «gas-report» where
   root := `Compiler.Gas.Report
 

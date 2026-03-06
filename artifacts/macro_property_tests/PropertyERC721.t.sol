@@ -17,7 +17,16 @@ contract PropertyERC721Test is YulTestBase {
         require(target != address(0), "Deploy failed");
     }
 
-    // Property 1: TODO decode and assert `ownerOf` result
+    // Property 1: TODO decode and assert `balanceOf` result
+    function testTODO_BalanceOf_DecodeAndAssert() public {
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("balanceOf(address)", alice));
+        require(ok, "balanceOf reverted unexpectedly");
+        assertEq(ret.length, 32, "balanceOf ABI return length mismatch (expected 32 bytes)");
+        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
+        ret;
+    }
+    // Property 2: TODO decode and assert `ownerOf` result
     function testTODO_OwnerOf_DecodeAndAssert() public {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("ownerOf(uint256)", uint256(1)));
@@ -26,7 +35,7 @@ contract PropertyERC721Test is YulTestBase {
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
-    // Property 2: TODO decode and assert `getApproved` result
+    // Property 3: TODO decode and assert `getApproved` result
     function testTODO_GetApproved_DecodeAndAssert() public {
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getApproved(uint256)", uint256(1)));
@@ -35,25 +44,40 @@ contract PropertyERC721Test is YulTestBase {
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
-    // Property 3: approve has no unexpected revert
+    // Property 4: TODO decode and assert `isApprovedForAll` result
+    function testTODO_IsApprovedForAll_DecodeAndAssert() public {
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("isApprovedForAll(address,address)", alice, alice));
+        require(ok, "isApprovedForAll reverted unexpectedly");
+        assertEq(ret.length, 32, "isApprovedForAll ABI return length mismatch (expected 32 bytes)");
+        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
+        ret;
+    }
+    // Property 5: approve has no unexpected revert
     function testAuto_Approve_NoUnexpectedRevert() public {
         vm.prank(alice);
-        (bool ok,) = target.call(abi.encodeWithSignature("approve(uint256,uint256)", uint256(1), uint256(1)));
+        (bool ok,) = target.call(abi.encodeWithSignature("approve(address,uint256)", alice, uint256(1)));
         require(ok, "approve reverted unexpectedly");
     }
-    // Property 4: TODO decode and assert `mint` result
+    // Property 6: setApprovalForAll has no unexpected revert
+    function testAuto_SetApprovalForAll_NoUnexpectedRevert() public {
+        vm.prank(alice);
+        (bool ok,) = target.call(abi.encodeWithSignature("setApprovalForAll(address,bool)", alice, true));
+        require(ok, "setApprovalForAll reverted unexpectedly");
+    }
+    // Property 7: TODO decode and assert `mint` result
     function testTODO_Mint_DecodeAndAssert() public {
         vm.prank(alice);
-        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("mint(uint256)", uint256(1)));
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("mint(address)", alice));
         require(ok, "mint reverted unexpectedly");
         assertEq(ret.length, 32, "mint ABI return length mismatch (expected 32 bytes)");
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
-    // Property 5: transferFrom has no unexpected revert
+    // Property 8: transferFrom has no unexpected revert
     function testAuto_TransferFrom_NoUnexpectedRevert() public {
         vm.prank(alice);
-        (bool ok,) = target.call(abi.encodeWithSignature("transferFrom(uint256,uint256,uint256)", uint256(1), uint256(1), uint256(1)));
+        (bool ok,) = target.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", alice, alice, uint256(1)));
         require(ok, "transferFrom reverted unexpectedly");
     }
 }

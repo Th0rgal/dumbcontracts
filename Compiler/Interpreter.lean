@@ -14,7 +14,7 @@
 import Compiler.Constants
 import Contracts.MacroContracts.Tokens
 import Contracts.MacroContracts.Core
-import Contracts.MacroContracts.ERC721Addressed
+import Contracts.MacroContracts.ERC721
 import Contracts.CryptoHash
 import Compiler.DiffTestTypes
 import Compiler.Hex
@@ -503,37 +503,37 @@ def interpretERC721 (tx : Transaction) (state : ContractState) : ExecutionResult
       let mintedTokenId : Uint256 := state.storage 2
       let recipientKey := (3, toAddr)
       let ownerWordKey := (4, mintedTokenId)
-      runUint (ERC721Addressed.mint toAddr) state [1, 2] [0] [recipientKey] [ownerWordKey]
+      runUint (ERC721.mint toAddr) state [1, 2] [0] [recipientKey] [ownerWordKey]
     ),
     case1Address "balanceOf" tx (fun addr =>
       let addrKey := (3, addr)
-      runUint (ERC721Addressed.balanceOf addr) state [] [] [addrKey]
+      runUint (ERC721.balanceOf addr) state [] [] [addrKey]
     ),
     case1 "ownerOf" tx (fun tokenId =>
       let tokenIdU : Uint256 := tokenId
       let ownerKey := (4, tokenIdU)
-      runAddress (ERC721Addressed.ownerOf tokenIdU) state [] [] [] [ownerKey]
+      runAddress (ERC721.ownerOf tokenIdU) state [] [] [] [ownerKey]
     ),
     case2AddressNat "approve" tx (fun approved tokenId =>
       let tokenIdU : Uint256 := tokenId
       let ownerKey := (4, tokenIdU)
       let approvalKey := (5, tokenIdU)
-      runUnit (ERC721Addressed.approve approved tokenIdU) state [] [] [] [ownerKey, approvalKey]
+      runUnit (ERC721.approve approved tokenIdU) state [] [] [] [ownerKey, approvalKey]
     ),
     case1 "getApproved" tx (fun tokenId =>
       let tokenIdU : Uint256 := tokenId
       let ownerKey := (4, tokenIdU)
       let approvalKey := (5, tokenIdU)
-      runAddress (ERC721Addressed.getApproved tokenIdU) state [] [] [] [ownerKey, approvalKey]
+      runAddress (ERC721.getApproved tokenIdU) state [] [] [] [ownerKey, approvalKey]
     ),
     case2AddressNat "setApprovalForAll" tx (fun operator approvedWord =>
       let ownerAddr := tx.sender
       let approvalKey := (6, ownerAddr, operator)
-      runUnit (ERC721Addressed.setApprovalForAll operator (approvedWord != 0)) state [] [] [] [] [approvalKey]
+      runUnit (ERC721.setApprovalForAll operator (approvedWord != 0)) state [] [] [] [] [approvalKey]
     ),
     case2AddressAddress "isApprovedForAll" tx (fun ownerAddr operator =>
       let approvalKey := (6, ownerAddr, operator)
-      runBool (ERC721Addressed.isApprovedForAll ownerAddr operator) state [] [] [] [] [approvalKey]
+      runBool (ERC721.isApprovedForAll ownerAddr operator) state [] [] [] [] [approvalKey]
     ),
     case3AddressAddressNat "transferFrom" tx (fun fromAddr toAddr tokenId =>
       let tokenIdU : Uint256 := tokenId
@@ -541,11 +541,11 @@ def interpretERC721 (tx : Transaction) (state : ContractState) : ExecutionResult
       let toKey := (3, toAddr)
       let ownerKey := (4, tokenIdU)
       let approvalKey := (5, tokenIdU)
-      runUnit (ERC721Addressed.transferFrom fromAddr toAddr tokenIdU) state [] [] [fromKey, toKey] [ownerKey, approvalKey]
+      runUnit (ERC721.transferFrom fromAddr toAddr tokenIdU) state [] [] [fromKey, toKey] [ownerKey, approvalKey]
     ),
-    case0 "owner" tx (fun _ => runAddress (getStorageAddr ERC721Addressed.owner) state [] [0] []),
-    case0 "totalSupply" tx (fun _ => runUint (getStorage ERC721Addressed.totalSupply) state [1] [] []),
-    case0 "nextTokenId" tx (fun _ => runUint (getStorage ERC721Addressed.nextTokenId) state [2] [] [])
+    case0 "owner" tx (fun _ => runAddress (getStorageAddr ERC721.owner) state [] [0] []),
+    case0 "totalSupply" tx (fun _ => runUint (getStorage ERC721.totalSupply) state [1] [] []),
+    case0 "nextTokenId" tx (fun _ => runUint (getStorage ERC721.nextTokenId) state [2] [] [])
   ]
 
 def interpretCryptoHash (tx : Transaction) (state : ContractState) : ExecutionResult :=

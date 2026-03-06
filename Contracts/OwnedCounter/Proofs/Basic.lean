@@ -240,15 +240,13 @@ theorem increment_preserves_owner (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := (increment.run s).snd
   s'.storageAddr = s.storageAddr := by
-  rw [increment_unfold s h_owner]
-  simp [ContractResult.snd]
+  verity_frame (increment_unfold s h_owner)
 
 theorem decrement_preserves_owner (s : ContractState)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := (decrement.run s).snd
   s'.storageAddr = s.storageAddr := by
-  rw [decrement_unfold s h_owner]
-  simp [ContractResult.snd]
+  verity_frame (decrement_unfold s h_owner)
 
 theorem transferOwnership_preserves_count (s : ContractState) (newOwner : Address)
   (h_owner : s.sender = s.storageAddr 0) :

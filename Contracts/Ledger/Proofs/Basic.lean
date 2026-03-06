@@ -83,13 +83,13 @@ theorem deposit_meets_spec (s : ContractState) (amount : Uint256) :
 theorem deposit_increases_balance (s : ContractState) (amount : Uint256) :
   let s' := ((deposit amount).run s).snd
   s'.storageMap 0 s.sender = EVM.Uint256.add (s.storageMap 0 s.sender) amount := by
-  rw [deposit_unfold]; simp [ContractResult.snd]
+  verity_frame deposit_unfold
 
 theorem deposit_preserves_other_balances (s : ContractState) (amount : Uint256)
   (addr : Address) (h_ne : addr ≠ s.sender) :
   let s' := ((deposit amount).run s).snd
   s'.storageMap 0 addr = s.storageMap 0 addr := by
-  rw [deposit_unfold]; simp [ContractResult.snd, beq_iff_eq, h_ne]
+  verity_frame deposit_unfold with h_ne
 
 /-! ## Withdraw Correctness -/
 
@@ -135,7 +135,7 @@ theorem withdraw_decreases_balance (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
   let s' := ((withdraw amount).run s).snd
   s'.storageMap 0 s.sender = EVM.Uint256.sub (s.storageMap 0 s.sender) amount := by
-  rw [withdraw_unfold s amount h_balance]; simp [ContractResult.snd]
+  verity_frame (withdraw_unfold s amount h_balance)
 
 theorem withdraw_reverts_insufficient (s : ContractState) (amount : Uint256)
   (h_insufficient : ¬(s.storageMap 0 s.sender >= amount)) :

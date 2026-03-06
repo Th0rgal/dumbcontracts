@@ -42,7 +42,7 @@ theorem transferOwnership_preserves_wellformedness (s : ContractState) (newOwner
   (h : WellFormedState s) (h_owner : s.sender = s.storageAddr 0) (h_new : newOwner ≠ 0) :
   let s' := ((transferOwnership newOwner).run s).snd
   WellFormedState s' := by
-  rw [transferOwnership_unfold s newOwner h_owner]; simp [ContractResult.snd]
+  verity_frame (transferOwnership_unfold s newOwner h_owner)
   exact ⟨h_owner ▸ h.sender_nonzero, h.contract_nonzero, h_new⟩
 
 /-! ## End-to-End Composition -/

@@ -6,7 +6,7 @@ import "./yul/YulTestBase.sol";
 /**
  * @title PropertySimpleStorageTest
  * @notice Auto-generated baseline property stubs from `verity_contract` declarations.
- * @dev Source: Contracts/MacroContracts/Core.lean
+ * @dev Source: Contracts/MacroContracts/SimpleStorage.lean
  */
 contract PropertySimpleStorageTest is YulTestBase {
     address target;

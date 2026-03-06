@@ -77,33 +77,35 @@ theorem isApprovedForAll_meets_spec (s : ContractState) (ownerAddr operator : Ad
 /-- `setApprovalForAll` writes sender/operator flag and leaves other state unchanged. -/
 theorem setApprovalForAll_meets_spec (s : ContractState) (operator : Address) (approved : Bool) :
     setApprovalForAll_spec s.sender operator approved s ((Contracts.MacroContracts.ERC721Addressed.setApprovalForAll operator approved).runState s) := by
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · cases approved <;>
       simp [Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
         setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord, Contracts.ERC721.Spec.boolToWord,
         msgSender, Contract.runState, Verity.bind, Bind.bind]
-  · intro o' op' h_neq
-    simp [Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
-      setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
-      msgSender, Contract.runState, Verity.bind, Bind.bind, h_neq]
-  · intro op' h_neq
-    simp [Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
-      setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
-      msgSender, Contract.runState, Verity.bind, Bind.bind, h_neq]
-  · simp [Specs.sameStorage, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
-      setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
-      msgSender, Contract.runState, Verity.bind, Bind.bind]
-  · simp [Specs.sameStorageAddr, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
-      setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
-      msgSender, Contract.runState, Verity.bind, Bind.bind]
-  · simp [Specs.sameStorageMap, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
+  · refine ⟨?_, ?_⟩
+    · intro o' op' h_neq
+      simp [Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
+        setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
+        msgSender, Contract.runState, Verity.bind, Bind.bind, h_neq]
+    · intro op' h_neq
+      simp [Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
+        setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
+        msgSender, Contract.runState, Verity.bind, Bind.bind, h_neq]
+  · refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    · simp [Specs.sameStorage, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
       setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
       msgSender, Contract.runState, Verity.bind, Bind.bind]
-  · simp [Specs.sameStorageMapUint, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll,
+    · simp [Specs.sameStorageAddr, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
+      setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
+      msgSender, Contract.runState, Verity.bind, Bind.bind]
+    · simp [Specs.sameStorageMap, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll, Contracts.MacroContracts.ERC721Addressed.operatorApprovals,
+      setMapping2, Contracts.MacroContracts.ERC721Addressed.boolToWord,
+      msgSender, Contract.runState, Verity.bind, Bind.bind]
+    · simp [Specs.sameStorageMapUint, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll,
       Contracts.MacroContracts.ERC721Addressed.operatorApprovals, setMapping2,
       Contracts.MacroContracts.ERC721Addressed.boolToWord,
       msgSender, Contract.runState, Verity.bind, Bind.bind]
-  · simp [Specs.sameContext, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll,
+    · simp [Specs.sameContext, Contracts.MacroContracts.ERC721Addressed.setApprovalForAll,
       Contracts.MacroContracts.ERC721Addressed.operatorApprovals, setMapping2,
       Contracts.MacroContracts.ERC721Addressed.boolToWord,
       msgSender, Contract.runState, Verity.bind, Bind.bind]

@@ -57,15 +57,15 @@ def isApprovedForAll_spec (ownerAddr operator : Address) (result : Bool) (s : Co
 /-- setApprovalForAll: updates only sender->operator flag in slot 6 -/
 def setApprovalForAll_spec
     (sender operator : Address) (approved : Bool) (s s' : ContractState) : Prop :=
-  s'.storageMap2 6 sender operator = boolToWord approved ∧
-  (∀ o' : Address, ∀ op' : Address,
-    o' ≠ sender → s'.storageMap2 6 o' op' = s.storageMap2 6 o' op') ∧
-  (∀ op' : Address,
-    op' ≠ operator → s'.storageMap2 6 sender op' = s.storageMap2 6 sender op') ∧
-  sameStorage s s' ∧
-  sameStorageAddr s s' ∧
-  sameStorageMap s s' ∧
-  sameStorageMapUint s s' ∧
-  sameContext s s'
+  storageMap2UpdateSpec
+    6 sender operator
+    (fun _ => boolToWord approved)
+    (fun st st' =>
+      sameStorage st st' ∧
+      sameStorageAddr st st' ∧
+      sameStorageMap st st' ∧
+      sameStorageMapUint st st' ∧
+      sameContext st st')
+    s s'
 
 end Contracts.ERC721.Spec

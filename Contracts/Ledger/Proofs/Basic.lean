@@ -112,8 +112,8 @@ private theorem withdraw_unfold (s : ContractState) (amount : Uint256)
         if slotIdx == 0 then (s.knownAddresses slotIdx).insert s.sender
         else s.knownAddresses slotIdx,
       events := s.events } := by
-  simp [withdraw, msgSender, getMapping, setMapping, balances,
-    Verity.require, Verity.bind, Bind.bind, Contract.run, h_balance]
+  verity_unfold withdraw
+  simp [balances, h_balance]
 
 theorem withdraw_meets_spec (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
@@ -152,9 +152,8 @@ private theorem transfer_unfold_self (s : ContractState) (to : Address) (amount 
   (h_balance : s.storageMap 0 s.sender >= amount)
   (h_eq : s.sender = to) :
   (transfer to amount).run s = ContractResult.success () s := by
-  simp [transfer, msgSender, getMapping, balances,
-    Verity.require, Verity.bind, Bind.bind, Verity.pure, Pure.pure,
-    Contract.run, uint256_ge_val_le (h_eq ▸ h_balance), h_eq]
+  verity_unfold transfer
+  simp [balances, Verity.pure, uint256_ge_val_le (h_eq ▸ h_balance), h_eq]
 
 /-- Helper: unfold transfer when balance sufficient and sender ≠ to. -/
 private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount : Uint256)

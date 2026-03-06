@@ -163,12 +163,20 @@ example : verityEval "shl" [8, 1] = bridgeEval "shl" [8, 1] := by native_decide
 example : verityEval "shl" [Compiler.Constants.evmModulus, 3] =
           bridgeEval "shl" [Compiler.Constants.evmModulus, 3] := by native_decide
 
+/-- shl: very large uint256 shift (2^256 - 1) saturates to 0. -/
+example : verityEval "shl" [Compiler.Constants.evmModulus - 1, 3] =
+          bridgeEval "shl" [Compiler.Constants.evmModulus - 1, 3] := by native_decide
+
 /-- shr: 256 >> 8 = 1 -/
 example : verityEval "shr" [8, 256] = bridgeEval "shr" [8, 256] := by native_decide
 
 /-- shr: both shift and value are interpreted as uint256 words. -/
 example : verityEval "shr" [Compiler.Constants.evmModulus, Compiler.Constants.evmModulus] =
           bridgeEval "shr" [Compiler.Constants.evmModulus, Compiler.Constants.evmModulus] := by native_decide
+
+/-- shr: very large uint256 shift (2^256 - 1) saturates to 0. -/
+example : verityEval "shr" [Compiler.Constants.evmModulus - 1, 12345] =
+          bridgeEval "shr" [Compiler.Constants.evmModulus - 1, 12345] := by native_decide
 
 -- ## Scope boundary: state-dependent builtins fall through to none
 

@@ -104,14 +104,20 @@ def evalBuiltinCall
     match argVals with
     | [shift, value] =>
         let shift := toWord shift
-        some ((value * (2 ^ shift)) % evmModulus)
+        if shift < 256 then
+          some ((toWord value * (2 ^ shift)) % evmModulus)
+        else
+          some 0
     | _ => none
   else if func = "shr" then
     match argVals with
     | [shift, value] =>
         let shift := toWord shift
         let value := toWord value
-        some (value / (2 ^ shift))
+        if shift < 256 then
+          some (value / (2 ^ shift))
+        else
+          some 0
     | _ => none
   else if func = "caller" then
     match argVals with

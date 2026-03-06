@@ -279,6 +279,13 @@ partial def translatePureExpr
   | `(term| chainid) => `(Compiler.CompilationModel.Expr.chainid)
   | `(term| calldatasize) => `(Compiler.CompilationModel.Expr.calldatasize)
   | `(term| returndataSize) => `(Compiler.CompilationModel.Expr.returndataSize)
+  | `(term| wordToAddress $a:term) => translatePureExpr params locals a
+  | `(term| addressToWord $a:term) => translatePureExpr params locals a
+  | `(term| boolToWord $a:term) =>
+      `(Compiler.CompilationModel.Expr.ite
+          $(← translatePureExpr params locals a)
+          (Compiler.CompilationModel.Expr.literal 1)
+          (Compiler.CompilationModel.Expr.literal 0))
   | `(term| $id:ident) => lookupVarExpr params locals (toString id.getId)
   | `(term| $n:num) => `(Compiler.CompilationModel.Expr.literal $n)
   | `(term| add $a $b) => `(Compiler.CompilationModel.Expr.add $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
@@ -302,6 +309,8 @@ partial def translatePureExpr
   | `(term| $a > $b) => `(Compiler.CompilationModel.Expr.gt $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| $a < $b) => `(Compiler.CompilationModel.Expr.lt $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| $a <= $b) => `(Compiler.CompilationModel.Expr.le $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| $a && $b) => `(Compiler.CompilationModel.Expr.logicalAnd $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
+  | `(term| $a || $b) => `(Compiler.CompilationModel.Expr.logicalOr $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| logicalAnd $a $b) => `(Compiler.CompilationModel.Expr.logicalAnd $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| logicalOr $a $b) => `(Compiler.CompilationModel.Expr.logicalOr $(← translatePureExpr params locals a) $(← translatePureExpr params locals b))
   | `(term| logicalNot $a) => `(Compiler.CompilationModel.Expr.logicalNot $(← translatePureExpr params locals a))

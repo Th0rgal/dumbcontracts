@@ -625,10 +625,18 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.YulGeneration.Backends.bridge_eval_eq_normalized  -- private
 -- #print axioms Compiler.Proofs.YulGeneration.Backends.verity_eval_iszero_normalized  -- private
 -- #print axioms Compiler.Proofs.YulGeneration.Backends.bridge_eval_iszero_normalized  -- private
+-- #print axioms Compiler.Proofs.YulGeneration.Backends.verity_eval_lt_normalized  -- private
+-- #print axioms Compiler.Proofs.YulGeneration.Backends.bridge_eval_lt_normalized  -- private
+-- #print axioms Compiler.Proofs.YulGeneration.Backends.verity_eval_gt_normalized  -- private
+-- #print axioms Compiler.Proofs.YulGeneration.Backends.bridge_eval_gt_normalized  -- private
 #print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_eq_bridge
 #print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_iszero_bridge
+#print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_lt_bridge
+#print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_gt_bridge
 #print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_eq_bridge
 #print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_iszero_bridge
+#print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_lt_bridge
+#print axioms Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_gt_bridge
 
 -- Compiler/Proofs/YulGeneration/Builtins.lean
 #print axioms Compiler.Proofs.YulGeneration.evalBuiltinCall_callvalue_nil
@@ -657,4 +665,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 553 theorems/lemmas (524 public, 29 private)
+-- Total: 561 theorems/lemmas (528 public, 33 private)

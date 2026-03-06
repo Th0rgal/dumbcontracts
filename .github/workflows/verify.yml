@@ -257,7 +257,8 @@ jobs:
 
       - name: No AXLE API key
         if: steps.axle-key.outputs.present != 'true'
-        run: echo "AXLE verify_proof pre-check skipped: AXLE_API_KEY is unavailable."
+        run: |
+          echo "AXLE verify_proof pre-check skipped: AXLE_API_KEY is unavailable."
 
   build:
     runs-on: ubuntu-latest

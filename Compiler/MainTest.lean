@@ -54,8 +54,8 @@ unsafe def runTests : IO Unit := do
   expectErrorContains "missing --module value" ["--module"] "Missing value for --module"
   expectErrorContains
     "duplicate --module value"
-    (["--module", "Contracts.MacroContracts.Counter", "--module", "Contracts.MacroContracts.Counter"] ++ ["--output", "/tmp/verity-main-test-dup"])
-    "Duplicate --module value: Contracts.MacroContracts.Counter"
+    (["--module", "Contracts.Counter.Counter", "--module", "Contracts.Counter.Counter"] ++ ["--output", "/tmp/verity-main-test-dup"])
+    "Duplicate --module value: Contracts.Counter.Counter"
   expectErrorContains
     "empty compiler input is rejected"
     ["--output", "/tmp/verity-main-test-empty"]
@@ -79,11 +79,11 @@ unsafe def runTests : IO Unit := do
 
   let singleOutDir := s!"/tmp/verity-main-test-{nonce}-single-out"
   IO.FS.createDirAll singleOutDir
-  main (["--module", "Contracts.MacroContracts.Counter", "--output", singleOutDir])
+  main (["--module", "Contracts.Counter.Counter", "--output", singleOutDir])
   let selectedCounterArtifact ← fileExists s!"{singleOutDir}/Counter.yul"
   expectTrue "module input mode compiles explicitly selected contract" selectedCounterArtifact
   let nonSelectedArtifactFlags ←
-    (canonicalModules.filter (· != "Contracts.MacroContracts.Counter")).mapM
+    (canonicalModules.filter (· != "Contracts.Counter.Counter")).mapM
       (fun moduleName => fileExists (contractArtifactPath singleOutDir moduleName))
   let nonSelectedArtifactsAbsent := nonSelectedArtifactFlags.all (fun isPresent => !isPresent)
   expectTrue "selected module mode does not emit non-selected artifacts" nonSelectedArtifactsAbsent

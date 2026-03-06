@@ -17,7 +17,7 @@ import Verity.Proofs.Stdlib.Automation
 namespace Contracts.Ledger.Proofs
 
 open Verity
-open Contracts.MacroContracts.Ledger
+open Contracts.Ledger
 open Contracts.Ledger.Spec
 open Verity.Stdlib.Math (MAX_UINT256)
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne uint256_ge_val_le)
@@ -174,7 +174,7 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
         if slotIdx == 0 then ((s.knownAddresses slotIdx).insert s.sender).insert to
         else s.knownAddresses slotIdx,
       events := s.events } := by
-  simp only [transfer, Contracts.MacroContracts.Ledger.balances,
+  simp only [transfer, Contracts.Ledger.balances,
     msgSender, getMapping, setMapping,
     Verity.require, Verity.bind, Bind.bind, Pure.pure,
     Contract.run, h_balance, h_ne, beq_iff_eq,

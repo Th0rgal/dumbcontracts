@@ -173,7 +173,7 @@ unsafe def runTests : IO Unit := do
       s!"{abiDir}/{contractName}.abi.json"
       s!"{manifestAbiDir}/{contractName}.abi.json"
 
-  let selectedModules := ["Contracts.MacroContracts.SimpleStorage", "Contracts.MacroContracts.Counter"]
+  let selectedModules := ["Contracts.SimpleStorage.SimpleStorage", "Contracts.Counter.Counter"]
   compileModulesWithOptions selectedOutDir selectedModules false [] {} none (some selectedAbiDir)
   expectOnlySelectedArtifacts
     "selected module compilation emits only requested artifacts"
@@ -203,8 +203,8 @@ unsafe def runTests : IO Unit := do
 
   expectFailureContains
     "duplicate selected modules fail closed"
-    (compileModulesWithOptions outDir ["Contracts.MacroContracts.Counter", "Contracts.MacroContracts.Counter"] false [] {} none (some abiDir))
-    "Duplicate --module value: Contracts.MacroContracts.Counter"
+    (compileModulesWithOptions outDir ["Contracts.Counter.Counter", "Contracts.Counter.Counter"] false [] {} none (some abiDir))
+    "Duplicate --module value: Contracts.Counter.Counter"
 
 #eval! runTests
 

@@ -7,7 +7,7 @@
 -/
 
 import Compiler.CompilationModel
-import Contracts.MacroContracts
+import Contracts
 
 namespace Compiler.Specs
 
@@ -18,35 +18,35 @@ open Compiler.CompilationModel
 -/
 
 /-- Legacy compatibility alias. Canonical source is macro-generated. -/
-def simpleStorageSpec : CompilationModel := Contracts.MacroContracts.SimpleStorage.spec
+def simpleStorageSpec : CompilationModel := Contracts.SimpleStorage.spec
 
 /-- Legacy compatibility shim preserving the historical 3-function Counter surface. -/
 def counterSpec : CompilationModel :=
-  let canonical := Contracts.MacroContracts.Counter.spec
+  let canonical := Contracts.Counter.spec
   { canonical with
     functions := canonical.functions.filter fun fn =>
       fn.name = "increment" || fn.name = "decrement" || fn.name = "getCount" }
 
 /-- Legacy compatibility alias. Canonical source is macro-generated. -/
-def ownedSpec : CompilationModel := Contracts.MacroContracts.Owned.spec
+def ownedSpec : CompilationModel := Contracts.Owned.spec
 
 /-- Legacy compatibility alias. Canonical source is macro-generated. -/
-def ledgerSpec : CompilationModel := Contracts.MacroContracts.Ledger.spec
+def ledgerSpec : CompilationModel := Contracts.Ledger.spec
 
 /-- Legacy compatibility alias. Canonical source is macro-generated. -/
-def ownedCounterSpec : CompilationModel := Contracts.MacroContracts.OwnedCounter.spec
+def ownedCounterSpec : CompilationModel := Contracts.OwnedCounter.spec
 
 /-- Legacy compatibility alias. Canonical source is macro-generated. -/
-def simpleTokenSpec : CompilationModel := Contracts.MacroContracts.SimpleToken.spec
+def simpleTokenSpec : CompilationModel := Contracts.SimpleToken.spec
 
 /-- Legacy compatibility alias. Canonical source is macro-generated. -/
-def safeCounterSpec : CompilationModel := Contracts.MacroContracts.SafeCounter.spec
+def safeCounterSpec : CompilationModel := Contracts.SafeCounter.spec
 
 /-- ERC20 spec alias for test/proof convenience. Uses the macro-generated spec. -/
-def erc20Spec : CompilationModel := Contracts.MacroContracts.ERC20.spec
+def erc20Spec : CompilationModel := Contracts.ERC20.spec
 
 /-- ERC721 spec alias for test/proof convenience. Uses the macro-generated spec. -/
-def erc721Spec : CompilationModel := Contracts.MacroContracts.ERC721.spec
+def erc721Spec : CompilationModel := Contracts.ERC721.spec
 
 /-!
 ## CryptoHash Specification (External Library Linking Demo)
@@ -119,7 +119,7 @@ Yul libraries (PoseidonT3/T4). Use `lake exe verity-compiler --link ...` to
 compile it separately.
 
 **Adding a new contract (canonical path)**: add a `verity_contract` declaration
-in `Contracts/MacroContracts/`, then add the generated `<Name>.spec`
+in `Contracts/<Name>/<Name>.lean`, then add the generated `<Name>.spec`
 to `allSpecs` below.
 
 `Compiler.Specs.*Spec` values are compatibility aliases only, except for

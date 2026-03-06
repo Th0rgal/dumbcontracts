@@ -1,6 +1,6 @@
-import Contracts.MacroContracts.Common
+import Contracts.Common
 
-namespace Contracts.MacroContracts
+namespace Contracts
 
 open Verity hiding pure bind
 open Verity.EVM.Uint256
@@ -24,4 +24,4 @@ verity_contract SafeCounter where
     let current ← getStorage count
     return current
 
-end Contracts.MacroContracts
+end Contracts

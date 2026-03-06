@@ -18,25 +18,22 @@ from property_utils import ROOT, die
 EXCLUDED_CONTRACTS = {
     "ReentrancyExample",  # Inline proofs in Examples/, no separate Proofs/ dir
     "CryptoHash",         # Axiom-based, no separate proof structure
-    "MacroContracts",     # Aggregates macro-generated examples, not a standalone contract
 }
 
 # Contracts excluded from property test check
 EXCLUDED_FROM_PROPERTY_TESTS = {
     "CryptoHash",         # External-library contract, no property tests
-    "MacroContracts",     # Bundle module, not a deployable contract
 }
 
 # Contracts excluded from differential test check
 EXCLUDED_FROM_DIFFERENTIAL_TESTS = {
     "CryptoHash",         # External-library oracle behavior is not differential-tested
-    "MacroContracts",     # Bundle module, not a deployable contract
     "ReentrancyExample",  # Reentrancy model requires dedicated external-call harnessing
 }
 
 # Expected files for each contract (relative to ROOT)
 EXPECTED_STRUCTURE = [
-    "Contracts/{name}/Contract.lean",
+    "Contracts/{name}/{name}.lean",
     "Contracts/{name}/Spec.lean",
     "Contracts/{name}/Invariants.lean",
     "Contracts/{name}/Proofs/Basic.lean",

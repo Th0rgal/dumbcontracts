@@ -5,13 +5,13 @@
 import Verity.Specs.Common
 import Verity.Macro
 import Verity.EVM.Uint256
-import Contracts.MacroContracts.Core
+import Contracts.Counter.Counter
 
 namespace Contracts.Counter.Spec
 
 open Verity
 open Verity.Specs
-open Contracts.MacroContracts.Counter
+open Contracts.Counter
 open Verity.EVM.Uint256
 
 /-! ## Operation Specifications -/

@@ -378,7 +378,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help=(
             "Lean source path to scan (relative to repo root). "
-            "Repeat flag for multiple files. Defaults to Contracts/MacroContracts/**/*.lean."
+            "Repeat flag for multiple files. Defaults to Contracts/**/*.lean."
         ),
     )
     parser.add_argument(
@@ -405,7 +405,7 @@ def main() -> None:
     if args.source:
         paths = [ROOT / p for p in args.source]
     else:
-        macro_dir = ROOT / "Contracts" / "MacroContracts"
+        macro_dir = ROOT / "Contracts"
         paths = discover_macro_contract_sources(macro_dir)
         if not paths:
             raise SystemExit(f"no Lean files found in {macro_dir}")

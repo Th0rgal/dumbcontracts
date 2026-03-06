@@ -1,6 +1,6 @@
-import Contracts.MacroContracts.Common
+import Contracts.Common
 
-namespace Contracts.MacroContracts
+namespace Contracts
 
 open Verity hiding pure bind
 open Verity.EVM.Uint256
@@ -119,11 +119,11 @@ def «constructor» (initialOwner : Address) : Contract Unit := do
   setStorage totalSupply 0
   setStorage nextTokenId 0
 
-abbrev addressToWord := Contracts.MacroContracts.addressToWord
+abbrev addressToWord : Address → Uint256 := Contracts.addressToWord
 
-abbrev wordToAddress := Contracts.MacroContracts.wordToAddress
+abbrev wordToAddress : Uint256 → Address := Contracts.wordToAddress
 
-abbrev boolToWord := Contracts.MacroContracts.boolToWord
+abbrev boolToWord : Bool → Uint256 := Contracts.boolToWord
 
 def isOwner : Contract Bool := do
   let sender ← msgSender
@@ -136,4 +136,4 @@ def onlyOwner : Contract Unit := do
 
 end ERC721
 
-end Contracts.MacroContracts
+end Contracts

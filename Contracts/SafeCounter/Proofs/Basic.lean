@@ -19,7 +19,7 @@ open Verity
 open Verity.Stdlib.Math
 open Verity.Proofs.Stdlib.Math (safeAdd_some safeAdd_none safeSub_some safeSub_none)
 open Verity.EVM.Uint256
-open Contracts.MacroContracts.SafeCounter
+open Contracts.SafeCounter
 open Contracts.SafeCounter.Spec
 open Contracts.SafeCounter.Invariants
 

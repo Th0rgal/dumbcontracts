@@ -6,7 +6,7 @@ import "./yul/YulTestBase.sol";
 /**
  * @title PropertySimpleTokenTest
  * @notice Auto-generated baseline property stubs from `verity_contract` declarations.
- * @dev Source: Contracts/MacroContracts/SimpleToken.lean
+ * @dev Source: Contracts/SimpleToken/SimpleToken.lean
  */
 contract PropertySimpleTokenTest is YulTestBase {
     address target;

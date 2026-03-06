@@ -13,7 +13,7 @@ import Verity.Proofs.Stdlib.Automation
 namespace Contracts.SimpleStorage.Proofs.Correctness
 
 open Verity
-open Contracts.MacroContracts.SimpleStorage
+open Contracts.SimpleStorage
 open Contracts.SimpleStorage.Spec
 open Contracts.SimpleStorage.Proofs
 open Verity.Proofs.Stdlib.Automation (wf_of_state_eq)

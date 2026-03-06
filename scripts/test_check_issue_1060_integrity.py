@@ -77,7 +77,7 @@ class Issue1060IntegrityTests(unittest.TestCase):
         entries["3.2"] = {
             "status": "complete",
             "acceptance_criteria": ["Bridge theorem exists"],
-            "files_changed": ["Contracts/MacroContracts/Core.lean"],
+            "files_changed": ["Contracts/Common.lean"],
             "verification_commands": ["lake build"],
             "verification_results": ["pass"],
             "evidence": {"theorems": [], "tests": [{"name": "bridge test"}]},

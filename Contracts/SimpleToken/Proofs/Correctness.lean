@@ -16,7 +16,7 @@ namespace Contracts.SimpleToken.Proofs.Correctness
 
 open Verity
 open Verity.Stdlib.Math (MAX_UINT256 safeAdd requireSomeUint)
-open Contracts.MacroContracts.SimpleToken (mint transfer balanceOf getTotalSupply getOwner isOwner)
+open Contracts.SimpleToken (mint transfer balanceOf getTotalSupply getOwner isOwner)
 open Contracts.SimpleToken.Spec
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne wf_preservation_of_frame)
 open Contracts.SimpleToken.Proofs
@@ -33,10 +33,10 @@ This is critical for safety: unauthorized or invalid operations must fail.
 theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount : Uint256)
   (h_not_owner : s.sender ≠ s.storageAddr 0) :
   ∃ msg, (mint to amount).run s = ContractResult.revert msg s := by
-  simp only [mint, Contracts.MacroContracts.SimpleToken.onlyOwner, isOwner,
-    Contracts.MacroContracts.SimpleToken.ownerSlot, Contracts.MacroContracts.SimpleToken.balancesSlot, Contracts.MacroContracts.SimpleToken.totalSupplySlot,
+  simp only [mint,
+    Contracts.SimpleToken.ownerSlot, Contracts.SimpleToken.balancesSlot, Contracts.SimpleToken.totalSupplySlot,
     msgSender, getStorageAddr, getStorage, setStorage, getMapping, setMapping,
-    Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+    Verity.require, Verity.bind, Bind.bind,
     Contract.run]
   simp [address_beq_false_of_ne s.sender (s.storageAddr 0) h_not_owner]
 
@@ -45,7 +45,7 @@ theorem mint_reverts_when_not_owner (s : ContractState) (to : Address) (amount :
 theorem transfer_reverts_insufficient_balance (s : ContractState) (to : Address) (amount : Uint256)
   (h_insufficient : s.storageMap 1 s.sender < amount) :
   ∃ msg, (transfer to amount).run s = ContractResult.revert msg s := by
-  simp only [transfer, Contracts.MacroContracts.SimpleToken.balancesSlot,
+  simp only [transfer, Contracts.SimpleToken.balancesSlot,
     msgSender, getMapping,
     Verity.require, Verity.bind, Bind.bind,
     Contract.run]

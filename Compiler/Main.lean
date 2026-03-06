@@ -87,7 +87,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println ""
         IO.println "Example:"
         IO.println "  verity-compiler --manifest packages/verity-examples/contracts.manifest -o artifacts/yul"
-        IO.println "  verity-compiler --module Contracts.MacroContracts.Counter -o artifacts/yul"
+        IO.println "  verity-compiler --module Contracts.Counter.Counter -o artifacts/yul"
         IO.println "  verity-compiler --enable-patches --patch-report artifacts/patch-report.tsv"
         throw (IO.userError "help")
     | "--link" :: path :: rest =>

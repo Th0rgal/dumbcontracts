@@ -2,7 +2,7 @@
 """Validate storage layout consistency across EDSL, Spec, and Compiler layers.
 
 Extracts storage slot definitions from:
-1. EDSL layer:     Contracts/*/Contract.lean  (StorageSlot definitions)
+1. EDSL layer:     Contracts/*/<Contract>.lean  (StorageSlot definitions)
 2. Spec layer:     Contracts/*/Spec.lean      (StorageSlot definitions)
 3. Compiler layer: Compiler/Specs.lean        (CompilationModel field lists)
 
@@ -34,11 +34,11 @@ COMPILER_FIELD_RE = re.compile(
     r'\{\s*name\s*:=\s*"(\w+)"\s*,\s*ty\s*:=\s*FieldType\.([\w.() ]+?)\s*\}'
 )
 COMPILER_ALIAS_RE = re.compile(
-    r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*Contracts\.MacroContracts\.(\w+)\.spec"
+    r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*Contracts\.(\w+)\.spec"
 )
 COMPILER_FILTERED_ALIAS_RE = re.compile(
     r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*"
-    r"let\s+canonical\s*:=\s*Contracts\.MacroContracts\.(\w+)\.spec\s*"
+    r"let\s+canonical\s*:=\s*Contracts\.(\w+)\.spec\s*"
     r"\{\s*canonical\s+with\s+functions\s*:=\s*canonical\.functions\.filter\s+fun\s+fn\s*=>\s*(.*?)\s*\}",
     re.DOTALL,
 )
@@ -102,8 +102,8 @@ def iter_braced_blocks(text: str, header_pattern: re.Pattern[str]) -> list[str]:
 
 
 def extract_macro_contract_slots(contract_name: str) -> list[tuple[str, str, int]]:
-    """Extract storage field declarations from a `Contracts/MacroContracts/*.lean` file."""
-    path = ROOT / "Contracts" / "MacroContracts" / f"{contract_name}.lean"
+    """Extract storage field declarations from a `Contracts/<Name>/<Name>.lean` file."""
+    path = ROOT / "Contracts" / contract_name / f"{contract_name}.lean"
     if not path.exists():
         return []
 
@@ -137,11 +137,11 @@ def extract_edsl_slots(filepath: Path) -> dict[str, list[tuple[str, str, int]]]:
     Returns dict mapping namespace/contract to list of (name, type, slot_number).
     """
     content = strip_lean_comments(filepath.read_text())
-    namespace = filepath.stem  # fallback to filename
+    namespace = filepath.parent.name if filepath.parent.name != "Contracts" else filepath.stem
     for m in NAMESPACE_RE.finditer(content):
-        # Use the last component of the namespace
-        ns = m.group(1)
-        namespace = ns.split(".")[-1]
+        ns = m.group(1).split(".")[-1]
+        if ns != "Contracts":
+            namespace = ns
 
     slots = []
     for m in STORAGE_SLOT_RE.finditer(content):
@@ -515,7 +515,7 @@ def main():
     for contract_dir in sorted(contracts_dir.iterdir()):
         if not contract_dir.is_dir():
             continue
-        lean_file = contract_dir / "Contract.lean"
+        lean_file = contract_dir / f"{contract_dir.name}.lean"
         if not lean_file.exists():
             continue
         result = extract_edsl_slots(lean_file)

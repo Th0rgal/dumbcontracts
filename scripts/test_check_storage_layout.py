@@ -22,7 +22,7 @@ class CheckStorageLayoutExtractCompilerSpecsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             spec_file = Path(tmpdir) / "Specs.lean"
             spec_file.write_text(
-                "def ownedSpec : CompilationModel := Contracts.MacroContracts.Owned.spec\n",
+                "def ownedSpec : CompilationModel := Contracts.Owned.spec\n",
                 encoding="utf-8",
             )
             rows = extract_compiler_specs(spec_file)
@@ -35,7 +35,7 @@ class CheckStorageLayoutExtractCompilerSpecsTests(unittest.TestCase):
             spec_file = Path(tmpdir) / "Specs.lean"
             spec_file.write_text(
                 "def counterSpec : CompilationModel :=\n"
-                "  let canonical := Contracts.MacroContracts.Counter.spec\n"
+                "  let canonical := Contracts.Counter.spec\n"
                 "  { canonical with\n"
                 '    functions := canonical.functions.filter fun fn => fn.name = "increment" }\n',
                 encoding="utf-8",

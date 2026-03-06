@@ -1,9 +1,8 @@
 import Compiler.Selector
 import Compiler.Hex
 import Compiler.Proofs.YulGeneration.Equivalence
-import Contracts.MacroContracts.Core
-import Contracts.MacroContracts.Tokens
-import Contracts.MacroContracts.Smoke
+import Contracts
+import Contracts.Smoke
 
 namespace Compiler.MacroTranslateRoundTripFuzz
 
@@ -28,21 +27,21 @@ private def writeSlots (spec : CompilationModel) : List Nat :=
   indexed.flatMap (fun (idx, field) => field.slot.getD idx :: field.aliasSlots)
 
 private def macroSpecs : List CompilationModel :=
-  [ Contracts.MacroContracts.SimpleStorage.spec
-  , Contracts.MacroContracts.Counter.spec
-  , Contracts.MacroContracts.Owned.spec
-  , Contracts.MacroContracts.Ledger.spec
-  , Contracts.MacroContracts.SafeCounter.spec
-  , Contracts.MacroContracts.OwnedCounter.spec
-  , Contracts.MacroContracts.SimpleToken.spec
-  , Contracts.MacroContracts.ERC20.spec
-  , Contracts.MacroContracts.ERC721.spec
-  , Contracts.MacroContracts.UintMapSmoke.spec
-  , Contracts.MacroContracts.Bytes32Smoke.spec
-  , Contracts.MacroContracts.MappingWordSmoke.spec
-  , Contracts.MacroContracts.StorageWordsSmoke.spec
-  , Contracts.MacroContracts.TupleSmoke.spec
-  , Contracts.MacroContracts.Uint8Smoke.spec
+  [ Contracts.SimpleStorage.spec
+  , Contracts.Counter.spec
+  , Contracts.Owned.spec
+  , Contracts.Ledger.spec
+  , Contracts.SafeCounter.spec
+  , Contracts.OwnedCounter.spec
+  , Contracts.SimpleToken.spec
+  , Contracts.ERC20.spec
+  , Contracts.ERC721.spec
+  , Contracts.Smoke.UintMapSmoke.spec
+  , Contracts.Smoke.Bytes32Smoke.spec
+  , Contracts.Smoke.MappingWordSmoke.spec
+  , Contracts.Smoke.StorageWordsSmoke.spec
+  , Contracts.Smoke.TupleSmoke.spec
+  , Contracts.Smoke.Uint8Smoke.spec
   ]
 
 private structure FuzzRng where

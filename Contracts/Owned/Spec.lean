@@ -4,13 +4,13 @@
 
 import Verity.Specs.Common
 import Verity.Macro
-import Contracts.MacroContracts.Core
+import Contracts.Owned.Owned
 
 namespace Contracts.Owned.Spec
 
 open Verity
 open Verity.Specs
-open Contracts.MacroContracts.Owned
+open Contracts.Owned
 
 /-! ## Operation Specifications -/
 

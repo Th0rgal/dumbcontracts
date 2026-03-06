@@ -6,7 +6,7 @@ import "./yul/YulTestBase.sol";
 /**
  * @title PropertyERC721Test
  * @notice Auto-generated baseline property stubs from `verity_contract` declarations.
- * @dev Source: Contracts/MacroContracts/ERC721.lean
+ * @dev Source: Contracts/ERC721/ERC721.lean
  */
 contract PropertyERC721Test is YulTestBase {
     address target;

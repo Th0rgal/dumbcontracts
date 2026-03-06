@@ -4,7 +4,7 @@
 
 import Verity.Specs.Common
 import Verity.Macro
-import Contracts.MacroContracts.Core
+import Contracts.SimpleStorage.SimpleStorage
 
 namespace Contracts.SimpleStorage.Spec
 

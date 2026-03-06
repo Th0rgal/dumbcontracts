@@ -1,6 +1,6 @@
-import Contracts.MacroContracts.Common
+import Contracts.Common
 
-namespace Contracts.MacroContracts
+namespace Contracts
 
 open Verity hiding pure bind
 open Verity.EVM.Uint256
@@ -37,4 +37,4 @@ verity_contract Ledger where
     let currentBalance ← getMapping balances addr
     return currentBalance
 
-end Contracts.MacroContracts
+end Contracts

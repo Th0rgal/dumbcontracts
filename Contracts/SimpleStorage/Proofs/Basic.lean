@@ -6,7 +6,6 @@
   Status: Complete — all 13 proofs proven with zero axioms and zero sorry.
 -/
 
-import Contracts.MacroContracts.Core
 import Contracts.SimpleStorage.Spec
 import Contracts.SimpleStorage.Invariants
 import Verity.Proofs.Stdlib.Automation
@@ -14,7 +13,7 @@ import Verity.Proofs.Stdlib.Automation
 namespace Contracts.SimpleStorage.Proofs
 
 open Verity
-open Contracts.MacroContracts.SimpleStorage
+open Contracts.SimpleStorage
 open Contracts.SimpleStorage.Spec
 open Contracts.SimpleStorage.Invariants
 open Verity.Proofs.Stdlib.Automation
@@ -75,10 +74,10 @@ theorem store_meets_spec (s : ContractState) (value : Uint256) :
   store_spec value s s' := by
   verity_unfold store
   refine ⟨?_, ?_, ?_⟩
-  · simp [store_spec, storedData]
+  · simp [storedData]
   · intro slotIdx h_neq
-    simp [store_spec, storedData, h_neq]
-  · simp [store_spec, storedData, Specs.sameAddrMapContext, Specs.sameStorageAddr,
+    simp [storedData, h_neq]
+  · simp [Specs.sameAddrMapContext, Specs.sameStorageAddr,
       Specs.sameStorageMap, Specs.sameContext]
 
 -- Main theorem: retrieve meets its specification

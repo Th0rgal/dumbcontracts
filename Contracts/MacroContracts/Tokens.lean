@@ -1,3 +1,0 @@
-import Contracts.MacroContracts.SimpleToken
-import Contracts.MacroContracts.ERC20
-import Contracts.MacroContracts.ERC721

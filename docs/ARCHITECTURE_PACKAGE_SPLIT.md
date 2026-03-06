@@ -32,7 +32,7 @@ No reverse imports are allowed.
 Current compiler and core code still directly reference in-repo contracts and registries:
 
 - Hardcoded contract/spec registry in `Compiler/Specs.lean`.
-- Compiler CLI resolution path coupled to that registry in `Compiler/CompileDriver.lean` and `Compiler/Lowering/FromEDSL.lean`.
+- Compiler CLI resolution path coupled to that registry in `Compiler/CompileDriver.lean`.
 - Differential interpreter importing concrete contracts in `Compiler/Interpreter.lean`.
 - Macro invariant/fuzz modules in `Compiler/*` importing concrete contract modules.
 - A core-side test dependency importing compiler specs in `Verity/Core/Free/TypedIRTests.lean`.

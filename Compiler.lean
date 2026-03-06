@@ -11,7 +11,6 @@ import Compiler.Selectors
 import Compiler.ParityPacks
 import Compiler.RandomGen
 import Compiler.CompilationModel
-import Compiler.Lowering.FromEDSL
 import Compiler.ModuleInput
 import Compiler.CompileDriver
 import Compiler.Modules.Calls

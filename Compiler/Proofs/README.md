@@ -1,100 +1,38 @@
 # Compiler Verification Proofs
 
-Formal verification proofs for the Verity compiler, proving correctness across three layers.
+Formal verification proofs for the Verity compiler across the active pipeline
+`EDSL -> CompilationModel -> IR -> Yul`.
 
-**Scope**: These proofs cover the compilation path `EDSL -> CompilationModel -> IR -> Yul`. See `TRUST_ASSUMPTIONS.md` for the full trust-boundary description.
+See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
 
 ## Verification Layers
 
-- **Layer 1: EDSL ≡ CompilationModel (`CompilationModel`)** — User contracts satisfy their compilation models (`Contracts/<Name>/Proofs/` + `Compiler/Proofs/SemanticBridge.lean`). The hybrid typed-IR pipeline (`Verity/Core/Free/TypedIRCompilerCorrectness.lean`) provides a generic compilation-correctness theorem; macro-generated bridge theorems eliminate `sorry` for the supported subset.
-- **Layer 2: CompilationModel (`CompilationModel`) → IR** — IR generation preserves compilation-model semantics (`Compiler/Proofs/IRGeneration/`).
-- **Layer 3: IR → Yul** — All statement equivalence proofs proven (`Compiler/Proofs/YulGeneration/`).
+- **Layer 1: EDSL ≡ CompilationModel**. Contract-specific proofs live in
+  `Contracts/<Name>/Proofs/`, with generic typed-IR compilation correctness in
+  `Verity/Core/Free/TypedIRCompilerCorrectness.lean`.
+- **Layer 2: CompilationModel -> IR**. The IR generation proof surface lives in
+  `Compiler/Proofs/IRGeneration/`.
+- **Layer 3: IR -> Yul**. Yul semantics, equivalence, and preservation proofs
+  live in `Compiler/Proofs/YulGeneration/`.
 
-Key entry points:
+## Key Modules
 
-- Semantic bridge: `Compiler/Proofs/SemanticBridge.lean`
-- Typed IR correctness: `Verity/Core/Free/TypedIRCompilerCorrectness.lean`
-- IR generation and proofs: `Compiler/Proofs/IRGeneration/`
-- Lowering boundary scaffolding proofs: `Compiler/Proofs/Lowering/`
-- Yul semantics and preservation: `Compiler/Proofs/YulGeneration/`
+- `Compiler/Proofs/SemanticBridge.lean`: contract-level bridge theorems that
+  connect EDSL executions to compiled IR/Yul executions for supported
+  contracts.
+- `Compiler/Proofs/EndToEnd.lean`: composed Layers 2 and 3 theorem spine,
+  showing compiled IR execution matches Yul execution.
+- `Compiler/Proofs/IRGeneration/Expr.lean` and
+  `Compiler/Proofs/IRGeneration/IRInterpreter.lean`: Layer 2 semantics and
+  interpreter lemmas for the compilation-model path.
+- `Compiler/Proofs/YulGeneration/`: Layer 3 semantics, statement equivalence,
+  codegen preservation, builtin modeling, and patch-rule proofs.
+- `Compiler/Proofs/MappingSlot.lean` and
+  `Compiler/Proofs/ArithmeticProfile.lean`: focused proof support for storage
+  layout invariants and arithmetic/backend alignment.
 
-The lowering boundary currently includes transition bridge lemmas that connect
-`SupportedEDSLContract` lowering cases to existing Layer 1 correctness results
-for the full currently supported subset (`SimpleStorage`, `Counter`, `Owned`,
-`Ledger`, `OwnedCounter`, `SimpleToken`, `SafeCounter`), including read/write
-bridge coverage across getter and mutating entrypoints in that subset
-(`ledger.transfer`, `simpleToken.mint`, and `simpleToken.transfer` included),
-plus explicit revert-path bridge coverage for owner-gated and
-insufficient-balance behaviors in `Owned`, `OwnedCounter`, `Ledger`, and
-`SimpleToken`, plus overflow/underflow revert coverage in `SafeCounter`.
-Getter-side read-only state-preservation bridges are also explicit for
-supported getter entrypoints. Parser-determinism lemmas are also included for
-`--edsl-contract` IDs (`supportedEDSLContractName_injective`,
-`parseSupportedEDSLContract_roundtrip_unique`,
-`supportedEDSLContractNames_nodup`).
-The same module also composes parsed CLI IDs with lowering semantics at the
-API boundary (`lowerFromParsedSupportedContract_preserves_interpretSpec`).
-Unknown selected-ID diagnostics are centralized at parser level via
-`parseSupportedEDSLContract_eq_error_of_unknown`.
-Singleton selected-ID map traversal helper lemmas are also explicit:
-`lowerFromParsedSupportedContract_singleton_eq_ok`,
-`lowerFromParsedSupportedContract_singleton_eq_ok_of_parse_ok`,
-`lowerFromParsedSupportedContract_singleton_eq_error`,
-`lowerFromParsedSupportedContract_cons_eq_ok_of_lower_ok`,
-`lowerFromParsedSupportedContract_cons_eq_error_of_head_error`,
-`lowerFromParsedSupportedContract_cons_eq_error_of_tail_error`,
-`lowerFromParsedSupportedContract_pair_eq_ok_of_lower_ok`,
-`lowerFromParsedSupportedContract_pair_eq_ok_of_parse_ok`,
-`lowerFromParsedSupportedContract_mapM_eq_ok_of_parse_ok`,
-`lowerFromParsedSupportedContract_append_eq_ok_of_parse_ok`,
-`lowerFromParsedSupportedContract_append_eq_error_of_parse_error`.
-CLI parsed-ID handling is centralized in `Compiler/Lowering/FromEDSL.lean` via
-`parseSupportedEDSLContract`, `lowerFromParsedSupportedContract`, and
-`lowerRequestedSupportedEDSLContracts`.
-Centralized selected/default helper behavior is also explicit in proofs via
-`lowerRequestedSupportedEDSLContracts_default_eq`,
-`supportedEDSLContractNames_mapM_lowerFromParsed_eq_ok`,
-`lowerRequestedSupportedEDSLContracts_default_eq_ok_supported`,
-`lowerRequestedSupportedEDSLContracts_duplicate_eq_error`,
-`lowerRequestedSupportedEDSLContracts_selected_eq`,
-`lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_mapM_lower_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_eq_ok_of_parse_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_lower_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_split_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_append_eq_ok_of_parse_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_lower_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_parse_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_cons_eq_ok_of_tail_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_head_error`,
-`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_tail_error`,
-`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_lower_error`,
-`lowerRequestedSupportedEDSLContracts_selected_cons_eq_error_of_parse_error`,
-`lowerRequestedSupportedEDSLContracts_selected_eq_error_of_mapM_lower_error`,
-`lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_lower_error`,
-`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_lower_error`,
-`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_error_of_parse_error`,
-`lowerRequestedSupportedEDSLContracts_selected_head_eq_error_of_parse_error`,
-`lowerRequestedSupportedEDSLContracts_selected_tail_eq_error_of_parse_error`,
-`lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_parse_error`,
-`lowerRequestedSupportedEDSLContracts_selected_append_eq_error_of_prefix_parse_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error_of_prefix_parse_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_unknown_head_eq_error`,
-`lowerRequestedSupportedEDSLContracts_selected_singleton_unknown_eq_error`,
-`lowerRequestedSupportedEDSLContracts_selected_unknown_tail_eq_error`,
-`lowerRequestedSupportedEDSLContracts_selected_append_unknown_eq_error`,
-`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok_of_parse_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_singleton_eq_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_pair_eq_ok`,
-`lowerRequestedSupportedEDSLContracts_selected_triple_eq_ok`,
-`lowerRequestedSupportedEDSLContracts_full_eq_default`.
-`Compiler/CompileDriver.lean` uses this same selected/default helper path directly,
-so runtime selected/default `--edsl-contract` behavior stays aligned with the
-proven parsing/lowering boundary.
-It also exposes API-boundary preservation lemmas for both transition entrypoints:
-`lowerFromEDSLSubset_supported_preserves_interpretSpec` and
-`lowerFromEDSLSubset_manualBridge_preserves_interpretSpec`.
-
-Layer 1 proofs live in `Contracts/<Name>/Proofs/Basic.lean` and `Correctness.lean`. The typed-IR compilation correctness pipeline is in `Verity/Core/Free/TypedIRCompilerCorrectness.lean`, with cross-layer bridge proofs in `Compiler/Proofs/SemanticBridge.lean`.
+The current compiler path consumes `CompilationModel` values directly. There is
+no separate verified EDSL-lowering boundary module in the active pipeline.
 
 ## Build
 

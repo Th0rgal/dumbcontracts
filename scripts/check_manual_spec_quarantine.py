@@ -18,7 +18,6 @@ from property_utils import ROOT, scrub_lean_code
 CANONICAL_FILES = [
     ROOT / "Compiler" / "CompileDriver.lean",
     ROOT / "Compiler" / "Gas" / "Report.lean",
-    ROOT / "Compiler" / "Lowering" / "FromEDSL.lean",
     ROOT / "Compiler" / "Main.lean",
     ROOT / "Compiler" / "MainTest.lean",
 ]

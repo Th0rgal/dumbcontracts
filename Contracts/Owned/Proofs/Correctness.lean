@@ -67,7 +67,7 @@ theorem transferred_owner_cannot_act (s : ContractState) (newOwner : Address)
   ∃ msg, (transferOwnership 42).run s' = ContractResult.revert msg s' := by
   have h_ne' : ((transferOwnership newOwner).run s).snd.sender ≠
       ((transferOwnership newOwner).run s).snd.storageAddr 0 := by
-    rw [transferOwnership_unfold s newOwner h_owner]; simp [ContractResult.snd, h_ne]
+    verity_frame (transferOwnership_unfold s newOwner h_owner) with h_ne
   exact transferOwnership_reverts_when_not_owner _ _ h_ne'
 
 /-! ## Summary

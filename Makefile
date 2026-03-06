@@ -119,10 +119,12 @@ check: ## Run local CI-equivalent checks job (no Lean build, no solc)
 	python3 scripts/check_gas.py coverage
 	python3 scripts/check_compiler_boundaries.py
 	python3 scripts/check_yul.py --builtin-boundary-only
+	python3 scripts/check_rewrite_proof_metadata.py
 	python3 scripts/generate_evmyullean_capability_report.py --check
 	python3 scripts/generate_evmyullean_adapter_report.py --check
 	python3 scripts/generate_print_axioms.py --check
 	python3 scripts/check_proof_length.py
+	python3 scripts/check_issue_1060_integrity.py
 	python3 -m unittest discover -s scripts -p 'test_*.py' -v
 	@echo "All checks passed."
 

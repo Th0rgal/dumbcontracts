@@ -102,8 +102,7 @@ theorem decrement_subtracts_one (s : ContractState) :
 theorem getCount_meets_spec (s : ContractState) :
   let result := ((getCount).run s).fst
   getCount_spec result s := by
-  verity_unfold getCount
-  simp [count, getCount_spec]
+  verity_spec getCount_spec unfold getCount with count
 
 theorem getCount_reads_count_value (s : ContractState) :
   let result := ((getCount).run s).fst

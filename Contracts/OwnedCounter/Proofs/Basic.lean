@@ -64,8 +64,7 @@ private theorem getCount_run (s : ContractState) :
 theorem getCount_meets_spec (s : ContractState) :
   let result := ((getCount).run s).fst
   getCount_spec result s := by
-  rw [getCount_run s]
-  simp [getCount_spec]
+  verity_spec getCount_spec using (getCount_run s)
 
 theorem getCount_returns_count (s : ContractState) :
   ((getCount).run s).fst = s.storage 1 := by
@@ -85,8 +84,7 @@ private theorem getOwner_run (s : ContractState) :
 theorem getOwner_meets_spec (s : ContractState) :
   let result := ((getOwner).run s).fst
   getOwner_spec result s := by
-  rw [getOwner_run s]
-  simp [getOwner_spec]
+  verity_spec getOwner_spec using (getOwner_run s)
 
 theorem getOwner_returns_owner (s : ContractState) :
   ((getOwner).run s).fst = s.storageAddr 0 := by

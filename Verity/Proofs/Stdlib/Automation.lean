@@ -77,6 +77,22 @@ syntax (name := verity_frame)
 syntax (name := verity_frame_with)
   "verity_frame " rwRule " with " simpLemma : tactic
 
+/-- Spec-proof helper: rewrite via an unfold lemma, then discharge standard spec goals. -/
+syntax (name := verity_spec_using)
+  "verity_spec " simpLemma " using " rwRule : tactic
+
+/-- `verity_spec` with an extra local simp lemma for contract-specific slots/fields. -/
+syntax (name := verity_spec_using_with)
+  "verity_spec " simpLemma " using " rwRule " with " simpLemma : tactic
+
+/-- Spec-proof helper: unfold a function with `verity_unfold`, then discharge spec goals. -/
+syntax (name := verity_spec_unfold)
+  "verity_spec " simpLemma " unfold " simpLemma : tactic
+
+/-- `verity_spec` unfold-mode with an extra local simp lemma. -/
+syntax (name := verity_spec_unfold_with)
+  "verity_spec " simpLemma " unfold " simpLemma " with " simpLemma : tactic
+
 macro_rules
   | `(tactic| verity_unfold $fn:simpLemma) =>
       `(tactic| simp only [
@@ -97,6 +113,40 @@ macro_rules
       `(tactic| (rw [$h]; simp [ContractResult.snd]))
   | `(tactic| verity_frame $h:rwRule with $extra:simpLemma) =>
       `(tactic| (rw [$h]; simp [ContractResult.snd, $extra]))
+  | `(tactic| verity_spec $spec:simpLemma using $h:rwRule) =>
+      `(tactic|
+        (rw [$h]
+         simp [$spec, ContractResult.snd]
+         try (intro slotIdx h_neq; simp [h_neq])
+         try (intro n h_neq; simp [h_neq])))
+  | `(tactic| verity_spec $spec:simpLemma using $h:rwRule with $extra:simpLemma) =>
+      `(tactic|
+        (rw [$h]
+         simp [$spec, ContractResult.snd, $extra]
+         try (intro slotIdx h_neq; simp [h_neq])
+         try (intro n h_neq; simp [h_neq])))
+  | `(tactic| verity_spec $spec:simpLemma unfold $fn:simpLemma) =>
+      `(tactic|
+        (simp only [
+           $fn, msgSender, getStorageAddr, getStorage, setStorage, setStorageAddr,
+           getMapping, setMapping, setMapping2, getMappingUint, setMappingUint, getMapping2,
+           Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+           Contract.run, ContractResult.snd, ContractResult.fst
+         ]
+         simp [$spec, ContractResult.snd]
+         try (intro slotIdx h_neq; simp [h_neq])
+         try (intro n h_neq; simp [h_neq])))
+  | `(tactic| verity_spec $spec:simpLemma unfold $fn:simpLemma with $extra:simpLemma) =>
+      `(tactic|
+        (simp only [
+           $fn, msgSender, getStorageAddr, getStorage, setStorage, setStorageAddr,
+           getMapping, setMapping, setMapping2, getMappingUint, setMappingUint, getMapping2,
+           Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
+           Contract.run, ContractResult.snd, ContractResult.fst, $extra
+         ]
+         simp [$spec, ContractResult.snd, $extra]
+         try (intro slotIdx h_neq; simp [h_neq])
+         try (intro n h_neq; simp [h_neq])))
 
 /-!
 ## Index Normalization Helpers

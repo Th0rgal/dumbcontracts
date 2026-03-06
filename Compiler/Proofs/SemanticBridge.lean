@@ -58,6 +58,11 @@ syntax (name := semantic_bridge_simp_with)
 syntax (name := semantic_bridge_split)
   "semantic_bridge_split " ident " : " term " with [" term,* "]" : tactic
 
+/-- `semantic_bridge_owner h with [...]` discharges owner-equality preconditions
+    via `subst` then runs the canonical SemanticBridge simp bundle. -/
+syntax (name := semantic_bridge_owner)
+  "semantic_bridge_owner " ident " with [" term,* "]" : tactic
+
 macro_rules
   | `(tactic| semantic_bridge_simp) =>
       `(tactic| simp [
@@ -81,6 +86,10 @@ macro_rules
         by_cases $h : $cond
         · semantic_bridge_simp [$[$extra],*, $h]
         · semantic_bridge_simp [$[$extra],*, $h])
+  | `(tactic| semantic_bridge_owner $h:ident with [$[$extra:term],*]) =>
+      `(tactic|
+        subst $h
+        semantic_bridge_simp [$[$extra],*])
 
 /-! ## State Encoding
 
@@ -311,8 +320,8 @@ theorem owned_transferOwnership_semantic_bridge
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
     := by
-  subst hOwner
-  semantic_bridge_simp [Contract.run, Contracts.MacroContracts.Owned.transferOwnership,
+  semantic_bridge_owner hOwner with
+    [Contract.run, Contracts.MacroContracts.Owned.transferOwnership,
     Contracts.MacroContracts.Owned.owner, getStorageAddr, setStorageAddr,
     ownedIRContract, encodeStorageAddr]
 
@@ -449,8 +458,8 @@ theorem ownedCounter_increment_semantic_bridge
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
     := by
-  subst hOwner
-  semantic_bridge_simp [Contract.run, Contracts.MacroContracts.OwnedCounter.increment,
+  semantic_bridge_owner hOwner with
+    [Contract.run, Contracts.MacroContracts.OwnedCounter.increment,
     Contracts.MacroContracts.OwnedCounter.owner, Contracts.MacroContracts.OwnedCounter.count,
     getStorageAddr, getStorage, setStorage,
     ownedCounterIRContract, encodeOwnedCounterStorage]
@@ -472,8 +481,8 @@ theorem ownedCounter_decrement_semantic_bridge
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
     := by
-  subst hOwner
-  semantic_bridge_simp [Contract.run, Contracts.MacroContracts.OwnedCounter.decrement,
+  semantic_bridge_owner hOwner with
+    [Contract.run, Contracts.MacroContracts.OwnedCounter.decrement,
     Contracts.MacroContracts.OwnedCounter.owner, Contracts.MacroContracts.OwnedCounter.count,
     getStorageAddr, getStorage, setStorage,
     ownedCounterIRContract, encodeOwnedCounterStorage]
@@ -495,8 +504,8 @@ theorem ownedCounter_transferOwnership_semantic_bridge
         encodeEvents s'.events = irResult.events
     | .revert _ _ => True
     := by
-  subst hOwner
-  semantic_bridge_simp [Contract.run, Contracts.MacroContracts.OwnedCounter.transferOwnership,
+  semantic_bridge_owner hOwner with
+    [Contract.run, Contracts.MacroContracts.OwnedCounter.transferOwnership,
     Contracts.MacroContracts.OwnedCounter.owner, getStorageAddr, setStorageAddr,
     ownedCounterIRContract, encodeOwnedCounterStorage]
 

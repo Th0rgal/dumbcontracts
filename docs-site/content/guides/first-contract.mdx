@@ -357,8 +357,8 @@ grep -r "sorry" Verity/Specs/TipJar/ Verity/Proofs/TipJar/
 
 ### 5.1 Add Canonical Compiler Declaration
 
-Add your contract to `Verity/Examples/MacroContracts.lean` with `verity_contract`.
-Then register `<Name>.spec` in `Compiler/Specs.lean` under `allSpecs`:
+Add your contract in `Contracts/<Name>/<Name>.lean` with `verity_contract`.
+Then register `Contracts.<Name>.spec` in `Compiler/Specs.lean` under `allSpecs`:
 
 ```lean
 verity_contract TipJar where
@@ -385,7 +385,7 @@ Function selectors (the first 4 bytes of `keccak256("functionName(paramTypes)")`
 
 ### 5.3 Compilation Correctness
 
-When you define a contract using the `verity_contract` macro (in `Verity/Examples/MacroContracts.lean`), the framework automatically provides compilation correctness via the generic typed-IR theorem in `Verity/Core/Free/TypedIRCompilerCorrectness.lean`. This theorem covers a grammar of 36+ supported statement fragments, so no per-contract compilation proofs are needed for standard patterns.
+When you define a contract using the `verity_contract` macro in `Contracts/<Name>/<Name>.lean`, the framework automatically provides compilation correctness via the generic typed-IR theorem in `Verity/Core/Free/TypedIRCompilerCorrectness.lean`. This theorem covers a grammar of 36+ supported statement fragments, so no per-contract compilation proofs are needed for standard patterns.
 
 The bridge between EDSL semantics and the compilation model is maintained in `Compiler/Proofs/SemanticBridge.lean`. The bridge theorem *statements* are fully defined for all supported patterns (storage reads/writes, mappings, require guards, arithmetic, conditionals), but 18 proof terms currently use `sorry` (blocked by heartbeat limits after the `evalBuiltinCall` refactor). The typed-IR compilation path (`TypedIRCompilerCorrectness.lean`) carries zero `sorry`.
 

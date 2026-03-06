@@ -6,15 +6,15 @@ These Solidity contracts serve as **reference implementations** for Verity's dif
 
 | Solidity File | Lean EDSL | Lean Proofs | What it demonstrates |
 |---------------|-----------|-------------|---------------------|
-| `SimpleStorage.sol` | `Contracts/SimpleStorage/Contract.lean` | 20 theorems | Single storage slot (store/retrieve) |
-| `Counter.sol` | `Contracts/Counter/Contract.lean` | 28 theorems | Increment/decrement with wrapping arithmetic |
-| `SafeCounter.sol` | `Contracts/SafeCounter/Contract.lean` | 25 theorems | Overflow-safe arithmetic (reverts on overflow) |
-| `Owned.sol` | `Contracts/Owned/Contract.lean` | 23 theorems | Access control (owner-only functions) |
-| `OwnedCounter.sol` | `Contracts/OwnedCounter/Contract.lean` | 48 theorems | Combined access control + counter |
-| `Ledger.sol` | `Contracts/Ledger/Contract.lean` | 33 theorems | Balance mapping (deposit/withdraw/transfer) |
-| `SimpleToken.sol` | `Contracts/SimpleToken/Contract.lean` | 61 theorems | Token with mint/transfer + supply invariants |
-| `(pending)` | `Contracts/ERC20/Contract.lean` | 19 theorems | ERC20 scaffold with initial read-state/spec bridge proofs |
-| `(pending)` | `Contracts/ERC721/Contract.lean` | 11 theorems | ERC721 scaffold with ownership/approval read-state proof baseline |
+| `SimpleStorage.sol` | `Contracts/SimpleStorage/SimpleStorage.lean` | 20 theorems | Single storage slot (store/retrieve) |
+| `Counter.sol` | `Contracts/Counter/Counter.lean` | 28 theorems | Increment/decrement with wrapping arithmetic |
+| `SafeCounter.sol` | `Contracts/SafeCounter/SafeCounter.lean` | 25 theorems | Overflow-safe arithmetic (reverts on overflow) |
+| `Owned.sol` | `Contracts/Owned/Owned.lean` | 23 theorems | Access control (owner-only functions) |
+| `OwnedCounter.sol` | `Contracts/OwnedCounter/OwnedCounter.lean` | 48 theorems | Combined access control + counter |
+| `Ledger.sol` | `Contracts/Ledger/Ledger.lean` | 33 theorems | Balance mapping (deposit/withdraw/transfer) |
+| `SimpleToken.sol` | `Contracts/SimpleToken/SimpleToken.lean` | 61 theorems | Token with mint/transfer + supply invariants |
+| `(pending)` | `Contracts/ERC20/ERC20.lean` | 19 theorems | ERC20 scaffold with initial read-state/spec bridge proofs |
+| `(pending)` | `Contracts/ERC721/ERC721.lean` | 11 theorems | ERC721 scaffold with ownership/approval read-state proof baseline |
 | `ReentrancyExample.sol` | `Contracts/ReentrancyExample/Contract.lean` | 5 theorems | Reentrancy guard pattern |
 
 ## How Testing Works

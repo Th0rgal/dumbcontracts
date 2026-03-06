@@ -604,7 +604,7 @@ FOUNDRY_PROFILE=difftest forge test
 
 ### Add New Contract
 
-1. **Add a macro contract declaration** in `Verity/Examples/MacroContracts.lean`:
+1. **Add a macro contract declaration** in `Contracts/<Name>/<Name>.lean`:
 ```lean
 verity_contract MyContract where
   storage
@@ -617,7 +617,7 @@ verity_contract MyContract where
 
 2. **Register it in** `Compiler/Specs.lean` **under** `allSpecs`:
 ```lean
-Verity.Examples.MacroContracts.MyContract.spec
+Contracts.MyContract.spec
 ```
 
 3. **Recompile**:

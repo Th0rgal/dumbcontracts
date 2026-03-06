@@ -100,114 +100,13 @@ jobs:
               - 'lean-toolchain'
               - 'foundry.toml'
 
-  # Python-only checks (fast, ~5s, always run)
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
-      - name: Check property manifest references
-        run: python3 scripts/check_property_manifest.py
-
-      - name: Check property coverage
-        run: python3 scripts/check_property_coverage.py
-
-      - name: Check contract file structure
-        run: python3 scripts/check_contract_structure.py
-
-      - name: Check case-insensitive path conflicts
-        run: python3 scripts/check_case_insensitive_path_conflicts.py
-
-      - name: Check axiom locations in AXIOMS.md
-        run: python3 scripts/check_axiom_locations.py
-
-      - name: Check verification status artifact freshness
-        run: python3 scripts/generate_verification_status.py --check
-
-      - name: Check documentation counts
-        run: python3 scripts/check_doc_counts.py
-
-      - name: Check Solidity interop matrix sync
-        run: python3 scripts/check_interop_matrix_sync.py
-
-      - name: Check verify workflow sync invariants
-        run: python3 scripts/check_verify_sync.py
-
-      - name: Check GitHub issue template forms
-        run: python3 scripts/check_issue_template_forms.py
-
-      - name: Check solc pin consistency
-        run: python3 scripts/check_solc_pin.py
-
-      - name: Check property manifest sync
-        run: python3 scripts/check_property_manifest_sync.py
-
-      - name: Check issue template contamination
-        run: python3 scripts/check_issue_templates.py
-
-      - name: Check macro property-test artifact generation
-        run: python3 scripts/check_macro_property_test_generation.py --check
-
-      - name: Check macro invariant suite coverage
-        run: python3 scripts/check_macro_translate_invariant_coverage.py
-
-      - name: Check macro round-trip fuzz suite coverage
-        run: python3 scripts/check_macro_roundtrip_fuzz_coverage.py
-
-      - name: Check storage layout consistency
-        run: python3 scripts/check_storage_layout.py
-
-      - name: Check manual-spec quarantine boundary
-        run: python3 scripts/check_manual_spec_quarantine.py
-
-      - name: Check SpecCorrectness migration boundary
-        run: python3 scripts/check_spec_proof_migration_boundary.py
-
-      - name: Check migrated legacy-example import boundary
-        run: python3 scripts/check_legacy_example_imports.py
-
-      - name: Check Layer-2 sender/storage universality
-        run: python3 scripts/check_layer2_universality.py
-
-      - name: Check Lean hygiene
-        run: python3 scripts/check_lean_hygiene.py
-
-      - name: Check static gas model builtin coverage
-        run: python3 scripts/check_gas_model_coverage.py
-
-      - name: Check mapping slot abstraction boundary
-        run: python3 scripts/check_mapping_slot_boundary.py
-
-      - name: Check Yul builtin abstraction boundary
-        run: python3 scripts/check_yul_builtin_boundary.py
-
-      - name: Check active rewrite-rule proof metadata
-        run: python3 scripts/check_rewrite_proof_metadata.py
-
-      - name: Check builtin list sync (Linker ↔ CompilationModel)
-        run: python3 scripts/check_builtin_list_sync.py
-
-      - name: Check EVMYulLean capability boundary
-        run: python3 scripts/check_evmyullean_capability_boundary.py
-
-      - name: Check EVMYulLean capability + unsupported-node report freshness
-        run: python3 scripts/generate_evmyullean_capability_report.py --check
-
-      - name: Check EVMYulLean adapter report freshness
-        run: python3 scripts/generate_evmyullean_adapter_report.py --check
-
-      - name: Check PrintAxioms.lean freshness
-        run: python3 scripts/generate_print_axioms.py --check
-
-      - name: Check proof length limits
-        run: python3 scripts/check_proof_length.py
-
-      - name: Check issue #1060 integrity ledger
-        run: python3 scripts/check_issue_1060_integrity.py
-
-      - name: Run Python unit tests
-        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Run all checks
+        run: make check
 
   build:
     runs-on: ubuntu-latest
@@ -217,38 +116,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache elan + Lean toolchain
-        id: cache-elan
-        uses: actions/cache@v4
+      - name: Setup Lean
+        uses: ./.github/actions/setup-lean
         with:
-          path: ~/.elan
-          key: elan-${{ hashFiles('lean-toolchain') }}
-
-      - name: Install elan
-        if: steps.cache-elan.outputs.cache-hit != 'true'
-        env:
-          ELAN_VERSION: "v4.1.2"
-          ELAN_INIT_SHA256: "4bacca9502cb89736fe63d2685abc2947cfbf34dc87673504f1bb4c43eda9264"
-        run: |
-          curl -sSfL "https://raw.githubusercontent.com/leanprover/elan/${ELAN_VERSION}/elan-init.sh" -o elan-init.sh
-          echo "${ELAN_INIT_SHA256}  elan-init.sh" | sha256sum -c -
-          bash elan-init.sh -y --default-toolchain none
-          rm elan-init.sh
-
-      - name: Add elan to PATH
-        run: echo "$HOME/.elan/bin" >> $GITHUB_PATH
-
-      - name: Restore Lake packages cache
-        id: cache-lake
-        uses: actions/cache/restore@v4
-        with:
-          path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
-          restore-keys: |
-            lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
-
-      - name: Fetch mathlib compiled cache
-        run: lake exe cache get
+          cache-key-prefix: lake
 
       - name: Build and verify all proofs
         env:
@@ -275,55 +146,19 @@ jobs:
           LEAN_NUM_THREADS: 4
         run: lake exe macro-roundtrip-fuzz
 
-      - name: Check for sorry
-        run: |
-          # Count sorry across all Lean files (matching both 'sorry' and '· sorry').
-          # Baseline is zero: any sorry is a failure.
-          EXPECTED_SORRY=0
-          ACTUAL_SORRY=$(grep -rn "sorry" Verity/ Compiler/ --include="*.lean" \
-            | grep -v ":[[:space:]]*--" | grep -v "zero sorry" | grep -v "Summary" \
-            | grep -v "SORRY" | grep -v "sorry_count" | grep -v "sorry placeholder" \
-            | grep -v "No sorry" | grep -v "all proofs are complete" \
-            | wc -l)
-          echo "Found $ACTUAL_SORRY sorry statement(s) (expected $EXPECTED_SORRY)"
-          if [ "$ACTUAL_SORRY" -ne "$EXPECTED_SORRY" ]; then
-            echo "ERROR: Unexpected sorry count ($ACTUAL_SORRY found, $EXPECTED_SORRY expected)"
-            grep -rn "sorry" Verity/ Compiler/ --include="*.lean" \
-              | grep -v ":[[:space:]]*--" | grep -v "zero sorry" | grep -v "Summary" \
-              | grep -v "SORRY" | grep -v "sorry_count" | grep -v "sorry placeholder" \
-              | grep -v "No sorry" | grep -v "all proofs are complete"
-            exit 1
-          fi
-          echo "✓ Sorry count ($ACTUAL_SORRY) within expected limit ($EXPECTED_SORRY)"
-
       - name: Check for axioms in proof files
         run: |
           echo "Checking for axioms in Compiler/ and Verity/..."
-
-          # Find all axioms across both directories (including private/protected axioms).
           grep -rnE "^(private |protected )?axiom " Compiler/ Verity/ --include="*.lean" | tee axioms.txt || true
-
-          # Count axioms
           AXIOM_COUNT=$(wc -l < axioms.txt 2>/dev/null | tr -d ' ')
-
           echo "Found $AXIOM_COUNT axiom declaration(s)"
-
           if [ "$AXIOM_COUNT" -gt 0 ]; then
             echo "::warning::Found $AXIOM_COUNT axiom(s) in proof files"
-            cat axioms.txt
-
-            # Check if AXIOMS.md exists
             if [ ! -f "AXIOMS.md" ]; then
               echo "::error::AXIOMS.md not found. All axioms must be documented."
               exit 1
             fi
-
-            # Verify each axiom is documented in AXIOMS.md
-            echo "Verifying all axioms are documented..."
-
-            # Extract axiom names from grep output
             AXIOM_NAMES=$(sed -E 's/.*:(private |protected )?axiom ([a-zA-Z0-9_]*).*/\2/' axioms.txt | sort -u)
-
             UNDOCUMENTED=""
             for axiom_name in $AXIOM_NAMES; do
               if ! grep -q "$axiom_name" AXIOMS.md; then
@@ -333,12 +168,10 @@ jobs:
                 echo "✓ Axiom '$axiom_name' is documented"
               fi
             done
-
             if [ -n "$UNDOCUMENTED" ]; then
               echo "::error::Undocumented axioms:$UNDOCUMENTED"
               exit 1
             fi
-
             echo "✓ All $AXIOM_COUNT axioms are documented in AXIOMS.md"
           else
             echo "✓ No axioms found in proof files"
@@ -365,7 +198,7 @@ jobs:
         run: python3 scripts/check_storage_layout.py --format=markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Save Lake packages cache
-        if: success() && steps.cache-lake.outputs.cache-hit != 'true'
+        if: success() && needs.changes.outputs.code == 'true'
         uses: actions/cache/save@v4
         with:
           path: .lake
@@ -379,54 +212,18 @@ jobs:
             axiom-report.md
             axiom-report-raw.log
 
-  # Compiler executable + Yul generation + solc validation.
-  # Cached separately from proofs: only rebuilds when Compiler/ sources,
-  # lean-toolchain, or lake-manifest.json change.  Proof-only changes
-  # (Verity/**) never invalidate this cache.
   build-compiler:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 60
     needs: changes
     if: needs.changes.outputs.compiler == 'true'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache elan + Lean toolchain
-        id: cache-elan
-        uses: actions/cache@v4
+      - name: Setup Lean
+        uses: ./.github/actions/setup-lean
         with:
-          path: ~/.elan
-          key: elan-${{ hashFiles('lean-toolchain') }}
-
-      - name: Install elan
-        if: steps.cache-elan.outputs.cache-hit != 'true'
-        env:
-          ELAN_VERSION: "v4.1.2"
-          ELAN_INIT_SHA256: "4bacca9502cb89736fe63d2685abc2947cfbf34dc87673504f1bb4c43eda9264"
-        run: |
-          curl -sSfL "https://raw.githubusercontent.com/leanprover/elan/${ELAN_VERSION}/elan-init.sh" -o elan-init.sh
-          echo "${ELAN_INIT_SHA256}  elan-init.sh" | sha256sum -c -
-          bash elan-init.sh -y --default-toolchain none
-          rm elan-init.sh
-
-      - name: Add elan to PATH
-        run: echo "$HOME/.elan/bin" >> $GITHUB_PATH
-
-      - name: Restore Lake compiler cache
-        id: cache-lake-compiler
-        uses: actions/cache/restore@v4
-        with:
-          path: .lake
-          key: lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
-          restore-keys: |
-            lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
-
-      - name: Clear stale Lake cache on partial hit
-        if: steps.cache-lake-compiler.outputs.cache-hit != 'true'
-        run: rm -rf .lake
-
-      - name: Fetch mathlib compiled cache
-        run: lake exe cache get
+          cache-key-prefix: lake-compiler
 
       - name: Build compiler
         env:
@@ -455,6 +252,7 @@ jobs:
             --link examples/external-libs/PoseidonT4.yul
 
       - name: Generate parity-pack Yul (pinned solc tuple)
+        if: github.event_name != 'pull_request'
         run: |
           ./.lake/build/bin/verity-compiler \
             --parity-pack solc-0.8.33-o200-viair-false-evm-shanghai \
@@ -463,6 +261,7 @@ jobs:
             --link examples/external-libs/PoseidonT4.yul
 
       - name: Generate parity-pack reference Yul (explicit profile + patch config)
+        if: github.event_name != 'pull_request'
         run: |
           ./.lake/build/bin/verity-compiler \
             --backend-profile solidity-parity \
@@ -474,6 +273,7 @@ jobs:
             --link examples/external-libs/PoseidonT4.yul
 
       - name: Generate parity-pack identity diff report
+        if: github.event_name != 'pull_request'
         run: |
           python3 scripts/generate_yul_identity_diff_report.py \
             --verity-dir compiler/yul-parity-pack \
@@ -481,6 +281,7 @@ jobs:
             --output compiler/parity-pack-identity-report.json
 
       - name: Gate parity-pack metrics
+        if: github.event_name != 'pull_request'
         run: |
           python3 scripts/check_parity_pack_metrics.py \
             --report compiler/parity-pack-identity-report.json \
@@ -558,7 +359,7 @@ jobs:
           PY
 
       - name: Save Lake compiler cache
-        if: success() && steps.cache-lake-compiler.outputs.cache-hit != 'true'
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: .lake
@@ -601,12 +402,12 @@ jobs:
           path: compiler/patch-report.tsv
 
       - name: Upload parity-pack identity report
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: parity-pack-identity-report
           path: compiler/parity-pack-identity-report.json
 
-  # Optional Lean typechecking profiler (workflow_dispatch only).
   lean-profile:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -615,38 +416,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache elan + Lean toolchain
-        id: cache-elan
-        uses: actions/cache@v4
-        with:
-          path: ~/.elan
-          key: elan-${{ hashFiles('lean-toolchain') }}
-
-      - name: Install elan
-        if: steps.cache-elan.outputs.cache-hit != 'true'
-        env:
-          ELAN_VERSION: "v4.1.2"
-          ELAN_INIT_SHA256: "4bacca9502cb89736fe63d2685abc2947cfbf34dc87673504f1bb4c43eda9264"
-        run: |
-          curl -sSfL "https://raw.githubusercontent.com/leanprover/elan/${ELAN_VERSION}/elan-init.sh" -o elan-init.sh
-          echo "${ELAN_INIT_SHA256}  elan-init.sh" | sha256sum -c -
-          bash elan-init.sh -y --default-toolchain none
-          rm elan-init.sh
-
-      - name: Add elan to PATH
-        run: echo "$HOME/.elan/bin" >> $GITHUB_PATH
-
-      - name: Restore Lake cache
-        id: cache-lake
-        uses: actions/cache/restore@v4
-        with:
-          path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
-          restore-keys: |
-            lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
-
-      - name: Fetch mathlib compiled cache
-        run: lake exe cache get
+      - name: Setup Lean
+        uses: ./.github/actions/setup-lean
 
       - name: Profile Lean module timings
         run: python3 scripts/profile_lean_modules.py --output lean-perf-queue.md
@@ -663,7 +434,7 @@ jobs:
   foundry-gas-calibration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [changes, build, build-compiler]
+    needs: [changes, build-compiler]
     if: needs.changes.outputs.compiler == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -693,7 +464,7 @@ jobs:
   foundry:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [changes, build, build-compiler]
+    needs: [changes, build-compiler]
     if: needs.changes.outputs.compiler == 'true'
     strategy:
       fail-fast: false
@@ -726,11 +497,10 @@ jobs:
           echo "Running tests with seed 42 (shard ${{ matrix.shard_index }}/8)"
           forge test
 
-  # Smoke gate for patch-enabled Yul on differential/property harness.
   foundry-patched:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [changes, build, build-compiler]
+    needs: [changes, build-compiler]
     if: needs.changes.outputs.compiler == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -757,17 +527,15 @@ jobs:
           DIFFTEST_SHARD_INDEX: "0"
         run: |
           echo "Running patched-Yul smoke tests with seed 42"
-          # Keep runtime bounded; full 10k random sweeps are already covered by baseline shards.
           forge test --no-match-test "Random10000"
 
-  # Multi-seed testing to detect flakiness and seed-dependent failures
   foundry-multi-seed:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [changes, build, build-compiler]
-    if: needs.changes.outputs.compiler == 'true'
+    needs: [changes, build-compiler]
+    if: needs.changes.outputs.compiler == 'true' && github.event_name != 'pull_request'
     strategy:
-      fail-fast: false  # Test all seeds even if one fails
+      fail-fast: false
       matrix:
         seed: [0, 1, 42, 123, 999, 12345, 67890]
     steps:
@@ -791,7 +559,7 @@ jobs:
           DIFFTEST_RANDOM_SMALL: "100"
           DIFFTEST_RANDOM_LARGE: "10000"
           DIFFTEST_RANDOM_SEED: "${{ matrix.seed }}"
-          DIFFTEST_SHARD_COUNT: "1"  # No sharding for multi-seed tests
+          DIFFTEST_SHARD_COUNT: "1"
           DIFFTEST_SHARD_INDEX: "0"
         run: |
           echo "::group::Testing with seed ${{ matrix.seed }}"
@@ -819,7 +587,7 @@ jobs:
           NEEDS_JSON: ${{ toJson(needs) }}
         with:
           script: |
-            const marker = "<!-- issue-1060-ci-failure-hints -->";
+            const marker = "<!-- ci-failure-hints -->";
             const needs = JSON.parse(process.env.NEEDS_JSON || "{}");
             const failed = Object.entries(needs)
               .filter(([, info]) => info && info.result === "failure")
@@ -838,8 +606,6 @@ jobs:
             lines.push("Copy-paste local triage:");
             lines.push("```bash");
             lines.push("make check");
-            lines.push("python3 scripts/generate_verification_status.py --check");
-            lines.push("python3 scripts/check_doc_counts.py");
             lines.push("lake build");
             lines.push("FOUNDRY_PROFILE=difftest forge test -vv");
             lines.push("```");

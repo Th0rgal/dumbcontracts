@@ -1,0 +1,56 @@
+name: Setup Lean
+description: Install elan, restore Lake cache, and fetch mathlib compiled cache
+
+inputs:
+  cache-key-prefix:
+    description: Cache key prefix for Lake packages (use different prefixes for separate caches)
+    default: "lake"
+
+runs:
+  using: composite
+  steps:
+    - name: Cache elan + Lean toolchain
+      id: cache-elan
+      uses: actions/cache@v4
+      with:
+        path: ~/.elan
+        key: elan-${{ hashFiles('lean-toolchain') }}
+
+    - name: Install elan
+      if: steps.cache-elan.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        ELAN_VERSION: "v4.1.2"
+        ELAN_INIT_SHA256: "4bacca9502cb89736fe63d2685abc2947cfbf34dc87673504f1bb4c43eda9264"
+      run: |
+        curl -sSfL "https://raw.githubusercontent.com/leanprover/elan/${ELAN_VERSION}/elan-init.sh" -o elan-init.sh
+        echo "${ELAN_INIT_SHA256}  elan-init.sh" | sha256sum -c -
+        bash elan-init.sh -y --default-toolchain none
+        rm elan-init.sh
+
+    - name: Add elan to PATH
+      shell: bash
+      run: echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+    - name: Restore Lake packages cache
+      id: cache-lake
+      uses: actions/cache/restore@v4
+      with:
+        path: .lake
+        key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}
+        restore-keys: |
+          ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
+
+    - name: Clear stale Lake cache on partial hit
+      if: steps.cache-lake.outputs.cache-hit != 'true'
+      shell: bash
+      run: rm -rf .lake
+
+    - name: Fetch mathlib compiled cache
+      shell: bash
+      run: lake exe cache get
+
+outputs:
+  cache-hit:
+    description: Whether the Lake cache was a full hit
+    value: ${{ steps.cache-lake.outputs.cache-hit }}

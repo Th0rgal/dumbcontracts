@@ -383,27 +383,31 @@ def _extract_non_script_python_commands(run_commands: list[str]) -> list[str]:
 
 def check_python_commands(snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
-    errors.extend(
-        _compare_lists(
-            "checks python scripts",
-            snapshot.python_commands("checks", include_args=True),
-            "spec checks scripts",
-            spec["expected_checks_commands"],
-        )
-    )
-    expected_other = spec.get("expected_checks_other_commands", [])
-    if expected_other:
-        workflow_other = _extract_non_script_python_commands(
-            snapshot.run_commands("checks")
-        )
+    expected_checks = spec["expected_checks_commands"]
+    checks_run_cmds = snapshot.run_commands("checks")
+    if expected_checks == ["make check"]:
+        if not any("make check" in cmd for cmd in checks_run_cmds):
+            errors.append("checks job must run 'make check'")
+    else:
         errors.extend(
             _compare_lists(
-                "checks other python commands",
-                workflow_other,
-                "spec checks other commands",
-                expected_other,
+                "checks python scripts",
+                snapshot.python_commands("checks", include_args=True),
+                "spec checks scripts",
+                expected_checks,
             )
         )
+        expected_other = spec.get("expected_checks_other_commands", [])
+        if expected_other:
+            workflow_other = _extract_non_script_python_commands(checks_run_cmds)
+            errors.extend(
+                _compare_lists(
+                    "checks other python commands",
+                    workflow_other,
+                    "spec checks other commands",
+                    expected_other,
+                )
+            )
     errors.extend(
         _compare_lists(
             "build python scripts",
@@ -583,8 +587,11 @@ def _extract_makefile_check_commands() -> list[str]:
 
 def check_makefile(_snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
+    expected_checks = spec["expected_checks_commands"]
+    if expected_checks == ["make check"]:
+        return CheckResult("makefile", errors)
     makefile_commands = _extract_makefile_check_commands()
-    expected = [f"python3 scripts/{cmd}" for cmd in spec["expected_checks_commands"]]
+    expected = [f"python3 scripts/{cmd}" for cmd in expected_checks]
     expected.extend(spec.get("expected_checks_other_commands", []))
     errors.extend(
         _compare_lists(

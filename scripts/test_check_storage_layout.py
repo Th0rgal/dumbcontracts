@@ -30,6 +30,21 @@ class CheckStorageLayoutExtractCompilerSpecsTests(unittest.TestCase):
         self.assertIn("Owned", rows)
         self.assertEqual(rows["Owned"], [("owner", "Address", 0)])
 
+    def test_extract_compiler_specs_supports_filtered_macro_alias_defs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec_file = Path(tmpdir) / "Specs.lean"
+            spec_file.write_text(
+                "def counterSpec : CompilationModel :=\n"
+                "  let canonical := Contracts.MacroContracts.Counter.spec\n"
+                "  { canonical with\n"
+                '    functions := canonical.functions.filter fun fn => fn.name = "increment" }\n',
+                encoding="utf-8",
+            )
+            rows = extract_compiler_specs(spec_file)
+
+        self.assertIn("Counter", rows)
+        self.assertEqual(rows["Counter"], [("count", "Uint256", 0)])
+
 
 class CheckStorageLayoutSpecEdslConsistencyTests(unittest.TestCase):
     def test_extract_spec_slots_supports_storage_helper_forms(self) -> None:

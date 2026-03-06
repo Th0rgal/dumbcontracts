@@ -36,6 +36,12 @@ COMPILER_FIELD_RE = re.compile(
 COMPILER_ALIAS_RE = re.compile(
     r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*Contracts\.MacroContracts\.(\w+)\.spec"
 )
+COMPILER_FILTERED_ALIAS_RE = re.compile(
+    r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*"
+    r"let\s+canonical\s*:=\s*Contracts\.MacroContracts\.(\w+)\.spec\s*"
+    r"\{\s*canonical\s+with\s+functions\s*:=\s*canonical\.functions\.filter\s+fun\s+fn\s*=>\s*(.*?)\s*\}",
+    re.DOTALL,
+)
 MACRO_STORAGE_LINE_RE = re.compile(
     r"^\s*(\w+)\s*:\s*(.+?)\s*:=\s*slot\s+(\d+)\s*$", re.MULTILINE
 )
@@ -197,6 +203,13 @@ def extract_compiler_specs(filepath: Path) -> dict[str, list[tuple[str, str, int
             specs[contract_name] = fields
 
     for _def_name, contract_name in COMPILER_ALIAS_RE.findall(content):
+        if contract_name in specs:
+            continue
+        fields = extract_macro_contract_slots(contract_name)
+        if fields:
+            specs[contract_name] = fields
+
+    for _def_name, contract_name, _filter_body in COMPILER_FILTERED_ALIAS_RE.findall(content):
         if contract_name in specs:
             continue
         fields = extract_macro_contract_slots(contract_name)

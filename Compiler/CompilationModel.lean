@@ -17,6 +17,7 @@ import Compiler.CompilationModel.IssueRefs
 import Compiler.CompilationModel.LayoutValidation
 import Compiler.CompilationModel.LogicalPurity
 import Compiler.CompilationModel.MappingWrites
+import Compiler.CompilationModel.ScopeValidation
 import Compiler.CompilationModel.StorageWrites
 import Compiler.CompilationModel.UsageAnalysis
 import Compiler.CompilationModel.ValidationHelpers

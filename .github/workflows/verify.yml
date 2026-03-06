@@ -115,6 +115,8 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Lean
         uses: ./.github/actions/setup-lean
@@ -219,6 +221,8 @@ jobs:
     if: needs.changes.outputs.compiler == 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Lean
         uses: ./.github/actions/setup-lean

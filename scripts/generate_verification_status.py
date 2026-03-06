@@ -7,8 +7,8 @@ import argparse
 import json
 from pathlib import Path
 
-from check_doc_counts import collect_metrics
 from property_utils import ROOT
+from verification_metrics import collect_metrics
 
 
 def _normalize(data: dict) -> str:

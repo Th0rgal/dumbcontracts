@@ -81,6 +81,12 @@ syntax (name := semantic_bridge_layer3_cases)
   "semantic_bridge_layer3_cases " term " " term " " term
     " [" ident,* "] with [" term,* "]" : tactic
 
+/-- `semantic_bridge_have h := t with [...]` introduces `h` by normalizing
+    `t` with a local simp bundle (used to rewrite bridge theorems to local
+    `let`-bound fixtures). -/
+syntax (name := semantic_bridge_have)
+  "semantic_bridge_have " ident " := " term " with [" term,* "]" : tactic
+
 macro_rules
   | `(tactic| semantic_bridge_simp) =>
       `(tactic| simp [
@@ -132,6 +138,10 @@ macro_rules
       `(tactic|
         semantic_bridge_layer3 $contract $tx $irState
         semantic_bridge_fn_cases [$[$h],*] with [$[$extra],*])
+  | `(tactic| semantic_bridge_have $hnew:ident := $hsrc:term with [$[$extra:term],*]) =>
+      `(tactic|
+        have $hnew := by
+          simpa [$[$extra],*] using $hsrc)
 
 /-! ## State Encoding
 
@@ -589,14 +599,7 @@ theorem simpleStorage_store_edsl_to_yul
   have hBridge := simpleStorage_store_semantic_bridge state sender value
   have hYul : resultsMatch (interpretIR simpleStorageIRContract tx irState) (interpretYulFromIR simpleStorageIRContract tx irState) := by
     semantic_bridge_layer3_cases simpleStorageIRContract tx irState [hfn, hfn] with [encodeStorage]
-  have hBridge' : match edslResult with
-      | .success _ s' =>
-          let irResult := interpretIR simpleStorageIRContract tx irState
-          irResult.success = true ∧
-          (∀ «slot», (s'.storage «slot»).val = irResult.finalStorage «slot») ∧
-          encodeEvents s'.events = irResult.events
-      | .revert _ _ => True := by
-    simpa [edslResult, tx, irState] using hBridge
+  semantic_bridge_have hBridge' := hBridge with [edslResult, tx, irState]
   simpa [edslResult, tx, irState] using
     (compose_semantic_bridge_with_yul
       (edslResult := edslResult)
@@ -633,15 +636,7 @@ theorem simpleStorage_retrieve_edsl_to_yul
   have hYul : resultsMatch (interpretIR simpleStorageIRContract tx irState)
       (interpretYulFromIR simpleStorageIRContract tx irState) := by
     semantic_bridge_layer3_cases simpleStorageIRContract tx irState [hfn, hfn] with [encodeStorage]
-  have hBridge' : match edslResult with
-      | .success val s' =>
-          let irResult := interpretIR simpleStorageIRContract tx irState
-          irResult.success = true ∧
-          irResult.returnValue = some val.val ∧
-          (∀ «slot», (s'.storage «slot»).val = irResult.finalStorage «slot») ∧
-          encodeEvents s'.events = irResult.events
-      | .revert _ _ => True := by
-    simpa [edslResult, tx, irState] using hBridge
+  semantic_bridge_have hBridge' := hBridge with [edslResult, tx, irState]
   simpa [edslResult, tx, irState] using
     (compose_semantic_bridge_with_yul
       (edslResult := edslResult)
@@ -678,14 +673,7 @@ theorem counter_increment_edsl_to_yul
   have hYul : resultsMatch (interpretIR counterIRContract tx irState)
       (interpretYulFromIR counterIRContract tx irState) := by
     semantic_bridge_layer3_cases counterIRContract tx irState [hfn, hfn, hfn] with [encodeStorage]
-  have hBridge' : match edslResult with
-      | .success _ s' =>
-          let irResult := interpretIR counterIRContract tx irState
-          irResult.success = true ∧
-          (∀ «slot», (s'.storage «slot»).val = irResult.finalStorage «slot») ∧
-          encodeEvents s'.events = irResult.events
-      | .revert _ _ => True := by
-    simpa [edslResult, tx, irState] using hBridge
+  semantic_bridge_have hBridge' := hBridge with [edslResult, tx, irState]
   simpa [edslResult, tx, irState] using
     (compose_semantic_bridge_with_yul
       (edslResult := edslResult)

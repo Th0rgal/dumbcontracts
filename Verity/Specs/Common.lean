@@ -231,6 +231,32 @@ def storageMapTransferSpec
     else storageMapUnchangedExceptKeysAtSlot slot fromAddr to s s') ∧
   frame s s'
 
+/-- Canonical two-state spec shape for ERC20-style `transferFrom` updates.
+When `from == to`, balances are unchanged; otherwise `from` is debited and `to` is credited.
+Allowance stays at `MAX_UINT256` or decreases by `amount` and all other allowance pairs are unchanged. -/
+@[simp]
+def storageMapTransferFromSpec
+    (balanceSlot allowanceSlot : Nat)
+    (fromAddr to spender : Address)
+    (amount : Uint256)
+    (frame : ContractState → ContractState → Prop)
+    (s s' : ContractState) : Prop :=
+  (if fromAddr == to
+    then s'.storageMap balanceSlot fromAddr = s.storageMap balanceSlot fromAddr
+    else s'.storageMap balanceSlot fromAddr = sub (s.storageMap balanceSlot fromAddr) amount) ∧
+  (if fromAddr == to
+    then s'.storageMap balanceSlot to = s.storageMap balanceSlot to
+    else s'.storageMap balanceSlot to = add (s.storageMap balanceSlot to) amount) ∧
+  (if fromAddr == to
+    then storageMapUnchangedExceptKeyAtSlot balanceSlot fromAddr s s'
+    else storageMapUnchangedExceptKeysAtSlot balanceSlot fromAddr to s s') ∧
+  (if s.storageMap2 allowanceSlot fromAddr spender == Verity.EVM.MAX_UINT256
+    then s'.storageMap2 allowanceSlot fromAddr spender = Verity.EVM.MAX_UINT256
+    else s'.storageMap2 allowanceSlot fromAddr spender =
+      sub (s.storageMap2 allowanceSlot fromAddr spender) amount) ∧
+  storageMap2UnchangedExceptKeyPair allowanceSlot fromAddr spender s s' ∧
+  frame s s'
+
 /-- All storage (uint256, addr, map, mapUint, map2) is unchanged. -/
 def sameAllStorage (s s' : ContractState) : Prop :=
   sameStorage s s' ∧

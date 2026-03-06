@@ -5,6 +5,7 @@
   the lower-level statement/expression compilation helpers.
 -/
 import Compiler.CompilationModel.Compile
+import Compiler.CompilationModel.ParamLoading
 
 namespace Compiler.CompilationModel
 

@@ -3,6 +3,7 @@
 -/
 
 import Verity.Specs.Common
+import Verity.Macro
 import Verity.EVM.Uint256
 import Contracts.MacroContracts.Core
 
@@ -15,13 +16,11 @@ open Verity.EVM.Uint256
 
 /-! ## Operation Specifications -/
 
-/-- Increment: increases count by 1 -/
-def increment_spec (s s' : ContractState) : Prop :=
-  storageUpdateSpec 0 (fun st => add (st.storage 0) 1) sameAddrMapContext s s'
+-- Increment: increases count by 1
+#gen_spec increment_spec (0, (fun st => add (st.storage 0) 1), sameAddrMapContext)
 
-/-- Decrement: decreases count by 1 -/
-def decrement_spec (s s' : ContractState) : Prop :=
-  storageUpdateSpec 0 (fun st => sub (st.storage 0) 1) sameAddrMapContext s s'
+-- Decrement: decreases count by 1
+#gen_spec decrement_spec (0, (fun st => sub (st.storage 0) 1), sameAddrMapContext)
 
 /-- getCount: returns the current count -/
 def getCount_spec (result : Uint256) (s : ContractState) : Prop :=

@@ -92,16 +92,18 @@ theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
   · rfl
   · rfl
   · intro slotIdx h_neq
-    simp only [simpleTokenConstructor, setStorageAddr, setStorage, Contracts.MacroContracts.SimpleToken.ownerSlot,
-      Contracts.MacroContracts.SimpleToken.totalSupplySlot, Verity.bind, Bind.bind, Contract.run, ContractResult.snd]
+    verity_unfold simpleTokenConstructor
+    simp only [Contracts.MacroContracts.SimpleToken.ownerSlot,
+      Contracts.MacroContracts.SimpleToken.totalSupplySlot]
     split
     · next h =>
       have : slotIdx = 0 := beq_iff_eq.mp h
       exact absurd this h_neq
     · rfl
   · intro slotIdx h_neq
-    simp only [simpleTokenConstructor, setStorageAddr, setStorage, Contracts.MacroContracts.SimpleToken.ownerSlot,
-      Contracts.MacroContracts.SimpleToken.totalSupplySlot, Verity.bind, Bind.bind, Contract.run, ContractResult.snd]
+    verity_unfold simpleTokenConstructor
+    simp only [Contracts.MacroContracts.SimpleToken.ownerSlot,
+      Contracts.MacroContracts.SimpleToken.totalSupplySlot]
     split
     · next h =>
       have : slotIdx = 2 := beq_iff_eq.mp h
@@ -109,8 +111,9 @@ theorem constructor_meets_spec (s : ContractState) (initialOwner : Address) :
     · rfl
   · rfl
   ·
-    simp [Specs.sameContext, simpleTokenConstructor, setStorageAddr, setStorage, Contracts.MacroContracts.SimpleToken.ownerSlot,
-      Contracts.MacroContracts.SimpleToken.totalSupplySlot, Verity.bind, Bind.bind, Contract.run, ContractResult.snd]
+    verity_unfold simpleTokenConstructor
+    simp [Specs.sameContext, Contracts.MacroContracts.SimpleToken.ownerSlot,
+      Contracts.MacroContracts.SimpleToken.totalSupplySlot]
 
 theorem constructor_sets_owner (s : ContractState) (initialOwner : Address) :
   let s' := ((simpleTokenConstructor initialOwner).run s).snd
@@ -134,7 +137,8 @@ on overflow, matching Solidity ^0.8 checked arithmetic semantics.
 -- Helper: isOwner returns true when sender is owner
 theorem isOwner_true_when_owner (s : ContractState) (h : s.sender = s.storageAddr 0) :
   ((isOwner).run s).fst = true := by
-  simp [isOwner, msgSender, getStorageAddr, Contracts.MacroContracts.SimpleToken.ownerSlot, Verity.bind, Bind.bind, Contract.run, Verity.pure, Pure.pure, ContractResult.fst, h]
+  verity_unfold isOwner
+  simp [Contracts.MacroContracts.SimpleToken.ownerSlot, h]
 
 -- Helper: unfold mint when owner guard passes and no overflow
 private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256)
@@ -392,9 +396,8 @@ theorem transfer_reverts_recipient_overflow (s : ContractState) (to : Address) (
 theorem balanceOf_meets_spec (s : ContractState) (addr : Address) :
   let result := ((balanceOf addr).run s).fst
   balanceOf_spec addr result s := by
-  unfold balanceOf
-  simp [balanceOf_spec, getMapping, Contracts.MacroContracts.SimpleToken.balancesSlot,
-    Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
+  verity_unfold balanceOf
+  simp [balanceOf_spec, Contracts.MacroContracts.SimpleToken.balancesSlot]
 
 theorem balanceOf_returns_balance (s : ContractState) (addr : Address) :
   let result := ((balanceOf addr).run s).fst
@@ -404,8 +407,7 @@ theorem balanceOf_returns_balance (s : ContractState) (addr : Address) :
 theorem balanceOf_preserves_state (s : ContractState) (addr : Address) :
   let s' := ((balanceOf addr).run s).snd
   s' = s := by
-  unfold balanceOf
-  simp [getMapping, Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
+  verity_unfold balanceOf
 
 theorem getTotalSupply_meets_spec (s : ContractState) :
   let result := ((getTotalSupply).run s).fst
@@ -464,7 +466,9 @@ theorem constructor_getOwner_correct (s : ContractState) (initialOwner : Address
   let s' := ((simpleTokenConstructor initialOwner).run s).snd
   let result := ((getOwner).run s').fst
   result = initialOwner := by
-  simp only [simpleTokenConstructor, getOwner, setStorageAddr, setStorage, getStorageAddr, Contracts.MacroContracts.SimpleToken.ownerSlot, Contracts.MacroContracts.SimpleToken.totalSupplySlot, Verity.bind, Bind.bind, Contract.run, ContractResult.snd, ContractResult.fst]
+  verity_unfold simpleTokenConstructor with getOwner
+  simp only [Contracts.MacroContracts.SimpleToken.ownerSlot,
+    Contracts.MacroContracts.SimpleToken.totalSupplySlot]
   rfl
 
 /-! ## Invariant Preservation -/

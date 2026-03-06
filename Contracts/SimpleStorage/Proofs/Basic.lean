@@ -83,8 +83,7 @@ theorem store_meets_spec (s : ContractState) (value : Uint256) :
 theorem retrieve_meets_spec (s : ContractState) :
   let result := ((retrieve).run s).fst
   retrieve_spec result s := by
-  verity_unfold retrieve
-  simp [storedData, retrieve_spec]
+  verity_spec retrieve_spec unfold retrieve with storedData
 
 -- Main theorem: store then retrieve returns the stored value
 -- This is the key correctness property!

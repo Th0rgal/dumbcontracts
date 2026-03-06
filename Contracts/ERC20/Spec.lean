@@ -59,18 +59,12 @@ def approve_spec (ownerAddr spender : Address) (amount : Uint256) (s s' : Contra
 def transferFrom_spec (spender fromAddr to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   s.storageMap2 3 fromAddr spender ≥ amount ∧
   s.storageMap 2 fromAddr ≥ amount ∧
-  (if fromAddr == to
-    then s'.storageMap 2 fromAddr = s.storageMap 2 fromAddr
-    else s'.storageMap 2 fromAddr = sub (s.storageMap 2 fromAddr) amount) ∧
-  (if fromAddr == to
-    then s'.storageMap 2 to = s.storageMap 2 to
-    else s'.storageMap 2 to = add (s.storageMap 2 to) amount) ∧
-  (if s.storageMap2 3 fromAddr spender == Verity.EVM.MAX_UINT256
-    then s'.storageMap2 3 fromAddr spender = Verity.EVM.MAX_UINT256
-    else s'.storageMap2 3 fromAddr spender = sub (s.storageMap2 3 fromAddr spender) amount) ∧
-  s'.storage 1 = s.storage 1 ∧
-  s'.storageAddr 0 = s.storageAddr 0 ∧
-  sameContext s s'
+  storageMapTransferFromSpec 2 3 fromAddr to spender amount
+    (fun st st' =>
+      sameStorage st st' ∧
+      sameStorageAddr st st' ∧
+      sameContext st st')
+    s s'
 
 /-- balanceOf: returns current balance of `addr` -/
 def balanceOf_spec (addr : Address) (result : Uint256) (s : ContractState) : Prop :=

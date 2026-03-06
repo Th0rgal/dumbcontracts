@@ -13,10 +13,11 @@ import re
 import subprocess
 from pathlib import Path
 
-from property_utils import ROOT, YUL_DIR, report_errors, scrub_lean_code
+from property_utils import ROOT, report_errors, scrub_lean_code
 
 PROOFS_DIR = ROOT / "Compiler" / "Proofs"
 BUILTINS_FILE = PROOFS_DIR / "YulGeneration" / "Builtins.lean"
+DEFAULT_YUL_DIR = ROOT / "artifacts" / "yul"
 RUNTIME_INTERPRETERS = [
     PROOFS_DIR / "IRGeneration" / "IRInterpreter.lean",
     PROOFS_DIR / "YulGeneration" / "Semantics.lean",
@@ -212,7 +213,7 @@ def collect_builtin_boundary_failures() -> list[str]:
 
 
 def run_compilation_checks(args: argparse.Namespace) -> tuple[list[str], int, int]:
-    yul_dirs = [resolve_dir(d) for d in (args.dirs or [str(YUL_DIR)])]
+    yul_dirs = [resolve_dir(d) for d in (args.dirs or [str(DEFAULT_YUL_DIR)])]
     files, failures = collect_yul_files(yul_dirs)
     if not files and not failures:
         checked = ", ".join(str(path) for path in yul_dirs)
@@ -343,7 +344,7 @@ def main(argv: list[str] | None = None) -> None:
     if not args.builtin_boundary_only:
         print(
             f"Yul->EVM compilation check passed ({checked_files} files across "
-            f"{len(args.dirs or [str(YUL_DIR)])} dirs)."
+            f"{len(args.dirs or [str(DEFAULT_YUL_DIR)])} dirs)."
         )
         if args.compare_dirs is not None:
             print(f"Bytecode parity check passed: {args.compare_dirs[0]} == {args.compare_dirs[1]}")

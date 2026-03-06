@@ -83,10 +83,12 @@ def evalExpr :=
             (dir_b / "Two.yul").write_text("{ }", encoding="utf-8")
 
             old_root = check_yul.ROOT
+            old_run_solc = check_yul.run_solc
             check_yul.ROOT = root
+            check_yul.run_solc = lambda _path: (0, "Binary representation:\n00\n", "")
             try:
                 args = argparse.Namespace(
-                    dirs=None,
+                    dirs=["a"],
                     compare_dirs=None,
                     same_file_pairs=[["a", "b"]],
                     allow_compare_diff_file=None,
@@ -94,11 +96,42 @@ def evalExpr :=
                 failures, checked_files, compare_count = check_yul.run_compilation_checks(args)
             finally:
                 check_yul.ROOT = old_root
+                check_yul.run_solc = old_run_solc
 
-        self.assertEqual(checked_files, 0)
+        self.assertEqual(checked_files, 1)
         self.assertEqual(compare_count, 1)
         self.assertIn(f"{dir_b} missing file present in {dir_a}: One.yul", failures)
         self.assertIn(f"{dir_a} missing file present in {dir_b}: Two.yul", failures)
+
+    def test_run_compilation_checks_defaults_to_artifacts_yul(self) -> None:
+        with tempfile.TemporaryDirectory(dir=property_utils.ROOT) as tmpdir:
+            root = Path(tmpdir)
+            artifacts_yul = root / "artifacts" / "yul"
+            artifacts_yul.mkdir(parents=True)
+            (artifacts_yul / "One.yul").write_text("{ }", encoding="utf-8")
+
+            old_root = check_yul.ROOT
+            old_default_yul_dir = check_yul.DEFAULT_YUL_DIR
+            old_run_solc = check_yul.run_solc
+            check_yul.ROOT = root
+            check_yul.DEFAULT_YUL_DIR = root / "artifacts" / "yul"
+            check_yul.run_solc = lambda _path: (0, "Binary representation:\n00\n", "")
+            try:
+                args = argparse.Namespace(
+                    dirs=None,
+                    compare_dirs=None,
+                    same_file_pairs=None,
+                    allow_compare_diff_file=None,
+                )
+                failures, checked_files, compare_count = check_yul.run_compilation_checks(args)
+            finally:
+                check_yul.ROOT = old_root
+                check_yul.DEFAULT_YUL_DIR = old_default_yul_dir
+                check_yul.run_solc = old_run_solc
+
+        self.assertEqual(failures, [])
+        self.assertEqual(checked_files, 1)
+        self.assertEqual(compare_count, 0)
 
     def test_main_builtin_boundary_only_skips_solc_checks(self) -> None:
         old_collect = check_yul.collect_builtin_boundary_failures

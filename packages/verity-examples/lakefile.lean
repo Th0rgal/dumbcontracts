@@ -11,7 +11,8 @@ lean_lib «Contracts» where
   srcDir := "../.."
   globs := #[
     .one `Contracts,
-    .andSubmodules `Contracts.MacroContracts,
+    .one `Contracts.Common,
+    .one `Contracts.Smoke,
     .andSubmodules `Contracts.Counter,
     .andSubmodules `Contracts.SimpleStorage,
     .andSubmodules `Contracts.Owned,

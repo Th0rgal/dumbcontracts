@@ -12,7 +12,7 @@ import Contracts.Owned.Proofs.Basic
 namespace Contracts.Owned.Proofs.Correctness
 
 open Verity
-open Contracts.MacroContracts.Owned
+open Contracts.Owned
 open Contracts.Owned.Spec
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne)
 open Contracts.Owned.Proofs

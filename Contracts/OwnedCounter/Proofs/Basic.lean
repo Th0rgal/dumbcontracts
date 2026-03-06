@@ -16,7 +16,7 @@ import Verity.Proofs.Stdlib.Automation
 namespace Contracts.OwnedCounter.Proofs
 
 open Verity
-open Contracts.MacroContracts.OwnedCounter
+open Contracts.OwnedCounter
 open Contracts.OwnedCounter.Spec
 open Verity.Proofs.Stdlib.Automation
 open Contracts.OwnedCounter.Invariants

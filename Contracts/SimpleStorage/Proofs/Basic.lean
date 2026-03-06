@@ -6,7 +6,6 @@
   Status: Complete — all 13 proofs proven with zero axioms and zero sorry.
 -/
 
-import Contracts.MacroContracts.Core
 import Contracts.SimpleStorage.Spec
 import Contracts.SimpleStorage.Invariants
 import Verity.Proofs.Stdlib.Automation
@@ -14,7 +13,7 @@ import Verity.Proofs.Stdlib.Automation
 namespace Contracts.SimpleStorage.Proofs
 
 open Verity
-open Contracts.MacroContracts.SimpleStorage
+open Contracts.SimpleStorage
 open Contracts.SimpleStorage.Spec
 open Contracts.SimpleStorage.Invariants
 open Verity.Proofs.Stdlib.Automation

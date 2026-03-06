@@ -41,11 +41,11 @@ SIMPLE_PARAM_MAP = {
     "bytes": "bytes",
 }
 COMPILER_ALIAS_RE = re.compile(
-    r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*Contracts\.MacroContracts\.(\w+)\.spec"
+    r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*Contracts\.(\w+)\.spec"
 )
 COMPILER_FILTERED_ALIAS_RE = re.compile(
     r"def\s+(\w+)\s*:\s*CompilationModel\s*:=\s*"
-    r"let\s+canonical\s*:=\s*Contracts\.MacroContracts\.(\w+)\.spec\s*"
+    r"let\s+canonical\s*:=\s*Contracts\.(\w+)\.spec\s*"
     r"\{\s*canonical\s+with\s+functions\s*:=\s*canonical\.functions\.filter\s+fun\s+fn\s*=>\s*(.*?)\s*\}",
     re.DOTALL,
 )
@@ -91,7 +91,7 @@ def find_matching(text: str, start: int, open_ch: str, close_ch: str) -> int:
 
 
 def _macro_contract_path(contract_name: str) -> Path:
-    return ROOT / "Contracts" / "MacroContracts" / f"{contract_name}.lean"
+    return ROOT / "Contracts" / contract_name / f"{contract_name}.lean"
 
 
 def _macro_type_to_signature(ty: str) -> str:

@@ -1,4 +1,4 @@
-import Contracts.SimpleToken.Contract
+import Contracts.SimpleToken.SimpleToken
 import Contracts.SimpleToken.Spec
 import Contracts.SimpleToken.Invariants
 import Contracts.SimpleToken.Proofs.Basic

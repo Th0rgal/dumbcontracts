@@ -3,7 +3,7 @@
 -/
 
 import Contracts.ERC20.Spec
-import Contracts.MacroContracts.Tokens
+import Contracts.ERC20.ERC20
 import Verity.Proofs.Stdlib.Math
 import Verity.Proofs.Stdlib.Automation
 
@@ -11,7 +11,7 @@ namespace Contracts.ERC20.Proofs
 
 open Verity
 open Contracts.ERC20.Spec
-open Contracts.MacroContracts.ERC20
+open Contracts.ERC20
 open Verity.Stdlib.Math (MAX_UINT256 requireSomeUint)
 open Verity.Proofs.Stdlib.Math (safeAdd_some)
 open Verity.Proofs.Stdlib.Automation (address_beq_false_of_ne uint256_ge_val_le)

@@ -1,4 +1,4 @@
-import Contracts.Ledger.Contract
+import Contracts.Ledger.Ledger
 import Contracts.Ledger.Spec
 import Contracts.Ledger.Invariants
 import Contracts.Ledger.Proofs.Basic

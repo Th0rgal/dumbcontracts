@@ -246,7 +246,7 @@ def collect_theorems(path: Path, *, include_helpers: bool = False) -> list[str]:
 def extract_manifest_from_proofs() -> dict[str, list[str]]:
     """Extract theorem names from Lean proof files.
 
-    Scans Contracts/<Contract>/Proofs/ directories and Contracts/<Contract>/Contract.lean
+    Scans Contracts/<Contract>/Proofs/ directories and Contracts/<Contract>/<Contract>.lean
     files that contain inline theorems (e.g., ReentrancyExample).
 
     Returns:
@@ -267,7 +267,7 @@ def extract_manifest_from_proofs() -> dict[str, list[str]]:
             if theorems:
                 manifest[contract] = sorted(dict.fromkeys(theorems))
 
-    # Also scan Contracts/<Contract>/Contract.lean for contracts with inline theorems (no separate Proofs dir)
+    # Also scan Contracts/<Contract>/<Contract>.lean for contracts with inline theorems (no separate Proofs dir)
     if EXAMPLES_DIR.exists():
         for contract_dir in sorted(EXAMPLES_DIR.iterdir()):
             if not contract_dir.is_dir():
@@ -275,7 +275,9 @@ def extract_manifest_from_proofs() -> dict[str, list[str]]:
             contract = _require_contract_identifier(contract_dir.name, contract_dir)
             if contract in manifest:
                 continue  # Already found via Proofs/
-            contract_lean = contract_dir / "Contract.lean"
+            contract_lean = contract_dir / f"{contract}.lean"
+            if not contract_lean.exists():
+                contract_lean = contract_dir / "Contract.lean"
             if contract_lean.exists():
                 theorems = collect_theorems(contract_lean)
                 if theorems:

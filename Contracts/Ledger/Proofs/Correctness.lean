@@ -12,7 +12,7 @@ import Contracts.Ledger.Proofs.Basic
 namespace Contracts.Ledger.Proofs.Correctness
 
 open Verity
-open Contracts.MacroContracts.Ledger
+open Contracts.Ledger
 open Contracts.Ledger.Spec
 open Contracts.Ledger.Proofs
 open Contracts.Ledger.Invariants

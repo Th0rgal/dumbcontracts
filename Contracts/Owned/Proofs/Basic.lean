@@ -14,7 +14,7 @@ import Verity.Proofs.Stdlib.Automation
 namespace Contracts.Owned.Proofs
 
 open Verity
-open Contracts.MacroContracts.Owned
+open Contracts.Owned
 open Contracts.Owned.Spec
 open Verity.Proofs.Stdlib.Automation (wf_of_state_eq)
 open Contracts.Owned.Invariants

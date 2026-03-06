@@ -2,7 +2,7 @@
 """Generate scaffold files for a new Verity contract.
 
 Creates the complete file structure needed to add a new contract:
-  - EDSL implementation (Contracts/{Name}/Contract.lean)
+  - EDSL implementation (Contracts/{Name}/{Name}.lean)
   - Formal specification (Contracts/{Name}/Spec.lean)
   - State invariants (Contracts/{Name}/Invariants.lean)
   - Layer 2 proof re-export (Contracts/{Name}/Proofs.lean -- re-export)
@@ -477,7 +477,7 @@ def _needs_uint256_import(cfg: ContractConfig) -> bool:
 
 
 def gen_example(cfg: ContractConfig) -> str:
-    """Generate Contracts/{Name}/Contract.lean"""
+    """Generate Contracts/{Name}/{Name}.lean"""
     imports = ["import Verity.Core"]
     opens = ["open Verity"]
     if _needs_uint256_import(cfg):
@@ -690,7 +690,7 @@ def gen_basic_proofs(cfg: ContractConfig) -> str:
         proof_stubs.append("")
 
     imports = [
-        f"import Contracts.{cfg.name}.Contract",
+        f"import Contracts.{cfg.name}.{cfg.name}",
         f"import Contracts.{cfg.name}.Spec",
         f"import Contracts.{cfg.name}.Invariants",
     ]
@@ -1006,7 +1006,7 @@ def {name_lower}Spec : CompilationModel := {{
 def gen_all_lean_imports(cfg: ContractConfig) -> str:
     """Generate import lines for Verity/All.lean."""
     return f"""
-import Contracts.{cfg.name}.Contract
+import Contracts.{cfg.name}.{cfg.name}
 import Contracts.{cfg.name}.Spec
 import Contracts.{cfg.name}.Invariants
 import Contracts.{cfg.name}.Proofs
@@ -1018,7 +1018,7 @@ def scaffold_files(cfg: ContractConfig) -> List[tuple[Path, str]]:
     """Return all scaffold outputs for this contract."""
     name = cfg.name
     return [
-        (ROOT / "Contracts" / name / "Contract.lean", gen_example(cfg)),
+        (ROOT / "Contracts" / name / f"{name}.lean", gen_example(cfg)),
         (ROOT / "Contracts" / name / "Spec.lean", gen_spec(cfg)),
         (ROOT / "Contracts" / name / "Invariants.lean", gen_invariants(cfg)),
         (ROOT / "Contracts" / name / "Proofs.lean", gen_spec_proofs(cfg)),
@@ -1136,8 +1136,8 @@ Examples:
     print()
 
     print("3. Canonical registration:")
-    print("   Add a `verity_contract` declaration in Contracts/MacroContracts/.")
-    print("   Then add `<Name>.spec` from MacroContracts to `Compiler.Specs.allSpecs`.")
+    print("   Add a `verity_contract` declaration in Contracts/{Name}/{Name}.lean.")
+    print("   Then add `<Name>.spec` to `Compiler.Specs.allSpecs`.")
     print("   (Automatic allSpecs derivation is planned but not implemented yet.)")
     print("   Manual `Compiler.Specs.*Spec` entries are legacy migration scaffolding only.")
     print()

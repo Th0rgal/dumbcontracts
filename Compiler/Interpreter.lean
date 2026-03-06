@@ -12,9 +12,7 @@
 -/
 
 import Compiler.Constants
-import Contracts.MacroContracts.Tokens
-import Contracts.MacroContracts.Core
-import Contracts.MacroContracts.ERC721
+import Contracts
 import Contracts.CryptoHash
 import Compiler.DiffTestTypes
 import Compiler.Hex
@@ -24,7 +22,7 @@ namespace Compiler.Interpreter
 open Compiler.Constants (errorStringSelectorWord addressModulus)
 
 open Verity
-open Contracts.MacroContracts
+open Contracts
 open Compiler.DiffTestTypes
 open Compiler.Hex
 

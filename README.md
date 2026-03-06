@@ -32,7 +32,7 @@ Verity is a **formally verified smart contract compiler** written in [Lean 4](ht
 Contracts are written using the `verity_contract` [macro](Verity/Macro/Elaborate.lean). It is the canonical contract authoring path, and it generates both an executable Lean specification (`Contract` monad) and a declarative compilation model (`CompilationModel`) from one definition, with a machine-checked proof that they agree:
 
 ```lean
--- Contracts/MacroContracts/Counter.lean
+-- Contracts/Counter/Counter.lean
 verity_contract Counter where
   storage
     count : Uint256 := slot 0
@@ -154,7 +154,7 @@ lake build
 
 # Compile contracts to Yul
 lake exe verity-compiler --manifest packages/verity-examples/contracts.manifest
-lake exe verity-compiler --module Contracts.MacroContracts.Counter  # specific contract
+lake exe verity-compiler --module Contracts.Counter.Counter  # specific contract
 
 # Run Foundry tests
 FOUNDRY_PROFILE=difftest forge test
@@ -216,7 +216,7 @@ verity/
 ├── Contracts/           # Verified contract implementations
 │   ├── <Name>/Spec.lean       #   Formal specification
 │   ├── <Name>/Proofs/*.lean   #   Correctness proofs
-│   └── MacroContracts/        #   Macro-generated contract definitions
+│   ├── <Name>/<Name>.lean      #   Canonical verity_contract definitions
 ├── Compiler/            # Compilation pipeline
 │   ├── CompilationModel/      # Declarative compiler-facing model (types, validation, codegen)
 │   ├── Proofs/          #   Compilation correctness proofs (Layers 1-3)

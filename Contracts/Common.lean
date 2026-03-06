@@ -3,7 +3,7 @@ import Verity.EVM.Uint256
 import Verity.Macro
 import Verity.Stdlib.Math
 
-namespace Contracts.MacroContracts
+namespace Contracts
 
 open Verity hiding pure bind
 open Verity.EVM.Uint256
@@ -55,4 +55,4 @@ def contractAddress : Uint256 := 0
 def chainid : Uint256 := 0
 
 
-end Contracts.MacroContracts
+end Contracts

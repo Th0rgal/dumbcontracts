@@ -12,7 +12,7 @@ import Contracts.OwnedCounter.Proofs.Basic
 namespace Contracts.OwnedCounter.Proofs.Correctness
 
 open Verity
-open Contracts.MacroContracts.OwnedCounter
+open Contracts.OwnedCounter
 open Contracts.OwnedCounter.Spec
 open Contracts.OwnedCounter.Proofs
 open Contracts.OwnedCounter.Invariants

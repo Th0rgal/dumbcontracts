@@ -1,4 +1,4 @@
-import Contracts.Counter.Contract
+import Contracts.Counter.Counter
 import Contracts.Counter.Spec
 import Contracts.Counter.Invariants
 import Contracts.Counter.Proofs.Basic

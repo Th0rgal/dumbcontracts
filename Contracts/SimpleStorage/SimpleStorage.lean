@@ -1,6 +1,6 @@
-import Contracts.MacroContracts.Common
+import Contracts.Common
 
-namespace Contracts.MacroContracts
+namespace Contracts
 
 open Verity hiding pure bind
 open Verity.EVM.Uint256
@@ -16,4 +16,4 @@ verity_contract SimpleStorage where
     let current ← getStorage storedData
     return current
 
-end Contracts.MacroContracts
+end Contracts

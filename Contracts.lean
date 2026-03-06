@@ -1,4 +1,5 @@
-import Contracts.MacroContracts
+import Contracts.Common
+import Contracts.Smoke
 import Contracts.Counter
 import Contracts.SimpleStorage
 import Contracts.Owned

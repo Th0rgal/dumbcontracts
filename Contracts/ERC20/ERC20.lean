@@ -1,16 +1,17 @@
-import Contracts.MacroContracts.Common
+import Contracts.Common
 
-namespace Contracts.MacroContracts
+namespace Contracts
 
 open Verity hiding pure bind
 open Verity.EVM.Uint256
 open Verity.Stdlib.Math
 
-verity_contract SimpleToken where
+verity_contract ERC20 where
   storage
     ownerSlot : Address := slot 0
-    balancesSlot : Address → Uint256 := slot 1
-    totalSupplySlot : Uint256 := slot 2
+    totalSupplySlot : Uint256 := slot 1
+    balancesSlot : Address → Uint256 := slot 2
+    allowancesSlot : Address → Address → Uint256 := slot 3
 
   constructor (initialOwner : Address) := do
     setStorageAddr ownerSlot initialOwner
@@ -40,9 +41,38 @@ verity_contract SimpleToken where
       setMapping balancesSlot sender (sub senderBalance amount)
       setMapping balancesSlot to newRecipientBalance
 
+  function approve (spender : Address, amount : Uint256) : Unit := do
+    let sender ← msgSender
+    setMapping2 allowancesSlot sender spender amount
+
+  function transferFrom (fromAddr : Address, to : Address, amount : Uint256) : Unit := do
+    let spender ← msgSender
+    let currentAllowance ← getMapping2 allowancesSlot fromAddr spender
+    require (currentAllowance >= amount) "Insufficient allowance"
+
+    let fromBalance ← getMapping balancesSlot fromAddr
+    require (fromBalance >= amount) "Insufficient balance"
+
+    if fromAddr == to then
+      pure ()
+    else
+      let toBalance ← getMapping balancesSlot to
+      let newToBalance ← requireSomeUint (safeAdd toBalance amount) "Recipient balance overflow"
+      setMapping balancesSlot fromAddr (sub fromBalance amount)
+      setMapping balancesSlot to newToBalance
+
+    if currentAllowance == 115792089237316195423570985008687907853269984665640564039457584007913129639935 then
+      pure ()
+    else
+      setMapping2 allowancesSlot fromAddr spender (sub currentAllowance amount)
+
   function balanceOf (addr : Address) : Uint256 := do
     let currentBalance ← getMapping balancesSlot addr
     return currentBalance
+
+  function allowanceOf (ownerAddr : Address, spender : Address) : Uint256 := do
+    let currentAllowance ← getMapping2 allowancesSlot ownerAddr spender
+    return currentAllowance
 
   function totalSupply () : Uint256 := do
     let currentSupply ← getStorage totalSupplySlot
@@ -52,7 +82,7 @@ verity_contract SimpleToken where
     let currentOwner ← getStorageAddr ownerSlot
     return currentOwner
 
-namespace SimpleToken
+namespace ERC20
 
 abbrev getTotalSupply : Contract Uint256 := totalSupply
 abbrev getOwner : Contract Address := owner
@@ -66,6 +96,6 @@ def onlyOwner : Contract Unit := do
   let ownerCheck ← isOwner
   require ownerCheck "Caller is not the owner"
 
-end SimpleToken
+end ERC20
 
-end Contracts.MacroContracts
+end Contracts

@@ -3,9 +3,8 @@ import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.YulGeneration.Equivalence
 import Compiler.Selector
 import Compiler.Hex
-import Contracts.MacroContracts.Core
-import Contracts.MacroContracts.Tokens
-import Contracts.MacroContracts.Smoke
+import Contracts
+import Contracts.Smoke
 
 namespace Compiler.MacroTranslateInvariantTest
 
@@ -226,21 +225,21 @@ private def runRandomDiffChecks (spec : CompilationModel) (ir : IRContract)
   loop count (seedFromName spec.name) 0
 
 private def macroSpecs : List CompilationModel :=
-  [ Contracts.MacroContracts.SimpleStorage.spec
-  , Contracts.MacroContracts.Counter.spec
-  , Contracts.MacroContracts.Owned.spec
-  , Contracts.MacroContracts.Ledger.spec
-  , Contracts.MacroContracts.SafeCounter.spec
-  , Contracts.MacroContracts.OwnedCounter.spec
-  , Contracts.MacroContracts.SimpleToken.spec
-  , Contracts.MacroContracts.ERC20.spec
-  , Contracts.MacroContracts.ERC721.spec
-  , Contracts.MacroContracts.UintMapSmoke.spec
-  , Contracts.MacroContracts.Bytes32Smoke.spec
-  , Contracts.MacroContracts.MappingWordSmoke.spec
-  , Contracts.MacroContracts.StorageWordsSmoke.spec
-  , Contracts.MacroContracts.TupleSmoke.spec
-  , Contracts.MacroContracts.Uint8Smoke.spec
+  [ Contracts.SimpleStorage.spec
+  , Contracts.Counter.spec
+  , Contracts.Owned.spec
+  , Contracts.Ledger.spec
+  , Contracts.SafeCounter.spec
+  , Contracts.OwnedCounter.spec
+  , Contracts.SimpleToken.spec
+  , Contracts.ERC20.spec
+  , Contracts.ERC721.spec
+  , Contracts.Smoke.UintMapSmoke.spec
+  , Contracts.Smoke.Bytes32Smoke.spec
+  , Contracts.Smoke.MappingWordSmoke.spec
+  , Contracts.Smoke.StorageWordsSmoke.spec
+  , Contracts.Smoke.TupleSmoke.spec
+  , Contracts.Smoke.Uint8Smoke.spec
   ]
 
 private def functionSignature (fn : FunctionSpec) : String :=
@@ -296,15 +295,15 @@ private def expectedFor
   (table.find? (fun entry => entry.1 == contractName)).map (·.2)
 
 -- Regression: `verity_contract` elaboration emits field-level findIdx simp lemmas.
-#check Contracts.MacroContracts.OwnedCounter.findIdx_owner_OwnedCounter
-#check Contracts.MacroContracts.OwnedCounter.findIdx_owner_OwnedCounter_decide
-#check Contracts.MacroContracts.SimpleToken.findIdx_balancesSlot_SimpleToken
-#check Contracts.MacroContracts.SimpleToken.findIdx_balancesSlot_SimpleToken_decide
+#check Contracts.OwnedCounter.findIdx_owner_OwnedCounter
+#check Contracts.OwnedCounter.findIdx_owner_OwnedCounter_decide
+#check Contracts.SimpleToken.findIdx_balancesSlot_SimpleToken
+#check Contracts.SimpleToken.findIdx_balancesSlot_SimpleToken_decide
 -- Regression: `verity_contract` elaboration emits parameter-level findIdx simp lemmas.
-#check Contracts.MacroContracts.OwnedCounter.findIdx_param_initialOwner_constructor_OwnedCounter
-#check Contracts.MacroContracts.OwnedCounter.findIdx_param_newOwner_transferOwnership_OwnedCounter
-#check Contracts.MacroContracts.Ledger.findIdx_param_to_transfer_Ledger
-#check Contracts.MacroContracts.Ledger.findIdx_param_amount_transfer_Ledger_decide
+#check Contracts.OwnedCounter.findIdx_param_initialOwner_constructor_OwnedCounter
+#check Contracts.OwnedCounter.findIdx_param_newOwner_transferOwnership_OwnedCounter
+#check Contracts.Ledger.findIdx_param_to_transfer_Ledger
+#check Contracts.Ledger.findIdx_param_amount_transfer_Ledger_decide
 
 private def checkSpec (spec : CompilationModel) : IO Unit := do
   let extFns := externalFunctions spec

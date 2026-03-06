@@ -6,7 +6,7 @@ import "./yul/YulTestBase.sol";
 /**
  * @title PropertyLedgerTest
  * @notice Auto-generated baseline property stubs from `verity_contract` declarations.
- * @dev Source: Contracts/MacroContracts/Ledger.lean
+ * @dev Source: Contracts/Ledger/Ledger.lean
  */
 contract PropertyLedgerTest is YulTestBase {
     address target;

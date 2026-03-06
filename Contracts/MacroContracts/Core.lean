@@ -1,6 +1,0 @@
-import Contracts.MacroContracts.SimpleStorage
-import Contracts.MacroContracts.Counter
-import Contracts.MacroContracts.Owned
-import Contracts.MacroContracts.Ledger
-import Contracts.MacroContracts.SafeCounter
-import Contracts.MacroContracts.OwnedCounter

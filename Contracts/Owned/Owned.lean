@@ -1,6 +1,6 @@
-import Contracts.MacroContracts.Common
+import Contracts.Common
 
-namespace Contracts.MacroContracts
+namespace Contracts
 
 open Verity hiding pure bind
 
@@ -34,4 +34,4 @@ def onlyOwner : Contract Unit := do
 
 end Owned
 
-end Contracts.MacroContracts
+end Contracts

@@ -55,7 +55,7 @@ Checked operations are **EDSL-level constructs**. They are not compiler-enforced
 
 **Correctness proofs**: `Verity/Proofs/Stdlib/Math.lean` proves that checked operations return the correct result within bounds and `none` otherwise (e.g., `safeAdd_some`, `safeAdd_none`).
 
-**Example**: See `Contracts/SafeCounter/Contract.lean` and `Contracts/SafeCounter/Proofs/Basic.lean` for a contract using checked arithmetic with proven overflow/underflow behavior.
+**Example**: See `Contracts/SafeCounter/SafeCounter.lean` and `Contracts/SafeCounter/Proofs/Basic.lean` for a contract using checked arithmetic with proven overflow/underflow behavior.
 
 ## Backend Profiles and Arithmetic
 

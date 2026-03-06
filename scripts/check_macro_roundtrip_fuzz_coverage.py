@@ -10,12 +10,12 @@ from pathlib import Path
 
 from property_utils import ROOT
 
-DEFAULT_CONTRACTS_DIR = ROOT / "Contracts" / "MacroContracts"
+DEFAULT_CONTRACTS_DIR = ROOT / "Contracts"
 DEFAULT_FUZZ_FILE = ROOT / "Compiler" / "MacroTranslateRoundTripFuzz.lean"
 
 CONTRACT_RE = re.compile(r"\bverity_contract\s+([A-Za-z_][A-Za-z0-9_]*)\s+where\b")
 SUITE_ENTRY_RE = re.compile(
-    r"\bContracts\.MacroContracts(?:\.[A-Za-z_][A-Za-z0-9_]*)*\.([A-Za-z_][A-Za-z0-9_]*)\.spec\b"
+    r"\bContracts(?:\.[A-Za-z_][A-Za-z0-9_]*)*\.([A-Za-z_][A-Za-z0-9_]*)\.spec\b"
 )
 MACRO_SPECS_DEF_RE = re.compile(
     r"\bprivate\s+def\s+macroSpecs(?:\s*:\s*List\s+CompilationModel)?\s*:=\s*\[",
@@ -123,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--contracts-dir",
         default=str(DEFAULT_CONTRACTS_DIR.relative_to(ROOT)),
-        help="Directory containing macro contract declarations (default: Contracts/MacroContracts).",
+        help="Directory containing macro contract declarations (default: Contracts).",
     )
     parser.add_argument(
         "--fuzz-suite",

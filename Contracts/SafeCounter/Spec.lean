@@ -6,7 +6,7 @@ import Verity.Specs.Common
 import Verity.Macro
 import Verity.Stdlib.Math
 import Verity.EVM.Uint256
-import Contracts.MacroContracts.Core
+import Contracts.SafeCounter.SafeCounter
 
 namespace Contracts.SafeCounter.Spec
 
@@ -14,7 +14,7 @@ open Verity
 open Verity.Specs
 open Verity.Stdlib.Math
 open Verity.EVM.Uint256
-open Contracts.MacroContracts.SafeCounter
+open Contracts.SafeCounter
 
 /-! ## Operation Specifications -/
 

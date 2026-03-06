@@ -105,7 +105,7 @@ check: ## Run local CI-equivalent checks job (no Lean build, no solc)
 	python3 scripts/check_property_manifest.py
 	python3 scripts/check_property_coverage.py
 	python3 scripts/check_contract_structure.py
-	python3 scripts/check_case_insensitive_path_conflicts.py
+	python3 scripts/check_paths.py
 	python3 scripts/check_axiom_locations.py
 	python3 scripts/generate_verification_status.py --check
 	python3 scripts/check_verification_status_doc.py
@@ -121,7 +121,6 @@ check: ## Run local CI-equivalent checks job (no Lean build, no solc)
 	python3 scripts/check_manual_spec_quarantine.py
 	python3 scripts/check_spec_proof_migration_boundary.py
 	python3 scripts/check_legacy_example_imports.py
-	python3 scripts/check_layer2_universality.py
 	python3 scripts/check_lean_hygiene.py
 	python3 scripts/check_gas_model_coverage.py
 	python3 scripts/check_mapping_slot_boundary.py

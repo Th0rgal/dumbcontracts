@@ -25,9 +25,25 @@ def parseModuleName (raw : String) : Except String Name := do
     throw s!"Invalid module name: {raw}"
   pure <| parts.foldl Name.str Name.anonymous
 
-/-- Resolve the default `<Module>.spec` constant name. -/
+/-- Resolve the default spec constant for a module.
+
+For flattened contract modules like `Contracts.Counter.Counter`, the generated
+`verity_contract` declarations still live under `Contracts.Counter`, so the
+canonical spec constant is `Contracts.Counter.spec` rather than
+`Contracts.Counter.Counter.spec`.
+-/
 def specNameOfModule (moduleName : Name) : Name :=
-  moduleName ++ `spec
+  let parts := moduleName.toString.splitOn "."
+  let ownerParts :=
+    match parts.reverse with
+    | leaf :: parent :: rest =>
+        if leaf == parent then
+          (parent :: rest).reverse
+        else
+          parts
+    | _ => parts
+  let owner := ownerParts.foldl Name.str Name.anonymous
+  owner ++ `spec
 
 private def manifestLine? (line : String) : Option String :=
   let trimmed := line.trim

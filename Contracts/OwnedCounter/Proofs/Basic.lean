@@ -58,7 +58,8 @@ theorem constructor_preserves_count (s : ContractState) (initialOwner : Address)
 
 private theorem getCount_run (s : ContractState) :
   (getCount).run s = ContractResult.success (s.storage 1) s := by
-  simp [getCount, count, getStorage, Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
+  verity_unfold getCount
+  simp [count]
 
 theorem getCount_meets_spec (s : ContractState) :
   let result := ((getCount).run s).fst
@@ -78,7 +79,8 @@ theorem getCount_preserves_state (s : ContractState) :
 
 private theorem getOwner_run (s : ContractState) :
   (getOwner).run s = ContractResult.success (s.storageAddr 0) s := by
-  simp [getOwner, owner, getStorageAddr, Verity.bind, Bind.bind, Verity.pure, Pure.pure, Contract.run]
+  verity_unfold getOwner
+  simp [owner]
 
 theorem getOwner_meets_spec (s : ContractState) :
   let result := ((getOwner).run s).fst

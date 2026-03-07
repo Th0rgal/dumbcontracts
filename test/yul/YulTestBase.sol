@@ -103,4 +103,17 @@ abstract contract YulTestBase is Test {
     function readStorageAddr(address target, uint256 slot) internal view returns (address) {
         return address(uint160(uint256(vm.load(target, bytes32(slot)))));
     }
+
+    function _mappingSlot(bytes32 key, uint256 baseSlot) internal pure returns (bytes32) {
+        return keccak256(abi.encode(key, baseSlot));
+    }
+
+    function _nestedMappingSlot(bytes32 key0, bytes32 key1, uint256 baseSlot) internal pure returns (bytes32) {
+        bytes32 outer = _mappingSlot(key0, baseSlot);
+        return keccak256(abi.encode(key1, outer));
+    }
+
+    function _mappingWordSlot(bytes32 key, uint256 baseSlot, uint256 wordOffset) internal pure returns (bytes32) {
+        return bytes32(uint256(_mappingSlot(key, baseSlot)) + wordOffset);
+    }
 }

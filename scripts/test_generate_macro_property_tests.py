@@ -340,6 +340,131 @@ class RenderTests(unittest.TestCase):
         self.assertIn('assertEq(actual0, uint256(1), "getPair tuple element 0 mismatch");', rendered)
         self.assertIn('assertEq(actual1, uint256(1), "getPair tuple element 1 mismatch");', rendered)
 
+    def test_render_mapping_getter_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="UintMapSmoke",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "getValue",
+                    (gen.ParamDecl("key", "Uint256"),),
+                    "Uint256",
+                    body=("let current ← getMappingUint values key", "return current"),
+                ),
+            ),
+            storage_slots={"values": 0},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_GetValue_ReadsConfiguredMapping()", rendered)
+        self.assertIn("vm.store(target, _mappingSlot(bytes32(uint256(uint256(1))), 0), bytes32(uint256(expected)));", rendered)
+        self.assertIn('assertEq(actual, expected, "getValue should decode the configured mapping value");', rendered)
+
+    def test_render_mapping_predicate_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="MappingWordSmoke",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "isWord1NonZero",
+                    (gen.ParamDecl("key", "Uint256"),),
+                    "Bool",
+                    body=("let word ← getMappingWord words key 1", "return (word != 0)"),
+                ),
+            ),
+            storage_slots={"words": 0},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_IsWord1NonZero_DetectsNonZeroMappingWord()", rendered)
+        self.assertIn("vm.store(target, _mappingWordSlot(bytes32(uint256(uint256(1))), 0, 1), bytes32(uint256(1)));", rendered)
+        self.assertIn(
+            'assertTrue(actual, "isWord1NonZero should return true when the configured word is non-zero");',
+            rendered,
+        )
+
+    def test_render_nested_mapping_predicate_without_parentheses_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="ERC721",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "isApprovedForAll",
+                    (
+                        gen.ParamDecl("ownerAddr", "Address"),
+                        gen.ParamDecl("operator", "Address"),
+                    ),
+                    "Bool",
+                    body=("let flag ← getMapping2 operatorApprovals ownerAddr operator", "return flag != 0"),
+                ),
+            ),
+            storage_slots={"operatorApprovals": 6},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_IsApprovedForAll_DetectsNonZeroMappingWord()", rendered)
+        self.assertIn(
+            "vm.store(target, _nestedMappingSlot(bytes32(uint256(uint160(alice))), bytes32(uint256(uint160(alice))), 6), bytes32(uint256(1)));",
+            rendered,
+        )
+        self.assertIn(
+            'assertTrue(actual, "isApprovedForAll should return true when the configured word is non-zero");',
+            rendered,
+        )
+
+    def test_render_word_to_address_mapping_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="ERC721",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "ownerOf",
+                    (gen.ParamDecl("tokenId", "Uint256"),),
+                    "Address",
+                    body=(
+                        "let ownerWord ← getMappingUint owners tokenId",
+                        'require (ownerWord != 0) "Token does not exist"',
+                        "return wordToAddress ownerWord",
+                    ),
+                ),
+            ),
+            storage_slots={"owners": 4},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_OwnerOf_DecodesConfiguredOwnerWord()", rendered)
+        self.assertIn("vm.store(target, _mappingSlot(bytes32(uint256(uint256(1))), 4), bytes32(uint256(uint160(expected))));", rendered)
+        self.assertIn('assertEq(actual, expected, "ownerOf should decode the configured owner word");', rendered)
+
+    def test_render_secondary_mapping_after_precondition_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="ERC721",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "getApproved",
+                    (gen.ParamDecl("tokenId", "Uint256"),),
+                    "Address",
+                    body=(
+                        "let ownerWord ← getMappingUint owners tokenId",
+                        'require (ownerWord != 0) "Token does not exist"',
+                        "let approvedAddr ← getMappingUintAddr tokenApprovals tokenId",
+                        "return approvedAddr",
+                    ),
+                ),
+            ),
+            storage_slots={"owners": 4, "tokenApprovals": 5},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_GetApproved_DecodesConfiguredSecondaryMapping()", rendered)
+        self.assertIn("vm.store(target, _mappingSlot(bytes32(uint256(uint256(1))), 4), bytes32(uint256(uint160(ownerWord))));", rendered)
+        self.assertIn("vm.store(target, _mappingSlot(bytes32(uint256(uint256(1))), 5), bytes32(uint256(uint160(expected))));", rendered)
+        self.assertIn(
+            'assertEq(actual, expected, "getApproved should decode the configured secondary mapping value");',
+            rendered,
+        )
+
     def test_parse_tuple_params(self) -> None:
         out = gen._split_params("cfg : Tuple [Address, Uint256], amount : Uint256")
         self.assertEqual(

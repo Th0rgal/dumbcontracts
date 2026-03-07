@@ -154,6 +154,17 @@ def compileSpecsWithOptions
       IO.println "  (no first-class low-level call or returndata primitives used)"
     IO.println "  Proof boundary: mechanics are lowered natively by the compiler; current proof interpreters do not model these primitives, and callee behavior remains assumption-backed unless discharged separately."
     IO.println ""
+    IO.println "Axiomatized primitive report:"
+    let mut anyAxiomatized := false
+    for spec in specs do
+      let primitives := collectAxiomatizedPrimitives spec
+      if !primitives.isEmpty then
+        anyAxiomatized := true
+        IO.println s!"  {spec.name}: {String.intercalate ", " primitives}"
+    if !anyAxiomatized then
+      IO.println "  (no axiomatized primitives used)"
+    IO.println "  Proof boundary: these primitives compile through explicit trusted boundaries (for example, keccak-backed hashing) and should be audited alongside AXIOMS.md/TRUST_ASSUMPTIONS.md."
+    IO.println ""
     IO.println "External assumption report:"
     let mut anyExternalAssumptions := false
     for spec in specs do

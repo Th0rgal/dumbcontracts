@@ -177,6 +177,7 @@ modules to use is choosing which trust assumptions to accept.
 For machine-readable audit trails, `verity-compiler --trust-report <path>` now
 emits per-contract JSON that includes:
 - first-class low-level call / returndata mechanics used by the spec
+- axiomatized primitives used directly by the spec (for example `keccak256`)
 - linked external assumptions (`spec.externals`)
 - ECM assumption entries (`module`, `assumption`)
 

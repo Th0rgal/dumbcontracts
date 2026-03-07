@@ -59,6 +59,58 @@ private partial def collectLowLevelExprMechanics : Expr → List String
   | _ =>
       []
 
+private partial def collectAxiomatizedExprPrimitives : Expr → List String
+  | .keccak256 offset size =>
+      ["keccak256"] ++ collectAxiomatizedExprPrimitives offset ++ collectAxiomatizedExprPrimitives size
+  | .call gas target value inOffset inSize outOffset outSize =>
+      collectAxiomatizedExprPrimitives gas ++ collectAxiomatizedExprPrimitives target ++
+        collectAxiomatizedExprPrimitives value ++ collectAxiomatizedExprPrimitives inOffset ++
+        collectAxiomatizedExprPrimitives inSize ++ collectAxiomatizedExprPrimitives outOffset ++
+        collectAxiomatizedExprPrimitives outSize
+  | .staticcall gas target inOffset inSize outOffset outSize =>
+      collectAxiomatizedExprPrimitives gas ++ collectAxiomatizedExprPrimitives target ++
+        collectAxiomatizedExprPrimitives inOffset ++ collectAxiomatizedExprPrimitives inSize ++
+        collectAxiomatizedExprPrimitives outOffset ++ collectAxiomatizedExprPrimitives outSize
+  | .delegatecall gas target inOffset inSize outOffset outSize =>
+      collectAxiomatizedExprPrimitives gas ++ collectAxiomatizedExprPrimitives target ++
+        collectAxiomatizedExprPrimitives inOffset ++ collectAxiomatizedExprPrimitives inSize ++
+        collectAxiomatizedExprPrimitives outOffset ++ collectAxiomatizedExprPrimitives outSize
+  | .returndataOptionalBoolAt outOffset
+  | .mload outOffset
+  | .calldataload outOffset
+  | .extcodesize outOffset =>
+      collectAxiomatizedExprPrimitives outOffset
+  | .mapping _ key
+  | .mappingWord _ key _
+  | .mappingPackedWord _ key _ _
+  | .structMember _ key _ =>
+      collectAxiomatizedExprPrimitives key
+  | .mapping2 _ key1 key2
+  | .mapping2Word _ key1 key2 _
+  | .structMember2 _ key1 key2 _ =>
+      collectAxiomatizedExprPrimitives key1 ++ collectAxiomatizedExprPrimitives key2
+  | .mappingUint _ key
+  | .arrayElement _ key =>
+      collectAxiomatizedExprPrimitives key
+  | .externalCall _ args
+  | .internalCall _ args =>
+      args.flatMap collectAxiomatizedExprPrimitives
+  | .add a b | .sub a b | .mul a b | .div a b | .mod a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b
+  | .eq a b | .gt a b | .lt a b | .ge a b | .le a b
+  | .logicalAnd a b | .logicalOr a b
+  | .wMulDown a b | .wDivUp a b | .min a b | .max a b =>
+      collectAxiomatizedExprPrimitives a ++ collectAxiomatizedExprPrimitives b
+  | .mulDivDown a b c | .mulDivUp a b c =>
+      collectAxiomatizedExprPrimitives a ++ collectAxiomatizedExprPrimitives b ++ collectAxiomatizedExprPrimitives c
+  | .bitNot a | .logicalNot a =>
+      collectAxiomatizedExprPrimitives a
+  | .ite cond thenVal elseVal =>
+      collectAxiomatizedExprPrimitives cond ++ collectAxiomatizedExprPrimitives thenVal ++
+        collectAxiomatizedExprPrimitives elseVal
+  | _ =>
+      []
+
 private partial def collectLowLevelStmtMechanics : Stmt → List String
   | .letVar _ value
   | .assignVar _ value
@@ -108,6 +160,57 @@ private partial def collectLowLevelStmtMechanics : Stmt → List String
   | .stop =>
       []
 
+private partial def collectAxiomatizedStmtPrimitives : Stmt → List String
+  | .letVar _ value
+  | .assignVar _ value
+  | .setStorage _ value
+  | .setStorageAddr _ value
+  | .return value
+  | .require value _ =>
+      collectAxiomatizedExprPrimitives value
+  | .requireError cond _ args =>
+      collectAxiomatizedExprPrimitives cond ++ args.flatMap collectAxiomatizedExprPrimitives
+  | .revertError _ args =>
+      args.flatMap collectAxiomatizedExprPrimitives
+  | .mstore offset value =>
+      collectAxiomatizedExprPrimitives offset ++ collectAxiomatizedExprPrimitives value
+  | .calldatacopy destOffset sourceOffset size
+  | .returndataCopy destOffset sourceOffset size =>
+      collectAxiomatizedExprPrimitives destOffset ++ collectAxiomatizedExprPrimitives sourceOffset ++
+        collectAxiomatizedExprPrimitives size
+  | .setMapping _ key value
+  | .setMappingWord _ key _ value
+  | .setMappingPackedWord _ key _ _ value
+  | .setMappingUint _ key value
+  | .setStructMember _ key _ value =>
+      collectAxiomatizedExprPrimitives key ++ collectAxiomatizedExprPrimitives value
+  | .setMapping2 _ key1 key2 value
+  | .setMapping2Word _ key1 key2 _ value
+  | .setStructMember2 _ key1 key2 _ value =>
+      collectAxiomatizedExprPrimitives key1 ++ collectAxiomatizedExprPrimitives key2 ++
+        collectAxiomatizedExprPrimitives value
+  | .ite cond thenBr elseBr =>
+      collectAxiomatizedExprPrimitives cond ++ thenBr.flatMap collectAxiomatizedStmtPrimitives ++
+        elseBr.flatMap collectAxiomatizedStmtPrimitives
+  | .forEach _ count body =>
+      collectAxiomatizedExprPrimitives count ++ body.flatMap collectAxiomatizedStmtPrimitives
+  | .emit _ args
+  | .internalCall _ args
+  | .externalCallBind _ _ args
+  | .returnValues args
+  | .ecm _ args
+  | .internalCallAssign _ _ args =>
+      args.flatMap collectAxiomatizedExprPrimitives
+  | .rawLog topics dataOffset dataSize =>
+      topics.flatMap collectAxiomatizedExprPrimitives ++ collectAxiomatizedExprPrimitives dataOffset ++
+        collectAxiomatizedExprPrimitives dataSize
+  | .returnArray _
+  | .returnBytes _
+  | .returnStorageWords _
+  | .revertReturndata
+  | .stop =>
+      []
+
 /-- Collect unique low-level call and returndata mechanics used by a spec. -/
 def collectLowLevelMechanics (spec : CompilationModel) : List String :=
   let stmtsFromFn (fn : FunctionSpec) := fn.body
@@ -116,6 +219,15 @@ def collectLowLevelMechanics (spec : CompilationModel) : List String :=
     | none => []
   let allStmts := stmtsFromCtor ++ spec.functions.flatMap stmtsFromFn
   dedupPreserve (allStmts.flatMap collectLowLevelStmtMechanics)
+
+/-- Collect unique axiomatized primitives used directly by a spec. -/
+def collectAxiomatizedPrimitives (spec : CompilationModel) : List String :=
+  let stmtsFromFn (fn : FunctionSpec) := fn.body
+  let stmtsFromCtor : List Stmt := match spec.constructor with
+    | some ctor => ctor.body
+    | none => []
+  let allStmts := stmtsFromCtor ++ spec.functions.flatMap stmtsFromFn
+  dedupPreserve (allStmts.flatMap collectAxiomatizedStmtPrimitives)
 
 private partial def collectExternalExprNames : Expr → List String
   | .externalCall name args =>
@@ -276,6 +388,7 @@ where
     jsonObject [
       ("contract", jsonString spec.name),
       ("modeledLowLevelMechanics", jsonArray ((collectLowLevelMechanics spec).map jsonString)),
+      ("axiomatizedPrimitives", jsonArray ((collectAxiomatizedPrimitives spec).map jsonString)),
       ("proofBoundary", jsonObject [
         ("compilerModelsMechanics", "true"),
         ("proofInterpretersModelMechanics", "false"),

@@ -145,6 +145,7 @@ private def trustSurfaceSpec : CompilationModel := {
             (Expr.literal 32)),
         Stmt.letVar "rd" Expr.returndataSize,
         Stmt.returndataCopy (Expr.literal 0) (Expr.literal 0) (Expr.localVar "rd"),
+        Stmt.letVar "digest" (Expr.keccak256 (Expr.literal 0) (Expr.literal 64)),
         Stmt.letVar "hash" (Expr.externalCall "PoseidonT3_hash" [Expr.literal 1, Expr.literal 2]),
         Stmt.ecm
           { name := "testCall"
@@ -155,7 +156,7 @@ private def trustSurfaceSpec : CompilationModel := {
             axioms := ["test_call_interface"]
             compile := fun _ _ => pure [] }
           [Expr.localVar "hash"],
-        Stmt.setStorage "value" (Expr.localVar "ok"),
+        Stmt.setStorage "value" (Expr.add (Expr.localVar "ok") (Expr.localVar "digest")),
         Stmt.stop
       ]
     }
@@ -306,13 +307,15 @@ unsafe def runTests : IO Unit := do
     throw (IO.userError "✗ trust report emits contract name")
   if !contains trustReport "\"modeledLowLevelMechanics\":[\"staticcall\",\"returndataSize\",\"returndataCopy\"]" then
     throw (IO.userError "✗ trust report emits low-level mechanics")
+  if !contains trustReport "\"axiomatizedPrimitives\":[\"keccak256\"]" then
+    throw (IO.userError "✗ trust report emits axiomatized primitives")
   if !contains trustReport "\"name\":\"PoseidonT3_hash\"" then
     throw (IO.userError "✗ trust report emits linked external name")
   if !contains trustReport "\"axioms\":[\"poseidon_t3_deterministic\"]" then
     throw (IO.userError "✗ trust report emits linked external axioms")
   if !contains trustReport "\"module\":\"testCall\"" || !contains trustReport "\"assumption\":\"test_call_interface\"" then
     throw (IO.userError "✗ trust report emits ECM axioms")
-  IO.println "✓ trust report emits low-level mechanics and external assumptions"
+  IO.println "✓ trust report emits low-level mechanics, axiomatized primitives, and external assumptions"
 
   compileSpecsWithOptions [abiSmokeSpec] outDir false [] {} none (some trustReportPath) none
   let writtenTrustReport ← fileExists trustReportPath

@@ -81,6 +81,19 @@ private def asBool (e : SomeTExpr) : Except String (TExpr Ty.bool) :=
   | ⟨Ty.bool, expr⟩ => Except.ok expr
   | ⟨ty, _⟩ => Except.error s!"Typed IR compile error: expected bool expression, got {repr ty}"
 
+private def ensureTypedIRAddressFieldSupported (fieldName : String) (field : Field) :
+    Except String Unit := do
+  match field.packedBits with
+  | some _ =>
+      throw s!"Typed IR compile error: storage field '{fieldName}' uses packedBits; address-typed packed storage is not yet supported in typed IR"
+  | none => Except.ok ()
+
+@[simp] private theorem ensureTypedIRAddressFieldSupported_none
+    (fieldName name : String) (ty : FieldType) (slot : Option Nat) (aliasSlots : List Nat) :
+    ensureTypedIRAddressFieldSupported fieldName
+      { name := name, ty := ty, slot := slot, packedBits := none, aliasSlots := aliasSlots } =
+        Except.ok () := rfl
+
 private def compileStorageRead (fields : List Field) (fieldName : String)
     (requireAddressField : Bool := false) : Except String SomeTExpr := do
   match findFieldWithResolvedSlot fields fieldName with
@@ -89,7 +102,7 @@ private def compileStorageRead (fields : List Field) (fieldName : String)
   | some (field, slot) =>
       if requireAddressField then
         match field.ty with
-        | .address => Except.ok ()
+        | .address => ensureTypedIRAddressFieldSupported fieldName field
         | _ =>
             throw s!"Typed IR compile error: storage field '{fieldName}' is not address-typed; use Expr.storage instead"
       match (← fieldTypeToTy field.ty) with
@@ -245,7 +258,9 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
       | some (field, slot) =>
           match (← fieldTypeToTy field.ty), rhs with
           | Ty.uint256, ⟨Ty.uint256, expr⟩ => emit (.setStorage slot expr)
-          | Ty.address, ⟨Ty.address, expr⟩ => emit (.setStorageAddr slot expr)
+          | Ty.address, ⟨Ty.address, expr⟩ => do
+              liftExcept <| ensureTypedIRAddressFieldSupported fieldName field
+              emit (.setStorageAddr slot expr)
           | expectedTy, ⟨actualTy, _⟩ =>
               throw s!"Typed IR compile error: setStorage type mismatch for '{fieldName}' (expected {repr expectedTy}, got {repr actualTy})"
   | .setStorageAddr fieldName value => do
@@ -255,7 +270,9 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
           throw s!"Typed IR compile error: unknown storage field '{fieldName}'"
       | some (field, slot) =>
           match (← fieldTypeToTy field.ty), rhs with
-          | Ty.address, ⟨Ty.address, expr⟩ => emit (.setStorageAddr slot expr)
+          | Ty.address, ⟨Ty.address, expr⟩ => do
+              liftExcept <| ensureTypedIRAddressFieldSupported fieldName field
+              emit (.setStorageAddr slot expr)
           | Ty.uint256, _ =>
               throw s!"Typed IR compile error: setStorageAddr requires an address-typed field '{fieldName}'"
           | expectedTy, ⟨actualTy, _⟩ =>

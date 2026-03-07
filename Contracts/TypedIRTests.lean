@@ -183,6 +183,29 @@ def compileSetStorageAddrRejectsNonAddressField : Bool :=
   | .error msg =>
       msg = "Typed IR compile error: setStorageAddr requires an address-typed field 'count'"
 
+def compileStorageAddrRejectsPackedAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "owner"
+     , ty := Compiler.CompilationModel.FieldType.address
+     , packedBits := some { offset := 32, width := 160 } }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.storageAddr "owner")]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'owner' uses packedBits; address-typed packed storage is not yet supported in typed IR"
+
+def compileSetStorageAddrRejectsPackedAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "owner"
+     , ty := Compiler.CompilationModel.FieldType.address
+     , packedBits := some { offset := 32, width := 160 } }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.setStorageAddr "owner" Compiler.CompilationModel.Expr.caller]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'owner' uses packedBits; address-typed packed storage is not yet supported in typed IR"
+
 def compileYulStorageAddrMasksPackedAddressField : Bool :=
   let fields : List Compiler.CompilationModel.Field :=
     [{ name := "owner"
@@ -314,6 +337,12 @@ example : compileStorageAddrRejectsNonAddressField = true := by native_decide
 
 /-- Typed-IR rejects `Stmt.setStorageAddr` on non-address fields. -/
 example : compileSetStorageAddrRejectsNonAddressField = true := by native_decide
+
+/-- Typed-IR rejects packed address storage reads until the abstract storage model supports them. -/
+example : compileStorageAddrRejectsPackedAddressField = true := by native_decide
+
+/-- Typed-IR rejects packed address storage writes until the abstract storage model supports them. -/
+example : compileSetStorageAddrRejectsPackedAddressField = true := by native_decide
 
 /-- Yul address-field reads preserve packed masking when the field is sub-word. -/
 example : compileYulStorageAddrMasksPackedAddressField = true := by native_decide

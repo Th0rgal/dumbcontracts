@@ -72,14 +72,32 @@ private unsafe def evalSpecConst
   | .error _ =>
       throw s!"Unable to evaluate '{specName}' as Compiler.CompilationModel.CompilationModel"
 
+private def splitPackageSearchRoots : List System.FilePath :=
+  [ "packages/verity-edsl/.lake/build/lib/lean"
+  , "packages/verity-compiler/.lake/build/lib/lean"
+  , "packages/verity-examples/.lake/build/lib/lean"
+  ]
+
+private def existingSplitPackageSearchRoots : IO SearchPath := do
+  let mut roots : SearchPath := []
+  for path in splitPackageSearchRoots do
+    if ← path.isDir then
+      roots := roots.concat path
+  pure roots
+
 /-- Import modules and evaluate their canonical `<Module>.spec` constants. -/
 unsafe def loadSpecsFromModules (moduleNames : List Name) : IO (Except String (List CompilationModel)) := do
+  let originalSearchPath ← searchPathRef.get
+  let extraSearchRoots ← existingSplitPackageSearchRoots
+  searchPathRef.set (originalSearchPath ++ extraSearchRoots)
   try
     let env ← Lean.importModules (moduleNames.toArray.map fun moduleName => { module := moduleName }) {}
     let opts : Options := {}
     pure <| moduleNames.mapM (fun moduleName => evalSpecConst env opts (specNameOfModule moduleName))
   catch e =>
     pure <| .error e.toString
+  finally
+    searchPathRef.set originalSearchPath
 
 /-- Parse raw module names, reject duplicates, then load their canonical specs. -/
 unsafe def loadSpecsFromRawModules (rawModules : List String) : IO (Except String (List CompilationModel)) := do

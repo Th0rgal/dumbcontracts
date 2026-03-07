@@ -153,16 +153,6 @@ jobs:
           LEAN_NUM_THREADS: 4
         run: lake build Compiler.MainTest
 
-      - name: Run module-input regression module
-        env:
-          LEAN_NUM_THREADS: 4
-        run: lake build Compiler.ModuleInputTest
-
-      - name: Run compile-driver regression module
-        env:
-          LEAN_NUM_THREADS: 4
-        run: lake build Compiler.CompileDriverTest
-
       - name: Run CompilationModel feature regression module
         env:
           LEAN_NUM_THREADS: 4

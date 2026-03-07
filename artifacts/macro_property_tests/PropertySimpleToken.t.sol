@@ -29,14 +29,16 @@ contract PropertySimpleTokenTest is YulTestBase {
         (bool ok,) = target.call(abi.encodeWithSignature("transfer(address,uint256)", alice, uint256(1)));
         require(ok, "transfer reverted unexpectedly");
     }
-    // Property 3: TODO decode and assert `balanceOf` result
-    function testTODO_BalanceOf_DecodeAndAssert() public {
+    // Property 3: balanceOf reads the configured mapping value
+    function testAuto_BalanceOf_ReadsConfiguredMapping() public {
+        uint256 expected = uint256(1);
+        vm.store(target, _mappingSlot(bytes32(uint256(uint160(alice))), 1), bytes32(uint256(expected)));
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("balanceOf(address)", alice));
         require(ok, "balanceOf reverted unexpectedly");
         assertEq(ret.length, 32, "balanceOf ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
+        uint256 actual = abi.decode(ret, (uint256));
+        assertEq(actual, expected, "balanceOf should decode the configured mapping value");
     }
     // Property 4: totalSupply reads storage slot 2 and decodes the result
     function testAuto_TotalSupply_ReadsConfiguredStorage() public {

@@ -23,22 +23,25 @@ contract PropertyMappingWordSmokeTest is YulTestBase {
         (bool ok,) = target.call(abi.encodeWithSignature("setWord1(uint256,uint256)", uint256(1), uint256(1)));
         require(ok, "setWord1 reverted unexpectedly");
     }
-    // Property 2: TODO decode and assert `getWord1` result
-    function testTODO_GetWord1_DecodeAndAssert() public {
+    // Property 2: getWord1 reads the configured mapping value
+    function testAuto_GetWord1_ReadsConfiguredMapping() public {
+        uint256 expected = uint256(1);
+        vm.store(target, _mappingWordSlot(bytes32(uint256(uint256(1))), 0, 1), bytes32(uint256(expected)));
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getWord1(uint256)", uint256(1)));
         require(ok, "getWord1 reverted unexpectedly");
         assertEq(ret.length, 32, "getWord1 ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
+        uint256 actual = abi.decode(ret, (uint256));
+        assertEq(actual, expected, "getWord1 should decode the configured mapping value");
     }
-    // Property 3: TODO decode and assert `isWord1NonZero` result
-    function testTODO_IsWord1NonZero_DecodeAndAssert() public {
+    // Property 3: isWord1NonZero returns true for a non-zero configured mapping word
+    function testAuto_IsWord1NonZero_DetectsNonZeroMappingWord() public {
+        vm.store(target, _mappingWordSlot(bytes32(uint256(uint256(1))), 0, 1), bytes32(uint256(1)));
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("isWord1NonZero(uint256)", uint256(1)));
         require(ok, "isWord1NonZero reverted unexpectedly");
         assertEq(ret.length, 32, "isWord1NonZero ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
+        bool actual = abi.decode(ret, (bool));
+        assertTrue(actual, "isWord1NonZero should return true when the configured word is non-zero");
     }
 }

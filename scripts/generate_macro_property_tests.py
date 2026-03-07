@@ -28,6 +28,25 @@ PARAM_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+?)\s*$")
 STORAGE_RE = re.compile(
     r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+?)\s*:=\s*slot\s+([0-9]+)\s*$",
 )
+STORAGE_READ_RE = re.compile(
+    r"let\s+([A-Za-z_][A-Za-z0-9_]*)\s*←\s*(getStorage|getStorageAddr)\s+([A-Za-z_][A-Za-z0-9_]*)$"
+)
+MAPPING_READ_RE = re.compile(
+    r"let\s+([A-Za-z_][A-Za-z0-9_]*)\s*←\s*"
+    r"(getMapping|getMappingUint|getMappingAddr|getMappingUintAddr)\s+"
+    r"([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)$"
+)
+MAPPING2_READ_RE = re.compile(
+    r"let\s+([A-Za-z_][A-Za-z0-9_]*)\s*←\s*getMapping2\s+"
+    r"([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)$"
+)
+MAPPING_WORD_READ_RE = re.compile(
+    r"let\s+([A-Za-z_][A-Za-z0-9_]*)\s*←\s*getMappingWord\s+"
+    r"([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s+([0-9]+)$"
+)
+NON_ZERO_REQUIRE_RE = re.compile(
+    r'require\s+\(([A-Za-z_][A-Za-z0-9_]*)\s*!=\s*0\)\s+"[^"]+"$'
+)
 
 
 @dataclass(frozen=True)
@@ -56,6 +75,15 @@ class ContractDecl:
     functions: tuple[FunctionDecl, ...]
     storage_slots: dict[str, int]
     source: Path
+
+
+@dataclass(frozen=True)
+class ReadAccessor:
+    var_name: str
+    accessor: str
+    storage_name: str
+    key_names: tuple[str, ...]
+    word_offset: int = 0
 
 
 def _normalize_type(type_src: str) -> str:
@@ -359,6 +387,118 @@ def _split_return_values(exprs_src: str) -> list[str]:
     return [part.strip() for part in exprs_src.split(",") if part.strip()]
 
 
+def _matches_return_expr(line: str, expr: str) -> bool:
+    return line in {f"return {expr}", f"return ({expr})"}
+
+
+def _parse_read_accessor(line: str) -> ReadAccessor | None:
+    storage_match = STORAGE_READ_RE.fullmatch(line)
+    if storage_match:
+        return ReadAccessor(
+            var_name=storage_match.group(1),
+            accessor=storage_match.group(2),
+            storage_name=storage_match.group(3),
+            key_names=(),
+        )
+
+    mapping_match = MAPPING_READ_RE.fullmatch(line)
+    if mapping_match:
+        return ReadAccessor(
+            var_name=mapping_match.group(1),
+            accessor=mapping_match.group(2),
+            storage_name=mapping_match.group(3),
+            key_names=(mapping_match.group(4),),
+        )
+
+    mapping2_match = MAPPING2_READ_RE.fullmatch(line)
+    if mapping2_match:
+        return ReadAccessor(
+            var_name=mapping2_match.group(1),
+            accessor="getMapping2",
+            storage_name=mapping2_match.group(2),
+            key_names=(mapping2_match.group(3), mapping2_match.group(4)),
+        )
+
+    mapping_word_match = MAPPING_WORD_READ_RE.fullmatch(line)
+    if mapping_word_match:
+        return ReadAccessor(
+            var_name=mapping_word_match.group(1),
+            accessor="getMappingWord",
+            storage_name=mapping_word_match.group(2),
+            key_names=(mapping_word_match.group(3),),
+            word_offset=int(mapping_word_match.group(4)),
+        )
+
+    return None
+
+
+def _mapping_key_expr(param: ParamDecl, value_expr: str) -> str:
+    ty = _normalize_type(param.lean_type)
+    if ty == "Address":
+        return f"bytes32(uint256(uint160({value_expr})))"
+    if ty in {"Uint256", "Uint8", "Bytes32"}:
+        return f"bytes32(uint256({value_expr}))"
+    raise ValueError(f"unsupported Lean key type for generated mapping setup: {ty!r}")
+
+
+def _mapping_slot_expr(
+    contract: ContractDecl,
+    fn: FunctionDecl,
+    read: ReadAccessor,
+    param_examples: dict[str, str],
+) -> str:
+    slot = contract.storage_slots.get(read.storage_name)
+    if slot is None:
+        raise ValueError(f"unknown storage slot '{read.storage_name}' on contract '{contract.name}'")
+
+    params = {param.name: param for param in fn.params}
+    key_exprs = []
+    for key_name in read.key_names:
+        param = params.get(key_name)
+        if param is None:
+            raise ValueError(f"unknown parameter '{key_name}' in function '{fn.name}'")
+        value_expr = param_examples.get(key_name)
+        if value_expr is None:
+            raise ValueError(f"missing example value for parameter '{key_name}' in function '{fn.name}'")
+        key_exprs.append(_mapping_key_expr(param, value_expr))
+
+    if read.accessor == "getMapping2":
+        return f"_nestedMappingSlot({key_exprs[0]}, {key_exprs[1]}, {slot})"
+    if read.accessor == "getMappingWord":
+        return f"_mappingWordSlot({key_exprs[0]}, {slot}, {read.word_offset})"
+    if read.accessor in {"getMapping", "getMappingUint", "getMappingAddr", "getMappingUintAddr"}:
+        return f"_mappingSlot({key_exprs[0]}, {slot})"
+    raise ValueError(f"unsupported accessor for mapping slot generation: {read.accessor!r}")
+
+
+def _render_decoded_assertion(
+    fn: FunctionDecl,
+    idx: int,
+    encode_args: str,
+    ret_assert: str,
+    decoded_type: str,
+    setup_lines: list[str],
+    actual_decode: str,
+    assert_lines: list[str],
+    summary: str,
+    suffix: str,
+) -> str:
+    setup = "\n".join(f"        {line}" for line in setup_lines)
+    asserts = "\n".join(f"        {line}" for line in assert_lines)
+    if setup:
+        setup += "\n"
+    return f"""    // Property {idx}: {summary}
+    function testAuto_{_fn_camel(fn.name)}_{suffix}() public {{
+{setup}        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature({encode_args}));
+        require(ok, \"{fn.name} reverted unexpectedly\");
+{ret_assert}
+        {actual_decode}
+{asserts}
+    }}
+"""
+
+
 def _render_inferred_non_unit_test(contract: ContractDecl, fn: FunctionDecl, idx: int, encode_args: str) -> str | None:
     fn_camel = _fn_camel(fn.name)
     body = list(fn.body)
@@ -416,19 +556,17 @@ def _render_inferred_non_unit_test(contract: ContractDecl, fn: FunctionDecl, idx
 """
 
     if len(body) == 2:
-        getter_match = re.fullmatch(
-            r"let\s+([A-Za-z_][A-Za-z0-9_]*)\s*←\s*(getStorage|getStorageAddr)\s+([A-Za-z_][A-Za-z0-9_]*)",
-            body[0],
-        )
-        if getter_match and body[1] == f"return {getter_match.group(1)}":
-            storage_name = getter_match.group(3)
-            slot = contract.storage_slots.get(storage_name)
-            if slot is None:
-                return None
+        read = _parse_read_accessor(body[0])
+        if read and body[1] == f"return {read.var_name}":
             ret_assert = _return_shape_assertion(fn.return_type, fn.name)
-            return f"""    // Property {idx}: {fn.name} reads storage slot {slot} and decodes the result
+            expected_expr = _example_value(fn.return_type)
+            if read.accessor in {"getStorage", "getStorageAddr"}:
+                slot = contract.storage_slots.get(read.storage_name)
+                if slot is None:
+                    return None
+                return f"""    // Property {idx}: {fn.name} reads storage slot {slot} and decodes the result
     function testAuto_{fn_camel}_ReadsConfiguredStorage() public {{
-        {decoded_type} expected = {_example_value(fn.return_type)};
+        {decoded_type} expected = {expected_expr};
         vm.store(target, bytes32(uint256({slot})), {_storage_word_expr(fn.return_type, "expected")});
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature({encode_args}));
@@ -438,6 +576,135 @@ def _render_inferred_non_unit_test(contract: ContractDecl, fn: FunctionDecl, idx
         assertEq(actual, expected, \"{fn.name} should return storage slot {slot}\");
     }}
 """
+            if read.accessor in {"getMapping", "getMappingUint", "getMappingAddr", "getMappingUintAddr", "getMapping2", "getMappingWord"}:
+                slot_expr = _mapping_slot_expr(contract, fn, read, param_examples)
+                return _render_decoded_assertion(
+                    fn,
+                    idx,
+                    encode_args,
+                    ret_assert,
+                    decoded_type,
+                    [
+                        f"{decoded_type} expected = {expected_expr};",
+                        f"vm.store(target, {slot_expr}, {_storage_word_expr(fn.return_type, 'expected')});",
+                    ],
+                    f"{decoded_type} actual = abi.decode(ret, ({decoded_type}));",
+                    [f'assertEq(actual, expected, "{fn.name} should decode the configured mapping value");'],
+                    f"{fn.name} reads the configured mapping value",
+                    "ReadsConfiguredMapping",
+                )
+
+        if read and ty == "Bool":
+            ret_assert = _return_shape_assertion(fn.return_type, fn.name)
+            slot_expr = _mapping_slot_expr(contract, fn, read, param_examples)
+            if _matches_return_expr(body[1], f"{read.var_name} != 0"):
+                return _render_decoded_assertion(
+                    fn,
+                    idx,
+                    encode_args,
+                    ret_assert,
+                    decoded_type,
+                    [
+                        f"vm.store(target, {slot_expr}, bytes32(uint256(1)));",
+                    ],
+                    f"{decoded_type} actual = abi.decode(ret, ({decoded_type}));",
+                    [f'assertTrue(actual, "{fn.name} should return true when the configured word is non-zero");'],
+                    f"{fn.name} returns true for a non-zero configured mapping word",
+                    "DetectsNonZeroMappingWord",
+                )
+            if _matches_return_expr(body[1], f"{read.var_name} != zeroAddress"):
+                return _render_decoded_assertion(
+                    fn,
+                    idx,
+                    encode_args,
+                    ret_assert,
+                    decoded_type,
+                    [
+                        f"vm.store(target, {slot_expr}, bytes32(uint256(uint160(address(0xBEEF)))));",
+                    ],
+                    f"{decoded_type} actual = abi.decode(ret, ({decoded_type}));",
+                    [f'assertTrue(actual, "{fn.name} should return true when the configured address is non-zero");'],
+                    f"{fn.name} returns true for a non-zero configured mapping address",
+                    "DetectsNonZeroMappingAddress",
+                )
+            if body[1] == f"return isZeroAddress {read.var_name}":
+                return _render_decoded_assertion(
+                    fn,
+                    idx,
+                    encode_args,
+                    ret_assert,
+                    decoded_type,
+                    [
+                        f"vm.store(target, {slot_expr}, bytes32(0));",
+                    ],
+                    f"{decoded_type} actual = abi.decode(ret, ({decoded_type}));",
+                    [f'assertTrue(actual, "{fn.name} should return true when the configured address is zero");'],
+                    f"{fn.name} returns true for a zero configured mapping address",
+                    "DetectsZeroMappingAddress",
+                )
+
+    if len(body) == 3:
+        read = _parse_read_accessor(body[0])
+        require_match = NON_ZERO_REQUIRE_RE.fullmatch(body[1])
+        if (
+            read
+            and read.accessor == "getMappingUint"
+            and require_match
+            and require_match.group(1) == read.var_name
+            and body[2] == f"return wordToAddress {read.var_name}"
+            and ty == "Address"
+        ):
+            ret_assert = _return_shape_assertion(fn.return_type, fn.name)
+            slot_expr = _mapping_slot_expr(contract, fn, read, param_examples)
+            return _render_decoded_assertion(
+                fn,
+                idx,
+                encode_args,
+                ret_assert,
+                decoded_type,
+                [
+                    f"{decoded_type} expected = address(0xBEEF);",
+                    f"vm.store(target, {slot_expr}, bytes32(uint256(uint160(expected))));",
+                ],
+                f"{decoded_type} actual = abi.decode(ret, ({decoded_type}));",
+                [f'assertEq(actual, expected, "{fn.name} should decode the configured owner word");'],
+                f"{fn.name} decodes a non-zero configured owner word",
+                "DecodesConfiguredOwnerWord",
+            )
+
+    if len(body) == 4:
+        precondition_read = _parse_read_accessor(body[0])
+        require_match = NON_ZERO_REQUIRE_RE.fullmatch(body[1])
+        result_read = _parse_read_accessor(body[2])
+        if (
+            precondition_read
+            and result_read
+            and precondition_read.accessor == "getMappingUint"
+            and require_match
+            and require_match.group(1) == precondition_read.var_name
+            and body[3] == f"return {result_read.var_name}"
+        ):
+            ret_assert = _return_shape_assertion(fn.return_type, fn.name)
+            owner_slot_expr = _mapping_slot_expr(contract, fn, precondition_read, param_examples)
+            result_slot_expr = _mapping_slot_expr(contract, fn, result_read, param_examples)
+            expected_expr = _example_value(fn.return_type)
+            return _render_decoded_assertion(
+                fn,
+                idx,
+                encode_args,
+                ret_assert,
+                decoded_type,
+                [
+                    "address ownerWord = alice;",
+                    f"vm.store(target, {owner_slot_expr}, bytes32(uint256(uint160(ownerWord))));",
+                    f"{decoded_type} expected = {expected_expr};",
+                    f"vm.store(target, {result_slot_expr}, {_storage_word_expr(fn.return_type, 'expected')});",
+                ],
+                f"{decoded_type} actual = abi.decode(ret, ({decoded_type}));",
+                [f'assertEq(actual, expected, "{fn.name} should decode the configured secondary mapping value");'],
+                f"{fn.name} decodes the configured secondary mapping value after the existence precondition",
+                "DecodesConfiguredSecondaryMapping",
+            )
 
     return None
 

@@ -17,41 +17,50 @@ contract PropertyERC721Test is YulTestBase {
         require(target != address(0), "Deploy failed");
     }
 
-    // Property 1: TODO decode and assert `balanceOf` result
-    function testTODO_BalanceOf_DecodeAndAssert() public {
+    // Property 1: balanceOf reads the configured mapping value
+    function testAuto_BalanceOf_ReadsConfiguredMapping() public {
+        uint256 expected = uint256(1);
+        vm.store(target, _mappingSlot(bytes32(uint256(uint160(alice))), 3), bytes32(uint256(expected)));
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("balanceOf(address)", alice));
         require(ok, "balanceOf reverted unexpectedly");
         assertEq(ret.length, 32, "balanceOf ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
+        uint256 actual = abi.decode(ret, (uint256));
+        assertEq(actual, expected, "balanceOf should decode the configured mapping value");
     }
-    // Property 2: TODO decode and assert `ownerOf` result
-    function testTODO_OwnerOf_DecodeAndAssert() public {
+    // Property 2: ownerOf decodes a non-zero configured owner word
+    function testAuto_OwnerOf_DecodesConfiguredOwnerWord() public {
+        address expected = address(0xBEEF);
+        vm.store(target, _mappingSlot(bytes32(uint256(uint256(1))), 4), bytes32(uint256(uint160(expected))));
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("ownerOf(uint256)", uint256(1)));
         require(ok, "ownerOf reverted unexpectedly");
         assertEq(ret.length, 32, "ownerOf ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
+        address actual = abi.decode(ret, (address));
+        assertEq(actual, expected, "ownerOf should decode the configured owner word");
     }
-    // Property 3: TODO decode and assert `getApproved` result
-    function testTODO_GetApproved_DecodeAndAssert() public {
+    // Property 3: getApproved decodes the configured secondary mapping value after the existence precondition
+    function testAuto_GetApproved_DecodesConfiguredSecondaryMapping() public {
+        address ownerWord = alice;
+        vm.store(target, _mappingSlot(bytes32(uint256(uint256(1))), 4), bytes32(uint256(uint160(ownerWord))));
+        address expected = alice;
+        vm.store(target, _mappingSlot(bytes32(uint256(uint256(1))), 5), bytes32(uint256(uint160(expected))));
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getApproved(uint256)", uint256(1)));
         require(ok, "getApproved reverted unexpectedly");
         assertEq(ret.length, 32, "getApproved ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
+        address actual = abi.decode(ret, (address));
+        assertEq(actual, expected, "getApproved should decode the configured secondary mapping value");
     }
-    // Property 4: TODO decode and assert `isApprovedForAll` result
-    function testTODO_IsApprovedForAll_DecodeAndAssert() public {
+    // Property 4: isApprovedForAll returns true for a non-zero configured mapping word
+    function testAuto_IsApprovedForAll_DetectsNonZeroMappingWord() public {
+        vm.store(target, _nestedMappingSlot(bytes32(uint256(uint160(alice))), bytes32(uint256(uint160(alice))), 6), bytes32(uint256(1)));
         vm.prank(alice);
         (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("isApprovedForAll(address,address)", alice, alice));
         require(ok, "isApprovedForAll reverted unexpectedly");
         assertEq(ret.length, 32, "isApprovedForAll ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
+        bool actual = abi.decode(ret, (bool));
+        assertTrue(actual, "isApprovedForAll should return true when the configured word is non-zero");
     }
     // Property 5: approve has no unexpected revert
     function testAuto_Approve_NoUnexpectedRevert() public {

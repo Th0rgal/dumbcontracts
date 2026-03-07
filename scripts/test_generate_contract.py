@@ -219,6 +219,18 @@ class GenerateContractExampleGetterScaffoldTests(unittest.TestCase):
         self.assertIn("let currentValue ← getMapping balances account", out)
         self.assertIn("return currentValue", out)
 
+    def test_uint_mapping_getter_reads_uint_mapping_entry(self) -> None:
+        cfg = ContractConfig(
+            name="AuditDemo",
+            fields=[Field(name="values", ty="mapping_uint")],
+            functions=[Function(name="getValue", params=[Param(name="id", ty="uint256")])],
+        )
+
+        out = gen_example(cfg)
+        self.assertIn("def getValue (id : Uint256) : Contract Uint256 := do", out)
+        self.assertIn("let currentValue ← getMappingUint values id", out)
+        self.assertIn("return currentValue", out)
+
 
 class GenerateContractSpecGetterTests(unittest.TestCase):
     def test_address_getter_spec_tracks_address_slot(self) -> None:
@@ -245,6 +257,20 @@ class GenerateContractSpecGetterTests(unittest.TestCase):
             out,
         )
         self.assertIn("result = s.storageMap 0 account", out)
+
+    def test_uint_mapping_getter_spec_tracks_uint_mapping_entry(self) -> None:
+        cfg = ContractConfig(
+            name="AuditDemo",
+            fields=[Field(name="values", ty="mapping_uint")],
+            functions=[Function(name="getValue", params=[Param(name="id", ty="uint256")])],
+        )
+
+        out = gen_spec(cfg)
+        self.assertIn(
+            "def getValue_spec (id : Uint256) (result : Uint256) (s : ContractState) : Prop :=",
+            out,
+        )
+        self.assertIn("result = s.storageMapUint 0 id", out)
 
 
 class GenerateContractCompilerSpecGetterTests(unittest.TestCase):

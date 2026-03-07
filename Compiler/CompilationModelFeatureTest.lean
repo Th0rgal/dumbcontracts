@@ -1,5 +1,8 @@
 import Compiler.CompilationModel
 import Compiler.ABI
+import Compiler.Codegen
+import Compiler.Modules.Precompiles
+import Compiler.Yul.PrettyPrint
 
 namespace Compiler.CompilationModelFeatureTest
 
@@ -36,6 +39,10 @@ private def expectCompileErrorContains (label : String)
       throw (IO.userError s!"✗ {label}: expected compile failure")
   | .error msg =>
       expectTrue label (contains msg needle)
+
+private def compileToYul (spec : CompilationModel) : Except String String := do
+  let contract ← Compiler.CompilationModel.compile spec (selectorsFor spec)
+  pure <| Compiler.Yul.render (Compiler.emitYul contract)
 
 private def selectorSmokeSpec : CompilationModel := {
   name := "SelectorSmoke"
@@ -281,6 +288,33 @@ private def stringArrayEventSpec : CompilationModel := {
   ]
 }
 
+private def ecrecoverSmokeSpec : CompilationModel := {
+  name := "EcrecoverSmoke"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "recover"
+      params := [
+        { name := "hash", ty := ParamType.bytes32 }
+        , { name := "v", ty := ParamType.uint256 }
+        , { name := "r", ty := ParamType.bytes32 }
+        , { name := "s", ty := ParamType.bytes32 }
+      ]
+      returnType := none
+      returns := [ParamType.address]
+      body := [
+        Compiler.Modules.Precompiles.ecrecover
+          "signer"
+          (Expr.param "hash")
+          (Expr.param "v")
+          (Expr.param "r")
+          (Expr.param "s"),
+        Stmt.returnValues [Expr.localVar "signer"]
+      ]
+    }
+  ]
+}
+
 #eval! do
   let compiled :=
     match Compiler.CompilationModel.compile selectorSmokeSpec (selectorsFor selectorSmokeSpec) with
@@ -343,5 +377,13 @@ private def stringArrayEventSpec : CompilationModel := {
     | .ok _ => true
     | .error _ => false
   expectTrue "string[] event emission compiles for indexed and unindexed params" stringArrayEventsCompile
+  let ecrecoverYul ←
+    match compileToYul ecrecoverSmokeSpec with
+    | .ok yul => pure yul
+    | .error err => throw (IO.userError s!"✗ ecrecover smoke spec compile failed:\n{err}")
+  expectTrue "ecrecover ECM lowers to precompile staticcall"
+    (contains ecrecoverYul "staticcall(gas(), 1, 0, 128, 0, 32)")
+  expectTrue "ecrecover ECM masks recovered address to 160 bits"
+    (contains ecrecoverYul "let signer := and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)")
 
 end Compiler.CompilationModelFeatureTest

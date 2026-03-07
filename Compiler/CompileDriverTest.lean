@@ -4,6 +4,7 @@ import Compiler.CompilationModel
 import Compiler.CompilationModel.TrustSurface
 import Compiler.ECM
 import Compiler.ModuleInput
+import Compiler.Modules.Precompiles
 import Compiler.TestModules
 
 namespace Compiler.CompileDriverTest
@@ -163,6 +164,33 @@ private def trustSurfaceSpec : CompilationModel := {
   ]
 }
 
+private def ecrecoverTrustSurfaceSpec : CompilationModel := {
+  name := "EcrecoverTrustSurface"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "recover"
+      params := [
+        { name := "hash", ty := ParamType.bytes32 }
+        , { name := "v", ty := ParamType.uint256 }
+        , { name := "r", ty := ParamType.bytes32 }
+        , { name := "s", ty := ParamType.bytes32 }
+      ]
+      returnType := none
+      returns := [ParamType.address]
+      body := [
+        Compiler.Modules.Precompiles.ecrecover
+          "signer"
+          (Expr.param "hash")
+          (Expr.param "v")
+          (Expr.param "r")
+          (Expr.param "s"),
+        Stmt.returnValues [Expr.localVar "signer"]
+      ]
+    }
+  ]
+}
+
 private def expectModuleArtifacts
     (labelPrefix : String)
     (modules : List String)
@@ -316,6 +344,14 @@ unsafe def runTests : IO Unit := do
   if !contains trustReport "\"module\":\"testCall\"" || !contains trustReport "\"assumption\":\"test_call_interface\"" then
     throw (IO.userError "✗ trust report emits ECM axioms")
   IO.println "✓ trust report emits low-level mechanics, axiomatized primitives, and external assumptions"
+
+  let ecrecoverTrustReport := emitTrustReportJson [ecrecoverTrustSurfaceSpec]
+  if !contains ecrecoverTrustReport "\"contract\":\"EcrecoverTrustSurface\"" then
+    throw (IO.userError "✗ ecrecover trust report emits contract name")
+  if !contains ecrecoverTrustReport "\"module\":\"ecrecover\"" ||
+      !contains ecrecoverTrustReport "\"assumption\":\"evm_ecrecover_precompile\"" then
+    throw (IO.userError "✗ ecrecover trust report emits precompile assumption")
+  IO.println "✓ ecrecover trust report emits precompile assumption"
 
   compileSpecsWithOptions [abiSmokeSpec] outDir false [] {} none (some trustReportPath) none
   let writtenTrustReport ← fileExists trustReportPath

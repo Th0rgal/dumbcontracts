@@ -19,8 +19,8 @@ def normalize_ws(text: str) -> str:
     return " ".join(text.split())
 
 
-def struct_mapping_surface_present(types_text: str) -> bool:
-    required_tokens = (
+def struct_mapping_surface_tokens() -> tuple[str, ...]:
+    return (
         "| mappingStruct ",
         "| mappingStruct2 ",
         "| structMember ",
@@ -28,7 +28,12 @@ def struct_mapping_surface_present(types_text: str) -> bool:
         "| setStructMember ",
         "| setStructMember2 ",
     )
-    return all(token in types_text for token in required_tokens)
+
+
+def present_struct_mapping_surface_tokens(types_text: str) -> tuple[str, ...]:
+    return tuple(
+        token for token in struct_mapping_surface_tokens() if token in types_text
+    )
 
 
 def expected_snippets(struct_surface_present: bool) -> dict[str, list[str]]:
@@ -58,9 +63,24 @@ def main() -> int:
         print(f"Missing: {TYPES_PATH.relative_to(ROOT)}", file=sys.stderr)
         return 1
 
-    struct_surface_present = struct_mapping_surface_present(
-        TYPES_PATH.read_text(encoding="utf-8")
-    )
+    types_text = TYPES_PATH.read_text(encoding="utf-8")
+    required_tokens = struct_mapping_surface_tokens()
+    present_tokens = present_struct_mapping_surface_tokens(types_text)
+    struct_surface_present = len(present_tokens) == len(required_tokens)
+
+    if present_tokens and not struct_surface_present:
+        missing_tokens = [
+            token.strip() for token in required_tokens if token not in present_tokens
+        ]
+        present_rendered = ", ".join(token.strip() for token in present_tokens)
+        missing_rendered = ", ".join(missing_tokens)
+        print(
+            "Compiler/CompilationModel/Types.lean has partial struct-mapping surface support; "
+            f"present: {present_rendered}; missing: {missing_rendered}",
+            file=sys.stderr,
+        )
+        return 1
+
     expected = expected_snippets(struct_surface_present)
 
     errors: list[str] = []

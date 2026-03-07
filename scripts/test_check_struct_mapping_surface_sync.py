@@ -132,6 +132,24 @@ class StructMappingSurfaceSyncTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("compiler.mdx is out of sync", output)
 
+    def test_partial_struct_mapping_surface_fails_closed(self) -> None:
+        types_text = textwrap.dedent(
+            """
+            | mappingStruct (keyType : MappingKeyType) (members : List StructMember)
+            | structMember (field : String) (key : Expr) (memberName : String)
+            | setStructMember (field : String) (key : Expr) (memberName : String) (value : Expr)
+            """
+        )
+        rc, output = self._run_check(
+            types_text=types_text,
+            roadmap="storage layout controls exist\n",
+            compiler_doc="mapping words exist\n",
+            add_contract="use the scaffold generator\n",
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("partial struct-mapping surface support", output)
+        self.assertIn("missing: | mappingStruct2, | structMember2, | setStructMember2", output)
+
     def test_docs_note_not_required_without_struct_mapping_surface(self) -> None:
         rc, output = self._run_check(
             types_text="| mappingTyped (mt : MappingType)\n",

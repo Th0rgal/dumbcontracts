@@ -34,6 +34,13 @@ def resolve_packages(package_args: list[str]) -> list[Path]:
     return [ROOT / rel_path for rel_path in rel_paths]
 
 
+def display_path(package_dir: Path) -> Path:
+    try:
+        return package_dir.relative_to(ROOT)
+    except ValueError:
+        return package_dir
+
+
 def run_lake_build(package_dir: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["lake", "build"],
@@ -47,9 +54,15 @@ def run_lake_build(package_dir: Path) -> subprocess.CompletedProcess[str]:
 def check_split_package_builds(package_dirs: list[Path]) -> int:
     failures: list[str] = []
     for package_dir in package_dirs:
-        rel_path = package_dir.relative_to(ROOT)
+        rel_path = display_path(package_dir)
         if not package_dir.exists():
             failures.append(f"{rel_path}: package directory does not exist")
+            continue
+        if not package_dir.is_dir():
+            failures.append(f"{rel_path}: package path is not a directory")
+            continue
+        if not any((package_dir / lakefile).is_file() for lakefile in ("lakefile.lean", "lakefile.toml")):
+            failures.append(f"{rel_path}: package directory does not contain a Lake manifest")
             continue
 
         print(f"Building {rel_path}...")

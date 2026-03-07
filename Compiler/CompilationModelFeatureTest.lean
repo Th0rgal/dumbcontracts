@@ -1,4 +1,5 @@
 import Compiler.CompilationModel
+import Compiler.ABI
 
 namespace Compiler.CompilationModelFeatureTest
 
@@ -200,6 +201,30 @@ private def reservedEcmResultVarSpec : CompilationModel := {
   ]
 }
 
+private def stringAbiSpec : CompilationModel := {
+  name := "StringABI"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "echo"
+      params := [{ name := "message", ty := ParamType.string }]
+      returnType := none
+      returns := [ParamType.string]
+      body := [Stmt.returnBytes "message"]
+    }
+  ]
+  events := [
+    { name := "MessageLogged"
+      params := [{ name := "message", ty := ParamType.string, kind := EventParamKind.unindexed }]
+    }
+  ]
+  errors := [
+    { name := "BadMessage"
+      params := [ParamType.string]
+    }
+  ]
+}
+
 #eval! do
   let compiled :=
     match Compiler.CompilationModel.compile selectorSmokeSpec (selectorsFor selectorSmokeSpec) with
@@ -241,5 +266,13 @@ private def reservedEcmResultVarSpec : CompilationModel := {
     "reserved compiler prefix is rejected in ECM result binders"
     reservedEcmResultVarSpec
     "local binder '__ecm_result' uses reserved compiler prefix '__'"
+  let stringCompiled :=
+    match Compiler.CompilationModel.compile stringAbiSpec (selectorsFor stringAbiSpec) with
+    | .ok _ => true
+    | .error _ => false
+  expectTrue "string params/returns compile via dynamic bytes path" stringCompiled
+  let stringAbi := Compiler.ABI.emitContractABIJson stringAbiSpec
+  expectTrue "string ABI uses Solidity string type"
+    (contains stringAbi "\"type\": \"string\"")
 
 end Compiler.CompilationModelFeatureTest

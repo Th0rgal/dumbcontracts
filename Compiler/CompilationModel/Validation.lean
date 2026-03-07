@@ -44,9 +44,9 @@ def validateStmtParamReferences (fnName : String) (params : List Param) :
           throw s!"Compilation error: function '{fnName}' returnArray references unknown parameter '{name}'"
   | Stmt.returnBytes name =>
       match findParamType params name with
-      | some ParamType.bytes => pure ()
+      | some ParamType.bytes | some ParamType.string => pure ()
       | some ty =>
-          throw s!"Compilation error: function '{fnName}' returnBytes '{name}' requires bytes parameter, got {repr ty}"
+          throw s!"Compilation error: function '{fnName}' returnBytes '{name}' requires bytes/string parameter, got {repr ty}"
       | none =>
           throw s!"Compilation error: function '{fnName}' returnBytes references unknown parameter '{name}'"
   | Stmt.returnStorageWords name =>
@@ -109,7 +109,7 @@ def validateReturnShapesInStmt (fnName : String)
   | Stmt.returnBytes _ =>
       if isInternal then
         throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnBytes; only static returns via Stmt.return/Stmt.returnValues are supported ({issue625Ref})."
-      else if expectedReturns == [ParamType.bytes] then
+      else if expectedReturns == [ParamType.bytes] || expectedReturns == [ParamType.string] then
         pure ()
       else
         throw s!"Compilation error: function '{fnName}' uses Stmt.returnBytes but declared returns are {repr expectedReturns}"

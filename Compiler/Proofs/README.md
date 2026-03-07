@@ -34,6 +34,12 @@ See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
 The current compiler path consumes `CompilationModel` values directly. There is
 no separate verified EDSL-lowering boundary module in the active pipeline.
 
+Internal helper calls are part of the supported `CompilationModel` execution
+surface, but the proof library does not yet provide a first-class
+helper-spec/helper-theorem reuse boundary across callers. Existing bridge
+theorems remain contract-specific; the compositional internal-call proof gap is
+tracked in [#1335](https://github.com/Th0rgal/verity/issues/1335).
+
 ## Build
 
 ```bash

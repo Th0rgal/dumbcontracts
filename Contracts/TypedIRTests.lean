@@ -2388,31 +2388,46 @@ example (init : TExecState) :
 -- ERC721 bridge theorem tests
 -- ============================================================
 
+/-- Recognize `sload(mappingSlot(slot, ident keyName))`. -/
+def isMappingLoadExpr (slotNum : Nat) (keyName : String) : Compiler.Yul.YulExpr → Bool
+  | .call "sload" [.call "mappingSlot" [.lit slot', .ident keyName']] =>
+      slot' == slotNum && keyName' == keyName
+  | _ => false
+
+/-- Recognize the lowered owner-existence guard emitted from `not (owner == 0)`. -/
+def isOwnerExistsSwitch (ownerName : String) : Compiler.Yul.YulStmt → Bool
+  | .switch (.call "iszero" [.call "eq" [.ident ownerName', .lit 0]])
+      [(1, [])] (some [.expr (.call "revert" [.lit 0, .lit 0])]) =>
+      ownerName' == ownerName
+  | _ => false
+
+/-- Recognize the lowered owner-match guard emitted from `addrToUint(ownerAddr) == ownerWord`. -/
+def isOwnerMatchSwitch (ownerAddrName ownerWordName : String) : Compiler.Yul.YulStmt → Bool
+  | .switch (.call "eq" [.ident ownerAddrName', .ident ownerWordName'])
+      [(1, [])] (some [.expr (.call "revert" [.lit 0, .lit 0])]) =>
+      ownerAddrName' == ownerAddrName && ownerWordName' == ownerWordName
+  | _ => false
+
 /-- ERC721.getApproved must keep the owner-existence guard and the corrected
 slot layout from `Compiler.TypedIRCompilerCorrectness`. -/
 def compiledERC721GetApprovedHasExpectedBody : Bool :=
   match compileFunctionNamed Compiler.Specs.erc721Spec "getApproved" with
   | .error _ => false
   | .ok block =>
-      reprStr block.body =
-        r#"[Verity.Core.Free.TStmt.let_
-   { id := 1, ty := Verity.Core.Free.Ty.uint256 }
-   (Verity.Core.Free.TExpr.getMappingUint
-     4
-     (Verity.Core.Free.TExpr.var { id := 0, ty := Verity.Core.Free.Ty.uint256 })),
- Verity.Core.Free.TStmt.if_
-   (Verity.Core.Free.TExpr.not
-     (Verity.Core.Free.TExpr.eq
-       (Verity.Core.Free.TExpr.var { id := 1, ty := Verity.Core.Free.Ty.uint256 })
-       (Verity.Core.Free.TExpr.uintLit 0)))
-   []
-   [Verity.Core.Free.TStmt.revert "Token does not exist"],
- Verity.Core.Free.TStmt.let_
-   { id := 2, ty := Verity.Core.Free.Ty.uint256 }
-   (Verity.Core.Free.TExpr.getMappingUint
-     5
-     (Verity.Core.Free.TExpr.var { id := 0, ty := Verity.Core.Free.Ty.uint256 })),
- Verity.Core.Free.TStmt.returnUint (Verity.Core.Free.TExpr.var { id := 2, ty := Verity.Core.Free.Ty.uint256 })]"#
+      match block.params, lowerTStmts block.body with
+      | [tokenIdParam],
+        [ .let_ ownerWordName ownerRead
+        , ownerExistsGuard
+        , .let_ approvedWordName approvalRead
+        , .expr (.call "mstore" [.lit 0, .ident approvedWordName'])
+        , .expr (.call "return" [.lit 0, .lit 32])
+        ] =>
+            let tokenName := tVarName tokenIdParam
+            isMappingLoadExpr 4 tokenName ownerRead &&
+            isOwnerExistsSwitch ownerWordName ownerExistsGuard &&
+            isMappingLoadExpr 5 tokenName approvalRead &&
+            approvedWordName' == approvedWordName
+      | _, _ => false
 
 /-- ERC721.getApproved emits the expected owner-guarded typed IR body. -/
 example : compiledERC721GetApprovedHasExpectedBody = true := by native_decide
@@ -2469,34 +2484,26 @@ def compiledERC721ApproveHasExpectedBody : Bool :=
   match compileFunctionNamed Compiler.Specs.erc721Spec "approve" with
   | .error _ => false
   | .ok block =>
-      reprStr block.body =
-        r#"[Verity.Core.Free.TStmt.let_ { id := 2, ty := Verity.Core.Free.Ty.address } (Verity.Core.Free.TExpr.sender),
- Verity.Core.Free.TStmt.let_
-   { id := 3, ty := Verity.Core.Free.Ty.uint256 }
-   (Verity.Core.Free.TExpr.getMappingUint
-     4
-     (Verity.Core.Free.TExpr.var { id := 1, ty := Verity.Core.Free.Ty.uint256 })),
- Verity.Core.Free.TStmt.if_
-   (Verity.Core.Free.TExpr.not
-     (Verity.Core.Free.TExpr.eq
-       (Verity.Core.Free.TExpr.var { id := 3, ty := Verity.Core.Free.Ty.uint256 })
-       (Verity.Core.Free.TExpr.uintLit 0)))
-   []
-   [Verity.Core.Free.TStmt.revert "Token does not exist"],
- Verity.Core.Free.TStmt.let_
-   { id := 4, ty := Verity.Core.Free.Ty.address }
-   (Verity.Core.Free.TExpr.var { id := 2, ty := Verity.Core.Free.Ty.address }),
- Verity.Core.Free.TStmt.if_
-   (Verity.Core.Free.TExpr.eq
-     (Verity.Core.Free.TExpr.addrToUint (Verity.Core.Free.TExpr.var { id := 4, ty := Verity.Core.Free.Ty.address }))
-     (Verity.Core.Free.TExpr.var { id := 3, ty := Verity.Core.Free.Ty.uint256 }))
-   []
-   [Verity.Core.Free.TStmt.revert "Not token owner"],
- Verity.Core.Free.TStmt.setMappingUint
-   5
-   (Verity.Core.Free.TExpr.var { id := 1, ty := Verity.Core.Free.Ty.uint256 })
-   (Verity.Core.Free.TExpr.addrToUint (Verity.Core.Free.TExpr.var { id := 0, ty := Verity.Core.Free.Ty.address })),
- Verity.Core.Free.TStmt.stop]"#
+      match block.params, lowerTStmts block.body with
+      | [approvedParam, tokenIdParam],
+        [ .let_ senderWordName (.call "caller" [])
+        , .let_ ownerWordName ownerRead
+        , ownerExistsGuard
+        , .let_ ownerAddrName (.ident senderWordName')
+        , ownerMatchGuard
+        , .expr (.call "sstore"
+            [.call "mappingSlot" [.lit 5, .ident tokenName'], .ident approvedName'])
+        , .expr (.call "stop" [])
+        ] =>
+            let tokenName := tVarName tokenIdParam
+            let approvedName := tVarName approvedParam
+            isMappingLoadExpr 4 tokenName ownerRead &&
+            isOwnerExistsSwitch ownerWordName ownerExistsGuard &&
+            senderWordName' == senderWordName &&
+            isOwnerMatchSwitch ownerAddrName ownerWordName ownerMatchGuard &&
+            tokenName' == tokenName &&
+            approvedName' == approvedName
+      | _, _ => false
 
 /-- ERC721.approve emits the expected guarded typed IR body. -/
 example : compiledERC721ApproveHasExpectedBody = true := by native_decide

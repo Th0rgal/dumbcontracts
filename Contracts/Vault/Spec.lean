@@ -20,13 +20,19 @@ def sameStorageExceptAssetSlots (s s' : ContractState) : Prop :=
   Specs.sameStorageAddr s s' ∧
   Specs.sameContext s s'
 
-#gen_spec_map deposit_spec for (assets : Uint256)
-  (2, s.sender, (fun st => add (st.storageMap 2 st.sender) assets),
-    sameStorageExceptAssetSlots)
+def deposit_spec (assets : Uint256) (s s' : ContractState) : Prop :=
+  s'.storageMap 2 s.sender = add (s.storageMap 2 s.sender) assets ∧
+  s'.storage 0 = add (s.storage 0) assets ∧
+  s'.storage 1 = add (s.storage 1) assets ∧
+  Specs.storageMapUnchangedExceptKeyAtSlot 2 s.sender s s' ∧
+  sameStorageExceptAssetSlots s s'
 
-#gen_spec_map withdraw_spec for (shares : Uint256)
-  (2, s.sender, (fun st => sub (st.storageMap 2 st.sender) shares),
-    sameStorageExceptAssetSlots)
+def withdraw_spec (shares : Uint256) (s s' : ContractState) : Prop :=
+  s'.storageMap 2 s.sender = sub (s.storageMap 2 s.sender) shares ∧
+  s'.storage 0 = sub (s.storage 0) shares ∧
+  s'.storage 1 = sub (s.storage 1) shares ∧
+  Specs.storageMapUnchangedExceptKeyAtSlot 2 s.sender s s' ∧
+  sameStorageExceptAssetSlots s s'
 
 def balanceOf_spec (addr : Address) (result : Uint256) (s : ContractState) : Prop :=
   result = s.storageMap 2 addr

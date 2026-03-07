@@ -46,7 +46,8 @@ The `SpecInterpreter` has been removed. EDSL semantics are now defined directly 
 | `staticcall` | `Expr.staticcall` | **0** | **0** | -- | -- | n/m |
 | `delegatecall` | `Expr.delegatecall` | **0** | **0** | -- | -- | n/m |
 | Arithmetic | `add/sub/mul/div/mod` | ok | ok | ok | ok | proved |
-| Bitwise | `and/or/xor/not/shl/shr` | ok | ok | ok | ok | proved |
+| Bitwise | `and/or/xor` | ok | ok | ok | ok | proved |
+| Bitwise | `not/shl/shr` | ok | ok | ok | ok | partial |
 | Comparison | `eq/lt/gt/le/ge` | ok | ok | ok | ok | proved |
 | Logical | `logicalAnd/Or/Not` | ok | ok | -- | -- | proved |
 | Fixed-point math | `mulDivDown/Up, wMulDown/wDivUp, min/max` | ok | ok | -- | -- | proved |

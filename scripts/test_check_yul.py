@@ -72,6 +72,14 @@ def evalExpr :=
         failures = self._run_boundary_check(body, body)
         self.assertEqual(failures, [])
 
+    def test_eval_builtin_call_with_backend_context_satisfies_boundary(self) -> None:
+        body = """import Compiler.Proofs.YulGeneration.Builtins
+def evalExpr :=
+  Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext
+"""
+        failures = self._run_boundary_check(body, body)
+        self.assertEqual(failures, [])
+
     def test_run_compilation_checks_reports_same_file_pair_mismatch(self) -> None:
         with tempfile.TemporaryDirectory(dir=property_utils.ROOT) as tmpdir:
             root = Path(tmpdir)

@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import sys
+import unittest
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import check_macro_translate_invariant_coverage
+
+
+class MacroTranslateInvariantCoverageTests(unittest.TestCase):
+    def test_collect_contracts_ignores_guard_msgs_negative_fixtures(self) -> None:
+        text = """
+        verity_contract HappyPath where
+          storage
+            counter : Uint256 := slot 0
+          function read () : Uint256 := do
+            return 0
+
+        /--
+        error: expected failure
+        -/
+        #guard_msgs in
+        verity_contract NegativeFixture where
+          storage
+            counter : Uint256 := slot 0
+          function read () : Uint256 := do
+            return 0
+        end NegativeFixture
+        """
+
+        self.assertEqual(
+            check_macro_translate_invariant_coverage._collect_contracts_from_text(text),
+            {"HappyPath"},
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

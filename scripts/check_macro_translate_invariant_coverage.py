@@ -23,11 +23,29 @@ MACRO_SPECS_DEF_RE = re.compile(
 )
 
 
+def _collect_contracts_from_text(text: str) -> set[str]:
+    names: set[str] = set()
+    guard_pending = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "#guard_msgs in":
+            guard_pending = True
+            continue
+        match = CONTRACT_RE.search(line)
+        if match is None:
+            continue
+        if guard_pending:
+            guard_pending = False
+            continue
+        names.add(match.group(1))
+    return names
+
+
 def _collect_contracts(sources: list[Path]) -> set[str]:
     names: set[str] = set()
     for path in sources:
         text = path.read_text(encoding="utf-8")
-        names.update(CONTRACT_RE.findall(text))
+        names.update(_collect_contracts_from_text(text))
     return names
 
 

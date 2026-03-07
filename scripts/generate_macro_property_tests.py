@@ -95,6 +95,7 @@ def parse_contracts(text: str, source: Path) -> dict[str, ContractDecl]:
     current_name: str | None = None
     current_constructor: ConstructorDecl | None = None
     current_functions: list[FunctionDecl] = []
+    guard_pending = False
 
     def flush_current() -> None:
         nonlocal current_name, current_constructor, current_functions
@@ -111,8 +112,15 @@ def parse_contracts(text: str, source: Path) -> dict[str, ContractDecl]:
         current_functions = []
 
     for line in text.splitlines():
+        if line.strip() == "#guard_msgs in":
+            flush_current()
+            guard_pending = True
+            continue
         cm = CONTRACT_RE.match(line)
         if cm:
+            if guard_pending:
+                guard_pending = False
+                continue
             flush_current()
             current_name = cm.group(1)
             continue

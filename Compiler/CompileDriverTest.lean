@@ -204,7 +204,7 @@ unsafe def runTests : IO Unit := do
   expectFailureContains
     "duplicate selected modules fail closed"
     (compileModulesWithOptions outDir ["Contracts.Counter.Counter", "Contracts.Counter.Counter"] false [] {} none (some abiDir))
-    "Duplicate --module value: Contracts.Counter.Counter"
+    "Duplicate module input: Contracts.Counter.Counter"
 
 #eval! runTests
 

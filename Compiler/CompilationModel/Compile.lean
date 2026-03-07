@@ -73,7 +73,7 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
   | Stmt.setStorage field value =>
       compileSetStorage fields dynamicSource field value
   | Stmt.setStorageAddr field value =>
-      compileSetStorage fields dynamicSource field value
+      compileSetStorage fields dynamicSource field value true
   | Stmt.setMapping field key value => do
       compileMappingSlotWrite fields field
         (← compileExpr fields dynamicSource key)

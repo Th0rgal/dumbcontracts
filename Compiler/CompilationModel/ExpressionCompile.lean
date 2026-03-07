@@ -70,7 +70,14 @@ def compileExpr (fields : List Field)
       | some (f, slot) =>
           match f.ty with
           | .address =>
-              pure (YulExpr.call "sload" [YulExpr.lit slot])
+              match f.packedBits with
+              | none =>
+                  pure (YulExpr.call "sload" [YulExpr.lit slot])
+              | some packed =>
+                  pure (YulExpr.call "and" [
+                    YulExpr.call "shr" [YulExpr.lit packed.offset, YulExpr.call "sload" [YulExpr.lit slot]],
+                    YulExpr.lit (packedMaskNat packed)
+                  ])
           | _ =>
               throw s!"Compilation error: field '{field}' is not address-typed; use Expr.storage instead"
       | none => throw s!"Compilation error: unknown storage field '{field}'"

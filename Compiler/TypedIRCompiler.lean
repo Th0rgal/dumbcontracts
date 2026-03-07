@@ -81,11 +81,17 @@ private def asBool (e : SomeTExpr) : Except String (TExpr Ty.bool) :=
   | ⟨Ty.bool, expr⟩ => Except.ok expr
   | ⟨ty, _⟩ => Except.error s!"Typed IR compile error: expected bool expression, got {repr ty}"
 
-private def compileStorageRead (fields : List Field) (fieldName : String) : Except String SomeTExpr := do
+private def compileStorageRead (fields : List Field) (fieldName : String)
+    (requireAddressField : Bool := false) : Except String SomeTExpr := do
   match findFieldWithResolvedSlot fields fieldName with
   | none =>
       throw s!"Typed IR compile error: unknown storage field '{fieldName}'"
   | some (field, slot) =>
+      if requireAddressField then
+        match field.ty with
+        | .address => pure ()
+        | _ =>
+            throw s!"Typed IR compile error: storage field '{fieldName}' is not address-typed; use Expr.storage instead"
       match (← fieldTypeToTy field.ty) with
       | Ty.uint256 =>
           return ⟨Ty.uint256, TExpr.getStorage slot⟩
@@ -110,7 +116,7 @@ private def compileExpr (fields : List Field) : Expr → CompileM SomeTExpr
   | .storage fieldName =>
       liftExcept <| compileStorageRead fields fieldName
   | .storageAddr fieldName =>
-      liftExcept <| compileStorageRead fields fieldName
+      liftExcept <| compileStorageRead fields fieldName true
   | .mapping field key => do
       let keyExpr ← compileExpr fields key
       let keyAddr ← liftExcept <| asAddress keyExpr

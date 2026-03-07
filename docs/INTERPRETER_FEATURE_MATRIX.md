@@ -150,7 +150,9 @@ Legend: **ok** = native evaluation, **del** = delegated to Verity path (bridge r
 
 2. **Low-level calls**: `call`/`staticcall`/`delegatecall` and `externalCallBind`/`ecm` are compiler-only features validated by Foundry testing, not modeled in proof interpreters.
 
+3. **Internal helper compositional proofs**: `Stmt.internalCall` / `Expr.internalCall` execute in the fuel-based interpreter path, but helper-level theorem reuse across callers is not yet surfaced as a first-class proof interface. The current gap is tracked in [#1335](https://github.com/Th0rgal/verity/issues/1335).
+
 ---
 
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-03-07
 **Machine-readable artifact**: `artifacts/interpreter_feature_matrix.json`

@@ -13,7 +13,7 @@
 - ✅ **Differential Testing**: Production-ready with 70k+ tests
 - ✅ **Trust Reduction Phase 1**: keccak256 axiom + CI validation (PR #43, #46)
 - ✅ **External Linking**: Cryptographic library support (PR #49)
-- ✅ **CompilationModel Real-World Support**: Loops, branching, arrays, events, multi-mappings, internal calls, verified extern linking (#153, #154, #179, #180, #181, #184)
+- ✅ **CompilationModel Real-World Support**: Loops, branching, arrays, events, multi-mappings, internal call mechanics, verified extern linking (#153, #154, #179, #180, #181, #184)
 
 ---
 
@@ -121,6 +121,8 @@ A developer can now write a `CompilationModel` for contracts with conditional lo
 ### Remaining gap
 
 The EDSL path remains more expressive (supports arbitrary Lean, `List.foldl`, pattern matching). Contracts like UnlinkPool that use advanced Lean features still need the EDSL path. The CompilationModel path now covers the subset needed for standard DeFi contracts (ERC20, ERC721, governance, simple AMMs).
+
+Internal helper call mechanics are available end-to-end, but first-class compositional proof reuse at the helper boundary is still incomplete. Today, internal helpers compile, validate, and execute through `execStmtsFuel`, but helper-level theorems are not yet exposed as a reusable proof interface across callers. That follow-on proof boundary is tracked separately in [#1335](https://github.com/Th0rgal/verity/issues/1335).
 
 ### Interpreter feature-support contract
 
@@ -304,5 +306,5 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines and [`VE
 
 ---
 
-**Last Updated**: 2026-02-20
-**Status**: Layers 1-3 complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). CompilationModel now supports real-world contracts (loops, branching, events, multi-mappings, internal calls, verified externs).
+**Last Updated**: 2026-03-07
+**Status**: Layers 1-3 complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). CompilationModel now supports real-world contracts (loops, branching, events, multi-mappings, internal call mechanics, verified externs).

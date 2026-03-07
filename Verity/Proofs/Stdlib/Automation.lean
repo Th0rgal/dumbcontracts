@@ -100,6 +100,10 @@ syntax (name := verity_spec)
 syntax (name := verity_spec_with)
   "verity_spec " simpLemma " with " simpLemma : tactic
 
+/-- Discharge common checked-arithmetic reachability goals (`safeAdd`/`safeSub`/`safeMul`). -/
+syntax (name := verity_arith)
+  "verity_arith" : tactic
+
 macro_rules
   | `(tactic| verity_unfold $fn:simpLemma) =>
       `(tactic| simp only [
@@ -166,6 +170,20 @@ macro "verity_spec " spec:simpLemma " with " extra:simpLemma : tactic =>
     (simp [$spec, ContractResult.snd, Verity.Specs.sameAddrMapContext,
       Verity.Specs.sameStorageMapContext, Verity.Specs.sameContext, Verity.Specs.sameStorage,
       Verity.Specs.sameStorageAddr, Verity.Specs.sameStorageMap, $extra]))
+
+macro "verity_arith" : tactic =>
+  `(tactic|
+    first
+      | exact Verity.Proofs.Stdlib.Math.safeAdd_none _ _ (by first | assumption | omega)
+      | exact Verity.Proofs.Stdlib.Math.safeSub_none _ _ (by first | assumption | omega)
+      | exact Verity.Proofs.Stdlib.Math.safeMul_none _ _ (by first | assumption | omega)
+      | exact safeAdd_some_val _ _ (by first | assumption | omega)
+      | exact safeSub_some_val _ _ (by first | assumption | omega)
+      | exact Verity.Proofs.Stdlib.Math.safeMul_some _ _ (by first | assumption | omega)
+      | simpa [safeAdd_some_iff_le, safeAdd_none_iff_gt,
+          safeSub_some_iff_ge, safeSub_none_iff_lt,
+          safeMul_some_iff_le, safeMul_none_iff_gt]
+      | omega)
 
 /-!
 ## Index Normalization Helpers
@@ -658,6 +676,40 @@ theorem safeAdd_some_val (a b : Verity.Core.Uint256)
   unfold Verity.Stdlib.Math.safeAdd
   have h_not : ¬((a : Nat) + (b : Nat) > Verity.Stdlib.Math.MAX_UINT256) := by omega
   simp [h_not]
+
+-- safeMul returns Some iff no overflow
+theorem safeMul_some_iff_le (a b : Verity.Core.Uint256) :
+    (Verity.Stdlib.Math.safeMul a b).isSome ↔
+    (a : Nat) * (b : Nat) ≤ Verity.Stdlib.Math.MAX_UINT256 := by
+  unfold Verity.Stdlib.Math.safeMul
+  by_cases h : (a : Nat) * (b : Nat) > Verity.Stdlib.Math.MAX_UINT256
+  · constructor
+    · intro h_some
+      simp [h] at h_some
+    · intro h_le
+      omega
+  · constructor
+    · intro _
+      omega
+    · intro _
+      simp [h]
+
+-- safeMul returns None iff overflow
+theorem safeMul_none_iff_gt (a b : Verity.Core.Uint256) :
+    (Verity.Stdlib.Math.safeMul a b).isNone ↔
+    (a : Nat) * (b : Nat) > Verity.Stdlib.Math.MAX_UINT256 := by
+  unfold Verity.Stdlib.Math.safeMul
+  by_cases h : (a : Nat) * (b : Nat) > Verity.Stdlib.Math.MAX_UINT256
+  · constructor
+    · intro _
+      exact h
+    · intro _
+      simp [h]
+  · constructor
+    · intro h_none
+      simp [h] at h_none
+    · intro h_gt
+      exact absurd h_gt h
 
 /-!
 ## Modular Arithmetic Wraparound Lemmas

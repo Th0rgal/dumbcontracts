@@ -428,6 +428,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.Stdlib.Automation.safeAdd_some_iff_le
 #print axioms Verity.Proofs.Stdlib.Automation.safeAdd_none_iff_gt
 #print axioms Verity.Proofs.Stdlib.Automation.safeAdd_some_val
+#print axioms Verity.Proofs.Stdlib.Automation.safeMul_some_iff_le
+#print axioms Verity.Proofs.Stdlib.Automation.safeMul_none_iff_gt
 #print axioms Verity.Proofs.Stdlib.Automation.add_one_preserves_order_iff_no_overflow
 #print axioms Verity.Proofs.Stdlib.Automation.wf_of_state_eq
 #print axioms Verity.Proofs.Stdlib.Automation.wf_preservation_of_frame
@@ -692,4 +694,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 591 theorems/lemmas (541 public, 50 private)
+-- Total: 593 theorems/lemmas (543 public, 50 private)

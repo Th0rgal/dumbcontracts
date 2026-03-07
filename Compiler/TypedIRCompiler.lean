@@ -89,7 +89,7 @@ private def compileStorageRead (fields : List Field) (fieldName : String)
   | some (field, slot) =>
       if requireAddressField then
         match field.ty with
-        | .address => pure ()
+        | .address => Except.ok ()
         | _ =>
             throw s!"Typed IR compile error: storage field '{fieldName}' is not address-typed; use Expr.storage instead"
       match (← fieldTypeToTy field.ty) with

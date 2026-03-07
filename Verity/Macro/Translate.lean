@@ -792,6 +792,8 @@ private def translateEffectStmt
               $(← translatePureExpr fields params locals value))
       | .mappingStruct2 _ _ _ =>
           throwErrorAt stx s!"field '{f.name}' is a nested struct mapping; use setStructMember2"
+      | .mappingStruct _ _ =>
+          throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember"
       | _ => throwErrorAt stx s!"field '{f.name}' is not a double mapping"
   | `(term| require $cond $msg) =>
       `(Compiler.CompilationModel.Stmt.require $(← translatePureExpr fields params locals cond) $(strTerm (← expectStringLiteral msg)))

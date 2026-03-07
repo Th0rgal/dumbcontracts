@@ -206,6 +206,18 @@ verity_contract StructMappingWrongWriteAccessor where
 end StructMappingWrongWriteAccessor
 
 /--
+error: field 'positions' is a struct-valued mapping; use setStructMember
+-/
+#guard_msgs in
+verity_contract StructMappingWrongLegacyWriteAccessor where
+  storage
+    positions : MappingStruct(Address,[delegate @word 0]) := slot 0
+
+  function setDelegate (owner : Address, delegate_ : Address) : Unit := do
+    setMapping2 positions owner owner delegate_
+end StructMappingWrongLegacyWriteAccessor
+
+/--
 error: unknown struct member 'nonce' on field 'positions'
 -/
 #guard_msgs in

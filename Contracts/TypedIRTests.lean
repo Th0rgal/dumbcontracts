@@ -1,5 +1,7 @@
 import Verity.Core.Free.TypedIR
 import Verity.Core.Free.ContractStep
+import Compiler.CompilationModel.Compile
+import Compiler.CompilationModel.ExpressionCompile
 import Compiler.TypedIRCompiler
 import Compiler.TypedIRCompilerCorrectness
 import Compiler.TypedIRLowering
@@ -7,6 +9,18 @@ import Compiler.Proofs.IRGeneration.IRInterpreter
 import Contracts.SpecAliases
 
 namespace Verity.Core.Free
+
+private def contains (haystack needle : String) : Bool :=
+  let h := haystack.toList
+  let n := needle.toList
+  if n.isEmpty then true
+  else
+    let rec go : List Char → Bool
+      | [] => false
+      | c :: cs =>
+        if (c :: cs).take n.length == n then true
+        else go cs
+    go h
 
 private def tVarIdNamed? (vars : List TVar) (name : String) : Option Nat :=
   match vars with
@@ -127,6 +141,94 @@ def compileRawLogSucceeds : Bool :=
   | .ok _ => true
   | .error _ => false
 
+def compileStorageAddrReturnUsesTypedAddressRead : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "owner", ty := Compiler.CompilationModel.FieldType.address }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.storageAddr "owner")]).run {} with
+  | .ok st =>
+      let rendered := reprStr st.2.body.toList
+      contains rendered "returnAddr" &&
+      contains rendered "getStorageAddr 0"
+  | .error _ => false
+
+def compileSetStorageAddrUsesTypedAddressWrite : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "owner", ty := Compiler.CompilationModel.FieldType.address }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.setStorageAddr "owner" Compiler.CompilationModel.Expr.caller]).run {} with
+  | .ok st =>
+      let rendered := reprStr st.2.body.toList
+      contains rendered "setStorageAddr 0" &&
+      contains rendered "sender"
+  | .error _ => false
+
+def compileStorageAddrRejectsNonAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "count", ty := Compiler.CompilationModel.FieldType.uint256 }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.storageAddr "count")]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'count' is not address-typed; use Expr.storage instead"
+
+def compileSetStorageAddrRejectsNonAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "count", ty := Compiler.CompilationModel.FieldType.uint256 }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.setStorageAddr "count" Compiler.CompilationModel.Expr.caller]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: setStorageAddr requires an address-typed field 'count'"
+
+def compileStorageAddrRejectsPackedAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "owner"
+     , ty := Compiler.CompilationModel.FieldType.address
+     , packedBits := some { offset := 32, width := 160 } }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.storageAddr "owner")]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'owner' uses packedBits; address-typed packed storage is not yet supported in typed IR"
+
+def compileSetStorageAddrRejectsPackedAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "owner"
+     , ty := Compiler.CompilationModel.FieldType.address
+     , packedBits := some { offset := 32, width := 160 } }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.setStorageAddr "owner" Compiler.CompilationModel.Expr.caller]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'owner' uses packedBits; address-typed packed storage is not yet supported in typed IR"
+
+def compileYulStorageAddrMasksPackedAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "owner"
+     , ty := Compiler.CompilationModel.FieldType.address
+     , packedBits := some { offset := 32, width := 160 } }]
+  match Compiler.CompilationModel.compileExpr fields Compiler.CompilationModel.DynamicDataSource.calldata
+      (Compiler.CompilationModel.Expr.storageAddr "owner") with
+  | .ok expr =>
+      let rendered := reprStr expr
+      contains rendered "and" &&
+      contains rendered "shr" &&
+      contains rendered "sload"
+  | .error _ => false
+
+def compileYulSetStorageAddrRejectsNonAddressField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "count", ty := Compiler.CompilationModel.FieldType.uint256 }]
+  match Compiler.CompilationModel.compileStmt fields [] [] Compiler.CompilationModel.DynamicDataSource.calldata [] false []
+      (Compiler.CompilationModel.Stmt.setStorageAddr "count" Compiler.CompilationModel.Expr.caller) with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Compilation error: field 'count' is not address-typed; use Stmt.setStorage instead"
+
 def compileRawLogLoweringShapeOk : Bool :=
   match (compileStmts []
       [Compiler.CompilationModel.Stmt.rawLog
@@ -223,6 +325,30 @@ example : compileModExprSucceeds = true := by native_decide
 
 /-- Typed-IR compiler accepts source-level `Stmt.rawLog`. -/
 example : compileRawLogSucceeds = true := by native_decide
+
+/-- Address-typed storage reads stay explicit through typed IR compilation. -/
+example : compileStorageAddrReturnUsesTypedAddressRead = true := by native_decide
+
+/-- Address-typed storage writes stay explicit through typed IR compilation. -/
+example : compileSetStorageAddrUsesTypedAddressWrite = true := by native_decide
+
+/-- Typed-IR rejects `Expr.storageAddr` on non-address fields. -/
+example : compileStorageAddrRejectsNonAddressField = true := by native_decide
+
+/-- Typed-IR rejects `Stmt.setStorageAddr` on non-address fields. -/
+example : compileSetStorageAddrRejectsNonAddressField = true := by native_decide
+
+/-- Typed-IR rejects packed address storage reads until the abstract storage model supports them. -/
+example : compileStorageAddrRejectsPackedAddressField = true := by native_decide
+
+/-- Typed-IR rejects packed address storage writes until the abstract storage model supports them. -/
+example : compileSetStorageAddrRejectsPackedAddressField = true := by native_decide
+
+/-- Yul address-field reads preserve packed masking when the field is sub-word. -/
+example : compileYulStorageAddrMasksPackedAddressField = true := by native_decide
+
+/-- Yul compilation rejects `Stmt.setStorageAddr` on non-address fields. -/
+example : compileYulSetStorageAddrRejectsNonAddressField = true := by native_decide
 
 /-- Typed-IR compiler emits the expected typed `rawLog` statement shape. -/
 example : compileRawLogLoweringShapeOk = true := by native_decide

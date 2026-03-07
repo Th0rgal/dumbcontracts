@@ -57,12 +57,18 @@ private def compileCompatPackedStorageWrites (writeSlots : List YulExpr) (valueE
   ]
 
 def compileSetStorage (fields : List Field) (dynamicSource : DynamicDataSource)
-    (field : String) (value : Expr) : Except String (List YulStmt) := do
+    (field : String) (value : Expr) (requireAddressField : Bool := false) :
+    Except String (List YulStmt) := do
   if isMapping fields field then
     throw s!"Compilation error: field '{field}' is a mapping; use setMapping, setMappingWord, or setMappingPackedWord"
   else
     match findFieldWithResolvedSlot fields field with
     | some (f, slot) => do
+        if requireAddressField then
+          match f.ty with
+          | .address => pure ()
+          | _ =>
+              throw s!"Compilation error: field '{field}' is not address-typed; use Stmt.setStorage instead"
         let slots := slot :: f.aliasSlots
         let valueExpr ← compileExpr fields dynamicSource value
         match slots with

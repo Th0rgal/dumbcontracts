@@ -72,6 +72,31 @@ class MacroRoundTripFuzzCoverageTests(unittest.TestCase):
             ["Duplicate", "Duplicate"],
         )
 
+    def test_collect_contracts_keeps_guard_through_comments(self) -> None:
+        text = """
+        #guard_msgs in
+        -- keep guarding the next contract
+        /-
+        multi-line comment
+        -/
+        verity_contract NegativeFixture where
+          storage
+            counter : Uint256 := slot 0
+          function read () : Uint256 := do
+            return 0
+
+        verity_contract HappyPath where
+          storage
+            counter : Uint256 := slot 1
+          function readAgain () : Uint256 := do
+            return 1
+        """
+
+        self.assertEqual(
+            check_macro_roundtrip_fuzz_coverage._collect_contracts_from_text(text),
+            ["HappyPath"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -193,6 +193,34 @@ class RewriteProofMetadataTests(unittest.TestCase):
         errors = guard.check_active_object_rule_proofs(root / "PatchRules.lean", root)
         self.assertTrue(any("unresolved or empty proofId token" in err for err in errors))
 
+    def test_rejects_malformed_helper_proof_ref(self) -> None:
+        root = self._write_repo(
+            """
+            def badRule : ObjectPatchRule := {
+              patchName := "bad"
+              proofId := proofRefName "Proofs..bad"
+            }
+
+            def foundationRewriteBundle : RewriteRuleBundle := {
+              id := "foundation"
+              exprRules := []
+              stmtRules := []
+              blockRules := []
+              objectRules := [badRule]
+            }
+
+            def solcCompatRewriteBundle : RewriteRuleBundle := {
+              id := "solc"
+              exprRules := []
+              stmtRules := []
+              blockRules := []
+              objectRules := []
+            }
+            """
+        )
+        errors = guard.check_active_object_rule_proofs(root / "PatchRules.lean", root)
+        self.assertTrue(any("missing proof declaration" in err for err in errors))
+
     def test_rejects_missing_object_rule_definition(self) -> None:
         root = self._write_repo(
             """
@@ -396,6 +424,35 @@ class RewriteProofMetadataTests(unittest.TestCase):
         )
         errors = guard._check_parity_pack_proof_refs(root / "ParityPacks.lean", root)
         self.assertEqual(errors, [])
+
+    def test_rejects_malformed_helper_parity_pack_ref(self) -> None:
+        root = self._write_repo(
+            """
+            def foundationRewriteBundle : RewriteRuleBundle := {
+              id := "foundation"
+              exprRules := []
+              stmtRules := []
+              blockRules := []
+              objectRules := []
+            }
+
+            def solcCompatRewriteBundle : RewriteRuleBundle := {
+              id := "solc"
+              exprRules := []
+              stmtRules := []
+              blockRules := []
+              objectRules := []
+            }
+            """,
+            parity_packs_text="""
+            def packA : ParityPack := {
+              id := "pack-a"
+              compositionProofRef := proofRefName "Proofs..bad"
+            }
+            """,
+        )
+        errors = guard._check_parity_pack_proof_refs(root / "ParityPacks.lean", root)
+        self.assertTrue(any("missing composition proof declaration" in err for err in errors))
 
 
 if __name__ == "__main__":

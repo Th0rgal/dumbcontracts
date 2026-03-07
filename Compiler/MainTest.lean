@@ -133,6 +133,11 @@ unsafe def runTests : IO Unit := do
     rewriteBundleId := "missing-rewrite-bundle" }
   expectTrue "parity pack proof composition rejects unknown rewrite bundle IDs"
     (!missingBundlePack.proofCompositionValid)
+  let malformedProofRefPack := { invalidPack with
+    compositionProofRef := Compiler.Yul.proofRefName "Compiler..Proofs.bad"
+    requiredProofRefs := Compiler.Yul.foundationProofAllowlist }
+  expectTrue "parity pack proof composition rejects malformed proof metadata"
+    (!malformedProofRefPack.proofCompositionValid)
 
   let libWithCommentAndStringBraces :=
     "{\n" ++

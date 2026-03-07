@@ -128,7 +128,11 @@ private def proofRefPresent (proofRef : Lean.Name) : Bool :=
 /-- Parse a dotted declaration name into `Lean.Name` metadata without requiring the
     declaration to be imported at the call site. -/
 def proofRefName (ref : String) : Lean.Name :=
-  ref.splitOn "." |>.foldl Lean.Name.str .anonymous
+  let segments := ref.splitOn "."
+  if segments.isEmpty || segments.any String.isEmpty then
+    .anonymous
+  else
+    segments.foldl Lean.Name.str .anonymous
 
 private def isRuleAuditable [PatchRuleLike α] (r : α) : Bool :=
   !(PatchRuleLike.patchName r).isEmpty &&

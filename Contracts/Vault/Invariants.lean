@@ -14,6 +14,6 @@ structure WellFormedState (s : ContractState) : Prop where
 abbrev context_preserved := Specs.sameContext
 
 abbrev share_storage_unchanged (s s' : ContractState) :=
-  Specs.sameStorageAddr s s'
+  ∀ addr : Address, s'.storageMap 2 addr = s.storageMap 2 addr
 
 end Contracts.Vault.Invariants

@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import sys
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 import generate_macro_property_tests as gen
 
@@ -60,6 +65,29 @@ class ParseContractsTests(unittest.TestCase):
             [(p.name, p.lean_type) for p in owned.constructor.params],
             [("initialOwner", "Address")],
         )
+
+    def test_parse_contracts_ignores_guard_msgs_negative_fixtures(self) -> None:
+        src = textwrap.dedent(
+            """
+            verity_contract HappyPath where
+              storage
+                counter : Uint256 := slot 0
+
+              function read () : Uint256 := do
+                return 0
+
+            #guard_msgs in
+            verity_contract NegativeFixture where
+              storage
+                counter : Uint256 := slot 0
+
+              function read () : Uint256 := do
+                return 0
+            end NegativeFixture
+            """
+        )
+        parsed = gen.parse_contracts(src, Path("dummy.lean"))
+        self.assertEqual(sorted(parsed.keys()), ["HappyPath"])
 
 
 class RenderTests(unittest.TestCase):

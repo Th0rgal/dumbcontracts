@@ -129,6 +129,120 @@ verity_contract ZeroAddressShadowSmoke where
   function shadowWrite (zeroAddress : Address) : Unit := do
     setMappingAddr delegates zeroAddress zeroAddress
 
+verity_contract StructMappingSmoke where
+  storage
+    positions : MappingStruct(Address,[
+      supplyShares @word 0 packed(0,128),
+      borrowShares @word 0 packed(128,128),
+      delegate @word 1
+    ]) := slot 0
+    approvals : MappingStruct2(Address,Address,[
+      allowance @word 0 packed(0,128),
+      nonce @word 1
+    ]) := slot 1
+
+  function setPosition (user : Address, supply : Uint256, borrow : Uint256, delegate_ : Address) : Unit := do
+    setStructMember "positions" user "supplyShares" supply
+    setStructMember "positions" user "borrowShares" borrow
+    setStructMember "positions" user "delegate" delegate_
+
+  function totalPositionShares (user : Address) : Uint256 := do
+    let supply ← structMember "positions" user "supplyShares"
+    let borrow ← structMember "positions" user "borrowShares"
+    return (add supply borrow)
+
+  function delegateOf (user : Address) : Address := do
+    let delegate_ ← structMember "positions" user "delegate"
+    return delegate_
+
+  function setApproval (owner : Address, spender : Address, amount : Uint256, nextNonce : Uint256) : Unit := do
+    setStructMember2 "approvals" owner spender "allowance" amount
+    setStructMember2 "approvals" owner spender "nonce" nextNonce
+
+  function approvalOf (owner : Address, spender : Address) : Uint256 := do
+    let amount ← structMember2 "approvals" owner spender "allowance"
+    return amount
+
+  function approvalNonce (owner : Address, spender : Address) : Uint256 := do
+    let nextNonce ← structMember2 "approvals" owner spender "nonce"
+    return nextNonce
+
+/--
+error: field 'approvals' is a nested struct mapping; use structMember2/setStructMember2
+-/
+#guard_msgs in
+verity_contract StructMappingWrongReadAccessor where
+  storage
+    approvals : MappingStruct2(Address,Address,[allowance @word 0]) := slot 0
+
+  function approvalOf (owner : Address, spender : Address) : Uint256 := do
+    let amount ← structMember "approvals" owner "allowance"
+    return amount
+end StructMappingWrongReadAccessor
+
+/--
+error: field 'approvals' is a nested struct mapping; use structMember2
+-/
+#guard_msgs in
+verity_contract StructMappingWrongLegacyReadAccessor where
+  storage
+    approvals : MappingStruct2(Address,Address,[allowance @word 0]) := slot 0
+
+  function approvalOf (owner : Address, spender : Address) : Uint256 := do
+    let amount ← getMapping2 approvals owner spender
+    return amount
+end StructMappingWrongLegacyReadAccessor
+
+/--
+error: field 'positions' is not a nested struct mapping
+-/
+#guard_msgs in
+verity_contract StructMappingWrongWriteAccessor where
+  storage
+    positions : MappingStruct(Address,[delegate @word 0]) := slot 0
+
+  function setDelegate (owner : Address, delegate_ : Address) : Unit := do
+    setStructMember2 "positions" owner owner "delegate" delegate_
+end StructMappingWrongWriteAccessor
+
+/--
+error: unknown struct member 'nonce' on field 'positions'
+-/
+#guard_msgs in
+verity_contract StructMappingUnknownMember where
+  storage
+    positions : MappingStruct(Address,[delegate @word 0]) := slot 0
+
+  function setNonce (owner : Address, value : Uint256) : Unit := do
+    setStructMember "positions" owner "nonce" value
+end StructMappingUnknownMember
+
+/--
+error: field 'positions' is a struct-valued mapping; use structMember/structMember2
+-/
+#guard_msgs in
+verity_contract StructMappingWrongScalarReadAccessor where
+  storage
+    positions : MappingStruct(Address,[delegate @word 0]) := slot 0
+
+  function positionWord () : Uint256 := do
+    let word ← getStorage positions
+    return word
+end StructMappingWrongScalarReadAccessor
+
+/--
+error: field 'positions' is a struct-valued mapping; use structMember/structMember2
+-/
+#guard_msgs in
+verity_contract StructMappingWrongScalarAddressReadAccessor where
+  storage
+    positions : MappingStruct(Address,[delegate @word 0]) := slot 0
+
+  function delegateWord () : Address := do
+    let word ← getStorageAddr positions
+    return word
+end StructMappingWrongScalarAddressReadAccessor
+
 namespace SpecGenSmoke
 
 #gen_spec storage_for2_spec for2 (x : Uint256) (y : Uint256)
@@ -178,6 +292,7 @@ end SpecGenSmoke
 #check_contract Uint8Smoke
 #check_contract AddressHelpersSmoke
 #check_contract ZeroAddressShadowSmoke
+#check_contract StructMappingSmoke
 
 example :
     (Compiler.CompilationModel.FunctionSpec.body

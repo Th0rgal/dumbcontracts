@@ -11,6 +11,7 @@ from property_utils import ROOT, extract_lean_import_modules, strip_lean_comment
 
 ONE_GLOB_RE = re.compile(r"\.one\s+`([A-Za-z0-9_.']+)")
 AND_SUBMODULES_GLOB_RE = re.compile(r"\.andSubmodules\s+`([A-Za-z0-9_.']+)")
+SUBMODULES_GLOB_RE = re.compile(r"\.submodules\s+`([A-Za-z0-9_.']+)")
 
 PACKAGE_BOUNDARIES = (
     (
@@ -67,6 +68,20 @@ def _expand_lake_globs(lakefile: Path, source_root: Path) -> tuple[list[str], li
             failures.append(
                 f"{_render_path(lakefile)}: empty submodule glob without root module: {module_name}"
             )
+            continue
+        paths.update(submodule_files)
+
+    for module_name in SUBMODULES_GLOB_RE.findall(contents):
+        submodule_dir = source_root / Path(*module_name.split("."))
+        if not submodule_dir.exists():
+            failures.append(
+                f"{_render_path(lakefile)}: missing submodule directory listed in globs: {module_name}"
+            )
+            continue
+
+        submodule_files = sorted(submodule_dir.rglob("*.lean"))
+        if not submodule_files:
+            failures.append(f"{_render_path(lakefile)}: empty submodule glob: {module_name}")
             continue
         paths.update(submodule_files)
 

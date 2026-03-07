@@ -157,6 +157,30 @@ class CheckPackageImportBoundariesTests(unittest.TestCase):
         self.assertIn("Package import boundary check passed.", stdout)
         self.assertEqual(stderr, "")
 
+    def test_expands_submodules_globs_without_root_module(self) -> None:
+        rc, stdout, stderr = self._run_check(
+            {
+                "Verity/Core/Address.lean": "import Verity.Core.Uint256\n",
+                "Compiler/Foo.lean": "import Compiler.Bar\n",
+            },
+            edsl_globs="    .submodules `Verity.Core",
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("Package import boundary check passed.", stdout)
+        self.assertEqual(stderr, "")
+
+    def test_reports_empty_submodules_glob(self) -> None:
+        rc, stdout, stderr = self._run_check(
+            {
+                "Verity/Core/.keep": "",
+                "Compiler/Foo.lean": "import Compiler.Bar\n",
+            },
+            edsl_globs="    .submodules `Verity.Core",
+        )
+        self.assertEqual(rc, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("empty submodule glob: Verity.Core", stderr)
+
     def test_reports_missing_module_from_lake_glob(self) -> None:
         rc, stdout, stderr = self._run_check(
             {

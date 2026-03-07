@@ -337,13 +337,19 @@ unsafe def runTests : IO Unit := do
     throw (IO.userError "✗ trust report emits low-level mechanics")
   if !contains trustReport "\"axiomatizedPrimitives\":[\"keccak256\"]" then
     throw (IO.userError "✗ trust report emits axiomatized primitives")
+  if !contains trustReport "\"proofStatus\":{\"proved\":{\"axiomatizedPrimitives\":[],\"linkedExternals\":[],\"ecmModules\":[]}" then
+    throw (IO.userError "✗ trust report emits proved proof-status bucket")
+  if !contains trustReport "\"assumed\":{\"axiomatizedPrimitives\":[\"keccak256\"],\"linkedExternals\":[\"PoseidonT3_hash\"],\"ecmModules\":[\"testCall\"]}" then
+    throw (IO.userError "✗ trust report emits assumed proof-status bucket")
+  if !contains trustReport "\"unchecked\":{\"axiomatizedPrimitives\":[],\"linkedExternals\":[],\"ecmModules\":[]}" then
+    throw (IO.userError "✗ trust report emits unchecked proof-status bucket")
   if !contains trustReport "\"name\":\"PoseidonT3_hash\"" then
     throw (IO.userError "✗ trust report emits linked external name")
   if !contains trustReport "\"axioms\":[\"poseidon_t3_deterministic\"]" then
     throw (IO.userError "✗ trust report emits linked external axioms")
   if !contains trustReport "\"module\":\"testCall\"" || !contains trustReport "\"assumption\":\"test_call_interface\"" then
     throw (IO.userError "✗ trust report emits ECM axioms")
-  IO.println "✓ trust report emits low-level mechanics, axiomatized primitives, and external assumptions"
+  IO.println "✓ trust report emits low-level mechanics, proof-status buckets, axiomatized primitives, and external assumptions"
 
   let ecrecoverTrustReport := emitTrustReportJson [ecrecoverTrustSurfaceSpec]
   if !contains ecrecoverTrustReport "\"contract\":\"EcrecoverTrustSurface\"" then

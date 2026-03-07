@@ -165,6 +165,29 @@ def compileSpecsWithOptions
       IO.println "  (no axiomatized primitives used)"
     IO.println "  Proof boundary: these primitives compile through explicit trusted boundaries (for example, keccak-backed hashing) and should be audited alongside AXIOMS.md/TRUST_ASSUMPTIONS.md."
     IO.println ""
+    IO.println "Proof-status summary:"
+    let mut anyAssumedStatus := false
+    for spec in specs do
+      let primitives := collectAxiomatizedPrimitives spec
+      let externals := (collectUsedExternalAssumptions spec).map Prod.fst
+      let ecmModules := (collectEcmAxioms spec).map Prod.fst
+      if !primitives.isEmpty || !externals.isEmpty || !ecmModules.isEmpty then
+        anyAssumedStatus := true
+        IO.println s!"  {spec.name}:"
+        if !primitives.isEmpty then
+          IO.println s!"    assumed primitives: {String.intercalate ", " primitives}"
+        if !externals.isEmpty then
+          IO.println s!"    assumed linked externals: {String.intercalate ", " externals}"
+        if !ecmModules.isEmpty then
+          IO.println s!"    assumed ECM modules: {String.intercalate ", " ecmModules}"
+    if !anyAssumedStatus then
+      IO.println "  proved: none"
+      IO.println "  assumed: none"
+      IO.println "  unchecked: none"
+    else
+      IO.println "  proved: none reported yet for foreign surfaces"
+      IO.println "  unchecked: none reported"
+    IO.println ""
     IO.println "External assumption report:"
     let mut anyExternalAssumptions := false
     for spec in specs do

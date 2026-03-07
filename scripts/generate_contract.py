@@ -462,6 +462,46 @@ def _getter_target_field(fn: Function, fields: List[Field]) -> Field | None:
     return None
 
 
+def _require_getter_target_field(fn: Function, fields: List[Field]) -> Field:
+    """Resolve the target field for an inferred ``get...`` getter or fail closed."""
+    target = _getter_target_field(fn, fields)
+    if target is not None:
+        return target
+    print(
+        f"Error: Cannot infer target field for getter '{fn.name}'. "
+        "Rename the getter to match a field (e.g. getTotalSupply → totalSupply) "
+        "or declare a matching field.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+def _field_slot(fields: List[Field], target: Field) -> int:
+    """Return the storage slot index for *target* within *fields*."""
+    return fields.index(target)
+
+
+def _require_mapping_getter_key_param(fn: Function, target: Field) -> Param:
+    """Validate and return the key parameter for a mapping getter."""
+    expected_key_ty = "address" if target.ty == "mapping" else "uint256"
+    if not fn.params:
+        print(
+            f"Error: Mapping getter '{fn.name}' for field '{target.name}' requires "
+            f"a first parameter of type '{expected_key_ty}'.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    key_param = fn.params[0]
+    if key_param.ty != expected_key_ty:
+        print(
+            f"Error: Mapping getter '{fn.name}' for field '{target.name}' requires "
+            f"first parameter type '{expected_key_ty}', got '{key_param.ty}'.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return key_param
+
+
 def _needs_uint256_import(cfg: ContractConfig) -> bool:
     """Whether a module needs ``import Verity.EVM.Uint256``."""
     return (
@@ -489,27 +529,34 @@ def gen_example(cfg: ContractConfig) -> str:
     for i, f in enumerate(cfg.fields):
         storage_lines.append(f"def {f.name} : {f.storage_kind} := ⟨{i}⟩")
 
-    # Function stubs — detect getters to use the correct return type.
-    # Match getter names to field types: getOwner → owner → address field.
-    # "is"/"has"-prefix getters return Bool (e.g., isOwner → Contract Bool).
-    addr_field_names = {f.name.lower() for f in cfg.fields if f.ty == "address"}
+    # Function stubs — infer storage-backed getter bodies where possible.
+    # "is"/"has"-prefix getters remain predicate TODO scaffolds.
     func_lines = []
     for fn in cfg.functions:
         matched_prefix = _getter_prefix(fn.name)
         if matched_prefix is not None:
-            suffix = fn.name[len(matched_prefix):]
             if matched_prefix in ("is", "has"):
                 ret_type = "Contract Bool"
-                ret_val = "pure false  -- TODO: implement predicate (see OwnedCounter.lean)"
-            elif suffix.lower() in addr_field_names:
-                ret_type = "Contract Address"
-                ret_val = 'pure 0  -- TODO: use getStorageAddr <slot> (see Owned.lean)'
+                body_lines = ["pure false  -- TODO: implement predicate (see OwnedCounter.lean)"]
             else:
-                ret_type = "Contract Uint256"
-                ret_val = "pure 0  -- TODO: use getStorage <slot> (see SimpleStorage.lean)"
+                target = _require_getter_target_field(fn, cfg.fields)
+                ret_type = "Contract Address" if target.ty == "address" else "Contract Uint256"
+                if target.is_mapping:
+                    key_param = _require_mapping_getter_key_param(fn, target)
+                    getter_name = "getMapping" if target.ty == "mapping" else "getMappingUint"
+                    body_lines = [
+                        f"let currentValue ← {getter_name} {target.name} {key_param.name}",
+                        "return currentValue",
+                    ]
+                else:
+                    getter_name = "getStorageAddr" if target.ty == "address" else "getStorage"
+                    body_lines = [
+                        f"let currentValue ← {getter_name} {target.name}",
+                        "return currentValue",
+                    ]
         else:
             ret_type = "Contract Unit"
-            ret_val = "pure ()  -- TODO: implement (see Counter.lean for mutating ops)"
+            body_lines = ["pure ()  -- TODO: implement (see Counter.lean for mutating ops)"]
         # Build parameter list: (param1 : Type1) (param2 : Type2)
         param_str = ""
         if fn.params:
@@ -517,7 +564,8 @@ def gen_example(cfg: ContractConfig) -> str:
             param_str = " " + param_str
         func_lines.append(f"-- TODO: Implement {fn.name}")
         func_lines.append(f"def {fn.name}{param_str} : {ret_type} := do")
-        func_lines.append(f"  {ret_val}")
+        for line in body_lines:
+            func_lines.append(f"  {line}")
         func_lines.append("")
 
     return f"""/-
@@ -556,11 +604,26 @@ def gen_spec(cfg: ContractConfig) -> str:
             ret_type = _getter_return_type(fn, cfg.fields)
             param_part = f" {lean_params}" if lean_params else ""
             spec_defs.append(f"def {fn.name}_spec{param_part} (result : {ret_type}) (s : ContractState) : Prop :=")
-            spec_defs.append("  -- Scaffold default: matches the generated placeholder implementation.")
             if ret_type == "Bool":
+                spec_defs.append("  -- Scaffold default: matches the generated placeholder implementation.")
                 spec_defs.append("  result = false")
             else:
-                spec_defs.append("  result = 0")
+                target = _require_getter_target_field(fn, cfg.fields)
+                slot = _field_slot(cfg.fields, target)
+                if target.ty == "address":
+                    spec_defs.append("  -- Inferred getter: returns the current address-valued storage field.")
+                    spec_defs.append(f"  result = s.storageAddr {slot}")
+                elif target.ty == "uint256":
+                    spec_defs.append("  -- Inferred getter: returns the current uint256 storage field.")
+                    spec_defs.append(f"  result = s.storage {slot}")
+                else:
+                    key_param = _require_mapping_getter_key_param(fn, target)
+                    if target.ty == "mapping":
+                        spec_defs.append("  -- Inferred getter: returns the current address-keyed mapping entry.")
+                        spec_defs.append(f"  result = s.storageMap {slot} {key_param.name}")
+                    else:
+                        spec_defs.append("  -- Inferred getter: returns the current uint256-keyed mapping entry.")
+                        spec_defs.append(f"  result = s.storageMapUint {slot} {key_param.name}")
         else:
             # Mutator spec: state-based (see deposit_spec, store_spec)
             param_part = f" {lean_params}" if lean_params else ""
@@ -936,37 +999,13 @@ def gen_compiler_spec(cfg: ContractConfig) -> str:
                 compiler_ret = "FieldType.address"
             else:
                 compiler_ret = "FieldType.uint256"  # Bool maps to uint256 at EVM level
-            target = _getter_target_field(fn, cfg.fields)
+            target = _require_getter_target_field(fn, cfg.fields)
             if target and target.is_mapping:
                 # Mapping getter: Expr.mapping with key param (see balanceOf in SimpleToken)
-                expected_key_ty = "address" if target.ty == "mapping" else "uint256"
-                if not fn.params:
-                    print(
-                        f"Error: Mapping getter '{fn.name}' for field '{target.name}' requires "
-                        f"a first parameter of type '{expected_key_ty}'.",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-                provided_key_ty = fn.params[0].ty
-                if provided_key_ty != expected_key_ty:
-                    print(
-                        f"Error: Mapping getter '{fn.name}' for field '{target.name}' requires "
-                        f"first parameter type '{expected_key_ty}', got '{provided_key_ty}'.",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-                key_param = fn.params[0].name
+                key_param = _require_mapping_getter_key_param(fn, target).name
                 body_expr = f'Expr.mapping "{target.name}" (Expr.param "{key_param}")'
-            elif target:
-                body_expr = f'Expr.storage "{target.name}"'
             else:
-                print(
-                    f"Error: Cannot infer target field for getter '{fn.name}'. "
-                    "Rename the getter to match a field (e.g. getTotalSupply → totalSupply) "
-                    "or declare a matching field.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+                body_expr = f'Expr.storage "{target.name}"'
             func_strs.append(f"""    {{ name := "{fn.name}"
       params := {params_str}
       returnType := some {compiler_ret}

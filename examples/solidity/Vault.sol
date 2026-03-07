@@ -10,6 +10,8 @@ contract Vault {
     mapping(address => uint256) public shareBalances;
 
     error InsufficientShares();
+    error InsufficientAssets();
+    error InsufficientSupply();
 
     function deposit(uint256 assets) external {
         shareBalances[msg.sender] += assets;
@@ -21,6 +23,12 @@ contract Vault {
         uint256 currentShares = shareBalances[msg.sender];
         if (currentShares < shares) {
             revert InsufficientShares();
+        }
+        if (totalAssets < shares) {
+            revert InsufficientAssets();
+        }
+        if (totalSupply < shares) {
+            revert InsufficientSupply();
         }
 
         shareBalances[msg.sender] = currentShares - shares;

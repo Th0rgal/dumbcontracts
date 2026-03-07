@@ -9,6 +9,10 @@ contract VaultTest is Test {
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
 
+    function _shareBalanceSlot(address account) internal pure returns (bytes32) {
+        return keccak256(abi.encode(account, uint256(2)));
+    }
+
     function setUp() public {
         vault = new Vault();
     }
@@ -46,6 +50,26 @@ contract VaultTest is Test {
         vm.prank(alice);
         vm.expectRevert(Vault.InsufficientShares.selector);
         vault.withdraw(11);
+    }
+
+    function test_WithdrawRevertsWhenAssetsInsufficient() public {
+        vm.store(address(vault), _shareBalanceSlot(alice), bytes32(uint256(10)));
+        vm.store(address(vault), bytes32(uint256(0)), bytes32(uint256(5)));
+        vm.store(address(vault), bytes32(uint256(1)), bytes32(uint256(10)));
+
+        vm.prank(alice);
+        vm.expectRevert(Vault.InsufficientAssets.selector);
+        vault.withdraw(10);
+    }
+
+    function test_WithdrawRevertsWhenSupplyInsufficient() public {
+        vm.store(address(vault), _shareBalanceSlot(alice), bytes32(uint256(10)));
+        vm.store(address(vault), bytes32(uint256(0)), bytes32(uint256(10)));
+        vm.store(address(vault), bytes32(uint256(1)), bytes32(uint256(5)));
+
+        vm.prank(alice);
+        vm.expectRevert(Vault.InsufficientSupply.selector);
+        vault.withdraw(10);
     }
 
     function test_MultipleDepositorsConserveTotals() public {

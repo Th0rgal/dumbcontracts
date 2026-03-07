@@ -4,45 +4,20 @@ import Compiler.TypedIRCompiler
 import Compiler.TypedIRCompilerCorrectness
 import Compiler.TypedIRLowering
 import Compiler.Proofs.IRGeneration.IRInterpreter
-import Contracts.Counter
-import Contracts.SimpleStorage
-import Contracts.Owned
-import Contracts.OwnedCounter
-import Contracts.SafeCounter
-import Contracts.Ledger
-import Contracts.SimpleToken
-import Contracts.ERC20
-import Contracts.ERC721
-
-namespace Compiler.Specs
-
-open Compiler.CompilationModel
-
-def simpleStorageSpec : CompilationModel := Contracts.SimpleStorage.spec
-
-def counterSpec : CompilationModel :=
-  let canonical := Contracts.Counter.spec
-  { canonical with
-    functions := canonical.functions.filter fun fn =>
-      fn.name = "increment" || fn.name = "decrement" || fn.name = "getCount" }
-
-def ownedSpec : CompilationModel := Contracts.Owned.spec
-
-def ledgerSpec : CompilationModel := Contracts.Ledger.spec
-
-def ownedCounterSpec : CompilationModel := Contracts.OwnedCounter.spec
-
-def simpleTokenSpec : CompilationModel := Contracts.SimpleToken.spec
-
-def safeCounterSpec : CompilationModel := Contracts.SafeCounter.spec
-
-def erc20Spec : CompilationModel := Contracts.ERC20.spec
-
-def erc721Spec : CompilationModel := Contracts.ERC721.spec
-
-end Compiler.Specs
+import Contracts.SpecAliases
 
 namespace Verity.Core.Free
+
+private def tVarIdNamed? (vars : List TVar) (name : String) : Option Nat :=
+  match vars with
+  | [] => none
+  | v :: rest => if tVarName v == name then some v.id else tVarIdNamed? rest name
+
+private def returnedWordName? : List Compiler.Yul.YulStmt → Option String
+  | [] => none
+  | .expr (.call "mstore" [.lit 0, .ident name]) :: .expr (.call "return" [.lit 0, .lit 32]) :: _ =>
+      some name
+  | _ :: rest => returnedWordName? rest
 
 def x : TVar := { id := 0, ty := .uint256 }
 def y : TVar := { id := 1, ty := .uint256 }
@@ -2459,22 +2434,25 @@ def compiledERC721GetApprovedLoadsApproval : Bool :=
   match compileFunctionNamed Compiler.Specs.erc721Spec "getApproved" with
   | .error _ => false
   | .ok block =>
-      match block.params with
-      | [tokenIdParam] =>
-          let initWorld : Verity.ContractState :=
-            { Verity.defaultState with
-              storageMapUint := fun i key =>
-                if i == 4 && key == 7 then 999
-                else if i == 5 && key == 7 then 333
-                else 0 }
-          let init : TExecState :=
-            { world := initWorld
-              vars := { uint256 := fun i =>
-                          if i = tokenIdParam.id then 7 else 0 } }
-          match evalTBlock init block with
-          | .ok st => st.vars.uint256 2 = 333
-          | _ => false
-      | _ => false
+      match block.params, returnedWordName? (lowerTStmts block.body) with
+      | [tokenIdParam], some returnName =>
+          match tVarIdNamed? (block.params ++ block.locals) returnName with
+          | some returnVarId =>
+              let initWorld : Verity.ContractState :=
+                { Verity.defaultState with
+                  storageMapUint := fun i key =>
+                    if i == 4 && key == 7 then 999
+                    else if i == 5 && key == 7 then 333
+                    else 0 }
+              let init : TExecState :=
+                { world := initWorld
+                  vars := { uint256 := fun i =>
+                              if i = tokenIdParam.id then 7 else 0 } }
+              match evalTBlock init block with
+              | .ok st => st.vars.uint256 returnVarId = 333
+              | _ => false
+          | none => false
+      | _, _ => false
 
 /-- ERC721.getApproved returns the approval word from slot 5. -/
 example : compiledERC721GetApprovedLoadsApproval = true := by native_decide

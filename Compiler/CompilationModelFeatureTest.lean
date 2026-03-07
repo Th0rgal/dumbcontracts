@@ -90,6 +90,43 @@ private def reservedLocalBinderSpec : CompilationModel := {
   ]
 }
 
+private def reservedConstructorParamSpec : CompilationModel := {
+  name := "ReservedConstructorParam"
+  fields := [{ name := "value", ty := FieldType.uint256 }]
+  «constructor» := some {
+    params := [{ name := "__init", ty := ParamType.uint256 }]
+    body := [
+      Stmt.setStorage "value" (Expr.constructorArg 0),
+      Stmt.stop
+    ]
+  }
+  functions := [
+    { name := "load"
+      params := []
+      returnType := some FieldType.uint256
+      body := [Stmt.return (Expr.storage "value")]
+    }
+  ]
+}
+
+private def reservedForEachBinderSpec : CompilationModel := {
+  name := "ReservedForEachBinder"
+  fields := [{ name := "value", ty := FieldType.uint256 }]
+  «constructor» := none
+  functions := [
+    { name := "store"
+      params := []
+      returnType := none
+      body := [
+        Stmt.forEach "__loop_idx" (Expr.literal 1) [
+          Stmt.setStorage "value" (Expr.literal 1)
+        ],
+        Stmt.stop
+      ]
+    }
+  ]
+}
+
 #eval! do
   let compiled :=
     match Compiler.CompilationModel.compile selectorSmokeSpec (selectorsFor selectorSmokeSpec) with
@@ -111,5 +148,13 @@ private def reservedLocalBinderSpec : CompilationModel := {
     "reserved compiler prefix is rejected in local binders"
     reservedLocalBinderSpec
     "local binder '__has_selector' uses reserved compiler prefix '__'"
+  expectCompileErrorContains
+    "reserved compiler prefix is rejected in constructor parameters"
+    reservedConstructorParamSpec
+    "constructor parameter '__init' uses reserved compiler prefix '__'"
+  expectCompileErrorContains
+    "reserved compiler prefix is rejected in forEach binders"
+    reservedForEachBinderSpec
+    "local binder '__loop_idx' uses reserved compiler prefix '__'"
 
 end Compiler.CompilationModelFeatureTest

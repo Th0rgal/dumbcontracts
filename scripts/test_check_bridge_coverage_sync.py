@@ -119,6 +119,29 @@ class BridgeCoverageSyncTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("docs/ARITHMETIC_PROFILE.md is out of sync", output)
 
+    def test_no_remaining_pure_builtin_coverage_is_supported(self) -> None:
+        expected = check.expected_snippets(check.PURE_BUILTINS, [])
+        self.assertIn(
+            "All pure bridge cases are now covered by universal symbolic lemmas.",
+            expected["AUDIT"],
+        )
+        self.assertIn(
+            "concrete bridge smoke tests are no longer needed for any pure builtin",
+            expected["ARITHMETIC_PROFILE"],
+        )
+        self.assertIn(
+            "15/15 pure EVMYulLean-backed builtins have universal bridge lemmas.",
+            expected["ARITHMETIC_PROFILE"],
+        )
+        self.assertIn(
+            "and none still require concrete-only regression coverage",
+            expected["INTERPRETER_FEATURE_MATRIX"],
+        )
+        self.assertIn(
+            "replacement coverage: universal bridge lemmas for all pure bridged builtins.",
+            expected["END_TO_END"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -74,35 +74,74 @@ def expected_snippets(universal: list[str], remaining: list[str]) -> dict[str, l
     count = len(universal)
     universal_codes = code_list(universal)
     remaining_codes = code_list(remaining)
-    remaining_case = "case" if len(remaining) == 1 else "cases"
-    remaining_smoke = "smoke tests" if len(remaining) != 1 else "smoke tests"
-    remaining_guard = "is" if len(remaining) == 1 else "are"
+
+    audit_remaining = (
+        "All pure bridge cases are now covered by universal symbolic lemmas."
+        if not remaining
+        else (
+            f"The remaining pure bridge case ({remaining_codes}) is still covered by concrete regression checks."
+            if len(remaining) == 1
+            else f"The remaining pure bridge cases ({remaining_codes}) are still covered by concrete regression checks."
+        )
+    )
+    axioms_remaining = (
+        "with no remaining pure builtins relying only on concrete bridge checks"
+        if not remaining
+        else (
+            f"while {remaining_codes} is covered by concrete bridge checks"
+            if len(remaining) == 1
+            else f"while {remaining_codes} are covered by concrete bridge checks"
+        )
+    )
+    arithmetic_remaining = (
+        "concrete bridge smoke tests are no longer needed for any pure builtin"
+        if not remaining
+        else f"concrete bridge smoke tests for {remaining_codes}"
+    )
+    arithmetic_summary = (
+        "15/15 pure EVMYulLean-backed builtins have universal bridge lemmas."
+        if not remaining
+        else (
+            f"{count}/15 pure EVMYulLean-backed builtins have universal bridge lemmas; {remaining_codes} still relies on concrete smoke tests."
+            if len(remaining) == 1
+            else f"{count}/15 pure EVMYulLean-backed builtins have universal bridge lemmas; {plain_code_subject(remaining)} still rely on concrete smoke tests."
+        )
+    )
+    interpreter_remaining = (
+        "and none still require concrete-only regression coverage"
+        if not remaining
+        else (
+            f"while {remaining_codes} is currently guarded by concrete regression checks"
+            if len(remaining) == 1
+            else f"while {plain_code_subject(remaining)} are currently guarded by concrete regression checks"
+        )
+    )
+    end_to_end_remaining = (
+        "replacement coverage: universal bridge lemmas for all pure bridged builtins."
+        if not remaining
+        else f"replacement coverage: universal bridge lemmas for all pure bridged builtins except {remaining_codes}, plus concrete smoke tests for {remaining_codes}."
+    )
+
     return {
         "AUDIT": [
             f"{count} universal pure bridge theorems are now proven",
-            f"The remaining pure bridge {remaining_case} ({remaining_codes}) is still covered by concrete regression checks."
-            if len(remaining) == 1
-            else f"The remaining pure bridge {remaining_case} ({remaining_codes}) are still covered by concrete regression checks.",
+            audit_remaining,
         ],
         "AXIOMS": [
             f"The EVMYulLean bridge currently has universal equivalence lemmas for {count} of them ({code_csv(universal)})",
-            f"while {remaining_codes} {remaining_guard} covered by concrete bridge checks",
+            axioms_remaining,
         ],
         "ARITHMETIC_PROFILE": [
             f"universal bridge lemmas for {count} pure builtins: {universal_codes}",
-            f"concrete bridge smoke tests for {remaining_codes}",
-            f"{count}/15 pure EVMYulLean-backed builtins have universal bridge lemmas; {remaining_codes} still relies on concrete smoke tests."
-            if len(remaining) == 1
-            else f"{count}/15 pure EVMYulLean-backed builtins have universal bridge lemmas; {plain_code_subject(remaining)} still rely on concrete smoke tests.",
+            arithmetic_remaining,
+            arithmetic_summary,
         ],
         "INTERPRETER_FEATURE_MATRIX": [
             f"{count} are discharged by universal symbolic lemmas",
-            f"while {remaining_codes} is currently guarded by concrete regression checks"
-            if len(remaining) == 1
-            else f"while {plain_code_subject(remaining)} are currently guarded by concrete regression checks",
+            interpreter_remaining,
         ],
         "END_TO_END": [
-            f"replacement coverage: universal bridge lemmas for all pure bridged builtins except {remaining_codes}, plus concrete smoke tests for {remaining_codes}.",
+            end_to_end_remaining,
         ],
     }
 

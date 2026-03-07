@@ -257,6 +257,30 @@ private def stringEventMismatchSpec : CompilationModel := {
   ]
 }
 
+private def stringArrayEventSpec : CompilationModel := {
+  name := "StringArrayEvents"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "log"
+      params := [{ name := "messages", ty := ParamType.array ParamType.string }]
+      returnType := none
+      body := [
+        Stmt.emit "MessageBatch" [Expr.param "messages", Expr.param "messages"],
+        Stmt.stop
+      ]
+    }
+  ]
+  events := [
+    { name := "MessageBatch"
+      params := [
+        { name := "body", ty := ParamType.array ParamType.string, kind := EventParamKind.unindexed },
+        { name := "topicBody", ty := ParamType.array ParamType.string, kind := EventParamKind.indexed }
+      ]
+    }
+  ]
+}
+
 #eval! do
   let compiled :=
     match Compiler.CompilationModel.compile selectorSmokeSpec (selectorsFor selectorSmokeSpec) with
@@ -314,5 +338,10 @@ private def stringEventMismatchSpec : CompilationModel := {
     "string events reject bytes parameters"
     stringEventMismatchSpec
     "event 'MessageLogged' param 'message' expects"
+  let stringArrayEventsCompile :=
+    match Compiler.CompilationModel.compile stringArrayEventSpec (selectorsFor stringArrayEventSpec) with
+    | .ok _ => true
+    | .error _ => false
+  expectTrue "string[] event emission compiles for indexed and unindexed params" stringArrayEventsCompile
 
 end Compiler.CompilationModelFeatureTest

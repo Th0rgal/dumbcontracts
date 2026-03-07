@@ -90,7 +90,7 @@ def compileEmit (fields : List Field) (events : List EventDef)
               | _ =>
                   throw s!"Compilation error: unindexed dynamic-bytes event param '{p.name}' in event '{eventName}' currently requires direct bytes/string parameter reference ({issue586Ref})."
           | ParamType.array elemTy =>
-              if elemTy == ParamType.bytes then
+              if elemTy == ParamType.bytes || elemTy == ParamType.string then
                   match srcExpr with
                   | Expr.param name =>
                       let lenName := s!"__evt_arg{argIdx}_len"
@@ -300,7 +300,7 @@ def compileEmit (fields : List Field) (events : List EventDef)
             throw s!"Compilation error: indexed dynamic-bytes event param '{p.name}' in event '{eventName}' currently requires direct bytes/string parameter reference ({issue586Ref})."
     | ParamType.array elemTy =>
         match elemTy with
-        | ParamType.bytes =>
+        | ParamType.bytes | ParamType.string =>
             match srcExpr with
             | Expr.param name =>
                 let topicName := s!"__evt_topic{idx + 1}"

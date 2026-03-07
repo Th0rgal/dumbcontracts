@@ -180,6 +180,9 @@ emits per-contract JSON that includes:
 - axiomatized primitives used directly by the spec (for example `keccak256`)
 - linked external assumptions (`spec.externals`)
 - ECM assumption entries (`module`, `assumption`)
+- explicit `proofStatus.proved` / `proofStatus.assumed` / `proofStatus.unchecked`
+  buckets for foreign trust surfaces; current linked externals, ECM modules, and
+  axiomatized primitives are reported under `assumed`
 
 ## Trust Model
 

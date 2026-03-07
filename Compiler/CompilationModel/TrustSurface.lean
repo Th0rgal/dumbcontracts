@@ -378,6 +378,24 @@ private def ecmJson (entry : String × String) : String :=
     ("assumption", jsonString entry.2)
   ]
 
+private def proofStatusBucketJson
+    (primitives externals modules : List String) : String :=
+  jsonObject [
+    ("axiomatizedPrimitives", jsonArray (primitives.map jsonString)),
+    ("linkedExternals", jsonArray (externals.map jsonString)),
+    ("ecmModules", jsonArray (modules.map jsonString))
+  ]
+
+private def proofStatusJson (spec : CompilationModel) : String :=
+  let axiomatizedPrimitives := collectAxiomatizedPrimitives spec
+  let linkedExternals := (collectUsedExternalAssumptions spec).map Prod.fst
+  let ecmModules := (collectEcmAxioms spec).map Prod.fst
+  jsonObject [
+    ("proved", proofStatusBucketJson [] [] []),
+    ("assumed", proofStatusBucketJson axiomatizedPrimitives linkedExternals ecmModules),
+    ("unchecked", proofStatusBucketJson [] [] [])
+  ]
+
 /-- Render the machine-readable trust report consumed by CLI/tests. -/
 def emitTrustReportJson (specs : List CompilationModel) : String :=
   jsonObject [
@@ -389,6 +407,7 @@ where
       ("contract", jsonString spec.name),
       ("modeledLowLevelMechanics", jsonArray ((collectLowLevelMechanics spec).map jsonString)),
       ("axiomatizedPrimitives", jsonArray ((collectAxiomatizedPrimitives spec).map jsonString)),
+      ("proofStatus", proofStatusJson spec),
       ("proofBoundary", jsonObject [
         ("compilerModelsMechanics", "true"),
         ("proofInterpretersModelMechanics", "false"),

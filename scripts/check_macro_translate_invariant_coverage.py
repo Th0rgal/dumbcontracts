@@ -23,21 +23,37 @@ MACRO_SPECS_DEF_RE = re.compile(
 )
 
 
-def _collect_contracts_from_text(text: str) -> set[str]:
-    names: set[str] = set()
+def _collect_contracts_from_text(text: str) -> list[str]:
+    names: list[str] = []
     guard_pending = False
+    block_comment_depth = 0
     for line in text.splitlines():
         stripped = line.strip()
+        if block_comment_depth > 0:
+            block_comment_depth += stripped.count("/-")
+            block_comment_depth -= stripped.count("-/")
+            continue
+        if stripped.startswith("/-"):
+            block_comment_depth += stripped.count("/-")
+            block_comment_depth -= stripped.count("-/")
+            if block_comment_depth > 0 or stripped == "":
+                continue
+            if stripped.endswith("-/"):
+                continue
         if stripped == "#guard_msgs in":
             guard_pending = True
             continue
         match = CONTRACT_RE.search(line)
+        if guard_pending:
+            if not stripped or stripped.startswith("--"):
+                continue
+            if match is not None:
+                guard_pending = False
+                continue
+            guard_pending = False
         if match is None:
             continue
-        if guard_pending:
-            guard_pending = False
-            continue
-        names.add(match.group(1))
+        names.append(match.group(1))
     return names
 
 

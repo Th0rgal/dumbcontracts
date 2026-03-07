@@ -35,7 +35,49 @@ class MacroTranslateInvariantCoverageTests(unittest.TestCase):
 
         self.assertEqual(
             check_macro_translate_invariant_coverage._collect_contracts_from_text(text),
-            {"HappyPath"},
+            ["HappyPath"],
+        )
+
+    def test_collect_contracts_resets_guard_after_non_contract_command(self) -> None:
+        text = """
+        #guard_msgs in
+        #check Uint256
+
+        verity_contract HappyPath where
+          storage
+            counter : Uint256 := slot 0
+          function read () : Uint256 := do
+            return 0
+        """
+
+        self.assertEqual(
+            check_macro_translate_invariant_coverage._collect_contracts_from_text(text),
+            ["HappyPath"],
+        )
+
+    def test_collect_contracts_keeps_guard_through_comments(self) -> None:
+        text = """
+        #guard_msgs in
+        -- keep guarding the next contract
+        /-
+        multi-line comment
+        -/
+        verity_contract NegativeFixture where
+          storage
+            counter : Uint256 := slot 0
+          function read () : Uint256 := do
+            return 0
+
+        verity_contract HappyPath where
+          storage
+            counter : Uint256 := slot 1
+          function readAgain () : Uint256 := do
+            return 1
+        """
+
+        self.assertEqual(
+            check_macro_translate_invariant_coverage._collect_contracts_from_text(text),
+            ["HappyPath"],
         )
 
 

@@ -43,6 +43,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.StorageWordsSmoke.spec
   , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.Smoke.StatelessSmoke.spec
+  , Contracts.Smoke.InitializerSmoke.spec
   , Contracts.Smoke.ConstantSmoke.spec
   , Contracts.Smoke.TupleSmoke.spec
   , Contracts.Smoke.Uint8Smoke.spec
@@ -139,10 +140,16 @@ private def runRoundTripTrials
     Nat → FuzzRng → IO FuzzRng
   | 0, rng => pure rng
   | trial + 1, rng => do
-      let (rng, senderRaw) := fuzzWord rng
+      let senderSample := fuzzWord rng
+      let rng := senderSample.1
+      let senderRaw := senderSample.2
       let sender := senderRaw % (2^160)
-      let (rng, args) := fuzzArgsForParams fn.params rng
-      let (rng, storageEntries) := fuzzStorageEntries slots rng
+      let argsSample := fuzzArgsForParams fn.params rng
+      let rng := argsSample.1
+      let args := argsSample.2
+      let storageSample := fuzzStorageEntries slots rng
+      let rng := storageSample.1
+      let storageEntries := storageSample.2
       let initialState : IRState :=
         { vars := []
           «storage» := storageOfEntries storageEntries

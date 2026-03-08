@@ -121,6 +121,23 @@ verity_contract ImmutableSmoke where
   function shadowed (seededSupply : Uint256) : Uint256 := do
     return seededSupply
 
+verity_contract TypedImmutableSmoke where
+  storage
+
+  immutables
+    paused : Bool := true
+    feeBps : Uint8 := 7
+    domainTag : Bytes32 := 42
+
+  function isPaused () : Bool := do
+    return paused
+
+  function feeScale () : Uint8 := do
+    return feeBps
+
+  function domainSeparator () : Bytes32 := do
+    return domainTag
+
 verity_contract InitializerSmoke where
   storage
     initializedVersion : Uint256 := slot 0
@@ -171,18 +188,54 @@ verity_contract ConstantRuntimeBuiltinRejected where
 end ConstantRuntimeBuiltinRejected
 
 /--
-error: contract immutables currently support only Uint256 and Address; 'paused' uses unsupported type
+error: contract immutables currently support only Uint256, Uint8, Address, Bytes32, and Bool; 'metadata' uses unsupported type
 -/
 #guard_msgs in
 verity_contract ImmutableTypeRejected where
   storage
 
   immutables
-    paused : Bool := true
+    metadata : String := "paused"
 
-  function isPaused () : Bool := do
-    return paused
+  function metadataWord () : Uint256 := do
+    return 0
 end ImmutableTypeRejected
+
+/--
+error: type mismatch
+  true
+has type
+  Bool : Type
+but is expected to have type
+  Uint256 : Type
+-/
+#guard_msgs in
+verity_contract ImmutableBoolAssignedToWordRejected where
+  storage
+
+  immutables
+    fee : Uint256 := true
+
+  function feeWord () : Uint256 := do
+    return fee
+
+/--
+error: type mismatch
+  true
+has type
+  Bool : Type
+but is expected to have type
+  Address : Type
+-/
+#guard_msgs in
+verity_contract ImmutableBoolAssignedToAddressRejected where
+  storage
+
+  immutables
+    owner : Address := true
+
+  function ownerAddr () : Address := do
+    return owner
 
 /--
 error: immutable 'owner' conflicts with a storage field of the same name

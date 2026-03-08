@@ -160,7 +160,6 @@ verity_contract InitializerGuardFieldTypeRejected where
 
   function initOwner () initializer(owner) : Unit := do
     pure ()
-end InitializerGuardFieldTypeRejected
 
 /--
 error: reinitializer version must be greater than 0
@@ -185,7 +184,6 @@ verity_contract ConstantRuntimeBuiltinRejected where
 
   function seeded () : Uint256 := do
     return seededAt
-end ConstantRuntimeBuiltinRejected
 
 /--
 error: contract immutables currently support only Uint256, Uint8, Address, Bytes32, and Bool; 'metadata' uses unsupported type
@@ -199,15 +197,9 @@ verity_contract ImmutableTypeRejected where
 
   function metadataWord () : Uint256 := do
     return 0
-end ImmutableTypeRejected
 
 /--
-error: type mismatch
-  true
-has type
-  Bool : Type
-but is expected to have type
-  Uint256 : Type
+error: immutable 'fee' expects Verity.Macro.ValueType.uint256, got Verity.Macro.ValueType.bool
 -/
 #guard_msgs in
 verity_contract ImmutableBoolAssignedToWordRejected where
@@ -220,12 +212,7 @@ verity_contract ImmutableBoolAssignedToWordRejected where
     return fee
 
 /--
-error: type mismatch
-  true
-has type
-  Bool : Type
-but is expected to have type
-  Address : Type
+error: immutable 'owner' expects Verity.Macro.ValueType.address, got Verity.Macro.ValueType.bool
 -/
 #guard_msgs in
 verity_contract ImmutableBoolAssignedToAddressRejected where
@@ -250,7 +237,6 @@ verity_contract ImmutableStorageNameConflictRejected where
 
   function getOwner () : Address := do
     return owner
-end ImmutableStorageNameConflictRejected
 
 /--
 error: immutable 'basisPoints' conflicts with a contract constant of the same name
@@ -267,7 +253,6 @@ verity_contract ImmutableConstantNameConflictRejected where
 
   function getBasisPoints () : Uint256 := do
     return basisPoints
-end ImmutableConstantNameConflictRejected
 
 /--
 error: duplicate immutable declaration 'seededSupply'
@@ -282,7 +267,6 @@ verity_contract DuplicateImmutableRejected where
 
   function getSeededSupply () : Uint256 := do
     return seededSupply
-end DuplicateImmutableRejected
 
 /--
 error: duplicate storage field declaration 'owner'
@@ -295,7 +279,6 @@ verity_contract DuplicateStorageFieldRejected where
 
   function getOwner () : Address := do
     return zeroAddress
-end DuplicateStorageFieldRejected
 
 /--
 error: constant 'owner' conflicts with a storage field of the same name
@@ -310,7 +293,6 @@ verity_contract ConstantStorageNameConflictRejected where
 
   function ownerWord () : Uint256 := do
     return owner
-end ConstantStorageNameConflictRejected
 
 /--
 error: duplicate constant declaration 'basisPoints'
@@ -325,7 +307,6 @@ verity_contract DuplicateConstantRejected where
 
   function getBasisPoints () : Uint256 := do
     return basisPoints
-end DuplicateConstantRejected
 
 /--
 error: function 'owner' conflicts with a storage field of the same name
@@ -337,7 +318,6 @@ verity_contract FunctionStorageNameConflictRejected where
 
   function owner () : Address := do
     return zeroAddress
-end FunctionStorageNameConflictRejected
 
 /--
 error: function 'fee' conflicts with a contract constant of the same name
@@ -351,7 +331,6 @@ verity_contract FunctionConstantNameConflictRejected where
 
   function fee () : Uint256 := do
     return 0
-end FunctionConstantNameConflictRejected
 
 /--
 error: duplicate function declaration 'echo'
@@ -365,7 +344,6 @@ verity_contract DuplicateFunctionRejected where
 
   function echo () : Uint256 := do
     return 2
-end DuplicateFunctionRejected
 
 /--
 error: storage field 'spec' conflicts with reserved generated declaration 'spec'
@@ -377,7 +355,6 @@ verity_contract ReservedSpecStorageNameRejected where
 
   function owner () : Address := do
     return zeroAddress
-end ReservedSpecStorageNameRejected
 
 /--
 error: function 'settle_model' conflicts with reserved generated declaration 'settle_model'
@@ -391,7 +368,6 @@ verity_contract FunctionGeneratedHelperNameRejected where
 
   function settle_model () : Uint256 := do
     return 2
-end FunctionGeneratedHelperNameRejected
 
 /--
 error: function 'price' generates helper 'price_model' that conflicts with a contract constant of the same name
@@ -405,7 +381,6 @@ verity_contract ConstantFunctionHelperCollisionRejected where
 
   function price () : Uint256 := do
     return 3
-end ConstantFunctionHelperCollisionRejected
 
 verity_contract TupleSmoke where
   storage
@@ -575,7 +550,6 @@ verity_contract ERC20HelperShadowReadRejected where
   function readShadowedBalance (token : Address, owner : Address) : Uint256 := do
     let balance ← balanceOf token owner
     return balance
-end ERC20HelperShadowReadRejected
 
 /--
 error: ERC-20 helper form 'safeTransfer' conflicts with contract function 'safeTransfer'; rename the function or avoid the direct helper syntax here
@@ -590,7 +564,6 @@ verity_contract ERC20HelperShadowWriteRejected where
 
   function writeShadowedTransfer (token : Address, to : Address, amount : Uint256) : Unit := do
     safeTransfer token to amount
-end ERC20HelperShadowWriteRejected
 
 /--
 error: linked external 'describe' uses unsupported parameter type; executable externalCall currently supports only Uint256, Uint8, Address, Bytes32, and Bool
@@ -603,7 +576,6 @@ verity_contract ExternalCallUnsupportedType where
 
   function noop () : Unit := do
     pure ()
-end ExternalCallUnsupportedType
 
 /--
 error: linked external 'fanout' currently supports at most one return value; statement-style external bindings are not exposed from verity_contract yet
@@ -616,7 +588,6 @@ verity_contract ExternalCallUnsupportedMultiReturn where
 
   function noop () : Unit := do
     pure ()
-end ExternalCallUnsupportedMultiReturn
 
 /--
 error: field 'approvals' is a nested struct mapping; use structMember2/setStructMember2
@@ -629,7 +600,6 @@ verity_contract StructMappingWrongReadAccessor where
   function approvalOf (owner : Address, spender : Address) : Uint256 := do
     let amount ← structMember "approvals" owner "allowance"
     return amount
-end StructMappingWrongReadAccessor
 
 /--
 error: field 'approvals' is a nested struct mapping; use structMember2
@@ -642,7 +612,6 @@ verity_contract StructMappingWrongLegacyReadAccessor where
   function approvalOf (owner : Address, spender : Address) : Uint256 := do
     let amount ← getMapping2 approvals owner spender
     return amount
-end StructMappingWrongLegacyReadAccessor
 
 /--
 error: field 'positions' is not a nested struct mapping
@@ -654,7 +623,6 @@ verity_contract StructMappingWrongWriteAccessor where
 
   function setDelegate (owner : Address, delegate_ : Address) : Unit := do
     setStructMember2 "positions" owner owner "delegate" delegate_
-end StructMappingWrongWriteAccessor
 
 /--
 error: field 'positions' is a struct-valued mapping; use setStructMember
@@ -666,7 +634,6 @@ verity_contract StructMappingWrongLegacyWriteAccessor where
 
   function setDelegate (owner : Address, delegate_ : Address) : Unit := do
     setMapping2 positions owner owner delegate_
-end StructMappingWrongLegacyWriteAccessor
 
 /--
 error: unknown struct member 'nonce' on field 'positions'
@@ -678,7 +645,6 @@ verity_contract StructMappingUnknownMember where
 
   function setNonce (owner : Address, value : Uint256) : Unit := do
     setStructMember "positions" owner "nonce" value
-end StructMappingUnknownMember
 
 /--
 error: field 'positions' is a struct-valued mapping; use structMember/structMember2
@@ -691,7 +657,6 @@ verity_contract StructMappingWrongScalarReadAccessor where
   function positionWord () : Uint256 := do
     let word ← getStorage positions
     return word
-end StructMappingWrongScalarReadAccessor
 
 /--
 error: field 'positions' is a struct-valued mapping; use structMember/structMember2
@@ -704,7 +669,6 @@ verity_contract StructMappingWrongScalarAddressReadAccessor where
   function delegateWord () : Address := do
     let word ← getStorageAddr positions
     return word
-end StructMappingWrongScalarAddressReadAccessor
 
 namespace SpecGenSmoke
 

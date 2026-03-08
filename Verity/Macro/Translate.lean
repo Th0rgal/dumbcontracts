@@ -770,6 +770,14 @@ private def requireSameOrWordLikeTypes (stx : Syntax) (context : String) (lhsTy 
     throwErrorAt stx
       s!"{context} requires matching branch types, got {renderValueType lhsTy} and {renderValueType rhsTy}"
 
+private def requireDeclaredValueType
+    (stx : Syntax)
+    (context : String)
+    (expectedTy actualTy : ValueType) : CommandElabM Unit := do
+  unless actualTy == expectedTy || (isWordLikeValueType actualTy && isWordLikeValueType expectedTy) do
+    throwErrorAt stx
+      s!"{context} expects {renderValueType expectedTy}, got {renderValueType actualTy}"
+
 mutual
 private partial def inferPureExprType
     (fields : Array StorageFieldDecl)
@@ -1887,6 +1895,12 @@ private def validateFunctionBodyExprTypes
       pure ()
   | _ => throwErrorAt fn.body "function body must be a do block"
 
+private def validateConstantExprTypes
+    (constDecls : Array ConstantDecl) : CommandElabM Unit := do
+  for constant in constDecls do
+    let inferredTy ← inferPureExprType #[] constDecls #[] #[] #[] #[] constant.body
+    requireDeclaredValueType constant.body s!"constant '{constant.name}'" constant.ty inferredTy
+
 private def validateConstructorBodyExprTypes
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
@@ -2736,6 +2750,7 @@ def mkConstantDefCommandPublic (constant : ConstantDecl) : CommandElabM Cmd :=
 def validateConstantDeclsPublic (constDecls : Array ConstantDecl) : CommandElabM Unit := do
   for constant in constDecls do
     validateConstantBody constDecls constant.body [constant.name]
+  validateConstantExprTypes constDecls
 
 def validateGeneratedDefNamesPublic
     (fields : Array StorageFieldDecl)
@@ -2812,7 +2827,8 @@ def validateImmutableDeclsPublic
   let ctorParams := ctor.map (·.params) |>.getD #[]
   for imm in immutableDecls do
     validateImmutableType imm
-    validateImmutableBodyType imm ctorParams
+    let inferredTy ← inferPureExprType fields constDecls #[] #[] ctorParams #[] imm.body
+    requireDeclaredValueType imm.body s!"immutable '{imm.name}'" imm.ty inferredTy
     if fields.any (fun field => field.name == imm.name) then
       throwErrorAt imm.ident
         s!"immutable '{imm.name}' conflicts with a storage field of the same name"

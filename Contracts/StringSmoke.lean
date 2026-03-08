@@ -32,7 +32,6 @@ verity_contract StringStorageUnsupported where
 
   function echoString () : Unit := do
     pure ()
-end StringStorageUnsupported
 
 /--
 error: equality is currently supported only for Bool and word-like values (Uint256, Uint8, Address, Bytes32); got Verity.Macro.ValueType.string and Verity.Macro.ValueType.string
@@ -44,7 +43,6 @@ verity_contract StringEqUnsupported where
 
   function same (lhs : String, rhs : String) : Bool := do
     return (lhs == rhs)
-end StringEqUnsupported
 
 /--
 error: logical operator requires Bool, got Verity.Macro.ValueType.string
@@ -59,7 +57,23 @@ verity_contract StringLogicalUnsupported where
       return 1
     else
       return 0
-end StringLogicalUnsupported
+
+/--
+error: equality is currently supported only for Bool and word-like values (Uint256, Uint8, Address, Bytes32); got Verity.Macro.ValueType.string and Verity.Macro.ValueType.string
+-/
+#guard_msgs in
+verity_contract StringImmutableEqUnsupported where
+  storage
+    sentinel : Uint256 := slot 0
+
+  immutables
+    bad : Bool := (lhs == rhs)
+
+  constructor (lhs : String, rhs : String) := do
+    pure ()
+
+  function same () : Bool := do
+    return bad
 
 #check_contract StringSmoke
 

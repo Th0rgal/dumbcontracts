@@ -367,6 +367,46 @@ verity_contract DuplicateFunctionRejected where
     return 2
 end DuplicateFunctionRejected
 
+/--
+error: storage field 'spec' conflicts with reserved generated declaration 'spec'
+-/
+#guard_msgs in
+verity_contract ReservedSpecStorageNameRejected where
+  storage
+    spec : Address := slot 0
+
+  function owner () : Address := do
+    return zeroAddress
+end ReservedSpecStorageNameRejected
+
+/--
+error: function 'settle_model' conflicts with reserved generated declaration 'settle_model'
+-/
+#guard_msgs in
+verity_contract FunctionGeneratedHelperNameRejected where
+  storage
+
+  function settle () : Uint256 := do
+    return 1
+
+  function settle_model () : Uint256 := do
+    return 2
+end FunctionGeneratedHelperNameRejected
+
+/--
+error: function 'price' generates helper 'price_model' that conflicts with a contract constant of the same name
+-/
+#guard_msgs in
+verity_contract ConstantFunctionHelperCollisionRejected where
+  storage
+
+  constants
+    price_model : Uint256 := 7
+
+  function price () : Uint256 := do
+    return 3
+end ConstantFunctionHelperCollisionRejected
+
 verity_contract TupleSmoke where
   storage
     values : Uint256 → Uint256 := slot 0

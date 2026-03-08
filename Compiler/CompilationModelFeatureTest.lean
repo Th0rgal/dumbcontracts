@@ -706,6 +706,25 @@ private def erc4626ConvertToSharesSmokeSpec : CompilationModel := {
   ]
 }
 
+private def erc4626TotalAssetsSmokeSpec : CompilationModel := {
+  name := "ERC4626TotalAssetsSmoke"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "totalAssets"
+      params := [{ name := "vault", ty := ParamType.address }]
+      returnType := none
+      returns := [ParamType.uint256]
+      body := [
+        Compiler.Modules.ERC4626.totalAssets
+          "assets"
+          (Expr.param "vault"),
+        Stmt.returnValues [Expr.localVar "assets"]
+      ]
+    }
+  ]
+}
+
 #eval! do
   let compiled :=
     match Compiler.CompilationModel.compile selectorSmokeSpec (selectorsFor selectorSmokeSpec) with
@@ -889,6 +908,16 @@ private def erc4626ConvertToSharesSmokeSpec : CompilationModel := {
     (contains erc4626ConvertToSharesYul "if iszero(eq(returndatasize(), 32)) {")
   expectTrue "erc4626 convertToShares ECM ABI-encodes the selector"
     (contains erc4626ConvertToSharesYul "mstore(0, shl(224, 0xc6e6f592))")
+  let erc4626TotalAssetsYul ←
+    expectCompileToYul "erc4626 totalAssets smoke spec" erc4626TotalAssetsSmokeSpec
+  expectTrue "erc4626 totalAssets ECM lowers to staticcall"
+    (contains erc4626TotalAssetsYul "staticcall(gas(), vault, 0, 4, 0, 32)")
+  expectTrue "erc4626 totalAssets ECM forwards revert returndata"
+    (contains erc4626TotalAssetsYul "returndatacopy(0, 0, __erc4626_rds)")
+  expectTrue "erc4626 totalAssets ECM rejects non-32-byte returndata"
+    (contains erc4626TotalAssetsYul "if iszero(eq(returndatasize(), 32)) {")
+  expectTrue "erc4626 totalAssets ECM ABI-encodes the selector"
+    (contains erc4626TotalAssetsYul "mstore(0, shl(224, 0x01e1d114))")
   let macroEcrecoverYul ←
     expectCompileToYul "macro ecrecover smoke spec" MacroEcrecoverSmoke.MacroEcrecover.spec
   expectTrue "macro ecrecover bind elaborates to the same ECM lowering"

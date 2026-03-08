@@ -14,6 +14,8 @@
     exactly one 32-byte return word.
   - `convertToShares`: staticcall `convertToShares(uint256)` and require
     exactly one 32-byte return word.
+  - `totalAssets`: staticcall `totalAssets()` and require exactly one 32-byte
+    return word.
 
   Trust assumption: the target address implements the selected ERC-4626 read
   interface and returns one ABI-encoded `uint256` word.
@@ -28,33 +30,37 @@ open Compiler.Yul
 open Compiler.ECM
 open Compiler.CompilationModel (Stmt Expr)
 
-/-- Shared implementation for read-only ERC-4626 calls that take a single
-    `uint256` argument and return one ABI-encoded `uint256` word. -/
+/-- Shared implementation for read-only ERC-4626 calls that return one
+    ABI-encoded `uint256` word. -/
 private def readUint256Module
     (moduleName : String)
     (axiomName : String)
     (resultVar : String)
     (selector : Nat)
-    (argName : String) : ExternalCallModule where
+    (argNames : List String) : ExternalCallModule where
   name := moduleName
-  numArgs := 2
+  numArgs := 1 + argNames.length
   resultVars := [resultVar]
   writesState := false
   readsState := true
   axioms := [axiomName]
   compile := fun _ctx args => do
-    let (vaultExpr, argExpr) ← match args with
-      | [vault, value] => pure (vault, value)
-      | _ => throw s!"{moduleName} expects 2 arguments (vault, {argName})"
+    let vaultExpr ← match args.head? with
+      | some vault => pure vault
+      | none => throw s!"{moduleName} expects at least 1 argument (vault)"
+    let argExprs := args.drop 1
+    if argExprs.length != argNames.length then
+      throw s!"{moduleName} expects {1 + argNames.length} arguments (vault{if argNames.isEmpty then "" else s!", {String.intercalate ", " argNames}"})"
     let storeSelector := YulStmt.expr (YulExpr.call "mstore" [
       YulExpr.lit 0,
       YulExpr.call "shl" [YulExpr.lit 224, YulExpr.hex selector]
     ])
-    let storeArg := YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, argExpr])
+    let storeArgs := argExprs.zipIdx.map fun (argExpr, idx) =>
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit (4 + idx * 32), argExpr])
     let callExpr := YulExpr.call "staticcall" [
       YulExpr.call "gas" [],
       vaultExpr,
-      YulExpr.lit 0, YulExpr.lit 36,
+      YulExpr.lit 0, YulExpr.lit (4 + argNames.length * 32),
       YulExpr.lit 0, YulExpr.lit 32
     ]
     let revertOnFailure := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__erc4626_success"]) [
@@ -70,13 +76,10 @@ private def readUint256Module
       YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
     ]
     let bindResult := YulStmt.let_ resultVar (YulExpr.call "mload" [YulExpr.lit 0])
-    pure [YulStmt.block [
-      storeSelector,
-      storeArg,
-      YulStmt.let_ "__erc4626_success" callExpr,
-      revertOnFailure,
-      requireSingleWord
-    ], bindResult]
+    pure [YulStmt.block (
+      [storeSelector] ++ storeArgs ++
+      [YulStmt.let_ "__erc4626_success" callExpr, revertOnFailure, requireSingleWord]
+    ), bindResult]
 
 /-- Read-only ERC-4626 `previewDeposit(uint256)` module.
 
@@ -91,7 +94,7 @@ def previewDepositModule (resultVar : String) : ExternalCallModule :=
     "erc4626_previewDeposit_interface"
     resultVar
     0xef8b30f7
-    "assets"
+    ["assets"]
 
 /-- Convenience: create a `Stmt.ecm` for a read-only `previewDeposit(uint256)`
     call. -/
@@ -111,7 +114,7 @@ def previewMintModule (resultVar : String) : ExternalCallModule :=
     "erc4626_previewMint_interface"
     resultVar
     0xb3d7f6b9
-    "shares"
+    ["shares"]
 
 /-- Convenience: create a `Stmt.ecm` for a read-only `previewMint(uint256)`
     call. -/
@@ -131,7 +134,7 @@ def previewWithdrawModule (resultVar : String) : ExternalCallModule :=
     "erc4626_previewWithdraw_interface"
     resultVar
     0x0a28a477
-    "assets"
+    ["assets"]
 
 /-- Convenience: create a `Stmt.ecm` for a read-only `previewWithdraw(uint256)`
     call. -/
@@ -151,7 +154,7 @@ def previewRedeemModule (resultVar : String) : ExternalCallModule :=
     "erc4626_previewRedeem_interface"
     resultVar
     0x4cdad506
-    "shares"
+    ["shares"]
 
 /-- Convenience: create a `Stmt.ecm` for a read-only `previewRedeem(uint256)`
     call. -/
@@ -171,7 +174,7 @@ def convertToAssetsModule (resultVar : String) : ExternalCallModule :=
     "erc4626_convertToAssets_interface"
     resultVar
     0x07a2d13a
-    "shares"
+    ["shares"]
 
 /-- Convenience: create a `Stmt.ecm` for a read-only `convertToAssets(uint256)`
     call. -/
@@ -191,11 +194,30 @@ def convertToSharesModule (resultVar : String) : ExternalCallModule :=
     "erc4626_convertToShares_interface"
     resultVar
     0xc6e6f592
-    "assets"
+    ["assets"]
 
 /-- Convenience: create a `Stmt.ecm` for a read-only `convertToShares(uint256)`
     call. -/
 def convertToShares (resultVar : String) (vault assets : Expr) : Stmt :=
   .ecm (convertToSharesModule resultVar) [vault, assets]
+
+/-- Read-only ERC-4626 `totalAssets()` module.
+
+    It ABI-encodes the canonical `totalAssets()` selector, performs a
+    `staticcall`, forwards revert returndata on failure, requires exactly one
+    32-byte return word, and binds that word to `resultVar`.
+
+    Arguments passed to the module are `[vault]`. -/
+def totalAssetsModule (resultVar : String) : ExternalCallModule :=
+  readUint256Module
+    "totalAssets"
+    "erc4626_totalAssets_interface"
+    resultVar
+    0x01e1d114
+    []
+
+/-- Convenience: create a `Stmt.ecm` for a read-only `totalAssets()` call. -/
+def totalAssets (resultVar : String) (vault : Expr) : Stmt :=
+  .ecm (totalAssetsModule resultVar) [vault]
 
 end Compiler.Modules.ERC4626

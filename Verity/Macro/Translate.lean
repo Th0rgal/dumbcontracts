@@ -1175,6 +1175,31 @@ private partial def translateDoElem
                 [ $[$bodyStmts],* ]))],
               locals,
               mutableLocals)
+      | `(doElem| requireError $cond:term $errorName:ident($args,*)) =>
+          let argExprs ← args.getElems.mapM (translatePureExpr fields params locals)
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.requireError
+                    $(← translatePureExpr fields params locals cond)
+                    $(strTerm (toString errorName.getId))
+                    [ $[$argExprs],* ]))],
+              locals,
+              mutableLocals)
+      | `(doElem| revert $errorName:ident($args,*)) =>
+          let argExprs ← args.getElems.mapM (translatePureExpr fields params locals)
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.revertError
+                    $(strTerm (toString errorName.getId))
+                    [ $[$argExprs],* ]))],
+              locals,
+              mutableLocals)
+      | `(doElem| revertError $errorName:ident($args,*)) =>
+          let argExprs ← args.getElems.mapM (translatePureExpr fields params locals)
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.revertError
+                    $(strTerm (toString errorName.getId))
+                    [ $[$argExprs],* ]))],
+              locals,
+              mutableLocals)
       | `(doElem| $stmt:term) =>
           pure (#[(← translateEffectStmt fields params locals stmt)], locals, mutableLocals)
       | _ => throwErrorAt elem "unsupported do element"

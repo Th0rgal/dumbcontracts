@@ -18,6 +18,9 @@ syntax "MappingStruct(" term "," "[" sepBy(verityStructMember, ",") "]" ")" : te
 syntax "MappingStruct2(" term "," term "," "[" sepBy(verityStructMember, ",") "]" ")" : term
 syntax ident " : " term : verityParam
 syntax "error " ident "(" sepBy(term, ",") ")" : verityError
+syntax "revert " ident "(" sepBy(term, ",") ")" : doElem
+syntax "revertError " ident "(" sepBy(term, ",") ")" : doElem
+syntax "requireError " term:max ppSpace ident "(" sepBy(term, ",") ")" : doElem
 syntax "constructor " "(" sepBy(verityParam, ",") ")" " := " term : verityConstructor
 syntax "function " ident " (" sepBy(verityParam, ",") ")" " : " term " := " term : verityFunction
 

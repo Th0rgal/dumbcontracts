@@ -11,6 +11,14 @@ open Verity hiding pure bind
 open Verity.EVM.Uint256
 open Verity.Stdlib.Math
 
+macro_rules
+  | `(doElem| revert $errorName:ident($_args,*)) =>
+      `(doElem| require false $(Lean.quote (toString errorName.getId)))
+  | `(doElem| revertError $errorName:ident($_args,*)) =>
+      `(doElem| require false $(Lean.quote (toString errorName.getId)))
+  | `(doElem| requireError $cond:term $errorName:ident($_args,*)) =>
+      `(doElem| if $cond then pure () else require false $(Lean.quote (toString errorName.getId)))
+
 
 def bitAnd (a b : Uint256) : Uint256 := Verity.Core.Uint256.and a b
 def bitOr (a b : Uint256) : Uint256 := Verity.Core.Uint256.or a b

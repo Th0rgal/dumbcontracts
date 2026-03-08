@@ -76,6 +76,7 @@ def baseWorld : Verity.ContractState :=
     msgValue := 11
     blockTimestamp := 13
     blockNumber := 17
+    chainId := 19
   }
 
 def baseState : TExecState :=
@@ -138,6 +139,20 @@ def compileModExprSucceeds : Bool :=
           (Compiler.CompilationModel.Expr.literal 10)
           (Compiler.CompilationModel.Expr.literal 3))]).run {} with
   | .ok _ => true
+  | .error _ => false
+
+def compileChainidLoweringShapeOk : Bool :=
+  match (compileStmts []
+      [Compiler.CompilationModel.Stmt.return
+        Compiler.CompilationModel.Expr.chainid]).run {} with
+  | .ok st =>
+      let rendered := reprStr st.2.body.toList
+      contains rendered "returnUint" &&
+      contains rendered "chainid" &&
+      match lowerTStmts st.2.body.toList with
+      | [ .expr (.call "mstore" [.lit 0, .call "chainid" []])
+        , .expr (.call "return" [.lit 0, .lit 32]) ] => true
+      | _ => false
   | .error _ => false
 
 def compileRawLogSucceeds : Bool :=
@@ -331,6 +346,9 @@ example : compileDivExprSucceeds = true := by native_decide
 /-- Typed-IR compiler accepts source-level `Expr.mod`. -/
 example : compileModExprSucceeds = true := by native_decide
 
+/-- Typed-IR compiler preserves `chainid` through typed lowering. -/
+example : compileChainidLoweringShapeOk = true := by native_decide
+
 /-- Typed-IR compiler accepts source-level `Stmt.rawLog`. -/
 example : compileRawLogSucceeds = true := by native_decide
 
@@ -388,14 +406,22 @@ example :
     evalTExpr baseState TExpr.blockNumber = (17 : Verity.Core.Uint256) := by
   simp [baseState, evalTExpr, baseWorld, Verity.Env.ofWorld]
 
+example :
+    evalTExpr baseState TExpr.chainid = (19 : Verity.Core.Uint256) := by
+  simp [baseState, evalTExpr, baseWorld, Verity.Env.ofWorld]
+
 def envOverrideState : TExecState :=
   { world := baseWorld
-    env := { sender := 99, thisAddress := 100, msgValue := 101, blockTimestamp := 102, blockNumber := 103 }
+    env := { sender := 99, thisAddress := 100, msgValue := 101, blockTimestamp := 102, blockNumber := 103, chainId := 104 }
     vars := baseState.vars }
 
 /-- Context expressions read from explicit `TExecState.env`, not from world fields. -/
 example :
     evalTExpr envOverrideState TExpr.sender = (99 : Verity.Core.Address) := by
+  simp [envOverrideState, evalTExpr]
+
+example :
+    evalTExpr envOverrideState TExpr.chainid = (104 : Verity.Core.Uint256) := by
   simp [envOverrideState, evalTExpr]
 
 /-- Storage updates do not mutate explicit execution environment fields. -/
@@ -612,29 +638,30 @@ private def tVarValueNat (state : Verity.Core.Free.TExecState.{0}) (v : TVar) : 
   | ⟨id, .bool⟩ => if state.vars.bool id then 1 else 0
   | ⟨_, .unit⟩ => 0
 
-private def mkIRStateFromTyped (state : Verity.Core.Free.TExecState.{0}) (block : TBlock) : IRState :=
+private def mkIRStateFromTyped (state : Verity.Core.Free.TExecState.{0}) (block : TBlock) : IRState := by
   let initVars : List (String × Nat) :=
     (block.params ++ block.locals).map (fun v => (tVarName v, tVarValueNat state v))
-  -- Merge typed storage fields into flat EVM storage.  In the EVM there is a
+  -- Merge typed storage fields into flat EVM storage. In the EVM there is a
   -- single `sload`/`sstore` namespace; the typed IR model splits it into
-  -- `storage` (uint256) and `storageAddr` (address) for type safety.  Each
-  -- slot is used by at most one field type, so we overlay the non-default value.
+  -- `storage` (uint256) and `storageAddr` (address) for type safety.
   let flatStorage : Nat → Nat := fun i =>
     let u : Nat := state.world.storage i
     let a : Nat := state.world.storageAddr i
     if a != 0 then a else u
-  { vars := initVars
-    storage := flatStorage
-    memory := fun _ => 0
-    calldata := []
-    returnValue := none
-    sender := state.env.sender
-    msgValue := state.env.msgValue
-    thisAddress := 0
-    blockTimestamp := 0
-    chainId := 0
-    selector := 0
-    events := [] }
+  exact IRState.mk
+    initVars
+    flatStorage
+    (fun _ => 0)
+    []
+    none
+    state.env.sender
+    state.env.msgValue
+    state.env.thisAddress
+    state.env.blockTimestamp
+    state.env.blockNumber
+    state.env.chainId
+    0
+    []
 
 private def execLoweredSlot0 (fuel : Nat) (state : IRState) (block : TBlock) : Option Nat :=
   match execIRStmts fuel state (lowerTBlock block) with
@@ -743,6 +770,17 @@ def compiledCounterGetCountReturn : Option Nat :=
 
 /-- End-to-end Counter getCount: typed IR pipeline returns slot-0 value. -/
 example : compiledCounterGetCountReturn = some 41 := by
+  native_decide
+
+def chainidLoweredReturn : Option Nat :=
+  let block : TBlock :=
+    { params := []
+      locals := []
+      body := [.returnUint TExpr.chainid] }
+  execLoweredReturn 32 (mkIRStateFromTyped envOverrideState block) block
+
+/-- Lowered typed IR reads `chainId` from the explicit execution environment. -/
+example : chainidLoweredReturn = some 104 := by
   native_decide
 
 def compiledSimpleStorageLoweredFinalSlot : Option Nat :=

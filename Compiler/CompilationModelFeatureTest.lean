@@ -277,6 +277,45 @@ example : storeHelperPairTailNameCollisionExecutablePreservesParam = true := by 
 
 end MacroTupleDestructuringSmoke
 
+namespace MacroStatelessSmoke
+
+open Contracts
+open Verity hiding pure bind
+open Verity.EVM.Uint256
+
+verity_contract MacroStateless where
+  storage
+
+  function echoWord (value : Uint256) : Uint256 := do
+    return value
+
+  function callerEcho () : Address := do
+    let sender ← msgSender
+    return sender
+
+def specHasNoFields : Bool :=
+  MacroStateless.spec.fields.isEmpty
+
+example : specHasNoFields = true := by native_decide
+
+def echoWordModelUsesOnlyParams : Bool :=
+  match MacroStateless.echoWord_modelBody with
+  | [Stmt.return (Expr.param "value")] => true
+  | _ => false
+
+example : echoWordModelUsesOnlyParams = true := by native_decide
+
+def callerEchoExecutableReadsSender : Bool :=
+  let state := { Verity.defaultState with sender := Verity.wordToAddress 77 }
+  match MacroStateless.callerEcho state with
+  | .success sender nextState =>
+      sender == Verity.wordToAddress 77 && nextState.sender == state.sender
+  | .revert _ _ => false
+
+example : callerEchoExecutableReadsSender = true := by native_decide
+
+end MacroStatelessSmoke
+
 namespace MacroStructDestructuringSmoke
 
 open Contracts

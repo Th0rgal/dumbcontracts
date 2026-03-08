@@ -484,6 +484,25 @@ private def erc4626ConvertToSharesTrustSurfaceSpec : CompilationModel := {
   ]
 }
 
+private def erc4626TotalAssetsTrustSurfaceSpec : CompilationModel := {
+  name := "ERC4626TotalAssetsTrustSurface"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "totalAssets"
+      params := [{ name := "vault", ty := ParamType.address }]
+      returnType := none
+      returns := [ParamType.uint256]
+      body := [
+        Compiler.Modules.ERC4626.totalAssets
+          "assets"
+          (Expr.param "vault"),
+        Stmt.returnValues [Expr.localVar "assets"]
+      ]
+    }
+  ]
+}
+
 private def expectModuleArtifacts
     (labelPrefix : String)
     (modules : List String)
@@ -773,6 +792,16 @@ unsafe def runTests : IO Unit := do
   if !contains erc4626ConvertToSharesTrustReport "\"assumed\":{\"axiomatizedPrimitives\":[],\"linkedExternals\":[],\"ecmModules\":[\"convertToShares\"]}" then
     throw (IO.userError "✗ erc4626 convertToShares trust report emits assumed ECM proof-status bucket")
   IO.println "✓ erc4626 convertToShares trust report emits standard vault module assumption"
+
+  let erc4626TotalAssetsTrustReport := emitTrustReportJson [erc4626TotalAssetsTrustSurfaceSpec]
+  if !contains erc4626TotalAssetsTrustReport "\"contract\":\"ERC4626TotalAssetsTrustSurface\"" then
+    throw (IO.userError "✗ erc4626 totalAssets trust report emits contract name")
+  if !contains erc4626TotalAssetsTrustReport "\"module\":\"totalAssets\"" ||
+      !contains erc4626TotalAssetsTrustReport "\"assumption\":\"erc4626_totalAssets_interface\"" then
+    throw (IO.userError "✗ erc4626 totalAssets trust report emits module assumption")
+  if !contains erc4626TotalAssetsTrustReport "\"assumed\":{\"axiomatizedPrimitives\":[],\"linkedExternals\":[],\"ecmModules\":[\"totalAssets\"]}" then
+    throw (IO.userError "✗ erc4626 totalAssets trust report emits assumed ECM proof-status bucket")
+  IO.println "✓ erc4626 totalAssets trust report emits standard vault module assumption"
 
   compileSpecsWithOptions [abiSmokeSpec] outDir false [] {} none (some trustReportPath) none
   let writtenTrustReport ← fileExists trustReportPath

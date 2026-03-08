@@ -359,6 +359,36 @@ example : failWithModelUsesDeclaredCustomError = true := by native_decide
 
 end MacroStatelessSectionsSmoke
 
+namespace MacroPayableConstructorSmoke
+
+open Contracts
+open Verity hiding pure bind
+open Verity.EVM.Uint256
+
+verity_contract MacroPayableConstructor where
+  storage
+    owner : Address := slot 0
+
+  constructor (seedOwner : Address) payable := do
+    setStorageAddr owner seedOwner
+
+  function getOwner () : Address := do
+    let currentOwner ← getStorageAddr owner
+    return currentOwner
+
+def specMarksConstructorPayable : Bool :=
+  match MacroPayableConstructor.spec.constructor with
+  | some ctor =>
+      ctor.isPayable &&
+      match ctor.params with
+      | [{ name := "seedOwner", ty := ParamType.address }] => true
+      | _ => false
+  | none => false
+
+example : specMarksConstructorPayable = true := by native_decide
+
+end MacroPayableConstructorSmoke
+
 namespace MacroStructDestructuringSmoke
 
 open Contracts
@@ -558,6 +588,11 @@ private def expectCompileErrorContains (label : String)
 private def compileToYul (spec : CompilationModel) : Except String String := do
   let contract ← Compiler.CompilationModel.compile spec (selectorsFor spec)
   pure <| Compiler.Yul.render (Compiler.emitYul contract)
+
+private def expectCompile (label : String) (spec : CompilationModel) : IO Compiler.IRContract := do
+  match Compiler.CompilationModel.compile spec (selectorsFor spec) with
+  | .ok contract => pure contract
+  | .error err => throw (IO.userError s!"✗ {label} compile failed:\n{err}")
 
 private def expectCompileToYul (label : String) (spec : CompilationModel) : IO String := do
   match compileToYul spec with
@@ -1276,6 +1311,7 @@ private def erc4626DepositSmokeSpec : CompilationModel := {
   ]
 }
 
+set_option maxRecDepth 4096 in
 #eval! do
   let compiled :=
     match Compiler.CompilationModel.compile selectorSmokeSpec (selectorsFor selectorSmokeSpec) with
@@ -1317,6 +1353,18 @@ private def erc4626DepositSmokeSpec : CompilationModel := {
     "reserved compiler prefix is rejected in ECM result binders"
     reservedEcmResultVarSpec
     "local binder '__ecm_result' uses reserved compiler prefix '__'"
+  expectTrue
+    "macro payable constructor preserves constructor isPayable flag"
+    MacroPayableConstructorSmoke.specMarksConstructorPayable
+  let payableCtorAbi := Compiler.ABI.emitContractABIJson MacroPayableConstructorSmoke.MacroPayableConstructor.spec
+  expectTrue "macro payable constructor ABI reports payable state mutability"
+    (contains payableCtorAbi "\"type\": \"constructor\"" &&
+      contains payableCtorAbi "\"stateMutability\": \"payable\"")
+  let payableCtorContract ← expectCompile
+    "macro payable constructor compiles"
+    MacroPayableConstructorSmoke.MacroPayableConstructor.spec
+  expectTrue "macro payable constructor reaches IR with constructorPayable enabled"
+    payableCtorContract.constructorPayable
   let envRuntimeYul ← expectCompileToYul "env runtime smoke compiles" envRuntimeSmokeSpec
   expectTrue "env runtime smoke lowers block.number" (contains envRuntimeYul "number()")
   let stringCompiled :=

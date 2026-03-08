@@ -32,7 +32,7 @@ def elabVerityContract : CommandElab := fun stx => do
     elabCommand (← mkStorageDefCommandPublic (immutableStorageFieldDecl fields imm.1 imm.2))
 
   for fn in functions do
-    let fnCmds ← mkFunctionCommandsPublic fields constDecls immutableDecls fn
+    let fnCmds ← mkFunctionCommandsPublic fields constDecls immutableDecls functions fn
     for cmd in fnCmds do
       elabCommand cmd
     elabCommand (← mkBridgeCommand fn.ident)

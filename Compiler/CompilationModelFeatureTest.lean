@@ -124,6 +124,151 @@ example : storeEchoExecutableUsesStub = true := by native_decide
 
 end MacroExternalSmoke
 
+namespace MacroERC20Smoke
+
+open Contracts
+open Verity hiding pure bind
+open Verity.EVM.Uint256
+
+verity_contract MacroERC20 where
+  storage
+    lastBalance : Uint256 := slot 0
+    lastAllowance : Uint256 := slot 1
+    lastSupply : Uint256 := slot 2
+
+  function pushTokens (token : Address, to : Address, amount : Uint256) : Unit := do
+    safeTransfer token to amount
+
+  function pullTokens (token : Address, fromAddr : Address, to : Address, amount : Uint256) : Unit := do
+    safeTransferFrom token fromAddr to amount
+
+  function approveTokens (token : Address, spender : Address, amount : Uint256) : Unit := do
+    safeApprove token spender amount
+
+  function snapshotBalance (token : Address, owner : Address) : Uint256 := do
+    let balance ← balanceOf token owner
+    setStorage lastBalance balance
+    return balance
+
+  function snapshotAllowance (token : Address, owner : Address, spender : Address) : Uint256 := do
+    let current ← allowance token owner spender
+    setStorage lastAllowance current
+    return current
+
+  function snapshotSupply (token : Address) : Uint256 := do
+    let supply ← totalSupply token
+    setStorage lastSupply supply
+    return supply
+
+def pushTokensModelUsesSafeTransfer : Bool :=
+  match MacroERC20.pushTokens_modelBody with
+  | [Stmt.ecm mod [Expr.param "token", Expr.param "to", Expr.param "amount"], Stmt.stop] =>
+      mod.name == "safeTransfer" &&
+      mod.resultVars.isEmpty &&
+      mod.axioms == ["erc20_transfer_interface"]
+  | _ => false
+
+example : pushTokensModelUsesSafeTransfer = true := by native_decide
+
+def pullTokensModelUsesSafeTransferFrom : Bool :=
+  match MacroERC20.pullTokens_modelBody with
+  | [Stmt.ecm mod [Expr.param "token", Expr.param "fromAddr", Expr.param "to", Expr.param "amount"], Stmt.stop] =>
+      mod.name == "safeTransferFrom" &&
+      mod.resultVars.isEmpty &&
+      mod.axioms == ["erc20_transferFrom_interface"]
+  | _ => false
+
+example : pullTokensModelUsesSafeTransferFrom = true := by native_decide
+
+def approveTokensModelUsesSafeApprove : Bool :=
+  match MacroERC20.approveTokens_modelBody with
+  | [Stmt.ecm mod [Expr.param "token", Expr.param "spender", Expr.param "amount"], Stmt.stop] =>
+      mod.name == "safeApprove" &&
+      mod.resultVars.isEmpty &&
+      mod.axioms == ["erc20_approve_interface"]
+  | _ => false
+
+example : approveTokensModelUsesSafeApprove = true := by native_decide
+
+def snapshotBalanceModelUsesBalanceOfModule : Bool :=
+  match MacroERC20.snapshotBalance_modelBody with
+  | [Stmt.ecm mod [Expr.param "token", Expr.param "owner"],
+      Stmt.setStorage "lastBalance" (Expr.localVar "balance"),
+      Stmt.return (Expr.localVar "balance")] =>
+      mod.name == "balanceOf" &&
+      mod.resultVars == ["balance"] &&
+      mod.axioms == ["erc20_balanceOf_interface"]
+  | _ => false
+
+example : snapshotBalanceModelUsesBalanceOfModule = true := by native_decide
+
+def snapshotAllowanceModelUsesAllowanceModule : Bool :=
+  match MacroERC20.snapshotAllowance_modelBody with
+  | [Stmt.ecm mod [Expr.param "token", Expr.param "owner", Expr.param "spender"],
+      Stmt.setStorage "lastAllowance" (Expr.localVar "current"),
+      Stmt.return (Expr.localVar "current")] =>
+      mod.name == "allowance" &&
+      mod.resultVars == ["current"] &&
+      mod.axioms == ["erc20_allowance_interface"]
+  | _ => false
+
+example : snapshotAllowanceModelUsesAllowanceModule = true := by native_decide
+
+def snapshotSupplyModelUsesTotalSupplyModule : Bool :=
+  match MacroERC20.snapshotSupply_modelBody with
+  | [Stmt.ecm mod [Expr.param "token"],
+      Stmt.setStorage "lastSupply" (Expr.localVar "supply"),
+      Stmt.return (Expr.localVar "supply")] =>
+      mod.name == "totalSupply" &&
+      mod.resultVars == ["supply"] &&
+      mod.axioms == ["erc20_totalSupply_interface"]
+  | _ => false
+
+example : snapshotSupplyModelUsesTotalSupplyModule = true := by native_decide
+
+def snapshotBalanceExecutableUsesStub : Bool :=
+  let token := Verity.wordToAddress 7
+  let owner := Verity.wordToAddress 13
+  match Contracts.balanceOf token owner Verity.defaultState,
+      MacroERC20.snapshotBalance token owner Verity.defaultState with
+  | .success expected _, .success balance state =>
+      balance == expected &&
+      state.storage 0 == expected &&
+      state.storage 1 == 0
+  | .revert _ _, _ => false
+  | _, .revert _ _ => false
+
+example : snapshotBalanceExecutableUsesStub = true := by native_decide
+
+def snapshotAllowanceExecutableUsesStub : Bool :=
+  let token := Verity.wordToAddress 7
+  let owner := Verity.wordToAddress 13
+  let spender := Verity.wordToAddress 17
+  match Contracts.allowance token owner spender Verity.defaultState,
+      MacroERC20.snapshotAllowance token owner spender Verity.defaultState with
+  | .success expected _, .success current state =>
+      current == expected &&
+      state.storage 1 == expected &&
+      state.storage 0 == 0
+  | .revert _ _, _ => false
+  | _, .revert _ _ => false
+
+example : snapshotAllowanceExecutableUsesStub = true := by native_decide
+
+def snapshotSupplyExecutableUsesStub : Bool :=
+  let token := Verity.wordToAddress 7
+  match Contracts.totalSupply token Verity.defaultState,
+      MacroERC20.snapshotSupply token Verity.defaultState with
+  | .success expected _, .success supply state =>
+      supply == expected &&
+      state.storage 2 == expected
+  | .revert _ _, _ => false
+  | _, .revert _ _ => false
+
+example : snapshotSupplyExecutableUsesStub = true := by native_decide
+
+end MacroERC20Smoke
+
 namespace MacroTransientStorageSmoke
 
 open Contracts

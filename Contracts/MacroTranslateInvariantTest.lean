@@ -290,6 +290,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.ZeroAddressShadowSmoke.spec
   , Contracts.Smoke.StructMappingSmoke.spec
   , Contracts.Smoke.ExternalCallSmoke.spec
+  , Contracts.Smoke.ERC20HelperSmoke.spec
   ]
 
 private def functionSignature (fn : FunctionSpec) : String :=
@@ -335,6 +336,9 @@ private def expectedExternalSignatures : List (String × List String) :=
       "delegateOf(address)", "setApproval(address,address,uint256,uint256)", "approvalOf(address,address)",
       "approvalNonce(address,address)"])
   , ("ExternalCallSmoke", ["storeEcho(uint256)", "getEchoedValue()"])
+  , ("ERC20HelperSmoke", ["pushTokens(address,address,uint256)", "pullTokens(address,address,address,uint256)",
+      "approveTokens(address,address,uint256)", "snapshotBalance(address,address)",
+      "snapshotAllowance(address,address,address)", "snapshotSupply(address)"])
   ]
 
 private def expectedExternalSelectors : List (String × List String) :=
@@ -369,6 +373,8 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("StructMappingSmoke", ["0x468c900e", "0xe7933b6a", "0x8d22ea2a", "0xf4536007", "0xcb01943e",
       "0x6c241120"])
   , ("ExternalCallSmoke", ["0x32fdff86", "0x21209dbd"])
+  , ("ERC20HelperSmoke", ["0xa6c29ca3", "0x6aa209a6", "0x912d6e28", "0x48476c71", "0xdac24aaf",
+      "0x7247c4a5"])
   ]
 
 private def expectedFor

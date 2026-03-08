@@ -562,6 +562,22 @@ def Compiler.Modules.Oracle.oracleReadUint256
 
 These are emitted as `Stmt.ecm ...` with explicit module metadata and trust assumptions.
 
+Inside `verity_contract` bodies, the standard ERC-20 helper names lower directly too:
+
+```lean
+safeTransfer token to amount
+safeTransferFrom token fromAddr to amount
+safeApprove token spender amount
+
+let balance <- balanceOf token owner
+let current <- allowance token owner spender
+let supply <- totalSupply token
+```
+
+Those forms compile to the corresponding `Compiler.Modules.ERC20.*Module` ECMs, so macro-only contracts can use the common token wrapper surface without dropping back to handwritten `CompilationModel` specs.
+
+If the contract already defines a same-named function with the matching arity, the macro now rejects the direct ERC-20 helper form instead of silently reinterpreting it. That keeps `balanceOf` / `safeTransfer` helper syntax reserved for ECM lowering and avoids ambiguous model generation.
+
 ### Generic external call with return value
 
 ```lean

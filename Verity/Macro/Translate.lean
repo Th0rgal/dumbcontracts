@@ -1,4 +1,5 @@
 import Lean
+import Compiler.Modules.ERC20
 import Compiler.Modules.Precompiles
 import Verity.Macro.Syntax
 
@@ -1283,15 +1284,105 @@ private def translateSafeRequireBind
           throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd or safeSub"
   | _ => pure none
 
+private def lookupFunctionByNameAndArity
+    (functions : Array FunctionDecl)
+    (name : String)
+    (arity : Nat) : Option FunctionDecl :=
+  functions.find? fun fn => fn.name == name && fn.params.size == arity
+
+private def translateERC20BindStmt?
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
+    (params : Array ParamDecl)
+    (locals : Array String)
+    (varName : String)
+    (rhs : Term) : CommandElabM (Option Term) := do
+  let rhs := stripParens rhs
+  match rhs with
+  | `(term| balanceOf $token:term $owner:term) =>
+      match lookupFunctionByNameAndArity functions "balanceOf" 2 with
+      | some localFn =>
+          throwErrorAt rhs
+            s!"ERC-20 helper form '{localFn.name}' conflicts with contract function '{localFn.name}'; rename the function or avoid the direct helper syntax here"
+      | none =>
+          let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+          let ownerExpr ← translatePureExpr fields constDecls immutableDecls params locals owner
+          pure <| some (← `(Compiler.CompilationModel.Stmt.ecm
+            (Compiler.Modules.ERC20.balanceOfModule $(strTerm varName))
+            [$tokenExpr, $ownerExpr]))
+  | `(term| allowance $token:term $owner:term $spender:term) =>
+      match lookupFunctionByNameAndArity functions "allowance" 3 with
+      | some localFn =>
+          throwErrorAt rhs
+            s!"ERC-20 helper form '{localFn.name}' conflicts with contract function '{localFn.name}'; rename the function or avoid the direct helper syntax here"
+      | none =>
+          let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+          let ownerExpr ← translatePureExpr fields constDecls immutableDecls params locals owner
+          let spenderExpr ← translatePureExpr fields constDecls immutableDecls params locals spender
+          pure <| some (← `(Compiler.CompilationModel.Stmt.ecm
+            (Compiler.Modules.ERC20.allowanceModule $(strTerm varName))
+            [$tokenExpr, $ownerExpr, $spenderExpr]))
+  | `(term| totalSupply $token:term) =>
+      match lookupFunctionByNameAndArity functions "totalSupply" 1 with
+      | some localFn =>
+          throwErrorAt rhs
+            s!"ERC-20 helper form '{localFn.name}' conflicts with contract function '{localFn.name}'; rename the function or avoid the direct helper syntax here"
+      | none =>
+          let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+          pure <| some (← `(Compiler.CompilationModel.Stmt.ecm
+            (Compiler.Modules.ERC20.totalSupplyModule $(strTerm varName))
+            [$tokenExpr]))
+  | _ => pure none
+
 private def translateEffectStmt
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
     (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
     (params : Array ParamDecl)
     (locals : Array String)
     (stx : Term) : CommandElabM Term := do
   let stx := stripParens stx
   match stx with
+  | `(term| safeTransfer $token:term $to:term $amount:term) =>
+      match lookupFunctionByNameAndArity functions "safeTransfer" 3 with
+      | some localFn =>
+          throwErrorAt stx
+            s!"ERC-20 helper form '{localFn.name}' conflicts with contract function '{localFn.name}'; rename the function or avoid the direct helper syntax here"
+      | _ =>
+          let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+          let toExpr ← translatePureExpr fields constDecls immutableDecls params locals to
+          let amountExpr ← translatePureExpr fields constDecls immutableDecls params locals amount
+          `(Compiler.CompilationModel.Stmt.ecm
+              Compiler.Modules.ERC20.safeTransferModule
+              [$tokenExpr, $toExpr, $amountExpr])
+  | `(term| safeTransferFrom $token:term $fromAddr:term $to:term $amount:term) =>
+      match lookupFunctionByNameAndArity functions "safeTransferFrom" 4 with
+      | some localFn =>
+          throwErrorAt stx
+            s!"ERC-20 helper form '{localFn.name}' conflicts with contract function '{localFn.name}'; rename the function or avoid the direct helper syntax here"
+      | _ =>
+          let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+          let fromExpr ← translatePureExpr fields constDecls immutableDecls params locals fromAddr
+          let toExpr ← translatePureExpr fields constDecls immutableDecls params locals to
+          let amountExpr ← translatePureExpr fields constDecls immutableDecls params locals amount
+          `(Compiler.CompilationModel.Stmt.ecm
+              Compiler.Modules.ERC20.safeTransferFromModule
+              [$tokenExpr, $fromExpr, $toExpr, $amountExpr])
+  | `(term| safeApprove $token:term $spender:term $amount:term) =>
+      match lookupFunctionByNameAndArity functions "safeApprove" 3 with
+      | some localFn =>
+          throwErrorAt stx
+            s!"ERC-20 helper form '{localFn.name}' conflicts with contract function '{localFn.name}'; rename the function or avoid the direct helper syntax here"
+      | _ =>
+          let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+          let spenderExpr ← translatePureExpr fields constDecls immutableDecls params locals spender
+          let amountExpr ← translatePureExpr fields constDecls immutableDecls params locals amount
+          `(Compiler.CompilationModel.Stmt.ecm
+              Compiler.Modules.ERC20.safeApproveModule
+              [$tokenExpr, $spenderExpr, $amountExpr])
   | `(term| setStorage $field:ident $value) =>
       let f ← lookupStorageField fields (toString field.getId)
       if f.ty != .scalar .uint256 then
@@ -1486,6 +1577,7 @@ private partial def translateDoElems
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
     (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
     (params : Array ParamDecl)
     (locals : Array String)
     (mutableLocals : Array String)
@@ -1495,7 +1587,7 @@ private partial def translateDoElems
   let mut stmts : Array Term := #[]
   for elem in elems do
     let (newStmts, newLocals, newMutableLocals) ←
-      translateDoElem fields constDecls immutableDecls params branchLocals branchMutableLocals elem
+      translateDoElem fields constDecls immutableDecls functions params branchLocals branchMutableLocals elem
     stmts := stmts ++ newStmts
     branchLocals := newLocals
     branchMutableLocals := newMutableLocals
@@ -1505,19 +1597,21 @@ private partial def translateDoSeqToStmtTerms
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
     (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
     (params : Array ParamDecl)
     (locals : Array String)
     (mutableLocals : Array String)
     (doSeq : DoSeq) : CommandElabM (Array Term) := do
   match doSeq with
   | `(doSeq| $[$elems:doElem]*) =>
-      pure (← (translateDoElems fields constDecls immutableDecls params locals mutableLocals elems)).1
+      pure (← (translateDoElems fields constDecls immutableDecls functions params locals mutableLocals elems)).1
   | _ => throwErrorAt doSeq "unsupported branch body; expected do-sequence"
 
 private partial def translateDoElem
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
     (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
     (params : Array ParamDecl)
     (locals : Array String)
     (mutableLocals : Array String)
@@ -1627,11 +1721,15 @@ private partial def translateDoElem
               match safeBind? with
               | some safeStmts => pure (safeStmts, locals.push varName, mutableLocals)
               | none =>
-                  let rhsExpr ← translateBindSource fields constDecls immutableDecls params locals rhs
-                  pure
-                    (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
-                      locals.push varName,
-                      mutableLocals)
+                  match (← translateERC20BindStmt? fields constDecls immutableDecls functions params locals varName rhs) with
+                  | some stmt =>
+                      pure (#[(stmt)], locals.push varName, mutableLocals)
+                  | none =>
+                      let rhsExpr ← translateBindSource fields constDecls immutableDecls params locals rhs
+                      pure
+                        (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+                          locals.push varName,
+                          mutableLocals)
       | `(doElem| $name:ident := $rhs:term) =>
           let varName := toString name.getId
           if !locals.contains varName then
@@ -1653,8 +1751,8 @@ private partial def translateDoElem
           pure (#[], locals, mutableLocals)
       | `(doElem| if $cond:term then $thenBranch:doSeq else $elseBranch:doSeq) =>
           let condExpr ← translatePureExpr fields constDecls immutableDecls params locals cond
-          let thenStmts ← translateDoSeqToStmtTerms fields constDecls immutableDecls params locals mutableLocals thenBranch
-          let elseStmts ← translateDoSeqToStmtTerms fields constDecls immutableDecls params locals mutableLocals elseBranch
+          let thenStmts ← translateDoSeqToStmtTerms fields constDecls immutableDecls functions params locals mutableLocals thenBranch
+          let elseStmts ← translateDoSeqToStmtTerms fields constDecls immutableDecls functions params locals mutableLocals elseBranch
           pure
             (#[(← `(Compiler.CompilationModel.Stmt.ite
               $condExpr
@@ -1668,7 +1766,7 @@ private partial def translateDoElem
           let bodyStmts ←
             match stripParens body with
             | `(term| do $[$inner:doElem]*) =>
-                pure (← (translateDoElems fields constDecls immutableDecls params (locals.push loopVar) mutableLocals inner)).1
+                pure (← (translateDoElems fields constDecls immutableDecls functions params (locals.push loopVar) mutableLocals inner)).1
             | _ => throwErrorAt body "forEach body must be a do block"
           pure
             (#[(← `(Compiler.CompilationModel.Stmt.forEach
@@ -1703,7 +1801,7 @@ private partial def translateDoElem
               locals,
               mutableLocals)
       | `(doElem| $stmt:term) =>
-          pure (#[(← translateEffectStmt fields constDecls immutableDecls params locals stmt)], locals, mutableLocals)
+          pure (#[(← translateEffectStmt fields constDecls immutableDecls functions params locals stmt)], locals, mutableLocals)
       | _ => throwErrorAt elem "unsupported do element"
 end
 
@@ -1711,11 +1809,12 @@ private def translateBodyToStmtTerms
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
     (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
     (fn : FunctionDecl) : CommandElabM (Array Term) := do
   match fn.body with
   | `(term| do $[$elems:doElem]*) =>
       let guardPrelude ← initGuardPreludeStmtTerms fields fn
-      let stmts := guardPrelude ++ (← translateDoElems fields constDecls immutableDecls fn.params #[] #[] elems).1
+      let stmts := guardPrelude ++ (← translateDoElems fields constDecls immutableDecls functions fn.params #[] #[] elems).1
       let mut stmts := stmts
       if fn.returnTy == .unit then
         stmts := stmts.push (← `(Compiler.CompilationModel.Stmt.stop))
@@ -1726,10 +1825,11 @@ private def translateConstructorBodyToStmtTerms
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
     (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
     (ctor : ConstructorDecl) : CommandElabM (Array Term) := do
   match ctor.body with
   | `(term| do $[$elems:doElem]*) =>
-      pure (← (translateDoElems fields constDecls immutableDecls ctor.params #[] #[] elems)).1
+      pure (← (translateDoElems fields constDecls immutableDecls functions ctor.params #[] #[] elems)).1
   | _ => throwErrorAt ctor.body "constructor body must be a do block"
 
 private def immutableInitStmtTerms
@@ -1878,7 +1978,7 @@ private def mkSpecCommand
         let ctorParams ← mkModelParamsTerm ctor.params
         let ctorPayable ← if ctor.isPayable then `(true) else `(false)
         let immutableInitTerms ← immutableInitStmtTerms fields constDecls immutableDecls ctor.params
-        let ctorBodyTerms ← translateConstructorBodyToStmtTerms fields constDecls immutableDecls ctor
+        let ctorBodyTerms ← translateConstructorBodyToStmtTerms fields constDecls immutableDecls functions ctor
         let ctorAllTerms := immutableInitTerms ++ ctorBodyTerms
         `(some {
           params := $ctorParams
@@ -2134,6 +2234,7 @@ def mkFunctionCommandsPublic
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
     (immutableDecls : Array ImmutableDecl)
+    (functions : Array FunctionDecl)
     (fn : FunctionDecl) : CommandElabM (Array Cmd) := do
   let fnType ← mkContractFnType fn.params fn.returnTy
   let fnGuardedBody ← mkInitGuardedBody fields fn
@@ -2141,7 +2242,7 @@ def mkFunctionCommandsPublic
   let fnValue ← mkContractFnValue fn.params fnBody
   let modelBodyName ← mkSuffixedIdent fn.ident "_modelBody"
   let modelName ← mkSuffixedIdent fn.ident "_model"
-  let stmtTerms ← translateBodyToStmtTerms fields constDecls immutableDecls fn
+  let stmtTerms ← translateBodyToStmtTerms fields constDecls immutableDecls functions fn
   let modelParams ← mkModelParamsTerm fn.params
 
   let fnCmd : Cmd ← `(command| def $fn.ident : $fnType := $fnValue)

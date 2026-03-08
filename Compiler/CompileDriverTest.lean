@@ -108,11 +108,32 @@ private def stringAbiSmokeSpec : CompilationModel := {
     { name := "MessageLogged"
       params := [{ name := "message", ty := ParamType.string, kind := EventParamKind.unindexed }]
     }
+    , { name := "TaggedMessageLogged"
+        params := [
+          { name := "tag", ty := ParamType.uint256, kind := EventParamKind.indexed }
+        , { name := "message", ty := ParamType.string, kind := EventParamKind.unindexed }
+        ]
+      }
+    , { name := "IndexedMessageLogged"
+        params := [{ name := "message", ty := ParamType.string, kind := EventParamKind.indexed }]
+      }
+    , { name := "SecondMessageLogged"
+        params := [
+          { name := "prefix", ty := ParamType.string, kind := EventParamKind.unindexed }
+        , { name := "message", ty := ParamType.string, kind := EventParamKind.unindexed }
+        ]
+      }
   ]
   «errors» := [
     { name := "BadMessage"
       params := [ParamType.string]
     }
+    , { name := "TaggedMessage"
+        params := [ParamType.uint256, ParamType.string]
+      }
+    , { name := "SecondMessage"
+        params := [ParamType.string, ParamType.string]
+      }
   ]
 }
 
@@ -745,7 +766,17 @@ unsafe def runTests : IO Unit := do
     , "\"inputs\": [{\"name\": \"prefix\", \"type\": \"string\"}, {\"name\": \"message\", \"type\": \"string\"}]"
     , "\"outputs\": [{\"name\": \"\", \"type\": \"string\"}]"
     , "\"name\": \"MessageLogged\""
+    , "\"name\": \"TaggedMessageLogged\""
+    , "\"inputs\": [{\"name\": \"tag\", \"type\": \"uint256\", \"indexed\": true}, {\"name\": \"message\", \"type\": \"string\", \"indexed\": false}]"
+    , "\"name\": \"IndexedMessageLogged\""
+    , "\"inputs\": [{\"name\": \"message\", \"type\": \"string\", \"indexed\": true}]"
+    , "\"name\": \"SecondMessageLogged\""
+    , "\"inputs\": [{\"name\": \"prefix\", \"type\": \"string\", \"indexed\": false}, {\"name\": \"message\", \"type\": \"string\", \"indexed\": false}]"
     , "\"name\": \"BadMessage\""
+    , "\"name\": \"TaggedMessage\""
+    , "\"inputs\": [{\"name\": \"\", \"type\": \"uint256\"}, {\"name\": \"\", \"type\": \"string\"}]"
+    , "\"name\": \"SecondMessage\""
+    , "\"inputs\": [{\"name\": \"\", \"type\": \"string\"}, {\"name\": \"\", \"type\": \"string\"}]"
     ]
 
   compileModulesWithOptions outDir canonicalModules false [] {} none none (some abiDir)

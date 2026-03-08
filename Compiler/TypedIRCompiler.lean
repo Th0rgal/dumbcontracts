@@ -395,6 +395,25 @@ def compileFunctionNamed (spec : CompilationModel) (functionName : String) : Exc
   | some fn => compileFunctionToTBlock spec fn
   | none => throw s!"Typed IR compile error: function '{functionName}' not found in spec '{spec.name}'"
 
+private def abiHeadParamSmokeSpec : CompilationModel := {
+  name := "AbiHeadParamSmoke"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "acceptHeads"
+      params := [
+        { name := "cfg", ty := ParamType.tuple [ParamType.address, ParamType.uint256] }
+        { name := "payload", ty := ParamType.bytes }
+        { name := "fixedRecipients", ty := ParamType.fixedArray ParamType.address 2 }
+        { name := "recipients", ty := ParamType.array ParamType.address }
+        { name := "note", ty := ParamType.string }
+      ]
+      returnType := none
+      body := [Stmt.stop]
+    }
+  ]
+}
+
 example : paramTypeToTy (ParamType.tuple [ParamType.address, ParamType.uint256]) = Except.ok Ty.uint256 := rfl
 
 example : paramTypeToTy ParamType.bytes = Except.ok Ty.uint256 := rfl
@@ -404,6 +423,19 @@ example : paramTypeToTy (ParamType.fixedArray ParamType.uint256 3) = Except.ok T
 example : paramTypeToTy (ParamType.array ParamType.address) = Except.ok Ty.uint256 := rfl
 
 example : paramTypeToTy ParamType.string = Except.ok Ty.uint256 := rfl
+
+example :
+    compileFunctionNamed abiHeadParamSmokeSpec "acceptHeads" =
+      Except.ok
+        { params := [
+            { id := 0, ty := Ty.uint256 },
+            { id := 1, ty := Ty.uint256 },
+            { id := 2, ty := Ty.uint256 },
+            { id := 3, ty := Ty.uint256 },
+            { id := 4, ty := Ty.uint256 }
+          ]
+          locals := []
+          body := [TStmt.stop] } := rfl
 
 /-- Single-statement compilation shape for the supported subset:
 `setStorage fieldName (literal n)` lowers to one typed `setStorage` when the

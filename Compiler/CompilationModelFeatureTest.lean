@@ -100,6 +100,10 @@ verity_contract MacroTupleDestructuring where
     setStorage firstSlot first
     setStorage secondSlot second
 
+  function storePairTail (pair : Tuple [Uint256, Uint256]) : Unit := do
+    let (_, second) := pair
+    setStorage secondSlot second
+
   function storeLiteralPair (seed : Uint256) : Unit := do
     let (first, second) := (seed, add seed 1)
     setStorage firstSlot first
@@ -119,6 +123,15 @@ verity_contract MacroTupleDestructuring where
     setStorage firstSlot first
     setStorage secondSlot second
 
+  function storeHelperPairTail (seed : Uint256) : Unit := do
+    let (_, second) := helperPair seed
+    setStorage secondSlot second
+
+  function storeHelperPairTailNameCollision («__tuple_discard_0» : Uint256, seed : Uint256) : Unit := do
+    let (_, second) := helperPair seed
+    setStorage firstSlot «__tuple_discard_0»
+    setStorage secondSlot second
+
 def storePairModelDestructuresTupleParam : Bool :=
   match MacroTupleDestructuring.storePair_modelBody with
   | [Stmt.letVar "first" (Expr.param "pair_0"),
@@ -130,6 +143,16 @@ def storePairModelDestructuresTupleParam : Bool :=
   | _ => false
 
 example : storePairModelDestructuresTupleParam = true := by native_decide
+
+def storePairTailModelSkipsDiscardedBinder : Bool :=
+  match MacroTupleDestructuring.storePairTail_modelBody with
+  | [Stmt.letVar "second" (Expr.param "pair_1"),
+      Stmt.setStorage "secondSlot" (Expr.localVar "second"),
+      Stmt.stop] =>
+      true
+  | _ => false
+
+example : storePairTailModelSkipsDiscardedBinder = true := by native_decide
 
 def helperPairModelReturnsMultipleWords : Bool :=
   match MacroTupleDestructuring.helperPair_modelBody with
@@ -183,6 +206,27 @@ def storeHelperPairEqModelUsesInternalCallAssign : Bool :=
 
 example : storeHelperPairEqModelUsesInternalCallAssign = true := by native_decide
 
+def storeHelperPairTailModelUsesHiddenDiscardTarget : Bool :=
+  match MacroTupleDestructuring.storeHelperPairTail_modelBody with
+  | [Stmt.internalCallAssign ["__tuple_discard_0", "second"] "helperPair" [Expr.param "seed"],
+      Stmt.setStorage "secondSlot" (Expr.localVar "second"),
+      Stmt.stop] =>
+      true
+  | _ => false
+
+example : storeHelperPairTailModelUsesHiddenDiscardTarget = true := by native_decide
+
+def storeHelperPairTailNameCollisionModelUsesFreshDiscardTarget : Bool :=
+  match MacroTupleDestructuring.storeHelperPairTailNameCollision_modelBody with
+  | [Stmt.internalCallAssign ["__tuple_discard_0_1", "second"] "helperPair" [Expr.param "seed"],
+      Stmt.setStorage "firstSlot" (Expr.param "__tuple_discard_0"),
+      Stmt.setStorage "secondSlot" (Expr.localVar "second"),
+      Stmt.stop] =>
+      true
+  | _ => false
+
+example : storeHelperPairTailNameCollisionModelUsesFreshDiscardTarget = true := by native_decide
+
 def echoPairExecutableKeepsTupleShape : Bool :=
   match MacroTupleDestructuring.echoPair (11, 17) Verity.defaultState with
   | .success (first, second) state =>
@@ -206,6 +250,30 @@ def storeHelperPairEqExecutableStoresHelperResults : Bool :=
   | .revert _ _ => false
 
 example : storeHelperPairEqExecutableStoresHelperResults = true := by native_decide
+
+def storePairTailExecutableStoresOnlyRequestedValue : Bool :=
+  match MacroTupleDestructuring.storePairTail (11, 17) Verity.defaultState with
+  | .success () state =>
+      state.storage 0 == 0 && state.storage 1 == 17
+  | .revert _ _ => false
+
+example : storePairTailExecutableStoresOnlyRequestedValue = true := by native_decide
+
+def storeHelperPairTailExecutableStoresOnlyRequestedValue : Bool :=
+  match MacroTupleDestructuring.storeHelperPairTail 11 Verity.defaultState with
+  | .success () state =>
+      state.storage 0 == 0 && state.storage 1 == 12
+  | .revert _ _ => false
+
+example : storeHelperPairTailExecutableStoresOnlyRequestedValue = true := by native_decide
+
+def storeHelperPairTailNameCollisionExecutablePreservesParam : Bool :=
+  match MacroTupleDestructuring.storeHelperPairTailNameCollision 33 11 Verity.defaultState with
+  | .success () state =>
+      state.storage 0 == 33 && state.storage 1 == 12
+  | .revert _ _ => false
+
+example : storeHelperPairTailNameCollisionExecutablePreservesParam = true := by native_decide
 
 end MacroTupleDestructuringSmoke
 

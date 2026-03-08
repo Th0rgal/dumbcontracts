@@ -191,6 +191,10 @@ emits per-contract JSON that includes:
   buckets for foreign trust surfaces
 - `usageSites` entries that localize those mechanics and assumptions to the
   constructor or individual function that introduced them
+- `partiallyModeledLinearMemoryMechanics` entries that isolate the current
+  linear-memory proof gap (`mload`, `mstore`, `calldatacopy`,
+  `returndataCopy`, `returndataOptionalBoolAt`) at both contract and
+  usage-site granularity
 - `hasUncheckedDependencies` so CI/reporting layers can fail or warn on
   contracts that are not eligible for full-verification claims
 
@@ -201,7 +205,10 @@ failure now cites the exact constructor/function usage site that introduced the
 unchecked dependency. For proof-strict runs that require fully proved foreign
 surfaces, `verity-compiler --deny-assumed-dependencies` fails closed on both
 `assumed` and `unchecked` linked externals / ECM modules and localizes the
-diagnostic to the exact usage site.
+diagnostic to the exact usage site. For memory-proof-strict runs,
+`verity-compiler --deny-linear-memory-mechanics` fails closed when any selected
+contract still uses partially modeled linear-memory mechanics, again citing the
+exact constructor/function usage site.
 
 ## Trust Model
 

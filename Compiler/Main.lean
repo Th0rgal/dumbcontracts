@@ -29,6 +29,7 @@ private structure CLIArgs where
   trustReportPath : Option String := none
   denyUncheckedDependencies : Bool := false
   denyAssumedDependencies : Bool := false
+  denyLinearMemoryMechanics : Bool := false
   mappingSlotScratchBase : Nat := 0
   mappingSlotScratchBaseExplicit : Bool := false
 
@@ -85,6 +86,7 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         IO.println "  --trust-report <path>       Write JSON trust-surface report"
         IO.println "  --deny-unchecked-dependencies  Fail if any contract depends on `unchecked` foreign surfaces"
         IO.println "  --deny-assumed-dependencies    Fail if any contract depends on `assumed` or `unchecked` foreign surfaces"
+        IO.println "  --deny-linear-memory-mechanics  Fail if any contract uses partially modeled linear-memory mechanics"
         IO.println "  --mapping-slot-scratch-base <n>  Scratch memory base for mappingSlot helper (default: 0)"
         IO.println "  --verbose          Enable verbose output"
         IO.println "  -v                 Short form of --verbose"
@@ -176,6 +178,8 @@ private def parseArgs (args : List String) : IO CLIArgs := do
         go rest { cfg with denyUncheckedDependencies := true }
     | "--deny-assumed-dependencies" :: rest =>
         go rest { cfg with denyAssumedDependencies := true }
+    | "--deny-linear-memory-mechanics" :: rest =>
+        go rest { cfg with denyLinearMemoryMechanics := true }
     | "--mapping-slot-scratch-base" :: raw :: rest =>
         match raw.toNat? with
         | some n => go rest { cfg with mappingSlotScratchBase := n, mappingSlotScratchBaseExplicit := true }
@@ -235,6 +239,8 @@ unsafe def main (args : List String) : IO Unit := do
       match cfg.trustReportPath with
       | some path => IO.println s!"Trust report: {path}"
       | none => pure ()
+      if cfg.denyLinearMemoryMechanics then
+        IO.println "Linear memory mechanics: denied"
       if cfg.denyAssumedDependencies then
         IO.println "Assumed dependencies: denied"
       if cfg.denyUncheckedDependencies then
@@ -269,6 +275,7 @@ unsafe def main (args : List String) : IO Unit := do
     compileModulesWithOptions
       cfg.outDir rawModules cfg.verbose cfg.libs options cfg.patchReportPath cfg.trustReportPath
       cfg.abiOutDir cfg.denyUncheckedDependencies cfg.denyAssumedDependencies
+      cfg.denyLinearMemoryMechanics
   catch e =>
     if e.toString == "help" then
       -- Help was shown, exit cleanly

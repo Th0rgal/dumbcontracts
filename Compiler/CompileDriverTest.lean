@@ -206,6 +206,26 @@ private def trustSurfaceSpec : CompilationModel := {
   ]
 }
 
+private def memoryTrustSurfaceSpec : CompilationModel := {
+  name := "MemoryTrustSurface"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "exerciseMemory"
+      params := []
+      returnType := none
+      returns := [ParamType.uint256]
+      body := [
+        Stmt.mstore (Expr.literal 0) (Expr.literal 1),
+        Stmt.calldatacopy (Expr.literal 32) (Expr.literal 4) (Expr.literal 32),
+        Stmt.returndataCopy (Expr.literal 64) (Expr.literal 0) (Expr.literal 32),
+        Stmt.letVar "word" (Expr.mload (Expr.literal 0)),
+        Stmt.returnValues [Expr.localVar "word"]
+      ]
+    }
+  ]
+}
+
 private def uncheckedTrustSurfaceSpec : CompilationModel := {
   name := "UncheckedTrustSurface"
   fields := []
@@ -876,6 +896,20 @@ unsafe def runTests : IO Unit := do
     throw (IO.userError "✗ verbose trust report localizes ECM assumptions")
   IO.println "✓ verbose trust report localizes per-site trust surfaces"
 
+  let memoryTrustReport := emitTrustReportJson [memoryTrustSurfaceSpec]
+  if !contains memoryTrustReport "\"contract\":\"MemoryTrustSurface\"" then
+    throw (IO.userError "✗ memory trust report emits contract name")
+  if !contains memoryTrustReport "\"modeledLowLevelMechanics\":[\"mstore\",\"calldatacopy\",\"returndataCopy\",\"mload\"]" then
+    throw (IO.userError "✗ memory trust report emits linear-memory mechanics")
+  if !contains memoryTrustReport "\"partiallyModeledLinearMemoryMechanics\":[\"mstore\",\"calldatacopy\",\"returndataCopy\",\"mload\"]" then
+    throw (IO.userError "✗ memory trust report emits partially modeled linear-memory mechanics")
+  if !contains memoryTrustReport "\"usageSites\":[{\"kind\":\"function\",\"name\":\"exerciseMemory\",\"modeledLowLevelMechanics\":[\"mstore\",\"calldatacopy\",\"returndataCopy\",\"mload\"],\"partiallyModeledLinearMemoryMechanics\":[\"mstore\",\"calldatacopy\",\"returndataCopy\",\"mload\"]" then
+    throw (IO.userError "✗ memory trust report localizes partially modeled linear-memory mechanics")
+  let memoryVerboseUsageSiteReport := String.intercalate "\n" (emitVerboseUsageSiteLines [memoryTrustSurfaceSpec])
+  if !contains memoryVerboseUsageSiteReport "partially modeled linear memory: mstore, calldatacopy, returndataCopy, mload" then
+    throw (IO.userError "✗ verbose trust report localizes partially modeled linear-memory mechanics")
+  IO.println "✓ trust report surfaces partially modeled linear-memory mechanics"
+
   let uncheckedTrustReport := emitTrustReportJson [uncheckedTrustSurfaceSpec]
   if !contains uncheckedTrustReport "\"hasUncheckedDependencies\":true" then
     throw (IO.userError "✗ trust report flags unchecked dependencies")
@@ -1104,6 +1138,17 @@ unsafe def runTests : IO Unit := do
   if !deniedAssumedTrustReportWritten then
     throw (IO.userError "✗ denied assumed-dependency compile still writes trust report file")
   IO.println "✓ denied assumed-dependency compile still writes trust report file"
+
+  let deniedLinearMemoryTrustReportPath := s!"{trustReportDir}/trust-report-denied-linear-memory.json"
+  expectFailureContains
+    "compileSpecsWithOptions rejects partially modeled linear memory when deny flag enabled"
+    (compileSpecsWithOptions
+      [memoryTrustSurfaceSpec] outDir false [] {} none (some deniedLinearMemoryTrustReportPath) none false false true)
+    "Partially modeled linear-memory mechanics remain:\n- MemoryTrustSurface [function:exerciseMemory]: mstore, calldatacopy, returndataCopy, mload"
+  let deniedLinearMemoryTrustReportWritten ← fileExists deniedLinearMemoryTrustReportPath
+  if !deniedLinearMemoryTrustReportWritten then
+    throw (IO.userError "✗ denied linear-memory compile still writes trust report file")
+  IO.println "✓ denied linear-memory compile still writes trust report file"
 
   compileSpecsWithOptions [abiSmokeSpec] outDir false [] { patchConfig := { enabled := true } } (some patchReportPath) none none
   let writtenPatchReport ← fileExists patchReportPath

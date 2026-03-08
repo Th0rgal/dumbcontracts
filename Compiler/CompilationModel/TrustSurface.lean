@@ -47,11 +47,14 @@ private partial def collectLowLevelExprMechanics : Expr → List String
   | .structMember2 _ key1 key2 _ =>
       collectLowLevelExprMechanics key1 ++ collectLowLevelExprMechanics key2
   | .mappingUint _ key
-  | .arrayElement _ key
-  | .mload key
-  | .calldataload key
-  | .extcodesize key =>
+  | .arrayElement _ key =>
       collectLowLevelExprMechanics key
+  | .mload key =>
+      ["mload"] ++ collectLowLevelExprMechanics key
+  | .calldataload key =>
+      ["calldataload"] ++ collectLowLevelExprMechanics key
+  | .extcodesize key =>
+      ["extcodesize"] ++ collectLowLevelExprMechanics key
   | .keccak256 offset size =>
       collectLowLevelExprMechanics offset ++ collectLowLevelExprMechanics size
   | .externalCall _ args
@@ -138,11 +141,12 @@ private partial def collectLowLevelStmtMechanics : Stmt → List String
   | .revertError _ args =>
       args.flatMap collectLowLevelExprMechanics
   | .mstore offset value =>
-      collectLowLevelExprMechanics offset ++ collectLowLevelExprMechanics value
+      ["mstore"] ++ collectLowLevelExprMechanics offset ++ collectLowLevelExprMechanics value
   | .tstore offset value =>
       ["tstore"] ++ collectLowLevelExprMechanics offset ++ collectLowLevelExprMechanics value
   | .calldatacopy destOffset sourceOffset size =>
-      collectLowLevelExprMechanics destOffset ++ collectLowLevelExprMechanics sourceOffset ++ collectLowLevelExprMechanics size
+      ["calldatacopy"] ++ collectLowLevelExprMechanics destOffset ++
+        collectLowLevelExprMechanics sourceOffset ++ collectLowLevelExprMechanics size
   | .returndataCopy destOffset sourceOffset size =>
       ["returndataCopy"] ++ collectLowLevelExprMechanics destOffset ++ collectLowLevelExprMechanics sourceOffset ++ collectLowLevelExprMechanics size
   | .revertReturndata =>
@@ -235,6 +239,14 @@ private def collectLowLevelMechanicsFromStmts (stmts : List Stmt) : List String 
 private def collectAxiomatizedPrimitivesFromStmts (stmts : List Stmt) : List String :=
   dedupPreserve (stmts.flatMap collectAxiomatizedStmtPrimitives)
 
+private def isLinearMemoryMechanic (mechanic : String) : Bool :=
+  match mechanic with
+  | "mload" | "mstore" | "calldatacopy" | "returndataCopy" | "returndataOptionalBoolAt" => true
+  | _ => false
+
+private def collectLinearMemoryMechanicsFromMechanics (mechanics : List String) : List String :=
+  dedupPreserve (mechanics.filter isLinearMemoryMechanic)
+
 /-- Collect unique low-level call and returndata mechanics used by a spec. -/
 def collectLowLevelMechanics (spec : CompilationModel) : List String :=
   let stmtsFromFn (fn : FunctionSpec) := fn.body
@@ -243,6 +255,10 @@ def collectLowLevelMechanics (spec : CompilationModel) : List String :=
     | none => []
   let allStmts := stmtsFromCtor ++ spec.functions.flatMap stmtsFromFn
   collectLowLevelMechanicsFromStmts allStmts
+
+/-- Collect partially modeled linear-memory mechanics used by a spec. -/
+def collectLinearMemoryMechanics (spec : CompilationModel) : List String :=
+  collectLinearMemoryMechanicsFromMechanics (collectLowLevelMechanics spec)
 
 /-- Collect unique axiomatized primitives used directly by a spec. -/
 def collectAxiomatizedPrimitives (spec : CompilationModel) : List String :=
@@ -590,10 +606,12 @@ private def collectUsageSiteSummaries (spec : CompilationModel) : List UsageSite
 
 private def usageSitesJson (spec : CompilationModel) : String :=
   let siteJson (site : UsageSiteSummary) : String :=
+    let linearMemoryMechanics := collectLinearMemoryMechanicsFromMechanics site.mechanics
     jsonObject [
       ("kind", jsonString site.kind),
       ("name", jsonString site.name),
       ("modeledLowLevelMechanics", jsonArray (site.mechanics.map jsonString)),
+      ("partiallyModeledLinearMemoryMechanics", jsonArray (linearMemoryMechanics.map jsonString)),
       ("axiomatizedPrimitives", jsonArray (site.primitives.map jsonString)),
       ("proofStatus", proofStatusJsonForSite site.primitives site.externals site.modules),
       ("hasUncheckedDependencies",
@@ -636,6 +654,10 @@ def emitVerboseUsageSiteLines (specs : List CompilationModel) : List String :=
             let mechanicsLines :=
               if site.mechanics.isEmpty then [] else
                 [s!"    low-level mechanics: {String.intercalate ", " site.mechanics}"]
+            let linearMemoryMechanics := collectLinearMemoryMechanicsFromMechanics site.mechanics
+            let linearMemoryLines :=
+              if linearMemoryMechanics.isEmpty then [] else
+                [s!"    partially modeled linear memory: {String.intercalate ", " linearMemoryMechanics}"]
             let primitiveLines :=
               if site.primitives.isEmpty then [] else
                 [s!"    axiomatized primitives: {String.intercalate ", " site.primitives}"] ++
@@ -681,6 +703,7 @@ def emitVerboseUsageSiteLines (specs : List CompilationModel) : List String :=
             siteAcc ++
               [heading] ++
               mechanicsLines ++
+              linearMemoryLines ++
               primitiveLines ++
               provedLines ++
               assumedLines ++
@@ -727,6 +750,23 @@ def emitUncheckedUsageSiteLines (specs : List CompilationModel) : List String :=
 def emitAssumedUsageSiteLines (specs : List CompilationModel) : List String :=
   emitUsageSiteLinesForStatuses specs [.assumed, .unchecked]
 
+/-- Render localized partially modeled linear-memory lines for proof-strict diagnostics. -/
+def emitLinearMemoryUsageSiteLines (specs : List CompilationModel) : List String :=
+  specs.foldl
+    (fun acc spec =>
+      let siteLines :=
+        (collectUsageSiteSummaries spec).foldl
+          (fun siteAcc site =>
+            let linearMemoryMechanics := collectLinearMemoryMechanicsFromMechanics site.mechanics
+            if linearMemoryMechanics.isEmpty then
+              siteAcc
+            else
+              siteAcc ++
+                [s!"- {spec.name} [{site.kind}:{site.name}]: {String.intercalate ", " linearMemoryMechanics}"])
+          []
+      acc ++ siteLines)
+    []
+
 /-- True when a contract depends on any foreign surface marked `unchecked`. -/
 def hasUncheckedDependencies (spec : CompilationModel) : Bool :=
   !(collectUsedExternalNamesByStatus spec .unchecked).isEmpty ||
@@ -748,6 +788,7 @@ where
     jsonObject [
       ("contract", jsonString spec.name),
       ("modeledLowLevelMechanics", jsonArray ((collectLowLevelMechanics spec).map jsonString)),
+      ("partiallyModeledLinearMemoryMechanics", jsonArray ((collectLinearMemoryMechanics spec).map jsonString)),
       ("axiomatizedPrimitives", jsonArray ((collectAxiomatizedPrimitives spec).map jsonString)),
       ("proofStatus", proofStatusJson spec),
       ("hasUncheckedDependencies", if hasUncheckedDependencies spec then "true" else "false"),

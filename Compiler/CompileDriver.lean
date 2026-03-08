@@ -66,6 +66,12 @@ private def ensureNoAssumedDependencies (specs : List CompilationModel) : IO Uni
     throw (IO.userError
       s!"Assumed or unchecked foreign dependencies remain:\n{String.intercalate "\n" assumedSites}")
 
+private def ensureNoLinearMemoryMechanics (specs : List CompilationModel) : IO Unit := do
+  let linearMemorySites := emitLinearMemoryUsageSiteLines specs
+  if !linearMemorySites.isEmpty then
+    throw (IO.userError
+      s!"Partially modeled linear-memory mechanics remain:\n{String.intercalate "\n" linearMemorySites}")
+
 private def writeContract
     (outDir : String)
     (contract : IRContract)
@@ -112,7 +118,8 @@ def compileSpecsWithOptions
     (trustReportPath : Option String)
     (abiOutDir : Option String)
     (denyUncheckedDependencies : Bool := false)
-    (denyAssumedDependencies : Bool := false) : IO Unit := do
+    (denyAssumedDependencies : Bool := false)
+    (denyLinearMemoryMechanics : Bool := false) : IO Unit := do
   IO.FS.createDirAll outDir
   match abiOutDir with
   | some dir => IO.FS.createDirAll dir
@@ -154,12 +161,25 @@ def compileSpecsWithOptions
       if verbose then
         IO.println s!"✓ Wrote trust report: {path}"
   | none => pure ()
+  if denyLinearMemoryMechanics then
+    ensureNoLinearMemoryMechanics specs
   if denyAssumedDependencies then
     ensureNoAssumedDependencies specs
   if denyUncheckedDependencies then
     ensureNoUncheckedDependencies specs
   -- Axiom aggregation report (verbose mode)
   if verbose then
+    IO.println ""
+    IO.println "Linear memory mechanics report:"
+    let mut anyLinearMemory := false
+    for spec in specs do
+      let mechanics := collectLinearMemoryMechanics spec
+      if !mechanics.isEmpty then
+        anyLinearMemory := true
+        IO.println s!"  {spec.name}: {String.intercalate ", " mechanics}"
+    if !anyLinearMemory then
+      IO.println "  (no partially modeled linear-memory primitives used)"
+    IO.println "  Proof boundary: these mechanics rely on linear memory / ABI movement that is still only partially modeled by current proof interpreters."
     IO.println ""
     IO.println "Low-level mechanics report:"
     let mut anyMechanics := false
@@ -293,11 +313,12 @@ unsafe def compileModulesWithOptions
     (trustReportPath : Option String := none)
     (abiOutDir : Option String := none)
     (denyUncheckedDependencies : Bool := false)
-    (denyAssumedDependencies : Bool := false) : IO Unit := do
+    (denyAssumedDependencies : Bool := false)
+    (denyLinearMemoryMechanics : Bool := false) : IO Unit := do
   let specs ←
     match ← Compiler.ModuleInput.loadSpecsFromRawModules modules with
     | .ok specs => pure specs
     | .error err => throw (IO.userError err)
   compileSpecsWithOptions
     specs outDir verbose libraryPaths options patchReportPath trustReportPath abiOutDir
-    denyUncheckedDependencies denyAssumedDependencies
+    denyUncheckedDependencies denyAssumedDependencies denyLinearMemoryMechanics

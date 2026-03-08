@@ -103,6 +103,7 @@ theorem vulnerable_attack_exists :
   -- `0 - amount` wraps to 1, making the mismatch obvious.
   let s : ContractState :=
     { storage := fun slot => if slot == totalSupply.slot then (Verity.EVM.MAX_UINT256 : Uint256) else 0
+    , transientStorage := fun _ => 0
     , storageAddr := fun _ => 0
     , storageMap := fun slot addr =>
         if slot == balances.slot && addr == 0xA77AC then (Verity.EVM.MAX_UINT256 : Uint256) else 0

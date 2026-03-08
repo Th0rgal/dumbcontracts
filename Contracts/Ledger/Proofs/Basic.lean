@@ -48,6 +48,7 @@ theorem getBalance_preserves_state (s : ContractState) (addr : Address) :
 private theorem deposit_unfold (s : ContractState) (amount : Uint256) :
   (deposit amount).run s = ContractResult.success ()
     { «storage» := s.storage,
+      transientStorage := s.transientStorage,
       storageAddr := s.storageAddr,
       storageMap := fun slotIdx addr =>
         if (slotIdx == 0 && addr == s.sender) = true then EVM.Uint256.add (s.storageMap 0 s.sender) amount
@@ -99,6 +100,7 @@ private theorem withdraw_unfold (s : ContractState) (amount : Uint256)
   (h_balance : s.storageMap 0 s.sender >= amount) :
   (withdraw amount).run s = ContractResult.success ()
     { «storage» := s.storage,
+      transientStorage := s.transientStorage,
       storageAddr := s.storageAddr,
       storageMap := fun slotIdx addr =>
         if (slotIdx == 0 && addr == s.sender) = true then EVM.Uint256.sub (s.storageMap 0 s.sender) amount
@@ -163,6 +165,7 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
   (h_ne : s.sender ≠ to) :
   (transfer to amount).run s = ContractResult.success ()
     { «storage» := s.storage,
+      transientStorage := s.transientStorage,
       storageAddr := s.storageAddr,
       storageMap := fun slotIdx addr =>
         if (slotIdx == 0 && addr == to) = true then EVM.Uint256.add (s.storageMap 0 to) amount
@@ -259,6 +262,7 @@ theorem transfer_succeeds_recipient_overflow (s : ContractState) (to : Address) 
   ∃ s', (transfer to amount).run s = ContractResult.success () s' := by
   let s' : ContractState :=
     { «storage» := s.storage,
+      transientStorage := s.transientStorage,
       storageAddr := s.storageAddr,
       storageMap := fun slotIdx addr =>
         if (slotIdx == 0 && addr == to) = true then EVM.Uint256.add (s.storageMap 0 to) amount

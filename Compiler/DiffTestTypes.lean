@@ -32,6 +32,7 @@ Enumeration of all contracts available for differential testing.
 
 inductive ContractType
   | simpleStorage
+  | localObligationMacroSmoke
   | counter
   | owned
   | ledger

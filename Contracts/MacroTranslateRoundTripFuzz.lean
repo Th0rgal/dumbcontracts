@@ -28,6 +28,7 @@ private def writeSlots (spec : CompilationModel) : List Nat :=
 
 private def macroSpecs : List CompilationModel :=
   [ Contracts.SimpleStorage.spec
+  , Contracts.LocalObligationMacroSmoke.spec
   , Contracts.Counter.spec
   , Contracts.Owned.spec
   , Contracts.Ledger.spec

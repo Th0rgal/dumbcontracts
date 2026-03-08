@@ -1,4 +1,5 @@
 import Contracts
+import Contracts.LocalObligationMacroSmoke.LocalObligationMacroSmoke
 import Contracts.LocalObligationTrustSurface
 import Contracts.RawLogTrustSurface
 import Compiler.Main
@@ -104,6 +105,27 @@ unsafe def runTests : IO Unit := do
     "strict local-obligation gate rejects undischarged local obligations"
     ["--module", "Contracts.LocalObligationTrustSurface", "--deny-local-obligations", "--output", s!"/tmp/verity-main-test-{nonce}-local-obligation-fail-out"]
     "LocalObligationTrustSurface [function:unsafeEdge]: assumed local obligations: manual_delegatecall_refinement"
+  let macroLocalObligationTrustReportPath := s!"/tmp/verity-main-test-{nonce}-macro-local-obligation-trust-report.json"
+  let macroLocalObligationOutDir := s!"/tmp/verity-main-test-{nonce}-macro-local-obligation-out"
+  IO.FS.createDirAll macroLocalObligationOutDir
+  main
+    [ "--module", "Contracts.LocalObligationMacroSmoke.LocalObligationMacroSmoke"
+    , "--trust-report", macroLocalObligationTrustReportPath
+    , "--output", macroLocalObligationOutDir
+    ]
+  let macroLocalObligationTrustReport ← IO.FS.readFile macroLocalObligationTrustReportPath
+  expectTrue "macro local-obligation trust report includes constructor obligation"
+    (contains macroLocalObligationTrustReport "\"name\":\"constructor_storage_layout\",\"status\":\"unchecked\"")
+  expectTrue "macro local-obligation trust report includes assumed function obligation"
+    (contains macroLocalObligationTrustReport "\"name\":\"manual_delegatecall_refinement\",\"status\":\"assumed\"")
+  expectTrue "macro local-obligation trust report includes proved function obligation"
+    (contains macroLocalObligationTrustReport "\"name\":\"checked_patch_pack\",\"status\":\"proved\"")
+  expectTrue "macro local-obligation trust report localizes constructor usage"
+    (contains macroLocalObligationTrustReport "\"kind\":\"constructor\",\"name\":\"constructor\"")
+  expectErrorContains
+    "strict local-obligation gate rejects macro-declared undischarged obligations"
+    ["--module", "Contracts.LocalObligationMacroSmoke.LocalObligationMacroSmoke", "--deny-local-obligations", "--output", s!"/tmp/verity-main-test-{nonce}-macro-local-obligation-fail-out"]
+    "LocalObligationMacroSmoke [constructor:constructor]: unchecked local obligations: constructor_storage_layout"
   let memoryStrictOutDir := s!"/tmp/verity-main-test-{nonce}-memory-strict-out"
   IO.FS.createDirAll memoryStrictOutDir
   main (["--module", "Contracts.SimpleStorage.SimpleStorage", "--deny-linear-memory-mechanics", "--output", memoryStrictOutDir])

@@ -51,11 +51,13 @@ private def paramTypeToTy : ParamType → Except String Ty
   | .address => Except.ok Ty.address
   | .bool => Except.ok Ty.bool
   | .bytes32 => Except.ok Ty.uint256
-  | .string => Except.error "Typed IR compile error: string params are not yet supported"
-  | .tuple _ => Except.error "Typed IR compile error: tuple params are not yet supported"
-  | .array _ => Except.error "Typed IR compile error: dynamic array params are not yet supported"
-  | .fixedArray _ _ => Except.error "Typed IR compile error: fixed array params are not yet supported"
-  | .bytes => Except.error "Typed IR compile error: bytes params are not yet supported"
+  -- Complex ABI params enter the compilation model as calldata head words/offsets.
+  -- The typed IR can track those heads as ordinary uint256 values.
+  | .string => Except.ok Ty.uint256
+  | .tuple _ => Except.ok Ty.uint256
+  | .array _ => Except.ok Ty.uint256
+  | .fixedArray _ _ => Except.ok Ty.uint256
+  | .bytes => Except.ok Ty.uint256
 
 private def fieldTypeToTy : FieldType → Except String Ty
   | .uint256 => Except.ok Ty.uint256
@@ -392,6 +394,65 @@ def compileFunctionNamed (spec : CompilationModel) (functionName : String) : Exc
   match spec.functions.find? (fun fn => fn.name == functionName) with
   | some fn => compileFunctionToTBlock spec fn
   | none => throw s!"Typed IR compile error: function '{functionName}' not found in spec '{spec.name}'"
+
+private def abiHeadParamSmokeFn : FunctionSpec := {
+  name := "acceptHeads"
+  params := [
+    ({ name := "cfg", ty := ParamType.tuple [ParamType.address, ParamType.uint256] } : Param),
+    ({ name := "payload", ty := ParamType.bytes } : Param),
+    ({ name := "fixedRecipients", ty := ParamType.fixedArray ParamType.address 2 } : Param),
+    ({ name := "recipients", ty := ParamType.array ParamType.address } : Param),
+    ({ name := "note", ty := ParamType.string } : Param)
+  ]
+  returnType := none
+  body := [Stmt.stop]
+}
+
+private def abiHeadParamSmokeSpec : CompilationModel := {
+  name := "AbiHeadParamSmoke"
+  fields := []
+  «constructor» := none
+  functions := [abiHeadParamSmokeFn]
+}
+
+example : paramTypeToTy (ParamType.tuple [ParamType.address, ParamType.uint256]) = Except.ok Ty.uint256 := rfl
+
+example : paramTypeToTy ParamType.bytes = Except.ok Ty.uint256 := rfl
+
+example : paramTypeToTy (ParamType.fixedArray ParamType.uint256 3) = Except.ok Ty.uint256 := rfl
+
+example : paramTypeToTy (ParamType.array ParamType.address) = Except.ok Ty.uint256 := rfl
+
+example : paramTypeToTy ParamType.string = Except.ok Ty.uint256 := rfl
+
+private def abiHeadExpectedParamTys : List Ty := [
+  Ty.uint256,
+  Ty.uint256,
+  Ty.uint256,
+  Ty.uint256,
+  Ty.uint256
+]
+
+example :
+    (match compileFunctionNamed abiHeadParamSmokeSpec "acceptHeads" with
+    | Except.ok block => decide (block.params.map TVar.ty = abiHeadExpectedParamTys)
+    | Except.error _ => false) = true := by
+  native_decide
+
+example :
+    (match compileFunctionNamed abiHeadParamSmokeSpec "acceptHeads" with
+    | Except.ok block => decide (block.locals = ([] : List TVar))
+    | Except.error _ => false) = true := by
+  native_decide
+
+example :
+    (match compileFunctionNamed abiHeadParamSmokeSpec "acceptHeads" with
+    | Except.ok block =>
+      match block.body with
+      | [TStmt.stop] => true
+      | _ => false
+    | Except.error _ => false) = true := by
+  native_decide
 
 /-- Single-statement compilation shape for the supported subset:
 `setStorage fieldName (literal n)` lowers to one typed `setStorage` when the

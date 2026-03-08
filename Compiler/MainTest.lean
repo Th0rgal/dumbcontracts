@@ -93,6 +93,15 @@ unsafe def runTests : IO Unit := do
   main (["--module", "Contracts.Counter.Counter", "--deny-assumed-dependencies", "--output", proofStrictOutDir])
   let proofStrictCounterArtifact ← fileExists s!"{proofStrictOutDir}/Counter.yul"
   expectTrue "strict assumed-dependency gate accepts proved local modules" proofStrictCounterArtifact
+  let memoryStrictOutDir := s!"/tmp/verity-main-test-{nonce}-memory-strict-out"
+  IO.FS.createDirAll memoryStrictOutDir
+  main (["--module", "Contracts.SimpleStorage.SimpleStorage", "--deny-linear-memory-mechanics", "--output", memoryStrictOutDir])
+  let memoryStrictArtifact ← fileExists s!"{memoryStrictOutDir}/SimpleStorage.yul"
+  expectTrue "strict linear-memory gate accepts contracts without partially modeled memory mechanics" memoryStrictArtifact
+  expectErrorContains
+    "strict linear-memory gate rejects partially modeled memory mechanics"
+    ["--module", "Contracts.Counter.Counter", "--deny-linear-memory-mechanics", "--output", s!"/tmp/verity-main-test-{nonce}-memory-fail-out"]
+    "Counter [function:previewEnvOps]: mload"
   let nonSelectedArtifactFlags ←
     (canonicalModules.filter (· != "Contracts.Counter.Counter")).mapM
       (fun moduleName => fileExists (contractArtifactPath singleOutDir moduleName))

@@ -554,6 +554,10 @@ verity_contract MacroInitializer where
   function initOwner (seedOwner : Address) initializer(initializedVersion) : Unit := do
     setStorageAddr owner seedOwner
 
+  function initOwnerChecked (seedOwner : Address) initializer(initializedVersion) : Unit := do
+    require (seedOwner != zeroAddress) "Invalid owner"
+    setStorageAddr owner seedOwner
+
   function upgradeToV2 () reinitializer(initializedVersion, 2) : Unit := do
     setStorage paused 1
 
@@ -607,6 +611,15 @@ def initializeExecutableSecondCallReverts : Bool :=
   | .revert _ _ => false
 
 example : initializeExecutableSecondCallReverts = true := by native_decide
+
+def initializeExecutableBodyRevertRollsBackVersionSlot : Bool :=
+  match (MacroInitializer.initOwnerChecked zeroAddress).run Verity.defaultState with
+  | .revert "Invalid owner" revertedState =>
+      revertedState.storage MacroInitializer.initializedVersion.slot == 0 &&
+      revertedState.storageAddr MacroInitializer.owner.slot == zeroAddress
+  | _ => false
+
+example : initializeExecutableBodyRevertRollsBackVersionSlot = true := by native_decide
 
 def reinitializerExecutableAdvancesVersion : Bool :=
   let seedOwner := wordToAddress 77
@@ -1724,6 +1737,9 @@ set_option maxRecDepth 4096 in
   expectTrue
     "macro initializer executable path rejects a second call"
     MacroInitializerSmoke.initializeExecutableSecondCallReverts
+  expectTrue
+    "macro initializer rollback keeps the version slot unchanged when the user body reverts"
+    MacroInitializerSmoke.initializeExecutableBodyRevertRollsBackVersionSlot
   expectTrue
     "macro reinitializer executable path advances the tracked version"
     MacroInitializerSmoke.reinitializerExecutableAdvancesVersion

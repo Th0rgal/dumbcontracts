@@ -576,6 +576,8 @@ let supply <- totalSupply token
 
 Those forms compile to the corresponding `Compiler.Modules.ERC20.*Module` ECMs, so macro-only contracts can use the common token wrapper surface without dropping back to handwritten `CompilationModel` specs.
 
+If the contract already defines a same-named function with the matching arity, the macro now rejects the direct ERC-20 helper form instead of silently reinterpreting it. That keeps `balanceOf` / `safeTransfer` helper syntax reserved for ECM lowering and avoids ambiguous model generation.
+
 ### Generic external call with return value
 
 ```lean

@@ -563,6 +563,36 @@ verity_contract ERC20HelperSmoke where
     return supply
 
 /--
+error: ERC-20 helper form 'balanceOf' conflicts with contract function 'balanceOf'; rename the function or avoid the direct helper syntax here
+-/
+#guard_msgs in
+verity_contract ERC20HelperShadowReadRejected where
+  storage
+
+  function balanceOf (token : Address, owner : Address) : Uint256 := do
+    return (add (addressToWord token) (addressToWord owner))
+
+  function readShadowedBalance (token : Address, owner : Address) : Uint256 := do
+    let balance ← balanceOf token owner
+    return balance
+end ERC20HelperShadowReadRejected
+
+/--
+error: ERC-20 helper form 'safeTransfer' conflicts with contract function 'safeTransfer'; rename the function or avoid the direct helper syntax here
+-/
+#guard_msgs in
+verity_contract ERC20HelperShadowWriteRejected where
+  storage
+    lastTransfer : Uint256 := slot 0
+
+  function safeTransfer (_token : Address, _to : Address, amount : Uint256) : Unit := do
+    setStorage lastTransfer amount
+
+  function writeShadowedTransfer (token : Address, to : Address, amount : Uint256) : Unit := do
+    safeTransfer token to amount
+end ERC20HelperShadowWriteRejected
+
+/--
 error: linked external 'describe' uses unsupported parameter type; executable externalCall currently supports only Uint256, Uint8, Address, Bytes32, and Bool
 -/
 #guard_msgs in

@@ -235,7 +235,4 @@ unsafe def runTests : IO Unit := do
   let firstBody := String.intercalate "\n" ((parsed.getD 0 {name := "", arity := 0, body := []}).body)
   expectTrue "first function body does not swallow next function" (!contains firstBody "function PoseidonT4_hash")
 
-set_option maxRecDepth 100000 in
-#eval! runTests
-
 end Compiler.MainTest

@@ -65,3 +65,6 @@ lean_exe «gas-report» where
 
 lean_exe «macro-roundtrip-fuzz» where
   root := `Contracts.MacroTranslateRoundTripFuzz
+
+lean_exe «compiler-main-test» where
+  root := `Compiler.MainTestRunner

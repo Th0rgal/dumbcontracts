@@ -150,7 +150,7 @@ jobs:
       - name: Run compiler CLI regression module
         env:
           LEAN_NUM_THREADS: 4
-        run: stdbuf -oL -eL lake build Compiler.MainTest
+        run: stdbuf -oL -eL lake exe compiler-main-test
 
       - name: Run CompilationModel feature regression module
         env:

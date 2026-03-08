@@ -5,6 +5,7 @@ import Compiler.Selector
 import Compiler.Hex
 import Contracts
 import Contracts.Smoke
+import Contracts.ProxyUpgradeabilityMacroSmoke
 import Contracts.StringErrorSmoke
 import Contracts.StringSmoke
 
@@ -269,6 +270,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Owned.spec
   , Contracts.Ledger.spec
   , Contracts.LocalObligationMacroSmoke.spec
+  , Contracts.ProxyUpgradeabilityMacroSmoke.spec
   , Contracts.Vault.spec
   , Contracts.SafeCounter.spec
   , Contracts.OwnedCounter.spec
@@ -306,6 +308,7 @@ private def functionSignature (fn : FunctionSpec) : String :=
 private def expectedExternalSignatures : List (String × List String) :=
   [ ("SimpleStorage", ["store(uint256)", "retrieve()"])
   , ("LocalObligationMacroSmoke", ["unsafeEdge()", "dischargedEdge(uint256)"])
+  , ("ProxyUpgradeabilityMacroSmoke", ["initProxy(address,address)", "upgradeTo(address)", "forward(uint256,uint256,uint256,uint256,uint256)"])
   , ("Counter", ["increment()", "decrement()", "getCount()", "previewAddTwice(uint256)",
       "previewOps(uint256,uint256,uint256)", "previewEnvOps(uint256,uint256)",
       "previewLowLevel(uint256,uint256)"])

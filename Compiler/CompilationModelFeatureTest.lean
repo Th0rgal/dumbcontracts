@@ -8,6 +8,7 @@ import Compiler.Modules.Precompiles
 import Compiler.Yul.PrettyPrint
 import Contracts.Common
 import Contracts.LocalObligationMacroSmoke.LocalObligationMacroSmoke
+import Contracts.ProxyUpgradeabilityMacroSmoke
 
 namespace Compiler.CompilationModelFeatureTest
 
@@ -57,6 +58,69 @@ def dischargedEdgeExecutableStillRuns : Bool :=
 example : dischargedEdgeExecutableStillRuns = true := by native_decide
 
 end MacroLocalObligationSmoke
+
+namespace MacroProxyUpgradeabilitySmoke
+
+open Contracts
+
+def initProxyCarriesInitializerObligation : Bool :=
+  match ProxyUpgradeabilityMacroSmoke.initProxy_model with
+  | { localObligations := [{ name := "implementation_slot_discipline"
+                             obligation := "Proxy storage-slot discipline must be validated against the intended implementation layout."
+                             proofStatus := .assumed }]
+      body := [Stmt.require (Expr.eq (Expr.storage "initializedVersion") (Expr.literal 0)) "initializer already run",
+               Stmt.setStorage "initializedVersion" (Expr.literal 1),
+               Stmt.setStorageAddr "admin" (Expr.param "seedAdmin"),
+               Stmt.setStorageAddr "implementation" (Expr.param "seedImplementation"),
+               Stmt.stop], .. } => true
+  | _ => false
+
+example : initProxyCarriesInitializerObligation = true := by native_decide
+
+def upgradeToCarriesUpgradeObligations : Bool :=
+  match ProxyUpgradeabilityMacroSmoke.upgradeTo_model with
+  | { localObligations := [{ name := "upgrade_authorization"
+                             obligation := "Caller must separately prove that only the intended admin can authorize upgrades."
+                             proofStatus := .assumed },
+                           { name := "storage_layout_compatibility"
+                             obligation := "Storage-layout compatibility across versions remains a manual proof obligation."
+                             proofStatus := .unchecked }]
+      body := [Stmt.require (Expr.lt (Expr.storage "initializedVersion") (Expr.literal 2)) "reinitializer(2) already run",
+               Stmt.setStorage "initializedVersion" (Expr.literal 2),
+               Stmt.setStorageAddr "implementation" (Expr.param "newImplementation"),
+               Stmt.stop], .. } => true
+  | _ => false
+
+example : upgradeToCarriesUpgradeObligations = true := by native_decide
+
+def forwardCarriesProxyBoundary : Bool :=
+  match ProxyUpgradeabilityMacroSmoke.forward_model with
+  | { localObligations := [{ name := "delegatecall_refinement"
+                             obligation := "Delegatecall fallback behavior must be shown to refine the selected proxy semantics."
+                             proofStatus := .assumed }]
+      body := body, .. } =>
+      body.length == 3
+  | _ => false
+
+example : forwardCarriesProxyBoundary = true := by native_decide
+
+def forwardExecutableReadsImplementation : Bool :=
+  let seededState :=
+    (ProxyUpgradeabilityMacroSmoke.initProxy (Verity.wordToAddress 11) (Verity.wordToAddress 19)).run Verity.defaultState
+  match seededState with
+  | .success _ state =>
+      match ProxyUpgradeabilityMacroSmoke.forward 100 0 32 64 32 state with
+      | .success ok nextState =>
+          ok == delegatecall 100 19 0 32 64 32 &&
+            nextState.storage ProxyUpgradeabilityMacroSmoke.initializedVersion.slot == 1 &&
+            nextState.storageAddr ProxyUpgradeabilityMacroSmoke.admin.slot == Verity.wordToAddress 11 &&
+            nextState.storageAddr ProxyUpgradeabilityMacroSmoke.implementation.slot == Verity.wordToAddress 19
+      | .revert _ _ => false
+  | .revert _ _ => false
+
+example : forwardExecutableReadsImplementation = true := by native_decide
+
+end MacroProxyUpgradeabilitySmoke
 
 namespace MacroEcrecoverSmoke
 

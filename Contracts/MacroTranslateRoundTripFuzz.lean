@@ -2,6 +2,7 @@ import Compiler.Selector
 import Compiler.Hex
 import Compiler.Proofs.YulGeneration.Equivalence
 import Contracts
+import Contracts.ProxyUpgradeabilityMacroSmoke
 import Contracts.Smoke
 
 namespace Compiler.MacroTranslateRoundTripFuzz
@@ -29,6 +30,7 @@ private def writeSlots (spec : CompilationModel) : List Nat :=
 private def macroSpecs : List CompilationModel :=
   [ Contracts.SimpleStorage.spec
   , Contracts.LocalObligationMacroSmoke.spec
+  , Contracts.ProxyUpgradeabilityMacroSmoke.spec
   , Contracts.Counter.spec
   , Contracts.Owned.spec
   , Contracts.Ledger.spec

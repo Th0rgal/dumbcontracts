@@ -624,6 +624,17 @@ def emitDynamicLogExecutableAppendsLowLevelTrace : Bool :=
 
 example : emitDynamicLogExecutableAppendsLowLevelTrace = true := by native_decide
 
+def rawLogExecutableRejectsTooManyTopics : Bool :=
+  match rawLog [1, 2, 3, 4, 5] 0 32 Verity.defaultState with
+  | .revert msg state =>
+      msg == "rawLog supports at most 4 topics, got 5" &&
+        match state.events with
+        | [] => true
+        | _ => false
+  | .success _ _ => false
+
+example : rawLogExecutableRejectsTooManyTopics = true := by native_decide
+
 end MacroEventTraceSmoke
 
 private def expectTrue (label : String) (ok : Bool) : IO Unit := do
@@ -1486,6 +1497,8 @@ set_option maxRecDepth 4096 in
     MacroEventTraceSmoke.emitNamedExecutableAppendsNamedEvent
   expectTrue "macro rawLog executable path appends the low-level event trace"
     MacroEventTraceSmoke.emitDynamicLogExecutableAppendsLowLevelTrace
+  expectTrue "executable rawLog rejects more than four topics like the compiler path"
+    MacroEventTraceSmoke.rawLogExecutableRejectsTooManyTopics
   let rawLogTraceYul ← expectCompileToYul
     "rawLog trace smoke spec"
     rawLogTraceSmokeSpec

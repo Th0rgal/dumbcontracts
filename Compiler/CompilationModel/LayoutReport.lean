@@ -1,31 +1,13 @@
 import Compiler.CompilationModel.Types
 import Compiler.CompilationModel.LayoutValidation
+import Compiler.Json
 
 namespace Compiler.CompilationModel
 
-private def escapeJsonChar (c : Char) : String :=
-  match c with
-  | '"' => "\\\""
-  | '\\' => "\\\\"
-  | '\n' => "\\n"
-  | '\r' => "\\r"
-  | '\t' => "\\t"
-  | _ => String.singleton c
-
-private def escapeJsonString (s : String) : String :=
-  s.data.foldl (fun acc c => acc ++ escapeJsonChar c) ""
-
-private def jsonString (s : String) : String :=
-  "\"" ++ escapeJsonString s ++ "\""
+open Compiler.Json
 
 private def jsonNat (n : Nat) : String :=
   toString n
-
-private def jsonArray (items : List String) : String :=
-  "[" ++ String.intercalate "," items ++ "]"
-
-private def jsonObject (fields : List (String × String)) : String :=
-  "{" ++ String.intercalate "," (fields.map fun (name, value) => jsonString name ++ ":" ++ value) ++ "}"
 
 private def jsonOption (render : α → String) : Option α → String
   | some value => render value

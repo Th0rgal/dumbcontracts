@@ -150,9 +150,7 @@ jobs:
       - name: Run compiler CLI regression module
         env:
           LEAN_NUM_THREADS: 4
-        run: |
-          set -- $(grep -vE '^[[:space:]]*($|#)' packages/verity-examples/contracts.manifest)
-          lake build "$@" Compiler.MainTest
+        run: lake build Compiler.MainTest
 
       - name: Run CompilationModel feature regression module
         env:

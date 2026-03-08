@@ -45,6 +45,39 @@ example : recoverSignerExecutableUsesOracle = true := by native_decide
 
 end MacroEcrecoverSmoke
 
+namespace MacroKeccakSmoke
+
+open Contracts
+open Verity hiding pure bind
+open Verity.EVM.Uint256
+
+verity_contract MacroKeccak where
+  storage
+    lastDigest : Uint256 := slot 0
+
+  function hashSlice (offset : Uint256, size : Uint256) : Uint256 := do
+    let digest := keccak256 offset size
+    return digest
+
+def hashSliceModelUsesKeccak : Bool :=
+  match MacroKeccak.hashSlice_modelBody with
+  | [Stmt.letVar "digest" (Expr.keccak256 (Expr.param "offset") (Expr.param "size")),
+      Stmt.return (Expr.localVar "digest")] =>
+      true
+  | _ => false
+
+example : hashSliceModelUsesKeccak = true := by native_decide
+
+def hashSliceExecutableUsesRuntimeStub : Bool :=
+  match MacroKeccak.hashSlice 11 64 Verity.defaultState with
+  | .success digest state =>
+      digest == 75 && state.sender == Verity.defaultState.sender
+  | .revert _ _ => false
+
+example : hashSliceExecutableUsesRuntimeStub = true := by native_decide
+
+end MacroKeccakSmoke
+
 private def expectTrue (label : String) (ok : Bool) : IO Unit := do
   if !ok then
     throw (IO.userError s!"✗ {label}")
@@ -463,5 +496,13 @@ private def ecrecoverSmokeSpec : CompilationModel := {
   expectTrue "macro ecrecover trust report surfaces the precompile assumption"
     (contains macroTrustReport "\"module\":\"ecrecover\"" &&
       contains macroTrustReport "\"assumption\":\"evm_ecrecover_precompile\"")
+  let macroKeccakYul ←
+    expectCompileToYul "macro keccak smoke spec" MacroKeccakSmoke.MacroKeccak.spec
+  expectTrue "macro keccak primitive lowers to the Yul keccak256 builtin"
+    (contains macroKeccakYul "keccak256(offset, size)")
+  let macroKeccakTrustReport := emitTrustReportJson [MacroKeccakSmoke.MacroKeccak.spec]
+  expectTrue "macro keccak trust report surfaces the named primitive assumption"
+    (contains macroKeccakTrustReport "\"primitive\":\"keccak256\"" &&
+      contains macroKeccakTrustReport "\"assumption\":\"keccak256_memory_slice_matches_evm\"")
 
 end Compiler.CompilationModelFeatureTest

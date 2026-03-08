@@ -138,6 +138,7 @@ This remains the last contract-level proof gap between body-level Yul equivalenc
 **Operational trust assumptions**:
 - Keccak implementation correctness in the linked FFI path.
 - Standard collision-resistance assumptions for mapping-slot uniqueness/non-collision, matching Solidity/EVM assumptions.
+- Machine-readable trust reports surface this runtime boundary as `keccak256_memory_slice_matches_evm` when contracts use `Expr.keccak256`.
 
 **Soundness controls**:
 - Mapping-slot abstraction boundary checks in CI.

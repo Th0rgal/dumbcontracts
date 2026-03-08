@@ -420,6 +420,19 @@ private def assumptionJson (entry : ExternalFunction) : String :=
     ("axioms", jsonArray (entry.axiomNames.map jsonString))
   ]
 
+/-- Stable machine-readable assumption name for a trusted primitive boundary. -/
+def primitiveAssumptionName (primitive : String) : String :=
+  match primitive with
+  | "keccak256" => "keccak256_memory_slice_matches_evm"
+  | other => s!"{other}_assumed"
+
+private def primitiveAssumptionJson (primitive : String) : String :=
+  jsonObject [
+    ("primitive", jsonString primitive),
+    ("status", proofStatusString .assumed),
+    ("assumption", jsonString (primitiveAssumptionName primitive))
+  ]
+
 private def ecmJson (entry : String × String) : String :=
   jsonObject [
     ("module", jsonString entry.1),
@@ -480,6 +493,8 @@ where
         ("calleeBehaviorRequiresAssumptions", "true")
       ]),
       ("externalAssumptions", jsonObject [
+        ("axiomatizedPrimitives",
+          jsonArray ((collectAxiomatizedPrimitives spec).map primitiveAssumptionJson)),
         ("linkedExternals", jsonArray ((collectUsedExternalAssumptions spec).map assumptionJson)),
         ("ecmAxioms", jsonArray ((collectEcmAxioms spec).map ecmJson)),
         ("ecmModules", jsonArray ((collectUsedEcmModules spec).map ecmModuleJson))

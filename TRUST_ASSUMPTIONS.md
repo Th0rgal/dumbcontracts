@@ -52,6 +52,7 @@ Current theorem totals, property-test coverage, and proof status live in [docs/V
 - **Role**: `keccak256(abi.encode(key, baseSlot))` for Solidity-compatible storage (`activeMappingSlotBackend = .keccak`).
 - **Trust**: external keccak implementation (`ffi.KEC` via EVMYul FFI) + standard collision-resistance assumptions (same trust class as Solidity/EVM).
 - **Mitigation**: Abstraction-boundary CI, selector/hash cross-checks.
+- **Audit surface**: machine-readable trust reports now emit the explicit primitive assumption `keccak256_memory_slice_matches_evm` whenever a contract uses `Expr.keccak256`.
 
 ### 5. EVM/Yul Semantics and Gas
 - **Role**: Runtime execution model.
@@ -101,5 +102,5 @@ High-level semantics can expose intermediate state in reverted computations. EVM
 
 ---
 
-**Last Updated**: 2026-03-06
+**Last Updated**: 2026-03-08
 **Maintainer Rule**: Update on every trust-boundary-relevant code change.

@@ -398,6 +398,8 @@ unsafe def runTests : IO Unit := do
     throw (IO.userError "✗ trust report emits low-level mechanics")
   if !contains trustReport "\"axiomatizedPrimitives\":[\"keccak256\"]" then
     throw (IO.userError "✗ trust report emits axiomatized primitives")
+  if !contains trustReport "\"axiomatizedPrimitives\":[{\"primitive\":\"keccak256\",\"status\":\"assumed\",\"assumption\":\"keccak256_memory_slice_matches_evm\"}]" then
+    throw (IO.userError "✗ trust report emits structured primitive assumptions")
   if !contains trustReport "\"proofStatus\":{\"proved\":{\"axiomatizedPrimitives\":[],\"linkedExternals\":[],\"ecmModules\":[]}" then
     throw (IO.userError "✗ trust report emits proved proof-status bucket")
   if !contains trustReport "\"assumed\":{\"axiomatizedPrimitives\":[\"keccak256\"],\"linkedExternals\":[\"PoseidonT3_hash\"],\"ecmModules\":[\"testCall\"]}" then
@@ -414,7 +416,7 @@ unsafe def runTests : IO Unit := do
     throw (IO.userError "✗ trust report emits ECM axioms")
   if !contains trustReport "\"ecmModules\":[{\"module\":\"testCall\",\"status\":\"assumed\",\"axioms\":[\"test_call_interface\"]}]" then
     throw (IO.userError "✗ trust report emits ECM module status")
-  IO.println "✓ trust report emits low-level mechanics, proof-status buckets, axiomatized primitives, and external assumptions"
+  IO.println "✓ trust report emits low-level mechanics, proof-status buckets, structured primitive assumptions, and external assumptions"
 
   let uncheckedTrustReport := emitTrustReportJson [uncheckedTrustSurfaceSpec]
   if !contains uncheckedTrustReport "\"hasUncheckedDependencies\":true" then

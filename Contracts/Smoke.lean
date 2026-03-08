@@ -62,6 +62,17 @@ verity_contract StorageWordsSmoke where
   function extSloadsLike (slots : Array Bytes32) : Array Uint256 := do
     returnStorageWords slots
 
+verity_contract CustomErrorSmoke where
+  storage
+    sentinel : Uint256 := slot 0
+
+  errors
+    error NonPositive(Uint256)
+    error AmountTooLarge(Uint256, Uint256)
+
+  function echo (amount : Uint256) : Uint256 := do
+    return amount
+
 verity_contract TupleSmoke where
   storage
     values : Uint256 → Uint256 := slot 0
@@ -301,6 +312,7 @@ end SpecGenSmoke
 #check_contract Bytes32Smoke
 #check_contract MappingWordSmoke
 #check_contract StorageWordsSmoke
+#check_contract CustomErrorSmoke
 #check_contract TupleSmoke
 #check_contract Uint8Smoke
 #check_contract AddressHelpersSmoke

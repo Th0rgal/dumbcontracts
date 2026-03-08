@@ -168,6 +168,7 @@ in `--verbose` output.
 | `ERC4626.convertToAssets` | `erc4626_convertToAssets_interface` | Target implements `convertToAssets(uint256)` and returns one ABI-encoded `uint256` |
 | `ERC4626.convertToShares` | `erc4626_convertToShares_interface` | Target implements `convertToShares(uint256)` and returns one ABI-encoded `uint256` |
 | `ERC4626.totalAssets` | `erc4626_totalAssets_interface` | Target implements `totalAssets()` and returns one ABI-encoded `uint256` |
+| `ERC4626.asset` | `erc4626_asset_interface` | Target implements `asset()` and returns one ABI-encoded `address` |
 | `ERC4626.maxDeposit` | `erc4626_maxDeposit_interface` | Target implements `maxDeposit(address)` and returns one ABI-encoded `uint256` |
 | `ERC4626.maxMint` | `erc4626_maxMint_interface` | Target implements `maxMint(address)` and returns one ABI-encoded `uint256` |
 | `ERC4626.maxWithdraw` | `erc4626_maxWithdraw_interface` | Target implements `maxWithdraw(address)` and returns one ABI-encoded `uint256` |

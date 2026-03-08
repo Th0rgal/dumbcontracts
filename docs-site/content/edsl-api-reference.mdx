@@ -343,6 +343,8 @@ def Compiler.Modules.ERC4626.convertToShares
   (resultVar : String) (vault assets : Expr) : Stmt
 def Compiler.Modules.ERC4626.totalAssets
   (resultVar : String) (vault : Expr) : Stmt
+def Compiler.Modules.ERC4626.asset
+  (resultVar : String) (vault : Expr) : Stmt
 def Compiler.Modules.ERC4626.maxDeposit
   (resultVar : String) (vault receiver : Expr) : Stmt
 def Compiler.Modules.ERC4626.maxMint
@@ -407,6 +409,8 @@ This elaborates to `Compiler.Modules.Precompiles.ecrecoverModule` and the trust 
 `Compiler.Modules.ERC4626.convertToShares` covers the canonical asset-to-share conversion case: it ABI-encodes `convertToShares(uint256)`, performs a `staticcall`, requires exactly one 32-byte return word, and binds the returned share amount to a local result variable. The trust report records the explicit ECM assumption `erc4626_convertToShares_interface`.
 
 `Compiler.Modules.ERC4626.totalAssets` covers the canonical vault-assets aggregate case: it ABI-encodes `totalAssets()`, performs a `staticcall`, requires exactly one 32-byte return word, and binds the returned asset total to a local result variable. The trust report records the explicit ECM assumption `erc4626_totalAssets_interface`.
+
+`Compiler.Modules.ERC4626.asset` covers the canonical underlying-asset getter case: it ABI-encodes `asset()`, performs a `staticcall`, requires exactly one 32-byte return word, masks the returned word to 160 bits, and binds the resulting asset address to a local result variable. The trust report records the explicit ECM assumption `erc4626_asset_interface`.
 
 `Compiler.Modules.ERC4626.maxDeposit` covers the canonical receiver-scoped deposit ceiling case: it ABI-encodes `maxDeposit(address)`, performs a `staticcall`, requires exactly one 32-byte return word, and binds the returned asset limit to a local result variable. The trust report records the explicit ECM assumption `erc4626_maxDeposit_interface`.
 

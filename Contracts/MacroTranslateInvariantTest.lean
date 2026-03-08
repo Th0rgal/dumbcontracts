@@ -275,6 +275,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.Bytes32Smoke.spec
   , Contracts.Smoke.MappingWordSmoke.spec
   , Contracts.Smoke.StorageWordsSmoke.spec
+  , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.StringSmoke.spec
   , Contracts.Smoke.TupleSmoke.spec
   , Contracts.Smoke.Uint8Smoke.spec
@@ -310,6 +311,7 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("Bytes32Smoke", ["setDigest(bytes32)", "getDigest()"])
   , ("MappingWordSmoke", ["setWord1(uint256,uint256)", "getWord1(uint256)", "isWord1NonZero(uint256)"])
   , ("StorageWordsSmoke", ["extSloadsLike(bytes32[])"])
+  , ("CustomErrorSmoke", ["echo(uint256)"])
   , ("StringSmoke", ["echoString(string)"])
   , ("TupleSmoke", ["setFromPair((uint256,uint256))", "getPair(uint256)", "processConfig((address,address,uint256))"])
   , ("Uint8Smoke", ["acceptSig((uint8,bytes32,bytes32))", "sigV()"])
@@ -338,6 +340,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("Bytes32Smoke", ["0xed9fdc05", "0xae0d3e27"])
   , ("MappingWordSmoke", ["0x60ab11c4", "0x8f8a322f", "0xea3aded7"])
   , ("StorageWordsSmoke", ["0x764fa434"])
+  , ("CustomErrorSmoke", ["0x6279e43c"])
   , ("StringSmoke", ["0x0d7e2fce"])
   , ("TupleSmoke", ["0x712ea680", "0xbdf391cc", "0x01b427d2"])
   , ("Uint8Smoke", ["0xc233eaa7", "0x62fc458b"])
@@ -441,6 +444,18 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
   let allNamesPresent :=
     fnNames.all (fun fnName => contains abi s!"\"name\": \"{fnName}\"")
   expectTrue s!"{spec.name}: ABI contains every external function name" allNamesPresent
+
+  if spec.name == "CustomErrorSmoke" then
+    expectTrue
+      "CustomErrorSmoke: macro spec preserves custom error declarations"
+      (spec.errors.map (·.name) == ["NonPositive", "AmountTooLarge"])
+    expectTrue
+      "CustomErrorSmoke: ABI includes declared custom errors"
+      (contains abi "\"type\": \"error\"" &&
+        contains abi "\"name\": \"NonPositive\"" &&
+        contains abi "\"name\": \"AmountTooLarge\"")
+  else
+    pure ()
 
 #eval! do
   expectTrue "macro spec count matches pinned signature snapshot"

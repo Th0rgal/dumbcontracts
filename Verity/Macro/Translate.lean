@@ -59,6 +59,11 @@ structure ParamDecl where
   name : String
   ty : ValueType
 
+structure ErrorDecl where
+  ident : Ident
+  name : String
+  params : Array ValueType
+
 structure FunctionDecl where
   ident : Ident
   name : String
@@ -279,6 +284,16 @@ private def parseParam (stx : Syntax) : CommandElabM ParamDecl := do
         ty := ← valueTypeFromSyntax ty
       }
   | _ => throwErrorAt stx "invalid parameter declaration"
+
+private def parseError (stx : Syntax) : CommandElabM ErrorDecl := do
+  match stx with
+  | `(verityError| error $name:ident ($[$params:term],*)) =>
+      pure {
+        ident := name
+        name := toString name.getId
+        params := ← params.mapM valueTypeFromSyntax
+      }
+  | _ => throwErrorAt stx "invalid custom error declaration"
 
 private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
   match stx with
@@ -904,7 +919,9 @@ private def translateEffectStmt
           throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember"
       | _ => throwErrorAt stx s!"field '{f.name}' is not a double mapping"
   | `(term| require $cond $msg) =>
-      `(Compiler.CompilationModel.Stmt.require $(← translatePureExpr fields params locals cond) $(strTerm (← expectStringLiteral msg)))
+      `(Compiler.CompilationModel.Stmt.require
+          $(← translatePureExpr fields params locals cond)
+          $(strTerm (← expectStringLiteral msg)))
   | `(term| mstore $offset:term $value:term) =>
       `(Compiler.CompilationModel.Stmt.mstore
           $(← translatePureExpr fields params locals offset)
@@ -1069,98 +1086,98 @@ private partial def translateDoElem
   match tupleCase? with
   | some result => pure result
   | none => match elem with
-  | `(doElem| let mut $name:ident := $rhs:term) =>
-      let varName := toString name.getId
-      if locals.contains varName then
-        throwErrorAt name s!"duplicate local variable '{varName}'"
-      let rhsExpr ← translatePureExpr fields params locals rhs
-      pure
-        (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
-          locals.push varName,
-          mutableLocals.push varName)
-  | `(doElem| let $name:ident := $rhs:term) =>
-      let varName := toString name.getId
-      if locals.contains varName then
-        throwErrorAt name s!"duplicate local variable '{varName}'"
-      let rhsExpr ← translatePureExpr fields params locals rhs
-      pure
-        (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
-          locals.push varName,
-          mutableLocals)
-  | `(doElem| let $name:ident ← $rhs:term) =>
-      let varName := toString name.getId
-      if locals.contains varName then
-        throwErrorAt name s!"duplicate local variable '{varName}'"
-      match stripParens rhs with
-      | `(term| ecrecover $hash:term $v:term $r:term $s:term) =>
-          let hashExpr ← translatePureExpr fields params locals hash
-          let vExpr ← translatePureExpr fields params locals v
-          let rExpr ← translatePureExpr fields params locals r
-          let sExpr ← translatePureExpr fields params locals s
+      | `(doElem| let mut $name:ident := $rhs:term) =>
+          let varName := toString name.getId
+          if locals.contains varName then
+            throwErrorAt name s!"duplicate local variable '{varName}'"
+          let rhsExpr ← translatePureExpr fields params locals rhs
           pure
-            (#[(← `(Compiler.CompilationModel.Stmt.ecm
-                    (Compiler.Modules.Precompiles.ecrecoverModule $(strTerm varName))
-                    [$hashExpr, $vExpr, $rExpr, $sExpr]))],
+            (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+              locals.push varName,
+              mutableLocals.push varName)
+      | `(doElem| let $name:ident := $rhs:term) =>
+          let varName := toString name.getId
+          if locals.contains varName then
+            throwErrorAt name s!"duplicate local variable '{varName}'"
+          let rhsExpr ← translatePureExpr fields params locals rhs
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
               locals.push varName,
               mutableLocals)
-      | _ =>
-          let safeBind? ← translateSafeRequireBind fields params locals varName rhs
-          match safeBind? with
-          | some safeStmts => pure (safeStmts, locals.push varName, mutableLocals)
-          | none =>
-              let rhsExpr ← translateBindSource fields params locals rhs
+      | `(doElem| let $name:ident ← $rhs:term) =>
+          let varName := toString name.getId
+          if locals.contains varName then
+            throwErrorAt name s!"duplicate local variable '{varName}'"
+          match stripParens rhs with
+          | `(term| ecrecover $hash:term $v:term $r:term $s:term) =>
+              let hashExpr ← translatePureExpr fields params locals hash
+              let vExpr ← translatePureExpr fields params locals v
+              let rExpr ← translatePureExpr fields params locals r
+              let sExpr ← translatePureExpr fields params locals s
               pure
-                (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+                (#[(← `(Compiler.CompilationModel.Stmt.ecm
+                        (Compiler.Modules.Precompiles.ecrecoverModule $(strTerm varName))
+                        [$hashExpr, $vExpr, $rExpr, $sExpr]))],
                   locals.push varName,
                   mutableLocals)
-  | `(doElem| $name:ident := $rhs:term) =>
-      let varName := toString name.getId
-      if !locals.contains varName then
-        throwErrorAt name s!"cannot assign unknown variable '{varName}'"
-      if !mutableLocals.contains varName then
-        throwErrorAt name s!"cannot assign immutable variable '{varName}'; declare it with 'let mut'"
-      let rhsExpr ← translatePureExpr fields params locals rhs
-      pure
-        (#[(← `(Compiler.CompilationModel.Stmt.assignVar $(strTerm varName) $rhsExpr))],
-          locals,
-          mutableLocals)
-  | `(doElem| return $value:term) =>
-      match (← tupleReturnValueExprs? fields params locals value) with
-      | some valueExprs =>
-          pure (#[(← `(Compiler.CompilationModel.Stmt.returnValues [ $[$valueExprs],* ]))], locals, mutableLocals)
-      | none =>
-          pure (#[(← `(Compiler.CompilationModel.Stmt.return $(← translatePureExpr fields params locals value)))], locals, mutableLocals)
-  | `(doElem| pure ()) =>
-      pure (#[], locals, mutableLocals)
-  | `(doElem| if $cond:term then $thenBranch:doSeq else $elseBranch:doSeq) =>
-      let condExpr ← translatePureExpr fields params locals cond
-      let thenStmts ← translateDoSeqToStmtTerms fields params locals mutableLocals thenBranch
-      let elseStmts ← translateDoSeqToStmtTerms fields params locals mutableLocals elseBranch
-      pure
-        (#[(← `(Compiler.CompilationModel.Stmt.ite
-          $condExpr
-          [ $[$thenStmts],* ]
-          [ $[$elseStmts],* ]))],
-          locals,
-          mutableLocals)
-  | `(doElem| forEach $name:term $count:term $body:term) =>
-      let loopVar := ← expectStringOrIdent name
-      let countExpr ← translatePureExpr fields params locals count
-      let bodyStmts ←
-        match stripParens body with
-        | `(term| do $[$inner:doElem]*) =>
-            pure (← (translateDoElems fields params (locals.push loopVar) mutableLocals inner)).1
-        | _ => throwErrorAt body "forEach body must be a do block"
-      pure
-        (#[(← `(Compiler.CompilationModel.Stmt.forEach
-            $(strTerm loopVar)
-            $countExpr
-            [ $[$bodyStmts],* ]))],
-          locals,
-          mutableLocals)
-  | `(doElem| $stmt:term) =>
-      pure (#[(← translateEffectStmt fields params locals stmt)], locals, mutableLocals)
-  | _ => throwErrorAt elem "unsupported do element"
+          | _ =>
+              let safeBind? ← translateSafeRequireBind fields params locals varName rhs
+              match safeBind? with
+              | some safeStmts => pure (safeStmts, locals.push varName, mutableLocals)
+              | none =>
+                  let rhsExpr ← translateBindSource fields params locals rhs
+                  pure
+                    (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+                      locals.push varName,
+                      mutableLocals)
+      | `(doElem| $name:ident := $rhs:term) =>
+          let varName := toString name.getId
+          if !locals.contains varName then
+            throwErrorAt name s!"cannot assign unknown variable '{varName}'"
+          if !mutableLocals.contains varName then
+            throwErrorAt name s!"cannot assign immutable variable '{varName}'; declare it with 'let mut'"
+          let rhsExpr ← translatePureExpr fields params locals rhs
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.assignVar $(strTerm varName) $rhsExpr))],
+              locals,
+              mutableLocals)
+      | `(doElem| return $value:term) =>
+          match (← tupleReturnValueExprs? fields params locals value) with
+          | some valueExprs =>
+              pure (#[(← `(Compiler.CompilationModel.Stmt.returnValues [ $[$valueExprs],* ]))], locals, mutableLocals)
+          | none =>
+              pure (#[(← `(Compiler.CompilationModel.Stmt.return $(← translatePureExpr fields params locals value)))], locals, mutableLocals)
+      | `(doElem| pure ()) =>
+          pure (#[], locals, mutableLocals)
+      | `(doElem| if $cond:term then $thenBranch:doSeq else $elseBranch:doSeq) =>
+          let condExpr ← translatePureExpr fields params locals cond
+          let thenStmts ← translateDoSeqToStmtTerms fields params locals mutableLocals thenBranch
+          let elseStmts ← translateDoSeqToStmtTerms fields params locals mutableLocals elseBranch
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.ite
+              $condExpr
+              [ $[$thenStmts],* ]
+              [ $[$elseStmts],* ]))],
+              locals,
+              mutableLocals)
+      | `(doElem| forEach $name:term $count:term $body:term) =>
+          let loopVar := ← expectStringOrIdent name
+          let countExpr ← translatePureExpr fields params locals count
+          let bodyStmts ←
+            match stripParens body with
+            | `(term| do $[$inner:doElem]*) =>
+                pure (← (translateDoElems fields params (locals.push loopVar) mutableLocals inner)).1
+            | _ => throwErrorAt body "forEach body must be a do block"
+          pure
+            (#[(← `(Compiler.CompilationModel.Stmt.forEach
+                $(strTerm loopVar)
+                $countExpr
+                [ $[$bodyStmts],* ]))],
+              locals,
+              mutableLocals)
+      | `(doElem| $stmt:term) =>
+          pure (#[(← translateEffectStmt fields params locals stmt)], locals, mutableLocals)
+      | _ => throwErrorAt elem "unsupported do element"
 end
 
 private def translateBodyToStmtTerms
@@ -1260,12 +1277,20 @@ private def mkFunctionCommands (fields : Array StorageFieldDecl) (fn : FunctionD
   })
   pure #[fnCmd, bodyCmd, modelCmd]
 
+private def mkModelErrorTerm (err : ErrorDecl) : CommandElabM Term := do
+  let paramTerms ← err.params.mapM modelParamTypeTerm
+  `(Compiler.CompilationModel.ErrorDef.mk
+      $(strTerm err.name)
+      [ $[$paramTerms],* ])
+
 private def mkSpecCommand
     (contractName : String)
     (fields : Array StorageFieldDecl)
+    (errorDecls : Array ErrorDecl)
     (ctor : Option ConstructorDecl)
     (functions : Array FunctionDecl) : CommandElabM Cmd := do
   let fieldTerms ← fields.mapM mkModelFieldTerm
+  let errorTerms ← errorDecls.mapM mkModelErrorTerm
   let constructorTerm ←
     match ctor with
     | none => `(none)
@@ -1280,6 +1305,7 @@ private def mkSpecCommand
   `(command| def spec : Compiler.CompilationModel.CompilationModel := {
     name := $(strTerm contractName)
     fields := [ $[$fieldTerms],* ]
+    «errors» := [ $[$errorTerms],* ]
     «constructor» := $constructorTerm
     functions := [ $[$functionModelIds],* ]
   })
@@ -1364,12 +1390,18 @@ private def mkFindIdxParamSimpCommands
 
 def parseContractSyntax
     (stx : Syntax)
-    : CommandElabM (Ident × Array StorageFieldDecl × Option ConstructorDecl × Array FunctionDecl) := do
+    : CommandElabM
+        (Ident × Array StorageFieldDecl × Array ErrorDecl × Option ConstructorDecl × Array FunctionDecl) := do
   match stx with
-  | `(command| verity_contract $contractName:ident where storage $[$storageFields:verityStorageField]* $[$ctor:verityConstructor]? $[$functions:verityFunction]*) =>
+  | `(command| verity_contract $contractName:ident where storage $[$storageFields:verityStorageField]* $[errors $[$errorDecls:verityError]*]? $[$ctor:verityConstructor]? $[$functions:verityFunction]*) =>
+      let parsedErrors ←
+        match errorDecls with
+        | some decls => decls.mapM parseError
+        | none => pure #[]
       pure
         ( contractName
         , (← storageFields.mapM parseStorageField)
+        , parsedErrors
         , (← ctor.mapM parseConstructor)
         , (← functions.mapM parseFunction)
         )
@@ -1386,9 +1418,10 @@ def mkFunctionCommandsPublic
 def mkSpecCommandPublic
     (contractName : String)
     (fields : Array StorageFieldDecl)
+    (errorDecls : Array ErrorDecl)
     (ctor : Option ConstructorDecl)
     (functions : Array FunctionDecl) : CommandElabM Cmd :=
-  mkSpecCommand contractName fields ctor functions
+  mkSpecCommand contractName fields errorDecls ctor functions
 
 def mkFindIdxFieldSimpCommandsPublic
     (contractIdent : Ident)

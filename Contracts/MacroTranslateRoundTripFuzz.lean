@@ -41,6 +41,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.Bytes32Smoke.spec
   , Contracts.Smoke.MappingWordSmoke.spec
   , Contracts.Smoke.StorageWordsSmoke.spec
+  , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.Smoke.TupleSmoke.spec
   , Contracts.Smoke.Uint8Smoke.spec
   , Contracts.Smoke.AddressHelpersSmoke.spec

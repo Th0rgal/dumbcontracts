@@ -98,6 +98,41 @@ verity_contract ConstantSmoke where
   function treasuryAddr () : Address := do
     return treasury
 
+verity_contract InitializerSmoke where
+  storage
+    initializedVersion : Uint256 := slot 0
+    owner : Address := slot 1
+    paused : Uint256 := slot 2
+
+  function initOwner (seedOwner : Address) initializer(initializedVersion) : Unit := do
+    setStorageAddr owner seedOwner
+
+  function upgradeToV2 () reinitializer(initializedVersion, 2) : Unit := do
+    setStorage paused 1
+
+/--
+error: initializer guard field 'owner' must be a Uint256 storage slot
+-/
+#guard_msgs in
+verity_contract InitializerGuardFieldTypeRejected where
+  storage
+    owner : Address := slot 0
+
+  function initOwner () initializer(owner) : Unit := do
+    pure ()
+end InitializerGuardFieldTypeRejected
+
+/--
+error: reinitializer version must be greater than 0
+-/
+#guard_msgs in
+verity_contract InitializerZeroVersionRejected where
+  storage
+    initializedVersion : Uint256 := slot 0
+
+  function upgradeToV0 () reinitializer(initializedVersion, 0) : Unit := do
+    pure ()
+
 /--
 error: contract constants must be compile-time expressions; 'blockTimestamp' is runtime-dependent
 -/

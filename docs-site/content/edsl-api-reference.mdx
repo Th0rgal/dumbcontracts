@@ -354,6 +354,24 @@ verity_contract PayableInit where
 
 This sets `spec.constructor.isPayable := true`, emits constructor ABI `stateMutability: "payable"`, and removes the deploy-time `callvalue` guard from generated Yul.
 
+Upgradeable-style initialization can also be guarded directly from the macro surface using an explicit version slot:
+
+```lean
+verity_contract UpgradeableConfig where
+  storage
+    initializedVersion : Uint256 := slot 0
+    owner : Address := slot 1
+    paused : Uint256 := slot 2
+
+  function initOwner (seedOwner : Address) initializer(initializedVersion) : Unit := do
+    setStorageAddr owner seedOwner
+
+  function upgradeToV2 () reinitializer(initializedVersion, 2) : Unit := do
+    setStorage paused 1
+```
+
+`initializer(versionSlot)` prepends `require(versionSlot == 0, "initializer already run")` and then stores `1` into that slot before the user body runs. `reinitializer(versionSlot, n)` similarly requires the tracked version to be strictly less than `n`, then stores `n` before running the body. The guard slot must be a user-declared `Uint256` storage field, which keeps layout and proof state explicit instead of hiding upgrade metadata in an implicit slot.
+
 ## Contract Constants
 
 `verity_contract` also supports contract-scoped compile-time constants that are shared between the executable fallback and the generated compilation model:

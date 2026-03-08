@@ -70,11 +70,16 @@ structure ConstantDecl where
   ty : ValueType
   body : Term
 
+inductive InitGuardDecl where
+  | initializer (fieldIdent : Ident) (fieldName : String)
+  | reinitializer (fieldIdent : Ident) (fieldName : String) (version : Nat)
+
 structure FunctionDecl where
   ident : Ident
   name : String
   params : Array ParamDecl
   returnTy : ValueType
+  initGuard? : Option InitGuardDecl := none
   body : Term
 
 structure ConstructorDecl where
@@ -315,6 +320,27 @@ private def parseConstant (stx : Syntax) : CommandElabM ConstantDecl := do
 
 private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
   match stx with
+  | `(verityFunction| function $name:ident ($[$params:verityParam],*) initializer($field:ident) : $retTy:term := $body:term) =>
+      pure {
+        ident := name
+        name := toString name.getId
+        params := ← params.mapM parseParam
+        returnTy := ← valueTypeFromSyntax retTy
+        initGuard? := some (.initializer field (toString field.getId))
+        body := body
+      }
+  | `(verityFunction| function $name:ident ($[$params:verityParam],*) reinitializer($field:ident, $version:num) : $retTy:term := $body:term) => do
+      let versionNat ← natFromSyntax version
+      if versionNat == 0 then
+        throwErrorAt version "reinitializer version must be greater than 0"
+      pure {
+        ident := name
+        name := toString name.getId
+        params := ← params.mapM parseParam
+        returnTy := ← valueTypeFromSyntax retTy
+        initGuard? := some (.reinitializer field (toString field.getId) versionNat)
+        body := body
+      }
   | `(verityFunction| function $name:ident ($[$params:verityParam],*) : $retTy:term := $body:term) =>
       pure {
         ident := name
@@ -378,6 +404,85 @@ private def lookupStorageField (fields : Array StorageFieldDecl) (name : String)
   match fields.find? (fun f => f.name == name) with
   | some f => pure f
   | none => throwError s!"unknown storage field '{name}'"
+
+private def resolveInitGuardField
+    (fields : Array StorageFieldDecl)
+    (guard : InitGuardDecl)
+    (stx : Syntax) : CommandElabM StorageFieldDecl := do
+  let field ←
+    match guard with
+    | .initializer _ fieldName => lookupStorageField fields fieldName
+    | .reinitializer _ fieldName _ => lookupStorageField fields fieldName
+  match field.ty with
+  | .scalar .uint256 => pure field
+  | _ =>
+      throwErrorAt stx
+        s!"initializer guard field '{field.name}' must be a Uint256 storage slot"
+
+private def initGuardRequireMessage : InitGuardDecl → String
+  | .initializer .. => "initializer already run"
+  | .reinitializer _ _ version => s!"reinitializer({version}) already run"
+
+private def initGuardVersionTerm (version : Nat) : Term :=
+  natTerm version
+
+private def initGuardPreludeStmtTerms
+    (fields : Array StorageFieldDecl)
+    (fn : FunctionDecl) : CommandElabM (Array Term) := do
+  match fn.initGuard? with
+  | none => pure #[]
+  | some guard =>
+      let field ← resolveInitGuardField fields guard fn.ident
+      let message := strTerm (initGuardRequireMessage guard)
+      match guard with
+      | .initializer _ _ =>
+          pure #[
+            ← `(Compiler.CompilationModel.Stmt.require
+                  (Compiler.CompilationModel.Expr.eq
+                    (Compiler.CompilationModel.Expr.storage $(strTerm field.name))
+                    (Compiler.CompilationModel.Expr.literal 0))
+                  $message),
+            ← `(Compiler.CompilationModel.Stmt.setStorage
+                  $(strTerm field.name)
+                  (Compiler.CompilationModel.Expr.literal 1))
+          ]
+      | .reinitializer _ _ version =>
+          pure #[
+            ← `(Compiler.CompilationModel.Stmt.require
+                  (Compiler.CompilationModel.Expr.lt
+                    (Compiler.CompilationModel.Expr.storage $(strTerm field.name))
+                    (Compiler.CompilationModel.Expr.literal $(initGuardVersionTerm version)))
+                  $message),
+            ← `(Compiler.CompilationModel.Stmt.setStorage
+                  $(strTerm field.name)
+                  (Compiler.CompilationModel.Expr.literal $(initGuardVersionTerm version)))
+          ]
+
+private def mkInitGuardedBody
+    (fields : Array StorageFieldDecl)
+    (fn : FunctionDecl) : CommandElabM Term := do
+  match fn.initGuard? with
+  | none => pure fn.body
+  | some guard =>
+      let field ← resolveInitGuardField fields guard fn.ident
+      let currentVersion := mkIdent (Name.mkSimple s!"__verity_init_version_{field.name}")
+      let message := strTerm (initGuardRequireMessage guard)
+      match fn.body with
+      | `(term| do $[$elems:doElem]*) =>
+          match guard with
+          | .initializer _ _ =>
+              `(do
+                  let $currentVersion ← getStorage $field.ident
+                  require ($currentVersion == 0) $message
+                  setStorage $field.ident 1
+                  $[$elems:doElem]*)
+          | .reinitializer _ _ version =>
+              `(do
+                  let $currentVersion ← getStorage $field.ident
+                  require ($currentVersion < $(initGuardVersionTerm version)) $message
+                  setStorage $field.ident $(initGuardVersionTerm version)
+                  $[$elems:doElem]*)
+      | _ => throwErrorAt fn.body "function body must be a do block"
 
 private def expectStringLiteral (stx : Term) : CommandElabM String :=
   match (stripParens stx).raw.isStrLit? with
@@ -1460,7 +1565,8 @@ private def translateBodyToStmtTerms
     (fn : FunctionDecl) : CommandElabM (Array Term) := do
   match fn.body with
   | `(term| do $[$elems:doElem]*) =>
-      let stmts := (← translateDoElems fields constDecls fn.params #[] #[] elems).1
+      let guardPrelude ← initGuardPreludeStmtTerms fields fn
+      let stmts := guardPrelude ++ (← translateDoElems fields constDecls fn.params #[] #[] elems).1
       let mut stmts := stmts
       if fn.returnTy == .unit then
         stmts := stmts.push (← `(Compiler.CompilationModel.Stmt.stop))
@@ -1536,7 +1642,8 @@ private def mkModelFieldTerm (field : StorageFieldDecl) : CommandElabM Term := d
 
 private def mkFunctionCommands (fields : Array StorageFieldDecl) (fn : FunctionDecl) : CommandElabM (Array Cmd) := do
   let fnType ← mkContractFnType fn.params fn.returnTy
-  let fnValue ← mkContractFnValue fn.params fn.body
+  let fnBody ← mkInitGuardedBody fields fn
+  let fnValue ← mkContractFnValue fn.params fnBody
   let modelBodyName ← mkSuffixedIdent fn.ident "_modelBody"
   let modelName ← mkSuffixedIdent fn.ident "_model"
   let stmtTerms ← translateBodyToStmtTerms fields #[] fn
@@ -1710,7 +1817,8 @@ def mkFunctionCommandsPublic
     (fn : FunctionDecl) : CommandElabM (Array Cmd) :=
   do
     let fnType ← mkContractFnType fn.params fn.returnTy
-    let fnValue ← mkContractFnValue fn.params fn.body
+    let fnBody ← mkInitGuardedBody fields fn
+    let fnValue ← mkContractFnValue fn.params fnBody
     let modelBodyName ← mkSuffixedIdent fn.ident "_modelBody"
     let modelName ← mkSuffixedIdent fn.ident "_model"
     let stmtTerms ← translateBodyToStmtTerms fields constDecls fn

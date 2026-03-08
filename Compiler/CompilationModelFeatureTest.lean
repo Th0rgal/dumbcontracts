@@ -539,6 +539,103 @@ example : specMarksConstructorPayable = true := by native_decide
 
 end MacroPayableConstructorSmoke
 
+namespace MacroInitializerSmoke
+
+open Contracts
+open Verity hiding pure bind
+open Verity.EVM.Uint256
+
+verity_contract MacroInitializer where
+  storage
+    initializedVersion : Uint256 := slot 0
+    owner : Address := slot 1
+    paused : Uint256 := slot 2
+
+  function initOwner (seedOwner : Address) initializer(initializedVersion) : Unit := do
+    setStorageAddr owner seedOwner
+
+  function initOwnerChecked (seedOwner : Address) initializer(initializedVersion) : Unit := do
+    require (seedOwner != zeroAddress) "Invalid owner"
+    setStorageAddr owner seedOwner
+
+  function upgradeToV2 () reinitializer(initializedVersion, 2) : Unit := do
+    setStorage paused 1
+
+  function ownerAddr () : Address := do
+    let currentOwner ← getStorageAddr owner
+    return currentOwner
+
+def initializeModelPrependsSingleRunGuard : Bool :=
+  match MacroInitializer.initOwner_modelBody with
+  | [Stmt.require (Expr.eq (Expr.storage "initializedVersion") (Expr.literal 0)) "initializer already run",
+      Stmt.setStorage "initializedVersion" (Expr.literal 1),
+      Stmt.setStorageAddr "owner" (Expr.param "seedOwner"),
+      Stmt.stop] =>
+      true
+  | _ => false
+
+example : initializeModelPrependsSingleRunGuard = true := by native_decide
+
+def initializeV2ModelPrependsVersionGuard : Bool :=
+  match MacroInitializer.upgradeToV2_modelBody with
+  | [Stmt.require (Expr.lt (Expr.storage "initializedVersion") (Expr.literal 2)) "reinitializer(2) already run",
+      Stmt.setStorage "initializedVersion" (Expr.literal 2),
+      Stmt.setStorage "paused" (Expr.literal 1),
+      Stmt.stop] =>
+      true
+  | _ => false
+
+example : initializeV2ModelPrependsVersionGuard = true := by native_decide
+
+def initializeExecutableRunsOnce : Bool :=
+  let seedOwner := wordToAddress 77
+  match MacroInitializer.initOwner seedOwner Verity.defaultState with
+  | .success () state =>
+      state.storage MacroInitializer.initializedVersion.slot == 1 &&
+      state.storageAddr MacroInitializer.owner.slot == seedOwner
+  | .revert _ _ => false
+
+example : initializeExecutableRunsOnce = true := by native_decide
+
+def initializeExecutableSecondCallReverts : Bool :=
+  let seedOwner := wordToAddress 77
+  match MacroInitializer.initOwner seedOwner Verity.defaultState with
+  | .success () initializedState =>
+      match MacroInitializer.initOwner seedOwner initializedState with
+      | .revert "initializer already run" revertedState =>
+          revertedState.storage MacroInitializer.initializedVersion.slot ==
+            initializedState.storage MacroInitializer.initializedVersion.slot &&
+          revertedState.storageAddr MacroInitializer.owner.slot ==
+            initializedState.storageAddr MacroInitializer.owner.slot
+      | _ => false
+  | .revert _ _ => false
+
+example : initializeExecutableSecondCallReverts = true := by native_decide
+
+def initializeExecutableBodyRevertRollsBackVersionSlot : Bool :=
+  match (MacroInitializer.initOwnerChecked zeroAddress).run Verity.defaultState with
+  | .revert "Invalid owner" revertedState =>
+      revertedState.storage MacroInitializer.initializedVersion.slot == 0 &&
+      revertedState.storageAddr MacroInitializer.owner.slot == zeroAddress
+  | _ => false
+
+example : initializeExecutableBodyRevertRollsBackVersionSlot = true := by native_decide
+
+def reinitializerExecutableAdvancesVersion : Bool :=
+  let seedOwner := wordToAddress 77
+  match MacroInitializer.initOwner seedOwner Verity.defaultState with
+  | .success () initializedState =>
+      match MacroInitializer.upgradeToV2 initializedState with
+      | .success () upgradedState =>
+          upgradedState.storage MacroInitializer.initializedVersion.slot == 2 &&
+          upgradedState.storage MacroInitializer.paused.slot == 1
+      | .revert _ _ => false
+  | .revert _ _ => false
+
+example : reinitializerExecutableAdvancesVersion = true := by native_decide
+
+end MacroInitializerSmoke
+
 namespace MacroStructDestructuringSmoke
 
 open Contracts
@@ -1628,6 +1725,24 @@ set_option maxRecDepth 4096 in
   expectTrue "macro payable constructor removes one deploy-time callvalue guard from rendered Yul"
     (countOccurrences nonPayableCtorYul "callvalue()" ==
       countOccurrences payableCtorYul "callvalue()" + 1)
+  expectTrue
+    "macro initializer prepends a single-run storage guard in the model"
+    MacroInitializerSmoke.initializeModelPrependsSingleRunGuard
+  expectTrue
+    "macro reinitializer prepends the target-version storage guard in the model"
+    MacroInitializerSmoke.initializeV2ModelPrependsVersionGuard
+  expectTrue
+    "macro initializer executable path seeds storage on the first call"
+    MacroInitializerSmoke.initializeExecutableRunsOnce
+  expectTrue
+    "macro initializer executable path rejects a second call"
+    MacroInitializerSmoke.initializeExecutableSecondCallReverts
+  expectTrue
+    "macro initializer rollback keeps the version slot unchanged when the user body reverts"
+    MacroInitializerSmoke.initializeExecutableBodyRevertRollsBackVersionSlot
+  expectTrue
+    "macro reinitializer executable path advances the tracked version"
+    MacroInitializerSmoke.reinitializerExecutableAdvancesVersion
   expectTrue "macro emit lowers to Stmt.emit"
     MacroEventTraceSmoke.emitNamedModelUsesStmtEmit
   expectTrue "macro rawLog lowers to Stmt.rawLog with dynamic topic expressions"

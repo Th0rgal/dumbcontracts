@@ -3,6 +3,8 @@ import Compiler.Hex
 import Compiler.Proofs.YulGeneration.Equivalence
 import Contracts
 import Contracts.ProxyUpgradeabilityMacroSmoke
+import Contracts.ProxyUpgradeabilityLayoutCompatibleSmoke
+import Contracts.ProxyUpgradeabilityLayoutIncompatibleSmoke
 import Contracts.Smoke
 
 namespace Compiler.MacroTranslateRoundTripFuzz
@@ -31,6 +33,8 @@ private def macroSpecs : List CompilationModel :=
   [ Contracts.SimpleStorage.spec
   , Contracts.LocalObligationMacroSmoke.spec
   , Contracts.ProxyUpgradeabilityMacroSmoke.spec
+  , Contracts.ProxyUpgradeabilityLayoutCompatibleSmoke.spec
+  , Contracts.ProxyUpgradeabilityLayoutIncompatibleSmoke.spec
   , Contracts.Counter.spec
   , Contracts.Owned.spec
   , Contracts.Ledger.spec

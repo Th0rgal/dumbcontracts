@@ -219,11 +219,16 @@ def compileSpecsWithOptions
     IO.println "External assumption report:"
     let mut anyExternalAssumptions := false
     for spec in specs do
+      let primitiveAssumptions := collectAxiomatizedPrimitives spec
       let externals := collectUsedExternalAssumptions spec
       let ecmAxioms := collectEcmAxioms spec
-      if !externals.isEmpty || !ecmAxioms.isEmpty then
+      if !primitiveAssumptions.isEmpty || !externals.isEmpty || !ecmAxioms.isEmpty then
         anyExternalAssumptions := true
         IO.println s!"  {spec.name}:"
+        if !primitiveAssumptions.isEmpty then
+          for primitive in primitiveAssumptions do
+            IO.println
+              s!"    [primitive:{primitive}][assumed] {primitiveAssumptionName primitive}"
         if !externals.isEmpty then
           for ext in externals do
             let renderedAxioms :=
@@ -234,7 +239,7 @@ def compileSpecsWithOptions
           for (modName, assumption) in ecmAxioms do
             IO.println s!"    [ecm:{modName}] {assumption}"
     if !anyExternalAssumptions then
-      IO.println "  (no linked external assumptions or ECM axioms)"
+      IO.println "  (no primitive assumptions, linked external assumptions, or ECM axioms)"
     IO.println ""
     IO.println "ECM axiom report:"
     let mut anyAxioms := false

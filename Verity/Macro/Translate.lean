@@ -1699,8 +1699,37 @@ private def mkContractFnType (params : Array ParamDecl) (retTy : ValueType) : Co
     ty ← `(($(← contractValueTypeTerm param.ty)) → $ty)
   pure ty
 
+private def mkTupleProjectionTerm (base : Term) (elemTys : List ValueType) (idx : Nat) : CommandElabM Term := do
+  let rec go (tupleTerm : Term) (remaining : List ValueType) (targetIdx : Nat) : CommandElabM Term := do
+    match remaining with
+    | [] => throwError "tuple projection index out of bounds"
+    | [_] =>
+        if targetIdx == 0 then
+          pure tupleTerm
+        else
+          throwError "tuple projection index out of bounds"
+    | _ :: rest =>
+        if targetIdx == 0 then
+          `(Prod.fst $tupleTerm)
+        else
+          go (← `(Prod.snd $tupleTerm)) rest (targetIdx - 1)
+  go base elemTys idx
+
+private def injectTupleParamAliases (params : Array ParamDecl) (body : Term) : CommandElabM Term := do
+  let mut wrappedBody := body
+  for param in params.reverse do
+    match param.ty with
+    | .tuple elemTys =>
+        let baseTerm : Term := mkIdent param.ident.getId
+        for (_elemTy, idx) in (elemTys.toArray.zipIdx).reverse do
+          let aliasName := mkIdent <| Name.str .anonymous s!"{param.name}_{idx}"
+          let projection ← mkTupleProjectionTerm baseTerm elemTys idx
+          wrappedBody ← `(term| let $aliasName := $projection; $wrappedBody)
+    | _ => pure ()
+  pure wrappedBody
+
 private def mkContractFnValue (params : Array ParamDecl) (body : Term) : CommandElabM Term := do
-  let mut value := body
+  let mut value ← injectTupleParamAliases params body
   for param in params.reverse do
     let pid := param.ident
     value ← `(fun ($pid : $(← contractValueTypeTerm param.ty)) => $value)

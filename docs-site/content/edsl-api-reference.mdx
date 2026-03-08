@@ -321,9 +321,17 @@ Today this elaborates cleanly for tuple literals and tuple-typed parameters. `re
 ```lean
 errors
   error NonPositive(Uint256)
+  error AmountTooLarge(Uint256, Uint256)
+
+function requirePositive (amount : Uint256) : Unit := do
+  requireError (amount != 0) NonPositive(amount)
+
+function rejectLarge (amount : Uint256) : Unit := do
+  if amount > 100 then
+    revert AmountTooLarge(amount, 100)
 ```
 
-These declarations populate `CompilationModel.errors`, so `#check_contract` and ABI generation see the same custom error list authored in the macro contract.
+These declarations populate `CompilationModel.errors`, and the macro now lowers guarded and unconditional custom-error exits to `Stmt.requireError` / `Stmt.revertError`. That keeps `#check_contract`, ABI generation, and the Yul compiler on the same custom-error surface authored in the macro contract.
 
 ## External Calls (ECM)
 

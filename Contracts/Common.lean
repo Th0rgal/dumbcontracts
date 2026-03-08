@@ -18,6 +18,9 @@ macro_rules
       `(doElem| require false $(Lean.quote (toString errorName.getId)))
   | `(doElem| requireError $cond:term $errorName:ident($_args,*)) =>
       `(doElem| if $cond then pure () else require false $(Lean.quote (toString errorName.getId)))
+  | `(doElem| let $name:ident := arrayElement $values:term $index:term) => do
+      let checked := Lean.mkIdentFrom name `_root_.Contracts.arrayElementChecked
+      `(doElem| let $name ← $checked:ident $values $index)
   | `(doElem| let $pat:term := $rhs:term) => do
       if pat.raw.getKind != `Lean.Parser.Term.tuple then
         Lean.Macro.throwUnsupported
@@ -71,8 +74,17 @@ def ecrecover (hash v r sigS : Uint256) : Contract Address := fun state =>
 def calldatacopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def returndataCopy (_destOffset _sourceOffset _size : Uint256) : Contract Unit := pure ()
 def revertReturndata : Contract Unit := pure ()
+def arrayLength {α : Type} (values : Array α) : Uint256 := values.size
+def arrayElement {α : Type} [Inhabited α] (values : Array α) (index : Uint256) : α :=
+  values.getD (index : Nat) default
+def arrayElementChecked {α : Type} (values : Array α) (index : Uint256) : Contract α := fun state =>
+  if h : (index : Nat) < values.size then
+    ContractResult.success (values[(index : Nat)]'h) state
+  else
+    ContractResult.revert "Array index out of bounds" state
+def returnArray {α : Type} (values : Array α) : Contract (Array α) := pure values
 def returnValues (_values : List Uint256) : Contract Unit := pure ()
-def returnBytes {α : Type} [Inhabited α] (_value : α) : Contract α := pure default
+def returnBytes {α : Type} (value : α) : Contract α := pure value
 def returnStorageWords (_slots : Array Uint256) : Contract (Array Uint256) := pure #[]
 def mstore (_offset _value : Uint256) : Contract Unit := pure ()
 def getMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset : Uint256) :

@@ -27,7 +27,7 @@ inductive ValueType where
   | array (elemTy : ValueType)
   | tuple (elemTys : List ValueType)
   | unit
-  deriving BEq
+  deriving Repr, BEq
 
 inductive MappingKeyType where
   | address
@@ -722,6 +722,393 @@ private def lookupVarExpr (params : Array ParamDecl) (locals : Array String) (na
   else
     throwError s!"unknown variable '{name}'"
 
+private abbrev TypedLocal := String × ValueType
+
+private def isWordLikeValueType : ValueType → Bool
+  | .uint256 | .uint8 | .address | .bytes32 => true
+  | _ => false
+
+private def lookupTypedLocalType? (locals : Array TypedLocal) (name : String) : Option ValueType :=
+  locals.findSome? fun localTy =>
+    if localTy.1 == name then some localTy.2 else none
+
+private def tupleParamElemType? (params : Array ParamDecl) (name : String) : Option ValueType :=
+  match name.splitOn "_" with
+  | [baseName, indexStr] =>
+      match indexStr.toNat? with
+      | some idx =>
+          params.findSome? fun p =>
+            if p.name == baseName then
+              match p.ty with
+              | .tuple elemTys => elemTys.toArray[idx]?
+              | _ => none
+            else
+              none
+      | none => none
+  | _ => none
+
+private def renderValueType (ty : ValueType) : String :=
+  reprStr ty
+
+private def requireWordLikeType (stx : Syntax) (context : String) (ty : ValueType) : CommandElabM Unit := do
+  unless isWordLikeValueType ty do
+    throwErrorAt stx s!"{context} requires a word-like value (Uint256, Uint8, Address, or Bytes32), got {renderValueType ty}"
+
+private def requireBoolType (stx : Syntax) (context : String) (ty : ValueType) : CommandElabM Unit := do
+  unless ty == .bool do
+    throwErrorAt stx s!"{context} requires Bool, got {renderValueType ty}"
+
+private def requireEqComparableTypes (stx : Syntax) (lhsTy rhsTy : ValueType) : CommandElabM Unit := do
+  let bothWordLike := isWordLikeValueType lhsTy && isWordLikeValueType rhsTy
+  let bothBool := lhsTy == .bool && rhsTy == .bool
+  unless bothWordLike || bothBool do
+    throwErrorAt stx
+      s!"equality is currently supported only for Bool and word-like values (Uint256, Uint8, Address, Bytes32); got {renderValueType lhsTy} and {renderValueType rhsTy}"
+
+private def requireSameOrWordLikeTypes (stx : Syntax) (context : String) (lhsTy rhsTy : ValueType) : CommandElabM Unit := do
+  unless lhsTy == rhsTy || (isWordLikeValueType lhsTy && isWordLikeValueType rhsTy) do
+    throwErrorAt stx
+      s!"{context} requires matching branch types, got {renderValueType lhsTy} and {renderValueType rhsTy}"
+
+mutual
+private partial def inferPureExprType
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (stx : Term)
+    (visitingConstants : List String := []) : CommandElabM ValueType := do
+  let stx := stripParens stx
+  match stx with
+  | `(term| true) | `(term| false) => pure .bool
+  | `(term| constructorArg $idx:num) =>
+      match params[(← natFromSyntax idx)]? with
+      | some param => pure param.ty
+      | none => throwErrorAt stx s!"constructorArg index {idx.raw.reprint.getD ""} is out of bounds"
+  | `(term| blockTimestamp) | `(term| blockNumber) | `(term| blobbasefee)
+    | `(term| chainid) | `(term| calldatasize) | `(term| returndataSize) =>
+      pure .uint256
+  | `(term| contractAddress) =>
+      pure .address
+  | `(term| zeroAddress) =>
+      match lookupTypedLocalType? locals "zeroAddress" <|> params.findSome? (fun p =>
+          if p.name == "zeroAddress" then some p.ty else none) with
+      | some ty => pure ty
+      | none => pure .address
+  | `(term| isZeroAddress $a:term) =>
+      requireWordLikeType a "isZeroAddress" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      pure .bool
+  | `(term| wordToAddress $a:term) =>
+      requireWordLikeType a "wordToAddress" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      pure .address
+  | `(term| addressToWord $a:term) =>
+      let ty ← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants
+      unless ty == .address do
+        throwErrorAt a s!"addressToWord requires Address, got {renderValueType ty}"
+      pure .uint256
+  | `(term| boolToWord $a:term) =>
+      requireBoolType a "boolToWord" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      pure .uint256
+  | `(term| $id:ident) =>
+      let name := toString id.getId
+      match params.findSome? (fun p => if p.name == name then some p.ty else none)
+          <|> tupleParamElemType? params name
+          <|> lookupTypedLocalType? locals name
+          <|> immutableDecls.findSome? (fun imm => if imm.name == name then some imm.ty else none)
+          <|> constDecls.findSome? (fun constant => if constant.name == name then some constant.ty else none) with
+      | some ty => pure ty
+      | none => throwErrorAt stx s!"unknown variable '{name}'"
+  | `(term| $n:num) =>
+      pure .uint256
+  | `(term| add $a $b) | `(term| sub $a $b) | `(term| mul $a $b)
+    | `(term| div $a $b) | `(term| mod $a $b) | `(term| bitAnd $a $b)
+    | `(term| bitOr $a $b) | `(term| bitXor $a $b) | `(term| and $a $b)
+    | `(term| or $a $b) | `(term| xor $a $b) | `(term| min $a $b)
+    | `(term| max $a $b) | `(term| wMulDown $a $b) | `(term| wDivUp $a $b) => do
+      requireWordLikeType a "word arithmetic" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      requireWordLikeType b "word arithmetic" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals b visitingConstants)
+      pure .uint256
+  | `(term| bitNot $a) | `(term| not $a) => do
+      requireWordLikeType a "bitwise not" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      pure .uint256
+  | `(term| shl $shift $value) | `(term| shr $shift $value) => do
+      requireWordLikeType shift "shift" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals shift visitingConstants)
+      requireWordLikeType value "shift" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals value visitingConstants)
+      pure .uint256
+  | `(term| $a == $b) | `(term| $a != $b) => do
+      let lhsTy ← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants
+      let rhsTy ← inferPureExprType fields constDecls immutableDecls externalDecls params locals b visitingConstants
+      requireEqComparableTypes stx lhsTy rhsTy
+      pure .bool
+  | `(term| $a >= $b) | `(term| $a > $b) | `(term| $a < $b) | `(term| $a <= $b) => do
+      requireWordLikeType a "ordering comparison" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      requireWordLikeType b "ordering comparison" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals b visitingConstants)
+      pure .bool
+  | `(term| $a && $b) | `(term| $a || $b) => do
+      requireBoolType a "logical operator" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      requireBoolType b "logical operator" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals b visitingConstants)
+      pure .bool
+  | `(term| logicalAnd $a $b) | `(term| logicalOr $a $b) => do
+      requireWordLikeType a "logical word operator" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      requireWordLikeType b "logical word operator" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals b visitingConstants)
+      pure .uint256
+  | `(term| logicalNot $a) => do
+      requireWordLikeType a "logical word operator" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      pure .uint256
+  | `(term| ! $a) => do
+      requireBoolType a "logical not" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a visitingConstants)
+      pure .bool
+  | `(term| mload $offset) | `(term| tload $offset) | `(term| calldataload $offset)
+    | `(term| extcodesize $offset) => do
+      requireWordLikeType offset "word offset expression" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals offset visitingConstants)
+      pure .uint256
+  | `(term| keccak256 $offset $size) => do
+      requireWordLikeType offset "keccak256" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals offset visitingConstants)
+      requireWordLikeType size "keccak256" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals size visitingConstants)
+      pure .uint256
+  | `(term| call $gas $target $value $inOffset $inSize $outOffset $outSize) => do
+      for arg in [gas, target, value, inOffset, inSize, outOffset, outSize] do
+        requireWordLikeType arg "low-level call" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
+      pure .uint256
+  | `(term| staticcall $gas $target $inOffset $inSize $outOffset $outSize)
+    | `(term| delegatecall $gas $target $inOffset $inSize $outOffset $outSize) => do
+      for arg in [gas, target, inOffset, inSize, outOffset, outSize] do
+        requireWordLikeType arg "low-level call" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
+      pure .uint256
+  | `(term| arrayLength $name:term) =>
+      match lookupNamedValueType? constDecls immutableDecls params locals (← expectStringOrIdent name) with
+      | some (.array _) => pure .uint256
+      | some ty => throwErrorAt name s!"arrayLength expects an Array value, got {renderValueType ty}"
+      | none => throwErrorAt name "unknown array value"
+  | `(term| arrayElement $name:term $index:term) => do
+      requireWordLikeType index "arrayElement index" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals index visitingConstants)
+      match lookupNamedValueType? constDecls immutableDecls params locals (← expectStringOrIdent name) with
+      | some (.array elemTy) => pure elemTy
+      | some ty => throwErrorAt name s!"arrayElement expects an Array value, got {renderValueType ty}"
+      | none => throwErrorAt name "unknown array value"
+  | `(term| mulDivDown $a $b $c) | `(term| mulDivUp $a $b $c) => do
+      for arg in [a, b, c] do
+        requireWordLikeType arg "mulDiv" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
+      pure .uint256
+  | `(term| ite $cond $thenVal $elseVal) => do
+      requireBoolType cond "ite condition" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals cond visitingConstants)
+      let thenTy ← inferPureExprType fields constDecls immutableDecls externalDecls params locals thenVal visitingConstants
+      let elseTy ← inferPureExprType fields constDecls immutableDecls externalDecls params locals elseVal visitingConstants
+      requireSameOrWordLikeTypes stx "ite" thenTy elseTy
+      pure thenTy
+  | `(term| externalCall $name:term $args:term) =>
+      let extName := ← expectStringOrIdent name
+      match stripParens args with
+      | `(term| [ $[$xs],* ]) =>
+          for x in xs do
+            requireWordLikeType x s!"externalCall '{extName}' argument" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals x visitingConstants)
+      | _ => throwErrorAt args "expected list literal [..]"
+      match externalDecls.find? (fun ext => ext.name == extName) with
+      | some ext =>
+          match ext.returnTys.toList with
+          | [retTy] => pure retTy
+          | _ => pure .uint256
+      | none => pure .uint256
+  | `(term| structMember $field:term $key:term $member:term) => do
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      let _ ← lookupStructMemberDecl fields fieldName memberName false
+      requireWordLikeType key "structMember key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key visitingConstants)
+      pure .uint256
+  | `(term| structMember2 $field:term $key1:term $key2:term $member:term) => do
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      let _ ← lookupStructMemberDecl fields fieldName memberName true
+      requireWordLikeType key1 "structMember2 key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key1 visitingConstants)
+      requireWordLikeType key2 "structMember2 key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key2 visitingConstants)
+      pure .uint256
+  | _ => throwErrorAt stx "unsupported expression in verity_contract body (see #1003 for planned macro support expansions)"
+
+private partial def lookupNamedValueType?
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (name : String) : Option ValueType :=
+  params.findSome? (fun p => if p.name == name then some p.ty else none)
+    <|> lookupTypedLocalType? locals name
+    <|> immutableDecls.findSome? (fun imm => if imm.name == name then some imm.ty else none)
+    <|> constDecls.findSome? (fun constant => if constant.name == name then some constant.ty else none)
+
+private partial def inferBindSourceType
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (rhs : Term) : CommandElabM ValueType := do
+  let rhs := stripParens rhs
+  match rhs with
+  | `(term| getStorage $field:ident) =>
+      let f ← lookupStorageField fields (toString field.getId)
+      match f.ty with
+      | .scalar .uint256 => pure .uint256
+      | .scalar .address => throwErrorAt rhs s!"field '{f.name}' is Address; use getStorageAddr"
+      | .scalar .bool => throwErrorAt rhs s!"field '{f.name}' is Bool; encode as Uint256 and use getStorage"
+      | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
+      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
+  | `(term| getStorageAddr $field:ident) =>
+      let f ← lookupStorageField fields (toString field.getId)
+      match f.ty with
+      | .scalar .address => pure .address
+      | .scalar .uint256 => throwErrorAt rhs s!"field '{f.name}' is Uint256; use getStorage"
+      | .scalar .bool => throwErrorAt rhs s!"field '{f.name}' is Bool; use getStorage"
+      | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
+      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
+  | `(term| getMapping $field:ident $key:term) | `(term| getMappingUint $field:ident $key:term)
+    | `(term| getMappingWord $field:ident $key:term $_wordOffset:num) => do
+      requireWordLikeType key "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
+      let f ← lookupStorageField fields (toString field.getId)
+      match f.ty with
+      | .mappingAddressToUint256 | .mappingUintToUint256 => pure .uint256
+      | .mappingStruct _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember"
+      | .mappingStruct2 _ _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a nested struct mapping; use structMember2"
+      | .mapping2AddressToAddressToUint256 =>
+          throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
+  | `(term| getMappingAddr $field:ident $key:term) | `(term| getMappingUintAddr $field:ident $key:term) => do
+      requireWordLikeType key "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
+      let f ← lookupStorageField fields (toString field.getId)
+      match f.ty with
+      | .mappingAddressToUint256 | .mappingUintToUint256 => pure .address
+      | .mappingStruct _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember"
+      | .mappingStruct2 _ _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a nested struct mapping; use structMember2"
+      | .mapping2AddressToAddressToUint256 =>
+          throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
+  | `(term| getMapping2 $field:ident $key1:term $key2:term) => do
+      requireWordLikeType key1 "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key1)
+      requireWordLikeType key2 "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key2)
+      let f ← lookupStorageField fields (toString field.getId)
+      match f.ty with
+      | .mapping2AddressToAddressToUint256 => pure .uint256
+      | .mappingStruct2 _ _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a nested struct mapping; use structMember2"
+      | .mappingStruct _ _ =>
+          throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember"
+      | _ => throwErrorAt rhs s!"field '{f.name}' is not a double mapping"
+  | `(term| structMember $field:term $key:term $member:term) => do
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      let _ ← lookupStructMemberDecl fields fieldName memberName false
+      requireWordLikeType key "structMember key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
+      pure .uint256
+  | `(term| structMember2 $field:term $key1:term $key2:term $member:term) => do
+      let fieldName := ← expectStringOrIdent field
+      let memberName := ← expectStringOrIdent member
+      let _ ← lookupStructMemberDecl fields fieldName memberName true
+      requireWordLikeType key1 "structMember2 key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key1)
+      requireWordLikeType key2 "structMember2 key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key2)
+      pure .uint256
+  | `(term| msgSender) =>
+      pure .address
+  | `(term| tload $offset:term) => do
+      requireWordLikeType offset "tload offset" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals offset)
+      pure .uint256
+  | `(term| ecrecover $hash:term $v:term $r:term $s:term) => do
+      for arg in [hash, v, r, s] do
+        requireWordLikeType arg "ecrecover" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg)
+      pure .address
+  | `(term| balanceOf $token:term $owner:term) =>
+      for arg in [token, owner] do
+        requireWordLikeType arg "ERC-20 helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg)
+      pure .uint256
+  | `(term| allowance $token:term $owner:term $spender:term) =>
+      for arg in [token, owner, spender] do
+        requireWordLikeType arg "ERC-20 helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg)
+      pure .uint256
+  | `(term| totalSupply $token:term) => do
+      requireWordLikeType token "ERC-20 helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals token)
+      pure .uint256
+  | `(term| requireSomeUint $optExpr:term $_msg:term) =>
+      match stripParens optExpr with
+      | `(term| safeAdd $a:term $b:term) | `(term| safeSub $a:term $b:term) => do
+          requireWordLikeType a "safe uint helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a)
+          requireWordLikeType b "safe uint helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals b)
+          pure .uint256
+      | _ => throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd or safeSub"
+  | _ =>
+      throwErrorAt rhs
+        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/tload/ecrecover"
+
+private partial def inferTupleSourceTypes?
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (functions : Array FunctionDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (rhs : Term) : CommandElabM (Option (Array ValueType)) := do
+  match tupleElemsFromTerm? rhs with
+  | some elems =>
+      pure <| some (← elems.mapM (inferPureExprType fields constDecls immutableDecls externalDecls params locals))
+  | none =>
+      match stripParens rhs with
+      | `(term| $id:ident) =>
+          match params.find? (fun p => p.name == toString id.getId) with
+          | some p =>
+              match p.ty with
+              | .tuple elemTys => pure (some elemTys.toArray)
+              | _ => pure none
+          | none => pure none
+      | `(term| structMembers $field:term $key:term $members:term) => do
+          let fieldName := ← expectStringOrIdent field
+          let memberNames := ← expectStringList members
+          for memberName in memberNames do
+            let _ ← lookupStructMemberDecl fields fieldName memberName false
+          requireWordLikeType key "structMembers key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
+          pure (some (Array.replicate memberNames.size .uint256))
+      | `(term| structMembers2 $field:term $key1:term $key2:term $members:term) => do
+          let fieldName := ← expectStringOrIdent field
+          let memberNames := ← expectStringList members
+          for memberName in memberNames do
+            let _ ← lookupStructMemberDecl fields fieldName memberName true
+          requireWordLikeType key1 "structMembers2 key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key1)
+          requireWordLikeType key2 "structMembers2 key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key2)
+          pure (some (Array.replicate memberNames.size .uint256))
+      | other =>
+          let findFunction := fun (fnName : String) (arity : Nat) =>
+            functions.find? fun fn => fn.name == fnName && fn.params.size == arity
+          match other.raw with
+          | .node _ `Lean.Parser.Term.app args =>
+              match args.getD 0 Syntax.missing with
+              | .ident _ raw _ _ =>
+                  match findFunction raw.toString ((args.getD 1 Syntax.missing).getArgs.size) with
+                  | some fn =>
+                      match fn.returnTy with
+                      | .tuple elemTys =>
+                          let argTerms := (args.getD 1 Syntax.missing).getArgs.map (fun syn => ⟨syn⟩)
+                          for arg in argTerms do
+                            let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg
+                          pure (some elemTys.toArray)
+                      | _ => pure none
+                  | none => pure none
+              | _ => pure none
+          | .ident _ raw _ _ =>
+              match findFunction raw.toString 0 with
+              | some fn =>
+                  match fn.returnTy with
+                  | .tuple elemTys => pure (some elemTys.toArray)
+                  | _ => pure none
+              | none => pure none
+          | _ => pure none
+end
+
 mutual
 private partial def validateConstantBody
     (constDecls : Array ConstantDecl)
@@ -1289,6 +1676,229 @@ private def lookupFunctionByNameAndArity
     (name : String)
     (arity : Nat) : Option FunctionDecl :=
   functions.find? fun fn => fn.name == name && fn.params.size == arity
+
+mutual
+private partial def validateDoSeqExprTypes
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (functions : Array FunctionDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (doSeq : DoSeq) : CommandElabM Unit := do
+  match doSeq with
+  | `(doSeq| $[$elems:doElem]*) =>
+      let _ ← validateDoElemsExprTypes fields constDecls immutableDecls externalDecls functions params locals elems
+      pure ()
+  | _ => throwErrorAt doSeq "unsupported branch body; expected do-sequence"
+
+private partial def validateDoElemsExprTypes
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (functions : Array FunctionDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (elems : Array (TSyntax `doElem)) : CommandElabM (Array TypedLocal) := do
+  let mut branchLocals := locals
+  for elem in elems do
+    branchLocals ← validateDoElemExprTypes fields constDecls immutableDecls externalDecls functions params branchLocals elem
+  pure branchLocals
+
+private partial def validateDoElemExprTypes
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (functions : Array FunctionDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (elem : TSyntax `doElem) : CommandElabM (Array TypedLocal) := do
+  let tupleCase? ← do
+    let stx := elem.raw
+    if stx.getKind == `Lean.Parser.Term.doLet then
+      let decl := stx[2]
+      let patDecl := decl[0]
+      match tupleBinderNames? patDecl[0] with
+      | some names =>
+          let rhs : Term := ⟨patDecl[4]⟩
+          match (← inferTupleSourceTypes? fields constDecls immutableDecls externalDecls functions params locals rhs) with
+          | some valueTys =>
+              if names.size != valueTys.size then
+                throwErrorAt patDecl s!"tuple destructuring binds {names.size} names, but the source provides {valueTys.size} values"
+              let typedNames := (names.zip valueTys).filterMap fun (name?, ty) => name?.map (fun name => (name, ty))
+              pure (some (locals ++ typedNames))
+          | none => pure none
+      | none => pure none
+    else if stx.getKind == `Lean.Parser.Term.doLetArrow then
+      let patDecl := stx[2]
+      match tupleBinderNames? patDecl[0] with
+      | some names =>
+          let rhs : Term := ⟨patDecl[2][0]⟩
+          match (← inferTupleSourceTypes? fields constDecls immutableDecls externalDecls functions params locals rhs) with
+          | some valueTys =>
+              if names.size != valueTys.size then
+                throwErrorAt patDecl s!"tuple destructuring binds {names.size} names, but the source provides {valueTys.size} values"
+              let typedNames := (names.zip valueTys).filterMap fun (name?, ty) => name?.map (fun name => (name, ty))
+              pure (some (locals ++ typedNames))
+          | none => pure none
+      | none => pure none
+    else
+      pure none
+  match tupleCase? with
+  | some typedLocals => pure typedLocals
+  | none => match elem with
+      | `(doElem| let mut $name:ident := $rhs:term) =>
+          pure <| locals.push (toString name.getId, ← inferPureExprType fields constDecls immutableDecls externalDecls params locals rhs)
+      | `(doElem| let $name:ident := $rhs:term) =>
+          pure <| locals.push (toString name.getId, ← inferPureExprType fields constDecls immutableDecls externalDecls params locals rhs)
+      | `(doElem| let $name:ident ← $rhs:term) =>
+          pure <| locals.push (toString name.getId, ← inferBindSourceType fields constDecls immutableDecls externalDecls params locals rhs)
+      | `(doElem| $name:ident := $rhs:term) =>
+          let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals rhs
+          pure locals
+      | `(doElem| return $value:term) =>
+          let _ ←
+            match (← inferTupleSourceTypes? fields constDecls immutableDecls externalDecls functions params locals value) with
+            | some _ => pure .unit
+            | none => inferPureExprType fields constDecls immutableDecls externalDecls params locals value
+          pure locals
+      | `(doElem| pure ()) =>
+          pure locals
+      | `(doElem| if $cond:term then $thenBranch:doSeq else $elseBranch:doSeq) =>
+          requireBoolType cond "if condition" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals cond)
+          validateDoSeqExprTypes fields constDecls immutableDecls externalDecls functions params locals thenBranch
+          validateDoSeqExprTypes fields constDecls immutableDecls externalDecls functions params locals elseBranch
+          pure locals
+      | `(doElem| forEach $name:term $count:term $body:term) =>
+          requireWordLikeType count "forEach count" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals count)
+          match stripParens body with
+          | `(term| do $[$inner:doElem]*) =>
+              let _ ← validateDoElemsExprTypes
+                fields constDecls immutableDecls externalDecls functions params
+                (locals.push (← expectStringOrIdent name, .uint256))
+                inner
+              pure locals
+          | _ => throwErrorAt body "forEach body must be a do block"
+      | `(doElem| requireError $cond:term $errorName:ident($args,*)) =>
+          requireBoolType cond "requireError condition" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals cond)
+          for arg in args.getElems do
+            let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg
+          pure locals
+      | `(doElem| revert $errorName:ident($args,*)) =>
+          for arg in args.getElems do
+            let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg
+          pure locals
+      | `(doElem| revertError $errorName:ident($args,*)) =>
+          for arg in args.getElems do
+            let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg
+          pure locals
+      | `(doElem| $stmt:term) =>
+          validateEffectStmtExprTypes fields constDecls immutableDecls externalDecls params locals stmt
+          pure locals
+      | _ => throwErrorAt elem "unsupported do element"
+
+private partial def validateEffectStmtExprTypes
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (stx : Term) : CommandElabM Unit := do
+  let stx := stripParens stx
+  match stx with
+  | `(term| safeTransfer $token:term $to:term $amount:term) =>
+      for arg in [token, to, amount] do
+        requireWordLikeType arg "ERC-20 helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg)
+  | `(term| safeTransferFrom $token:term $fromAddr:term $to:term $amount:term) =>
+      for arg in [token, fromAddr, to, amount] do
+        requireWordLikeType arg "ERC-20 helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg)
+  | `(term| safeApprove $token:term $spender:term $amount:term) =>
+      for arg in [token, spender, amount] do
+        requireWordLikeType arg "ERC-20 helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg)
+  | `(term| setStorage $_field:ident $value:term) | `(term| setStorageAddr $_field:ident $value:term)
+    | `(term| require $value:term $_msg) | `(term| returnStorageWords $value:term) =>
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
+      pure ()
+  | `(term| setMapping $_field:ident $key:term $value:term) | `(term| setMappingAddr $_field:ident $key:term $value:term)
+    | `(term| setMappingUint $_field:ident $key:term $value:term) | `(term| setMappingUintAddr $_field:ident $key:term $value:term)
+    | `(term| setMappingWord $_field:ident $key:term $_wordOffset:num $value:term)
+    | `(term| setStructMember $_field:term $key:term $_member:term $value:term) => do
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
+  | `(term| setMapping2 $_field:ident $key1:term $key2:term $value:term)
+    | `(term| setStructMember2 $_field:term $key1:term $key2:term $_member:term $value:term) => do
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key1
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key2
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
+  | `(term| mstore $offset:term $value:term) | `(term| tstore $offset:term $value:term) => do
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals offset
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
+  | `(term| calldatacopy $destOffset:term $sourceOffset:term $size:term)
+    | `(term| returndataCopy $destOffset:term $sourceOffset:term $size:term) => do
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals destOffset
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals sourceOffset
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals size
+  | `(term| rawLog $topics:term $dataOffset:term $dataSize:term) => do
+      match stripParens topics with
+      | `(term| [ $[$xs],* ]) =>
+          for x in xs do
+            let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals x
+      | _ => throwErrorAt topics "expected list literal [..]"
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals dataOffset
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals dataSize
+  | `(term| returnValues $values:term) | `(term| emit $_eventName:term $values:term) => do
+      match stripParens values with
+      | `(term| [ $[$xs],* ]) =>
+          for x in xs do
+            let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals x
+      | _ => throwErrorAt values "expected list literal [..]"
+      pure ()
+  | `(term| returnArray $_name:term) | `(term| returnBytes $_name:term) =>
+      pure ()
+  | `(term| internalCall $_fnName:term $args:term)
+    | `(term| internalCallAssign $_names:term $_fnName:term $args:term)
+    | `(term| externalCallBind $_names:term $_fnName:term $args:term) =>
+      match stripParens args with
+      | `(term| [ $[$xs],* ]) =>
+          for x in xs do
+            let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals x
+      | _ => throwErrorAt args "expected list literal [..]"
+  | `(term| revertReturndata) =>
+      pure ()
+  | _ =>
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals stx
+      pure ()
+end
+
+private def validateFunctionBodyExprTypes
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (functions : Array FunctionDecl)
+    (fn : FunctionDecl) : CommandElabM Unit := do
+  match fn.body with
+  | `(term| do $[$elems:doElem]*) =>
+      let _ ← validateDoElemsExprTypes fields constDecls immutableDecls externalDecls functions fn.params #[] elems
+      pure ()
+  | _ => throwErrorAt fn.body "function body must be a do block"
+
+private def validateConstructorBodyExprTypes
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (functions : Array FunctionDecl)
+    (ctor : ConstructorDecl) : CommandElabM Unit := do
+  match ctor.body with
+  | `(term| do $[$elems:doElem]*) =>
+      let _ ← validateDoElemsExprTypes fields constDecls immutableDecls externalDecls functions ctor.params #[] elems
+      pure ()
+  | _ => throwErrorAt ctor.body "constructor body must be a do block"
 
 private def translateERC20BindStmt?
     (fields : Array StorageFieldDecl)
@@ -2229,6 +2839,20 @@ def validateExternalDeclsPublic
     for returnTy in ext.returnTys do
       validateExternalExecutableType ext.ident ext.name returnTy "return"
     seenNames := seenNames.push ext.name
+
+def validateFunctionDeclsPublic
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (externalDecls : Array ExternalDecl)
+    (ctor : Option ConstructorDecl)
+    (functions : Array FunctionDecl) : CommandElabM Unit := do
+  match ctor with
+  | some ctor =>
+      validateConstructorBodyExprTypes fields constDecls immutableDecls externalDecls functions ctor
+  | none => pure ()
+  for fn in functions do
+    validateFunctionBodyExprTypes fields constDecls immutableDecls externalDecls functions fn
 
 def mkFunctionCommandsPublic
     (fields : Array StorageFieldDecl)

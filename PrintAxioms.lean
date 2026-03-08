@@ -11,6 +11,8 @@ import Contracts.ERC721.Proofs.Correctness
 import Contracts.Ledger.Proofs.Basic
 import Contracts.Ledger.Proofs.Conservation
 import Contracts.Ledger.Proofs.Correctness
+import Contracts.LocalObligationMacroSmoke.Proofs.Basic
+import Contracts.LocalObligationMacroSmoke.Proofs.Correctness
 import Contracts.Owned.Proofs.Basic
 import Contracts.Owned.Proofs.Correctness
 import Contracts.OwnedCounter.Proofs.Basic
@@ -151,6 +153,14 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Contracts.Ledger.Proofs.Correctness.transfer_getBalance_sender_correct
 #print axioms Contracts.Ledger.Proofs.Correctness.transfer_getBalance_recipient_correct
 #print axioms Contracts.Ledger.Proofs.Correctness.deposit_withdraw_cancel
+
+-- Contracts/LocalObligationMacroSmoke/Proofs/Basic.lean
+#print axioms Contracts.LocalObligationMacroSmoke.Proofs.unsafeEdge_preserves_state
+#print axioms Contracts.LocalObligationMacroSmoke.Proofs.dischargedEdge_meets_spec
+#print axioms Contracts.LocalObligationMacroSmoke.Proofs.dischargedEdge_preserves_slot_zero
+
+-- Contracts/LocalObligationMacroSmoke/Proofs/Correctness.lean
+#print axioms Contracts.LocalObligationMacroSmoke.Proofs.Correctness.dischargedEdge_roundtrip
 
 -- Contracts/Owned/Proofs/Basic.lean
 #print axioms Contracts.Owned.Proofs.setStorageAddr_updates_owner
@@ -705,4 +715,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 604 theorems/lemmas (554 public, 50 private)
+-- Total: 608 theorems/lemmas (558 public, 50 private)

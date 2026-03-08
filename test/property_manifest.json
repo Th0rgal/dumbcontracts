@@ -229,6 +229,12 @@
     "store_retrieve_correct",
     "store_retrieve_roundtrip_holds"
   ],
+  "LocalObligationMacroSmoke": [
+    "unsafeEdge_preserves_state",
+    "dischargedEdge_meets_spec",
+    "dischargedEdge_preserves_slot_zero",
+    "dischargedEdge_roundtrip"
+  ],
   "SimpleToken": [
     "balanceOf_meets_spec",
     "balanceOf_preserves_state",

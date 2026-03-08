@@ -13,13 +13,14 @@ The compiler is verified with IR preservation proofs and Yul equivalence proofs 
 
 This section is a dated historical snapshot. Use [docs/VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for the live totals and coverage tables.
 
-- EDSL theorems: 273 across 10 categories (9 contracts + ReentrancyExample + Stdlib).
+- EDSL theorems: 277 across 11 categories (10 contracts + ReentrancyExample + Stdlib).
 - SimpleStorage: 20 total (Basic 13, Correctness 7).
 - Counter: 28 total (Basic 19, Correctness 10; 1 shared between Basic and Correctness).
 - Owned: 23 total (Basic 19, Correctness 4).
 - SimpleToken: 61 total (Basic 37, Correctness 10, Supply 5, Isolation 9).
 - OwnedCounter: 48 total (Basic 29, Correctness 5, Isolation 14).
 - Ledger: 33 total (Basic 20, Correctness 6, Conservation 7 — all proven).
+- LocalObligationMacroSmoke: 4 total (Basic 3, Correctness 1; macro-local-obligation fixture).
 - SafeCounter: 25 total (Basic 17, Correctness 8).
 - ERC20: 19 total (Basic 3, Correctness 2).
 - ERC721: 11 total (Basic 6, Correctness 5).

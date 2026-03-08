@@ -83,6 +83,12 @@ structure ExternalDecl where
   params : Array ValueType
   returnTys : Array ValueType
 
+structure LocalObligationDecl where
+  ident : Ident
+  name : String
+  obligation : String
+  proofStatus : Compiler.ProofStatus
+
 inductive InitGuardDecl where
   | initializer (fieldIdent : Ident) (fieldName : String)
   | reinitializer (fieldIdent : Ident) (fieldName : String) (version : Nat)
@@ -93,11 +99,13 @@ structure FunctionDecl where
   params : Array ParamDecl
   returnTy : ValueType
   initGuard? : Option InitGuardDecl := none
+  localObligations : Array LocalObligationDecl := #[]
   body : Term
 
 structure ConstructorDecl where
   params : Array ParamDecl
   isPayable : Bool := false
+  localObligations : Array LocalObligationDecl := #[]
   body : Term
 
 private def strTerm (s : String) : Term := ⟨Syntax.mkStrLit s⟩
@@ -360,8 +368,40 @@ private def parseExternal (stx : Syntax) : CommandElabM ExternalDecl := do
       }
   | _ => throwErrorAt stx "invalid external declaration"
 
+private def parseProofStatusIdent (stx : Syntax) : CommandElabM Compiler.ProofStatus := do
+  match stx with
+  | .ident _ raw _ _ =>
+      match raw.toString with
+      | "proved" => pure .proved
+      | "assumed" => pure .assumed
+      | "unchecked" => pure .unchecked
+      | other =>
+          throwErrorAt stx s!"unsupported proof status '{other}'; expected proved, assumed, or unchecked"
+  | _ => throwErrorAt stx "expected proof status identifier"
+
+private def parseLocalObligation (stx : Syntax) : CommandElabM LocalObligationDecl := do
+  match stx with
+  | `(verityLocalObligation| $name:ident := $status:ident $obligation:str) =>
+      pure {
+        ident := name
+        name := toString name.getId
+        obligation := obligation.getString
+        proofStatus := ← parseProofStatusIdent status
+      }
+  | _ => throwErrorAt stx "invalid local obligation declaration"
+
 private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
   match stx with
+  | `(verityFunction| function $name:ident ($[$params:verityParam],*) initializer($field:ident) local_obligations [ $[$obligations:verityLocalObligation],* ] : $retTy:term := $body:term) =>
+      pure {
+        ident := name
+        name := toString name.getId
+        params := ← params.mapM parseParam
+        returnTy := ← valueTypeFromSyntax retTy
+        initGuard? := some (.initializer field (toString field.getId))
+        localObligations := ← obligations.mapM parseLocalObligation
+        body := body
+      }
   | `(verityFunction| function $name:ident ($[$params:verityParam],*) initializer($field:ident) : $retTy:term := $body:term) =>
       pure {
         ident := name
@@ -369,6 +409,19 @@ private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
         params := ← params.mapM parseParam
         returnTy := ← valueTypeFromSyntax retTy
         initGuard? := some (.initializer field (toString field.getId))
+        body := body
+      }
+  | `(verityFunction| function $name:ident ($[$params:verityParam],*) reinitializer($field:ident, $version:num) local_obligations [ $[$obligations:verityLocalObligation],* ] : $retTy:term := $body:term) => do
+      let versionNat ← natFromSyntax version
+      if versionNat == 0 then
+        throwErrorAt version "reinitializer version must be greater than 0"
+      pure {
+        ident := name
+        name := toString name.getId
+        params := ← params.mapM parseParam
+        returnTy := ← valueTypeFromSyntax retTy
+        initGuard? := some (.reinitializer field (toString field.getId) versionNat)
+        localObligations := ← obligations.mapM parseLocalObligation
         body := body
       }
   | `(verityFunction| function $name:ident ($[$params:verityParam],*) reinitializer($field:ident, $version:num) : $retTy:term := $body:term) => do
@@ -383,6 +436,15 @@ private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
         initGuard? := some (.reinitializer field (toString field.getId) versionNat)
         body := body
       }
+  | `(verityFunction| function $name:ident ($[$params:verityParam],*) local_obligations [ $[$obligations:verityLocalObligation],* ] : $retTy:term := $body:term) =>
+      pure {
+        ident := name
+        name := toString name.getId
+        params := ← params.mapM parseParam
+        returnTy := ← valueTypeFromSyntax retTy
+        localObligations := ← obligations.mapM parseLocalObligation
+        body := body
+      }
   | `(verityFunction| function $name:ident ($[$params:verityParam],*) : $retTy:term := $body:term) =>
       pure {
         ident := name
@@ -395,10 +457,23 @@ private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
 
 private def parseConstructor (stx : Syntax) : CommandElabM ConstructorDecl := do
   match stx with
+  | `(verityConstructor| constructor ($[$params:verityParam],*) payable local_obligations [ $[$obligations:verityLocalObligation],* ] := $body:term) =>
+      pure {
+        params := ← params.mapM parseParam
+        isPayable := true
+        localObligations := ← obligations.mapM parseLocalObligation
+        body := body
+      }
   | `(verityConstructor| constructor ($[$params:verityParam],*) payable := $body:term) =>
       pure {
         params := ← params.mapM parseParam
         isPayable := true
+        body := body
+      }
+  | `(verityConstructor| constructor ($[$params:verityParam],*) local_obligations [ $[$obligations:verityLocalObligation],* ] := $body:term) =>
+      pure {
+        params := ← params.mapM parseParam
+        localObligations := ← obligations.mapM parseLocalObligation
         body := body
       }
   | `(verityConstructor| constructor ($[$params:verityParam],*) := $body:term) =>
@@ -2647,6 +2722,17 @@ private def mkModelExternalTerm (ext : ExternalDecl) : CommandElabM Term := do
       Compiler.ProofStatus.assumed
       [])
 
+private def mkModelLocalObligationTerm (obligation : LocalObligationDecl) : CommandElabM Term := do
+  let proofStatusTerm ←
+    match obligation.proofStatus with
+    | .proved => `(Compiler.ProofStatus.proved)
+    | .assumed => `(Compiler.ProofStatus.assumed)
+    | .unchecked => `(Compiler.ProofStatus.unchecked)
+  `(Compiler.CompilationModel.LocalObligation.mk
+      $(strTerm obligation.name)
+      $(strTerm obligation.obligation)
+      $proofStatusTerm)
+
 private def mkSpecCommand
     (contractName : String)
     (fields : Array StorageFieldDecl)
@@ -2667,12 +2753,14 @@ private def mkSpecCommand
     | some ctor, _ =>
         let ctorParams ← mkModelParamsTerm ctor.params
         let ctorPayable ← if ctor.isPayable then `(true) else `(false)
+        let ctorLocalObligationTerms ← ctor.localObligations.mapM mkModelLocalObligationTerm
         let immutableInitTerms ← immutableInitStmtTerms fields constDecls immutableDecls ctor.params
         let ctorBodyTerms ← translateConstructorBodyToStmtTerms fields constDecls immutableDecls functions ctor
         let ctorAllTerms := immutableInitTerms ++ ctorBodyTerms
         `(some {
           params := $ctorParams
           isPayable := $ctorPayable
+          localObligations := [ $[$ctorLocalObligationTerms],* ]
           body := [ $[$ctorAllTerms],* ]
         })
     | none, false =>
@@ -2680,6 +2768,7 @@ private def mkSpecCommand
         `(some {
           params := []
           isPayable := false
+          localObligations := []
           body := [ $[$immutableInitTerms],* ]
         })
   let functionModelIds ← functions.mapM fun fn => mkSuffixedIdent fn.ident "_model"
@@ -2922,6 +3011,19 @@ def validateExternalDeclsPublic
       validateExternalExecutableType ext.ident ext.name returnTy "return"
     seenNames := seenNames.push ext.name
 
+private def validateLocalObligationDecls
+    (owner : String)
+    (obligations : Array LocalObligationDecl) : CommandElabM Unit := do
+  let mut seenNames : Array String := #[]
+  for obligation in obligations do
+    if obligation.obligation.isEmpty then
+      throwErrorAt obligation.ident
+        s!"{owner} local obligation '{obligation.name}' must not be empty"
+    if seenNames.contains obligation.name then
+      throwErrorAt obligation.ident
+        s!"duplicate local obligation '{obligation.name}' on {owner}"
+    seenNames := seenNames.push obligation.name
+
 def validateFunctionDeclsPublic
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
@@ -2931,9 +3033,11 @@ def validateFunctionDeclsPublic
     (functions : Array FunctionDecl) : CommandElabM Unit := do
   match ctor with
   | some ctor =>
+      validateLocalObligationDecls "constructor" ctor.localObligations
       validateConstructorBodyExprTypes fields constDecls immutableDecls externalDecls functions ctor
   | none => pure ()
   for fn in functions do
+    validateLocalObligationDecls s!"function '{fn.name}'" fn.localObligations
     validateFunctionBodyExprTypes fields constDecls immutableDecls externalDecls functions fn
 
 def mkFunctionCommandsPublic
@@ -2950,6 +3054,7 @@ def mkFunctionCommandsPublic
   let modelName ← mkSuffixedIdent fn.ident "_model"
   let stmtTerms ← translateBodyToStmtTerms fields constDecls immutableDecls functions fn
   let modelParams ← mkModelParamsTerm fn.params
+  let localObligationTerms ← fn.localObligations.mapM mkModelLocalObligationTerm
 
   let fnCmd : Cmd ← `(command| def $fn.ident : $fnType := $fnValue)
   let bodyCmd : Cmd ← `(command| def $modelBodyName : List Compiler.CompilationModel.Stmt := [ $[$stmtTerms],* ])
@@ -2958,6 +3063,7 @@ def mkFunctionCommandsPublic
     params := $modelParams
     returnType := $(← modelReturnTypeTerm fn.returnTy)
     «returns» := $(← modelReturnsTerm fn.returnTy)
+    localObligations := [ $[$localObligationTerms],* ]
     body := $modelBodyName
   })
   pure #[fnCmd, bodyCmd, modelCmd]

@@ -340,6 +340,16 @@ def interpretSimpleStorage (tx : Transaction) (state : ContractState) : Executio
     case0 "retrieve" tx (fun _ => runUint SimpleStorage.retrieve state [0] [] [])
   ]
 
+def interpretLocalObligationMacroSmoke (tx : Transaction) (state : ContractState) : ExecutionResult :=
+  dispatch tx [
+    case0 "unsafeEdge" tx (fun _ =>
+      runUnit LocalObligationMacroSmoke.unsafeEdge state [0, 1] [] []
+    ),
+    case1 "dischargedEdge" tx (fun value =>
+      runUint (LocalObligationMacroSmoke.dischargedEdge value) state [0, 1] [] []
+    )
+  ]
+
 /-!
 ## Counter Interpreter
 -/
@@ -590,6 +600,7 @@ For use by the differential testing harness.
 def interpret (contractType : ContractType) (tx : Transaction) (state : ContractState) : ExecutionResult :=
   match contractType with
   | ContractType.simpleStorage => interpretSimpleStorage tx state
+  | ContractType.localObligationMacroSmoke => interpretLocalObligationMacroSmoke tx state
   | ContractType.counter => interpretCounter tx state
   | ContractType.safeCounter => interpretSafeCounter tx state
   | ContractType.owned => interpretOwned tx state
@@ -960,6 +971,7 @@ def main (args : List String) : IO Unit := do
     }
     let contractTypeEnum? : Option ContractType := match contractType with
       | "SimpleStorage" => some ContractType.simpleStorage
+      | "LocalObligationMacroSmoke" => some ContractType.localObligationMacroSmoke
       | "Counter" => some ContractType.counter
       | "Owned" => some ContractType.owned
       | "Ledger" => some ContractType.ledger
@@ -981,7 +993,7 @@ def main (args : List String) : IO Unit := do
       IO.println out.toJSON
     | none =>
       throw <| IO.userError
-        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20, ERC721, CryptoHash"
+        s!"Unknown contract type: {contractType}. Supported: SimpleStorage, LocalObligationMacroSmoke, Counter, Owned, Ledger, OwnedCounter, SimpleToken, SafeCounter, ERC20, ERC721, CryptoHash"
   | _ =>
     IO.println "Usage: difftest-interpreter <contract> <function> <sender> [arg0] [storage] [addr=...] [map=...] [mapuint=...] [map2=...] [value=...] [timestamp=...]"
     IO.println "Example: difftest-interpreter SimpleStorage store 0xAlice 42"

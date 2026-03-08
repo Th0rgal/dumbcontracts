@@ -14,3 +14,4 @@ import Contracts.ERC721
 import Contracts.SimpleToken
 import Contracts.CryptoHash
 import Contracts.ReentrancyExample
+import Contracts.LocalObligationMacroSmoke

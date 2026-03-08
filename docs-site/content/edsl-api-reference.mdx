@@ -16,6 +16,19 @@ open Verity.EVM.Uint256
 open Verity.Stdlib.Math
 ```
 
+## `verity_contract` Local Obligations
+
+Use `local_obligations [...]` on constructors or functions when a small unsafe or refinement-shaped boundary must stay explicit in the generated trust report.
+
+```lean
+function unsafeEdge ()
+  local_obligations [manual_delegatecall_refinement := assumed "Caller must separately prove the handwritten assembly path."]
+  : Unit := do
+  pure ()
+```
+
+Each entry lowers into `spec.constructor.localObligations` or `FunctionSpec.localObligations`, shows up in `--trust-report`, and participates in `--deny-local-obligations`.
+
 ## Storage Operations
 
 ### `getStorage` / `setStorage`

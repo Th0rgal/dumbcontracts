@@ -11,6 +11,8 @@ declare_syntax_cat verityError
 declare_syntax_cat verityConstant
 declare_syntax_cat verityImmutable
 declare_syntax_cat verityExternal
+declare_syntax_cat verityLocalObligation
+declare_syntax_cat verityLocalObligations
 declare_syntax_cat verityConstructor
 declare_syntax_cat verityFunction
 
@@ -24,16 +26,18 @@ syntax "error " ident "(" sepBy(term, ",") ")" : verityError
 syntax ident " : " term:max " := " term:max : verityConstant
 syntax ident " : " term:max " := " term:max : verityImmutable
 syntax "external " ident "(" sepBy(term, ",") ")" (" -> " "(" sepBy(term, ",") ")")? : verityExternal
+syntax ident " := " ident ppSpace str : verityLocalObligation
+syntax "local_obligations " "[" sepBy(verityLocalObligation, ",") "]" : verityLocalObligations
 syntax "ecmCall " term:max ppSpace term:max : term
 syntax "ecmDo " term:max ppSpace term:max : term
 syntax "revert " ident "(" sepBy(term, ",") ")" : doElem
 syntax "revertError " ident "(" sepBy(term, ",") ")" : doElem
 syntax "requireError " term:max ppSpace ident "(" sepBy(term, ",") ")" : doElem
-syntax "constructor " "(" sepBy(verityParam, ",") ")" " := " term : verityConstructor
-syntax "constructor " "(" sepBy(verityParam, ",") ")" " payable" " := " term : verityConstructor
-syntax "function " ident " (" sepBy(verityParam, ",") ")" " initializer(" ident ")" " : " term " := " term : verityFunction
-syntax "function " ident " (" sepBy(verityParam, ",") ")" " reinitializer(" ident ", " num ")" " : " term " := " term : verityFunction
-syntax "function " ident " (" sepBy(verityParam, ",") ")" " : " term " := " term : verityFunction
+syntax "constructor " "(" sepBy(verityParam, ",") ")" (ppSpace verityLocalObligations)? " := " term : verityConstructor
+syntax "constructor " "(" sepBy(verityParam, ",") ")" " payable" (ppSpace verityLocalObligations)? " := " term : verityConstructor
+syntax "function " ident " (" sepBy(verityParam, ",") ")" " initializer(" ident ")" (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
+syntax "function " ident " (" sepBy(verityParam, ",") ")" " reinitializer(" ident ", " num ")" (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
+syntax "function " ident " (" sepBy(verityParam, ",") ")" (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
 
 syntax (name := verityContractCmd)
   "verity_contract " ident " where "

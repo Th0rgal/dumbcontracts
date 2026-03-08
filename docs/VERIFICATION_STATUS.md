@@ -30,14 +30,15 @@ EVM Bytecode
 | Owned | 23 | Complete | `Contracts/Owned/Proofs/` |
 | OwnedCounter | 48 | Complete | `Contracts/OwnedCounter/Proofs/` |
 | Ledger | 33 | Complete | `Contracts/Ledger/Proofs/` |
+| LocalObligationMacroSmoke | 4 | Baseline | `Contracts/LocalObligationMacroSmoke/Proofs/` |
 | SimpleToken | 61 | Complete | `Contracts/SimpleToken/Proofs/` |
 | ERC20 | 19 | Baseline | `Contracts/ERC20/Proofs/` |
 | ERC721 | 11 | Baseline | `Contracts/ERC721/Proofs/` |
 | ReentrancyExample | 5 | Complete | `Contracts/ReentrancyExample/Contract.lean` |
 | CryptoHash | 0 | No specs | `Contracts/CryptoHash/Contract.lean` |
-| **Total** | **273** | **✅ 100%** | — |
+| **Total** | **277** | **✅ 100%** | — |
 
-> **Note**: Stdlib (0 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (273 total properties).
+> **Note**: Stdlib (0 internal proof-automation properties) is excluded from the Layer 1 contracts table above but included in overall coverage statistics (277 total properties).
 
 Layer 1 uses macro-generated bridge theorems backed by a generic typed-IR compilation-correctness theorem ([`TypedIRCompilerCorrectness.lean`](../Compiler/TypedIRCompilerCorrectness.lean)). Tuple/bytes/fixed-array/dynamic-array/string parameters now stay inside that proof path when they are carried as ABI head words/offsets. Advanced constructs beyond that typed-IR head-word surface (linked libraries, ECMs, fully custom ABI behavior) are still expressed directly in `CompilationModel` and trusted at that boundary.
 
@@ -92,6 +93,7 @@ Key files: [`StatementEquivalence.lean`](../Compiler/Proofs/YulGeneration/Statem
 | SafeCounter | 100% (25/25) | 0 |
 | ReentrancyExample | 100% (5/5) | 0 |
 | Ledger | 100% (33/33) | 0 |
+| LocalObligationMacroSmoke | 100% (4/4) | 0 |
 | SimpleStorage | 95% (19/20) | 1 proof-only |
 | OwnedCounter | 92% (44/48) | 4 proof-only |
 | Owned | 87% (20/23) | 3 proof-only |
@@ -99,10 +101,10 @@ Key files: [`StatementEquivalence.lean`](../Compiler/Proofs/YulGeneration/Statem
 | Counter | 82% (23/28) | 5 proof-only |
 | Stdlib | 0% (0/0) | 0 proof-only |
 
-**Status**: 92% coverage (251/273), 22 remaining exclusions all proof-only
+**Status**: 92% coverage (255/277), 22 remaining exclusions all proof-only
 
-- **Total Properties**: 273
-- **Covered**: 251
+- **Total Properties**: 277
+- **Covered**: 255
 - **Excluded**: 22 (all proof-only)
 
 **Proof-Only Properties (22 exclusions)**: Internal proof machinery that cannot be tested in Foundry.

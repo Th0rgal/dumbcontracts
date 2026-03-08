@@ -7,11 +7,56 @@ import Compiler.Modules.Oracle
 import Compiler.Modules.Precompiles
 import Compiler.Yul.PrettyPrint
 import Contracts.Common
+import Contracts.LocalObligationMacroSmoke.LocalObligationMacroSmoke
 
 namespace Compiler.CompilationModelFeatureTest
 
 open Compiler
 open Compiler.CompilationModel
+
+namespace MacroLocalObligationSmoke
+
+open Contracts
+
+def constructorCarriesUncheckedObligation : Bool :=
+  match LocalObligationMacroSmoke.spec.constructor with
+  | some { localObligations := [{ name := "constructor_storage_layout"
+                                  obligation := "Constructor storage aliasing must be checked separately across deployments."
+                                  proofStatus := .unchecked }], .. } =>
+      true
+  | none => false
+  | _ => false
+
+example : constructorCarriesUncheckedObligation = true := by native_decide
+
+def unsafeEdgeCarriesAssumedObligation : Bool :=
+  match LocalObligationMacroSmoke.unsafeEdge_model with
+  | { localObligations := [{ name := "manual_delegatecall_refinement"
+                             obligation := "Caller must separately prove the handwritten assembly path refines the intended state transition."
+                             proofStatus := .assumed }]
+      body := [Stmt.stop], .. } => true
+  | _ => false
+
+example : unsafeEdgeCarriesAssumedObligation = true := by native_decide
+
+def dischargedEdgeCarriesProvedObligation : Bool :=
+  match LocalObligationMacroSmoke.dischargedEdge_model with
+  | { localObligations := [{ name := "checked_patch_pack"
+                             obligation := "Patch-pack proof already discharges this handwritten lowering boundary."
+                             proofStatus := .proved }]
+      body := [Stmt.setStorage "lastValue" (Expr.param "value"), Stmt.return (Expr.param "value")], .. } => true
+  | _ => false
+
+example : dischargedEdgeCarriesProvedObligation = true := by native_decide
+
+def dischargedEdgeExecutableStillRuns : Bool :=
+  match LocalObligationMacroSmoke.dischargedEdge 77 Verity.defaultState with
+  | .success value state => value == 77 && state.storage 1 == 77
+  | .revert _ _ => false
+
+example : dischargedEdgeExecutableStillRuns = true := by native_decide
+
+end MacroLocalObligationSmoke
 
 namespace MacroEcrecoverSmoke
 

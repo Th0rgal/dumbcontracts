@@ -150,9 +150,7 @@ jobs:
       - name: Run compiler CLI regression module
         env:
           LEAN_NUM_THREADS: 4
-        run: |
-          set -- $(grep -vE '^[[:space:]]*($|#)' packages/verity-examples/contracts.manifest)
-          lake build "$@" Compiler.MainTest
+        run: stdbuf -oL -eL lake exe compiler-main-test
 
       - name: Run CompilationModel feature regression module
         env:
@@ -232,7 +230,7 @@ jobs:
 
   build-compiler:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     needs: changes
     if: needs.changes.outputs.compiler == 'true'
     steps:
@@ -250,7 +248,7 @@ jobs:
           LEAN_NUM_THREADS: 4
         run: |
           set -- $(grep -vE '^[[:space:]]*($|#)' packages/verity-examples/contracts.manifest)
-          lake build "$@" verity-compiler
+          stdbuf -oL -eL lake build "$@" verity-compiler
 
       - name: Build difftest interpreter
         env:

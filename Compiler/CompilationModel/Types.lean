@@ -255,6 +255,7 @@ inductive Expr
   | blockTimestamp
   | blockNumber
   | mload (offset : Expr)
+  | tload (offset : Expr)
   | keccak256 (offset size : Expr)
   /-- First-class low-level `call(gas, target, value, inOffset, inSize, outOffset, outSize)`.
       Returns the EVM success bit (0/1). -/
@@ -354,6 +355,7 @@ inductive Stmt
   | returnBytes (name : String)        -- ABI-encode dynamic bytes parameter loaded from calldata
   | returnStorageWords (name : String) -- ABI-encode dynamic uint256[] from sload over a dynamic word-array parameter
   | mstore (offset value : Expr)
+  | tstore (offset value : Expr)
   /-- First-class `calldatacopy(destOffset, sourceOffset, size)` statement. -/
   | calldatacopy (destOffset sourceOffset size : Expr)
   /-- First-class `returndatacopy(destOffset, sourceOffset, size)` statement. -/

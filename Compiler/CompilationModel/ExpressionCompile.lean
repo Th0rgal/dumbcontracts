@@ -174,6 +174,8 @@ def compileExpr (fields : List Field)
   | Expr.blockNumber => pure (YulExpr.call "number" [])
   | Expr.mload offset => do
       pure (YulExpr.call "mload" [← compileExpr fields dynamicSource offset])
+  | Expr.tload offset => do
+      pure (YulExpr.call "tload" [← compileExpr fields dynamicSource offset])
   | Expr.keccak256 offset size => do
       pure (YulExpr.call "keccak256" [
         ← compileExpr fields dynamicSource offset,

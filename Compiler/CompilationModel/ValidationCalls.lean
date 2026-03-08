@@ -85,7 +85,7 @@ def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName outSize
   | Expr.extcodesize addr =>
       validateInternalCallShapesInExpr functions callerName addr
-  | Expr.mload offset =>
+  | Expr.mload offset | Expr.tload offset =>
       validateInternalCallShapesInExpr functions callerName offset
   | Expr.calldataload offset =>
       validateInternalCallShapesInExpr functions callerName offset
@@ -152,6 +152,9 @@ def validateInternalCallShapesInStmt
   | Stmt.revertError _ args =>
       validateInternalCallShapesInExprList functions callerName args
   | Stmt.mstore offset value => do
+      validateInternalCallShapesInExpr functions callerName offset
+      validateInternalCallShapesInExpr functions callerName value
+  | Stmt.tstore offset value => do
       validateInternalCallShapesInExpr functions callerName offset
       validateInternalCallShapesInExpr functions callerName value
   | Stmt.calldatacopy destOffset sourceOffset size => do
@@ -279,7 +282,7 @@ def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context outSize
   | Expr.extcodesize addr =>
       validateExternalCallTargetsInExpr externals context addr
-  | Expr.mload offset =>
+  | Expr.mload offset | Expr.tload offset =>
       validateExternalCallTargetsInExpr externals context offset
   | Expr.calldataload offset =>
       validateExternalCallTargetsInExpr externals context offset
@@ -348,6 +351,9 @@ def validateExternalCallTargetsInStmt
   | Stmt.revertError _ args =>
       validateExternalCallTargetsInExprList externals context args
   | Stmt.mstore offset value => do
+      validateExternalCallTargetsInExpr externals context offset
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.tstore offset value => do
       validateExternalCallTargetsInExpr externals context offset
       validateExternalCallTargetsInExpr externals context value
   | Stmt.calldatacopy destOffset sourceOffset size => do

@@ -56,6 +56,8 @@ def validateInteropExpr (context : String) : Expr → Except String Unit
       validateInteropExpr context offset
   | Expr.mload offset =>
       validateInteropExpr context offset
+  | Expr.tload offset =>
+      validateInteropExpr context offset
   | Expr.keccak256 offset size => do
       validateInteropExpr context offset
       validateInteropExpr context size
@@ -120,6 +122,9 @@ def validateInteropStmt (context : String) : Stmt → Except String Unit
   | Stmt.revertError _ args =>
       validateInteropExprList context args
   | Stmt.mstore offset value => do
+      validateInteropExpr context offset
+      validateInteropExpr context value
+  | Stmt.tstore offset value => do
       validateInteropExpr context offset
       validateInteropExpr context value
   | Stmt.calldatacopy destOffset sourceOffset size => do

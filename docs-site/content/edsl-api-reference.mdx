@@ -364,6 +364,17 @@ rawLog [topic0, add topic1 1] dataOffset dataSize
 
 `rawLog topics dataOffset dataSize` lowers to `Stmt.rawLog topics dataOffset dataSize`. Both the compiler and the executable fallback currently support 0 to 4 topics only (`log0` to `log4`); larger topic lists are rejected. On the executable path, successful calls append a low-level trace entry shaped like `{ name := "logN", args := [dataOffset, dataSize], indexedArgs := topics }`, so macro-authored contracts can round-trip observable log behavior instead of only compiling it.
 
+## Transient Storage Surface
+
+`verity_contract` now exposes the EIP-1153 transient storage builtins directly:
+
+```lean
+tstore slot value
+let warmed := tload slot
+```
+
+`tstore slot value` lowers to `Stmt.tstore slot value`, and `tload slot` lowers to `Expr.tload slot`. The generated Yul uses the native `tstore(...)` / `tload(...)` builtins, and the trust report classifies them under `lowLevelMechanics` instead of hiding them behind ordinary storage reads/writes. On the executable path, `Contracts/Common.lean` keeps a separate `ContractState.transientStorage` map so transient reads do not alias persistent storage slots.
+
 ## Dynamic Array Surface
 
 Dynamic array parameters can be consumed directly from `verity_contract` bodies using the same helper names that lower into the compilation model:

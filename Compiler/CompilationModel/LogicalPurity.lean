@@ -17,7 +17,7 @@ def exprContainsCallLike (expr : Expr) : Bool :=
       exprContainsCallLike key1 || exprContainsCallLike key2
   | Expr.arrayElement _ index =>
       exprContainsCallLike index
-  | Expr.mload offset | Expr.calldataload offset | Expr.extcodesize offset |
+  | Expr.mload offset | Expr.tload offset | Expr.calldataload offset | Expr.extcodesize offset |
     Expr.returndataOptionalBoolAt offset =>
       exprContainsCallLike offset
   | Expr.keccak256 offset size =>
@@ -68,7 +68,7 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike value || exprContainsUnsafeLogicalCallLike inOffset ||
       exprContainsUnsafeLogicalCallLike inSize || exprContainsUnsafeLogicalCallLike outOffset ||
       exprContainsUnsafeLogicalCallLike outSize
-  | Expr.mload offset =>
+  | Expr.mload offset | Expr.tload offset =>
       exprContainsUnsafeLogicalCallLike offset
   | Expr.calldataload offset =>
       exprContainsUnsafeLogicalCallLike offset
@@ -133,6 +133,8 @@ def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
   | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _ =>
       false
   | Stmt.mstore offset value =>
+      exprContainsUnsafeLogicalCallLike offset || exprContainsUnsafeLogicalCallLike value
+  | Stmt.tstore offset value =>
       exprContainsUnsafeLogicalCallLike offset || exprContainsUnsafeLogicalCallLike value
   | Stmt.calldatacopy destOffset sourceOffset size =>
       exprContainsUnsafeLogicalCallLike destOffset ||

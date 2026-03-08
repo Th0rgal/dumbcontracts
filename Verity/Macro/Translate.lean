@@ -1937,9 +1937,23 @@ def validateConstantDeclsPublic (constDecls : Array ConstantDecl) : CommandElabM
   for constant in constDecls do
     validateConstantBody constDecls constant.body [constant.name]
 
-def validateImmutableDeclsPublic (immutableDecls : Array ImmutableDecl) : CommandElabM Unit := do
+def validateImmutableDeclsPublic
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl) : CommandElabM Unit := do
+  let mut seenNames : Array String := #[]
   for imm in immutableDecls do
     validateImmutableType imm
+    if fields.any (fun field => field.name == imm.name) then
+      throwErrorAt imm.ident
+        s!"immutable '{imm.name}' conflicts with a storage field of the same name"
+    if constDecls.any (fun constant => constant.name == imm.name) then
+      throwErrorAt imm.ident
+        s!"immutable '{imm.name}' conflicts with a contract constant of the same name"
+    if seenNames.contains imm.name then
+      throwErrorAt imm.ident
+        s!"duplicate immutable declaration '{imm.name}'"
+    seenNames := seenNames.push imm.name
 
 def mkFunctionCommandsPublic
     (fields : Array StorageFieldDecl)

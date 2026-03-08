@@ -184,6 +184,53 @@ verity_contract ImmutableTypeRejected where
     return paused
 end ImmutableTypeRejected
 
+/--
+error: immutable 'owner' conflicts with a storage field of the same name
+-/
+#guard_msgs in
+verity_contract ImmutableStorageNameConflictRejected where
+  storage
+    owner : Address := slot 0
+
+  immutables
+    owner : Address := zeroAddress
+
+  function getOwner () : Address := do
+    return owner
+end ImmutableStorageNameConflictRejected
+
+/--
+error: immutable 'basisPoints' conflicts with a contract constant of the same name
+-/
+#guard_msgs in
+verity_contract ImmutableConstantNameConflictRejected where
+  storage
+
+  constants
+    basisPoints : Uint256 := 10000
+
+  immutables
+    basisPoints : Uint256 := 9999
+
+  function getBasisPoints () : Uint256 := do
+    return basisPoints
+end ImmutableConstantNameConflictRejected
+
+/--
+error: duplicate immutable declaration 'seededSupply'
+-/
+#guard_msgs in
+verity_contract DuplicateImmutableRejected where
+  storage
+
+  immutables
+    seededSupply : Uint256 := 1
+    seededSupply : Uint256 := 2
+
+  function getSeededSupply () : Uint256 := do
+    return seededSupply
+end DuplicateImmutableRejected
+
 verity_contract TupleSmoke where
   storage
     values : Uint256 → Uint256 := slot 0

@@ -18,7 +18,7 @@ def elabVerityContract : CommandElab := fun stx => do
   elabCommand (← `(namespace $contractName))
 
   validateConstantDeclsPublic constDecls
-  validateImmutableDeclsPublic immutableDecls
+  validateImmutableDeclsPublic fields constDecls immutableDecls
 
   for field in fields do
     elabCommand (← mkStorageDefCommandPublic field)

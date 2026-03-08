@@ -640,6 +640,39 @@ verity_contract GenericECMCallRejectsEffectOnlyModules where
     return quote
 
 /--
+error: unsupported proof status 'pending'; expected proved, assumed, or unchecked
+-/
+#guard_msgs in
+verity_contract LocalObligationRejectsUnknownStatus where
+  storage
+
+  function badStatus () local_obligations [manual_check := pending "Must be proved later."] : Unit := do
+    pure ()
+
+/--
+error: duplicate local obligation 'manual_check' on function 'unsafeEdge'
+-/
+#guard_msgs in
+verity_contract LocalObligationRejectsDuplicateNames where
+  storage
+
+  function unsafeEdge () local_obligations [manual_check := assumed "First localized trust boundary.", manual_check := unchecked "Second localized trust boundary."] : Unit := do
+    pure ()
+
+/--
+error: constructor local obligation 'manual_check' must not be empty
+-/
+#guard_msgs in
+verity_contract LocalObligationRejectsEmptyConstructorMessage where
+  storage
+
+  constructor () local_obligations [manual_check := unchecked ""] := do
+    pure ()
+
+  function noop () : Unit := do
+    pure ()
+
+/--
 error: field 'approvals' is a nested struct mapping; use structMember2/setStructMember2
 -/
 #guard_msgs in

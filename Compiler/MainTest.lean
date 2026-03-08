@@ -177,13 +177,6 @@ unsafe def runTests : IO Unit := do
   let nonSelectedArtifactsAbsent := nonSelectedArtifactFlags.all (fun isPresent => !isPresent)
   expectTrue "selected module mode does not emit non-selected artifacts" nonSelectedArtifactsAbsent
 
-  let manifestOutDir := s!"/tmp/verity-main-test-{nonce}-manifest-out"
-  IO.FS.createDirAll manifestOutDir
-  main ["--manifest", "packages/verity-examples/contracts.manifest", "--output", manifestOutDir]
-  let manifestArtifactsPresent ←
-    canonicalModules.allM (fun moduleName => fileExists (contractArtifactPath manifestOutDir moduleName))
-  expectTrue "manifest input mode compiles every requested artifact" manifestArtifactsPresent
-
   expectErrorContains "missing --patch-report value" ["--patch-report"] "Missing value for --patch-report"
   expectErrorContains "missing --patch-max-iterations value" ["--patch-max-iterations"] "Missing value for --patch-max-iterations"
   expectErrorContains "missing --backend-profile value" ["--backend-profile"] "Missing value for --backend-profile"

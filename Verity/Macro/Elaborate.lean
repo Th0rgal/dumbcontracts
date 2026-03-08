@@ -15,42 +15,46 @@ set_option hygiene false
 def elabVerityContract : CommandElab := fun stx => do
   let (contractName, fields, errorDecls, constDecls, immutableDecls, externalDecls, ctor, functions) ← parseContractSyntax stx
 
-  elabCommand (← `(namespace $contractName))
-
   validateGeneratedDefNamesPublic fields constDecls functions
   validateConstantDeclsPublic constDecls
-  for constant in constDecls do
-    elabCommand (← mkConstantDefCommandPublic constant)
-
   validateImmutableDeclsPublic fields constDecls immutableDecls ctor
   validateExternalDeclsPublic externalDecls
+  validateFunctionDeclsPublic fields constDecls immutableDecls externalDecls ctor functions
 
-  for field in fields do
-    elabCommand (← mkStorageDefCommandPublic field)
+  elabCommand (← `(namespace $contractName))
+  try
+    for constant in constDecls do
+      elabCommand (← mkConstantDefCommandPublic constant)
 
-  for imm in immutableDecls.zipIdx do
-    elabCommand (← mkStorageDefCommandPublic (immutableStorageFieldDecl fields imm.1 imm.2))
+    for field in fields do
+      elabCommand (← mkStorageDefCommandPublic field)
 
-  for fn in functions do
-    let fnCmds ← mkFunctionCommandsPublic fields constDecls immutableDecls functions fn
-    for cmd in fnCmds do
+    for imm in immutableDecls.zipIdx do
+      elabCommand (← mkStorageDefCommandPublic (immutableStorageFieldDecl fields imm.1 imm.2))
+
+    for fn in functions do
+      let fnCmds ← mkFunctionCommandsPublic fields constDecls immutableDecls functions fn
+      for cmd in fnCmds do
+        elabCommand cmd
+      elabCommand (← mkBridgeCommand fn.ident)
+
+    elabCommand (← mkSpecCommandPublic (toString contractName.getId) fields errorDecls constDecls immutableDecls externalDecls ctor functions)
+
+    let findIdxSimpCmds ← mkFindIdxFieldSimpCommandsPublic contractName fields
+    for cmd in findIdxSimpCmds do
       elabCommand cmd
-    elabCommand (← mkBridgeCommand fn.ident)
 
-  elabCommand (← mkSpecCommandPublic (toString contractName.getId) fields errorDecls constDecls immutableDecls externalDecls ctor functions)
+    let findIdxParamSimpCmds ← mkFindIdxParamSimpCommandsPublic contractName ctor functions
+    for cmd in findIdxParamSimpCmds do
+      elabCommand cmd
 
-  let findIdxSimpCmds ← mkFindIdxFieldSimpCommandsPublic contractName fields
-  for cmd in findIdxSimpCmds do
-    elabCommand cmd
+    -- Emit per-function semantic preservation theorem skeletons after spec generation.
+    for fn in functions do
+      elabCommand (← mkSemanticBridgeCommand contractName fields fn)
 
-  let findIdxParamSimpCmds ← mkFindIdxParamSimpCommandsPublic contractName ctor functions
-  for cmd in findIdxParamSimpCmds do
-    elabCommand cmd
-
-  -- Emit per-function semantic preservation theorem skeletons after spec generation.
-  for fn in functions do
-    elabCommand (← mkSemanticBridgeCommand contractName fields fn)
-
-  elabCommand (← `(end $contractName))
+    elabCommand (← `(end $contractName))
+  catch err =>
+    elabCommand (← `(end $contractName))
+    throw err
 
 end Verity.Macro

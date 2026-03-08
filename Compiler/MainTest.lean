@@ -1,6 +1,7 @@
 import Contracts
 import Contracts.LocalObligationMacroSmoke.LocalObligationMacroSmoke
 import Contracts.LocalObligationTrustSurface
+import Contracts.ProxyUpgradeabilityMacroSmoke
 import Contracts.RawLogTrustSurface
 import Compiler.Main
 import Compiler.Linker
@@ -171,6 +172,32 @@ unsafe def runTests : IO Unit := do
     "strict proxy-upgradeability gate rejects delegatecall mechanics"
     ["--module", "Contracts.Counter.Counter", "--deny-proxy-upgradeability", "--output", s!"/tmp/verity-main-test-{nonce}-proxy-fail-out"]
     "Counter [function:previewLowLevel]: delegatecall"
+  let proxyMacroTrustReportPath := s!"/tmp/verity-main-test-{nonce}-proxy-macro-trust-report.json"
+  let proxyMacroOutDir := s!"/tmp/verity-main-test-{nonce}-proxy-macro-out"
+  IO.FS.createDirAll proxyMacroOutDir
+  main
+    [ "--module", "Contracts.ProxyUpgradeabilityMacroSmoke"
+    , "--trust-report", proxyMacroTrustReportPath
+    , "--output", proxyMacroOutDir
+    ]
+  let proxyMacroTrustReport ← IO.FS.readFile proxyMacroTrustReportPath
+  expectTrue "macro proxy trust report includes delegatecall proxy boundary"
+    (contains proxyMacroTrustReport "\"notModeledProxyUpgradeability\":[\"delegatecall\"]")
+  expectTrue "macro proxy trust report includes initializer proxy obligation"
+    (contains proxyMacroTrustReport "\"name\":\"implementation_slot_discipline\",\"status\":\"assumed\"")
+  expectTrue "macro proxy trust report includes upgrade obligations"
+    ((contains proxyMacroTrustReport "\"name\":\"upgrade_authorization\",\"status\":\"assumed\"") &&
+      (contains proxyMacroTrustReport "\"name\":\"storage_layout_compatibility\",\"status\":\"unchecked\""))
+  expectTrue "macro proxy trust report localizes delegatecall usage"
+    (contains proxyMacroTrustReport "\"kind\":\"function\",\"name\":\"forward\"")
+  expectErrorContains
+    "strict proxy-upgradeability gate rejects macro proxy delegatecall"
+    ["--module", "Contracts.ProxyUpgradeabilityMacroSmoke", "--deny-proxy-upgradeability", "--output", s!"/tmp/verity-main-test-{nonce}-proxy-macro-fail-out"]
+    "ProxyUpgradeabilityMacroSmoke [function:forward]: delegatecall"
+  expectErrorContains
+    "strict local-obligation gate rejects macro proxy obligations"
+    ["--module", "Contracts.ProxyUpgradeabilityMacroSmoke", "--deny-local-obligations", "--output", s!"/tmp/verity-main-test-{nonce}-proxy-macro-local-fail-out"]
+    "ProxyUpgradeabilityMacroSmoke [function:initProxy]: assumed local obligations: implementation_slot_discipline"
   let nonSelectedArtifactFlags ←
     (canonicalModules.filter (· != "Contracts.Counter.Counter")).mapM
       (fun moduleName => fileExists (contractArtifactPath singleOutDir moduleName))

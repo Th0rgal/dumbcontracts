@@ -109,6 +109,10 @@ unsafe def runTests : IO Unit := do
     "strict local-obligation gate rejects undischarged local obligations"
     ["--module", "Contracts.LocalObligationTrustSurface", "--deny-local-obligations", "--output", s!"/tmp/verity-main-test-{nonce}-local-obligation-fail-out"]
     "LocalObligationTrustSurface [function:unsafeEdge]: assumed local obligations: manual_delegatecall_refinement"
+  expectErrorContains
+    "strict local-obligation gate rejects direct unsafe-boundary annotations"
+    ["--module", "Contracts.Counter.Counter", "--deny-local-obligations", "--output", s!"/tmp/verity-main-test-{nonce}-counter-local-obligation-fail-out"]
+    "Counter [function:previewEnvOps]: assumed local obligations: env_memory_refinement"
   let macroLocalObligationTrustReportPath := s!"/tmp/verity-main-test-{nonce}-macro-local-obligation-trust-report.json"
   let macroLocalObligationAssumptionReportPath := s!"/tmp/verity-main-test-{nonce}-macro-local-obligation-assumption-report.json"
   let macroLocalObligationOutDir := s!"/tmp/verity-main-test-{nonce}-macro-local-obligation-out"

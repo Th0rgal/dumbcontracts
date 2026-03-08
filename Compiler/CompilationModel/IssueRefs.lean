@@ -30,4 +30,7 @@ def issue756Ref : String :=
 def issue184Ref : String :=
   "Issue #184 (verified external interface declarations)"
 
+def issue1424Ref : String :=
+  "Issue #1424 (controlled unsafe/assembly escape hatches)"
+
 end Compiler.CompilationModel

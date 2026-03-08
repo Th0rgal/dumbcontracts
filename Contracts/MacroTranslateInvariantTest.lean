@@ -302,6 +302,8 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.ERC20HelperSmoke.spec
   , Contracts.Smoke.GenericECMReadSmoke.spec
   , Contracts.Smoke.GenericECMWriteSmoke.spec
+  , Contracts.Smoke.LocalObligationRequiredForUnsafeFunctionBoundary.spec
+  , Contracts.Smoke.LocalObligationRequiredForUnsafeConstructorBoundary.spec
   ]
 
 private def functionSignature (fn : FunctionSpec) : String :=
@@ -359,6 +361,8 @@ private def expectedExternalSignatures : List (String × List String) :=
       "snapshotAllowance(address,address,address)", "snapshotSupply(address)"])
   , ("GenericECMReadSmoke", ["snapshotQuote(address,address)"])
   , ("GenericECMWriteSmoke", ["runEffect(uint256,uint256)"])
+  , ("LocalObligationRequiredForUnsafeFunctionBoundary", ["preview()"])
+  , ("LocalObligationRequiredForUnsafeConstructorBoundary", ["noop()"])
   ]
 
 private def expectedExternalSelectors : List (String × List String) :=
@@ -398,6 +402,8 @@ private def expectedExternalSelectors : List (String × List String) :=
       "0x7247c4a5"])
   , ("GenericECMReadSmoke", ["0x78f2e50f"])
   , ("GenericECMWriteSmoke", ["0xc1192eb1"])
+  , ("LocalObligationRequiredForUnsafeFunctionBoundary", ["0xefae2305"])
+  , ("LocalObligationRequiredForUnsafeConstructorBoundary", ["0x5dfc2e4a"])
   ]
 
 private def expectedFor

@@ -13,6 +13,7 @@ import Compiler.CompilationModel.LayoutValidation
 import Compiler.CompilationModel.LogicalPurity
 import Compiler.CompilationModel.MappingWrites
 import Compiler.CompilationModel.ScopeValidation
+import Compiler.CompilationModel.TrustSurface
 import Compiler.CompilationModel.UsageAnalysis
 import Compiler.CompilationModel.ValidationCalls
 import Compiler.CompilationModel.ValidationEvents
@@ -370,6 +371,9 @@ decreasing_by all_goals simp_wf; all_goals omega
 end
 
 def validateFunctionSpec (spec : FunctionSpec) : Except String Unit := do
+  let unsafeBoundaryMechanics := collectUnsafeBoundaryMechanicsFromStmts spec.body
+  if !unsafeBoundaryMechanics.isEmpty && spec.localObligations.isEmpty then
+    throw s!"Compilation error: function '{spec.name}' uses low-level/assembly mechanic(s) {String.intercalate ", " unsafeBoundaryMechanics} without any local_obligations entry ({issue1424Ref}). Add local_obligations [...] to make the trust boundary explicit."
   if spec.isPayable && (spec.isView || spec.isPure) then
     throw s!"Compilation error: function '{spec.name}' cannot be both payable and view/pure ({issue586Ref})"
   if spec.isView && spec.isPure then
@@ -416,6 +420,9 @@ def validateConstructorSpec (ctor : Option ConstructorSpec) : Except String Unit
   match ctor with
   | none => pure ()
   | some spec =>
+      let unsafeBoundaryMechanics := collectUnsafeBoundaryMechanicsFromStmts spec.body
+      if !unsafeBoundaryMechanics.isEmpty && spec.localObligations.isEmpty then
+        throw s!"Compilation error: constructor uses low-level/assembly mechanic(s) {String.intercalate ", " unsafeBoundaryMechanics} without any local_obligations entry ({issue1424Ref}). Add local_obligations [...] to make the trust boundary explicit."
       if spec.body.any stmtContainsUnsafeLogicalCallLike then
         throw s!"Compilation error: constructor uses Expr.logicalAnd/Expr.logicalOr/Expr.ite or arithmetic helpers (mulDivUp/wDivUp/min/max) with call-like operand(s) that would be duplicated in Yul output ({issue748Ref}). Move call-like expressions into Stmt.letVar before combining."
       spec.body.forM validateNoRuntimeReturnsInConstructorStmt

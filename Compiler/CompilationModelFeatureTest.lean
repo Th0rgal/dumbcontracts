@@ -7,6 +7,7 @@ import Compiler.Modules.Oracle
 import Compiler.Modules.Precompiles
 import Compiler.Yul.PrettyPrint
 import Contracts.Common
+import Contracts.Counter.Counter
 import Contracts.LocalObligationMacroSmoke.LocalObligationMacroSmoke
 import Contracts.ProxyUpgradeabilityMacroSmoke
 
@@ -121,6 +122,32 @@ def forwardExecutableReadsImplementation : Bool :=
 example : forwardExecutableReadsImplementation = true := by native_decide
 
 end MacroProxyUpgradeabilitySmoke
+
+namespace CounterUnsafeBoundarySmoke
+
+open Contracts
+
+def previewEnvOpsCarriesBoundaryObligation : Bool :=
+  match Counter.previewEnvOps_model with
+  | { localObligations := [{ name := "env_memory_refinement"
+                             obligation := "Caller must separately prove the direct mload-based environment digest path respects the intended memory/refinement boundary."
+                             proofStatus := .assumed }]
+      body := _, .. } => true
+  | _ => false
+
+example : previewEnvOpsCarriesBoundaryObligation = true := by native_decide
+
+def previewLowLevelCarriesBoundaryObligation : Bool :=
+  match Counter.previewLowLevel_model with
+  | { localObligations := [{ name := "manual_low_level_refinement"
+                             obligation := "Caller must separately prove the direct low-level call and returndata choreography refines the intended external-call behavior."
+                             proofStatus := .assumed }]
+      body := _, .. } => true
+  | _ => false
+
+example : previewLowLevelCarriesBoundaryObligation = true := by native_decide
+
+end CounterUnsafeBoundarySmoke
 
 namespace MacroEcrecoverSmoke
 
@@ -387,12 +414,16 @@ open Verity.EVM.Uint256
 verity_contract MacroTransientStorage where
   storage
 
-  function warm (key : Uint256, value : Uint256) : Uint256 := do
+  function warm (key : Uint256, value : Uint256)
+    local_obligations [transient_storage_refinement := assumed "Caller must separately prove the direct transient-storage choreography refines the intended warm-slot behavior."]
+    : Uint256 := do
     tstore key value
     let current := tload key
     return current
 
-  function peek (key : Uint256) : Uint256 := do
+  function peek (key : Uint256)
+    local_obligations [transient_storage_read_refinement := assumed "Caller must separately prove the direct transient-storage read refines the intended peek behavior."]
+    : Uint256 := do
     let current := tload key
     return current
 
@@ -406,6 +437,16 @@ def warmModelUsesTransientStorage : Bool :=
 
 example : warmModelUsesTransientStorage = true := by native_decide
 
+def warmCarriesTransientStorageObligation : Bool :=
+  match MacroTransientStorage.warm_model with
+  | { localObligations := [{ name := "transient_storage_refinement"
+                             obligation := "Caller must separately prove the direct transient-storage choreography refines the intended warm-slot behavior."
+                             proofStatus := .assumed }]
+      body := _, .. } => true
+  | _ => false
+
+example : warmCarriesTransientStorageObligation = true := by native_decide
+
 def peekModelUsesTransientStorage : Bool :=
   match MacroTransientStorage.peek_modelBody with
   | [Stmt.letVar "current" (Expr.tload (Expr.param "key")),
@@ -414,6 +455,16 @@ def peekModelUsesTransientStorage : Bool :=
   | _ => false
 
 example : peekModelUsesTransientStorage = true := by native_decide
+
+def peekCarriesTransientStorageObligation : Bool :=
+  match MacroTransientStorage.peek_model with
+  | { localObligations := [{ name := "transient_storage_read_refinement"
+                             obligation := "Caller must separately prove the direct transient-storage read refines the intended peek behavior."
+                             proofStatus := .assumed }]
+      body := _, .. } => true
+  | _ => false
+
+example : peekCarriesTransientStorageObligation = true := by native_decide
 
 def warmExecutableWritesTransientStorage : Bool :=
   match MacroTransientStorage.warm 7 99 Verity.defaultState with

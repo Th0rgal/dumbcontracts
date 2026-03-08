@@ -2027,6 +2027,39 @@ def validateConstantDeclsPublic (constDecls : Array ConstantDecl) : CommandElabM
   for constant in constDecls do
     validateConstantBody constDecls constant.body [constant.name]
 
+def validateGeneratedDefNamesPublic
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (functions : Array FunctionDecl) : CommandElabM Unit := do
+  let mut storageNames : Array String := #[]
+  for field in fields do
+    if storageNames.contains field.name then
+      throwErrorAt field.ident s!"duplicate storage field declaration '{field.name}'"
+    storageNames := storageNames.push field.name
+
+  let mut constantNames : Array String := #[]
+  for constant in constDecls do
+    if storageNames.contains constant.name then
+      throwErrorAt constant.ident
+        s!"constant '{constant.name}' conflicts with a storage field of the same name"
+    if constantNames.contains constant.name then
+      throwErrorAt constant.ident
+        s!"duplicate constant declaration '{constant.name}'"
+    constantNames := constantNames.push constant.name
+
+  let mut functionNames : Array String := #[]
+  for fn in functions do
+    if storageNames.contains fn.name then
+      throwErrorAt fn.ident
+        s!"function '{fn.name}' conflicts with a storage field of the same name"
+    if constantNames.contains fn.name then
+      throwErrorAt fn.ident
+        s!"function '{fn.name}' conflicts with a contract constant of the same name"
+    if functionNames.contains fn.name then
+      throwErrorAt fn.ident
+        s!"duplicate function declaration '{fn.name}'"
+    functionNames := functionNames.push fn.name
+
 def validateImmutableDeclsPublic
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)

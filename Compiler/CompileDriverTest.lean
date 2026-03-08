@@ -503,6 +503,25 @@ private def erc4626TotalAssetsTrustSurfaceSpec : CompilationModel := {
   ]
 }
 
+private def erc4626AssetTrustSurfaceSpec : CompilationModel := {
+  name := "ERC4626AssetTrustSurface"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "asset"
+      params := [{ name := "vault", ty := ParamType.address }]
+      returnType := none
+      returns := [ParamType.address]
+      body := [
+        Compiler.Modules.ERC4626.asset
+          "assetAddr"
+          (Expr.param "vault"),
+        Stmt.returnValues [Expr.localVar "assetAddr"]
+      ]
+    }
+  ]
+}
+
 private def erc4626MaxDepositTrustSurfaceSpec : CompilationModel := {
   name := "ERC4626MaxDepositTrustSurface"
   fields := []
@@ -894,6 +913,16 @@ unsafe def runTests : IO Unit := do
   if !contains erc4626TotalAssetsTrustReport "\"assumed\":{\"axiomatizedPrimitives\":[],\"linkedExternals\":[],\"ecmModules\":[\"totalAssets\"]}" then
     throw (IO.userError "✗ erc4626 totalAssets trust report emits assumed ECM proof-status bucket")
   IO.println "✓ erc4626 totalAssets trust report emits standard vault module assumption"
+
+  let erc4626AssetTrustReport := emitTrustReportJson [erc4626AssetTrustSurfaceSpec]
+  if !contains erc4626AssetTrustReport "\"contract\":\"ERC4626AssetTrustSurface\"" then
+    throw (IO.userError "✗ erc4626 asset trust report emits contract name")
+  if !contains erc4626AssetTrustReport "\"module\":\"asset\"" ||
+      !contains erc4626AssetTrustReport "\"assumption\":\"erc4626_asset_interface\"" then
+    throw (IO.userError "✗ erc4626 asset trust report emits module assumption")
+  if !contains erc4626AssetTrustReport "\"assumed\":{\"axiomatizedPrimitives\":[],\"linkedExternals\":[],\"ecmModules\":[\"asset\"]}" then
+    throw (IO.userError "✗ erc4626 asset trust report emits assumed ECM proof-status bucket")
+  IO.println "✓ erc4626 asset trust report emits standard vault module assumption"
 
   let erc4626MaxDepositTrustReport := emitTrustReportJson [erc4626MaxDepositTrustSurfaceSpec]
   if !contains erc4626MaxDepositTrustReport "\"contract\":\"ERC4626MaxDepositTrustSurface\"" then

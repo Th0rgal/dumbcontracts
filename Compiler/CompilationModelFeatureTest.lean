@@ -725,6 +725,25 @@ private def erc4626TotalAssetsSmokeSpec : CompilationModel := {
   ]
 }
 
+private def erc4626AssetSmokeSpec : CompilationModel := {
+  name := "ERC4626AssetSmoke"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "asset"
+      params := [{ name := "vault", ty := ParamType.address }]
+      returnType := none
+      returns := [ParamType.address]
+      body := [
+        Compiler.Modules.ERC4626.asset
+          "assetAddr"
+          (Expr.param "vault"),
+        Stmt.returnValues [Expr.localVar "assetAddr"]
+      ]
+    }
+  ]
+}
+
 private def erc4626MaxDepositSmokeSpec : CompilationModel := {
   name := "ERC4626MaxDepositSmoke"
   fields := []
@@ -1010,6 +1029,18 @@ private def erc4626MaxRedeemSmokeSpec : CompilationModel := {
     (contains erc4626TotalAssetsYul "if iszero(eq(returndatasize(), 32)) {")
   expectTrue "erc4626 totalAssets ECM ABI-encodes the selector"
     (contains erc4626TotalAssetsYul "mstore(0, shl(224, 0x01e1d114))")
+  let erc4626AssetYul ←
+    expectCompileToYul "erc4626 asset smoke spec" erc4626AssetSmokeSpec
+  expectTrue "erc4626 asset ECM lowers to staticcall"
+    (contains erc4626AssetYul "staticcall(gas(), vault, 0, 4, 0, 32)")
+  expectTrue "erc4626 asset ECM forwards revert returndata"
+    (contains erc4626AssetYul "returndatacopy(0, 0, __erc4626_rds)")
+  expectTrue "erc4626 asset ECM rejects non-32-byte returndata"
+    (contains erc4626AssetYul "if iszero(eq(returndatasize(), 32)) {")
+  expectTrue "erc4626 asset ECM ABI-encodes the selector"
+    (contains erc4626AssetYul "mstore(0, shl(224, 0x38d52e0f))")
+  expectTrue "erc4626 asset ECM masks the returned address"
+    (contains erc4626AssetYul "let assetAddr := and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)")
   let erc4626MaxDepositYul ←
     expectCompileToYul "erc4626 maxDeposit smoke spec" erc4626MaxDepositSmokeSpec
   expectTrue "erc4626 maxDeposit ECM lowers to staticcall"

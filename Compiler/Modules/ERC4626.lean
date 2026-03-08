@@ -16,6 +16,7 @@
     exactly one 32-byte return word.
   - `totalAssets`: staticcall `totalAssets()` and require exactly one 32-byte
     return word.
+  - `asset`: staticcall `asset()` and require exactly one 32-byte return word.
   - `maxDeposit`: staticcall `maxDeposit(address)` and require exactly one
     32-byte return word.
   - `maxMint`: staticcall `maxMint(address)` and require exactly one 32-byte
@@ -31,11 +32,13 @@
 
 import Compiler.ECM
 import Compiler.CompilationModel
+import Compiler.Constants
 
 namespace Compiler.Modules.ERC4626
 
 open Compiler.Yul
 open Compiler.ECM
+open Compiler.Constants (addressMask)
 open Compiler.CompilationModel (Stmt Expr)
 
 /-- Shared implementation for read-only ERC-4626 calls that return one
@@ -227,6 +230,56 @@ def totalAssetsModule (resultVar : String) : ExternalCallModule :=
 /-- Convenience: create a `Stmt.ecm` for a read-only `totalAssets()` call. -/
 def totalAssets (resultVar : String) (vault : Expr) : Stmt :=
   .ecm (totalAssetsModule resultVar) [vault]
+
+/-- Read-only ERC-4626 `asset()` module.
+
+    It ABI-encodes the canonical `asset()` selector, performs a `staticcall`,
+    forwards revert returndata on failure, requires exactly one 32-byte return
+    word, masks that word to 160 bits, and binds it to `resultVar`.
+
+    Arguments passed to the module are `[vault]`. -/
+def assetModule (resultVar : String) : ExternalCallModule where
+  name := "asset"
+  numArgs := 1
+  resultVars := [resultVar]
+  writesState := false
+  readsState := true
+  axioms := ["erc4626_asset_interface"]
+  compile := fun _ctx args => do
+    let vaultExpr ← match args with
+      | [vault] => pure vault
+      | _ => throw "asset expects 1 argument (vault)"
+    let storeSelector := YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.lit 0,
+      YulExpr.call "shl" [YulExpr.lit 224, YulExpr.hex 0x38d52e0f]
+    ])
+    let callExpr := YulExpr.call "staticcall" [
+      YulExpr.call "gas" [],
+      vaultExpr,
+      YulExpr.lit 0, YulExpr.lit 4,
+      YulExpr.lit 0, YulExpr.lit 32
+    ]
+    let revertOnFailure := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__erc4626_success"]) [
+      YulStmt.let_ "__erc4626_rds" (YulExpr.call "returndatasize" []),
+      YulStmt.expr (YulExpr.call "returndatacopy" [
+        YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__erc4626_rds"
+      ]),
+      YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__erc4626_rds"])
+    ]
+    let requireSingleWord := YulStmt.if_ (YulExpr.call "iszero" [
+      YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]
+    ]) [
+      YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+    ]
+    let bindResult := YulStmt.let_ resultVar
+      (YulExpr.call "and" [YulExpr.call "mload" [YulExpr.lit 0], YulExpr.hex addressMask])
+    pure [YulStmt.block (
+      [storeSelector, YulStmt.let_ "__erc4626_success" callExpr, revertOnFailure, requireSingleWord]
+    ), bindResult]
+
+/-- Convenience: create a `Stmt.ecm` for a read-only `asset()` call. -/
+def asset (resultVar : String) (vault : Expr) : Stmt :=
+  .ecm (assetModule resultVar) [vault]
 
 /-- Read-only ERC-4626 `maxDeposit(address)` module.
 

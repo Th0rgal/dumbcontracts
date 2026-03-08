@@ -237,26 +237,31 @@ verity_contract TupleSmoke where
     authorized : Address → Uint256 := slot 1
 
   function setFromPair (pair : Tuple [Uint256, Uint256]) : Unit := do
-    let pairValue := pair
-    let _ignored := pairValue
-    pure ()
+    let _pairValue := pair
+    let key := pair_0
+    let value := pair_1
+    setMappingUint values key value
 
   function getPair (key : Uint256) : Tuple [Uint256, Uint256] := do
     return (key, key)
 
   function processConfig (cfg : Tuple [Address, Address, Uint256]) : Unit := do
-    let cfgValue := cfg
-    let _ignored := cfgValue
-    pure ()
+    let _cfgValue := cfg
+    let owner := cfg_0
+    let _delegate := cfg_1
+    let flag := cfg_2
+    setMapping authorized owner flag
 
 verity_contract Uint8Smoke where
   storage
     sentinel : Uint256 := slot 0
 
   function acceptSig (sig : Tuple [Uint8, Bytes32, Bytes32]) : Unit := do
-    let sigValue := sig
-    let _ignored := sigValue
-    pure ()
+    let _sigValue := sig
+    let v := sig_0
+    let _r := sig_1
+    let _s := sig_2
+    setStorage sentinel v
 
   function sigV () : Uint8 := do
     return 27
@@ -478,6 +483,13 @@ end SpecGenSmoke
 #check_contract ZeroAddressShadowSmoke
 #check_contract StructMappingSmoke
 #check_contract Contracts.Vault
+
+example : TupleSmoke.setFromPair = (TupleSmoke.setFromPair : (Uint256 × Uint256) → Verity.Contract Unit) := rfl
+example : TupleSmoke.getPair = (TupleSmoke.getPair : Uint256 → Verity.Contract (Uint256 × Uint256)) := rfl
+example :
+    TupleSmoke.processConfig =
+      (TupleSmoke.processConfig : (Address × Address × Uint256) → Verity.Contract Unit) := rfl
+example : Uint8Smoke.acceptSig = (Uint8Smoke.acceptSig : (Uint256 × Uint256 × Uint256) → Verity.Contract Unit) := rfl
 
 example :
     (Compiler.CompilationModel.FunctionSpec.body

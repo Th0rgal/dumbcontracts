@@ -656,10 +656,10 @@ private def mkIRStateFromTyped (state : Verity.Core.Free.TExecState.{0}) (block 
     none
     state.env.sender
     state.env.msgValue
-    0
-    0
-    0
-    0
+    state.env.thisAddress
+    state.env.blockTimestamp
+    state.env.blockNumber
+    state.env.chainId
     0
     []
 
@@ -770,6 +770,17 @@ def compiledCounterGetCountReturn : Option Nat :=
 
 /-- End-to-end Counter getCount: typed IR pipeline returns slot-0 value. -/
 example : compiledCounterGetCountReturn = some 41 := by
+  native_decide
+
+def chainidLoweredReturn : Option Nat :=
+  let block : TBlock :=
+    { params := []
+      locals := []
+      body := [.returnUint TExpr.chainid] }
+  execLoweredReturn 32 (mkIRStateFromTyped envOverrideState block) block
+
+/-- Lowered typed IR reads `chainId` from the explicit execution environment. -/
+example : chainidLoweredReturn = some 104 := by
   native_decide
 
 def compiledSimpleStorageLoweredFinalSlot : Option Nat :=

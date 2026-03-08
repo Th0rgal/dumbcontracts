@@ -539,6 +539,9 @@ partial def translatePureExpr
   | `(term| mload $offset) =>
       `(Compiler.CompilationModel.Expr.mload
           $(← translatePureExpr fields params locals offset))
+  | `(term| tload $offset) =>
+      `(Compiler.CompilationModel.Expr.tload
+          $(← translatePureExpr fields params locals offset))
   | `(term| calldataload $offset) =>
       `(Compiler.CompilationModel.Expr.calldataload
           $(← translatePureExpr fields params locals offset))
@@ -865,9 +868,12 @@ private def translateBindSource
           $(← translatePureExpr fields params locals key2)
           $(strTerm memberName))
   | `(term| msgSender) => `(Compiler.CompilationModel.Expr.caller)
+  | `(term| tload $offset:term) =>
+      `(Compiler.CompilationModel.Expr.tload
+          $(← translatePureExpr fields params locals offset))
   | _ =>
       throwErrorAt rhs
-        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/ecrecover"
+        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/tload/ecrecover"
 
 private def translateSafeRequireBind
     (fields : Array StorageFieldDecl)
@@ -1019,6 +1025,10 @@ private def translateEffectStmt
           $(strTerm (← expectStringLiteral msg)))
   | `(term| mstore $offset:term $value:term) =>
       `(Compiler.CompilationModel.Stmt.mstore
+          $(← translatePureExpr fields params locals offset)
+          $(← translatePureExpr fields params locals value))
+  | `(term| tstore $offset:term $value:term) =>
+      `(Compiler.CompilationModel.Stmt.tstore
           $(← translatePureExpr fields params locals offset)
           $(← translatePureExpr fields params locals value))
   | `(term| calldatacopy $destOffset:term $sourceOffset:term $size:term) =>

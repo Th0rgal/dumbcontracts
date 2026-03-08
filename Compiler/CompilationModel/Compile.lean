@@ -266,6 +266,11 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         ← compileExpr fields dynamicSource offset,
         ← compileExpr fields dynamicSource value
       ])]
+  | Stmt.tstore offset value => do
+      pure [YulStmt.expr (YulExpr.call "tstore" [
+        ← compileExpr fields dynamicSource offset,
+        ← compileExpr fields dynamicSource value
+      ])]
   | Stmt.calldatacopy destOffset sourceOffset size => do
       pure [YulStmt.expr (YulExpr.call "calldatacopy" [
         ← compileExpr fields dynamicSource destOffset,

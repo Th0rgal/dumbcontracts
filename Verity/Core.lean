@@ -43,6 +43,7 @@ structure Event where
 -- State monad for contract execution
 structure ContractState where
   storage : Nat → Uint256                -- Uint256 storage mapping
+  transientStorage : Nat → Uint256       -- EIP-1153 transient storage mapping
   storageAddr : Nat → Address            -- Address storage mapping
   storageMap : Nat → Address → Uint256  -- Mapping storage (Address → Uint256)
   storageMapUint : Nat → Uint256 → Uint256  -- Uint256-keyed mapping storage (#154)
@@ -60,6 +61,7 @@ structure ContractState where
 -- Use `{ defaultState with sender := "0xAlice" }` to customize individual fields.
 def defaultState : ContractState where
   storage := fun _ => 0
+  transientStorage := fun _ => 0
   storageAddr := fun _ => 0
   storageMap := fun _ _ => 0
   storageMapUint := fun _ _ => 0

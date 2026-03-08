@@ -55,6 +55,7 @@ def collectExprNames : Expr → List String
   | Expr.blockTimestamp => []
   | Expr.blockNumber => []
   | Expr.mload offset => collectExprNames offset
+  | Expr.tload offset => collectExprNames offset
   | Expr.keccak256 offset size => collectExprNames offset ++ collectExprNames size
   | Expr.call gas target value inOffset inSize outOffset outSize =>
       collectExprNames gas ++ collectExprNames target ++ collectExprNames value ++
@@ -140,6 +141,7 @@ def collectStmtNames : Stmt → List String
   | Stmt.returnBytes name => [name]
   | Stmt.returnStorageWords name => [name]
   | Stmt.mstore offset value => collectExprNames offset ++ collectExprNames value
+  | Stmt.tstore offset value => collectExprNames offset ++ collectExprNames value
   | Stmt.calldatacopy destOffset sourceOffset size =>
       collectExprNames destOffset ++ collectExprNames sourceOffset ++ collectExprNames size
   | Stmt.returndataCopy destOffset sourceOffset size =>

@@ -946,6 +946,7 @@ def main (args : List String) : IO Unit := do
 
     let initialState : ContractState := {
       «storage» := storageState
+      transientStorage := fun _ => 0
       storageAddr := storageAddrState
       storageMap := storageMapState
       storageMapUint := storageMapUintState

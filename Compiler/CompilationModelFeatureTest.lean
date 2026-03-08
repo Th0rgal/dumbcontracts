@@ -81,6 +81,67 @@ example : hashSliceExecutableUsesRuntimeStub = true := by native_decide
 
 end MacroKeccakSmoke
 
+namespace MacroTransientStorageSmoke
+
+open Contracts
+open Verity hiding pure bind
+open Verity.EVM.Uint256
+
+verity_contract MacroTransientStorage where
+  storage
+
+  function warm (key : Uint256, value : Uint256) : Uint256 := do
+    tstore key value
+    let current := tload key
+    return current
+
+  function peek (key : Uint256) : Uint256 := do
+    let current := tload key
+    return current
+
+def warmModelUsesTransientStorage : Bool :=
+  match MacroTransientStorage.warm_modelBody with
+  | [Stmt.tstore (Expr.param "key") (Expr.param "value"),
+      Stmt.letVar "current" (Expr.tload (Expr.param "key")),
+      Stmt.return (Expr.localVar "current")] =>
+      true
+  | _ => false
+
+example : warmModelUsesTransientStorage = true := by native_decide
+
+def peekModelUsesTransientStorage : Bool :=
+  match MacroTransientStorage.peek_modelBody with
+  | [Stmt.letVar "current" (Expr.tload (Expr.param "key")),
+      Stmt.return (Expr.localVar "current")] =>
+      true
+  | _ => false
+
+example : peekModelUsesTransientStorage = true := by native_decide
+
+def warmExecutableWritesTransientStorage : Bool :=
+  match MacroTransientStorage.warm 7 99 Verity.defaultState with
+  | .success current state =>
+      current == 99 &&
+      state.transientStorage 7 == 99 &&
+      state.storage 7 == 0
+  | .revert _ _ => false
+
+example : warmExecutableWritesTransientStorage = true := by native_decide
+
+def transientStoragePersistsAcrossExecutableCalls : Bool :=
+  match MacroTransientStorage.warm 7 99 Verity.defaultState with
+  | .success _ warmedState =>
+      match MacroTransientStorage.peek 7 warmedState with
+      | .success current finalState =>
+          current == 99 &&
+          finalState.transientStorage 7 == 99
+      | .revert _ _ => false
+  | .revert _ _ => false
+
+example : transientStoragePersistsAcrossExecutableCalls = true := by native_decide
+
+end MacroTransientStorageSmoke
+
 namespace MacroTupleDestructuringSmoke
 
 open Contracts
@@ -1747,5 +1808,19 @@ set_option maxRecDepth 4096 in
   expectTrue "macro keccak trust report surfaces the named primitive assumption"
     (contains macroKeccakTrustReport "\"primitive\":\"keccak256\"" &&
       contains macroKeccakTrustReport "\"assumption\":\"keccak256_memory_slice_matches_evm\"")
+  let macroTransientYul ←
+    expectCompileToYul "macro transient storage smoke spec" MacroTransientStorageSmoke.MacroTransientStorage.spec
+  expectTrue "macro transient storage lowers to the Yul transient builtins"
+    (contains macroTransientYul "tstore(" &&
+      contains macroTransientYul "tload(")
+  expectTrue "macro transient storage executable path uses the transient state map"
+    MacroTransientStorageSmoke.warmExecutableWritesTransientStorage
+  expectTrue "macro transient storage round-trips across executable calls"
+    MacroTransientStorageSmoke.transientStoragePersistsAcrossExecutableCalls
+  let macroTransientTrustReport := emitTrustReportJson [MacroTransientStorageSmoke.MacroTransientStorage.spec]
+  expectTrue "macro transient storage trust report surfaces low-level mechanics"
+    (contains macroTransientTrustReport "\"modeledLowLevelMechanics\"" &&
+      contains macroTransientTrustReport "\"tstore\"" &&
+      contains macroTransientTrustReport "\"tload\"")
 
 end Compiler.CompilationModelFeatureTest

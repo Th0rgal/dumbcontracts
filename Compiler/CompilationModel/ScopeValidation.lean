@@ -151,7 +151,7 @@ def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount outSize
   | Expr.extcodesize addr =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount addr
-  | Expr.mload offset =>
+  | Expr.mload offset | Expr.tload offset =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
   | Expr.calldataload offset =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
@@ -250,6 +250,10 @@ def validateScopedStmtIdentifiers
       validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount args
       pure localScope
   | Stmt.mstore offset value => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
+      pure localScope
+  | Stmt.tstore offset value => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount offset
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
       pure localScope

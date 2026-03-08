@@ -197,6 +197,7 @@ def exprReadsStateOrEnv : Expr → Bool
   | Expr.calldatasize => true
   | Expr.calldataload _ => true
   | Expr.mload offset => exprReadsStateOrEnv offset
+  | Expr.tload _ => true
   | Expr.keccak256 offset size => exprReadsStateOrEnv offset || exprReadsStateOrEnv size
   | Expr.call _ _ _ _ _ _ _ | Expr.staticcall _ _ _ _ _ _
   | Expr.delegatecall _ _ _ _ _ _ => true
@@ -245,7 +246,7 @@ def exprWritesState : Expr → Bool
       exprWritesState inOffset || exprWritesState inSize ||
       exprWritesState outOffset || exprWritesState outSize
   | Expr.delegatecall _ _ _ _ _ _ => true
-  | Expr.mload offset =>
+  | Expr.mload offset | Expr.tload offset =>
       exprWritesState offset
   | Expr.calldataload offset =>
       exprWritesState offset
@@ -294,6 +295,8 @@ def stmtWritesState : Stmt → Bool
       false
   | Stmt.mstore offset value =>
       exprWritesState offset || exprWritesState value
+  | Stmt.tstore _ _ =>
+      true
   | Stmt.calldatacopy destOffset sourceOffset size =>
       exprWritesState destOffset || exprWritesState sourceOffset || exprWritesState size
   | Stmt.returndataCopy destOffset sourceOffset size =>
@@ -335,6 +338,8 @@ def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.returnStorageWords _ =>
       true
   | Stmt.mstore offset value =>
+      exprReadsStateOrEnv offset || exprReadsStateOrEnv value
+  | Stmt.tstore offset value =>
       exprReadsStateOrEnv offset || exprReadsStateOrEnv value
   | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ => true
   | Stmt.revertReturndata =>

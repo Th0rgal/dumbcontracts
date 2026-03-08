@@ -23,6 +23,8 @@ private partial def collectLowLevelExprMechanics : Expr → List String
         collectLowLevelExprMechanics outOffset ++ collectLowLevelExprMechanics outSize
   | .returndataSize =>
       ["returndataSize"]
+  | .tload offset =>
+      ["tload"] ++ collectLowLevelExprMechanics offset
   | .returndataOptionalBoolAt outOffset =>
       ["returndataOptionalBoolAt"] ++ collectLowLevelExprMechanics outOffset
   | .mapping _ key
@@ -78,6 +80,7 @@ private partial def collectAxiomatizedExprPrimitives : Expr → List String
         collectAxiomatizedExprPrimitives outOffset ++ collectAxiomatizedExprPrimitives outSize
   | .returndataOptionalBoolAt outOffset
   | .mload outOffset
+  | .tload outOffset
   | .calldataload outOffset
   | .extcodesize outOffset =>
       collectAxiomatizedExprPrimitives outOffset
@@ -126,6 +129,8 @@ private partial def collectLowLevelStmtMechanics : Stmt → List String
       args.flatMap collectLowLevelExprMechanics
   | .mstore offset value =>
       collectLowLevelExprMechanics offset ++ collectLowLevelExprMechanics value
+  | .tstore offset value =>
+      ["tstore"] ++ collectLowLevelExprMechanics offset ++ collectLowLevelExprMechanics value
   | .calldatacopy destOffset sourceOffset size =>
       collectLowLevelExprMechanics destOffset ++ collectLowLevelExprMechanics sourceOffset ++ collectLowLevelExprMechanics size
   | .returndataCopy destOffset sourceOffset size =>
@@ -174,6 +179,8 @@ private partial def collectAxiomatizedStmtPrimitives : Stmt → List String
   | .revertError _ args =>
       args.flatMap collectAxiomatizedExprPrimitives
   | .mstore offset value =>
+      collectAxiomatizedExprPrimitives offset ++ collectAxiomatizedExprPrimitives value
+  | .tstore offset value =>
       collectAxiomatizedExprPrimitives offset ++ collectAxiomatizedExprPrimitives value
   | .calldatacopy destOffset sourceOffset size
   | .returndataCopy destOffset sourceOffset size =>
@@ -251,6 +258,7 @@ private partial def collectExternalExprNames : Expr → List String
         collectExternalExprNames inSize ++ collectExternalExprNames outOffset ++ collectExternalExprNames outSize
   | .returndataOptionalBoolAt outOffset
   | .mload outOffset
+  | .tload outOffset
   | .calldataload outOffset
   | .extcodesize outOffset =>
       collectExternalExprNames outOffset
@@ -298,6 +306,8 @@ private partial def collectExternalStmtNames : Stmt → List String
   | .revertError _ args =>
       args.flatMap collectExternalExprNames
   | .mstore offset value =>
+      collectExternalExprNames offset ++ collectExternalExprNames value
+  | .tstore offset value =>
       collectExternalExprNames offset ++ collectExternalExprNames value
   | .calldatacopy destOffset sourceOffset size
   | .returndataCopy destOffset sourceOffset size =>

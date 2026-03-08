@@ -19,7 +19,7 @@ def collectStmtBindNames : Stmt → List String
   | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _
   | Stmt.require _ _ | Stmt.requireError _ _ _ | Stmt.revertError _ _
   | Stmt.returnValues _ | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
-  | Stmt.mstore _ _ | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata | Stmt.stop
+  | Stmt.mstore _ _ | Stmt.tstore _ _ | Stmt.calldatacopy _ _ _ | Stmt.returndataCopy _ _ _ | Stmt.revertReturndata | Stmt.stop
   | Stmt.emit _ _ | Stmt.internalCall _ _ | Stmt.rawLog _ _ _ =>
       []
 termination_by s => sizeOf s
@@ -57,6 +57,8 @@ def exprUsesArrayElement : Expr → Bool
       exprUsesArrayElement outOffset || exprUsesArrayElement outSize
   | Expr.extcodesize addr => exprUsesArrayElement addr
   | Expr.mload offset =>
+      exprUsesArrayElement offset
+  | Expr.tload offset =>
       exprUsesArrayElement offset
   | Expr.calldataload offset =>
       exprUsesArrayElement offset
@@ -101,6 +103,8 @@ def stmtUsesArrayElement : Stmt → Bool
   | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
       exprListUsesArrayElement args
   | Stmt.mstore offset value =>
+      exprUsesArrayElement offset || exprUsesArrayElement value
+  | Stmt.tstore offset value =>
       exprUsesArrayElement offset || exprUsesArrayElement value
   | Stmt.calldatacopy destOffset sourceOffset size =>
       exprUsesArrayElement destOffset || exprUsesArrayElement sourceOffset || exprUsesArrayElement size

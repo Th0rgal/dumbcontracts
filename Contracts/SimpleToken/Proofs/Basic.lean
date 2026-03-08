@@ -148,6 +148,7 @@ private theorem mint_unfold (s : ContractState) (to : Address) (amount : Uint256
   (mint to amount).run s = ContractResult.success ()
     { «storage» := fun slotIdx =>
         if (slotIdx == 2) = true then EVM.Uint256.add (s.storage 2) amount else s.storage slotIdx,
+      transientStorage := s.transientStorage,
       storageAddr := s.storageAddr,
       storageMap := fun slotIdx addr =>
         if (slotIdx == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount
@@ -281,6 +282,7 @@ private theorem transfer_unfold_other (s : ContractState) (to : Address) (amount
   (h_no_overflow : (s.storageMap 1 to : Nat) + (amount : Nat) ≤ MAX_UINT256) :
   (transfer to amount).run s = ContractResult.success ()
     { «storage» := s.storage,
+      transientStorage := s.transientStorage,
       storageAddr := s.storageAddr,
       storageMap := fun slotIdx addr =>
         if (slotIdx == 1 && addr == to) = true then EVM.Uint256.add (s.storageMap 1 to) amount

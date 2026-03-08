@@ -21,6 +21,9 @@ macro_rules
   | `(doElem| let $name:ident := arrayElement $values:term $index:term) => do
       let checked := Lean.mkIdentFrom name `_root_.Contracts.arrayElementChecked
       `(doElem| let $name ← $checked:ident $values $index)
+  | `(doElem| let $name:ident := tload $offset:term) => do
+      let load := Lean.mkIdentFrom name `_root_.Contracts.tload
+      `(doElem| let $name ← $load:ident $offset)
   | `(doElem| let $pat:term := $rhs:term) => do
       if pat.raw.getKind != `Lean.Parser.Term.tuple then
         Lean.Macro.throwUnsupported
@@ -59,6 +62,8 @@ def calldatasize : Uint256 := 0
 def returndataSize : Uint256 := 0
 def calldataload (offset : Uint256) : Uint256 := offset
 def mload (offset : Uint256) : Uint256 := offset
+def tload (offset : Uint256) : Contract Uint256 := fun state =>
+  ContractResult.success (state.transientStorage (offset : Nat)) state
 def extcodesize (addr : Uint256) : Uint256 := addr
 def keccak256 (offset size : Uint256) : Uint256 := add offset size
 def call (gas target value inOffset inSize outOffset outSize : Uint256) : Uint256 :=
@@ -96,6 +101,10 @@ def rawLog (topics : List Uint256) (dataOffset dataSize : Uint256) : Contract Un
         [{ name := s!"log{topics.length}", args := [dataOffset, dataSize], indexedArgs := topics }]
     }
 def mstore (_offset _value : Uint256) : Contract Unit := pure ()
+def tstore (offset value : Uint256) : Contract Unit := fun state =>
+  ContractResult.success () { state with
+    transientStorage := fun i => if i == (offset : Nat) then value else state.transientStorage i
+  }
 def getMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset : Uint256) :
     Contract Uint256 := pure 0
 def setMappingWord (_slot : StorageSlot (Uint256 → Uint256)) (_key _wordOffset _value : Uint256) :

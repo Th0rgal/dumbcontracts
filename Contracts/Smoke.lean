@@ -98,6 +98,20 @@ verity_contract ConstantSmoke where
   function treasuryAddr () : Address := do
     return treasury
 
+/--
+error: contract constants must be compile-time expressions; 'blockTimestamp' is runtime-dependent
+-/
+#guard_msgs in
+verity_contract ConstantRuntimeBuiltinRejected where
+  storage
+
+  constants
+    seededAt : Uint256 := blockTimestamp
+
+  function seeded () : Uint256 := do
+    return seededAt
+end ConstantRuntimeBuiltinRejected
+
 verity_contract TupleSmoke where
   storage
     values : Uint256 → Uint256 := slot 0

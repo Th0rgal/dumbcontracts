@@ -345,6 +345,9 @@ private partial def stripParens (stx : Term) : Term :=
   | `(term| ($inner)) => stripParens inner
   | _ => stx
 
+private def throwNonCompileTimeConstantError (stx : Syntax) (what : String) : CommandElabM α :=
+  throwErrorAt stx s!"contract constants must be compile-time expressions; '{what}' is runtime-dependent"
+
 private def lookupStructMemberDecl
     (fields : Array StorageFieldDecl)
     (fieldName memberName : String)
@@ -491,6 +494,83 @@ private def lookupVarExpr (params : Array ParamDecl) (locals : Array String) (na
     throwError s!"unknown variable '{name}'"
 
 mutual
+private partial def validateConstantBody
+    (constDecls : Array ConstantDecl)
+    (stx : Term)
+    (visiting : List String := []) : CommandElabM Unit := do
+  let stx := stripParens stx
+  match stx with
+  | `(term| constructorArg $idx:num) => throwNonCompileTimeConstantError idx "constructorArg"
+  | `(term| blockTimestamp) => throwNonCompileTimeConstantError stx "blockTimestamp"
+  | `(term| blockNumber) => throwNonCompileTimeConstantError stx "blockNumber"
+  | `(term| contractAddress) => throwNonCompileTimeConstantError stx "contractAddress"
+  | `(term| chainid) => throwNonCompileTimeConstantError stx "chainid"
+  | `(term| calldatasize) => throwNonCompileTimeConstantError stx "calldatasize"
+  | `(term| returndataSize) => throwNonCompileTimeConstantError stx "returndataSize"
+  | `(term| zeroAddress) => pure ()
+  | `(term| isZeroAddress $a:term) => validateConstantBody constDecls a visiting
+  | `(term| wordToAddress $a:term) => validateConstantBody constDecls a visiting
+  | `(term| addressToWord $a:term) => validateConstantBody constDecls a visiting
+  | `(term| boolToWord $a:term) => validateConstantBody constDecls a visiting
+  | `(term| $id:ident) =>
+      let name := toString id.getId
+      match constDecls.find? (fun c => c.name == name) with
+      | none => throwErrorAt stx s!"unknown variable '{name}'"
+      | some constant =>
+          if visiting.contains name then
+            throwErrorAt stx s!"constant '{name}' depends on itself recursively"
+          validateConstantBody constDecls constant.body (name :: visiting)
+  | `(term| $n:num) => pure ()
+  | `(term| add $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| sub $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| mul $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| div $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| mod $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| bitAnd $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| bitOr $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| bitXor $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| bitNot $a) => validateConstantBody constDecls a visiting
+  | `(term| shl $shift $value) => validateConstantBody constDecls shift visiting *> validateConstantBody constDecls value visiting
+  | `(term| shr $shift $value) => validateConstantBody constDecls shift visiting *> validateConstantBody constDecls value visiting
+  | `(term| $a == $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| $a != $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| $a >= $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| $a > $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| $a < $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| $a <= $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| $a && $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| $a || $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| logicalAnd $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| logicalOr $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| logicalNot $a) => validateConstantBody constDecls a visiting
+  | `(term| and $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| or $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| xor $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| not $a) => validateConstantBody constDecls a visiting
+  | `(term| mload $offset) => throwNonCompileTimeConstantError offset "mload"
+  | `(term| tload $offset) => throwNonCompileTimeConstantError offset "tload"
+  | `(term| calldataload $offset) => throwNonCompileTimeConstantError offset "calldataload"
+  | `(term| extcodesize $addr) => throwNonCompileTimeConstantError addr "extcodesize"
+  | `(term| keccak256 $offset $_size) => throwNonCompileTimeConstantError offset "keccak256"
+  | `(term| call $gas $_target $_value $_inOffset $_inSize $_outOffset $_outSize) =>
+      throwNonCompileTimeConstantError gas "call"
+  | `(term| staticcall $gas $_target $_inOffset $_inSize $_outOffset $_outSize) =>
+      throwNonCompileTimeConstantError gas "staticcall"
+  | `(term| delegatecall $gas $_target $_inOffset $_inSize $_outOffset $_outSize) =>
+      throwNonCompileTimeConstantError gas "delegatecall"
+  | `(term| byte $index $word) => validateConstantBody constDecls index visiting *> validateConstantBody constDecls word visiting
+  | `(term| addmod $a $b $c) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting *> validateConstantBody constDecls c visiting
+  | `(term| mulmod $a $b $c) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting *> validateConstantBody constDecls c visiting
+  | `(term| signextend $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| sar $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| min $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| max $a $b) => validateConstantBody constDecls a visiting *> validateConstantBody constDecls b visiting
+  | `(term| ite $cond $thenVal $elseVal) =>
+      validateConstantBody constDecls cond visiting *>
+      validateConstantBody constDecls thenVal visiting *>
+      validateConstantBody constDecls elseVal visiting
+  | _ => throwErrorAt stx "unsupported expression in contract constant"
+
 private partial def translateConstantExpr
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
@@ -1619,6 +1699,10 @@ def mkStorageDefCommandPublic (field : StorageFieldDecl) : CommandElabM Cmd :=
 
 def mkConstantDefCommandPublic (constant : ConstantDecl) : CommandElabM Cmd :=
   mkConstantDefCommand constant
+
+def validateConstantDeclsPublic (constDecls : Array ConstantDecl) : CommandElabM Unit := do
+  for constant in constDecls do
+    validateConstantBody constDecls constant.body [constant.name]
 
 def mkFunctionCommandsPublic
     (fields : Array StorageFieldDecl)

@@ -127,6 +127,8 @@ private def externalCallStubWord (name : String) (args : List Uint256) : Uint256
   | _, _ => args.foldl add name.length
 def externalCallWords {α : Type} [ExternalResult α] (name : String) (args : List Uint256) : α :=
   ExternalResult.fromWord (externalCallStubWord name args)
+private def erc20ReadStubWord (name : String) (args : List Uint256) : Uint256 :=
+  externalCallStubWord name args
 macro_rules
   | `(term| externalCall $name:ident [ $[$args:term],* ]) =>
       `(externalCallWords $(Lean.quote (toString name.getId)) [ $[ExternalArg.toWord $args],* ])
@@ -148,6 +150,12 @@ def setStructMember {κ α : Type} (_field : String) (_key : κ) (_member : Stri
     Contract Unit := pure ()
 def setStructMember2 {κ₁ κ₂ α : Type}
     (_field : String) (_key1 : κ₁) (_key2 : κ₂) (_member : String) (_value : α) : Contract Unit := pure ()
+def safeTransfer (_token _to : Address) (_amount : Uint256) : Contract Unit := pure ()
+def safeTransferFrom (_token _fromAddr _to : Address) (_amount : Uint256) : Contract Unit := pure ()
+def safeApprove (_token _spender : Address) (_amount : Uint256) : Contract Unit := pure ()
+def balanceOf (token owner : Address) : Contract Uint256 := pure <| erc20ReadStubWord "balanceOf" [token.toNat, owner.toNat]
+def allowance (token owner spender : Address) : Contract Uint256 := pure <| erc20ReadStubWord "allowance" [token.toNat, owner.toNat, spender.toNat]
+def totalSupply (token : Address) : Contract Uint256 := pure <| erc20ReadStubWord "totalSupply" [token.toNat]
 def forEach (_name : String) (_count : Uint256) (body : Contract Unit) : Contract Unit := body
 def blockTimestamp : Uint256 := 0
 def blockNumber : Uint256 := 0

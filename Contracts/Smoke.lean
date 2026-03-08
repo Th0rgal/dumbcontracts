@@ -532,6 +532,36 @@ verity_contract ExternalCallSmoke where
     let current ← getStorage echoedValue
     return current
 
+verity_contract ERC20HelperSmoke where
+  storage
+    lastBalance : Uint256 := slot 0
+    lastAllowance : Uint256 := slot 1
+    lastSupply : Uint256 := slot 2
+
+  function pushTokens (token : Address, to : Address, amount : Uint256) : Unit := do
+    safeTransfer token to amount
+
+  function pullTokens (token : Address, fromAddr : Address, to : Address, amount : Uint256) : Unit := do
+    safeTransferFrom token fromAddr to amount
+
+  function approveTokens (token : Address, spender : Address, amount : Uint256) : Unit := do
+    safeApprove token spender amount
+
+  function snapshotBalance (token : Address, owner : Address) : Uint256 := do
+    let balance ← balanceOf token owner
+    setStorage lastBalance balance
+    return balance
+
+  function snapshotAllowance (token : Address, owner : Address, spender : Address) : Uint256 := do
+    let current ← allowance token owner spender
+    setStorage lastAllowance current
+    return current
+
+  function snapshotSupply (token : Address) : Uint256 := do
+    let supply ← totalSupply token
+    setStorage lastSupply supply
+    return supply
+
 /--
 error: linked external 'describe' uses unsupported parameter type; executable externalCall currently supports only Uint256, Uint8, Address, Bytes32, and Bool
 -/

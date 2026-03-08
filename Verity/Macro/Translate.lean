@@ -1,4 +1,5 @@
 import Lean
+import Compiler.Modules.ERC20
 import Compiler.Modules.Precompiles
 import Verity.Macro.Syntax
 
@@ -1283,6 +1284,36 @@ private def translateSafeRequireBind
           throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd or safeSub"
   | _ => pure none
 
+private def translateERC20BindStmt?
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (params : Array ParamDecl)
+    (locals : Array String)
+    (varName : String)
+    (rhs : Term) : CommandElabM (Option Term) := do
+  let rhs := stripParens rhs
+  match rhs with
+  | `(term| balanceOf $token:term $owner:term) =>
+      let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+      let ownerExpr ← translatePureExpr fields constDecls immutableDecls params locals owner
+      pure <| some (← `(Compiler.CompilationModel.Stmt.ecm
+        (Compiler.Modules.ERC20.balanceOfModule $(strTerm varName))
+        [$tokenExpr, $ownerExpr]))
+  | `(term| allowance $token:term $owner:term $spender:term) =>
+      let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+      let ownerExpr ← translatePureExpr fields constDecls immutableDecls params locals owner
+      let spenderExpr ← translatePureExpr fields constDecls immutableDecls params locals spender
+      pure <| some (← `(Compiler.CompilationModel.Stmt.ecm
+        (Compiler.Modules.ERC20.allowanceModule $(strTerm varName))
+        [$tokenExpr, $ownerExpr, $spenderExpr]))
+  | `(term| totalSupply $token:term) =>
+      let tokenExpr ← translatePureExpr fields constDecls immutableDecls params locals token
+      pure <| some (← `(Compiler.CompilationModel.Stmt.ecm
+        (Compiler.Modules.ERC20.totalSupplyModule $(strTerm varName))
+        [$tokenExpr]))
+  | _ => pure none
+
 private def translateEffectStmt
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
@@ -1292,6 +1323,28 @@ private def translateEffectStmt
     (stx : Term) : CommandElabM Term := do
   let stx := stripParens stx
   match stx with
+  | `(term| safeTransfer $token:term $to:term $amount:term) =>
+      `(Compiler.CompilationModel.Stmt.ecm
+          Compiler.Modules.ERC20.safeTransferModule
+          [ $(← translatePureExpr fields constDecls immutableDecls params locals token)
+          , $(← translatePureExpr fields constDecls immutableDecls params locals to)
+          , $(← translatePureExpr fields constDecls immutableDecls params locals amount)
+          ])
+  | `(term| safeTransferFrom $token:term $fromAddr:term $to:term $amount:term) =>
+      `(Compiler.CompilationModel.Stmt.ecm
+          Compiler.Modules.ERC20.safeTransferFromModule
+          [ $(← translatePureExpr fields constDecls immutableDecls params locals token)
+          , $(← translatePureExpr fields constDecls immutableDecls params locals fromAddr)
+          , $(← translatePureExpr fields constDecls immutableDecls params locals to)
+          , $(← translatePureExpr fields constDecls immutableDecls params locals amount)
+          ])
+  | `(term| safeApprove $token:term $spender:term $amount:term) =>
+      `(Compiler.CompilationModel.Stmt.ecm
+          Compiler.Modules.ERC20.safeApproveModule
+          [ $(← translatePureExpr fields constDecls immutableDecls params locals token)
+          , $(← translatePureExpr fields constDecls immutableDecls params locals spender)
+          , $(← translatePureExpr fields constDecls immutableDecls params locals amount)
+          ])
   | `(term| setStorage $field:ident $value) =>
       let f ← lookupStorageField fields (toString field.getId)
       if f.ty != .scalar .uint256 then
@@ -1627,11 +1680,15 @@ private partial def translateDoElem
               match safeBind? with
               | some safeStmts => pure (safeStmts, locals.push varName, mutableLocals)
               | none =>
-                  let rhsExpr ← translateBindSource fields constDecls immutableDecls params locals rhs
-                  pure
-                    (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
-                      locals.push varName,
-                      mutableLocals)
+                  match (← translateERC20BindStmt? fields constDecls immutableDecls params locals varName rhs) with
+                  | some stmt =>
+                      pure (#[(stmt)], locals.push varName, mutableLocals)
+                  | none =>
+                      let rhsExpr ← translateBindSource fields constDecls immutableDecls params locals rhs
+                      pure
+                        (#[(← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $rhsExpr))],
+                          locals.push varName,
+                          mutableLocals)
       | `(doElem| $name:ident := $rhs:term) =>
           let varName := toString name.getId
           if !locals.contains varName then

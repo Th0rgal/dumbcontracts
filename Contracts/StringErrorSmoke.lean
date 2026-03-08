@@ -24,18 +24,6 @@ verity_contract StringErrorSmoke where
   function checkSecondMessage (ok : Bool, _prefix : String, _message : String) : Unit := do
     requireError ok SecondMessage(_prefix, _message)
 
-private def contains (haystack needle : String) : Bool :=
-  let h := haystack.toList
-  let n := needle.toList
-  if n.isEmpty then true
-  else
-    let rec go : List Char → Bool
-      | [] => false
-      | c :: cs =>
-        if (c :: cs).take n.length == n then true
-        else go cs
-    go h
-
 def checkMessageModelUsesStringError : Bool :=
   match StringErrorSmoke.spec.errors with
   | [ { name := "BadMessage", params := [Compiler.CompilationModel.ParamType.string] }

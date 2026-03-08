@@ -58,22 +58,4 @@ contract PropertyCounterTest is YulTestBase {
         // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
         ret;
     }
-    // Property 6: TODO decode and assert `previewEnvOps` result
-    function testTODO_PreviewEnvOps_DecodeAndAssert() public {
-        vm.prank(alice);
-        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("previewEnvOps(uint256,uint256)", uint256(1), uint256(1)));
-        require(ok, "previewEnvOps reverted unexpectedly");
-        assertEq(ret.length, 32, "previewEnvOps ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
-    }
-    // Property 7: TODO decode and assert `previewLowLevel` result
-    function testTODO_PreviewLowLevel_DecodeAndAssert() public {
-        vm.prank(alice);
-        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("previewLowLevel(uint256,uint256)", uint256(1), uint256(1)));
-        require(ok, "previewLowLevel reverted unexpectedly");
-        assertEq(ret.length, 32, "previewLowLevel ABI return length mismatch (expected 32 bytes)");
-        // TODO(#1011): decode `ret` and assert the concrete postcondition from Lean theorem.
-        ret;
-    }
 }

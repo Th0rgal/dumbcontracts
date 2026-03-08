@@ -18,7 +18,7 @@ open Verity.Stdlib.Math
 
 ## `verity_contract` Local Obligations
 
-Use `local_obligations [...]` on constructors or functions when a small unsafe or refinement-shaped boundary must stay explicit in the generated trust report.
+Use `local_obligations [...]` on constructors or functions when a small unsafe or refinement-shaped boundary must stay explicit in the generated trust report. Direct assembly-shaped primitives such as raw low-level calls, returndata forwarding, and manual memory/calldata operations are expected to carry at least one local obligation at that exact usage site.
 
 ```lean
 function unsafeEdge ()
@@ -27,7 +27,7 @@ function unsafeEdge ()
   pure ()
 ```
 
-Each entry lowers into `spec.constructor.localObligations` or `FunctionSpec.localObligations`, shows up in `--trust-report`, and participates in `--deny-local-obligations`.
+Each entry lowers into `spec.constructor.localObligations` or `FunctionSpec.localObligations`, shows up in `--trust-report`, and participates in `--deny-local-obligations`. If a constructor or function uses direct assembly-shaped primitives without any `local_obligations [...]`, compilation now fails closed.
 
 ## Storage Operations
 

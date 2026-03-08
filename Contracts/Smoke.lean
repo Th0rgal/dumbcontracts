@@ -672,6 +672,35 @@ verity_contract LocalObligationRejectsEmptyConstructorMessage where
   function noop () : Unit := do
     pure ()
 
+verity_contract LocalObligationRequiredForUnsafeFunctionBoundary where
+  storage
+
+  function preview () : Uint256 := do
+    let head := calldataload 0
+    return head
+
+/--
+error: #check_contract failed for 'Contracts.Smoke.LocalObligationRequiredForUnsafeFunctionBoundary': Compilation error: function 'preview' uses low-level/assembly mechanic(s) calldataload without any local_obligations entry (Issue #1424 (controlled unsafe/assembly escape hatches)). Add local_obligations [...] to make the trust boundary explicit.
+-/
+#guard_msgs in
+#check_contract LocalObligationRequiredForUnsafeFunctionBoundary
+
+verity_contract LocalObligationRequiredForUnsafeConstructorBoundary where
+  storage
+
+  constructor () := do
+    mstore 0 1
+    pure ()
+
+  function noop () : Unit := do
+    pure ()
+
+/--
+error: #check_contract failed for 'Contracts.Smoke.LocalObligationRequiredForUnsafeConstructorBoundary': Compilation error: constructor uses low-level/assembly mechanic(s) mstore without any local_obligations entry (Issue #1424 (controlled unsafe/assembly escape hatches)). Add local_obligations [...] to make the trust boundary explicit.
+-/
+#guard_msgs in
+#check_contract LocalObligationRequiredForUnsafeConstructorBoundary
+
 /--
 error: field 'approvals' is a nested struct mapping; use structMember2/setStructMember2
 -/

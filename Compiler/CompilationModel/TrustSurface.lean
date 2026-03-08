@@ -247,6 +247,18 @@ private def collectLowLevelMechanicsFromStmts (stmts : List Stmt) : List String 
 private def collectAxiomatizedPrimitivesFromStmts (stmts : List Stmt) : List String :=
   dedupPreserve (stmts.flatMap collectAxiomatizedStmtPrimitives)
 
+private def isUnsafeBoundaryMechanic (mechanic : String) : Bool :=
+  match mechanic with
+  | "call" | "staticcall" | "delegatecall"
+  | "returndataSize" | "returndataCopy" | "revertReturndata" | "returndataOptionalBoolAt"
+  | "mload" | "mstore" | "calldataload" | "calldatacopy"
+  | "extcodesize" | "tload" | "tstore" => true
+  | _ => false
+
+/-- Collect assembly-shaped low-level mechanics that require an explicit local obligation. -/
+def collectUnsafeBoundaryMechanicsFromStmts (stmts : List Stmt) : List String :=
+  dedupPreserve ((collectLowLevelMechanicsFromStmts stmts).filter isUnsafeBoundaryMechanic)
+
 private def isLinearMemoryMechanic (mechanic : String) : Bool :=
   match mechanic with
   | "mload" | "mstore" | "calldatacopy" | "returndataCopy" | "returndataOptionalBoolAt" => true

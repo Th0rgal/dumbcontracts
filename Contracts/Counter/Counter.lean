@@ -45,7 +45,9 @@ verity_contract Counter where
     let chosen := ite (x > y) wadUp (sub wadUp 1)
     return chosen
 
-  function previewEnvOps (x : Uint256, y : Uint256) : Uint256 := do
+  function previewEnvOps (x : Uint256, y : Uint256)
+    local_obligations [env_memory_refinement := assumed "Caller must separately prove the direct mload-based environment digest path respects the intended memory/refinement boundary."]
+    : Uint256 := do
     let ts := blockTimestamp
     let bn := blockNumber
     let self := contractAddress
@@ -58,7 +60,9 @@ verity_contract Counter where
     let digest := keccak256 memWord 64
     return (add (add digest flagAnd) (add flagOr flagNot))
 
-  function previewLowLevel (target : Uint256, count : Uint256) : Uint256 := do
+  function previewLowLevel (target : Uint256, count : Uint256)
+    local_obligations [manual_low_level_refinement := assumed "Caller must separately prove the direct low-level call and returndata choreography refines the intended external-call behavior."]
+    : Uint256 := do
     let cds := calldatasize
     let head := calldataload 0
     mstore 0 head

@@ -586,6 +586,8 @@ private def oracleReadSmokeSpec : CompilationModel := {
     expectCompileToYul "oracle read smoke spec" oracleReadSmokeSpec
   expectTrue "oracle read ECM lowers to staticcall"
     (contains oracleReadYul "staticcall(gas(), oracle, 0, 36, 0, 32)")
+  expectTrue "oracle read ECM forwards revert returndata"
+    (contains oracleReadYul "returndatacopy(0, 0, __oracle_rds)")
   expectTrue "oracle read ECM rejects non-32-byte returndata"
     (contains oracleReadYul "if iszero(eq(returndatasize(), 32)) {")
   expectTrue "oracle read ECM ABI-encodes the selector"

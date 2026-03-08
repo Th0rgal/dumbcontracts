@@ -19,8 +19,8 @@ open Compiler.ECM
 open Compiler.CompilationModel (Stmt Expr)
 
 /-- Read-only oracle module that ABI-encodes `selector(staticArgs...)`, performs
-    a `staticcall`, requires exactly one 32-byte return word, and binds it to
-    `resultVar`.
+    a `staticcall`, forwards revert returndata on failure, requires exactly one
+    32-byte return word, and binds it to `resultVar`.
 
     Arguments passed to the module are `[target] ++ staticArgs`. -/
 def oracleReadUint256Module (resultVar : String) (selector : Nat) (numStaticArgs : Nat) :
@@ -52,7 +52,11 @@ def oracleReadUint256Module (resultVar : String) (selector : Nat) (numStaticArgs
       YulExpr.lit 0, YulExpr.lit 32
     ]
     let revertOnFailure := YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__oracle_success"]) [
-      YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+      YulStmt.let_ "__oracle_rds" (YulExpr.call "returndatasize" []),
+      YulStmt.expr (YulExpr.call "returndatacopy" [
+        YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__oracle_rds"
+      ]),
+      YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__oracle_rds"])
     ]
     let requireSingleWord := YulStmt.if_ (YulExpr.call "iszero" [
       YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]

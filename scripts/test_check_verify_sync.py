@@ -49,6 +49,8 @@ class VerifySyncTests(unittest.TestCase):
         *,
         check_only_paths: list[str],
         compiler_paths: list[str],
+        expected_push_branches: list[str] | None = None,
+        require_workflow_dispatch: bool = False,
     ) -> tuple[int, str, str]:
         with tempfile.TemporaryDirectory(dir=SCRIPT_DIR.parent) as td:
             root = Path(td)
@@ -60,6 +62,8 @@ class VerifySyncTests(unittest.TestCase):
                     {
                         "check_only_paths": check_only_paths,
                         "compiler_paths": compiler_paths,
+                        "expected_push_branches": expected_push_branches or [],
+                        "require_workflow_dispatch": require_workflow_dispatch,
                     }
                 ),
                 encoding="utf-8",
@@ -338,6 +342,84 @@ class VerifySyncTests(unittest.TestCase):
         rc, _, err = self._run_jobs_check(workflow, ["changes", "checks"])
         self.assertEqual(rc, 1)
         self.assertIn("[FAIL] jobs", err)
+
+    def test_paths_check_fails_when_push_branch_and_workflow_dispatch_drift(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on:
+              push:
+                branches:
+                  - release
+                paths:
+                  - 'src/**'
+              pull_request:
+                paths:
+                  - 'src/**'
+            jobs:
+              changes:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - id: filter
+                    uses: dorny/paths-filter@v3
+                    with:
+                      filters: |
+                        code:
+                          - 'src/**'
+                        compiler:
+                          - 'src/**'
+            """
+        )
+        rc, _, err = self._run_paths_check(
+            workflow,
+            check_only_paths=[],
+            compiler_paths=["src/**"],
+            expected_push_branches=["main"],
+            require_workflow_dispatch=True,
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("[FAIL] paths", err)
+        self.assertIn("on.push.branches does not match spec push branches.", err)
+        self.assertIn("workflow_dispatch trigger is missing from verify.yml", err)
+
+    def test_paths_check_passes_when_trigger_contracts_match_spec(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on:
+              push:
+                branches: [main]
+                paths:
+                  - 'src/**'
+              pull_request:
+                paths:
+                  - 'src/**'
+              workflow_dispatch:
+            jobs:
+              changes:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - id: filter
+                    uses: dorny/paths-filter@v3
+                    with:
+                      filters: |
+                        code:
+                          - 'src/**'
+                        compiler:
+                          - 'src/**'
+            """
+        )
+        rc, out, err = self._run_paths_check(
+            workflow,
+            check_only_paths=[],
+            compiler_paths=["src/**"],
+            expected_push_branches=["main"],
+            require_workflow_dispatch=True,
+        )
+        self.assertEqual(rc, 0, err)
+        self.assertIn("[PASS] paths", out)
 
     def test_job_contracts_check_fails_when_needs_and_if_drift(self) -> None:
         workflow = textwrap.dedent(

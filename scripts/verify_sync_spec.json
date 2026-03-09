@@ -28,6 +28,10 @@
     "lean-toolchain",
     "foundry.toml"
   ],
+  "expected_push_branches": [
+    "main"
+  ],
+  "require_workflow_dispatch": true,
   "expected_jobs": [
     "changes",
     "checks",

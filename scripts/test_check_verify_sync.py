@@ -232,6 +232,45 @@ class VerifySyncTests(unittest.TestCase):
             err,
         )
 
+    def test_paths_check_fails_when_artifacts_are_missing_from_triggers(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            on:
+              push:
+                paths:
+                  - '.github/workflows/verify.yml'
+                  - 'scripts/**'
+              pull_request:
+                paths:
+                  - '.github/workflows/verify.yml'
+                  - 'scripts/**'
+            jobs:
+              changes:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: dorny/paths-filter@v3
+                    with:
+                      filters: |
+                        code:
+                          - '.github/workflows/verify.yml'
+                          - 'scripts/**'
+                        compiler:
+                          - '.github/workflows/verify.yml'
+                          - 'scripts/**'
+            """
+        )
+        rc, _, err = self._run_paths_check(
+            workflow,
+            check_only_paths=["artifacts/**"],
+            compiler_paths=[".github/workflows/verify.yml", "scripts/**"],
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "check_only_paths includes entries missing from on.push.paths: artifacts/**",
+            err,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

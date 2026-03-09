@@ -555,12 +555,14 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.Stdlib.Math.mulDivDown_monotone_left
 #print axioms Verity.Proofs.Stdlib.Math.mulDivDown_monotone_right
 #print axioms Verity.Proofs.Stdlib.Math.mulDivDown_mul_lt_add
+#print axioms Verity.Proofs.Stdlib.Math.mulDivDown_antitone_divisor
 #print axioms Verity.Proofs.Stdlib.Math.mulDivUp_nat_eq
 #print axioms Verity.Proofs.Stdlib.Math.mulDivDown_le_mulDivUp
 #print axioms Verity.Proofs.Stdlib.Math.mulDivUp_monotone_left
 #print axioms Verity.Proofs.Stdlib.Math.mulDivUp_monotone_right
 #print axioms Verity.Proofs.Stdlib.Math.mulDivUp_mul_lt_add
 #print axioms Verity.Proofs.Stdlib.Math.mulDivUp_mul_ge
+#print axioms Verity.Proofs.Stdlib.Math.mulDivUp_antitone_divisor
 #print axioms Verity.Proofs.Stdlib.Math.wMulDown_nat_eq
 #print axioms Verity.Proofs.Stdlib.Math.wMulDown_mul_le
 #print axioms Verity.Proofs.Stdlib.Math.wMulDown_monotone_left
@@ -568,6 +570,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Verity.Proofs.Stdlib.Math.wMulDown_mul_lt_add
 #print axioms Verity.Proofs.Stdlib.Math.wDivUp_nat_eq
 #print axioms Verity.Proofs.Stdlib.Math.wDivUp_monotone_left
+#print axioms Verity.Proofs.Stdlib.Math.wDivUp_antitone_right
 #print axioms Verity.Proofs.Stdlib.Math.wDivUp_mul_lt_add
 #print axioms Verity.Proofs.Stdlib.Math.wDivUp_mul_ge
 #print axioms Verity.Proofs.Stdlib.Math.safeAdd_some

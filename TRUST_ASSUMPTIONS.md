@@ -20,8 +20,8 @@ Layer 1 and Layer 3 have generic proof surfaces in Lean. Layer 2 currently combi
 
 ## What's Verified
 
-- **Layer 1**: EDSL behavior matches its CompilationModel. For supported contracts, a generic typed-IR compilation-correctness theorem eliminates per-contract manual proofs.
-- **Layer 2**: a supported statement-list CompilationModel → IR theorem exists, but whole-contract Layer 2 preservation still relies on contract-specific bridge theorems.
+- **Layer 1**: EDSL behavior matches its `CompilationModel`. This names the frontend semantic bridge only; it does not refer to the contract-specific specification theorems in `Contracts/<Name>/Proofs/`. For supported contracts, macro-generated bridge theorems and the typed-IR correctness path discharge this boundary.
+- **Layer 2**: a supported statement-list `CompilationModel → IR` theorem exists, but whole-contract Layer 2 preservation still relies on contract-specific bridge theorems.
 - **Layer 3**: IR → Yul preserves behavior, with 1 documented axiom (keccak256 selector).
 - **Cross-layer**: `Contracts/Proofs/SemanticBridge.lean` provides the active contract-specific Layer 2 bridge surface; `Compiler/Proofs/EndToEnd.lean` composes that current Layer 2 boundary with Layer 3.
 

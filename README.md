@@ -95,7 +95,7 @@ EVM Bytecode
 | 2 | Supported-statement CompilationModel → IR fragment is generic; full-contract bridges remain contract-specific | [SupportedFragment.lean](Compiler/Proofs/IRGeneration/SupportedFragment.lean) |
 | 3 | IR → Yul codegen preserves behavior | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
 
-Layer 3 is generically verified with 1 documented axiom (the selector axiom). Layer 2 currently combines a generic supported-statement theorem with contract-specific full-contract bridges. See [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md) and [AXIOMS.md](AXIOMS.md).
+Layer 1 is the frontend EDSL-to-`CompilationModel` bridge. The per-contract files in `Contracts/<Name>/Proofs/` prove human-readable contract specifications; they are not what “Layer 1” means in the compiler stack. Layer 3 is generically verified with 1 documented axiom (the selector axiom). Layer 2 currently combines a generic supported-statement theorem with contract-specific full-contract bridges. See [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md) and [AXIOMS.md](AXIOMS.md).
 
 ### 5. Test the compiled output (belt and suspenders)
 

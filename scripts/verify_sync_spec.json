@@ -88,6 +88,13 @@
     "report_property_coverage.py --format=markdown >> $GITHUB_STEP_SUMMARY",
     "check_storage_layout.py --format=markdown >> $GITHUB_STEP_SUMMARY"
   ],
+  "required_build_run_commands": [
+    "lake exe compiler-main-test",
+    "lake build Compiler.CompilationModelFeatureTest",
+    "lake exe macro-roundtrip-fuzz",
+    "lake build PrintAxioms",
+    "lake env lean PrintAxioms.lean"
+  ],
   "expected_build_compiler_commands": [
     "generate_yul_identity_diff_report.py --verity-dir compiler/yul-parity-pack --solc-dir compiler/yul-parity-reference --output compiler/parity-pack-identity-report.json",
     "check_parity_pack_metrics.py --report compiler/parity-pack-identity-report.json --max-only-in-verity 0 --max-only-in-solidity 0 --max-hash-mismatch 0 --format markdown >> \"$GITHUB_STEP_SUMMARY\"",
@@ -98,6 +105,7 @@
     "check_gas.py report",
     "check_patch_gas_delta.py --baseline-report gas-report-static.tsv --patched-report gas-report-static-patched.tsv --min-improved-contracts 0 --summary-markdown patch-gas-delta-summary.md >> \"$GITHUB_STEP_SUMMARY\""
   ],
+  "required_build_compiler_run_commands": [],
   "expected_foundry": {
     "shards": 8,
     "seed": 42

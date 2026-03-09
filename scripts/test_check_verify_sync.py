@@ -128,6 +128,52 @@ class VerifySyncTests(unittest.TestCase):
                 check.MAKEFILE = old_makefile
                 sys.argv = old_argv
 
+    def _run_python_commands_check(
+        self,
+        workflow_text: str,
+        *,
+        expected_checks_commands: list[str],
+        expected_build_commands: list[str],
+        expected_build_compiler_commands: list[str],
+        required_build_run_commands: list[str] | None = None,
+        required_build_compiler_run_commands: list[str] | None = None,
+    ) -> tuple[int, str, str]:
+        with tempfile.TemporaryDirectory(dir=SCRIPT_DIR.parent) as td:
+            root = Path(td)
+            verify = root / "verify.yml"
+            spec = root / "verify_sync_spec.json"
+            verify.write_text(textwrap.dedent(workflow_text).lstrip(), encoding="utf-8")
+            spec.write_text(
+                json.dumps(
+                    {
+                        "expected_checks_commands": expected_checks_commands,
+                        "expected_checks_other_commands": [],
+                        "expected_build_commands": expected_build_commands,
+                        "expected_build_compiler_commands": expected_build_compiler_commands,
+                        "required_build_run_commands": required_build_run_commands or [],
+                        "required_build_compiler_run_commands": required_build_compiler_run_commands or [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            old_verify = check.VERIFY_YML
+            old_spec = check.SPEC_PATH
+            check.VERIFY_YML = verify
+            check.SPEC_PATH = spec
+            old_argv = sys.argv
+            sys.argv = ["check_verify_sync.py", "--only", "python-commands"]
+            try:
+                stderr = io.StringIO()
+                stdout = io.StringIO()
+                with redirect_stderr(stderr), redirect_stdout(stdout):
+                    rc = check.main()
+                return rc, stdout.getvalue(), stderr.getvalue()
+            finally:
+                check.VERIFY_YML = old_verify
+                check.SPEC_PATH = old_spec
+                sys.argv = old_argv
+
     def test_jobs_check_passes_when_order_matches(self) -> None:
         workflow = textwrap.dedent(
             """
@@ -424,6 +470,96 @@ class VerifySyncTests(unittest.TestCase):
             "check_only_paths includes entries missing from on.push.paths: Makefile",
             err,
         )
+
+    def test_python_commands_check_fails_when_required_build_run_commands_are_missing(self) -> None:
+        workflow = """
+        name: verify
+        jobs:
+          checks:
+            runs-on: ubuntu-latest
+            steps:
+              - run: make check
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - run: python3 scripts/check_split_package_builds.py
+              - run: python3 scripts/check_lean_warning_regression.py --log lake-build.log
+              - run: lake exe compiler-main-test
+          build-compiler:
+            runs-on: ubuntu-latest
+            steps:
+              - run: python3 scripts/check_gas.py report
+        """
+        rc, _, err = self._run_python_commands_check(
+            workflow,
+            expected_checks_commands=["make check"],
+            expected_build_commands=[
+                "check_split_package_builds.py",
+                "check_lean_warning_regression.py --log lake-build.log",
+            ],
+            expected_build_compiler_commands=["check_gas.py report"],
+            required_build_run_commands=[
+                "lake exe compiler-main-test",
+                "lake build Compiler.CompilationModelFeatureTest",
+                "lake exe macro-roundtrip-fuzz",
+                "lake build PrintAxioms",
+                "lake env lean PrintAxioms.lean",
+            ],
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "build job is missing required run commands: "
+            "lake build Compiler.CompilationModelFeatureTest, "
+            "lake exe macro-roundtrip-fuzz, "
+            "lake build PrintAxioms, "
+            "lake env lean PrintAxioms.lean",
+            err,
+        )
+
+    def test_python_commands_check_passes_when_required_build_run_commands_are_present(self) -> None:
+        workflow = """
+        name: verify
+        jobs:
+          checks:
+            runs-on: ubuntu-latest
+            steps:
+              - run: make check
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - run: python3 scripts/check_split_package_builds.py
+              - run: python3 scripts/check_lean_warning_regression.py --log lake-build.log
+              - run: |
+                  lake exe compiler-main-test
+                  lake build Compiler.CompilationModelFeatureTest
+                  lake exe macro-roundtrip-fuzz
+                  lake build PrintAxioms
+                  lake env lean PrintAxioms.lean 2>&1 | tee axiom-report-raw.log
+              - run: python3 scripts/check_proof_length.py --format=markdown >> $GITHUB_STEP_SUMMARY
+          build-compiler:
+            runs-on: ubuntu-latest
+            steps:
+              - run: python3 scripts/check_gas.py report
+        """
+        rc, out, err = self._run_python_commands_check(
+            workflow,
+            expected_checks_commands=["make check"],
+            expected_build_commands=[
+                "check_split_package_builds.py",
+                "check_lean_warning_regression.py --log lake-build.log",
+                "check_proof_length.py --format=markdown >> $GITHUB_STEP_SUMMARY",
+            ],
+            expected_build_compiler_commands=["check_gas.py report"],
+            required_build_run_commands=[
+                "lake exe compiler-main-test",
+                "lake build Compiler.CompilationModelFeatureTest",
+                "lake exe macro-roundtrip-fuzz",
+                "lake build PrintAxioms",
+                "lake env lean PrintAxioms.lean",
+            ],
+        )
+        self.assertEqual(rc, 0, err)
+        self.assertIn("[PASS] python-commands", out)
 
     def test_makefile_check_fails_when_required_unit_test_command_is_missing(self) -> None:
         rc, _, err = self._run_makefile_check(

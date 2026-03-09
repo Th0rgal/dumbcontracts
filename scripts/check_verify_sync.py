@@ -381,6 +381,11 @@ def _extract_non_script_python_commands(run_commands: list[str]) -> list[str]:
     return result
 
 
+def _missing_required_run_substrings(run_commands: list[str], required_substrings: list[str]) -> list[str]:
+    joined = "\n".join(run_commands)
+    return [needle for needle in required_substrings if needle not in joined]
+
+
 def check_python_commands(snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
     expected_checks = spec["expected_checks_commands"]
@@ -424,6 +429,24 @@ def check_python_commands(snapshot: Snapshot, spec: dict) -> CheckResult:
             spec["expected_build_compiler_commands"],
         )
     )
+    missing_build_run = _missing_required_run_substrings(
+        snapshot.run_commands("build"),
+        spec.get("required_build_run_commands", []),
+    )
+    if missing_build_run:
+        errors.append(
+            "build job is missing required run commands: " + ", ".join(missing_build_run)
+        )
+
+    missing_build_compiler_run = _missing_required_run_substrings(
+        snapshot.run_commands("build-compiler"),
+        spec.get("required_build_compiler_run_commands", []),
+    )
+    if missing_build_compiler_run:
+        errors.append(
+            "build-compiler job is missing required run commands: "
+            + ", ".join(missing_build_compiler_run)
+        )
     return CheckResult("python-commands", errors)
 
 

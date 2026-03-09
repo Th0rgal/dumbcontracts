@@ -79,11 +79,11 @@ The compiler turns contracts into Yul (Solidity's low-level IR) through three la
 
 ```
 EDSL contract (Lean)
-  ↓  Layer 1: EDSL ≡ CompilationModel     [PROVEN]
+  ↓  Layer 1: EDSL ≡ CompilationModel     [PROVEN FOR CURRENT CONTRACTS; GENERIC CORE, CONTRACT BRIDGES]
 CompilationModel (declarative IR spec)
-  ↓  Layer 2: CompilationModel → IR        [PROVEN]
+  ↓  Layer 2: CompilationModel → IR        [GENERIC THEOREM SURFACE, 1 AXIOM, CONTRACT BRIDGES ACTIVE]
 Intermediate Representation
-  ↓  Layer 3: IR → Yul                     [PROVEN, 1 axiom]
+  ↓  Layer 3: IR → Yul                     [GENERIC, 5 AXIOMS]
 Yul
   ↓  solc (trusted external compiler)
 EVM Bytecode
@@ -91,11 +91,11 @@ EVM Bytecode
 
 | Layer | What it proves | Key file |
 |-------|---------------|----------|
-| 1 | EDSL execution = CompilationModel interpretation | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
-| 2 | CompilationModel → IR preserves behavior | [IRInterpreter.lean](Compiler/Proofs/IRGeneration/IRInterpreter.lean) |
-| 3 | IR → Yul codegen preserves behavior | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
+| 1 | A generic typed-IR core plus contract-level bridge theorems establish EDSL execution = CompilationModel interpretation for the current supported contracts | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
+| 2 | A generic whole-contract theorem shape exists, but its function-body step still depends on 1 documented axiom and active end-to-end examples still use contract-specific bridge theorems | [Contract.lean](Compiler/Proofs/IRGeneration/Contract.lean) |
+| 3 | IR → Yul codegen is proved generically at the statement/function level, but the current full dispatch-preservation path still uses 5 documented axioms | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
 
-Layers 2 and 3 (`CompilationModel → IR → Yul`) are verified with 1 axiom (the selector axiom). See [AXIOMS.md](AXIOMS.md).
+There are currently 7 documented Lean axioms in total: 1 selector axiom, 1 generic Layer 2 function-body axiom, and 5 Layer 3 dispatch/preservation axioms. See [AXIOMS.md](AXIOMS.md).
 
 ### 5. Test the compiled output (belt and suspenders)
 
@@ -217,10 +217,10 @@ verity/
 │   ├── <Name>/Spec.lean       #   Formal specification
 │   ├── <Name>/Proofs/*.lean   #   Correctness proofs
 │   ├── <Name>/<Name>.lean      #   Canonical verity_contract definitions
+│   └── Proofs/SemanticBridge.lean # Manual EDSL -> IR/Yul bridge theorems for a subset of contracts
 ├── Compiler/            # Compilation pipeline
 │   ├── CompilationModel/      # Declarative compiler-facing model (types, validation, codegen)
 │   ├── Proofs/          #   Compilation correctness proofs (Layers 1-3)
-│   │   ├── SemanticBridge.lean      # EDSL ≡ IR bridge theorems
 │   │   ├── EndToEnd.lean            # Layers 2+3 composition
 │   │   └── YulGeneration/           # IR → Yul preservation
 │   ├── Yul/             #   Yul code generation

@@ -9,19 +9,23 @@ See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
 
 - **Layer 1: EDSL ≡ CompilationModel**. Contract-specific proofs live in
   `Contracts/<Name>/Proofs/`, with generic typed-IR compilation correctness in
-  `Compiler/TypedIRCompilerCorrectness.lean`.
+  `Compiler/TypedIRCompilerCorrectness.lean`. The generic core is real, but the
+  active bridge theorems are still instantiated per contract.
 - **Layer 2: CompilationModel -> IR**. The current proof surface is split:
   a generic supported-statement-fragment theorem lives in
   `Compiler/TypedIRCompilerCorrectness.lean` and
-  `Compiler/Proofs/IRGeneration/SupportedFragment.lean`, while full-contract
-  EDSL/CompilationModel-to-IR bridges still rely on contract-specific theorems
-  in `Contracts/Proofs/SemanticBridge.lean`.
+  `Compiler/Proofs/IRGeneration/SupportedFragment.lean`. A generic whole-contract
+  theorem surface now also exists in `Compiler/Proofs/IRGeneration/Contract.lean`,
+  but its function-body step still depends on the documented axiom
+  `supported_function_correct`. Active end-to-end examples still rely on
+  contract-specific theorems in `Contracts/Proofs/SemanticBridge.lean`.
 - **Layer 3: IR -> Yul**. Yul semantics, equivalence, and preservation proofs
-  live in `Compiler/Proofs/YulGeneration/`.
+  live in `Compiler/Proofs/YulGeneration/`. The proof surface is generic, but the
+  current full dispatch-preservation path still uses 5 documented axioms.
 
 ## Key Modules
 
-- `Compiler/Proofs/SemanticBridge.lean`: contract-level bridge theorems that
+- `Contracts/Proofs/SemanticBridge.lean`: contract-level bridge theorems that
   connect EDSL executions to compiled IR/Yul executions for supported
   contracts. This is still the active full-contract Layer 2 bridge surface.
 - `Compiler/Proofs/EndToEnd.lean`: composed Layers 2 and 3 theorem spine,
@@ -39,11 +43,12 @@ See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
 
 The current compiler path consumes `CompilationModel` values directly. There is
 no separate verified EDSL-lowering boundary module in the active pipeline.
-This branch now includes the target compiler-level theorem shape,
+This branch now includes the generic compiler-level theorem
 `Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics`, rooted at
 successful `CompilationModel.compile` for an explicit supported whole-contract
-fragment. Its proof is not fully closed yet: two compiler-level TODO lemmas
-still need to be discharged generically.
+fragment. The theorem shape is in place, but it is not fully closed yet because
+it still depends on the documented axiom
+`Compiler.Proofs.IRGeneration.Function.supported_function_correct`.
 
 ## Current Layer 2 Boundary
 
@@ -59,10 +64,9 @@ What exists today:
 What does not exist yet:
 - A fully closed proof of the compiler-level theorem quantified over an
   arbitrary supported `CompilationModel` and successful
-  `CompilationModel.compile`
+  `CompilationModel.compile`, with no remaining axioms
 - A generic dispatch/function-body/whole-contract Layer 2 preservation proof
-  with no remaining TODO lemmas on compiled-function extraction or function-body
-  correctness
+  with no remaining function-body axiom
 
 Current supported-fragment scope for the generic theorem:
 - Included: statement lists that can be witnessed by `SupportedStmtList`
@@ -90,9 +94,8 @@ lake build                                      # Build everything
 lake build Contracts.SimpleStorage.Proofs    # Build one contract's proofs
 ```
 
-This branch currently contains temporary `sorry` placeholders on the new
-generic whole-contract Layer 2 path while the remaining compiler-level proof
-obligations are being closed.
+The proof tree currently has 0 `sorry`, but it still has the documented axioms
+listed in `AXIOMS.md`.
 
 ## Infrastructure
 

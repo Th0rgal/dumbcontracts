@@ -2355,6 +2355,168 @@ theorem evalExpr_lt_evmModulus_core
       exact boolWord_lt_evmModulus _
 end
 
+theorem compileRequireFailCond_core_ok
+    {fields : List Field}
+    {cond : Expr}
+    (hcore : ExprCompileCore cond) :
+    ∃ failCond,
+      CompilationModel.compileRequireFailCond fields .calldata cond = Except.ok failCond := by
+  cases hcore with
+  | literal value =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.lit (value % CompilationModel.uint256Modulus)], rfl⟩
+  | param name =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.ident name], rfl⟩
+  | localVar name =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.ident name], rfl⟩
+  | caller =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "caller" []], rfl⟩
+  | contractAddress =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "address" []], rfl⟩
+  | msgValue =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "callvalue" []], rfl⟩
+  | blockTimestamp =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "timestamp" []], rfl⟩
+  | blockNumber =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "number" []], rfl⟩
+  | chainid =>
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "chainid" []], rfl⟩
+  | add hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "add" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_add_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | sub hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "sub" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_sub_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | mul hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "mul" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_mul_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | div hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "div" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_div_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | mod hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "mod" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_mod_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | eq hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "eq" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_eq_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | lt hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "lt" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_lt_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | gt hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "gt" [lhsIR, rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_gt_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | ge hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "lt" [lhsIR, rhsIR], by
+        rw [CompilationModel.compileRequireFailCond, hlhs, hrhs]
+        rfl⟩
+  | le hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "gt" [lhsIR, rhsIR], by
+        rw [CompilationModel.compileRequireFailCond, hlhs, hrhs]
+        rfl⟩
+  | logicalNot h =>
+      rename_i expr
+      rcases compileExpr_core_ok (fields := fields) h with ⟨exprIR, hexpr⟩
+      exact ⟨YulExpr.call "iszero" [YulExpr.call "iszero" [exprIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_logicalNot_ok hexpr]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | logicalAnd hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero"
+          [YulExpr.call "and" [CompilationModel.yulToBool lhsIR, CompilationModel.yulToBool rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_logicalAnd_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+  | logicalOr hL hR =>
+      rename_i lhs rhs
+      rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
+      rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      exact ⟨YulExpr.call "iszero"
+          [YulExpr.call "or" [CompilationModel.yulToBool lhsIR, CompilationModel.yulToBool rhsIR]], by
+        rw [CompilationModel.compileRequireFailCond, compileExpr_logicalOr_ok hlhs hrhs]
+        all_goals
+          try rfl
+          try
+            intro a b hEq
+            cases hEq⟩
+
 theorem runtimeStateMatchesIR_setVar_bindValue
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}
@@ -2390,6 +2552,8 @@ inductive StmtCompileCore : Stmt → Prop where
       ExprCompileCore value → StmtCompileCore (.letVar name value)
   | assignVar {name : String} {value : Expr} :
       ExprCompileCore value → StmtCompileCore (.assignVar name value)
+  | require_ {cond : Expr} {message : String} :
+      ExprCompileCore cond → StmtCompileCore (.require cond message)
   | return_ {value : Expr} :
       ExprCompileCore value → StmtCompileCore (.return value)
   | stop :
@@ -2412,6 +2576,12 @@ theorem compileStmt_core_ok
       rcases compileExpr_core_ok hvalue with ⟨valueIR, hvalueIR⟩
       exact ⟨[YulStmt.assign name valueIR], by
         rw [CompilationModel.compileStmt, hvalueIR]
+        rfl⟩
+  | require_ hcond =>
+      rename_i cond message
+      rcases compileRequireFailCond_core_ok hcond with ⟨failCond, hfailCond⟩
+      exact ⟨[YulStmt.if_ failCond (CompilationModel.revertWithMessage message)], by
+        rw [CompilationModel.compileStmt, hfailCond]
         rfl⟩
   | return_ hvalue =>
       rcases compileExpr_core_ok hvalue with ⟨valueIR, hvalueIR⟩
@@ -2761,6 +2931,12 @@ theorem compileStmt_core_ok_any_scope
       rcases compileExpr_core_ok hvalue with ⟨valueIR, hvalueIR⟩
       exact ⟨[YulStmt.assign name valueIR], by
         rw [CompilationModel.compileStmt, hvalueIR]
+        rfl⟩
+  | require_ hcond =>
+      rename_i cond message
+      rcases compileRequireFailCond_core_ok hcond with ⟨failCond, hfailCond⟩
+      exact ⟨[YulStmt.if_ failCond (CompilationModel.revertWithMessage message)], by
+        rw [CompilationModel.compileStmt, hfailCond]
         rfl⟩
   | return_ hvalue =>
       rcases compileExpr_core_ok hvalue with ⟨valueIR, hvalueIR⟩

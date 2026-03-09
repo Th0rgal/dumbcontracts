@@ -101,6 +101,27 @@ def _extract_push_paths(text: str) -> list[str]:
     )
 
 
+def _extract_push_branches(text: str) -> list[str]:
+    push_match = re.search(r"^  push:\n(?P<body>(?:^    .*\n)*)", text, re.MULTILINE)
+    if not push_match:
+        raise ValueError(f"Could not locate on.push in {VERIFY_YML}")
+
+    push_body = push_match.group("body")
+    inline_match = re.search(r"^    branches:\s*(?P<value>\[.*\])\s*$", push_body, re.MULTILINE)
+    if inline_match:
+        raw = strip_yaml_inline_comment(inline_match.group("value"))
+        inner = raw[1:-1].strip()
+        if not inner:
+            raise ValueError(f"on.push.branches is empty in {VERIFY_YML}")
+        return [unquote_yaml_scalar(part.strip()) for part in inner.split(",")]
+
+    return _extract_list_block(
+        text,
+        r"^  push:\n(?:^    .*\n)*?^    branches:\n(?P<block>(?:^      - .*\n)+)",
+        "on.push.branches",
+    )
+
+
 def _extract_pr_paths(text: str) -> list[str]:
     return _extract_list_block(
         text,
@@ -676,18 +697,39 @@ def check_paths(snapshot: Snapshot, spec: dict) -> CheckResult:
     pr_paths = _extract_pr_paths(snapshot.workflow_text)
     changes_paths = _extract_changes_filter_paths(snapshot.workflow_text, "code")
     compiler_changes_paths = _extract_changes_filter_paths(snapshot.workflow_text, "compiler")
+    expected_push_branches = spec.get("expected_push_branches", [])
+    require_workflow_dispatch = spec.get("require_workflow_dispatch", False)
 
-    for label, values in [
+    list_blocks = [
         ("on.push.paths", push_paths),
         ("on.pull_request.paths", pr_paths),
         ("changes.filter.code", changes_paths),
         ("changes.filter.compiler", compiler_changes_paths),
-    ]:
+    ]
+    push_branches: list[str] = []
+    if expected_push_branches:
+        push_branches = _extract_push_branches(snapshot.workflow_text)
+        list_blocks.insert(0, ("on.push.branches", push_branches))
+
+    for label, values in list_blocks:
         dup = _duplicates(values)
         if dup:
             errors.append(f"{label} has duplicates: {', '.join(dup)}")
 
+    if expected_push_branches:
+        errors.extend(
+            _compare_lists(
+                "on.push.branches",
+                push_branches,
+                "spec push branches",
+                expected_push_branches,
+            )
+        )
+
     errors.extend(_compare_lists("on.push.paths", push_paths, "on.pull_request.paths", pr_paths))
+
+    if require_workflow_dispatch and "\n  workflow_dispatch:\n" not in f"\n{snapshot.workflow_text}":
+        errors.append("workflow_dispatch trigger is missing from verify.yml")
 
     check_only = spec["check_only_paths"]
     missing_check_only = sorted(set(check_only) - set(push_paths))

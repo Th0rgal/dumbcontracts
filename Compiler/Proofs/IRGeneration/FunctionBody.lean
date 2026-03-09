@@ -3735,6 +3735,91 @@ theorem compileStmtList_terminal_core_ok
       simp [helseNonempty]
       rfl
 
+private theorem yulStmtList_length_le_sizeOf : (stmts : List YulStmt) → stmts.length ≤ sizeOf stmts
+  | [] => by simp
+  | _ :: rest => by
+      have hrest := yulStmtList_length_le_sizeOf rest
+      simp
+      omega
+
+private theorem compiledIteBlockSize_ge_thenBranchLength
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR : List YulStmt) :
+    thenIR.length + 4 ≤
+      sizeOf
+        [ YulStmt.let_ tempName condIR
+        , YulStmt.if_ (YulExpr.ident tempName) thenIR
+        , YulStmt.if_
+            (YulExpr.call "iszero" [YulExpr.ident tempName])
+            elseIR ] := by
+  have hthenLen : thenIR.length ≤ sizeOf thenIR :=
+    yulStmtList_length_le_sizeOf thenIR
+  simp
+  omega
+
+private theorem compiledIteBlockSize_ge_elseBranchLength
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR : List YulStmt) :
+    elseIR.length + 4 ≤
+      sizeOf
+        [ YulStmt.let_ tempName condIR
+        , YulStmt.if_ (YulExpr.ident tempName) thenIR
+        , YulStmt.if_
+            (YulExpr.call "iszero" [YulExpr.ident tempName])
+            elseIR ] := by
+  have helseLen : elseIR.length ≤ sizeOf elseIR :=
+    yulStmtList_length_le_sizeOf elseIR
+  simp
+  omega
+
+theorem compiled_terminal_ite_body_size_ge_branchFuel
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR tailIR : List YulStmt) :
+    thenIR.length + 4 ≤
+      sizeOf
+        ([YulStmt.block
+            [ YulStmt.let_ tempName condIR
+            , YulStmt.if_ (YulExpr.ident tempName) thenIR
+            , YulStmt.if_
+                (YulExpr.call "iszero" [YulExpr.ident tempName])
+                elseIR
+            ]] ++ tailIR) ∧
+    elseIR.length + 4 ≤
+      sizeOf
+        ([YulStmt.block
+            [ YulStmt.let_ tempName condIR
+            , YulStmt.if_ (YulExpr.ident tempName) thenIR
+            , YulStmt.if_
+                (YulExpr.call "iszero" [YulExpr.ident tempName])
+                elseIR
+            ]] ++ tailIR) := by
+  have hthen :
+      thenIR.length + 4 ≤
+        sizeOf
+          [ YulStmt.let_ tempName condIR
+          , YulStmt.if_ (YulExpr.ident tempName) thenIR
+          , YulStmt.if_
+              (YulExpr.call "iszero" [YulExpr.ident tempName])
+              elseIR ] :=
+    compiledIteBlockSize_ge_thenBranchLength tempName condIR thenIR elseIR
+  have helse :
+      elseIR.length + 4 ≤
+        sizeOf
+          [ YulStmt.let_ tempName condIR
+          , YulStmt.if_ (YulExpr.ident tempName) thenIR
+          , YulStmt.if_
+              (YulExpr.call "iszero" [YulExpr.ident tempName])
+              elseIR ] :=
+    compiledIteBlockSize_ge_elseBranchLength tempName condIR thenIR elseIR
+  constructor
+  · simp at *
+    omega
+  · simp at *
+    omega
+
 private theorem execIRStmts_cons_of_execIRStmt_continue
     (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
     (hstmt : execIRStmt (rest.length + 1) state stmt = .continue next) :

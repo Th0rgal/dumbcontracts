@@ -346,6 +346,114 @@ theorem runtimeStateMatchesIR_prebindRawArgs
       simpa [List.foldl, IRState.setVar] using
         ih (state := state.setVar entry.1.name entry.2) hmatch
 
+/-- Folding `bindValue` over names that never mention `queryName` leaves its
+lookup unchanged. -/
+private theorem lookupBinding?_foldl_bindValue_not_mem
+    (bindings : List (String × Nat))
+    (init : List (String × Nat))
+    (queryName : String)
+    (hnotmem : queryName ∉ bindings.map Prod.fst) :
+    FunctionBody.lookupBinding?
+      (bindings.foldl (fun acc entry => SourceSemantics.bindValue acc entry.1 entry.2) init)
+      queryName =
+    FunctionBody.lookupBinding? init queryName := by
+  induction bindings generalizing init with
+  | nil =>
+      simp
+  | cons entry rest ih =>
+      have hqueryNe : queryName ≠ entry.1 := by
+        intro hEq
+        apply hnotmem
+        simp [hEq]
+      have hrestNotMem : queryName ∉ rest.map Prod.fst := by
+        intro hmem
+        apply hnotmem
+        simp [hmem]
+      rw [List.foldl, ih _ hrestNotMem,
+        FunctionBody.lookupBinding?_bindValue_ne init entry.1 queryName entry.2 hqueryNe]
+
+/-- If a name occurs in the final binding list with unique parameter names,
+folding `bindValue` over any initial environment reconstructs that lookup
+exactly. -/
+private theorem lookupBinding?_foldl_bindValue_mem
+    (bindings : List (String × Nat))
+    (init : List (String × Nat))
+    (queryName : String)
+    (hmem : queryName ∈ bindings.map Prod.fst)
+    (hnodup : (bindings.map Prod.fst).Nodup) :
+    FunctionBody.lookupBinding?
+      (bindings.foldl (fun acc entry => SourceSemantics.bindValue acc entry.1 entry.2) init)
+      queryName =
+    FunctionBody.lookupBinding? bindings queryName := by
+  induction bindings generalizing init with
+  | nil =>
+      cases hmem
+  | cons entry rest ih =>
+      simp only [List.map_cons, List.nodup_cons] at hnodup
+      rcases hnodup with ⟨hheadNotMem, hrestNodup⟩
+      simp only [List.map_cons, List.mem_cons] at hmem
+      rcases hmem with hEq | hmemRest
+      · subst hEq
+        have hrestNotMem : entry.1 ∉ rest.map Prod.fst := hheadNotMem
+        rw [List.foldl]
+        rw [lookupBinding?_foldl_bindValue_not_mem rest
+          (SourceSemantics.bindValue init entry.1 entry.2) entry.1 hrestNotMem]
+        rw [FunctionBody.lookupBinding?_bindValue_eq]
+        unfold FunctionBody.lookupBinding?
+        simp
+      · have hqueryNe : queryName ≠ entry.1 := by
+          intro hEq
+          apply hheadNotMem
+          simpa [hEq] using hmemRest
+        rw [List.foldl]
+        rw [ih (SourceSemantics.bindValue init entry.1 entry.2) hmemRest hrestNodup]
+        have hbeq : (entry.1 == queryName) = false := by
+          have hqueryNe' : ¬ entry.1 = queryName := by
+            intro hEq
+            exact hqueryNe hEq.symm
+          simp [hqueryNe']
+        unfold FunctionBody.lookupBinding?
+        simp [List.find?, hbeq]
+
+/-- The raw prebinding fold starts from an empty environment, so names absent
+from the raw ABI prefix stay absent afterwards. -/
+private theorem lookupBinding?_rawArgBindings_fold_not_mem
+    (params : List Param)
+    (args : List Nat)
+    (queryName : String)
+    (hnotmem : queryName ∉ (rawArgBindings params args).map Prod.fst) :
+    FunctionBody.lookupBinding?
+      ((rawArgBindings params args).foldl
+        (fun acc entry => SourceSemantics.bindValue acc entry.1 entry.2) [])
+      queryName = none := by
+  rw [lookupBinding?_foldl_bindValue_not_mem (rawArgBindings params args) [] queryName hnotmem]
+  simp [FunctionBody.lookupBinding?]
+
+private theorem lookupBinding?_eq_none_of_not_mem
+    (bindings : List (String × Nat))
+    (queryName : String)
+    (hnotmem : queryName ∉ bindings.map Prod.fst) :
+    FunctionBody.lookupBinding? bindings queryName = none := by
+  unfold FunctionBody.lookupBinding?
+  induction bindings with
+  | nil =>
+      simp
+  | cons entry rest ih =>
+      have hqueryNe : queryName ≠ entry.1 := by
+        intro hEq
+        apply hnotmem
+        simp [hEq]
+      have hrestNotMem : queryName ∉ rest.map Prod.fst := by
+        intro hmem
+        apply hnotmem
+        simp [hmem]
+      have hbeq : (entry.1 == queryName) = false := by
+        have hqueryNe' : ¬ entry.1 = queryName := by
+          intro hEq
+          exact hqueryNe hEq.symm
+        simp [hqueryNe']
+      simp [List.find?, hbeq, ih hrestNotMem]
+
 /-- TODO(#1510): discharge the remaining initial-state normalization gap between
 source `withTransactionContext` values and the raw `IRTransaction` payload stored
 in `initialIRStateForTx`. -/
@@ -359,10 +467,9 @@ axiom initialIRStateForTx_matches_runtime
         bindings := [] }
       (FunctionBody.initialIRStateForTx model tx initialWorld)
 
-/-- TODO(#1510): replace this temporary bridge with a proof that the ABI
-parameter-loading prefix produces an IR variable environment exactly matching
-the decoded source bindings. This is the first strategy-3 subgoal. -/
-axiom supported_function_param_state_exact
+/-- The ABI parameter-loading prefix reconstructs exactly the decoded source
+bindings for any supported function with pairwise-distinct parameter names. -/
+theorem supported_function_param_state_exact
     (state : IRState)
     (params : List Param)
     (bindings : List (String × Nat))
@@ -370,7 +477,35 @@ axiom supported_function_param_state_exact
     (hparamNamesNodup : (params.map (·.name)).Nodup)
     (hbind : SourceSemantics.bindSupportedParams params state.calldata = some bindings) :
     FunctionBody.bindingsExactlyMatchIRVars bindings
-      (ParamLoading.applyBindingsToIRState (prebindRawArgs state params) bindings)
+      (ParamLoading.applyBindingsToIRState (prebindRawArgs state params) bindings) := by
+  let rawInitBindings :=
+    (rawArgBindings params state.calldata).foldl
+      (fun acc entry => SourceSemantics.bindValue acc entry.1 entry.2) []
+  have hprebound :
+      FunctionBody.bindingsExactlyMatchIRVars rawInitBindings
+        (prebindRawArgs state params) := by
+    simpa [rawInitBindings] using prebindRawArgs_exact_rawArgBindings hinit params
+  have hfinal :
+      FunctionBody.bindingsExactlyMatchIRVars
+        (bindings.foldl (fun acc entry => SourceSemantics.bindValue acc entry.1 entry.2)
+          rawInitBindings)
+        (ParamLoading.applyBindingsToIRState (prebindRawArgs state params) bindings) :=
+    FunctionBody.bindingsExactlyMatchIRVars_applyBindingsToIRState hprebound
+  intro queryName
+  rw [hfinal queryName]
+  by_cases hmem : queryName ∈ bindings.map Prod.fst
+  · exact lookupBinding?_foldl_bindValue_mem bindings rawInitBindings queryName hmem
+      (ParamLoading.bindSupportedParams_names_nodup hparamNamesNodup hbind)
+  · rw [lookupBinding?_foldl_bindValue_not_mem bindings rawInitBindings queryName hmem]
+    have hrawNames :
+        (rawArgBindings params state.calldata).map Prod.fst = bindings.map Prod.fst :=
+      rawArgBindings_names_of_bindSupportedParams hbind
+    have hrawNotMem : queryName ∉ (rawArgBindings params state.calldata).map Prod.fst := by
+      rw [hrawNames]
+      exact hmem
+    rw [lookupBinding?_rawArgBindings_fold_not_mem params state.calldata queryName hrawNotMem]
+    symm
+    exact lookupBinding?_eq_none_of_not_mem bindings queryName hmem
 
 /-- TODO(#1510): replace this temporary bridge with the generic body simulation
 proof under the exact-state invariant produced by parameter loading. This is

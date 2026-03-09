@@ -17,8 +17,7 @@ See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
   `Compiler/TypedIRCompilerCorrectness.lean` and
   `Compiler/Proofs/IRGeneration/SupportedFragment.lean`. A generic whole-contract
   theorem surface now also exists in `Compiler/Proofs/IRGeneration/Contract.lean`,
-  but its function-body step still depends on the documented axiom
-  `supported_function_correct`, which is now assembled from 4 narrower Layer-2
+  but its function-level closure still depends on 3 narrower documented Layer-2
   axioms in `Compiler.Proofs.IRGeneration.Function`. Active end-to-end examples still rely on
   contract-specific theorems in `Contracts/Proofs/SemanticBridge.lean`.
 - **Layer 3: IR -> Yul**. Yul semantics, equivalence, and preservation proofs
@@ -49,11 +48,10 @@ This branch now includes the generic compiler-level theorem
 `Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics`, rooted at
 successful `CompilationModel.compile` for an explicit supported whole-contract
 fragment. The theorem shape is in place, but it is not fully closed yet because
-it still depends on the documented axiom
-`Compiler.Proofs.IRGeneration.Function.supported_function_correct`, with the
-remaining trust boundary split into initial-state normalization, parameter-state
-exactness, generic body simulation, and `execIRFunctionFuel`/`execIRFunction`
-bridging.
+it still depends on 3 documented axioms in
+`Compiler.Proofs.IRGeneration.Function`, with the remaining trust boundary split
+into initial-state normalization, generic body simulation, and
+`execIRFunctionFuel`/`execIRFunction` bridging.
 
 ## Current Layer 2 Boundary
 

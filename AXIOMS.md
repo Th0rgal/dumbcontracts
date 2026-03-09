@@ -123,7 +123,7 @@ This remains the last contract-level proof gap between body-level Yul equivalenc
 
 ### 7. `initialIRStateForTx_matches_runtime`
 
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:352`
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:460`
 
 **Statement**:
 ```lean
@@ -142,31 +142,9 @@ all observable fields used by the supported fragment.
 
 **Risk**: Low-to-medium.
 
-### 8. `supported_function_param_state_exact`
+### 8. `supported_function_body_correct_from_exact_state`
 
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:365`
-
-**Statement**:
-```lean
-axiom supported_function_param_state_exact
-```
-
-**Purpose**:
-Captures the first strategy-3 Layer-2 subgoal: after raw prebinding and
-`applyBindingsToIRState`, the IR variable environment exactly matches the decoded
-source parameter bindings.
-
-**Why this is currently an axiom**:
-The repository now carries the needed structural invariants (`Nodup` parameter
-names, raw prebinding helpers, binding-name alignment), but the final proof that
-the resulting IR variable map is extensionally equal to the source binding map has
-not yet been discharged.
-
-**Risk**: Medium.
-
-### 9. `supported_function_body_correct_from_exact_state`
-
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:378`
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:513`
 
 **Statement**:
 ```lean
@@ -180,14 +158,14 @@ and variable bindings are exact, executing `compileStmtList ... fn.body` simulat
 
 **Why this is currently an axiom**:
 This is the remaining generic body-simulation proof over the supported fragment.
-It needs the future expression/statement induction library under the exact-state
-invariant introduced by `supported_function_param_state_exact`.
+The exact parameter-state reconstruction step is now proved, but the repo still
+needs the future expression/statement induction library under that invariant.
 
 **Risk**: Medium.
 
-### 10. `supported_function_execIRFunction_eq_fuel`
+### 9. `supported_function_execIRFunction_eq_fuel`
 
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:415`
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:550`
 
 **Statement**:
 ```lean
@@ -288,7 +266,7 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 
 ## Trust Summary
 
-- Active axioms: 10
+- Active axioms: 9
 - Production blockers from axioms: 0
 - Enforcement: `scripts/check_axioms.py` ensures this file tracks exact source location.
 - Compilation-path totalization work in `Compiler/CompilationModel.lean` does not

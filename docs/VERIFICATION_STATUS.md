@@ -8,7 +8,7 @@ Verity implements a **three-layer verification stack** proving smart contracts c
 EDSL contracts (Lean)
     ↓ Layer 1: EDSL ≡ CompilationModel [PROVEN FOR CURRENT CONTRACTS; GENERIC CORE, CONTRACT BRIDGES]
 CompilationModel (declarative compiler-facing model)
-    ↓ Layer 2: CompilationModel → IR [GENERIC THEOREM SURFACE, 1 AXIOM, CONTRACT BRIDGES ACTIVE]
+    ↓ Layer 2: CompilationModel → IR [GENERIC THEOREM SURFACE, 3 AXIOMS, CONTRACT BRIDGES ACTIVE]
 Intermediate Representation (IR)
     ↓ Layer 3: IR → Yul [GENERIC, 5 AXIOMS]
 Yul (EVM Assembly)
@@ -59,13 +59,13 @@ theorems for supported EDSL contracts, covering:
 - a whole-contract theorem surface, [`compile_preserves_semantics`](../Compiler/Proofs/IRGeneration/Contract.lean), quantified over arbitrary supported `CompilationModel`s, selectors, a `SupportedSpec` witness, and successful `CompilationModel.compile` output
 
 **What is not fully discharged yet**:
-- the generic whole-contract theorem surface is now assembled by theorem, but it still depends on 4 documented Layer-2 axioms in [`Function.lean`](../Compiler/Proofs/IRGeneration/Function.lean)
+- the generic whole-contract theorem surface is now assembled by theorem, but it still depends on 3 documented Layer-2 axioms in [`Function.lean`](../Compiler/Proofs/IRGeneration/Function.lean)
 - active end-to-end contract examples still rely on manual bridge theorems in [`Contracts/Proofs/SemanticBridge.lean`](../Contracts/Proofs/SemanticBridge.lean)
 - the repo does not yet have a closed generic proof that directly composes source whole-function semantics, parameter loading, supported statement compilation, and the exact `compileStmtList`/IR execution path used by `CompilationModel.compile`
 
 **Current boundary**:
 - Generic: supported statement-list compilation and the whole-contract theorem shape
-- Still axiomatized: initial-state normalization, exact parameter-state reconstruction, generic supported body simulation, and the `execIRFunctionFuel` to `execIRFunction` bridge
+- Still axiomatized: initial-state normalization, generic supported body simulation, and the `execIRFunctionFuel` to `execIRFunction` bridge
 - Contract-specific today: the concrete EDSL→compiled-IR bridges used for current end-to-end examples
 - Outside the current generic theorem or current proof model: events/logs, proxy/delegatecall upgradeability, linked externals, local unsafe obligations, and other trust-surfaced features not captured by the current supported whole-contract fragment
 

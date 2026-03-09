@@ -4819,6 +4819,42 @@ theorem execStmtList_terminal_core_not_continue
         · rename_i next'
           exact helseNoContinue next' helseExec
 
+theorem stmtResultMatchesIRExec_ir_not_continue_of_source_not_continue
+    {fields : List Field}
+    {sourceResult : SourceSemantics.StmtResult}
+    {irExec : IRExecResult}
+    (hsourceNoContinue : ∀ next, sourceResult ≠ .continue next)
+    (hmatch : stmtResultMatchesIRExec fields sourceResult irExec) :
+    ∀ next, irExec ≠ .continue next := by
+  intro next hcontinue
+  cases sourceResult <;> cases irExec <;> simp [stmtResultMatchesIRExec] at hmatch hcontinue
+  rename_i runtime state
+  exact hsourceNoContinue runtime rfl
+
+theorem stmtResultMatchesIRExec_ir_not_continue_of_terminal_core
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {scope : List String}
+    {stmts : List Stmt}
+    {irExec : IRExecResult}
+    (hterminal : StmtListTerminalCore scope stmts)
+    (hmatch :
+      stmtResultMatchesIRExec fields
+        (SourceSemantics.execStmtList fields runtime stmts)
+        irExec) :
+    ∀ next, irExec ≠ .continue next := by
+  exact stmtResultMatchesIRExec_ir_not_continue_of_source_not_continue
+    (fields := fields)
+    (sourceResult := SourceSemantics.execStmtList fields runtime stmts)
+    (irExec := irExec)
+    (execStmtList_terminal_core_not_continue
+      (fields := fields)
+      (runtime := runtime)
+      (scope := scope)
+      (stmts := stmts)
+      hterminal)
+    hmatch
+
 def irResultOfExecResult (rollback : IRState) : IRExecResult → IRResult
   | .continue s =>
       { success := true

@@ -133,6 +133,24 @@
     "cancel-in-progress": "true"
   },
   "expected_step_contracts": {
+    "changes": [
+      {
+        "uses": "actions/checkout@v4"
+      },
+      {
+        "id": "filter",
+        "uses": "dorny/paths-filter@v3"
+      }
+    ],
+    "checks": [
+      {
+        "uses": "actions/checkout@v4"
+      },
+      {
+        "name": "Run all checks",
+        "run": "make check"
+      }
+    ],
     "build": [
       {
         "uses": "actions/checkout@v4",

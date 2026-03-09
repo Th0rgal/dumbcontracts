@@ -597,6 +597,18 @@ class VerifySyncTests(unittest.TestCase):
             """
             name: verify
             jobs:
+              changes:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - id: changed-filter
+                    uses: dorny/paths-filter@v3
+              checks:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - name: Run all checks
+                    run: make verify
               build:
                 runs-on: ubuntu-latest
                 steps:
@@ -625,6 +637,24 @@ class VerifySyncTests(unittest.TestCase):
         rc, _, err = self._run_step_contracts_check(
             workflow,
             expected_step_contracts={
+                "changes": [
+                    {
+                        "uses": "actions/checkout@v4",
+                    },
+                    {
+                        "id": "filter",
+                        "uses": "dorny/paths-filter@v3",
+                    },
+                ],
+                "checks": [
+                    {
+                        "uses": "actions/checkout@v4",
+                    },
+                    {
+                        "name": "Run all checks",
+                        "run": "make check",
+                    },
+                ],
                 "build": [
                     {
                         "uses": "actions/checkout@v4",
@@ -654,6 +684,14 @@ class VerifySyncTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("[FAIL] step-contracts", err)
         self.assertIn(
+            "changes is missing expected step id='filter', uses='dorny/paths-filter@v3'",
+            err,
+        )
+        self.assertIn(
+            "checks step name='Run all checks' has run='make verify', expected 'make check'",
+            err,
+        )
+        self.assertIn(
             "build step name='Setup Lean', uses='./.github/actions/setup-lean' has with.cache-key-prefix='stale', expected 'lake'",
             err,
         )
@@ -671,6 +709,18 @@ class VerifySyncTests(unittest.TestCase):
             """
             name: verify
             jobs:
+              changes:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - id: filter
+                    uses: dorny/paths-filter@v3
+              checks:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - name: Run all checks
+                    run: make check
               build:
                 runs-on: ubuntu-latest
                 steps:
@@ -699,6 +749,24 @@ class VerifySyncTests(unittest.TestCase):
         rc, out, err = self._run_step_contracts_check(
             workflow,
             expected_step_contracts={
+                "changes": [
+                    {
+                        "uses": "actions/checkout@v4",
+                    },
+                    {
+                        "id": "filter",
+                        "uses": "dorny/paths-filter@v3",
+                    },
+                ],
+                "checks": [
+                    {
+                        "uses": "actions/checkout@v4",
+                    },
+                    {
+                        "name": "Run all checks",
+                        "run": "make check",
+                    },
+                ],
                 "build": [
                     {
                         "uses": "actions/checkout@v4",

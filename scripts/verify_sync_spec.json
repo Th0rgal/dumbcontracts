@@ -140,8 +140,36 @@
     "artifact": "static-gas-report",
     "command": "python3 scripts/check_gas.py calibration --static-report gas-report-static.tsv"
   },
-  "artifact_producer_jobs": [
-    "build",
-    "build-compiler"
-  ]
+  "expected_uploaded_artifacts": {
+    "build": [
+      "axiom-dependency-report"
+    ],
+    "build-compiler": [
+      "generated-yul",
+      "generated-yul-patched",
+      "difftest-interpreter",
+      "static-gas-report",
+      "static-gas-report-patched",
+      "patch-coverage-report",
+      "parity-pack-identity-report"
+    ],
+    "lean-profile": [
+      "lean-perf-queue"
+    ]
+  },
+  "expected_downloaded_artifacts": {
+    "foundry-gas-calibration": [
+      "static-gas-report",
+      "generated-yul"
+    ],
+    "foundry": [
+      "generated-yul"
+    ],
+    "foundry-patched": [
+      "generated-yul-patched"
+    ],
+    "foundry-multi-seed": [
+      "generated-yul"
+    ]
+  }
 }

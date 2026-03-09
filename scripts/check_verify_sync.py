@@ -573,30 +573,86 @@ def check_foundry(snapshot: Snapshot, spec: dict) -> CheckResult:
 
 def check_artifacts(snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
-    producer_jobs = spec["artifact_producer_jobs"]
+    expected_uploads: dict[str, list[str]] = spec.get("expected_uploaded_artifacts", {})
+    expected_downloads: dict[str, list[str]] = spec.get("expected_downloaded_artifacts", {})
 
-    upload_names: list[str] = []
-    for job in producer_jobs:
-        if job not in snapshot.jobs:
-            errors.append(f"producer job missing from workflow: {job}")
-            continue
-        upload_names.extend(_extract_artifact_names(snapshot.job_body(job), action="upload-artifact"))
+    actual_uploads: dict[str, list[str]] = {}
+    actual_downloads: dict[str, list[str]] = {}
 
+    for job in snapshot.jobs:
+        job_body = snapshot.job_body(job)
+        upload_names = _extract_artifact_names(job_body, action="upload-artifact")
+        download_names = _extract_artifact_names(job_body, action="download-artifact")
+
+        if upload_names:
+            actual_uploads[job] = upload_names
+        if download_names:
+            actual_downloads[job] = download_names
+
+        if len(upload_names) != len(set(upload_names)):
+            errors.append(f"duplicate upload artifact names in {job}: {upload_names}")
+        if len(download_names) != len(set(download_names)):
+            errors.append(f"duplicate download artifact names in {job}: {download_names}")
+
+    expected_upload_jobs = list(expected_uploads)
+    actual_upload_jobs = [job for job in snapshot.jobs if job in actual_uploads]
+    errors.extend(
+        _compare_lists(
+            "upload-artifact jobs",
+            actual_upload_jobs,
+            "spec upload-artifact jobs",
+            expected_upload_jobs,
+        )
+    )
+
+    expected_download_jobs = list(expected_downloads)
+    actual_download_jobs = [job for job in snapshot.jobs if job in actual_downloads]
+    errors.extend(
+        _compare_lists(
+            "download-artifact jobs",
+            actual_download_jobs,
+            "spec download-artifact jobs",
+            expected_download_jobs,
+        )
+    )
+
+    upload_names = [name for names in actual_uploads.values() for name in names]
     if not upload_names:
-        errors.append("no upload-artifact names found in producer jobs")
+        errors.append("no upload-artifact names found in workflow")
         return CheckResult("artifacts", errors)
 
     dup_upload = sorted([name for name, count in Counter(upload_names).items() if count > 1])
     if dup_upload:
-        errors.append("duplicate upload artifacts across producer jobs: " + ", ".join(dup_upload))
+        errors.append("duplicate upload artifacts across workflow: " + ", ".join(dup_upload))
+
+    for job, expected_names in expected_uploads.items():
+        if job not in actual_uploads:
+            errors.append(f"expected upload-artifact job missing from workflow: {job}")
+            continue
+        errors.extend(
+            _compare_lists(
+                f"{job} upload artifacts",
+                actual_uploads[job],
+                f"spec {job} upload artifacts",
+                expected_names,
+            )
+        )
+
+    for job, expected_names in expected_downloads.items():
+        if job not in actual_downloads:
+            errors.append(f"expected download-artifact job missing from workflow: {job}")
+            continue
+        errors.extend(
+            _compare_lists(
+                f"{job} download artifacts",
+                actual_downloads[job],
+                f"spec {job} download artifacts",
+                expected_names,
+            )
+        )
 
     uploaded = set(upload_names)
-    for job in snapshot.jobs:
-        if job in producer_jobs:
-            continue
-        names = _extract_artifact_names(snapshot.job_body(job), action="download-artifact")
-        if len(names) != len(set(names)):
-            errors.append(f"duplicate download artifact names in {job}: {names}")
+    for job, names in actual_downloads.items():
         for name in names:
             if name not in uploaded:
                 errors.append(f"{job} downloads unknown artifact: {name}")

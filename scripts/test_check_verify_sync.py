@@ -128,6 +128,45 @@ class VerifySyncTests(unittest.TestCase):
                 check.MAKEFILE = old_makefile
                 sys.argv = old_argv
 
+    def _run_artifacts_check(
+        self,
+        workflow_text: str,
+        *,
+        expected_uploaded_artifacts: dict[str, list[str]],
+        expected_downloaded_artifacts: dict[str, list[str]],
+    ) -> tuple[int, str, str]:
+        with tempfile.TemporaryDirectory(dir=SCRIPT_DIR.parent) as td:
+            root = Path(td)
+            verify = root / "verify.yml"
+            spec = root / "verify_sync_spec.json"
+            verify.write_text(textwrap.dedent(workflow_text).lstrip(), encoding="utf-8")
+            spec.write_text(
+                json.dumps(
+                    {
+                        "expected_uploaded_artifacts": expected_uploaded_artifacts,
+                        "expected_downloaded_artifacts": expected_downloaded_artifacts,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            old_verify = check.VERIFY_YML
+            old_spec = check.SPEC_PATH
+            check.VERIFY_YML = verify
+            check.SPEC_PATH = spec
+            old_argv = sys.argv
+            sys.argv = ["check_verify_sync.py", "--only", "artifacts"]
+            try:
+                stderr = io.StringIO()
+                stdout = io.StringIO()
+                with redirect_stderr(stderr), redirect_stdout(stdout):
+                    rc = check.main()
+                return rc, stdout.getvalue(), stderr.getvalue()
+            finally:
+                check.VERIFY_YML = old_verify
+                check.SPEC_PATH = old_spec
+                sys.argv = old_argv
+
     def _run_python_commands_check(
         self,
         workflow_text: str,
@@ -901,6 +940,137 @@ class VerifySyncTests(unittest.TestCase):
         self.assertIn("python3 scripts/check_bridge_coverage_sync.py", err)
         self.assertIn("python3 scripts/check_storage_layout.py", err)
         self.assertIn("python3 scripts/check_proof_length.py", err)
+
+    def test_artifacts_check_fails_when_expected_upload_is_missing(self) -> None:
+        workflow = """
+        name: verify
+        jobs:
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: axiom-dependency-report
+          build-compiler:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: generated-yul
+          foundry:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/download-artifact@v4
+                with:
+                  name: generated-yul
+        """
+        rc, _, err = self._run_artifacts_check(
+            workflow,
+            expected_uploaded_artifacts={
+                "build": ["axiom-dependency-report"],
+                "build-compiler": ["generated-yul", "static-gas-report"],
+            },
+            expected_downloaded_artifacts={
+                "foundry": ["generated-yul"],
+            },
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "build-compiler upload artifacts does not match spec build-compiler upload artifacts.",
+            err,
+        )
+        self.assertIn(
+            "idx 1: build-compiler upload artifacts='<missing>', spec build-compiler upload artifacts='static-gas-report'",
+            err,
+        )
+
+    def test_artifacts_check_fails_when_expected_download_is_missing(self) -> None:
+        workflow = """
+        name: verify
+        jobs:
+          build-compiler:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: static-gas-report
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: generated-yul
+          foundry-gas-calibration:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/download-artifact@v4
+                with:
+                  name: static-gas-report
+        """
+        rc, _, err = self._run_artifacts_check(
+            workflow,
+            expected_uploaded_artifacts={
+                "build-compiler": ["static-gas-report", "generated-yul"],
+            },
+            expected_downloaded_artifacts={
+                "foundry-gas-calibration": ["static-gas-report", "generated-yul"],
+            },
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "foundry-gas-calibration download artifacts does not match spec foundry-gas-calibration download artifacts.",
+            err,
+        )
+        self.assertIn(
+            "idx 1: foundry-gas-calibration download artifacts='<missing>', spec foundry-gas-calibration download artifacts='generated-yul'",
+            err,
+        )
+
+    def test_artifacts_check_passes_when_uploads_and_downloads_match_spec(self) -> None:
+        workflow = """
+        name: verify
+        jobs:
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: axiom-dependency-report
+          build-compiler:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: generated-yul
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: static-gas-report
+          lean-profile:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: lean-perf-queue
+          foundry-gas-calibration:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/download-artifact@v4
+                with:
+                  name: static-gas-report
+              - uses: actions/download-artifact@v4
+                with:
+                  name: generated-yul
+        """
+        rc, out, err = self._run_artifacts_check(
+            workflow,
+            expected_uploaded_artifacts={
+                "build": ["axiom-dependency-report"],
+                "build-compiler": ["generated-yul", "static-gas-report"],
+                "lean-profile": ["lean-perf-queue"],
+            },
+            expected_downloaded_artifacts={
+                "foundry-gas-calibration": ["static-gas-report", "generated-yul"],
+            },
+        )
+        self.assertEqual(rc, 0, err)
+        self.assertIn("[PASS] artifacts", out)
 
 
 if __name__ == "__main__":

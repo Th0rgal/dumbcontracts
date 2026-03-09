@@ -407,6 +407,35 @@ theorem lookupValue_bindValue_ne
   intro name
   simp [SourceSemantics.lookupValue, Compiler.Constants.evmModulus]
 
+@[simp] theorem wordNormalize_lt_evmModulus (value : Nat) :
+    SourceSemantics.wordNormalize value < Compiler.Constants.evmModulus := by
+  rw [ParamLoading.wordNormalize_eq_mod]
+  exact Nat.mod_lt _ (by simp [Compiler.Constants.evmModulus])
+
+theorem decodeSupportedParamWord_lt_evmModulus
+    {ty : ParamType}
+    {word value : Nat}
+    (hdecode : SourceSemantics.decodeSupportedParamWord ty word = some value) :
+    value < Compiler.Constants.evmModulus := by
+  cases ty <;> simp [SourceSemantics.decodeSupportedParamWord, SourceSemantics.uint8Modulus] at hdecode ⊢
+  · subst value
+    exact wordNormalize_lt_evmModulus word
+  · subst value
+    exact Nat.lt_of_le_of_lt Nat.and_le_left (wordNormalize_lt_evmModulus word)
+  · subst value
+    exact Nat.lt_of_le_of_lt Nat.and_le_left (wordNormalize_lt_evmModulus word)
+  · split at hdecode
+    · injection hdecode with hvalue
+      subst hvalue
+      simp [Compiler.Constants.evmModulus]
+    · split at hdecode
+      · injection hdecode with hvalue
+        subst hvalue
+        simp [Compiler.Constants.evmModulus]
+      · contradiction
+  · subst value
+    exact wordNormalize_lt_evmModulus word
+
 theorem bindingsBounded_bindValue
     {bindings : List (String × Nat)}
     (hbounded : bindingsBounded bindings)
@@ -420,6 +449,55 @@ theorem bindingsBounded_bindValue
     simp [lookupValue_bindValue_eq, hvalueLt]
   · rw [lookupValue_bindValue_ne bindings boundName queryName value hEq]
     exact hbounded queryName
+
+private theorem bindingsBounded_cons
+    {bindings : List (String × Nat)}
+    (boundName : String)
+    (value : Nat)
+    (hvalueLt : value < Compiler.Constants.evmModulus)
+    (hbounded : bindingsBounded bindings) :
+    bindingsBounded ((boundName, value) :: bindings) := by
+  intro queryName
+  by_cases hEq : queryName = boundName
+  · subst hEq
+    simp [SourceSemantics.lookupValue, hvalueLt]
+  · have hlookup :
+        SourceSemantics.lookupValue ((boundName, value) :: bindings) queryName =
+          SourceSemantics.lookupValue bindings queryName := by
+        have hEq' : boundName ≠ queryName := by
+          intro hEq'
+          apply hEq
+          exact hEq'.symm
+        unfold SourceSemantics.lookupValue
+        simp [hEq']
+    rw [hlookup]
+    exact hbounded queryName
+
+theorem bindingsBounded_of_bindSupportedParams
+    {params : List Param}
+    {args : List Nat}
+    {bindings : List (String × Nat)}
+    (hbind : SourceSemantics.bindSupportedParams params args = some bindings) :
+    bindingsBounded bindings := by
+  induction params generalizing args bindings with
+  | nil =>
+      simp [SourceSemantics.bindSupportedParams] at hbind
+      cases hbind
+      simp
+  | cons param rest ih =>
+      cases args with
+      | nil =>
+          simp [SourceSemantics.bindSupportedParams] at hbind
+      | cons arg restArgs =>
+          cases hdecode : SourceSemantics.decodeSupportedParamWord param.ty arg <;>
+              simp [SourceSemantics.bindSupportedParams, hdecode] at hbind
+          case some value =>
+            cases hrest : SourceSemantics.bindSupportedParams rest restArgs <;>
+                simp [hrest] at hbind
+            case some restBindings =>
+              cases hbind
+              exact bindingsBounded_cons
+                param.name value (decodeSupportedParamWord_lt_evmModulus hdecode) (ih hrest)
 
 @[simp] theorem lookupBinding?_bindValue_eq
     (bindings : List (String × Nat))
@@ -475,6 +553,74 @@ theorem exprBoundNamesPresent_bindValue
     exact ⟨value, lookupBinding?_bindValue_eq bindings queryName value⟩
   · rcases hpresent queryName hmem with ⟨found, hfound⟩
     exact ⟨found, by rw [lookupBinding?_bindValue_ne bindings boundName queryName value hEq, hfound]⟩
+
+theorem bindSupportedParams_lookupBinding?_some_of_mem
+    {params : List Param}
+    {args : List Nat}
+    {bindings : List (String × Nat)}
+    (hparamsNodup : (params.map Param.name).Nodup)
+    (hbind : SourceSemantics.bindSupportedParams params args = some bindings)
+    {queryName : String}
+    (hmem : queryName ∈ params.map Param.name) :
+    ∃ value, lookupBinding? bindings queryName = some value := by
+  induction params generalizing args bindings with
+  | nil =>
+      cases hmem
+  | cons param rest ih =>
+      cases args with
+      | nil =>
+          simp [SourceSemantics.bindSupportedParams] at hbind
+      | cons arg restArgs =>
+          have hrestNodup : (rest.map Param.name).Nodup := by
+            exact (List.nodup_cons.mp hparamsNodup).2
+          cases hdecode : SourceSemantics.decodeSupportedParamWord param.ty arg <;>
+              simp [SourceSemantics.bindSupportedParams, hdecode] at hbind
+          case some value =>
+            cases hrest : SourceSemantics.bindSupportedParams rest restArgs <;>
+                simp [hrest] at hbind
+            case some restBindings =>
+              cases hbind
+              simp only [List.map, List.mem_cons] at hmem
+              rcases hmem with rfl | hmemRest
+              · exact ⟨value, by simp [lookupBinding?]⟩
+              · have hqueryNe : queryName ≠ param.name := by
+                  intro hEq
+                  apply (List.nodup_cons.mp hparamsNodup).1
+                  simpa [hEq] using hmemRest
+                have hqueryNe' : ¬ param.name = queryName := by
+                  intro hEq
+                  apply hqueryNe
+                  exact hEq.symm
+                rcases ih hrestNodup hrest hmemRest with ⟨found, hfound⟩
+                have hfindSome : ∃ entryName,
+                    List.find? (fun entry => entry.1 == queryName) restBindings =
+                      some (entryName, found) := by
+                  unfold lookupBinding? at hfound
+                  cases hfind : List.find? (fun entry => entry.1 == queryName) restBindings with
+                  | none =>
+                      simp [hfind] at hfound
+                  | some entry =>
+                      cases entry with
+                      | mk entryName entryValue =>
+                          simp [hfind] at hfound
+                          cases hfound
+                          exact ⟨entryName, rfl⟩
+                rcases hfindSome with ⟨entryName, hfindSome⟩
+                exact ⟨found, by
+                  unfold lookupBinding?
+                  simp [hqueryNe', hfindSome]⟩
+
+theorem exprBoundNamesPresent_of_bindSupportedParams
+    {expr : Expr}
+    {params : List Param}
+    {args : List Nat}
+    {bindings : List (String × Nat)}
+    (hparamsNodup : (params.map Param.name).Nodup)
+    (hbind : SourceSemantics.bindSupportedParams params args = some bindings)
+    (hsubset : ∀ name, name ∈ exprBoundNames expr → name ∈ params.map Param.name) :
+    exprBoundNamesPresent expr bindings := by
+  intro queryName hmem
+  exact bindSupportedParams_lookupBinding?_some_of_mem hparamsNodup hbind (hsubset queryName hmem)
 
 theorem bindingsExactlyMatchIRVars_setVar_bindValue
     {bindings : List (String × Nat)}

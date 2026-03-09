@@ -7,6 +7,25 @@ open Compiler.CompilationModel
 
 namespace Contract
 
+private theorem pickUniqueFunctionByName_eq_ok_none_of_absent
+    (name : String) (funcs : List FunctionSpec)
+    (habsent : ∀ fn ∈ funcs, fn.name != name) :
+    pickUniqueFunctionByName name funcs = Except.ok none := by
+  induction funcs with
+  | nil =>
+      rfl
+  | cons fn rest ih =>
+      have hfn : (fn.name == name) = false := by
+        by_cases heq : fn.name = name
+        · have habs := habsent fn (by simp)
+          simp [heq] at habs
+        · simp [heq]
+      have hrest : ∀ fn' ∈ rest, fn'.name != name := by
+        intro fn' hmem
+        exact habsent fn' (by simp [hmem])
+      have ih' := ih hrest
+      simpa [pickUniqueFunctionByName, hfn] using ih'
+
 private theorem compiled_functions_forall₂_of_mapM_ok
     (fields : List Field)
     (events : List EventDef)
@@ -18,11 +37,74 @@ private theorem compiled_functions_forall₂_of_mapM_ok
         (fun (entry : FunctionSpec × Nat) irFn =>
           compileFunctionSpec fields events errors entry.2 entry.1 = Except.ok irFn)
         entries irFns := by
-  /- TODO(#1510): discharge this as a purely structural `Except`/`List.mapM`
-  extraction lemma with no contract-specific assumptions. This is mechanical
-  proof plumbing; the generic Layer 2 proof must not depend on callers
-  supplying a pre-built `List.Forall₂` witness. -/
-  sorry
+  intro entries
+  induction entries with
+  | nil =>
+      intro irFns hmap
+      cases hmap
+      simp
+  | cons entry entries ih =>
+      intro irFns hmap
+      rcases hstep : compileFunctionSpec fields events errors entry.2 entry.1 with _ | irFn
+      · simp only [List.mapM_cons, hstep, bind, Except.bind] at hmap
+        cases hmap
+      · rcases htail : List.mapM
+            (fun (entry : FunctionSpec × Nat) =>
+              compileFunctionSpec fields events errors entry.2 entry.1) entries with _ | irFnsTail
+        · simp only [List.mapM_cons, hstep, htail, bind, Except.bind] at hmap
+          cases hmap
+        · simp only [List.mapM_cons, hstep, htail, bind, Except.bind] at hmap
+          cases hmap
+          exact List.Forall₂.cons hstep (ih _ htail)
+
+private theorem compileValidatedCore_ok_yields_compiled_functions
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (ir : IRContract)
+    (hcore : compileValidatedCore model selectors = Except.ok ir) :
+    List.Forall₂
+      (fun entry irFn =>
+        compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+      (SourceSemantics.selectorFunctionPairs model selectors)
+      ir.functions := by
+  have hfallback :
+      pickUniqueFunctionByName "fallback" model.functions = Except.ok none :=
+    pickUniqueFunctionByName_eq_ok_none_of_absent
+      "fallback" model.functions hSupported.noFallback
+  have hreceive :
+      pickUniqueFunctionByName "receive" model.functions = Except.ok none :=
+    pickUniqueFunctionByName_eq_ok_none_of_absent
+      "receive" model.functions hSupported.noReceive
+  unfold compileValidatedCore at hcore
+  rw [hSupported.normalizedFields, hSupported.noEvents, hSupported.noErrors,
+    hSupported.noConstructor, hfallback, hreceive] at hcore
+  simp only [bind, Except.bind, pure, Except.pure] at hcore
+  rcases hmap :
+      ((model.functions.filter
+          (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)).zip selectors).mapM
+        (fun x => compileFunctionSpec model.fields [] [] x.2 x.1) with _ | irFns
+  · simp [hmap] at hcore
+  · simp [hmap] at hcore
+    rcases hinternal :
+        (model.functions.filter (·.isInternal)).mapM
+          (compileInternalFunction model.fields [] []) with _ | internalFuncDefs
+    · simp [hinternal] at hcore
+    · simp [hinternal, compileConstructor] at hcore
+      have hfunctions : ir.functions = irFns := by
+        injection hcore with hir
+        cases hir
+        rfl
+      have hcompiled :
+          List.Forall₂
+            (fun (entry : FunctionSpec × Nat) irFn =>
+              compileFunctionSpec model.fields [] [] entry.2 entry.1 = Except.ok irFn)
+            ((model.functions.filter
+                (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)).zip selectors)
+            irFns :=
+        compiled_functions_forall₂_of_mapM_ok model.fields [] [] _ _ hmap
+      simpa [SourceSemantics.selectorFunctionPairs, selectorDispatchedFunctions,
+        hSupported.noEvents, hSupported.noErrors, hfunctions] using hcompiled
 
 theorem supported_params_of_supportedSpec
     (model : CompilationModel)
@@ -142,7 +224,17 @@ theorem compile_ok_yields_compiled_functions
         compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
       (SourceSemantics.selectorFunctionPairs model selectors)
       ir.functions := by
-  sorry
+  unfold CompilationModel.compile at hcompile
+  simp only [bind, Except.bind] at hcompile
+  rcases hvalidate : validateCompileInputs model selectors with _ | validated
+  · simp [hvalidate] at hcompile
+  · simp [hvalidate] at hcompile
+    exact compileValidatedCore_ok_yields_compiled_functions
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (ir := ir)
+      (hcore := hcompile)
 
 /-- TODO(#1510): close the function layer generically from `SupportedSpec`
 and successful `compileFunctionSpec`, with no residual body-level premises

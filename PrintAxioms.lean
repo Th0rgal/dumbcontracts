@@ -664,6 +664,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.EndToEnd.simpleStorage_endToEnd
 
 -- Compiler/Proofs/IRGeneration/Contract.lean
+-- #print axioms Compiler.Proofs.IRGeneration.Contract.pickUniqueFunctionByName_eq_ok_none_of_absent  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.Contract.compiled_functions_forall₂_of_mapM_ok  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.Contract.compileValidatedCore_ok_yields_compiled_functions  -- private
 #print axioms Compiler.Proofs.IRGeneration.Contract.supported_params_of_supportedSpec
 #print axioms Compiler.Proofs.IRGeneration.Contract.interpretIR_eq_runtimeContractOfFunctions
 #print axioms Compiler.Proofs.IRGeneration.Contract.interpretContract_correct_of_ir_functions
@@ -845,4 +848,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 717 theorems/lemmas (643 public, 74 private)
+-- Total: 720 theorems/lemmas (643 public, 77 private)

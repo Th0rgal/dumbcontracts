@@ -168,7 +168,11 @@ just a missing bridge lemma: the supported-function path needs a structural
 fuel refactor (`sizeOf`-style) before it can reuse
 `execIRFunctionFuel_adequate` and eliminate this axiom cleanly. The new local
 structural lemmas in `Function.lean` now pin down the required lower bound
-`body.length + 1 ≤ sizeOf body + 1` for compiled function bodies.
+`body.length + 1 ≤ sizeOf body + 1` for compiled function bodies, and
+`ParamLoading.lean` now exposes an `extraFuel`-parametric
+`exec_genParamLoads_supported_then_extraFuel` bridge so the future spine can
+thread a larger structural budget through the ABI-loading prefix instead of
+being stuck on the minimal `length + 1` execution.
 
 **Risk**: Medium.
 

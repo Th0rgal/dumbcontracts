@@ -175,10 +175,14 @@ structural `extraFuel` all the way to `sizeOf`. The remaining axiom usage is
 therefore outside the proven core fragment, where the generic body proof still
 falls back to the old `length + 1` spine. The terminal-`ite` preparation now
 also includes explicit branch-size lower bounds
-(`compiled_terminal_ite_body_size_ge_branchSizeOf` in
-`Compiler/Proofs/IRGeneration/FunctionBody.lean`), which is the arithmetic
-layer needed for the next recursive `StmtListTerminalCore` proof over nested
-compiled blocks.
+(`compiled_terminal_ite_body_size_ge_branchSizeOf`) and the stronger
+branch-exec-fuel bounds
+(`compiled_terminal_ite_body_size_ge_branchExecFuel` in
+`Compiler/Proofs/IRGeneration/FunctionBody.lean`). The latter closes the
+off-by-one needed to justify entering a chosen `ite` branch with the usual
+`stmt-list + 1` fuel under a top-level `sizeOf` budget, which is the exact
+arithmetic layer needed for the next recursive `StmtListTerminalCore` proof
+over nested compiled blocks.
 
 **Risk**: Medium.
 

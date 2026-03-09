@@ -16,6 +16,62 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import check_verify_sync as check
 
+FAILURE_HINTS_SCRIPT = textwrap.dedent(
+    """
+    const marker = "<!-- ci-failure-hints -->";
+    const needs = JSON.parse(process.env.NEEDS_JSON || "{}");
+    const failed = Object.entries(needs)
+      .filter(([, info]) => info && info.result === "failure")
+      .map(([name]) => name);
+    if (failed.length === 0) {
+      core.info("No failed jobs; no hint comment needed.");
+      return;
+    }
+
+    const lines = [];
+    lines.push(marker);
+    lines.push("### CI Failure Hints");
+    lines.push("");
+    lines.push("Failed jobs: " + failed.map((n) => "`" + n + "`").join(", "));
+    lines.push("");
+    lines.push("Copy-paste local triage:");
+    lines.push("```bash");
+    lines.push("make check");
+    lines.push("lake build");
+    lines.push("FOUNDRY_PROFILE=difftest forge test -vv");
+    lines.push("```");
+    const body = lines.join("\\n");
+
+    const owner = context.repo.owner;
+    const repo = context.repo.repo;
+    const issue_number = context.issue.number;
+    const comments = await github.paginate(github.rest.issues.listComments, {
+      owner,
+      repo,
+      issue_number,
+      per_page: 100
+    });
+    const existing = comments.find((c) =>
+      c.user && c.user.type === "Bot" && typeof c.body === "string" && c.body.includes(marker)
+    );
+    if (existing) {
+      await github.rest.issues.updateComment({
+        owner,
+        repo,
+        comment_id: existing.id,
+        body
+      });
+    } else {
+      await github.rest.issues.createComment({
+        owner,
+        repo,
+        issue_number,
+        body
+      });
+    }
+    """
+).strip()
+
 
 class VerifySyncTests(unittest.TestCase):
     def _run_jobs_check(self, workflow_text: str, expected_jobs: list[str]) -> tuple[int, str, str]:
@@ -845,6 +901,9 @@ class VerifySyncTests(unittest.TestCase):
                     uses: actions/github-script@v7
                     env:
                       NEEDS_JSON: stale
+                    with:
+                      script: |
+                        core.info("stale")
             """
         )
         rc, _, err = self._run_step_contracts_check(
@@ -890,6 +949,7 @@ class VerifySyncTests(unittest.TestCase):
                         "name": "Post CI failure hints",
                         "uses": "actions/github-script@v7",
                         "env": {"NEEDS_JSON": "${{ toJson(needs) }}"},
+                        "with": {"script": FAILURE_HINTS_SCRIPT},
                     }
                 ],
             },
@@ -914,6 +974,10 @@ class VerifySyncTests(unittest.TestCase):
         )
         self.assertIn(
             "failure-hints step name='Post CI failure hints', uses='actions/github-script@v7' has env.NEEDS_JSON='stale', expected '${{ toJson(needs) }}'",
+            err,
+        )
+        self.assertIn(
+            "failure-hints step name='Post CI failure hints', uses='actions/github-script@v7' has with.script='core.info(\"stale\")', expected",
             err,
         )
 
@@ -957,6 +1021,59 @@ class VerifySyncTests(unittest.TestCase):
                     uses: actions/github-script@v7
                     env:
                       NEEDS_JSON: ${{ toJson(needs) }}
+                    with:
+                      script: |
+                        const marker = "<!-- ci-failure-hints -->";
+                        const needs = JSON.parse(process.env.NEEDS_JSON || "{}");
+                        const failed = Object.entries(needs)
+                          .filter(([, info]) => info && info.result === "failure")
+                          .map(([name]) => name);
+                        if (failed.length === 0) {
+                          core.info("No failed jobs; no hint comment needed.");
+                          return;
+                        }
+
+                        const lines = [];
+                        lines.push(marker);
+                        lines.push("### CI Failure Hints");
+                        lines.push("");
+                        lines.push("Failed jobs: " + failed.map((n) => "`" + n + "`").join(", "));
+                        lines.push("");
+                        lines.push("Copy-paste local triage:");
+                        lines.push("```bash");
+                        lines.push("make check");
+                        lines.push("lake build");
+                        lines.push("FOUNDRY_PROFILE=difftest forge test -vv");
+                        lines.push("```");
+                        const body = lines.join("\\n");
+
+                        const owner = context.repo.owner;
+                        const repo = context.repo.repo;
+                        const issue_number = context.issue.number;
+                        const comments = await github.paginate(github.rest.issues.listComments, {
+                          owner,
+                          repo,
+                          issue_number,
+                          per_page: 100
+                        });
+                        const existing = comments.find((c) =>
+                          c.user && c.user.type === "Bot" && typeof c.body === "string" && c.body.includes(marker)
+                        );
+                        if (existing) {
+                          await github.rest.issues.updateComment({
+                            owner,
+                            repo,
+                            comment_id: existing.id,
+                            body
+                          });
+                        } else {
+                          await github.rest.issues.createComment({
+                            owner,
+                            repo,
+                            issue_number,
+                            body
+                          });
+                        }
             """
         )
         rc, out, err = self._run_step_contracts_check(
@@ -1002,6 +1119,7 @@ class VerifySyncTests(unittest.TestCase):
                         "name": "Post CI failure hints",
                         "uses": "actions/github-script@v7",
                         "env": {"NEEDS_JSON": "${{ toJson(needs) }}"},
+                        "with": {"script": FAILURE_HINTS_SCRIPT},
                     }
                 ],
             },

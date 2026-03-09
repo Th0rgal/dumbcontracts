@@ -353,7 +353,7 @@ def _extract_literal_step_mapping(step_block: str, key: str) -> dict[str, str]:
         return {}
 
     values: dict[str, str] = {}
-    for line in block_lines:
+    for idx, line in enumerate(block_lines):
         if not line.strip():
             continue
         child_indent = len(line) - len(line.lstrip(" "))
@@ -366,7 +366,30 @@ def _extract_literal_step_mapping(step_block: str, key: str) -> dict[str, str]:
         raw_value = strip_yaml_inline_comment(m.group("value"))
         if not raw_value:
             raise ValueError(f"Empty step {key}.{entry_key} value in {VERIFY_YML}")
-        value = unquote_yaml_scalar(raw_value)
+        if raw_value in {"|", "|-", "|+", ">", ">-", ">+"}:
+            nested_lines: list[str] = []
+            nested_indent: int | None = None
+            for nested in block_lines[idx + 1 :]:
+                if not nested.strip():
+                    nested_lines.append("")
+                    continue
+                current_indent = len(nested) - len(nested.lstrip(" "))
+                if current_indent <= child_indent:
+                    break
+                if nested_indent is None or current_indent < nested_indent:
+                    nested_indent = current_indent
+                nested_lines.append(nested)
+            if nested_indent is None:
+                raise ValueError(f"Empty step {key}.{entry_key} block scalar in {VERIFY_YML}")
+            normalized_lines = [
+                nested[nested_indent:] if nested.strip() else ""
+                for nested in nested_lines
+            ]
+            while normalized_lines and normalized_lines[-1] == "":
+                normalized_lines.pop()
+            value = "\n".join(normalized_lines)
+        else:
+            value = unquote_yaml_scalar(raw_value)
         previous = values.get(entry_key)
         if previous is not None and previous != value:
             raise ValueError(

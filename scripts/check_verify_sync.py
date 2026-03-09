@@ -587,10 +587,20 @@ def _extract_makefile_check_commands() -> list[str]:
 
 def check_makefile(_snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
+    makefile_commands = _extract_makefile_check_commands()
+
+    required_commands = spec.get("required_makefile_check_commands", [])
+    missing_required = [cmd for cmd in required_commands if cmd not in makefile_commands]
+    if missing_required:
+        errors.append(
+            "Makefile check target is missing required commands: "
+            + ", ".join(missing_required)
+        )
+
     expected_checks = spec["expected_checks_commands"]
     if expected_checks == ["make check"]:
         return CheckResult("makefile", errors)
-    makefile_commands = _extract_makefile_check_commands()
+
     expected = [f"python3 scripts/{cmd}" for cmd in expected_checks]
     expected.extend(spec.get("expected_checks_other_commands", []))
     errors.extend(

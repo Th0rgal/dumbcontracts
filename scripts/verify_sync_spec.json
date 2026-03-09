@@ -42,6 +42,11 @@
   "expected_checks_commands": [
     "make check"
   ],
+  "required_makefile_check_commands": [
+    "python3 scripts/check_verify_sync.py",
+    "python3 scripts/check_issue_templates.py",
+    "python3 scripts/check_docs_workflow_sync.py"
+  ],
   "expected_checks_other_commands": [],
   "expected_build_commands": [
     "check_split_package_builds.py",

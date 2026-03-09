@@ -82,6 +82,52 @@ class VerifySyncTests(unittest.TestCase):
                 check.SPEC_PATH = old_spec
                 sys.argv = old_argv
 
+    def _run_makefile_check(
+        self,
+        makefile_text: str,
+        *,
+        expected_checks_commands: list[str],
+        required_makefile_check_commands: list[str] | None = None,
+        expected_checks_other_commands: list[str] | None = None,
+    ) -> tuple[int, str, str]:
+        with tempfile.TemporaryDirectory(dir=SCRIPT_DIR.parent) as td:
+            root = Path(td)
+            verify = root / "verify.yml"
+            spec = root / "verify_sync_spec.json"
+            makefile = root / "Makefile"
+            verify.write_text("name: verify\njobs:\n  checks:\n    runs-on: ubuntu-latest\n    steps: []\n", encoding="utf-8")
+            makefile.write_text(textwrap.dedent(makefile_text).lstrip(), encoding="utf-8")
+            spec.write_text(
+                json.dumps(
+                    {
+                        "expected_checks_commands": expected_checks_commands,
+                        "required_makefile_check_commands": required_makefile_check_commands or [],
+                        "expected_checks_other_commands": expected_checks_other_commands or [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            old_verify = check.VERIFY_YML
+            old_spec = check.SPEC_PATH
+            old_makefile = check.MAKEFILE
+            check.VERIFY_YML = verify
+            check.SPEC_PATH = spec
+            check.MAKEFILE = makefile
+            old_argv = sys.argv
+            sys.argv = ["check_verify_sync.py", "--only", "makefile"]
+            try:
+                stderr = io.StringIO()
+                stdout = io.StringIO()
+                with redirect_stderr(stderr), redirect_stdout(stdout):
+                    rc = check.main()
+                return rc, stdout.getvalue(), stderr.getvalue()
+            finally:
+                check.VERIFY_YML = old_verify
+                check.SPEC_PATH = old_spec
+                check.MAKEFILE = old_makefile
+                sys.argv = old_argv
+
     def test_jobs_check_passes_when_order_matches(self) -> None:
         workflow = textwrap.dedent(
             """
@@ -309,6 +355,47 @@ class VerifySyncTests(unittest.TestCase):
         )
         self.assertEqual(rc, 0, err)
         self.assertIn("[PASS] paths", out)
+
+    def test_makefile_check_passes_when_required_commands_are_present(self) -> None:
+        makefile = """
+        check:
+        \tpython3 scripts/check_verify_sync.py
+        \tpython3 scripts/check_issue_templates.py
+        \tpython3 scripts/check_docs_workflow_sync.py
+        \tpython3 -m unittest discover -s scripts -p 'test_*.py' -v
+        """
+        rc, out, err = self._run_makefile_check(
+            makefile,
+            expected_checks_commands=["make check"],
+            required_makefile_check_commands=[
+                "python3 scripts/check_verify_sync.py",
+                "python3 scripts/check_issue_templates.py",
+                "python3 scripts/check_docs_workflow_sync.py",
+            ],
+        )
+        self.assertEqual(rc, 0, err)
+        self.assertIn("[PASS] makefile", out)
+
+    def test_makefile_check_fails_when_required_command_is_missing(self) -> None:
+        makefile = """
+        check:
+        \tpython3 scripts/check_verify_sync.py
+        \tpython3 scripts/check_issue_templates.py
+        """
+        rc, _, err = self._run_makefile_check(
+            makefile,
+            expected_checks_commands=["make check"],
+            required_makefile_check_commands=[
+                "python3 scripts/check_verify_sync.py",
+                "python3 scripts/check_issue_templates.py",
+                "python3 scripts/check_docs_workflow_sync.py",
+            ],
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "Makefile check target is missing required commands: python3 scripts/check_docs_workflow_sync.py",
+            err,
+        )
 
 
 if __name__ == "__main__":

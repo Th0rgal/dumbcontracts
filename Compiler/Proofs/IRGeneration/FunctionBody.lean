@@ -3968,6 +3968,34 @@ theorem compiled_terminal_ite_body_size_ge_branchExecFuel
   · simp at *
     omega
 
+private theorem yulStmtList_sizeOf_cons_ge_tailFuel
+    (stmt : YulStmt)
+    (rest : List YulStmt) :
+    sizeOf rest + 1 ≤ sizeOf (stmt :: rest) := by
+  simp
+  omega
+
+theorem compiled_terminal_ite_body_size_ge_blockFuel
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR tailIR : List YulStmt) :
+    sizeOf
+        [ YulStmt.let_ tempName condIR
+        , YulStmt.if_ (YulExpr.ident tempName) thenIR
+        , YulStmt.if_
+            (YulExpr.call "iszero" [YulExpr.ident tempName])
+            elseIR ] + 2 ≤
+      sizeOf
+        ([YulStmt.block
+            [ YulStmt.let_ tempName condIR
+            , YulStmt.if_ (YulExpr.ident tempName) thenIR
+            , YulStmt.if_
+                (YulExpr.call "iszero" [YulExpr.ident tempName])
+                elseIR
+            ]] ++ tailIR) := by
+  simp
+  omega
+
 private theorem execIRStmts_cons_of_execIRStmt_continue
     (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
     (hstmt : execIRStmt (rest.length + 1) state stmt = .continue next) :
@@ -4116,6 +4144,21 @@ private theorem execIRStmts_two_of_continue_then_return_extraFuel
       .return value next := by
   rw [execIRStmts_two_of_execIRStmt_continue_extraFuel extraFuel state mid stmt1 stmt2 rest hstmt1]
   exact execIRStmts_cons_of_execIRStmt_return_extraFuel extraFuel mid next stmt2 rest value hstmt2
+
+private theorem execIRStmts_two_of_continue_then_return_anyFuel
+    (fuel : Nat)
+    (state mid next : IRState) (stmt1 stmt2 : YulStmt) (rest : List YulStmt) (value : Nat)
+    (hstmt1 : execIRStmt fuel state stmt1 = .continue mid)
+    (hstmt2 : execIRStmt (fuel - 1) mid stmt2 = .return value next) :
+    execIRStmts (fuel + 1) state (stmt1 :: stmt2 :: rest) =
+      .return value next := by
+  rw [execIRStmts_cons_of_execIRStmt_continue_anyFuel fuel state mid stmt1 (stmt2 :: rest) hstmt1]
+  cases fuel with
+  | zero =>
+      cases stmt2 <;> simp [execIRStmt] at hstmt2
+  | succ fuel =>
+      simpa using
+        (execIRStmts_cons_of_execIRStmt_return_anyFuel fuel mid next stmt2 rest value hstmt2)
 
 private theorem execIRStmt_block_of_execIRStmts_continue
     (fuel : Nat) (state next : IRState) (body : List YulStmt)

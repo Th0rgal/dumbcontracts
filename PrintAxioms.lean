@@ -34,6 +34,7 @@ import Compiler.Proofs.ArithmeticProfile
 import Compiler.Proofs.EndToEnd
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.SupportedFragment
+import Compiler.Proofs.IRGeneration.SupportedSpec
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeLemmas
 import Compiler.Proofs.YulGeneration.Builtins
@@ -669,6 +670,12 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- Compiler/Proofs/IRGeneration/SupportedFragment.lean
 #print axioms Compiler.Proofs.IRGeneration.supported_stmt_list_preserves_semantics
 
+-- Compiler/Proofs/IRGeneration/SupportedSpec.lean
+#print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedContractSurface_nil
+#print axioms Compiler.Proofs.IRGeneration.selectorDispatchedFunctions_nil
+#print axioms Compiler.Proofs.IRGeneration.counter_supported_spec
+#print axioms Compiler.Proofs.IRGeneration.simpleStorage_supported_spec
+
 -- Compiler/Proofs/MappingSlot.lean
 #print axioms Compiler.Proofs.abstractMappingSlot_eq_solidity
 #print axioms Compiler.Proofs.abstractMappingTag_eq_zero
@@ -772,4 +779,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 662 theorems/lemmas (607 public, 55 private)
+-- Total: 666 theorems/lemmas (611 public, 55 private)

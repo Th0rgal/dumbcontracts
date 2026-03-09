@@ -156,9 +156,9 @@ theorem counter_supported_spec : SupportedSpec counterSupportedSpecModel
       noErrors := rfl
       noExternals := rfl
       selectorCount := by
-        native_decide
+        decide
       selectorsDistinct := by
-        native_decide
+        decide
       functions := ?_ }
   intro fn hfn
   simp [counterSupportedSpecModel] at hfn
@@ -169,7 +169,7 @@ theorem counter_supported_spec : SupportedSpec counterSupportedSpecModel
         params := by intro param hparam; cases hparam
         returns := ⟨[], rfl, trivial⟩
         body := Verity.Core.Free.counter_increment_supported
-        bodySurface := by native_decide
+        bodySurface := by decide
         noLocalObligations := rfl }
   · refine
       { nonInternal := rfl
@@ -177,7 +177,7 @@ theorem counter_supported_spec : SupportedSpec counterSupportedSpecModel
         params := by intro param hparam; cases hparam
         returns := ⟨[], rfl, trivial⟩
         body := Verity.Core.Free.counter_decrement_supported
-        bodySurface := by native_decide
+        bodySurface := by decide
         noLocalObligations := rfl }
   · refine
       { nonInternal := rfl
@@ -185,7 +185,7 @@ theorem counter_supported_spec : SupportedSpec counterSupportedSpecModel
         params := by intro param hparam; cases hparam
         returns := ⟨[.uint256], rfl, trivial⟩
         body := Verity.Core.Free.counter_getCount_supported
-        bodySurface := by native_decide
+        bodySurface := by decide
         noLocalObligations := rfl }
 
 def simpleStorageSupportedSpecModel : CompilationModel :=
@@ -206,9 +206,9 @@ theorem simpleStorage_supported_spec : SupportedSpec simpleStorageSupportedSpecM
       noErrors := rfl
       noExternals := rfl
       selectorCount := by
-        native_decide
+        decide
       selectorsDistinct := by
-        native_decide
+        decide
       functions := ?_ }
   intro fn hfn
   simp [simpleStorageSupportedSpecModel] at hfn
@@ -219,7 +219,7 @@ theorem simpleStorage_supported_spec : SupportedSpec simpleStorageSupportedSpecM
       params := by intro param hparam; cases hparam
       returns := ⟨[.uint256], rfl, trivial⟩
       body := Verity.Core.Free.simpleStorage_retrieve_supported
-      bodySurface := by native_decide
+      bodySurface := by decide
       noLocalObligations := rfl }
 
 end Compiler.Proofs.IRGeneration

@@ -123,6 +123,25 @@ theorem bindingsExactlyMatchIRVars_implies_onScope
   intro name _
   exact hexact name
 
+theorem bindingsExactlyMatchIRVars_implies_onExpr
+    {expr : Expr}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    (hexact : bindingsExactlyMatchIRVars bindings state) :
+    bindingsExactlyMatchIRVarsOnExpr expr bindings state := by
+  intro name _
+  exact hexact name
+
+theorem bindingsExactlyMatchIRVarsOnExpr_of_subset
+    {expr subexpr : Expr}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    (hexact : bindingsExactlyMatchIRVarsOnExpr expr bindings state)
+    (hsubset : ∀ name, name ∈ exprBoundNames subexpr → name ∈ exprBoundNames expr) :
+    bindingsExactlyMatchIRVarsOnExpr subexpr bindings state := by
+  intro name hname
+  exact hexact name (hsubset name hname)
+
 
 def runtimeStateMatchesIR
     (fields : List Field)
@@ -1050,6 +1069,42 @@ theorem eval_compileExpr_localVar_of_exact_bindings
   rw [hsource]
   exact hident
 
+theorem eval_compileExpr_param_of_expr_bindings
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (name : String)
+    (hexact : bindingsExactlyMatchIRVarsOnExpr (.param name) runtime.bindings state)
+    (hpresent : exprBoundNamesPresent (.param name) runtime.bindings) :
+    evalIRExpr state (YulExpr.ident name) =
+      some (SourceSemantics.evalExpr fields runtime (.param name)) := by
+  rcases hpresent name (by simp [exprBoundNames]) with ⟨value, hlookup⟩
+  have hident := hexact name (by simp [exprBoundNames])
+  rw [hlookup] at hident
+  have hsource : SourceSemantics.evalExpr fields runtime (.param name) = value := by
+    change SourceSemantics.lookupValue runtime.bindings name = value
+    exact lookupValue_eq_of_lookupBinding?_some hlookup
+  rw [hsource]
+  simpa [evalIRExpr] using hident
+
+theorem eval_compileExpr_localVar_of_expr_bindings
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (name : String)
+    (hexact : bindingsExactlyMatchIRVarsOnExpr (.localVar name) runtime.bindings state)
+    (hpresent : exprBoundNamesPresent (.localVar name) runtime.bindings) :
+    evalIRExpr state (YulExpr.ident name) =
+      some (SourceSemantics.evalExpr fields runtime (.localVar name)) := by
+  rcases hpresent name (by simp [exprBoundNames]) with ⟨value, hlookup⟩
+  have hident := hexact name (by simp [exprBoundNames])
+  rw [hlookup] at hident
+  have hsource : SourceSemantics.evalExpr fields runtime (.localVar name) = value := by
+    change SourceSemantics.lookupValue runtime.bindings name = value
+    exact lookupValue_eq_of_lookupBinding?_some hlookup
+  rw [hsource]
+  simpa [evalIRExpr] using hident
+
 @[simp] theorem boolWord_lt_evmModulus (b : Bool) :
     SourceSemantics.boolWord b < Compiler.Constants.evmModulus := by
   cases b <;> norm_num [SourceSemantics.boolWord, Compiler.Constants.evmModulus]
@@ -1932,13 +1987,13 @@ theorem compileExpr_core_ok
         compileExpr_logicalOr_ok hlhs hrhs⟩
 
 mutual
-theorem eval_compileExpr_core
+theorem eval_compileExpr_core_onExpr
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}
     {state : IRState}
     {expr : Expr}
     (hcore : ExprCompileCore expr)
-    (hexact : bindingsExactlyMatchIRVars runtime.bindings state)
+    (hexact : bindingsExactlyMatchIRVarsOnExpr expr runtime.bindings state)
     (hbounded : bindingsBounded runtime.bindings)
     (hpresent : exprBoundNamesPresent expr runtime.bindings)
     (hruntime : runtimeStateMatchesIR fields runtime state) :
@@ -1950,10 +2005,10 @@ theorem eval_compileExpr_core
       simpa [CompilationModel.compileExpr] using eval_compileExpr_literal fields runtime state value
   | param name =>
       simpa [CompilationModel.compileExpr] using
-        eval_compileExpr_param_of_exact_bindings name hexact hpresent
+        eval_compileExpr_param_of_expr_bindings name hexact hpresent
   | localVar name =>
       simpa [CompilationModel.compileExpr] using
-        eval_compileExpr_localVar_of_exact_bindings name hexact hpresent
+        eval_compileExpr_localVar_of_expr_bindings name hexact hpresent
   | caller =>
       exact eval_compileExpr_caller hruntime
   | contractAddress =>
@@ -1970,6 +2025,14 @@ theorem eval_compileExpr_core
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -1977,11 +2040,11 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_add_of_compiled hlhs hrhs
@@ -1990,6 +2053,14 @@ theorem eval_compileExpr_core
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -1997,21 +2068,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_sub_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | mul hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2019,11 +2098,11 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_mul_of_compiled hlhs hrhs
@@ -2032,6 +2111,14 @@ theorem eval_compileExpr_core
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2039,21 +2126,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_div_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | mod hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2061,21 +2156,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_mod_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | eq hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2083,21 +2186,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_eq_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | lt hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2105,21 +2216,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_lt_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | gt hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2127,21 +2246,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_gt_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | ge hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2149,21 +2276,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_ge_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | le hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2171,34 +2306,46 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_le_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | logicalNot h ih =>
       rename_i expr
       rcases compileExpr_core_ok h with ⟨exprIR, hexpr⟩
+      have hexact' : bindingsExactlyMatchIRVarsOnExpr expr runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using hmem)
       have hpresent' := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using hmem)
       have hEval : evalIRExpr state exprIR = some (SourceSemantics.evalExpr fields runtime expr) := by
-        have htmp := ih hexact hbounded hpresent' hruntime
+        have htmp := ih hexact' hbounded hpresent' hruntime
         rw [hexpr] at htmp
         simpa using htmp
       exact eval_compileExpr_logicalNot_of_compiled hexpr
         hEval
-        (evalExpr_lt_evmModulus_core h hexact hbounded hpresent' hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr h hexact' hbounded hpresent' hruntime)
   | logicalAnd hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2206,21 +2353,29 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_logicalAnd_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
   | logicalOr hL hR ihL ihR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hmem
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hpresentL := exprBoundNamesPresent_of_subset hpresent (by
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hmem))
@@ -2228,25 +2383,41 @@ theorem eval_compileExpr_core
         intro name hmem
         simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hmem))
       have hEvalL : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs) := by
-        have htmp := ihL hexact hbounded hpresentL hruntime
+        have htmp := ihL hexactL hbounded hpresentL hruntime
         rw [hlhs] at htmp
         simpa using htmp
       have hEvalR : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs) := by
-        have htmp := ihR hexact hbounded hpresentR hruntime
+        have htmp := ihR hexactR hbounded hpresentR hruntime
         rw [hrhs] at htmp
         simpa using htmp
       exact eval_compileExpr_logicalOr_of_compiled hlhs hrhs
         hEvalL hEvalR
-        (evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime)
-        (evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime)
+        (evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime)
 
-theorem evalExpr_lt_evmModulus_core
+theorem eval_compileExpr_core
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}
     {state : IRState}
     {expr : Expr}
     (hcore : ExprCompileCore expr)
     (hexact : bindingsExactlyMatchIRVars runtime.bindings state)
+    (hbounded : bindingsBounded runtime.bindings)
+    (hpresent : exprBoundNamesPresent expr runtime.bindings)
+    (hruntime : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state
+      (CompilationModel.compileExpr fields .calldata expr |>.toOption.getD (YulExpr.lit 0)) =
+        some (SourceSemantics.evalExpr fields runtime expr) :=
+  eval_compileExpr_core_onExpr hcore
+    (bindingsExactlyMatchIRVars_implies_onExpr hexact) hbounded hpresent hruntime
+
+theorem evalExpr_lt_evmModulus_core_onExpr
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {expr : Expr}
+    (hcore : ExprCompileCore expr)
+    (hexact : bindingsExactlyMatchIRVarsOnExpr expr runtime.bindings state)
     (hbounded : bindingsBounded runtime.bindings)
     (hpresent : exprBoundNamesPresent expr runtime.bindings)
     (hruntime : runtimeStateMatchesIR fields runtime state) :
@@ -2386,6 +2557,20 @@ theorem evalExpr_lt_evmModulus_core
               decide (SourceSemantics.evalExpr fields runtime rhs != 0)) by rfl]
       exact boolWord_lt_evmModulus _
 end
+
+theorem evalExpr_lt_evmModulus_core
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {expr : Expr}
+    (hcore : ExprCompileCore expr)
+    (hexact : bindingsExactlyMatchIRVars runtime.bindings state)
+    (hbounded : bindingsBounded runtime.bindings)
+    (hpresent : exprBoundNamesPresent expr runtime.bindings)
+    (hruntime : runtimeStateMatchesIR fields runtime state) :
+    SourceSemantics.evalExpr fields runtime expr < Compiler.Constants.evmModulus :=
+  evalExpr_lt_evmModulus_core_onExpr hcore
+    (bindingsExactlyMatchIRVars_implies_onExpr hexact) hbounded hpresent hruntime
 
 theorem compileRequireFailCond_core_ok
     {fields : List Field}
@@ -2549,13 +2734,13 @@ theorem compileRequireFailCond_core_ok
             intro a b hEq
             cases hEq⟩
 
-theorem eval_compileRequireFailCond_core
+theorem eval_compileRequireFailCond_core_onExpr
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}
     {state : IRState}
     {cond : Expr}
     (hcore : ExprCompileCore cond)
-    (hexact : bindingsExactlyMatchIRVars runtime.bindings state)
+    (hexact : bindingsExactlyMatchIRVarsOnExpr cond runtime.bindings state)
     (hbounded : bindingsBounded runtime.bindings)
     (hpresent : exprBoundNamesPresent cond runtime.bindings)
     (hruntime : runtimeStateMatchesIR fields runtime state) :
@@ -2564,14 +2749,15 @@ theorem eval_compileRequireFailCond_core
       evalIRExpr state failCond =
         some (SourceSemantics.boolWord (SourceSemantics.evalExpr fields runtime cond = 0)) := by
   let finishIszeroEval {expr : Expr} (h : ExprCompileCore expr)
+      (hexactExpr : bindingsExactlyMatchIRVarsOnExpr expr runtime.bindings state)
       (hpresentExpr : exprBoundNamesPresent expr runtime.bindings)
       {exprIR : YulExpr}
       (hexpr : CompilationModel.compileExpr fields .calldata expr = Except.ok exprIR) :
       evalIRExpr state (YulExpr.call "iszero" [exprIR]) =
         some (SourceSemantics.boolWord (SourceSemantics.evalExpr fields runtime expr = 0)) := by
-    have heval := eval_compileExpr_core h hexact hbounded hpresentExpr hruntime
+    have heval := eval_compileExpr_core_onExpr h hexactExpr hbounded hpresentExpr hruntime
     rw [hexpr] at heval
-    have hlt := evalExpr_lt_evmModulus_core h hexact hbounded hpresentExpr hruntime
+    have hlt := evalExpr_lt_evmModulus_core_onExpr h hexactExpr hbounded hpresentExpr hruntime
     simpa [hexpr] using evalIRExpr_iszero_of_lt heval hlt
   cases hcore with
   | literal value =>
@@ -2580,63 +2766,63 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .literal value)
-          (show ExprCompileCore (.literal value) from ExprCompileCore.literal value) hpresent hexpr
+          (show ExprCompileCore (.literal value) from ExprCompileCore.literal value) hexact hpresent hexpr
   | param name =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.param name) from ExprCompileCore.param name) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .param name)
-          (show ExprCompileCore (.param name) from ExprCompileCore.param name) hpresent hexpr
+          (show ExprCompileCore (.param name) from ExprCompileCore.param name) hexact hpresent hexpr
   | localVar name =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.localVar name) from ExprCompileCore.localVar name) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .localVar name)
-          (show ExprCompileCore (.localVar name) from ExprCompileCore.localVar name) hpresent hexpr
+          (show ExprCompileCore (.localVar name) from ExprCompileCore.localVar name) hexact hpresent hexpr
   | caller =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.caller) from ExprCompileCore.caller) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .caller)
-          (show ExprCompileCore (.caller) from ExprCompileCore.caller) hpresent hexpr
+          (show ExprCompileCore (.caller) from ExprCompileCore.caller) hexact hpresent hexpr
   | contractAddress =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.contractAddress) from ExprCompileCore.contractAddress) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .contractAddress)
-          (show ExprCompileCore (.contractAddress) from ExprCompileCore.contractAddress) hpresent hexpr
+          (show ExprCompileCore (.contractAddress) from ExprCompileCore.contractAddress) hexact hpresent hexpr
   | msgValue =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.msgValue) from ExprCompileCore.msgValue) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .msgValue)
-          (show ExprCompileCore (.msgValue) from ExprCompileCore.msgValue) hpresent hexpr
+          (show ExprCompileCore (.msgValue) from ExprCompileCore.msgValue) hexact hpresent hexpr
   | blockTimestamp =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.blockTimestamp) from ExprCompileCore.blockTimestamp) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .blockTimestamp)
-          (show ExprCompileCore (.blockTimestamp) from ExprCompileCore.blockTimestamp) hpresent hexpr
+          (show ExprCompileCore (.blockTimestamp) from ExprCompileCore.blockTimestamp) hexact hpresent hexpr
   | blockNumber =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.blockNumber) from ExprCompileCore.blockNumber) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .blockNumber)
-          (show ExprCompileCore (.blockNumber) from ExprCompileCore.blockNumber) hpresent hexpr
+          (show ExprCompileCore (.blockNumber) from ExprCompileCore.blockNumber) hexact hpresent hexpr
   | chainid =>
       rcases compileExpr_core_ok (fields := fields)
           (show ExprCompileCore (.chainid) from ExprCompileCore.chainid) with ⟨exprIR, hexpr⟩
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .chainid)
-          (show ExprCompileCore (.chainid) from ExprCompileCore.chainid) hpresent hexpr
+          (show ExprCompileCore (.chainid) from ExprCompileCore.chainid) hexact hpresent hexpr
   | add hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2644,7 +2830,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .add lhs rhs)
-          (show ExprCompileCore (.add lhs rhs) from ExprCompileCore.add hL hR) hpresent hexpr
+          (show ExprCompileCore (.add lhs rhs) from ExprCompileCore.add hL hR) hexact hpresent hexpr
   | sub hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2652,7 +2838,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .sub lhs rhs)
-          (show ExprCompileCore (.sub lhs rhs) from ExprCompileCore.sub hL hR) hpresent hexpr
+          (show ExprCompileCore (.sub lhs rhs) from ExprCompileCore.sub hL hR) hexact hpresent hexpr
   | mul hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2660,7 +2846,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .mul lhs rhs)
-          (show ExprCompileCore (.mul lhs rhs) from ExprCompileCore.mul hL hR) hpresent hexpr
+          (show ExprCompileCore (.mul lhs rhs) from ExprCompileCore.mul hL hR) hexact hpresent hexpr
   | div hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2668,7 +2854,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .div lhs rhs)
-          (show ExprCompileCore (.div lhs rhs) from ExprCompileCore.div hL hR) hpresent hexpr
+          (show ExprCompileCore (.div lhs rhs) from ExprCompileCore.div hL hR) hexact hpresent hexpr
   | mod hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2676,7 +2862,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .mod lhs rhs)
-          (show ExprCompileCore (.mod lhs rhs) from ExprCompileCore.mod hL hR) hpresent hexpr
+          (show ExprCompileCore (.mod lhs rhs) from ExprCompileCore.mod hL hR) hexact hpresent hexpr
   | eq hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2684,7 +2870,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .eq lhs rhs)
-          (show ExprCompileCore (.eq lhs rhs) from ExprCompileCore.eq hL hR) hpresent hexpr
+          (show ExprCompileCore (.eq lhs rhs) from ExprCompileCore.eq hL hR) hexact hpresent hexpr
   | lt hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2692,7 +2878,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .lt lhs rhs)
-          (show ExprCompileCore (.lt lhs rhs) from ExprCompileCore.lt hL hR) hpresent hexpr
+          (show ExprCompileCore (.lt lhs rhs) from ExprCompileCore.lt hL hR) hexact hpresent hexpr
   | gt hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2700,11 +2886,19 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .gt lhs rhs)
-          (show ExprCompileCore (.gt lhs rhs) from ExprCompileCore.gt hL hR) hpresent hexpr
+          (show ExprCompileCore (.gt lhs rhs) from ExprCompileCore.gt hL hR) hexact hpresent hexpr
   | ge hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hname
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hname))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hname
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hname))
       have hpresentL : exprBoundNamesPresent lhs runtime.bindings :=
         exprBoundNamesPresent_of_subset hpresent (by
           intro name hname
@@ -2713,12 +2907,12 @@ theorem eval_compileRequireFailCond_core
         exprBoundNamesPresent_of_subset hpresent (by
           intro name hname
           simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hname))
-      have hlhsEval := eval_compileExpr_core hL hexact hbounded hpresentL hruntime
-      have hrhsEval := eval_compileExpr_core hR hexact hbounded hpresentR hruntime
+      have hlhsEval := eval_compileExpr_core_onExpr hL hexactL hbounded hpresentL hruntime
+      have hrhsEval := eval_compileExpr_core_onExpr hR hexactR hbounded hpresentR hruntime
       rw [hlhs] at hlhsEval
       rw [hrhs] at hrhsEval
-      have hlhsLt := evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime
-      have hrhsLt := evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime
+      have hlhsLt := evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime
+      have hrhsLt := evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime
       refine ⟨YulExpr.call "lt" [lhsIR, rhsIR], ?_, ?_⟩
       · rw [CompilationModel.compileRequireFailCond, hlhs, hrhs]
         rfl
@@ -2744,6 +2938,14 @@ theorem eval_compileRequireFailCond_core
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields) hL with ⟨lhsIR, hlhs⟩
       rcases compileExpr_core_ok (fields := fields) hR with ⟨rhsIR, hrhs⟩
+      have hexactL : bindingsExactlyMatchIRVarsOnExpr lhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hname
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inl hname))
+      have hexactR : bindingsExactlyMatchIRVarsOnExpr rhs runtime.bindings state :=
+        bindingsExactlyMatchIRVarsOnExpr_of_subset hexact (by
+          intro name hname
+          simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hname))
       have hpresentL : exprBoundNamesPresent lhs runtime.bindings :=
         exprBoundNamesPresent_of_subset hpresent (by
           intro name hname
@@ -2752,12 +2954,12 @@ theorem eval_compileRequireFailCond_core
         exprBoundNamesPresent_of_subset hpresent (by
           intro name hname
           simpa [exprBoundNames] using List.mem_append.mpr (Or.inr hname))
-      have hlhsEval := eval_compileExpr_core hL hexact hbounded hpresentL hruntime
-      have hrhsEval := eval_compileExpr_core hR hexact hbounded hpresentR hruntime
+      have hlhsEval := eval_compileExpr_core_onExpr hL hexactL hbounded hpresentL hruntime
+      have hrhsEval := eval_compileExpr_core_onExpr hR hexactR hbounded hpresentR hruntime
       rw [hlhs] at hlhsEval
       rw [hrhs] at hrhsEval
-      have hlhsLt := evalExpr_lt_evmModulus_core hL hexact hbounded hpresentL hruntime
-      have hrhsLt := evalExpr_lt_evmModulus_core hR hexact hbounded hpresentR hruntime
+      have hlhsLt := evalExpr_lt_evmModulus_core_onExpr hL hexactL hbounded hpresentL hruntime
+      have hrhsLt := evalExpr_lt_evmModulus_core_onExpr hR hexactR hbounded hpresentR hruntime
       refine ⟨YulExpr.call "gt" [lhsIR, rhsIR], ?_, ?_⟩
       · rw [CompilationModel.compileRequireFailCond, hlhs, hrhs]
         rfl
@@ -2786,7 +2988,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .logicalNot expr)
-          (show ExprCompileCore (.logicalNot expr) from ExprCompileCore.logicalNot h) hpresent hexpr
+          (show ExprCompileCore (.logicalNot expr) from ExprCompileCore.logicalNot h) hexact hpresent hexpr
   | logicalAnd hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2794,7 +2996,7 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .logicalAnd lhs rhs)
-          (show ExprCompileCore (.logicalAnd lhs rhs) from ExprCompileCore.logicalAnd hL hR) hpresent hexpr
+          (show ExprCompileCore (.logicalAnd lhs rhs) from ExprCompileCore.logicalAnd hL hR) hexact hpresent hexpr
   | logicalOr hL hR =>
       rename_i lhs rhs
       rcases compileExpr_core_ok (fields := fields)
@@ -2802,7 +3004,24 @@ theorem eval_compileRequireFailCond_core
       refine ⟨YulExpr.call "iszero" [exprIR], ?_, ?_⟩
       · simp [CompilationModel.compileRequireFailCond, hexpr]
       · simpa using finishIszeroEval (expr := .logicalOr lhs rhs)
-          (show ExprCompileCore (.logicalOr lhs rhs) from ExprCompileCore.logicalOr hL hR) hpresent hexpr
+          (show ExprCompileCore (.logicalOr lhs rhs) from ExprCompileCore.logicalOr hL hR) hexact hpresent hexpr
+
+theorem eval_compileRequireFailCond_core
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {cond : Expr}
+    (hcore : ExprCompileCore cond)
+    (hexact : bindingsExactlyMatchIRVars runtime.bindings state)
+    (hbounded : bindingsBounded runtime.bindings)
+    (hpresent : exprBoundNamesPresent cond runtime.bindings)
+    (hruntime : runtimeStateMatchesIR fields runtime state) :
+    ∃ failCond,
+      CompilationModel.compileRequireFailCond fields .calldata cond = Except.ok failCond ∧
+      evalIRExpr state failCond =
+        some (SourceSemantics.boolWord (SourceSemantics.evalExpr fields runtime cond = 0)) :=
+  eval_compileRequireFailCond_core_onExpr hcore
+    (bindingsExactlyMatchIRVars_implies_onExpr hexact) hbounded hpresent hruntime
 
 theorem runtimeStateMatchesIR_setVar_bindValue
     {fields : List Field}

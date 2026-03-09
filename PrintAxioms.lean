@@ -687,6 +687,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_ok_of_components
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_ok_params
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_ok_selector
+#print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_ok_components
 #print axioms Compiler.Proofs.IRGeneration.Function.exec_compiledFunctionIR_of_body
 #print axioms Compiler.Proofs.IRGeneration.Function.interpretFunction_eq_execResultToIRResult_of_body
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_correct_of_body
@@ -736,6 +737,10 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.supported_stmt_list_preserves_semantics
 
 -- Compiler/Proofs/IRGeneration/SupportedSpec.lean
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.supportedFunctionOfSelectorDispatched
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionParamsSupported
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionBodySupported
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionReturnsSupported
 #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedContractSurface_nil
 #print axioms Compiler.Proofs.IRGeneration.selectorDispatchedFunctions_nil
 -- #print axioms Compiler.Proofs.IRGeneration.counter_noPackedFields  -- private
@@ -848,4 +853,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
--- Total: 720 theorems/lemmas (643 public, 77 private)
+-- Total: 725 theorems/lemmas (648 public, 77 private)

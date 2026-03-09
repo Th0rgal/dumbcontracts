@@ -121,6 +121,29 @@ This remains the last contract-level proof gap between body-level Yul equivalenc
 
 **Risk**: Medium.
 
+### 7. `supported_function_correct`
+
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:272`
+
+**Statement**:
+```lean
+axiom supported_function_correct
+```
+
+**Purpose**:
+Closes the remaining whole-function Layer 2 gap for the generic compiler theorem surface. It is the function-level bridge used by the whole-contract theorem `Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics`, and it is quantified over arbitrary supported `CompilationModel` functions rather than any contract-specific semantic bridge.
+
+**Why this is currently an axiom**:
+The repository still lacks the final generic proof that composes:
+- source whole-function semantics for `SupportedSpec`
+- the supported statement-fragment compilation theorem
+- parameter-loading correctness
+- the exact `compileStmtList` / IR execution path used by `CompilationModel.compile`
+
+That proof is now isolated to this one function-level theorem instead of being spread across contract-specific bridge theorems.
+
+**Risk**: Medium.
+
 ## Trusted Cryptographic Primitive (Non-Axiom)
 
 ### `ffi.KEC` (keccak256 via EVMYul FFI)
@@ -203,7 +226,7 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 
 ## Trust Summary
 
-- Active axioms: 6
+- Active axioms: 7
 - Production blockers from axioms: 0
 - Enforcement: `scripts/check_axioms.py` ensures this file tracks exact source location.
 - Compilation-path totalization work in `Compiler/CompilationModel.lean` does not

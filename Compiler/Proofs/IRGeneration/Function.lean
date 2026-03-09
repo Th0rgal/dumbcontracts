@@ -257,16 +257,19 @@ theorem interpretFunction_eq_execResultToIRResult_of_body
     FunctionBody.stmtResultToSourceResult, FunctionBody.sourceResultMatchesIRResult,
     FunctionBody.irResultOfExecResult, execResultToIRResult] using hpack
 
-/-- TODO(#1510): prove the generic function-level simulation for the supported
-fragment. This must derive whole-function semantic preservation directly from:
+/-- TODO(#1510): discharge this axiomatized generic function-level simulation.
+This must be proved from compiler structure alone, directly from:
 - a whole-contract `SupportedSpec` witness
 - successful `compileFunctionSpec` decomposition
 - successful supported parameter binding
 - generic transaction well-formedness
 
-This theorem must remain fully generic: no contract-specific bridge premise and
-no intermediate hypothesis pre-aligning compiled functions to source functions. -/
-theorem supported_function_correct
+The final proof must remain fully generic:
+- no contract-specific bridge premise
+- no intermediate hypothesis pre-aligning compiled functions to source functions
+- no relocation of the whole-function proof burden back into contract proofs
+See `AXIOMS.md` for the current trust-boundary entry. -/
+axiom supported_function_correct
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpec model selectors)
@@ -290,8 +293,7 @@ theorem supported_function_correct
     (hcalldataSizeFits : TxCalldataSizeFitsEvm tx) :
     FunctionBody.sourceResultMatchesIRResult
       (SourceSemantics.interpretFunction model fn tx initialWorld)
-      (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-  sorry
+      (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld))
 
 theorem compileFunctionSpec_correct_of_body
     (model : CompilationModel)

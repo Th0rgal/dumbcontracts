@@ -131,7 +131,7 @@ Key files: [`StatementEquivalence.lean`](../Compiler/Proofs/YulGeneration/Statem
 
 **Proof-Only Properties (22 exclusions)**: Internal proof machinery that cannot be tested in Foundry.
 
-1 `sorry` remaining across `Compiler/**/*.lean` and `Verity/**/*.lean` proof modules.
+0 `sorry` remaining across `Compiler/**/*.lean` and `Verity/**/*.lean` proof modules.
 
 ## Differential Testing
 

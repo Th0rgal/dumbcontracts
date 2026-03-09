@@ -273,7 +273,20 @@ def _extract_artifact_names(job_body: str, *, action: str) -> list[str]:
     return names
 
 
+def _extract_artifact_paths(job_body: str, *, action: str) -> list[str | None]:
+    paths: list[str | None] = []
+    for block in _iter_step_blocks(job_body):
+        if not _step_uses_action(block, action):
+            continue
+        paths.append(_extract_with_key_from_block(block, "path"))
+    return paths
+
+
 def _extract_name_from_with_block(step_block: str) -> str | None:
+    return _extract_with_key_from_block(step_block, "name")
+
+
+def _extract_with_key_from_block(step_block: str, key: str) -> str | None:
     lines = step_block.splitlines()
     i = 0
     while i < len(lines):
@@ -306,18 +319,41 @@ def _extract_name_from_with_block(step_block: str) -> str | None:
         if min_child_indent is None:
             i = j
             continue
-        for child in block_lines:
+        for child_idx, child in enumerate(block_lines):
             if not child.strip():
                 continue
             child_indent = len(child) - len(child.lstrip(" "))
             if child_indent != min_child_indent:
                 continue
-            km = re.match(r"^\s*name:\s*(?P<value>.+?)\s*$", child)
+            km = re.match(rf"^\s*{re.escape(key)}:\s*(?P<value>.*?)\s*$", child)
             if not km:
                 continue
             raw = strip_yaml_inline_comment(km.group("value"))
+            if raw in {"|", "|-", "|+", ">", ">-", ">+"}:
+                nested_lines: list[str] = []
+                nested_indent: int | None = None
+                for nested in block_lines[child_idx + 1 :]:
+                    if not nested.strip():
+                        nested_lines.append("")
+                        continue
+                    current_indent = len(nested) - len(nested.lstrip(" "))
+                    if current_indent <= child_indent:
+                        break
+                    if nested_indent is None or current_indent < nested_indent:
+                        nested_indent = current_indent
+                    nested_lines.append(nested)
+                if nested_indent is None:
+                    return ""
+                normalized_lines = [
+                    nested[nested_indent:] if nested.strip() else ""
+                    for nested in nested_lines
+                ]
+                while normalized_lines and normalized_lines[-1] == "":
+                    normalized_lines.pop()
+                return "\n".join(normalized_lines)
             if raw:
                 return unquote_yaml_scalar(raw)
+            return ""
         i = j
     return None
 
@@ -575,19 +611,27 @@ def check_artifacts(snapshot: Snapshot, spec: dict) -> CheckResult:
     errors: list[str] = []
     expected_uploads: dict[str, list[str]] = spec.get("expected_uploaded_artifacts", {})
     expected_downloads: dict[str, list[str]] = spec.get("expected_downloaded_artifacts", {})
+    expected_upload_paths: dict[str, list[str | None]] = spec.get("expected_uploaded_artifact_paths", {})
+    expected_download_paths: dict[str, list[str | None]] = spec.get("expected_downloaded_artifact_paths", {})
 
     actual_uploads: dict[str, list[str]] = {}
     actual_downloads: dict[str, list[str]] = {}
+    actual_upload_paths: dict[str, list[str | None]] = {}
+    actual_download_paths: dict[str, list[str | None]] = {}
 
     for job in snapshot.jobs:
         job_body = snapshot.job_body(job)
         upload_names = _extract_artifact_names(job_body, action="upload-artifact")
         download_names = _extract_artifact_names(job_body, action="download-artifact")
+        upload_paths = _extract_artifact_paths(job_body, action="upload-artifact")
+        download_paths = _extract_artifact_paths(job_body, action="download-artifact")
 
         if upload_names:
             actual_uploads[job] = upload_names
+            actual_upload_paths[job] = upload_paths
         if download_names:
             actual_downloads[job] = download_names
+            actual_download_paths[job] = download_paths
 
         if len(upload_names) != len(set(upload_names)):
             errors.append(f"duplicate upload artifact names in {job}: {upload_names}")
@@ -637,6 +681,15 @@ def check_artifacts(snapshot: Snapshot, spec: dict) -> CheckResult:
                 expected_names,
             )
         )
+        if job in expected_upload_paths:
+            errors.extend(
+                _compare_lists(
+                    f"{job} upload artifact paths",
+                    [repr(path) for path in actual_upload_paths.get(job, [])],
+                    f"spec {job} upload artifact paths",
+                    [repr(path) for path in expected_upload_paths[job]],
+                )
+            )
 
     for job, expected_names in expected_downloads.items():
         if job not in actual_downloads:
@@ -650,6 +703,15 @@ def check_artifacts(snapshot: Snapshot, spec: dict) -> CheckResult:
                 expected_names,
             )
         )
+        if job in expected_download_paths:
+            errors.extend(
+                _compare_lists(
+                    f"{job} download artifact paths",
+                    [repr(path) for path in actual_download_paths.get(job, [])],
+                    f"spec {job} download artifact paths",
+                    [repr(path) for path in expected_download_paths[job]],
+                )
+            )
 
     uploaded = set(upload_names)
     for job, names in actual_downloads.items():

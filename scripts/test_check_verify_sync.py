@@ -134,6 +134,8 @@ class VerifySyncTests(unittest.TestCase):
         *,
         expected_uploaded_artifacts: dict[str, list[str]],
         expected_downloaded_artifacts: dict[str, list[str]],
+        expected_uploaded_artifact_paths: dict[str, list[str | None]] | None = None,
+        expected_downloaded_artifact_paths: dict[str, list[str | None]] | None = None,
     ) -> tuple[int, str, str]:
         with tempfile.TemporaryDirectory(dir=SCRIPT_DIR.parent) as td:
             root = Path(td)
@@ -145,6 +147,8 @@ class VerifySyncTests(unittest.TestCase):
                     {
                         "expected_uploaded_artifacts": expected_uploaded_artifacts,
                         "expected_downloaded_artifacts": expected_downloaded_artifacts,
+                        "expected_uploaded_artifact_paths": expected_uploaded_artifact_paths or {},
+                        "expected_downloaded_artifact_paths": expected_downloaded_artifact_paths or {},
                     }
                 ),
                 encoding="utf-8",
@@ -984,6 +988,40 @@ class VerifySyncTests(unittest.TestCase):
             err,
         )
 
+    def test_artifacts_check_fails_when_upload_path_drifts(self) -> None:
+        workflow = """
+        name: verify
+        jobs:
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: axiom-dependency-report
+                  path: |
+                    axiom-report.md
+                    unexpected.log
+        """
+        rc, _, err = self._run_artifacts_check(
+            workflow,
+            expected_uploaded_artifacts={
+                "build": ["axiom-dependency-report"],
+            },
+            expected_downloaded_artifacts={},
+            expected_uploaded_artifact_paths={
+                "build": ["axiom-report.md\naxiom-report-raw.log"],
+            },
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "build upload artifact paths does not match spec build upload artifact paths.",
+            err,
+        )
+        self.assertIn(
+            "idx 0: build upload artifact paths=\"'axiom-report.md\\\\nunexpected.log'\", spec build upload artifact paths=\"'axiom-report.md\\\\naxiom-report-raw.log'\"",
+            err,
+        )
+
     def test_artifacts_check_fails_when_expected_download_is_missing(self) -> None:
         workflow = """
         name: verify
@@ -1023,6 +1061,49 @@ class VerifySyncTests(unittest.TestCase):
             err,
         )
 
+    def test_artifacts_check_fails_when_download_path_drift_removes_destination(self) -> None:
+        workflow = """
+        name: verify
+        jobs:
+          build-compiler:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name: generated-yul
+                  path: compiler/yul
+          foundry:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/download-artifact@v4
+                with:
+                  name: generated-yul
+        """
+        rc, _, err = self._run_artifacts_check(
+            workflow,
+            expected_uploaded_artifacts={
+                "build-compiler": ["generated-yul"],
+            },
+            expected_downloaded_artifacts={
+                "foundry": ["generated-yul"],
+            },
+            expected_uploaded_artifact_paths={
+                "build-compiler": ["compiler/yul"],
+            },
+            expected_downloaded_artifact_paths={
+                "foundry": ["compiler/yul"],
+            },
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "foundry download artifact paths does not match spec foundry download artifact paths.",
+            err,
+        )
+        self.assertIn(
+            "idx 0: foundry download artifact paths='None', spec foundry download artifact paths=\"'compiler/yul'\"",
+            err,
+        )
+
     def test_artifacts_check_passes_when_uploads_and_downloads_match_spec(self) -> None:
         workflow = """
         name: verify
@@ -1033,21 +1114,27 @@ class VerifySyncTests(unittest.TestCase):
               - uses: actions/upload-artifact@v4
                 with:
                   name: axiom-dependency-report
+                  path: |
+                    axiom-report.md
+                    axiom-report-raw.log
           build-compiler:
             runs-on: ubuntu-latest
             steps:
               - uses: actions/upload-artifact@v4
                 with:
                   name: generated-yul
+                  path: compiler/yul
               - uses: actions/upload-artifact@v4
                 with:
                   name: static-gas-report
+                  path: gas-report-static.tsv
           lean-profile:
             runs-on: ubuntu-latest
             steps:
               - uses: actions/upload-artifact@v4
                 with:
                   name: lean-perf-queue
+                  path: lean-perf-queue.md
           foundry-gas-calibration:
             runs-on: ubuntu-latest
             steps:
@@ -1057,6 +1144,7 @@ class VerifySyncTests(unittest.TestCase):
               - uses: actions/download-artifact@v4
                 with:
                   name: generated-yul
+                  path: compiler/yul
         """
         rc, out, err = self._run_artifacts_check(
             workflow,
@@ -1067,6 +1155,14 @@ class VerifySyncTests(unittest.TestCase):
             },
             expected_downloaded_artifacts={
                 "foundry-gas-calibration": ["static-gas-report", "generated-yul"],
+            },
+            expected_uploaded_artifact_paths={
+                "build": ["axiom-report.md\naxiom-report-raw.log"],
+                "build-compiler": ["compiler/yul", "gas-report-static.tsv"],
+                "lean-profile": ["lean-perf-queue.md"],
+            },
+            expected_downloaded_artifact_paths={
+                "foundry-gas-calibration": [None, "compiler/yul"],
             },
         )
         self.assertEqual(rc, 0, err)

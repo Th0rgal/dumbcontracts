@@ -256,6 +256,50 @@ theorem evalIRExpr_chainid_of_runtimeStateMatchesIR
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, hchain, Nat.mod_eq_of_lt hchainLt]
 
+@[simp] theorem boolWord_eq_if (p : Prop) [Decidable p] :
+    SourceSemantics.boolWord (decide p) = (if p then 1 else 0) := by
+  by_cases hp : p <;> simp [SourceSemantics.boolWord, hp]
+
+theorem evalIRExpr_iszero_of_lt
+    {state : IRState}
+    {expr : YulExpr}
+    {value : Nat}
+    (heval : evalIRExpr state expr = some value)
+    (hvalueLt : value < Compiler.Constants.evmModulus) :
+    evalIRExpr state (YulExpr.call "iszero" [expr]) =
+      some (SourceSemantics.boolWord (value = 0)) := by
+  by_cases hzero : value = 0
+  · subst hzero
+    simp [evalIRExpr, evalIRCall, evalIRExprs, heval,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext,
+      SourceSemantics.boolWord]
+  · have hmod : value % Compiler.Constants.evmModulus = value := Nat.mod_eq_of_lt hvalueLt
+    simp [evalIRExpr, evalIRCall, evalIRExprs, heval, hmod, hzero,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext,
+      SourceSemantics.boolWord]
+
+theorem evalIRExpr_yulToBool_of_lt
+    {state : IRState}
+    {expr : YulExpr}
+    {value : Nat}
+    (heval : evalIRExpr state expr = some value)
+    (hvalueLt : value < Compiler.Constants.evmModulus) :
+    evalIRExpr state (CompilationModel.yulToBool expr) =
+      some (SourceSemantics.boolWord (value ≠ 0)) := by
+  by_cases hzero : value = 0
+  · subst hzero
+    simp [CompilationModel.yulToBool, evalIRExpr, evalIRCall, evalIRExprs, heval,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext,
+      SourceSemantics.boolWord]
+  · have hmod : value % Compiler.Constants.evmModulus = value := Nat.mod_eq_of_lt hvalueLt
+    simp [CompilationModel.yulToBool, evalIRExpr, evalIRCall, evalIRExprs, heval, hmod, hzero,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+      Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext,
+      SourceSemantics.boolWord]
+
 private theorem findEntry_filter_ne_eq_findEntry
     (entries : List (String × Nat))
     (blockedName queryName : String)

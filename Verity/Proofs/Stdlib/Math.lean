@@ -181,6 +181,23 @@ theorem mulDivUp_mul_lt_add (a b c : Uint256)
     _ < (a : Nat) * (b : Nat) + (c : Nat) := by
       exact Nat.add_lt_add_left (Nat.sub_lt (Nat.pos_of_ne_zero hCVal) (by decide)) _
 
+/-- Ceil rounding never drops below the exact numerator product. -/
+theorem mulDivUp_mul_ge (a b c : Uint256)
+    (hC : c ≠ 0)
+    (hNum : (a : Nat) * (b : Nat) + ((c : Nat) - 1) ≤ MAX_UINT256) :
+    (a : Nat) * (b : Nat) ≤ (mulDivUp a b c : Nat) * (c : Nat) := by
+  have hCVal : (c : Nat) ≠ 0 := by
+    intro h
+    apply hC
+    exact Verity.Core.Uint256.ext (by simpa using h)
+  have hCPos : 0 < (c : Nat) := Nat.pos_of_ne_zero hCVal
+  rw [mulDivUp_nat_eq a b c hC hNum]
+  have hLift :
+      (a : Nat) * (b : Nat) + ((c : Nat) - 1) ≤
+        ((((a : Nat) * (b : Nat)) + ((c : Nat) - 1)) / (c : Nat)) * (c : Nat) + (c : Nat) - 1 := by
+    exact (Nat.div_le_iff_le_mul hCPos).mp (Nat.le_refl _)
+  omega
+
 /-- `wMulDown` is `mulDivDown` specialized to the canonical wad scale. -/
 theorem wMulDown_nat_eq (a b : Uint256)
     (hMul : (a : Nat) * (b : Nat) ≤ MAX_UINT256) :
@@ -229,6 +246,13 @@ theorem wDivUp_mul_lt_add (a b : Uint256)
     (hNum : (a : Nat) * (WAD : Nat) + ((b : Nat) - 1) ≤ MAX_UINT256) :
     (wDivUp a b : Nat) * (b : Nat) < (a : Nat) * (WAD : Nat) + (b : Nat) := by
   simpa [WAD_val] using mulDivUp_mul_lt_add a WAD b hB hNum
+
+/-- Wad ceil-division never drops below the scaled numerator. -/
+theorem wDivUp_mul_ge (a b : Uint256)
+    (hB : b ≠ 0)
+    (hNum : (a : Nat) * (WAD : Nat) + ((b : Nat) - 1) ≤ MAX_UINT256) :
+    (a : Nat) * (WAD : Nat) ≤ (wDivUp a b : Nat) * (b : Nat) := by
+  simpa [WAD_val] using mulDivUp_mul_ge a WAD b hB hNum
 
 /-! ## safeAdd Correctness -/
 

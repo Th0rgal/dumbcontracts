@@ -2825,6 +2825,50 @@ theorem compileStmtList_core_ok
       rw [htailIR]
       rfl
 
+private theorem execIRStmts_cons_of_execIRStmt_continue
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execIRStmt (rest.length + 1) state stmt = .continue next) :
+    execIRStmts (rest.length + 2) state (stmt :: rest) =
+      execIRStmts (rest.length + 1) next rest := by
+  simp [execIRStmts, hstmt]
+
+private theorem execIRStmts_cons_of_execIRStmt_return
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt) (value : Nat)
+    (hstmt : execIRStmt (rest.length + 1) state stmt = .return value next) :
+    execIRStmts (rest.length + 2) state (stmt :: rest) =
+      .return value next := by
+  simp [execIRStmts, hstmt]
+
+private theorem execIRStmts_cons_of_execIRStmt_stop
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execIRStmt (rest.length + 1) state stmt = .stop next) :
+    execIRStmts (rest.length + 2) state (stmt :: rest) =
+      .stop next := by
+  simp [execIRStmts, hstmt]
+
+private theorem execIRStmts_cons_of_execIRStmt_revert
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execIRStmt (rest.length + 1) state stmt = .revert next) :
+    execIRStmts (rest.length + 2) state (stmt :: rest) =
+      .revert next := by
+  simp [execIRStmts, hstmt]
+
+private theorem execIRStmts_two_of_execIRStmt_continue
+    (state mid : IRState) (stmt1 stmt2 : YulStmt) (rest : List YulStmt)
+    (hstmt1 : execIRStmt (rest.length + 2) state stmt1 = .continue mid) :
+    execIRStmts (rest.length + 3) state (stmt1 :: stmt2 :: rest) =
+      execIRStmts (rest.length + 2) mid (stmt2 :: rest) := by
+  simp [execIRStmts, hstmt1]
+
+private theorem execIRStmts_two_of_continue_then_return
+    (state mid next : IRState) (stmt1 stmt2 : YulStmt) (rest : List YulStmt) (value : Nat)
+    (hstmt1 : execIRStmt (rest.length + 2) state stmt1 = .continue mid)
+    (hstmt2 : execIRStmt (rest.length + 1) mid stmt2 = .return value next) :
+    execIRStmts (rest.length + 3) state (stmt1 :: stmt2 :: rest) =
+      .return value next := by
+  rw [execIRStmts_two_of_execIRStmt_continue state mid stmt1 stmt2 rest hstmt1]
+  exact execIRStmts_cons_of_execIRStmt_return mid next stmt2 rest value hstmt2
+
 def irResultOfExecResult (rollback : IRState) : IRExecResult → IRResult
   | .continue s =>
       { success := true

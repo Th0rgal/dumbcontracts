@@ -360,15 +360,21 @@ class VerifySyncTests(unittest.TestCase):
         rc, _, err = self._run_makefile_check(
             """
             check:
+            	python3 scripts/generate_verification_status.py --check
+            	python3 scripts/check_verification_status_doc.py
             	python3 scripts/check_verify_sync.py
             	python3 scripts/check_issue_templates.py
             	python3 scripts/check_docs_workflow_sync.py
+            	python3 scripts/check_solc_pin.py
             """,
             expected_checks_commands=["make check"],
             required_makefile_check_commands=[
+                "python3 scripts/generate_verification_status.py --check",
+                "python3 scripts/check_verification_status_doc.py",
                 "python3 scripts/check_verify_sync.py",
                 "python3 scripts/check_issue_templates.py",
                 "python3 scripts/check_docs_workflow_sync.py",
+                "python3 scripts/check_solc_pin.py",
                 "python3 -m unittest discover -s scripts -p 'test_*.py' -v",
             ],
         )
@@ -382,41 +388,53 @@ class VerifySyncTests(unittest.TestCase):
     def test_makefile_check_passes_when_required_commands_are_present(self) -> None:
         makefile = """
         check:
+        \tpython3 scripts/generate_verification_status.py --check
+        \tpython3 scripts/check_verification_status_doc.py
         \tpython3 scripts/check_verify_sync.py
         \tpython3 scripts/check_issue_templates.py
         \tpython3 scripts/check_docs_workflow_sync.py
+        \tpython3 scripts/check_solc_pin.py
         \tpython3 -m unittest discover -s scripts -p 'test_*.py' -v
         """
         rc, out, err = self._run_makefile_check(
             makefile,
             expected_checks_commands=["make check"],
             required_makefile_check_commands=[
+                "python3 scripts/generate_verification_status.py --check",
+                "python3 scripts/check_verification_status_doc.py",
                 "python3 scripts/check_verify_sync.py",
                 "python3 scripts/check_issue_templates.py",
                 "python3 scripts/check_docs_workflow_sync.py",
+                "python3 scripts/check_solc_pin.py",
             ],
         )
         self.assertEqual(rc, 0, err)
         self.assertIn("[PASS] makefile", out)
 
-    def test_makefile_check_fails_when_required_command_is_missing(self) -> None:
+    def test_makefile_check_fails_when_required_solc_pin_command_is_missing(self) -> None:
         makefile = """
         check:
+        \tpython3 scripts/generate_verification_status.py --check
+        \tpython3 scripts/check_verification_status_doc.py
         \tpython3 scripts/check_verify_sync.py
         \tpython3 scripts/check_issue_templates.py
+        \tpython3 scripts/check_docs_workflow_sync.py
         """
         rc, _, err = self._run_makefile_check(
             makefile,
             expected_checks_commands=["make check"],
             required_makefile_check_commands=[
+                "python3 scripts/generate_verification_status.py --check",
+                "python3 scripts/check_verification_status_doc.py",
                 "python3 scripts/check_verify_sync.py",
                 "python3 scripts/check_issue_templates.py",
                 "python3 scripts/check_docs_workflow_sync.py",
+                "python3 scripts/check_solc_pin.py",
             ],
         )
         self.assertEqual(rc, 1)
         self.assertIn(
-            "Makefile check target is missing required commands: python3 scripts/check_docs_workflow_sync.py",
+            "Makefile check target is missing required commands: python3 scripts/check_solc_pin.py",
             err,
         )
 

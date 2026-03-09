@@ -286,6 +286,7 @@ theorem interpretFunction_eq_execResultToIRResult_of_body
 /-- TODO(#1510): discharge this axiomatized generic function-level simulation.
 This must be proved from compiler structure alone, directly from:
 - a whole-contract `SupportedSpec` witness
+- successful whole-contract validation
 - successful `compileFunctionSpec` decomposition
 - successful supported parameter binding
 - generic transaction well-formedness
@@ -299,6 +300,7 @@ axiom supported_function_correct
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpec model selectors)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
     (fn : FunctionSpec)
     (selector : Nat)
     (returns : List ParamType)

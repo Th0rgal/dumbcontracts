@@ -244,6 +244,7 @@ theorem compileFunctionSpec_correct_generic
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpec model selectors)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
     (fn : FunctionSpec)
     (sel : Nat)
     (irFn : IRFunction)
@@ -267,6 +268,7 @@ theorem compileFunctionSpec_correct_generic
     (model := model)
     (selectors := selectors)
     (hSupported := hSupported)
+    (hvalidateInputs := hvalidateInputs)
     (fn := fn)
     (selector := sel)
     (returns := returns)
@@ -299,6 +301,12 @@ theorem compile_preserves_semantics
     FunctionBody.sourceResultMatchesIRResult
       (SourceSemantics.interpretContract model selectors tx initialWorld)
       (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  have hvalidateInputs : validateCompileInputs model selectors = Except.ok () := by
+    unfold CompilationModel.compile at hcompile
+    simp only [bind, Except.bind] at hcompile
+    rcases hvalidate : validateCompileInputs model selectors with _ | validated
+    · simp [hvalidate] at hcompile
+    · simpa using hvalidate
   have hcompiled :
       List.Forall₂
         (fun entry irFn =>
@@ -328,6 +336,7 @@ theorem compile_preserves_semantics
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
+      (hvalidateInputs := hvalidateInputs)
       (fn := fn)
       (sel := sel)
       (irFn := irFn)

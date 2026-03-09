@@ -123,7 +123,7 @@ This remains the last contract-level proof gap between body-level Yul equivalenc
 
 ### 7. `supported_function_body_correct_from_exact_state`
 
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:684`
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:810`
 
 **Statement**:
 ```lean
@@ -146,7 +146,7 @@ supported body shapes.
 
 ### 8. `supported_function_execIRFunction_eq_fuel`
 
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:724`
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:850`
 
 **Statement**:
 ```lean
@@ -166,13 +166,14 @@ checked counterexample now lives at
 (`execIRStmts_single_block_stop_length_insufficient`). So this is no longer
 just a missing bridge lemma: the supported-function path needs a structural
 fuel refactor (`sizeOf`-style) before it can reuse
-`execIRFunctionFuel_adequate` and eliminate this axiom cleanly. The new local
-structural lemmas in `Function.lean` now pin down the required lower bound
-`body.length + 1 ≤ sizeOf body + 1` for compiled function bodies, and
-`ParamLoading.lean` now exposes an `extraFuel`-parametric
-`exec_genParamLoads_supported_then_extraFuel` bridge so the future spine can
-thread a larger structural budget through the ABI-loading prefix instead of
-being stuck on the minimal `length + 1` execution.
+`execIRFunctionFuel_adequate` and eliminate this axiom cleanly. The core path
+of `supported_function_correct` now already takes that non-axiomatic route:
+`FunctionBody.exec_compileStmtList_core_extraFuel`,
+`supported_function_body_correct_from_exact_state_core_extraFuel`, and the
+`compileFunctionSpec_correct_of_body_supported_extraFuel` bridge thread a
+structural `extraFuel` all the way to `sizeOf`. The remaining axiom usage is
+therefore outside the proven core fragment, where the generic body proof still
+falls back to the old `length + 1` spine.
 
 **Risk**: Medium.
 

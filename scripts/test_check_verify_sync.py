@@ -90,6 +90,7 @@ class VerifySyncTests(unittest.TestCase):
         expected_job_if_conditions: dict[str, str | None],
         expected_job_runs_on: dict[str, str] | None = None,
         expected_job_timeouts: dict[str, int] | None = None,
+        expected_job_strategy_fail_fast: dict[str, bool] | None = None,
         expected_job_outputs: dict[str, dict[str, str]] | None = None,
         expected_job_permissions: dict[str, dict[str, str]] | None = None,
         expected_workflow_permissions: dict[str, str] | None = None,
@@ -108,6 +109,7 @@ class VerifySyncTests(unittest.TestCase):
                         "expected_job_if_conditions": expected_job_if_conditions,
                         "expected_job_runs_on": expected_job_runs_on or {},
                         "expected_job_timeouts": expected_job_timeouts or {},
+                        "expected_job_strategy_fail_fast": expected_job_strategy_fail_fast or {},
                         "expected_job_outputs": expected_job_outputs or {},
                         "expected_job_permissions": expected_job_permissions or {},
                         "expected_workflow_permissions": expected_workflow_permissions or {},
@@ -524,6 +526,35 @@ class VerifySyncTests(unittest.TestCase):
         self.assertIn("changes outputs does not match spec changes outputs.", err)
         self.assertIn("failure-hints permissions does not match spec failure-hints permissions.", err)
 
+    def test_job_contracts_check_fails_when_strategy_fail_fast_drifts(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            jobs:
+              foundry:
+                runs-on: ubuntu-latest
+                timeout-minutes: 15
+                strategy:
+                  fail-fast: true
+                  matrix:
+                    shard_index: [0, 1]
+                steps: []
+            """
+        )
+        rc, _, err = self._run_job_contracts_check(
+            workflow,
+            expected_job_needs={"foundry": []},
+            expected_job_if_conditions={"foundry": None},
+            expected_job_runs_on={"foundry": "ubuntu-latest"},
+            expected_job_timeouts={"foundry": 15},
+            expected_job_strategy_fail_fast={"foundry": False},
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "foundry strategy.fail-fast does not match spec: workflow='true', spec='false'",
+            err,
+        )
+
     def test_job_contracts_check_passes_when_workflow_platform_contracts_match_spec(self) -> None:
         workflow = textwrap.dedent(
             """
@@ -581,6 +612,46 @@ class VerifySyncTests(unittest.TestCase):
             expected_workflow_env={
                 "SOLC_VERSION": "0.8.33",
                 "SOLC_URL": "https://example.invalid/solc",
+            },
+        )
+        self.assertEqual(rc, 0, err)
+        self.assertIn("[PASS] job-contracts", out)
+
+    def test_job_contracts_check_passes_when_strategy_fail_fast_matches_spec(self) -> None:
+        workflow = textwrap.dedent(
+            """
+            name: verify
+            jobs:
+              foundry:
+                runs-on: ubuntu-latest
+                timeout-minutes: 15
+                strategy:
+                  fail-fast: false
+                  matrix:
+                    shard_index: [0, 1]
+                steps: []
+              foundry-multi-seed:
+                runs-on: ubuntu-latest
+                timeout-minutes: 25
+                strategy:
+                  fail-fast: false
+                  matrix:
+                    seed: [42, 123]
+                steps: []
+            """
+        )
+        rc, out, err = self._run_job_contracts_check(
+            workflow,
+            expected_job_needs={"foundry": [], "foundry-multi-seed": []},
+            expected_job_if_conditions={"foundry": None, "foundry-multi-seed": None},
+            expected_job_runs_on={
+                "foundry": "ubuntu-latest",
+                "foundry-multi-seed": "ubuntu-latest",
+            },
+            expected_job_timeouts={"foundry": 15, "foundry-multi-seed": 25},
+            expected_job_strategy_fail_fast={
+                "foundry": False,
+                "foundry-multi-seed": False,
             },
         )
         self.assertEqual(rc, 0, err)

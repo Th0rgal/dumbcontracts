@@ -400,6 +400,38 @@ def _extract_job_needs(job_body: str) -> list[str]:
     return [raw]
 
 
+def _extract_job_strategy_fail_fast(job_body: str) -> str | None:
+    block_lines = _extract_top_level_job_block_lines(job_body, "strategy")
+    if not block_lines:
+        return None
+
+    min_child_indent: int | None = None
+    for line in block_lines:
+        if not line.strip():
+            continue
+        child_indent = len(line) - len(line.lstrip(" "))
+        if min_child_indent is None or child_indent < min_child_indent:
+            min_child_indent = child_indent
+    if min_child_indent is None:
+        return None
+
+    for line in block_lines:
+        if not line.strip():
+            continue
+        child_indent = len(line) - len(line.lstrip(" "))
+        if child_indent != min_child_indent:
+            continue
+        m = re.match(r"^\s*fail-fast:\s*(?P<value>.+?)\s*$", line)
+        if not m:
+            continue
+        raw_value = strip_yaml_inline_comment(m.group("value"))
+        if not raw_value:
+            raise ValueError(f"Empty strategy.fail-fast value in {VERIFY_YML}")
+        return unquote_yaml_scalar(raw_value)
+
+    return None
+
+
 def _compare_mappings(
     name_a: str, a: dict[str, str], name_b: str, b: dict[str, str]
 ) -> list[str]:
@@ -689,6 +721,7 @@ def check_job_contracts(snapshot: Snapshot, spec: dict) -> CheckResult:
     expected_conditions: dict[str, str] = spec.get("expected_job_if_conditions", {})
     expected_runs_on: dict[str, str] = spec.get("expected_job_runs_on", {})
     expected_timeouts: dict[str, int] = spec.get("expected_job_timeouts", {})
+    expected_fail_fast: dict[str, bool] = spec.get("expected_job_strategy_fail_fast", {})
     expected_outputs: dict[str, dict[str, str]] = spec.get("expected_job_outputs", {})
     expected_job_permissions: dict[str, dict[str, str]] = spec.get(
         "expected_job_permissions", {}
@@ -772,6 +805,16 @@ def check_job_contracts(snapshot: Snapshot, spec: dict) -> CheckResult:
             errors.append(
                 f"{job} timeout-minutes does not match spec: workflow={actual_timeout!r}, spec={expected_timeout_value!r}"
             )
+
+        expected_fail_fast_value = expected_fail_fast.get(job)
+        if expected_fail_fast_value is not None:
+            actual_fail_fast = _extract_job_strategy_fail_fast(job_body)
+            expected_fail_fast_scalar = "true" if expected_fail_fast_value else "false"
+            if actual_fail_fast != expected_fail_fast_scalar:
+                errors.append(
+                    f"{job} strategy.fail-fast does not match spec: "
+                    f"workflow={actual_fail_fast!r}, spec={expected_fail_fast_scalar!r}"
+                )
 
         outputs = _extract_literal_top_level_mapping(job_body, "outputs")
         if outputs:

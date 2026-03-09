@@ -1385,6 +1385,68 @@ theorem eval_compileExpr_logicalNot_of_compiled
   rw [show SourceSemantics.evalExpr fields runtime (.logicalNot expr) =
       SourceSemantics.boolWord (decide (SourceSemantics.evalExpr fields runtime expr = 0)) by rfl]
 
+theorem eval_compileExpr_add_of_compiled
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhsCompile : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhsCompile : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR)
+    (hlhsEval : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs))
+    (hrhsEval : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs)) :
+    evalIRExpr state
+      (CompilationModel.compileExpr fields .calldata (.add lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+        some (SourceSemantics.evalExpr fields runtime (.add lhs rhs)) := by
+  have hcompile := compileExpr_add_ok hlhsCompile hrhsCompile
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.add lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some ((SourceSemantics.evalExpr fields runtime lhs +
+            SourceSemantics.evalExpr fields runtime rhs) % Compiler.Constants.evmModulus) := by
+    simpa [hcompile] using evalIRExpr_add_of_eval hlhsEval hrhsEval
+  rw [heval]
+  refine congrArg some ?_
+  change
+    ((SourceSemantics.evalExpr fields runtime lhs + SourceSemantics.evalExpr fields runtime rhs) %
+      Compiler.Constants.evmModulus) =
+    (((SourceSemantics.evalExpr fields runtime lhs : Verity.Core.Uint256) +
+      (SourceSemantics.evalExpr fields runtime rhs : Verity.Core.Uint256)) : Verity.Core.Uint256).val
+  rw [Nat.add_mod]
+  simp [HAdd.hAdd, Verity.Core.Uint256.add, Verity.Core.Uint256.ofNat,
+    Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus, Verity.Core.UINT256_MODULUS]
+
+theorem eval_compileExpr_mul_of_compiled
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhsCompile : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhsCompile : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR)
+    (hlhsEval : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs))
+    (hrhsEval : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs)) :
+    evalIRExpr state
+      (CompilationModel.compileExpr fields .calldata (.mul lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+        some (SourceSemantics.evalExpr fields runtime (.mul lhs rhs)) := by
+  have hcompile := compileExpr_mul_ok hlhsCompile hrhsCompile
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.mul lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some ((SourceSemantics.evalExpr fields runtime lhs *
+            SourceSemantics.evalExpr fields runtime rhs) % Compiler.Constants.evmModulus) := by
+    simpa [hcompile] using evalIRExpr_mul_of_eval hlhsEval hrhsEval
+  rw [heval]
+  refine congrArg some ?_
+  change
+    ((SourceSemantics.evalExpr fields runtime lhs * SourceSemantics.evalExpr fields runtime rhs) %
+      Compiler.Constants.evmModulus) =
+    (((SourceSemantics.evalExpr fields runtime lhs : Verity.Core.Uint256) *
+      (SourceSemantics.evalExpr fields runtime rhs : Verity.Core.Uint256)) : Verity.Core.Uint256).val
+  rw [Nat.mul_mod]
+  simp [HMul.hMul, Verity.Core.Uint256.mul, Verity.Core.Uint256.ofNat,
+    Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus, Verity.Core.UINT256_MODULUS]
+
 theorem evalExpr_literal_lt_evmModulus
     (fields : List Field)
     (state : SourceSemantics.RuntimeState)

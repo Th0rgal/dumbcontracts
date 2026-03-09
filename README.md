@@ -97,6 +97,8 @@ EVM Bytecode
 
 There are currently 10 documented Lean axioms in total: 1 selector axiom, 4 generic Layer 2 axioms, and 5 Layer 3 dispatch/preservation axioms. See [AXIOMS.md](AXIOMS.md).
 
+Layer 1 is the frontend EDSL-to-`CompilationModel` bridge. The per-contract files in `Contracts/<Name>/Proofs/` prove human-readable contract specifications; they are not what “Layer 1” means in the compiler stack. Layers 2 and 3 (`CompilationModel → IR → Yul`) are verified with the current documented axioms and bridge boundaries; see [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md) and [AXIOMS.md](AXIOMS.md).
+
 ### 5. Test the compiled output (belt and suspenders)
 
 **Foundry tests** validate EDSL = Yul = EVM execution. See [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md) for the current test count and coverage snapshot. The proofs already guarantee correctness, but the tests confirm it works end-to-end:

@@ -7,10 +7,11 @@ See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
 
 ## Verification Layers
 
-- **Layer 1: EDSL ≡ CompilationModel**. Contract-specific proofs live in
-  `Contracts/<Name>/Proofs/`, with generic typed-IR compilation correctness in
-  `Compiler/TypedIRCompilerCorrectness.lean`. The generic core is real, but the
-  active bridge theorems are still instantiated per contract.
+- **Layer 1: EDSL ≡ CompilationModel**. This is the frontend semantic bridge.
+  Contract-specific specification proofs live separately in
+  `Contracts/<Name>/Proofs/`, while generic typed-IR compilation correctness
+  lives in `Compiler/TypedIRCompilerCorrectness.lean`. The generic core is
+  real, but the active bridge theorems are still instantiated per contract.
 - **Layer 2: CompilationModel -> IR**. The current proof surface is split:
   a generic supported-statement-fragment theorem lives in
   `Compiler/TypedIRCompilerCorrectness.lean` and

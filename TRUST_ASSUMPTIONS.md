@@ -21,6 +21,9 @@ The repository has no `sorry`, but it still has 10 documented Lean axioms. See [
 ## What's Verified
 
 - **Layer 1**: A generic typed-IR compilation-correctness core exists, but the active contract-level bridges are still instantiated per contract and internal-helper proof reuse is not yet a first-class generic interface.
+  This names the frontend EDSL-to-`CompilationModel` bridge only; the
+  contract-specific specification theorems in `Contracts/<Name>/Proofs/` are a
+  separate proof layer about human-readable contract behavior.
 - **Layer 2**: A generic whole-contract theorem surface exists for supported `CompilationModel`s, and `supported_function_correct` is now a real theorem, but it still depends on 4 documented sub-axioms for initial-state normalization, parameter-state exactness, body simulation, and the `execIRFunctionFuel`/`execIRFunction` bridge.
 - **Layer 3**: IR → Yul preservation is generic at the proof surface, but the current full dispatch-preservation path still depends on 5 documented axioms.
 - **Cross-layer**: [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) has zero `sorry`, but it is a manual bridge layer for a subset of contracts rather than a fully generic replacement for Layers 1-3.

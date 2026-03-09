@@ -1447,6 +1447,31 @@ theorem eval_compileExpr_mul_of_compiled
   simp [HMul.hMul, Verity.Core.Uint256.mul, Verity.Core.Uint256.ofNat,
     Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus, Verity.Core.UINT256_MODULUS]
 
+/-- Bridge `Nat` values already known to be in-range to their `Uint256` coercion. -/
+theorem uint256_val_ofNat_eq
+    {n : Nat}
+    (hn : n < Compiler.Constants.evmModulus) :
+    ((n : Verity.Core.Uint256)).val = n := by
+  rw [show ((n : Verity.Core.Uint256)).val = n % Compiler.Constants.evmModulus by rfl]
+  exact Nat.mod_eq_of_lt hn
+
+/-- Division on in-range `Nat` values agrees with `Uint256.div`. -/
+theorem uint256_div_val_eq
+    {a b : Nat}
+    (ha : a < Compiler.Constants.evmModulus)
+    (hb : b < Compiler.Constants.evmModulus) :
+    (((a : Verity.Core.Uint256) / (b : Verity.Core.Uint256)) : Verity.Core.Uint256).val =
+      if b = 0 then 0 else a / b := by
+  by_cases hzero : b = 0
+  · subst hzero
+    simp [HDiv.hDiv, Verity.Core.Uint256.div, Verity.Core.Uint256.ofNat]
+  · have hdivLt : a / b < Compiler.Constants.evmModulus := by
+      exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) ha
+    have hdivMod : (a / b) % Compiler.Constants.evmModulus = a / b :=
+      Nat.mod_eq_of_lt hdivLt
+    simpa [HDiv.hDiv, Verity.Core.Uint256.div, Verity.Core.Uint256.ofNat,
+      Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb, hzero] using hdivMod
+
 theorem evalExpr_literal_lt_evmModulus
     (fields : List Field)
     (state : SourceSemantics.RuntimeState)

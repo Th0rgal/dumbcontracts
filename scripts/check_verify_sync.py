@@ -811,6 +811,8 @@ def check_job_contracts(snapshot: Snapshot, spec: dict) -> CheckResult:
 
 def _describe_step_locator(step_spec: dict) -> str:
     parts: list[str] = []
+    if "id" in step_spec:
+        parts.append(f"id={step_spec['id']!r}")
     if "name" in step_spec:
         parts.append(f"name={step_spec['name']!r}")
     if "uses" in step_spec:
@@ -821,8 +823,11 @@ def _describe_step_locator(step_spec: dict) -> str:
 def _find_matching_step(job_body: str, step_spec: dict) -> str | None:
     matches: list[str] = []
     for step_block in _iter_step_blocks(job_body):
+        actual_id = _extract_top_level_step_value(step_block, "id")
         actual_name = _extract_top_level_step_value(step_block, "name")
         actual_uses = _extract_top_level_step_value(step_block, "uses")
+        if "id" in step_spec and actual_id != step_spec["id"]:
+            continue
         if "name" in step_spec and actual_name != step_spec["name"]:
             continue
         if "uses" in step_spec and actual_uses != step_spec["uses"]:
@@ -850,7 +855,7 @@ def check_step_contracts(snapshot: Snapshot, spec: dict) -> CheckResult:
                 errors.append(f"{job} is missing expected step {locator}")
                 continue
 
-            for key in ("name", "uses", "if"):
+            for key in ("id", "name", "uses", "if", "run"):
                 if key not in step_spec:
                     continue
                 actual_value = _extract_top_level_step_value(step_block, key)

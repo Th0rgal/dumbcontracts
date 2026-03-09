@@ -123,7 +123,7 @@ This remains the last contract-level proof gap between body-level Yul equivalenc
 
 ### 7. `supported_function_correct`
 
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:272`
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:332`
 
 **Statement**:
 ```lean

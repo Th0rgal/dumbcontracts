@@ -46,7 +46,7 @@ Internal helper calls are supported operationally in `CompilationModel` and the 
 
 ### Lowering Bridge
 
-`Compiler/Proofs/SemanticBridge.lean` provides the active contract-level bridge
+`Contracts/Proofs/SemanticBridge.lean` provides the active contract-level bridge
 theorems for supported EDSL contracts, covering:
 - Write/read bridges for mutating and getter entrypoints
 - Explicit revert-path bridges for owner-gated and arithmetic failure paths

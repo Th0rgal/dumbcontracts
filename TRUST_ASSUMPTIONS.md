@@ -8,7 +8,7 @@ This document states what Verity proves and what it still trusts.
 EDSL (Lean)
   ↓ [Layer 1: PROVEN — EDSL ≡ CompilationModel bridge]
 CompilationModel
-  ↓ [Layer 2: FULLY VERIFIED — CompilationModel → IR]
+  ↓ [Layer 2: PARTIAL GENERIC — CompilationModel → IR + contract bridges]
 IR
   ↓ [Layer 3: FULLY VERIFIED, 1 axiom — IR → Yul]
 Yul
@@ -16,14 +16,14 @@ Yul
 EVM Bytecode
 ```
 
-All three layers are proven in Lean, with 1 documented axiom (the selector axiom; see [AXIOMS.md](AXIOMS.md)).
+Layer 1 and Layer 3 have generic proof surfaces in Lean. Layer 2 currently combines a generic supported-statement theorem with contract-specific full-contract bridge theorems, with 1 documented axiom in the overall stack (the selector axiom; see [AXIOMS.md](AXIOMS.md)).
 
 ## What's Verified
 
 - **Layer 1**: EDSL behavior matches its CompilationModel. For supported contracts, a generic typed-IR compilation-correctness theorem eliminates per-contract manual proofs.
-- **Layer 2**: CompilationModel → IR preserves behavior.
+- **Layer 2**: a supported statement-list CompilationModel → IR theorem exists, but whole-contract Layer 2 preservation still relies on contract-specific bridge theorems.
 - **Layer 3**: IR → Yul preserves behavior, with 1 documented axiom (keccak256 selector).
-- **Cross-layer**: `Compiler/Proofs/SemanticBridge.lean` has zero `sorry`; `Compiler/Proofs/EndToEnd.lean` composes Layers 2+3.
+- **Cross-layer**: `Contracts/Proofs/SemanticBridge.lean` provides the active contract-specific Layer 2 bridge surface; `Compiler/Proofs/EndToEnd.lean` composes that current Layer 2 boundary with Layer 3.
 
 Current theorem totals, property-test coverage, and proof status live in [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md).
 
@@ -72,7 +72,7 @@ Current theorem totals, property-test coverage, and proof status live in [docs/V
 - **Role**: Generates both EDSL `Contract` monad value and `CompilationModel` from one syntax tree.
 - **Status**: Trusted unverified metaprogram ([Verity/Macro/Translate.lean](Verity/Macro/Translate.lean)).
 - **Risk**: A translation bug would silently cause EDSL and CompilationModel to diverge.
-- **Mitigation**: EDSL ≡ IR bridge theorems in `Compiler/Proofs/SemanticBridge.lean` cross-check independently.
+- **Mitigation**: EDSL ≡ IR bridge theorems in `Contracts/Proofs/SemanticBridge.lean` cross-check independently.
 
 ### 9. Local Unsafe / Refinement Obligations
 - **Role**: Let a function or constructor declare a localized proof obligation for an unsafe/assembly-shaped boundary without marking the whole contract as opaque.

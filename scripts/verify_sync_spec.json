@@ -43,9 +43,12 @@
     "make check"
   ],
   "required_makefile_check_commands": [
+    "python3 scripts/generate_verification_status.py --check",
+    "python3 scripts/check_verification_status_doc.py",
     "python3 scripts/check_verify_sync.py",
     "python3 scripts/check_issue_templates.py",
     "python3 scripts/check_docs_workflow_sync.py",
+    "python3 scripts/check_solc_pin.py",
     "python3 -m unittest discover -s scripts -p 'test_*.py' -v"
   ],
   "expected_checks_other_commands": [],

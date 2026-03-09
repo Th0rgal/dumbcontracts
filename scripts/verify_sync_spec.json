@@ -113,6 +113,10 @@
     "foundry-patched": 15,
     "foundry-multi-seed": 25
   },
+  "expected_job_strategy_fail_fast": {
+    "foundry": false,
+    "foundry-multi-seed": false
+  },
   "expected_job_outputs": {
     "changes": {
       "code": "${{ steps.filter.outputs.code }}",

@@ -77,11 +77,118 @@ def initialIRStateForTx
 @[simp] theorem bindingsExactlyMatchIRVars_nil_initialIRStateForTx
     (spec : CompilationModel)
     (tx : IRTransaction)
-    (initialWorld : Verity.ContractState) :
+  (initialWorld : Verity.ContractState) :
     bindingsExactlyMatchIRVars []
       (initialIRStateForTx spec tx initialWorld) := by
   intro name
-  simp [bindingsExactlyMatchIRVars, lookupBinding?, initialIRStateForTx, IRState.getVar]
+  simp [lookupBinding?, initialIRStateForTx, IRState.getVar]
+
+theorem evalIRExpr_ident_of_exact_bindings
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    (hexact : bindingsExactlyMatchIRVars bindings state)
+    (name : String) :
+    evalIRExpr state (YulExpr.ident name) = lookupBinding? bindings name := by
+  simpa [evalIRExpr] using hexact name
+
+theorem evalIRExpr_caller_of_runtimeStateMatchesIR
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (YulExpr.call "caller" []) =
+      some (SourceSemantics.evalExpr fields runtime (.caller)) := by
+  rcases hmatch with ⟨_, hsender, _, _, _, _, _, _, _⟩
+  rw [show SourceSemantics.evalExpr fields runtime (.caller) = runtime.world.sender.val by rfl]
+  simp [evalIRExpr, evalIRCall, evalIRExprs,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, hsender]
+
+theorem evalIRExpr_contractAddress_of_runtimeStateMatchesIR
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (YulExpr.call "address" []) =
+      some (SourceSemantics.evalExpr fields runtime (.contractAddress)) := by
+  rcases hmatch with ⟨_, _, _, hthis, _, _, _, _, _⟩
+  have hthisLt : runtime.world.thisAddress.val < Compiler.Constants.evmModulus := by
+    have haddrLt : runtime.world.thisAddress.val < Verity.Core.ADDRESS_MODULUS := by
+      simpa [Verity.Core.Address.modulus] using
+        Verity.Core.Address.val_lt_modulus runtime.world.thisAddress
+    have hmodLt : Verity.Core.ADDRESS_MODULUS < Compiler.Constants.evmModulus := by
+      norm_num [Verity.Core.ADDRESS_MODULUS, Compiler.Constants.evmModulus]
+    exact Nat.lt_trans haddrLt hmodLt
+  rw [show SourceSemantics.evalExpr fields runtime (.contractAddress) = runtime.world.thisAddress.val by rfl]
+  simp [evalIRExpr, evalIRCall, evalIRExprs,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, hthis, Nat.mod_eq_of_lt hthisLt]
+
+theorem evalIRExpr_msgValue_of_runtimeStateMatchesIR
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (YulExpr.call "callvalue" []) =
+      some (SourceSemantics.evalExpr fields runtime (.msgValue)) := by
+  rcases hmatch with ⟨_, _, hmsgValue, _, _, _, _, _, _⟩
+  rw [show SourceSemantics.evalExpr fields runtime (.msgValue) = runtime.world.msgValue.val by rfl]
+  have hmsgValueLt : runtime.world.msgValue.val < Compiler.Constants.evmModulus := by
+    simpa [Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus] using
+      runtime.world.msgValue.isLt
+  simp [evalIRExpr, evalIRCall, evalIRExprs,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, hmsgValue, Nat.mod_eq_of_lt hmsgValueLt]
+
+theorem evalIRExpr_blockTimestamp_of_runtimeStateMatchesIR
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (YulExpr.call "timestamp" []) =
+      some (SourceSemantics.evalExpr fields runtime (.blockTimestamp)) := by
+  rcases hmatch with ⟨_, _, _, _, htimestamp, _, _, _, _⟩
+  rw [show SourceSemantics.evalExpr fields runtime (.blockTimestamp) =
+      runtime.world.blockTimestamp.val by rfl]
+  have htimestampLt : runtime.world.blockTimestamp.val < Compiler.Constants.evmModulus := by
+    simpa [Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus] using
+      runtime.world.blockTimestamp.isLt
+  simp [evalIRExpr, evalIRCall, evalIRExprs,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, htimestamp, Nat.mod_eq_of_lt htimestampLt]
+
+theorem evalIRExpr_blockNumber_of_runtimeStateMatchesIR
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (YulExpr.call "number" []) =
+      some (SourceSemantics.evalExpr fields runtime (.blockNumber)) := by
+  rcases hmatch with ⟨_, _, _, _, _, hnumber, _, _, _⟩
+  rw [show SourceSemantics.evalExpr fields runtime (.blockNumber) =
+      runtime.world.blockNumber.val by rfl]
+  have hnumberLt : runtime.world.blockNumber.val < Compiler.Constants.evmModulus := by
+    simpa [Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus] using
+      runtime.world.blockNumber.isLt
+  simp [evalIRExpr, evalIRCall, evalIRExprs,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, hnumber, Nat.mod_eq_of_lt hnumberLt]
+
+theorem evalIRExpr_chainid_of_runtimeStateMatchesIR
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (YulExpr.call "chainid" []) =
+      some (SourceSemantics.evalExpr fields runtime (.chainid)) := by
+  rcases hmatch with ⟨_, _, _, _, _, _, hchain, _, _⟩
+  rw [show SourceSemantics.evalExpr fields runtime (.chainid) = runtime.world.chainId.val by rfl]
+  have hchainLt : runtime.world.chainId.val < Compiler.Constants.evmModulus := by
+    simpa [Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus] using
+      runtime.world.chainId.isLt
+  simp [evalIRExpr, evalIRCall, evalIRExprs,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
+    Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, hchain, Nat.mod_eq_of_lt hchainLt]
 
 private theorem findEntry_filter_ne_eq_findEntry
     (entries : List (String × Nat))

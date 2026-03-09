@@ -283,7 +283,10 @@ def _extract_artifact_paths(job_body: str, *, action: str) -> list[str | None]:
 
 
 def _extract_name_from_with_block(step_block: str) -> str | None:
-    return _extract_with_key_from_block(step_block, "name")
+    value = _extract_with_key_from_block(step_block, "name")
+    if value == "":
+        return None
+    return value
 
 
 def _extract_with_key_from_block(step_block: str, key: str) -> str | None:

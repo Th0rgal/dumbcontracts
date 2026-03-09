@@ -988,6 +988,21 @@ class VerifySyncTests(unittest.TestCase):
             err,
         )
 
+    def test_artifacts_check_fails_when_upload_name_is_empty(self) -> None:
+        job_body = textwrap.dedent(
+            """
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/upload-artifact@v4
+                with:
+                  name:
+            """
+        ).lstrip()
+        with self.assertRaisesRegex(
+            ValueError, "Found upload-artifact step without literal with.name"
+        ):
+            check._extract_artifact_names(job_body, action="upload-artifact")
+
     def test_artifacts_check_fails_when_upload_path_drifts(self) -> None:
         workflow = """
         name: verify

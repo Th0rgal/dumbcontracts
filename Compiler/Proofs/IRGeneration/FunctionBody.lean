@@ -1125,6 +1125,61 @@ theorem compileExpr_logicalOr_ok
   rw [CompilationModel.compileExpr, hlhs, hrhs]
   rfl
 
+theorem compileExpr_add_ok
+    {fields : List Field}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhs : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhs : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR) :
+    CompilationModel.compileExpr fields .calldata (.add lhs rhs) =
+      Except.ok (YulExpr.call "add" [lhsIR, rhsIR]) := by
+  rw [CompilationModel.compileExpr, hlhs, hrhs]
+  rfl
+
+theorem compileExpr_sub_ok
+    {fields : List Field}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhs : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhs : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR) :
+    CompilationModel.compileExpr fields .calldata (.sub lhs rhs) =
+      Except.ok (YulExpr.call "sub" [lhsIR, rhsIR]) := by
+  rw [CompilationModel.compileExpr, hlhs, hrhs]
+  rfl
+
+theorem compileExpr_mul_ok
+    {fields : List Field}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhs : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhs : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR) :
+    CompilationModel.compileExpr fields .calldata (.mul lhs rhs) =
+      Except.ok (YulExpr.call "mul" [lhsIR, rhsIR]) := by
+  rw [CompilationModel.compileExpr, hlhs, hrhs]
+  rfl
+
+theorem compileExpr_div_ok
+    {fields : List Field}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhs : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhs : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR) :
+    CompilationModel.compileExpr fields .calldata (.div lhs rhs) =
+      Except.ok (YulExpr.call "div" [lhsIR, rhsIR]) := by
+  rw [CompilationModel.compileExpr, hlhs, hrhs]
+  rfl
+
+theorem compileExpr_mod_ok
+    {fields : List Field}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhs : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhs : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR) :
+    CompilationModel.compileExpr fields .calldata (.mod lhs rhs) =
+      Except.ok (YulExpr.call "mod" [lhsIR, rhsIR]) := by
+  rw [CompilationModel.compileExpr, hlhs, hrhs]
+  rfl
+
 theorem eval_compileExpr_eq_of_compiled
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}

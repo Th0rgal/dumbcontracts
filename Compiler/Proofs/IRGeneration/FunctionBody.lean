@@ -260,6 +260,66 @@ theorem evalIRExpr_chainid_of_runtimeStateMatchesIR
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext, hchain, Nat.mod_eq_of_lt hchainLt]
 
+theorem eval_compileExpr_caller
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (CompilationModel.compileExpr fields .calldata .caller |>.toOption.getD (YulExpr.lit 0)) =
+      some (SourceSemantics.evalExpr fields runtime (.caller)) := by
+  simp [CompilationModel.compileExpr]
+  exact evalIRExpr_caller_of_runtimeStateMatchesIR hmatch
+
+theorem eval_compileExpr_contractAddress
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (CompilationModel.compileExpr fields .calldata .contractAddress |>.toOption.getD (YulExpr.lit 0)) =
+      some (SourceSemantics.evalExpr fields runtime (.contractAddress)) := by
+  simp [CompilationModel.compileExpr]
+  exact evalIRExpr_contractAddress_of_runtimeStateMatchesIR hmatch
+
+theorem eval_compileExpr_msgValue
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (CompilationModel.compileExpr fields .calldata .msgValue |>.toOption.getD (YulExpr.lit 0)) =
+      some (SourceSemantics.evalExpr fields runtime (.msgValue)) := by
+  simp [CompilationModel.compileExpr]
+  exact evalIRExpr_msgValue_of_runtimeStateMatchesIR hmatch
+
+theorem eval_compileExpr_blockTimestamp
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (CompilationModel.compileExpr fields .calldata .blockTimestamp |>.toOption.getD (YulExpr.lit 0)) =
+      some (SourceSemantics.evalExpr fields runtime (.blockTimestamp)) := by
+  simp [CompilationModel.compileExpr]
+  exact evalIRExpr_blockTimestamp_of_runtimeStateMatchesIR hmatch
+
+theorem eval_compileExpr_blockNumber
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (CompilationModel.compileExpr fields .calldata .blockNumber |>.toOption.getD (YulExpr.lit 0)) =
+      some (SourceSemantics.evalExpr fields runtime (.blockNumber)) := by
+  simp [CompilationModel.compileExpr]
+  exact evalIRExpr_blockNumber_of_runtimeStateMatchesIR hmatch
+
+theorem eval_compileExpr_chainid
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    evalIRExpr state (CompilationModel.compileExpr fields .calldata .chainid |>.toOption.getD (YulExpr.lit 0)) =
+      some (SourceSemantics.evalExpr fields runtime (.chainid)) := by
+  simp [CompilationModel.compileExpr]
+  exact evalIRExpr_chainid_of_runtimeStateMatchesIR hmatch
+
 theorem eval_compileExpr_literal
     (fields : List Field)
     (runtime : SourceSemantics.RuntimeState)

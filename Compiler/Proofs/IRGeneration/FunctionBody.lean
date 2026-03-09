@@ -1472,6 +1472,40 @@ theorem uint256_div_val_eq
     simpa [HDiv.hDiv, Verity.Core.Uint256.div, Verity.Core.Uint256.ofNat,
       Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb, hzero] using hdivMod
 
+/-- Subtraction on in-range `Nat` values agrees with `Uint256.sub`. -/
+theorem uint256_sub_val_eq
+    {a b : Nat}
+    (ha : a < Compiler.Constants.evmModulus)
+    (hb : b < Compiler.Constants.evmModulus) :
+    (((a : Verity.Core.Uint256) - (b : Verity.Core.Uint256)) : Verity.Core.Uint256).val =
+      (Compiler.Constants.evmModulus + a - b) % Compiler.Constants.evmModulus := by
+  change (Verity.Core.Uint256.sub (a : Verity.Core.Uint256) (b : Verity.Core.Uint256)).val =
+    (Compiler.Constants.evmModulus + a - b) % Compiler.Constants.evmModulus
+  by_cases hle : b ≤ a
+  · have hsubLt : a - b < Compiler.Constants.evmModulus := by
+      exact Nat.lt_of_le_of_lt (Nat.sub_le _ _) ha
+    have hsum : Compiler.Constants.evmModulus + a - b =
+        Compiler.Constants.evmModulus + (a - b) := by
+      omega
+    simp [Verity.Core.Uint256.sub, Verity.Core.Uint256.ofNat,
+      Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb, hle]
+    rw [hsum]
+    simpa [Nat.mod_eq_of_lt hsubLt] using
+      Nat.add_mod_right_right (a - b) Compiler.Constants.evmModulus
+  · have hgt : b > a := Nat.lt_of_not_ge hle
+    have hsubLt : a - b < Compiler.Constants.evmModulus := by
+      exact Nat.lt_of_le_of_lt (Nat.sub_le _ _) ha
+    have hdiffPos : 0 < b - a := Nat.sub_pos_of_lt hgt
+    have hdiffLe : b - a ≤ Compiler.Constants.evmModulus := by
+      exact Nat.le_of_lt (Nat.lt_of_le_of_lt (Nat.sub_le _ _) hb)
+    have hdiffLt : Compiler.Constants.evmModulus - (b - a) < Compiler.Constants.evmModulus := by
+      omega
+    have hsum : Compiler.Constants.evmModulus + a - b =
+        Compiler.Constants.evmModulus - (b - a) := by
+      omega
+    simp [Verity.Core.Uint256.sub, Verity.Core.Uint256.ofNat,
+      Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb, hle, hsum, Nat.mod_eq_of_lt hdiffLt]
+
 /-- Modulo on in-range `Nat` values agrees with `Uint256.mod`. -/
 theorem uint256_mod_val_eq
     {a b : Nat}
@@ -1521,6 +1555,38 @@ theorem eval_compileExpr_div_of_compiled
         (SourceSemantics.evalExpr fields runtime rhs : Verity.Core.Uint256)) : Verity.Core.Uint256).val by
       rfl]
   rw [uint256_div_val_eq hlhsLt hrhsLt]
+  simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt]
+
+theorem eval_compileExpr_sub_of_compiled
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {lhs rhs : Expr}
+    {lhsIR rhsIR : YulExpr}
+    (hlhsCompile : CompilationModel.compileExpr fields .calldata lhs = Except.ok lhsIR)
+    (hrhsCompile : CompilationModel.compileExpr fields .calldata rhs = Except.ok rhsIR)
+    (hlhsEval : evalIRExpr state lhsIR = some (SourceSemantics.evalExpr fields runtime lhs))
+    (hrhsEval : evalIRExpr state rhsIR = some (SourceSemantics.evalExpr fields runtime rhs))
+    (hlhsLt : SourceSemantics.evalExpr fields runtime lhs < Compiler.Constants.evmModulus)
+    (hrhsLt : SourceSemantics.evalExpr fields runtime rhs < Compiler.Constants.evmModulus) :
+    evalIRExpr state
+      (CompilationModel.compileExpr fields .calldata (.sub lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+        some (SourceSemantics.evalExpr fields runtime (.sub lhs rhs)) := by
+  have hcompile := compileExpr_sub_ok hlhsCompile hrhsCompile
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.sub lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some ((Compiler.Constants.evmModulus +
+            (SourceSemantics.evalExpr fields runtime lhs % Compiler.Constants.evmModulus) -
+            (SourceSemantics.evalExpr fields runtime rhs % Compiler.Constants.evmModulus)) %
+              Compiler.Constants.evmModulus) := by
+    simpa [hcompile] using evalIRExpr_sub_of_eval hlhsEval hrhsEval
+  rw [heval]
+  rw [show SourceSemantics.evalExpr fields runtime (.sub lhs rhs) =
+      (((SourceSemantics.evalExpr fields runtime lhs : Verity.Core.Uint256) -
+        (SourceSemantics.evalExpr fields runtime rhs : Verity.Core.Uint256)) : Verity.Core.Uint256).val by
+      rfl]
+  rw [uint256_sub_val_eq hlhsLt hrhsLt]
   simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt]
 
 theorem eval_compileExpr_mod_of_compiled

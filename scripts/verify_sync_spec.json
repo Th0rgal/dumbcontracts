@@ -157,6 +157,23 @@
       "lean-perf-queue"
     ]
   },
+  "expected_uploaded_artifact_paths": {
+    "build": [
+      "axiom-report.md\naxiom-report-raw.log"
+    ],
+    "build-compiler": [
+      "compiler/yul",
+      "compiler/yul-patched",
+      ".lake/build/bin/difftest-interpreter",
+      "gas-report-static.tsv",
+      "gas-report-static-patched.tsv",
+      "compiler/patch-report.tsv",
+      "compiler/parity-pack-identity-report.json"
+    ],
+    "lean-profile": [
+      "lean-perf-queue.md"
+    ]
+  },
   "expected_downloaded_artifacts": {
     "foundry-gas-calibration": [
       "static-gas-report",
@@ -170,6 +187,21 @@
     ],
     "foundry-multi-seed": [
       "generated-yul"
+    ]
+  },
+  "expected_downloaded_artifact_paths": {
+    "foundry-gas-calibration": [
+      null,
+      "compiler/yul"
+    ],
+    "foundry": [
+      "compiler/yul"
+    ],
+    "foundry-patched": [
+      "compiler/yul-patched"
+    ],
+    "foundry-multi-seed": [
+      "compiler/yul"
     ]
   }
 }

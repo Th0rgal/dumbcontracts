@@ -34,6 +34,9 @@ def prebindRawArgs (state : IRState) (params : List Param) : IRState :=
     (fun s (p, v) => s.setVar p.name v)
     state
 
+def rawArgBindings (params : List Param) (args : List Nat) : List (String × Nat) :=
+  ((params.map Param.toIRParam).zip args).map (fun entry => (entry.1.name, entry.2))
+
 @[simp] theorem prebindRawArgs_calldata (state : IRState) (params : List Param) :
     (prebindRawArgs state params).calldata = state.calldata := by
   unfold prebindRawArgs
@@ -42,6 +45,29 @@ def prebindRawArgs (state : IRState) (params : List Param) : IRState :=
       rfl
   | cons entry rest ih =>
       simpa [List.foldl, IRState.setVar] using ih (state.setVar entry.1.name entry.2)
+
+theorem prebindRawArgs_exact_rawArgBindings
+    {state : IRState}
+    {bindings0 : List (String × Nat)}
+    (hexact : FunctionBody.bindingsExactlyMatchIRVars bindings0 state)
+    (params : List Param) :
+    FunctionBody.bindingsExactlyMatchIRVars
+      ((rawArgBindings params state.calldata).foldl
+        (fun acc entry => SourceSemantics.bindValue acc entry.1 entry.2) bindings0)
+      (prebindRawArgs state params) := by
+  unfold prebindRawArgs rawArgBindings
+  induction (List.zip (List.map Param.toIRParam params) state.calldata) generalizing bindings0 state with
+  | nil =>
+      simpa
+  | cons entry rest ih =>
+      have hstep :
+          FunctionBody.bindingsExactlyMatchIRVars
+            (SourceSemantics.bindValue bindings0 entry.1.name entry.2)
+            (state.setVar entry.1.name entry.2) :=
+        FunctionBody.bindingsExactlyMatchIRVars_setVar_bindValue hexact entry.1.name entry.2
+      simpa [List.foldl, SourceSemantics.bindValue] using
+        ih (bindings0 := SourceSemantics.bindValue bindings0 entry.1.name entry.2)
+          (state := state.setVar entry.1.name entry.2) hstep
 
 def execResultToIRResult (initialState : IRState) : IRExecResult → IRResult
   | .continue s =>

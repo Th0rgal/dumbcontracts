@@ -85,6 +85,12 @@ def bindingsExactlyMatchIRVars
     (state : IRState) : Prop :=
   ∀ name, state.getVar name = lookupBinding? bindings name
 
+def bindingsExactlyMatchIRVarsOnScope
+    (scope : List String)
+    (bindings : List (String × Nat))
+    (state : IRState) : Prop :=
+  ∀ name, name ∈ scope → state.getVar name = lookupBinding? bindings name
+
 def bindingsMatchIRVars
     (bindings : List (String × Nat))
     (state : IRState) : Prop :=
@@ -101,6 +107,15 @@ theorem bindingsExactlyMatchIRVars_implies_bindingsMatchIRVars
   intro name
   rw [hexact name]
   rfl
+
+theorem bindingsExactlyMatchIRVars_implies_onScope
+    {scope : List String}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    (hexact : bindingsExactlyMatchIRVars bindings state) :
+    bindingsExactlyMatchIRVarsOnScope scope bindings state := by
+  intro name _
+  exact hexact name
 
 def runtimeStateMatchesIR
     (fields : List Field)
@@ -160,6 +175,16 @@ theorem evalIRExpr_ident_of_exact_bindings
     (name : String) :
     evalIRExpr state (YulExpr.ident name) = lookupBinding? bindings name := by
   simpa [evalIRExpr] using hexact name
+
+theorem evalIRExpr_ident_of_scope_bindings
+    {scope : List String}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    (hexact : bindingsExactlyMatchIRVarsOnScope scope bindings state)
+    {name : String}
+    (hname : name ∈ scope) :
+    evalIRExpr state (YulExpr.ident name) = lookupBinding? bindings name := by
+  simpa [evalIRExpr] using hexact name hname
 
 theorem evalIRExpr_caller_of_runtimeStateMatchesIR
     {fields : List Field}
@@ -2870,6 +2895,54 @@ theorem bindingsExactlyMatchIRVars_setMemory
       { state with memory := fun o => if o = offset then value else state.memory o } := by
   intro name
   simpa [IRState.getVar] using hexact name
+
+theorem bindingsExactlyMatchIRVarsOnScope_setMemory
+    {scope : List String}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    (hexact : bindingsExactlyMatchIRVarsOnScope scope bindings state)
+    (offset value : Nat) :
+    bindingsExactlyMatchIRVarsOnScope scope bindings
+      { state with memory := fun o => if o = offset then value else state.memory o } := by
+  intro name hname
+  simpa [IRState.getVar] using hexact name hname
+
+theorem bindingsExactlyMatchIRVarsOnScope_setVar_irrelevant
+    {scope : List String}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    {tempName : String}
+    {value : Nat}
+    (hexact : bindingsExactlyMatchIRVarsOnScope scope bindings state)
+    (hfresh : tempName ∉ scope) :
+    bindingsExactlyMatchIRVarsOnScope scope bindings (state.setVar tempName value) := by
+  intro name hname
+  by_cases hEq : name = tempName
+  · subst hEq
+    exact False.elim (hfresh hname)
+  · rw [getVar_setVar_ne state tempName name value hEq]
+    exact hexact name hname
+
+theorem bindingsExactlyMatchIRVarsOnScope_setVar_bindValue
+    {scope : List String}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    {boundName : String}
+    {value : Nat}
+    (hexact : bindingsExactlyMatchIRVarsOnScope scope bindings state) :
+    bindingsExactlyMatchIRVarsOnScope (boundName :: scope)
+      (SourceSemantics.bindValue bindings boundName value)
+      (state.setVar boundName value) := by
+  intro name hname
+  simp at hname
+  rcases hname with rfl | hname
+  · simp [lookupBinding?_bindValue_eq]
+  · by_cases hEq : name = boundName
+    · subst hEq
+      simp [lookupBinding?_bindValue_eq]
+    · rw [lookupBinding?_bindValue_ne bindings boundName name value hEq]
+      rw [getVar_setVar_ne state boundName name value hEq]
+      exact hexact name hname
 
 @[simp] theorem encodeEvents_withTransactionContext
     (world : Verity.ContractState) (tx : IRTransaction) :

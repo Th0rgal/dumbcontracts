@@ -21,7 +21,7 @@ See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
 
 ## Key Modules
 
-- `Compiler/Proofs/SemanticBridge.lean`: contract-level bridge theorems that
+- `Contracts/Proofs/SemanticBridge.lean`: contract-level bridge theorems that
   connect EDSL executions to compiled IR/Yul executions for supported
   contracts. This is still the active full-contract Layer 2 bridge surface.
 - `Compiler/Proofs/EndToEnd.lean`: composed Layers 2 and 3 theorem spine,

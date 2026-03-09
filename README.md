@@ -81,7 +81,7 @@ The compiler turns contracts into Yul (Solidity's low-level IR) through three la
 EDSL contract (Lean)
   ↓  Layer 1: EDSL ≡ CompilationModel     [PROVEN]
 CompilationModel (declarative IR spec)
-  ↓  Layer 2: CompilationModel → IR        [PROVEN]
+  ↓  Layer 2: CompilationModel → IR        [PARTIAL GENERIC, CONTRACT BRIDGES ACTIVE]
 Intermediate Representation
   ↓  Layer 3: IR → Yul                     [PROVEN, 1 axiom]
 Yul
@@ -92,10 +92,10 @@ EVM Bytecode
 | Layer | What it proves | Key file |
 |-------|---------------|----------|
 | 1 | EDSL execution = CompilationModel interpretation | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
-| 2 | CompilationModel → IR preserves behavior | [IRInterpreter.lean](Compiler/Proofs/IRGeneration/IRInterpreter.lean) |
+| 2 | Supported-statement CompilationModel → IR fragment is generic; full-contract bridges remain contract-specific | [SupportedFragment.lean](Compiler/Proofs/IRGeneration/SupportedFragment.lean) |
 | 3 | IR → Yul codegen preserves behavior | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
 
-Layers 2 and 3 (`CompilationModel → IR → Yul`) are verified with 1 axiom (the selector axiom). See [AXIOMS.md](AXIOMS.md).
+Layer 3 is generically verified with 1 documented axiom (the selector axiom). Layer 2 currently combines a generic supported-statement theorem with contract-specific full-contract bridges. See [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md) and [AXIOMS.md](AXIOMS.md).
 
 ### 5. Test the compiled output (belt and suspenders)
 

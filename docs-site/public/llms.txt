@@ -10,7 +10,7 @@ Lean 4 EDSL for writing smart contracts with machine-checked proofs. Three-layer
 
 **Contracts**: 9 formally verified contracts (+ CryptoHash as unverified linker demo) covering correctness, conservation laws, and storage isolation.
 
-**Compiler**: Declarative `CompilationModel` DSL compiles to Yul with verified IR generation. Solidity-compatible function selectors via keccak256.
+**Compiler**: Declarative `CompilationModel` DSL compiles to Yul. Layer 2 currently has a generic supported-statement theorem plus contract-specific full-contract bridges. Solidity-compatible function selectors via keccak256.
 
 ## Quick Facts
 
@@ -27,7 +27,7 @@ Lean 4 EDSL for writing smart contracts with machine-checked proofs. Three-layer
 
 ```
 Layer 1: EDSL Proofs      — Lean theorems about contract behavior
-Layer 2: Compiler Proofs  — CompilationModel -> IR preservation
+Layer 2: Compiler Proofs  — partial generic CompilationModel -> IR boundary
 Layer 3: IR -> Yul        — Statement/expression equivalence proofs
 Trust:   Yul -> Bytecode  — Via solc (validated by differential testing)
 ```

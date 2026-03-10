@@ -265,7 +265,16 @@ the generated block and enclosing statement list is now
 this subpath is therefore no longer branch composition; it is reintroducing the
 recursive semantic theorem for `StmtListTerminalCore` with the right structural
 fuel schema so the branch induction hypotheses line up with these new `then` and
-`else` composition lemmas.
+`else` composition lemmas. The latest cleanup also adds direct `fuel + 1`
+composition wrappers for one-step IR heads:
+`execIRStmts_cons_of_execIRStmt_continue_stepFuel`,
+`execIRStmts_cons_of_execIRStmt_return_stepFuel`,
+`execIRStmts_cons_of_execIRStmt_stop_stepFuel`,
+`execIRStmts_cons_of_execIRStmt_revert_stepFuel`, and
+`execIRStmts_two_of_continue_then_return_stepFuel`. That removes the immediate
+`execIRStmt (fuel + 1)` vs `execIRStmts (fuel + 2)` mismatch that the aborted
+terminal-core theorem attempt hit in the simple `let/assign/require/mstore;
+return/stop` prefixes.
 
 **Risk**: Medium.
 

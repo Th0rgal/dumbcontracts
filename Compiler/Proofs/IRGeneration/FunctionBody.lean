@@ -4112,6 +4112,21 @@ private theorem execIRStmts_cons_of_execIRStmt_continue_anyFuel
   | succ fuel =>
       simp [execIRStmts, hstmt]
 
+private theorem execIRStmts_cons_of_execIRStmt_continue_stepFuel
+    (fuel : Nat)
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execIRStmt (fuel + 1) state stmt = .continue next) :
+    execIRStmts (fuel + 2) state (stmt :: rest) =
+      execIRStmts (fuel + 1) next rest := by
+  simpa [Nat.add_assoc] using
+    (execIRStmts_cons_of_execIRStmt_continue_anyFuel
+      (fuel := fuel + 1)
+      (state := state)
+      (next := next)
+      (stmt := stmt)
+      (rest := rest)
+      hstmt)
+
 private theorem execIRStmts_cons_of_execIRStmt_return
     (state next : IRState) (stmt : YulStmt) (rest : List YulStmt) (value : Nat)
     (hstmt : execIRStmt (rest.length + 1) state stmt = .return value next) :
@@ -4138,6 +4153,22 @@ private theorem execIRStmts_cons_of_execIRStmt_return_anyFuel
       cases stmt <;> simp [execIRStmt, execIRStmts] at hstmt ⊢ <;> simpa using hstmt
   | succ fuel =>
       simp [execIRStmts, hstmt]
+
+private theorem execIRStmts_cons_of_execIRStmt_return_stepFuel
+    (fuel : Nat)
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt) (value : Nat)
+    (hstmt : execIRStmt (fuel + 1) state stmt = .return value next) :
+    execIRStmts (fuel + 2) state (stmt :: rest) =
+      .return value next := by
+  simpa [Nat.add_assoc] using
+    (execIRStmts_cons_of_execIRStmt_return_anyFuel
+      (fuel := fuel + 1)
+      (state := state)
+      (next := next)
+      (stmt := stmt)
+      (rest := rest)
+      (value := value)
+      hstmt)
 
 private theorem execIRStmts_cons_of_execIRStmt_stop
     (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
@@ -4166,6 +4197,21 @@ private theorem execIRStmts_cons_of_execIRStmt_stop_anyFuel
   | succ fuel =>
       simp [execIRStmts, hstmt]
 
+private theorem execIRStmts_cons_of_execIRStmt_stop_stepFuel
+    (fuel : Nat)
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execIRStmt (fuel + 1) state stmt = .stop next) :
+    execIRStmts (fuel + 2) state (stmt :: rest) =
+      .stop next := by
+  simpa [Nat.add_assoc] using
+    (execIRStmts_cons_of_execIRStmt_stop_anyFuel
+      (fuel := fuel + 1)
+      (state := state)
+      (next := next)
+      (stmt := stmt)
+      (rest := rest)
+      hstmt)
+
 private theorem execIRStmts_cons_of_execIRStmt_revert
     (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
     (hstmt : execIRStmt (rest.length + 1) state stmt = .revert next) :
@@ -4192,6 +4238,21 @@ private theorem execIRStmts_cons_of_execIRStmt_revert_anyFuel
       cases stmt <;> simp [execIRStmt, execIRStmts] at hstmt ⊢ <;> simpa using hstmt
   | succ fuel =>
       simp [execIRStmts, hstmt]
+
+private theorem execIRStmts_cons_of_execIRStmt_revert_stepFuel
+    (fuel : Nat)
+    (state next : IRState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execIRStmt (fuel + 1) state stmt = .revert next) :
+    execIRStmts (fuel + 2) state (stmt :: rest) =
+      .revert next := by
+  simpa [Nat.add_assoc] using
+    (execIRStmts_cons_of_execIRStmt_revert_anyFuel
+      (fuel := fuel + 1)
+      (state := state)
+      (next := next)
+      (stmt := stmt)
+      (rest := rest)
+      hstmt)
 
 private theorem execIRStmts_two_of_execIRStmt_continue
     (state mid : IRState) (stmt1 stmt2 : YulStmt) (rest : List YulStmt)
@@ -4241,6 +4302,26 @@ private theorem execIRStmts_two_of_continue_then_return_anyFuel
   | succ fuel =>
       simpa using
         (execIRStmts_cons_of_execIRStmt_return_anyFuel fuel mid next stmt2 rest value hstmt2)
+
+private theorem execIRStmts_two_of_continue_then_return_stepFuel
+    (fuel : Nat)
+    (state mid next : IRState) (stmt1 stmt2 : YulStmt) (rest : List YulStmt) (value : Nat)
+    (hstmt1 : execIRStmt (fuel + 2) state stmt1 = .continue mid)
+    (hstmt2 : execIRStmt (fuel + 1) mid stmt2 = .return value next) :
+    execIRStmts (fuel + 3) state (stmt1 :: stmt2 :: rest) =
+      .return value next := by
+  simpa [Nat.add_assoc] using
+    (execIRStmts_two_of_continue_then_return_anyFuel
+      (fuel := fuel + 2)
+      (state := state)
+      (mid := mid)
+      (next := next)
+      (stmt1 := stmt1)
+      (stmt2 := stmt2)
+      (rest := rest)
+      (value := value)
+      hstmt1
+      (by simpa [Nat.add_assoc] using hstmt2))
 
 private theorem execIRStmt_block_of_execIRStmts_continue
     (fuel : Nat) (state next : IRState) (body : List YulStmt)

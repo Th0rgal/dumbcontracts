@@ -8,7 +8,7 @@ Verity implements a **three-layer verification stack** proving smart contracts c
 EDSL contracts (Lean)
     ↓ Layer 1: EDSL ≡ CompilationModel [PROVEN FOR CURRENT CONTRACTS; GENERIC CORE, CONTRACT BRIDGES]
 CompilationModel (declarative compiler-facing model)
-    ↓ Layer 2: CompilationModel → IR [GENERIC THEOREM SURFACE, 2 AXIOMS, CONTRACT BRIDGES ACTIVE]
+    ↓ Layer 2: CompilationModel → IR [PARTIAL GENERIC, 2 AXIOMS, CONTRACT BRIDGES ACTIVE]
 Intermediate Representation (IR)
     ↓ Layer 3: IR → Yul [GENERIC SURFACE, 1 AXIOM]
 Yul (EVM Assembly)

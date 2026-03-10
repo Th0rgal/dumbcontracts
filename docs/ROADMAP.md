@@ -311,5 +311,5 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines and [`VE
 
 ---
 
-**Last Updated**: 2026-03-07
-**Status**: Layers 1-3 complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). CompilationModel now supports real-world contracts (loops, branching, events, multi-mappings, internal call mechanics, verified externs).
+**Last Updated**: 2026-03-10
+**Status**: Layer 1 is complete for the current contract set; Layer 2 remains partial-generic with an open whole-contract theorem gap tracked in [#1510](https://github.com/Th0rgal/verity/issues/1510); Layer 3 is complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). CompilationModel now supports real-world contracts (loops, branching, events, multi-mappings, internal call mechanics, verified externs).

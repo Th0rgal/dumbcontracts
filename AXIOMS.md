@@ -36,28 +36,68 @@ Selector hashing is modeled as an external cryptographic primitive rather than r
 
 **Risk**: Low.
 
-### 2. `SwitchCaseBodyBridge`
+### 2. `execYulStmtsFuel_setVar_hasSelector_irrelevant`
 
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:532`
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:748`
 
 **Statement**:
 ```lean
-private axiom SwitchCaseBodyBridge
+private axiom execYulStmtsFuel_setVar_hasSelector_irrelevant
 ```
 
 **Purpose**:
-Bridges from the single-function body equivalence theorem to the remaining matched, arity-safe runtime-dispatch execution shape (`switchCaseBody`, `__has_selector`, and rollback shaping after the dispatch guards have been proved to pass).
+Variable irrelevance: the dispatch variable `__has_selector` is never read by
+function body statements, so adding it to the variable environment does not
+change execution. This is a purely Yul-level property: it says
+`execYulStmtsFuel fuel (state.setVar "__has_selector" 1) body = execYulStmtsFuel fuel state body`.
 
 **Why this is currently an axiom**:
-This remains the last contract-level proof gap between body-level Yul equivalence and full selector-dispatch preservation, but the theorem surface is now smaller than before.
-The checked theorem surface now requires both `DispatchGuardsSafe fn tx` and an explicit arity fact `fn.params.length ≤ tx.args.length`.
-The short-calldata failure branch is no longer axiomatized: it is proved by the checked helper lemmas `execYulStmtsFuel_cons_continue`, `execYulStmtsFuel_cons_revert`, `exec_callvalueGuard_noop`, `exec_calldatasizeGuard_revert_of_short_noWrap`, `exec_switchCaseBody_revert_of_short`, and `SwitchCaseBodyBridge_short`.
-What remains axiomatized is only the matched-case bridge from `interpretYulRuntime fn.body ...` to executing the full `switchCaseBody fn` wrapper after the value guard and calldata-size guard are known to pass.
-The remaining blocker is therefore narrower and local: proving the success-path prefix normalization around the leading dispatch comment, optional `callvalueGuard`, and successful `calldatasizeGuard` no-op so the proof can hand control to the already-checked body equivalence theorem without an axiom.
+Proving this mechanically requires showing that no subexpression in `body`
+evaluates `YulExpr.ident "__has_selector"`. The compiler never emits references
+to `__has_selector` inside function bodies (only in the dispatch prelude), but
+the proof infrastructure for "variable X is dead in statement list S" is not yet
+built.
 
-**Risk**: Medium.
+**Risk**: Low. Purely Yul-level, does not mention IR types. The property is
+a standard dead-variable elimination fact.
 
-### 3. `supported_function_body_correct_from_exact_state`
+### 3. `execYulStmtsFuel_fuel_adequate`
+
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:757`
+
+**Statement**:
+```lean
+private axiom execYulStmtsFuel_fuel_adequate
+    (body : List YulStmt) (state : YulState) (fuel : Nat)
+    (h : fuel ≥ sizeOf body + 1) :
+    execYulStmtsFuel fuel state body = execYulStmts state body
+```
+
+**Purpose**:
+Fuel adequacy: when the fuel budget is at least `sizeOf body + 1` (the amount
+used by `execYulStmts`), fuel-bounded execution gives the same result as total
+execution. This is a purely Yul-level fuel-saturation property. The hypothesis
+`h` ensures the fuel is sufficient; the equality is unwrapped (not wrapped
+in `yulResultOfExecWithRollback`), making this a strictly stronger and more
+composable statement than the previous version.
+
+**Why this is currently an axiom**:
+The `execYulFuel` engine reuses the same fuel counter across recursive calls
+(it is a depth bound, not a countdown), so once fuel exceeds the structural
+depth the result stabilizes. Proving this requires a fuel-monotonicity induction
+over `execYulFuel` that is understood but not yet mechanized.
+
+**Risk**: Low. Purely Yul-level, does not mention IR types. The property is a
+standard fuel-monotonicity / fuel-saturation fact for bounded recursion.
+
+*Note*: The former `SwitchCaseBodyBridge` axiom has been fully eliminated.
+`SwitchCaseBodyBridge` is now a proved theorem. It composes:
+1. `exec_switchCaseBody_continue_of_long` — proved guard-prefix stepping
+2. `SwitchCaseBodyBridge_body` — proved theorem composing axioms #2 and #3
+The `sizeOf_buildSwitch_ge_switchCases` structural bound (relating AST nesting
+depth to `switchCases` size) is also fully proved mechanically.
+
+### 4. `supported_function_body_correct_from_exact_state`
 
 **Location**: `Compiler/Proofs/IRGeneration/Function.lean:810`
 
@@ -117,7 +157,7 @@ the still-unproved non-core supported statement shapes preserve
 
 **Risk**: Medium.
 
-### 4. `supported_function_execIRFunction_eq_fuel`
+### 5. `supported_function_execIRFunction_eq_fuel`
 
 **Location**: `Compiler/Proofs/IRGeneration/Function.lean:849`
 
@@ -453,9 +493,23 @@ scoped to contracts that use the module.
 
 The repository removed prior axioms related to IR and Yul expression and statement equivalence and address injectivity by making interpreters total and by using a bounded-nat `Address` representation.
 
-These removals reduced prior axiom debt. The Layer 3 switch-case bridge still has
-a small explicit preservation-side axiom boundary for dispatch-step normalization
-and case-body bridging; those active axioms are tracked above.
+These removals reduced prior axiom debt. The monolithic `SwitchCaseBodyBridge`
+axiom was fully eliminated. `SwitchCaseBodyBridge` is now a proved theorem that
+composes:
+- `exec_switchCaseBody_continue_of_long` — proved guard-prefix stepping (with
+  `hfuel : fuel ≥ 2` precondition for non-zero fuel witness)
+- `SwitchCaseBodyBridge_body` — proved theorem composing the two remaining axioms
+  (variable irrelevance + fuel adequacy)
+- `sizeOf_buildSwitch_ge_switchCases` — fully proved structural AST sizeOf bound
+- `exec_switchCaseBody_revert_of_short` / `SwitchCaseBodyBridge_short` — proved
+  short-calldata branches
+
+The `execYulStmtsFuel_fuel_adequate` axiom was narrowed from its original form
+(no fuel precondition, wrapped in `yulResultOfExecWithRollback`) to a strictly
+stronger form with an explicit `h : fuel ≥ sizeOf body + 1` precondition and
+unwrapped equality. The fuel precondition is threaded through
+`SwitchCaseBodyBridge` (via `hFuelAdequate : fuel ≥ sizeOf fn.body + 5`) and
+discharged at the call site using `sizeOf_buildSwitch_ge_fn_body`.
 
 ## Non-Axiom: Arithmetic Semantics
 
@@ -463,7 +517,7 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 
 ## Trust Summary
 
-- Active axioms: 4
+- Active axioms: 5
 - Production blockers from axioms: 0
 - Enforcement: `scripts/check_axioms.py` ensures this file tracks exact source location.
 - Compilation-path totalization work in `Compiler/CompilationModel.lean` does not
@@ -488,4 +542,4 @@ Any commit that adds, removes, renames, or moves an axiom must update this file 
 
 If this file is stale, trust analysis is stale.
 
-**Last Updated**: 2026-03-08
+**Last Updated**: 2026-03-10

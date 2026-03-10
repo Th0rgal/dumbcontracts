@@ -231,7 +231,15 @@ that schema are now exported as
 `yulStmtList_sizeOf_cons_ge_tailFuel` and
 `yulStmtList_sizeOf_cons_extraFuel_eq`, so the next attempt can reuse them
 outside the local arithmetic section instead of re-proving the head/tail fuel
-decomposition ad hoc.
+decomposition ad hoc. The branch-entry wrappers are now also explicit:
+`execIRStmt_compiled_terminal_ite_let`,
+`evalIRExpr_compiled_terminal_ite_elseCond_of_zero`,
+`execIRStmt_compiled_terminal_ite_thenIf_true`,
+`execIRStmt_compiled_terminal_ite_thenIf_false`, and
+`execIRStmt_compiled_terminal_ite_elseIf_true` package the exact generated
+`__ite_cond` control-flow steps at the structural fuel the remaining theorem
+needs, so the next proof can focus on composing branch results instead of
+rebuilding those local rewrites and condition evaluations inline.
 
 **Risk**: Medium.
 

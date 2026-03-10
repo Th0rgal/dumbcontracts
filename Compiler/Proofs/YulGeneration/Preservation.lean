@@ -150,9 +150,10 @@ private theorem sizeOf_append_ge_length_add (l₁ l₂ : List YulStmt) :
     | .revert s => .revert s) = r := by
   cases r <;> rfl
 
-/-- `callvalueGuard` is a no-op when the execution context has `msg.value = 0`. -/
+/-- `callvalueGuard` is a no-op when the execution context observes zero
+    `callvalue()` modulo `2^256`, matching `DispatchGuardsSafe`. -/
 private theorem exec_callvalueGuard_noop (fuel : Nat) (state : YulState)
-    (hMsgValue : state.msgValue = 0) :
+    (hMsgValue : state.msgValue % evmModulus = 0) :
     execYulStmtsFuel (fuel + 2) state [Compiler.callvalueGuard] =
       YulExecResult.continue state := by
   have hs : fuel + 2 = Nat.succ (Nat.succ fuel) := by omega
@@ -162,6 +163,35 @@ private theorem exec_callvalueGuard_noop (fuel : Nat) (state : YulState)
       evalBuiltinCallWithBackend, evalBuiltinCall, evalBuiltinCallWithBackendContext,
       evalBuiltinCallWithContext]
   simp [Compiler.callvalueGuard, execYulStmtsFuel, execYulFuel, hCallvalue]
+
+/-- If calldata is too short for the expected arity, the singleton
+    `calldatasizeGuard` list reverts. This is the smallest checked short-arity
+    guard fact needed for the remaining switch-case bridge work. -/
+private theorem exec_calldatasizeGuard_revert_of_short_noWrap
+    (fuel : Nat) (state : YulState) (numParams : Nat)
+    (hShort : ¬ numParams ≤ state.calldata.length)
+    (hDataNoWrap : 4 + state.calldata.length * 32 < evmModulus)
+    (hParamNoWrap : 4 + numParams * 32 < evmModulus) :
+    execYulStmtsFuel (fuel + 2) state [Compiler.calldatasizeGuard numParams] =
+      .revert state := by
+  have hLtTrue : 4 + state.calldata.length * 32 < 4 + numParams * 32 := by
+    omega
+  have hEval :
+      evalYulExpr state
+        (YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit (4 + numParams * 32)]) =
+        some 1 := by
+    simp [evalYulExpr, evalYulCall, evalYulExprs, evalBuiltinCallWithBackendContext,
+      evalBuiltinCallWithContext, hLtTrue, Nat.mod_eq_of_lt hDataNoWrap,
+      Nat.mod_eq_of_lt hParamNoWrap]
+  cases fuel with
+  | zero =>
+      simp [Compiler.calldatasizeGuard, execYulStmtsFuel, execYulFuel, hEval]
+  | succ fuel =>
+      cases fuel with
+      | zero =>
+          simp [Compiler.calldatasizeGuard, execYulStmtsFuel, execYulFuel, hEval]
+      | succ fuel =>
+          simp [Compiler.calldatasizeGuard, execYulStmtsFuel, execYulFuel, hEval]
 
 /-- If calldata has enough words for `numParams`, `calldatasizeGuard` is a no-op.
 

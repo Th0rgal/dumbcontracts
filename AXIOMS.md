@@ -66,6 +66,13 @@ expose either the `callvalueGuard` failure/no-op or the short-calldata guard
 revert. The next reliable move is therefore to package those one-step
 statement-list rewrites explicitly, then reattempt shrinking this axiom to the
 matched-dispatch branch only under `DispatchGuardsSafe`.
+That preparation is now partially checked: `exec_callvalueGuard_noop` matches
+the actual modulo-`2^256` `callvalue()` semantics used by
+`DispatchGuardsSafe`, and `exec_calldatasizeGuard_revert_of_short_noWrap`
+proves the singleton short-calldata guard reverts under the same no-wrap
+preconditions. The remaining blocker is therefore the statement-list prefix
+normalization around the leading dispatch comment and optional value guard, not
+the guard semantics themselves.
 
 **Risk**: Medium.
 

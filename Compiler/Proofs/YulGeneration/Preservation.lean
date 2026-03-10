@@ -478,6 +478,17 @@ private theorem evalSelectorExpr_setVar_has_selector (state : YulState) (v : Nat
   simpa using (evalYulExpr_selectorExpr_eq (state.setVar "__has_selector" v) (by
     simpa [YulState.setVar] using hselector))
 
+/-- In the non-payable branch, `DispatchGuardsSafe` forces `msgValue = 0 mod 2^256`. -/
+private theorem dispatchGuardsSafe_msgValue_zero_mod_of_nonpayable
+    (fn : IRFunction) (tx : IRTransaction)
+    (hguards : DispatchGuardsSafe fn tx)
+    (hNonPayable : fn.payable = false) :
+    tx.msgValue % evmModulus = 0 := by
+  rcases hguards with ⟨hValueSafe, _⟩
+  rcases hValueSafe with hPayable | hZero
+  · cases (by simpa [hNonPayable] using hPayable : False)
+  · exact hZero
+
 private theorem exec_switchCaseBody_revert_of_short
     (fn : IRFunction) (tx : IRTransaction) (irState : IRState) (fuel : Nat)
     (hguards : DispatchGuardsSafe fn tx)
@@ -557,10 +568,9 @@ private theorem exec_switchCaseBody_revert_of_short
       | succ fuel =>
           have hMsgValue :
               state.msgValue % evmModulus = 0 := by
-            have hZero : tx.msgValue % evmModulus = 0 := by
-              rcases hValueSafe with hTrue | hZero
-              · cases (by simpa [hPayable] using hTrue : False)
-              · exact hZero
+            have hZero : tx.msgValue % evmModulus = 0 :=
+              dispatchGuardsSafe_msgValue_zero_mod_of_nonpayable fn tx
+                ⟨hValueSafe, hParamNoWrap⟩ hPayable
             simpa [state, YulState.initial, YulState.setVar] using hZero
           have hValueGuard :
               execYulStmtFuel (fuel + 1) state Compiler.callvalueGuard = .continue state := by
@@ -712,10 +722,9 @@ private theorem exec_switchCaseBody_continue_of_long
       rw [execYulStmtsFuel_cons_continue (fuel := k + 2) (next := state) (hstmt := hComment)]
       have hMsgValue :
           state.msgValue % evmModulus = 0 := by
-        have hZero : tx.msgValue % evmModulus = 0 := by
-          rcases hValueSafe with hTrue | hZero
-          · cases (by simpa [hPayable] using hTrue : False)
-          · exact hZero
+        have hZero : tx.msgValue % evmModulus = 0 :=
+          dispatchGuardsSafe_msgValue_zero_mod_of_nonpayable fn tx
+            ⟨hValueSafe, hParamNoWrap⟩ hPayable
         simpa [state, YulState.initial, YulState.setVar] using hZero
       have hValueGuard :
           execYulStmtFuel (k + 1 + 1) state Compiler.callvalueGuard = .continue state := by

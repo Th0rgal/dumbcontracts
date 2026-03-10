@@ -493,23 +493,15 @@ scoped to contracts that use the module.
 
 The repository removed prior axioms related to IR and Yul expression and statement equivalence and address injectivity by making interpreters total and by using a bounded-nat `Address` representation.
 
-These removals reduced prior axiom debt. The monolithic `SwitchCaseBodyBridge`
-axiom was fully eliminated. `SwitchCaseBodyBridge` is now a proved theorem that
-composes:
-- `exec_switchCaseBody_continue_of_long` — proved guard-prefix stepping (with
-  `hfuel : fuel ≥ 2` precondition for non-zero fuel witness)
-- `SwitchCaseBodyBridge_body` — proved theorem composing the two remaining axioms
-  (variable irrelevance + fuel adequacy)
-- `sizeOf_buildSwitch_ge_switchCases` — fully proved structural AST sizeOf bound
-- `exec_switchCaseBody_revert_of_short` / `SwitchCaseBodyBridge_short` — proved
-  short-calldata branches
+Specifically, the Layer 2 fuel/accounting bridge axioms (`execIRStmtsFuel_adequate`,
+`supported_function_execIRFunction_eq_fuel`) were eliminated by making the IR
+interpreter total (fuel-based). The fuel adequacy relationship is now trivially
+`rfl` and the proof chain flows through `ir_yul_function_equiv_from_state_of_stmt_equiv`
+without any external adequacy hypothesis.
 
-The `execYulStmtsFuel_fuel_adequate` axiom was narrowed from its original form
-(no fuel precondition, wrapped in `yulResultOfExecWithRollback`) to a strictly
-stronger form with an explicit `h : fuel ≥ sizeOf body + 1` precondition and
-unwrapped equality. The fuel precondition is threaded through
-`SwitchCaseBodyBridge` (via `hFuelAdequate : fuel ≥ sizeOf fn.body + 5`) and
-discharged at the call site using `sizeOf_buildSwitch_ge_fn_body`.
+These removals reduced prior axiom debt. The Layer 3 switch-case bridge still has
+a small explicit preservation-side axiom boundary for dispatch-step normalization
+and case-body bridging; those active axioms are tracked above.
 
 ## Non-Axiom: Arithmetic Semantics
 

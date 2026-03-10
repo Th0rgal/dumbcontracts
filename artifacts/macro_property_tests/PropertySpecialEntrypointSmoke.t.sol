@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.33;
+
+import "./yul/YulTestBase.sol";
+
+/**
+ * @title PropertySpecialEntrypointSmokeTest
+ * @notice Auto-generated baseline property stubs from `verity_contract` declarations.
+ * @dev Source: Contracts/Smoke.lean
+ */
+contract PropertySpecialEntrypointSmokeTest is YulTestBase {
+    address target;
+    address alice = address(0x1111);
+
+    function setUp() public {
+        target = deployYul("SpecialEntrypointSmoke");
+        require(target != address(0), "Deploy failed");
+    }
+
+    // Property 1: getReceiveCount reads storage slot 0 and decodes the result
+    function testAuto_GetReceiveCount_ReadsConfiguredStorage() public {
+        uint256 expected = uint256(1);
+        vm.store(target, bytes32(uint256(0)), bytes32(uint256(expected)));
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getReceiveCount()"));
+        require(ok, "getReceiveCount reverted unexpectedly");
+        assertEq(ret.length, 32, "getReceiveCount ABI return length mismatch (expected 32 bytes)");
+        uint256 actual = abi.decode(ret, (uint256));
+        assertEq(actual, expected, "getReceiveCount should return storage slot 0");
+    }
+    // Property 2: getFallbackCount reads storage slot 1 and decodes the result
+    function testAuto_GetFallbackCount_ReadsConfiguredStorage() public {
+        uint256 expected = uint256(1);
+        vm.store(target, bytes32(uint256(1)), bytes32(uint256(expected)));
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature("getFallbackCount()"));
+        require(ok, "getFallbackCount reverted unexpectedly");
+        assertEq(ret.length, 32, "getFallbackCount ABI return length mismatch (expected 32 bytes)");
+        uint256 actual = abi.decode(ret, (uint256));
+        assertEq(actual, expected, "getFallbackCount should return storage slot 1");
+    }
+}

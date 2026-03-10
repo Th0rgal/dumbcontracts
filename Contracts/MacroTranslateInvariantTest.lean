@@ -288,6 +288,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.Smoke.StatelessSmoke.spec
   , Contracts.Smoke.MutabilitySmoke.spec
+  , Contracts.Smoke.SpecialEntrypointSmoke.spec
   , Contracts.Smoke.InitializerSmoke.spec
   , Contracts.Smoke.ConstantSmoke.spec
   , Contracts.Smoke.ImmutableSmoke.spec
@@ -341,6 +342,7 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("CustomErrorSmoke", ["echo(uint256)"])
   , ("StatelessSmoke", ["echoWord(uint256)", "whoAmI()"])
   , ("MutabilitySmoke", ["deposit()", "currentOwner()"])
+  , ("SpecialEntrypointSmoke", ["getReceiveCount()", "getFallbackCount()"])
   , ("InitializerSmoke", ["initOwner(address)", "upgradeToV2()"])
   , ("ConstantSmoke", ["feeOn(uint256)", "treasuryAddr()"])
   , ("ImmutableSmoke", ["supplyCap()", "treasuryAddr()", "shadowed(uint256)"])
@@ -391,6 +393,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("CustomErrorSmoke", ["0x6279e43c"])
   , ("StatelessSmoke", ["0x26534f53", "0xda91254c"])
   , ("MutabilitySmoke", ["0xd0e30db0", "0xb387ef92"])
+  , ("SpecialEntrypointSmoke", ["0x931999fb", "0x74b204a4"])
   , ("InitializerSmoke", ["0x0d009297", "0xcc01053e"])
   , ("ConstantSmoke", ["0x9c421eb5", "0x30d9a62a"])
   , ("ImmutableSmoke", ["0x8f770ad0", "0x30d9a62a", "0x655b96ec"])
@@ -446,6 +449,23 @@ private def checkMutabilitySmoke : IO Unit := do
   expectTrue "MutabilitySmoke: deposit body reads msgValue"
     (contains (reprStr deposit.body) "Expr.msgValue")
 
+private def checkSpecialEntrypointSmoke : IO Unit := do
+  let functions := Contracts.Smoke.SpecialEntrypointSmoke.spec.functions
+  let receiveFn? := functions.find? (·.name == "receive")
+  let fallback? := functions.find? (·.name == "fallback")
+  let receiveFn := receiveFn?.getD { name := "", params := [], returnType := none, returns := [], body := [] }
+  let fallbackFn := fallback?.getD { name := "", params := [], returnType := none, returns := [], body := [] }
+  expectTrue "SpecialEntrypointSmoke: receive entrypoint is materialized in the spec"
+    (receiveFn.name == "receive")
+  expectTrue "SpecialEntrypointSmoke: receive entrypoint is implicitly payable"
+    receiveFn.isPayable
+  expectTrue "SpecialEntrypointSmoke: receive entrypoint remains selector-free"
+    receiveFn.params.isEmpty
+  expectTrue "SpecialEntrypointSmoke: fallback entrypoint is materialized in the spec"
+    (fallbackFn.name == "fallback")
+  expectTrue "SpecialEntrypointSmoke: fallback entrypoint remains selector-free"
+    fallbackFn.params.isEmpty
+
 private def checkSpec (spec : CompilationModel) : IO Unit := do
   let extFns := externalFunctions spec
   let fnNames := extFns.map (·.name)
@@ -499,6 +519,13 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
         (irFnNames == fnNames)
       expectTrue s!"{spec.name}: IR selectors preserve canonical selector order"
         (irSelectors == selectors)
+      if spec.name == "SpecialEntrypointSmoke" then
+        expectTrue "SpecialEntrypointSmoke: IR keeps receive entrypoint out of selector dispatch"
+          ir.receiveEntrypoint.isSome
+        expectTrue "SpecialEntrypointSmoke: IR keeps fallback entrypoint out of selector dispatch"
+          ir.fallbackEntrypoint.isSome
+      else
+        pure ()
       let indexedFns := List.zip (List.range extFns.length) extFns
       let mappingSafeFns :=
         indexedFns.filterMap (fun (idx, fnSpec) =>
@@ -554,6 +581,7 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
     "Owned.transferOwnership keeps address storage writes explicit in macro output"
     (bodyUsesAddressStorageWrite Contracts.Owned.transferOwnership_modelBody)
   checkMutabilitySmoke
+  checkSpecialEntrypointSmoke
   for spec in macroSpecs do
     checkSpec spec
 

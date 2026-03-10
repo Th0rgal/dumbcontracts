@@ -246,6 +246,12 @@ Those are now extracted as
 `yulStmtList_sizeOf_two_cons_tailExecFuel_eq`, so the next attempt can rewrite
 tail calls straight to `sizeOf whole + extraFuel - 1` / `- 2` instead of
 re-deriving that arithmetic inline. The branch-entry wrappers are now also explicit:
+The latest theorem attempt also exposed one more useful direct normalization on
+the two-head path: sometimes the recursive proof needs to rewrite the whole
+execution budget directly to the tail structural budget after consuming both
+head steps, without stopping at the intermediate second-head budget. That is
+now packaged as `yulStmtList_sizeOf_two_cons_wholeExecFuel_eq`.
+The branch-entry wrappers are now also explicit:
 `execIRStmt_compiled_terminal_ite_let`,
 `evalIRExpr_compiled_terminal_ite_elseCond_of_zero`,
 `execIRStmt_compiled_terminal_ite_thenIf_true`,

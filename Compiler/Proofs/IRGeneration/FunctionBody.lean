@@ -4057,6 +4057,20 @@ theorem yulStmtList_sizeOf_two_cons_tailExecFuel_eq
     yulStmtList_sizeOf_cons_ge_tailFuel stmt2 rest
   omega
 
+theorem yulStmtList_sizeOf_two_cons_wholeExecFuel_eq
+    (extraFuel : Nat)
+    (stmt1 stmt2 : YulStmt)
+    (rest : List YulStmt) :
+    sizeOf (stmt1 :: stmt2 :: rest) + extraFuel =
+      sizeOf rest +
+        (sizeOf (stmt2 :: rest) - (sizeOf rest + 1) +
+          (sizeOf (stmt1 :: stmt2 :: rest) - (sizeOf (stmt2 :: rest) + 1) + extraFuel)) + 2 := by
+  have htail₁ : sizeOf (stmt2 :: rest) + 1 ≤ sizeOf (stmt1 :: stmt2 :: rest) :=
+    yulStmtList_sizeOf_cons_ge_tailFuel stmt1 (stmt2 :: rest)
+  have htail₂ : sizeOf rest + 1 ≤ sizeOf (stmt2 :: rest) :=
+    yulStmtList_sizeOf_cons_ge_tailFuel stmt2 rest
+  omega
+
 theorem compiled_terminal_ite_body_size_ge_blockFuel
     (tempName : String)
     (condIR : YulExpr)

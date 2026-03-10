@@ -14,6 +14,8 @@ declare_syntax_cat verityExternal
 declare_syntax_cat verityLocalObligation
 declare_syntax_cat verityLocalObligations
 declare_syntax_cat verityConstructor
+declare_syntax_cat verityMutability
+declare_syntax_cat verityInitGuard
 declare_syntax_cat verityFunction
 
 syntax ident " : " term " := " "slot" num : verityStorageField
@@ -28,6 +30,10 @@ syntax ident " : " term:max " := " term:max : verityImmutable
 syntax "external " ident "(" sepBy(term, ",") ")" (" -> " "(" sepBy(term, ",") ")")? : verityExternal
 syntax ident " := " ident ppSpace str : verityLocalObligation
 syntax "local_obligations " "[" sepBy(verityLocalObligation, ",") "]" : verityLocalObligations
+syntax "payable" : verityMutability
+syntax "view" : verityMutability
+syntax "initializer(" ident ")" : verityInitGuard
+syntax "reinitializer(" ident ", " num ")" : verityInitGuard
 syntax "ecmCall " term:max ppSpace term:max : term
 syntax "ecmDo " term:max ppSpace term:max : term
 syntax "revert " ident "(" sepBy(term, ",") ")" : doElem
@@ -35,9 +41,7 @@ syntax "revertError " ident "(" sepBy(term, ",") ")" : doElem
 syntax "requireError " term:max ppSpace ident "(" sepBy(term, ",") ")" : doElem
 syntax "constructor " "(" sepBy(verityParam, ",") ")" (ppSpace verityLocalObligations)? " := " term : verityConstructor
 syntax "constructor " "(" sepBy(verityParam, ",") ")" " payable" (ppSpace verityLocalObligations)? " := " term : verityConstructor
-syntax "function " ident " (" sepBy(verityParam, ",") ")" " initializer(" ident ")" (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
-syntax "function " ident " (" sepBy(verityParam, ",") ")" " reinitializer(" ident ", " num ")" (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
-syntax "function " ident " (" sepBy(verityParam, ",") ")" (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
+syntax "function " verityMutability* ident " (" sepBy(verityParam, ",") ")" (ppSpace verityInitGuard)? (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
 
 syntax (name := verityContractCmd)
   "verity_contract " ident " where "

@@ -98,6 +98,8 @@ structure FunctionDecl where
   name : String
   params : Array ParamDecl
   returnTy : ValueType
+  isPayable : Bool := false
+  isView : Bool := false
   initGuard? : Option InitGuardDecl := none
   localObligations : Array LocalObligationDecl := #[]
   body : Term
@@ -390,67 +392,65 @@ private def parseLocalObligation (stx : Syntax) : CommandElabM LocalObligationDe
       }
   | _ => throwErrorAt stx "invalid local obligation declaration"
 
+private def parseMutabilityModifiers
+    (mods : Array (TSyntax `verityMutability))
+    (stx : Syntax) : CommandElabM (Bool × Bool) := do
+  let mut isPayable := false
+  let mut isView := false
+  for mod in mods do
+    match mod with
+    | `(verityMutability| payable) =>
+        if isPayable then
+          throwErrorAt mod "duplicate 'payable' modifier"
+        isPayable := true
+    | `(verityMutability| view) =>
+        if isView then
+          throwErrorAt mod "duplicate 'view' modifier"
+        isView := true
+    | _ => throwErrorAt stx "invalid function mutability modifier"
+  pure (isPayable, isView)
+
+private def parseInitGuard (stx : TSyntax `verityInitGuard) : CommandElabM InitGuardDecl := do
+  match stx with
+  | `(verityInitGuard| initializer($field:ident)) =>
+      pure (.initializer field (toString field.getId))
+  | `(verityInitGuard| reinitializer($field:ident, $version:num)) => do
+      let versionNat ← natFromSyntax version
+      if versionNat == 0 then
+        throwErrorAt version "reinitializer version must be greater than 0"
+      pure (.reinitializer field (toString field.getId) versionNat)
+  | _ => throwErrorAt stx "invalid initializer guard"
+
+private def parseLocalObligations
+    (stx : TSyntax `verityLocalObligations) : CommandElabM (Array LocalObligationDecl) := do
+  match stx with
+  | `(verityLocalObligations| local_obligations [ $[$obligations:verityLocalObligation],* ]) =>
+      obligations.mapM parseLocalObligation
+  | _ => throwErrorAt stx "invalid local obligations declaration"
+
 private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
   match stx with
-  | `(verityFunction| function $name:ident ($[$params:verityParam],*) initializer($field:ident) local_obligations [ $[$obligations:verityLocalObligation],* ] : $retTy:term := $body:term) =>
+  | `(verityFunction| function $[$mods:verityMutability]* $name:ident ($[$params:verityParam],*) $[$guard?:verityInitGuard]? $[$localObligations?:verityLocalObligations]? : $retTy:term := $body:term) => do
+      let (isPayable, isView) ← parseMutabilityModifiers mods stx
+      let parsedParams ← params.mapM parseParam
+      let parsedReturnTy ← valueTypeFromSyntax retTy
+      let parsedGuard? ←
+        match guard? with
+        | some guard => pure (some (← parseInitGuard guard))
+        | none => pure none
+      let parsedLocalObligations ←
+        match localObligations? with
+        | some obligations => parseLocalObligations obligations
+        | none => pure #[]
       pure {
         ident := name
         name := toString name.getId
-        params := ← params.mapM parseParam
-        returnTy := ← valueTypeFromSyntax retTy
-        initGuard? := some (.initializer field (toString field.getId))
-        localObligations := ← obligations.mapM parseLocalObligation
-        body := body
-      }
-  | `(verityFunction| function $name:ident ($[$params:verityParam],*) initializer($field:ident) : $retTy:term := $body:term) =>
-      pure {
-        ident := name
-        name := toString name.getId
-        params := ← params.mapM parseParam
-        returnTy := ← valueTypeFromSyntax retTy
-        initGuard? := some (.initializer field (toString field.getId))
-        body := body
-      }
-  | `(verityFunction| function $name:ident ($[$params:verityParam],*) reinitializer($field:ident, $version:num) local_obligations [ $[$obligations:verityLocalObligation],* ] : $retTy:term := $body:term) => do
-      let versionNat ← natFromSyntax version
-      if versionNat == 0 then
-        throwErrorAt version "reinitializer version must be greater than 0"
-      pure {
-        ident := name
-        name := toString name.getId
-        params := ← params.mapM parseParam
-        returnTy := ← valueTypeFromSyntax retTy
-        initGuard? := some (.reinitializer field (toString field.getId) versionNat)
-        localObligations := ← obligations.mapM parseLocalObligation
-        body := body
-      }
-  | `(verityFunction| function $name:ident ($[$params:verityParam],*) reinitializer($field:ident, $version:num) : $retTy:term := $body:term) => do
-      let versionNat ← natFromSyntax version
-      if versionNat == 0 then
-        throwErrorAt version "reinitializer version must be greater than 0"
-      pure {
-        ident := name
-        name := toString name.getId
-        params := ← params.mapM parseParam
-        returnTy := ← valueTypeFromSyntax retTy
-        initGuard? := some (.reinitializer field (toString field.getId) versionNat)
-        body := body
-      }
-  | `(verityFunction| function $name:ident ($[$params:verityParam],*) local_obligations [ $[$obligations:verityLocalObligation],* ] : $retTy:term := $body:term) =>
-      pure {
-        ident := name
-        name := toString name.getId
-        params := ← params.mapM parseParam
-        returnTy := ← valueTypeFromSyntax retTy
-        localObligations := ← obligations.mapM parseLocalObligation
-        body := body
-      }
-  | `(verityFunction| function $name:ident ($[$params:verityParam],*) : $retTy:term := $body:term) =>
-      pure {
-        ident := name
-        name := toString name.getId
-        params := ← params.mapM parseParam
-        returnTy := ← valueTypeFromSyntax retTy
+        params := parsedParams
+        returnTy := parsedReturnTy
+        isPayable := isPayable
+        isView := isView
+        initGuard? := parsedGuard?
+        localObligations := parsedLocalObligations
         body := body
       }
   | _ => throwErrorAt stx "invalid function declaration"
@@ -870,7 +870,7 @@ private partial def inferPureExprType
       match params[(← natFromSyntax idx)]? with
       | some param => pure param.ty
       | none => throwErrorAt stx s!"constructorArg index {idx.raw.reprint.getD ""} is out of bounds"
-  | `(term| blockTimestamp) | `(term| blockNumber) | `(term| blobbasefee)
+  | `(term| msgValue) | `(term| blockTimestamp) | `(term| blockNumber) | `(term| blobbasefee)
     | `(term| chainid) | `(term| calldatasize) | `(term| returndataSize) =>
       pure .uint256
   | `(term| contractAddress) =>
@@ -1099,6 +1099,8 @@ private partial def inferBindSourceType
       pure .uint256
   | `(term| msgSender) =>
       pure .address
+  | `(term| msgValue) =>
+      pure .uint256
   | `(term| tload $offset:term) => do
       requireWordLikeType offset "tload offset" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals offset)
       pure .uint256
@@ -1134,7 +1136,7 @@ private partial def inferBindSourceType
       | _ => throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd or safeSub"
   | _ =>
       throwErrorAt rhs
-        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/tload/ecrecover/ecmCall"
+        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/msgValue/tload/ecrecover/ecmCall"
 
 private partial def inferTupleSourceTypes?
     (fields : Array StorageFieldDecl)
@@ -1210,6 +1212,7 @@ private partial def validateConstantBody
   | `(term| true) => pure ()
   | `(term| false) => pure ()
   | `(term| constructorArg $idx:num) => throwNonCompileTimeConstantError idx "constructorArg"
+  | `(term| msgValue) => throwNonCompileTimeConstantError stx "msgValue"
   | `(term| blockTimestamp) => throwNonCompileTimeConstantError stx "blockTimestamp"
   | `(term| blockNumber) => throwNonCompileTimeConstantError stx "blockNumber"
   | `(term| blobbasefee) => throwNonCompileTimeConstantError stx "blobbasefee"
@@ -1308,6 +1311,7 @@ partial def translatePureExpr
   | `(term| false) => `(Compiler.CompilationModel.Expr.literal 0)
   | `(term| constructorArg $idx:num) =>
       `(Compiler.CompilationModel.Expr.constructorArg $idx)
+  | `(term| msgValue) => `(Compiler.CompilationModel.Expr.msgValue)
   | `(term| blockTimestamp) => `(Compiler.CompilationModel.Expr.blockTimestamp)
   | `(term| blockNumber) => `(Compiler.CompilationModel.Expr.blockNumber)
   | `(term| blobbasefee) => `(Compiler.CompilationModel.Expr.blobbasefee)
@@ -1757,12 +1761,13 @@ private def translateBindSource
           $(← translatePureExpr fields constDecls immutableDecls params locals key2)
           $(strTerm memberName))
   | `(term| msgSender) => `(Compiler.CompilationModel.Expr.caller)
+  | `(term| msgValue) => `(Compiler.CompilationModel.Expr.msgValue)
   | `(term| tload $offset:term) =>
       `(Compiler.CompilationModel.Expr.tload
           $(← translatePureExpr fields constDecls immutableDecls params locals offset))
   | _ =>
       throwErrorAt rhs
-        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/tload/ecrecover"
+        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/msgValue/tload/ecrecover"
 
 private def translateSafeRequireBind
     (fields : Array StorageFieldDecl)
@@ -3055,14 +3060,20 @@ def mkFunctionCommandsPublic
   let stmtTerms ← translateBodyToStmtTerms fields constDecls immutableDecls functions fn
   let modelParams ← mkModelParamsTerm fn.params
   let localObligationTerms ← fn.localObligations.mapM mkModelLocalObligationTerm
+  let payableTerm ← if fn.isPayable then `(true) else `(false)
+  let viewTerm ← if fn.isView then `(true) else `(false)
+  let returnTypeTerm ← modelReturnTypeTerm fn.returnTy
+  let returnsTerm ← modelReturnsTerm fn.returnTy
 
   let fnCmd : Cmd ← `(command| def $fn.ident : $fnType := $fnValue)
   let bodyCmd : Cmd ← `(command| def $modelBodyName : List Compiler.CompilationModel.Stmt := [ $[$stmtTerms],* ])
   let modelCmd : Cmd ← `(command| def $modelName : Compiler.CompilationModel.FunctionSpec := {
     name := $(strTerm fn.name)
     params := $modelParams
-    returnType := $(← modelReturnTypeTerm fn.returnTy)
-    «returns» := $(← modelReturnsTerm fn.returnTy)
+    returnType := $returnTypeTerm
+    «returns» := $returnsTerm
+    isPayable := $payableTerm
+    isView := $viewTerm
     localObligations := [ $[$localObligationTerms],* ]
     body := $modelBodyName
   })

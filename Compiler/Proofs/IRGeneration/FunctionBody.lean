@@ -3378,6 +3378,64 @@ theorem exec_compileStmt_return_core
     · rw [SourceSemantics.execStmt, hirExec]
       exact ⟨hexact', hbounded⟩
 
+theorem exec_compileStmt_return_core_extraFuel
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {value : Expr}
+    (extraFuel : Nat)
+    (hcore : ExprCompileCore value)
+    (hexact : bindingsExactlyMatchIRVars runtime.bindings state)
+    (hbounded : bindingsBounded runtime.bindings)
+    (hpresent : exprBoundNamesPresent value runtime.bindings)
+    (hruntime : runtimeStateMatchesIR fields runtime state) :
+    ∃ bodyIR,
+      CompilationModel.compileStmt fields [] [] .calldata [] false [] (.return value) = Except.ok bodyIR ∧
+      let sourceResult := SourceSemantics.execStmt fields runtime (.return value)
+      let irExec := execIRStmts (bodyIR.length + extraFuel + 1) state bodyIR
+      stmtResultMatchesIRExec fields sourceResult irExec ∧
+      stmtResultMatchesIRExecExact sourceResult irExec := by
+  rcases compileExpr_core_ok hcore with ⟨valueIR, hvalueIR⟩
+  let retVal := SourceSemantics.evalExpr fields runtime value
+  let state' := { state with memory := fun o => if o = 0 then retVal else state.memory o }
+  refine ⟨[ YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueIR])
+          , YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32]) ], ?_, ?_⟩
+  · rw [CompilationModel.compileStmt, hvalueIR]
+    rfl
+  · have heval := eval_compileExpr_core hcore hexact hbounded hpresent hruntime
+    rw [hvalueIR] at heval
+    have heval' : evalIRExpr state valueIR = some retVal := by
+      simpa [retVal] using heval
+    have hruntime' : runtimeStateMatchesIR fields runtime state' :=
+      runtimeStateMatchesIR_setMemory hruntime 0 retVal
+    have hexact' : bindingsExactlyMatchIRVars runtime.bindings state' :=
+      bindingsExactlyMatchIRVars_setMemory hexact 0 retVal
+    have hmstore :
+        execIRStmt (extraFuel + 2) state
+          (YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueIR])) =
+          .continue state' := by
+      simp [execIRStmt, evalIRExpr, heval', retVal, state']
+    have hreturn :
+        execIRStmt (extraFuel + 1) state'
+          (YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])) =
+          .return retVal state' := by
+      simp [execIRStmt, evalIRExpr, retVal, state']
+    have hirExec :
+        execIRStmts
+            ([ YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueIR])
+             , YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32]) ].length +
+              extraFuel + 1)
+            state
+            [ YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, valueIR])
+            , YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32]) ] =
+          .return retVal state' := by
+      simp [execIRStmts, hmstore, hreturn, Nat.add_comm]
+    constructor
+    · rw [SourceSemantics.execStmt, hirExec]
+      exact ⟨rfl, hruntime'⟩
+    · rw [SourceSemantics.execStmt, hirExec]
+      exact ⟨hexact', hbounded⟩
+
 theorem exec_compileStmt_stop_core
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}

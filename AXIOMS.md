@@ -291,10 +291,12 @@ composition wrappers for one-step IR heads:
 terminal-core theorem attempt hit in the simple `let/assign/require/mstore;
 return/stop` prefixes.
 The newest green theorem extraction also adds
-`exec_compileStmt_stop_core_extraFuel` in
-`Compiler/Proofs/IRGeneration/FunctionBody.lean`, which packages the singleton
-terminal `stop` case directly at arbitrary extra fuel. That removes one more
-base-case special-casing point from the next recursive
+`exec_compileStmt_stop_core_extraFuel` and
+`exec_compileStmt_return_core_extraFuel` in
+`Compiler/Proofs/IRGeneration/FunctionBody.lean`, which package the singleton
+terminal `stop` case and the terminal compiled `mstore; return` case directly
+at arbitrary extra fuel. That removes the remaining singleton terminal
+base-case special-casing from the next recursive
 `StmtListTerminalCore` proof attempt.
 
 **Risk**: Medium.

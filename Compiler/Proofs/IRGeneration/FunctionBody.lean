@@ -7674,6 +7674,48 @@ theorem stmtResultMatchesIRExec_ir_not_continue_of_terminal_core
       hterminal)
     hmatch
 
+theorem execStmtList_terminal_core_ite_then_eq
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {scope : List String}
+    {cond : Expr}
+    {thenBranch elseBranch rest : List Stmt}
+    (hthen : StmtListTerminalCore scope thenBranch)
+    (hcondTrue : (SourceSemantics.evalExpr fields runtime cond != 0) = true) :
+    SourceSemantics.execStmtList fields runtime (.ite cond thenBranch elseBranch :: rest) =
+      SourceSemantics.execStmtList fields runtime thenBranch := by
+  rw [SourceSemantics.execStmtList, SourceSemantics.execStmt, hcondTrue]
+  cases hthenExec : SourceSemantics.execStmtList fields runtime thenBranch <;> simp [hthenExec]
+  rename_i next
+  exact False.elim <|
+    execStmtList_terminal_core_not_continue
+      (fields := fields)
+      (runtime := runtime)
+      (scope := scope)
+      (stmts := thenBranch)
+      hthen next hthenExec
+
+theorem execStmtList_terminal_core_ite_else_eq
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {scope : List String}
+    {cond : Expr}
+    {thenBranch elseBranch rest : List Stmt}
+    (helse : StmtListTerminalCore scope elseBranch)
+    (hcondFalse : (SourceSemantics.evalExpr fields runtime cond != 0) = false) :
+    SourceSemantics.execStmtList fields runtime (.ite cond thenBranch elseBranch :: rest) =
+      SourceSemantics.execStmtList fields runtime elseBranch := by
+  rw [SourceSemantics.execStmtList, SourceSemantics.execStmt, hcondFalse]
+  cases helseExec : SourceSemantics.execStmtList fields runtime elseBranch <;> simp [helseExec]
+  rename_i next
+  exact False.elim <|
+    execStmtList_terminal_core_not_continue
+      (fields := fields)
+      (runtime := runtime)
+      (scope := scope)
+      (stmts := elseBranch)
+      helse next helseExec
+
 theorem scopeNamesIncluded_refl
     {scope : List String} :
     scopeNamesIncluded scope scope := by

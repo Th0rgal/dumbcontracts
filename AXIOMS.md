@@ -346,7 +346,17 @@ singleton and two-head terminal prefixes. The append-normalized wrappers
 `[stmt] ++ tailIR` / `[stmt1, stmt2] ++ tailIR` friction directly, so the next
 terminal-core theorem attempt can stay on the explicit compiled-body shape
 instead of converting back and forth to cons form just to use the fuel
-wrappers.
+wrappers. The latest compile-guided attempt also made one more source-side gap
+explicit: in the terminal `Stmt.ite` case, the source semantics still expose a
+`match execStmtList branch with | continue => execStmtList rest | ...` shape
+even though the chosen branch is terminal and can never continue. That
+normalization is now extracted as
+`execStmtList_terminal_core_ite_then_eq` and
+`execStmtList_terminal_core_ite_else_eq` in
+`Compiler/Proofs/IRGeneration/FunctionBody.lean`, so the next terminal-core
+theorem attempt can rewrite the source side directly to the chosen branch
+result instead of redoing the `execStmtList_terminal_core_not_continue`
+argument inline.
 
 **Risk**: Medium.
 

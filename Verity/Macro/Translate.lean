@@ -428,6 +428,40 @@ private def parseLocalObligations
       obligations.mapM parseLocalObligation
   | _ => throwErrorAt stx "invalid local obligations declaration"
 
+private def hiddenEntrypointIdent (name : String) : Ident :=
+  mkIdent (Name.mkSimple s!"__verity_{name}")
+
+private def parseSpecialEntrypoint (stx : Syntax) : CommandElabM FunctionDecl := do
+  match stx with
+  | `(veritySpecialEntrypoint| receive $[$localObligations?:verityLocalObligations]? := $body:term) => do
+      let parsedLocalObligations ←
+        match localObligations? with
+        | some obligations => parseLocalObligations obligations
+        | none => pure #[]
+      pure {
+        ident := hiddenEntrypointIdent "receive"
+        name := "receive"
+        params := #[]
+        returnTy := .unit
+        isPayable := true
+        localObligations := parsedLocalObligations
+        body := body
+      }
+  | `(veritySpecialEntrypoint| fallback $[$localObligations?:verityLocalObligations]? := $body:term) => do
+      let parsedLocalObligations ←
+        match localObligations? with
+        | some obligations => parseLocalObligations obligations
+        | none => pure #[]
+      pure {
+        ident := hiddenEntrypointIdent "fallback"
+        name := "fallback"
+        params := #[]
+        returnTy := .unit
+        localObligations := parsedLocalObligations
+        body := body
+      }
+  | _ => throwErrorAt stx "invalid special entrypoint declaration"
+
 private def parseFunction (stx : Syntax) : CommandElabM FunctionDecl := do
   match stx with
   | `(verityFunction| function $[$mods:verityMutability]* $name:ident ($[$params:verityParam],*) $[$guard?:verityInitGuard]? $[$localObligations?:verityLocalObligations]? : $retTy:term := $body:term) => do
@@ -2869,7 +2903,7 @@ def parseContractSyntax
     : CommandElabM
         (Ident × Array StorageFieldDecl × Array ErrorDecl × Array ConstantDecl × Array ImmutableDecl × Array ExternalDecl × Option ConstructorDecl × Array FunctionDecl) := do
   match stx with
-  | `(command| verity_contract $contractName:ident where storage $[$storageFields:verityStorageField]* $[errors $[$errorDecls:verityError]*]? $[constants $[$constantDecls:verityConstant]*]? $[immutables $[$immutableDecls:verityImmutable]*]? $[linked_externals $[$externalDecls:verityExternal]*]? $[$ctor:verityConstructor]? $[$functions:verityFunction]*) =>
+  | `(command| verity_contract $contractName:ident where storage $[$storageFields:verityStorageField]* $[errors $[$errorDecls:verityError]*]? $[constants $[$constantDecls:verityConstant]*]? $[immutables $[$immutableDecls:verityImmutable]*]? $[linked_externals $[$externalDecls:verityExternal]*]? $[$ctor:verityConstructor]? $[$entrypoints:veritySpecialEntrypoint]* $[$functions:verityFunction]*) =>
       let parsedErrors ←
         match errorDecls with
         | some decls => decls.mapM parseError
@@ -2894,7 +2928,7 @@ def parseContractSyntax
         , parsedImmutables
         , parsedExternals
         , (← ctor.mapM parseConstructor)
-        , (← functions.mapM parseFunction)
+        , (← entrypoints.mapM parseSpecialEntrypoint) ++ (← functions.mapM parseFunction)
         )
   | _ => throwErrorAt stx "invalid verity_contract declaration"
 

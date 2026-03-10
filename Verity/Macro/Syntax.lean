@@ -16,6 +16,7 @@ declare_syntax_cat verityLocalObligations
 declare_syntax_cat verityConstructor
 declare_syntax_cat verityMutability
 declare_syntax_cat verityInitGuard
+declare_syntax_cat veritySpecialEntrypoint
 declare_syntax_cat verityFunction
 
 syntax ident " : " term " := " "slot" num : verityStorageField
@@ -41,6 +42,8 @@ syntax "revertError " ident "(" sepBy(term, ",") ")" : doElem
 syntax "requireError " term:max ppSpace ident "(" sepBy(term, ",") ")" : doElem
 syntax "constructor " "(" sepBy(verityParam, ",") ")" (ppSpace verityLocalObligations)? " := " term : verityConstructor
 syntax "constructor " "(" sepBy(verityParam, ",") ")" " payable" (ppSpace verityLocalObligations)? " := " term : verityConstructor
+syntax "receive" (ppSpace verityLocalObligations)? " := " term : veritySpecialEntrypoint
+syntax "fallback" (ppSpace verityLocalObligations)? " := " term : veritySpecialEntrypoint
 syntax "function " verityMutability* ident " (" sepBy(verityParam, ",") ")" (ppSpace verityInitGuard)? (ppSpace verityLocalObligations)? " : " term " := " term : verityFunction
 
 syntax (name := verityContractCmd)
@@ -51,7 +54,8 @@ syntax (name := verityContractCmd)
   ("immutables " verityImmutable+)?
   ("linked_externals " verityExternal+)?
   (verityConstructor)?
-  verityFunction+ : command
+  (veritySpecialEntrypoint)*
+  verityFunction* : command
 
 syntax (name := checkContractCmd)
   "#check_contract " ident : command

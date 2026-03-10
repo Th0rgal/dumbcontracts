@@ -109,6 +109,27 @@ verity_contract MutabilitySmoke where
     let ownerAddr ← getStorageAddr owner
     return ownerAddr
 
+verity_contract SpecialEntrypointSmoke where
+  storage
+    receiveCount : Uint256 := slot 0
+    fallbackCount : Uint256 := slot 1
+
+  receive := do
+    let current ← getStorage receiveCount
+    setStorage receiveCount (add current 1)
+
+  fallback := do
+    let current ← getStorage fallbackCount
+    setStorage fallbackCount (add current 1)
+
+  function getReceiveCount () : Uint256 := do
+    let current ← getStorage receiveCount
+    return current
+
+  function getFallbackCount () : Uint256 := do
+    let current ← getStorage fallbackCount
+    return current
+
 verity_contract ConstantSmoke where
   storage
 
@@ -844,6 +865,7 @@ end SpecGenSmoke
 #check_contract StorageWordsSmoke
 #check_contract CustomErrorSmoke
 #check_contract StatelessSmoke
+#check_contract SpecialEntrypointSmoke
 #check_contract TupleSmoke
 #check_contract Uint8Smoke
 #check_contract AddressHelpersSmoke

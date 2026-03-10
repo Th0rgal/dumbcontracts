@@ -53,7 +53,16 @@ The old fully generic dispatch normalization statement was false on wraparound-s
 calldata and has now been removed. The remaining axiom is the narrowed true form:
 it explicitly assumes `4 + state.calldata.length * 32 < evmModulus`. Layer 3 now
 threads that no-wrap hypothesis publicly, so this axiom surface is smaller than
-before, but the actual small-step normalization is still axiomatic.
+before, but the actual small-step normalization is still axiomatic. The latest
+checked proof attempt also narrowed the remaining mechanical gap further: the
+`buildSwitch` block now reduces constructively through the `__has_selector := 1`
+binding and both `if_` guards, but the proof still gets stuck at the final
+singleton-switch normalization shape. Concretely, the constructive trace lands on
+`execYulFuel fuel ... (.stmts [switch ...])`, while the current caller and axiom
+surface use the `execYulStmtFuel (fuel + 1) ... (switch ...)` form directly. The
+next reliable elimination move is therefore a local proved bridge between those
+two singleton-switch views, followed by refactoring the dispatch caller onto that
+proved shape.
 
 **Risk**: Medium.
 

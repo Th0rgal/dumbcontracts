@@ -96,7 +96,7 @@ guard theorems with these two smaller Yul-level axioms through `SwitchCaseBodyBr
 
 ### 4. `supported_function_body_correct_from_exact_state`
 
-**Location**: `Compiler/Proofs/IRGeneration/Function.lean:815`
+**Location**: `Compiler/Proofs/IRGeneration/Function.lean:827`
 
 **Statement**:
 ```lean
@@ -153,10 +153,14 @@ the still-unproved non-core supported statement shapes preserve
 `stmtResultMatchesIRExec` once parameter loading has established exact state.
 
 Note: this axiom's signature was widened with an `extraFuel : Nat` parameter
-when `supported_function_execIRFunction_eq_fuel` was eliminated. The caller in
-`supported_function_correct` instantiates `extraFuel := sizeOf irFn.body -
-irFn.body.length`, which lets the non-core path bridge to `sizeOf`-style fuel
-via the same `compileFunctionSpec_correct_of_body_supported_extraFuel` and
+when `supported_function_execIRFunction_eq_fuel` was eliminated, but it is not
+universal over arbitrary fuel anymore. The statement now requires a lower-bound
+precondition `sizeOf bodyStmts - bodyStmts.length ≤ extraFuel`, matching the
+structural slack needed for nested blocks. The caller in
+`supported_function_correct` discharges that precondition with
+`extraFuel := sizeOf irFn.body - irFn.body.length`, which lets the non-core path
+bridge to `sizeOf`-style fuel via the same
+`compileFunctionSpec_correct_of_body_supported_extraFuel` and
 `execIRFunctionFuel_adequate` machinery that the core path already uses.
 
 **Risk**: Medium.

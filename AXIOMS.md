@@ -147,14 +147,15 @@ whole-fuel prefix wrappers
 `execIRStmts_compiled_require_core_pass_append_wholeFuel_of_scope`,
 `execIRStmts_compiled_require_core_fail_append_wholeFuel_of_scope`, and
 `execIRStmts_compiled_return_core_append_wholeFuel_of_scope` in
-`FunctionBody.lean`. The newest extraction is
-`execIRStmts_singleton_append_of_execIRStmt_continue_tailExtraFuel`, which
-packages the exact singleton-prefix whole-fuel rewrite the recursive
-`StmtListTerminalCore` proof needs when its IH is stated on tail-specific
-structural fuel. That removes one more source of inline `Nat` normalization for
-the ordinary `let`/`assign`/passing-`require` heads. The remaining blocker is
-still the recursive theorem schema itself, plus the broader supported non-core
-fragment including storage and mapping writes.
+`FunctionBody.lean`. The newest checked extractions close the next layer above
+that arithmetic: `execIRStmts_compiled_let_core_tailExtraFuel_of_scope`,
+`execIRStmts_compiled_assign_core_tailExtraFuel_of_scope`, and
+`execIRStmts_compiled_require_core_pass_tailExtraFuel_of_scope` now package the
+ordinary singleton-prefix cases directly in the tail-IH fuel shape that the
+recursive `StmtListTerminalCore` theorem wants. The remaining blocker is
+therefore narrower: landing that recursive theorem itself, especially the
+terminal `return`/`stop`/`ite` branches, before attacking the broader supported
+non-core fragment including storage and mapping writes.
 
 **Risk**: Medium.
 

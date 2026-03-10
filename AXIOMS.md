@@ -38,7 +38,7 @@ Selector hashing is modeled as an external cryptographic primitive rather than r
 
 ### 2. `execYulStmtsFuel_setVar_hasSelector_irrelevant`
 
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:748`
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:757`
 
 **Statement**:
 ```lean
@@ -63,7 +63,7 @@ a standard dead-variable elimination fact.
 
 ### 3. `execYulStmtsFuel_fuel_adequate`
 
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:757`
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:766`
 
 **Statement**:
 ```lean
@@ -93,6 +93,9 @@ standard fuel-monotonicity / fuel-saturation fact for bounded recursion.
 *Note*: The former monolithic `SwitchCaseBodyBridge` axiom has been eliminated.
 `SwitchCaseBodyBridge` is now a proved theorem built by composing the short-calldata
 guard theorems with these two smaller Yul-level axioms through `SwitchCaseBodyBridge_body`.
+In particular, the non-payable `msgValue = 0` dispatch path is handled constructively
+inside the guard-stepping lemmas (`dispatchGuardsSafe_msgValue_zero_mod_of_nonpayable`
+plus `exec_callvalueGuard_noop`), so it is not covered by any separate bridge axiom.
 
 ### 4. `supported_function_body_correct_from_exact_state`
 

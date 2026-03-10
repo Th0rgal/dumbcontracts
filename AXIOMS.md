@@ -193,7 +193,16 @@ generated `__ite_cond` temporary is now also isolated by
 `bindingsExactlyMatchIRVarsOnScope_setFreshTemp_irrelevant`, so the remaining
 terminal-`ite` proof no longer needs to inline fresh-name reasoning just to
 preserve `bindingsExactlyMatchIRVarsOnScope` across the compiler-generated
-temporary binding.
+temporary binding. The newest blocker extraction also adds the direct
+execution-fuel rewrites
+`compiled_terminal_ite_body_thenBranch_execFuel_eq` and
+`compiled_terminal_ite_body_elseBranch_execFuel_eq`, plus the nonzero-fuel
+facts `compiled_terminal_ite_body_letFuel_ne_zero`,
+`compiled_terminal_ite_body_thenIfFuel_ne_zero`, and
+`compiled_terminal_ite_body_blockStmtFuel_ne_zero`. Those are the exact
+shapes consumed by the `execIRStmt_*_nonzeroFuel` lemmas, so the next
+terminal-`ite` proof attempt can plug branch results into the compiled block
+without reconstructing those entry-fuel facts by hand.
 
 **Risk**: Medium.
 

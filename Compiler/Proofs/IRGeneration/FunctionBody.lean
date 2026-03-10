@@ -5105,6 +5105,114 @@ private theorem compiled_terminal_ite_body_elseBranch_extraFuel_eq
     (compiled_terminal_ite_body_size_ge_branchExecFuel tempName condIR thenIR elseIR tailIR).2
   omega
 
+private theorem compiled_terminal_ite_body_thenBranch_execFuel_eq
+    (extraFuel : Nat)
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR tailIR : List YulStmt) :
+    sizeOf thenIR +
+        (sizeOf
+          ([YulStmt.block
+              [ YulStmt.let_ tempName condIR
+              , YulStmt.if_ (YulExpr.ident tempName) thenIR
+              , YulStmt.if_
+                  (YulExpr.call "iszero" [YulExpr.ident tempName])
+                  elseIR
+              ]] ++ tailIR) -
+          (sizeOf thenIR + 5) +
+          extraFuel) + 1 =
+      sizeOf
+        ([YulStmt.block
+            [ YulStmt.let_ tempName condIR
+            , YulStmt.if_ (YulExpr.ident tempName) thenIR
+            , YulStmt.if_
+                (YulExpr.call "iszero" [YulExpr.ident tempName])
+                elseIR
+            ]] ++ tailIR) + extraFuel - 4 := by
+  simpa using
+    (compiled_terminal_ite_body_thenBranch_extraFuel_eq
+      extraFuel tempName condIR thenIR elseIR tailIR).symm
+
+private theorem compiled_terminal_ite_body_elseBranch_execFuel_eq
+    (extraFuel : Nat)
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR tailIR : List YulStmt) :
+    sizeOf elseIR +
+        (sizeOf
+          ([YulStmt.block
+              [ YulStmt.let_ tempName condIR
+              , YulStmt.if_ (YulExpr.ident tempName) thenIR
+              , YulStmt.if_
+                  (YulExpr.call "iszero" [YulExpr.ident tempName])
+                  elseIR
+              ]] ++ tailIR) -
+          (sizeOf elseIR + 5) +
+          extraFuel) + 1 =
+      sizeOf
+        ([YulStmt.block
+            [ YulStmt.let_ tempName condIR
+            , YulStmt.if_ (YulExpr.ident tempName) thenIR
+            , YulStmt.if_
+                (YulExpr.call "iszero" [YulExpr.ident tempName])
+                elseIR
+            ]] ++ tailIR) + extraFuel - 4 := by
+  simpa using
+    (compiled_terminal_ite_body_elseBranch_extraFuel_eq
+      extraFuel tempName condIR thenIR elseIR tailIR).symm
+
+private theorem compiled_terminal_ite_body_letFuel_ne_zero
+    (extraFuel : Nat)
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR tailIR : List YulStmt) :
+    sizeOf
+      ([YulStmt.block
+          [ YulStmt.let_ tempName condIR
+          , YulStmt.if_ (YulExpr.ident tempName) thenIR
+          , YulStmt.if_
+              (YulExpr.call "iszero" [YulExpr.ident tempName])
+              elseIR
+          ]] ++ tailIR) + extraFuel - 2 ≠ 0 := by
+  have hbranch :=
+    (compiled_terminal_ite_body_size_ge_branchExecFuel tempName condIR thenIR elseIR tailIR).1
+  omega
+
+private theorem compiled_terminal_ite_body_thenIfFuel_ne_zero
+    (extraFuel : Nat)
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR tailIR : List YulStmt) :
+    sizeOf
+      ([YulStmt.block
+          [ YulStmt.let_ tempName condIR
+          , YulStmt.if_ (YulExpr.ident tempName) thenIR
+          , YulStmt.if_
+              (YulExpr.call "iszero" [YulExpr.ident tempName])
+              elseIR
+          ]] ++ tailIR) + extraFuel - 3 ≠ 0 := by
+  have hbranch :=
+    (compiled_terminal_ite_body_size_ge_branchExecFuel tempName condIR thenIR elseIR tailIR).1
+  omega
+
+private theorem compiled_terminal_ite_body_blockStmtFuel_ne_zero
+    (extraFuel : Nat)
+    (tempName : String)
+    (condIR : YulExpr)
+    (thenIR elseIR tailIR : List YulStmt) :
+    sizeOf
+      ([YulStmt.block
+          [ YulStmt.let_ tempName condIR
+          , YulStmt.if_ (YulExpr.ident tempName) thenIR
+          , YulStmt.if_
+              (YulExpr.call "iszero" [YulExpr.ident tempName])
+              elseIR
+          ]] ++ tailIR) + extraFuel ≠ 0 := by
+  have hblock :=
+    compiled_terminal_ite_body_size_ge_blockFuel tempName condIR thenIR elseIR tailIR
+  omega
+
+
 theorem execStmtList_terminal_core_not_continue
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}

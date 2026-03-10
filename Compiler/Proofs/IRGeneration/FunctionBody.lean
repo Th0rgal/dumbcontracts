@@ -3979,14 +3979,14 @@ theorem compiled_terminal_ite_body_size_ge_branchExecFuel
   · simp at *
     omega
 
-private theorem yulStmtList_sizeOf_cons_ge_tailFuel
+theorem yulStmtList_sizeOf_cons_ge_tailFuel
     (stmt : YulStmt)
     (rest : List YulStmt) :
     sizeOf rest + 1 ≤ sizeOf (stmt :: rest) := by
   simp
   omega
 
-private theorem yulStmtList_sizeOf_cons_extraFuel_eq
+theorem yulStmtList_sizeOf_cons_extraFuel_eq
     (extraFuel : Nat)
     (stmt : YulStmt)
     (rest : List YulStmt) :

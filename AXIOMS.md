@@ -223,6 +223,15 @@ That closes the last missing link between the theorem’s logical scope and the
 compiler’s concrete `inScopeNames` argument, so the next terminal-core proof
 attempt can preserve the on-scope bindings invariant through the generated
 `__ite_cond` temporary without rebuilding that subset argument inline.
+The last failed direct proof attempt also clarified one theorem-shape issue:
+the recursive terminal-core theorem must generalize `extraFuel` across the
+induction, because the compiled `ite` branches consume different structural
+slack than the enclosing body. The generic size-of list rewrites needed for
+that schema are now exported as
+`yulStmtList_sizeOf_cons_ge_tailFuel` and
+`yulStmtList_sizeOf_cons_extraFuel_eq`, so the next attempt can reuse them
+outside the local arithmetic section instead of re-proving the head/tail fuel
+decomposition ad hoc.
 
 **Risk**: Medium.
 

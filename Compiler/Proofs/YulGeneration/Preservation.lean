@@ -76,6 +76,12 @@ See `TRUST_ASSUMPTIONS.md` for the full trust-boundary description.
 private def initialYulState (tx : YulTransaction) (state : IRState) : YulState :=
   YulState.initial tx state.storage state.events
 
+/-- Preconditions under which the generated dispatch guards behave like the
+    intended source-level checks for a selected function case. -/
+def DispatchGuardsSafe (fn : IRFunction) (tx : IRTransaction) : Prop :=
+  (fn.payable = true ∨ tx.msgValue % evmModulus = 0) ∧
+  4 + fn.params.length * 32 < evmModulus
+
 @[simp]
 private theorem evalYulExpr_selectorExpr_initial
     (tx : YulTransaction) (state : IRState)
@@ -334,6 +340,7 @@ The remaining contract-level gap is connecting `hbody` (which reasons about
 -/
 private axiom SwitchCaseBodyBridge
     (fn : IRFunction) (tx : IRTransaction) (irState : IRState) (fuel : Nat) :
+    DispatchGuardsSafe fn tx →
     resultsMatch
       (execIRFunction fn tx.args irState)
       (interpretYulRuntime fn.body
@@ -399,6 +406,7 @@ theorem yulCodegen_preserves_semantics
     (hWF : ContractWF contract)
     (hNoFallback : contract.fallbackEntrypoint = none)
     (hNoReceive : contract.receiveEntrypoint = none)
+    (hdispatchGuardSafe : ∀ fn, fn ∈ contract.functions → DispatchGuardsSafe fn tx)
     (hbody : ∀ fn, fn ∈ contract.functions →
       resultsMatch
         (execIRFunction fn tx.args
@@ -554,7 +562,7 @@ theorem yulCodegen_preserves_semantics
           blobBaseFee := tx.blobBaseFee
           calldata := tx.args
           selector := tx.functionSelector }
-        (m + 2) hmatch
+        (m + 2) (hdispatchGuardSafe fn hmem) hmatch
 
 /-! ## Complete Preservation Theorem
 

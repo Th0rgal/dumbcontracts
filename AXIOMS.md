@@ -50,6 +50,12 @@ Bridges from the single-function body equivalence theorem to the actual generate
 
 **Why this is currently an axiom**:
 This remains the last contract-level proof gap between body-level Yul equivalence and full selector-dispatch preservation.
+The checked theorem surface has now been narrowed to the strongest currently
+honest variant: callers must supply `DispatchGuardsSafe fn tx`, which makes the
+Yul-level dispatch guards match the intended source-side checks by requiring
+word-level `msg.value` no-op behavior for non-payable functions and a
+non-wrapping calldata-width bound for each selected function case. Without those
+preconditions, the old generic bridge statement was too strong.
 The latest checked decomposition attempt showed the statement can likely be
 split into a proved short-calldata failure branch plus a smaller matched-case
 bridge, but the remaining local blocker is not semantic. It is a mechanical
@@ -59,7 +65,7 @@ residual `execYulFuel (n + 1) ... (.stmts guardsAndBody)` shape far enough to
 expose either the `callvalueGuard` failure/no-op or the short-calldata guard
 revert. The next reliable move is therefore to package those one-step
 statement-list rewrites explicitly, then reattempt shrinking this axiom to the
-matched-dispatch branch only.
+matched-dispatch branch only under `DispatchGuardsSafe`.
 
 **Risk**: Medium.
 

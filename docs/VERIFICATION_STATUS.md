@@ -95,7 +95,7 @@ Key files:
 
 ## Layer 3: IR → Yul — GENERIC, WITH EXPLICIT AXIOM BOUNDARY
 
-**What it proves today**: Yul code generation preserves IR semantics through a generic statement/function equivalence stack, but the current full dispatch-preservation path still depends on 1 documented bridge axiom in [`Preservation.lean`](../Compiler/Proofs/YulGeneration/Preservation.lean).
+**What it proves today**: Yul code generation preserves IR semantics through a generic statement/function equivalence stack, but the current full dispatch-preservation path still depends on 1 documented bridge axiom in [`Preservation.lean`](../Compiler/Proofs/YulGeneration/Preservation.lean). The checked contract-level theorem surface now explicitly requires dispatch-guard safety for each selected function case: word-level zero `msg.value` on non-payable paths and a non-wrapping calldata-width bound for each case guard.
 
 All 8 Yul statement types proven equivalent to IR counterparts. Universal dispatcher theorem:
 

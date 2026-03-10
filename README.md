@@ -93,7 +93,7 @@ EVM Bytecode
 |-------|---------------|----------|
 | 1 | A generic typed-IR core plus contract-level bridge theorems establish EDSL execution = CompilationModel interpretation for the current supported contracts | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
 | 2 | A generic whole-contract theorem shape exists, but its non-core function-level closure still depends on 2 documented axioms; the proved core fragment already runs on structural fuel, and the theorem surface now explicitly assumes normalized transaction-context fields | [Contract.lean](Compiler/Proofs/IRGeneration/Contract.lean) |
-| 3 | IR → Yul codegen is proved generically at the statement/function level, but the current full dispatch-preservation path still uses 1 documented bridge axiom | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
+| 3 | IR → Yul codegen is proved generically at the statement/function level, but the current full dispatch-preservation path still uses 1 documented bridge axiom; the checked contract-level theorem surface now makes dispatch-guard safety explicit for each selected function case | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
 
 There are currently 4 documented Lean axioms in total: 1 selector axiom, 2 generic non-core Layer 2 axioms, and 1 Layer 3 dispatch bridge axiom. See [AXIOMS.md](AXIOMS.md).
 

@@ -140,11 +140,17 @@ This is the remaining generic body-simulation proof over the supported fragment.
 The exact parameter-state reconstruction step is now proved, and `Function.lean`
 now bypasses this axiom for `StmtListCompileCore` bodies, but the repo still
 needs the broader expression/statement induction library for the remaining
-supported body shapes. The latest checked extraction here is the scope-local
-wrapper `execIRStmts_compiled_return_core_append_wholeFuel_of_scope` in
-`FunctionBody.lean`, which confirms the terminal-core path can drive compiled
-`return` under `bindingsExactlyMatchIRVarsOnScope` instead of whole-state
-exactness. A direct attempt to finish the explicit-`bodyIR`
+supported body shapes. The latest checked extractions here are the scope-local
+whole-fuel prefix wrappers
+`execIRStmts_compiled_let_core_append_wholeFuel_of_scope`,
+`execIRStmts_compiled_assign_core_append_wholeFuel_of_scope`,
+`execIRStmts_compiled_require_core_pass_append_wholeFuel_of_scope`,
+`execIRStmts_compiled_require_core_fail_append_wholeFuel_of_scope`, and
+`execIRStmts_compiled_return_core_append_wholeFuel_of_scope` in
+`FunctionBody.lean`. Those confirm the terminal-core path can now drive the
+ordinary singleton heads and compiled `return` directly under
+`bindingsExactlyMatchIRVarsOnScope` instead of rebuilding their whole-body
+`sizeOf` fuel steps inline. A direct attempt to finish the explicit-`bodyIR`
 `StmtListTerminalCore` theorem still failed for a sharper reason: the
 recursive induction must generalize branch- and prefix-specific `extraFuel`
 for every recursive tail, not only for terminal `ite`. That proof-shape gap is
@@ -406,7 +412,14 @@ terminal-head hypothesis instead of redoing that constructor bookkeeping by
 hand. The latest failed theorem attempt also made the remaining fuel problem
 more precise: the recursive statement must quantify tail-specific structural
 `extraFuel` for ordinary singleton prefixes (`let`, `assign`, and `require`),
-not just for the compiled terminal-`ite` branches.
+not just for the compiled terminal-`ite` branches. The newest green wrappers
+now package those singleton whole-fuel prefix steps directly as
+`execIRStmts_compiled_let_core_append_wholeFuel_of_scope`,
+`execIRStmts_compiled_assign_core_append_wholeFuel_of_scope`,
+`execIRStmts_compiled_require_core_pass_append_wholeFuel_of_scope`, and
+`execIRStmts_compiled_require_core_fail_append_wholeFuel_of_scope`, so the next
+recursive theorem attempt can recurse on the compiled tail without first
+re-deriving the head-step execution and invariant update for those cases.
 
 **Risk**: Medium.
 

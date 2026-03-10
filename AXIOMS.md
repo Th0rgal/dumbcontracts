@@ -38,7 +38,7 @@ Selector hashing is modeled as an external cryptographic primitive rather than r
 
 ### 2. `SwitchCaseBodyBridge`
 
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:335`
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:532`
 
 **Statement**:
 ```lean
@@ -46,33 +46,14 @@ private axiom SwitchCaseBodyBridge
 ```
 
 **Purpose**:
-Bridges from the single-function body equivalence theorem to the actual generated runtime-dispatch execution shape (`switchCaseBody`, `__has_selector`, rollback shaping, and arity-guarded execution).
+Bridges from the single-function body equivalence theorem to the remaining matched, arity-safe runtime-dispatch execution shape (`switchCaseBody`, `__has_selector`, and rollback shaping after the dispatch guards have been proved to pass).
 
 **Why this is currently an axiom**:
-This remains the last contract-level proof gap between body-level Yul equivalence and full selector-dispatch preservation.
-The checked theorem surface has now been narrowed to the strongest currently
-honest variant: callers must supply `DispatchGuardsSafe fn tx`, which makes the
-Yul-level dispatch guards match the intended source-side checks by requiring
-word-level `msg.value` no-op behavior for non-payable functions and a
-non-wrapping calldata-width bound for each selected function case. Without those
-preconditions, the old generic bridge statement was too strong.
-The latest checked decomposition attempt showed the statement can likely be
-split into a proved short-calldata failure branch plus a smaller matched-case
-bridge, but the remaining local blocker is not semantic. It is a mechanical
-list-prefix normalization after the initial dispatch comment in
-`switchCaseBody fn`: after one comment step, the proof still has to rewrite the
-residual `execYulFuel (n + 1) ... (.stmts guardsAndBody)` shape far enough to
-expose either the `callvalueGuard` failure/no-op or the short-calldata guard
-revert. The next reliable move is therefore to package those one-step
-statement-list rewrites explicitly, then reattempt shrinking this axiom to the
-matched-dispatch branch only under `DispatchGuardsSafe`.
-That preparation is now partially checked: `exec_callvalueGuard_noop` matches
-the actual modulo-`2^256` `callvalue()` semantics used by
-`DispatchGuardsSafe`, and `exec_calldatasizeGuard_revert_of_short_noWrap`
-proves the singleton short-calldata guard reverts under the same no-wrap
-preconditions. The remaining blocker is therefore the statement-list prefix
-normalization around the leading dispatch comment and optional value guard, not
-the guard semantics themselves.
+This remains the last contract-level proof gap between body-level Yul equivalence and full selector-dispatch preservation, but the theorem surface is now smaller than before.
+The checked theorem surface now requires both `DispatchGuardsSafe fn tx` and an explicit arity fact `fn.params.length ≤ tx.args.length`.
+The short-calldata failure branch is no longer axiomatized: it is proved by the checked helper lemmas `execYulStmtsFuel_cons_continue`, `execYulStmtsFuel_cons_revert`, `exec_callvalueGuard_noop`, `exec_calldatasizeGuard_revert_of_short_noWrap`, `exec_switchCaseBody_revert_of_short`, and `SwitchCaseBodyBridge_short`.
+What remains axiomatized is only the matched-case bridge from `interpretYulRuntime fn.body ...` to executing the full `switchCaseBody fn` wrapper after the value guard and calldata-size guard are known to pass.
+The remaining blocker is therefore narrower and local: proving the success-path prefix normalization around the leading dispatch comment, optional `callvalueGuard`, and successful `calldatasizeGuard` no-op so the proof can hand control to the already-checked body equivalence theorem without an axiom.
 
 **Risk**: Medium.
 

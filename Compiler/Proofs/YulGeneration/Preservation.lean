@@ -321,6 +321,25 @@ private theorem execBuildSwitch_none_none_aux_of_noWrap (fuel : Nat) (state : Yu
   simp [execYulStmtsFuel, execYulStmtFuel, execYulFuel]
   cases hExec : execYulFuel (fuel + 1) state (.stmt stmt) <;> simp
 
+/-- If a head statement continues, the surrounding list steps into the tail. -/
+@[simp] private theorem execYulStmtsFuel_cons_continue
+    (fuel : Nat) (state next : YulState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execYulStmtFuel (fuel + 1) state stmt = .continue next) :
+    execYulStmtsFuel (fuel + 2) state (stmt :: rest) =
+      execYulStmtsFuel (fuel + 1) next rest := by
+  have hstmt' : execYulFuel (fuel + 1) state (.stmt stmt) = .continue next := by
+    simpa [execYulStmtFuel] using hstmt
+  simp [execYulStmtsFuel, execYulFuel, hstmt']
+
+/-- If a head statement reverts, the surrounding list reverts immediately. -/
+@[simp] private theorem execYulStmtsFuel_cons_revert
+    (fuel : Nat) (state : YulState) (stmt : YulStmt) (rest : List YulStmt)
+    (hstmt : execYulStmtFuel (fuel + 1) state stmt = .revert state) :
+    execYulStmtsFuel (fuel + 2) state (stmt :: rest) = .revert state := by
+  have hstmt' : execYulFuel (fuel + 1) state (.stmt stmt) = .revert state := by
+    simpa [execYulStmtFuel] using hstmt
+  simp [execYulStmtsFuel, execYulFuel, hstmt']
+
 /-- The case list emitted by `buildSwitch` is definitionally `switchCases`.
     Keeping this fact explicit helps avoid large reducible unfold chains in #1094 proofs. -/
 private theorem buildSwitch_cases_eq_switchCases (fns : List IRFunction) :
@@ -362,6 +381,148 @@ private theorem evalSelectorExpr_setVar_has_selector (state : YulState) (v : Nat
   simpa using (evalYulExpr_selectorExpr_eq (state.setVar "__has_selector" v) (by
     simpa [YulState.setVar] using hselector))
 
+private theorem exec_switchCaseBody_revert_of_short
+    (fn : IRFunction) (tx : IRTransaction) (irState : IRState) (fuel : Nat)
+    (hguards : DispatchGuardsSafe fn tx)
+    (hNoWrap : 4 + tx.args.length * 32 < evmModulus)
+    (hShort : ¬ fn.params.length ≤ tx.args.length) :
+    execYulStmtsFuel (fuel + 2)
+      ((YulState.initial
+          { sender := tx.sender
+            msgValue := tx.msgValue
+            thisAddress := tx.thisAddress
+            blockTimestamp := tx.blockTimestamp
+            blockNumber := tx.blockNumber
+            chainId := tx.chainId
+            blobBaseFee := tx.blobBaseFee
+            functionSelector := tx.functionSelector
+            args := tx.args }
+          irState.storage irState.events).setVar "__has_selector" 1)
+      (switchCaseBody fn) =
+        .revert
+          ((YulState.initial
+              { sender := tx.sender
+                msgValue := tx.msgValue
+                thisAddress := tx.thisAddress
+                blockTimestamp := tx.blockTimestamp
+                blockNumber := tx.blockNumber
+                chainId := tx.chainId
+                blobBaseFee := tx.blobBaseFee
+                functionSelector := tx.functionSelector
+                args := tx.args }
+              irState.storage irState.events).setVar "__has_selector" 1) := by
+  rcases hguards with ⟨hValueSafe, hParamNoWrap⟩
+  let state :=
+    ((YulState.initial
+        { sender := tx.sender
+          msgValue := tx.msgValue
+          thisAddress := tx.thisAddress
+          blockTimestamp := tx.blockTimestamp
+          blockNumber := tx.blockNumber
+          chainId := tx.chainId
+          blobBaseFee := tx.blobBaseFee
+          functionSelector := tx.functionSelector
+          args := tx.args }
+        irState.storage irState.events).setVar "__has_selector" 1)
+  have hDataNoWrap : 4 + state.calldata.length * 32 < evmModulus := by
+    simpa [state, YulState.initial, YulState.setVar] using hNoWrap
+  have hComment :
+      execYulStmtFuel (fuel + 1) state (YulStmt.comment s!"{fn.name}()") = .continue state := by
+    simp [execYulStmtFuel, execYulFuel]
+  cases hPayable : fn.payable with
+  | true =>
+      rw [show switchCaseBody fn =
+        YulStmt.comment s!"{fn.name}()" :: Compiler.calldatasizeGuard fn.params.length :: fn.body by
+          simp [switchCaseBody, hPayable]]
+      rw [execYulStmtsFuel_cons_continue (fuel := fuel) (next := state) (hstmt := hComment)]
+      cases fuel with
+      | zero =>
+          rfl
+      | succ fuel =>
+          have hGuard :
+              execYulStmtFuel (fuel + 1) state (Compiler.calldatasizeGuard fn.params.length) =
+                .revert state := by
+            simpa [execYulStmtFuel] using
+              (exec_calldatasizeGuard_revert_of_short_noWrap fuel state fn.params.length
+                hShort hDataNoWrap hParamNoWrap)
+          exact execYulStmtsFuel_cons_revert (fuel := fuel) (state := state)
+            (stmt := Compiler.calldatasizeGuard fn.params.length) (rest := fn.body) hGuard
+  | false =>
+      rw [show switchCaseBody fn =
+        YulStmt.comment s!"{fn.name}()" ::
+          Compiler.callvalueGuard ::
+            Compiler.calldatasizeGuard fn.params.length :: fn.body by
+          simp [switchCaseBody, hPayable]]
+      rw [execYulStmtsFuel_cons_continue (fuel := fuel) (next := state) (hstmt := hComment)]
+      cases fuel with
+      | zero =>
+          rfl
+      | succ fuel =>
+          have hMsgValue :
+              state.msgValue % evmModulus = 0 := by
+            have hZero : tx.msgValue % evmModulus = 0 := by
+              rcases hValueSafe with hTrue | hZero
+              · cases (by simpa [hPayable] using hTrue : False)
+              · exact hZero
+            simpa [state, YulState.initial, YulState.setVar] using hZero
+          have hValueGuard :
+              execYulStmtFuel (fuel + 1) state Compiler.callvalueGuard = .continue state := by
+            simpa [execYulStmtFuel] using exec_callvalueGuard_noop fuel state hMsgValue
+          rw [execYulStmtsFuel_cons_continue (fuel := fuel) (next := state) (hstmt := hValueGuard)]
+          cases fuel with
+          | zero =>
+              rfl
+          | succ fuel =>
+              have hGuard :
+                  execYulStmtFuel (fuel + 1) state (Compiler.calldatasizeGuard fn.params.length) =
+                    .revert state := by
+                simpa [execYulStmtFuel] using
+                  (exec_calldatasizeGuard_revert_of_short_noWrap fuel state fn.params.length
+                    hShort hDataNoWrap hParamNoWrap)
+              exact execYulStmtsFuel_cons_revert (fuel := fuel) (state := state)
+                (stmt := Compiler.calldatasizeGuard fn.params.length) (rest := fn.body) hGuard
+
+private theorem SwitchCaseBodyBridge_short
+    (fn : IRFunction) (tx : IRTransaction) (irState : IRState) (fuel : Nat) :
+    DispatchGuardsSafe fn tx →
+    4 + tx.args.length * 32 < evmModulus →
+    ¬ fn.params.length ≤ tx.args.length →
+    resultsMatch
+      { success := false
+        returnValue := none
+        finalStorage := irState.storage
+        finalMappings := storageAsMappings irState.storage
+        events := irState.events }
+      (yulResultOfExecWithRollback
+        (YulState.initial
+          { sender := tx.sender
+            msgValue := tx.msgValue
+            thisAddress := tx.thisAddress
+            blockTimestamp := tx.blockTimestamp
+            blockNumber := tx.blockNumber
+            chainId := tx.chainId
+            blobBaseFee := tx.blobBaseFee
+            functionSelector := tx.functionSelector
+            args := tx.args }
+          irState.storage irState.events)
+        (execYulStmtsFuel (fuel + 2)
+          ((YulState.initial
+            { sender := tx.sender
+              msgValue := tx.msgValue
+              thisAddress := tx.thisAddress
+              blockTimestamp := tx.blockTimestamp
+              blockNumber := tx.blockNumber
+              chainId := tx.chainId
+              blobBaseFee := tx.blobBaseFee
+              functionSelector := tx.functionSelector
+              args := tx.args }
+            irState.storage irState.events).setVar "__has_selector" 1)
+          (switchCaseBody fn))) := by
+  intro hguards hNoWrap hShort
+  have hExec := exec_switchCaseBody_revert_of_short fn tx irState fuel hguards hNoWrap hShort
+  rw [hExec]
+  simp [YulState.initial, yulResultOfExecWithRollback, resultsMatch]
+
 /-! ### switchCaseBody bridge hypothesis
 
 The remaining contract-level gap is connecting `hbody` (which reasons about
@@ -371,6 +532,7 @@ The remaining contract-level gap is connecting `hbody` (which reasons about
 private axiom SwitchCaseBodyBridge
     (fn : IRFunction) (tx : IRTransaction) (irState : IRState) (fuel : Nat) :
     DispatchGuardsSafe fn tx →
+    fn.params.length ≤ tx.args.length →
     resultsMatch
       (execIRFunction fn tx.args irState)
       (interpretYulRuntime fn.body
@@ -385,14 +547,7 @@ private axiom SwitchCaseBodyBridge
           args := tx.args }
         irState.storage irState.events) →
     resultsMatch
-      (if _ : fn.params.length ≤ tx.args.length then
-        execIRFunction fn tx.args irState
-      else
-        { success := false
-          returnValue := none
-          finalStorage := irState.storage
-          finalMappings := storageAsMappings irState.storage
-          events := irState.events })
+      (execIRFunction fn tx.args irState)
       (yulResultOfExecWithRollback
         (YulState.initial
           { sender := tx.sender
@@ -581,18 +736,33 @@ theorem yulCodegen_preserves_semantics
       -- Apply switch match lemma
       rw [show m + 2 + 1 = Nat.succ (m + 2) from by omega]
       rw [execYulStmtFuel_switch_match _ _ _ _ _ _ _ hSelEval hcase]
-      exact SwitchCaseBodyBridge fn tx
-        { initialState with
-          sender := tx.sender
-          msgValue := tx.msgValue
-          thisAddress := tx.thisAddress
-          blockTimestamp := tx.blockTimestamp
-          blockNumber := tx.blockNumber
-          chainId := tx.chainId
-          blobBaseFee := tx.blobBaseFee
-          calldata := tx.args
-          selector := tx.functionSelector }
-        (m + 2) (hdispatchGuardSafe fn hmem) hmatch
+      by_cases hlen : fn.params.length ≤ tx.args.length
+      · simpa [hlen] using
+          (SwitchCaseBodyBridge fn tx
+            { initialState with
+              sender := tx.sender
+              msgValue := tx.msgValue
+              thisAddress := tx.thisAddress
+              blockTimestamp := tx.blockTimestamp
+              blockNumber := tx.blockNumber
+              chainId := tx.chainId
+              blobBaseFee := tx.blobBaseFee
+              calldata := tx.args
+              selector := tx.functionSelector }
+            (m + 2) (hdispatchGuardSafe fn hmem) hlen hmatch)
+      · simpa [hlen] using
+          (SwitchCaseBodyBridge_short fn tx
+            { initialState with
+              sender := tx.sender
+              msgValue := tx.msgValue
+              thisAddress := tx.thisAddress
+              blockTimestamp := tx.blockTimestamp
+              blockNumber := tx.blockNumber
+              chainId := tx.chainId
+              blobBaseFee := tx.blobBaseFee
+              calldata := tx.args
+              selector := tx.functionSelector }
+            m (hdispatchGuardSafe fn hmem) hNoWrap hlen)
 
 /-! ## Complete Preservation Theorem
 

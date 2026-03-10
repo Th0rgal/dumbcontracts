@@ -364,10 +364,16 @@ exactness. That gap is now extracted as
 `eval_compileExpr_core_of_scope`,
 `evalExpr_lt_evmModulus_core_of_scope`, and
 `eval_compileRequireFailCond_core_of_scope` in
-`Compiler/Proofs/IRGeneration/FunctionBody.lean`. The next direct move is
-still the explicit-`bodyIR` terminal-core theorem, but it can now evaluate
-`let`, `assign`, `return`, and `require` heads directly from the theorem’s
-scope-local invariant instead of rebuilding `...OnExpr` facts inline.
+`Compiler/Proofs/IRGeneration/FunctionBody.lean`. The arithmetic side is also
+slightly more symmetric now: both branch-specific whole-to-tail rewrites exist
+for the compiled terminal `ite` body,
+`compiled_terminal_ite_body_thenBranch_tailExecFuel_eq` and
+`compiled_terminal_ite_body_elseBranch_tailExecFuel_eq`, so the next theorem
+attempt no longer has to special-case the then-branch residual fuel arithmetic.
+The next direct move is still the explicit-`bodyIR` terminal-core theorem, but
+it can now evaluate `let`, `assign`, `return`, and `require` heads directly
+from the theorem’s scope-local invariant instead of rebuilding `...OnExpr`
+facts inline.
 
 **Risk**: Medium.
 

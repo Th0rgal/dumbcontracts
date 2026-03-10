@@ -4342,6 +4342,69 @@ private theorem execIRStmt_assign_of_eval_nonzeroFuel
   | succ fuel =>
       simpa using execIRStmt_assign_of_eval_anyFuel fuel state name valueExpr value heval
 
+private theorem execIRStmt_mstore_of_eval_anyFuel
+    (fuel : Nat)
+    (state : IRState)
+    (offset : Nat)
+    (valueExpr : YulExpr)
+    (value : Nat)
+    (heval : evalIRExpr state valueExpr = some value) :
+    execIRStmt (Nat.succ fuel) state
+      (YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit offset, valueExpr])) =
+      .continue { state with memory := fun o => if o = offset then value else state.memory o } := by
+  simp [execIRStmt, evalIRExpr, heval]
+
+private theorem execIRStmt_mstore_of_eval_nonzeroFuel
+    (fuel : Nat)
+    (state : IRState)
+    (offset : Nat)
+    (valueExpr : YulExpr)
+    (value : Nat)
+    (hfuel : fuel ≠ 0)
+    (heval : evalIRExpr state valueExpr = some value) :
+    execIRStmt fuel state
+      (YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit offset, valueExpr])) =
+      .continue { state with memory := fun o => if o = offset then value else state.memory o } := by
+  cases fuel with
+  | zero =>
+      exact False.elim (hfuel rfl)
+  | succ fuel =>
+      simpa using execIRStmt_mstore_of_eval_anyFuel fuel state offset valueExpr value heval
+
+private theorem execIRStmt_return32_of_memory_anyFuel
+    (fuel : Nat)
+    (state : IRState)
+    (offset : Nat) :
+    execIRStmt (Nat.succ fuel) state
+      (YulStmt.expr (YulExpr.call "return" [YulExpr.lit offset, YulExpr.lit 32])) =
+      .return (state.memory offset) state := by
+  simp [execIRStmt, evalIRExpr]
+
+private theorem execIRStmt_return32_of_memory_nonzeroFuel
+    (fuel : Nat)
+    (state : IRState)
+    (offset : Nat)
+    (hfuel : fuel ≠ 0) :
+    execIRStmt fuel state
+      (YulStmt.expr (YulExpr.call "return" [YulExpr.lit offset, YulExpr.lit 32])) =
+      .return (state.memory offset) state := by
+  cases fuel with
+  | zero =>
+      exact False.elim (hfuel rfl)
+  | succ fuel =>
+      simpa using execIRStmt_return32_of_memory_anyFuel fuel state offset
+
+private theorem execIRStmt_stop_nonzeroFuel
+    (fuel : Nat)
+    (state : IRState)
+    (hfuel : fuel ≠ 0) :
+    execIRStmt fuel state (YulStmt.expr (YulExpr.call "stop" [])) = .stop state := by
+  cases fuel with
+  | zero =>
+      exact False.elim (hfuel rfl)
+  | succ fuel =>
+      simpa using execIRStmt_stop_succ fuel state
+
 private theorem evalIRExpr_iszero_of_eval
     (state : IRState)
     (expr : YulExpr)

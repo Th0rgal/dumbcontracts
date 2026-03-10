@@ -206,7 +206,14 @@ without reconstructing those entry-fuel facts by hand. The newest wrapper
 `compiled_terminal_ite_body_block_execFuel_eq` also puts the inner
 `block [let __ite_cond; if_; if_]` body fuel in the exact direction consumed
 by the remaining block-lifting step, so the next proof no longer needs to
-manually invert `compiled_terminal_ite_body_block_extraFuel_eq`.
+manually invert `compiled_terminal_ite_body_block_extraFuel_eq`. The symbolic
+fuel wrappers for terminal IR steps are now also in place:
+`execIRStmt_mstore_of_eval_nonzeroFuel`,
+`execIRStmt_return32_of_memory_nonzeroFuel`, and
+`execIRStmt_stop_nonzeroFuel` in
+`Compiler/Proofs/IRGeneration/FunctionBody.lean`. That removes the last local
+need to destruct `fuel` manually when the terminal-core proof reaches compiled
+`mstore; return` / `stop` shapes under a structural budget.
 
 **Risk**: Medium.
 

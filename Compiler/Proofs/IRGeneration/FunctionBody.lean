@@ -3037,6 +3037,17 @@ theorem runtimeStateMatchesIR_setVar_bindValue
   cases state
   simpa [runtimeStateMatchesIR, IRState.setVar]
 
+theorem runtimeStateMatchesIR_setVar_irrelevant
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {name : String}
+    {value : Nat}
+    (hmatch : runtimeStateMatchesIR fields runtime state) :
+    runtimeStateMatchesIR fields runtime (state.setVar name value) := by
+  cases state
+  simpa [runtimeStateMatchesIR, IRState.setVar] using hmatch
+
 def stmtResultMatchesIRExecExact :
     SourceSemantics.StmtResult → IRExecResult → Prop
   | .continue runtime, .continue state =>
@@ -3973,6 +3984,17 @@ private theorem yulStmtList_sizeOf_cons_ge_tailFuel
     (rest : List YulStmt) :
     sizeOf rest + 1 ≤ sizeOf (stmt :: rest) := by
   simp
+  omega
+
+private theorem yulStmtList_sizeOf_cons_extraFuel_eq
+    (extraFuel : Nat)
+    (stmt : YulStmt)
+    (rest : List YulStmt) :
+    sizeOf (stmt :: rest) + extraFuel =
+      sizeOf rest +
+        (sizeOf (stmt :: rest) - (sizeOf rest + 1) + extraFuel) + 1 := by
+  have htail : sizeOf rest + 1 ≤ sizeOf (stmt :: rest) :=
+    yulStmtList_sizeOf_cons_ge_tailFuel stmt rest
   omega
 
 theorem compiled_terminal_ite_body_size_ge_blockFuel

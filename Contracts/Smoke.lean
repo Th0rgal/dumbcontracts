@@ -94,6 +94,21 @@ verity_contract StatelessSmoke where
     let sender ← msgSender
     return sender
 
+verity_contract MutabilitySmoke where
+  storage
+    owner : Address := slot 0
+
+  constructor (initialOwner : Address) := do
+    setStorageAddr owner initialOwner
+
+  function payable deposit () : Uint256 := do
+    let value ← msgValue
+    return value
+
+  function view currentOwner () : Address := do
+    let ownerAddr ← getStorageAddr owner
+    return ownerAddr
+
 verity_contract ConstantSmoke where
   storage
 

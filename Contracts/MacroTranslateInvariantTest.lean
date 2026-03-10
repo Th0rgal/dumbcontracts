@@ -287,6 +287,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.StorageWordsSmoke.spec
   , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.Smoke.StatelessSmoke.spec
+  , Contracts.Smoke.MutabilitySmoke.spec
   , Contracts.Smoke.InitializerSmoke.spec
   , Contracts.Smoke.ConstantSmoke.spec
   , Contracts.Smoke.ImmutableSmoke.spec
@@ -339,6 +340,7 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("StorageWordsSmoke", ["extSloadsLike(bytes32[])"])
   , ("CustomErrorSmoke", ["echo(uint256)"])
   , ("StatelessSmoke", ["echoWord(uint256)", "whoAmI()"])
+  , ("MutabilitySmoke", ["deposit()", "currentOwner()"])
   , ("InitializerSmoke", ["initOwner(address)", "upgradeToV2()"])
   , ("ConstantSmoke", ["feeOn(uint256)", "treasuryAddr()"])
   , ("ImmutableSmoke", ["supplyCap()", "treasuryAddr()", "shadowed(uint256)"])
@@ -367,6 +369,10 @@ private def expectedExternalSignatures : List (String × List String) :=
 
 private def expectedExternalSelectors : List (String × List String) :=
   [ ("SimpleStorage", ["0x6057361d", "0x2e64cec1"])
+  , ("LocalObligationMacroSmoke", ["0xbb93e288", "0xb67b3c55"])
+  , ("ProxyUpgradeabilityMacroSmoke", ["0x50deff9e", "0x3659cfe6", "0x33b403a6"])
+  , ("ProxyUpgradeabilityLayoutCompatibleSmoke", ["0x50deff9e", "0x1188ed66", "0x9a508c8e", "0x33b403a6"])
+  , ("ProxyUpgradeabilityLayoutIncompatibleSmoke", ["0x50deff9e", "0x1188ed66", "0x9a508c8e", "0x33b403a6"])
   , ("Counter", ["0xd09de08a", "0x2baeceb7", "0xa87d942c", "0x04a34e04", "0x8022f026", "0x0a7486d3", "0x9d4825af"])
   , ("Owned", ["0xf2fde38b", "0x893d20e8"])
   , ("Ledger", ["0xb6b55f25", "0x2e1a7d4d", "0xa9059cbb", "0xf8b2cb4f"])
@@ -384,6 +390,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("StorageWordsSmoke", ["0x764fa434"])
   , ("CustomErrorSmoke", ["0x6279e43c"])
   , ("StatelessSmoke", ["0x26534f53", "0xda91254c"])
+  , ("MutabilitySmoke", ["0xd0e30db0", "0xb387ef92"])
   , ("InitializerSmoke", ["0x0d009297", "0xcc01053e"])
   , ("ConstantSmoke", ["0x9c421eb5", "0x30d9a62a"])
   , ("ImmutableSmoke", ["0x8f770ad0", "0x30d9a62a", "0x655b96ec"])
@@ -410,6 +417,14 @@ private def expectedFor
     (table : List (String × List String)) (contractName : String) : Option (List String) :=
   (table.find? (fun entry => entry.1 == contractName)).map (·.2)
 
+private def expectedCompileCheckedError? (contractName : String) : Option String :=
+  match contractName with
+  | "LocalObligationRequiredForUnsafeFunctionBoundary" =>
+      some "uses low-level/assembly mechanic(s) calldataload without any local_obligations entry"
+  | "LocalObligationRequiredForUnsafeConstructorBoundary" =>
+      some "constructor uses low-level/assembly mechanic(s) mstore without any local_obligations entry"
+  | _ => none
+
 -- Regression: `verity_contract` elaboration emits field-level findIdx simp lemmas.
 private def _findIdxFieldRegression1 := Contracts.OwnedCounter.findIdx_owner_OwnedCounter
 private def _findIdxFieldRegression2 := Contracts.OwnedCounter.findIdx_owner_OwnedCounter_decide
@@ -420,6 +435,16 @@ private def _findIdxParamRegression1 := Contracts.OwnedCounter.findIdx_param_ini
 private def _findIdxParamRegression2 := Contracts.OwnedCounter.findIdx_param_newOwner_transferOwnership_OwnedCounter
 private def _findIdxParamRegression3 := Contracts.Ledger.findIdx_param_to_transfer_Ledger
 private def _findIdxParamRegression4 := Contracts.Ledger.findIdx_param_amount_transfer_Ledger_decide
+
+private def checkMutabilitySmoke : IO Unit := do
+  let deposit? := Contracts.Smoke.MutabilitySmoke.spec.functions.find? (·.name == "deposit")
+  let owner? := Contracts.Smoke.MutabilitySmoke.spec.functions.find? (·.name == "currentOwner")
+  let deposit := deposit?.getD { name := "", params := [], returnType := none, returns := [], body := [] }
+  let owner := owner?.getD { name := "", params := [], returnType := none, returns := [], body := [] }
+  expectTrue "MutabilitySmoke: payable flag is preserved" deposit.isPayable
+  expectTrue "MutabilitySmoke: view flag is preserved" owner.isView
+  expectTrue "MutabilitySmoke: deposit body reads msgValue"
+    (contains (reprStr deposit.body) "Expr.msgValue")
 
 private def checkSpec (spec : CompilationModel) : IO Unit := do
   let extFns := externalFunctions spec
@@ -457,8 +482,13 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
         (selectorHexes == expectedHexes)
 
   let compileResult ← Selector.compileChecked spec selectors
-  match compileResult with
-  | .ok ir =>
+  match expectedCompileCheckedError? spec.name, compileResult with
+  | some expectedErr, .error err =>
+      expectTrue s!"{spec.name}: compileChecked rejects the missing local_obligations boundary as expected"
+        (contains err expectedErr)
+  | some _, .ok _ =>
+      throw (IO.userError s!"✗ {spec.name}: compileChecked unexpectedly succeeded for an intentionally unsafe-boundary fixture")
+  | none, .ok ir =>
       IO.println s!"✓ {spec.name}: compileChecked succeeds with canonical selectors"
       let irFns := ir.functions
       let irFnNames := irFns.map (·.name)
@@ -487,7 +517,7 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
       else
         IO.println s!"ℹ {spec.name}: randomized IR↔Yul checks use mapping-safe subset {mappingSafeExtFns.length}/{extFns.length}"
         runRandomDiffChecks spec ir mappingSafeExtFns mappingSafeSelectors 8
-  | .error err =>
+  | none, .error err =>
       throw (IO.userError s!"✗ {spec.name}: compileChecked failed: {err}")
 
   let abi := ABI.emitContractABIJson spec
@@ -523,6 +553,7 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
   expectTrue
     "Owned.transferOwnership keeps address storage writes explicit in macro output"
     (bodyUsesAddressStorageWrite Contracts.Owned.transferOwnership_modelBody)
+  checkMutabilitySmoke
   for spec in macroSpecs do
     checkSpec spec
 

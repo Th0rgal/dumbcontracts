@@ -140,11 +140,14 @@ This is the remaining generic body-simulation proof over the supported fragment.
 The exact parameter-state reconstruction step is now proved, and `Function.lean`
 now bypasses this axiom for `StmtListCompileCore` bodies, but the repo still
 needs the broader expression/statement induction library for the remaining
-supported body shapes. The latest compile-guided extraction here is
-`compileStmtList_terminal_core_ok_nonempty` in `FunctionBody.lean`: terminal
-core bodies now come with an explicit proof that their compiled IR body cannot
-be empty. That removes one more impossible branch from the planned explicit-
-`bodyIR` induction, but the main blocker is still larger than terminal `ite`
+supported body shapes. The latest compile-guided extraction here is the pair
+`execIRStmts_compiled_return_core_append_wholeFuel` and
+`execIRStmts_compiled_stop_core_append_wholeFuel` in
+`FunctionBody.lean`: the terminal-core path now has direct whole-body `sizeOf`
+execution facts for compiled `return` and `stop` prefixes with arbitrary
+compiled tails. That removes the last local head/tail execution packaging the
+planned explicit-`bodyIR` induction would otherwise need to rebuild for those
+terminal cases, but the main blocker is still larger than terminal-core
 composition alone: the remaining axiom covers the whole supported non-core
 fragment, including storage and mapping writes.
 

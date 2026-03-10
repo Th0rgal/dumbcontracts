@@ -3885,6 +3885,57 @@ theorem compileStmt_terminal_ite_ok_inv
               · injection hcompile with hbody
                 simpa [List.append_assoc] using hbody.symm
 
+theorem compileStmtList_terminal_ite_ok_inv
+    {fields : List Field}
+    {inScopeNames : List String}
+    {cond : Expr}
+    {thenBranch elseBranch rest : List Stmt}
+    {bodyIR : List YulStmt}
+    (helseNonempty : elseBranch.isEmpty = false)
+    (hcompile :
+      CompilationModel.compileStmtList
+        fields [] [] .calldata [] false inScopeNames
+          (.ite cond thenBranch elseBranch :: rest) = Except.ok bodyIR) :
+    ∃ condIR thenIR elseIR tailIR tempName,
+      CompilationModel.compileExpr fields .calldata cond = Except.ok condIR ∧
+      CompilationModel.compileStmtList
+        fields [] [] .calldata [] false inScopeNames thenBranch = Except.ok thenIR ∧
+      CompilationModel.compileStmtList
+        fields [] [] .calldata [] false inScopeNames elseBranch = Except.ok elseIR ∧
+      CompilationModel.compileStmtList
+        fields [] [] .calldata [] false
+          (collectStmtNames (.ite cond thenBranch elseBranch) ++ inScopeNames) rest =
+          Except.ok tailIR ∧
+      tempName =
+        CompilationModel.pickFreshName "__ite_cond"
+          (inScopeNames ++ collectExprNames cond ++
+            collectStmtListNames thenBranch ++ collectStmtListNames elseBranch) ∧
+      bodyIR =
+        [YulStmt.block
+          [ YulStmt.let_ tempName condIR
+          , YulStmt.if_ (YulExpr.ident tempName) thenIR
+          , YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident tempName]) elseIR ]] ++
+          tailIR := by
+  rcases compileStmtList_cons_ok_inv
+      (fields := fields)
+      (inScopeNames := inScopeNames)
+      (stmt := .ite cond thenBranch elseBranch)
+      (rest := rest)
+      hcompile with
+    ⟨headIR, tailIR, hhead, htail, hbody⟩
+  rcases compileStmt_terminal_ite_ok_inv
+      (fields := fields)
+      (inScopeNames := inScopeNames)
+      (cond := cond)
+      (thenBranch := thenBranch)
+      (elseBranch := elseBranch)
+      (bodyIR := headIR)
+      helseNonempty
+      hhead with
+    ⟨condIR, thenIR, elseIR, tempName, hcond, hthen, helse, htemp, hheadIR⟩
+  refine ⟨condIR, thenIR, elseIR, tailIR, tempName, hcond, hthen, helse, htail, htemp, ?_⟩
+  simpa [hheadIR] using hbody
+
 theorem compileStmtList_core_ok
     {fields : List Field}
     {scope inScopeNames : List String}

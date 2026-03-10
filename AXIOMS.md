@@ -379,7 +379,11 @@ head shape of `Stmt.ite`, including `condIR`, `thenIR`, `elseIR`, the chosen
 fresh `__ite_cond` name, and the enclosing generated `block [...]`. The next
 explicit-`bodyIR` theorem attempt can use that directly instead of redoing the
 nested `compileExpr` / `compileStmtList` monad inversion locally in the
-terminal `ite` case. The remaining semantic branch glue is also factored now:
+terminal `ite` case. That inversion now also reaches the surrounding tail via
+`compileStmtList_terminal_ite_ok_inv`, so a successful
+`compileStmtList ... (.ite ... :: rest)` can be decomposed in one step into
+the explicit compiled head block plus the separately compiled tail. The
+remaining semantic branch glue is also factored now:
 `stmtResultMatchesIRExec_compiled_terminal_ite_then` and
 `stmtResultMatchesIRExec_compiled_terminal_ite_else` package the full source-
 and compiled-side lift from a matched chosen branch result to the enclosing

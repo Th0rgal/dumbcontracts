@@ -297,7 +297,20 @@ The newest green theorem extraction also adds
 terminal `stop` case and the terminal compiled `mstore; return` case directly
 at arbitrary extra fuel. That removes the remaining singleton terminal
 base-case special-casing from the next recursive
-`StmtListTerminalCore` proof attempt.
+`StmtListTerminalCore` proof attempt. The latest failed recursive attempt also
+made one more reusable gap explicit: even with the existing `*_stepFuel`
+wrappers, the proof still kept stopping on the direct whole-body structural
+fuel shapes `execIRStmt (sizeOf (stmt :: rest) + extraFuel) ...` and
+`execIRStmt (sizeOf (stmt1 :: stmt2 :: rest) + extraFuel) ...`. Those are now
+packaged as
+`execIRStmts_cons_of_execIRStmt_continue_wholeFuel`,
+`execIRStmts_cons_of_execIRStmt_return_wholeFuel`,
+`execIRStmts_cons_of_execIRStmt_stop_wholeFuel`,
+`execIRStmts_cons_of_execIRStmt_revert_wholeFuel`, and
+`execIRStmts_two_of_continue_then_return_wholeFuel`, so the next
+`StmtListTerminalCore` theorem attempt can consume whole-prefix structural fuel
+directly instead of repeatedly normalizing it back into `fuel + 1` / `fuel + 2`
+shapes locally.
 
 **Risk**: Medium.
 

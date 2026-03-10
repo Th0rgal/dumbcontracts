@@ -53,43 +53,9 @@ The reduction from proof-runtime `calldatasize`/`lt` normalization to the intend
 
 **Risk**: Medium.
 
-### 3. `eval_buildSwitch_hasSelectorExpr_eq_one`
+### 3. `execBuildSwitch_none_none_aux`
 
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:195`
-
-**Statement**:
-```lean
-private axiom eval_buildSwitch_hasSelectorExpr_eq_one
-```
-
-**Purpose**:
-Captures that the generated dispatch prelude computes `__has_selector = 1` because runtime calldata always contains the 4-byte selector word.
-
-**Why this is currently an axiom**:
-The execution fact is understood, but the modulo-aware builtin normalization for this exact `buildSwitch` path is still incomplete.
-
-**Risk**: Medium.
-
-### 4. `eval_iszero_hasSelector_after_set`
-
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:204`
-
-**Statement**:
-```lean
-private axiom eval_iszero_hasSelector_after_set
-```
-
-**Purpose**:
-Bridges the local dispatch-state fact that after setting `__has_selector := 1`, evaluating `iszero(__has_selector)` yields `0`.
-
-**Why this is currently an axiom**:
-This is a small helper fact that currently sits inside the same partially-axiomatized dispatch-step proof boundary.
-
-**Risk**: Low.
-
-### 5. `execBuildSwitch_none_none_aux`
-
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:250`
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:233`
 
 **Statement**:
 ```lean
@@ -104,9 +70,9 @@ The step-by-step execution trace is known, but proving it directly through reduc
 
 **Risk**: Medium.
 
-### 6. `SwitchCaseBodyBridge`
+### 4. `SwitchCaseBodyBridge`
 
-**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:311`
+**Location**: `Compiler/Proofs/YulGeneration/Preservation.lean:294`
 
 **Statement**:
 ```lean
@@ -121,7 +87,7 @@ This remains the last contract-level proof gap between body-level Yul equivalenc
 
 **Risk**: Medium.
 
-### 7. `supported_function_body_correct_from_exact_state`
+### 5. `supported_function_body_correct_from_exact_state`
 
 **Location**: `Compiler/Proofs/IRGeneration/Function.lean:810`
 
@@ -173,7 +139,7 @@ supported non-core fragment including storage and mapping writes.
 
 **Risk**: Medium.
 
-### 8. `supported_function_execIRFunction_eq_fuel`
+### 6. `supported_function_execIRFunction_eq_fuel`
 
 **Location**: `Compiler/Proofs/IRGeneration/Function.lean:850`
 
@@ -518,7 +484,7 @@ Wrapping modular arithmetic at 2^256 is **proven**, not assumed. All 15 pure bui
 
 ## Trust Summary
 
-- Active axioms: 8
+- Active axioms: 6
 - Production blockers from axioms: 0
 - Enforcement: `scripts/check_axioms.py` ensures this file tracks exact source location.
 - Compilation-path totalization work in `Compiler/CompilationModel.lean` does not

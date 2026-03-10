@@ -188,23 +188,6 @@ because `execYulFuel` is `[reducible]` and `simp` over-reduces to produce
 the theorem statement is correct and the execution trace is well-understood.
 -/
 
-/-- Guard expression used by `buildSwitch` evaluates to 1 because `calldatasize ≥ 4`.
-
-This is kept as an explicit assumption until the modulo-aware `calldatasize`/`lt`
-normalization is proved in the proof runtime. -/
-private axiom eval_buildSwitch_hasSelectorExpr_eq_one (state : YulState) :
-    evalYulExpr state
-      (YulExpr.call "iszero"
-        [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]) = some 1
-
-/-- After setting `__has_selector := 1`, `iszero(__has_selector)` evaluates to 0.
-
-This bridge is straightforward but kept explicit while the surrounding
-`buildSwitch` execution remains axiomatized. -/
-private axiom eval_iszero_hasSelector_after_set (state : YulState) :
-    evalYulExpr (state.setVar "__has_selector" 1)
-      (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) = some 0
-
 /-- After setting `__has_selector := 1`, reading `__has_selector` yields 1. -/
 private theorem eval_hasSelector_after_set (state : YulState) :
     evalYulExpr (state.setVar "__has_selector" 1) (YulExpr.ident "__has_selector") = some 1 := by

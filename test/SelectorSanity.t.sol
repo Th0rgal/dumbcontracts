@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import "forge-std/Test.sol";
+import "./yul/YulTestBase.sol";
 
-contract SelectorSanityTest is Test {
+contract SelectorSanityTest is YulTestBase {
     function testYulSelectorsMatchAbi() public {
+        _ensureVerityManifestYul("packages/verity-examples/contracts.manifest", "Vault", _yulDir());
+
         _assertSelector(_yulPath("Counter"), "increment()");
         _assertSelector(_yulPath("Counter"), "decrement()");
         _assertSelector(_yulPath("Counter"), "getCount()");

@@ -29,12 +29,11 @@ Important: Verity has two different "spec" concepts.
 ## Trust Model
 
 ### What's Verified (Zero Trust Required)
-- **Layer 1 frontend bridge**: EDSL behavior is proven equivalent to its `CompilationModel`.
-- **Layer 2 boundary today**: a supported-statement `CompilationModel -> IR` theorem exists, but full-contract Layer 2 preservation still relies on contract-specific bridge theorems.
-- **Layer 2 framework proof**: a generic whole-contract theorem surface exists, but the remaining non-core closure still depends on 1 documented axiom.
-- **Layer 3 framework proof**: `IR -> Yul` preserves semantics, with the remaining dispatch bridge exposed as an explicit theorem hypothesis rather than a Lean axiom.
-- **Machine-checked proofs**: see [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for the current proof-status snapshot and [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md) for documented axioms.
-- **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean
+- **Layer 1** (EDSL → CompilationModel): **Proved per contract.** Generic typed-IR core; per-contract bridge theorems.
+- **Layer 2** (CompilationModel → IR): **Proved generically, 1 axiom.** The theorem `compile_preserves_semantics` holds for arbitrary supported `CompilationModel`s. It depends on `supported_function_body_correct_from_exact_state` for non-core body simulation (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)).
+- **Layer 3** (IR → Yul): **Proved generically.** The dispatch bridge is an explicit theorem hypothesis, not a Lean axiom.
+- **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean.
+- See [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for proof-status details and [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md) for all documented axioms.
 
 The per-contract files in `Contracts/<Name>/Proofs/` are separate contract-specification proofs. They show that a given contract satisfies its human-readable spec; they are not the definition of Layer 1 in the compiler stack.
 

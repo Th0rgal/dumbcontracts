@@ -219,9 +219,6 @@ private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
         (← keyTypeFromSyntax outerKey)
         (← keyTypeFromSyntax innerKey)
         ((← members.mapM structMemberFromSyntax).toList)
-  | `(term| Address → Uint256) => pure .mappingAddressToUint256
-  | `(term| Address → Address → Uint256) => pure .mapping2AddressToAddressToUint256
-  | `(term| Uint256 → Uint256) => pure .mappingUintToUint256
   | _ => do
       let vt ← valueTypeFromSyntax ty
       match vt with

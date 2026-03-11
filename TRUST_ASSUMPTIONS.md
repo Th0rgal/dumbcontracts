@@ -6,13 +6,13 @@ This document states what Verity proves and what it still trusts.
 
 ```
 EDSL (Lean)
-  ↓ [Layer 1: proved per contract, generic core + per-contract bridges]
+  ↓ [Layer 1: PROVEN FOR CURRENT CONTRACTS, generic core, contract bridges]
 CompilationModel
-  ↓ [Layer 2: proved generically, 1 axiom]
+  ↓ [Layer 2: PARTIAL GENERIC — CompilationModel → IR + contract bridges]
 IR
-  ↓ [Layer 3: proved generically, dispatch bridge is a theorem hypothesis]
+  ↓ [Layer 3: GENERIC SURFACE, explicit bridge hypothesis, IR → Yul]
 Yul
-  ↓ [trusted, solc]
+  ↓ [trusted: solc]
 EVM Bytecode
 ```
 
@@ -20,11 +20,15 @@ The repository has no `sorry`, but it still has 2 documented Lean axioms. See [A
 
 ## What's Verified
 
-- **Layer 1** (EDSL → `CompilationModel`): **Proved per contract.** A generic typed-IR compilation-correctness core exists; contract-level bridges instantiate it for each contract. Helper-proof reuse across callers is not yet a first-class generic interface ([#1335](https://github.com/Th0rgal/verity/issues/1335)).
-  *Scope*: covers the EDSL-to-`CompilationModel` bridge only. Specification theorems in `Contracts/<Name>/Proofs/` (e.g. "increment adds 1") are a separate downstream proof layer.
-- **Layer 2** (`CompilationModel` → IR): **Proved generically, 1 axiom.** The theorem `compile_preserves_semantics` holds for arbitrary supported `CompilationModel`s. It depends on `supported_function_body_correct_from_exact_state` for non-core body simulation (see [AXIOMS.md](AXIOMS.md)). Precondition: transaction-context fields must be bounded to the source-side `Address`/`Uint256` domains.
-- **Layer 3** (IR → Yul): **Proved generically.** The dispatch bridge is an explicit theorem hypothesis, not a Lean axiom. Dispatch-guard preconditions: non-payable functions require word-level zero `msg.value`; each function case requires a non-wrapping calldata-width guard.
-- **Cross-layer**: [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) has zero `sorry` but covers a subset of contracts — it is a manual bridge, not a fully generic replacement for Layers 1–3.
+- **Layer 1**: A generic typed-IR compilation-correctness core exists, but the active contract-level bridges are still instantiated per contract and internal-helper proof reuse is not yet a first-class generic interface.
+  This names the frontend EDSL-to-`CompilationModel` bridge only; the
+  contract-specific specification theorems in `Contracts/<Name>/Proofs/` are a
+  separate proof layer about human-readable contract behavior.
+- **Layer 2**: A generic whole-contract theorem surface exists for supported `CompilationModel`s, and `supported_function_correct` is now a real theorem. The initial-state normalization step is proved, but whole-contract Layer 2 preservation still relies on contract-specific bridge theorems. The theorem surface still depends on 1 documented sub-axiom for generic body simulation, and it makes explicit that the observed transaction-context fields must already be normalized to the bounded source-side `Address`/`Uint256` domains.
+- **Layer 3**: IR → Yul preservation is generic at the proof surface, but the current full dispatch-preservation path still depends on 1 documented bridge hypothesis. The checked contract-level theorem surface now makes the dispatch-guard safety preconditions explicit: non-payable cases must see word-level zero `msg.value`, and each selected function case must have a non-wrapping calldata-width guard.
+- **Layer 2**: A generic whole-contract theorem surface exists for supported `CompilationModel`s, and `supported_function_correct` is now a real theorem. The initial-state normalization step is proved, and the former `execIRFunctionFuel`/`execIRFunction` bridge axiom has been eliminated, but whole-contract Layer 2 preservation still relies on contract-specific bridge theorems. The theorem surface still depends on 1 documented sub-axiom for generic body simulation, and it makes explicit that the observed transaction-context fields must already be normalized to the bounded source-side `Address`/`Uint256` domains.
+- **Layer 3**: IR → Yul preservation is generic at the proof surface, and the remaining dispatch bridge now lives as an explicit theorem hypothesis rather than a Lean axiom. The checked contract-level theorem surface makes the dispatch-guard safety preconditions explicit: non-payable cases must see word-level zero `msg.value`, and each selected function case must have a non-wrapping calldata-width guard.
+- **Cross-layer**: [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) has zero `sorry`, but it is a manual bridge layer for a subset of contracts rather than a fully generic replacement for Layers 1-3.
 
 Current theorem totals, property-test coverage, and proof status live in [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md).
 
@@ -45,37 +49,37 @@ Current theorem totals, property-test coverage, and proof status live in [docs/V
 - **Status**: 1 axiom in `Compiler/Selectors.lean:41`.
 - **Mitigation**: CI cross-checks against `solc --hashes` and fixtures.
 
-### 4. Linked Yul Libraries
+### 3. Linked Yul Libraries
 - **Role**: External functions injected at compile time (e.g., Poseidon hash).
 - **Trust**: Semantic correctness of linked code. Compiler validates names, arities, collisions.
 
-### 5. Mapping Slot Derivation
+### 4. Mapping Slot Derivation
 - **Role**: `keccak256(abi.encode(key, baseSlot))` for Solidity-compatible storage (`activeMappingSlotBackend = .keccak`).
 - **Trust**: external keccak implementation (`ffi.KEC` via EVMYul FFI) + standard collision-resistance assumptions (same trust class as Solidity/EVM).
 - **Mitigation**: Abstraction-boundary CI, selector/hash cross-checks.
-- **Audit surface**: machine-readable trust reports emit the explicit primitive assumption `keccak256_memory_slice_matches_evm` whenever a contract uses `Expr.keccak256`.
+- **Audit surface**: machine-readable trust reports now emit the explicit primitive assumption `keccak256_memory_slice_matches_evm` whenever a contract uses `Expr.keccak256`.
 
-### 6. EVM/Yul Semantics and Gas
+### 5. EVM/Yul Semantics and Gas
 - **Role**: Runtime execution model.
 - **Status**: 15 pure builtins bridged to EVMYulLean `UInt256` operations. Gas is not modeled.
 - **Implication**: Semantic correctness does not imply gas-safety.
 - **Proxy note**: `delegatecall`-based proxy / upgradeability flows still sit outside the current proof-interpreter model. Archive `--trust-report` and use `--deny-proxy-upgradeability` when proxy semantics must remain outside the selected verified subset (issue `#1420`).
 
-### 7. External Call Modules (ECMs)
+### 6. External Call Modules (ECMs)
 - **Role**: Reusable typed external call patterns (ERC-20 writes/reads including `totalSupply`, ERC-4626 preview/conversion helpers plus `totalAssets`, `asset`, `max*` limit reads, and `deposit`, oracle reads, precompiles, callbacks).
 - **Trust**: Each module's `compile` produces correct Yul. Bug in one module doesn't affect others.
 - **Mitigation**: Axiom aggregation at compile time (`--verbose`), machine-readable trust-surface emission via `--trust-report <path>`, and a fail-closed verification gate via `--deny-unchecked-dependencies` when unchecked foreign surfaces must be excluded. See [docs/EXTERNAL_CALL_MODULES.md](docs/EXTERNAL_CALL_MODULES.md).
 
-### 8. Lean Kernel
+### 7. Lean Kernel
 - **Role**: Proof checker soundness. Foundational assumption for all Lean-based verification.
 
-### 9. Macro Elaborator (`verity_contract`)
+### 8. Macro Elaborator (`verity_contract`)
 - **Role**: Generates both EDSL `Contract` monad value and `CompilationModel` from one syntax tree.
 - **Status**: Trusted unverified metaprogram ([Verity/Macro/Translate.lean](Verity/Macro/Translate.lean)).
 - **Risk**: A translation bug would silently cause EDSL and CompilationModel to diverge.
 - **Mitigation**: EDSL/IR/Yul cross-checks in [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) and differential tests catch divergence on the current contract set.
 
-### 10. Local Unsafe / Refinement Obligations
+### 9. Local Unsafe / Refinement Obligations
 - **Role**: Let a function or constructor declare a localized proof obligation for an unsafe/assembly-shaped boundary without marking the whole contract as opaque.
 - **Status**: Surfaced explicitly in `--trust-report`, `--verbose`, and `proofStatus.*.localObligations`.
 - **Mitigation**: `verity-compiler --deny-local-obligations` fails closed on any obligation that remains `assumed` or `unchecked`.
@@ -91,7 +95,7 @@ High-level semantics can expose intermediate state in reverted computations. EVM
 ## Security Audit Checklist
 
 1. Confirm deployment uses the supported EDSL CLI path.
-2. Review [AXIOMS.md](AXIOMS.md), ensure the axiom list is unchanged and justified.
+2. Review [AXIOMS.md](AXIOMS.md); ensure the axiom list is unchanged and justified.
 3. If linked libraries are used, audit each linked Yul file as trusted code.
 4. Validate selector, Yul compile, and storage-layout CI checks.
 5. Confirm arithmetic and revert assumptions are acceptable for the target contract.

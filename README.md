@@ -103,25 +103,25 @@ The compiler turns contracts into Yul (Solidity's low-level IR) through three la
 
 ```
 EDSL contract (Lean)
-  ↓  Layer 1: proved per contract — generic core + per-contract bridges
+  ↓  Layer 1: EDSL ≡ CompilationModel     [PROVEN FOR CURRENT CONTRACTS; GENERIC CORE, CONTRACT BRIDGES]
 CompilationModel (declarative IR spec)
-  ↓  Layer 2: proved generically, 1 axiom
+  ↓  Layer 2: CompilationModel → IR        [PARTIAL GENERIC, CONTRACT BRIDGES ACTIVE]
 Intermediate Representation
-  ↓  Layer 3: proved generically — dispatch bridge is a theorem hypothesis
+  ↓  Layer 3: IR → Yul                     [GENERIC SURFACE, EXPLICIT BRIDGE HYPOTHESIS]
 Yul
-  ↓  trusted — solc compiler
+  ↓  solc (trusted external compiler)
 EVM Bytecode
 ```
 
 | Layer | What it proves | Key file |
 |-------|---------------|----------|
-| 1 | EDSL execution = CompilationModel interpretation. Generic typed-IR core; per-contract bridge theorems. | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
-| 2 | CompilationModel → IR preserves semantics. Proved generically; depends on 1 documented axiom for non-core body simulation. | [Contract.lean](Compiler/Proofs/IRGeneration/Contract.lean) |
-| 3 | IR → Yul preserves semantics. Proved generically; dispatch bridge is an explicit theorem hypothesis, not a Lean axiom. | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
+| 1 | A generic typed-IR core plus contract-level bridge theorems establish EDSL execution = CompilationModel interpretation for the current supported contracts | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
+| 2 | A generic whole-contract theorem shape exists, but its non-core function-level closure still depends on 1 documented axiom; the proved core fragment already runs on structural fuel, and the theorem surface now explicitly assumes normalized transaction-context fields. The remaining closure work is tracked in [#1510](https://github.com/Th0rgal/verity/issues/1510), with the current proof plan in [docs/GENERIC_LAYER2_PLAN.md](docs/GENERIC_LAYER2_PLAN.md). | [Contract.lean](Compiler/Proofs/IRGeneration/Contract.lean) |
+| 3 | IR → Yul codegen is proved generically at the statement/function level, but the current full dispatch-preservation path still uses 1 documented bridge hypothesis; the checked contract-level theorem surface now makes dispatch-guard safety explicit for each selected function case | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
 
-There are 2 documented Lean axioms: 1 for selector computation and 1 for non-core Layer 2 body simulation. See [AXIOMS.md](AXIOMS.md). The Layer 2 closure work is tracked in [#1510](https://github.com/Th0rgal/verity/issues/1510) with the proof plan in [docs/GENERIC_LAYER2_PLAN.md](docs/GENERIC_LAYER2_PLAN.md).
+There are currently 2 documented Lean axioms in total: 1 selector axiom and 1 generic non-core Layer 2 axiom. Layer 3 keeps its remaining dispatch bridge as an explicit theorem hypothesis rather than a Lean axiom. See [AXIOMS.md](AXIOMS.md).
 
-**Note:** "Layer 1" refers to the compiler's EDSL-to-CompilationModel bridge, not the per-contract specification proofs in `Contracts/<Name>/Proofs/`. For detailed status, see [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md) and [AXIOMS.md](AXIOMS.md).
+Layer 1 is the frontend EDSL-to-`CompilationModel` bridge. The per-contract files in `Contracts/<Name>/Proofs/` prove human-readable contract specifications; they are not what “Layer 1” means in the compiler stack. Layer 2 currently combines a generic supported-statement theorem with contract-specific full-contract bridges. Layers 2 and 3 (`CompilationModel → IR → Yul`) are verified with the current documented axioms and bridge boundaries; see [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md), [docs/GENERIC_LAYER2_PLAN.md](docs/GENERIC_LAYER2_PLAN.md), and [AXIOMS.md](AXIOMS.md).
 
 ### 5. Test the compiled output (belt and suspenders)
 
@@ -151,12 +151,7 @@ FOUNDRY_PROFILE=difftest forge test
 
 Current theorem totals, test counts, coverage, and proof status live in [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md).
 
-**Dynamic-type status** ([#1159](https://github.com/Th0rgal/verity/issues/1159)):
-
-| | Scope |
-|---|---|
-| **Supported** | ABI-level `String`: macro parsing, calldata flow, `returnBytes`, event payloads, custom-error payloads, parameter `==`/`!=` via dynamic-bytes equality helper |
-| **Intentionally unsupported** | Solidity-style string storage/layout, dynamic linked externals, dynamic local aliases, broader word-style operators |
+Current dynamic-type status: ABI-level `String` support is available for macro parsing, calldata flow, `returnBytes`, event payloads, custom-error payloads, and direct parameter `==` / `!=` checks via the dynamic-bytes equality helper. Solidity-style string storage/layout, dynamic linked externals, dynamic local aliases, and broader word-style operators still remain intentionally unsupported while issue [#1159](https://github.com/Th0rgal/verity/issues/1159) stays open for the remaining work.
 
 ---
 
@@ -190,7 +185,7 @@ This is intentionally narrower than Solidity's full `try/catch`: higher-level ex
 curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
 source ~/.elan/env
 
-# Clone and build, verifies the current proof set
+# Clone and build; verifies the current proof set
 git clone https://github.com/Th0rgal/verity.git && cd verity
 lake build
 

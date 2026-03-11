@@ -21,7 +21,7 @@ The CLI can also emit machine-readable audit artifacts alongside Yul/ABI output:
 
 Important: Verity has two different "spec" concepts.
 
-1. Logical specs in `Contracts/<Name>/Spec.lean` are `Prop` statements used for proofs.
+1. Logical specs in `Verity/Specs/<Name>/Spec.lean` are `Prop` statements used for proofs.
 2. Compiler specs in `Compiler/Specs.lean` are `CompilationModel` values used for code generation.
 
 `CompilationModel` is not only an ABI. It also contains storage fields and function bodies (`Expr`/`Stmt`).
@@ -29,11 +29,12 @@ Important: Verity has two different "spec" concepts.
 ## Trust Model
 
 ### What's Verified (Zero Trust Required)
-- **Layer 1** (EDSL → CompilationModel): **Proved per contract.** Generic typed-IR core; per-contract bridge theorems.
-- **Layer 2** (CompilationModel → IR): **Proved generically, 1 axiom.** The theorem `compile_preserves_semantics` holds for arbitrary supported `CompilationModel`s. It depends on `supported_function_body_correct_from_exact_state` for non-core body simulation (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md)).
-- **Layer 3** (IR → Yul): **Proved generically.** The dispatch bridge is an explicit theorem hypothesis, not a Lean axiom.
-- **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean.
-- See [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for proof-status details and [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md) for all documented axioms.
+- **Layer 1 frontend bridge**: EDSL behavior is proven equivalent to its `CompilationModel`.
+- **Layer 2 boundary today**: a supported-statement `CompilationModel -> IR` theorem exists, but full-contract Layer 2 preservation still relies on contract-specific bridge theorems.
+- **Layer 2 framework proof**: a generic whole-contract theorem surface exists, but the remaining non-core closure still depends on 1 documented axiom.
+- **Layer 3 framework proof**: `IR -> Yul` preserves semantics, with the remaining dispatch bridge exposed as an explicit theorem hypothesis rather than a Lean axiom.
+- **Machine-checked proofs**: see [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for the current proof-status snapshot and [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md) for documented axioms.
+- **Interpreter semantics**: Spec, IR, and Yul semantics defined and linked in Lean
 
 The per-contract files in `Contracts/<Name>/Proofs/` are separate contract-specification proofs. They show that a given contract satisfies its human-readable spec; they are not the definition of Layer 1 in the compiler stack.
 
@@ -55,7 +56,7 @@ Roadmap, milestones, and progress updates live in `docs-site/content/research.md
 
 ### EDSL Implementation
 ```lean
--- Contracts/SimpleStorage/SimpleStorage.lean
+-- Verity/Examples/SimpleStorage.lean
 def storedData : StorageSlot Uint256 := ⟨0⟩
 
 def store (value : Uint256) : Contract Unit := do
@@ -300,29 +301,27 @@ The CompilationModel DSL provides a complete expression and statement language f
 | `lt a b` | Less than | `lt(a, b)` |
 | `ge a b` | Greater or equal | `iszero(lt(a, b))` |
 | `le a b` | Less or equal | `iszero(gt(a, b))` |
+
+Low-level call expressions compile to the expected Yul builtins, but their runtime semantics are still outside the current proof-interpreter model. Today they are a partial feature: codegen exists, while call success / returndata mechanics remain validated by differential testing and tracked under issue `#1332`.
+
+`delegatecall` also remains a separate proxy / upgradeability trust boundary; archive `--trust-report` and add `--deny-proxy-upgradeability` if those semantics must stay outside the selected verification envelope (see issue `#1420`).
 | `logicalAnd a b` | Short-circuit logical AND | `and(iszero(iszero(a)), iszero(iszero(b)))` |
 | `logicalOr a b` | Short-circuit logical OR | `or(iszero(iszero(a)), iszero(iszero(b)))` |
 | `logicalNot a` | Logical NOT | `iszero(a)` |
 
-Use typed intrinsics (`Expr.mload`, `Expr.keccak256`, `Expr.contractAddress`, `Expr.chainid`, `Stmt.mstore`) instead of `Expr.externalCall` for these opcodes. Builtin names routed through `externalCall` are rejected by interop validation.
+Use typed intrinsics (`Expr.mload`, `Expr.keccak256`, `Expr.contractAddress`, `Expr.chainid`, `Stmt.mstore`) instead of `Expr.externalCall` for these opcodes. Builtin names routed through `externalCall` remain rejected by interop validation.
 
-#### Partial-proof features
+Memory-oriented intrinsics (`mload`, `mstore`, `calldatacopy`, `returndataCopy`, `returndataOptionalBoolAt`) compile, but the current proof interpreters still model them only partially. For audit-oriented or proof-strict builds, surface that boundary with `--trust-report` / `--deny-linear-memory-mechanics`; the remaining gap is tracked under issue `#1411`.
 
-Some expression and statement types compile to correct Yul but are not yet fully modeled in the proof interpreters. Use `--trust-report` to surface the boundary, and the corresponding `--deny-*` flag to fail closed when a contract must stay inside the proved subset.
+Raw `rawLog` event emission also compiles, but the current proof interpreters still treat it as a not-modeled feature rather than a proved event semantics layer. For audit-oriented or proof-strict builds, archive `--trust-report` and add `--deny-event-emission` if the selected contracts must stay inside the proved subset.
 
-| Feature | Proof status | `--deny-*` flag | Tracking |
-|---------|-------------|-----------------|----------|
-| Low-level calls (`call`, `staticcall`) | Codegen only; validated by differential tests | — | [#1332](https://github.com/Th0rgal/verity/issues/1332) |
-| `delegatecall` | Codegen only; separate proxy/upgradeability trust boundary | `--deny-proxy-upgradeability` | [#1420](https://github.com/Th0rgal/verity/issues/1420) |
-| Memory intrinsics (`mload`, `mstore`, `calldatacopy`, `returndataCopy`, `returndataOptionalBoolAt`) | Partially modeled | `--deny-linear-memory-mechanics` | [#1411](https://github.com/Th0rgal/verity/issues/1411) |
-| `rawLog` event emission | Not modeled (compiles correctly) | `--deny-event-emission` | — |
-| `keccak256` intrinsic | Axiomatized, not end-to-end modeled | `--deny-axiomatized-primitives` | [#1411](https://github.com/Th0rgal/verity/issues/1411) |
+The `keccak256` intrinsic also compiles, but it remains axiomatized in the current proof stack rather than fully modeled end to end. For audit-oriented or proof-strict builds, archive `--trust-report` and add `--deny-axiomatized-primitives` if the selected contracts must stay inside the proved subset (see issue `#1411`).
 
-**Local obligations**: Functions or constructors that use raw low-level calls, returndata choreography, or manual memory primitives carry `localObligations` (user-supplied refinement contracts scoped to that boundary). For proof-strict builds, add `--deny-local-obligations` to fail closed on undischarged obligations. Use `--assumption-report` for a flat machine-readable list.
+The trust-report surface also supports localized `localObligations` on a function or constructor. Use these when a small unsafe/assembly-shaped boundary still needs a user-supplied refinement contract without turning the whole compilation unit into an opaque trust blob. Direct raw low-level calls, returndata choreography, and manual memory/calldata primitives are expected to carry at least one such obligation on the enclosing constructor or function. For proof-strict builds, add `--deny-local-obligations` so any undischarged local obligation fails closed. When audit tooling needs a flat machine-readable list instead of the full nested trust report, archive `--assumption-report` alongside `--trust-report`.
 
-**Upgradeability reviews**: Pair `--layout-compat-report` with `--deny-layout-incompatibility` to compare two contracts' storage layouts and fail closed if the candidate moves or mutates persisted fields.
+For upgradeability reviews, pair `--layout-compat-report` with `--deny-layout-incompatibility`. That path compares the first selected contract against the second, preserves all baseline field slots/types/alias writes, and fails closed if the candidate moves or mutates persisted storage fields while still writing the JSON compatibility report for audit trails.
 
-For Morpho-style `mapping(K => Struct)` / `mapping(K1 => mapping(K2 => Struct))` layouts, declare `FieldType.mappingStruct` / `FieldType.mappingStruct2` and access named members through `Expr.structMember` / `Expr.structMember2`. The `verity_contract` surface exposes matching storage forms:
+For Morpho-style `mapping(K => Struct)` / `mapping(K1 => mapping(K2 => Struct))` layouts, declare `FieldType.mappingStruct` / `FieldType.mappingStruct2` and access named members through `Expr.structMember` / `Expr.structMember2`. The `verity_contract` surface now exposes matching storage forms:
 
 ```lean
 positions : MappingStruct(Address,[
@@ -363,7 +362,7 @@ Members can carry packed bit metadata, so common `uint128`-style packed subfield
 | `emit "Event" args` | Emit event | `log1(ptr, size, topic0)` |
 | `internalCall "f" args` | Call internal function (statement) | `internal_f(args...)` |
 
-**Example** combining multiple features:
+**Example**, combining multiple features:
 ```lean
 -- Balance check with require
 Stmt.require (Expr.ge (Expr.mapping "balances" Expr.caller) (Expr.param "amount")) "Insufficient",
@@ -585,7 +584,7 @@ Expr.mapping2 "allowances" (Expr.param "owner") (Expr.param "spender")
 Stmt.setMapping2 "allowances" (Expr.param "owner") (Expr.param "spender") (Expr.param "amount")
 ```
 
-Storage layout: `keccak256(spender . keccak256(owner . slot))` (matches Solidity nested mapping layout).
+Storage layout: `keccak256(spender . keccak256(owner . slot))`; matches Solidity nested mapping layout.
 
 ### Uint256-Keyed Mappings
 
@@ -676,7 +675,10 @@ lake exe verity-compiler
 
 4. **Done!** Contract generated in `artifacts/yul/MyContract.yul`
 
-Handwritten `Compiler.Specs.*Spec` definitions still exist but are not the canonical compile path.
+Legacy note: handwritten `Compiler.Specs.*Spec` definitions are retained only for
+migration/special workflows and are not the canonical CLI compile path.
+
+Time: **~5 minutes** (vs ~30 minutes manual IR)
 
 ## Test Results
 
@@ -708,6 +710,89 @@ All current example contracts compile and pass tests:
 - ✅ **SafeCounter**: Checked arithmetic with underflow protection
 
 **Not compiled**: ReentrancyExample (proofs are embedded inline, no compiler spec). CryptoHash compiles via `--link` with external Poseidon libraries and is validated in CI.
+
+## Comparison: Manual vs Automatic
+
+### Lines of Code
+- **Before**: Manual IR for all contracts (brittle to maintain)
+- **After**: Declarative specs for all contracts (stable, reusable)
+- **Reduction**: Manual IR eliminated
+
+### Time to Add Contract
+- **Before**: Manual IR requires more steps (write IR, test, debug)
+- **After**: Declarative specs reduce the setup and iteration work
+- **Improvement**: Faster authoring and less surface for mistakes
+
+### Code Quality
+- **Before**: Manual Yul construction, error-prone
+- **After**: Type-safe DSL, compile-time validation
+- **Result**: More optimized, safer, maintainable
+
+### Example: Owned Contract
+
+**Before** (manual IR):
+```lean
+private def ownedContract : IRContract :=
+  let deployBody := [
+    stmtLet "argsOffset" (call "sub" [call "codesize" [], lit 32]),
+    stmtExpr (call "codecopy" [lit 0, ident "argsOffset", lit 32]),
+    stmtLet "initialOwner" (call "and" [call "mload" [lit 0], hex addressMask]),
+    sstoreSlot 0 (ident "initialOwner")
+  ]
+  let transferBody := onlyOwnerCheck 0 ++ [
+    stmtLet "newOwner" (calldataAddress 4),
+    sstoreSlot 0 (ident "newOwner"),
+    stop
+  ]
+  let getOwnerBody := returnUint (sloadSlot 0)
+  { name := "Owned"
+    deploy := deployBody
+    functions := [
+      fn "transferOwnership" 0xf2fde38b [addrParam "newOwner"] IRType.unit transferBody,
+      fn "getOwner" 0x893d20e8 [] IRType.address getOwnerBody
+    ]
+    usesMapping := false }
+```
+
+**After** (declarative spec):
+```lean
+def ownedSpec : CompilationModel := {
+  name := "Owned"
+  fields := [
+    { name := "owner", ty := FieldType.address }
+  ]
+  constructor := some {
+    params := [{ name := "initialOwner", ty := ParamType.address }]
+    body := [
+      Stmt.setStorage "owner" (Expr.constructorArg 0)
+    ]
+  }
+  functions := [
+    { name := "transferOwnership"
+      params := [{ name := "newOwner", ty := ParamType.address }]
+      returnType := none
+      body := [
+        Stmt.require (Expr.eq Expr.caller (Expr.storage "owner")) "Not owner",
+        Stmt.setStorage "owner" (Expr.param "newOwner"),
+        Stmt.stop
+      ]
+    },
+    { name := "getOwner"
+      params := []
+      returnType := some FieldType.address
+      body := [
+        Stmt.return (Expr.storage "owner")
+      ]
+    }
+  ]
+}
+```
+
+**Improvements**:
+- 33% shorter
+- Type-safe expressions
+- No manual Yul construction
+- Automatic slot/selector management
 
 ## Links
 

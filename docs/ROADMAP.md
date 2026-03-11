@@ -7,7 +7,7 @@
 ## Current Status
 
 - ✅ **Layer 1 Complete**: see [VERIFICATION_STATUS.md](VERIFICATION_STATUS.md) for the current theorem totals and contract coverage table
-- 🟡 **Layer 2 Partial Generic**: `compile_preserves_semantics` is proved for arbitrary supported `CompilationModel`s (zero sorry), but depends on 1 documented axiom for body simulation; see [VERIFICATION_STATUS.md](VERIFICATION_STATUS.md) and [#1510](https://github.com/Th0rgal/verity/issues/1510)
+- 🟡 **Layer 2 Partial Generic**: supported statement-list preservation is proven, but the generic whole-contract `CompilationModel.compile` theorem is still tracked in [#1510](https://github.com/Th0rgal/verity/issues/1510)
 - ✅ **Layer 3 Complete**: All 8 statement equivalence proofs + universal dispatcher (PR #42)
 - ✅ **Property Testing**: see [VERIFICATION_STATUS.md](VERIFICATION_STATUS.md) for current coverage totals and exclusions
 - ✅ **Differential Testing**: Production-ready with 70k+ tests
@@ -38,10 +38,10 @@ Current P1 foundation coverage (Issue #582):
 - Proof hooks + preservation theorems in `Compiler/Proofs/YulGeneration/PatchRulesProofs.lean`
 - Opt-in compiler path via `Compiler.emitYulWithOptions` (`YulEmitOptions.patchConfig`)
 - Report-capable compiler path via `Compiler.emitYulWithOptionsReport` to surface patch manifest/iteration metadata to CI and tooling
-- `verity-compiler` patch coverage emission (`--patch-report`) writes per-contract/rule TSV output; CI uploads it as an artifact for Issue #583 tuning
-- Static gas delta gate for patch impact (`scripts/check_patch_gas_delta.py`) compares baseline vs patch-enabled reports in CI with median/p90 non-regression and measurable-improvement requirements
-- CI runs `check_yul.py` + `check_gas.py coverage` on `artifacts/yul-patched` as part of Issue #582 fail-closed hardening for patch-enabled output, including filename-set parity checks against baseline Yul output
-- CI runs a dedicated Foundry patched-Yul smoke gate (`DIFFTEST_YUL_DIR=artifacts/yul-patched`) so differential/property harnesses execute against patch-enabled output
+- `verity-compiler` patch coverage emission (`--patch-report`) now writes per-contract/rule TSV output and CI uploads it as an artifact for Issue #583 tuning
+- Static gas delta gate for patch impact (`scripts/check_patch_gas_delta.py`) now compares baseline vs patch-enabled reports in CI with median/p90 non-regression and measurable-improvement requirements
+- CI now runs `check_yul.py` + `check_gas.py coverage` on `artifacts/yul-patched` as part of Issue #582 fail-closed hardening for patch-enabled output, including filename-set parity checks against baseline Yul output
+- CI now runs a dedicated Foundry patched-Yul smoke gate (`DIFFTEST_YUL_DIR=artifacts/yul-patched`) so differential/property harnesses execute against patch-enabled output
 
 Execution policy:
 1. Do not start patch-pack expansion in `#583` before `#582` proof hooks are merged.
@@ -68,41 +68,40 @@ Status legend:
 | 5 | Storage layout controls (packed fields + explicit slot mapping) | partial | partial | partial | partial | partial |
 | 6 | ABI JSON artifact generation | partial | partial | n/a | partial | partial |
 
-Storage layout controls ([#623](https://github.com/Th0rgal/verity/issues/623)):
-- `CompilationModel.Field` supports optional explicit slot assignment (`slot := some <n>`), with backward-compatible positional slots when omitted.
-- Compiler fails fast on conflicting effective slot assignments with an issue-linked diagnostic.
-- `CompilationModel.Field` supports compatibility mirror-write slots (`aliasSlots := [...]`), so `setStorage`/`setMapping`/`setMapping2` write to canonical and alias slots in one declarative policy.
-- `CompilationModel` supports slot remap policies (`slotAliasRanges := [{ sourceStart := a, sourceEnd := b, targetStart := c }, ...]`) so compatibility windows like `8..11 -> 20..23` can be declared once and applied automatically to canonical field writes.
-- `CompilationModel` supports declarative reserved storage slot ranges (`reservedSlotRanges := [{ start := a, end_ := b }, ...]`) with compile-time overlap checks and fail-fast diagnostics when field canonical/alias write slots intersect reserved intervals.
-- `CompilationModel.Field` supports packed subfield placement (`packedBits := some { offset := o, width := w }`) so multiple fields can share a slot with disjoint bit ranges; codegen performs masked read-modify-write updates and masked reads directly from layout metadata.
-- `FieldType.mappingStruct` / `FieldType.mappingStruct2` plus `Expr.structMember` / `Stmt.setStructMember` make struct-valued mappings and packed submembers first-class in the CompilationModel surface, and `verity_contract` exposes matching `MappingStruct(...)` / `MappingStruct2(...)` storage declarations so Morpho-style layouts do not require handwritten CompilationModel shims.
+Recent progress for storage layout controls (`#623`):
+- `CompilationModel.Field` now supports optional explicit slot assignment (`slot := some <n>`), with backward-compatible positional slots when omitted.
+- Compiler now fails fast on conflicting effective slot assignments with an issue-linked diagnostic.
+- `CompilationModel.Field` now supports compatibility mirror-write slots (`aliasSlots := [...]`), so `setStorage`/`setMapping`/`setMapping2` write to canonical and alias slots in one declarative policy.
+- `CompilationModel` now supports slot remap policies (`slotAliasRanges := [{ sourceStart := a, sourceEnd := b, targetStart := c }, ...]`) so compatibility windows like `8..11 -> 20..23` can be declared once and applied automatically to canonical field writes.
+- `CompilationModel` now supports declarative reserved storage slot ranges (`reservedSlotRanges := [{ start := a, end_ := b }, ...]`) with compile-time overlap checks and fail-fast diagnostics when field canonical/alias write slots intersect reserved intervals.
+- `CompilationModel.Field` now supports packed subfield placement (`packedBits := some { offset := o, width := w }`) so multiple fields can share a slot with disjoint bit ranges; codegen performs masked read-modify-write updates and masked reads directly from layout metadata.
+- `FieldType.mappingStruct` / `FieldType.mappingStruct2` plus `Expr.structMember` / `Stmt.setStructMember` now make struct-valued mappings and packed submembers first-class in the CompilationModel surface, and `verity_contract` now exposes matching `MappingStruct(...)` / `MappingStruct2(...)` storage declarations so Morpho-style layouts no longer require handwritten CompilationModel shims.
 
-Low-level calls + returndata handling ([#622](https://github.com/Th0rgal/verity/issues/622)):
-- `CompilationModel.Expr` supports first-class low-level call primitives (`call`, `staticcall`, `delegatecall`) with explicit gas/value/target/input/output operands and deterministic Yul lowering.
-- `CompilationModel.Expr.returndataSize`, `Stmt.returndataCopy`, and `Stmt.revertReturndata` provide first-class returndata access and revert-data forwarding without raw Yul builtin injection.
-- `CompilationModel.Expr.returndataOptionalBoolAt(outOffset)` provides a first-class ERC20 compatibility helper for optional return-data bool decoding (`returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`), so low-level token call acceptance paths can be expressed without raw Yul builtins.
-- `verity-compiler --trust-report <path>` emits a machine-readable per-contract trust surface covering: low-level mechanics usage, event emission, linked externals, ECM axioms, proof-status buckets (`proved`/`assumed`/`unchecked`), per-site `usageSites` and `localObligations`, and dedicated slices for unmodeled proof gaps (events, proxy/upgradeability, linear memory, runtime introspection). `--verbose` adds matching human-readable summaries.
-- Nine `--deny-*` flags let CI fail closed on specific proof-gap categories. See the flag table in [VERIFICATION_STATUS.md § Diagnostics policy](VERIFICATION_STATUS.md#diagnostics-policy-for-unsupported-constructs) for the full list.
+Recent progress for low-level calls + returndata handling (`#622`):
+- `CompilationModel.Expr` now supports first-class low-level call primitives (`call`, `staticcall`, `delegatecall`) with explicit gas/value/target/input/output operands and deterministic Yul lowering.
+- `CompilationModel.Expr.returndataSize`, `Stmt.returndataCopy`, and `Stmt.revertReturndata` now provide first-class returndata access and revert-data forwarding without raw Yul builtin injection.
+- `CompilationModel.Expr.returndataOptionalBoolAt(outOffset)` now provides a first-class ERC20 compatibility helper for optional return-data bool decoding (`returndatasize()==0 || (returndatasize()==32 && mload(outOffset)==1)`), so low-level token call acceptance paths can be expressed without raw Yul builtins.
+- `verity-compiler --trust-report <path>` now emits a machine-readable per-contract trust surface covering low-level mechanics usage, raw `rawLog` event emission, linked external assumptions, ECM axioms, explicit `proved` / `assumed` / `unchecked` proof-status buckets for foreign surfaces, constructor/function-level `usageSites`, site-localized `localObligations` for unsafe/refinement escape hatches, and dedicated `notModeledEventEmission` / `notModeledProxyUpgradeability` / `partiallyModeledLinearMemoryMechanics` / `partiallyModeledRuntimeIntrospection` slices for the current event, proxy/upgradeability, memory/ABI, and runtime-context proof gaps; `--verbose` now includes matching human-readable summaries, `--deny-unchecked-dependencies` upgrades unchecked foreign usage from a warning to a fail-closed verification gate with site-localized diagnostics, `--deny-assumed-dependencies` provides a proof-strict gate for any remaining assumed or unchecked foreign dependency, `--deny-axiomatized-primitives` fails closed on contracts that still rely on axiomatized primitives such as `keccak256`, `--deny-local-obligations` fails closed on any undischarged local unsafe/refinement obligation, `--deny-linear-memory-mechanics` fails closed on contracts that still rely on partially modeled linear-memory mechanics, `--deny-event-emission` fails closed on raw `rawLog` event emission, `--deny-low-level-mechanics` fails closed on first-class low-level call / returndata usage, `--deny-proxy-upgradeability` fails closed on `delegatecall`-based proxy / upgradeability mechanics tracked under issue `#1420`, and `--deny-runtime-introspection` does the same for partially modeled runtime-introspection primitives.
 - Raw `Expr.externalCall` interop names for low-level/builtin opcodes remain fail-fast rejected, preserving explicit migration diagnostics while the first-class surface continues to expand.
-- ABI artifact emission reflects explicit function mutability markers (`isView`, `isPure`) as `stateMutability: "view" | "pure"` in generated JSON.
+- ABI artifact emission now reflects explicit function mutability markers (`isView`, `isPure`) as `stateMutability: "view" | "pure"` in generated JSON.
 
-Custom errors ([#586](https://github.com/Th0rgal/verity/issues/586)):
-- `Stmt.requireError` / `Stmt.revertError` support ABI encoding for tuple/fixed-array/array/bytes payloads (including nested dynamic composites) when arguments are direct `Expr.param` references.
+Recent progress for custom errors (`#586`):
+- `Stmt.requireError` / `Stmt.revertError` now support ABI encoding for tuple/fixed-array/array/bytes payloads (including nested dynamic composites) when arguments are direct `Expr.param` references.
 - Static scalar payload args remain expression-friendly (`uint256`, `address`, `bool`, `bytes32`), while composite/dynamic payload args fail fast with issue-linked diagnostics when not provided as direct parameter references.
 
-ABI JSON artifact generation ([#688](https://github.com/Th0rgal/verity/issues/688)):
+Recent progress for ABI JSON artifact generation (`#688`):
 - `verity-compiler --abi-output <dir>` emits one `<Contract>.abi.json` file per compiled CompilationModel in the supported compilation path.
 
-ABI-level string support ([#1159](https://github.com/Th0rgal/verity/issues/1159)):
-- `ParamType.string` compiles through the existing dynamic-bytes ABI path for macro parsing/lowering, calldata loading, ABI JSON/signature rendering, `Stmt.returnBytes`, event emission, and custom errors.
-- Direct parameter `String` / `Bytes` equality and inequality lower through the dedicated dynamic-bytes equality helper on both the macro and compilation-model paths.
-- This support is intentionally ABI-only: Solidity-style string storage/layout and typed-IR string lowering remain unsupported and fail fast with explicit diagnostics.
+Recent progress for ABI-level string support (`#1159`):
+- `ParamType.string` now compiles through the existing dynamic-bytes ABI path for macro parsing/lowering, calldata loading, ABI JSON/signature rendering, `Stmt.returnBytes`, event emission, and custom errors.
+- Direct parameter `String` / `Bytes` equality and inequality now lower through the dedicated dynamic-bytes equality helper on both the macro and compilation-model paths.
+- This support is intentionally ABI-only for now: Solidity-style string storage/layout and typed-IR string lowering remain unsupported and should continue to fail fast with explicit diagnostics.
 
-Constants and immutables ([#1569](https://github.com/Th0rgal/verity/issues/1569)):
-- `verity_contract` exposes `constants` and `immutables` sections in the macro surface, with smoke, invariant, round-trip, and generated Foundry property coverage.
+Recent progress for constants and immutables (`#1569`):
+- `verity_contract` now exposes `constants` and `immutables` sections in the macro surface, with smoke, invariant, round-trip, and generated Foundry property coverage.
 - Constants are validated as compile-time expressions, elaborated as Lean definitions, and can reference earlier constants while failing fast on runtime-dependent expressions and recursive definitions.
 - Immutables support `Uint256`, `Uint8`, `Address`, `Bytes32`, and `Bool` values bound from constructor-visible expressions, materialized as hidden storage-backed fields in the compilation model, and reintroduced as read-only bindings in function bodies.
-- Name-collision and type-mismatch diagnostics fail fast for storage/constant/immutable/function conflicts and unsupported immutable payload types.
+- Name-collision and type-mismatch diagnostics now fail fast for storage/constant/immutable/function conflicts and unsupported immutable payload types.
 
 Delivery policy for unsupported features:
 1. Compiler diagnostics must identify the exact unsupported construct.
@@ -130,7 +129,7 @@ Delivery policy for unsupported features:
 
 ### What this enables
 
-A developer can now write a `CompilationModel` for contracts with conditional logic, loops over arrays, nested mappings (`address → address → uint256` for ERC20 allowances), event emission, internal helper functions, and linked external libraries, then compile through the verified pipeline (Layers 2+3). Previously only simple counter/token contracts were supported.
+A developer can now write a `CompilationModel` for contracts with conditional logic, loops over arrays, nested mappings (`address → address → uint256` for ERC20 allowances), event emission, internal helper functions, and linked external libraries, and compile through the verified pipeline (Layers 2+3). Previously only simple counter/token contracts were supported.
 
 ### Remaining gap
 
@@ -186,7 +185,18 @@ Reference docs:
 - `docs/REWRITE_RULES.md`
 - `docs/IDENTITY_CHECKER.md`
 ### ✅ **Ledger Sum Properties** (Complete)
-All 7 ledger sum-invariant theorems proved with zero `sorry` (PR #47, #51, Issue #65).
+**What**: Prove total supply equals sum of all balances
+**Status**: All 7/7 proven with zero `sorry` (PR #47, #51, Issue #65 resolved)
+
+| # | Property | Description |
+|---|----------|-------------|
+| 1 | ~~`deposit_sum_equation`~~ | ✅ Deposit increases total by amount |
+| 2 | ~~`withdraw_sum_equation`~~ | ✅ Withdraw decreases total by amount |
+| 3 | ~~`transfer_sum_preservation`~~ | ✅ Transfer preserves total |
+| 4 | ~~`deposit_sum_singleton_sender`~~ | ✅ Singleton set deposit property |
+| 5 | ~~`withdraw_sum_singleton_sender`~~ | ✅ Singleton set withdraw property |
+| 6 | ~~`transfer_sum_preserved_unique`~~ | ✅ Transfer with unique addresses preserves sum |
+| 7 | ~~`deposit_withdraw_sum_cancel`~~ | ✅ Deposit then withdraw cancels out |
 
 ---
 
@@ -197,7 +207,7 @@ All 7 ledger sum-invariant theorems proved with zero `sorry` (PR #47, #51, Issue
 **Goal**: Demonstrate scalability beyond toy examples.
 
 **Completed Contracts**:
-1. **ERC721** (NFT standard), implemented with 11 theorems, differential + property tests
+1. **ERC721** (NFT standard): implemented with 11 theorems, differential + property tests
 
 **Proposed Contracts**:
 1. **Governance** (voting/proposals)
@@ -241,18 +251,65 @@ All 7 ledger sum-invariant theorems proved with zero `sorry` (PR #47, #51, Issue
 
 ---
 
-## Completed Milestones
+## Timeline & Milestones
 
-- ✅ Layer 3 statement-level proofs (PR #42)
+### Phase 1: Core Verification Complete (2-3 months)
+
+**Milestone**: End-to-end verification with minimal trust assumptions
+
+**Work Items**:
+- ✅ Complete Layer 3 statement-level proofs (PR #42)
 - ✅ Function selector verification (PR #43, #46)
-- ✅ Ledger sum properties, all 7/7 proved (PR #47, #51, Issue #65)
-- ✅ ERC721 example contract, 11 theorems
-- ✅ Differential testing at scale, 70k+ test vectors
+- ✅ Ledger sum properties infrastructure (PR #47, #51)
+- ✅ Complete sum property proofs (Issue #65 - all 7/7 proven)
+- 🔄 Yul → EVM bridge investigation
 
-## Design Decisions
+**Success Metrics**:
+- Layer 3 preservation theorem proven
+- Zero unverified assumptions in EDSL → Yul chain
+- All addressable properties covered
 
-- **Yul → EVM bridge**: Accepted as a documented trust assumption (`solc` compiler). Revisit when resources allow.
-- **Language scope**: EDSL-only for the foreseeable future; multi-language support deferred.
+### Phase 2: Production Readiness (3-6 months)
+
+**Milestone**: First real-world verified contract deployment
+
+**Work Items**:
+- ~~Add ERC721 example contract~~ (done: 11 theorems)
+- Strengthen differential testing coverage (ongoing)
+- Comprehensive documentation and tutorials (1 month)
+- Performance optimization (ongoing)
+
+**Success Metrics**:
+- At least one realistic contract fully verified
+- External contributors successfully verify contracts
+- CI runs complete in < 30 minutes
+
+### Phase 3: Ecosystem Growth (6-12 months)
+
+**Milestone**: Community adoption and ecosystem maturity
+
+**Work Items**:
+- Add Governance and AMM contracts (2-3 months)
+- IDE integration (VS Code extension) (2 months)
+- Automated property extraction (2-3 months)
+- Integration with production smart contract tooling (ongoing)
+
+**Success Metrics**:
+- 10+ verified contracts in repository
+- Active external contributors
+- Production deployments using Verity verification
+
+---
+
+## Open Questions
+
+1. **Should we prioritize Yul → EVM bridge or accept it as trust assumption?**
+   - Tradeoff: 1-3 months of effort vs. documented trust
+   - Recommendation: Start with documented trust (ledger sum properties now complete; revisit when resources allow)
+
+2. **Should we support multiple smart contract languages (Solidity, Vyper, Fe)?**
+   - Current: EDSL only
+   - Recommendation: After Phase 2, if community demand exists
 
 ---
 

@@ -6,23 +6,19 @@ Verity implements a **three-layer verification stack** proving smart contracts c
 
 ```
 EDSL contracts (Lean)
-    ↓ Layer 1: proved per contract — generic core + per-contract bridges
+    ↓ Layer 1: EDSL ≡ CompilationModel [PROVEN FOR CURRENT CONTRACTS; GENERIC CORE, CONTRACT BRIDGES]
 CompilationModel (declarative compiler-facing model)
-    ↓ Layer 2: proved generically, 1 axiom
+    ↓ Layer 2: CompilationModel → IR [PARTIAL GENERIC, 2 AXIOMS, CONTRACT BRIDGES ACTIVE]
 Intermediate Representation (IR)
-    ↓ Layer 3: proved generically — dispatch bridge is a theorem hypothesis
+    ↓ Layer 3: IR → Yul [GENERIC SURFACE, EXPLICIT BRIDGE HYPOTHESIS]
 Yul (EVM Assembly)
-    ↓ trusted — solc compiler
+    ↓ (Trusted: solc compiler)
 EVM Bytecode
 ```
 
 ## Layer 1: EDSL ≡ CompilationModel, PROVEN FOR CURRENT CONTRACTS
 
-**What it proves today**: running a contract through the EDSL `Contract` monad produces the same result as interpreting its `CompilationModel`. This is proved for every contract in the table below.
-
-The proof core is generic (see [`TypedIRCompilerCorrectness.lean`](../Compiler/TypedIRCompilerCorrectness.lean)), but the bridge theorem that connects each contract's EDSL to its `CompilationModel` is still instantiated per contract.
-
-> **Scope note**: the per-contract proofs under `Contracts/<Name>/Proofs/` go further: they show contracts satisfy human-readable specifications (e.g. "increment adds 1"). Those are downstream contract proofs, not Layer 1 itself.
+**What it proves today**: The EDSL `Contract` monad execution is equivalent to `CompilationModel` interpretation for the current supported contract set. This is the frontend semantic bridge. The proof stack has a generic typed-IR core, but the active bridge theorems are still instantiated per contract. Separate per-contract proofs under `Contracts/<Name>/Proofs/` then show these contracts satisfy their human-readable specifications; those specification theorems are downstream contract proofs, not the definition of Layer 1 itself.
 
 ### Verified Contracts
 
@@ -44,12 +40,9 @@ The proof core is generic (see [`TypedIRCompilerCorrectness.lean`](../Compiler/T
 
 > **Note**: Stdlib (0 internal proof-automation properties) is excluded from the contract-spec theorem table above but included in overall coverage statistics (277 total properties).
 
-**What the generic typed-IR core covers**:
+Layer 1 uses macro-generated EDSL-to-`CompilationModel` bridge theorems backed by a generic typed-IR compilation-correctness theorem ([`TypedIRCompilerCorrectness.lean`](../Compiler/TypedIRCompilerCorrectness.lean)). Tuple/bytes/fixed-array/dynamic-array/string parameters now stay inside that proof path when they are carried as ABI head words/offsets. Advanced constructs beyond that typed-IR head-word surface (linked libraries, ECMs, fully custom ABI behavior) are still expressed directly in `CompilationModel` and trusted at that boundary.
 
-- **Inside the proof path**: tuple, bytes, fixed-array, dynamic-array, and string parameters carried as ABI head words/offsets.
-- **Outside the proof path** (trusted at the `CompilationModel` boundary): linked libraries, ECMs, and fully custom ABI behavior.
-
-**Internal helper calls**: supported operationally in `CompilationModel` and the fuel-based interpreter, but compositional proof reuse of helpers across callers is not yet a first-class verified interface. Tracked in [#1335](https://github.com/Th0rgal/verity/issues/1335).
+Internal helper calls are supported operationally in `CompilationModel` and the fuel-based interpreter path, but helper-level compositional proof reuse across callers is not yet a first-class verified interface. Current EDSL-to-`CompilationModel` bridge instantiations remain contract-specific; the reusable internal-helper proof boundary is tracked in [#1335](https://github.com/Th0rgal/verity/issues/1335).
 
 ### Lowering Bridge
 
@@ -59,28 +52,30 @@ theorems for supported EDSL contracts, covering:
 - Explicit revert-path bridges for owner-gated and arithmetic failure paths
 - Composition with the compiled IR/Yul semantics used by the proof pipeline
 
-## Layer 2: CompilationModel → IR, PROVED GENERICALLY, 1 AXIOM
+## Layer 2: CompilationModel → IR — PARTIAL GENERIC
 
 Tracking:
 - Whole-contract generic theorem gap: [#1510](https://github.com/Th0rgal/verity/issues/1510)
 - Current body-simulation blocker: [#1564](https://github.com/Th0rgal/verity/issues/1564)
 - Proof decomposition plan: [GENERIC_LAYER2_PLAN.md](./GENERIC_LAYER2_PLAN.md)
 
-**Main theorem**: [`compile_preserves_semantics`](../Compiler/Proofs/IRGeneration/Contract.lean), quantified over arbitrary supported `CompilationModel`s, selectors, a `SupportedSpec` witness, and successful `CompilationModel.compile` output. The proof chain is complete but transitively depends on 1 documented axiom (see below).
+**What is generic today**:
+- a structural theorem for raw statement lists inside the explicit `SupportedStmtList` fragment witness in [`TypedIRCompilerCorrectness.lean`](../Compiler/TypedIRCompilerCorrectness.lean), re-exported for the compiler-proof layer in [`SupportedFragment.lean`](../Compiler/Proofs/IRGeneration/SupportedFragment.lean)
+- a whole-contract theorem surface, [`compile_preserves_semantics`](../Compiler/Proofs/IRGeneration/Contract.lean), quantified over arbitrary supported `CompilationModel`s, selectors, a `SupportedSpec` witness, and successful `CompilationModel.compile` output
 
-**Current proof status**:
+**What is not fully discharged yet**:
+- the generic whole-contract theorem surface is now assembled by theorem, but it still depends on 1 documented Layer-2 axiom in [`Function.lean`](../Compiler/Proofs/IRGeneration/Function.lean)
+- the hardest remaining closure step is the generic body-simulation axiom `supported_function_body_correct_from_exact_state`, tracked separately in [#1564](https://github.com/Th0rgal/verity/issues/1564)
+- active end-to-end contract examples still rely on manual bridge theorems in [`Contracts/Proofs/SemanticBridge.lean`](../Contracts/Proofs/SemanticBridge.lean)
+- the repo does not yet have a closed generic proof that directly composes source whole-function semantics, parameter loading, supported statement compilation, and the exact `compileStmtList`/IR execution path used by `CompilationModel.compile`; there is not yet a single compiler-level theorem quantified over arbitrary supported `CompilationModel` programs and successful `CompilationModel.compile` output.
 
-| Status | What |
-|--------|------|
-| Proved generically | Supported statement-list compilation ([`SupportedFragment.lean`](../Compiler/Proofs/IRGeneration/SupportedFragment.lean), re-exported from [`TypedIRCompilerCorrectness.lean`](../Compiler/TypedIRCompilerCorrectness.lean)) |
-| Proved generically | Initial-state normalization (`withTransactionContext` ↔ `initialIRStateForTx`) |
-| Proved generically | Whole-contract theorem shape, dispatch, parameter loading |
-| Still axiomatized | Body simulation for non-core statement patterns, `supported_function_body_correct_from_exact_state` in [`Function.lean`](../Compiler/Proofs/IRGeneration/Function.lean) ([#1564](https://github.com/Th0rgal/verity/issues/1564)) |
-| Contract-specific | End-to-end examples still use manual bridge theorems in [`SemanticBridge.lean`](../Contracts/Proofs/SemanticBridge.lean) |
-
-**Explicit precondition**: the theorem requires transaction-context fields (`sender`, `thisAddress`, `msgValue`, `blockTimestamp`, `blockNumber`, `chainId`) to already fit the bounded source-side `Address`/`Uint256` domains.
-
-**Outside current scope**: events/logs, proxy/delegatecall upgradeability, linked externals, local unsafe obligations, and other trust-surfaced features not captured by the supported whole-contract fragment.
+**Current boundary**:
+- Generic: supported statement-list compilation and the whole-contract theorem shape
+- Proved generically: initial-state normalization between `withTransactionContext` and `initialIRStateForTx`, under explicit transaction-context normalization hypotheses
+- Still axiomatized: generic supported body simulation
+- Additional explicit precondition: the generic theorem surface now requires the observed transaction-context fields (`sender`, `thisAddress`, `msgValue`, `blockTimestamp`, `blockNumber`, `chainId`) to already fit the bounded source-side `Address`/`Uint256` domains
+- Contract-specific today: the concrete EDSL→compiled-IR bridges used for current end-to-end examples
+- Outside the current generic theorem or current proof model: events/logs, proxy/delegatecall upgradeability, linked externals, local unsafe obligations, and other trust-surfaced features not captured by the current supported whole-contract fragment
 
 | Contract | IR Functions | Status |
 |----------|-------------|--------|
@@ -104,9 +99,9 @@ Key files:
 - [`SemanticBridge.lean`](../Contracts/Proofs/SemanticBridge.lean)
 - [`EndToEnd.lean`](../Compiler/Proofs/EndToEnd.lean)
 
-## Layer 3: IR → Yul, PROVED GENERICALLY
+## Layer 3: IR → Yul, GENERIC, WITH EXPLICIT AXIOM BOUNDARY
 
-**What it proves**: Yul code generation preserves IR semantics through a generic statement/function equivalence stack. The dispatch bridge is an explicit theorem hypothesis in [`Preservation.lean`](../Compiler/Proofs/YulGeneration/Preservation.lean), not a Lean axiom. Dispatch-guard preconditions: non-payable functions require word-level zero `msg.value`; each function case requires a non-wrapping calldata-width guard.
+**What it proves today**: Yul code generation preserves IR semantics through a generic statement/function equivalence stack, but the current full dispatch-preservation path still depends on 1 documented bridge hypothesis in [`Preservation.lean`](../Compiler/Proofs/YulGeneration/Preservation.lean). The checked contract-level theorem surface now explicitly requires dispatch-guard safety for each selected function case: word-level zero `msg.value` on non-payable paths and a non-wrapping calldata-width bound for each case guard.
 
 All 8 Yul statement types proven equivalent to IR counterparts. Universal dispatcher theorem:
 
@@ -223,23 +218,7 @@ Diagnostics policy for unsupported constructs:
 1. Report the exact unsupported construct at compile time.
 2. Suggest the nearest supported migration pattern.
 3. Link to the owning tracking issue.
-4. When trust-relevant features are in play (low-level mechanics, raw event emission, axiomatized primitives, local obligations, or external assumptions), emit a machine-readable trust report via `verity-compiler --trust-report <path>`. Use `--verbose` for a human-readable summary.
-
-The trust report groups every foreign trust surface into `proofStatus.proved`, `proofStatus.assumed`, and `proofStatus.unchecked` buckets, localized to constructor/function usage sites. It separately lists proof-gap categories: `notModeledEventEmission`, `notModeledProxyUpgradeability`, `partiallyModeledLinearMemoryMechanics`, and `partiallyModeledRuntimeIntrospection`.
-
-**Fail-closed flags**: each flag rejects the named surface and reports the exact usage site that introduced it:
-
-| Flag | Rejects |
-|------|---------|
-| `--deny-unchecked-dependencies` | Any `unchecked` linked external or ECM module |
-| `--deny-assumed-dependencies` | Any `assumed` or `unchecked` linked external or ECM module |
-| `--deny-axiomatized-primitives` | Any axiomatized primitive (e.g. `keccak256`) |
-| `--deny-local-obligations` | Any `assumed` or `unchecked` local unsafe/refinement obligation |
-| `--deny-linear-memory-mechanics` | Any partially modeled linear-memory mechanic |
-| `--deny-event-emission` | Any raw `rawLog` event emission |
-| `--deny-low-level-mechanics` | Any first-class low-level call / returndata mechanic |
-| `--deny-proxy-upgradeability` | Any `delegatecall`-based proxy/upgradeability mechanic (issue [#1420](https://github.com/Th0rgal/verity/issues/1420)) |
-| `--deny-runtime-introspection` | Any partially modeled runtime-introspection primitive |
+4. When low-level mechanics, raw `rawLog` event emission, axiomatized primitives (for example `keccak256`), local unsafe/refinement obligations, or external assumptions are in play, emit a machine-readable trust report via `verity-compiler --trust-report <path>`. The report groups foreign trust surfaces into explicit `proofStatus.proved`, `proofStatus.assumed`, and `proofStatus.unchecked` buckets, localizes them to constructor/function `usageSites`, surfaces localized `localObligations`, and now separately lists `notModeledEventEmission`, `notModeledProxyUpgradeability`, `partiallyModeledLinearMemoryMechanics`, and `partiallyModeledRuntimeIntrospection` so the current event, proxy/upgradeability, memory/ABI, and runtime-context proof gaps are explicit in both contract-level and per-site audit output. In human-readable mode, `--verbose` now emits matching usage-site and contract-level summaries. For fail-closed verification runs, add `--deny-unchecked-dependencies`, which now reports the exact usage site that introduced each unchecked dependency. For proof-strict runs that reject any unproved foreign surface, use `--deny-assumed-dependencies`, which fails on both `assumed` and `unchecked` linked externals / ECM modules and reports the exact usage site. For primitive-proof-strict runs, add `--deny-axiomatized-primitives`, which fails on any remaining axiomatized primitive and reports the exact usage site. For local-obligation-proof-strict runs, add `--deny-local-obligations`, which fails on any remaining `assumed` or `unchecked` localized unsafe/refinement obligation and reports the exact usage site. For memory-proof-strict runs, add `--deny-linear-memory-mechanics`, which fails on any remaining partially modeled linear-memory mechanic and reports the exact usage site. For event-proof-strict runs, add `--deny-event-emission`, which fails on any remaining raw `rawLog` event emission and reports the exact usage site. For low-level-proof-strict runs, add `--deny-low-level-mechanics`, which fails on any remaining first-class low-level call / returndata mechanic and reports the exact usage site. For proxy-proof-strict runs, add `--deny-proxy-upgradeability`, which fails on any remaining `delegatecall`-based proxy / upgradeability mechanic and reports the exact usage site; the dedicated proxy semantics gap is tracked under issue `#1420`. For runtime-proof-strict runs, add `--deny-runtime-introspection`, which fails on any remaining partially modeled runtime-introspection primitive and reports the exact usage site.
 
 ## Trust Assumptions
 

@@ -248,8 +248,11 @@ now sits under the post-generic widening/completeness plan in
   target (`evalExprWithHelpers` / `execStmtListWithHelpers` /
   `interpretInternalFunctionFuel`), while `SupportedSpec.lean` now attaches a
   reusable `InternalHelperSummaryContract` interface and a strictly decreasing
-  helper-rank measure directly to helper-summary witnesses. `SourceSemantics`
-  now also defines `InternalHelperSummarySound` /
+  helper-rank measure directly to helper-summary witnesses. Expression-position
+  helper callees are now tracked separately and must prove world preservation on
+  success, which keeps the current helper-aware expression semantics honest
+  without constraining statement-position helper summaries the same way.
+  `SourceSemantics` now also defines `InternalHelperSummarySound` /
   `SupportedBodyHelperSummariesSound` plus direct-call consumption lemmas for
   `Expr.internalCall`, `Stmt.internalCall`, and `Stmt.internalCallAssign`, so
   helper summaries are now a proof-carrying source-semantics interface rather

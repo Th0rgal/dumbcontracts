@@ -526,6 +526,61 @@ mutual
 end
 
 mutual
+  /-- Collect direct internal-helper callee names that occur specifically in expression
+  positions. These calls must preserve the world on success because the current
+  helper-aware expression semantics returns only a value. -/
+  def stmtExprHelperCallNames : Stmt → List String
+    | .letVar _ value | .assignVar _ value | .setStorage _ value | .setStorageAddr _ value
+    | .storageArrayPush _ value | .return value | .require value _ =>
+        exprInternalHelperCallNames value
+    | .setStorageArrayElement _ index value =>
+        exprInternalHelperCallNames index ++ exprInternalHelperCallNames value
+    | .requireError cond _ args =>
+        exprInternalHelperCallNames cond ++ exprListInternalHelperCallNames args
+    | .revertError _ args | .emit _ args | .returnValues args
+    | .externalCallBind _ _ args | .ecm _ args =>
+        exprListInternalHelperCallNames args
+    | .mstore offset value | .tstore offset value =>
+        exprInternalHelperCallNames offset ++ exprInternalHelperCallNames value
+    | .calldatacopy destOffset sourceOffset size
+    | .returndataCopy destOffset sourceOffset size =>
+        exprInternalHelperCallNames destOffset ++ exprInternalHelperCallNames sourceOffset ++
+          exprInternalHelperCallNames size
+    | .setMapping _ key value | .setMappingWord _ key _ value
+    | .setMappingPackedWord _ key _ _ value | .setMappingUint _ key value
+    | .setStructMember _ key _ value =>
+        exprInternalHelperCallNames key ++ exprInternalHelperCallNames value
+    | .setMappingChain _ keys value =>
+        exprListInternalHelperCallNames keys ++ exprInternalHelperCallNames value
+    | .setMapping2 _ key1 key2 value | .setMapping2Word _ key1 key2 _ value
+    | .setStructMember2 _ key1 key2 _ value =>
+        exprInternalHelperCallNames key1 ++ exprInternalHelperCallNames key2 ++
+          exprInternalHelperCallNames value
+    | .ite cond thenBranch elseBranch =>
+        exprInternalHelperCallNames cond ++ stmtListExprHelperCallNames thenBranch ++
+          stmtListExprHelperCallNames elseBranch
+    | .forEach _ count body =>
+        exprInternalHelperCallNames count ++ stmtListExprHelperCallNames body
+    | .internalCall _ args | .internalCallAssign _ _ args =>
+        exprListInternalHelperCallNames args
+    | .rawLog topics dataOffset dataSize =>
+        exprListInternalHelperCallNames topics ++ exprInternalHelperCallNames dataOffset ++
+          exprInternalHelperCallNames dataSize
+    | .storageArrayPop _ | .returnArray _ | .returnBytes _ | .returnStorageWords _
+    | .revertReturndata | .stop =>
+        []
+  termination_by s => sizeOf s
+  decreasing_by all_goals simp_wf; all_goals omega
+
+  def stmtListExprHelperCallNames : List Stmt → List String
+    | [] => []
+    | stmt :: rest =>
+        stmtExprHelperCallNames stmt ++ stmtListExprHelperCallNames rest
+  termination_by stmts => sizeOf stmts
+  decreasing_by all_goals simp_wf; all_goals omega
+end
+
+mutual
   /-- Collect direct internal-helper callee names mentioned by a statement list. -/
   def stmtInternalHelperCallNames : Stmt → List String
     | .letVar _ value | .assignVar _ value | .setStorage _ value | .setStorageAddr _ value
@@ -588,6 +643,113 @@ theorem helperCallNames_nodup (fn : FunctionSpec) :
     (helperCallNames fn).Nodup := by
   simpa [helperCallNames] using List.nodup_eraseDups (stmtListInternalHelperCallNames fn.body)
 
+/-- Deduplicated direct helper-callee inventory for expression-position helper uses. -/
+def exprHelperCallNames (fn : FunctionSpec) : List String :=
+  (stmtListExprHelperCallNames fn.body).eraseDups
+
+theorem exprHelperCallNames_nodup (fn : FunctionSpec) :
+    (exprHelperCallNames fn).Nodup := by
+  simpa [exprHelperCallNames] using List.nodup_eraseDups (stmtListExprHelperCallNames fn.body)
+
+theorem stmtExprHelperCallNames_subset_stmtInternalHelperCallNames
+    (stmt : Stmt) :
+    ∀ {calleeName : String},
+      calleeName ∈ stmtExprHelperCallNames stmt →
+        calleeName ∈ stmtInternalHelperCallNames stmt := by
+  intro calleeName hmem
+  induction stmt with
+  | letVar name value
+  | assignVar name value
+  | setStorage name value
+  | setStorageAddr name value
+  | storageArrayPush name value
+  | return value
+  | require value msg =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames] using hmem
+  | setStorageArrayElement name index value =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append] using hmem
+  | requireError cond err args
+  | calldatacopy cond err args
+  | returndataCopy cond err args =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append] using hmem
+  | revertError err args
+  | emit err args
+  | returnValues args
+  | externalCallBind names err args
+  | ecm err args =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames] using hmem
+  | mstore offset value
+  | tstore offset value =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append] using hmem
+  | setMapping name key value
+  | setMappingWord name key offset value
+  | setMappingPackedWord name key offset packed value
+  | setMappingUint name key value
+  | setStructMember name key member value =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append] using hmem
+  | setMappingChain name keys value =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append] using hmem
+  | setMapping2 name key1 key2 value
+  | setMapping2Word name key1 key2 offset value
+  | setStructMember2 name key1 key2 member value =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append,
+        or_left_comm, or_assoc] using hmem
+  | ite cond thenBranch elseBranch ihThen ihElse =>
+      simp only [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append,
+        List.mem_cons] at hmem ⊢
+      rcases hmem with hcond | hrest
+      · exact Or.inl hcond
+      · rcases hrest with hthen | helse
+        · exact Or.inr <| Or.inl <| ihThen hthen
+        · exact Or.inr <| Or.inr <| ihElse helse
+  | forEach var count body ih =>
+      simp only [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append] at hmem ⊢
+      rcases hmem with hcount | hbody
+      · exact Or.inl hcount
+      · exact Or.inr <| ih hbody
+  | internalCall calleeName args =>
+      simp [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_cons] at hmem ⊢
+      exact Or.inr hmem
+  | internalCallAssign names calleeName args =>
+      simp [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_cons] at hmem ⊢
+      exact Or.inr hmem
+  | rawLog topics dataOffset dataSize =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames, List.mem_append,
+        or_left_comm, or_assoc] using hmem
+  | storageArrayPop name
+  | returnArray values
+  | returnBytes values
+  | returnStorageWords values
+  | revertReturndata
+  | stop =>
+      simpa [stmtExprHelperCallNames, stmtInternalHelperCallNames] using hmem
+
+theorem stmtListExprHelperCallNames_subset_stmtListInternalHelperCallNames
+    (stmts : List Stmt) :
+    ∀ {calleeName : String},
+      calleeName ∈ stmtListExprHelperCallNames stmts →
+        calleeName ∈ stmtListInternalHelperCallNames stmts := by
+  intro calleeName hmem
+  induction stmts with
+  | nil =>
+      simpa [stmtListExprHelperCallNames, stmtListInternalHelperCallNames] using hmem
+  | cons stmt rest ih =>
+      simp only [stmtListExprHelperCallNames, stmtListInternalHelperCallNames, List.mem_append] at hmem ⊢
+      rcases hmem with hstmt | hrest
+      · exact Or.inl (stmtExprHelperCallNames_subset_stmtInternalHelperCallNames stmt hstmt)
+      · exact Or.inr (ih hrest)
+
+theorem exprHelperCallNames_subset_helperCallNames
+    {fn : FunctionSpec}
+    {calleeName : String}
+    (hmem : calleeName ∈ exprHelperCallNames fn) :
+    calleeName ∈ helperCallNames fn := by
+  have hexpr : calleeName ∈ stmtListExprHelperCallNames fn.body := by
+    simpa [exprHelperCallNames] using hmem
+  have hhelper : calleeName ∈ stmtListInternalHelperCallNames fn.body :=
+    stmtListExprHelperCallNames_subset_stmtListInternalHelperCallNames fn.body hexpr
+  simpa [helperCallNames] using hhelper
+
 /-- Compatibility scan retained for the existing generic-induction library.
 Its meaning is now derived from smaller feature-local interfaces rather than a
 single undifferentiated exclusion bag. -/
@@ -620,6 +782,13 @@ structure SupportedBodyStateInterface (fn : FunctionSpec) : Prop where
 
 structure InternalHelperSummaryContract where
   post : Nat → Verity.ContractState → List Nat → Bool → Option Nat → Verity.ContractState → Prop
+
+def InternalHelperSummaryPreservesWorldOnSuccess
+    (summary : InternalHelperSummaryContract) : Prop :=
+  ∀ fuel initialWorld args success returnValue finalWorld,
+    summary.post fuel initialWorld args success returnValue finalWorld →
+      success = true →
+      finalWorld = initialWorld
 
 structure SupportedInternalHelperSummary (spec : CompilationModel) (callee : FunctionSpec) : Prop where
   present : callee ∈ spec.functions
@@ -656,6 +825,12 @@ structure SupportedBodyHelperInterface (spec : CompilationModel) (fn : FunctionS
   calleeRanksDecrease :
     ∀ calleeName (hmem : calleeName ∈ helperCallNames fn),
       (summaryOf calleeName hmem).summary.helperRank < helperRank
+  exprCallsPreserveWorld :
+    ∀ calleeName (hmem : calleeName ∈ exprHelperCallNames fn),
+      let hcall : calleeName ∈ helperCallNames fn :=
+        exprHelperCallNames_subset_helperCallNames hmem
+      InternalHelperSummaryPreservesWorldOnSuccess
+        ((summaryOf calleeName hcall).summary.contract)
   legacySurfaceClosed : stmtListTouchesUnsupportedHelperSurface fn.body = false
 
 structure SupportedBodyCallInterface (spec : CompilationModel) (fn : FunctionSpec) : Prop where
@@ -775,6 +950,17 @@ theorem SupportedBodyHelperInterface.calleeRank_lt
     (hmem : calleeName ∈ helperCallNames fn) :
     (hHelpers.summaryOfCall hmem).summary.helperRank < hHelpers.helperRank :=
   hHelpers.calleeRanksDecrease calleeName hmem
+
+theorem SupportedBodyHelperInterface.exprSummaryPreservesWorld
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hHelpers : SupportedBodyHelperInterface spec fn)
+    {calleeName : String}
+    (hmem : calleeName ∈ exprHelperCallNames fn) :
+    let hcall : calleeName ∈ helperCallNames fn :=
+      exprHelperCallNames_subset_helperCallNames hmem
+    InternalHelperSummaryPreservesWorldOnSuccess
+      (hHelpers.summaryContractOfCall hcall) :=
+  hHelpers.exprCallsPreserveWorld calleeName hmem
 
 theorem stmtListTouchesUnsupportedContractSurface_eq_featureOr
     (stmts : List Stmt) :

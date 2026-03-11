@@ -103,6 +103,57 @@ def stringEqBranchModelUsesDynamicBytesEq : Bool :=
 
 example : stringEqBranchModelUsesDynamicBytesEq = true := by decide
 
+verity_contract BytesEqSmoke where
+  storage
+    sentinel : Uint256 := slot 0
+
+  function same (lhs : Bytes, rhs : Bytes) : Bool := do
+    return (lhs == rhs)
+
+  function different (lhs : Bytes, rhs : Bytes) : Bool := do
+    return (lhs != rhs)
+
+  function choose (lhs : Bytes, rhs : Bytes) : Uint256 := do
+    if lhs == rhs then
+      return 1
+    else
+      return 0
+
+def bytesEqExecutableMatches : Bool :=
+  let mkBytes (xs : List UInt8) : ByteArray := ByteArray.mk xs.toArray
+  let abc : ByteArray := mkBytes [0x01, 0x02, 0x03]
+  let abd : ByteArray := mkBytes [0x01, 0x02, 0x04]
+  let aabb : ByteArray := mkBytes [0xaa, 0xbb]
+  let bbaa : ByteArray := mkBytes [0xbb, 0xaa]
+  match BytesEqSmoke.same abc abc Verity.defaultState,
+      BytesEqSmoke.same abc abd Verity.defaultState,
+      BytesEqSmoke.different abc abd Verity.defaultState,
+      BytesEqSmoke.choose aabb aabb Verity.defaultState,
+      BytesEqSmoke.choose aabb bbaa Verity.defaultState with
+  | .success eq1 _, .success eq2 _, .success ne _, .success pick1 _, .success pick2 _ =>
+      eq1 && (!eq2) && ne && pick1 == 1 && pick2 == 0
+  | _, _, _, _, _ => false
+
+example : bytesEqExecutableMatches = true := by decide
+
+def bytesEqModelUsesDynamicBytesEq : Bool :=
+  match BytesEqSmoke.same_modelBody with
+  | [Compiler.CompilationModel.Stmt.return
+      (Compiler.CompilationModel.Expr.dynamicBytesEq "lhs" "rhs")] => true
+  | _ => false
+
+example : bytesEqModelUsesDynamicBytesEq = true := by decide
+
+def bytesEqBranchModelUsesDynamicBytesEq : Bool :=
+  match BytesEqSmoke.choose_modelBody with
+  | [Compiler.CompilationModel.Stmt.ite
+      (Compiler.CompilationModel.Expr.dynamicBytesEq "lhs" "rhs")
+      [Compiler.CompilationModel.Stmt.return (Compiler.CompilationModel.Expr.literal 1)]
+      [Compiler.CompilationModel.Stmt.return (Compiler.CompilationModel.Expr.literal 0)]] => true
+  | _ => false
+
+example : bytesEqBranchModelUsesDynamicBytesEq = true := by decide
+
 /--
 error: logical operator requires Bool, got Verity.Macro.ValueType.string
 -/
@@ -143,5 +194,6 @@ verity_contract BytesLocalAliasUnsupported where
 
 #check_contract StringSmoke
 #check_contract StringEqSmoke
+#check_contract BytesEqSmoke
 
 end Contracts

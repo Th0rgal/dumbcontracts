@@ -29,7 +29,7 @@ contract StringEventSmokeReference {
 
 contract StringEventSmokeTest is Test, YulTestBase {
     address internal stringEventSmoke;
-    StringEventSmokeReference internal reference;
+    StringEventSmokeReference internal referenceContract;
 
     function setUp() public {
         stringEventSmoke = deployCompiledVerityModule(
@@ -37,7 +37,7 @@ contract StringEventSmokeTest is Test, YulTestBase {
             "StringEventSmoke",
             "artifacts/test-string-event-smoke"
         );
-        reference = new StringEventSmokeReference();
+        referenceContract = new StringEventSmokeReference();
     }
 
     function _assertLogsEqual(Vm.Log[] memory lhs, Vm.Log[] memory rhs) internal pure {
@@ -62,7 +62,7 @@ contract StringEventSmokeTest is Test, YulTestBase {
         Vm.Log[] memory yulLogs =
             _recordLogs(stringEventSmoke, abi.encodeWithSignature("logMessage(string)", message));
         Vm.Log[] memory refLogs =
-            _recordLogs(address(reference), abi.encodeWithSignature("logMessage(string)", message));
+            _recordLogs(address(referenceContract), abi.encodeWithSignature("logMessage(string)", message));
         _assertLogsEqual(yulLogs, refLogs);
     }
 
@@ -72,7 +72,7 @@ contract StringEventSmokeTest is Test, YulTestBase {
             abi.encodeWithSignature("logTaggedMessage(uint256,string)", tag, message)
         );
         Vm.Log[] memory refLogs = _recordLogs(
-            address(reference),
+            address(referenceContract),
             abi.encodeWithSignature("logTaggedMessage(uint256,string)", tag, message)
         );
         _assertLogsEqual(yulLogs, refLogs);
@@ -82,7 +82,7 @@ contract StringEventSmokeTest is Test, YulTestBase {
         Vm.Log[] memory yulLogs =
             _recordLogs(stringEventSmoke, abi.encodeWithSignature("logIndexedMessage(string)", message));
         Vm.Log[] memory refLogs =
-            _recordLogs(address(reference), abi.encodeWithSignature("logIndexedMessage(string)", message));
+            _recordLogs(address(referenceContract), abi.encodeWithSignature("logIndexedMessage(string)", message));
         _assertLogsEqual(yulLogs, refLogs);
     }
 
@@ -92,7 +92,7 @@ contract StringEventSmokeTest is Test, YulTestBase {
             abi.encodeWithSignature("logSecondMessage(string,string)", prefix, message)
         );
         Vm.Log[] memory refLogs = _recordLogs(
-            address(reference),
+            address(referenceContract),
             abi.encodeWithSignature("logSecondMessage(string,string)", prefix, message)
         );
         _assertLogsEqual(yulLogs, refLogs);

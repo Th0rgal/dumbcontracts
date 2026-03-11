@@ -15,16 +15,16 @@ contract PropertyLocalObligationMacroSmoke is YulTestBase {
      * Property: unsafeEdge_preserves_state
      */
     function testProperty_UnsafeEdge_IsNoOp() public {
-        uint256 slot0Before = readStorage(0);
-        uint256 slot1Before = readStorage(1);
+        uint256 slot0Before = readStorage(macroSmoke, 0);
+        uint256 slot1Before = readStorage(macroSmoke, 1);
 
         (bool success,) = macroSmoke.call(
             abi.encodeWithSignature("unsafeEdge()")
         );
         require(success, "unsafeEdge failed");
 
-        assertEq(readStorage(0), slot0Before, "unsafeEdge must preserve slot 0");
-        assertEq(readStorage(1), slot1Before, "unsafeEdge must preserve slot 1");
+        assertEq(readStorage(macroSmoke, 0), slot0Before, "unsafeEdge must preserve slot 0");
+        assertEq(readStorage(macroSmoke, 1), slot1Before, "unsafeEdge must preserve slot 1");
     }
 
     /**
@@ -40,6 +40,6 @@ contract PropertyLocalObligationMacroSmoke is YulTestBase {
 
         uint256 result = abi.decode(data, (uint256));
         assertEq(result, value, "dischargedEdge must return the input");
-        assertEq(readStorage(1), value, "dischargedEdge must write slot 1");
+        assertEq(readStorage(macroSmoke, 1), value, "dischargedEdge must write slot 1");
     }
 }

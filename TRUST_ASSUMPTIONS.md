@@ -20,13 +20,11 @@ The repository has no `sorry`, but it still has 2 documented Lean axioms. See [A
 
 ## What's Verified
 
-- **Layer 1**: A generic typed-IR compilation-correctness core exists, but the active contract-level bridges are still instantiated per contract and internal-helper proof reuse is not yet a first-class generic interface.
-  This names the frontend EDSL-to-`CompilationModel` bridge only; the
-  contract-specific specification theorems in `Contracts/<Name>/Proofs/` are a
-  separate proof layer about human-readable contract behavior.
-- **Layer 2**: A generic whole-contract theorem surface exists for supported `CompilationModel`s, and `supported_function_correct` is a real theorem. Initial-state normalization is proved, and the former `execIRFunctionFuel`/`execIRFunction` bridge axiom has been eliminated. Whole-contract Layer 2 preservation still relies on contract-specific bridge theorems and 1 documented sub-axiom for generic body simulation. The theorem surface requires that transaction-context fields are already normalized to the bounded source-side `Address`/`Uint256` domains.
-- **Layer 3**: IR → Yul preservation is generic at the proof surface. The remaining dispatch bridge is an explicit theorem hypothesis, not a Lean axiom. Dispatch-guard safety preconditions are explicit: non-payable cases must see word-level zero `msg.value`, and each selected function case must have a non-wrapping calldata-width guard.
-- **Cross-layer**: [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) has zero `sorry`, but it is a manual bridge layer for a subset of contracts rather than a fully generic replacement for Layers 1-3.
+- **Layer 1** (EDSL → `CompilationModel`): a generic typed-IR compilation-correctness core exists, but the active contract-level bridges are still instantiated per contract. Internal-helper proof reuse across callers is not yet a first-class generic interface.
+  *Scope*: this is the EDSL-to-`CompilationModel` bridge only. The specification theorems in `Contracts/<Name>/Proofs/` (e.g. "increment adds 1") are a separate downstream proof layer.
+- **Layer 2** (`CompilationModel` → IR): the generic whole-contract theorem `compile_preserves_semantics` is proved for arbitrary supported `CompilationModel`s. The proof chain is complete but depends on 1 documented axiom for non-core body simulation (`supported_function_body_correct_from_exact_state`; see [AXIOMS.md](AXIOMS.md)). End-to-end examples still use per-contract bridge theorems. Precondition: transaction-context fields must already be bounded to the source-side `Address`/`Uint256` domains.
+- **Layer 3** (IR → Yul): preservation is generic at the proof surface. The dispatch bridge is an explicit theorem hypothesis, not a Lean axiom. Dispatch-guard preconditions are explicit: non-payable cases require word-level zero `msg.value`, and each function case requires a non-wrapping calldata-width guard.
+- **Cross-layer**: [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) has zero `sorry`, but it is a manual bridge for a subset of contracts, not a fully generic replacement for Layers 1–3.
 
 Current theorem totals, property-test coverage, and proof status live in [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md).
 

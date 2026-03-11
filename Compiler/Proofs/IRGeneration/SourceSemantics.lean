@@ -954,6 +954,33 @@ theorem SupportedBodyHelperInterface.exprCallSummaryPreservesWorld
       (hHelpers.summaryContractOfCall hcall) :=
   hHelpers.exprSummaryPreservesWorld hmem
 
+structure SupportedFunctionHelperProofs
+    (spec : CompilationModel)
+    (fn : FunctionSpec)
+    (hSupported : SupportedFunction spec fn) : Prop where
+  summariesSound :
+    SupportedBodyHelperSummariesSound spec fn hSupported.body.calls.helpers
+
+structure SupportedSpecHelperProofs
+    (spec : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors) : Prop where
+  functionProofs :
+    ∀ fn (hfn : fn ∈ selectorDispatchedFunctions spec),
+      SupportedFunctionHelperProofs spec fn
+        (hSupported.supportedFunctionOfSelectorDispatched hfn)
+
+theorem SupportedSpecHelperProofs.functionSummariesSound
+    {spec : CompilationModel}
+    {selectors : List Nat}
+    (hSupported : SupportedSpec spec selectors)
+    (hProofs : SupportedSpecHelperProofs spec selectors hSupported)
+    {fn : FunctionSpec}
+    (hfn : fn ∈ selectorDispatchedFunctions spec) :
+    SupportedBodyHelperSummariesSound spec fn
+      (hSupported.supportedFunctionOfSelectorDispatched hfn).body.calls.helpers :=
+  (hProofs.functionProofs fn hfn).summariesSound
+
 mutual
   theorem evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed
       (spec : CompilationModel)

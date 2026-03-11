@@ -60,37 +60,39 @@ Then call `onlyOwner` at function start.
 
 ### try/catch
 
-Partial support exists today via low-level `tryCatch` sugar in `verity_contract`:
+Low-level `tryCatch` sugar is available in `verity_contract`:
 
 ```lean
 tryCatch (call gas target value inOffset inSize outOffset outSize) (do
   setStorage lastFailure 1)
 ```
 
-This lowers to a low-level call result check plus an `ite` on the returned success word, so it works for raw `call` / `staticcall` / `delegatecall`-style expressions that already return `0` on failure.
+This lowers to a call result check plus an `ite` on the returned success word. It works for raw `call` / `staticcall` / `delegatecall`-style expressions that return `0` on failure.
 
-What is still missing under issue `#1161`:
+**Limitations** (issue `#1161`):
 
-- Solidity-style first-class `try/catch` over higher-level external-call helpers / ECMs
-- catch-payload decoding on the compilation-model path; the handler binder must currently be ignored (`_`) and returndata must be read explicitly if needed
+- No first-class `try/catch` over higher-level external-call helpers / ECMs.
+- Catch-payload decoding: the handler binder must be ignored (`_`); read returndata explicitly if needed.
 
-Those low-level call mechanics compile, but they are still outside the current proof-interpreter semantics; treat them as an explicit trust boundary for now (see issue `#1332`). Treat `delegatecall` even more strictly: it is also tracked as a dedicated proxy / upgradeability boundary, so archive `--trust-report` and use `--deny-proxy-upgradeability` when proxy semantics must remain outside the verified subset (see issue `#1420`).
+**Trust boundary**: Low-level call mechanics compile but are outside the proved interpreter semantics (issue `#1332`). `delegatecall` is additionally tracked as a proxy / upgradeability boundary — use `--deny-proxy-upgradeability` to exclude it (issue `#1420`).
 
 ### Manual ABI / memory plumbing
 
-Manual ABI or memory plumbing (`mload` / `mstore` / copy-based payload handling) compiles, but it is still outside the fully proved interpreter semantics today. Treat that path as an explicit trust boundary, prefer higher-level helpers when available, and use `--deny-linear-memory-mechanics` if the translated contract must stay inside the proved subset (see issue `#1411`).
+`mload` / `mstore` / copy-based payload handling compiles but is outside the proved interpreter semantics. Prefer higher-level helpers when available. Use `--deny-linear-memory-mechanics` to reject this path (issue `#1411`).
 
-Raw `keccak256` hashing also compiles through the typed intrinsic surface, but it still relies on an explicit axiom in the current proof stack. Treat it as a separate trust boundary, archive `--trust-report`, and use `--deny-axiomatized-primitives` when the translated contract must stay inside the proved subset (see issue `#1411`).
+### Raw keccak256
+
+`keccak256` hashing compiles through the typed intrinsic surface but relies on an axiom (see [AXIOMS.md](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md) §1). Use `--deny-axiomatized-primitives` to reject it (issue `#1411`).
 
 ### Reentrancy guard primitive
 
-Not first-class yet (see issue `#1160`).
-Model guard manually with a dedicated storage slot (`entered : Bool` encoded as `Uint256`).
+No first-class reentrancy guard (issue `#1160`).
+Model the guard manually with a dedicated storage slot (`entered : Bool` encoded as `Uint256`).
 
 ### String-heavy logic
 
-ABI-level `String` support exists today for macro parsing, calldata flow, `returnBytes`, event payloads, custom-error payloads, and direct parameter `==` / `!=` checks (see issue `#1159`).
-String storage/layout, dynamic linked externals, dynamic local aliases, and broader word-style operators over `String` remain unsupported, so prefer numeric/address/bytes-based logic unless you only need ABI transport or a direct parameter equality check.
+ABI-level `String` support covers macro parsing, calldata flow, `returnBytes`, event payloads, custom-error payloads, and direct parameter `==` / `!=` checks (issue `#1159`).
+String storage/layout, dynamic linked externals, dynamic local aliases, and broader word-style operators over `String` are unsupported — prefer numeric/address/bytes-based logic unless you only need ABI transport or a direct parameter equality check.
 
 ## 3. Worked Walkthrough: Minimal ERC20 Transfer Path
 

@@ -218,7 +218,23 @@ Diagnostics policy for unsupported constructs:
 1. Report the exact unsupported construct at compile time.
 2. Suggest the nearest supported migration pattern.
 3. Link to the owning tracking issue.
-4. When low-level mechanics, raw `rawLog` event emission, axiomatized primitives (for example `keccak256`), local unsafe/refinement obligations, or external assumptions are in play, emit a machine-readable trust report via `verity-compiler --trust-report <path>`. The report groups foreign trust surfaces into explicit `proofStatus.proved`, `proofStatus.assumed`, and `proofStatus.unchecked` buckets, localizes them to constructor/function `usageSites`, surfaces localized `localObligations`, and now separately lists `notModeledEventEmission`, `notModeledProxyUpgradeability`, `partiallyModeledLinearMemoryMechanics`, and `partiallyModeledRuntimeIntrospection` so the current event, proxy/upgradeability, memory/ABI, and runtime-context proof gaps are explicit in both contract-level and per-site audit output. In human-readable mode, `--verbose` now emits matching usage-site and contract-level summaries. For fail-closed verification runs, add `--deny-unchecked-dependencies`, which now reports the exact usage site that introduced each unchecked dependency. For proof-strict runs that reject any unproved foreign surface, use `--deny-assumed-dependencies`, which fails on both `assumed` and `unchecked` linked externals / ECM modules and reports the exact usage site. For primitive-proof-strict runs, add `--deny-axiomatized-primitives`, which fails on any remaining axiomatized primitive and reports the exact usage site. For local-obligation-proof-strict runs, add `--deny-local-obligations`, which fails on any remaining `assumed` or `unchecked` localized unsafe/refinement obligation and reports the exact usage site. For memory-proof-strict runs, add `--deny-linear-memory-mechanics`, which fails on any remaining partially modeled linear-memory mechanic and reports the exact usage site. For event-proof-strict runs, add `--deny-event-emission`, which fails on any remaining raw `rawLog` event emission and reports the exact usage site. For low-level-proof-strict runs, add `--deny-low-level-mechanics`, which fails on any remaining first-class low-level call / returndata mechanic and reports the exact usage site. For proxy-proof-strict runs, add `--deny-proxy-upgradeability`, which fails on any remaining `delegatecall`-based proxy / upgradeability mechanic and reports the exact usage site; the dedicated proxy semantics gap is tracked under issue `#1420`. For runtime-proof-strict runs, add `--deny-runtime-introspection`, which fails on any remaining partially modeled runtime-introspection primitive and reports the exact usage site.
+4. When trust-relevant features are in play (low-level mechanics, raw event emission, axiomatized primitives, local obligations, or external assumptions), emit a machine-readable trust report via `verity-compiler --trust-report <path>`. Use `--verbose` for a human-readable summary.
+
+The trust report groups every foreign trust surface into `proofStatus.proved`, `proofStatus.assumed`, and `proofStatus.unchecked` buckets, localized to constructor/function usage sites. It separately lists proof-gap categories: `notModeledEventEmission`, `notModeledProxyUpgradeability`, `partiallyModeledLinearMemoryMechanics`, and `partiallyModeledRuntimeIntrospection`.
+
+**Fail-closed flags** — each flag rejects the named surface and reports the exact usage site that introduced it:
+
+| Flag | Rejects |
+|------|---------|
+| `--deny-unchecked-dependencies` | Any `unchecked` linked external or ECM module |
+| `--deny-assumed-dependencies` | Any `assumed` or `unchecked` linked external or ECM module |
+| `--deny-axiomatized-primitives` | Any axiomatized primitive (e.g. `keccak256`) |
+| `--deny-local-obligations` | Any `assumed` or `unchecked` local unsafe/refinement obligation |
+| `--deny-linear-memory-mechanics` | Any partially modeled linear-memory mechanic |
+| `--deny-event-emission` | Any raw `rawLog` event emission |
+| `--deny-low-level-mechanics` | Any first-class low-level call / returndata mechanic |
+| `--deny-proxy-upgradeability` | Any `delegatecall`-based proxy/upgradeability mechanic (issue [#1420](https://github.com/Th0rgal/verity/issues/1420)) |
+| `--deny-runtime-introspection` | Any partially modeled runtime-introspection primitive |
 
 ## Trust Assumptions
 

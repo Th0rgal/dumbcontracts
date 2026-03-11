@@ -229,6 +229,25 @@ def compileSetStorageAddrRejectsPackedAddressField : Bool :=
   | .error msg =>
       msg = "Typed IR compile error: storage field 'owner' uses packedBits; address-typed packed storage is not yet supported in typed IR"
 
+def compileStorageRejectsDynamicArrayField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "queue", ty := Compiler.CompilationModel.FieldType.dynamicArray .uint256 }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.storage "queue")]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'queue' is a storage dynamic array; use Expr.storageArrayLength or Expr.storageArrayElement instead"
+
+def compileSetStorageRejectsDynamicArrayField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "queue", ty := Compiler.CompilationModel.FieldType.dynamicArray .uint256 }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.setStorage "queue" (Compiler.CompilationModel.Expr.literal 1)]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'queue' is a storage dynamic array; use Stmt.storageArrayPush, Stmt.storageArrayPop, or Stmt.setStorageArrayElement instead"
+
 def compileYulStorageAddrMasksPackedAddressField : Bool :=
   let fields : List Compiler.CompilationModel.Field :=
     [{ name := "owner"
@@ -369,6 +388,12 @@ example : compileStorageAddrRejectsPackedAddressField = true := by native_decide
 
 /-- Typed-IR rejects packed address storage writes until the abstract storage model supports them. -/
 example : compileSetStorageAddrRejectsPackedAddressField = true := by native_decide
+
+/-- Typed-IR rejects scalar-style reads from storage dynamic arrays. -/
+example : compileStorageRejectsDynamicArrayField = true := by native_decide
+
+/-- Typed-IR rejects scalar-style writes to storage dynamic arrays. -/
+example : compileSetStorageRejectsDynamicArrayField = true := by native_decide
 
 /-- Yul address-field reads preserve packed masking when the field is sub-word. -/
 example : compileYulStorageAddrMasksPackedAddressField = true := by native_decide

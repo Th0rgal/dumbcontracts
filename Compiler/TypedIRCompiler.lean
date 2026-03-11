@@ -93,6 +93,22 @@ private def ensureTypedIRAddressFieldSupported (fieldName : String) (field : Fie
       throw s!"Typed IR compile error: storage field '{fieldName}' uses packedBits; address-typed packed storage is not yet supported in typed IR"
   | none => Except.ok ()
 
+private def ensureTypedIRScalarStorageFieldSupported (fieldName : String) (field : Field)
+    (context : String) : Except String Unit := do
+  match field.ty with
+  | .dynamicArray _ =>
+      let guidance :=
+        match context with
+        | "Expr.storage" =>
+            "use Expr.storageArrayLength or Expr.storageArrayElement instead"
+        | "Stmt.setStorage" =>
+            "use Stmt.storageArrayPush, Stmt.storageArrayPop, or Stmt.setStorageArrayElement instead"
+        | _ =>
+            "use storage dynamic-array helpers instead"
+      throw s!"Typed IR compile error: storage field '{fieldName}' is a storage dynamic array; {guidance}"
+  | _ =>
+      Except.ok ()
+
 @[simp] private theorem ensureTypedIRAddressFieldSupported_none
     (fieldName name : String) (ty : FieldType) (slot : Option Nat) (aliasSlots : List Nat) :
     ensureTypedIRAddressFieldSupported fieldName
@@ -110,6 +126,8 @@ private def compileStorageRead (fields : List Field) (fieldName : String)
         | .address => ensureTypedIRAddressFieldSupported fieldName field
         | _ =>
             throw s!"Typed IR compile error: storage field '{fieldName}' is not address-typed; use Expr.storage instead"
+      else
+        ensureTypedIRScalarStorageFieldSupported fieldName field "Expr.storage"
       match (← fieldTypeToTy field.ty) with
       | Ty.uint256 =>
           return ⟨Ty.uint256, TExpr.getStorage slot⟩
@@ -263,6 +281,7 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
       | none =>
           throw s!"Typed IR compile error: unknown storage field '{fieldName}'"
       | some (field, slot) =>
+          liftExcept <| ensureTypedIRScalarStorageFieldSupported fieldName field "Stmt.setStorage"
           match (← fieldTypeToTy field.ty), rhs with
           | Ty.uint256, ⟨Ty.uint256, expr⟩ => emit (.setStorage slot expr)
           | Ty.address, ⟨Ty.address, expr⟩ => do

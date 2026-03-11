@@ -143,9 +143,14 @@ ALLOWLIST: set[str] = {
     "supported_function_correct",
     "compileFunctionSpec_correct_generic",
     "compile_preserves_semantics",
-    "execIRStmt_compiled_terminal_ite_thenIf_true",
-    "execIRStmt_compiled_terminal_ite_elseIf_true",
-    "execIRStmt_compiled_terminal_ite_elseIf_true_tail",
+    # Issue #1564 / PR #1606:
+    # these are the pre-existing long terminal-ite branch-entry transport
+    # proofs, now exposed as public lemmas so later Layer 2 induction work can
+    # reuse them directly. The proof bodies are unchanged; only the exported
+    # names shifted, so the historical allowlist needs to track the new names.
+    "execIRStmt_compiled_terminal_ite_then_branch_entry",
+    "execIRStmt_compiled_terminal_ite_else_branch_entry",
+    "execIRStmt_compiled_terminal_ite_else_branch_entry_tailFuel",
     "execStmtList_terminal_core_not_continue",
     "execIRStmts_compiled_terminal_ite_then_of_irExec",
     "execIRStmts_compiled_terminal_ite_else_of_irExec",

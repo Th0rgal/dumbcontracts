@@ -1886,6 +1886,19 @@ private def storageArrayUint256SmokeSpec : CompilationModel := {
   ]
 }
 
+private def storageArrayBoolRejectSpec : CompilationModel := {
+  name := "StorageArrayBoolReject"
+  fields := [{ name := "flags", ty := FieldType.dynamicArray .bool, «slot» := some 9 }]
+  «constructor» := none
+  functions := [
+    { name := "pushFlag"
+      params := [{ name := "flag", ty := ParamType.bool }]
+      returnType := none
+      body := [Stmt.storageArrayPush "flags" (Expr.param "flag"), Stmt.stop]
+    }
+  ]
+}
+
 private def ecrecoverSmokeSpec : CompilationModel := {
   name := "EcrecoverSmoke"
   fields := []
@@ -2510,6 +2523,10 @@ set_option maxRecDepth 4096 in
     (contains storageArrayUint256Yul "lt(__array_index, __array_len)")
   expectTrue "storage uint256[] pop clears the removed tail word"
     (contains storageArrayUint256Yul "sstore(add(__array_base, __array_new_len), 0)")
+  expectCompileErrorContains
+    "storage bool[] rejects packed element layouts until slot packing lands"
+    storageArrayBoolRejectSpec
+    "only one-storage-word elements (uint256, address, bytes32)"
   let envYul ← expectCompileToYul "env runtime smoke spec" envRuntimeSmokeSpec
   expectTrue "address(this) lowers to the Yul address builtin"
     (contains envYul "address()")

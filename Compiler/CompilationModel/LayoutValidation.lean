@@ -254,6 +254,22 @@ def firstMappingPackedBits (fields : List Field) :
         | _, _ => go rest
   go fields
 
+def firstUnsupportedStorageArrayElemType (fields : List Field) :
+    Option (String × StorageArrayElemType) :=
+  let rec go (remaining : List Field) : Option (String × StorageArrayElemType) :=
+    match remaining with
+    | [] => none
+    | f :: rest =>
+        match f.ty with
+        | FieldType.dynamicArray elemType =>
+            if storageArrayElemUsesOneStorageWord elemType then
+              go rest
+            else
+              some (f.name, elemType)
+        | _ =>
+            go rest
+  go fields
+
 /-- Validate struct member definitions within a mappingStruct/mappingStruct2 field.
     Checks: (1) no duplicate member names, (2) packed ranges are valid,
     (3) no conflicting members sharing the same word offset:

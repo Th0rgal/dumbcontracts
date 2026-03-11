@@ -1,4 +1,5 @@
 import Compiler.CompilationModel.Compile
+import Compiler.CompilationModel.ScopeValidation
 import Compiler.CompilationModel.ValidationCalls
 import Compiler.Proofs.IRGeneration.FunctionBody
 
@@ -118,6 +119,287 @@ inductive StmtListScopeDiscipline (fieldNames : List String) : List String → L
       StmtListScopeDiscipline fieldNames scope elseBranch →
       StmtListScopeDiscipline fieldNames (stmtNextScope scope (.ite cond thenBranch elseBranch)) rest →
       StmtListScopeDiscipline fieldNames scope (.ite cond thenBranch elseBranch :: rest)
+
+/-- Syntax-side witness for the current generic statement fragment, before the
+scope obligations are discharged from identifier validation. -/
+inductive StmtListScopeCore (fieldNames : List String) : List Stmt → Prop where
+  | nil :
+      StmtListScopeCore fieldNames []
+  | letVar {name : String} {value : Expr} {rest : List Stmt} :
+      FunctionBody.ExprCompileCore value →
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.letVar name value :: rest)
+  | assignVar {name : String} {value : Expr} {rest : List Stmt} :
+      FunctionBody.ExprCompileCore value →
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.assignVar name value :: rest)
+  | require {cond : Expr} {message : String} {rest : List Stmt} :
+      FunctionBody.ExprCompileCore cond →
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.require cond message :: rest)
+  | return_ {value : Expr} {rest : List Stmt} :
+      FunctionBody.ExprCompileCore value →
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.return value :: rest)
+  | stop {rest : List Stmt} :
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.stop :: rest)
+  | setStorage {fieldName : String} {value : Expr} {rest : List Stmt} :
+      fieldName ∈ fieldNames →
+      FunctionBody.ExprCompileCore value →
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.setStorage fieldName value :: rest)
+  | setStorageAddr {fieldName : String} {value : Expr} {rest : List Stmt} :
+      fieldName ∈ fieldNames →
+      FunctionBody.ExprCompileCore value →
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.setStorageAddr fieldName value :: rest)
+  | ite {cond : Expr} {thenBranch elseBranch rest : List Stmt} :
+      FunctionBody.ExprCompileCore cond →
+      StmtListScopeCore fieldNames thenBranch →
+      StmtListScopeCore fieldNames elseBranch →
+      StmtListScopeCore fieldNames rest →
+      StmtListScopeCore fieldNames (.ite cond thenBranch elseBranch :: rest)
+
+private theorem mem_stmtNextScope_of_mem_scope
+    {scope : List String}
+    {stmt : Stmt}
+    {name : String}
+    (hmem : name ∈ scope) :
+    name ∈ stmtNextScope scope stmt :=
+  List.mem_append.mpr <| Or.inr hmem
+
+private theorem exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+    {context : String}
+    {params : List Param}
+    {paramScope dynamicParams localScope scope : List String}
+    {constructorArgCount : Option Nat}
+    {expr : Expr}
+    (hcore : FunctionBody.ExprCompileCore expr)
+    (hvalidate :
+      validateScopedExprIdentifiers
+        context params paramScope dynamicParams localScope constructorArgCount expr =
+          Except.ok ())
+    (hparamsInScope : ∀ name, name ∈ paramScope → name ∈ scope)
+    (hlocalsInScope : ∀ name, name ∈ localScope → name ∈ scope) :
+    FunctionBody.exprBoundNamesInScope expr scope := by
+  induction hcore with
+  | literal =>
+      intro name hmem
+      simp [FunctionBody.exprBoundNames] at hmem
+  | param name0 =>
+      intro name hmem
+      simp [validateScopedExprIdentifiers] at hvalidate
+      simp [FunctionBody.exprBoundNames] at hmem
+      subst name
+      exact hparamsInScope name0 hvalidate
+  | localVar name0 =>
+      intro name hmem
+      simp [validateScopedExprIdentifiers] at hvalidate
+      simp [FunctionBody.exprBoundNames] at hmem
+      subst name
+      exact hlocalsInScope name0 hvalidate
+  | caller | contractAddress | msgValue | blockTimestamp | blockNumber | chainid =>
+      intro name hmem
+      simp [FunctionBody.exprBoundNames] at hmem
+  | add hL hR ihL ihR
+  | sub hL hR ihL ihR
+  | mul hL hR ihL ihR
+  | div hL hR ihL ihR
+  | mod hL hR ihL ihR
+  | eq hL hR ihL ihR
+  | lt hL hR ihL ihR
+  | gt hL hR ihL ihR
+  | ge hL hR ihL ihR
+  | le hL hR ihL ihR =>
+      simp [validateScopedExprIdentifiers] at hvalidate
+      intro name hmem
+      rcases List.mem_append.mp hmem with hmem | hmem
+      · exact ihL hvalidate.1 hparamsInScope hlocalsInScope _ hmem
+      · exact ihR hvalidate.2 hparamsInScope hlocalsInScope _ hmem
+  | logicalNot h ih =>
+      intro name hmem
+      simpa [FunctionBody.exprBoundNames] using
+        ih (by simpa [validateScopedExprIdentifiers] using hvalidate)
+          hparamsInScope hlocalsInScope name hmem
+  | logicalAnd hL hR ihL ihR
+  | logicalOr hL hR ihL ihR =>
+      simp [validateScopedExprIdentifiers] at hvalidate
+      intro name hmem
+      rcases List.mem_append.mp hmem with hmem | hmem
+      · exact ihL hvalidate.2.1 hparamsInScope hlocalsInScope _ hmem
+      · exact ihR hvalidate.2.2 hparamsInScope hlocalsInScope _ hmem
+
+private theorem stmtListScopeDiscipline_of_validateScopedStmtListIdentifiers
+    {fieldNames : List String}
+    {context : String}
+    {params : List Param}
+    {paramScope dynamicParams localScope scope : List String}
+    {constructorArgCount : Option Nat}
+    {stmts : List Stmt}
+    {finalScope : List String}
+    (hcore : StmtListScopeCore fieldNames stmts)
+    (hvalidate :
+      validateScopedStmtListIdentifiers
+        context params paramScope dynamicParams localScope constructorArgCount stmts =
+          Except.ok finalScope)
+    (hparamsInScope : ∀ name, name ∈ paramScope → name ∈ scope)
+    (hlocalsInScope : ∀ name, name ∈ localScope → name ∈ scope) :
+    StmtListScopeDiscipline fieldNames scope stmts := by
+  induction hcore generalizing localScope scope finalScope with
+  | nil =>
+      cases hvalidate
+      exact StmtListScopeDiscipline.nil
+  | letVar hvalueCore hrest ih =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with ⟨hvalueValidate, _, _, rfl⟩
+      exact StmtListScopeDiscipline.letVar
+        hvalueCore
+        (exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+          hvalueCore hvalueValidate hparamsInScope hlocalsInScope)
+        (ih hrestValidate
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hparamsInScope other hmem))
+          (by
+            intro other hmem
+            simp at hmem
+            rcases hmem with rfl | hmem
+            · exact List.mem_append.mpr <| Or.inl <| by simp [stmtNextScope, collectStmtNames]
+            · exact mem_stmtNextScope_of_mem_scope (hlocalsInScope other hmem)))
+  | assignVar hvalueCore hrest ih =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with ⟨_, hvalueValidate, rfl⟩
+      exact StmtListScopeDiscipline.assignVar
+        hvalueCore
+        (exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+          hvalueCore hvalueValidate hparamsInScope hlocalsInScope)
+        (ih hrestValidate
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hparamsInScope other hmem))
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hlocalsInScope other hmem)))
+  | require hcondCore hrest ih =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with ⟨hcondValidate, rfl⟩
+      exact StmtListScopeDiscipline.require
+        hcondCore
+        (exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+          hcondCore hcondValidate hparamsInScope hlocalsInScope)
+        (ih hrestValidate
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hparamsInScope other hmem))
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hlocalsInScope other hmem)))
+  | return_ hvalueCore hrest ih =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with ⟨hvalueValidate, rfl⟩
+      exact StmtListScopeDiscipline.return_
+        hvalueCore
+        (exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+          hvalueCore hvalueValidate hparamsInScope hlocalsInScope)
+        (ih hrestValidate
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hparamsInScope other hmem))
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hlocalsInScope other hmem)))
+  | stop hrest ih =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with rfl
+      refine StmtListScopeDiscipline.stop ?_
+      exact ih hrestValidate hparamsInScope hlocalsInScope
+  | setStorage hfield hvalueCore hrest ih =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with ⟨hvalueValidate, rfl⟩
+      exact StmtListScopeDiscipline.setStorage
+        hfield
+        hvalueCore
+        (exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+          hvalueCore hvalueValidate hparamsInScope hlocalsInScope)
+        (ih hrestValidate
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hparamsInScope other hmem))
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hlocalsInScope other hmem)))
+  | setStorageAddr hfield hvalueCore hrest ih =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with ⟨hvalueValidate, rfl⟩
+      exact StmtListScopeDiscipline.setStorageAddr
+        hfield
+        hvalueCore
+        (exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+          hvalueCore hvalueValidate hparamsInScope hlocalsInScope)
+        (ih hrestValidate
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hparamsInScope other hmem))
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hlocalsInScope other hmem)))
+  | ite hcondCore hthenCore helseCore hrest ihThen ihElse ihRest =>
+      rcases validateScopedStmtListIdentifiers_cons_ok_inv hvalidate with
+        ⟨nextLocalScope, hstmt, hrestValidate⟩
+      simp [validateScopedStmtIdentifiers] at hstmt
+      rcases hstmt with ⟨hcondValidate, hthenValidate, helseValidate, rfl⟩
+      exact StmtListScopeDiscipline.ite
+        hcondCore
+        (exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
+          hcondCore hcondValidate hparamsInScope hlocalsInScope)
+        (ihThen hthenValidate hparamsInScope hlocalsInScope)
+        (ihElse helseValidate hparamsInScope hlocalsInScope)
+        (ihRest hrestValidate
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hparamsInScope other hmem))
+          (by
+            intro other hmem
+            exact mem_stmtNextScope_of_mem_scope (hlocalsInScope other hmem)))
+
+theorem stmtListScopeDiscipline_of_validateFunctionIdentifierReferences_prefix
+    {spec : FunctionSpec}
+    {fieldNames : List String}
+    {prefix suffix : List Stmt}
+    (hcore : StmtListScopeCore fieldNames prefix)
+    (hvalidate : validateFunctionIdentifierReferences spec = Except.ok ())
+    (hparamScope : paramScopeNames spec.params = spec.params.map (·.name))
+    (hbody : spec.body = prefix ++ suffix) :
+    StmtListScopeDiscipline fieldNames (spec.params.map (·.name)) prefix := by
+  rcases validateFunctionIdentifierReferences_prefix_ok hvalidate hbody with
+    ⟨finalLocalScope, hprefixValidate⟩
+  apply stmtListScopeDiscipline_of_validateScopedStmtListIdentifiers
+    (paramScope := paramScopeNames spec.params)
+    (dynamicParams := dynamicParamBases spec.params)
+    (localScope := [])
+    (finalScope := finalLocalScope)
+    hcore
+    hprefixValidate
+  · intro name hmem
+    rw [hparamScope] at hmem
+    simpa using hmem
+  · intro name hmem
+    simp at hmem
 
 private theorem collectExprNames_mem_exprBoundNames_of_core
     {expr : Expr}
@@ -1355,6 +1637,55 @@ theorem compiledStmtStep_setStorage_of_validateIdentifierShapes_of_scopeDiscipli
   have hscopeNames := stmtListScopeDiscipline_scope_names hprefix name hmem
   rw [hbody] at hscopeNames
   simpa [collectStmtListBindNames, collectStmtListAssignedNames, hbody] using hscopeNames
+
+theorem compiledStmtStep_setStorage_of_validateIdentifierShapes_of_validateFunctionIdentifierReferences
+    {spec : CompilationModel}
+    {fn : FunctionSpec}
+    {prefix suffix : List Stmt}
+    {fieldName : String}
+    {value : Expr}
+    {valueIR : YulExpr}
+    {f : Field}
+    {slot : Nat}
+    (hvalidateShapes : validateIdentifierShapes spec = Except.ok ())
+    (hvalidateRefs : validateFunctionIdentifierReferences fn = Except.ok ())
+    (hfn : fn ∈ spec.functions)
+    (hparamScope : paramScopeNames fn.params = fn.params.map (·.name))
+    (hprefixCore : StmtListScopeCore (spec.fields.map (·.name)) prefix)
+    (hbody : fn.body = prefix ++ .setStorage fieldName value :: suffix)
+    (hcore : FunctionBody.ExprCompileCore value)
+    (hinScope :
+      FunctionBody.exprBoundNamesInScope
+        value
+        (List.foldl stmtNextScope (fn.params.map (·.name)) prefix))
+    (hfind : findFieldWithResolvedSlot spec.fields fieldName = some (f, slot))
+    (hwriteSlots : findFieldWriteSlots spec.fields fieldName = some (slot :: f.aliasSlots))
+    (hunpacked : f.packedBits = none)
+    (hnoConflict : firstFieldWriteSlotConflict spec.fields = none)
+    (hnotAddr : SourceSemantics.fieldUsesAddressStorage f = false)
+    (hnotDyn : SourceSemantics.fieldUsesDynamicArrayStorage f = false)
+    (hvalueIR : CompilationModel.compileExpr spec.fields .calldata value = Except.ok valueIR) :
+    ∃ compiledIR,
+      CompiledStmtStep spec.fields
+        (List.foldl stmtNextScope (fn.params.map (·.name)) prefix)
+        (.setStorage fieldName value)
+        compiledIR := by
+  apply compiledStmtStep_setStorage_of_validateIdentifierShapes_of_scopeDiscipline
+    (hvalidate := hvalidateShapes)
+    (hfn := hfn)
+    (hprefix := stmtListScopeDiscipline_of_validateFunctionIdentifierReferences_prefix
+      hprefixCore hvalidateRefs hparamScope
+      (by simpa [List.append_assoc] using hbody))
+    (hbody := hbody)
+    (hcore := hcore)
+    (hinScope := hinScope)
+    (hfind := hfind)
+    (hwriteSlots := hwriteSlots)
+    (hunpacked := hunpacked)
+    (hnoConflict := hnoConflict)
+    (hnotAddr := hnotAddr)
+    (hnotDyn := hnotDyn)
+    (hvalueIR := hvalueIR)
 
 private theorem terminal_stmtResultMatchesIRExec_implies_stmtStepMatchesIRExec
     {fields : List Field}

@@ -101,7 +101,11 @@ private def ensureTypedIRScalarStorageFieldSupported (fieldName : String) (field
         match context with
         | "Expr.storage" =>
             "use Expr.storageArrayLength or Expr.storageArrayElement instead"
+        | "Expr.storageAddr" =>
+            "use Expr.storageArrayLength or Expr.storageArrayElement instead"
         | "Stmt.setStorage" =>
+            "use Stmt.storageArrayPush, Stmt.storageArrayPop, or Stmt.setStorageArrayElement instead"
+        | "Stmt.setStorageAddr" =>
             "use Stmt.storageArrayPush, Stmt.storageArrayPop, or Stmt.setStorageArrayElement instead"
         | _ =>
             "use storage dynamic-array helpers instead"
@@ -122,6 +126,7 @@ private def compileStorageRead (fields : List Field) (fieldName : String)
       throw s!"Typed IR compile error: unknown storage field '{fieldName}'"
   | some (field, slot) =>
       if requireAddressField then
+        ensureTypedIRScalarStorageFieldSupported fieldName field "Expr.storageAddr"
         match field.ty with
         | .address => ensureTypedIRAddressFieldSupported fieldName field
         | _ =>
@@ -295,6 +300,7 @@ private def compileStmt (fields : List Field) : Stmt → CompileM Unit
       | none =>
           throw s!"Typed IR compile error: unknown storage field '{fieldName}'"
       | some (field, slot) =>
+          liftExcept <| ensureTypedIRScalarStorageFieldSupported fieldName field "Stmt.setStorageAddr"
           match (← fieldTypeToTy field.ty), rhs with
           | Ty.address, ⟨Ty.address, expr⟩ => do
               liftExcept <| ensureTypedIRAddressFieldSupported fieldName field

@@ -239,11 +239,30 @@ def compileStorageRejectsDynamicArrayField : Bool :=
   | .error msg =>
       msg = "Typed IR compile error: storage field 'queue' is a storage dynamic array; use Expr.storageArrayLength or Expr.storageArrayElement instead"
 
+def compileStorageAddrRejectsDynamicArrayField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "queue", ty := Compiler.CompilationModel.FieldType.dynamicArray .uint256 }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.return
+        (Compiler.CompilationModel.Expr.storageAddr "queue")]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'queue' is a storage dynamic array; use Expr.storageArrayLength or Expr.storageArrayElement instead"
+
 def compileSetStorageRejectsDynamicArrayField : Bool :=
   let fields : List Compiler.CompilationModel.Field :=
     [{ name := "queue", ty := Compiler.CompilationModel.FieldType.dynamicArray .uint256 }]
   match (compileStmts fields
       [Compiler.CompilationModel.Stmt.setStorage "queue" (Compiler.CompilationModel.Expr.literal 1)]).run {} with
+  | .ok _ => false
+  | .error msg =>
+      msg = "Typed IR compile error: storage field 'queue' is a storage dynamic array; use Stmt.storageArrayPush, Stmt.storageArrayPop, or Stmt.setStorageArrayElement instead"
+
+def compileSetStorageAddrRejectsDynamicArrayField : Bool :=
+  let fields : List Compiler.CompilationModel.Field :=
+    [{ name := "queue", ty := Compiler.CompilationModel.FieldType.dynamicArray .uint256 }]
+  match (compileStmts fields
+      [Compiler.CompilationModel.Stmt.setStorageAddr "queue" Compiler.CompilationModel.Expr.caller]).run {} with
   | .ok _ => false
   | .error msg =>
       msg = "Typed IR compile error: storage field 'queue' is a storage dynamic array; use Stmt.storageArrayPush, Stmt.storageArrayPop, or Stmt.setStorageArrayElement instead"
@@ -392,8 +411,14 @@ example : compileSetStorageAddrRejectsPackedAddressField = true := by native_dec
 /-- Typed-IR rejects scalar-style reads from storage dynamic arrays. -/
 example : compileStorageRejectsDynamicArrayField = true := by native_decide
 
+/-- Typed-IR rejects address-style reads from storage dynamic arrays. -/
+example : compileStorageAddrRejectsDynamicArrayField = true := by native_decide
+
 /-- Typed-IR rejects scalar-style writes to storage dynamic arrays. -/
 example : compileSetStorageRejectsDynamicArrayField = true := by native_decide
+
+/-- Typed-IR rejects address-style writes to storage dynamic arrays. -/
+example : compileSetStorageAddrRejectsDynamicArrayField = true := by native_decide
 
 /-- Yul address-field reads preserve packed masking when the field is sub-word. -/
 example : compileYulStorageAddrMasksPackedAddressField = true := by native_decide

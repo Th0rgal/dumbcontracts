@@ -18,6 +18,10 @@ def runtimeContractOfFunctions (name : String) (functions : List IRFunction) : I
     usesMapping := false
     internalFunctions := [] }
 
+@[simp] theorem runtimeContractOfFunctions_internalFunctions
+    (name : String) (functions : List IRFunction) :
+    (runtimeContractOfFunctions name functions).internalFunctions = [] := rfl
+
 private theorem decodeSupportedParamWord_some_of_supported
     (ty : ParamType) (word : Nat) (hsupported : SupportedExternalParamType ty) :
     ∃ value, SourceSemantics.decodeSupportedParamWord ty word = some value := by

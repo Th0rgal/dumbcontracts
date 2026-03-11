@@ -299,10 +299,13 @@ The first theorem does not need to cover everything. It may explicitly leave out
   `IRInterpreter.lean` now defines helper-aware compiled-side targets
   (`execIRFunctionWithInternals`, `interpretIRWithInternals`) that can execute
   `IRContract.internalFunctions`, and it now also formalizes the intended
-  helper-free compatibility subset as `LegacyCompatibleExternalStmtList`; the
-  remaining work is proving those semantics conservatively extend legacy
-  `interpretIR` on that subset, then retargeting the proof stack to those
-  semantics and consuming helper-summary soundness/rank evidence
+  helper-free compatibility subset as `LegacyCompatibleExternalStmtList`.
+  `Dispatch.runtimeContractOfFunctions` now also has an explicit
+  `internalFunctions = []` lemma documenting the exact helper-free runtime
+  constructor used by the current theorem stack; the remaining work is proving
+  those semantics conservatively extend legacy `interpretIR` first on that
+  runtime-contract target over the subset, then retargeting the proof stack to
+  those semantics and consuming helper-summary soundness/rank evidence
 - dynamic ABI cases outside the current typed path
 
 If a feature is out of scope, say so in the supported-fragment witness and docs.

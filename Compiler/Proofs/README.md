@@ -116,13 +116,16 @@ The exact blocker for removing that temporary helper gate is now machine-readabl
 in `artifacts/layer2_boundary_catalog.json`: callers still derive body closure
 through the helper-free `SupportedStmtList`, summary-soundness evidence still is
 not threaded through the helper-aware body/IR preservation proof, and the
-current `execIRFunction` semantics does not yet model internal helper call
-composition. The intended compiled-side compatibility subset is now explicit in
-`IRInterpreter.lean` as `LegacyCompatibleExternalStmtList`. The next
-compiled-side substep is now stated explicitly too: prove that
-`interpretIRWithInternals` is a conservative extension of legacy `interpretIR`
-on that legacy-compatible external-body Yul subset, then retarget the theorem
-stack to that richer IR target. The compiled-side blocker is tracked in
+current public theorem stack still runs through the helper-free runtime
+constructor `Dispatch.runtimeContractOfFunctions`, which now has an explicit
+`internalFunctions = []` lemma. The intended compiled-side compatibility subset
+is now explicit in `IRInterpreter.lean` as the legacy-compatible external-body
+Yul subset `LegacyCompatibleExternalStmtList`.
+The next compiled-side substep is therefore precise rather than implicit: first
+prove conservative extension for `interpretIRWithInternals` on
+`runtimeContractOfFunctions` contracts over that subset, then generalize or
+retarget the broader theorem stack from legacy `interpretIR` to the richer
+helper-aware IR target. The compiled-side blocker is tracked in
 [#1638](https://github.com/Th0rgal/verity/issues/1638).
 
 The remaining work tracked in

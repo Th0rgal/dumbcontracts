@@ -440,6 +440,74 @@ class RenderTests(unittest.TestCase):
         self.assertIn('assertEq(actual0, uint256(1), "getPair tuple element 0 mismatch");', rendered)
         self.assertIn('assertEq(actual1, uint256(1), "getPair tuple element 1 mismatch");', rendered)
 
+    def test_render_string_eq_predicate_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="StringEqSmoke",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "same",
+                    (
+                        gen.ParamDecl("lhs", "String"),
+                        gen.ParamDecl("rhs", "String"),
+                    ),
+                    "Bool",
+                    body=("return (lhs == rhs)",),
+                ),
+            ),
+            storage_slots={},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_Same_ComparesDirectDynamicParamsEq()", rendered)
+        self.assertIn("bool expected = true;", rendered)
+        self.assertIn('assertTrue(actual, "same should return true for the configured string comparison");', rendered)
+
+    def test_render_bytes_neq_predicate_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="BytesEqSmoke",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "different",
+                    (
+                        gen.ParamDecl("lhs", "Bytes"),
+                        gen.ParamDecl("rhs", "Bytes"),
+                    ),
+                    "Bool",
+                    body=("return (lhs != rhs)",),
+                ),
+            ),
+            storage_slots={},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_Different_ComparesDirectDynamicParamsNeq()", rendered)
+        self.assertIn("bool expected = false;", rendered)
+        self.assertIn('assertFalse(actual, "different should return false for the configured bytes comparison");', rendered)
+
+    def test_render_string_eq_branch_infers_assertion(self) -> None:
+        contract = gen.ContractDecl(
+            name="StringEqSmoke",
+            constructor=None,
+            source=gen.ROOT / "Contracts/Sample/Sample.lean",
+            functions=(
+                gen.FunctionDecl(
+                    "choose",
+                    (
+                        gen.ParamDecl("lhs", "String"),
+                        gen.ParamDecl("rhs", "String"),
+                    ),
+                    "Uint256",
+                    body=("if lhs == rhs then", "return 1", "else", "return 0"),
+                ),
+            ),
+            storage_slots={},
+        )
+        rendered = gen.render_contract_test(contract)
+        self.assertIn("function testAuto_Choose_SelectsDynamicComparisonBranch()", rendered)
+        self.assertIn('assertEq(actual, 1, "choose should return the configured branch value");', rendered)
+
     def test_render_mapping_getter_infers_assertion(self) -> None:
         contract = gen.ContractDecl(
             name="UintMapSmoke",

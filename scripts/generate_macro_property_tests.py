@@ -50,6 +50,12 @@ NON_ZERO_REQUIRE_RE = re.compile(
 BUILTIN_READ_RE = re.compile(
     r"let\s+([A-Za-z_][A-Za-z0-9_]*)\s*←\s*(msgSender|msgValue)$"
 )
+PARAM_COMPARE_RETURN_RE = re.compile(
+    r"return\s+\(?([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=)\s*([A-Za-z_][A-Za-z0-9_]*)\)?$"
+)
+PARAM_COMPARE_BRANCH_RE = re.compile(
+    r"if\s+([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=)\s*([A-Za-z_][A-Za-z0-9_]*)\s+then$"
+)
 
 
 @dataclass(frozen=True)
@@ -546,14 +552,75 @@ def _render_direct_return_assertion(
 """
 
 
+def _render_dynamic_param_compare_assertion(
+    fn: FunctionDecl,
+    idx: int,
+    encode_args: str,
+    decoded_type: str,
+    expected_expr: str,
+    summary: str,
+    suffix: str,
+    assertion_expr: str,
+    assertion_msg: str,
+) -> str:
+    ret_assert = _return_shape_assertion(fn.return_type, fn.name)
+    return f"""    // Property {idx}: {summary}
+    function testAuto_{_fn_camel(fn.name)}_{suffix}() public {{
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature({encode_args}));
+        require(ok, \"{fn.name} reverted unexpectedly\");
+{ret_assert}
+        {decoded_type} actual = abi.decode(ret, ({decoded_type}));
+        {decoded_type} expected = {expected_expr};
+        assertEq(actual, expected, \"{assertion_msg}\");
+        {assertion_expr}
+    }}
+"""
+
+
 def _render_inferred_non_unit_test(contract: ContractDecl, fn: FunctionDecl, idx: int, encode_args: str) -> str | None:
     fn_camel = _fn_camel(fn.name)
     body = list(fn.body)
     ty = _normalize_type(fn.return_type)
     param_examples = {param.name: _example_value(param.lean_type) for param in fn.params}
     decoded_type = _sol_type(fn.return_type)
+    param_types = {param.name: _normalize_type(param.lean_type) for param in fn.params}
 
     if len(body) == 1:
+        compare_match = PARAM_COMPARE_RETURN_RE.fullmatch(body[0])
+        if compare_match and ty == "Bool":
+            lhs_name, op, rhs_name = compare_match.groups()
+            lhs_ty = param_types.get(lhs_name)
+            rhs_ty = param_types.get(rhs_name)
+            lhs_example = param_examples.get(lhs_name)
+            rhs_example = param_examples.get(rhs_name)
+            if (
+                lhs_ty is not None
+                and rhs_ty is not None
+                and lhs_ty == rhs_ty
+                and lhs_ty in {"String", "Bytes"}
+                and lhs_example is not None
+                and rhs_example is not None
+            ):
+                examples_match = lhs_example == rhs_example
+                expected_expr = "true" if (examples_match if op == "==" else not examples_match) else "false"
+                compare_kind = lhs_ty.lower()
+                return _render_dynamic_param_compare_assertion(
+                    fn,
+                    idx,
+                    encode_args,
+                    decoded_type,
+                    expected_expr,
+                    f"{fn.name} matches the expected dynamic-parameter comparison result",
+                    "ComparesDirectDynamicParamsEq" if op == "==" else "ComparesDirectDynamicParamsNeq",
+                    (
+                        f'assertTrue(actual, "{fn.name} should return true for the configured {compare_kind} comparison");'
+                        if expected_expr == "true"
+                        else f'assertFalse(actual, "{fn.name} should return false for the configured {compare_kind} comparison");'
+                    ),
+                    f"{fn.name} should preserve the configured comparison result",
+                )
+
         direct_return_match = re.fullmatch(r"return\s+([A-Za-z_][A-Za-z0-9_]*)", body[0])
         if direct_return_match:
             returned_name = direct_return_match.group(1)
@@ -768,6 +835,42 @@ def _render_inferred_non_unit_test(contract: ContractDecl, fn: FunctionDecl, idx
             )
 
     if len(body) == 4:
+        branch_match = PARAM_COMPARE_BRANCH_RE.fullmatch(body[0])
+        then_match = re.fullmatch(r"return\s+(.+)", body[1])
+        else_match = re.fullmatch(r"return\s+(.+)", body[3])
+        if branch_match and body[2] == "else" and then_match and else_match:
+            lhs_name, op, rhs_name = branch_match.groups()
+            lhs_ty = param_types.get(lhs_name)
+            rhs_ty = param_types.get(rhs_name)
+            lhs_example = param_examples.get(lhs_name)
+            rhs_example = param_examples.get(rhs_name)
+            if (
+                lhs_ty is not None
+                and rhs_ty is not None
+                and lhs_ty == rhs_ty
+                and lhs_ty in {"String", "Bytes"}
+                and lhs_example is not None
+                and rhs_example is not None
+            ):
+                examples_match = lhs_example == rhs_example
+                take_then = examples_match if op == "==" else not examples_match
+                expected_expr = _literal_expr(
+                    then_match.group(1).strip() if take_then else else_match.group(1).strip(),
+                    ty,
+                )
+                if expected_expr is not None:
+                    ret_assert = _return_shape_assertion(fn.return_type, fn.name)
+                    return f"""    // Property {idx}: {fn.name} selects the expected branch for the configured dynamic inputs
+    function testAuto_{fn_camel}_SelectsDynamicComparisonBranch() public {{
+        vm.prank(alice);
+        (bool ok, bytes memory ret) = target.call(abi.encodeWithSignature({encode_args}));
+        require(ok, \"{fn.name} reverted unexpectedly\");
+{ret_assert}
+        {decoded_type} actual = abi.decode(ret, ({decoded_type}));
+        assertEq(actual, {expected_expr}, \"{fn.name} should return the configured branch value\");
+    }}
+"""
+
         precondition_read = _parse_read_accessor(body[0])
         require_match = NON_ZERO_REQUIRE_RE.fullmatch(body[1])
         result_read = _parse_read_accessor(body[2])

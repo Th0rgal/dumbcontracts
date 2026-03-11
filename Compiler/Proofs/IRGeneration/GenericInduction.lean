@@ -295,14 +295,85 @@ private theorem encodeStorageAt_writeUintSlots_singleton_other
       SourceSemantics.encodeStorageAt fields world query := by
   simp [SourceSemantics.encodeStorageAt, SourceSemantics.writeUintSlots, hneq]
 
+private def findResolvedFieldAtSlotCopy (fields : List Field) (slot : Nat) : Option Field :=
+  let rec go (remaining : List Field) (idx : Nat) : Option Field :=
+    match remaining with
+    | [] => none
+    | field :: rest =>
+        let resolvedSlot := field.slot.getD idx
+        if resolvedSlot = slot || field.aliasSlots.contains slot then
+          some field
+        else
+          go rest (idx + 1)
+  go fields 0
+
+private def findDynamicArrayElementAtSlotCopy
+    (fields : List Field) (world : Verity.ContractState) (targetSlot : Nat) : Option Nat :=
+  let rec scanElements (baseSlot : Nat) : List Verity.Core.Uint256 → Nat → Option Nat
+    | [], _ => none
+    | value :: rest, idx =>
+        if Compiler.Proofs.solidityMappingSlot baseSlot idx = targetSlot then
+          some value.val
+        else
+          scanElements baseSlot rest (idx + 1)
+  let rec go (remaining : List Field) (idx : Nat) : Option Nat :=
+    match remaining with
+    | [] => none
+    | field :: rest =>
+        let resolvedSlot := field.slot.getD idx
+        match field.ty with
+        | .dynamicArray _ =>
+            match scanElements resolvedSlot (world.storageArray resolvedSlot) 0 with
+            | some value => some value
+            | none => go rest (idx + 1)
+        | _ => go rest (idx + 1)
+  go fields 0
+
+private def encodeStorageAtCopy
+    (fields : List Field) (world : Verity.ContractState) (slot : Nat) : Nat :=
+  match findResolvedFieldAtSlotCopy fields slot with
+  | some field =>
+      if SourceSemantics.fieldUsesAddressStorage field then
+        (world.storageAddr slot).val
+      else if SourceSemantics.fieldUsesDynamicArrayStorage field then
+        (world.storageArray slot).length
+      else
+        (world.storage slot).val
+  | none =>
+      match findDynamicArrayElementAtSlotCopy fields world slot with
+      | some value => value
+      | none => (world.storage slot).val
+
+private theorem encodeStorageAt_eq_copy
+    {fields : List Field}
+    {world : Verity.ContractState}
+    {slot : Nat} :
+    SourceSemantics.encodeStorageAt fields world slot =
+      encodeStorageAtCopy fields world slot := by
+  simp [SourceSemantics.encodeStorageAt, encodeStorageAtCopy,
+    findResolvedFieldAtSlotCopy, findDynamicArrayElementAtSlotCopy]
+
+private theorem encodeStorageAt_eq_storage_of_resolvedSlot
+    {fields : List Field}
+    {world : Verity.ContractState}
+    {slot : Nat}
+    {f : Field}
+    (hresolved : findResolvedFieldAtSlotCopy fields slot = some f)
+    (hnotAddr : SourceSemantics.fieldUsesAddressStorage f = false)
+    (hnotDyn : SourceSemantics.fieldUsesDynamicArrayStorage f = false) :
+    SourceSemantics.encodeStorageAt fields world slot = (world.storage slot).val := by
+  rw [encodeStorageAt_eq_copy, encodeStorageAtCopy, hresolved, hnotAddr, hnotDyn]
+
 private theorem runtimeStateMatchesIR_writeUintSlot
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}
     {state : IRState}
     {slot value : Nat}
     (hruntime : FunctionBody.runtimeStateMatchesIR fields runtime state)
-    (hslotEncode :
-      ∀ world, SourceSemantics.encodeStorageAt fields world slot = (world.storage slot).val) :
+    {f : Field}
+    (hresolved : findResolvedFieldAtSlotCopy fields slot = some f)
+    (hnotAddr : SourceSemantics.fieldUsesAddressStorage f = false)
+    (hnotDyn : SourceSemantics.fieldUsesDynamicArrayStorage f = false) :
     FunctionBody.runtimeStateMatchesIR fields
       { runtime with world := SourceSemantics.writeUintSlots runtime.world [slot] value }
       { state with
@@ -313,7 +384,8 @@ private theorem runtimeStateMatchesIR_writeUintSlot
   funext query
   by_cases hEq : query = slot
   · subst hEq
-    rw [Compiler.Proofs.abstractStoreStorageOrMapping_eq, hstorage, hslotEncode]
+    rw [Compiler.Proofs.abstractStoreStorageOrMapping_eq, hstorage,
+      encodeStorageAt_eq_storage_of_resolvedSlot hresolved hnotAddr hnotDyn]
     simp [SourceSemantics.writeUintSlots]
   · rw [Compiler.Proofs.abstractStoreStorageOrMapping_eq, hstorage]
     simp [hEq, encodeStorageAt_writeUintSlots_singleton_other]
@@ -347,8 +419,7 @@ theorem compiledStmtStep_setStorage_singleSlot
     (hunpacked : f.packedBits = none)
     (hnotAddr : SourceSemantics.fieldUsesAddressStorage f = false)
     (hnotDyn : SourceSemantics.fieldUsesDynamicArrayStorage f = false)
-    (hslotEncode :
-      ∀ world, SourceSemantics.encodeStorageAt fields world slot = (world.storage slot).val)
+    (hresolvedSlot : findResolvedFieldAtSlotCopy fields slot = some f)
     (hvalueIR : CompilationModel.compileExpr fields .calldata value = Except.ok valueIR) :
     CompiledStmtStep fields scope (.setStorage fieldName value)
       [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueIR])] where
@@ -382,7 +453,7 @@ theorem compiledStmtStep_setStorage_singleSlot
           extraFuel state slot valueIR valueNat hvalueEval
       simpa [compiledIR, execIRStmts, hExecStmt]
     · refine And.intro ?_ <| And.intro ?_ <| And.intro hbounded hscope
-      · exact runtimeStateMatchesIR_writeUintSlot hruntime hslotEncode
+      · exact runtimeStateMatchesIR_writeUintSlot hruntime hresolvedSlot hnotAddr hnotDyn
       · exact bindingsExactlyMatchIRVarsOnScope_writeUintSlot hexact
 
 private theorem terminal_stmtResultMatchesIRExec_implies_stmtStepMatchesIRExec

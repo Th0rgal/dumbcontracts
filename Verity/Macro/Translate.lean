@@ -46,6 +46,7 @@ inductive StorageType where
   | mappingAddressToUint256
   | mapping2AddressToAddressToUint256
   | mappingUintToUint256
+  | mappingChain (keyTypes : List MappingKeyType)
   | mappingStruct (keyType : MappingKeyType) (members : List StructMemberDecl)
   | mappingStruct2 (outerKey : MappingKeyType) (innerKey : MappingKeyType) (members : List StructMemberDecl)
   deriving BEq
@@ -114,6 +115,36 @@ structure ConstructorDecl where
 private def strTerm (s : String) : Term := ⟨Syntax.mkStrLit s⟩
 private def natTerm (n : Nat) : Term := ⟨Syntax.mkNumLit (toString n)⟩
 
+private partial def expectTermListLiteral (stx : Term) : CommandElabM (Array Term) := do
+  match stx with
+  | `(term| [ $[$xs],* ]) => pure xs
+  | `(term| ($inner:term)) => expectTermListLiteral inner
+  | _ => throwErrorAt stx "expected list literal [..]"
+
+private partial def collectTupleElems (stx : Syntax) : Array Syntax :=
+  if stx.isAtom then
+    #[]
+  else if stx.getKind == `null then
+    stx.getArgs.foldl (fun acc child => acc ++ collectTupleElems child) #[]
+  else
+    #[stx]
+
+private def tupleElemsFromSyntax? (stx : Syntax) : Option (Array Syntax) :=
+  if stx.getKind == `Lean.Parser.Term.tuple then
+    some (collectTupleElems stx[1])
+  else
+    none
+
+private partial def expectMappingKeyTerms (stx : Term) : CommandElabM (Array Term) := do
+  expectTermListLiteral stx
+
+private partial def collectArrowChainTypes (stx : Term) : CommandElabM (List Term × Term) := do
+  match stx with
+  | `(term| $lhs:term → $rhs:term) =>
+      let (rest, resultTy) ← collectArrowChainTypes rhs
+      pure (lhs :: rest, resultTy)
+  | _ => pure ([], stx)
+
 private def natFromSyntax (stx : Syntax) : CommandElabM Nat :=
   match stx.isNatLit? with
   | some n => pure n
@@ -165,7 +196,20 @@ private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
         }
     | _ => throwErrorAt stx "invalid struct member declaration"
 
-  match ty with
+  let (arrowArgs, arrowResult) ← collectArrowChainTypes ty
+  if !arrowArgs.isEmpty then
+    match arrowResult with
+    | `(term| Uint256) =>
+        let keyTypes ← arrowArgs.mapM keyTypeFromSyntax
+        match keyTypes with
+        | [.address] => pure .mappingAddressToUint256
+        | [.uint256] => pure .mappingUintToUint256
+        | [.address, .address] => pure .mapping2AddressToAddressToUint256
+        | _ => pure (.mappingChain keyTypes)
+    | _ =>
+        throwErrorAt ty "unsupported mapping value type; expected Uint256"
+  else
+    match ty with
   | `(term| MappingStruct($keyTy:term,[ $[$members:verityStructMember],* ])) =>
       pure <| .mappingStruct
         (← keyTypeFromSyntax keyTy)
@@ -175,9 +219,6 @@ private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
         (← keyTypeFromSyntax outerKey)
         (← keyTypeFromSyntax innerKey)
         ((← members.mapM structMemberFromSyntax).toList)
-  | `(term| Address → Uint256) => pure .mappingAddressToUint256
-  | `(term| Address → Address → Uint256) => pure .mapping2AddressToAddressToUint256
-  | `(term| Uint256 → Uint256) => pure .mappingUintToUint256
   | _ => do
       let vt ← valueTypeFromSyntax ty
       match vt with
@@ -187,6 +228,20 @@ private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
 private def modelMappingKeyTypeTerm : MappingKeyType → CommandElabM Term
   | .address => `(Compiler.CompilationModel.MappingKeyType.address)
   | .uint256 => `(Compiler.CompilationModel.MappingKeyType.uint256)
+
+private def storageTypeMappingKeyTypes? : StorageType → Option (List MappingKeyType)
+  | .mappingAddressToUint256 => some [.address]
+  | .mapping2AddressToAddressToUint256 => some [.address, .address]
+  | .mappingUintToUint256 => some [.uint256]
+  | .mappingChain keyTypes => some keyTypes
+  | _ => none
+
+private def storageTypeMappingDepth? (ty : StorageType) : Option Nat :=
+  storageTypeMappingKeyTypes? ty |>.map List.length
+
+private def storageKeyTypeContractTerm : MappingKeyType → CommandElabM Term
+  | .address => `(Address)
+  | .uint256 => `(Uint256)
 
 private def modelStructMemberTerm (member : StructMemberDecl) : CommandElabM Term := do
   let packedTerm ←
@@ -223,6 +278,10 @@ private def modelFieldTypeTerm (ty : StorageType) : CommandElabM Term :=
   | .mappingUintToUint256 =>
       `(Compiler.CompilationModel.FieldType.mappingTyped
           (Compiler.CompilationModel.MappingType.simple Compiler.CompilationModel.MappingKeyType.uint256))
+  | .mappingChain keyTypes => do
+      let keyTypeTerms := (← keyTypes.mapM modelMappingKeyTypeTerm).toArray
+      `(Compiler.CompilationModel.FieldType.mappingTyped
+          (Compiler.CompilationModel.MappingType.chain [ $[$keyTypeTerms],* ]))
   | .mappingStruct keyType members => do
       let keyTypeTerm ← modelMappingKeyTypeTerm keyType
       let memberTerms := (← members.mapM modelStructMemberTerm).toArray
@@ -584,6 +643,9 @@ private partial def stripParens (stx : Term) : Term :=
   | `(term| ($inner)) => stripParens inner
   | _ => stx
 
+private def tupleElemsFromTerm? (stx : Term) : Option (Array Term) :=
+  tupleElemsFromSyntax? (stripParens stx).raw |>.map (·.map (fun syn => ⟨syn⟩))
+
 private def throwNonCompileTimeConstantError (stx : Syntax) (what : String) : CommandElabM α :=
   throwErrorAt stx s!"contract constants must be compile-time expressions; '{what}' is runtime-dependent"
 
@@ -741,23 +803,6 @@ private def expectStringList (stx : Term) : CommandElabM (Array String) := do
   | `(term| [ $[$xs],* ]) =>
       xs.mapM expectStringOrIdent
   | _ => throwErrorAt stx "expected list literal [..]"
-
-private partial def collectTupleElems (stx : Syntax) : Array Syntax :=
-  if stx.isAtom then
-    #[]
-  else if stx.getKind == `null then
-    stx.getArgs.foldl (fun acc child => acc ++ collectTupleElems child) #[]
-  else
-    #[stx]
-
-private def tupleElemsFromSyntax? (stx : Syntax) : Option (Array Syntax) :=
-  if stx.getKind == `Lean.Parser.Term.tuple then
-    some (collectTupleElems stx[1])
-  else
-    none
-
-private def tupleElemsFromTerm? (stx : Term) : Option (Array Term) :=
-  tupleElemsFromSyntax? (stripParens stx).raw |>.map (·.map (fun syn => ⟨syn⟩))
 
 private def tupleBinderNames? (stx : Syntax) : Option (Array (Option String)) := do
   let elems ← tupleElemsFromSyntax? stx
@@ -1121,7 +1166,7 @@ private partial def inferBindSourceType
       | .scalar .bool => throwErrorAt rhs s!"field '{f.name}' is Bool; encode as Uint256 and use getStorage"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
-      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
+      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2/getMappingN"
   | `(term| getStorageAddr $field:ident) =>
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with
@@ -1130,7 +1175,7 @@ private partial def inferBindSourceType
       | .scalar .bool => throwErrorAt rhs s!"field '{f.name}' is Bool; use getStorage"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
-      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
+      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2/getMappingN"
   | `(term| getMapping $field:ident $key:term) | `(term| getMappingUint $field:ident $key:term)
     | `(term| getMappingWord $field:ident $key:term $_wordOffset:num) => do
       requireWordLikeType key "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
@@ -1143,6 +1188,8 @@ private partial def inferBindSourceType
           throwErrorAt rhs s!"field '{f.name}' is a nested struct mapping; use structMember2"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .mappingChain _ =>
+          throwErrorAt rhs s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use getMappingN"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
   | `(term| getMappingAddr $field:ident $key:term) | `(term| getMappingUintAddr $field:ident $key:term) => do
       requireWordLikeType key "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
@@ -1155,6 +1202,8 @@ private partial def inferBindSourceType
           throwErrorAt rhs s!"field '{f.name}' is a nested struct mapping; use structMember2"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .mappingChain _ =>
+          throwErrorAt rhs s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use getMappingN"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
   | `(term| getMapping2 $field:ident $key1:term $key2:term) => do
       requireWordLikeType key1 "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key1)
@@ -1167,6 +1216,22 @@ private partial def inferBindSourceType
       | .mappingStruct _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember"
       | _ => throwErrorAt rhs s!"field '{f.name}' is not a double mapping"
+  | `(term| getMappingN $field:ident $keys:term) => do
+      let keyTerms ← expectMappingKeyTerms keys
+      for key in keyTerms do
+        requireWordLikeType key "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
+      let f ← lookupStorageField fields (toString field.getId)
+      match storageTypeMappingKeyTypes? f.ty with
+      | some keyTypes =>
+          if keyTerms.size == keyTypes.length then
+            pure .uint256
+          else
+            throwErrorAt rhs s!"field '{f.name}' expects {keyTypes.length} mapping keys, but getMappingN received {keyTerms.size}"
+      | none =>
+          match f.ty with
+          | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
+              throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
+          | _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
   | `(term| structMember $field:term $key:term $member:term) => do
       let fieldName := ← expectStringOrIdent field
       let memberName := ← expectStringOrIdent member
@@ -1219,7 +1284,7 @@ private partial def inferBindSourceType
       | _ => throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd or safeSub"
   | _ =>
       throwErrorAt rhs
-        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/msgValue/tload/ecrecover/ecmCall"
+        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/getMappingN/structMember/structMember2/msgSender/msgValue/tload/ecrecover/ecmCall"
 
 private partial def inferTupleSourceTypes?
     (fields : Array StorageFieldDecl)
@@ -1795,7 +1860,7 @@ private def translateBindSource
       | .scalar .unit => throwErrorAt rhs "invalid field type"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
-      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
+      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2/getMappingN"
   | `(term| getStorageAddr $field:ident) =>
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with
@@ -1805,7 +1870,7 @@ private def translateBindSource
       | .scalar .unit => throwErrorAt rhs "invalid field type"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
-      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2"
+      | _ => throwErrorAt rhs s!"field '{f.name}' is a mapping; use getMapping/getMapping2/getMappingN"
   | `(term| getMapping $field:ident $key:term) =>
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with
@@ -1815,6 +1880,8 @@ private def translateBindSource
           `(Compiler.CompilationModel.Expr.mappingUint $(strTerm f.name) $(← translatePureExpr fields constDecls immutableDecls params locals key))
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .mappingChain _ =>
+          throwErrorAt rhs s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use getMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
@@ -1827,6 +1894,8 @@ private def translateBindSource
           throwErrorAt rhs s!"field '{f.name}' is Uint256-keyed; use getMappingUintAddr"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .mappingChain _ =>
+          throwErrorAt rhs s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use getMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
@@ -1839,6 +1908,8 @@ private def translateBindSource
           throwErrorAt rhs s!"field '{f.name}' is Address-keyed; use getMapping"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .mappingChain _ =>
+          throwErrorAt rhs s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use getMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
@@ -1851,6 +1922,8 @@ private def translateBindSource
           throwErrorAt rhs s!"field '{f.name}' is Address-keyed; use getMappingAddr"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt rhs s!"field '{f.name}' is a double mapping; use getMapping2"
+      | .mappingChain _ =>
+          throwErrorAt rhs s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use getMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
@@ -1869,6 +1942,8 @@ private def translateBindSource
       | .mappingStruct2 _ _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a nested struct mapping; use structMember2"
       | .scalar _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
+      | .mappingChain _ =>
+          throwErrorAt rhs s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use getMappingN"
   | `(term| getMapping2 $field:ident $key1:term $key2:term) =>
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with
@@ -1882,6 +1957,22 @@ private def translateBindSource
       | .mappingStruct _ _ =>
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember"
       | _ => throwErrorAt rhs s!"field '{f.name}' is not a double mapping"
+  | `(term| getMappingN $field:ident $keys:term) => do
+      let f ← lookupStorageField fields (toString field.getId)
+      let keyTerms ← expectMappingKeyTerms keys
+      match storageTypeMappingKeyTypes? f.ty with
+      | some keyTypes =>
+          if keyTerms.size != keyTypes.length then
+            throwErrorAt rhs s!"field '{f.name}' expects {keyTypes.length} mapping keys, but getMappingN received {keyTerms.size}"
+          let keyExprs ← keyTerms.mapM (translatePureExpr fields constDecls immutableDecls params locals)
+          `(Compiler.CompilationModel.Expr.mappingChain
+              $(strTerm f.name)
+              [ $[$keyExprs],* ])
+      | none =>
+          match f.ty with
+          | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
+              throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember/structMember2"
+          | _ => throwErrorAt rhs s!"field '{f.name}' is not a mapping"
   | `(term| structMember $field:term $key:term $member:term) =>
       let fieldName := ← expectStringOrIdent field
       let memberName := ← expectStringOrIdent member
@@ -1906,7 +1997,7 @@ private def translateBindSource
           $(← translatePureExpr fields constDecls immutableDecls params locals offset))
   | _ =>
       throwErrorAt rhs
-        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/structMember/structMember2/msgSender/msgValue/tload/ecrecover"
+        "unsupported bind source; expected getStorage/getStorageAddr/getMapping/getMappingAddr/getMappingUint/getMappingUintAddr/getMappingWord/getMapping2/getMappingN/structMember/structMember2/msgSender/msgValue/tload/ecrecover"
 
 private def translateSafeRequireBind
     (fields : Array StorageFieldDecl)
@@ -2106,6 +2197,10 @@ private partial def validateEffectStmtExprTypes
     | `(term| setStructMember2 $_field:term $key1:term $key2:term $_member:term $value:term) => do
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key1
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key2
+      let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
+  | `(term| setMappingN $_field:ident $keys:term $value:term) => do
+      for key in (← expectMappingKeyTerms keys) do
+        let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
   | `(term| mstore $offset:term $value:term) | `(term| tstore $offset:term $value:term) => do
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals offset
@@ -2307,6 +2402,8 @@ private def translateEffectStmt
               $(← translatePureExpr fields constDecls immutableDecls params locals value))
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt stx s!"field '{f.name}' is a double mapping; use setMapping2"
+      | .mappingChain _ =>
+          throwErrorAt stx s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use setMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember/setStructMember2"
       | .scalar _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
@@ -2322,6 +2419,8 @@ private def translateEffectStmt
           throwErrorAt stx s!"field '{f.name}' is Uint256-keyed; use setMappingUintAddr"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt stx s!"field '{f.name}' is a double mapping; use setMapping2"
+      | .mappingChain _ =>
+          throwErrorAt stx s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use setMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember/setStructMember2"
       | .scalar _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
@@ -2337,6 +2436,8 @@ private def translateEffectStmt
           throwErrorAt stx s!"field '{f.name}' is Address-keyed; use setMapping"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt stx s!"field '{f.name}' is a double mapping; use setMapping2"
+      | .mappingChain _ =>
+          throwErrorAt stx s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use setMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember/setStructMember2"
       | .scalar _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
@@ -2352,6 +2453,8 @@ private def translateEffectStmt
           throwErrorAt stx s!"field '{f.name}' is Address-keyed; use setMappingAddr"
       | .mapping2AddressToAddressToUint256 =>
           throwErrorAt stx s!"field '{f.name}' is a double mapping; use setMapping2"
+      | .mappingChain _ =>
+          throwErrorAt stx s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use setMappingN"
       | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
           throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember/setStructMember2"
       | .scalar _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
@@ -2371,6 +2474,8 @@ private def translateEffectStmt
       | .mappingStruct2 _ _ _ =>
           throwErrorAt stx s!"field '{f.name}' is a nested struct mapping; use setStructMember2"
       | .scalar _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
+      | .mappingChain _ =>
+          throwErrorAt stx s!"field '{f.name}' uses {storageTypeMappingDepth? f.ty |>.getD 0} mapping keys; use setMappingN"
   | `(term| setMapping2 $field:ident $key1:term $key2:term $value:term) =>
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with
@@ -2385,6 +2490,23 @@ private def translateEffectStmt
       | .mappingStruct _ _ =>
           throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember"
       | _ => throwErrorAt stx s!"field '{f.name}' is not a double mapping"
+  | `(term| setMappingN $field:ident $keys:term $value:term) => do
+      let f ← lookupStorageField fields (toString field.getId)
+      let keyTerms ← expectMappingKeyTerms keys
+      match storageTypeMappingKeyTypes? f.ty with
+      | some keyTypes =>
+          if keyTerms.size != keyTypes.length then
+            throwErrorAt stx s!"field '{f.name}' expects {keyTypes.length} mapping keys, but setMappingN received {keyTerms.size}"
+          let keyExprs ← keyTerms.mapM (translatePureExpr fields constDecls immutableDecls params locals)
+          `(Compiler.CompilationModel.Stmt.setMappingChain
+              $(strTerm f.name)
+              [ $[$keyExprs],* ]
+              $(← translatePureExpr fields constDecls immutableDecls params locals value))
+      | none =>
+          match f.ty with
+          | .mappingStruct _ _ | .mappingStruct2 _ _ _ =>
+              throwErrorAt stx s!"field '{f.name}' is a struct-valued mapping; use setStructMember/setStructMember2"
+          | _ => throwErrorAt stx s!"field '{f.name}' is not a mapping"
   | `(term| require $cond $msg) =>
       `(Compiler.CompilationModel.Stmt.require
           $(← translatePureExpr fields constDecls immutableDecls params locals cond)
@@ -2812,6 +2934,11 @@ private def mkModelParamsTerm (params : Array ParamDecl) : CommandElabM Term := 
   `([ $[$xs],* ])
 
 private def mkStorageDefCommand (field : StorageFieldDecl) : CommandElabM Cmd := do
+  let rec mkStorageMappingTy (keys : List MappingKeyType) : CommandElabM Term := do
+    match keys with
+    | [] => `(Uint256)
+    | keyTy :: rest =>
+        `(($(← storageKeyTypeContractTerm keyTy) → $(← mkStorageMappingTy rest)))
   let storageTy ←
     match field.ty with
     | .scalar .uint256 => `(Uint256)
@@ -2828,6 +2955,7 @@ private def mkStorageDefCommand (field : StorageFieldDecl) : CommandElabM Cmd :=
     | .mappingAddressToUint256 => `(Address → Uint256)
     | .mapping2AddressToAddressToUint256 => `(Address → Address → Uint256)
     | .mappingUintToUint256 => `(Uint256 → Uint256)
+    | .mappingChain keyTypes => mkStorageMappingTy keyTypes
     | .mappingStruct .address _ => `(Address → Uint256)
     | .mappingStruct .uint256 _ => `(Uint256 → Uint256)
     | .mappingStruct2 .address .address _ => `(Address → Address → Uint256)

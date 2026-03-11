@@ -124,6 +124,8 @@ def validateScopedExprIdentifiers
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key
+  | Expr.mappingChain _ keys =>
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount keys
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
   | Expr.structMember2 _ key1 key2 _ => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key1
@@ -237,6 +239,10 @@ def validateScopedStmtIdentifiers
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
   | Stmt.setStructMember _ key _ value => do
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
+      pure localScope
+  | Stmt.setMappingChain _ keys value => do
+      validateScopedExprIdentifiersList context params paramScope dynamicParams localScope constructorArgCount keys
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount value
       pure localScope
   | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value

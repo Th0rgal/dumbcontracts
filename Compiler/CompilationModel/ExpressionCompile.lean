@@ -30,6 +30,9 @@ private def compileMappingSlotRead (fields : List Field) (field : String) (keyEx
       pure (YulExpr.call "sload" [finalSlot])
     | none => throw s!"Compilation error: unknown mapping field '{field}' in {label}"
 
+private def compileMappingSlotChain (baseSlot : YulExpr) (keys : List YulExpr) : YulExpr :=
+  keys.foldl (fun slotExpr keyExpr => YulExpr.call "mappingSlot" [slotExpr, keyExpr]) baseSlot
+
 -- Compile expression to Yul (using mutual recursion for lists)
 mutual
 def compileExprList (fields : List Field)
@@ -120,6 +123,15 @@ def compileExpr (fields : List Field)
       | none => throw s!"Compilation error: unknown mapping field '{field}'"
   | Expr.mappingUint field key => do
       compileMappingSlotRead fields field (← compileExpr fields dynamicSource key) "mappingUint"
+  | Expr.mappingChain field keys =>
+      if !isMapping fields field then
+        throw s!"Compilation error: field '{field}' is not a mapping"
+      else
+        match findFieldSlot fields field with
+        | some slot => do
+            let keyExprs ← compileExprList fields dynamicSource keys
+            pure (YulExpr.call "sload" [compileMappingSlotChain (YulExpr.lit slot) keyExprs])
+        | none => throw s!"Compilation error: unknown mapping field '{field}'"
   | Expr.structMember field key memberName => do
       if isMapping2 fields field then
         throw s!"Compilation error: field '{field}' is a double mapping; use Expr.structMember2 instead of Expr.structMember"

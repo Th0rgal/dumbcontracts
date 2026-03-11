@@ -187,6 +187,7 @@ def exprReadsStateOrEnv : Expr → Bool
   | Expr.mapping _ _ | Expr.mappingWord _ _ _ | Expr.mappingPackedWord _ _ _ _
   | Expr.mapping2 _ _ _ | Expr.mapping2Word _ _ _ _
   | Expr.mappingUint _ _
+  | Expr.mappingChain _ _
   | Expr.structMember _ _ _ | Expr.structMember2 _ _ _ _ => true
   | Expr.caller => true
   | Expr.contractAddress => true
@@ -243,6 +244,8 @@ def exprWritesState : Expr → Bool
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ =>
       exprWritesState key
+  | Expr.mappingChain _ keys =>
+      exprListWritesState keys
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
   | Expr.structMember2 _ key1 key2 _ =>
       exprWritesState key1 || exprWritesState key2
@@ -281,6 +284,7 @@ def stmtWritesState : Stmt → Bool
       exprWritesState value
   | Stmt.setStorage _ _ | Stmt.setStorageAddr _ _
   | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
+  | Stmt.setMappingChain _ _ _
   | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _
   | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _ => true
   | Stmt.require cond _ =>
@@ -353,6 +357,7 @@ def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.stop =>
       false
   | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
+  | Stmt.setMappingChain _ _ _
   | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _
   | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _ => true
   | Stmt.ite cond thenBranch elseBranch =>

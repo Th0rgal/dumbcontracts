@@ -72,6 +72,7 @@ def validateInteropExpr (context : String) : Expr → Except String Unit
   | Expr.mapping _ key => validateInteropExpr context key
   | Expr.mappingWord _ key _ => validateInteropExpr context key
   | Expr.mappingPackedWord _ key _ _ => validateInteropExpr context key
+  | Expr.mappingChain _ keys => validateInteropExprList context keys
   | Expr.structMember _ key _ => validateInteropExpr context key
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
   | Expr.structMember2 _ key1 key2 _ => do
@@ -141,6 +142,9 @@ def validateInteropStmt (context : String) : Stmt → Except String Unit
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
   | Stmt.setStructMember _ key _ value => do
       validateInteropExpr context key
+      validateInteropExpr context value
+  | Stmt.setMappingChain _ keys value => do
+      validateInteropExprList context keys
       validateInteropExpr context value
   | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
   | Stmt.setStructMember2 _ key1 key2 _ value => do

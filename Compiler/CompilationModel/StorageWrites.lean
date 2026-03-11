@@ -163,6 +163,37 @@ def compileSetMapping2Word (fields : List Field) (dynamicSource : DynamicDataSou
             ]
     | none => throw s!"Compilation error: unknown mapping field '{field}' in setMapping2Word"
 
+def compileSetMappingChain (fields : List Field) (dynamicSource : DynamicDataSource)
+    (field : String) (keys : List Expr) (value : Expr) : Except String (List YulStmt) := do
+  if !isMapping fields field then
+    throw s!"Compilation error: field '{field}' is not a mapping"
+  else
+    match findFieldWriteSlots fields field with
+    | some slots => do
+        let keyExprs ← compileExprList fields dynamicSource keys
+        let valueExpr ← compileExpr fields dynamicSource value
+        let writeAt (slot : Nat) (keysRef : List YulExpr) (valueRef : YulExpr) : YulStmt :=
+          YulStmt.expr (YulExpr.call "sstore" [
+            keysRef.foldl (fun slotExpr keyExpr => YulExpr.call "mappingSlot" [slotExpr, keyExpr]) (YulExpr.lit slot),
+            valueRef
+          ])
+        match slots with
+        | [] =>
+            throw s!"Compilation error: internal invariant failure: no write slots for mapping field '{field}' in setMappingChain"
+        | [slot] =>
+            pure [writeAt slot keyExprs valueExpr]
+        | _ =>
+            pure [
+              YulStmt.block (
+                [YulStmt.let_ "__compat_value" valueExpr] ++
+                keyExprs.zipIdx.map (fun (keyExpr, idx) => YulStmt.let_ s!"__compat_key{idx}" keyExpr) ++
+                slots.map (fun slot =>
+                  let compatKeys := List.range keyExprs.length |>.map (fun idx => YulExpr.ident s!"__compat_key{idx}")
+                  writeAt slot compatKeys (YulExpr.ident "__compat_value"))
+              )
+            ]
+    | none => throw s!"Compilation error: unknown mapping field '{field}' in setMappingChain"
+
 def compileSetStructMember (fields : List Field) (dynamicSource : DynamicDataSource)
     (field : String) (key : Expr) (memberName : String) (value : Expr) :
     Except String (List YulStmt) := do

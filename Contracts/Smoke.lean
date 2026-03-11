@@ -40,6 +40,28 @@ verity_contract UintMapSmoke where
     let current ← getMappingUint values key
     return current
 
+verity_contract MappingChainSmoke where
+  storage
+    approvals : Address → Address → Address → Uint256 := slot 0
+
+  function setApproval (owner : Address, spender : Address, delegate_ : Address, value : Uint256) : Unit := do
+    setMappingN approvals [owner, spender, delegate_] value
+
+  function getApproval (owner : Address, spender : Address, delegate_ : Address) : Uint256 := do
+    let current ← getMappingN approvals [owner, spender, delegate_]
+    return current
+
+verity_contract MixedMappingChainSmoke where
+  storage
+    approvals : Address → Uint256 → Address → Uint256 := slot 0
+
+  function setApproval (owner : Address, tokenId : Uint256, delegate_ : Address, value : Uint256) : Unit := do
+    setMappingN approvals [addressToWord owner, tokenId, addressToWord delegate_] value
+
+  function getApproval (owner : Address, tokenId : Uint256, delegate_ : Address) : Uint256 := do
+    let current ← getMappingN approvals [addressToWord owner, tokenId, addressToWord delegate_]
+    return current
+
 verity_contract Bytes32Smoke where
   storage
     value : Uint256 := slot 0

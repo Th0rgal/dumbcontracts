@@ -50,6 +50,8 @@ private partial def collectLowLevelExprMechanics : Expr → List String
   | .mappingPackedWord _ key _ _
   | .structMember _ key _ =>
       collectLowLevelExprMechanics key
+  | .mappingChain _ keys =>
+      keys.flatMap collectLowLevelExprMechanics
   | .mapping2 _ key1 key2
   | .mapping2Word _ key1 key2 _
   | .structMember2 _ key1 key2 _ =>
@@ -110,6 +112,8 @@ private partial def collectAxiomatizedExprPrimitives : Expr → List String
   | .mappingPackedWord _ key _ _
   | .structMember _ key _ =>
       collectAxiomatizedExprPrimitives key
+  | .mappingChain _ keys =>
+      keys.flatMap collectAxiomatizedExprPrimitives
   | .mapping2 _ key1 key2
   | .mapping2Word _ key1 key2 _
   | .structMember2 _ key1 key2 _ =>
@@ -165,6 +169,8 @@ private partial def collectLowLevelStmtMechanics : Stmt → List String
   | .setMappingUint _ key value
   | .setStructMember _ key _ value =>
       collectLowLevelExprMechanics key ++ collectLowLevelExprMechanics value
+  | .setMappingChain _ keys value =>
+      keys.flatMap collectLowLevelExprMechanics ++ collectLowLevelExprMechanics value
   | .setMapping2 _ key1 key2 value
   | .setMapping2Word _ key1 key2 _ value
   | .setStructMember2 _ key1 key2 _ value =>
@@ -214,6 +220,8 @@ private partial def collectAxiomatizedStmtPrimitives : Stmt → List String
   | .setMappingUint _ key value
   | .setStructMember _ key _ value =>
       collectAxiomatizedExprPrimitives key ++ collectAxiomatizedExprPrimitives value
+  | .setMappingChain _ keys value =>
+      keys.flatMap collectAxiomatizedExprPrimitives ++ collectAxiomatizedExprPrimitives value
   | .setMapping2 _ key1 key2 value
   | .setMapping2Word _ key1 key2 _ value
   | .setStructMember2 _ key1 key2 _ value =>
@@ -314,6 +322,8 @@ private partial def collectEventEmissionExprMechanics : Expr → List String
   | .mapping2Word _ key1 key2 _
   | .structMember2 _ key1 key2 _ =>
       collectEventEmissionExprMechanics key1 ++ collectEventEmissionExprMechanics key2
+  | .mappingChain _ keys =>
+      keys.flatMap collectEventEmissionExprMechanics
   | .mappingUint _ key
   | .arrayElement _ key =>
       collectEventEmissionExprMechanics key
@@ -359,6 +369,8 @@ private partial def collectEventEmissionStmtMechanics : Stmt → List String
   | .setMappingUint _ key value
   | .setStructMember _ key _ value =>
       collectEventEmissionExprMechanics key ++ collectEventEmissionExprMechanics value
+  | .setMappingChain _ keys value =>
+      keys.flatMap collectEventEmissionExprMechanics ++ collectEventEmissionExprMechanics value
   | .setMapping2 _ key1 key2 value
   | .setMapping2Word _ key1 key2 _ value
   | .setStructMember2 _ key1 key2 _ value =>
@@ -459,6 +471,8 @@ private partial def collectRuntimeIntrospectionExprMechanics : Expr → List Str
   | .mapping2Word _ key1 key2 _
   | .structMember2 _ key1 key2 _ =>
       collectRuntimeIntrospectionExprMechanics key1 ++ collectRuntimeIntrospectionExprMechanics key2
+  | .mappingChain _ keys =>
+      keys.flatMap collectRuntimeIntrospectionExprMechanics
   | .mappingUint _ key
   | .arrayElement _ key =>
       collectRuntimeIntrospectionExprMechanics key
@@ -505,6 +519,8 @@ private partial def collectRuntimeIntrospectionStmtMechanics : Stmt → List Str
   | .setMappingUint _ key value
   | .setStructMember _ key _ value =>
       collectRuntimeIntrospectionExprMechanics key ++ collectRuntimeIntrospectionExprMechanics value
+  | .setMappingChain _ keys value =>
+      keys.flatMap collectRuntimeIntrospectionExprMechanics ++ collectRuntimeIntrospectionExprMechanics value
   | .setMapping2 _ key1 key2 value
   | .setMapping2Word _ key1 key2 _ value
   | .setStructMember2 _ key1 key2 _ value =>
@@ -592,6 +608,8 @@ private partial def collectExternalExprNames : Expr → List String
   | .mapping2Word _ key1 key2 _
   | .structMember2 _ key1 key2 _ =>
       collectExternalExprNames key1 ++ collectExternalExprNames key2
+  | .mappingChain _ keys =>
+      keys.flatMap collectExternalExprNames
   | .mappingUint _ key
   | .arrayElement _ key =>
       collectExternalExprNames key
@@ -637,6 +655,8 @@ private partial def collectExternalStmtNames : Stmt → List String
   | .setMappingUint _ key value
   | .setStructMember _ key _ value =>
       collectExternalExprNames key ++ collectExternalExprNames value
+  | .setMappingChain _ keys value =>
+      keys.flatMap collectExternalExprNames ++ collectExternalExprNames value
   | .setMapping2 _ key1 key2 value
   | .setMapping2Word _ key1 key2 _ value
   | .setStructMember2 _ key1 key2 _ value =>

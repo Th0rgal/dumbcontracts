@@ -17,6 +17,9 @@ private def mappingKeyTypeString : MappingKeyType → String
   | .address => "address"
   | .uint256 => "uint256"
 
+private def mappingKeysJson (keys : List MappingKeyType) : String :=
+  jsonArray (keys.map (fun keyType => jsonString (mappingKeyTypeString keyType)))
+
 private def packedBitsJson (packed : PackedBits) : String :=
   jsonObject [
     ("offset", jsonNat packed.offset),
@@ -35,16 +38,10 @@ private def fieldTypeJson : FieldType → String
       jsonObject [("kind", jsonString "uint256")]
   | .address =>
       jsonObject [("kind", jsonString "address")]
-  | .mappingTyped (.simple keyType) =>
+  | .mappingTyped mt =>
       jsonObject [
         ("kind", jsonString "mapping"),
-        ("keys", jsonArray [jsonString (mappingKeyTypeString keyType)]),
-        ("valueKind", jsonString "uint256")
-      ]
-  | .mappingTyped (.nested outer inner) =>
-      jsonObject [
-        ("kind", jsonString "mapping"),
-        ("keys", jsonArray [jsonString (mappingKeyTypeString outer), jsonString (mappingKeyTypeString inner)]),
+        ("keys", mappingKeysJson (mappingTypeKeyTypes mt)),
         ("valueKind", jsonString "uint256")
       ]
   | .mappingStruct keyType members =>

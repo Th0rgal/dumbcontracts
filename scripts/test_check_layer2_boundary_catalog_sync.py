@@ -45,12 +45,14 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "proof-complete `CompilationModel` subset\n"
                 "macro-lowered image of `verity_contract`\n"
                 "helper-free `SupportedStmtList` witness\n"
+                "legacy-compatible external-body Yul subset\n"
             ),
             "ROADMAP": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "macro-lowered `verity_contract` image\n"
                 "`calls.helperCompatibility` can disappear\n"
                 "`execIRFunctionWithInternals` / `interpretIRWithInternals`\n"
+                "conservative extension of `interpretIR`\n"
                 "[#1638]\n"
             ),
             "VERIFICATION_STATUS": (
@@ -58,6 +60,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "macro-lowered image of `verity_contract`\n"
                 "`calls.helperCompatibility` gate\n"
                 "helper-aware body theorem does not yet consume helper-summary soundness/rank evidence\n"
+                "legacy-compatible external-body Yul subset\n"
                 "[#1638]\n"
             ),
             "COMPILER_PROOFS_README": (
@@ -65,6 +68,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "`SupportedSpec` split\n"
                 "`calls.helpers`\n"
                 "summary-soundness evidence\n"
+                "legacy-compatible external-body Yul subset\n"
                 "[#1638]\n"
             ),
         }

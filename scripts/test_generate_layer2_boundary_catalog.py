@@ -34,6 +34,12 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             1638,
         )
         self.assertEqual(
+            catalog["supported_spec_split"]["helper_boundary"][
+                "compiled_target_compatibility_subset"
+            ]["name"],
+            "legacy_compatible_external_body_yul_subset",
+        )
+        self.assertEqual(
             catalog["current_out_of_scope_surfaces"][0]["status"],
             "blocked_at_body_ir_composition_seam",
         )
@@ -45,6 +51,7 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             [
                 "legacy_stmt_fragment_witness",
                 "ir_internal_call_semantics",
+                "legacy_ir_target_compatibility_subset",
                 "summary_soundness_not_yet_consumed",
             ],
         )

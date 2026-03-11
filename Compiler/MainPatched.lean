@@ -339,7 +339,7 @@ unsafe def main (args : List String) : IO Unit := do
       }
       mappingSlotScratchBase := cfg.mappingSlotScratchBase
     }
-    compileModulesWithOptions
+    Compiler.compileModulesWithOptions
       cfg.outDir rawModules cfg.verbose cfg.libs options cfg.patchReportPath cfg.trustReportPath
       cfg.assumptionReportPath cfg.abiOutDir cfg.denyUncheckedDependencies cfg.denyAssumedDependencies
       cfg.denyAxiomatizedPrimitives cfg.denyLocalObligations cfg.denyLinearMemoryMechanics cfg.denyEventEmission

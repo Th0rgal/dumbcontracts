@@ -18,18 +18,13 @@ See `TRUST_ASSUMPTIONS.md` for the full trust boundary.
   layer now closes a generic whole-contract theorem in
   `Compiler/Proofs/IRGeneration/Contract.lean`. The initial-state normalization
   step is proved under an explicit transaction-context normalization hypothesis.
-  Active end-to-end examples may still rely on legacy/example wrapper theorems
-  in `Contracts/Proofs/SemanticBridge.lean`, but Layer 2 no longer depends on a
-  Lean axiom.
+  Layer 2 no longer depends on a Lean axiom.
 - **Layer 3: IR -> Yul**. Yul semantics, equivalence, and preservation proofs
   live in `Compiler/Proofs/YulGeneration/`. The proof surface is generic, but the
   current full dispatch-preservation path still uses 1 documented bridge hypothesis.
 
 ## Key Modules
 
-- `Contracts/Proofs/SemanticBridge.lean`: legacy/example wrapper theorems that
-  connect EDSL executions to compiled IR/Yul executions for supported
-  contracts. This is no longer the source of generic Layer 2 correctness.
 - `Compiler/Proofs/EndToEnd.lean`: composed Layers 2 and 3 theorem spine,
   showing compiled IR execution matches Yul execution.
 - `Compiler/Proofs/IRGeneration/Expr.lean` and
@@ -49,9 +44,7 @@ This branch now includes the generic compiler-level theorem
 `Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics`, rooted at
 successful `CompilationModel.compile` for an explicit supported whole-contract
 fragment. The former exact-state body-simulation axiom in
-`Compiler.Proofs.IRGeneration.Function` has now been eliminated, and active
-end-to-end examples that still mention `Contracts/Proofs/SemanticBridge.lean`
-should be read as legacy/example consumers rather than missing compiler proofs.
+`Compiler.Proofs.IRGeneration.Function` has now been eliminated.
 
 Tracking:
 - issue: [#1510](https://github.com/Th0rgal/verity/issues/1510)
@@ -67,19 +60,9 @@ What exists today:
 - A generic whole-contract theorem for successful `CompilationModel.compile` on
   the current explicit supported fragment:
   `Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics`
-- Legacy/example wrapper theorems in `Contracts/Proofs/SemanticBridge.lean`
-  that instantiate the current compiler/interpreter machinery for specific
-  contracts
 - Generic Layer 3 preservation from IR to Yul
 
 What does not exist yet:
-- A first-class migration of every existing example contract onto the generic
-  Layer 2 theorem surface. The first direct instantiation now exists for the
-  supported demo model in
-  `Compiler.Proofs.IRGeneration.Contract.counter_supported_spec_compile_preserves_semantics`.
-  `Contracts/Proofs/SemanticBridge.lean` also now includes
-  `counter_supported_spec_generic_semantic_bridge` as a client/example wrapper
-  that calls the generic theorem directly.
 - Broader supported-fragment coverage for features still intentionally outside
   the current whole-contract theorem
 
@@ -93,15 +76,13 @@ Current supported-fragment scope for the generic theorem:
 
 Negative boundary example:
 - A contract whose proof depends on linked external assumptions is outside the
-  current supported fragment and still needs an explicit wrapper/trust argument
-  today. `Contracts/Proofs/SemanticBridge.lean` remains a convenient place to
-  instantiate those example-level bridges.
+  current supported fragment and still needs an explicit trust argument today.
 
 Internal helper calls are part of the supported `CompilationModel` execution
 surface, but the proof library does not yet provide a first-class
-helper-spec/helper-theorem reuse boundary across callers. Existing bridge
-theorems remain contract-specific; the compositional internal-call proof gap is
-tracked in [#1335](https://github.com/Th0rgal/verity/issues/1335).
+helper-spec/helper-theorem reuse boundary across callers. The compositional
+internal-call proof gap is tracked in
+[#1335](https://github.com/Th0rgal/verity/issues/1335).
 
 ## Build
 

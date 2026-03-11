@@ -36,14 +36,11 @@ The current proof boundary stops too low and too late:
 
 - `Compiler/Proofs/IRGeneration/SupportedFragment.lean` only re-exports a
   statement-list theorem over `SupportedStmtList`
-- `Contracts/Proofs/SemanticBridge.lean` still proves whole-contract results by
-  assuming a contract-specific `hpost`
 - dispatch selection, parameter loading, whole-function assembly, and contract-level
-  execution are therefore not proved generically as part of Layer 2
+  execution were therefore not proved generically as part of Layer 2
 
-As long as whole-contract reasoning is centered in `SemanticBridge.lean`, the repo
-does not have a generic compiler proof. It has a transport theorem around per-contract
-proofs.
+(Note: the manual `SemanticBridge.lean` has been removed. The generic compiler proof
+now serves as the sole Layer 2 boundary.)
 
 ## Required Architectural Shift
 
@@ -79,15 +76,8 @@ Add new compiler-proof modules under `Compiler/Proofs/IRGeneration/`:
 
 Keep `SupportedFragment.lean` as a lower-level statement theorem only.
 
-Keep `Contracts/Proofs/SemanticBridge.lean` only as:
-
-`Contracts/Proofs/SemanticBridge.lean` becomes client/example layer only.
-
-- examples
-- regressions
-- composition wrappers for already-proved generic theorems
-
-It must stop being the source of Layer 2 whole-contract correctness.
+`Contracts/Proofs/SemanticBridge.lean` has been removed. The generic compiler proof
+is now the sole source of Layer 2 whole-contract correctness.
 
 ## Semantic Interfaces To Introduce
 
@@ -191,7 +181,7 @@ The work is only done if all checks below pass:
 - the theorem does not accept `post`, `hpost`, or any contract-specific semantic premise
 - a supported contract can obtain Layer 2 correctness by theorem instantiation alone
 - no new contract-specific Layer 2 bridge theorem is introduced to demonstrate success
-- docs identify `SemanticBridge.lean` as example/wrapper layer, not proof source
+- `SemanticBridge.lean` has been removed; the generic theorem is the sole Layer 2 proof source
 
 ## Tracking Checklist
 
@@ -230,8 +220,6 @@ The main objective of issue #1618 is therefore complete. Remaining Layer 2 work
 under [#1510](https://github.com/Th0rgal/verity/issues/1510) is follow-on
 adoption and breadth work:
 
-- refactor at least one existing contract proof so it instantiates the generic
-  theorem directly instead of using a legacy wrapper bridge
 - widen the supported whole-contract fragment without reintroducing axioms
 
 ## Non-Goals For The First Generic Theorem
@@ -259,4 +247,4 @@ Success condition for the demo:
 
 - the contract still compiles via `CompilationModel.compile`
 - the generic theorem instantiates directly
-- the old contract-specific Layer 2 theorem is reduced to a wrapper or removed
+- the old contract-specific Layer 2 theorems have been removed (SemanticBridge.lean deleted)

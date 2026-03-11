@@ -15,7 +15,6 @@ TARGETS = {
     "ROADMAP": ROOT / "docs" / "ROADMAP.md",
     "ROOT_README": ROOT / "README.md",
     "TRUST_ASSUMPTIONS": ROOT / "TRUST_ASSUMPTIONS.md",
-    "SEMANTIC_BRIDGE": ROOT / "Contracts" / "Proofs" / "SemanticBridge.lean",
     "DOCS_SITE_COMPILER": ROOT / "docs-site" / "content" / "compiler.mdx",
     "DOCS_SITE_INDEX": ROOT / "docs-site" / "content" / "index.mdx",
     "DOCS_SITE_EXAMPLES": ROOT / "docs-site" / "content" / "examples.mdx",
@@ -38,12 +37,10 @@ def expected_snippets() -> dict[str, list[str]]:
         ],
         "COMPILER_PROOFS_README": [
             "`Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics`",
-            "`Contracts/Proofs/SemanticBridge.lean`: legacy/example wrapper theorems",
             "The former exact-state body-simulation axiom in `Compiler.Proofs.IRGeneration.Function` has now been eliminated",
         ],
         "GENERIC_PLAN": [
             "avoid any `post`/`hpost`/contract-specific bridge premise",
-            "`Contracts/Proofs/SemanticBridge.lean` becomes client/example layer only.",
             "The main objective of issue #1618 is therefore complete.",
         ],
         "VERIFICATION_STATUS": [
@@ -57,7 +54,7 @@ def expected_snippets() -> dict[str, list[str]]:
             "generic whole-contract `CompilationModel.compile` theorem is proved for the current supported fragment",
         ],
         "ROOT_README": [
-            "Layer 2: CompilationModel → IR        [GENERIC WHOLE-CONTRACT THEOREM, LEGACY EXAMPLE BRIDGES]",
+            "Layer 2: CompilationModel → IR        [GENERIC WHOLE-CONTRACT THEOREM]",
             "Layer 2 now has a generic whole-contract theorem for the explicit supported fragment.",
             "its function-level closure now runs by theorem rather than axiom",
             "There is currently 1 documented Lean axiom in total: the selector axiom.",
@@ -70,10 +67,6 @@ def expected_snippets() -> dict[str, list[str]]:
             "it now has 1 documented Lean axiom",
             "explicit theorem hypothesis rather than a Lean axiom",
         ],
-        "SEMANTIC_BRIDGE": [
-            "This is not the source of generic compiler correctness for `CompilationModel.compile`.",
-            "The generic Layer 2 theorem now lives under",
-        ],
         "DOCS_SITE_COMPILER": [
             "**Layer 2 boundary today**",
             "the generic whole-contract `CompilationModel -> IR` theorem is proved for the current explicit supported fragment.",
@@ -82,31 +75,24 @@ def expected_snippets() -> dict[str, list[str]]:
         ],
         "DOCS_SITE_INDEX": [
             "`Compiler/Proofs/IRGeneration/Contract.lean` (generic whole-contract `CompilationModel -> IR` theorem for the current supported fragment)",
-            "`Contracts/Proofs/SemanticBridge.lean` remains as a legacy/example wrapper layer",
             "This project currently has no `sorry` placeholders.",
         ],
         "DOCS_SITE_EXAMPLES": [
             "`Compiler/Proofs/IRGeneration/Contract.lean` for the current supported fragment",
-            "`Contracts/Proofs/SemanticBridge.lean` remains as a legacy/example wrapper layer",
         ],
         "DOCS_SITE_FIRST_CONTRACT": [
             "the compiler-level `CompilationModel -> IR` result now lives in `Compiler/Proofs/IRGeneration/Contract.lean`",
-            "`Contracts/Proofs/SemanticBridge.lean` still exists, but it is now a legacy/example wrapper layer",
             "The repository's proof tree currently has zero `sorry` placeholders",
         ],
         "DOCS_SITE_VERIFICATION": [
-            "**Legacy/example bridge wrappers**: `Contracts/Proofs/SemanticBridge.lean`",
             "**Generic whole-contract Layer 2 theorem**: `Compiler/Proofs/IRGeneration/Contract.lean`",
         ],
         "DOCS_SITE_RESEARCH": [
             "Supported-fragment generic theorem in place.",
-            "legacy bridge consumers in",
-            "`Contracts/Proofs/SemanticBridge.lean`",
             "`Compiler/Proofs/IRGeneration/Contract.lean`",
         ],
         "LLMS": [
             "generic whole-contract CompilationModel -> IR theorem for the supported fragment",
-            "legacy example wrapper bridges remain",
             "1 documented Lean axiom",
             "0 `sorry` placeholders",
         ],
@@ -157,11 +143,6 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "2 documented axioms in [AXIOMS.md](AXIOMS.md): 1 selector axiom and 1 generic non-core Layer 2 axiom",
             "Layer 3: GENERIC SURFACE, 1 axiom — IR → Yul",
             "1 Layer 3 dispatch bridge axiom",
-            "whole-contract Layer 2 preservation still relies on contract-specific bridge theorems.",
-        ],
-        "SEMANTIC_BRIDGE": [
-            "proofs use placeholders until",
-            "The actual semantic work still lives in the contract-specific bridge theorem passed in as `hpost`.",
         ],
         "DOCS_SITE_COMPILER": [
             "**Layer 2 framework proof**: `CompilationModel -> IR` preserves semantics.",
@@ -170,18 +151,8 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "depends on 1 documented axiom",
             "full-contract Layer 2 preservation still relies on contract-specific bridge theorems.",
         ],
-        "DOCS_SITE_INDEX": [
-            "`Contracts/Proofs/SemanticBridge.lean` (current contract bridge layer)",
-        ],
-        "DOCS_SITE_EXAMPLES": [
-            "`Compiler/TypedIRCompilerCorrectness.lean` + `Contracts/Proofs/SemanticBridge.lean`",
-        ],
         "DOCS_SITE_FIRST_CONTRACT": [
             "18 proof terms currently use `sorry`",
-            "The bridge between EDSL semantics and the compilation model is maintained in `Contracts/Proofs/SemanticBridge.lean`.",
-        ],
-        "DOCS_SITE_VERIFICATION": [
-            "**Semantic bridge**: `Contracts/Proofs/SemanticBridge.lean` (EDSL ≡ CompilationModel for supported contract bridges)",
         ],
         "DOCS_SITE_RESEARCH": [
             "Complete for all 7 contracts",
@@ -195,8 +166,6 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "4 documented axioms",
             "2 documented Lean axioms",
             "partial generic CompilationModel -> IR boundary",
-            "12 in SemanticBridge cross-layer proofs",
-            "16 SemanticBridge + 0 Preservation",
         ],
     }
 

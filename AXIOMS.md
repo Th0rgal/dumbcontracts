@@ -138,8 +138,8 @@ specification.
 - Production blockers from axioms: 0
 - Enforcement: `scripts/check_axioms.py` ensures this file tracks exact source locations.
 - All internal compiler functions are proven to terminate (no axioms involved).
-- The macro front-end, semantic bridge, and typed-IR pipeline do not use any
-  axioms. Both `SemanticBridge.lean` and the typed-IR compiler have zero `sorry`.
+- The macro front-end and typed-IR pipeline do not use any
+  axioms. The typed-IR compiler has zero `sorry`.
 
 ## Maintenance Rule
 

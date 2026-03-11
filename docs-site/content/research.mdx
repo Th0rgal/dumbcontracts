@@ -20,7 +20,7 @@ The project evolved in two phases:
 This is the single source of truth for progress, roadmap, and milestone updates.
 
 - **Contract-specific specification proofs**: Complete for all 8 verified contracts (7 compiler-spec contracts + ReentrancyExample).
-- **Layer 2 (CompilationModel → IR)**: Supported-fragment generic theorem in place. The compiler-level theorem now lives in [`Compiler/Proofs/IRGeneration/Contract.lean`](https://github.com/Th0rgal/verity/blob/main/Compiler/Proofs/IRGeneration/Contract.lean); legacy bridge consumers in [`Contracts/Proofs/SemanticBridge.lean`](https://github.com/Th0rgal/verity/blob/main/Contracts/Proofs/SemanticBridge.lean) remain to be refactored and [#1510](https://github.com/Th0rgal/verity/issues/1510) now tracks fragment widening plus consumer migration.
+- **Layer 2 (CompilationModel → IR)**: Supported-fragment generic theorem in place. The compiler-level theorem lives in [`Compiler/Proofs/IRGeneration/Contract.lean`](https://github.com/Th0rgal/verity/blob/main/Compiler/Proofs/IRGeneration/Contract.lean). The compiler proves Layer 2 preservation automatically for supported contracts. [#1510](https://github.com/Th0rgal/verity/issues/1510) now tracks fragment widening.
 - **Layer 3 (IR → Yul)**: Complete — all 8 statement equivalence proofs + universal dispatcher proven (PR #42).
 
 Recent updates:
@@ -104,7 +104,6 @@ Each contract has:
 - `Contracts/X/Invariants.lean` — State properties that should hold
 - `Contracts/X/SpecProofs.lean` — Contract-specific spec conformance and end-to-end proof layer
 - `Compiler/TypedIRCompilerCorrectness.lean` — Layer 1 typed-IR compilation correctness for the supported statement fragment
-- `Contracts/Proofs/SemanticBridge.lean` — Contract-level Layer 2 bridge theorems (client/example layer, not the generic compiler proof)
 - `Compiler/Proofs/IRGeneration/Contract.lean` — Generic whole-contract Layer 2 theorem for the current supported fragment
 
 Some contracts have additional proof files:

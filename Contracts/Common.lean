@@ -301,6 +301,7 @@ def getMappingN {κ α : Type} (_slot : StorageSlot α) (_keys : List κ) :
     Contract Uint256 := pure 0
 def setMappingN {κ α : Type} (_slot : StorageSlot α) (_keys : List κ) (_value : Uint256) :
     Contract Unit := pure ()
+
 def structMember {κ α : Type} [Inhabited α] (_field : String) (_key : κ) (_member : String) :
     Contract α := pure default
 def structMember2 {κ₁ κ₂ α : Type} [Inhabited α]

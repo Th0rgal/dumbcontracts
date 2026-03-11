@@ -121,6 +121,23 @@ private partial def expectTermListLiteral (stx : Term) : CommandElabM (Array Ter
   | `(term| ($inner:term)) => expectTermListLiteral inner
   | _ => throwErrorAt stx "expected list literal [..]"
 
+private partial def collectTupleElems (stx : Syntax) : Array Syntax :=
+  if stx.isAtom then
+    #[]
+  else if stx.getKind == `null then
+    stx.getArgs.foldl (fun acc child => acc ++ collectTupleElems child) #[]
+  else
+    #[stx]
+
+private def tupleElemsFromSyntax? (stx : Syntax) : Option (Array Syntax) :=
+  if stx.getKind == `Lean.Parser.Term.tuple then
+    some (collectTupleElems stx[1])
+  else
+    none
+
+private partial def expectMappingKeyTerms (stx : Term) : CommandElabM (Array Term) := do
+  expectTermListLiteral stx
+
 private partial def collectArrowChainTypes (stx : Term) : CommandElabM (List Term × Term) := do
   match stx with
   | `(term| $lhs:term → $rhs:term) =>
@@ -629,6 +646,9 @@ private partial def stripParens (stx : Term) : Term :=
   | `(term| ($inner)) => stripParens inner
   | _ => stx
 
+private def tupleElemsFromTerm? (stx : Term) : Option (Array Term) :=
+  tupleElemsFromSyntax? (stripParens stx).raw |>.map (·.map (fun syn => ⟨syn⟩))
+
 private def throwNonCompileTimeConstantError (stx : Syntax) (what : String) : CommandElabM α :=
   throwErrorAt stx s!"contract constants must be compile-time expressions; '{what}' is runtime-dependent"
 
@@ -786,23 +806,6 @@ private def expectStringList (stx : Term) : CommandElabM (Array String) := do
   | `(term| [ $[$xs],* ]) =>
       xs.mapM expectStringOrIdent
   | _ => throwErrorAt stx "expected list literal [..]"
-
-private partial def collectTupleElems (stx : Syntax) : Array Syntax :=
-  if stx.isAtom then
-    #[]
-  else if stx.getKind == `null then
-    stx.getArgs.foldl (fun acc child => acc ++ collectTupleElems child) #[]
-  else
-    #[stx]
-
-private def tupleElemsFromSyntax? (stx : Syntax) : Option (Array Syntax) :=
-  if stx.getKind == `Lean.Parser.Term.tuple then
-    some (collectTupleElems stx[1])
-  else
-    none
-
-private def tupleElemsFromTerm? (stx : Term) : Option (Array Term) :=
-  tupleElemsFromSyntax? (stripParens stx).raw |>.map (·.map (fun syn => ⟨syn⟩))
 
 private def tupleBinderNames? (stx : Syntax) : Option (Array (Option String)) := do
   let elems ← tupleElemsFromSyntax? stx
@@ -1217,7 +1220,7 @@ private partial def inferBindSourceType
           throwErrorAt rhs s!"field '{f.name}' is a struct-valued mapping; use structMember"
       | _ => throwErrorAt rhs s!"field '{f.name}' is not a double mapping"
   | `(term| getMappingN $field:ident $keys:term) => do
-      let keyTerms ← expectTermListLiteral keys
+      let keyTerms ← expectMappingKeyTerms keys
       for key in keyTerms do
         requireWordLikeType key "mapping key" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals key)
       let f ← lookupStorageField fields (toString field.getId)
@@ -1959,7 +1962,7 @@ private def translateBindSource
       | _ => throwErrorAt rhs s!"field '{f.name}' is not a double mapping"
   | `(term| getMappingN $field:ident $keys:term) => do
       let f ← lookupStorageField fields (toString field.getId)
-      let keyTerms ← expectTermListLiteral keys
+      let keyTerms ← expectMappingKeyTerms keys
       match storageTypeMappingKeyTypes? f.ty with
       | some keyTypes =>
           if keyTerms.size != keyTypes.length then
@@ -2199,7 +2202,7 @@ private partial def validateEffectStmtExprTypes
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key2
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
   | `(term| setMappingN $_field:ident $keys:term $value:term) => do
-      for key in (← expectTermListLiteral keys) do
+      for key in (← expectMappingKeyTerms keys) do
         let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
   | `(term| mstore $offset:term $value:term) | `(term| tstore $offset:term $value:term) => do
@@ -2492,7 +2495,7 @@ private def translateEffectStmt
       | _ => throwErrorAt stx s!"field '{f.name}' is not a double mapping"
   | `(term| setMappingN $field:ident $keys:term $value:term) => do
       let f ← lookupStorageField fields (toString field.getId)
-      let keyTerms ← expectTermListLiteral keys
+      let keyTerms ← expectMappingKeyTerms keys
       match storageTypeMappingKeyTypes? f.ty with
       | some keyTypes =>
           if keyTerms.size != keyTypes.length then

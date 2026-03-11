@@ -284,6 +284,107 @@ theorem compiledStmtStep_stop
           (state := state) (tailIR := []) (extraFuel := wholeExtraFuel))
     · simpa [stmtStepMatchesIRExec, stmtNextScope, collectStmtNames] using hruntime
 
+private theorem encodeStorageAt_writeUintSlots_singleton_other
+    {fields : List Field}
+    {world : Verity.ContractState}
+    {slot query value : Nat}
+    (hneq : query ≠ slot) :
+    SourceSemantics.encodeStorageAt fields
+      (SourceSemantics.writeUintSlots world [slot] value)
+      query =
+      SourceSemantics.encodeStorageAt fields world query := by
+  simp [SourceSemantics.encodeStorageAt, SourceSemantics.writeUintSlots, hneq]
+
+private theorem runtimeStateMatchesIR_writeUintSlot
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {slot value : Nat}
+    (hruntime : FunctionBody.runtimeStateMatchesIR fields runtime state)
+    (hslotEncode :
+      ∀ world, SourceSemantics.encodeStorageAt fields world slot = (world.storage slot).val) :
+    FunctionBody.runtimeStateMatchesIR fields
+      { runtime with world := SourceSemantics.writeUintSlots runtime.world [slot] value }
+      { state with
+          storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage slot value } := by
+  rcases hruntime with
+    ⟨hstorage, hsender, hmsgValue, hthis, htimestamp, hblock, hchain, hret, hevents⟩
+  refine ⟨?_, hsender, hmsgValue, hthis, htimestamp, hblock, hchain, hret, hevents⟩
+  funext query
+  by_cases hEq : query = slot
+  · subst hEq
+    rw [Compiler.Proofs.abstractStoreStorageOrMapping_eq, hstorage, hslotEncode]
+    simp [SourceSemantics.writeUintSlots]
+  · rw [Compiler.Proofs.abstractStoreStorageOrMapping_eq, hstorage]
+    simp [hEq, encodeStorageAt_writeUintSlots_singleton_other]
+
+private theorem bindingsExactlyMatchIRVarsOnScope_writeUintSlot
+    {scope : List String}
+    {bindings : List (String × Nat)}
+    {state : IRState}
+    {slot value : Nat}
+    (hexact : FunctionBody.bindingsExactlyMatchIRVarsOnScope scope bindings state) :
+    FunctionBody.bindingsExactlyMatchIRVarsOnScope scope bindings
+      { state with
+          storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage slot value } := by
+  intro name hname
+  simpa [IRState.getVar, Compiler.Proofs.abstractStoreStorageOrMapping_eq] using
+    hexact name hname
+
+theorem compiledStmtStep_setStorage_singleSlot
+    {fields : List Field}
+    {scope : List String}
+    {fieldName : String}
+    {value : Expr}
+    {valueIR : YulExpr}
+    {f : Field}
+    {slot : Nat}
+    (hcore : FunctionBody.ExprCompileCore value)
+    (hinScope : FunctionBody.exprBoundNamesInScope value scope)
+    (hfind : findFieldWithResolvedSlot fields fieldName = some (f, slot))
+    (hwriteSlots : findFieldWriteSlots fields fieldName = some [slot])
+    (halias : f.aliasSlots = [])
+    (hunpacked : f.packedBits = none)
+    (hnotAddr : SourceSemantics.fieldUsesAddressStorage f = false)
+    (hnotDyn : SourceSemantics.fieldUsesDynamicArrayStorage f = false)
+    (hslotEncode :
+      ∀ world, SourceSemantics.encodeStorageAt fields world slot = (world.storage slot).val)
+    (hvalueIR : CompilationModel.compileExpr fields .calldata value = Except.ok valueIR) :
+    CompiledStmtStep fields scope (.setStorage fieldName value)
+      [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueIR])] where
+  compileOk := by
+    simp [CompilationModel.compileStmt, CompilationModel.compileSetStorage,
+      hfind, halias, hunpacked, hvalueIR]
+  preserves runtime state extraFuel hexact hscope hbounded hruntime hslack := by
+    let compiledIR := [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueIR])]
+    let valueNat := SourceSemantics.evalExpr fields runtime value
+    have heval :=
+      FunctionBody.eval_compileExpr_core_of_scope
+        hcore hexact hinScope hbounded
+        (FunctionBody.exprBoundNamesPresent_of_scope hscope hinScope)
+        hruntime
+    rw [hvalueIR] at heval
+    have hvalueEval : evalIRExpr state valueIR = some valueNat := by
+      simpa [valueNat] using heval
+    have hslack' : sizeOf compiledIR - compiledIR.length ≤ extraFuel := by
+      simpa [compiledIR] using hslack
+    refine ⟨_, _, ?_⟩
+    · simp [SourceSemantics.execStmt, hwriteSlots, valueNat]
+    · have hExecStmt :
+          execIRStmt (extraFuel + 1) state
+            (YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueIR])) =
+              .continue
+                { state with
+                    storage :=
+                      Compiler.Proofs.abstractStoreStorageOrMapping
+                        state.storage slot valueNat } :=
+        execIRStmt_sstore_lit_expr_succ_of_eval
+          extraFuel state slot valueIR valueNat hvalueEval
+      simpa [compiledIR, execIRStmts, hExecStmt]
+    · refine And.intro ?_ <| And.intro ?_ <| And.intro hbounded hscope
+      · exact runtimeStateMatchesIR_writeUintSlot hruntime hslotEncode
+      · exact bindingsExactlyMatchIRVarsOnScope_writeUintSlot hexact
+
 private theorem terminal_stmtResultMatchesIRExec_implies_stmtStepMatchesIRExec
     {fields : List Field}
     {scope : List String}

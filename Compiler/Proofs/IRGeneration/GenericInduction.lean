@@ -12,6 +12,11 @@ statement-list compiler's `collectStmtNames` update. -/
 def stmtNextScope (scope : List String) (stmt : Stmt) : List String :=
   collectStmtNames stmt ++ scope
 
+/-- Source names visible to generic statement proofs must stay out of the
+compiler-reserved `__` namespace used by scratch temporaries. -/
+def scopeAvoidsReservedCompilerPrefix (scope : List String) : Prop :=
+  ∀ name ∈ scope, ¬ name.startsWith "__"
+
 /-- Single-step result relation used by the generic statement induction library.
 Unlike `stmtResultMatchesIRExecExact`, this tracks the tail scope instead of
 requiring exact bindings for every name in the runtime map. -/
@@ -831,6 +836,15 @@ private theorem execIRStmts_single_block_of_continue
     simpa [execIRStmt, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hbody
   simpa [execIRStmts, hblock]
 
+private theorem compatValue_not_mem_scope_of_reservedPrefix
+    {scope : List String}
+    (hscopeReserved : scopeAvoidsReservedCompilerPrefix scope) :
+    "__compat_value" ∉ scope := by
+  intro hmem
+  have hreserved : ¬ "__compat_value".startsWith "__" :=
+    hscopeReserved "__compat_value" hmem
+  exact hreserved (by native_decide)
+
 theorem compiledStmtStep_setStorage_singleSlot
     {fields : List Field}
     {scope : List String}
@@ -901,7 +915,7 @@ theorem compiledStmtStep_setStorage_aliasSlots
     (hfind : findFieldWithResolvedSlot fields fieldName = some (f, slot))
     (hwriteSlots : findFieldWriteSlots fields fieldName = some (slot :: f.aliasSlots))
     (halias : f.aliasSlots ≠ [])
-    (hcompatFresh : "__compat_value" ∉ scope)
+    (hscopeReserved : scopeAvoidsReservedCompilerPrefix scope)
     (hunpacked : f.packedBits = none)
     (hnoConflict : firstFieldWriteSlotConflict fields = none)
     (hnotAddr : SourceSemantics.fieldUsesAddressStorage f = false)
@@ -993,7 +1007,7 @@ theorem compiledStmtStep_setStorage_aliasSlots
             FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings
               (state.setVar "__compat_value" valueNat) :=
           FunctionBody.bindingsExactlyMatchIRVarsOnScope_setVar_irrelevant
-            hexact hcompatFresh
+            hexact (compatValue_not_mem_scope_of_reservedPrefix hscopeReserved)
         simpa [slots, IRState.setVar] using
           bindingsExactlyMatchIRVarsOnScope_writeUintSlots hexactSet
 

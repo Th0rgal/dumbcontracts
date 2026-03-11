@@ -895,6 +895,10 @@ private def isWordLikeValueType : ValueType → Bool
   | .uint256 | .int256 | .uint8 | .address | .bytes32 => true
   | _ => false
 
+private def isSingleWordStaticValueType : ValueType → Bool
+  | .bool => true
+  | ty => isWordLikeValueType ty
+
 private def classifyWordArithmeticResultType
     (stx : Syntax)
     (context : String)
@@ -948,7 +952,7 @@ private def requireSupportedReturnArrayType
     (ty : ValueType) : CommandElabM Unit := do
   match ty with
   | .array elemTy =>
-      unless isWordLikeValueType elemTy do
+      unless isSingleWordStaticValueType elemTy do
         throwErrorAt stx
           s!"{context} currently supports only arrays with single-word static elements on the compilation-model path, got {renderValueType ty}"
   | _ =>

@@ -2853,6 +2853,55 @@ theorem stmtListGenericCore_append
       simp
       exact StmtListGenericCore.cons hstep (ih hsuffix)
 
+private theorem scopeNamesIncluded_foldl_stmtNextScope
+    {scope : List String}
+    {stmts : List Stmt} :
+    FunctionBody.scopeNamesIncluded scope (List.foldl stmtNextScope scope stmts) := by
+  induction stmts generalizing scope with
+  | nil =>
+      simpa using FunctionBody.scopeNamesIncluded_refl
+  | cons stmt rest ih =>
+      exact
+        FunctionBody.scopeNamesIncluded_collectStmtNames_tail
+          (ih (scope := stmtNextScope scope stmt))
+
+theorem compileStmtList_ok_of_stmtListGenericCore
+    {fields : List Field}
+    {scope inScopeNames : List String}
+    {stmts : List Stmt}
+    (hgeneric : StmtListGenericCore fields scope stmts)
+    (hincluded : FunctionBody.scopeNamesIncluded scope inScopeNames) :
+    ∃ bodyIR,
+      CompilationModel.compileStmtList
+        fields [] [] .calldata [] false inScopeNames stmts = Except.ok bodyIR := by
+  induction hgeneric generalizing inScopeNames with
+  | nil =>
+      exact ⟨[], by simp [CompilationModel.compileStmtList]⟩
+  | @cons scope stmt compiledIR rest hstep hrest ih =>
+      rcases ih
+          (inScopeNames := collectStmtNames stmt ++ inScopeNames)
+          (scopeNamesIncluded_stmtNextScope hincluded) with
+        ⟨tailIR, htail⟩
+      refine ⟨compiledIR ++ tailIR, ?_⟩
+      exact FunctionBody.compileStmtList_cons_ok_of_compileStmt_ok
+        hstep.compileOk htail
+
+theorem stmtStepMatchesIRExec_of_included
+    {fields : List Field}
+    {scope largerScope : List String}
+    {sourceResult : SourceSemantics.StmtResult}
+    {irExec : IRExecResult}
+    (hmatch : stmtStepMatchesIRExec fields largerScope sourceResult irExec)
+    (hincluded : FunctionBody.scopeNamesIncluded scope largerScope) :
+    stmtStepMatchesIRExec fields scope sourceResult irExec := by
+  cases sourceResult <;> cases irExec <;> simp [stmtStepMatchesIRExec] at hmatch ⊢
+  case continue runtime state =>
+    rcases hmatch with ⟨hruntime, hexact, hbounded, hscope⟩
+    exact ⟨hruntime,
+      FunctionBody.bindingsExactlyMatchIRVarsOnScope_of_included hexact hincluded,
+      hbounded,
+      FunctionBody.scopeNamesPresent_of_included hscope hincluded⟩
+
 theorem stmtStepMatchesIRExec_implies_stmtResultMatchesIRExec
     {fields : List Field}
     {scope : List String}

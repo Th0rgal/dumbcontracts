@@ -37,22 +37,22 @@ This section is a dated historical snapshot. Use [docs/VERIFICATION_STATUS.md](h
 
 ## Structure
 
-Each contract has these layers of files:
+Each contract lives under `Contracts/{Name}/`:
 
 ```
-Verity/
-├── Examples/{Contract}.lean      # Implementation (EDSL)
-├── Specs/{Contract}/
-│   ├── Spec.lean                 # What each operation should do
-│   └── Invariants.lean           # Properties that should always hold
-│   └── Proofs.lean               # User-facing spec statements and re-exports
-├── Proofs/Stdlib/                # Reusable proof infrastructure
-└── Proofs/{Contract}/            # Deeper contract proof suites
-    ├── Basic.lean                # Contract-specific spec conformance and lemmas
-    ├── Correctness.lean          # Contract-specific composition and revert behavior
-    ├── Conservation.lean         # Sum conservation laws (Ledger)
-    ├── Supply.lean               # Supply conservation (SimpleToken)
-    └── Isolation.lean            # Storage isolation (SimpleToken)
+Contracts/{Name}/
+├── {Name}.lean           # Implementation (EDSL via verity_contract)
+├── Spec.lean             # What each operation should do
+├── Invariants.lean       # Properties that should always hold
+├── SpecProofs.lean       # User-facing spec statements and re-exports
+└── Proofs/
+    ├── Basic.lean        # Spec conformance and lemmas
+    ├── Correctness.lean  # Composition and revert behavior
+    ├── Conservation.lean # Sum conservation (Ledger)
+    ├── Supply.lean       # Supply conservation (SimpleToken)
+    └── Isolation.lean    # Storage isolation (SimpleToken)
+
+Verity/Proofs/Stdlib/     # Reusable proof infrastructure (Math, Automation, etc.)
 ```
 
 ## Guard modeling

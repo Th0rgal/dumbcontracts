@@ -15,12 +15,12 @@ Machine-readable version: [`artifacts/interpreter_feature_matrix.json`](../artif
 | **YulSemantics** | `Compiler/Proofs/YulGeneration/Semantics.lean` | `execYulFuel` | Layer-3 Yul execution semantics |
 | **EVMYulLean bridge** | `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanBridgeTest.lean` | `evalBuiltinCallViaEvmYulLean` | Pure builtin evaluation via EVMYulLean UInt256 |
 
-The old `SpecInterpreter` module has been removed. Source semantics now live in
-`Verity/Core.lean`, with the supported whole-contract Layer-2 source-side model
-assembled in `Compiler/Proofs/IRGeneration/SourceSemantics.lean`. This matrix
-keeps the legacy `Spec (basic)` / `Spec (fuel)` column names, and the
-machine-readable artifact keeps `SpecInterpreter_*` keys, for compatibility
-with the existing sync scripts and boundary checks.
+The **Spec (basic)** and **Spec (fuel)** columns describe source-side semantics
+defined in `Verity/Core.lean` (basic: direct evaluation, fuel: bounded-step
+evaluation for recursive/looping constructs). The whole-contract source model
+is assembled in `Compiler/Proofs/IRGeneration/SourceSemantics.lean`. The
+machine-readable artifact uses `SpecInterpreter_*` keys for sync-script
+compatibility.
 
 ---
 
@@ -150,7 +150,7 @@ Legend: **ok** = native evaluation, **del** = delegated to Verity path (bridge r
 | Statement features | 25 | 0 | 1 (`mstore`) | 6 (`calldatacopy`, `returndataCopy`, `revertReturndata`, `rawLog`, `externalCallBind`, `ecm`) |
 | Builtins (agreement) | 15 | 0 | 0 | 7 (delegated) |
 
-Proof-boundary features split across two buckets. Partially modeled features currently include runtime introspection (`blockNumber`, `contractAddress`, `chainid`) and single-word linear-memory forms (`mload`, `mstore`, `returndataOptionalBoolAt`). Fully not-modeled features currently include `keccak256`, low-level call / returndata plumbing (`call`, `staticcall`, `delegatecall`, `calldatacopy`, `returndataCopy`, `revertReturndata`), event emission (`rawLog`), and external call modules (`externalCallBind`, `ecm`). These features are still compiler-supported and are validated by differential testing (70,000+ test vectors against actual EVM execution).
+Features marked **partial** or **n/m** in the table above are still compiler-supported and validated by differential testing (70,000+ test vectors against actual EVM execution). See "Known Limitations" below for details on each gap.
 
 ---
 

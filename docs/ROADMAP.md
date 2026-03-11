@@ -186,18 +186,7 @@ Reference docs:
 - `docs/REWRITE_RULES.md`
 - `docs/IDENTITY_CHECKER.md`
 ### ✅ **Ledger Sum Properties** (Complete)
-**What**: Prove total supply equals sum of all balances
-**Status**: All 7/7 proven with zero `sorry` (PR #47, #51, Issue #65 resolved)
-
-| # | Property | Description |
-|---|----------|-------------|
-| 1 | ~~`deposit_sum_equation`~~ | ✅ Deposit increases total by amount |
-| 2 | ~~`withdraw_sum_equation`~~ | ✅ Withdraw decreases total by amount |
-| 3 | ~~`transfer_sum_preservation`~~ | ✅ Transfer preserves total |
-| 4 | ~~`deposit_sum_singleton_sender`~~ | ✅ Singleton set deposit property |
-| 5 | ~~`withdraw_sum_singleton_sender`~~ | ✅ Singleton set withdraw property |
-| 6 | ~~`transfer_sum_preserved_unique`~~ | ✅ Transfer with unique addresses preserves sum |
-| 7 | ~~`deposit_withdraw_sum_cancel`~~ | ✅ Deposit then withdraw cancels out |
+All 7 ledger sum-invariant theorems proved with zero `sorry` (PR #47, #51, Issue #65).
 
 ---
 
@@ -252,65 +241,18 @@ Reference docs:
 
 ---
 
-## Timeline & Milestones
+## Completed Milestones
 
-### Phase 1: Core Verification Complete (2-3 months)
-
-**Milestone**: End-to-end verification with minimal trust assumptions
-
-**Work Items**:
-- ✅ Complete Layer 3 statement-level proofs (PR #42)
+- ✅ Layer 3 statement-level proofs (PR #42)
 - ✅ Function selector verification (PR #43, #46)
-- ✅ Ledger sum properties infrastructure (PR #47, #51)
-- ✅ Complete sum property proofs (Issue #65 - all 7/7 proven)
-- 🔄 Yul → EVM bridge investigation
+- ✅ Ledger sum properties — all 7/7 proved (PR #47, #51, Issue #65)
+- ✅ ERC721 example contract — 11 theorems
+- ✅ Differential testing at scale — 70k+ test vectors
 
-**Success Metrics**:
-- Layer 3 preservation theorem proven
-- Zero unverified assumptions in EDSL → Yul chain
-- All addressable properties covered
+## Design Decisions
 
-### Phase 2: Production Readiness (3-6 months)
-
-**Milestone**: First real-world verified contract deployment
-
-**Work Items**:
-- ~~Add ERC721 example contract~~ (done — 11 theorems)
-- Strengthen differential testing coverage (ongoing)
-- Comprehensive documentation and tutorials (1 month)
-- Performance optimization (ongoing)
-
-**Success Metrics**:
-- At least one realistic contract fully verified
-- External contributors successfully verify contracts
-- CI runs complete in < 30 minutes
-
-### Phase 3: Ecosystem Growth (6-12 months)
-
-**Milestone**: Community adoption and ecosystem maturity
-
-**Work Items**:
-- Add Governance and AMM contracts (2-3 months)
-- IDE integration (VS Code extension) (2 months)
-- Automated property extraction (2-3 months)
-- Integration with production smart contract tooling (ongoing)
-
-**Success Metrics**:
-- 10+ verified contracts in repository
-- Active external contributors
-- Production deployments using Verity verification
-
----
-
-## Open Questions
-
-1. **Should we prioritize Yul → EVM bridge or accept it as trust assumption?**
-   - Tradeoff: 1-3 months of effort vs. documented trust
-   - Recommendation: Start with documented trust (ledger sum properties now complete — revisit when resources allow)
-
-2. **Should we support multiple smart contract languages (Solidity, Vyper, Fe)?**
-   - Current: EDSL only
-   - Recommendation: After Phase 2, if community demand exists
+- **Yul → EVM bridge**: Accepted as a documented trust assumption (`solc` compiler). Revisit when resources allow.
+- **Language scope**: EDSL-only for the foreseeable future; multi-language support deferred.
 
 ---
 

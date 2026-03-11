@@ -21,7 +21,7 @@ The CLI can also emit machine-readable audit artifacts alongside Yul/ABI output:
 
 Important: Verity has two different "spec" concepts.
 
-1. Logical specs in `Verity/Specs/<Name>/Spec.lean` are `Prop` statements used for proofs.
+1. Logical specs in `Contracts/<Name>/Spec.lean` are `Prop` statements used for proofs.
 2. Compiler specs in `Compiler/Specs.lean` are `CompilationModel` values used for code generation.
 
 `CompilationModel` is not only an ABI. It also contains storage fields and function bodies (`Expr`/`Stmt`).
@@ -56,7 +56,7 @@ Roadmap, milestones, and progress updates live in `docs-site/content/research.md
 
 ### EDSL Implementation
 ```lean
--- Verity/Examples/SimpleStorage.lean
+-- Contracts/SimpleStorage/SimpleStorage.lean
 def storedData : StorageSlot Uint256 := ⟨0⟩
 
 def store (value : Uint256) : Contract Unit := do

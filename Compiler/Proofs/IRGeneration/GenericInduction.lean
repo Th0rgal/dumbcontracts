@@ -459,15 +459,7 @@ theorem stmtListScopeCore_prefix_of_compileStmtList_ok_of_stmtListTouchesUnsuppo
               (by simpa [stmtTouchesUnsupportedContractSurface] using hstmtSurface))
             (ih hrestSurface htail)
       | setStorageAddr fieldName value =>
-          have hfield :
-              fieldName ∈ fields.map (·.name) := by
-            simp [CompilationModel.compileStmt] at hhead
-            exact fieldName_mem_fields_of_compileSetStorage_ok hhead
-          exact StmtListScopeCore.setStorageAddr
-            hfield
-            (exprCompileCore_of_exprTouchesUnsupportedContractSurface_eq_false
-              (by simpa [stmtTouchesUnsupportedContractSurface] using hstmtSurface))
-            (ih hrestSurface htail)
+          cases hstmtSurface
       | require cond message =>
           exact StmtListScopeCore.require
             (exprCompileCore_of_exprTouchesUnsupportedContractSurface_eq_false
@@ -1907,7 +1899,7 @@ private theorem compatValue_not_mem_scope_of_reservedPrefix
   intro hmem
   have hreserved : ¬ "__compat_value".startsWith "__" :=
     hscopeReserved "__compat_value" hmem
-  exact hreserved (by native_decide)
+  exact hreserved (by decide)
 
 private theorem validateIdentifierShapes_fieldName_avoidReservedCompilerPrefix
     {spec : CompilationModel}

@@ -2835,6 +2835,24 @@ theorem stmtListGenericCore_of_stmtListTerminalCore
     hterminal
     FunctionBody.scopeNamesIncluded_refl
 
+theorem stmtListGenericCore_append
+    {fields : List Field}
+    {scope : List String}
+    {prefix suffix : List Stmt}
+    (hprefix : StmtListGenericCore fields scope prefix)
+    (hsuffix :
+      StmtListGenericCore
+        fields
+        (List.foldl stmtNextScope scope prefix)
+        suffix) :
+    StmtListGenericCore fields scope (prefix ++ suffix) := by
+  induction hprefix generalizing suffix with
+  | nil =>
+      simpa using hsuffix
+  | @cons scope stmt compiledIR rest hstep hrest ih =>
+      simp
+      exact StmtListGenericCore.cons hstep (ih hsuffix)
+
 theorem stmtStepMatchesIRExec_implies_stmtResultMatchesIRExec
     {fields : List Field}
     {scope : List String}

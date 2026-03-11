@@ -217,6 +217,42 @@ private def restoreCallerVars (callerState calleeState : IRState) : IRState :=
 private def internalReturnValues (state : IRState) (retNames : List String) : List Nat :=
   retNames.map (fun name => (state.getVar name).getD 0)
 
+/-- Legacy IR-theorem compatibility subset for external bodies. This excludes the
+helper-only Yul forms whose semantics differ from the current helper-free
+interpreter target (`letMany`, `leave`, `switch`, and `for`) while still
+allowing nested blocks / branches so the conservative-extension theorem can
+talk about today's compiled external-body shape explicitly. -/
+inductive LegacyCompatibleExternalStmtList : List YulStmt → Prop
+  | nil :
+      LegacyCompatibleExternalStmtList []
+  | comment (msg : String) (rest : List YulStmt) :
+      LegacyCompatibleExternalStmtList rest →
+      LegacyCompatibleExternalStmtList (.comment msg :: rest)
+  | let_ (name : String) (value : YulExpr) (rest : List YulStmt) :
+      LegacyCompatibleExternalStmtList rest →
+      LegacyCompatibleExternalStmtList (.let_ name value :: rest)
+  | assign (name : String) (value : YulExpr) (rest : List YulStmt) :
+      LegacyCompatibleExternalStmtList rest →
+      LegacyCompatibleExternalStmtList (.assign name value :: rest)
+  | expr (value : YulExpr) (rest : List YulStmt) :
+      LegacyCompatibleExternalStmtList rest →
+      LegacyCompatibleExternalStmtList (.expr value :: rest)
+  | if_ (cond : YulExpr) (body rest : List YulStmt) :
+      LegacyCompatibleExternalStmtList body →
+      LegacyCompatibleExternalStmtList rest →
+      LegacyCompatibleExternalStmtList (.if_ cond body :: rest)
+  | block (body rest : List YulStmt) :
+      LegacyCompatibleExternalStmtList body →
+      LegacyCompatibleExternalStmtList rest →
+      LegacyCompatibleExternalStmtList (.block body :: rest)
+  | funcDef (name : String) (params rets : List String) (body rest : List YulStmt) :
+      LegacyCompatibleExternalStmtList body →
+      LegacyCompatibleExternalStmtList rest →
+      LegacyCompatibleExternalStmtList (.funcDef name params rets body :: rest)
+
+abbrev LegacyCompatibleExternalStmt (stmt : YulStmt) : Prop :=
+  LegacyCompatibleExternalStmtList [stmt]
+
 mutual
 
 /-- Evaluate a list of Yul expressions in the helper-aware IR context, threading

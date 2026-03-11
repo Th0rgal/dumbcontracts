@@ -35,6 +35,8 @@ def validate_catalog(catalog: dict) -> None:
     helper = catalog.get("supported_spec_split", {}).get("helper_boundary", {})
     if helper.get("current_fail_closed_gate") != "SupportedBodyCallInterface.helperCompatibility":
         raise ValueError("Layer 2 boundary catalog is missing the helper fail-closed gate")
+    if not helper.get("blocking_seams"):
+        raise ValueError("Layer 2 boundary catalog is missing helper blocking seams")
 
 
 def expected_snippets(catalog: dict) -> dict[str, list[str]]:
@@ -47,21 +49,25 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "`artifacts/layer2_boundary_catalog.json`",
             "proof-complete `CompilationModel` subset",
             "macro-lowered image of `verity_contract`",
+            "helper-free `SupportedStmtList` witness",
         ],
         "ROADMAP": [
             "`artifacts/layer2_boundary_catalog.json`",
             "macro-lowered `verity_contract` image",
             "`calls.helperCompatibility` can disappear",
+            "`execIRFunction` does not yet model internal helper call composition",
         ],
         "VERIFICATION_STATUS": [
             "`artifacts/layer2_boundary_catalog.json`",
             "macro-lowered image of `verity_contract`",
             "`calls.helperCompatibility` gate",
+            "helper-free `SourceSemantics.execStmtList`",
         ],
         "COMPILER_PROOFS_README": [
             "`artifacts/layer2_boundary_catalog.json`",
             "`SupportedSpec` split",
             "`calls.helpers`",
+            "`SupportedStmtList`",
         ],
     }
 

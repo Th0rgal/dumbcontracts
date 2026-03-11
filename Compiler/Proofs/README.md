@@ -109,6 +109,12 @@ work is now split into:
   top-level only
 - a temporary legacy fail-closed check that keeps the current theorem boundary unchanged
 
+The exact blocker for removing that temporary helper gate is now machine-readable
+in `artifacts/layer2_boundary_catalog.json`: callers still derive body closure
+through the helper-free `SupportedStmtList`, the generic body theorem still
+targets helper-free `SourceSemantics.execStmtList`, and the current
+`execIRFunction` semantics does not yet model internal helper call composition.
+
 The remaining work tracked in
 [#1630](https://github.com/Th0rgal/verity/issues/1630).
 

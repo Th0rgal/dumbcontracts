@@ -28,7 +28,10 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                     },
                     "supported_spec_split": {
                         "helper_boundary": {
-                            "current_fail_closed_gate": "SupportedBodyCallInterface.helperCompatibility"
+                            "current_fail_closed_gate": "SupportedBodyCallInterface.helperCompatibility",
+                            "blocking_seams": [
+                                {"name": "legacy_stmt_fragment_witness"}
+                            ],
                         }
                     },
                 }
@@ -41,21 +44,25 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "proof-complete `CompilationModel` subset\n"
                 "macro-lowered image of `verity_contract`\n"
+                "helper-free `SupportedStmtList` witness\n"
             ),
             "ROADMAP": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "macro-lowered `verity_contract` image\n"
                 "`calls.helperCompatibility` can disappear\n"
+                "`execIRFunction` does not yet model internal helper call composition\n"
             ),
             "VERIFICATION_STATUS": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "macro-lowered image of `verity_contract`\n"
                 "`calls.helperCompatibility` gate\n"
+                "helper-free `SourceSemantics.execStmtList`\n"
             ),
             "COMPILER_PROOFS_README": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "`SupportedSpec` split\n"
                 "`calls.helpers`\n"
+                "`SupportedStmtList`\n"
             ),
         }
         if not good_docs:

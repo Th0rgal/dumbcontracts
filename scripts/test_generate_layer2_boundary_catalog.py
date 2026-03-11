@@ -25,6 +25,14 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             catalog["supported_spec_split"]["helper_boundary"]["current_fail_closed_gate"],
             "SupportedBodyCallInterface.helperCompatibility",
         )
+        self.assertEqual(
+            catalog["current_out_of_scope_surfaces"][0]["status"],
+            "blocked_at_body_ir_composition_seam",
+        )
+        self.assertGreaterEqual(
+            len(catalog["supported_spec_split"]["helper_boundary"]["blocking_seams"]),
+            4,
+        )
 
     def test_check_mode_rejects_stale_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

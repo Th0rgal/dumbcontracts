@@ -150,15 +150,57 @@ def build_catalog() -> dict:
                     "SupportedBodyCallInterface.helperCompatibility"
                 ),
                 "next_required_proof_step": (
-                    "consume helper-summary soundness and helper ranks inside "
-                    "the body/IR preservation lemmas"
+                    "replace the helperCompatibility gate with a helper-aware "
+                    "body/IR composition interface"
                 ),
+                "blocking_seams": [
+                    {
+                        "name": "legacy_stmt_fragment_witness",
+                        "source": "SupportedBodyInterface.stmtList",
+                        "status": (
+                            "callers still derive generic body proofs through "
+                            "SupportedStmtList, which excludes helper-call forms"
+                        ),
+                    },
+                    {
+                        "name": "helper_free_body_theorem",
+                        "source": (
+                            "GenericInduction."
+                            "supported_function_body_correct_from_exact_state_generic"
+                        ),
+                        "status": (
+                            "the generic body/IR preservation theorem still "
+                            "targets SourceSemantics.execStmtList rather than "
+                            "the helper-aware source semantics"
+                        ),
+                    },
+                    {
+                        "name": "ir_internal_call_semantics",
+                        "source": (
+                            "Compiler.Proofs.IRGeneration.IRInterpreter.execIRFunction"
+                        ),
+                        "status": (
+                            "IR execution still runs only the compiled external "
+                            "function body and does not model internal helper "
+                            "call composition"
+                        ),
+                    },
+                    {
+                        "name": "summary_soundness_not_yet_consumed",
+                        "source": "SupportedSpecHelperProofs",
+                        "status": (
+                            "summary-soundness evidence exists as an explicit "
+                            "theorem-level slot but is not yet threaded through "
+                            "the body proof"
+                        ),
+                    },
+                ],
             },
         },
         "current_out_of_scope_surfaces": [
             {
                 "name": "helper_composition",
-                "status": "interface_defined_but_not_consumed",
+                "status": "blocked_at_body_ir_composition_seam",
                 "issue": 1335,
             },
             {
@@ -200,7 +242,7 @@ def build_catalog() -> dict:
             },
             {
                 "rank": "P2",
-                "name": "internal helper compositional proof reuse",
+                "name": "internal helper compositional proof reuse at the body/IR seam",
                 "status": "next_structural_blocker",
             },
             {

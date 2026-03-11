@@ -269,6 +269,11 @@ now sits under the post-generic widening/completeness plan in
   boundaries are control-flow complete rather than top-level-only, and
   compatibility lemmas still prove that the helper-aware semantics collapses to
   the existing helper-free semantics on the current `SupportedSpec` fragment
+- the remaining helper blocker is now pinned down more precisely in
+  [`artifacts/layer2_boundary_catalog.json`](../artifacts/layer2_boundary_catalog.json):
+  callers still derive generic body proofs through the helper-free `SupportedStmtList` witness,
+  the generic body theorem still targets helper-free `SourceSemantics.execStmtList`,
+  and the current IR function semantics has no first-class internal-helper composition
 - widen the supported whole-contract fragment without reintroducing axioms
 
 ## Non-Goals For The First Generic Theorem

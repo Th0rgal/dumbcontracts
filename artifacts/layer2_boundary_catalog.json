@@ -3,7 +3,7 @@
     {
       "issue": 1335,
       "name": "helper_composition",
-      "status": "interface_defined_but_not_consumed"
+      "status": "blocked_at_body_ir_composition_seam"
     },
     {
       "issue": 1630,
@@ -56,7 +56,7 @@
       "status": "in_progress"
     },
     {
-      "name": "internal helper compositional proof reuse",
+      "name": "internal helper compositional proof reuse at the body/IR seam",
       "rank": "P2",
       "status": "next_structural_blocker"
     },
@@ -167,10 +167,32 @@
       }
     ],
     "helper_boundary": {
+      "blocking_seams": [
+        {
+          "name": "legacy_stmt_fragment_witness",
+          "source": "SupportedBodyInterface.stmtList",
+          "status": "callers still derive generic body proofs through SupportedStmtList, which excludes helper-call forms"
+        },
+        {
+          "name": "helper_free_body_theorem",
+          "source": "GenericInduction.supported_function_body_correct_from_exact_state_generic",
+          "status": "the generic body/IR preservation theorem still targets SourceSemantics.execStmtList rather than the helper-aware source semantics"
+        },
+        {
+          "name": "ir_internal_call_semantics",
+          "source": "Compiler.Proofs.IRGeneration.IRInterpreter.execIRFunction",
+          "status": "IR execution still runs only the compiled external function body and does not model internal helper call composition"
+        },
+        {
+          "name": "summary_soundness_not_yet_consumed",
+          "source": "SupportedSpecHelperProofs",
+          "status": "summary-soundness evidence exists as an explicit theorem-level slot but is not yet threaded through the body proof"
+        }
+      ],
       "current_fail_closed_gate": "SupportedBodyCallInterface.helperCompatibility",
       "decreasing_rank_measure": "SupportedBodyHelperInterface.calleeRanksDecrease",
       "inventory_source": "SupportedBodyHelperInterface.summaryOf",
-      "next_required_proof_step": "consume helper-summary soundness and helper ranks inside the body/IR preservation lemmas",
+      "next_required_proof_step": "replace the helperCompatibility gate with a helper-aware body/IR composition interface",
       "proof_contract": "InternalHelperSummaryContract",
       "proof_soundness_slot": "SupportedSpecHelperProofs"
     }

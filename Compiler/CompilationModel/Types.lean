@@ -533,12 +533,6 @@ def findStructMembers (fields : List Field) (name : String) : Option (List Struc
     | FieldType.mappingStruct2 _ _ members => some members
     | _ => none
 
-def findDynamicArrayElemType (fields : List Field) (name : String) : Option StorageArrayElemType :=
-  fields.find? (·.name == name) |>.bind fun f =>
-    match f.ty with
-    | FieldType.dynamicArray elemType => some elemType
-    | _ => none
-
 -- Helper: Look up a named struct member from the members list.
 def findStructMember (members : List StructMember) (memberName : String) : Option StructMember :=
   members.find? (·.name == memberName)

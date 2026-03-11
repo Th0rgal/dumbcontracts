@@ -344,11 +344,12 @@ end
 mutual
 def stmtReadsStateOrEnv : Stmt → Bool
   | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value | Stmt.setStorageAddr _ value |
-    Stmt.storageArrayPush _ value |
     Stmt.return value | Stmt.require value _ =>
       exprReadsStateOrEnv value
+  | Stmt.storageArrayPush _ value =>
+      true || exprReadsStateOrEnv value
   | Stmt.setStorageArrayElement _ index value =>
-      exprReadsStateOrEnv index || exprReadsStateOrEnv value
+      true || exprReadsStateOrEnv index || exprReadsStateOrEnv value
   | Stmt.storageArrayPop _ =>
       true
   | Stmt.requireError cond _ args =>

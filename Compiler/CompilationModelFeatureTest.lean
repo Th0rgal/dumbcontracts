@@ -2523,6 +2523,12 @@ set_option maxRecDepth 4096 in
     (contains storageArrayUint256Yul "lt(__array_index, __array_len)")
   expectTrue "storage uint256[] pop clears the removed tail word"
     (contains storageArrayUint256Yul "sstore(add(__array_base, __array_new_len), 0)")
+  expectTrue "storageArrayPush is tracked as reading state"
+    (Compiler.CompilationModel.stmtReadsStateOrEnv
+      (Stmt.storageArrayPush "queue" (Expr.literal 1)))
+  expectTrue "setStorageArrayElement is tracked as reading state"
+    (Compiler.CompilationModel.stmtReadsStateOrEnv
+      (Stmt.setStorageArrayElement "queue" (Expr.literal 0) (Expr.literal 1)))
   expectCompileErrorContains
     "storage bool[] rejects packed element layouts until slot packing lands"
     storageArrayBoolRejectSpec

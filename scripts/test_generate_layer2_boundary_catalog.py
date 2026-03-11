@@ -42,9 +42,22 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
         self.assertEqual(
             catalog["supported_spec_split"]["helper_boundary"][
                 "compiled_target_compatibility_subset"
+            ]["status"],
+            "runtime_shape_goal_and_compositional_interfaces_formalized",
+        )
+        self.assertEqual(
+            catalog["supported_spec_split"]["helper_boundary"][
+                "compiled_target_compatibility_subset"
             ]["goal_surface"],
             "Compiler.Proofs.IRGeneration.IRInterpreter."
             "InterpretIRWithInternalsZeroConservativeExtensionGoal",
+        )
+        self.assertEqual(
+            catalog["supported_spec_split"]["helper_boundary"][
+                "compiled_target_compatibility_subset"
+            ]["goal_decomposition_surface"],
+            "Compiler.Proofs.IRGeneration.IRInterpreter."
+            "InterpretIRWithInternalsZeroConservativeExtensionInterfaces",
         )
         self.assertEqual(
             catalog["current_out_of_scope_surfaces"][0]["status"],

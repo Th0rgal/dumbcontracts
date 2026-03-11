@@ -151,7 +151,7 @@ def build_catalog() -> dict:
                 "compiled_side_blocker_issue": 1638,
                 "compiled_target_compatibility_subset": {
                     "name": "legacy_compatible_external_body_yul_subset",
-                    "status": "runtime_shape_and_first_conservative_extension_goal_formalized",
+                    "status": "runtime_shape_goal_and_compositional_interfaces_formalized",
                     "source": (
                         "Compiler.Proofs.IRGeneration.IRInterpreter."
                         "LegacyCompatibleExternalStmtList"
@@ -160,10 +160,16 @@ def build_catalog() -> dict:
                         "Compiler.Proofs.IRGeneration.IRInterpreter."
                         "InterpretIRWithInternalsZeroConservativeExtensionGoal"
                     ),
+                    "goal_decomposition_surface": (
+                        "Compiler.Proofs.IRGeneration.IRInterpreter."
+                        "InterpretIRWithInternalsZeroConservativeExtensionInterfaces"
+                    ),
                     "required_goal": (
                         "prove the now-explicit zero-helper-fuel conservative-"
                         "extension goal for helper-free runtime contracts with "
-                        "legacy-compatible external bodies"
+                        "legacy-compatible external bodies by filling the "
+                        "decomposed expr/stmt/stmt-list/function compatibility "
+                        "interface"
                     ),
                 },
                 "compiled_target_proof_surface": {
@@ -186,7 +192,10 @@ def build_catalog() -> dict:
                     "SupportedBodyCallInterface.helperCompatibility"
                 ),
                 "next_required_proof_step": (
-                    "first prove the explicit "
+                    "first fill the decomposed "
+                    "InterpretIRWithInternalsZeroConservativeExtensionInterfaces "
+                    "(expr, stmt, stmt-list, and function compatibility) and "
+                    "compose them into the explicit "
                     "InterpretIRWithInternalsZeroConservativeExtensionGoal on "
                     "the legacy-compatible external-body Yul subset generated "
                     "by the current supported fragment for the helper-free "
@@ -235,8 +244,11 @@ def build_catalog() -> dict:
                             "LegacyCompatibleRuntimeContract, and "
                             "InterpretIRWithInternalsZeroConservativeExtensionGoal "
                             "now encodes the exact first compiled-side retarget "
-                            "theorem; the repo still needs the proof of that "
-                            "goal before the public theorem "
+                            "theorem. IRInterpreter.lean now also packages the "
+                            "expected expr/stmt/stmt-list/function sub-lemmas as "
+                            "InterpretIRWithInternalsZeroConservativeExtensionInterfaces; "
+                            "the repo still needs those interfaces proved and "
+                            "composed into the top-level goal before the public theorem "
                             "stack can safely retarget from interpretIR to "
                             "interpretIRWithInternals"
                         ),

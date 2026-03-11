@@ -956,6 +956,53 @@ def InterpretIRWithInternalsZeroConservativeExtensionGoal
       interpretIRWithInternals contract 0 tx initialState =
         interpretIR contract tx initialState
 
+/-- Compositional proof surface for the first compiled-side helper retarget theorem.
+Rather than treating `InterpretIRWithInternalsZeroConservativeExtensionGoal` as a
+single opaque proof obligation, this packages the expected compatibility lemmas
+that should be proved first and then composed into the top-level contract theorem. -/
+structure InterpretIRWithInternalsZeroConservativeExtensionInterfaces
+    (contract : IRContract) : Prop where
+  exprCompatibility :
+    contract.internalFunctions = [] →
+      ∀ fuel state expr,
+        evalIRExprWithInternals contract fuel state expr =
+          match evalIRExpr state expr with
+          | some value => .value value state
+          | none => .revert state
+  exprListCompatibility :
+    contract.internalFunctions = [] →
+      ∀ fuel state exprs,
+        evalIRExprsWithInternals contract fuel state exprs =
+          match evalIRExprs state exprs with
+          | some values => .values values state
+          | none => .revert state
+  stmtCompatibility :
+    contract.internalFunctions = [] →
+      ∀ fuel state stmt,
+        LegacyCompatibleExternalStmt stmt →
+          execIRStmtWithInternals contract fuel state stmt =
+            match execIRStmt fuel state stmt with
+            | .continue next => .continue next
+            | .return value next => .return value next
+            | .stop next => .stop next
+            | .revert next => .revert next
+  stmtListCompatibility :
+    contract.internalFunctions = [] →
+      ∀ fuel state stmts,
+        LegacyCompatibleExternalStmtList stmts →
+          execIRStmtsWithInternals contract fuel state stmts =
+            match execIRStmts fuel state stmts with
+            | .continue next => .continue next
+            | .return value next => .return value next
+            | .stop next => .stop next
+            | .revert next => .revert next
+  functionCompatibility :
+    contract.internalFunctions = [] →
+      ∀ fn args initialState,
+        LegacyCompatibleExternalStmtList fn.body →
+          execIRFunctionWithInternals contract 0 fn args initialState =
+            execIRFunction fn args initialState
+
 private def shortCalldataRegressionContract : IRContract :=
   { name := "ShortCalldataRegression"
     deploy := []

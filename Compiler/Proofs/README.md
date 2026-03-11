@@ -123,14 +123,15 @@ is now explicit in `IRInterpreter.lean` as the legacy-compatible external-body
 Yul subset `LegacyCompatibleExternalStmtList`, and the exact first compiled-side
 retarget theorem is now encoded there as
 `InterpretIRWithInternalsZeroConservativeExtensionGoal`.
-The next compiled-side substep is therefore precise rather than implicit: first
-prove that explicit conservative-extension goal for
-`runtimeContractOfFunctions`-style contracts over that subset, then generalize
+`IRInterpreter.lean` now also packages the expected proof decomposition as
+`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`, which splits that
+goal into expr / stmt / stmt-list / function compatibility lemmas before they
+are recomposed at the contract level. The next compiled-side substep is
+therefore precise rather than implicit: fill that interface for
+`runtimeContractOfFunctions`-style contracts over the subset, then generalize
 or retarget the broader theorem stack from legacy `interpretIR` to the richer
-helper-aware IR target. `IRInterpreter.lean` now makes that compiled-side
-target available as total fuel-indexed helper-aware IR semantics, so the next
-proof step can target that execution surface directly rather than first
-mirroring it.
+helper-aware IR target. The helper-aware compiled target remains available as
+total fuel-indexed helper-aware IR semantics throughout that retargeting work.
 The compiled-side blocker is tracked in
 [#1638](https://github.com/Th0rgal/verity/issues/1638).
 

@@ -281,13 +281,15 @@ now sits under the post-generic widening/completeness plan in
   `LegacyCompatibleExternalStmtList`,
   and `IRInterpreter.lean` now also encodes the exact first compiled-side retarget theorem as
   `InterpretIRWithInternalsZeroConservativeExtensionGoal`;
-  the remaining compiled-side proof step is proving that conservative-extension goal from legacy `interpretIR`
-  to `interpretIRWithInternals` on that subset,
+  `IRInterpreter.lean` now also decomposes that first theorem into explicit expr / stmt / stmt-list / function
+  compatibility obligations via `InterpretIRWithInternalsZeroConservativeExtensionInterfaces`;
+  the remaining compiled-side proof step is filling that interface and composing it into the conservative-extension goal
+  from legacy `interpretIR` to `interpretIRWithInternals` on that subset,
   while the public theorem stack still targets legacy `execIRFunction` / `interpretIR`
   even though `IRInterpreter.lean` now defines helper-aware compiled-side targets
   (`execIRFunctionWithInternals`, `interpretIRWithInternals`) for internal-helper composition;
-  those helper-aware IR semantics are now available as total fuel-indexed helper-aware IR semantics, so the first compiled-side
-  retarget step can prove conservative extension directly against that execution target;
+  those helper-aware IR semantics are now available as total fuel-indexed helper-aware IR semantics, and the first compiled-side
+  retarget step now has an explicit compositional proof surface rather than one large monolithic goal;
   the compiled-side blocker is tracked in [#1638](https://github.com/Th0rgal/verity/issues/1638)
 - widen the supported whole-contract fragment without reintroducing axioms
 

@@ -48,6 +48,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "legacy-compatible external-body Yul subset\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
             ),
             "ROADMAP": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
@@ -57,6 +58,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "conservative extension of `interpretIR`\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
                 "[#1638]\n"
             ),
             "VERIFICATION_STATUS": (
@@ -67,6 +69,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "legacy-compatible external-body Yul subset\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
                 "[#1638]\n"
             ),
             "COMPILER_PROOFS_README": (
@@ -77,6 +80,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "legacy-compatible external-body Yul subset\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
                 "[#1638]\n"
             ),
         }

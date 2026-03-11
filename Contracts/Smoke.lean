@@ -689,6 +689,15 @@ verity_contract LowLevelTryCatchSmoke where
     let current ← getStorage lastOutcome
     return current
 
+  function catchFailureWithShadowedParam (verity_try_success : Uint256)
+    local_obligations [manual_low_level_refinement := assumed "Low-level call success/failure boundary still requires a manual refinement argument."]
+    : Uint256
+    := do
+    tryCatch (call 0 0 0 0 0 0 0) (do
+      setStorage lastOutcome 11)
+    let current ← getStorage lastOutcome
+    return current
+
 /--
 error: tryCatch catch payload 'err' is not available on the compilation-model path yet; use `_`/ignore it and read returndata explicitly if needed
 -/
@@ -1241,6 +1250,10 @@ example :
   decide
 
 example :
+    ((LowLevelTryCatchSmoke.catchFailureWithShadowedParam 5).run Verity.defaultState).getValue? = some 11 := by
+  decide
+
+example :
     LowLevelTryCatchSmoke.catchFailure_modelBody =
       [ Compiler.CompilationModel.Stmt.letVar "verity_try_success"
           (Compiler.CompilationModel.Expr.call
@@ -1258,6 +1271,33 @@ example :
           [ Compiler.CompilationModel.Stmt.setStorage
               "lastOutcome"
               (Compiler.CompilationModel.Expr.literal 7)
+          ]
+          []
+      , Compiler.CompilationModel.Stmt.letVar
+          "current"
+          (Compiler.CompilationModel.Expr.storage "lastOutcome")
+      , Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.localVar "current")
+      ] := rfl
+
+example :
+    LowLevelTryCatchSmoke.catchFailureWithShadowedParam_modelBody =
+      [ Compiler.CompilationModel.Stmt.letVar "verity_try_success_1"
+          (Compiler.CompilationModel.Expr.call
+            (Compiler.CompilationModel.Expr.literal 0)
+            (Compiler.CompilationModel.Expr.literal 0)
+            (Compiler.CompilationModel.Expr.literal 0)
+            (Compiler.CompilationModel.Expr.literal 0)
+            (Compiler.CompilationModel.Expr.literal 0)
+            (Compiler.CompilationModel.Expr.literal 0)
+            (Compiler.CompilationModel.Expr.literal 0))
+      , Compiler.CompilationModel.Stmt.ite
+          (Compiler.CompilationModel.Expr.eq
+            (Compiler.CompilationModel.Expr.localVar "verity_try_success_1")
+            (Compiler.CompilationModel.Expr.literal 0))
+          [ Compiler.CompilationModel.Stmt.setStorage
+              "lastOutcome"
+              (Compiler.CompilationModel.Expr.literal 11)
           ]
           []
       , Compiler.CompilationModel.Stmt.letVar

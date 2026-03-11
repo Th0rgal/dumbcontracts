@@ -1705,9 +1705,11 @@ private partial def syntaxMentionsIdent (stx : Syntax) (name : String) : Bool :=
 
 private def freshSyntheticLocalName
     (base : String)
+    (params : Array ParamDecl)
     (locals : Array String)
     (mutableLocals : Array String) : String :=
-  let used := (locals ++ mutableLocals).toList
+  let used :=
+    ((params.map (·.name)) ++ locals ++ mutableLocals).toList
   let rec go (remaining : Nat) (suffix : Nat) : String :=
     let candidate :=
       if suffix == 0 then base else s!"{base}_{suffix}"
@@ -2843,7 +2845,8 @@ private partial def translateDoElem
               locals,
               mutableLocals)
       | `(doElem| tryCatch $attempt:term $handler:term) => do
-          let trySuccessName := freshSyntheticLocalName "verity_try_success" locals mutableLocals
+          let trySuccessName :=
+            freshSyntheticLocalName "verity_try_success" params locals mutableLocals
           let (payloadName?, catchElems) ← parseTryCatchHandler handler
           validateTryCatchHandlerDoesNotUsePayload handler payloadName? catchElems
           let attemptExpr ← translatePureExpr fields constDecls immutableDecls params locals attempt

@@ -81,6 +81,8 @@ Keep `SupportedFragment.lean` as a lower-level statement theorem only.
 
 Keep `Contracts/Proofs/SemanticBridge.lean` only as:
 
+`Contracts/Proofs/SemanticBridge.lean` becomes client/example layer only.
+
 - examples
 - regressions
 - composition wrappers for already-proved generic theorems

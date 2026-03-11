@@ -9,10 +9,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = {
     "COMPILER_PROOFS_README": ROOT / "Compiler" / "Proofs" / "README.md",
+    "GENERIC_PLAN": ROOT / "docs" / "GENERIC_LAYER2_PLAN.md",
     "VERIFICATION_STATUS": ROOT / "docs" / "VERIFICATION_STATUS.md",
     "ROADMAP": ROOT / "docs" / "ROADMAP.md",
     "ROOT_README": ROOT / "README.md",
     "TRUST_ASSUMPTIONS": ROOT / "TRUST_ASSUMPTIONS.md",
+    "SEMANTIC_BRIDGE": ROOT / "Contracts" / "Proofs" / "SemanticBridge.lean",
     "DOCS_SITE_COMPILER": ROOT / "docs-site" / "content" / "compiler.mdx",
     "DOCS_SITE_RESEARCH": ROOT / "docs-site" / "content" / "research.mdx",
     "LLMS": ROOT / "docs-site" / "public" / "llms.txt",
@@ -29,6 +31,10 @@ def expected_snippets() -> dict[str, list[str]]:
             "there is not yet a single generic theorem saying `CompilationModel.compile` preserves semantics for every supported full contract.",
             "`Contracts/Proofs/SemanticBridge.lean`: contract-level bridge theorems",
             "it still depends on 1 documented axiom in `Compiler.Proofs.IRGeneration.Function`",
+        ],
+        "GENERIC_PLAN": [
+            "avoid any `post`/`hpost`/contract-specific bridge premise",
+            "`Contracts/Proofs/SemanticBridge.lean` becomes client/example layer only.",
         ],
         "VERIFICATION_STATUS": [
             "## Layer 2: CompilationModel → IR — PARTIAL GENERIC",
@@ -52,6 +58,10 @@ def expected_snippets() -> dict[str, list[str]]:
             "The theorem surface still depends on 1 documented sub-axiom for generic body simulation",
             "it still has 3 documented Lean axioms",
         ],
+        "SEMANTIC_BRIDGE": [
+            "This is not a generic compiler-correctness theorem for `CompilationModel.compile`.",
+            "The actual semantic work still lives in the contract-specific bridge theorem passed in as `hpost`.",
+        ],
         "DOCS_SITE_COMPILER": [
             "**Layer 2 boundary today**",
             "full-contract Layer 2 preservation still relies on contract-specific bridge theorems.",
@@ -60,6 +70,8 @@ def expected_snippets() -> dict[str, list[str]]:
         "DOCS_SITE_RESEARCH": [
             "Partial generic coverage only.",
             "generic `CompilationModel.compile` theorem is tracked in [#1510]",
+            "`Contracts/Proofs/SemanticBridge.lean`",
+            "`Compiler/Proofs/IRGeneration/Contract.lean`",
         ],
         "LLMS": [
             "partial generic CompilationModel -> IR boundary",
@@ -80,6 +92,9 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "it still depends on 2 documented Layer-2 axioms",
             "Still axiomatized: generic supported body simulation and the `execIRFunctionFuel` to `execIRFunction` bridge",
         ],
+        "GENERIC_PLAN": [
+            "use the old `hpost`-based bridge theorem as the solution",
+        ],
         "ROADMAP": [
             "✅ **Layer 2 Complete**",
         ],
@@ -95,12 +110,17 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "2 documented sub-axioms for generic body simulation and the `execIRFunctionFuel`/`execIRFunction` bridge",
             "4 documented Lean axioms",
         ],
+        "SEMANTIC_BRIDGE": [
+            "proofs use placeholders until",
+        ],
         "DOCS_SITE_COMPILER": [
             "**Layer 2 framework proof**: `CompilationModel -> IR` preserves semantics.",
             "depends on 2 documented axioms.",
         ],
         "DOCS_SITE_RESEARCH": [
             "Complete for all 7 contracts",
+            "`Verity/Examples/X.lean`",
+            "`Compiler/TypedIRCompilerCorrectness.lean` — Compilation correctness (generic theorem, 36 supported fragments)",
         ],
         "LLMS": [
             "CompilationModel -> IR preservation",

@@ -24,6 +24,7 @@ def build_catalog() -> dict:
             "issue_refs": {
                 "theorem_shape": 1510,
                 "completeness": 1630,
+                "helper_ir_semantics": 1638,
             },
             "source_refs": [
                 "docs/GENERIC_LAYER2_PLAN.md",
@@ -147,6 +148,7 @@ def build_catalog() -> dict:
                 "inventory_source": "SupportedBodyHelperInterface.summaryOf",
                 "proof_contract": "InternalHelperSummaryContract",
                 "proof_soundness_slot": "SupportedSpecHelperProofs",
+                "compiled_side_blocker_issue": 1638,
                 "decreasing_rank_measure": (
                     "SupportedBodyHelperInterface.calleeRanksDecrease"
                 ),
@@ -154,9 +156,10 @@ def build_catalog() -> dict:
                     "SupportedBodyCallInterface.helperCompatibility"
                 ),
                 "next_required_proof_step": (
+                    "define helper-aware IR internal-call semantics, then "
                     "consume helper-summary soundness/rank evidence in the "
-                    "helper-aware body/IR composition interface so "
-                    "helperCompatibility can disappear"
+                    "body/IR composition interface so helperCompatibility can "
+                    "disappear"
                 ),
                 "blocking_seams": [
                     {
@@ -239,7 +242,11 @@ def build_catalog() -> dict:
             },
             {
                 "rank": "P2",
-                "name": "internal helper compositional proof reuse at the body/IR seam",
+                "name": (
+                    "internal helper compositional proof reuse at the body/IR "
+                    "seam, starting with compiled-side IR helper semantics "
+                    "(#1638)"
+                ),
                 "status": "next_structural_blocker",
             },
             {

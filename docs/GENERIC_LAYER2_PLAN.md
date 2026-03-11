@@ -277,7 +277,8 @@ now sits under the post-generic widening/completeness plan in
   callers still derive generic body proofs through the helper-free `SupportedStmtList` witness,
   the generic body theorem now already targets the helper-aware source semantics family under the current fail-closed helper gate,
   but summary-soundness/rank evidence is still not consumed inside that body proof,
-  and the current IR function semantics has no first-class internal-helper composition
+  and the current IR function semantics has no first-class internal-helper composition;
+  the compiled-side blocker is tracked in [#1638](https://github.com/Th0rgal/verity/issues/1638)
 - widen the supported whole-contract fragment without reintroducing axioms
 
 ## Non-Goals For The First Generic Theorem

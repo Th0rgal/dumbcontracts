@@ -56,18 +56,21 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "macro-lowered `verity_contract` image",
             "`calls.helperCompatibility` can disappear",
             "`execIRFunction` does not yet model internal helper call composition",
+            "[#1638]",
         ],
         "VERIFICATION_STATUS": [
             "`artifacts/layer2_boundary_catalog.json`",
             "macro-lowered image of `verity_contract`",
             "`calls.helperCompatibility` gate",
             "helper-aware body theorem does not yet consume helper-summary soundness/rank evidence",
+            "[#1638]",
         ],
         "COMPILER_PROOFS_README": [
             "`artifacts/layer2_boundary_catalog.json`",
             "`SupportedSpec` split",
             "`calls.helpers`",
             "summary-soundness evidence",
+            "[#1638]",
         ],
     }
 

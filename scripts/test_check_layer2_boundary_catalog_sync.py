@@ -51,18 +51,21 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "macro-lowered `verity_contract` image\n"
                 "`calls.helperCompatibility` can disappear\n"
                 "`execIRFunction` does not yet model internal helper call composition\n"
+                "[#1638]\n"
             ),
             "VERIFICATION_STATUS": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "macro-lowered image of `verity_contract`\n"
                 "`calls.helperCompatibility` gate\n"
                 "helper-aware body theorem does not yet consume helper-summary soundness/rank evidence\n"
+                "[#1638]\n"
             ),
             "COMPILER_PROOFS_README": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "`SupportedSpec` split\n"
                 "`calls.helpers`\n"
                 "summary-soundness evidence\n"
+                "[#1638]\n"
             ),
         }
         if not good_docs:

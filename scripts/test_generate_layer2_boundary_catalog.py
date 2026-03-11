@@ -26,6 +26,14 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             "SupportedBodyCallInterface.helperCompatibility",
         )
         self.assertEqual(
+            catalog["theorem_target"]["issue_refs"]["helper_ir_semantics"],
+            1638,
+        )
+        self.assertEqual(
+            catalog["supported_spec_split"]["helper_boundary"]["compiled_side_blocker_issue"],
+            1638,
+        )
+        self.assertEqual(
             catalog["current_out_of_scope_surfaces"][0]["status"],
             "blocked_at_body_ir_composition_seam",
         )

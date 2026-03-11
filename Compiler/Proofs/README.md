@@ -117,7 +117,8 @@ in `artifacts/layer2_boundary_catalog.json`: callers still derive body closure
 through the helper-free `SupportedStmtList`, summary-soundness evidence still is
 not threaded through the helper-aware body/IR preservation proof, and the
 current `execIRFunction` semantics does not yet model internal helper call
-composition.
+composition. The compiled-side blocker is tracked in
+[#1638](https://github.com/Th0rgal/verity/issues/1638).
 
 The remaining work tracked in
 [#1630](https://github.com/Th0rgal/verity/issues/1630).

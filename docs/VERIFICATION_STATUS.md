@@ -58,7 +58,7 @@ Tracking:
 
 **What is not yet covered**:
 - the supported whole-contract fragment is still intentionally narrower than the full `CompilationModel` surface; unsupported features remain documented at the boundary instead of being claimed as proved
-- the body-level supported-fragment witness is now decomposed into feature-local interfaces (`core`, `state`, `calls`, `effects`) in [`SupportedSpec.lean`](../Compiler/Proofs/IRGeneration/SupportedSpec.lean), but helper reuse, low-level calls, and richer observables are still excluded by those interfaces rather than proved
+- the body-level supported-fragment witness is now decomposed into feature-local interfaces (`core`, `state`, `calls`, `effects`) in [`SupportedSpec.lean`](../Compiler/Proofs/IRGeneration/SupportedSpec.lean), and the `calls` interface is further split into `helpers`, `foreign`, and `lowLevel`; helper reuse, low-level calls, and richer observables are still excluded by those interfaces rather than proved
 
 **Intended end-state claim**:
 - "whole EDSL" means the proof-complete macro-lowered image of `verity_contract`, not all arbitrary Lean-produced `CompilationModel` terms

@@ -137,6 +137,113 @@ def exprTouchesUnsupportedCallSurface : Expr → Bool
   | .shl a b | .shr a b | .sar a b | .signextend a b =>
       exprTouchesUnsupportedCallSurface a || exprTouchesUnsupportedCallSurface b
 
+/-- Internal helper-call surfaces not yet modeled compositionally in the current
+generic whole-contract theorem. -/
+def exprTouchesUnsupportedHelperSurface : Expr → Bool
+  | .internalCall _ _ => true
+  | .literal _ | .param _ | .caller | .contractAddress
+  | .chainid | .msgValue | .blockTimestamp | .blockNumber
+  | .localVar _ | .storage _ | .storageAddr _
+  | .constructorArg _ | .blobbasefee | .mload _ | .tload _
+  | .calldatasize | .calldataload _ | .returndataSize | .extcodesize _
+  | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .storageArrayLength _ | .externalCall _ _ => false
+  | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _ => false
+  | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .eq a b
+  | .ge a b | .gt a b | .sgt a b | .lt a b | .slt a b | .le a b
+  | .logicalAnd a b | .logicalOr a b =>
+      exprTouchesUnsupportedHelperSurface a || exprTouchesUnsupportedHelperSurface b
+  | .min a b | .max a b | .wMulDown a b | .wDivUp a b =>
+      exprTouchesUnsupportedHelperSurface a || exprTouchesUnsupportedHelperSurface b
+  | .mapping _ b | .mappingUint _ b | .arrayElement _ b | .storageArrayElement _ b =>
+      exprTouchesUnsupportedHelperSurface b
+  | .bitNot a | .logicalNot a | .mappingWord _ a _ | .mappingPackedWord _ a _ _
+  | .structMember _ a _ => exprTouchesUnsupportedHelperSurface a
+  | .ite cond thenVal elseVal =>
+      exprTouchesUnsupportedHelperSurface cond ||
+        exprTouchesUnsupportedHelperSurface thenVal ||
+        exprTouchesUnsupportedHelperSurface elseVal
+  | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
+      exprTouchesUnsupportedHelperSurface a || exprTouchesUnsupportedHelperSurface b
+  | .mulDivDown a b c | .mulDivUp a b c =>
+      exprTouchesUnsupportedHelperSurface a ||
+        exprTouchesUnsupportedHelperSurface b ||
+        exprTouchesUnsupportedHelperSurface c
+  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+      exprTouchesUnsupportedHelperSurface a || exprTouchesUnsupportedHelperSurface b
+
+/-- Foreign-call/library-hook surfaces still outside the current generic
+whole-contract theorem. -/
+def exprTouchesUnsupportedForeignSurface : Expr → Bool
+  | .externalCall _ _ => true
+  | .literal _ | .param _ | .caller | .contractAddress
+  | .chainid | .msgValue | .blockTimestamp | .blockNumber
+  | .localVar _ | .storage _ | .storageAddr _
+  | .constructorArg _ | .blobbasefee | .mload _ | .tload _
+  | .calldatasize | .calldataload _ | .returndataSize | .extcodesize _
+  | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .storageArrayLength _ | .internalCall _ _ => false
+  | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _ => false
+  | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .eq a b
+  | .ge a b | .gt a b | .sgt a b | .lt a b | .slt a b | .le a b
+  | .logicalAnd a b | .logicalOr a b =>
+      exprTouchesUnsupportedForeignSurface a || exprTouchesUnsupportedForeignSurface b
+  | .min a b | .max a b | .wMulDown a b | .wDivUp a b =>
+      exprTouchesUnsupportedForeignSurface a || exprTouchesUnsupportedForeignSurface b
+  | .mapping _ b | .mappingUint _ b | .arrayElement _ b | .storageArrayElement _ b =>
+      exprTouchesUnsupportedForeignSurface b
+  | .bitNot a | .logicalNot a | .mappingWord _ a _ | .mappingPackedWord _ a _ _
+  | .structMember _ a _ => exprTouchesUnsupportedForeignSurface a
+  | .ite cond thenVal elseVal =>
+      exprTouchesUnsupportedForeignSurface cond ||
+        exprTouchesUnsupportedForeignSurface thenVal ||
+        exprTouchesUnsupportedForeignSurface elseVal
+  | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
+      exprTouchesUnsupportedForeignSurface a || exprTouchesUnsupportedForeignSurface b
+  | .mulDivDown a b c | .mulDivUp a b c =>
+      exprTouchesUnsupportedForeignSurface a ||
+        exprTouchesUnsupportedForeignSurface b ||
+        exprTouchesUnsupportedForeignSurface c
+  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+      exprTouchesUnsupportedForeignSurface a || exprTouchesUnsupportedForeignSurface b
+
+/-- Low-level call/runtime-mechanic surfaces still outside the current generic
+whole-contract theorem. -/
+def exprTouchesUnsupportedLowLevelSurface : Expr → Bool
+  | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _ => true
+  | .literal _ | .param _ | .caller | .contractAddress
+  | .chainid | .msgValue | .blockTimestamp | .blockNumber
+  | .localVar _ | .storage _ | .storageAddr _
+  | .constructorArg _ | .blobbasefee | .mload _ | .tload _
+  | .calldatasize | .calldataload _ | .returndataSize | .extcodesize _
+  | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .storageArrayLength _ | .internalCall _ _ | .externalCall _ _ => false
+  | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .eq a b
+  | .ge a b | .gt a b | .sgt a b | .lt a b | .slt a b | .le a b
+  | .logicalAnd a b | .logicalOr a b =>
+      exprTouchesUnsupportedLowLevelSurface a || exprTouchesUnsupportedLowLevelSurface b
+  | .min a b | .max a b | .wMulDown a b | .wDivUp a b =>
+      exprTouchesUnsupportedLowLevelSurface a || exprTouchesUnsupportedLowLevelSurface b
+  | .mapping _ b | .mappingUint _ b | .arrayElement _ b | .storageArrayElement _ b =>
+      exprTouchesUnsupportedLowLevelSurface b
+  | .bitNot a | .logicalNot a | .mappingWord _ a _ | .mappingPackedWord _ a _ _
+  | .structMember _ a _ => exprTouchesUnsupportedLowLevelSurface a
+  | .ite cond thenVal elseVal =>
+      exprTouchesUnsupportedLowLevelSurface cond ||
+        exprTouchesUnsupportedLowLevelSurface thenVal ||
+        exprTouchesUnsupportedLowLevelSurface elseVal
+  | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
+      exprTouchesUnsupportedLowLevelSurface a || exprTouchesUnsupportedLowLevelSurface b
+  | .mulDivDown a b c | .mulDivUp a b c =>
+      exprTouchesUnsupportedLowLevelSurface a ||
+        exprTouchesUnsupportedLowLevelSurface b ||
+        exprTouchesUnsupportedLowLevelSurface c
+  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+      exprTouchesUnsupportedLowLevelSurface a || exprTouchesUnsupportedLowLevelSurface b
+
 /-- Compatibility expression scan retained for the current generic-induction
 proofs. Its meaning is now factored through core/state/call subinterfaces. -/
 def exprTouchesUnsupportedContractSurface (expr : Expr) : Bool :=
@@ -219,6 +326,56 @@ def stmtTouchesUnsupportedCallSurface : Stmt → Bool
   | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
   | .returnBytes _ | .returnStorageWords _ | .emit _ _ | .rawLog _ _ _ => false
 
+def stmtTouchesUnsupportedHelperSurface : Stmt → Bool
+  | .letVar _ value | .assignVar _ value | .setStorage _ value =>
+      exprTouchesUnsupportedHelperSurface value
+  | .require cond _ | .return cond =>
+      exprTouchesUnsupportedHelperSurface cond
+  | .internalCall _ _ | .internalCallAssign _ _ _ => true
+  | .stop | .ite _ _ _ | .forEach _ _ _ | .setStorageAddr _ _
+  | .mstore _ _ | .tstore _ _ | .calldatacopy _ _ _
+  | .returndataCopy _ _ _ | .revertReturndata | .externalCallBind _ _ _
+  | .ecm _ _ | .setMapping _ _ _ | .setMappingWord _ _ _ _
+  | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
+  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
+  | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
+  | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
+  | .returnBytes _ | .returnStorageWords _ | .emit _ _ | .rawLog _ _ _ => false
+
+def stmtTouchesUnsupportedForeignSurface : Stmt → Bool
+  | .letVar _ value | .assignVar _ value | .setStorage _ value =>
+      exprTouchesUnsupportedForeignSurface value
+  | .require cond _ | .return cond =>
+      exprTouchesUnsupportedForeignSurface cond
+  | .externalCallBind _ _ _ | .ecm _ _ => true
+  | .stop | .ite _ _ _ | .forEach _ _ _ | .setStorageAddr _ _
+  | .internalCall _ _ | .internalCallAssign _ _ _ | .mstore _ _ | .tstore _ _
+  | .calldatacopy _ _ _ | .returndataCopy _ _ _ | .revertReturndata
+  | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
+  | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
+  | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
+  | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
+  | .returnBytes _ | .returnStorageWords _ | .emit _ _ | .rawLog _ _ _ => false
+
+def stmtTouchesUnsupportedLowLevelSurface : Stmt → Bool
+  | .letVar _ value | .assignVar _ value | .setStorage _ value =>
+      exprTouchesUnsupportedLowLevelSurface value
+  | .require cond _ | .return cond =>
+      exprTouchesUnsupportedLowLevelSurface cond
+  | .mstore _ _ | .tstore _ _ | .calldatacopy _ _ _
+  | .returndataCopy _ _ _ | .revertReturndata => true
+  | .stop | .ite _ _ _ | .forEach _ _ _ | .setStorageAddr _ _
+  | .internalCall _ _ | .internalCallAssign _ _ _ | .externalCallBind _ _ _
+  | .ecm _ _ | .setMapping _ _ _ | .setMappingWord _ _ _ _
+  | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
+  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
+  | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
+  | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
+  | .returnBytes _ | .returnStorageWords _ | .emit _ _ | .rawLog _ _ _ => false
+
 def stmtTouchesUnsupportedContractSurface (stmt : Stmt) : Bool :=
   stmtTouchesUnsupportedCoreSurface stmt ||
     stmtTouchesUnsupportedStateSurface stmt ||
@@ -243,6 +400,24 @@ def stmtListTouchesUnsupportedCallSurface : List Stmt → Bool
       stmtTouchesUnsupportedCallSurface stmt ||
         stmtListTouchesUnsupportedCallSurface rest
 
+def stmtListTouchesUnsupportedHelperSurface : List Stmt → Bool
+  | [] => false
+  | stmt :: rest =>
+      stmtTouchesUnsupportedHelperSurface stmt ||
+        stmtListTouchesUnsupportedHelperSurface rest
+
+def stmtListTouchesUnsupportedForeignSurface : List Stmt → Bool
+  | [] => false
+  | stmt :: rest =>
+      stmtTouchesUnsupportedForeignSurface stmt ||
+        stmtListTouchesUnsupportedForeignSurface rest
+
+def stmtListTouchesUnsupportedLowLevelSurface : List Stmt → Bool
+  | [] => false
+  | stmt :: rest =>
+      stmtTouchesUnsupportedLowLevelSurface stmt ||
+        stmtListTouchesUnsupportedLowLevelSurface rest
+
 def stmtListTouchesUnsupportedEffectSurface : List Stmt → Bool
   | [] => false
   | stmt :: rest =>
@@ -265,7 +440,9 @@ structure SupportedBodyStateInterface (fn : FunctionSpec) : Prop where
   surfaceClosed : stmtListTouchesUnsupportedStateSurface fn.body = false
 
 structure SupportedBodyCallInterface (fn : FunctionSpec) : Prop where
-  surfaceClosed : stmtListTouchesUnsupportedCallSurface fn.body = false
+  helpers : stmtListTouchesUnsupportedHelperSurface fn.body = false
+  foreign : stmtListTouchesUnsupportedForeignSurface fn.body = false
+  lowLevel : stmtListTouchesUnsupportedLowLevelSurface fn.body = false
 
 structure SupportedBodyEffectInterface (fn : FunctionSpec) : Prop where
   surfaceClosed : stmtListTouchesUnsupportedEffectSurface fn.body = false
@@ -362,6 +539,30 @@ theorem stmtListTouchesUnsupportedContractSurface_eq_featureOr
         stmtListTouchesUnsupportedCoreSurface, stmtListTouchesUnsupportedStateSurface,
         stmtListTouchesUnsupportedCallSurface, stmtListTouchesUnsupportedEffectSurface,
         ih, Bool.or_assoc, Bool.or_left_comm, Bool.or_comm]
+
+theorem stmtListTouchesUnsupportedCallSurface_eq_featureOr
+    (stmts : List Stmt) :
+    stmtListTouchesUnsupportedCallSurface stmts =
+      (stmtListTouchesUnsupportedHelperSurface stmts ||
+        stmtListTouchesUnsupportedForeignSurface stmts ||
+        stmtListTouchesUnsupportedLowLevelSurface stmts) := by
+  induction stmts with
+  | nil =>
+      simp [stmtListTouchesUnsupportedCallSurface, stmtListTouchesUnsupportedHelperSurface,
+        stmtListTouchesUnsupportedForeignSurface, stmtListTouchesUnsupportedLowLevelSurface]
+  | cons stmt rest ih =>
+      simp [stmtListTouchesUnsupportedCallSurface, stmtTouchesUnsupportedCallSurface,
+        stmtListTouchesUnsupportedHelperSurface, stmtTouchesUnsupportedHelperSurface,
+        stmtListTouchesUnsupportedForeignSurface, stmtTouchesUnsupportedForeignSurface,
+        stmtListTouchesUnsupportedLowLevelSurface, stmtTouchesUnsupportedLowLevelSurface,
+        ih, Bool.or_assoc, Bool.or_left_comm, Bool.or_comm]
+
+theorem SupportedBodyCallInterface.surfaceClosed
+    {fn : FunctionSpec}
+    (hCalls : SupportedBodyCallInterface fn) :
+    stmtListTouchesUnsupportedCallSurface fn.body = false := by
+  rw [stmtListTouchesUnsupportedCallSurface_eq_featureOr]
+  simp [hCalls.helpers, hCalls.foreign, hCalls.lowLevel]
 
 theorem SupportedBodyInterface.surfaceClosed
     {fields : List Field} {fn : FunctionSpec}
@@ -594,7 +795,10 @@ private theorem counter_supported_function :
               Verity.Core.Free.RequireFamilyClausesTail.toStmts]
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }
-          calls := { surfaceClosed := by decide }
+          calls :=
+            { helpers := by decide
+              foreign := by decide
+              lowLevel := by decide }
           effects := { surfaceClosed := by decide }
           noLocalObligations := rfl } }
 
@@ -674,7 +878,10 @@ theorem simpleStorage_supported_spec : SupportedSpec simpleStorageSupportedSpecM
               Verity.Core.Free.RequireFamilyClausesTail.toStmts]
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }
-          calls := { surfaceClosed := by decide }
+          calls :=
+            { helpers := by decide
+              foreign := by decide
+              lowLevel := by decide }
           effects := { surfaceClosed := by decide }
           noLocalObligations := rfl } }
 

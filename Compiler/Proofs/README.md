@@ -86,7 +86,8 @@ Negative boundary example:
 Internal helper calls are part of the supported `CompilationModel` execution
 surface, but the proof library does not yet provide a first-class
 helper-spec/helper-theorem reuse boundary across callers. The compositional
-internal-call proof gap now sits inside the `calls` body-support interface in
+internal-call proof gap now sits inside the `calls.helpers` body-support
+sub-interface in
 `Compiler/Proofs/IRGeneration/SupportedSpec.lean`, and its follow-on widening
 work is tracked in
 [#1630](https://github.com/Th0rgal/verity/issues/1630).

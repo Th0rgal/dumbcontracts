@@ -972,53 +972,6 @@ private theorem firstFieldWriteSlotConflict_eq_none_of_validateCompileInputs
                                                       | none =>
                                                           simpa [hfields] using hconflict
 
-/-- TODO(#1510): replace this temporary bridge with the generic body simulation
-proof under the exact-state invariant produced by parameter loading. This is
-the second strategy-3 subgoal after `supported_function_param_state_exact`.
-
-NOTE: the `extraFuel` parameter was added when eliminating
-`supported_function_execIRFunction_eq_fuel`: the caller instantiates
-`extraFuel := sizeOf irFn.body - irFn.body.length` so that the fuel bridges
-cleanly to `sizeOf`-style budgets and `execIRFunctionFuel_adequate`.
-The axiom is only claimed once that extra slack is large enough to cover the
-known structural `sizeOf bodyStmts - bodyStmts.length` gap for nested blocks. -/
-axiom supported_function_body_correct_from_exact_state
-    (model : CompilationModel)
-    (fn : FunctionSpec)
-    (bodyStmts : List YulStmt)
-    (tx : IRTransaction)
-    (initialWorld : Verity.ContractState)
-    (state : IRState)
-    (bindings : List (String × Nat))
-    (extraFuel : Nat)
-    (hextraFuel : sizeOf bodyStmts - bodyStmts.length ≤ extraFuel)
-    (hsupportedFn : SupportedFunction model.fields fn)
-    (hnormalized : SourceSemantics.effectiveFields model = model.fields)
-    (hnoEvents : model.events = [])
-    (hnoErrors : model.errors = [])
-    (hbodyCompile :
-      compileStmtList model.fields model.events model.errors .calldata [] false
-        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
-    (hstateRuntime :
-      FunctionBody.runtimeStateMatchesIR
-        (SourceSemantics.effectiveFields model)
-        { world := SourceSemantics.withTransactionContext initialWorld tx
-          bindings := [] }
-        state)
-    (hnotCore : ¬ FunctionBody.StmtListCompileCore (fn.params.map (·.name)) fn.body)
-    (hnotTerminal : ¬ FunctionBody.StmtListTerminalCore (fn.params.map (·.name)) fn.body)
-    (hstateBindings :
-      FunctionBody.bindingsExactlyMatchIRVars bindings state) :
-    ∃ sourceResult irExec,
-      SourceSemantics.execStmtList (SourceSemantics.effectiveFields model)
-        { world := SourceSemantics.withTransactionContext initialWorld tx
-          bindings := bindings }
-        fn.body = sourceResult ∧
-      execIRStmts (bodyStmts.length + extraFuel + 1) state bodyStmts = irExec ∧
-      FunctionBody.stmtResultMatchesIRExec
-        (SourceSemantics.effectiveFields model) sourceResult irExec
-
-
 theorem compileFunctionSpec_correct_of_body
     (model : CompilationModel)
     (selector : Nat) (fn : FunctionSpec) (irFn : IRFunction)

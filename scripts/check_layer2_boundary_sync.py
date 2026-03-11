@@ -29,13 +29,13 @@ def normalize_ws(text: str) -> str:
 def expected_snippets() -> dict[str, list[str]]:
     return {
         "AXIOMS": [
-            "now bypasses this axiom for both `StmtListCompileCore` and `StmtListTerminalCore` bodies.",
-            "The terminal `ite` branch-entry blocker described in issue `#1564` is now discharged:",
+            "### 1. `keccak256_first_4_bytes`",
+            "- Active axioms: 1",
         ],
         "COMPILER_PROOFS_README": [
             "there is not yet a single generic theorem saying `CompilationModel.compile` preserves semantics for every supported full contract.",
             "`Contracts/Proofs/SemanticBridge.lean`: contract-level bridge theorems",
-            "it still depends on 1 documented axiom in `Compiler.Proofs.IRGeneration.Function`",
+            "The former exact-state body-simulation axiom in `Compiler.Proofs.IRGeneration.Function` has now been eliminated",
         ],
         "GENERIC_PLAN": [
             "avoid any `post`/`hpost`/contract-specific bridge premise",
@@ -44,8 +44,8 @@ def expected_snippets() -> dict[str, list[str]]:
         "VERIFICATION_STATUS": [
             "## Layer 2: CompilationModel → IR — PARTIAL GENERIC",
             "there is not yet a single compiler-level theorem quantified over arbitrary supported `CompilationModel` programs and successful `CompilationModel.compile` output.",
-            "it still depends on 1 documented Layer-2 axiom in [`Function.lean`](../Compiler/Proofs/IRGeneration/Function.lean)",
-            "Still axiomatized: generic supported body simulation",
+            "including the former exact-state body-simulation branch in [`Function.lean`](../Compiler/Proofs/IRGeneration/Function.lean)",
+            "No Lean axioms remain in Layer 2",
         ],
         "ROADMAP": [
             "🟡 **Layer 2 Partial Generic**",
@@ -54,16 +54,16 @@ def expected_snippets() -> dict[str, list[str]]:
         "ROOT_README": [
             "Layer 2: CompilationModel → IR        [PARTIAL GENERIC, CONTRACT BRIDGES ACTIVE]",
             "Layer 2 currently combines a generic supported-statement theorem with contract-specific full-contract bridges.",
-            "its non-core function-level closure still depends on 1 documented axiom",
-            "There are currently 2 documented Lean axioms in total: 1 selector axiom and 1 generic non-core Layer 2 axiom.",
+            "its function-level closure now runs by theorem rather than axiom",
+            "There is currently 1 documented Lean axiom in total: the selector axiom.",
             "Layer 3 keeps its remaining dispatch bridge as an explicit theorem hypothesis rather than a Lean axiom.",
         ],
         "TRUST_ASSUMPTIONS": [
             "Layer 2: PARTIAL GENERIC — CompilationModel → IR + contract bridges",
             "whole-contract Layer 2 preservation still relies on contract-specific bridge theorems.",
-            "The theorem surface still depends on 1 documented sub-axiom for generic body simulation",
-            "it still has 2 documented Lean axioms",
-            "former `execIRFunctionFuel`/`execIRFunction` bridge axiom has been eliminated",
+            "former generic body-simulation axiom has been eliminated",
+            "it now has 1 documented Lean axiom",
+            "former `execIRFunctionFuel`/`execIRFunction` bridge axiom",
             "explicit theorem hypothesis rather than a Lean axiom",
         ],
         "SEMANTIC_BRIDGE": [
@@ -73,7 +73,7 @@ def expected_snippets() -> dict[str, list[str]]:
         "DOCS_SITE_COMPILER": [
             "**Layer 2 boundary today**",
             "full-contract Layer 2 preservation still relies on contract-specific bridge theorems.",
-            "the remaining non-core closure still depends on 1 documented axiom.",
+            "former exact-state body-simulation axiom has been eliminated",
             "explicit theorem hypothesis rather than a Lean axiom",
         ],
         "DOCS_SITE_RESEARCH": [
@@ -85,7 +85,7 @@ def expected_snippets() -> dict[str, list[str]]:
         "LLMS": [
             "partial generic CompilationModel -> IR boundary",
             "generic supported-statement theorem plus contract-specific full-contract bridges.",
-            "2 documented Lean axioms",
+            "1 documented Lean axiom",
         ],
     }
 
@@ -97,13 +97,15 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "generic body simulation and `execIRFunctionFuel`/`execIRFunction` bridging",
         ],
         "AXIOMS": [
-            "else-branches still enter their compiled body through `execIRStmt_if_true_of_eval_nonzeroFuel`",
-            "package that if-body entry form cleanly, then reattempt the explicit-`bodyIR` `StmtListTerminalCore` theorem",
+            "### 2. `supported_function_body_correct_from_exact_state`",
+            "supported_function_body_correct_from_exact_state",
+            "- Active axioms: 2",
         ],
         "VERIFICATION_STATUS": [
             "## Layer 2: CompilationModel → IR — COMPLETE",
             "it still depends on 2 documented Layer-2 axioms",
             "Still axiomatized: generic supported body simulation and the `execIRFunctionFuel` to `execIRFunction` bridge",
+            "PARTIAL GENERIC, 2 AXIOMS, CONTRACT BRIDGES ACTIVE",
         ],
         "GENERIC_PLAN": [
             "use the old `hpost`-based bridge theorem as the solution",
@@ -116,6 +118,7 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "| 2 | CompilationModel → IR preserves behavior |",
             "depends on 2 documented axioms",
             "documented bridge axiom",
+            "1 generic non-core Layer 2 axiom",
             "There are currently 3 documented Lean axioms in total",
             "There are currently 4 documented Lean axioms in total",
         ],
@@ -126,6 +129,7 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "3 documented Lean axioms",
             "4 documented Lean axioms",
             "1 documented bridge axiom",
+            "2 documented axioms in [AXIOMS.md](AXIOMS.md): 1 selector axiom and 1 generic non-core Layer 2 axiom",
             "Layer 3: GENERIC SURFACE, 1 axiom — IR → Yul",
             "1 Layer 3 dispatch bridge axiom",
         ],
@@ -136,6 +140,7 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "**Layer 2 framework proof**: `CompilationModel -> IR` preserves semantics.",
             "depends on 2 documented axioms.",
             "1 documented bridge axiom",
+            "depends on 1 documented axiom",
         ],
         "DOCS_SITE_RESEARCH": [
             "Complete for all 7 contracts",
@@ -146,6 +151,7 @@ def forbidden_snippets() -> dict[str, list[str]]:
             "CompilationModel -> IR preservation",
             "3 documented axioms",
             "4 documented axioms",
+            "2 documented Lean axioms",
         ],
     }
 

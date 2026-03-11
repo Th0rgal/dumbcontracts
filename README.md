@@ -103,21 +103,21 @@ The compiler turns contracts into Yul (Solidity's low-level IR) through three la
 
 ```
 EDSL contract (Lean)
-  ↓  Layer 1: EDSL ≡ CompilationModel     [PROVEN FOR CURRENT CONTRACTS; GENERIC CORE, CONTRACT BRIDGES]
+  ↓  Layer 1: proved per contract — generic core + per-contract bridges
 CompilationModel (declarative IR spec)
-  ↓  Layer 2: CompilationModel → IR        [PARTIAL GENERIC, CONTRACT BRIDGES ACTIVE]
+  ↓  Layer 2: proved generically, 1 axiom
 Intermediate Representation
-  ↓  Layer 3: IR → Yul                     [GENERIC SURFACE, EXPLICIT BRIDGE HYPOTHESIS]
+  ↓  Layer 3: proved generically — dispatch bridge is a theorem hypothesis
 Yul
-  ↓  solc (trusted external compiler)
+  ↓  trusted — solc compiler
 EVM Bytecode
 ```
 
 | Layer | What it proves | Key file |
 |-------|---------------|----------|
-| 1 | EDSL execution = CompilationModel interpretation for the current supported contracts. Uses a generic typed-IR core plus per-contract bridge theorems. | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
-| 2 | CompilationModel → IR compilation preserves semantics. Generic for the proved "core" statement patterns; still uses 1 documented axiom for non-core bodies. Requires normalized transaction-context fields. | [Contract.lean](Compiler/Proofs/IRGeneration/Contract.lean) |
-| 3 | IR → Yul codegen preserves semantics. Generic at the statement/function level; the full dispatch-preservation path uses 1 explicit bridge hypothesis (not a Lean axiom). | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
+| 1 | EDSL execution = CompilationModel interpretation. Generic typed-IR core; per-contract bridge theorems. | [TypedIRCompilerCorrectness.lean](Compiler/TypedIRCompilerCorrectness.lean) |
+| 2 | CompilationModel → IR preserves semantics. Proved generically; depends on 1 documented axiom for non-core body simulation. | [Contract.lean](Compiler/Proofs/IRGeneration/Contract.lean) |
+| 3 | IR → Yul preserves semantics. Proved generically; dispatch bridge is an explicit theorem hypothesis, not a Lean axiom. | [Preservation.lean](Compiler/Proofs/YulGeneration/Preservation.lean) |
 
 There are 2 documented Lean axioms: 1 for selector computation and 1 for non-core Layer 2 body simulation. See [AXIOMS.md](AXIOMS.md). The Layer 2 closure work is tracked in [#1510](https://github.com/Th0rgal/verity/issues/1510) with the proof plan in [docs/GENERIC_LAYER2_PLAN.md](docs/GENERIC_LAYER2_PLAN.md).
 

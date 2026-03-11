@@ -126,8 +126,13 @@ retarget theorem is now encoded there as
 `IRInterpreter.lean` now also packages the expected proof decomposition as
 `InterpretIRWithInternalsZeroConservativeExtensionInterfaces`, which splits that
 goal into expr / stmt / stmt-list / function compatibility lemmas before they
-are recomposed at the contract level. The next compiled-side substep is
-therefore precise rather than implicit: fill that interface for
+are recomposed at the contract level. The expr / expr-list slice of that
+interface is now already discharged in `IRInterpreter.lean` via
+`evalIRExprWithInternals_eq_evalIRExpr_of_no_internal`,
+`evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal`, and the wrapper
+theorem `InterpretIRWithInternalsZeroConservativeExtensionExprInterfaces`. The
+next compiled-side substep is therefore more precise than before: fill the
+remaining stmt / stmt-list / function slice for
 `runtimeContractOfFunctions`-style contracts over the subset, then generalize
 or retarget the broader theorem stack from legacy `interpretIR` to the richer
 helper-aware IR target. The helper-aware compiled target remains available as

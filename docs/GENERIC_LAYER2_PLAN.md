@@ -283,7 +283,12 @@ now sits under the post-generic widening/completeness plan in
   `InterpretIRWithInternalsZeroConservativeExtensionGoal`;
   `IRInterpreter.lean` now also decomposes that first theorem into explicit expr / stmt / stmt-list / function
   compatibility obligations via `InterpretIRWithInternalsZeroConservativeExtensionInterfaces`;
-  the remaining compiled-side proof step is filling that interface and composing it into the conservative-extension goal
+  the expr / expr-list obligations in that interface are now discharged directly in
+  `IRInterpreter.lean` via
+  `evalIRExprWithInternals_eq_evalIRExpr_of_no_internal`,
+  `evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal`, and the wrapper theorem
+  `InterpretIRWithInternalsZeroConservativeExtensionExprInterfaces`;
+  the remaining compiled-side proof step is filling the stmt / stmt-list / function part of that interface and composing it into the conservative-extension goal
   from legacy `interpretIR` to `interpretIRWithInternals` on that subset,
   while the public theorem stack still targets legacy `execIRFunction` / `interpretIR`
   even though `IRInterpreter.lean` now defines helper-aware compiled-side targets

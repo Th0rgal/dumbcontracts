@@ -43,7 +43,7 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             catalog["supported_spec_split"]["helper_boundary"][
                 "compiled_target_compatibility_subset"
             ]["status"],
-            "runtime_shape_goal_and_compositional_interfaces_formalized",
+            "expr_layer_compatibility_proved_stmt_function_remaining",
         )
         self.assertEqual(
             catalog["supported_spec_split"]["helper_boundary"][

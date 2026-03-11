@@ -151,7 +151,7 @@ def build_catalog() -> dict:
                 "compiled_side_blocker_issue": 1638,
                 "compiled_target_compatibility_subset": {
                     "name": "legacy_compatible_external_body_yul_subset",
-                    "status": "runtime_shape_goal_and_compositional_interfaces_formalized",
+                    "status": "expr_layer_compatibility_proved_stmt_function_remaining",
                     "source": (
                         "Compiler.Proofs.IRGeneration.IRInterpreter."
                         "LegacyCompatibleExternalStmtList"
@@ -165,11 +165,12 @@ def build_catalog() -> dict:
                         "InterpretIRWithInternalsZeroConservativeExtensionInterfaces"
                     ),
                     "required_goal": (
-                        "prove the now-explicit zero-helper-fuel conservative-"
+                        "finish the now-explicit zero-helper-fuel conservative-"
                         "extension goal for helper-free runtime contracts with "
-                        "legacy-compatible external bodies by filling the "
-                        "decomposed expr/stmt/stmt-list/function compatibility "
-                        "interface"
+                        "legacy-compatible external bodies: expr and expr-list "
+                        "compatibility are proved, while stmt / stmt-list / "
+                        "function compatibility still need to be filled and "
+                        "composed into the top-level goal"
                     ),
                 },
                 "compiled_target_proof_surface": {
@@ -192,10 +193,11 @@ def build_catalog() -> dict:
                     "SupportedBodyCallInterface.helperCompatibility"
                 ),
                 "next_required_proof_step": (
-                    "first fill the decomposed "
+                    "next fill the remaining "
                     "InterpretIRWithInternalsZeroConservativeExtensionInterfaces "
-                    "(expr, stmt, stmt-list, and function compatibility) and "
-                    "compose them into the explicit "
+                    "(stmt, stmt-list, and function compatibility; the expr and "
+                    "expr-list obligations are already discharged in "
+                    "IRInterpreter.lean) and compose them into the explicit "
                     "InterpretIRWithInternalsZeroConservativeExtensionGoal on "
                     "the legacy-compatible external-body Yul subset generated "
                     "by the current supported fragment for the helper-free "

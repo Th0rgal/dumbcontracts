@@ -1003,6 +1003,81 @@ structure InterpretIRWithInternalsZeroConservativeExtensionInterfaces
           execIRFunctionWithInternals contract 0 fn args initialState =
             execIRFunction fn args initialState
 
+mutual
+
+theorem evalIRExprWithInternals_eq_evalIRExpr_of_no_internal
+    (contract : IRContract)
+    (hinternal : contract.internalFunctions = []) :
+    ∀ fuel state expr,
+      evalIRExprWithInternals contract fuel state expr =
+        match evalIRExpr state expr with
+        | some value => .value value state
+        | none => .revert state
+  | fuel, state, .lit n => by
+      simp [evalIRExprWithInternals, evalIRExpr]
+  | fuel, state, .hex n => by
+      simp [evalIRExprWithInternals, evalIRExpr]
+  | fuel, state, .str s => by
+      simp [evalIRExprWithInternals, evalIRExpr]
+  | fuel, state, .ident name => by
+      cases hget : state.getVar name <;>
+        simp [evalIRExprWithInternals, evalIRExpr, hget]
+  | fuel, state, .call func args => by
+      rw [evalIRExprWithInternals, evalIRExpr, evalIRCall, evalIRCallWithInternals,
+        evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal fuel state args]
+      cases hargs : evalIRExprs state args with
+      | none =>
+          simp
+      | some argVals =>
+          cases hbuiltin :
+              Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext
+                Compiler.Proofs.YulGeneration.defaultBuiltinBackend
+                state.storage state.sender state.msgValue state.thisAddress state.blockTimestamp
+                state.blockNumber state.chainId state.blobBaseFee state.selector state.calldata func argVals with
+          | none =>
+              simp [findInternalFunction?_eq_none_of_internalFunctions_nil, hinternal, hbuiltin]
+          | some value =>
+              simp [findInternalFunction?_eq_none_of_internalFunctions_nil, hinternal, hbuiltin]
+
+theorem evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal
+    (contract : IRContract)
+    (hinternal : contract.internalFunctions = []) :
+    ∀ fuel state exprs,
+      evalIRExprsWithInternals contract fuel state exprs =
+        match evalIRExprs state exprs with
+        | some values => .values values state
+        | none => .revert state
+  | fuel, state, [] => by
+      simp [evalIRExprsWithInternals, evalIRExprs]
+  | fuel, state, expr :: exprs => by
+      rw [evalIRExprsWithInternals,
+        evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal fuel state expr]
+      cases hexpr : evalIRExpr state expr <;>
+        cases htail : evalIRExprs state exprs <;>
+          simp [evalIRExprs, hexpr, htail,
+            evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal fuel state exprs]
+
+end
+
+/-- The helper-free conservative-extension interface is now discharged for the
+expression layer: both single-expression and expression-list helper-aware
+evaluation collapse definitionally to the legacy helper-free evaluator when the
+runtime contract has no internal helpers. -/
+theorem interpretIRWithInternalsZeroConservativeExtensionExprInterfaces
+    (contract : IRContract) :
+    (∀ (_hinternal : contract.internalFunctions = []) fuel state expr,
+        evalIRExprWithInternals contract fuel state expr =
+          match evalIRExpr state expr with
+          | some value => .value value state
+          | none => .revert state) ∧
+    (∀ (_hinternal : contract.internalFunctions = []) fuel state exprs,
+        evalIRExprsWithInternals contract fuel state exprs =
+          match evalIRExprs state exprs with
+          | some values => .values values state
+          | none => .revert state) := by
+  exact ⟨evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract,
+    evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract⟩
+
 private def shortCalldataRegressionContract : IRContract :=
   { name := "ShortCalldataRegression"
     deploy := []

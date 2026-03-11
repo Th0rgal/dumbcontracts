@@ -61,6 +61,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.TypedImmutableSmoke.spec
   , Contracts.Smoke.TupleSmoke.spec
   , Contracts.Smoke.Uint8Smoke.spec
+  , Contracts.BytesEqSmoke.spec
   , Contracts.Smoke.AddressHelpersSmoke.spec
   , Contracts.Smoke.ZeroAddressShadowSmoke.spec
   , Contracts.Smoke.StructMappingSmoke.spec

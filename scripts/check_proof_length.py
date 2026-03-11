@@ -218,6 +218,16 @@ ALLOWLIST: set[str] = {
     # theorem avoids duplicating the structural cases across the paired list/stmt
     # compatibility lemmas introduced by the new proof interface inventory.
     "evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed",
+    # Issue #1630 / PR #1633 follow-up — helper-proof theorem-surface adapters:
+    # these declarations are intentionally long because they mirror the existing
+    # generic Layer 2 theorem signatures while adding the explicit helper-proof
+    # slot. The proof bodies are thin wrappers around the existing theorems; the
+    # line count comes from preserving the stable public API shape, not from
+    # proof complexity.
+    "supported_function_correct_with_helper_proofs",
+    "interpretContract_correct_of_compiled_functions_with_helper_proofs",
+    "compileFunctionSpec_correct_generic_with_helper_proofs",
+    "compile_preserves_semantics_with_helper_proofs",
     # Issue #1630 / PR #1633 — feature-interface compatibility bridge:
     # this private theorem is the one place that folds the split `core` / `state`
     # / `calls` booleans back into the legacy `exprTouchesUnsupportedContractSurface`

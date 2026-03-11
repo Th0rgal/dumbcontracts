@@ -33,6 +33,10 @@ def build_catalog() -> dict:
         },
         "current_theorem": {
             "theorem": "Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics",
+            "helper_proof_ready_variant": (
+                "Compiler.Proofs.IRGeneration.Contract."
+                "compile_preserves_semantics_with_helper_proofs"
+            ),
             "source_semantics": (
                 "Compiler.Proofs.IRGeneration.SourceSemantics.supportedSourceContractSemantics"
             ),

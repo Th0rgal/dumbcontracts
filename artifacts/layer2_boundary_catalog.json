@@ -37,6 +37,7 @@
     }
   ],
   "current_theorem": {
+    "helper_proof_ready_variant": "Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs",
     "layer2_axioms": [],
     "remaining_global_hypotheses": [
       "CompilationModel.compile spec selectors = Except.ok ir",

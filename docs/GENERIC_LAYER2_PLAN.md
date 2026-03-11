@@ -264,7 +264,10 @@ now sits under the post-generic widening/completeness plan in
   than just an inventory placeholder. `SourceSemantics.lean` now also exposes
   dedicated `SupportedFunctionHelperProofs` / `SupportedSpecHelperProofs`
   wrappers, so future helper composition has an explicit theorem-level slot for
-  summary-soundness evidence instead of needing an ad hoc extra hypothesis; the
+  summary-soundness evidence instead of needing an ad hoc extra hypothesis, and
+  `Contract.lean` now mirrors that at the public theorem surface via
+  helper-proof-carrying variants such as
+  `compile_preserves_semantics_with_helper_proofs`; the
   feature-local `state` / `calls` / `effects` scans recurse through nested `ite` / `forEach` bodies so those
   boundaries are control-flow complete rather than top-level-only, and
   compatibility lemmas still prove that the helper-aware semantics collapses to

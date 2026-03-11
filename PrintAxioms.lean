@@ -675,7 +675,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_of_compiled_functions
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_compiled_functions
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic
+#print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic_with_helper_proofs
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics
+#print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs
 #print axioms Compiler.Proofs.IRGeneration.Contract.counter_supported_spec_compile_preserves_semantics
 
 -- Compiler/Proofs/IRGeneration/Dispatch.lean
@@ -684,6 +686,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.Dispatch.find_compiledFunction_some_of_forall₂  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Dispatch.find_compiledFunction_none_of_forall₂  -- private
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions
+#print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs
 
 -- Compiler/Proofs/IRGeneration/Function.lean
 -- #print axioms Compiler.Proofs.IRGeneration.Function.yulStmtList_length_le_sizeOf  -- private
@@ -716,6 +719,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_correct_of_body
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_correct_of_body_supported_extraFuel
 #print axioms Compiler.Proofs.IRGeneration.Function.supported_function_correct
+#print axioms Compiler.Proofs.IRGeneration.Function.supported_function_correct_with_helper_proofs
 
 -- Compiler/Proofs/IRGeneration/FunctionBody.lean
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.lookupValue_eq_of_lookupBinding?_some
@@ -1307,4 +1311,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1173 theorems/lemmas (938 public, 235 private)
+-- Total: 1177 theorems/lemmas (942 public, 235 private)

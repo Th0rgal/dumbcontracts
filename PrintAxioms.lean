@@ -951,10 +951,10 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compiled_terminal_ite_body_block_execFuel_eq  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_let  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_compiled_terminal_ite_elseCond_of_zero  -- private
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_thenIf_true  -- private
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_then_branch_entry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_thenIf_false  -- private
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_elseIf_true  -- private
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_elseIf_true_tail  -- private
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_else_branch_entry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_else_branch_entry_tailFuel
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmts_compiled_terminal_ite_then_of_irExec  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmts_compiled_terminal_ite_else_of_irExec  -- private
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execStmtList_terminal_core_not_continue
@@ -1152,4 +1152,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1024 theorems/lemmas (850 public, 174 private)
+-- Total: 1024 theorems/lemmas (853 public, 171 private)

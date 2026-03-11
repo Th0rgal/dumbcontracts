@@ -57,8 +57,9 @@ def exprTouchesUnsupportedContractSurface : Expr → Bool
 mutual
   /-- Statement forms intentionally outside the first generic whole-contract theorem. -/
   def stmtTouchesUnsupportedContractSurface : Stmt → Bool
-    | .letVar _ value | .assignVar _ value | .setStorage _ value | .setStorageAddr _ value =>
+    | .letVar _ value | .assignVar _ value | .setStorage _ value =>
         exprTouchesUnsupportedContractSurface value
+    | .setStorageAddr _ _ => true
     | .require cond _ | .return cond =>
         exprTouchesUnsupportedContractSurface cond
     | .mstore _ _ | .tstore _ _ => true
@@ -178,6 +179,10 @@ theorem SupportedSpec.selectorFunctionReturnsSupported
 @[simp] theorem stmtTouchesUnsupportedContractSurface_mstore
     (offset value : Expr) :
     stmtTouchesUnsupportedContractSurface (.mstore offset value) = true := rfl
+
+@[simp] theorem stmtTouchesUnsupportedContractSurface_setStorageAddr
+    (field : String) (value : Expr) :
+    stmtTouchesUnsupportedContractSurface (.setStorageAddr field value) = true := rfl
 
 @[simp] theorem stmtTouchesUnsupportedContractSurface_tstore
     (offset value : Expr) :

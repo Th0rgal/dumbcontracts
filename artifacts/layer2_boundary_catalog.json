@@ -69,6 +69,21 @@
       "name": "events, logs, and typed errors",
       "rank": "P4",
       "status": "pending"
+    },
+    {
+      "name": "storage and layout rich whole-contract coverage",
+      "rank": "P5",
+      "status": "pending"
+    },
+    {
+      "name": "constructor, fallback, and receive semantics",
+      "rank": "P6",
+      "status": "pending"
+    },
+    {
+      "name": "local obligations as proof-carrying extensions",
+      "rank": "P7",
+      "status": "pending"
     }
   ],
   "schema_version": 1,

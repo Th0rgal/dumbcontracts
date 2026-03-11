@@ -255,6 +255,21 @@ def build_catalog() -> dict:
                 "name": "events, logs, and typed errors",
                 "status": "pending",
             },
+            {
+                "rank": "P5",
+                "name": "storage and layout rich whole-contract coverage",
+                "status": "pending",
+            },
+            {
+                "rank": "P6",
+                "name": "constructor, fallback, and receive semantics",
+                "status": "pending",
+            },
+            {
+                "rank": "P7",
+                "name": "local obligations as proof-carrying extensions",
+                "status": "pending",
+            },
         ],
     }
 

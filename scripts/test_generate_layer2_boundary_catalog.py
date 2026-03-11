@@ -33,6 +33,10 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             len(catalog["supported_spec_split"]["helper_boundary"]["blocking_seams"]),
             4,
         )
+        self.assertEqual(
+            [step["rank"] for step in catalog["ranked_next_steps"]],
+            ["P1", "P2", "P3", "P4", "P5", "P6", "P7"],
+        )
 
     def test_check_mode_rejects_stale_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

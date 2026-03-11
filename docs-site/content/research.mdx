@@ -120,128 +120,21 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 
 ## Compiler Development
 
-### Generic Compilation (Completed 2026-02-10)
+### Generic Compilation
 
-**Problem**: Manual IR translation for each contract (unmaintainable and repetitive).
+All contracts are compiled from declarative `CompilationModel` specifications (in `Compiler/Specs.lean`) — no manual IR. The compiler handles storage slot inference, constructor parameters, function selectors, and expression inlining automatically. See the [Compiler reference](/compiler) for the full DSL documentation.
 
-**Solution**: Declarative contract specification DSL with automatic IR generation.
+### Differential Testing
 
-**Result**: All 7 contracts compile automatically. Zero manual IR. Generated code is more optimized than manual translations.
+Random transaction generation + parallel execution on the EDSL interpreter (`Compiler/Interpreter.lean`) and compiled EVM bytecode. Default runs use 100 random transactions per contract; CI scales to 10,000+ per contract (sharded across 8 jobs). Zero mismatches detected. See [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for current test counts.
 
-**Implementation** (as of 2026-02-13):
-- `Compiler/CompilationModel.lean` — DSL + automatic IR compiler
-  - Type-safe expression language (literals, storage, mappings, arithmetic, comparisons)
-  - Statement DSL (setStorage, setMapping, require, return)
-  - Automatic storage slot inference from field order
-  - Constructor parameter handling (bytecode argument loading)
-- `Compiler/Specs.lean` — All 7 contract specifications
-- `Compiler/Selector.lean` — Function selector computation (Solidity keccak256)
-- `Compiler/Main.lean` — New compilation entry point
+### Remaining Work
 
-**Before**:
-```lean
-// Manual IR for each contract (long, repetitive)
-private def ownedContract : IRContract :=
-  let deployBody := [
-    stmtLet "argsOffset" (call "sub" [call "codesize" [], lit 32]),
-    stmtExpr (call "codecopy" [lit 0, ident "argsOffset", lit 32]),
-    stmtLet "initialOwner" (call "and" [call "mload" [lit 0], hex addressMask]),
-    sstoreSlot 0 (ident "initialOwner")
-  ]
-  // ... more manual Yul construction
-```
-
-**After**:
-```lean
-// Declarative spec (compact, declarative)
-def ownedSpec : CompilationModel := {
-  name := "Owned"
-  fields := [{ name := "owner", ty := FieldType.address }]
-  constructor := some {
-    params := [{ name := "initialOwner", ty := ParamType.address }]
-    body := [Stmt.setStorage "owner" (Expr.constructorArg 0)]
-  }
-  functions := [/* ... high-level DSL */]
-}
-```
-
-**Metrics**:
-- Manual IR eliminated in favor of generated IR from the spec
-- Time to add contract dropped significantly in practice
-- Test results: see [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for the current proof and test status snapshot
-- Code quality: More concise, optimized (expression inlining)
-
-**Features Achieved**:
-- ✅ Automatic storage slot inference
-- ✅ Constructor parameter support
-- ✅ Function selector management
-- ✅ Type-safe DSL prevents errors
-- ✅ Code optimization
-
-**Usage**:
-```bash
-lake build verity-compiler    # Build compiler
-lake exe verity-compiler      # Generate all contracts
-FOUNDRY_PROFILE=difftest forge test
-```
-
-### Differential Testing (Completed 2026-02-10)
-
-**Problem**: No way to trust compiler correctness without formal proofs. Need high confidence that compiled EVM matches verified EDSL semantics.
-
-**Solution**: Random transaction generation + parallel execution on EDSL interpreter and compiled EVM bytecode.
-
-**Result**: default runs use 100 random transactions per contract, while CI scales the large suite to 10,000+ per contract. Zero mismatches detected so far.
-
-**Implementation** (as of 2026-02-13):
-- `Compiler/Interpreter.lean` — EDSL interpreter for differential testing
-  - Executes EDSL contracts on abstract state
-  - Returns JSON results for comparison with EVM
-  - Supports all 7 compiled contracts (Counter, SafeCounter, SimpleStorage, Ledger, Owned, OwnedCounter, SimpleToken)
-- `Compiler/RandomGen.lean` — Random transaction generator
-  - Generates random addresses, values, and function calls
-  - Contract-specific transaction generation (store/retrieve for SimpleStorage)
-- `test/DifferentialSimpleStorage.t.sol` — Foundry test harness
-  - Executes transactions on compiled EVM bytecode
-  - Calls EDSL interpreter via `vm.ffi`
-  - Compares: success/revert, return values, storage changes
-  - Tracks independent state for EVM and EDSL
-
-**Critical Fixes** (Bugbot second review):
-1. **EDSL State Independence**: Fixed bug where EVM results were fed back to EDSL state tracker, making tests always match. Added JSON parsing to maintain separate EDSL and EVM state.
-2. **Test Assertions**: Added `assertTrue` checks to prevent silent test failures.
-3. **Underflow Guards**: Added length guards to JSON parsing to prevent underflow reverts.
-4. **Clang Crash**: Removed `deriving Repr` to fix CI compilation crash (Lean generated overly complex C code).
-5. **Mapping Change De-duplication**: Mapping change keys are de-duplicated before comparison to avoid self-transfer double counting and reduce diff output size.
-
-**Test Results**:
-- 100/100 random transactions pass per contract in default runs
-- 10,000+ random transactions pass per contract in CI (large suite)
-- Large suite is sharded across 8 CI jobs to stay within per-test gas limits
-- Zero mismatches detected
-- Current Foundry and proof status is tracked in [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md)
-- CI: All checks passing
-
-**Usage**:
-```bash
-lake build Compiler.Interpreter           # Build interpreter
-lake exe difftest-interpreter simpleStorage store 0 100  # Run single tx
-FOUNDRY_PROFILE=difftest forge test --match-contract Differential  # Run default (100) random tests
-# Scale the large suite (used in CI):
-FOUNDRY_PROFILE=difftest DIFFTEST_RANDOM_LARGE=10000 forge test --match-contract Differential
-# Shard the large suite (CI uses 8 shards):
-FOUNDRY_PROFILE=difftest DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_RANDOM_LARGE=10000 \
-  forge test --match-contract Differential
-```
-
-**Remaining Work**:
-
-- **Property extraction**: Reduce exclusions. Add property tests contract‑by‑contract. Keep coverage script green.
-- **Nested mapping proofs**: Extend storage semantics + proofs for nested mappings to support allowances (`approve`/`transferFrom`).
+- **Property extraction**: Reduce exclusions; add property tests contract-by-contract.
+- **Nested mapping proofs**: Extend storage semantics + proofs for nested mappings (`approve`/`transferFrom`).
 - **Selector proofs**: Prove selector hashes in Lean (not just CI fixture checks).
-- **Documentation**: Keep roadmap updates in sync with each milestone.
 
-See [`docs/ROADMAP.md`](https://github.com/Th0rgal/verity/blob/main/docs/ROADMAP.md) for the full roadmap and timeline.
+See [`docs/ROADMAP.md`](https://github.com/Th0rgal/verity/blob/main/docs/ROADMAP.md) for the full roadmap.
 
 ## Detailed Logs
 

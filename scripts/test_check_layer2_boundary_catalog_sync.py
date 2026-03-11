@@ -46,6 +46,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "macro-lowered image of `verity_contract`\n"
                 "helper-free `SupportedStmtList` witness\n"
                 "legacy-compatible external-body Yul subset\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
             ),
             "ROADMAP": (
@@ -54,6 +55,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "`calls.helperCompatibility` can disappear\n"
                 "`execIRFunctionWithInternals` / `interpretIRWithInternals`\n"
                 "conservative extension of `interpretIR`\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
                 "[#1638]\n"
             ),
@@ -63,6 +65,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "`calls.helperCompatibility` gate\n"
                 "helper-aware body theorem does not yet consume helper-summary soundness/rank evidence\n"
                 "legacy-compatible external-body Yul subset\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
                 "[#1638]\n"
             ),
@@ -72,6 +75,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "`calls.helpers`\n"
                 "summary-soundness evidence\n"
                 "legacy-compatible external-body Yul subset\n"
+                "`InterpretIRWithInternalsZeroConservativeExtensionGoal`\n"
                 "total fuel-indexed helper-aware IR semantics\n"
                 "[#1638]\n"
             ),

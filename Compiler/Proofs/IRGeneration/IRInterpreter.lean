@@ -937,6 +937,25 @@ noncomputable def interpretIRWithInternals
     findInternalFunction? contract name = none := by
   simp [findInternalFunction?, hinternal]
 
+/-- The first compiled-side helper retarget theorem only needs the current
+helper-free runtime-contract shape: no internal helpers and legacy-compatible
+external bodies. Encoding that shape as a proposition keeps the remaining
+conservative-extension step machine-checkable instead of prose-only. -/
+def LegacyCompatibleRuntimeContract (contract : IRContract) : Prop :=
+  contract.internalFunctions = [] ∧
+    ∀ fn ∈ contract.functions, LegacyCompatibleExternalStmtList fn.body
+
+/-- Exact first conservative-extension theorem target for the helper-aware IR
+interpreter: on helper-free runtime contracts with legacy-compatible external
+bodies, zero-helper-fuel helper-aware interpretation should coincide with the
+current public `interpretIR` target. -/
+def InterpretIRWithInternalsZeroConservativeExtensionGoal
+    (contract : IRContract) : Prop :=
+  LegacyCompatibleRuntimeContract contract →
+    ∀ tx initialState,
+      interpretIRWithInternals contract 0 tx initialState =
+        interpretIR contract tx initialState
+
 private def shortCalldataRegressionContract : IRContract :=
   { name := "ShortCalldataRegression"
     deploy := []

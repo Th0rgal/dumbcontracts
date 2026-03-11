@@ -279,7 +279,9 @@ now sits under the post-generic widening/completeness plan in
   but summary-soundness/rank evidence is still not consumed inside that body proof,
   `IRInterpreter.lean` now formalizes the intended legacy-compatible external-body Yul subset as
   `LegacyCompatibleExternalStmtList`,
-  and the remaining compiled-side proof step is the conservative-extension lemma from legacy `interpretIR`
+  and `IRInterpreter.lean` now also encodes the exact first compiled-side retarget theorem as
+  `InterpretIRWithInternalsZeroConservativeExtensionGoal`;
+  the remaining compiled-side proof step is proving that conservative-extension goal from legacy `interpretIR`
   to `interpretIRWithInternals` on that subset,
   while the public theorem stack still targets legacy `execIRFunction` / `interpretIR`
   even though `IRInterpreter.lean` now defines helper-aware compiled-side targets
@@ -302,6 +304,8 @@ The first theorem does not need to cover everything. It may explicitly leave out
   (`execIRFunctionWithInternals`, `interpretIRWithInternals`) that can execute
   `IRContract.internalFunctions`, and it now also formalizes the intended
   helper-free compatibility subset as `LegacyCompatibleExternalStmtList`.
+  The exact first theorem cut is now machine-checkable as
+  `InterpretIRWithInternalsZeroConservativeExtensionGoal`.
   `Dispatch.runtimeContractOfFunctions` now also has an explicit
   `internalFunctions = []` lemma documenting the exact helper-free runtime
   constructor used by the current theorem stack; the remaining work is proving

@@ -40,6 +40,13 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             "legacy_compatible_external_body_yul_subset",
         )
         self.assertEqual(
+            catalog["supported_spec_split"]["helper_boundary"][
+                "compiled_target_compatibility_subset"
+            ]["goal_surface"],
+            "Compiler.Proofs.IRGeneration.IRInterpreter."
+            "InterpretIRWithInternalsZeroConservativeExtensionGoal",
+        )
+        self.assertEqual(
             catalog["current_out_of_scope_surfaces"][0]["status"],
             "blocked_at_body_ir_composition_seam",
         )

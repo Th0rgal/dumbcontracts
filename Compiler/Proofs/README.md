@@ -120,14 +120,17 @@ current public theorem stack still runs through the helper-free runtime
 constructor `Dispatch.runtimeContractOfFunctions`, which now has an explicit
 `internalFunctions = []` lemma. The intended compiled-side compatibility subset
 is now explicit in `IRInterpreter.lean` as the legacy-compatible external-body
-Yul subset `LegacyCompatibleExternalStmtList`.
+Yul subset `LegacyCompatibleExternalStmtList`, and the exact first compiled-side
+retarget theorem is now encoded there as
+`InterpretIRWithInternalsZeroConservativeExtensionGoal`.
 The next compiled-side substep is therefore precise rather than implicit: first
-prove conservative extension for `interpretIRWithInternals` on
-`runtimeContractOfFunctions` contracts over that subset, then generalize or
-retarget the broader theorem stack from legacy `interpretIR` to the richer
-helper-aware IR target. `IRInterpreter.lean` now makes that compiled-side target
-available as total fuel-indexed helper-aware IR semantics, so the next proof
-step can target that execution surface directly rather than first mirroring it.
+prove that explicit conservative-extension goal for
+`runtimeContractOfFunctions`-style contracts over that subset, then generalize
+or retarget the broader theorem stack from legacy `interpretIR` to the richer
+helper-aware IR target. `IRInterpreter.lean` now makes that compiled-side
+target available as total fuel-indexed helper-aware IR semantics, so the next
+proof step can target that execution surface directly rather than first
+mirroring it.
 The compiled-side blocker is tracked in
 [#1638](https://github.com/Th0rgal/verity/issues/1638).
 

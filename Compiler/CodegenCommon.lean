@@ -235,7 +235,7 @@ example (backend : PatchBackend) (contract : IRContract) (options : YulEmitOptio
       (runtimeCodeWithOptionsReport backend contract options).patchReport := by
   rfl
 
-private def contains (haystack needle : String) : Bool :=
+def contains (haystack needle : String) : Bool :=
   let h := haystack.toList
   let n := needle.toList
   if n.isEmpty then true
@@ -248,7 +248,7 @@ private def contains (haystack needle : String) : Bool :=
     go h
 
 mutual
-  private def stmtContainsSwitchCaseCall (target : String) : YulStmt → Bool
+  def stmtContainsSwitchCaseCall (target : String) : YulStmt → Bool
     | .comment _ => false
     | .let_ _ _ => false
     | .letMany _ _ => false
@@ -275,7 +275,7 @@ mutual
     | .funcDef _ _ _ body => stmtListContainsSwitchCaseCall target body
   termination_by stmt => sizeOf stmt
 
-  private def stmtListContainsSwitchCaseCall (target : String) : List YulStmt → Bool
+  def stmtListContainsSwitchCaseCall (target : String) : List YulStmt → Bool
     | [] => false
     | stmt :: rest =>
         stmtContainsSwitchCaseCall target stmt || stmtListContainsSwitchCaseCall target rest

@@ -56,53 +56,6 @@ def emitYulWithOptionsReport (contract : IRContract) (options : YulEmitOptions) 
     YulObject × Yul.PatchPassReport :=
   Compiler.CodegenCommon.emitYulWithOptionsReport patchBackend contract options
 
-private def contains (haystack needle : String) : Bool :=
-  let h := haystack.toList
-  let n := needle.toList
-  if n.isEmpty then true
-  else
-    let rec go : List Char → Bool
-      | [] => false
-      | c :: cs =>
-          if (c :: cs).take n.length == n then true
-          else go cs
-    go h
-
-mutual
-  private def stmtContainsSwitchCaseCall (target : String) : YulStmt → Bool
-    | .comment _ => false
-    | .let_ _ _ => false
-    | .letMany _ _ => false
-    | .assign _ _ => false
-    | .expr _ => false
-    | .leave => false
-    | .if_ _ body => stmtListContainsSwitchCaseCall target body
-    | .for_ init _ post body =>
-        stmtListContainsSwitchCaseCall target init ||
-        stmtListContainsSwitchCaseCall target post ||
-        stmtListContainsSwitchCaseCall target body
-    | .switch _ cases default =>
-        let caseHit :=
-          cases.any (fun (_, body) =>
-            match body with
-            | [.expr (.call fn [])] => decide (fn = target)
-            | _ => false)
-        let defaultHit :=
-          match default with
-          | some body => stmtListContainsSwitchCaseCall target body
-          | none => false
-        caseHit || defaultHit
-    | .block stmts => stmtListContainsSwitchCaseCall target stmts
-    | .funcDef _ _ _ body => stmtListContainsSwitchCaseCall target body
-  termination_by stmt => sizeOf stmt
-
-  private def stmtListContainsSwitchCaseCall (target : String) : List YulStmt → Bool
-    | [] => false
-    | stmt :: rest =>
-        stmtContainsSwitchCaseCall target stmt || stmtListContainsSwitchCaseCall target rest
-  termination_by stmts => sizeOf stmts
-end
-
 /-- Regression guard:
     expression/statement/block patching remains runtime-scoped (deploy is unchanged),
     and runtime patch reporting excludes deploy-only candidates. -/
@@ -124,8 +77,8 @@ example :
     let options : YulEmitOptions := { patchConfig := { enabled := true, maxIterations := 2 } }
     let report := emitYulWithOptionsReport contract options
     let rendered := Yul.render report.1
-    let deployStillHasMarker := contains rendered s!"add({deployMarker}, 0)"
-    let runtimeNoLongerHasMarker := !(contains rendered s!"add({runtimeMarker}, 0)")
+    let deployStillHasMarker := Compiler.CodegenCommon.contains rendered s!"add({deployMarker}, 0)"
+    let runtimeNoLongerHasMarker := !(Compiler.CodegenCommon.contains rendered s!"add({runtimeMarker}, 0)")
     let runtimeMatchCount :=
       report.2.manifest.foldl
         (fun acc entry =>
@@ -189,7 +142,7 @@ example :
         match stmt with
         | .funcDef "fun_ping" [] [] _ => true
         | _ => false)
-    let switchCallsHelper := runtime.any (stmtContainsSwitchCaseCall "fun_ping")
+    let switchCallsHelper := runtime.any (Compiler.CodegenCommon.stmtContainsSwitchCaseCall "fun_ping")
     (!hasFunHelper) && (!switchCallsHelper) := by
   native_decide
 

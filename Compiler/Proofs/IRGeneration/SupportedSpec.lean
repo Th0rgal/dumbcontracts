@@ -61,9 +61,7 @@ mutual
         exprTouchesUnsupportedContractSurface value
     | .require cond _ | .return cond =>
         exprTouchesUnsupportedContractSurface cond
-    | .mstore offset value | .tstore offset value =>
-        exprTouchesUnsupportedContractSurface offset ||
-          exprTouchesUnsupportedContractSurface value
+    | .mstore _ _ | .tstore _ _ => true
     | .stop => false
     | .ite cond thenBranch elseBranch =>
         exprTouchesUnsupportedContractSurface cond ||
@@ -176,6 +174,14 @@ theorem SupportedSpec.selectorFunctionReturnsSupported
 @[simp] theorem stmtTouchesUnsupportedContractSurface_storageArrayPush
     (field : String) (value : Expr) :
     stmtTouchesUnsupportedContractSurface (.storageArrayPush field value) = true := rfl
+
+@[simp] theorem stmtTouchesUnsupportedContractSurface_mstore
+    (offset value : Expr) :
+    stmtTouchesUnsupportedContractSurface (.mstore offset value) = true := rfl
+
+@[simp] theorem stmtTouchesUnsupportedContractSurface_tstore
+    (offset value : Expr) :
+    stmtTouchesUnsupportedContractSurface (.tstore offset value) = true := rfl
 
 @[simp] theorem stmtTouchesUnsupportedContractSurface_storageArrayPop
     (field : String) :

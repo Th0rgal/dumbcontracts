@@ -708,6 +708,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Function.supported_function_param_state_exact
 #print axioms Compiler.Proofs.IRGeneration.Function.supported_function_body_correct_from_exact_state_core
 #print axioms Compiler.Proofs.IRGeneration.Function.supported_function_body_correct_from_exact_state_core_extraFuel
+#print axioms Compiler.Proofs.IRGeneration.Function.supported_function_body_correct_from_exact_state_terminal_core_extraFuel
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_correct_of_body
 #print axioms Compiler.Proofs.IRGeneration.Function.compileFunctionSpec_correct_of_body_supported_extraFuel
 #print axioms Compiler.Proofs.IRGeneration.Function.supported_function_correct
@@ -1153,3 +1154,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
 -- Total: 1024 theorems/lemmas (853 public, 171 private)
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.exec_compileStmtList_terminal_core_sizeOf_extraFuel

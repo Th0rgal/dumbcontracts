@@ -6249,7 +6249,10 @@ private theorem evalIRExpr_compiled_terminal_ite_elseCond_of_zero
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext,
     Compiler.Proofs.YulGeneration.evalBuiltinCallWithContext]
 
-private theorem execIRStmt_compiled_terminal_ite_thenIf_true
+/-- Entering the taken `then` branch of a compiled terminal `ite` re-expresses
+the remaining fuel in the branch-local schema expected by recursive body
+simulation proofs. -/
+theorem execIRStmt_compiled_terminal_ite_then_branch_entry
     (extraFuel : Nat)
     (state : IRState)
     (tempName : String)
@@ -6428,7 +6431,10 @@ private theorem execIRStmt_compiled_terminal_ite_thenIf_false
       hident
       hcondZero
 
-private theorem execIRStmt_compiled_terminal_ite_elseIf_true
+/-- Entering the taken `else` branch of a compiled terminal `ite` still has one
+token available for the branch body itself, so the resulting branch-local fuel
+keeps the trailing `+ 1`. -/
+theorem execIRStmt_compiled_terminal_ite_else_branch_entry
     (extraFuel : Nat)
     (state : IRState)
     (tempName : String)
@@ -6566,7 +6572,10 @@ private theorem execIRStmt_compiled_terminal_ite_elseIf_true
         (state.setVar tempName condValue) elseIR := by
           rw [hfuelEq]
 
-private theorem execIRStmt_compiled_terminal_ite_elseIf_true_tail
+/-- Entering the taken `else` branch after the outer `if` token has already been
+spent re-expresses the remaining fuel in the smaller branch-local schema needed
+by the Layer 2 terminal-body induction. -/
+theorem execIRStmt_compiled_terminal_ite_else_branch_entry_tailFuel
     (extraFuel : Nat)
     (state : IRState)
     (tempName : String)
@@ -6761,7 +6770,7 @@ private theorem execIRStmts_compiled_terminal_ite_then_of_irExec
                 ]] ++ tailIR) + extraFuel - 3)
         (state.setVar tempName condValue)
         (YulStmt.if_ (YulExpr.ident tempName) thenIR) = irExec := by
-    rw [execIRStmt_compiled_terminal_ite_thenIf_true
+    rw [execIRStmt_compiled_terminal_ite_then_branch_entry
       extraFuel state tempName condIR thenIR elseIR tailIR condValue hcondNonzero]
     exact hthenExec
   have hafterLet :
@@ -7311,7 +7320,7 @@ private theorem execIRStmts_compiled_terminal_ite_else_of_irExec
                 ]] ++ tailIR) + extraFuel - 4)
         (state.setVar tempName condValue)
         (YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident tempName]) elseIR) = irExec := by
-    rw [execIRStmt_compiled_terminal_ite_elseIf_true_tail
+    rw [execIRStmt_compiled_terminal_ite_else_branch_entry_tailFuel
       extraFuel state tempName condIR thenIR elseIR tailIR condValue hcondZero]
     exact helseExec
   have hafterThen :

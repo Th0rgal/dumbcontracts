@@ -242,25 +242,11 @@ FOUNDRY_PROFILE=difftest DIFFTEST_SHARD_COUNT=8 DIFFTEST_SHARD_INDEX=0 DIFFTEST_
 
 **Remaining Work**:
 
-**A. ~~Scale Differential Testing~~** (done — PR #307):
-- ~~Centralize the "random run" entrypoint so each harness can opt into the same seed/count knobs.~~
-- ~~Add adversarial patterns: boundary overflows, more edge cases.~~
-- ~~**Done when**: random harness setup is shared and parameterized across all 7 contracts.~~ All 7 differential tests now inherit `DifferentialTestBase` with shared utilities.
-
-**B. Property Extraction (Proofs → Tests)**:
-- Reduce exclusions. Add property tests contract‑by‑contract. Keep coverage script green.
-
-**C. Address Known Limitations (Core Modeling)**:
-- ~~Full "supply = sum balances" proof over a finite address set~~ (PR #47 foundation, PR #51 infrastructure — all 7/7 sum properties proven in `Conservation.lean`).
-- Extend storage semantics + proofs for nested mappings to support allowances (`approve`/`transferFrom`).
-
-**D. Reduce Remaining Trust Assumptions**:
-- Prove selector hashes in Lean (not just CI fixture checks).
-- Add a minimal Yul↔EVM semantic bridge lemma or mechanized model.
-
-**E. Documentation**:
-- ~~Add the 1‑page "add a contract" guide~~ — done: see [Add a Contract](/add-contract).
-- Keep roadmap updates in sync with each milestone.
+- **Property extraction**: Reduce exclusions. Add property tests contract‑by‑contract. Keep coverage script green.
+- **Nested mapping proofs**: Extend storage semantics + proofs for nested mappings to support allowances (`approve`/`transferFrom`).
+- **Selector proofs**: Prove selector hashes in Lean (not just CI fixture checks).
+- **Yul↔EVM bridge**: Add a minimal semantic bridge lemma or mechanized model.
+- **Documentation**: Keep roadmap updates in sync with each milestone.
 
 See [`docs/ROADMAP.md`](https://github.com/Th0rgal/verity/blob/main/docs/ROADMAP.md) for the full roadmap and timeline.
 

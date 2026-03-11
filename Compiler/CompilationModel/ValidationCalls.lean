@@ -526,6 +526,7 @@ def validateIdentifierShapes (spec : CompilationModel) : Except String Unit := d
   ensureContractIdentifier "contract" spec.name
   for field in spec.fields do
     ensureContractIdentifier "field" field.name
+    ensureNonReservedYulIdentifier "field" field.name
   for fn in spec.functions do
     ensureContractIdentifier "function" fn.name
     for p in fn.params do

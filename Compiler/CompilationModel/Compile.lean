@@ -101,6 +101,8 @@ def compileStmt (fields : List Field) (events : List EventDef := [])
         (← compileExpr fields dynamicSource key)
         (← compileExpr fields dynamicSource value)
         "setMappingUint"
+  | Stmt.setMappingChain field keys value =>
+      compileSetMappingChain fields dynamicSource field keys value
   | Stmt.setStructMember field key memberName value =>
       compileSetStructMember fields dynamicSource field key memberName value
   | Stmt.setStructMember2 field key1 key2 memberName value =>

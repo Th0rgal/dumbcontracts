@@ -100,6 +100,8 @@ def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName key
   | Expr.mappingPackedWord _ key _ _ =>
       validateInternalCallShapesInExpr functions callerName key
+  | Expr.mappingChain _ keys =>
+      validateInternalCallShapesInExprList functions callerName keys
   | Expr.structMember _ key _ =>
       validateInternalCallShapesInExpr functions callerName key
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
@@ -171,6 +173,9 @@ def validateInternalCallShapesInStmt
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
   | Stmt.setStructMember _ key _ value => do
       validateInternalCallShapesInExpr functions callerName key
+      validateInternalCallShapesInExpr functions callerName value
+  | Stmt.setMappingChain _ keys value => do
+      validateInternalCallShapesInExprList functions callerName keys
       validateInternalCallShapesInExpr functions callerName value
   | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
   | Stmt.setStructMember2 _ key1 key2 _ value => do
@@ -298,6 +303,8 @@ def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context key
   | Expr.mappingPackedWord _ key _ _ =>
       validateExternalCallTargetsInExpr externals context key
+  | Expr.mappingChain _ keys =>
+      validateExternalCallTargetsInExprList externals context keys
   | Expr.structMember _ key _ =>
       validateExternalCallTargetsInExpr externals context key
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
@@ -371,6 +378,9 @@ def validateExternalCallTargetsInStmt
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
   | Stmt.setStructMember _ key _ value => do
       validateExternalCallTargetsInExpr externals context key
+      validateExternalCallTargetsInExpr externals context value
+  | Stmt.setMappingChain _ keys value => do
+      validateExternalCallTargetsInExprList externals context keys
       validateExternalCallTargetsInExpr externals context value
   | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
   | Stmt.setStructMember2 _ key1 key2 _ value => do

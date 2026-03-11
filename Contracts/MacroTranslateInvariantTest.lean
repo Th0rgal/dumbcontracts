@@ -285,6 +285,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.ERC20.spec
   , Contracts.ERC721.spec
   , Contracts.Smoke.UintMapSmoke.spec
+  , Contracts.Smoke.MappingChainSmoke.spec
   , Contracts.Smoke.Bytes32Smoke.spec
   , Contracts.Smoke.MappingWordSmoke.spec
   , Contracts.Smoke.StorageWordsSmoke.spec
@@ -340,6 +341,7 @@ private def expectedExternalSignatures : List (String × List String) :=
       "isApprovedForAll(address,address)", "approve(address,uint256)", "setApprovalForAll(address,bool)",
       "mint(address)", "transferFrom(address,address,uint256)"])
   , ("UintMapSmoke", ["setValue(uint256,uint256)", "getValue(uint256)"])
+  , ("MappingChainSmoke", ["setApproval(address,address,address,uint256)", "getApproval(address,address,address)"])
   , ("Bytes32Smoke", ["setDigest(bytes32)", "getDigest()"])
   , ("MappingWordSmoke", ["setWord1(uint256,uint256)", "getWord1(uint256)", "isWord1NonZero(uint256)"])
   , ("StorageWordsSmoke", ["extSloadsLike(bytes32[])"])
@@ -395,6 +397,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("ERC721", ["0x70a08231", "0x6352211e", "0x081812fc", "0xe985e9c5", "0x095ea7b3", "0xa22cb465",
       "0x6a627842", "0x23b872dd"])
   , ("UintMapSmoke", ["0x7b8d56e3", "0x0ff4c916"])
+  , ("MappingChainSmoke", ["0xd5264fdd", "0xf7531281"])
   , ("Bytes32Smoke", ["0xed9fdc05", "0xae0d3e27"])
   , ("MappingWordSmoke", ["0x60ab11c4", "0x8f8a322f", "0xea3aded7"])
   , ("StorageWordsSmoke", ["0x764fa434"])

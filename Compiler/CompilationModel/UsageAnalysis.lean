@@ -15,6 +15,7 @@ def collectStmtBindNames : Stmt → List String
   -- Statements that never bind new names.
   | Stmt.assignVar _ _ | Stmt.setStorage _ _ | Stmt.setStorageAddr _ _ | Stmt.return _
   | Stmt.setMapping _ _ _ | Stmt.setMappingWord _ _ _ _ | Stmt.setMappingPackedWord _ _ _ _ _ | Stmt.setMappingUint _ _ _
+  | Stmt.setMappingChain _ _ _
   | Stmt.setMapping2 _ _ _ _ | Stmt.setMapping2Word _ _ _ _ _
   | Stmt.setStructMember _ _ _ _ | Stmt.setStructMember2 _ _ _ _ _
   | Stmt.require _ _ | Stmt.requireError _ _ _ | Stmt.revertError _ _
@@ -39,6 +40,7 @@ def exprUsesArrayElement : Expr → Bool
   | Expr.mapping _ key => exprUsesArrayElement key
   | Expr.mappingWord _ key _ => exprUsesArrayElement key
   | Expr.mappingPackedWord _ key _ _ => exprUsesArrayElement key
+  | Expr.mappingChain _ keys => exprListUsesArrayElement keys
   | Expr.structMember _ key _ => exprUsesArrayElement key
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
   | Expr.structMember2 _ key1 key2 _ => exprUsesArrayElement key1 || exprUsesArrayElement key2
@@ -115,6 +117,8 @@ def stmtUsesArrayElement : Stmt → Bool
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
   | Stmt.setStructMember _ key _ value =>
       exprUsesArrayElement key || exprUsesArrayElement value
+  | Stmt.setMappingChain _ keys value =>
+      exprListUsesArrayElement keys || exprUsesArrayElement value
   | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
   | Stmt.setStructMember2 _ key1 key2 _ value =>
       exprUsesArrayElement key1 || exprUsesArrayElement key2 || exprUsesArrayElement value

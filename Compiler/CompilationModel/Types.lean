@@ -62,6 +62,7 @@ inductive MappingKeyType
 inductive MappingType
   | simple (keyType : MappingKeyType)                          -- mapping(K => uint256)
   | nested (outerKey : MappingKeyType) (innerKey : MappingKeyType)  -- mapping(K1 => mapping(K2 => uint256))
+  | chain (keyTypes : List MappingKeyType)                     -- mapping(K1 => ... => mapping(Kn => uint256))
   deriving Repr, BEq
 
 structure PackedBits where
@@ -249,6 +250,7 @@ inductive Expr
   | mapping2 (field : String) (key1 key2 : Expr)  -- Double mapping (#154)
   | mapping2Word (field : String) (key1 key2 : Expr) (wordOffset : Nat)  -- Double mapping + word offset
   | mappingUint (field : String) (key : Expr)  -- Uint256-keyed mapping (#154)
+  | mappingChain (field : String) (keys : List Expr)  -- Arbitrary-depth mapping read (#1570)
   /-- Read a named member of a struct-valued mapping.
       Resolves the member's word offset and optional packed bits at compile time.
       `structMember field key memberName` compiles to the same Yul as
@@ -355,6 +357,7 @@ inductive Stmt
   | setMapping2 (field : String) (key1 key2 : Expr) (value : Expr)  -- Double mapping write (#154)
   | setMapping2Word (field : String) (key1 key2 : Expr) (wordOffset : Nat) (value : Expr)  -- Double mapping + word offset write
   | setMappingUint (field : String) (key : Expr) (value : Expr)  -- Uint256-keyed mapping write (#154)
+  | setMappingChain (field : String) (keys : List Expr) (value : Expr)  -- Arbitrary-depth mapping write (#1570)
   /-- Write to a named member of a struct-valued mapping.
       Resolves the member's word offset and optional packed bits at compile time.
       Generates the same Yul as `setMappingPackedWord` (or `setMappingWord` when
@@ -475,6 +478,14 @@ def findFieldWithResolvedSlot (fields : List Field) (name : String) : Option (Fi
 def findFieldWriteSlots (fields : List Field) (name : String) : Option (List Nat) :=
   findFieldByName fields name fun f slot => slot :: f.aliasSlots
 
+def mappingTypeKeyTypes : MappingType → List MappingKeyType
+  | .simple keyType => [keyType]
+  | .nested outerKey innerKey => [outerKey, innerKey]
+  | .chain keyTypes => keyTypes
+
+def mappingTypeDepth (mt : MappingType) : Nat :=
+  mt |> mappingTypeKeyTypes |> List.length
+
 -- Helper: Is field a mapping?
 def isMapping (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any fun f =>
@@ -488,7 +499,7 @@ def isMapping (fields : List Field) (name : String) : Bool :=
 def isMapping2 (fields : List Field) (name : String) : Bool :=
   fields.find? (·.name == name) |>.any fun f =>
     match f.ty with
-    | FieldType.mappingTyped (MappingType.nested _ _) => true
+    | FieldType.mappingTyped mt => mappingTypeDepth mt == 2
     | FieldType.mappingStruct2 _ _ _ => true
     | _ => false
 

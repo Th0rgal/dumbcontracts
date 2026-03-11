@@ -3,7 +3,8 @@ import Compiler.CompilationModel.IssueRefs
 
 namespace Compiler.CompilationModel
 
-def exprContainsCallLike (expr : Expr) : Bool :=
+mutual
+partial def exprContainsCallLike (expr : Expr) : Bool :=
   match expr with
   | Expr.call _ _ _ _ _ _ _ => true
   | Expr.staticcall _ _ _ _ _ _ => true
@@ -12,6 +13,8 @@ def exprContainsCallLike (expr : Expr) : Bool :=
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ =>
       exprContainsCallLike key
+  | Expr.mappingChain _ keys =>
+      exprListContainsCallLike keys
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
   | Expr.structMember2 _ key1 key2 _ =>
       exprContainsCallLike key1 || exprContainsCallLike key2
@@ -41,6 +44,10 @@ def exprContainsCallLike (expr : Expr) : Bool :=
   | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ =>
       false
+partial def exprListContainsCallLike : List Expr → Bool
+  | [] => false
+  | expr :: exprs => exprContainsCallLike expr || exprListContainsCallLike exprs
+end
 
 def validateLogicalOperandPurity (context : String) (a b : Expr) : Except String Unit := do
   if exprContainsCallLike a || exprContainsCallLike b then
@@ -89,6 +96,8 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ =>
       exprContainsUnsafeLogicalCallLike key
+  | Expr.mappingChain _ keys =>
+      exprListAnyUnsafeLogicalCallLike keys
   | Expr.mapping2 _ key1 key2 | Expr.mapping2Word _ key1 key2 _
   | Expr.structMember2 _ key1 key2 _ =>
       exprContainsUnsafeLogicalCallLike key1 || exprContainsUnsafeLogicalCallLike key2
@@ -153,6 +162,8 @@ def stmtContainsUnsafeLogicalCallLike : Stmt → Bool
   | Stmt.setMapping _ key value | Stmt.setMappingWord _ key _ value | Stmt.setMappingPackedWord _ key _ _ value | Stmt.setMappingUint _ key value
   | Stmt.setStructMember _ key _ value =>
       exprContainsUnsafeLogicalCallLike key || exprContainsUnsafeLogicalCallLike value
+  | Stmt.setMappingChain _ keys value =>
+      exprListAnyUnsafeLogicalCallLike keys || exprContainsUnsafeLogicalCallLike value
   | Stmt.setMapping2 _ key1 key2 value | Stmt.setMapping2Word _ key1 key2 _ value
   | Stmt.setStructMember2 _ key1 key2 _ value =>
       exprContainsUnsafeLogicalCallLike key1 ||

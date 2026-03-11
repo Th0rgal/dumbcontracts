@@ -45,6 +45,7 @@ def collectExprNames : Expr → List String
   | Expr.mapping2 field key1 key2 => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.mapping2Word field key1 key2 _ => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.mappingUint field key => field :: collectExprNames key
+  | Expr.mappingChain field keys => field :: collectExprListNames keys
   | Expr.structMember field key _ => field :: collectExprNames key
   | Expr.structMember2 field key1 key2 _ => field :: collectExprNames key1 ++ collectExprNames key2
   | Expr.caller => []
@@ -136,6 +137,8 @@ def collectStmtNames : Stmt → List String
   | Stmt.setMapping2Word field key1 key2 _ value =>
     field :: collectExprNames key1 ++ collectExprNames key2 ++ collectExprNames value
   | Stmt.setMappingUint field key value => field :: collectExprNames key ++ collectExprNames value
+  | Stmt.setMappingChain field keys value =>
+    field :: collectExprListNames keys ++ collectExprNames value
   | Stmt.setStructMember field key _ value => field :: collectExprNames key ++ collectExprNames value
   | Stmt.setStructMember2 field key1 key2 _ value =>
     field :: collectExprNames key1 ++ collectExprNames key2 ++ collectExprNames value

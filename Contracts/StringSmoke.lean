@@ -91,7 +91,7 @@ def stringEqModelUsesDynamicBytesEq : Bool :=
       (Compiler.CompilationModel.Expr.dynamicBytesEq "lhs" "rhs")] => true
   | _ => false
 
-example : stringEqModelUsesDynamicBytesEq = true := by native_decide
+example : stringEqModelUsesDynamicBytesEq = true := by decide
 
 def stringEqBranchModelUsesDynamicBytesEq : Bool :=
   match StringEqSmoke.choose_modelBody with
@@ -101,7 +101,7 @@ def stringEqBranchModelUsesDynamicBytesEq : Bool :=
       [Compiler.CompilationModel.Stmt.return (Compiler.CompilationModel.Expr.literal 0)]] => true
   | _ => false
 
-example : stringEqBranchModelUsesDynamicBytesEq = true := by native_decide
+example : stringEqBranchModelUsesDynamicBytesEq = true := by decide
 
 /--
 error: logical operator requires Bool, got Verity.Macro.ValueType.string

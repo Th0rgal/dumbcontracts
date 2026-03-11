@@ -78,8 +78,8 @@ Model guard manually with a dedicated storage slot (`entered : Bool` encoded as 
 
 ### String-heavy logic
 
-String support is not complete (see issue `#1159`).
-Prefer numeric/address/bytes-based logic for now.
+ABI-level `String` support exists today for macro parsing, calldata flow, `returnBytes`, event payloads, and custom-error payloads (see issue `#1159`).
+String storage/layout, dynamic linked externals, and word-style operators over `String` remain unsupported, so prefer numeric/address/bytes-based logic unless you only need ABI transport.
 
 ## 3. Worked Walkthrough: Minimal ERC20 Transfer Path
 

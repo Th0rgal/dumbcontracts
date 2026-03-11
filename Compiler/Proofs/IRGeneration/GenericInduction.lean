@@ -320,6 +320,193 @@ private def findResolvedFieldAtSlotCopy (fields : List Field) (slot : Nat) : Opt
           go rest (idx + 1)
   go fields 0
 
+private def findFieldWithResolvedSlotCopyFrom
+    (fields : List Field) (idx : Nat) (name : String) : Option (Field × Nat) :=
+  match fields with
+  | [] => none
+  | field :: rest =>
+      if field.name == name then
+        some (field, field.slot.getD idx)
+      else
+        findFieldWithResolvedSlotCopyFrom rest (idx + 1) name
+
+private def findFieldWriteSlotsCopyFrom
+    (fields : List Field) (idx : Nat) (name : String) : Option (List Nat) :=
+  match fields with
+  | [] => none
+  | field :: rest =>
+      if field.name == name then
+        some (field.slot.getD idx :: field.aliasSlots)
+      else
+        findFieldWriteSlotsCopyFrom rest (idx + 1) name
+
+private def findResolvedFieldAtSlotCopyFrom
+    (fields : List Field) (idx : Nat) (slot : Nat) : Option Field :=
+  match fields with
+  | [] => none
+  | field :: rest =>
+      let resolvedSlot := field.slot.getD idx
+      if resolvedSlot = slot || field.aliasSlots.contains slot then
+        some field
+      else
+        findResolvedFieldAtSlotCopyFrom rest (idx + 1) slot
+
+private def fieldWriteEntriesAt
+    (idx : Nat) (field : Field) : List (Nat × String × Option PackedBits) :=
+  (field.slot.getD idx, field.name, field.packedBits) ::
+    (field.aliasSlots.zipIdx.map (fun (slot, aliasIdx) =>
+      (slot, s!"{field.name}.aliasSlots[{aliasIdx}]", field.packedBits)))
+
+private def firstInFieldConflictCopy
+    (seen : List (Nat × String × Option PackedBits))
+    (current : List (Nat × String × Option PackedBits)) :
+    Option (Nat × String × String) :=
+  match current with
+  | [] => none
+  | (slot, ownerName, packed) :: tail =>
+      match seen.find? (fun entry => entry.1 == slot && packedSlotsConflict entry.2.2 packed) with
+      | some (_, prevName, _) => some (slot, prevName, ownerName)
+      | none => firstInFieldConflictCopy ((slot, ownerName, packed) :: seen) tail
+
+private def firstFieldWriteSlotConflictCopyFrom
+    (seen : List (Nat × String × Option PackedBits))
+    (idx : Nat) (fields : List Field) : Option (Nat × String × String) :=
+  match fields with
+  | [] => none
+  | field :: rest =>
+      let writeSlots := fieldWriteEntriesAt idx field
+      match firstInFieldConflictCopy seen writeSlots with
+      | some conflict => some conflict
+      | none => firstFieldWriteSlotConflictCopyFrom (writeSlots.reverse ++ seen) (idx + 1) rest
+
+private theorem list_findSlotPackedNone_ne_none
+    {seen : List (Nat × String × Option PackedBits)}
+    {slot : Nat}
+    (hmem : slot ∈ seen.map (fun entry => entry.1)) :
+    (seen.find? (fun entry => entry.1 == slot && packedSlotsConflict entry.2.2 none)) ≠ none := by
+  induction seen with
+  | nil =>
+      cases hmem
+  | cons entry rest ih =>
+      simp at hmem ⊢
+      by_cases hEq : entry.1 = slot
+      · subst hEq
+        simp [packedSlotsConflict]
+      · simp [hEq, ih hmem]
+
+private theorem firstFieldWriteSlotConflictCopyFrom_some_of_seen_slot_singleton
+    {seen : List (Nat × String × Option PackedBits)}
+    {fields : List Field}
+    {idx : Nat}
+    {fieldName : String}
+    {f : Field}
+    {slot : Nat}
+    (hseen : slot ∈ seen.map (fun entry => entry.1))
+    (hfind :
+      findFieldWithResolvedSlotCopyFrom fields idx fieldName = some (f, slot))
+    (hwrite :
+      findFieldWriteSlotsCopyFrom fields idx fieldName = some [slot])
+    (hunpacked : f.packedBits = none) :
+    firstFieldWriteSlotConflictCopyFrom seen idx fields ≠ none := by
+  induction fields generalizing seen idx with
+  | nil =>
+      cases hfind
+  | cons field rest ih =>
+      by_cases hname : field.name == fieldName
+      · simp [findFieldWithResolvedSlotCopyFrom, findFieldWriteSlotsCopyFrom, hname] at hfind hwrite
+        injection hfind with hf hslot
+        subst hf
+        subst hslot
+        have hfindSeen :
+            (seen.find? (fun entry => entry.1 == field.slot.getD idx &&
+              packedSlotsConflict entry.2.2 none)) ≠ none :=
+          list_findSlotPackedNone_ne_none hseen
+        intro hnone
+        simp [firstFieldWriteSlotConflictCopyFrom, firstInFieldConflictCopy,
+          fieldWriteEntriesAt, hunpacked, hfindSeen] at hnone
+      · simp [findFieldWithResolvedSlotCopyFrom, findFieldWriteSlotsCopyFrom, hname] at hfind hwrite
+        intro hnone
+        cases hfirst : firstInFieldConflictCopy seen (fieldWriteEntriesAt idx field)
+        · have htailNone :
+              firstFieldWriteSlotConflictCopyFrom
+                ((fieldWriteEntriesAt idx field).reverse ++ seen)
+                (idx + 1)
+                rest = none := by
+            simpa [firstFieldWriteSlotConflictCopyFrom, hfirst] using hnone
+          have hseen' :
+              slot ∈
+                (((fieldWriteEntriesAt idx field).reverse ++ seen).map
+                  (fun entry => entry.1)) := by
+            simp [hseen]
+          exact (ih hseen' hfind hwrite hunpacked) htailNone
+        · simp [firstFieldWriteSlotConflictCopyFrom, hfirst] at hnone
+
+private theorem findResolvedFieldAtSlotCopy_of_findFieldWithResolvedSlot_singleton
+    {fields : List Field}
+    {fieldName : String}
+    {f : Field}
+    {slot : Nat}
+    (hnoConflict : firstFieldWriteSlotConflict fields = none)
+    (hfind : findFieldWithResolvedSlot fields fieldName = some (f, slot))
+    (hwrite : findFieldWriteSlots fields fieldName = some [slot])
+    (hunpacked : f.packedBits = none) :
+    findResolvedFieldAtSlotCopy fields slot = some f := by
+  have hnoConflictCopy :
+      firstFieldWriteSlotConflictCopyFrom [] 0 fields = none := by
+    simpa [firstFieldWriteSlotConflict, firstFieldWriteSlotConflictCopyFrom,
+      fieldWriteEntriesAt, firstInFieldConflictCopy] using hnoConflict
+  have hfindCopy :
+      findFieldWithResolvedSlotCopyFrom fields 0 fieldName = some (f, slot) := by
+    simpa [findFieldWithResolvedSlot, findFieldWithResolvedSlotCopyFrom] using hfind
+  have hwriteCopy :
+      findFieldWriteSlotsCopyFrom fields 0 fieldName = some [slot] := by
+    simpa [findFieldWriteSlots, findFieldWriteSlotsCopyFrom] using hwrite
+  have hresolved :
+      findResolvedFieldAtSlotCopyFrom fields 0 slot = some f := by
+    induction fields generalizing slot with
+    | nil =>
+        cases hfindCopy
+    | cons field rest ih =>
+        by_cases hname : field.name == fieldName
+        · simp [findFieldWithResolvedSlotCopyFrom, findFieldWriteSlotsCopyFrom, hname] at
+            hfindCopy hwriteCopy
+          injection hfindCopy with hf hslot
+          subst hf
+          subst hslot
+          simp [findResolvedFieldAtSlotCopyFrom]
+        · simp [findFieldWithResolvedSlotCopyFrom, findFieldWriteSlotsCopyFrom, hname] at
+            hfindCopy hwriteCopy
+          cases hfirst : firstInFieldConflictCopy [] (fieldWriteEntriesAt 0 field)
+          · have htailNoConflict :
+                firstFieldWriteSlotConflictCopyFrom
+                  (fieldWriteEntriesAt 0 field).reverse
+                  1
+                  rest = none := by
+              simpa [firstFieldWriteSlotConflictCopyFrom, hfirst] using hnoConflictCopy
+            have hheadNotOwn :
+                slot ∉ (fieldWriteEntriesAt 0 field).map (fun entry => entry.1) := by
+              intro hmem
+              have hmemRev :
+                  slot ∈ ((fieldWriteEntriesAt 0 field).reverse.map (fun entry => entry.1)) := by
+                simpa [List.map_reverse] using (List.mem_reverse.mpr hmem)
+              exact
+                (firstFieldWriteSlotConflictCopyFrom_some_of_seen_slot_singleton
+                  hmemRev hfindCopy hwriteCopy hunpacked) htailNoConflict
+            have hresolvedNe : field.slot.getD 0 ≠ slot := by
+              have hheadNotOwn' := hheadNotOwn
+              simp [fieldWriteEntriesAt] at hheadNotOwn'
+              exact hheadNotOwn'.1
+            have haliasNotMem : slot ∉ field.aliasSlots := by
+              have hheadNotOwn' := hheadNotOwn
+              simp [fieldWriteEntriesAt] at hheadNotOwn'
+              exact hheadNotOwn'.2
+            have haliasNe : field.aliasSlots.contains slot = false :=
+              List.contains_eq_false.mpr haliasNotMem
+            simpa [findResolvedFieldAtSlotCopyFrom, hresolvedNe, haliasNe] using
+              ih (slot := slot) htailNoConflict hfindCopy hwriteCopy hunpacked
+          · simp [firstFieldWriteSlotConflictCopyFrom, hfirst] at hnoConflictCopy
+  simpa [findResolvedFieldAtSlotCopy, findResolvedFieldAtSlotCopyFrom] using hresolved
+
 private def findDynamicArrayElementAtSlotCopy
     (fields : List Field) (world : Verity.ContractState) (targetSlot : Nat) : Option Nat :=
   let rec scanElements (baseSlot : Nat) : List Verity.Core.Uint256 → Nat → Option Nat
@@ -562,9 +749,9 @@ theorem compiledStmtStep_setStorage_singleSlot
     (hwriteSlots : findFieldWriteSlots fields fieldName = some [slot])
     (halias : f.aliasSlots = [])
     (hunpacked : f.packedBits = none)
+    (hnoConflict : firstFieldWriteSlotConflict fields = none)
     (hnotAddr : SourceSemantics.fieldUsesAddressStorage f = false)
     (hnotDyn : SourceSemantics.fieldUsesDynamicArrayStorage f = false)
-    (hresolvedSlot : findResolvedFieldAtSlotCopy fields slot = some f)
     (hvalueIR : CompilationModel.compileExpr fields .calldata value = Except.ok valueIR) :
     CompiledStmtStep fields scope (.setStorage fieldName value)
       [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueIR])] where
@@ -574,6 +761,10 @@ theorem compiledStmtStep_setStorage_singleSlot
   preserves runtime state extraFuel hexact hscope hbounded hruntime hslack := by
     let compiledIR := [YulStmt.expr (YulExpr.call "sstore" [YulExpr.lit slot, valueIR])]
     let valueNat := SourceSemantics.evalExpr fields runtime value
+    have hresolvedSlot :
+        findResolvedFieldAtSlotCopy fields slot = some f :=
+      findResolvedFieldAtSlotCopy_of_findFieldWithResolvedSlot_singleton
+        hnoConflict hfind hwriteSlots hunpacked
     have heval :=
       FunctionBody.eval_compileExpr_core_of_scope
         hcore hexact hinScope hbounded

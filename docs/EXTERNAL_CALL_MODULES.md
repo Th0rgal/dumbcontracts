@@ -163,7 +163,7 @@ Import path: `import MyProtocol.Swap`.
 
 Every ECM declares its trust assumptions in the `axioms` field and tags the
 surface with `proofStatus`. When compiling with `--verbose`, the compiler
-aggregates both the assumptions and the status buckets, and now emits a
+aggregates both the assumptions and the status buckets, emitting a
 localized `Usage-site trust report` section before the contract-level reports:
 
 ```

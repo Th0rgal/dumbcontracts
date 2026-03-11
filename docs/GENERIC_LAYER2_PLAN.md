@@ -248,12 +248,16 @@ now sits under the post-generic widening/completeness plan in
   target (`evalExprWithHelpers` / `execStmtListWithHelpers` /
   `interpretInternalFunctionFuel`), while `SupportedSpec.lean` now attaches a
   reusable `InternalHelperSummaryContract` interface and a strictly decreasing
-  helper-rank measure directly to helper-summary witnesses; the feature-local
-  `state` / `calls` / `effects` scans now recurse through nested `ite` /
-  `forEach` bodies so those boundaries are control-flow complete rather than
-  top-level-only, and compatibility lemmas now prove that the helper-aware
-  semantics collapses to the existing helper-free semantics on the current
-  `SupportedSpec` fragment
+  helper-rank measure directly to helper-summary witnesses. `SourceSemantics`
+  now also defines `InternalHelperSummarySound` /
+  `SupportedBodyHelperSummariesSound` plus direct-call consumption lemmas for
+  `Expr.internalCall`, `Stmt.internalCall`, and `Stmt.internalCallAssign`, so
+  helper summaries are now a proof-carrying source-semantics interface rather
+  than just an inventory placeholder; the feature-local `state` / `calls` /
+  `effects` scans recurse through nested `ite` / `forEach` bodies so those
+  boundaries are control-flow complete rather than top-level-only, and
+  compatibility lemmas still prove that the helper-aware semantics collapses to
+  the existing helper-free semantics on the current `SupportedSpec` fragment
 - widen the supported whole-contract fragment without reintroducing axioms
 
 ## Non-Goals For The First Generic Theorem

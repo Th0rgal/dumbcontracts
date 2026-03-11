@@ -772,6 +772,29 @@ decreasing_by
   all_goals simp_wf
   all_goals omega
 
+/-- Semantic contract attached to an internal-helper summary witness. The summary
+is intentionally phrased against the helper-aware source semantics so later
+Layer 2 composition lemmas can consume it without changing theorem targets. -/
+def InternalHelperSummarySound
+    (spec : CompilationModel)
+    (fn : FunctionSpec)
+    (summary : InternalHelperSummaryContract) : Prop :=
+  ∀ fuel initialWorld args,
+    let result := interpretInternalFunctionFuel spec fuel fn initialWorld args
+    summary.post fuel initialWorld args result.success result.returnValue result.world
+
+/-- The direct-callee summary inventory carried by `SupportedBodyHelperInterface`
+becomes a proof interface once each summary contract is proved sound for the
+actual helper-aware source semantics. -/
+def SupportedBodyHelperSummariesSound
+    (spec : CompilationModel)
+    (fn : FunctionSpec)
+    (hHelpers : SupportedBodyHelperInterface spec fn) : Prop :=
+  ∀ calleeName (hmem : calleeName ∈ helperCallNames fn),
+    InternalHelperSummarySound spec
+      (hHelpers.summaryOfCall hmem).callee
+      (hHelpers.summaryContractOfCall hmem)
+
 def interpretFunctionWithHelpers
     (spec : CompilationModel)
     (fuel : Nat)
@@ -798,6 +821,90 @@ def interpretContractWithHelpers
   match findFunctionBySelector spec selectors tx.functionSelector with
   | some fn => interpretFunctionWithHelpers spec fuel fn tx initialWorld
   | none => revertedResult spec (withTransactionContext initialWorld tx)
+
+theorem helperSummarySound
+    {spec : CompilationModel}
+    {fn : FunctionSpec}
+    {summary : InternalHelperSummaryContract}
+    (hsound : InternalHelperSummarySound spec fn summary)
+    (fuel : Nat)
+    (initialWorld : Verity.ContractState)
+    (args : List Nat) :
+    let result := interpretInternalFunctionFuel spec fuel fn initialWorld args
+    summary.post fuel initialWorld args result.success result.returnValue result.world :=
+  hsound fuel initialWorld args
+
+theorem evalExprWithHelpers_internalCall_obeys_summary
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fuel : Nat}
+    {state : RuntimeState}
+    {calleeName : String}
+    {args : List Expr}
+    {callee : FunctionSpec}
+    {summary : InternalHelperSummaryContract}
+    (hfind : findUniqueInternalFunction? spec calleeName = some callee)
+    (hsound : InternalHelperSummarySound spec callee summary)
+    {argVals : List Nat}
+    (hargs : evalExprListWithHelpers spec fields fuel state args = some argVals) :
+    let result := interpretInternalFunctionFuel spec fuel callee state.world argVals
+    summary.post fuel state.world argVals result.success result.returnValue result.world := by
+  simpa [InternalHelperSummarySound] using hsound fuel state.world argVals
+
+theorem execStmtWithHelpers_internalCall_obeys_summary
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fuel : Nat}
+    {state : RuntimeState}
+    {calleeName : String}
+    {args : List Expr}
+    {callee : FunctionSpec}
+    {summary : InternalHelperSummaryContract}
+    (hfind : findUniqueInternalFunction? spec calleeName = some callee)
+    (hsound : InternalHelperSummarySound spec callee summary)
+    {argVals : List Nat}
+    (hargs : evalExprListWithHelpers spec fields fuel state args = some argVals) :
+    let result := interpretInternalFunctionFuel spec fuel callee state.world argVals
+    summary.post fuel state.world argVals result.success result.returnValue result.world := by
+  simpa [execStmtWithHelpers, hfind, hargs] using
+    evalExprWithHelpers_internalCall_obeys_summary
+      (hfind := hfind)
+      (hsound := hsound)
+      (hargs := hargs)
+
+theorem execStmtWithHelpers_internalCallAssign_obeys_summary
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fuel : Nat}
+    {state : RuntimeState}
+    {names : List String}
+    {calleeName : String}
+    {args : List Expr}
+    {callee : FunctionSpec}
+    {summary : InternalHelperSummaryContract}
+    (hfind : findUniqueInternalFunction? spec calleeName = some callee)
+    (hsound : InternalHelperSummarySound spec callee summary)
+    {argVals : List Nat}
+    (hargs : evalExprListWithHelpers spec fields fuel state args = some argVals) :
+    let result := interpretInternalFunctionFuel spec fuel callee state.world argVals
+    summary.post fuel state.world argVals result.success result.returnValue result.world := by
+  simpa [execStmtWithHelpers, hfind, hargs] using
+    evalExprWithHelpers_internalCall_obeys_summary
+      (hfind := hfind)
+      (hsound := hsound)
+      (hargs := hargs)
+
+theorem SupportedBodyHelperInterface.summarySoundOfCall
+    {spec : CompilationModel}
+    {fn : FunctionSpec}
+    {calleeName : String}
+    (hHelpers : SupportedBodyHelperInterface spec fn)
+    (hsummaries : SupportedBodyHelperSummariesSound spec fn hHelpers)
+    (hmem : calleeName ∈ helperCallNames fn) :
+    InternalHelperSummarySound spec
+      (hHelpers.summaryOfCall hmem).callee
+      (hHelpers.summaryContractOfCall hmem) :=
+  hsummaries calleeName hmem
 
 mutual
   theorem evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed

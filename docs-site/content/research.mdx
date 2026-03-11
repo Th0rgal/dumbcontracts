@@ -110,13 +110,13 @@ Conservation proofs use `List.countOcc` to account for duplicate addresses. For 
 
 ## Known Limitations
 
-- **Self-transfer**: Modeled as a no-op; transfer theorems no longer require `sender != to`.
+- **Self-transfer**: Modeled as a no-op; transfer theorems do not require `sender != to`.
 - **Supply = sum of balances**: Requires finite address model. Proven as exact sum equations with `countOcc`, not as global invariant over all addresses.
 - **`ContractResult.fst`**: Returns `default` on revert, requiring `[Inhabited a]`. Proofs using `.fst` always show result is `success` first.
 - **No gas modeling**: EDSL models storage and control flow only; verification assumes infinite gas.
-- **Events**: The CompilationModel DSL supports event emission (`Stmt.emit`), but the EDSL core does not yet model events in proofs.
-- **Nested mappings**: The CompilationModel DSL supports double mappings (`mapping2`/`setMapping2`), but EDSL-level proofs for nested mapping semantics are still limited.
-- **Strings are still bounded today**: `String` flows through macro parsing, calldata, `returnBytes`, event payloads, custom errors, and direct parameter `==` / `!=` checks, but Solidity-style string storage/layout, dynamic linked externals, dynamic local aliases, and broader word-style operators still fail fast instead of pretending to be supported (see issue `#1159`).
+- **Events**: The CompilationModel DSL supports event emission (`Stmt.emit`), but the EDSL core does not model events in proofs.
+- **Nested mappings**: The CompilationModel DSL supports double mappings (`mapping2`/`setMapping2`), but EDSL-level proofs for nested mapping semantics are limited.
+- **String support**: `String` flows through macro parsing, calldata, `returnBytes`, event payloads, custom errors, and direct parameter `==` / `!=` checks. String storage/layout, dynamic linked externals, dynamic local aliases, and broader word-style operators are unsupported (issue `#1159`).
 
 ## Compiler Development
 

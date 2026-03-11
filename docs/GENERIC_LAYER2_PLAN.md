@@ -216,7 +216,7 @@ Use this checklist in the PR description and keep it current:
 
 The generic whole-contract theorem exists and its proof chain is complete:
 
-- **`compile_preserves_semantics`** in [`Contract.lean`](../Compiler/Proofs/IRGeneration/Contract.lean), quantified over arbitrary supported `CompilationModel`s, selectors, a `SupportedSpec` witness, and successful `CompilationModel.compile`. No contract-specific bridge premise.
+- **`compile_preserves_semantics`** in [`Contract.lean`](../Compiler/Proofs/IRGeneration/Contract.lean), quantified over arbitrary supported `CompilationModel`s, selectors, a `SupportedSpec` witness, and successful `CompilationModel.compile`. No contract-specific bridge premise. The theorem now targets the canonical helper-aware source semantics induced by `SupportedSpec.helperFuel`, so future helper-summary composition can extend the existing theorem surface instead of replacing it.
 - **`compileFunctionSpec_correct_generic`** in the same file, per-function correctness.
 - **`interpretContract_correct_of_compiled_functions`** in [`Dispatch.lean`](../Compiler/Proofs/IRGeneration/Dispatch.lean), selector-dispatch preservation.
 - **`counter_supported_spec_compile_preserves_semantics`** in [`Contract.lean`](../Compiler/Proofs/IRGeneration/Contract.lean), the first direct consumer instantiating the generic theorem for an existing supported demo model, with no contract-specific body-simulation premise.
@@ -227,10 +227,14 @@ The proof chain no longer depends on `supported_function_body_correct_from_exact
 
 This theorem is now quantified over a whole `CompilationModel`, selectors, a
 `SupportedSpec` witness, and successful `CompilationModel.compile`, with no
-contract-specific semantic bridge premise and no Layer 2 axiom. The function
-closure is discharged generically from the supported statement fragment, and the
-compiled-function-table witness is derived directly from
-`CompilationModel.compile = Except.ok ir`.
+contract-specific semantic bridge premise and no Layer 2 axiom. The source side
+is already phrased in the helper-aware semantics family via the canonical fuel
+computed from `SupportedSpec.helperFuel`; on the current fragment that helper-aware
+semantics is proved equal to the legacy helper-free semantics, so the trusted
+boundary is unchanged while the future helper-composition target is now the
+current theorem surface. The function closure is discharged generically from the
+supported statement fragment, and the compiled-function-table witness is derived
+directly from `CompilationModel.compile = Except.ok ir`.
 
 The main objective of issue #1618 is therefore complete. Remaining Layer 2 work
 now sits under the post-generic widening/completeness plan in

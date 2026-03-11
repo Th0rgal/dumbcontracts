@@ -256,14 +256,15 @@ theorem compileFunctionSpec_correct_generic
       compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn)
     (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings) :
     FunctionBody.sourceResultMatchesIRResult
-      (SourceSemantics.interpretFunction model fn tx initialWorld)
+      (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
       (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   have hfnModel : fn ∈ model.functions := List.mem_of_mem_filter hfn
   rcases Function.compileFunctionSpec_ok_components
       model.fields model.events model.errors sel fn irFn hcompileFn with
     ⟨returns, bodyStmts, hvalidate, hreturns, hbodyCompile, hirFn⟩
   subst hirFn
-  exact Function.supported_function_correct
+  have hcorrect :=
+    Function.supported_function_correct
     (model := model)
     (selectors := selectors)
     (hSupported := hSupported)
@@ -284,6 +285,8 @@ theorem compileFunctionSpec_correct_generic
     (hcompile := by simpa using hcompileFn)
     (hbind := hbind)
     (hcalldataSizeFits := hcalldataSizeFits)
+  simpa [supportedSourceFunctionSemantics_eq_interpretFunction_of_selectorDispatched
+    (hSupported := hSupported) hfn tx initialWorld] using hcorrect
 
 /-- Primary whole-contract Layer 2 theorem: compilation preserves semantics
 for any supported `CompilationModel`. No contract-specific bridge premise.
@@ -301,7 +304,7 @@ theorem compile_preserves_semantics
     (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
     (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
     FunctionBody.sourceResultMatchesIRResult
-      (SourceSemantics.interpretContract model selectors tx initialWorld)
+      (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
       (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   have hvalidateInputs : validateCompileInputs model selectors = Except.ok () := by
     unfold CompilationModel.compile at hcompile
@@ -350,7 +353,8 @@ theorem compile_preserves_semantics
       (hfn := hfn)
       (hcompileFn := hcompileFn)
       (hbind := hbind)
-  exact compile_preserves_semantics_of_compiled_functions
+  have hcontract :=
+    compile_preserves_semantics_of_compiled_functions
     (model := model)
     (selectors := selectors)
     (ir := ir)
@@ -360,6 +364,8 @@ theorem compile_preserves_semantics
     (hcompiled := hcompiled)
     (hparamsSupported := hparamsSupported)
     (hfunction := hfunction)
+  simpa [supportedSourceContractSemantics_eq_sourceContractSemantics
+    (hSupported := hSupported) tx initialWorld] using hcontract
 
 /-- First direct consumer of the generic Layer 2 theorem surface: the existing
 supported single-function demo model can now obtain whole-contract correctness
@@ -374,8 +380,8 @@ theorem counter_supported_spec_compile_preserves_semantics
     (hcompile :
       CompilationModel.compile counterSupportedSpecModel [0xa87d942c] = Except.ok ir) :
     FunctionBody.sourceResultMatchesIRResult
-      (SourceSemantics.interpretContract
-        counterSupportedSpecModel [0xa87d942c] tx initialWorld)
+      (supportedSourceContractSemantics
+        counterSupportedSpecModel [0xa87d942c] counter_supported_spec tx initialWorld)
       (interpretIR ir tx
         (FunctionBody.initialIRStateForTx counterSupportedSpecModel tx initialWorld)) := by
   exact compile_preserves_semantics

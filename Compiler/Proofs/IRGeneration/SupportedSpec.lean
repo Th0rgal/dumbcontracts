@@ -741,6 +741,11 @@ theorem SupportedFunction.returnsSupported
         SupportedExternalReturnProfile resolvedReturns :=
   hSupported.returns.resolved
 
+def SupportedFunction.helperFuel
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hSupported : SupportedFunction spec fn) : Nat :=
+  hSupported.body.calls.helpers.helperRank
+
 theorem SupportedBodyHelperInterface.surfaceClosed
     {spec : CompilationModel} {fn : FunctionSpec}
     (hHelpers : SupportedBodyHelperInterface spec fn) :
@@ -891,6 +896,22 @@ theorem SupportedSpec.supportedFunctionOfSelectorDispatched
     simpa [selectorDispatchedFunctions] using hfn
   have hmem : fn ∈ spec.functions := (List.mem_filter.mp hfiltered).1
   exact hSupported.functions fn hmem
+
+def SupportedSpec.helperFuelOfFunction
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpec spec selectors)
+    (fn : FunctionSpec) : Nat :=
+  if hfn : fn ∈ selectorDispatchedFunctions spec then
+    (hSupported.supportedFunctionOfSelectorDispatched hfn).helperFuel
+  else
+    0
+
+def SupportedSpec.helperFuel
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpec spec selectors) : Nat :=
+  (selectorDispatchedFunctions spec).foldl
+    (fun fuel fn => max fuel (hSupported.helperFuelOfFunction fn))
+    0
 
 theorem SupportedSpec.selectorFunctionParamsSupported
     {spec : CompilationModel} {selectors : List Nat}

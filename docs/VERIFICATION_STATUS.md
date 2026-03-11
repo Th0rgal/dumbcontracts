@@ -154,23 +154,61 @@ Also note that the macro-generated `*_semantic_preservation` theorems are not co
 
 **Status**: CI runs large sharded randomized differential suites against the current contract set, comparing EDSL interpreter output against Solidity-compiled EVM execution.
 
-## Solidity Interop Support Matrix (Issue #586)
+## Feature Support Matrix
 
-This matrix tracks migration-critical Solidity interoperability features and current implementation status.
+This matrix tracks EDSL language features and their status across the compilation and verification stack. The key distinction is between features that **compile and execute correctly** (Spec/Codegen/Interpreter) and features **covered by the generic proof** (`SupportedSpec`).
 
-Status legend:
-- `supported`: usable end-to-end
-- `partial`: implemented with functional limits or incomplete proof/test coverage
-- `unsupported`: not implemented as a first-class feature
-
-| Feature | Spec support | Codegen support | Proof status | Test status | Current status |
+| Feature | Spec/EDSL | Codegen | Interpreter | Generic Proof | Issue |
 |---|---|---|---|---|---|
-| Custom errors + typed revert payloads | partial | partial | n/a | partial | partial |
-| Low-level calls (`call` / `staticcall` / `delegatecall`) with returndata | partial | partial | n/a | partial | partial |
-| `fallback` / `receive` / payable entrypoint modeling | partial | partial | n/a | partial | partial |
-| Event ABI parity for indexed dynamic/tuple payloads | supported | supported | supported | supported | supported |
-| Storage layout controls (packing + explicit slots) | partial | partial | partial | partial | partial |
-| ABI JSON artifact generation | partial | partial | n/a | partial | partial |
+| **Core arithmetic** (add, sub, mul, div, mod, comparisons) | supported | supported | supported | supported | |
+| **Boolean logic** (and, or, not) | supported | supported | supported | supported | |
+| **Local variables** (let, assign) | supported | supported | supported | supported | |
+| **Require + revert** (simple condition) | supported | supported | supported | supported | |
+| **Return** (single scalar) | supported | supported | supported | supported | |
+| **Stop** | supported | supported | supported | supported | |
+| **Storage read/write** (uint256 fields) | supported | supported | supported | supported | |
+| **Selector dispatch + ABI parameter loading** | supported | supported | supported | supported (uint256, uint8, address, bytes32) | |
+| **Payable modifier** | supported | supported | supported | supported (dispatch guard) | |
+| **Event ABI parity** (indexed dynamic/tuple) | supported | supported | supported | supported | |
+| **If/else branching** | supported | supported | supported | partial (in SupportedStmtFragment patterns) | [#1618](https://github.com/Th0rgal/verity/issues/1618) |
+| **Storage read/write** (address fields) | supported | supported | supported | excluded from SupportedSpec | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Mappings / multi-mappings** | supported | supported | supported | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Packed storage fields** | supported | supported | partial | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Dynamic storage arrays** | supported | supported | supported | not in generic proof | [#1571](https://github.com/Th0rgal/verity/issues/1571), [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Struct-valued storage** | supported | supported | supported | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Internal helper calls** | supported | supported | supported | not compositional | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **forEach loops** | supported | supported | supported | known proof gap | [#1623](https://github.com/Th0rgal/verity/issues/1623) |
+| **Constructor** | supported | supported | supported | excluded from SupportedSpec | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **fallback / receive** | supported | supported | supported | excluded from SupportedSpec | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Events (emit)** | supported | supported | supported | not in proof model | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Raw log (rawLog)** | supported | supported | n/a | not in proof model | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Custom errors (revertError)** | supported | supported | supported | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **returnValues** (multi-return, arrays, bytes) | supported | supported | supported | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Linked externals (ExternalFunction)** | supported | supported | axiom-tracked | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **ECM (external call modules)** | supported | supported | supported | not in proof model | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Low-level calls** (call / staticcall) | supported | supported | not modeled | not in proof model | [#1627](https://github.com/Th0rgal/verity/issues/1627), [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **delegatecall** (proxy/upgradeability) | supported | supported | not modeled | not in proof model | [#1627](https://github.com/Th0rgal/verity/issues/1627), [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **returndata** (returndataCopy, returndataSize) | supported | supported | not modeled | not in proof model | [#1627](https://github.com/Th0rgal/verity/issues/1627), [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Linear memory** (mstore, mload, calldatacopy) | supported | supported | partial | partially modeled | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Bitwise ops** (and, or, xor, not, shl, shr) | supported | supported | supported | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Signed arithmetic** (sdiv, smod, sar, sgt, slt, signextend) | supported | supported | supported | not in generic proof | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **Fixed-point math** (mulDivDown, mulDivUp, wMulDown, wDivUp) | supported | supported | supported | not in generic proof | [#1622](https://github.com/Th0rgal/verity/issues/1622), [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **keccak256** | supported | supported | axiomatized | axiomatized primitive | |
+| **ABI JSON artifact generation** | supported | supported | n/a | n/a | |
+| **Local obligations** | supported | supported | n/a | excluded from SupportedSpec | [#1630](https://github.com/Th0rgal/verity/issues/1630) |
+| **ETH balance tracking** | not supported | not supported | not supported | n/a | [#1628](https://github.com/Th0rgal/verity/issues/1628) |
+| **create / create2** | not supported | not supported | not supported | n/a | [#1626](https://github.com/Th0rgal/verity/issues/1626) |
+| **Contract composition (mixins)** | not supported | not supported | not supported | n/a | [#1572](https://github.com/Th0rgal/verity/issues/1572) |
+
+### Legend
+
+- **supported**: works end-to-end, proven where applicable
+- **partial**: works with known limitations
+- **not in generic proof**: compiles and executes correctly, but `SupportedSpec` excludes it from the generic whole-contract Layer 2 theorem
+- **not in proof model**: the proof interpreter does not have semantics for this feature
+- **not compositional**: works per-contract but helper-level proof reuse across callers is not verified
+- **axiomatized**: assumed correct via named axiom (`keccak256_first_4_bytes`)
+- **not supported**: not implemented
 
 Diagnostics policy for unsupported constructs:
 1. Report the exact unsupported construct at compile time.
@@ -184,4 +222,4 @@ See [`TRUST_ASSUMPTIONS.md`](../TRUST_ASSUMPTIONS.md) for the full trust model a
 
 ---
 
-**Last Updated**: 2026-03-09
+**Last Updated**: 2026-03-11

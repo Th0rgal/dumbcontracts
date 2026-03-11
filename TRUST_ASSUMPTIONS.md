@@ -6,11 +6,11 @@ This document states what Verity proves and what it still trusts.
 
 ```
 EDSL (Lean)
-  ↓ [Layer 1: PROVEN FOR CURRENT CONTRACTS — generic core, contract bridges]
+  ↓ [Layer 1: proved per contract — generic core + per-contract bridges]
 CompilationModel
-  ↓ [Layer 2: PARTIAL GENERIC — CompilationModel → IR + contract bridges]
+  ↓ [Layer 2: proved generically, 1 axiom]
 IR
-  ↓ [Layer 3: GENERIC SURFACE, explicit bridge hypothesis — IR → Yul]
+  ↓ [Layer 3: proved generically — dispatch bridge is a theorem hypothesis]
 Yul
   ↓ [trusted — solc]
 EVM Bytecode
@@ -20,11 +20,11 @@ The repository has no `sorry`, but it still has 2 documented Lean axioms. See [A
 
 ## What's Verified
 
-- **Layer 1** (EDSL → `CompilationModel`): a generic typed-IR compilation-correctness core exists, but the active contract-level bridges are still instantiated per contract. Internal-helper proof reuse across callers is not yet a first-class generic interface.
-  *Scope*: this is the EDSL-to-`CompilationModel` bridge only. The specification theorems in `Contracts/<Name>/Proofs/` (e.g. "increment adds 1") are a separate downstream proof layer.
-- **Layer 2** (`CompilationModel` → IR): the generic whole-contract theorem `compile_preserves_semantics` is proved for arbitrary supported `CompilationModel`s. The proof chain is complete but depends on 1 documented axiom for non-core body simulation (`supported_function_body_correct_from_exact_state`; see [AXIOMS.md](AXIOMS.md)). End-to-end examples still use per-contract bridge theorems. Precondition: transaction-context fields must already be bounded to the source-side `Address`/`Uint256` domains.
-- **Layer 3** (IR → Yul): preservation is generic at the proof surface. The dispatch bridge is an explicit theorem hypothesis, not a Lean axiom. Dispatch-guard preconditions are explicit: non-payable cases require word-level zero `msg.value`, and each function case requires a non-wrapping calldata-width guard.
-- **Cross-layer**: [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) has zero `sorry`, but it is a manual bridge for a subset of contracts, not a fully generic replacement for Layers 1–3.
+- **Layer 1** (EDSL → `CompilationModel`): **Proved per contract.** A generic typed-IR compilation-correctness core exists; contract-level bridges instantiate it for each contract. Helper-proof reuse across callers is not yet a first-class generic interface ([#1335](https://github.com/Th0rgal/verity/issues/1335)).
+  *Scope*: covers the EDSL-to-`CompilationModel` bridge only. Specification theorems in `Contracts/<Name>/Proofs/` (e.g. "increment adds 1") are a separate downstream proof layer.
+- **Layer 2** (`CompilationModel` → IR): **Proved generically, 1 axiom.** The theorem `compile_preserves_semantics` holds for arbitrary supported `CompilationModel`s. It depends on `supported_function_body_correct_from_exact_state` for non-core body simulation (see [AXIOMS.md](AXIOMS.md)). Precondition: transaction-context fields must be bounded to the source-side `Address`/`Uint256` domains.
+- **Layer 3** (IR → Yul): **Proved generically.** The dispatch bridge is an explicit theorem hypothesis, not a Lean axiom. Dispatch-guard preconditions: non-payable functions require word-level zero `msg.value`; each function case requires a non-wrapping calldata-width guard.
+- **Cross-layer**: [`Contracts/Proofs/SemanticBridge.lean`](Contracts/Proofs/SemanticBridge.lean) has zero `sorry` but covers a subset of contracts — it is a manual bridge, not a fully generic replacement for Layers 1–3.
 
 Current theorem totals, property-test coverage, and proof status live in [docs/VERIFICATION_STATUS.md](docs/VERIFICATION_STATUS.md).
 

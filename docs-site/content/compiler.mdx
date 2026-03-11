@@ -323,7 +323,7 @@ Some expression and statement types compile to correct Yul but are not yet fully
 
 **Upgradeability reviews**: Pair `--layout-compat-report` with `--deny-layout-incompatibility` to compare two contracts' storage layouts and fail closed if the candidate moves or mutates persisted fields.
 
-For Morpho-style `mapping(K => Struct)` / `mapping(K1 => mapping(K2 => Struct))` layouts, declare `FieldType.mappingStruct` / `FieldType.mappingStruct2` and access named members through `Expr.structMember` / `Expr.structMember2`. The `verity_contract` surface now exposes matching storage forms:
+For Morpho-style `mapping(K => Struct)` / `mapping(K1 => mapping(K2 => Struct))` layouts, declare `FieldType.mappingStruct` / `FieldType.mappingStruct2` and access named members through `Expr.structMember` / `Expr.structMember2`. The `verity_contract` surface exposes matching storage forms:
 
 ```lean
 positions : MappingStruct(Address,[

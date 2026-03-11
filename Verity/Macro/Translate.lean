@@ -222,6 +222,9 @@ private def storageTypeFromSyntax (ty : Term) : CommandElabM StorageType := do
   | _ => do
       let vt ← valueTypeFromSyntax ty
       match vt with
+      | .array elemTy =>
+          throwErrorAt ty
+            s!"storage dynamic arrays are not supported yet (issue #1571); field uses {reprStr (ValueType.array elemTy)}"
       | .tuple _ => throwErrorAt ty "storage fields cannot be Tuple; use mapping encodings"
       | _ => pure (.scalar vt)
 

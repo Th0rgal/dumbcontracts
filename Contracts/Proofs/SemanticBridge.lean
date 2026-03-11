@@ -11,12 +11,12 @@
 
     ∀ slot, (edslFinalState.storage slot).val = irResult.finalStorage slot
 
-  **Status (post-evalBuiltinCall refactor, e5da6c7f)**: All proofs in this file
-  used `simp` to unfold the full IR execution chain including `evalBuiltinCall`.
-  After the refactor added `callvalue`/`calldatasize` support, `evalBuiltinCall`
-  became too large for `simp`/`isDefEq` to reduce within the heartbeat limit.
-  The theorem *statements* are preserved; proofs use placeholders until
-  `evalBuiltinCall` is factored into smaller pieces.
+  **Status**: This file is the contract-specific Layer 2 client/example layer.
+  The bridge theorems below are intentionally concrete per contract function:
+  they demonstrate how to connect EDSL execution, compiled IR execution, and
+  Layer 3 preservation without claiming a single generic
+  `CompilationModel.compile` correctness theorem for arbitrary supported
+  contracts.
 
   **Why a separate file**: The macro-generated theorems cannot import
   `Compiler.Proofs.IRGeneration.IRInterpreter` (it would transitively pull

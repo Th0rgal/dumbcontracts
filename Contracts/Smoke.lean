@@ -84,6 +84,28 @@ verity_contract StorageArraySmoke where
   function push (value : Uint256) : Unit := do
     pushStorageArray queue value
 
+/--
+error: field 'queue' is a storage dynamic array; use pushStorageArray/popStorageArray/setStorageArrayElement
+-/
+#guard_msgs in
+verity_contract StorageArraySetStorageUnsupported where
+  storage
+    queue : Array Uint256 := slot 0
+
+  function badWrite (value : Uint256) : Unit := do
+    setStorage queue value
+
+/--
+error: field 'queue' is a storage dynamic array; use pushStorageArray/popStorageArray/setStorageArrayElement
+-/
+#guard_msgs in
+verity_contract StorageArraySetStorageAddrUnsupported where
+  storage
+    queue : Array Uint256 := slot 0
+
+  function badWrite (owner : Address) : Unit := do
+    setStorageAddr queue owner
+
 verity_contract MappingWordSmoke where
   storage
     words : Uint256 → Uint256 := slot 0

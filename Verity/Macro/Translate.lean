@@ -2709,14 +2709,26 @@ private def translateEffectStmt
           [ $[$argExprs],* ])
   | `(term| setStorage $field:ident $value) =>
       let f ← lookupStorageField fields (toString field.getId)
-      if f.ty != .scalar .uint256 then
-        throwErrorAt stx s!"field '{f.name}' is not Uint256; use setStorageAddr"
-      `(Compiler.CompilationModel.Stmt.setStorage $(strTerm f.name) $(← translatePureExpr fields constDecls immutableDecls params locals value))
+      match f.ty with
+      | .scalar .uint256 =>
+          `(Compiler.CompilationModel.Stmt.setStorage $(strTerm f.name) $(← translatePureExpr fields constDecls immutableDecls params locals value))
+      | .scalar .address =>
+          throwErrorAt stx s!"field '{f.name}' is Address-valued; use setStorageAddr"
+      | .dynamicArray _ =>
+          throwErrorAt stx s!"field '{f.name}' is a storage dynamic array; use pushStorageArray/popStorageArray/setStorageArrayElement"
+      | _ =>
+          throwErrorAt stx s!"field '{f.name}' is not Uint256; use setStorageAddr"
   | `(term| setStorageAddr $field:ident $value) =>
       let f ← lookupStorageField fields (toString field.getId)
-      if f.ty != .scalar .address then
-        throwErrorAt stx s!"field '{f.name}' is not Address; use setStorage"
-      `(Compiler.CompilationModel.Stmt.setStorageAddr $(strTerm f.name) $(← translatePureExpr fields constDecls immutableDecls params locals value))
+      match f.ty with
+      | .scalar .address =>
+          `(Compiler.CompilationModel.Stmt.setStorageAddr $(strTerm f.name) $(← translatePureExpr fields constDecls immutableDecls params locals value))
+      | .scalar .uint256 =>
+          throwErrorAt stx s!"field '{f.name}' is Uint256-valued; use setStorage"
+      | .dynamicArray _ =>
+          throwErrorAt stx s!"field '{f.name}' is a storage dynamic array; use pushStorageArray/popStorageArray/setStorageArrayElement"
+      | _ =>
+          throwErrorAt stx s!"field '{f.name}' is not Address; use setStorage"
   | `(term| setMapping $field:ident $key:term $value:term) =>
       let f ← lookupStorageField fields (toString field.getId)
       match f.ty with

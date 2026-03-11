@@ -201,7 +201,7 @@ def build_catalog() -> dict:
             {
                 "name": "helper_composition",
                 "status": "blocked_at_body_ir_composition_seam",
-                "issue": 1335,
+                "issue": 1630,
             },
             {
                 "name": "low_level_calls_and_returndata",

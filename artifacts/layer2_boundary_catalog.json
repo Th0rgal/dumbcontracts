@@ -1,7 +1,7 @@
 {
   "current_out_of_scope_surfaces": [
     {
-      "issue": 1335,
+      "issue": 1630,
       "name": "helper_composition",
       "status": "blocked_at_body_ir_composition_seam"
     },

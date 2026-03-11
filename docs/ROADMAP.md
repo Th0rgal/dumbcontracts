@@ -135,7 +135,7 @@ A developer can now write a `CompilationModel` for contracts with conditional lo
 
 The EDSL path remains more expressive (supports arbitrary Lean, `List.foldl`, pattern matching). Contracts like UnlinkPool that use advanced Lean features still need the EDSL path. The CompilationModel path now covers the subset needed for standard DeFi contracts (ERC20, ERC721, governance, simple AMMs).
 
-Internal helper call mechanics are available end-to-end, but first-class compositional proof reuse at the helper boundary is still incomplete. Today, internal helpers compile, validate, and execute through `execStmtsFuel`; the source-semantics layer now has explicit helper-summary soundness and direct-call consumption lemmas, but those summaries are not yet threaded through the body/IR preservation proofs across callers. That follow-on proof boundary is tracked separately in [#1335](https://github.com/Th0rgal/verity/issues/1335).
+Internal helper call mechanics are available end-to-end, but first-class compositional proof reuse at the helper boundary is still incomplete. Today, internal helpers compile, validate, and execute through `execStmtsFuel`; the source-semantics layer now has explicit helper-summary soundness and direct-call consumption lemmas, but those summaries are not yet threaded through the body/IR preservation proofs across callers. That remaining proof-level gap is tracked in the Layer 2 completeness roadmap under [#1630](https://github.com/Th0rgal/verity/issues/1630), with the current interface/boundary refactor landing in [#1633](https://github.com/Th0rgal/verity/pull/1633).
 
 ### Interpreter feature-support contract
 

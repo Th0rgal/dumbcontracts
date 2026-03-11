@@ -1406,6 +1406,69 @@ def storageDynamicArrayPopUsesStorageStmt : Bool :=
 
 example : storageDynamicArrayPopUsesStorageStmt = true := by native_decide
 
+def storageDynamicArrayExecutableReadsHead : Bool :=
+  let seededState : Verity.ContractState :=
+    { Verity.defaultState with
+      storageArray := fun idx =>
+        if idx == (MacroStorageDynamicArray.queue).slot then [11, 17] else [] }
+  match MacroStorageDynamicArray.firstValue seededState with
+  | .success value state =>
+      value == 11 && state.storageArray (MacroStorageDynamicArray.queue).slot == [11, 17]
+  | .revert _ _ => false
+
+example : storageDynamicArrayExecutableReadsHead = true := by native_decide
+
+def storageDynamicArrayExecutableReadRevertsOutOfBounds : Bool :=
+  match MacroStorageDynamicArray.firstValue Verity.defaultState with
+  | .success _ _ => false
+  | .revert msg state =>
+      msg == "Storage array index out of bounds" &&
+        state.storageArray (MacroStorageDynamicArray.queue).slot == []
+
+example : storageDynamicArrayExecutableReadRevertsOutOfBounds = true := by native_decide
+
+def storageDynamicArrayExecutableSetUpdatesHead : Bool :=
+  let seededState : Verity.ContractState :=
+    { Verity.defaultState with
+      storageArray := fun idx =>
+        if idx == (MacroStorageDynamicArray.queue).slot then [11, 17] else [] }
+  match MacroStorageDynamicArray.setValue0 29 seededState with
+  | .success () state =>
+      state.storageArray (MacroStorageDynamicArray.queue).slot == [29, 17]
+  | .revert _ _ => false
+
+example : storageDynamicArrayExecutableSetUpdatesHead = true := by native_decide
+
+def storageDynamicArrayExecutableSetRevertsOutOfBounds : Bool :=
+  match MacroStorageDynamicArray.setValue0 29 Verity.defaultState with
+  | .success _ _ => false
+  | .revert msg state =>
+      msg == "Storage array index out of bounds" &&
+        state.storageArray (MacroStorageDynamicArray.queue).slot == []
+
+example : storageDynamicArrayExecutableSetRevertsOutOfBounds = true := by native_decide
+
+def storageDynamicArrayExecutablePopShrinksLength : Bool :=
+  let seededState : Verity.ContractState :=
+    { Verity.defaultState with
+      storageArray := fun idx =>
+        if idx == (MacroStorageDynamicArray.queue).slot then [11, 17] else [] }
+  match MacroStorageDynamicArray.popValue seededState with
+  | .success () state =>
+      state.storageArray (MacroStorageDynamicArray.queue).slot == [11]
+  | .revert _ _ => false
+
+example : storageDynamicArrayExecutablePopShrinksLength = true := by native_decide
+
+def storageDynamicArrayExecutablePopRevertsWhenEmpty : Bool :=
+  match MacroStorageDynamicArray.popValue Verity.defaultState with
+  | .success _ _ => false
+  | .revert msg state =>
+      msg == "Storage array pop on empty array" &&
+        state.storageArray (MacroStorageDynamicArray.queue).slot == []
+
+example : storageDynamicArrayExecutablePopRevertsWhenEmpty = true := by native_decide
+
 end MacroDynamicArraySmoke
 
 namespace MacroEventTraceSmoke

@@ -247,6 +247,7 @@ def firstMappingPackedBits (fields : List Field) :
     | [] => none
     | f :: rest =>
         match f.ty, f.packedBits with
+        | FieldType.dynamicArray _, some _ => some f.name
         | FieldType.mappingTyped _, some _ => some f.name
         | FieldType.mappingStruct _ _, some _ => some f.name
         | FieldType.mappingStruct2 _ _ _, some _ => some f.name
@@ -285,6 +286,7 @@ def validateStructMembers (fieldName : String) (members : List StructMember) : E
 def firstInvalidStructField (fields : List Field) : Except String Unit := do
   for f in fields do
     match f.ty with
+    | FieldType.dynamicArray _ => pure ()
     | FieldType.mappingStruct _ members => validateStructMembers f.name members
     | FieldType.mappingStruct2 _ _ members => validateStructMembers f.name members
     | _ => pure ()

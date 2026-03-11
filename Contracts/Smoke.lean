@@ -73,16 +73,38 @@ verity_contract Bytes32Smoke where
     let digest ← getStorage value
     return digest
 
-/--
-error: storage dynamic arrays are not supported yet (issue #1571); field uses Verity.Macro.ValueType.array (Verity.Macro.ValueType.uint256)
--/
-#guard_msgs in
-verity_contract StorageArrayUnsupported where
+verity_contract StorageArraySmoke where
   storage
     queue : Array Uint256 := slot 0
 
   function size () : Uint256 := do
-    return 0
+    let size ← getStorageArrayLength queue
+    return size
+
+  function push (value : Uint256) : Unit := do
+    pushStorageArray queue value
+
+/--
+error: field 'queue' is a storage dynamic array; use pushStorageArray/popStorageArray/setStorageArrayElement
+-/
+#guard_msgs in
+verity_contract StorageArraySetStorageUnsupported where
+  storage
+    queue : Array Uint256 := slot 0
+
+  function badWrite (value : Uint256) : Unit := do
+    setStorage queue value
+
+/--
+error: field 'queue' is a storage dynamic array; use pushStorageArray/popStorageArray/setStorageArrayElement
+-/
+#guard_msgs in
+verity_contract StorageArraySetStorageAddrUnsupported where
+  storage
+    queue : Array Uint256 := slot 0
+
+  function badWrite (owner : Address) : Unit := do
+    setStorageAddr queue owner
 
 verity_contract MappingWordSmoke where
   storage

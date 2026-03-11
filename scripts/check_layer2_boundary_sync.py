@@ -71,6 +71,10 @@ def expected_snippets() -> dict[str, list[str]]:
 
 def forbidden_snippets() -> dict[str, list[str]]:
     return {
+        "COMPILER_PROOFS_README": [
+            "it still depends on 2 documented axioms in `Compiler.Proofs.IRGeneration.Function`",
+            "generic body simulation and `execIRFunctionFuel`/`execIRFunction` bridging",
+        ],
         "VERIFICATION_STATUS": [
             "## Layer 2: CompilationModel → IR — COMPLETE",
             "it still depends on 2 documented Layer-2 axioms",

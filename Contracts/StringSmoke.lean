@@ -134,7 +134,7 @@ def bytesEqExecutableMatches : Bool :=
       eq1 && (!eq2) && ne && pick1 == 1 && pick2 == 0
   | _, _, _, _, _ => false
 
-example : bytesEqExecutableMatches = true := by native_decide
+example : bytesEqExecutableMatches = true := by decide
 
 def bytesEqModelUsesDynamicBytesEq : Bool :=
   match BytesEqSmoke.same_modelBody with

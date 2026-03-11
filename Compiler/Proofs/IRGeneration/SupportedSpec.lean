@@ -63,7 +63,7 @@ def exprTouchesUnsupportedCoreSurface : Expr → Bool
   | .mulDivDown _ _ _ | .mulDivUp _ _ _ | .shl _ _
   | .shr _ _ | .sar _ _ | .signextend _ _ => true
   | .mapping _ _ | .mappingWord _ _ _ | .mappingPackedWord _ _ _ _
-  | .mapping2 _ _ _ | .mapping2Word _ _ _ _ | .mappingUint _ _
+  | .mapping2 _ _ _ | .mapping2Word _ _ _ _ | .mappingUint _ _ | .mappingChain _ _
   | .structMember _ _ _ | .structMember2 _ _ _ _
   | .constructorArg _ | .blobbasefee | .mload _ | .tload _ | .keccak256 _ _
   | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _
@@ -79,7 +79,7 @@ def exprTouchesUnsupportedStateSurface : Expr → Bool
   | .localVar _ => false
   | .storage _ | .storageAddr _ => true
   | .mapping _ _ | .mappingWord _ _ _ | .mappingPackedWord _ _ _ _
-  | .mapping2 _ _ _ | .mapping2Word _ _ _ _ | .mappingUint _ _
+  | .mapping2 _ _ _ | .mapping2Word _ _ _ _ | .mappingUint _ _ | .mappingChain _ _
   | .structMember _ _ _ | .structMember2 _ _ _ _
   | .storageArrayLength _ | .storageArrayElement _ _ => true
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
@@ -122,6 +122,7 @@ def exprTouchesUnsupportedCallSurface : Expr → Bool
       exprTouchesUnsupportedCallSurface a || exprTouchesUnsupportedCallSurface b
   | .mapping _ b | .mappingUint _ b | .arrayElement _ b | .storageArrayElement _ b =>
       exprTouchesUnsupportedCallSurface b
+  | .mappingChain _ _ => true
   | .bitNot a | .logicalNot a | .mappingWord _ a _ | .mappingPackedWord _ a _ _
   | .structMember _ a _ => exprTouchesUnsupportedCallSurface a
   | .ite cond thenVal elseVal =>
@@ -158,6 +159,7 @@ def exprTouchesUnsupportedHelperSurface : Expr → Bool
       exprTouchesUnsupportedHelperSurface a || exprTouchesUnsupportedHelperSurface b
   | .mapping _ b | .mappingUint _ b | .arrayElement _ b | .storageArrayElement _ b =>
       exprTouchesUnsupportedHelperSurface b
+  | .mappingChain _ _ => true
   | .bitNot a | .logicalNot a | .mappingWord _ a _ | .mappingPackedWord _ a _ _
   | .structMember _ a _ => exprTouchesUnsupportedHelperSurface a
   | .ite cond thenVal elseVal =>
@@ -194,6 +196,7 @@ def exprTouchesUnsupportedForeignSurface : Expr → Bool
       exprTouchesUnsupportedForeignSurface a || exprTouchesUnsupportedForeignSurface b
   | .mapping _ b | .mappingUint _ b | .arrayElement _ b | .storageArrayElement _ b =>
       exprTouchesUnsupportedForeignSurface b
+  | .mappingChain _ _ => true
   | .bitNot a | .logicalNot a | .mappingWord _ a _ | .mappingPackedWord _ a _ _
   | .structMember _ a _ => exprTouchesUnsupportedForeignSurface a
   | .ite cond thenVal elseVal =>
@@ -229,6 +232,7 @@ def exprTouchesUnsupportedLowLevelSurface : Expr → Bool
       exprTouchesUnsupportedLowLevelSurface a || exprTouchesUnsupportedLowLevelSurface b
   | .mapping _ b | .mappingUint _ b | .arrayElement _ b | .storageArrayElement _ b =>
       exprTouchesUnsupportedLowLevelSurface b
+  | .mappingChain _ _ => true
   | .bitNot a | .logicalNot a | .mappingWord _ a _ | .mappingPackedWord _ a _ _
   | .structMember _ a _ => exprTouchesUnsupportedLowLevelSurface a
   | .ite cond thenVal elseVal =>
@@ -266,7 +270,7 @@ def exprTouchesUnsupportedContractSurface (expr : Expr) : Bool :=
         exprTouchesUnsupportedContractSurface thenVal ||
         exprTouchesUnsupportedContractSurface elseVal
   | .mapping _ _ | .mappingWord _ _ _ | .mappingPackedWord _ _ _ _
-  | .mapping2 _ _ _ | .mapping2Word _ _ _ _ | .mappingUint _ _
+  | .mapping2 _ _ _ | .mapping2Word _ _ _ _ | .mappingUint _ _ | .mappingChain _ _
   | .structMember _ _ _ | .structMember2 _ _ _ _
   | .constructorArg _ | .blobbasefee | .mload _ | .tload _ | .keccak256 _ _
   | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _
@@ -772,6 +776,16 @@ example :
 example :
     stmtListTouchesUnsupportedEffectSurface
       [Stmt.ite (.literal 1) [Stmt.emit "Evt" []] []] = true := by
+  decide
+
+example :
+    exprTouchesUnsupportedHelperSurface
+      (.mappingChain "balances" [Expr.internalCall "helper" []]) = true := by
+  decide
+
+example :
+    exprTouchesUnsupportedCallSurface
+      (.mappingChain "balances" [Expr.internalCall "helper" []]) = true := by
   decide
 
 structure SupportedBodyCoreInterface (fn : FunctionSpec) : Prop where

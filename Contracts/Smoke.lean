@@ -73,6 +73,17 @@ verity_contract Bytes32Smoke where
     let digest ← getStorage value
     return digest
 
+/--
+error: storage dynamic arrays are not supported yet (issue #1571); field uses Verity.Macro.ValueType.array (Verity.Macro.ValueType.uint256)
+-/
+#guard_msgs in
+verity_contract StorageArrayUnsupported where
+  storage
+    queue : Array Uint256 := slot 0
+
+  function size () : Uint256 := do
+    return 0
+
 verity_contract MappingWordSmoke where
   storage
     words : Uint256 → Uint256 := slot 0

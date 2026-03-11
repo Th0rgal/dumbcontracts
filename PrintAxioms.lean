@@ -1063,6 +1063,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_requireClausesThenLetAssignMulSetStorageLocalLiteral  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_supportedStmtFragment_of_surface  -- private
 #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_supportedStmtList_of_surface
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterface.genericCore
 -- #print axioms Compiler.Proofs.IRGeneration.exprBoundNamesInScope_of_scopeNamesIncluded  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_stmtListCompileCore_of_scopeNamesIncluded  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_stmtListTerminalCore_of_scopeNamesIncluded  -- private
@@ -1123,6 +1124,19 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.supported_stmt_list_preserves_semantics
 
 -- Compiler/Proofs/IRGeneration/SupportedSpec.lean
+#print axioms Compiler.Proofs.IRGeneration.SupportedFunction.paramNamesNodup
+#print axioms Compiler.Proofs.IRGeneration.SupportedFunction.paramsSupported
+#print axioms Compiler.Proofs.IRGeneration.SupportedFunction.returnsSupported
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.normalizedFields
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noPackedFields
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorCount
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorsDistinct
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noConstructor
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noEvents
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noErrors
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noExternals
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noFallback
+#print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noReceive
 #print axioms Compiler.Proofs.IRGeneration.SupportedSpec.supportedFunctionOfSelectorDispatched
 #print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionParamsSupported
 #print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionParamNamesNodup
@@ -1250,4 +1264,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1119 theorems/lemmas (890 public, 229 private)
+-- Total: 1133 theorems/lemmas (904 public, 229 private)

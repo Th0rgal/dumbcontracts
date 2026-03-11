@@ -30,7 +30,7 @@ contract StringErrorSmokeReference {
 
 contract StringErrorSmokeTest is Test, YulTestBase {
     address internal stringErrorSmoke;
-    StringErrorSmokeReference internal reference;
+    StringErrorSmokeReference internal referenceContract;
 
     function setUp() public {
         stringErrorSmoke = deployCompiledVerityModule(
@@ -38,14 +38,14 @@ contract StringErrorSmokeTest is Test, YulTestBase {
             "StringErrorSmoke",
             "artifacts/test-string-error-smoke"
         );
-        reference = new StringErrorSmokeReference();
+        referenceContract = new StringErrorSmokeReference();
     }
 
     function _assertCheckMessageParity(bool ok, string memory message) internal {
         (bool yulSuccess, bytes memory yulData) =
             stringErrorSmoke.call(abi.encodeWithSignature("checkMessage(bool,string)", ok, message));
         (bool refSuccess, bytes memory refData) =
-            address(reference).call(abi.encodeWithSignature("checkMessage(bool,string)", ok, message));
+            address(referenceContract).call(abi.encodeWithSignature("checkMessage(bool,string)", ok, message));
 
         assertEq(yulSuccess, refSuccess, "success mismatch");
         assertEq(yulData, refData, "revert payload mismatch");
@@ -62,7 +62,7 @@ contract StringErrorSmokeTest is Test, YulTestBase {
         (bool yulSuccess, bytes memory yulData) =
             stringErrorSmoke.call(abi.encodeWithSignature("checkTaggedMessage(uint256,string)", tag, message));
         (bool refSuccess, bytes memory refData) =
-            address(reference).call(abi.encodeWithSignature("checkTaggedMessage(uint256,string)", tag, message));
+            address(referenceContract).call(abi.encodeWithSignature("checkTaggedMessage(uint256,string)", tag, message));
 
         assertEq(yulSuccess, refSuccess, "success mismatch");
         assertEq(yulData, refData, "payload mismatch");
@@ -79,7 +79,7 @@ contract StringErrorSmokeTest is Test, YulTestBase {
         (bool yulSuccess, bytes memory yulData) =
             stringErrorSmoke.call(abi.encodeWithSignature("checkSecondMessage(bool,string,string)", ok, prefix, message));
         (bool refSuccess, bytes memory refData) =
-            address(reference).call(abi.encodeWithSignature("checkSecondMessage(bool,string,string)", ok, prefix, message));
+            address(referenceContract).call(abi.encodeWithSignature("checkSecondMessage(bool,string,string)", ok, prefix, message));
 
         assertEq(yulSuccess, refSuccess, "success mismatch");
         assertEq(yulData, refData, "revert payload mismatch");

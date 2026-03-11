@@ -1375,14 +1375,15 @@ theorem supported_function_correct
               fn.body :=
           hsupportedFn.body.genericCore
             (by simpa [SourceSemantics.effectiveFields] using hnoConflict)
-        exact supported_function_body_correct_from_exact_state_generic
-          model fn bodyStmts tx initialWorld
+        exact supported_function_body_correct_from_exact_state_generic_with_helpers
+          model fn bodyStmts hSupported.helperFuel tx initialWorld
           (ParamLoading.applyBindingsToIRState
             (prebindRawArgs initialState fn.params) bindings)
           bindings extraFuel hbodyExtraFuelLower
           (by simpa [SourceSemantics.effectiveFields] using hSupported.normalizedFields)
           hSupported.noEvents
           hSupported.noErrors
+          hsupportedFn.body.calls.helperCompatibility.surfaceClosed
           hgeneric
           hbodyCompile
           hscope

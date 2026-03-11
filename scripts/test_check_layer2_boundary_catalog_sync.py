@@ -56,13 +56,13 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "macro-lowered image of `verity_contract`\n"
                 "`calls.helperCompatibility` gate\n"
-                "helper-free `SourceSemantics.execStmtList`\n"
+                "helper-aware body theorem does not yet consume helper-summary soundness/rank evidence\n"
             ),
             "COMPILER_PROOFS_README": (
                 "`artifacts/layer2_boundary_catalog.json`\n"
                 "`SupportedSpec` split\n"
                 "`calls.helpers`\n"
-                "`SupportedStmtList`\n"
+                "summary-soundness evidence\n"
             ),
         }
         if not good_docs:

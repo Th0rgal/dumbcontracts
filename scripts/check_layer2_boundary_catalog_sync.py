@@ -61,13 +61,13 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "`artifacts/layer2_boundary_catalog.json`",
             "macro-lowered image of `verity_contract`",
             "`calls.helperCompatibility` gate",
-            "helper-free `SourceSemantics.execStmtList`",
+            "helper-aware body theorem does not yet consume helper-summary soundness/rank evidence",
         ],
         "COMPILER_PROOFS_README": [
             "`artifacts/layer2_boundary_catalog.json`",
             "`SupportedSpec` split",
             "`calls.helpers`",
-            "`SupportedStmtList`",
+            "summary-soundness evidence",
         ],
     }
 

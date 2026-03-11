@@ -150,8 +150,9 @@ def build_catalog() -> dict:
                     "SupportedBodyCallInterface.helperCompatibility"
                 ),
                 "next_required_proof_step": (
-                    "replace the helperCompatibility gate with a helper-aware "
-                    "body/IR composition interface"
+                    "consume helper-summary soundness/rank evidence in the "
+                    "helper-aware body/IR composition interface so "
+                    "helperCompatibility can disappear"
                 ),
                 "blocking_seams": [
                     {
@@ -160,18 +161,6 @@ def build_catalog() -> dict:
                         "status": (
                             "callers still derive generic body proofs through "
                             "SupportedStmtList, which excludes helper-call forms"
-                        ),
-                    },
-                    {
-                        "name": "helper_free_body_theorem",
-                        "source": (
-                            "GenericInduction."
-                            "supported_function_body_correct_from_exact_state_generic"
-                        ),
-                        "status": (
-                            "the generic body/IR preservation theorem still "
-                            "targets SourceSemantics.execStmtList rather than "
-                            "the helper-aware source semantics"
                         ),
                     },
                     {
@@ -187,11 +176,15 @@ def build_catalog() -> dict:
                     },
                     {
                         "name": "summary_soundness_not_yet_consumed",
-                        "source": "SupportedSpecHelperProofs",
+                        "source": (
+                            "GenericInduction."
+                            "supported_function_body_correct_from_exact_state_"
+                            "generic_with_helpers"
+                        ),
                         "status": (
-                            "summary-soundness evidence exists as an explicit "
-                            "theorem-level slot but is not yet threaded through "
-                            "the body proof"
+                            "the helper-aware body theorem exists, but helper "
+                            "summary-soundness/rank evidence is not yet "
+                            "threaded through that body proof"
                         ),
                     },
                 ],

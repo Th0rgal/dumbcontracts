@@ -189,25 +189,20 @@
           "status": "callers still derive generic body proofs through SupportedStmtList, which excludes helper-call forms"
         },
         {
-          "name": "helper_free_body_theorem",
-          "source": "GenericInduction.supported_function_body_correct_from_exact_state_generic",
-          "status": "the generic body/IR preservation theorem still targets SourceSemantics.execStmtList rather than the helper-aware source semantics"
-        },
-        {
           "name": "ir_internal_call_semantics",
           "source": "Compiler.Proofs.IRGeneration.IRInterpreter.execIRFunction",
           "status": "IR execution still runs only the compiled external function body and does not model internal helper call composition"
         },
         {
           "name": "summary_soundness_not_yet_consumed",
-          "source": "SupportedSpecHelperProofs",
-          "status": "summary-soundness evidence exists as an explicit theorem-level slot but is not yet threaded through the body proof"
+          "source": "GenericInduction.supported_function_body_correct_from_exact_state_generic_with_helpers",
+          "status": "the helper-aware body theorem exists, but helper summary-soundness/rank evidence is not yet threaded through that body proof"
         }
       ],
       "current_fail_closed_gate": "SupportedBodyCallInterface.helperCompatibility",
       "decreasing_rank_measure": "SupportedBodyHelperInterface.calleeRanksDecrease",
       "inventory_source": "SupportedBodyHelperInterface.summaryOf",
-      "next_required_proof_step": "replace the helperCompatibility gate with a helper-aware body/IR composition interface",
+      "next_required_proof_step": "consume helper-summary soundness/rank evidence in the helper-aware body/IR composition interface so helperCompatibility can disappear",
       "proof_contract": "InternalHelperSummaryContract",
       "proof_soundness_slot": "SupportedSpecHelperProofs"
     }

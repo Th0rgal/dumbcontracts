@@ -272,7 +272,8 @@ now sits under the post-generic widening/completeness plan in
 - the remaining helper blocker is now pinned down more precisely in
   [`artifacts/layer2_boundary_catalog.json`](../artifacts/layer2_boundary_catalog.json):
   callers still derive generic body proofs through the helper-free `SupportedStmtList` witness,
-  the generic body theorem still targets helper-free `SourceSemantics.execStmtList`,
+  the generic body theorem now already targets the helper-aware source semantics family under the current fail-closed helper gate,
+  but summary-soundness/rank evidence is still not consumed inside that body proof,
   and the current IR function semantics has no first-class internal-helper composition
 - widen the supported whole-contract fragment without reintroducing axioms
 

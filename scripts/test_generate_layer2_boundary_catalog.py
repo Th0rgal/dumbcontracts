@@ -29,9 +29,16 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             catalog["current_out_of_scope_surfaces"][0]["status"],
             "blocked_at_body_ir_composition_seam",
         )
-        self.assertGreaterEqual(
-            len(catalog["supported_spec_split"]["helper_boundary"]["blocking_seams"]),
-            4,
+        self.assertEqual(
+            [
+                seam["name"]
+                for seam in catalog["supported_spec_split"]["helper_boundary"]["blocking_seams"]
+            ],
+            [
+                "legacy_stmt_fragment_witness",
+                "ir_internal_call_semantics",
+                "summary_soundness_not_yet_consumed",
+            ],
         )
         self.assertEqual(
             [step["rank"] for step in catalog["ranked_next_steps"]],

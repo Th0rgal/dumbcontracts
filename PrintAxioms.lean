@@ -1124,9 +1124,16 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.supported_stmt_list_preserves_semantics
 
 -- Compiler/Proofs/IRGeneration/SupportedSpec.lean
+#print axioms Compiler.Proofs.IRGeneration.helperCallNames_nodup
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.paramNamesNodup
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.paramsSupported
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.returnsSupported
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.surfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.summaryOfCall
+#print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedContractSurface_eq_featureOr
+#print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedCallSurface_eq_featureOr
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyCallInterface.surfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterface.surfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedSpec.normalizedFields
 #print axioms Compiler.Proofs.IRGeneration.SupportedSpec.noPackedFields
 #print axioms Compiler.Proofs.IRGeneration.SupportedSpec.selectorCount
@@ -1158,6 +1165,10 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.counter_noReceive  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.counter_supported_function  -- private
 #print axioms Compiler.Proofs.IRGeneration.counter_supported_spec
+-- #print axioms Compiler.Proofs.IRGeneration.simpleStorage_noPackedFields  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.simpleStorage_noFallback  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.simpleStorage_noReceive  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.simpleStorage_supported_function  -- private
 #print axioms Compiler.Proofs.IRGeneration.simpleStorage_supported_spec
 
 -- Compiler/Proofs/MappingSlot.lean
@@ -1264,4 +1275,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1133 theorems/lemmas (904 public, 229 private)
+-- Total: 1144 theorems/lemmas (911 public, 233 private)

@@ -1006,33 +1006,26 @@ def simpleStorageSupportedSpecModel : CompilationModel :=
           returnType := some .uint256
           body := [Stmt.return (Expr.literal 11)] } ] }
 
-theorem simpleStorage_supported_spec : SupportedSpec simpleStorageSupportedSpecModel
-    [0x2e64cec1] := by
-  refine
-    { invariants :=
-        { normalizedFields := by
-            rfl
-          noPackedFields := by
-            intro field hfield
-            simp [simpleStorageSupportedSpecModel] at hfield
-          selectorCount := by
-            decide
-          selectorsDistinct := by
-            decide }
-      surface :=
-        { noConstructor := rfl
-          noEvents := rfl
-          noErrors := rfl
-          noExternals := rfl
-          noFallback := by
-            intro fn hfn
-            simp [simpleStorageSupportedSpecModel] at hfn
-            rcases hfn with rfl <;> decide
-          noReceive := by
-            intro fn hfn
-            simp [simpleStorageSupportedSpecModel] at hfn
-            rcases hfn with rfl <;> decide }
-      functions := ?_ }
+private theorem simpleStorage_noPackedFields :
+    ∀ field ∈ simpleStorageSupportedSpecModel.fields, field.packedBits = none := by
+  intro field hfield
+  simp [simpleStorageSupportedSpecModel] at hfield
+
+private theorem simpleStorage_noFallback :
+    ∀ fn ∈ simpleStorageSupportedSpecModel.functions, fn.name != "fallback" := by
+  intro fn hfn
+  simp [simpleStorageSupportedSpecModel] at hfn
+  rcases hfn with rfl <;> decide
+
+private theorem simpleStorage_noReceive :
+    ∀ fn ∈ simpleStorageSupportedSpecModel.functions, fn.name != "receive" := by
+  intro fn hfn
+  simp [simpleStorageSupportedSpecModel] at hfn
+  rcases hfn with rfl <;> decide
+
+private theorem simpleStorage_supported_function :
+    ∀ fn, fn ∈ simpleStorageSupportedSpecModel.functions →
+      SupportedFunction simpleStorageSupportedSpecModel fn := by
   intro fn hfn
   simp [simpleStorageSupportedSpecModel] at hfn
   rcases hfn with rfl
@@ -1063,5 +1056,25 @@ theorem simpleStorage_supported_spec : SupportedSpec simpleStorageSupportedSpecM
                lowLevel := by decide }
           effects := { surfaceClosed := by decide }
           noLocalObligations := rfl } }
+
+theorem simpleStorage_supported_spec : SupportedSpec simpleStorageSupportedSpecModel
+    [0x2e64cec1] := by
+  refine
+    { invariants :=
+        { normalizedFields := by
+            rfl
+          noPackedFields := simpleStorage_noPackedFields
+          selectorCount := by
+            decide
+          selectorsDistinct := by
+            decide }
+      surface :=
+        { noConstructor := rfl
+          noEvents := rfl
+          noErrors := rfl
+          noExternals := rfl
+          noFallback := simpleStorage_noFallback
+          noReceive := simpleStorage_noReceive }
+      functions := simpleStorage_supported_function }
 
 end Compiler.Proofs.IRGeneration

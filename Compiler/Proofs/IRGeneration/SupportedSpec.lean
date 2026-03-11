@@ -64,10 +64,7 @@ mutual
         exprTouchesUnsupportedContractSurface cond
     | .mstore _ _ | .tstore _ _ => true
     | .stop => false
-    | .ite cond thenBranch elseBranch =>
-        exprTouchesUnsupportedContractSurface cond ||
-          stmtListTouchesUnsupportedContractSurface thenBranch ||
-          stmtListTouchesUnsupportedContractSurface elseBranch
+    | .ite _ _ _ => true
     | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
     | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
     | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
@@ -183,6 +180,10 @@ theorem SupportedSpec.selectorFunctionReturnsSupported
 @[simp] theorem stmtTouchesUnsupportedContractSurface_setStorageAddr
     (field : String) (value : Expr) :
     stmtTouchesUnsupportedContractSurface (.setStorageAddr field value) = true := rfl
+
+@[simp] theorem stmtTouchesUnsupportedContractSurface_ite
+    (cond : Expr) (thenBranch elseBranch : List Stmt) :
+    stmtTouchesUnsupportedContractSurface (.ite cond thenBranch elseBranch) = true := rfl
 
 @[simp] theorem stmtTouchesUnsupportedContractSurface_tstore
     (offset value : Expr) :

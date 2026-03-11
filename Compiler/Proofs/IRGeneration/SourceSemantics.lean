@@ -523,4 +523,18 @@ example :
       { Verity.defaultState with storageArray := fun slot => if slot = 7 then [11, 17] else [] }).finalStorage 7 = 1 := by
   decide
 
+example :
+    (sourceContractSemantics storageArraySourceSpec
+      [0x11111111, 0x22222222, 0x33333333, 0x44444444, 0x55555555]
+      { sender := 9, functionSelector := 0x22222222, args := [] }
+      Verity.defaultState).success = false := by
+  decide
+
+example :
+    (sourceContractSemantics storageArraySourceSpec
+      [0x11111111, 0x22222222, 0x33333333, 0x44444444, 0x55555555]
+      { sender := 9, functionSelector := 0x55555555, args := [] }
+      Verity.defaultState).success = false := by
+  decide
+
 end Compiler.Proofs.IRGeneration

@@ -2703,6 +2703,112 @@ theorem interpretIRWithInternalsZeroConservativeExtensionGoal_closed
   exact interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtSubgoals
     contract (interpretIRWithInternalsZeroConservativeExtensionStmtSubgoals_closed contract)
 
+/-! ## Disjointness-based conservative extension (widened fragment)
+
+The following chain generalizes the `_closed` chain above by replacing the blanket
+`contract.internalFunctions = []` requirement with per-body disjointness:
+contracts **may** carry internal helper definitions as long as externally callable
+function bodies do not reference them.  This widens the supported fragment from
+"no internal functions at all" to "internal functions present but unused by
+external call sites." -/
+
+/-- A runtime contract whose externally callable function bodies are disjoint
+from its internal function table.  Unlike `LegacyCompatibleRuntimeContract` this
+does **not** require `contract.internalFunctions = []`. -/
+def DisjointRuntimeContract (contract : IRContract) : Prop :=
+  ∀ fn ∈ contract.functions,
+    YulStmtListCallsDisjointFromInternalTable contract fn.body
+
+/-- `LegacyCompatibleRuntimeContract` implies `DisjointRuntimeContract`: the
+blanket "no internals" assumption trivially satisfies per-body disjointness. -/
+theorem disjointRuntimeContract_of_legacyCompatibleRuntimeContract
+    (contract : IRContract) :
+    LegacyCompatibleRuntimeContract contract →
+      DisjointRuntimeContract contract := by
+  intro ⟨hinternal, hbodies⟩ fn hmem
+  exact YulStmtListCallsDisjointFromInternalTable_of_internalFunctions_nil
+    contract hinternal fn.body (hbodies fn hmem)
+
+/-- Dispatch-local restatement of the disjointness boundary: once a function is
+selected by the dispatcher, we only need disjointness for that single body. -/
+def DisjointRuntimeDispatch (contract : IRContract) : Prop :=
+  ∀ (tx : IRTransaction) (fn : IRFunction),
+    contract.functions.find? (·.selector == tx.functionSelector) = some fn →
+    YulStmtListCallsDisjointFromInternalTable contract fn.body
+
+theorem disjointRuntimeDispatch_of_disjointRuntimeContract
+    (contract : IRContract) :
+    DisjointRuntimeContract contract →
+      DisjointRuntimeDispatch contract := by
+  intro hdisjoint tx fn hfind
+  exact hdisjoint fn (List.mem_of_find?_eq_some hfind)
+
+/-- Function-level conservative extension under body disjointness.  Since both
+`execIRFunctionWithInternals contract 0` and `execIRFunction` use the same fuel
+`sizeOf fn.body + 1` and parameterize identically, all that is needed is
+stmt-list compatibility — which is exactly what
+`execIRStmtsWithInternals_eq_execIRStmts_of_callsDisjoint` provides. -/
+theorem execIRFunctionWithInternals_eq_execIRFunction_of_bodyCallsDisjoint
+    (contract : IRContract) :
+    ∀ fn args initialState,
+      YulStmtListCallsDisjointFromInternalTable contract fn.body →
+        execIRFunctionWithInternals contract 0 fn args initialState =
+          execIRFunction fn args initialState := by
+  intro fn args initialState hbody
+  let stateWithParams :=
+    fn.params.zip args |>.foldl (fun s (p, v) => s.setVar p.name v) initialState
+  rw [execIRFunctionWithInternals, execIRFunction]
+  rw [execIRStmtsWithInternals_eq_execIRStmts_of_callsDisjoint
+    contract (sizeOf fn.body + 1) stateWithParams fn.body hbody]
+  cases execIRStmts (sizeOf fn.body + 1) stateWithParams fn.body <;> rfl
+
+/-- Top-level conservative extension goal under disjointness: on runtime
+contracts whose external bodies are disjoint from the internal table, zero-helper-
+fuel helper-aware interpretation coincides with public `interpretIR`.  This
+strictly subsumes `InterpretIRWithInternalsZeroConservativeExtensionGoal`
+(which additionally requires `contract.internalFunctions = []`). -/
+def InterpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint
+    (contract : IRContract) : Prop :=
+  DisjointRuntimeContract contract →
+    ∀ tx initialState,
+      interpretIRWithInternals contract 0 tx initialState =
+        interpretIR contract tx initialState
+
+/-- The disjoint conservative extension goal is now proved: zero-helper-fuel
+execution equals helper-free execution when every external body is disjoint from
+the internal table. -/
+theorem interpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint_closed
+    (contract : IRContract) :
+    InterpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint contract := by
+  intro hdisjoint tx initialState
+  let stateWithTx := applyIRTransactionContext tx initialState
+  cases hfind : contract.functions.find? (·.selector == tx.functionSelector) with
+  | none =>
+      simp [interpretIRWithInternals, interpretIR, hfind]
+  | some fn =>
+      have hbody :=
+        disjointRuntimeDispatch_of_disjointRuntimeContract contract hdisjoint
+          tx fn hfind
+      have hfnEq :=
+        execIRFunctionWithInternals_eq_execIRFunction_of_bodyCallsDisjoint
+          contract fn tx.args stateWithTx hbody
+      simp [interpretIRWithInternals, interpretIR, hfind]
+      split
+      · exact hfnEq
+      · rfl
+
+/-- The legacy `_closed` goal is a corollary of the disjoint version: any
+contract satisfying `LegacyCompatibleRuntimeContract` also satisfies
+`DisjointRuntimeContract`. -/
+theorem interpretIRWithInternalsZeroConservativeExtensionGoal_of_disjoint
+    (contract : IRContract) :
+    InterpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint contract →
+      InterpretIRWithInternalsZeroConservativeExtensionGoal contract := by
+  intro hdisjoint hlegacy tx initialState
+  exact hdisjoint
+    (disjointRuntimeContract_of_legacyCompatibleRuntimeContract contract hlegacy)
+    tx initialState
+
 @[simp] theorem applyIRTransactionContext_sender
     (tx : IRTransaction) (initialState : IRState) :
     (applyIRTransactionContext tx initialState).sender = tx.sender := by

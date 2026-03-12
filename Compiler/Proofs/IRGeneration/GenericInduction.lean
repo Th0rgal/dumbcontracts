@@ -4613,39 +4613,98 @@ private theorem stmtListGenericCore_of_requireClausesThenLetAssignMulSetStorageL
               simp [stmtNextScope, collectStmtNames, FunctionBody.exprBoundNames] at hmem ⊢
               simpa using hmem))))
 
-private theorem stmtListGenericCore_of_supportedStmtFragment_of_surface
+private theorem stmtListGenericCore_of_requireFamilyClausesTailProgram_of_surface
     {fields : List Field}
     {scope : List String}
     (hnoConflict : firstFieldWriteSlotConflict fields = none)
-    (fragment : Verity.Core.Free.SupportedStmtFragment fields)
+    (program : Verity.Core.Free.RequireFamilyClausesTailProgram fields)
     (hsurface :
       stmtListTouchesUnsupportedContractSurface
-        (Verity.Core.Free.SupportedStmtFragment.toStmts fragment) = false) :
+        (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program) = false) :
     StmtListGenericCore fields scope
-      (Verity.Core.Free.SupportedStmtFragment.toStmts fragment) := by
-  cases fragment <;>
-    simp [Verity.Core.Free.SupportedStmtFragment.toStmts,
-      Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts,
-      Verity.Core.Free.RequireFamilyClausesTail.toStmts] at hsurface ⊢
-  · exact stmtListGenericCore_of_requireClausesOnly (fields := fields) (scope := scope) clauses
-  · exact stmtListGenericCore_of_requireClausesThenSetStorageLiteral
-      (fields := fields) (scope := scope) hnoConflict clauses fieldName slot writeVal hfind
-  · exact stmtListGenericCore_of_requireClausesThenReturnLiteral
-      (fields := fields) (scope := scope) clauses retVal
-  · exact stmtListGenericCore_of_requireClausesThenLetReturnLocalLiteral
-      (fields := fields) (scope := scope) clauses tmp retVal
-  · exact stmtListGenericCore_of_requireClausesThenLetSetStorageLocalLiteral
-      (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n hfind
-  · exact stmtListGenericCore_of_requireClausesThenLetAssignSetStorageLocalLiteral
-      (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
-  · exact stmtListGenericCore_of_requireClausesThenLetAssignAddSetStorageLocalLiteral
-      (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
-  · exact stmtListGenericCore_of_requireClausesThenLetAssignSubSetStorageLocalLiteral
-      (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
-  · exact stmtListGenericCore_of_requireClausesThenLetAssignMulSetStorageLocalLiteral
-      (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
-  all_goals
-    cases hsurface
+      (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program) := by
+  cases program with
+  | mk clauses tail =>
+      cases tail <;>
+        simp [Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts,
+          Verity.Core.Free.RequireFamilyClausesTail.toStmts] at hsurface ⊢
+      all_goals
+        first
+        | exact stmtListGenericCore_of_requireClausesOnly (fields := fields) (scope := scope) clauses
+        | exact stmtListGenericCore_of_requireClausesThenSetStorageLiteral
+            (fields := fields) (scope := scope) hnoConflict clauses fieldName slot writeVal hfind
+        | exact stmtListGenericCore_of_requireClausesThenReturnLiteral
+            (fields := fields) (scope := scope) clauses retVal
+        | exact stmtListGenericCore_of_requireClausesThenLetReturnLocalLiteral
+            (fields := fields) (scope := scope) clauses tmp retVal
+        | exact stmtListGenericCore_of_requireClausesThenLetSetStorageLocalLiteral
+            (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n hfind
+        | exact stmtListGenericCore_of_requireClausesThenLetAssignSetStorageLocalLiteral
+            (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
+        | exact stmtListGenericCore_of_requireClausesThenLetAssignAddSetStorageLocalLiteral
+            (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
+        | exact stmtListGenericCore_of_requireClausesThenLetAssignSubSetStorageLocalLiteral
+            (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
+        | exact stmtListGenericCore_of_requireClausesThenLetAssignMulSetStorageLocalLiteral
+            (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
+        | cases hsurface
+
+private theorem stmtListGenericCore_of_supportedStmtList_legacyProgram_of_surface
+    {fields : List Field}
+    {scope : List String}
+    {rest : List Stmt}
+    (hnoConflict : firstFieldWriteSlotConflict fields = none)
+    (program : Verity.Core.Free.RequireFamilyClausesTailProgram fields)
+    (htail : SupportedStmtList fields
+      (List.foldl stmtNextScope scope
+        (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program)) rest)
+    (ih : stmtListTouchesUnsupportedContractSurface rest = false →
+      StmtListGenericCore fields
+        (List.foldl stmtNextScope scope
+          (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program)) rest)
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface
+        (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program ++ rest) = false) :
+    StmtListGenericCore fields scope
+      (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program ++ rest) := by
+  have hsplit :
+      stmtListTouchesUnsupportedContractSurface
+          (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program) ||
+        stmtListTouchesUnsupportedContractSurface rest = false := by
+    simpa [stmtListTouchesUnsupportedContractSurface_append] using hsurface
+  exact stmtListGenericCore_append
+    (stmtListGenericCore_of_requireFamilyClausesTailProgram_of_surface
+      (fields := fields)
+      (scope := scope)
+      hnoConflict
+      program
+      (Bool.or_eq_false.mp hsplit).1)
+    (ih (Bool.or_eq_false.mp hsplit).2)
+
+private theorem false_of_supportedStmtList_legacyEmit_surface
+    (clauses : List Verity.Core.Free.RequireLiteralGuardFamilyClause)
+    (eventName : String)
+    (args : List Nat)
+    (rest : List Stmt)
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface
+        ((clauses.map Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt ++
+          [Stmt.emit eventName (args.map Expr.literal)]) ++ rest) = false) :
+    False := by
+  have hsplit :
+      stmtListTouchesUnsupportedContractSurface
+          (clauses.map Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt ++
+            [Stmt.emit eventName (args.map Expr.literal)]) ||
+        stmtListTouchesUnsupportedContractSurface rest = false := by
+    simpa [stmtListTouchesUnsupportedContractSurface_append] using hsurface
+  have hheadSurface :
+      stmtListTouchesUnsupportedContractSurface
+        (clauses.map Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt ++
+          [Stmt.emit eventName (args.map Expr.literal)]) = false :=
+    (Bool.or_eq_false.mp hsplit).1
+  simp [stmtListTouchesUnsupportedContractSurface,
+    stmtTouchesUnsupportedContractSurface,
+    exprTouchesUnsupportedContractSurface] at hheadSurface
 
 theorem stmtListGenericCore_of_supportedStmtList_of_surface
     {fields : List Field}
@@ -4660,27 +4719,18 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
       exact stmtListGenericCore_of_stmtListCompileCore hcore
   | terminalCore hterminal =>
       exact stmtListGenericCore_of_stmtListTerminalCore hterminal
-  | @legacyCons _ _ fragment rest htail ih =>
-      have hsplit :
-          stmtListTouchesUnsupportedContractSurface
-              (Verity.Core.Free.SupportedStmtFragment.toStmts fragment) ||
-            stmtListTouchesUnsupportedContractSurface rest = false := by
-        simpa [stmtListTouchesUnsupportedContractSurface_append] using hsurface
-      have hheadSurface :
-          stmtListTouchesUnsupportedContractSurface
-            (Verity.Core.Free.SupportedStmtFragment.toStmts fragment) = false :=
-        (Bool.or_eq_false.mp hsplit).1
-      have htailSurface :
-          stmtListTouchesUnsupportedContractSurface rest = false :=
-        (Bool.or_eq_false.mp hsplit).2
-      exact stmtListGenericCore_append
-        (stmtListGenericCore_of_supportedStmtFragment_of_surface
-          (fields := fields)
-          (scope := scope)
-          hnoConflict
-          fragment
-          hheadSurface)
-        (ih htailSurface)
+  | @legacyProgram _ _ program rest htail ih =>
+      exact stmtListGenericCore_of_supportedStmtList_legacyProgram_of_surface
+        (fields := fields)
+        (scope := scope)
+        hnoConflict
+        program
+        htail
+        ih
+        hsurface
+  | @legacyEmit _ _ clauses eventName args hargs rest htail ih =>
+      exact False.elim
+        (false_of_supportedStmtList_legacyEmit_surface clauses eventName args rest hsurface)
 
 /-- The current supported statement-list witness already suffices for the
 weaker helper-free source-step interface consumed by the exact helper-aware

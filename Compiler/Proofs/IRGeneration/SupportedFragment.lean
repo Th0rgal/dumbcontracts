@@ -5,7 +5,7 @@ Scoped proof-layer support witness for statement lists.
 
 `SupportedStmtList` is now a compositional public grammar: it can expose either
 the existing generic compile-core / terminal-core statement grammars directly,
-or splice in one of the still-legacy `SupportedStmtFragment` leaves while the
+or splice in one of the still-legacy `require`-family tail programs while the
 remaining storage-write shapes are being migrated off the hardcoded inventory.
 -/
 
@@ -18,9 +18,12 @@ open Verity.Core.Free
 /-- Proof-layer compositional witness for supported statement lists.
 
 The witness is scoped because the generic compile-core grammars track local name
-availability explicitly. Legacy fragment leaves remain available as a
+availability explicitly. Legacy tail-program leaves remain available as a
 transitional constructor so existing non-core storage/write shapes continue to
-fit under the same body interface while the fragment inventory is dismantled. -/
+fit under the same body interface while the old fragment inventory is
+dismantled. `emit` stays separate because the legacy tail program projects it
+through `rawLog`, while the proof layer still tracks the exact source
+statement shape. -/
 inductive SupportedStmtList (fields : List Field) : List String → List Stmt → Prop where
   | compileCore
       {scope : List String}
@@ -32,11 +35,26 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       {stmts : List Stmt} :
       FunctionBody.StmtListTerminalCore scope stmts →
       SupportedStmtList fields scope stmts
-  | legacyCons
+  | legacyProgram
       {scope : List String}
-      (fragment : SupportedStmtFragment fields)
+      (program : RequireFamilyClausesTailProgram fields)
       {rest : List Stmt} :
-      SupportedStmtList fields (List.foldl stmtNextScope scope fragment.toStmts) rest →
-      SupportedStmtList fields scope (fragment.toStmts ++ rest)
+      SupportedStmtList fields (List.foldl stmtNextScope scope program.toStmts) rest →
+      SupportedStmtList fields scope (program.toStmts ++ rest)
+  | legacyEmit
+      {scope : List String}
+      (clauses : List RequireLiteralGuardFamilyClause)
+      (eventName : String)
+      (args : List Nat)
+      (hargs : args.length ≤ 3)
+      {rest : List Stmt} :
+      SupportedStmtList fields
+        (List.foldl stmtNextScope scope
+          (clauses.map RequireLiteralGuardFamilyClause.toStmt ++
+            [Stmt.emit eventName (args.map Expr.literal)]))
+        rest →
+      SupportedStmtList fields scope
+        ((clauses.map RequireLiteralGuardFamilyClause.toStmt ++
+          [Stmt.emit eventName (args.map Expr.literal)]) ++ rest)
 
 end Compiler.Proofs.IRGeneration

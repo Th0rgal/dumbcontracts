@@ -1159,18 +1159,31 @@ def SupportedFunction.helperFuel
     (hSupported : SupportedFunction spec fn) : Nat :=
   hSupported.body.calls.helpers.helperRank
 
-private theorem supportedStmtFragment_helperSurfaceClosed
+private theorem requireFamilyClausesTailProgram_helperSurfaceClosed
     {fields : List Field}
-    (fragment : SupportedStmtFragment fields) :
-    stmtListTouchesUnsupportedHelperSurface fragment.toStmts = false := by
-  cases fragment <;>
-    simp [SupportedStmtFragment.toStmts,
-      RequireFamilyClausesTailProgram.toStmts,
-      RequireFamilyClausesTail.toStmts,
-      RequireLiteralGuardFamilyClause.toStmt,
-      stmtListTouchesUnsupportedHelperSurface,
-      stmtTouchesUnsupportedHelperSurface,
-      exprTouchesUnsupportedHelperSurface]
+    (program : RequireFamilyClausesTailProgram fields) :
+    stmtListTouchesUnsupportedHelperSurface program.toStmts = false := by
+  cases program with
+  | mk clauses tail =>
+      cases tail <;>
+        simp [RequireFamilyClausesTailProgram.toStmts,
+          RequireFamilyClausesTail.toStmts,
+          RequireLiteralGuardFamilyClause.toStmt,
+          stmtListTouchesUnsupportedHelperSurface,
+          stmtTouchesUnsupportedHelperSurface,
+          exprTouchesUnsupportedHelperSurface]
+
+private theorem legacyEmit_helperSurfaceClosed
+    (clauses : List RequireLiteralGuardFamilyClause)
+    (eventName : String)
+    (args : List Nat) :
+    stmtListTouchesUnsupportedHelperSurface
+      (clauses.map RequireLiteralGuardFamilyClause.toStmt ++
+        [Stmt.emit eventName (args.map Expr.literal)]) = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    RequireLiteralGuardFamilyClause.toStmt,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface]
 
 private theorem stmtListCompileCore_helperSurfaceClosed
     {scope : List String}
@@ -1241,10 +1254,14 @@ theorem SupportedStmtList.helperSurfaceClosed
       exact stmtListCompileCore_helperSurfaceClosed hcore
   | terminalCore hterminal =>
       exact stmtListTerminalCore_helperSurfaceClosed hterminal
-  | legacyCons fragment htail ih =>
+  | legacyProgram program htail ih =>
       simpa [stmtListTouchesUnsupportedHelperSurface,
-        supportedStmtFragment_helperSurfaceClosed, ih]
-        using (supportedStmtFragment_helperSurfaceClosed fragment)
+        requireFamilyClausesTailProgram_helperSurfaceClosed, ih]
+        using (requireFamilyClausesTailProgram_helperSurfaceClosed program)
+  | legacyEmit clauses eventName args _ htail ih =>
+      simpa [stmtListTouchesUnsupportedHelperSurface,
+        legacyEmit_helperSurfaceClosed, ih]
+        using (legacyEmit_helperSurfaceClosed clauses eventName args)
 
 theorem exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
     {expr : Expr}

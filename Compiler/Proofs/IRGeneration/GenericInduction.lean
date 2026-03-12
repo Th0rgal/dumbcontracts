@@ -4846,6 +4846,49 @@ private theorem false_of_supportedStmtList_setMapping2Single_surface
       exprTouchesUnsupportedContractSurface])
     hsurface
 
+private theorem false_of_supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_surface
+    {ownerField senderVar ownerVar paramName msg1 msg2 : String}
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface
+        [ Stmt.letVar senderVar Expr.caller
+        , Stmt.letVar ownerVar (Expr.storage ownerField)
+        , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
+        , Stmt.require
+            (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar ownerVar))) msg2
+        , Stmt.setStorage ownerField (Expr.param paramName)
+        , Stmt.stop
+        ] = false) :
+    False := by
+  simp [stmtListTouchesUnsupportedContractSurface,
+    stmtTouchesUnsupportedContractSurface,
+    exprTouchesUnsupportedContractSurface,
+    exprTouchesUnsupportedCoreSurface,
+    exprTouchesUnsupportedStateSurface,
+    exprTouchesUnsupportedCallSurface,
+    stmtTouchesUnsupportedEffectSurface] at hsurface
+
+private theorem false_of_supportedStmtList_letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop_surface
+    {ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 : String}
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface
+        [ Stmt.letVar senderVar Expr.caller
+        , Stmt.letVar ownerVar (Expr.storage ownerField)
+        , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
+        , Stmt.letVar targetVar (Expr.storage targetField)
+        , Stmt.require
+            (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar targetVar))) msg2
+        , Stmt.setStorage targetField (Expr.param paramName)
+        , Stmt.stop
+        ] = false) :
+    False := by
+  simp [stmtListTouchesUnsupportedContractSurface,
+    stmtTouchesUnsupportedContractSurface,
+    exprTouchesUnsupportedContractSurface,
+    exprTouchesUnsupportedCoreSurface,
+    exprTouchesUnsupportedStateSurface,
+    exprTouchesUnsupportedCallSurface,
+    stmtTouchesUnsupportedEffectSurface] at hsurface
+
 private theorem false_of_supportedStmtList_legacyTail_surface
     {fields : List Field}
     {tail : SupportedStmtLegacyTail fields}
@@ -4871,34 +4914,28 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
     (hsurface : stmtListTouchesUnsupportedContractSurface stmts = false) :
     StmtListGenericCore fields scope stmts := by
   induction hSupported with
-  | compileCore hcore =>
-      exact stmtListGenericCore_of_stmtListCompileCore hcore
-  | terminalCore hterminal =>
-      exact stmtListGenericCore_of_stmtListTerminalCore hterminal
+  | compileCore hcore => exact stmtListGenericCore_of_stmtListCompileCore hcore
+  | terminalCore hterminal => exact stmtListGenericCore_of_stmtListTerminalCore hterminal
   | setStorageSingleSlot hcore hinScope hfind =>
       exact stmtListGenericCore_of_supportedStmtList_setStorageSingleSlot_of_surface
         (fields := fields) hnoConflict hfind hcore hinScope
-  | letStorageField hfind =>
-      exact False.elim (false_of_supportedStmtList_letStorageField_surface hsurface)
-  | returnMapping hkey hscope hslot =>
-      exact False.elim (false_of_supportedStmtList_returnMapping_surface hsurface)
-  | letMapping hkey hscope hslot =>
-      exact False.elim (false_of_supportedStmtList_letMapping_surface hsurface)
-  | letMapping2 hkey1 hscope1 hkey2 hscope2 hslot =>
-      exact False.elim (false_of_supportedStmtList_letMapping2_surface hsurface)
-  | letMappingUint hkey hscope hslot =>
-      exact False.elim (false_of_supportedStmtList_letMappingUint_surface hsurface)
-  | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot =>
-      exact False.elim (false_of_supportedStmtList_setMappingUintSingle_surface hsurface)
-  | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot =>
-      exact False.elim (false_of_supportedStmtList_setMappingSingle_surface hsurface)
-  | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot =>
-      exact False.elim (false_of_supportedStmtList_setMapping2Single_surface hsurface)
+  | letStorageField hfind => exact False.elim (false_of_supportedStmtList_letStorageField_surface hsurface)
+  | returnMapping hkey hscope hslot => exact False.elim (false_of_supportedStmtList_returnMapping_surface hsurface)
+  | letMapping hkey hscope hslot => exact False.elim (false_of_supportedStmtList_letMapping_surface hsurface)
+  | letMapping2 hkey1 hscope1 hkey2 hscope2 hslot => exact False.elim (false_of_supportedStmtList_letMapping2_surface hsurface)
+  | letMappingUint hkey hscope hslot => exact False.elim (false_of_supportedStmtList_letMappingUint_surface hsurface)
+  | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMappingUintSingle_surface hsurface)
+  | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMappingSingle_surface hsurface)
+  | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMapping2Single_surface hsurface)
+  | letCallerLetStorageReqEqReqNeqSetStorageParamStop hOwner hne_sv_p hne_ov_p hne_ov_sv =>
+      exact False.elim (false_of_supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_surface hsurface)
+  | letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop
+      hOwner hTarget hne_sv_p hne_ov_p hne_ov_sv hne_tv_p hne_tv_sv hne_tv_ov =>
+      exact False.elim (false_of_supportedStmtList_letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop_surface hsurface)
   | requireClause clause hrest ih =>
       exact stmtListGenericCore_of_supportedStmtList_requireClause_of_surface
         (fields := fields) (scope := scope) clause ih hsurface
-  | ite hcond hscope hthen helse ihThen ihElse =>
-      exact False.elim (false_of_supportedStmtList_ite_list_surface hsurface)
+  | ite hcond hscope hthen helse ihThen ihElse => exact False.elim (false_of_supportedStmtList_ite_list_surface hsurface)
   | append hprefix hsuffix ihPrefix ihSuffix =>
       exact stmtListGenericCore_of_supportedStmtList_append_of_surface hprefix hsuffix ihPrefix ihSuffix hsurface
   | @legacyTail _ _ tail rest htail ih =>

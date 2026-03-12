@@ -1346,6 +1346,37 @@ private theorem supportedStmtList_setMapping2Single_helperSurfaceClosed
     exprCompileCore_helperSurfaceClosed hkey2,
     exprCompileCore_helperSurfaceClosed hvalue]
 
+private theorem supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_helperSurfaceClosed
+    {ownerField senderVar ownerVar paramName msg1 msg2 : String} :
+    stmtListTouchesUnsupportedHelperSurface
+      [ Stmt.letVar senderVar Expr.caller
+      , Stmt.letVar ownerVar (Expr.storage ownerField)
+      , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
+      , Stmt.require
+          (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar ownerVar))) msg2
+      , Stmt.setStorage ownerField (Expr.param paramName)
+      , Stmt.stop
+      ] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface]
+
+private theorem supportedStmtList_letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop_helperSurfaceClosed
+    {ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 : String} :
+    stmtListTouchesUnsupportedHelperSurface
+      [ Stmt.letVar senderVar Expr.caller
+      , Stmt.letVar ownerVar (Expr.storage ownerField)
+      , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
+      , Stmt.letVar targetVar (Expr.storage targetField)
+      , Stmt.require
+          (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar targetVar))) msg2
+      , Stmt.setStorage targetField (Expr.param paramName)
+      , Stmt.stop
+      ] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface]
+
 theorem SupportedStmtList.helperSurfaceClosed
     {fields : List Field}
     {scope : List String}
@@ -1353,30 +1384,25 @@ theorem SupportedStmtList.helperSurfaceClosed
     (hSupported : SupportedStmtList fields scope stmts) :
     stmtListTouchesUnsupportedHelperSurface stmts = false := by
   induction hSupported with
-  | compileCore hcore =>
-      exact stmtListCompileCore_helperSurfaceClosed hcore
-  | terminalCore hterminal =>
-      exact stmtListTerminalCore_helperSurfaceClosed hterminal
+  | compileCore hcore => exact stmtListCompileCore_helperSurfaceClosed hcore
+  | terminalCore hterminal => exact stmtListTerminalCore_helperSurfaceClosed hterminal
   | setStorageSingleSlot hcore hinScope hfind =>
       simp [stmtListTouchesUnsupportedHelperSurface,
         stmtTouchesUnsupportedHelperSurface,
         exprTouchesUnsupportedHelperSurface]
-  | letStorageField hfind =>
-      exact supportedStmtList_letStorageField_helperSurfaceClosed
-  | returnMapping hkey hscope hslot =>
-      exact supportedStmtList_returnMapping_helperSurfaceClosed hkey
-  | letMapping hkey hscope hslot =>
-      exact supportedStmtList_letMapping_helperSurfaceClosed hkey
-  | letMapping2 hkey1 hscope1 hkey2 hscope2 hslot =>
-      exact supportedStmtList_letMapping2_helperSurfaceClosed hkey1 hkey2
-  | letMappingUint hkey hscope hslot =>
-      exact supportedStmtList_letMappingUint_helperSurfaceClosed hkey
-  | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot =>
-      exact supportedStmtList_setMappingUintSingle_helperSurfaceClosed hkey hvalue
-  | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot =>
-      exact supportedStmtList_setMappingSingle_helperSurfaceClosed hkey hvalue
-  | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot =>
-      exact supportedStmtList_setMapping2Single_helperSurfaceClosed hkey1 hkey2 hvalue
+  | letStorageField hfind => exact supportedStmtList_letStorageField_helperSurfaceClosed
+  | returnMapping hkey hscope hslot => exact supportedStmtList_returnMapping_helperSurfaceClosed hkey
+  | letMapping hkey hscope hslot => exact supportedStmtList_letMapping_helperSurfaceClosed hkey
+  | letMapping2 hkey1 hscope1 hkey2 hscope2 hslot => exact supportedStmtList_letMapping2_helperSurfaceClosed hkey1 hkey2
+  | letMappingUint hkey hscope hslot => exact supportedStmtList_letMappingUint_helperSurfaceClosed hkey
+  | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingUintSingle_helperSurfaceClosed hkey hvalue
+  | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingSingle_helperSurfaceClosed hkey hvalue
+  | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot => exact supportedStmtList_setMapping2Single_helperSurfaceClosed hkey1 hkey2 hvalue
+  | letCallerLetStorageReqEqReqNeqSetStorageParamStop hOwner hne_sv_p hne_ov_p hne_ov_sv =>
+      exact supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_helperSurfaceClosed
+  | letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop
+      hOwner hTarget hne_sv_p hne_ov_p hne_ov_sv hne_tv_p hne_tv_sv hne_tv_ov =>
+      exact supportedStmtList_letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop_helperSurfaceClosed
   | requireClause clause hrest ih =>
       simp [stmtListTouchesUnsupportedHelperSurface,
         RequireLiteralGuardFamilyClause.toStmt,

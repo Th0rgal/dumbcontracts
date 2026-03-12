@@ -23,51 +23,12 @@ inductive SupportedStmtLegacyTail (fields : List Field) : Type where
   | rawLogLiterals
       (topics : List Nat) (dataOffset dataSize : Nat)
       (htopics : topics.length ≤ 4)
-  | letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop
-      (ownerField senderVar ownerVar paramName msg1 msg2 : String) (ownerSlot : Nat)
-      (hOwner : findFieldWithResolvedSlot fields ownerField =
-        some ({ name := ownerField, ty := FieldType.address }, ownerSlot))
-      (hne_sv_p : senderVar ≠ paramName)
-      (hne_ov_p : ownerVar ≠ paramName)
-      (hne_ov_sv : ownerVar ≠ senderVar)
-  | letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop
-      (ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 : String)
-      (ownerSlot targetSlot : Nat)
-      (hOwner : findFieldWithResolvedSlot fields ownerField =
-        some ({ name := ownerField, ty := FieldType.address }, ownerSlot))
-      (hTarget : findFieldWithResolvedSlot fields targetField =
-        some ({ name := targetField, ty := FieldType.address }, targetSlot))
-      (hne_sv_p : senderVar ≠ paramName)
-      (hne_ov_p : ownerVar ≠ paramName)
-      (hne_ov_sv : ownerVar ≠ senderVar)
-      (hne_tv_p : targetVar ≠ paramName)
-      (hne_tv_sv : targetVar ≠ senderVar)
-      (hne_tv_ov : targetVar ≠ ownerVar)
 
 def SupportedStmtLegacyTail.toStmts
     {fields : List Field} (tail : SupportedStmtLegacyTail fields) : List Stmt :=
   match tail with
   | .rawLogLiterals topics dataOffset dataSize _ =>
       [Stmt.rawLog (topics.map Expr.literal) (Expr.literal dataOffset) (Expr.literal dataSize)]
-  | .letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop
-      ownerField senderVar ownerVar paramName msg1 msg2 _ _ _ _ _ =>
-      [ Stmt.letVar senderVar Expr.caller
-      , Stmt.letVar ownerVar (Expr.storage ownerField)
-      , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
-      , Stmt.require (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar ownerVar))) msg2
-      , Stmt.setStorage ownerField (Expr.param paramName)
-      , Stmt.stop
-      ]
-  | .letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop
-      ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 _ _ _ _ _ _ _ _ _ _ =>
-      [ Stmt.letVar senderVar Expr.caller
-      , Stmt.letVar ownerVar (Expr.storage ownerField)
-      , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
-      , Stmt.letVar targetVar (Expr.storage targetField)
-      , Stmt.require (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar targetVar))) msg2
-      , Stmt.setStorage targetField (Expr.param paramName)
-      , Stmt.stop
-      ]
 
 /-- Proof-layer compositional witness for supported statement lists.
 
@@ -181,6 +142,48 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       FunctionBody.exprBoundNamesInScope value scope →
       findFieldSlot fields fieldName = some slot →
       SupportedStmtList fields scope [Stmt.setMapping2 fieldName key1 key2 value]
+  | letCallerLetStorageReqEqReqNeqSetStorageParamStop
+      {scope : List String}
+      {ownerField senderVar ownerVar paramName msg1 msg2 : String}
+      {ownerSlot : Nat} :
+      findFieldWithResolvedSlot fields ownerField =
+        some ({ name := ownerField, ty := FieldType.address }, ownerSlot) →
+      senderVar ≠ paramName →
+      ownerVar ≠ paramName →
+      ownerVar ≠ senderVar →
+      SupportedStmtList fields scope
+        [ Stmt.letVar senderVar Expr.caller
+        , Stmt.letVar ownerVar (Expr.storage ownerField)
+        , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
+        , Stmt.require
+            (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar ownerVar))) msg2
+        , Stmt.setStorage ownerField (Expr.param paramName)
+        , Stmt.stop
+        ]
+  | letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop
+      {scope : List String}
+      {ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 : String}
+      {ownerSlot targetSlot : Nat} :
+      findFieldWithResolvedSlot fields ownerField =
+        some ({ name := ownerField, ty := FieldType.address }, ownerSlot) →
+      findFieldWithResolvedSlot fields targetField =
+        some ({ name := targetField, ty := FieldType.address }, targetSlot) →
+      senderVar ≠ paramName →
+      ownerVar ≠ paramName →
+      ownerVar ≠ senderVar →
+      targetVar ≠ paramName →
+      targetVar ≠ senderVar →
+      targetVar ≠ ownerVar →
+      SupportedStmtList fields scope
+        [ Stmt.letVar senderVar Expr.caller
+        , Stmt.letVar ownerVar (Expr.storage ownerField)
+        , Stmt.require (Expr.eq (Expr.localVar senderVar) (Expr.localVar ownerVar)) msg1
+        , Stmt.letVar targetVar (Expr.storage targetField)
+        , Stmt.require
+            (Expr.logicalNot (Expr.eq (Expr.param paramName) (Expr.localVar targetVar))) msg2
+        , Stmt.setStorage targetField (Expr.param paramName)
+        , Stmt.stop
+        ]
   | requireClause
       {scope : List String}
       (clause : RequireLiteralGuardFamilyClause)

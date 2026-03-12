@@ -33,7 +33,7 @@ theorem increment_preserves_context (s : ContractState)
   let s' := ((increment).run s).snd
   context_preserved s s' := by
   have h := increment_meets_spec s h_no_overflow; simp [increment_spec] at h
-  exact ⟨h.2.2.2.2.1, h.2.2.2.2.2⟩
+  simpa [context_preserved, Specs.sameContext] using h.2.2.2.2.2
 
 /-- decrement preserves context (sender, thisAddress). -/
 theorem decrement_preserves_context (s : ContractState)
@@ -41,7 +41,7 @@ theorem decrement_preserves_context (s : ContractState)
   let s' := ((decrement).run s).snd
   context_preserved s s' := by
   have h := decrement_meets_spec s h_no_underflow; simp [decrement_spec] at h
-  exact ⟨h.2.2.2.2.1, h.2.2.2.2.2⟩
+  simpa [context_preserved, Specs.sameContext] using h.2.2.2.2.2
 
 /-- increment preserves storage isolation. -/
 theorem increment_preserves_storage_isolated (s : ContractState)

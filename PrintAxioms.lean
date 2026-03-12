@@ -1412,6 +1412,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesExprInternalHelperSurface_eq_false_of_helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesStructuralInternalHelperSurface_eq_false_of_helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedStmtList.internalHelperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterface.helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.summaryOfCall
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.summaryContractOfCall
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.calleeRank_lt
@@ -1581,4 +1582,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1450 theorems/lemmas (1158 public, 292 private)
+-- Total: 1451 theorems/lemmas (1159 public, 292 private)

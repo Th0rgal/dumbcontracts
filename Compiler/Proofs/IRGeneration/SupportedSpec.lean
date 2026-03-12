@@ -1084,7 +1084,6 @@ directly into the top-level `SupportedSpec` inventory. Each sub-interface is a
 feature-local place to hang future widening work. -/
 structure SupportedBodyInterface (spec : CompilationModel) (fn : FunctionSpec) : Prop where
   stmtList : SupportedStmtList spec.fields (fn.params.map (·.name)) fn.body
-  helperSurfaceClosed : stmtListTouchesUnsupportedHelperSurface fn.body = false
   core : SupportedBodyCoreInterface fn
   state : SupportedBodyStateInterface fn
   calls : SupportedBodyCallInterface spec fn
@@ -1458,6 +1457,12 @@ theorem SupportedStmtList.internalHelperSurfaceClosed
     stmtListTouchesInternalHelperSurface stmts = false := by
   exact stmtListTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
     hSupported.helperSurfaceClosed
+
+theorem SupportedBodyInterface.helperSurfaceClosed
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hBody : SupportedBodyInterface spec fn) :
+    stmtListTouchesUnsupportedHelperSurface fn.body = false := by
+  exact hBody.stmtList.helperSurfaceClosed
 
 theorem SupportedBodyHelperInterface.summaryOfCall
     {spec : CompilationModel} {fn : FunctionSpec}
@@ -2315,7 +2320,6 @@ private theorem counter_supported_function :
             · intro name hname
               simp at hname
             · exact FunctionBody.StmtListCompileCore.nil
-          helperSurfaceClosed := by decide
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }
             calls :=
@@ -2406,7 +2410,6 @@ private theorem simpleStorage_supported_function :
             · intro name hname
               simp at hname
             · exact FunctionBody.StmtListCompileCore.nil
-          helperSurfaceClosed := by decide
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }
             calls :=

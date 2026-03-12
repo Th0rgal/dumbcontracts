@@ -106,7 +106,7 @@ def writeAddressSlots (world : Verity.ContractState) (slots : List Nat) (value :
     storageAddr := fun slot =>
       if slots.contains slot then addr else world.storageAddr slot }
 
-private def writeAddressKeyedMappingSlots
+def writeAddressKeyedMappingSlots
     (world : Verity.ContractState) (slots : List Nat) (key value : Nat) :
     Verity.ContractState :=
   match slots with
@@ -127,7 +127,7 @@ private def writeAddressKeyedMappingSlots
           else
             world.storageMap baseSlot addr }
 
-private def writeUintKeyedMappingSlots
+def writeUintKeyedMappingSlots
     (world : Verity.ContractState) (slots : List Nat) (key value : Nat) :
     Verity.ContractState :=
   match slots with
@@ -148,7 +148,7 @@ private def writeUintKeyedMappingSlots
           else
             world.storageMapUint baseSlot key' }
 
-private def writeAddressKeyedMapping2Slots
+def writeAddressKeyedMapping2Slots
     (world : Verity.ContractState) (slots : List Nat) (key1 key2 value : Nat) :
     Verity.ContractState :=
   match slots with

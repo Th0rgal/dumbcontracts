@@ -79,6 +79,11 @@ ALLOWLIST: set[str] = {
     # transport-heavy local normalization over reducible Yul/IR state updates.
     "exec_callvalueGuard_noop",
     "evalSelectorExpr_setVar_has_selector",
+    # Tier-2 singleton mapping-write bridge: long because it spells out the
+    # slot-safety hypothesis threading and the concrete source/IR post-state
+    # relation in one place. Further decomposition is possible after more write
+    # families share the same abstraction.
+    "compiledStmtStep_setMappingUint_singleSlot_of_slotSafety_preserves",
     # Generic Layer 2 param-loading list theorem (Issue #1510 / PR #1554):
     # centralizes the scalar-head induction for `genParamLoadBodyFrom`; further
     # decomposition is possible later, but keeping the recursion in one place

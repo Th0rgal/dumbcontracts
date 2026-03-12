@@ -216,6 +216,13 @@ ALLOWLIST: set[str] = {
     # body theorem surface during the semantics retarget, not from novel proof
     # complexity in the wrapper itself.
     "supported_function_body_correct_from_exact_state_generic_with_helpers",
+    # Issue #1630 / PR #1639 — helper-aware stmt retarget seam isolation:
+    # this theorem is the current one-stop wrapper that discharges the trivial
+    # singleton statement constructors and leaves only expr / if / block as the
+    # open semantic cases. Decomposing it further right now would just spread
+    # the same case split across more boilerplate lemmas while the real blocker
+    # remains the missing stmt-compatibility proof for those three cases.
+    "execIRStmtWithInternals_eq_execIRStmt_of_exprIfBlockCompatibility",
     # Issue #1630 / PR #1633 — helper-aware source-semantics compatibility:
     # this mutual-recursion theorem centralizes the constructor-by-constructor
     # collapse from helper-aware expression evaluation back to the legacy

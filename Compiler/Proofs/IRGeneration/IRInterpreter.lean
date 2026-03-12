@@ -452,14 +452,35 @@ def execIRStmtWithInternals
       | .expr e =>
           match e with
           | .call "sstore" [slotExpr, valExpr] =>
-              match evalIRExprsWithInternals contract fuel state [slotExpr, valExpr] with
-              | .values [slot, val] state' =>
-                  let updated := Compiler.Proofs.abstractStoreStorageOrMapping state'.storage slot val
-                  .continue { state' with storage := updated }
-              | .values _ state' => .revert state'
-              | .stop state' => .stop state'
-              | .return value' state' => .return value' state'
-              | .revert state' => .revert state'
+              match slotExpr with
+              | .call "mappingSlot" [baseExpr, keyExpr] =>
+                  match evalIRExprWithInternals contract fuel state baseExpr with
+                  | .value baseSlot state' =>
+                      match evalIRExprWithInternals contract fuel state' keyExpr with
+                      | .value key state'' =>
+                          match evalIRExprWithInternals contract fuel state'' valExpr with
+                          | .value val state''' =>
+                              let updated := Compiler.Proofs.abstractStoreMappingEntry
+                                state'''.storage baseSlot key val
+                              .continue { state''' with storage := updated }
+                          | .stop state''' => .stop state'''
+                          | .return value' state''' => .return value' state'''
+                          | .revert state''' => .revert state'''
+                      | .stop state'' => .stop state''
+                      | .return value' state'' => .return value' state''
+                      | .revert state'' => .revert state''
+                  | .stop state' => .stop state'
+                  | .return value' state' => .return value' state'
+                  | .revert state' => .revert state'
+              | _ =>
+                  match evalIRExprsWithInternals contract fuel state [slotExpr, valExpr] with
+                  | .values [slot, val] state' =>
+                      let updated := Compiler.Proofs.abstractStoreStorageOrMapping state'.storage slot val
+                      .continue { state' with storage := updated }
+                  | .values _ state' => .revert state'
+                  | .stop state' => .stop state'
+                  | .return value' state' => .return value' state'
+                  | .revert state' => .revert state'
           | .call "mstore" [offsetExpr, valExpr] =>
               match evalIRExprsWithInternals contract fuel state [offsetExpr, valExpr] with
               | .values [offset, val] state' =>
@@ -1085,6 +1106,29 @@ theorem evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal
             evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal fuel state exprs]
 
 end
+
+/-- Helper-free helper-aware execution now preserves the legacy `mappingSlot`
+`sstore` special case instead of routing it through the generic builtin path.
+This removes a real semantic mismatch that would otherwise make the remaining
+stmt-compatibility theorem false on mapping-backed contracts. -/
+theorem execIRStmtWithInternals_sstore_mappingSlot_succ_of_no_internal
+    (contract : IRContract)
+    (hinternal : contract.internalFunctions = [])
+    (fuel : Nat) (state : IRState)
+    (baseExpr keyExpr valExpr : YulExpr)
+    (baseSlot key val : Nat)
+    (hbase : evalIRExpr state baseExpr = some baseSlot)
+    (hkey : evalIRExpr state keyExpr = some key)
+    (hval : evalIRExpr state valExpr = some val) :
+    execIRStmtWithInternals contract (Nat.succ fuel) state
+      (YulStmt.expr
+        (YulExpr.call "sstore"
+          [YulExpr.call "mappingSlot" [baseExpr, keyExpr], valExpr])) =
+      .continue { state with
+        storage := Compiler.Proofs.abstractStoreMappingEntry state.storage baseSlot key val } := by
+  simp [execIRStmtWithInternals,
+    evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal,
+    hbase, hkey, hval]
 
 /-- The helper-free conservative-extension interface is now discharged for the
 expression layer: both single-expression and expression-list helper-aware

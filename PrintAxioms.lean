@@ -1099,8 +1099,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.exprSize_lt_exprsSize_cons  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.exprsSize_tail_lt_exprsSize_cons  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.exprsSize_lt_exprSize_call  -- private
--- #print axioms Compiler.Proofs.IRGeneration.pairLex_same_fst  -- private
--- #print axioms Compiler.Proofs.IRGeneration.pairLex_lt_fst  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.exprs_head_measure_decreases  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.exprs_tail_measure_decreases  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.expr_call_measure_decreases  -- private
@@ -1119,7 +1117,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.findInternalFunction?_eq_none_of_internalFunctions_nil
 #print axioms Compiler.Proofs.IRGeneration.evalIRExprWithInternals_eq_evalIRExpr_of_no_internal
 #print axioms Compiler.Proofs.IRGeneration.evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal
+#print axioms Compiler.Proofs.IRGeneration.execIRStmtWithInternals_sstore_mappingSlot_succ_of_no_internal
 #print axioms Compiler.Proofs.IRGeneration.interpretIRWithInternalsZeroConservativeExtensionExprInterfaces
+#print axioms Compiler.Proofs.IRGeneration.execIRStmtWithInternals_eq_execIRStmt_of_exprIfBlockCompatibility
 #print axioms Compiler.Proofs.IRGeneration.execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility
 #print axioms Compiler.Proofs.IRGeneration.execIRFunctionWithInternals_eq_execIRFunction_of_stmtListCompatibility
 #print axioms Compiler.Proofs.IRGeneration.execIRStmtWithInternals_eq_execIRStmt_of_stmtListCompatibility
@@ -1348,4 +1348,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1214 theorems/lemmas (968 public, 246 private)
+-- Total: 1214 theorems/lemmas (970 public, 244 private)

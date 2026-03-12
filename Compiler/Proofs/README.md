@@ -199,7 +199,9 @@ longer a helper-free compiled-side witness on today’s theorem domain, but
 end-to-end consumption of helper-summary soundness/rank evidence through the
 now-explicit direct helper-aware body/IR target
 `SupportedFunctionBodyWithHelpersIRPreservationGoal`, which now feeds
-`supported_function_correct_with_helper_proofs_body_goal`. The older
+`supported_function_correct_with_helper_proofs_body_goal`, while widening or
+replacing the helper-excluding `SupportedStmtList` fragment whose current
+closure is now recorded as `SupportedStmtList.helperSurfaceClosed`. The older
 source-side conservative-extension goal
 `SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal` remains only
 as the current helper-free discharge path into

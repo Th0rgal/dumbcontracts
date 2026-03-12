@@ -253,9 +253,9 @@ theorem interpretContract_correct_of_compiled_functions
 
 /-- Helper-proof-carrying wrapper for the dispatch theorem.
 The current proof still reduces helper-aware source semantics to the legacy
-helper-free semantics via `calls.helperCompatibility`, so the additional helper
-proof slot is present to stabilize the theorem boundary rather than to widen the
-proved fragment today. -/
+helper-free semantics via the helper-excluding `SupportedStmtList` body
+fragment, so the additional helper proof slot is present to stabilize the
+theorem boundary rather than to widen the proved fragment today. -/
 theorem interpretContract_correct_of_compiled_functions_with_helper_proofs
     (model : CompilationModel)
     (selectors : List Nat)

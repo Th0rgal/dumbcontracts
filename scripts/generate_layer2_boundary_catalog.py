@@ -243,7 +243,8 @@ def build_catalog() -> dict:
                     "required_follow_on": (
                         "consume helper-summary soundness/rank evidence "
                         "through the helper-aware body/IR preservation path "
-                        "so calls.helperCompatibility can disappear, then "
+                        "while widening or replacing the helper-excluding "
+                        "SupportedStmtList fragment, then "
                         "retarget the compiled-side theorem so helper tables "
                         "can remain present without affecting helper-free "
                         "external execution once helper-rich features move "
@@ -287,7 +288,7 @@ def build_catalog() -> dict:
                     "SupportedBodyHelperInterface.calleeRanksDecrease"
                 ),
                 "current_fail_closed_gate": (
-                    "SupportedBodyCallInterface.helperCompatibility"
+                    "SupportedBodyInterface.stmtList"
                 ),
                 "next_required_proof_step": (
                     "the helper-free compiled-side conservative-extension goal "
@@ -303,8 +304,10 @@ def build_catalog() -> dict:
                     "therefore no longer a helper-free compiled-side witness, "
                     "but consuming helper-summary soundness/rank evidence in "
                     "a direct proof of "
-                    "SupportedFunctionBodyWithHelpersIRPreservationGoal so "
-                    "calls.helperCompatibility can disappear. The longer-term "
+                    "SupportedFunctionBodyWithHelpersIRPreservationGoal while "
+                    "widening or replacing the helper-excluding "
+                    "SupportedStmtList fragment that currently proves "
+                    "SupportedStmtList.helperSurfaceClosed. The longer-term "
                     "widening step still needs a weaker compiled-side retarget "
                     "boundary so helper tables can remain present without "
                     "affecting helper-free external execution once helper-rich "

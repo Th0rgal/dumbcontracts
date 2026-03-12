@@ -381,8 +381,9 @@ The first theorem does not need to cover everything. It may explicitly leave out
   without any extra caller-supplied compiled-side premise. The remaining work
   on today’s theorem domain is therefore no longer the helper-free compiled-side
   witness, but consuming helper-summary soundness/rank evidence through
-  `SupportedFunctionBodyWithHelpersIRPreservationGoal` so
-  `calls.helperCompatibility` can disappear from the theorem path. The
+  `SupportedFunctionBodyWithHelpersIRPreservationGoal` while widening or
+  replacing the helper-excluding `SupportedStmtList` fragment, which now
+  discharges helper-freedom via `SupportedStmtList.helperSurfaceClosed`. The
   helper-free collapse goal
   `SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal` remains
   only as the current discharge path on today’s fragment. The longer-term

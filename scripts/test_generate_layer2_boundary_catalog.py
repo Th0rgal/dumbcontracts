@@ -23,7 +23,7 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             catalog["supported_spec_split"]["helper_boundary"]["current_fail_closed_gate"],
-            "SupportedBodyCallInterface.helperCompatibility",
+            "SupportedBodyInterface.stmtList",
         )
         self.assertEqual(
             catalog["theorem_target"]["issue_refs"]["helper_ir_semantics"],

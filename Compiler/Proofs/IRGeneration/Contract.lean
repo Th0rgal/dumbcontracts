@@ -865,7 +865,8 @@ theorem compileFunctionSpec_correct_generic
 /-- Helper-proof-carrying function-level generic theorem.
 This is the proof-ready theorem surface for the next helper-composition step.
 Today the additional helper-proof argument is compatibility-redundant because
-the body proof still closes helpers through `calls.helperCompatibility`. -/
+the body proof still closes helpers through the helper-excluding
+`SupportedStmtList` fragment. -/
 theorem compileFunctionSpec_correct_generic_with_helper_proofs
     (model : CompilationModel)
     (selectors : List Nat)

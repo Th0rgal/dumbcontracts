@@ -829,8 +829,8 @@ structure SupportedInternalHelperWitness
 
 /-- Helper-call boundary for the current generic theorem.
 It already inventories helper callees via positive summary witnesses, but it
-still carries a legacy fail-closed surface check so the generic theorem shape
-and trusted boundary remain unchanged until helper semantics are modeled. -/
+still carries the helper-excluding body fragment witness, so the generic theorem
+shape and trusted boundary remain unchanged until helper semantics are modeled. -/
 structure SupportedBodyHelperInterface (spec : CompilationModel) (fn : FunctionSpec) : Prop where
   helperRank : Nat
   callNamesNodup : (helperCallNames fn).Nodup
@@ -847,16 +847,8 @@ structure SupportedBodyHelperInterface (spec : CompilationModel) (fn : FunctionS
       InternalHelperSummaryPreservesWorldOnSuccess
         ((summaryOf calleeName hcall).summary.contract)
 
-/-- Temporary compatibility gate retained while helper-summary soundness and the
-generic body/IR preservation proof are not yet composed end to end. This is
-kept separate from `SupportedBodyHelperInterface` so the helper boundary itself
-remains a positive compositional inventory. -/
-structure SupportedBodyHelperCompatibility (fn : FunctionSpec) : Prop where
-  legacySurfaceClosed : stmtListTouchesUnsupportedHelperSurface fn.body = false
-
 structure SupportedBodyCallInterface (spec : CompilationModel) (fn : FunctionSpec) : Prop where
   helpers : SupportedBodyHelperInterface spec fn
-  helperCompatibility : SupportedBodyHelperCompatibility fn
   foreign : stmtListTouchesUnsupportedForeignSurface fn.body = false
   lowLevel : stmtListTouchesUnsupportedLowLevelSurface fn.body = false
 
@@ -943,11 +935,38 @@ def SupportedFunction.helperFuel
     (hSupported : SupportedFunction spec fn) : Nat :=
   hSupported.body.calls.helpers.helperRank
 
-theorem SupportedBodyHelperCompatibility.surfaceClosed
-    {fn : FunctionSpec}
-    (hCompat : SupportedBodyHelperCompatibility fn) :
-    stmtListTouchesUnsupportedHelperSurface fn.body = false :=
-  hCompat.legacySurfaceClosed
+private theorem supportedStmtFragment_helperSurfaceClosed
+    {fields : List Field}
+    (fragment : SupportedStmtFragment fields) :
+    stmtListTouchesUnsupportedHelperSurface fragment.toStmts = false := by
+  cases fragment <;>
+    simp [SupportedStmtFragment.toStmts,
+      RequireFamilyClausesTailProgram.toStmts,
+      RequireFamilyClausesTail.toStmts,
+      RequireLiteralGuardFamilyClause.toStmt,
+      stmtListTouchesUnsupportedHelperSurface,
+      stmtTouchesUnsupportedHelperSurface,
+      exprTouchesUnsupportedHelperSurface]
+
+private theorem supportedStmtFragments_helperSurfaceClosed
+    {fields : List Field}
+    (fragments : List (SupportedStmtFragment fields)) :
+    stmtListTouchesUnsupportedHelperSurface
+      (supportedStmtFragmentsToStmts fragments) = false := by
+  induction fragments with
+  | nil =>
+      simp [supportedStmtFragmentsToStmts, stmtListTouchesUnsupportedHelperSurface]
+  | cons fragment rest ih =>
+      simpa [supportedStmtFragmentsToStmts, stmtListTouchesUnsupportedHelperSurface,
+        supportedStmtFragment_helperSurfaceClosed, ih]
+
+theorem SupportedStmtList.helperSurfaceClosed
+    {fields : List Field}
+    {stmts : List Stmt}
+    (hSupported : SupportedStmtList fields stmts) :
+    stmtListTouchesUnsupportedHelperSurface stmts = false := by
+  rcases hSupported with ⟨fragments, rfl⟩
+  exact supportedStmtFragments_helperSurfaceClosed fragments
 
 theorem SupportedBodyHelperInterface.summaryOfCall
     {spec : CompilationModel} {fn : FunctionSpec}
@@ -1211,10 +1230,10 @@ theorem stmtListTouchesUnsupportedContractSurface_eq_false_of_featureClosed
 
 theorem SupportedBodyCallInterface.surfaceClosed
     {spec : CompilationModel} {fn : FunctionSpec}
-    (hCalls : SupportedBodyCallInterface spec fn) :
+    (hBody : SupportedBodyInterface spec fn) :
     stmtListTouchesUnsupportedCallSurface fn.body = false := by
   rw [stmtListTouchesUnsupportedCallSurface_eq_featureOr]
-  simp [hCalls.helperCompatibility.surfaceClosed, hCalls.foreign, hCalls.lowLevel]
+  simp [hBody.stmtList.helperSurfaceClosed, hBody.calls.foreign, hBody.calls.lowLevel]
 
 theorem SupportedBodyInterface.surfaceClosed
     {spec : CompilationModel} {fn : FunctionSpec}
@@ -1223,7 +1242,7 @@ theorem SupportedBodyInterface.surfaceClosed
   exact stmtListTouchesUnsupportedContractSurface_eq_false_of_featureClosed fn.body
     hBody.core.surfaceClosed
     hBody.state.surfaceClosed
-    hBody.calls.surfaceClosed
+    (SupportedBodyCallInterface.surfaceClosed (hBody := hBody))
     hBody.effects.surfaceClosed
 
 private theorem exprUsesArrayElement_eq_false_of_coreClosed
@@ -1721,7 +1740,6 @@ private theorem counter_supported_function :
                    exprCallsPreserveWorld := by
                      intro calleeName hmem
                      simp [exprHelperCallNames] at hmem }
-               helperCompatibility := { legacySurfaceClosed := by decide }
                 foreign := by decide
                 lowLevel := by decide }
            effects := { surfaceClosed := by decide }
@@ -1809,7 +1827,6 @@ private theorem simpleStorage_supported_function :
                    exprCallsPreserveWorld := by
                      intro calleeName hmem
                      simp [exprHelperCallNames] at hmem }
-               helperCompatibility := { legacySurfaceClosed := by decide }
                 foreign := by decide
                 lowLevel := by decide }
            effects := { surfaceClosed := by decide }

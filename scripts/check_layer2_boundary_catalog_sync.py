@@ -33,7 +33,7 @@ def validate_catalog(catalog: dict) -> None:
         raise ValueError("Layer 2 boundary catalog must exclude arbitrary Lean-produced models")
 
     helper = catalog.get("supported_spec_split", {}).get("helper_boundary", {})
-    if helper.get("current_fail_closed_gate") != "SupportedBodyCallInterface.helperCompatibility":
+    if helper.get("current_fail_closed_gate") != "SupportedBodyInterface.stmtList":
         raise ValueError("Layer 2 boundary catalog is missing the helper fail-closed gate")
     if not helper.get("blocking_seams"):
         raise ValueError("Layer 2 boundary catalog is missing helper blocking seams")
@@ -43,7 +43,7 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
     helper = catalog["supported_spec_split"]["helper_boundary"]
     theorem_target = catalog["theorem_target"]
     assert theorem_target["intended_claim"] == "proof_complete_macro_lowered_verity_contract_image"
-    assert helper["current_fail_closed_gate"] == "SupportedBodyCallInterface.helperCompatibility"
+    assert helper["current_fail_closed_gate"] == "SupportedBodyInterface.stmtList"
     return {
         "GENERIC_PLAN": [
             "`artifacts/layer2_boundary_catalog.json`",
@@ -68,7 +68,7 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
         "ROADMAP": [
             "`artifacts/layer2_boundary_catalog.json`",
             "macro-lowered `verity_contract` image",
-            "`calls.helperCompatibility` can disappear",
+            "`SupportedStmtList.helperSurfaceClosed`",
             "`SupportedFunctionBodyWithHelpersIRPreservationGoal`",
             "`execIRFunctionWithInternals` / `interpretIRWithInternals`",
             "conservative extension of `interpretIR`",
@@ -89,7 +89,7 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
         "VERIFICATION_STATUS": [
             "`artifacts/layer2_boundary_catalog.json`",
             "macro-lowered image of `verity_contract`",
-            "`calls.helperCompatibility` gate",
+            "`SupportedBodyInterface.stmtList` gate",
             "`SupportedFunctionBodyWithHelpersIRPreservationGoal`",
             "helper-aware body theorem does not yet consume helper-summary soundness/rank evidence",
             "legacy-compatible external-body Yul subset",

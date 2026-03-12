@@ -1569,8 +1569,8 @@ theorem supported_function_correct_with_helper_proofs_goal
 
 /-- Helper-proof-carrying variant of `supported_function_correct`.
 This still closes the source-side helper seam through the temporary
-`calls.helperCompatibility` gate, but now only as a wrapper around the explicit
-goal-based theorem surface. -/
+helper-excluding `SupportedStmtList` fragment, but now only as a wrapper around
+the explicit goal-based theorem surface. -/
 theorem supported_function_correct_with_helper_proofs
     (model : CompilationModel)
     (selectors : List Nat)
@@ -1615,7 +1615,7 @@ theorem supported_function_correct_with_helper_proofs
       (state := { world := SourceSemantics.withTransactionContext initialWorld tx
                   bindings := bindings })
       (stmts := fn.body)
-      hsupportedFn.body.calls.helperCompatibility.surfaceClosed
+      hsupportedFn.body.stmtList.helperSurfaceClosed
   exact supported_function_correct_with_helper_proofs_goal
     model selectors hSupported hHelperProofs hvalidateInputs fn selector returns
     bodyStmts irFn tx initialWorld bindings hfn hvalidate hreturns hbodyCompile

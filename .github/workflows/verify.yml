@@ -74,7 +74,7 @@ env:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
@@ -120,7 +120,7 @@ jobs:
               - 'foundry.toml'
 
   checks:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -128,7 +128,7 @@ jobs:
         run: make check
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 45
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -237,7 +237,7 @@ jobs:
             axiom-report-raw.log
 
   build-compiler:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 90
     needs: changes
     if: needs.changes.outputs.compiler == 'true'
@@ -451,7 +451,7 @@ jobs:
           path: compiler/parity-pack-identity-report.json
 
   lean-profile:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 45
     needs: changes
     if: github.event_name == 'workflow_dispatch' && needs.changes.outputs.code == 'true'
@@ -474,7 +474,7 @@ jobs:
           path: lean-perf-queue.md
 
   foundry-gas-calibration:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     needs: [changes, build-compiler]
     if: needs.changes.outputs.compiler == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
@@ -504,7 +504,7 @@ jobs:
         run: python3 scripts/check_gas.py calibration --static-report gas-report-static.tsv
 
   foundry:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     needs: [changes, build-compiler]
     if: needs.changes.outputs.compiler == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
@@ -540,7 +540,7 @@ jobs:
           forge test
 
   foundry-patched:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     needs: [changes, build-compiler]
     if: needs.changes.outputs.compiler == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
@@ -572,7 +572,7 @@ jobs:
           forge test --no-match-test "Random10000"
 
   foundry-multi-seed:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 25
     needs: [changes, build-compiler]
     if: needs.changes.outputs.compiler == 'true' && github.event_name != 'pull_request'
@@ -616,7 +616,7 @@ jobs:
           echo "::notice::Reproduce locally: FOUNDRY_PROFILE=difftest DIFFTEST_RANDOM_SEED=${{ matrix.seed }} forge test -vv"
 
   failure-hints:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [checks, build, build-compiler, foundry-gas-calibration, foundry, foundry-patched, foundry-multi-seed]
     if: always() && github.event_name == 'pull_request' && contains(join(needs.*.result, ','), 'failure')
     permissions:

@@ -85,6 +85,7 @@ ALLOWLIST: set[str] = {
     # families share the same abstraction.
     "compiledStmtStep_setMappingUint_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping_singleSlot_of_slotSafety_preserves",
+    "compiledStmtStep_setMappingWord_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping2_singleSlot_of_slotSafety_preserves",
     # Tier-4 runtime-helper-table packaging: these theorems intentionally keep
     # the witness-to-lookup extraction and the final IR characterization in one

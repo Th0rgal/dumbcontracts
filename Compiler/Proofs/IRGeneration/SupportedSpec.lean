@@ -397,7 +397,8 @@ def stmtTouchesUnsupportedStateSurface : Stmt → Bool
 all existing unsupported stateful forms remain excluded except for the proved
 singleton mapping-write heads. -/
 def stmtTouchesUnsupportedStateSurfaceExceptMappingWrites : Stmt → Bool
-  | .setMapping _ _ _ | .setMapping2 _ _ _ _ | .setMappingUint _ _ _ => false
+  | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMapping2 _ _ _ _
+  | .setMappingUint _ _ _ => false
   | stmt => stmtTouchesUnsupportedStateSurface stmt
 
 /-- Helper/foreign/runtime-call statement surfaces still outside the current
@@ -1424,6 +1425,20 @@ private theorem supportedStmtList_setMappingSingle_helperSurfaceClosed
     exprCompileCore_helperSurfaceClosed hkey,
     exprCompileCore_helperSurfaceClosed hvalue]
 
+private theorem supportedStmtList_setMappingWordSingle_helperSurfaceClosed
+    {fieldName : String}
+    {key value : Expr}
+    {wordOffset : Nat}
+    (hkey : FunctionBody.ExprCompileCore key)
+    (hvalue : FunctionBody.ExprCompileCore value) :
+    stmtListTouchesUnsupportedHelperSurface
+      [Stmt.setMappingWord fieldName key wordOffset value] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface,
+    exprCompileCore_helperSurfaceClosed hkey,
+    exprCompileCore_helperSurfaceClosed hvalue]
+
 private theorem supportedStmtList_setMapping2Single_helperSurfaceClosed
     {fieldName : String}
     {key1 key2 value : Expr}
@@ -1501,6 +1516,8 @@ theorem SupportedStmtList.helperSurfaceClosed
   | letMappingUint hkey hscope hslot => exact supportedStmtList_letMappingUint_helperSurfaceClosed hkey
   | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingUintSingle_helperSurfaceClosed hkey hvalue
   | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingSingle_helperSurfaceClosed hkey hvalue
+  | setMappingWordSingle hkey hscopeKey hvalue hscopeValue hslot =>
+      exact supportedStmtList_setMappingWordSingle_helperSurfaceClosed hkey hvalue
   | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot => exact supportedStmtList_setMapping2Single_helperSurfaceClosed hkey1 hkey2 hvalue
   | rawLogLiterals htopics => exact supportedStmtList_rawLogLiterals_helperSurfaceClosed
   | letCallerLetStorageReqEqReqNeqSetStorageParamStop hOwner hne_sv_p hne_ov_p hne_ov_sv =>

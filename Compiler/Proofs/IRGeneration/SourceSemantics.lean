@@ -127,6 +127,15 @@ def writeAddressKeyedMappingSlots
           else
             world.storageMap baseSlot addr }
 
+def writeAddressKeyedMappingWordSlots
+    (world : Verity.ContractState) (slots : List Nat) (key wordOffset value : Nat) :
+    Verity.ContractState :=
+  let word : Verity.Core.Uint256 := value
+  let targets := slots.map (fun slot => Compiler.Proofs.abstractMappingSlot slot key + wordOffset)
+  { world with
+    storage := fun slot =>
+      if targets.contains slot then word else world.storage slot }
+
 def writeUintKeyedMappingSlots
     (world : Verity.ContractState) (slots : List Nat) (key value : Nat) :
     Verity.ContractState :=
@@ -403,6 +412,16 @@ mutual
             .continue
               { state with
                   world := writeAddressKeyedMappingSlots state.world slots resolvedKey resolved }
+        | _, _, _ => .revert
+    | state, .setMappingWord fieldName key wordOffset value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExpr fields state key,
+            evalExpr fields state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            .continue
+              { state with
+                  world := writeAddressKeyedMappingWordSlots
+                    state.world slots resolvedKey wordOffset resolved }
         | _, _, _ => .revert
     | state, .setMapping2 fieldName key1 key2 value =>
         match findFieldWriteSlots fields fieldName,
@@ -764,6 +783,16 @@ mutual
             .continue
               { state with
                   world := writeAddressKeyedMappingSlots state.world slots resolvedKey resolved }
+        | _, _, _ => .revert
+    | state, .setMappingWord fieldName key wordOffset value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExprWithHelpers spec fields fuel state key,
+            evalExprWithHelpers spec fields fuel state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            .continue
+              { state with
+                  world := writeAddressKeyedMappingWordSlots
+                    state.world slots resolvedKey wordOffset resolved }
         | _, _, _ => .revert
     | state, .setMapping2 fieldName key1 key2 value =>
         match findFieldWriteSlots fields fieldName,

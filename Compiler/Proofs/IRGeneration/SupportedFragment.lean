@@ -124,6 +124,17 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       FunctionBody.exprBoundNamesInScope value scope →
       findFieldSlot fields fieldName = some slot →
       SupportedStmtList fields scope [Stmt.setMapping fieldName key value]
+  | setMappingWordSingle
+      {scope : List String}
+      {fieldName : String}
+      {key value : Expr}
+      {wordOffset slot : Nat} :
+      FunctionBody.ExprCompileCore key →
+      FunctionBody.exprBoundNamesInScope key scope →
+      FunctionBody.ExprCompileCore value →
+      FunctionBody.exprBoundNamesInScope value scope →
+      findFieldSlot fields fieldName = some slot →
+      SupportedStmtList fields scope [Stmt.setMappingWord fieldName key wordOffset value]
   | setMapping2Single
       {scope : List String}
       {fieldName : String}

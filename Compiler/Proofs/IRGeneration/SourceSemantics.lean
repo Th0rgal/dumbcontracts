@@ -106,6 +106,74 @@ def writeAddressSlots (world : Verity.ContractState) (slots : List Nat) (value :
     storageAddr := fun slot =>
       if slots.contains slot then addr else world.storageAddr slot }
 
+private def writeAddressKeyedMappingSlots
+    (world : Verity.ContractState) (slots : List Nat) (key value : Nat) :
+    Verity.ContractState :=
+  match slots with
+  | [] => world
+  | slot :: _ =>
+      let keyAddr := Verity.wordToAddress (key : Verity.Core.Uint256)
+      let word : Verity.Core.Uint256 := value
+      let storage :=
+        slots.foldl
+          (fun current slot =>
+            Compiler.Proofs.abstractStoreMappingEntry current slot key value)
+          world.storage
+      { world with
+        storage := storage
+        storageMap := fun baseSlot addr =>
+          if baseSlot == slot && addr == keyAddr then
+            word
+          else
+            world.storageMap baseSlot addr }
+
+private def writeUintKeyedMappingSlots
+    (world : Verity.ContractState) (slots : List Nat) (key value : Nat) :
+    Verity.ContractState :=
+  match slots with
+  | [] => world
+  | slot :: _ =>
+      let keyWord : Verity.Core.Uint256 := key
+      let word : Verity.Core.Uint256 := value
+      let storage :=
+        slots.foldl
+          (fun current slot =>
+            Compiler.Proofs.abstractStoreMappingEntry current slot key value)
+          world.storage
+      { world with
+        storage := storage
+        storageMapUint := fun baseSlot key' =>
+          if baseSlot == slot && key' == keyWord then
+            word
+          else
+            world.storageMapUint baseSlot key' }
+
+private def writeAddressKeyedMapping2Slots
+    (world : Verity.ContractState) (slots : List Nat) (key1 key2 value : Nat) :
+    Verity.ContractState :=
+  match slots with
+  | [] => world
+  | slot :: _ =>
+      let key1Addr := Verity.wordToAddress (key1 : Verity.Core.Uint256)
+      let key2Addr := Verity.wordToAddress (key2 : Verity.Core.Uint256)
+      let word : Verity.Core.Uint256 := value
+      let storage :=
+        slots.foldl
+          (fun current slot =>
+            Compiler.Proofs.abstractStoreMappingEntry
+              current
+              (Compiler.Proofs.abstractMappingSlot slot key1)
+              key2
+              value)
+          world.storage
+      { world with
+        storage := storage
+        storageMap2 := fun baseSlot addr1 addr2 =>
+          if baseSlot == slot && addr1 == key1Addr && addr2 == key2Addr then
+            word
+          else
+            world.storageMap2 baseSlot addr1 addr2 }
+
 def decodeSupportedParamWord (ty : ParamType) (word : Nat) : Option Nat :=
   let word := wordNormalize word
   match ty with
@@ -327,6 +395,40 @@ mutual
         | some slots, some resolved =>
             .continue { state with world := writeUintSlots state.world slots resolved }
         | _, _ => .revert
+    | state, .setMapping fieldName key value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExpr fields state key,
+            evalExpr fields state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            .continue
+              { state with
+                  world := writeAddressKeyedMappingSlots state.world slots resolvedKey resolved }
+        | _, _, _ => .revert
+    | state, .setMapping2 fieldName key1 key2 value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExpr fields state key1,
+            evalExpr fields state key2,
+            evalExpr fields state value with
+        | some slots@(_ :: _), some resolvedKey1, some resolvedKey2, some resolved =>
+            .continue
+              { state with
+                  world :=
+                    writeAddressKeyedMapping2Slots
+                      state.world
+                      slots
+                      resolvedKey1
+                      resolvedKey2
+                      resolved }
+        | _, _, _, _ => .revert
+    | state, .setMappingUint fieldName key value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExpr fields state key,
+            evalExpr fields state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            .continue
+              { state with
+                  world := writeUintKeyedMappingSlots state.world slots resolvedKey resolved }
+        | _, _, _ => .revert
     | state, .storageArrayPush fieldName value =>
         match findFieldWithResolvedSlot fields fieldName, evalExpr fields state value with
         | some ({ ty := .dynamicArray _, .. }, slot), some resolved =>
@@ -654,6 +756,40 @@ mutual
         | some slots, some resolved =>
             .continue { state with world := writeUintSlots state.world slots resolved }
         | _, _ => .revert
+    | state, .setMapping fieldName key value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExprWithHelpers spec fields fuel state key,
+            evalExprWithHelpers spec fields fuel state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            .continue
+              { state with
+                  world := writeAddressKeyedMappingSlots state.world slots resolvedKey resolved }
+        | _, _, _ => .revert
+    | state, .setMapping2 fieldName key1 key2 value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExprWithHelpers spec fields fuel state key1,
+            evalExprWithHelpers spec fields fuel state key2,
+            evalExprWithHelpers spec fields fuel state value with
+        | some slots@(_ :: _), some resolvedKey1, some resolvedKey2, some resolved =>
+            .continue
+              { state with
+                  world :=
+                    writeAddressKeyedMapping2Slots
+                      state.world
+                      slots
+                      resolvedKey1
+                      resolvedKey2
+                      resolved }
+        | _, _, _, _ => .revert
+    | state, .setMappingUint fieldName key value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExprWithHelpers spec fields fuel state key,
+            evalExprWithHelpers spec fields fuel state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            .continue
+              { state with
+                  world := writeUintKeyedMappingSlots state.world slots resolvedKey resolved }
+        | _, _, _ => .revert
     | state, .storageArrayPush fieldName value =>
         match findFieldWithResolvedSlot fields fieldName, evalExprWithHelpers spec fields fuel state value with
         | some ({ ty := .dynamicArray _, .. }, slot), some resolved =>

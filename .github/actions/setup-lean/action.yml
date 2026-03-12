@@ -41,6 +41,14 @@ runs:
         restore-keys: |
           ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-
 
+    - name: Refresh Lake dependency state on partial cache hit
+      if: steps.cache-lake.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        lake update
+        rm -rf .lake/build
+        find .lake/packages -type d -path '*/.lake/build' -prune -exec rm -rf {} +
+
     - name: Fetch mathlib compiled cache
       shell: bash
       run: lake exe cache get

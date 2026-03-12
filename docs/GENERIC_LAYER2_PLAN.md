@@ -309,7 +309,11 @@ now sits under the post-generic widening/completeness plan in
   `interpretIRWithInternals` on that subset follows by composition,
   and `Function.lean`, `Dispatch.lean`, and `Contract.lean` now already expose
   helper-aware wrapper theorems that consume those conservative-extension equalities
-  directly instead of requiring another public-theorem refactor;
+  directly instead of requiring another public-theorem refactor; `Dispatch.lean`
+  and `Contract.lean` now also expose `_goal` variants such as
+  `compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal`, so the
+  public theorem seam can consume the named conservative-extension goal itself
+  rather than only a manually restated equality;
   those helper-aware IR semantics are now available as total fuel-indexed helper-aware IR semantics, and the first compiled-side
   retarget step now has an explicit compositional proof surface rather than one large monolithic goal;
   the compiled-side blocker is tracked in [#1638](https://github.com/Th0rgal/verity/issues/1638)

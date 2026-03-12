@@ -37,6 +37,7 @@
     }
   ],
   "current_theorem": {
+    "helper_ir_goal_ready_variant": "Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal",
     "helper_ir_ready_variant": "Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs_and_helper_ir",
     "helper_proof_ready_variant": "Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs",
     "layer2_axioms": [],
@@ -219,7 +220,7 @@
         "status": "expr_layer_proved_stmt_function_dispatch_contract_reduced_to_stmt_list"
       },
       "compiled_target_proof_surface": {
-        "required_follow_on": "prove the first conservative-extension theorem directly against the now-total helper-aware compiled semantics surface, then instantiate the already-exposed helper-aware wrappers in Function.lean / Dispatch.lean / Contract.lean",
+        "required_follow_on": "prove the first conservative-extension theorem directly against the now-total helper-aware compiled semantics surface, then instantiate the already-exposed helper-aware wrappers in Function.lean / Dispatch.lean / Contract.lean, which now accept either the raw conservative-extension equality or the named goal surface plus an explicit legacy-compatibility witness",
         "source": "Compiler.Proofs.IRGeneration.IRInterpreter.evalIRExprWithInternals",
         "status": "helper_aware_ir_target_now_total_fuel_indexed_defs"
       },

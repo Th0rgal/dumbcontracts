@@ -107,7 +107,11 @@ work is now split into:
 - helper-aware compiled-target wrapper theorems in `Contract.lean` and
   `Dispatch.lean` that already target `execIRFunctionWithInternals` /
   `interpretIRWithInternals` once the compiled-side conservative-extension
-  equalities are supplied
+  equalities are supplied; those modules now also expose `_goal` variants that
+  consume the named conservative-extension target
+  `InterpretIRWithInternalsZeroConservativeExtensionGoal` plus an explicit
+  legacy-compatibility witness instead of a raw equality, including
+  `compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal`
 - a dedicated world-preservation hook for expression-position helper callees
 - a strictly decreasing helper-rank interface for direct callees, so future
   helper composition can target a well-founded measure instead of raw fuel

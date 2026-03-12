@@ -35,6 +35,11 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
             "compile_preserves_semantics_with_helper_proofs_and_helper_ir",
         )
         self.assertEqual(
+            catalog["current_theorem"]["helper_ir_goal_ready_variant"],
+            "Compiler.Proofs.IRGeneration.Contract."
+            "compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal",
+        )
+        self.assertEqual(
             catalog["supported_spec_split"]["helper_boundary"]["compiled_side_blocker_issue"],
             1638,
         )

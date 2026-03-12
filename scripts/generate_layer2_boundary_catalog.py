@@ -42,6 +42,10 @@ def build_catalog() -> dict:
                 "Compiler.Proofs.IRGeneration.Contract."
                 "compile_preserves_semantics_with_helper_proofs_and_helper_ir"
             ),
+            "helper_ir_goal_ready_variant": (
+                "Compiler.Proofs.IRGeneration.Contract."
+                "compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal"
+            ),
             "source_semantics": (
                 "Compiler.Proofs.IRGeneration.SourceSemantics.supportedSourceContractSemantics"
             ),
@@ -210,7 +214,9 @@ def build_catalog() -> dict:
                         "against the now-total helper-aware compiled semantics "
                         "surface, then instantiate the already-exposed helper-"
                         "aware wrappers in Function.lean / Dispatch.lean / "
-                        "Contract.lean"
+                        "Contract.lean, which now accept either the raw "
+                        "conservative-extension equality or the named goal "
+                        "surface plus an explicit legacy-compatibility witness"
                     ),
                 },
                 "decreasing_rank_measure": (

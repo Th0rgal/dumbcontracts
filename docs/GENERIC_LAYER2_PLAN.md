@@ -291,16 +291,22 @@ now sits under the post-generic widening/completeness plan in
   compiled seam. It now also weakens that requirement for future helper-rich
   widening via `StmtListHelperFreeCompiledLegacyCompatible`,
   `StmtListInternalHelperSurfaceStepInterface`,
-  `StmtListResidualHelperSurfaceStepInterface`, and
-  `stmtListGenericWithHelpersAndHelperIR_of_core_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
+  `StmtListResidualHelperSurfaceStepInterface`, and the finer genuine-helper
+  cut `StmtListDirectInternalHelperStepInterface`,
+  `StmtListExprInternalHelperStepInterface`,
+  `StmtListStructuralInternalHelperStepInterface`, assembled through
+  `stmtListInternalHelperSurfaceStepInterface_of_directInternalHelperStepInterface_and_exprInternalHelperStepInterface_and_structuralInternalHelperStepInterface`
+  and then
+  `stmtListGenericWithHelpersAndHelperIR_of_core_directInternalHelperStepInterface_and_exprInternalHelperStepInterface_and_structuralInternalHelperStepInterface_and_residualHelperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
   so only genuine internal-helper heads need genuinely new helper-specific exact
-  step proofs while residual non-helper coarse-surface heads are kept separate
-  and helper-free heads keep reusing the existing library. On today's
+  step proofs while residual non-helper coarse-surface heads are kept separate,
+  and the genuine-helper work itself is now cut along direct-helper,
+  expression-helper, and structural-recursion lines. On today's
   boundary the source-side reuse seam is now split the same way via
   `StmtListHelperFreeStepInterface`,
   `stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
   and
-  `supported_function_body_correct_from_exact_state_generic_internal_helper_surface_steps_and_helper_ir`,
+  `supported_function_body_correct_from_exact_state_generic_split_internal_helper_surface_steps_and_helper_ir`,
   so future helper-rich bodies no longer need the whole list to satisfy
   `StmtListGenericCore` before they can land in the exact helper-aware body
   theorem. On today's

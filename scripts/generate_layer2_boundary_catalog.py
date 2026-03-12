@@ -298,6 +298,25 @@ def build_catalog() -> dict:
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "StmtListInternalHelperSurfaceStepInterface"
                     ),
+                    "direct_internal_helper_step_interface": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "StmtListDirectInternalHelperStepInterface"
+                    ),
+                    "expr_internal_helper_step_interface": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "StmtListExprInternalHelperStepInterface"
+                    ),
+                    "structural_internal_helper_step_interface": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "StmtListStructuralInternalHelperStepInterface"
+                    ),
+                    "internal_helper_step_interface_builder": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "stmtListInternalHelperSurfaceStepInterface_of_direct"
+                        "InternalHelperStepInterface_and_exprInternalHelper"
+                        "StepInterface_and_structuralInternalHelperStep"
+                        "Interface"
+                    ),
                     "residual_helper_surface_step_interface": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "StmtListResidualHelperSurfaceStepInterface"
@@ -319,19 +338,26 @@ def build_catalog() -> dict:
                     "helper_surface_split_bridge": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "stmtListGenericWithHelpersAndHelperIR_of_helperFree"
-                        "StepInterface_and_internalHelperSurfaceStepInterface_"
-                        "and_residualHelperSurfaceStepInterface_and_"
+                        "StepInterface_and_directInternalHelperStepInterface_"
+                        "and_exprInternalHelperStepInterface_and_"
+                        "structuralInternalHelperStepInterface_and_"
+                        "residualHelperSurfaceStepInterface_and_"
                         "helperFreeCompiledLegacyCompatible"
                     ),
                     "helper_surface_split_bridge_from_core": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "stmtListGenericWithHelpersAndHelperIR_of_core_"
-                        "internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible"
+                        "directInternalHelperStepInterface_and_"
+                        "exprInternalHelperStepInterface_and_"
+                        "structuralInternalHelperStepInterface_and_"
+                        "residualHelperSurfaceStepInterface_and_"
+                        "helperFreeCompiledLegacyCompatible"
                     ),
                     "helper_surface_split_body_bridge": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "supported_function_body_correct_from_exact_state_"
-                        "generic_internal_helper_surface_steps_and_helper_ir"
+                        "generic_split_internal_helper_surface_steps_and_"
+                        "helper_ir"
                     ),
                     "direct_body_goal": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
@@ -394,17 +420,21 @@ def build_catalog() -> dict:
                         "residual coarse-surface interface "
                         "StmtListResidualHelperSurfaceStepInterface, combined directly by "
                         "stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_"
-                        "and_internalHelperSurfaceStepInterface_and_"
+                        "and_directInternalHelperStepInterface_and_"
+                        "exprInternalHelperStepInterface_and_"
+                        "structuralInternalHelperStepInterface_and_"
                         "residualHelperSurfaceStepInterface_and_"
                         "helperFreeCompiledLegacyCompatible "
                         "and, for legacy callers, by "
                         "stmtListGenericWithHelpersAndHelperIR_of_core_"
-                        "internalHelperSurfaceStepInterface_and_"
+                        "directInternalHelperStepInterface_and_"
+                        "exprInternalHelperStepInterface_and_"
+                        "structuralInternalHelperStepInterface_and_"
                         "residualHelperSurfaceStepInterface_and_"
                         "helperFreeCompiledLegacyCompatible; "
                         "the matching body-level split bridge is "
                         "supported_function_body_correct_from_exact_state_"
-                        "generic_internal_helper_surface_steps_and_helper_ir; and it now derives "
+                        "generic_split_internal_helper_surface_steps_and_helper_ir; and it now derives "
                         "that weaker compiled-side witness "
                         "on today's supported fragment via "
                         "stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface / "
@@ -418,7 +448,9 @@ def build_catalog() -> dict:
                         "StmtListGenericCore wholesale; future helper-rich proofs "
                         "only need exact step proofs at genuine internal-helper heads, "
                         "with residual coarse-surface non-helper cases tracked "
-                        "separately; "
+                        "separately and the genuine-helper side itself cut "
+                        "into direct-helper, expression-helper, and structural "
+                        "interfaces; "
                         "which feeds the function-level theorem "
                         "supported_function_correct_with_helper_proofs_body_goal; "
                         "the legacy conservative-extension goal remains only "
@@ -453,7 +485,9 @@ def build_catalog() -> dict:
                         "helper-aware compiled induction seam "
                         "CompiledStmtStepWithHelpersAndHelperIR / "
                         "StmtListGenericWithHelpersAndHelperIR via "
-                        "StmtListInternalHelperSurfaceStepInterface "
+                        "StmtListDirectInternalHelperStepInterface / "
+                        "StmtListExprInternalHelperStepInterface / "
+                        "StmtListStructuralInternalHelperStepInterface "
                         "and then into a direct proof of "
                         "SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal "
                         "while widening or replacing the helper-excluding "

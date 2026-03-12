@@ -124,13 +124,20 @@ work is now split into:
 - a weaker exact-seam compiled compatibility witness
   `StmtListHelperFreeCompiledLegacyCompatible` plus the split exact step
   interfaces `StmtListInternalHelperSurfaceStepInterface` and
-  `StmtListResidualHelperSurfaceStepInterface`, bridged through
+  `StmtListResidualHelperSurfaceStepInterface`, where the genuine-helper side is
+  now further split into
+  `StmtListDirectInternalHelperStepInterface`,
+  `StmtListExprInternalHelperStepInterface`, and
+  `StmtListStructuralInternalHelperStepInterface`, assembled through
+  `stmtListInternalHelperSurfaceStepInterface_of_directInternalHelperStepInterface_and_exprInternalHelperStepInterface_and_structuralInternalHelperStepInterface`,
+  then bridged through
   `stmtListHelperSurfaceStepInterface_of_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface`
   and
   `stmtListGenericWithHelpersAndHelperIR_of_core_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
   so future helper-rich bodies only need genuinely new helper proofs at
   internal-helper heads while residual non-helper coarse-surface cases are kept
-  separate from helper-summary work
+  separate from helper-summary work, and the genuine-helper proof work itself is
+  now cut along direct-helper, expression-helper, and structural-recursion lines
 - a matching weaker source-side reuse witness
   `StmtListHelperFreeStepInterface` plus the direct split bridges
   `stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`
@@ -246,12 +253,15 @@ successful `CompilationModel.compile`. The helper-aware compiled target remains
 available as total fuel-indexed helper-aware IR semantics throughout the later
 fragment-widening retargeting work. The remaining blocker is therefore no
 longer a helper-free compiled-side witness on today’s theorem domain, but
- end-to-end consumption of helper-summary soundness/rank evidence through the
- genuinely new internal-helper cases in the exact helper-aware compiled
- seam, via `StmtListInternalHelperSurfaceStepInterface`, past the transitional
- legacy-compiled-body goal `SupportedFunctionBodyWithHelpersIRPreservationGoal`,
- and then through the exact helper-rich body target
- `SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal`; the current
+  end-to-end consumption of helper-summary soundness/rank evidence through the
+  genuinely new internal-helper cases in the exact helper-aware compiled
+  seam, now cut into
+  `StmtListDirectInternalHelperStepInterface`,
+  `StmtListExprInternalHelperStepInterface`, and
+  `StmtListStructuralInternalHelperStepInterface`, past the transitional
+  legacy-compiled-body goal `SupportedFunctionBodyWithHelpersIRPreservationGoal`,
+  and then through the exact helper-rich body target
+  `SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal`; the current
  function wrapper still feeds through
 `supported_function_correct_with_helper_proofs_body_goal`, while widening or
 replacing the helper-excluding `SupportedStmtList` fragment whose current

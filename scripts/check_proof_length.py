@@ -268,6 +268,7 @@ ALLOWLIST: set[str] = {
     # cleanup once the real helper-call step proofs land.
     "exec_compileStmtList_generic_with_helpers_and_helper_ir_sizeOf_extraFuel_step",
     "supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir_raw",
+    "supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir",
     # Issue #1630 / PR #1639 follow-up — exact helper-aware split reuse bridge:
     # these theorems are the one list/body-level transport layer that
     # separates helper-free head reuse from genuinely new helper-surface-
@@ -277,6 +278,13 @@ ALLOWLIST: set[str] = {
     "stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible",
     "stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible",
     "supported_function_body_correct_from_exact_state_generic_helper_surface_steps_and_helper_ir",
+    "supported_function_body_correct_from_exact_state_generic_internal_helper_surface_steps_and_helper_ir",
+    # Issue #1630 / PR #1639 follow-up — helper-positive seam split by proof
+    # obligation shape: this body-level bridge preserves the public exact target
+    # while threading direct-helper, expression-helper, structural-helper, and
+    # residual interfaces through one transport layer instead of duplicating the
+    # same composition logic across later helper-summary proof PRs.
+    "supported_function_body_correct_from_exact_state_generic_split_internal_helper_surface_steps_and_helper_ir",
     # Issue #1630 / PR #1639 follow-up — current-fragment exact helper-aware body wrapper:
     # this theorem keeps the public body-proof surface stable while deriving the
     # new compiled-side legacy-compatibility witness and lifting the existing

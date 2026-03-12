@@ -66,7 +66,7 @@ theorem store_preserves_context (s : ContractState) (value : Uint256) :
   context_preserved s s' := by
   have h := store_meets_spec s value
   simp [store_spec] at h
-  simpa [Specs.sameContext, context_preserved] using h.2.2.2.2
+  simpa [Specs.sameContext, context_preserved] using h.2.2.2.2.2
 
 /-- retrieve preserves all state (read-only, trivially preserves everything). -/
 theorem retrieve_preserves_context (s : ContractState) :

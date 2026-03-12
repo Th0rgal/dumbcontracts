@@ -48,36 +48,36 @@ def remove_path(path: Path, reason: str) -> None:
 
 
 def main() -> int:
-    if not PACKAGES_DIR.exists():
+    package_dirs: list[Path] = []
+    if PACKAGES_DIR.exists():
+        package_dirs = [path for path in PACKAGES_DIR.iterdir() if path.is_dir()]
+    else:
         print("prune_lake_cache: no .lake/packages directory to prune")
-        return 0
 
-    expected = expected_git_revs()
-    for package_dir in PACKAGES_DIR.iterdir():
-        if not package_dir.is_dir():
-            continue
-        expected_rev = expected.get(package_dir.name)
-        if expected_rev is None:
-            remove_path(package_dir, "package not present in lake-manifest.json")
-            continue
+    if package_dirs:
+        expected = expected_git_revs()
+        for package_dir in package_dirs:
+            expected_rev = expected.get(package_dir.name)
+            if expected_rev is None:
+                remove_path(package_dir, "package not present in lake-manifest.json")
+                continue
 
-        actual_rev = git_head(package_dir)
-        if actual_rev is None:
-            remove_path(package_dir, "package checkout is missing git metadata")
-            continue
-        if actual_rev != expected_rev:
-            remove_path(package_dir, f"expected {expected_rev[:12]}, found {actual_rev[:12]}")
+            actual_rev = git_head(package_dir)
+            if actual_rev is None:
+                remove_path(package_dir, "package checkout is missing git metadata")
+                continue
+            if actual_rev != expected_rev:
+                remove_path(package_dir, f"expected {expected_rev[:12]}, found {actual_rev[:12]}")
 
     root_build = LAKE_DIR / "build"
     if root_build.exists():
         remove_path(root_build, "clearing root build outputs after partial cache restore")
 
-    for package_dir in PACKAGES_DIR.iterdir():
-        if not package_dir.is_dir():
-            continue
-        package_build = package_dir / ".lake" / "build"
-        if package_build.exists():
-            remove_path(package_build, "clearing dependency build outputs after partial cache restore")
+    if PACKAGES_DIR.exists():
+        for package_dir in [path for path in PACKAGES_DIR.iterdir() if path.is_dir()]:
+            package_build = package_dir / ".lake" / "build"
+            if package_build.exists():
+                remove_path(package_build, "clearing dependency build outputs after partial cache restore")
 
     return 0
 

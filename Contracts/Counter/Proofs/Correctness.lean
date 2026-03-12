@@ -35,7 +35,7 @@ theorem increment_state_preserved_except_count (s : ContractState) :
   refine ⟨?h_storage, h_addr, h_map, ?_⟩
   · intro n h_ne
     exact h_slots n h_ne
-  simpa [context_preserved, Specs.sameContext] using h_ctx
+  simpa [context_preserved, Specs.sameContext] using h_ctx.2
 
 /-- decrement preserves all state except count. -/
 theorem decrement_state_preserved_except_count (s : ContractState) :
@@ -47,7 +47,7 @@ theorem decrement_state_preserved_except_count (s : ContractState) :
   refine ⟨?h_storage, h_addr, h_map, ?_⟩
   · intro n h_ne
     exact h_slots n h_ne
-  simpa [context_preserved, Specs.sameContext] using h_ctx
+  simpa [context_preserved, Specs.sameContext] using h_ctx.2
 
 /-- getCount preserves all state (trivially, since it's read-only). -/
 theorem getCount_state_preserved (s : ContractState) :

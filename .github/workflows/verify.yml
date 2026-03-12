@@ -145,6 +145,8 @@ jobs:
               - 'lean-toolchain'
               - 'foundry.toml'
             macro_fuzz:
+              - '.github/actions/setup-lean/action.yml'
+              - '.github/workflows/verify.yml'
               - 'Verity/Macro/**'
               - 'Compiler/**'
               - '!Compiler/Proofs/**'

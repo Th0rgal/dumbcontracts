@@ -95,7 +95,7 @@ theorem transfer_preserves_wellformedness (s : ContractState) (to : Address) (am
   have h_wf_frame :=
     wf_preservation_of_frame s ((transfer to amount).run s).snd
       h.sender_nonzero h.contract_nonzero h.owner_nonzero
-      h_addr_ctx.2.2.1 h_addr_ctx.2.2.2.1 h_owner_pres
+      h_addr_ctx.2.2.2.1 h_addr_ctx.2.2.2.2.1 h_owner_pres
   exact ⟨h_wf_frame.1, h_wf_frame.2.1, h_wf_frame.2.2⟩
 
 /-! ## Owner Stability

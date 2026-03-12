@@ -288,10 +288,17 @@ now sits under the post-generic widening/completeness plan in
   `stmtListGenericWithHelpersAndHelperIR_of_withHelpers_and_compiledLegacyCompatible`
   plus the witness interface `StmtListCompiledLegacyCompatible`, so the
   already-proved helper-free cases can also lift into the exact helper-aware
-  compiled seam. On today's supported fragment that witness is now derived
-  directly via `stmtListCompiledLegacyCompatible_of_supportedContractSurface` /
-  `SupportedBodyInterface.compiledLegacyCompatible`, and the current-fragment
-  wrapper `supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir`
+  compiled seam. It now also weakens that requirement for future helper-rich
+  widening via `StmtListHelperFreeCompiledLegacyCompatible`,
+  `StmtListHelperSurfaceStepInterface`, and
+  `stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
+  so only helper-surface-positive heads need genuinely new exact step proofs
+  while helper-free heads keep reusing the existing library. On today's
+  supported fragment that weaker witness is derived directly via
+  `stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface` /
+  `SupportedBodyInterface.compiledHelperFreeLegacyCompatible`, and the
+  current-fragment wrapper
+  `supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir`
   now lands in the exact helper-aware compiled body goal without a
   caller-supplied compiled-side witness.
   `Contract.lean` now mirrors that at the public theorem surface via

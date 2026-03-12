@@ -121,15 +121,24 @@ work is now split into:
   `stmtListGenericWithHelpersAndHelperIR_of_withHelpers_and_compiledLegacyCompatible`,
   so already-proved helper-free cases can also be reused inside the exact
   helper-aware compiled seam on legacy-compatible compiled bodies
+- a weaker exact-seam compiled compatibility witness
+  `StmtListHelperFreeCompiledLegacyCompatible` plus the list-local exact helper
+  step interface `StmtListHelperSurfaceStepInterface` and the bridge theorem
+  `stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
+  so future helper-rich bodies only need new exact proofs at helper-surface-
+  positive heads while helper-free heads keep reusing the legacy generic step
+  library
 - a derivation of that compiled-side witness from the existing supported-body
   surface via
   `stmtListCompiledLegacyCompatible_of_supportedContractSurface` and
-  `SupportedBodyInterface.compiledLegacyCompatible`, plus the current-fragment
-  exact body wrapper
+  `SupportedBodyInterface.compiledLegacyCompatible`; the weaker exact-seam
+  witness is also derived directly via
+  `stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface` and
+  `SupportedBodyInterface.compiledHelperFreeLegacyCompatible`, plus the
+  current-fragment exact body wrapper
   `supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir`,
   so today's supported fragment no longer needs a caller-supplied
-  `StmtListCompiledLegacyCompatible` proof just to reach the exact helper-aware
-  compiled body goal
+  compiled-side witness just to reach the exact helper-aware compiled body goal
 - matching helper-proof-carrying theorem variants in `Function.lean`,
   `Dispatch.lean`, and `Contract.lean`, so the public Layer 2 theorem family
   already exposes that input without changing the current trusted boundary
@@ -227,11 +236,10 @@ available as total fuel-indexed helper-aware IR semantics throughout the later
 fragment-widening retargeting work. The remaining blocker is therefore no
 longer a helper-free compiled-side witness on today’s theorem domain, but
  end-to-end consumption of helper-summary soundness/rank evidence through the
- genuinely new helper-call cases in helper-aware
- `CompiledStmtStepWithHelpers` / `StmtListGenericWithHelpers` proofs and then
- through the now-explicit legacy-compiled-body helper target
- `SupportedFunctionBodyWithHelpersIRPreservationGoal`, while the exact future
- helper-rich body target is the helper-aware compiled-body goal
+ genuinely new helper-surface-positive cases in the exact helper-aware compiled
+ seam, via `StmtListHelperSurfaceStepInterface`, past the transitional
+ legacy-compiled-body goal `SupportedFunctionBodyWithHelpersIRPreservationGoal`,
+ and then through the exact helper-rich body target
  `SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal`; the current
  function wrapper still feeds through
 `supported_function_correct_with_helper_proofs_body_goal`, while widening or

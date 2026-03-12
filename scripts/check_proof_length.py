@@ -268,6 +268,12 @@ ALLOWLIST: set[str] = {
     # cleanup once the real helper-call step proofs land.
     "exec_compileStmtList_generic_with_helpers_and_helper_ir_sizeOf_extraFuel_step",
     "supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir_raw",
+    # Issue #1630 / PR #1639 follow-up — exact helper-aware split reuse bridge:
+    # this theorem is the one list-level transport that separates helper-free
+    # head reuse from genuinely new helper-surface-positive step obligations.
+    # Keeping the split centralized makes the remaining helper-rich proof work
+    # land at a single named seam instead of duplicating the branch logic.
+    "stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible",
     # Issue #1630 / PR #1639 follow-up — current-fragment exact helper-aware body wrapper:
     # this theorem keeps the public body-proof surface stable while deriving the
     # new compiled-side legacy-compatibility witness and lifting the existing
@@ -289,6 +295,7 @@ ALLOWLIST: set[str] = {
     # blocker lives at single-statement compatibility rather than list plumbing.
     # Its length comes from the constructor-by-constructor composition over the
     # legacy-compatible Yul stmt-list fragment.
+    "stmtListGenericWithHelpersAndHelperIR_of_withHelpers_and_compiledLegacyCompatible",
     "execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility",
     # Issue #1638 / PR #1639 follow-up — closing the helper-free conservative-
     # extension theorem on the legacy-compatible runtime subset currently

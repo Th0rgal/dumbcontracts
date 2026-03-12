@@ -699,17 +699,20 @@ theorem stmtListHelperFreeCompiledLegacyCompatible_of_compiledLegacyCompatible
       intro _ compiledIR hcompile
       exact hhead compiledIR hcompile
 
-/-- The current supported contract surface also derives the weaker exact-seam
-compiled witness that only constrains helper-free heads. Future helper-rich
-bodies can reuse this witness for the unchanged helper-free cases while proving
-exact helper-aware steps only for helper-positive heads. -/
-theorem stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface
+/-- The current supported contract surface already implies the weaker exact-seam
+compiled disjointness witness whenever the runtime contract has no internal
+helper table. This lets the active exact helper-aware wrapper target the
+generalized calls-disjoint bridge directly instead of routing through the older
+helper-free legacy-compatibility witness. -/
+theorem stmtListHelperFreeCompiledCallsDisjoint_of_supportedContractSurface
+    {runtimeContract : IRContract}
     {fields : List Field}
     {scope : List String}
     {stmts : List Stmt}
     (hnoPacked : ∀ field ∈ fields, field.packedBits = none)
-    (hsurface : stmtListTouchesUnsupportedContractSurface stmts = false) :
-    StmtListHelperFreeCompiledLegacyCompatible fields scope stmts := by
+    (hsurface : stmtListTouchesUnsupportedContractSurface stmts = false)
+    (hinternal : runtimeContract.internalFunctions = []) :
+    StmtListHelperFreeCompiledCallsDisjoint runtimeContract fields scope stmts := by
   induction stmts generalizing scope with
   | nil =>
       exact .nil
@@ -720,8 +723,15 @@ theorem stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface
         simpa [stmtListTouchesUnsupportedContractSurface] using (Bool.or_eq_false.mp hsurface).2
       refine .cons ?_ (ih hrestSurface)
       intro _ compiledIR hcompile
-      exact legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface
-        hnoPacked hstmtSurface hcompile
+      exact
+        YulStmtListCallsDisjointFromInternalTable_of_internalFunctions_nil
+          runtimeContract
+          hinternal
+          compiledIR
+          (legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface
+            hnoPacked
+            hstmtSurface
+            hcompile)
 
 /-- Any full helper-free generic statement-list proof also gives the weaker
 source-side reuse witness needed by the future helper-rich exact seam: only the
@@ -6103,49 +6113,6 @@ def SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
     stmtResultMatchesIRExecWithInternals
       (SourceSemantics.effectiveFields model) sourceResult irExec
 
-/-- The current helper-free compiled-body goal is a conservative special case of
-the exact helper-aware compiled-body target whenever the runtime contract has no
-internal helper table and the compiled body stays inside the already-closed
-legacy-compatible external Yul subset. -/
-theorem supported_function_body_with_helpers_and_helper_ir_goal_of_legacy_ir_goal
-    (runtimeContract : IRContract)
-    (model : CompilationModel)
-    (fn : FunctionSpec)
-    (bodyStmts : List YulStmt)
-    (helperFuel : Nat)
-    (tx : IRTransaction)
-    (initialWorld : Verity.ContractState)
-    (state : IRState)
-    (bindings : List (String × Nat))
-    (extraFuel : Nat)
-    (hbody :
-      SupportedFunctionBodyWithHelpersIRPreservationGoal
-        model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel)
-    (hlegacyBody : LegacyCompatibleExternalStmtList bodyStmts)
-    (hinternal : runtimeContract.internalFunctions = []) :
-    SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
-      runtimeContract
-      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
-  rcases hbody with ⟨sourceResult, irExec, hsource, hbodyExec, hmatch⟩
-  refine ⟨sourceResult, match irExec with
-      | .continue next => .continue next
-      | .return value next => .return value next
-      | .stop next => .stop next
-      | .revert next => .revert next, hsource, ?_, ?_⟩
-  · have hcompat :=
-      execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility runtimeContract
-        (execIRStmtWithInternals_eq_execIRStmt_of_stmtSubgoals
-          runtimeContract
-          (interpretIRWithInternalsZeroConservativeExtensionStmtSubgoals_closed
-            runtimeContract))
-        hinternal
-        (bodyStmts.length + extraFuel + 1)
-        state
-        bodyStmts
-        hlegacyBody
-    simpa [hbodyExec] using hcompat
-  · cases irExec <;> simpa [stmtResultMatchesIRExecWithInternals] using hmatch
-
 /-- Disjoint-based body-level bridge: the helper-free compiled-body goal lifts to
 the exact helper-aware compiled-body target when the compiled body is disjoint
 from the runtime contract's internal function table.  Does **not** require
@@ -6869,20 +6836,23 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
     SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
       runtimeContract
       model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
-  have hlegacy :
-      StmtListHelperFreeCompiledLegacyCompatible
+  have hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
         (SourceSemantics.effectiveFields model)
         (fn.params.map (·.name))
         fn.body := by
     simpa [hnormalized] using
-      (stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface
+      (stmtListHelperFreeCompiledCallsDisjoint_of_supportedContractSurface
+        (runtimeContract := runtimeContract)
         (fields := model.fields)
         (scope := fn.params.map (·.name))
         (stmts := fn.body)
         hnoPacked
-        hcontractSurface)
+        hcontractSurface
+        hinternal)
   exact
-    supported_function_body_correct_from_exact_state_generic_finer_split_internal_helper_surface_steps_and_helper_ir
+    supported_function_body_correct_from_exact_state_generic_finer_split_internal_helper_surface_steps_and_helper_ir_callsDisjoint
       runtimeContract
       model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
       hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hhelperFree
@@ -6921,9 +6891,9 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
         (scope := fn.params.map (·.name))
         (stmts := fn.body)
         hhelperSurface)
-      hlegacy
+      hdisjoint
       hbodyCompile
-      hscope hbounded hstateRuntime hstateBindings hinternal
+      hscope hbounded hstateRuntime hstateBindings
 
 /-- Goal-based helper-aware wrapper around the generic body/IR preservation
 theorem. This keeps the current helper-free collapse available as a corollary,

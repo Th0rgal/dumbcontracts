@@ -1145,6 +1145,16 @@ structure SupportedFunction (spec : CompilationModel) (fn : FunctionSpec) : Prop
   returns : SupportedReturnProfile fn
   body : SupportedBodyInterface spec fn
 
+/-- Tier 2 function-level support witness that weakens only the body state
+surface closure to admit singleton mapping writes. -/
+structure SupportedFunctionExceptMappingWrites
+    (spec : CompilationModel) (fn : FunctionSpec) : Prop where
+  nonInternal : fn.isInternal = false
+  nonSpecialEntrypoint : isInteropEntrypointName fn.name = false
+  params : SupportedParamProfile fn.params
+  returns : SupportedReturnProfile fn
+  body : SupportedBodyInterfaceExceptMappingWrites spec fn
+
 /-- Whole-contract invariants that should remain global preconditions for the
 current generic theorem, independent of feature-local proof interfaces. -/
 structure SupportedSpecInvariants (spec : CompilationModel) (selectors : List Nat) : Prop where
@@ -1179,6 +1189,15 @@ structure SupportedSpec (spec : CompilationModel) (selectors : List Nat) : Prop 
   functions :
     ∀ fn, fn ∈ spec.functions → SupportedFunction spec fn
 
+/-- Tier 2 whole-contract support witness that weakens only the function-body
+state closure to admit singleton mapping writes. -/
+structure SupportedSpecExceptMappingWrites
+    (spec : CompilationModel) (selectors : List Nat) : Prop where
+  invariants : SupportedSpecInvariants spec selectors
+  surface : SupportedSpecSurface spec
+  functions :
+    ∀ fn, fn ∈ spec.functions → SupportedFunctionExceptMappingWrites spec fn
+
 theorem SupportedFunction.paramNamesNodup
     {spec : CompilationModel} {fn : FunctionSpec}
     (hSupported : SupportedFunction spec fn) :
@@ -1199,9 +1218,34 @@ theorem SupportedFunction.returnsSupported
         SupportedExternalReturnProfile resolvedReturns :=
   hSupported.returns.resolved
 
+theorem SupportedFunctionExceptMappingWrites.paramNamesNodup
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hSupported : SupportedFunctionExceptMappingWrites spec fn) :
+    (fn.params.map (·.name)).Nodup :=
+  hSupported.params.namesNodup
+
+theorem SupportedFunctionExceptMappingWrites.paramsSupported
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hSupported : SupportedFunctionExceptMappingWrites spec fn) :
+    ∀ param ∈ fn.params, SupportedExternalParamType param.ty :=
+  hSupported.params.supported
+
+theorem SupportedFunctionExceptMappingWrites.returnsSupported
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hSupported : SupportedFunctionExceptMappingWrites spec fn) :
+    ∃ resolvedReturns,
+      functionReturns fn = Except.ok resolvedReturns ∧
+        SupportedExternalReturnProfile resolvedReturns :=
+  hSupported.returns.resolved
+
 def SupportedFunction.helperFuel
     {spec : CompilationModel} {fn : FunctionSpec}
     (hSupported : SupportedFunction spec fn) : Nat :=
+  hSupported.body.calls.helpers.helperRank
+
+def SupportedFunctionExceptMappingWrites.helperFuel
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hSupported : SupportedFunctionExceptMappingWrites spec fn) : Nat :=
   hSupported.body.calls.helpers.helperRank
 
 private theorem exprCompileCore_helperSurfaceClosed
@@ -2359,12 +2403,33 @@ theorem SupportedSpec.noInternalFunctions
   intro fn hmem
   exact (hSupported.functions fn hmem).nonInternal
 
+theorem SupportedSpecExceptMappingWrites.noInternalFunctions
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    ∀ fn ∈ spec.functions, fn.isInternal = false := by
+  intro fn hmem
+  exact (hSupported.functions fn hmem).nonInternal
+
 theorem SupportedSpec.contractUsesArrayElement_eq_false
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
     contractUsesArrayElement spec = false := by
   have hctor : constructorUsesArrayElement spec.constructor = false := by
     simp [SupportedSpec.noConstructor hSupported]
+  have hfunctions :
+      spec.functions.any functionUsesArrayElement = false := by
+    apply listAny_eq_false_of_mem_eq_false
+    intro fn hmem
+    exact stmtListUsesArrayElement_eq_false_of_coreClosed
+      ((hSupported.functions fn hmem).body.core.surfaceClosed)
+  simp [contractUsesArrayElement, hctor, hfunctions]
+
+theorem SupportedSpecExceptMappingWrites.contractUsesArrayElement_eq_false
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    contractUsesArrayElement spec = false := by
+  have hctor : constructorUsesArrayElement spec.constructor = false := by
+    simp [hSupported.surface.noConstructor]
   have hfunctions :
       spec.functions.any functionUsesArrayElement = false := by
     apply listAny_eq_false_of_mem_eq_false
@@ -2387,6 +2452,20 @@ theorem SupportedSpec.contractUsesStorageArrayElement_eq_false
       ((hSupported.functions fn hmem).body.core.surfaceClosed)
   simp [contractUsesStorageArrayElement, hctor, hfunctions]
 
+theorem SupportedSpecExceptMappingWrites.contractUsesStorageArrayElement_eq_false
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    contractUsesStorageArrayElement spec = false := by
+  have hctor : constructorUsesStorageArrayElement spec.constructor = false := by
+    simp [hSupported.surface.noConstructor]
+  have hfunctions :
+      spec.functions.any functionUsesStorageArrayElement = false := by
+    apply listAny_eq_false_of_mem_eq_false
+    intro fn hmem
+    exact stmtListUsesStorageArrayElement_eq_false_of_coreClosed
+      ((hSupported.functions fn hmem).body.core.surfaceClosed)
+  simp [contractUsesStorageArrayElement, hctor, hfunctions]
+
 theorem SupportedSpec.contractUsesDynamicBytesEq_eq_false
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
@@ -2401,9 +2480,29 @@ theorem SupportedSpec.contractUsesDynamicBytesEq_eq_false
       ((hSupported.functions fn hmem).body.core.surfaceClosed)
   simp [contractUsesDynamicBytesEq, hctor, hfunctions]
 
+theorem SupportedSpecExceptMappingWrites.contractUsesDynamicBytesEq_eq_false
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    contractUsesDynamicBytesEq spec = false := by
+  have hctor : (spec.constructor.map (fun ctor => ctor.body.any stmtUsesDynamicBytesEq) |>.getD false) = false := by
+    simp [hSupported.surface.noConstructor]
+  have hfunctions :
+      spec.functions.any (fun fn => fn.body.any stmtUsesDynamicBytesEq) = false := by
+    apply listAny_eq_false_of_mem_eq_false
+    intro fn hmem
+    exact stmtListUsesDynamicBytesEq_eq_false_of_coreClosed
+      ((hSupported.functions fn hmem).body.core.surfaceClosed)
+  simp [contractUsesDynamicBytesEq, hctor, hfunctions]
+
 theorem SupportedSpec.normalizedFields
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
+    applySlotAliasRanges spec.fields spec.slotAliasRanges = spec.fields :=
+  hSupported.invariants.normalizedFields
+
+theorem SupportedSpecExceptMappingWrites.normalizedFields
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
     applySlotAliasRanges spec.fields spec.slotAliasRanges = spec.fields :=
   hSupported.invariants.normalizedFields
 
@@ -2413,9 +2512,21 @@ theorem SupportedSpec.noPackedFields
     ∀ field ∈ spec.fields, field.packedBits = none :=
   hSupported.invariants.noPackedFields
 
+theorem SupportedSpecExceptMappingWrites.noPackedFields
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    ∀ field ∈ spec.fields, field.packedBits = none :=
+  hSupported.invariants.noPackedFields
+
 theorem SupportedSpec.selectorCount
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
+    selectors.length = (selectorDispatchedFunctions spec).length :=
+  hSupported.invariants.selectorCount
+
+theorem SupportedSpecExceptMappingWrites.selectorCount
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
     selectors.length = (selectorDispatchedFunctions spec).length :=
   hSupported.invariants.selectorCount
 
@@ -2425,9 +2536,21 @@ theorem SupportedSpec.selectorsDistinct
     firstDuplicateSelector selectors = none :=
   hSupported.invariants.selectorsDistinct
 
+theorem SupportedSpecExceptMappingWrites.selectorsDistinct
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    firstDuplicateSelector selectors = none :=
+  hSupported.invariants.selectorsDistinct
+
 theorem SupportedSpec.functionNamesNodup
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
+    (spec.functions.map (·.name)).Nodup :=
+  hSupported.invariants.functionNamesNodup
+
+theorem SupportedSpecExceptMappingWrites.functionNamesNodup
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
     (spec.functions.map (·.name)).Nodup :=
   hSupported.invariants.functionNamesNodup
 
@@ -2437,9 +2560,21 @@ theorem SupportedSpec.noConstructor
     spec.constructor = none :=
   hSupported.surface.noConstructor
 
+theorem SupportedSpecExceptMappingWrites.noConstructor
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    spec.constructor = none :=
+  hSupported.surface.noConstructor
+
 theorem SupportedSpec.noEvents
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
+    spec.events = [] :=
+  hSupported.surface.noEvents
+
+theorem SupportedSpecExceptMappingWrites.noEvents
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
     spec.events = [] :=
   hSupported.surface.noEvents
 
@@ -2449,9 +2584,21 @@ theorem SupportedSpec.noErrors
     spec.errors = [] :=
   hSupported.surface.noErrors
 
+theorem SupportedSpecExceptMappingWrites.noErrors
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    spec.errors = [] :=
+  hSupported.surface.noErrors
+
 theorem SupportedSpec.noExternals
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
+    spec.externals = [] :=
+  hSupported.surface.noExternals
+
+theorem SupportedSpecExceptMappingWrites.noExternals
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
     spec.externals = [] :=
   hSupported.surface.noExternals
 
@@ -2461,9 +2608,21 @@ theorem SupportedSpec.noFallback
     ∀ fn ∈ spec.functions, fn.name != "fallback" :=
   hSupported.surface.noFallback
 
+theorem SupportedSpecExceptMappingWrites.noFallback
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
+    ∀ fn ∈ spec.functions, fn.name != "fallback" :=
+  hSupported.surface.noFallback
+
 theorem SupportedSpec.noReceive
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors) :
+    ∀ fn ∈ spec.functions, fn.name != "receive" :=
+  hSupported.surface.noReceive
+
+theorem SupportedSpecExceptMappingWrites.noReceive
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) :
     ∀ fn ∈ spec.functions, fn.name != "receive" :=
   hSupported.surface.noReceive
 
@@ -2478,9 +2637,29 @@ theorem SupportedSpec.supportedFunctionOfSelectorDispatched
   have hmem : fn ∈ spec.functions := (List.mem_filter.mp hfiltered).1
   exact hSupported.functions fn hmem
 
+theorem SupportedSpecExceptMappingWrites.supportedFunctionOfSelectorDispatched
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
+    {fn : FunctionSpec}
+    (hfn : fn ∈ selectorDispatchedFunctions spec) :
+    SupportedFunctionExceptMappingWrites spec fn := by
+  have hfiltered : fn ∈ spec.functions.filter (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name) := by
+    simpa [selectorDispatchedFunctions] using hfn
+  have hmem : fn ∈ spec.functions := (List.mem_filter.mp hfiltered).1
+  exact hSupported.functions fn hmem
+
 def SupportedSpec.helperFuelOfFunction
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors)
+    (fn : FunctionSpec) : Nat :=
+  if hfn : fn ∈ selectorDispatchedFunctions spec then
+    (hSupported.supportedFunctionOfSelectorDispatched hfn).helperFuel
+  else
+    0
+
+def SupportedSpecExceptMappingWrites.helperFuelOfFunction
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
     (fn : FunctionSpec) : Nat :=
   if hfn : fn ∈ selectorDispatchedFunctions spec then
     (hSupported.supportedFunctionOfSelectorDispatched hfn).helperFuel
@@ -2494,9 +2673,24 @@ def SupportedSpec.helperFuel
     (fun fuel fn => max fuel (hSupported.helperFuelOfFunction fn))
     0
 
+def SupportedSpecExceptMappingWrites.helperFuel
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors) : Nat :=
+  (selectorDispatchedFunctions spec).foldl
+    (fun fuel fn => max fuel (hSupported.helperFuelOfFunction fn))
+    0
+
 theorem SupportedSpec.selectorFunctionParamsSupported
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors)
+    {fn : FunctionSpec}
+    (hfn : fn ∈ selectorDispatchedFunctions spec) :
+    ∀ param ∈ fn.params, SupportedExternalParamType param.ty :=
+  (hSupported.supportedFunctionOfSelectorDispatched hfn).paramsSupported
+
+theorem SupportedSpecExceptMappingWrites.selectorFunctionParamsSupported
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
     {fn : FunctionSpec}
     (hfn : fn ∈ selectorDispatchedFunctions spec) :
     ∀ param ∈ fn.params, SupportedExternalParamType param.ty :=
@@ -2510,9 +2704,27 @@ theorem SupportedSpec.selectorFunctionParamNamesNodup
     (fn.params.map (·.name)).Nodup :=
   (hSupported.supportedFunctionOfSelectorDispatched hfn).paramNamesNodup
 
+theorem SupportedSpecExceptMappingWrites.selectorFunctionParamNamesNodup
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
+    {fn : FunctionSpec}
+    (hfn : fn ∈ selectorDispatchedFunctions spec) :
+    (fn.params.map (·.name)).Nodup :=
+  (hSupported.supportedFunctionOfSelectorDispatched hfn).paramNamesNodup
+
 theorem SupportedSpec.selectorFunctionReturnsSupported
     {spec : CompilationModel} {selectors : List Nat}
     (hSupported : SupportedSpec spec selectors)
+    {fn : FunctionSpec}
+    (hfn : fn ∈ selectorDispatchedFunctions spec) :
+    ∃ resolvedReturns,
+      functionReturns fn = Except.ok resolvedReturns ∧
+        SupportedExternalReturnProfile resolvedReturns :=
+  (hSupported.supportedFunctionOfSelectorDispatched hfn).returnsSupported
+
+theorem SupportedSpecExceptMappingWrites.selectorFunctionReturnsSupported
+    {spec : CompilationModel} {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
     {fn : FunctionSpec}
     (hfn : fn ∈ selectorDispatchedFunctions spec) :
     ∃ resolvedReturns,

@@ -532,6 +532,55 @@ private theorem compileValidatedCore_ok_yields_compiled_functions
       simpa [SourceSemantics.selectorFunctionPairs, selectorDispatchedFunctions,
         hSupported.noEvents, hSupported.noErrors, hfunctions] using hcompiled
 
+private theorem compileValidatedCore_ok_yields_compiled_functions_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors)
+    (ir : IRContract)
+    (hcore : compileValidatedCore model selectors = Except.ok ir) :
+    List.Forall₂
+      (fun entry irFn =>
+        compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+      (SourceSemantics.selectorFunctionPairs model selectors)
+      ir.functions := by
+  have hfallback :
+      pickUniqueFunctionByName "fallback" model.functions = Except.ok none :=
+    pickUniqueFunctionByName_eq_ok_none_of_absent
+      "fallback" model.functions hSupported.noFallback
+  have hreceive :
+      pickUniqueFunctionByName "receive" model.functions = Except.ok none :=
+    pickUniqueFunctionByName_eq_ok_none_of_absent
+      "receive" model.functions hSupported.noReceive
+  unfold compileValidatedCore at hcore
+  rw [hSupported.normalizedFields, hSupported.noEvents, hSupported.noErrors,
+    hSupported.noConstructor, hfallback, hreceive] at hcore
+  simp only [bind, Except.bind, pure, Except.pure] at hcore
+  rcases hmap :
+      ((model.functions.filter
+          (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)).zip selectors).mapM
+        (fun x => compileFunctionSpec model.fields [] [] x.2 x.1) with _ | irFns
+  · simp [hmap] at hcore
+  · simp [hmap] at hcore
+    rcases hinternal :
+        (model.functions.filter (·.isInternal)).mapM
+          (compileInternalFunction model.fields [] []) with _ | internalFuncDefs
+    · simp [hinternal] at hcore
+    · simp [hinternal, compileConstructor] at hcore
+      have hfunctions : ir.functions = irFns := by
+        injection hcore with hir
+        cases hir
+        rfl
+      have hcompiled :
+          List.Forall₂
+            (fun (entry : FunctionSpec × Nat) irFn =>
+              compileFunctionSpec model.fields [] [] entry.2 entry.1 = Except.ok irFn)
+            ((model.functions.filter
+                (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)).zip selectors)
+            irFns :=
+        compiled_functions_forall₂_of_mapM_ok model.fields [] [] _ _ hmap
+      simpa [SourceSemantics.selectorFunctionPairs, selectorDispatchedFunctions,
+        hSupported.noEvents, hSupported.noErrors, hfunctions] using hcompiled
+
 private theorem filterInternalFunctions_eq_nil_of_all_nonInternal :
     ∀ (fns : List FunctionSpec),
       (∀ fn ∈ fns, fn.isInternal = false) →
@@ -548,6 +597,14 @@ private theorem filterInternalFunctions_eq_nil_of_supported
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpec model selectors) :
+    model.functions.filter (·.isInternal) = [] := by
+  exact filterInternalFunctions_eq_nil_of_all_nonInternal model.functions
+    (hSupported.noInternalFunctions)
+
+private theorem filterInternalFunctions_eq_nil_of_supported_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors) :
     model.functions.filter (·.isInternal) = [] := by
   exact filterInternalFunctions_eq_nil_of_all_nonInternal model.functions
     (hSupported.noInternalFunctions)
@@ -593,6 +650,17 @@ theorem supported_params_of_supportedSpec
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpec model selectors) :
+    ∀ fn ∈ selectorDispatchedFunctions model,
+      ∀ param ∈ fn.params, SupportedExternalParamType param.ty := by
+  intro fn hfn param hparam
+  have hfnModel : fn ∈ model.functions := by
+    exact List.mem_of_mem_filter hfn
+  exact (hSupported.functions fn hfnModel).paramsSupported param hparam
+
+theorem supported_params_of_supportedSpec_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors) :
     ∀ fn ∈ selectorDispatchedFunctions model,
       ∀ param ∈ fn.params, SupportedExternalParamType param.ty := by
   intro fn hfn param hparam
@@ -712,6 +780,29 @@ theorem compile_ok_yields_compiled_functions
   · simp [hvalidate] at hcompile
   · simp [hvalidate] at hcompile
     exact compileValidatedCore_ok_yields_compiled_functions
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (ir := ir)
+      (hcore := hcompile)
+
+theorem compile_ok_yields_compiled_functions_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors)
+    (ir : IRContract)
+    (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
+    List.Forall₂
+      (fun entry irFn =>
+        compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+      (SourceSemantics.selectorFunctionPairs model selectors)
+      ir.functions := by
+  unfold CompilationModel.compile at hcompile
+  simp only [bind, Except.bind] at hcompile
+  rcases hvalidate : validateCompileInputs model selectors with _ | validated
+  · simp [hvalidate] at hcompile
+  · simp [hvalidate] at hcompile
+    exact compileValidatedCore_ok_yields_compiled_functions_except_mapping_writes
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -1190,6 +1281,78 @@ theorem compile_preserves_semantics
     (hfunction := hfunction)
   simpa [supportedSourceContractSemantics_eq_sourceContractSemantics
     (hSupported := hSupported) tx initialWorld] using hcontract
+
+/-- Whole-contract Tier 2 bridge for specs whose selector-dispatched bodies use
+the alternate mapping-write-admitting state interface. This keeps the contract
+proof on the same generic dispatch skeleton while widening only the function
+correctness theorem it instantiates. -/
+theorem compile_preserves_semantics_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors)
+    (ir : IRContract)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (hnoConflict : firstFieldWriteSlotConflict model.fields = none)
+    (hsafety : SupportedStmtListMappingWriteSlotSafety model.fields)
+    (htxNormalized : Function.TxContextNormalized tx)
+    (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
+    (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
+    FunctionBody.sourceResultMatchesIRResult
+      (sourceContractSemantics model selectors tx initialWorld)
+      (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  have hcompiled :
+      List.Forall₂
+        (fun entry irFn =>
+          compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+        (SourceSemantics.selectorFunctionPairs model selectors)
+        ir.functions :=
+    compile_ok_yields_compiled_functions_except_mapping_writes
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (ir := ir)
+      (hcompile := hcompile)
+  have hparamsSupported :
+      ∀ fn ∈ selectorDispatchedFunctions model,
+        ∀ param ∈ fn.params, SupportedExternalParamType param.ty :=
+    supported_params_of_supportedSpec_except_mapping_writes model selectors hSupported
+  have hfunction :
+      ∀ fn sel irFn bindings,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
+        FunctionBody.sourceResultMatchesIRResult
+          (SourceSemantics.interpretFunction model fn tx initialWorld)
+          (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+    intro fn sel irFn bindings hfn hcompileFn hbind
+    exact Function.supported_function_correct_except_mapping_writes
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (fn := fn)
+      (selector := sel)
+      (irFn := irFn)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (bindings := bindings)
+      (hfn := hfn)
+      (hcompileFn := hcompileFn)
+      (hbind := hbind)
+      (hnoConflict := hnoConflict)
+      (hsafety := hsafety)
+      (htxNormalized := htxNormalized)
+      (hcalldataSizeFits := hcalldataSizeFits)
+  exact compile_preserves_semantics_of_compiled_functions
+    (model := model)
+    (selectors := selectors)
+    (ir := ir)
+    (tx := tx)
+    (initialWorld := initialWorld)
+    (_hcompile := hcompile)
+    (hcompiled := hcompiled)
+    (hparamsSupported := hparamsSupported)
+    (hfunction := hfunction)
 
 /-- Helper-proof-carrying whole-contract Layer 2 theorem.
 This theorem family is the intended stable public interface for the helper

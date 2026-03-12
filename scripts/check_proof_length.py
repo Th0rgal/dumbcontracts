@@ -153,6 +153,11 @@ ALLOWLIST: set[str] = {
     # interface wiring, and final function-adequacy assembly into one reusable
     # theorem for the first non-vacuous singleton mapping-write path.
     "supported_function_correct_with_body_interface_except_mapping_writes",
+    # Tier-2 selector-dispatched wrapper for the alternate mapping-write spec:
+    # long because it unpacks `compileFunctionSpec`, rethreads the alternate
+    # spec witness, and repackages the body-level bridge into the generic
+    # function theorem shape consumed by contract-level proofs.
+    "supported_function_correct_except_mapping_writes",
     "supported_function_body_correct_from_exact_state_core",
     "supported_function_body_correct_from_exact_state_core_extraFuel",
     "supported_function_body_correct_from_exact_state_terminal_core_extraFuel",
@@ -160,6 +165,11 @@ ALLOWLIST: set[str] = {
     "supported_function_correct",
     "compileFunctionSpec_correct_generic",
     "compile_preserves_semantics",
+    # Tier-2 whole-contract mapping-write bridge: long because it mirrors the
+    # primary contract theorem while swapping in the alternate selector/body
+    # witness family and threading slot-safety/no-conflict assumptions through
+    # the per-function generic closure.
+    "compile_preserves_semantics_except_mapping_writes",
     # Issue #1564 / PR #1606:
     # these are the pre-existing long terminal-ite branch-entry transport
     # proofs, now exposed as public lemmas so later Layer 2 induction work can

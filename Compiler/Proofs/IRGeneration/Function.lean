@@ -1707,6 +1707,63 @@ theorem supported_function_correct_with_body_interface_except_mapping_writes
   simpa [SourceSemantics.interpretFunctionWithHelpers_eq_interpretFunction_of_helperSurfaceClosed
     model helperFuel fn tx initialWorld hBody.helperSurfaceClosed] using hlegacy
 
+/-- Function-level Tier 2 bridge from the alternate contract support witness.
+This is the selector-dispatched analogue of `supported_function_correct`,
+reusing the weakened body interface instead of the default fail-closed state
+surface. -/
+theorem supported_function_correct_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors)
+    (fn : FunctionSpec)
+    (selector : Nat)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (bindings : List (String × Nat))
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hcompileFn :
+      compileFunctionSpec model.fields model.events model.errors selector fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
+    (hnoConflict : firstFieldWriteSlotConflict model.fields = none)
+    (hsafety : SupportedStmtListMappingWriteSlotSafety model.fields)
+    (htxNormalized : TxContextNormalized tx)
+    (hcalldataSizeFits : TxCalldataSizeFitsEvm tx) :
+    FunctionBody.sourceResultMatchesIRResult
+      (SourceSemantics.interpretFunction model fn tx initialWorld)
+      (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  rcases compileFunctionSpec_ok_components
+      model.fields model.events model.errors selector fn irFn hcompileFn with
+    ⟨returns, bodyStmts, hvalidate, hreturns, hbodyCompile, hirFn⟩
+  subst hirFn
+  have hcorrect :=
+    supported_function_correct_with_body_interface_except_mapping_writes
+      (model := model)
+      (fn := fn)
+      (helperFuel := hSupported.helperFuel)
+      (hnormalized := hSupported.normalizedFields)
+      (hnoEvents := hSupported.noEvents)
+      (hnoErrors := hSupported.noErrors)
+      (hparams := (hSupported.supportedFunctionOfSelectorDispatched hfn).params)
+      (hBody := (hSupported.supportedFunctionOfSelectorDispatched hfn).body)
+      (hnoConflict := hnoConflict)
+      (hsafety := hsafety)
+      (selector := selector)
+      (returns := returns)
+      (bodyStmts := bodyStmts)
+      (irFn := compiledFunctionIR selector fn returns bodyStmts)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (bindings := bindings)
+      (hvalidate := hvalidate)
+      (hreturns := hreturns)
+      (hbodyCompile := hbodyCompile)
+      (hcompile := by simpa using hcompileFn)
+      (hbind := hbind)
+      (htxNormalized := htxNormalized)
+      (hcalldataSizeFits := hcalldataSizeFits)
+  simpa using hcorrect
+
 /-- Goal-based helper-proof-carrying variant of `supported_function_correct`.
 This keeps the current helper-free source-side conservative-extension premise
 available as a wrapper, but the exact future helper seam is now the direct

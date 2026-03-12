@@ -940,7 +940,7 @@ class VerifySyncTests(unittest.TestCase):
                     {
                         "name": "Save Lake packages cache",
                         "uses": "actions/cache/save@v4",
-                        "if": "success() && needs.changes.outputs.code == 'true'",
+                        "if": "success() && needs.changes.outputs.code == 'true' && steps.setup-lean.outputs.cache-hit != 'true'",
                         "with": {"path": ".lake", "key": "good-key"},
                     },
                 ],
@@ -969,7 +969,7 @@ class VerifySyncTests(unittest.TestCase):
             err,
         )
         self.assertIn(
-            "build step name='Save Lake packages cache', uses='actions/cache/save@v4' has if='success()', expected \"success() && needs.changes.outputs.code == 'true'\"",
+            "build step name='Save Lake packages cache', uses='actions/cache/save@v4' has if='success()', expected \"success() && needs.changes.outputs.code == 'true' && steps.setup-lean.outputs.cache-hit != 'true'\"",
             err,
         )
         self.assertIn(
@@ -1009,7 +1009,7 @@ class VerifySyncTests(unittest.TestCase):
                     with:
                       cache-key-prefix: lake
                   - name: Save Lake packages cache
-                    if: success() && needs.changes.outputs.code == 'true'
+                    if: success() && needs.changes.outputs.code == 'true' && steps.setup-lean.outputs.cache-hit != 'true'
                     uses: actions/cache/save@v4
                     with:
                       path: .lake
@@ -1110,7 +1110,7 @@ class VerifySyncTests(unittest.TestCase):
                     {
                         "name": "Save Lake packages cache",
                         "uses": "actions/cache/save@v4",
-                        "if": "success() && needs.changes.outputs.code == 'true'",
+                        "if": "success() && needs.changes.outputs.code == 'true' && steps.setup-lean.outputs.cache-hit != 'true'",
                         "with": {"path": ".lake", "key": "good-key"},
                     },
                 ],
@@ -1452,8 +1452,6 @@ class VerifySyncTests(unittest.TestCase):
             ],
             expected_build_compiler_commands=["check_gas.py report"],
             required_build_run_commands=[
-                "lake exe compiler-main-test",
-                "lake build Compiler.CompilationModelFeatureTest",
                 "lake exe macro-roundtrip-fuzz",
                 "lake build PrintAxioms",
                 "lake env lean PrintAxioms.lean",
@@ -1462,7 +1460,6 @@ class VerifySyncTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn(
             "build job is missing required run commands: "
-            "lake build Compiler.CompilationModelFeatureTest, "
             "lake exe macro-roundtrip-fuzz, "
             "lake build PrintAxioms, "
             "lake env lean PrintAxioms.lean",
@@ -1504,8 +1501,6 @@ class VerifySyncTests(unittest.TestCase):
             ],
             expected_build_compiler_commands=["check_gas.py report"],
             required_build_run_commands=[
-                "lake exe compiler-main-test",
-                "lake build Compiler.CompilationModelFeatureTest",
                 "lake exe macro-roundtrip-fuzz",
                 "lake build PrintAxioms",
                 "lake env lean PrintAxioms.lean",
@@ -1542,6 +1537,8 @@ class VerifySyncTests(unittest.TestCase):
             expected_build_commands=["check_split_package_builds.py"],
             expected_build_compiler_commands=["check_gas.py report"],
             required_build_compiler_run_commands=[
+                "lake exe compiler-main-test",
+                "lake build Compiler.CompilationModelFeatureTest",
                 "lake build difftest-interpreter",
                 "--output compiler/yul",
                 "--output compiler/yul-patched",
@@ -1554,6 +1551,8 @@ class VerifySyncTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn(
             "build-compiler job is missing required run commands: "
+            "lake exe compiler-main-test, "
+            "lake build Compiler.CompilationModelFeatureTest, "
             "--output compiler/yul-patched, "
             "--parity-pack solc-0.8.33-o200-viair-false-evm-shanghai, "
             "--backend-profile solidity-parity, "
@@ -1577,6 +1576,8 @@ class VerifySyncTests(unittest.TestCase):
           build-compiler:
             runs-on: ubuntu-latest
             steps:
+              - run: lake exe compiler-main-test
+              - run: lake build Compiler.CompilationModelFeatureTest
               - run: lake build difftest-interpreter
               - run: |
                   ./.lake/build/bin/verity-compiler \
@@ -1598,6 +1599,8 @@ class VerifySyncTests(unittest.TestCase):
             expected_build_commands=["check_split_package_builds.py"],
             expected_build_compiler_commands=["check_gas.py report"],
             required_build_compiler_run_commands=[
+                "lake exe compiler-main-test",
+                "lake build Compiler.CompilationModelFeatureTest",
                 "lake build difftest-interpreter",
                 "--output compiler/yul",
                 "--output compiler/yul-patched",
@@ -1628,6 +1631,8 @@ class VerifySyncTests(unittest.TestCase):
           build-compiler:
             runs-on: ubuntu-latest
             steps:
+              - run: lake exe compiler-main-test
+              - run: lake build Compiler.CompilationModelFeatureTest
               - run: lake build difftest-interpreter
               - run: ./.lake/build/bin/verity-compiler --manifest packages/verity-examples/contracts.manifest --output compiler/yul
               - run: ./.lake/build/bin/verity-compiler --manifest packages/verity-examples/contracts.manifest --enable-patches --output compiler/yul-patched
@@ -1643,6 +1648,8 @@ class VerifySyncTests(unittest.TestCase):
             expected_build_commands=["check_split_package_builds.py"],
             expected_build_compiler_commands=["check_gas.py report"],
             required_build_compiler_run_commands=[
+                "lake exe compiler-main-test",
+                "lake build Compiler.CompilationModelFeatureTest",
                 "lake build difftest-interpreter",
                 "--output compiler/yul",
                 "--output compiler/yul-patched",

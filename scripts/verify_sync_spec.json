@@ -53,10 +53,12 @@
     "changes": [],
     "checks": [],
     "build": [
-      "changes"
+      "changes",
+      "checks"
     ],
     "build-compiler": [
-      "changes"
+      "changes",
+      "checks"
     ],
     "lean-profile": [
       "changes"
@@ -90,8 +92,8 @@
   "expected_job_if_conditions": {
     "changes": null,
     "checks": null,
-    "build": "needs.changes.outputs.code == 'true'",
-    "build-compiler": "needs.changes.outputs.compiler == 'true'",
+    "build": "needs.checks.result == 'success' && needs.changes.outputs.code == 'true'",
+    "build-compiler": "needs.checks.result == 'success' && needs.changes.outputs.compiler == 'true'",
     "lean-profile": "github.event_name == 'workflow_dispatch' && needs.changes.outputs.code == 'true'",
     "foundry-gas-calibration": "needs.changes.outputs.compiler == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)",
     "foundry": "needs.changes.outputs.compiler == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)",
@@ -186,7 +188,7 @@
       {
         "name": "Save Lake packages cache",
         "uses": "actions/cache/save@v4",
-        "if": "success() && needs.changes.outputs.code == 'true'",
+        "if": "success() && needs.changes.outputs.code == 'true' && steps.setup-lean.outputs.cache-hit != 'true'",
         "with": {
           "path": ".lake",
           "key": "lake-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}"
@@ -214,7 +216,7 @@
       {
         "name": "Save Lake compiler cache",
         "uses": "actions/cache/save@v4",
-        "if": "success()",
+        "if": "success() && steps.setup-lean.outputs.cache-hit != 'true'",
         "with": {
           "path": ".lake",
           "key": "lake-compiler-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lakefile.lean') }}-${{ hashFiles('lake-manifest.json') }}"
@@ -344,8 +346,6 @@
     "check_storage_layout.py --format=markdown >> $GITHUB_STEP_SUMMARY"
   ],
   "required_build_run_commands": [
-    "lake exe compiler-main-test",
-    "lake build Compiler.CompilationModelFeatureTest",
     "lake exe macro-roundtrip-fuzz",
     "lake build PrintAxioms",
     "lake env lean PrintAxioms.lean"
@@ -361,6 +361,8 @@
     "check_patch_gas_delta.py --baseline-report gas-report-static.tsv --patched-report gas-report-static-patched.tsv --min-improved-contracts 0 --summary-markdown patch-gas-delta-summary.md >> \"$GITHUB_STEP_SUMMARY\""
   ],
   "required_build_compiler_run_commands": [
+    "lake exe compiler-main-test",
+    "lake build Compiler.CompilationModelFeatureTest",
     "lake build difftest-interpreter",
     "verity-compiler-patched",
     "--output compiler/yul",

@@ -268,11 +268,15 @@ now sits under the post-generic widening/completeness plan in
   summary can be proved once and reused across every caller instead of being
   replumbed per external function. `GenericInduction.lean` now also exposes the
   helper-aware induction interfaces `CompiledStmtStepWithHelpers` /
-  `StmtListGenericWithHelpers` plus the induction-level body theorem
+  `StmtListGenericWithHelpers`, the fail-closed lifting bridge
+  `CompiledStmtStep.withHelpers_of_helperSurfaceClosed` /
+  `stmtListGenericWithHelpers_of_core_and_helperSurfaceClosed`, and the
+  induction-level body theorem
   `supported_function_body_correct_from_exact_state_generic_helper_steps`, so
   the remaining helper work now has an explicit statement-induction goal
-  surface instead of only a body/function wrapper target, and `Contract.lean`
-  now mirrors that at the public theorem surface via
+  surface instead of only a body/function wrapper target, and the already-proved
+  helper-free cases can be reused directly inside that seam rather than
+  re-proved there. `Contract.lean` now mirrors that at the public theorem surface via
   helper-proof-carrying variants such as
   `compile_preserves_semantics_with_helper_proofs`; the
   feature-local `state` / `calls` / `effects` scans recurse through nested `ite` / `forEach` bodies so those
@@ -292,10 +296,11 @@ now sits under the post-generic widening/completeness plan in
   the generic body theorem now already targets the helper-aware source semantics family under the current fail-closed helper gate,
   but summary-soundness/rank evidence is still not consumed inside a direct
   proof of `SupportedFunctionBodyWithHelpersIRPreservationGoal`; more
-  precisely, that evidence is not yet consumed through
-  `CompiledStmtStepWithHelpers` / `StmtListGenericWithHelpers` and then into a
-  proof of `SupportedFunctionBodyWithHelpersIRPreservationGoal`; the older
-  conservative-extension goal remains only the current helper-free discharge
+  precisely, that evidence is not yet consumed through the genuinely new
+  helper-call cases in `CompiledStmtStepWithHelpers` /
+  `StmtListGenericWithHelpers` and then into a proof of
+  `SupportedFunctionBodyWithHelpersIRPreservationGoal`; the older
+  conservative-extension goal remains only the abstract helper-free discharge
   path,
   `IRInterpreter.lean` now formalizes the intended legacy-compatible external-body Yul subset as
   `LegacyCompatibleExternalStmtList`,

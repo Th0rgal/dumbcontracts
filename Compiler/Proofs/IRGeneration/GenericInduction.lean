@@ -91,6 +91,34 @@ structure CompiledStmtStepWithHelpers
         execIRStmts (compiledIR.length + extraFuel + 1) state compiledIR = irExec ∧
         stmtStepMatchesIRExec fields (stmtNextScope scope stmt) sourceResult irExec
 
+/-- Any legacy generic statement-step proof remains valid for the helper-aware
+source semantics as long as the statement itself is helper-surface closed. This
+lets the existing helper-free library discharge the unchanged cases while the
+remaining work focuses only on genuinely helper-using statements. -/
+theorem CompiledStmtStep.withHelpers_of_helperSurfaceClosed
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmt : Stmt}
+    {compiledIR : List YulStmt}
+    (hstep : CompiledStmtStep fields scope stmt compiledIR)
+    (hsurface : stmtTouchesUnsupportedHelperSurface stmt = false) :
+    CompiledStmtStepWithHelpers spec fields scope stmt compiledIR where
+  compileOk := hstep.compileOk
+  preserves := by
+    intro runtime state helperFuel extraFuel hexact hscope hbounded hruntime hslack
+    rcases hstep.preserves runtime state extraFuel
+        hexact hscope hbounded hruntime hslack with
+      ⟨sourceResult, irExec, hsource, hir, hmatch⟩
+    refine ⟨sourceResult, irExec, ?_, hir, hmatch⟩
+    simpa [SourceSemantics.execStmtWithHelpers_eq_execStmt_of_helperSurfaceClosed
+      (spec := spec)
+      (fields := fields)
+      (fuel := helperFuel)
+      (state := runtime)
+      (stmt := stmt)
+      hsurface] using hsource
+
 /-- Statement lists whose heads all admit a generic compiled-step proof. -/
 inductive StmtListGenericCore (fields : List Field) : List String → List Stmt → Prop where
   | nil {scope : List String} :
@@ -113,6 +141,27 @@ inductive StmtListGenericWithHelpers
       CompiledStmtStepWithHelpers spec fields scope stmt compiledIR →
       StmtListGenericWithHelpers spec fields (stmtNextScope scope stmt) rest →
       StmtListGenericWithHelpers spec fields scope (stmt :: rest)
+
+/-- Lift an existing helper-free generic statement-list proof into the
+helper-aware induction world when the whole list is helper-surface closed. This
+is the current fail-closed bridge from the legacy generic library to the new
+helper-aware induction seam. -/
+theorem stmtListGenericWithHelpers_of_core_and_helperSurfaceClosed
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hgeneric : StmtListGenericCore fields scope stmts)
+    (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
+    StmtListGenericWithHelpers spec fields scope stmts := by
+  induction hgeneric generalizing hsurface with
+  | nil =>
+      exact .nil
+  | @cons scope stmt compiledIR rest hstep hrest ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false] at hsurface
+      exact .cons
+        (hstep.withHelpers_of_helperSurfaceClosed hsurface.1)
+        (ih hsurface.2)
 
 /-- Structural scope discipline for statement prefixes used to justify that the
 generic induction scope only contains validated source identifiers. -/
@@ -4243,25 +4292,19 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers
       FunctionBody.bindingsExactlyMatchIRVars bindings state) :
     SupportedFunctionBodyWithHelpersIRPreservationGoal
       model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
-  have hhelperGoal :
-      SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal
+  have hgenericWithHelpers :
+      StmtListGenericWithHelpers
         model
         (SourceSemantics.effectiveFields model)
-        helperFuel
-        { world := SourceSemantics.withTransactionContext initialWorld tx
-          bindings := bindings }
+        (fn.params.map (·.name))
         fn.body :=
-    SourceSemantics.execStmtListWithHelpersConservativeExtensionGoal_of_helperSurfaceClosed
+    stmtListGenericWithHelpers_of_core_and_helperSurfaceClosed
       (spec := model)
-      (fields := SourceSemantics.effectiveFields model)
-      (fuel := helperFuel)
-      (state := { world := SourceSemantics.withTransactionContext initialWorld tx
-                  bindings := bindings })
-      (stmts := fn.body)
+      (hgeneric := hgeneric)
       hhelperSurface
-  exact supported_function_body_correct_from_exact_state_generic_with_helpers_goal
+  exact supported_function_body_correct_from_exact_state_generic_helper_steps
     model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
-    hextraFuel hnormalized hnoEvents hnoErrors hhelperGoal hgeneric hbodyCompile
+    hextraFuel hnormalized hnoEvents hnoErrors hgenericWithHelpers hbodyCompile
     hscope hbounded hstateRuntime hstateBindings
 
 end Compiler.Proofs.IRGeneration

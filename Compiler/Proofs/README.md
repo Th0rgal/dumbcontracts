@@ -204,9 +204,10 @@ successful `CompilationModel.compile`. The helper-aware compiled target remains
 available as total fuel-indexed helper-aware IR semantics throughout the later
 fragment-widening retargeting work. The remaining blocker is therefore no
 longer a helper-free compiled-side witness on today’s theorem domain, but
- end-to-end consumption of helper-summary soundness/rank evidence through
- helper-aware `CompiledStmtStepWithHelpers` / `StmtListGenericWithHelpers`
- proofs and then through the now-explicit direct helper-aware body/IR target
+ end-to-end consumption of helper-summary soundness/rank evidence through the
+ genuinely new helper-call cases in helper-aware
+ `CompiledStmtStepWithHelpers` / `StmtListGenericWithHelpers` proofs and then
+ through the now-explicit direct helper-aware body/IR target
  `SupportedFunctionBodyWithHelpersIRPreservationGoal`, which now feeds
 `supported_function_correct_with_helper_proofs_body_goal`, while widening or
 replacing the helper-excluding `SupportedStmtList` fragment whose current
@@ -215,9 +216,14 @@ source-side conservative-extension goal
 `SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal` remains only
 as the current helper-free discharge path into
 `supported_function_body_correct_from_exact_state_generic_with_helpers_goal`
-and `supported_function_correct_with_helper_proofs_goal`; for later widening
-beyond the current fragment, the weaker compiled-side boundary tracked in
-[#1638](https://github.com/Th0rgal/verity/issues/1638) still remains.
+and `supported_function_correct_with_helper_proofs_goal`, while the concrete
+helper-free wrapper now already lifts legacy `CompiledStmtStep` /
+`StmtListGenericCore` proofs into that helper-aware induction seam via
+`CompiledStmtStep.withHelpers_of_helperSurfaceClosed` and
+`stmtListGenericWithHelpers_of_core_and_helperSurfaceClosed`; for later
+widening beyond the current fragment, the weaker compiled-side boundary
+tracked in [#1638](https://github.com/Th0rgal/verity/issues/1638) still
+remains.
 
 The remaining work tracked in
 [#1630](https://github.com/Th0rgal/verity/issues/1630).

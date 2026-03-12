@@ -6631,6 +6631,78 @@ theorem supported_function_body_correct_from_exact_state_generic_split_internal_
       hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hgeneric hbodyCompile hscope
       hbounded hstateRuntime hstateBindings
 
+private theorem
+    generic_with_helpers_and_helper_ir_of_split_internal_helper_surface_callsDisjoint
+    (runtimeContract : IRContract)
+    (model : CompilationModel)
+    (fn : FunctionSpec)
+    (hhelperFree :
+      StmtListHelperFreeStepInterface
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hcall :
+      StmtListDirectInternalHelperCallStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hassign :
+      StmtListDirectInternalHelperAssignStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hexpr :
+      StmtListExprInternalHelperStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hstruct :
+      StmtListStructuralInternalHelperStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hresidual :
+      StmtListResidualHelperSurfaceStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body) :
+    StmtListGenericWithHelpersAndHelperIR
+      runtimeContract
+      model
+      (SourceSemantics.effectiveFields model)
+      (fn.params.map (·.name))
+      fn.body :=
+  stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledCallsDisjoint
+    (runtimeContract := runtimeContract)
+    (spec := model)
+    (hhelperFree := hhelperFree)
+    (hsteps :=
+      stmtListHelperSurfaceStepInterface_of_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface
+        (stmtListInternalHelperSurfaceStepInterface_of_directInternalHelperStepInterface_and_exprInternalHelperStepInterface_and_structuralInternalHelperStepInterface
+          (stmtListDirectInternalHelperStepInterface_of_callStepInterface_and_assignStepInterface
+            hcall
+            hassign)
+          hexpr
+          hstruct)
+        hresidual)
+    (hdisjoint := hdisjoint)
+
 /-- Disjoint-based body-level exact helper-aware bridge over the fully split
 genuine-helper interfaces.  Replaces `StmtListHelperFreeCompiledLegacyCompatible`
 + `runtimeContract.internalFunctions = []` with the weaker
@@ -6722,20 +6794,9 @@ theorem supported_function_body_correct_from_exact_state_generic_finer_split_int
         (SourceSemantics.effectiveFields model)
         (fn.params.map (·.name))
         fn.body :=
-    stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledCallsDisjoint
-      (runtimeContract := runtimeContract)
-      (spec := model)
-      (hhelperFree := hhelperFree)
-      (hsteps :=
-        stmtListHelperSurfaceStepInterface_of_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface
-          (stmtListInternalHelperSurfaceStepInterface_of_directInternalHelperStepInterface_and_exprInternalHelperStepInterface_and_structuralInternalHelperStepInterface
-            (stmtListDirectInternalHelperStepInterface_of_callStepInterface_and_assignStepInterface
-              hcall
-              hassign)
-            hexpr
-            hstruct)
-          hresidual)
-      (hdisjoint := hdisjoint)
+    generic_with_helpers_and_helper_ir_of_split_internal_helper_surface_callsDisjoint
+      runtimeContract model fn hhelperFree hcall hassign hexpr hstruct hresidual
+      hdisjoint
   exact
     supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir
       runtimeContract
@@ -7012,33 +7073,37 @@ theorem compiledStmtStepWithHelpersAndHelperIR_internalCallAssign
     compileOk := hcompile
     preserves := ?_ }
   intro runtime state helperFuel extraFuel hfuelPos hexact hscope hbounded hruntime hslack
-  -- Obtain the shape of the compiled IR
   obtain ⟨argExprs', hargOk, hshape⟩ := compileStmt_internalCallAssign_shape hcompile
   have hArgEq : argExprs' = argExprs := by
-    simp [hargCompile] at hargOk; exact hargOk.symm
+    simp [hargCompile] at hargOk
+    exact hargOk.symm
   subst hArgEq
-  rw [hshape]
-  -- Fuel arithmetic: compiledIR = singleton, so .length = 1
-  -- preserves fuel = 1 + extraFuel + 1, bridge needs irFuel + 3
-  -- So irFuel = extraFuel - 1
-  have hlenOne : ([YulStmt.letMany names
-    (YulExpr.call (CompilationModel.internalFunctionYulName calleeName)
-      argExprs)] : List YulStmt).length = 1 := rfl
+  set singletonIR :=
+    [YulStmt.letMany names
+      (YulExpr.call (CompilationModel.internalFunctionYulName calleeName) argExprs)]
+  have hshape' : compiledIR = singletonIR := by
+    simpa [singletonIR] using hshape
+  have hlenOne : singletonIR.length = 1 := by
+    simp [singletonIR]
   have hExtraPos : 1 ≤ extraFuel := by
-    have hsz : sizeOf ([YulStmt.letMany names
-      (YulExpr.call (CompilationModel.internalFunctionYulName calleeName)
-        argExprs)] : List YulStmt) ≥ 2 := by simp; omega
-    rw [hshape] at hslack; rw [hlenOne] at hslack; omega
+    have hsz : sizeOf singletonIR ≥ 2 := by
+      simp [singletonIR]
+      omega
+    rw [hshape'] at hslack
+    rw [hlenOne] at hslack
+    omega
   set irFuel := extraFuel - 1 with hirFuel
-  -- The source result and the IR result at fuel irFuel + 3 match by the bridge
   have hMatch := bridge runtime state helperFuel irFuel hfuelPos hexact hscope hbounded hruntime
-  -- Rewrite the fuel in the IR execution
-  have hFuelEq : ([YulStmt.letMany names
-    (YulExpr.call (CompilationModel.internalFunctionYulName calleeName) argExprs)]).length +
-    extraFuel + 1 = irFuel + 3 := by
-    rw [hlenOne, hirFuel]; omega
-  rw [hFuelEq]
-  exact ⟨_, _, rfl, rfl, hMatch⟩
+  have hFuelEq : singletonIR.length + extraFuel + 1 = irFuel + 3 := by
+    rw [hlenOne, hirFuel]
+    omega
+  refine ⟨_, _, ?_, ?_, ?_⟩
+  · exact SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+      (Stmt.internalCallAssign names calleeName args)
+  · exact execIRStmtsWithInternals runtimeContract (compiledIR.length + extraFuel + 1) state compiledIR
+  · rfl
+  · rw [hshape', hFuelEq]
+  · simpa [singletonIR] using hMatch
 
 /-- Generic `CompiledStmtStepWithHelpersAndHelperIR` constructor for
 `Stmt.internalCall` (void internal helper calls).  Analogous to
@@ -7085,28 +7150,36 @@ theorem compiledStmtStepWithHelpersAndHelperIR_internalCall
     compileOk := hcompile
     preserves := ?_ }
   intro runtime state helperFuel extraFuel hfuelPos hexact hscope hbounded hruntime hslack
-  -- Obtain the shape of the compiled IR
   obtain ⟨argExprs', hargOk, hshape⟩ := compileStmt_internalCall_shape hcompile
   have hArgEq : argExprs' = argExprs := by
-    simp [hargCompile] at hargOk; exact hargOk.symm
+    simp [hargCompile] at hargOk
+    exact hargOk.symm
   subst hArgEq
-  rw [hshape]
-  -- Fuel arithmetic: compiledIR = singleton, so .length = 1
-  have hlenOne : ([YulStmt.expr
-    (YulExpr.call (CompilationModel.internalFunctionYulName calleeName)
-      argExprs)] : List YulStmt).length = 1 := rfl
+  set singletonIR :=
+    [YulStmt.expr
+      (YulExpr.call (CompilationModel.internalFunctionYulName calleeName) argExprs)]
+  have hshape' : compiledIR = singletonIR := by
+    simpa [singletonIR] using hshape
+  have hlenOne : singletonIR.length = 1 := by
+    simp [singletonIR]
   have hExtraPos : 1 ≤ extraFuel := by
-    have hsz : sizeOf ([YulStmt.expr
-      (YulExpr.call (CompilationModel.internalFunctionYulName calleeName)
-        argExprs)] : List YulStmt) ≥ 2 := by simp; omega
-    rw [hshape] at hslack; rw [hlenOne] at hslack; omega
+    have hsz : sizeOf singletonIR ≥ 2 := by
+      simp [singletonIR]
+      omega
+    rw [hshape'] at hslack
+    rw [hlenOne] at hslack
+    omega
   set irFuel := extraFuel - 1 with hirFuel
   have hMatch := bridge runtime state helperFuel irFuel hfuelPos hexact hscope hbounded hruntime
-  have hFuelEq : ([YulStmt.expr
-    (YulExpr.call (CompilationModel.internalFunctionYulName calleeName) argExprs)]).length +
-    extraFuel + 1 = irFuel + 3 := by
-    rw [hlenOne, hirFuel]; omega
-  rw [hFuelEq]
-  exact ⟨_, _, rfl, rfl, hMatch⟩
+  have hFuelEq : singletonIR.length + extraFuel + 1 = irFuel + 3 := by
+    rw [hlenOne, hirFuel]
+    omega
+  refine ⟨_, _, ?_, ?_, ?_⟩
+  · exact SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+      (Stmt.internalCall calleeName args)
+  · exact execIRStmtsWithInternals runtimeContract (compiledIR.length + extraFuel + 1) state compiledIR
+  · rfl
+  · rw [hshape', hFuelEq]
+  · simpa [singletonIR] using hMatch
 
 end Compiler.Proofs.IRGeneration

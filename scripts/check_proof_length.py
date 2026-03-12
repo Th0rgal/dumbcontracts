@@ -238,6 +238,19 @@ ALLOWLIST: set[str] = {
     # replaces the compatibility path; for now keeping the recursion in one
     # theorem avoids duplicating the structural cases across the paired list/stmt
     # compatibility lemmas introduced by the new proof interface inventory.
+    # Issue #1630 / PR #1639 helper-aware IR retarget:
+    # the remaining long proofs are transport-heavy conservative-extension and
+    # exact-seam assembly lemmas. They stay centralized until the helper-call
+    # body recursion is wired through the new direct/expr/structural interfaces.
+    "execIRStmtWithInternals_eq_execIRStmt_expr_of_callsDisjoint",
+    "execIRStmtsWithInternals_eq_execIRStmts_of_callsDisjoint",
+    "supported_function_body_correct_from_exact_state_generic_finer_split_internal_helper_surface_steps_and_helper_ir_callsDisjoint",
+    # Public singleton-step constructors for direct internal helper calls:
+    # the line count comes from one-time compilation-shape extraction plus the
+    # fuel transport into the supplied bridge hypothesis; decomposition would
+    # mostly split bookkeeping away from the theorem boundary the callers need.
+    "compiledStmtStepWithHelpersAndHelperIR_internalCallAssign",
+    "compiledStmtStepWithHelpersAndHelperIR_internalCall",
     "evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed",
     # Issue #1630 / PR #1633 follow-up — helper-proof theorem-surface adapters:
     # these declarations are intentionally long because they mirror the existing

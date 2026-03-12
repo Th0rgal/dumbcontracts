@@ -269,6 +269,22 @@ private def restoreCallerVars (callerState calleeState : IRState) : IRState :=
 private def internalReturnValues (state : IRState) (retNames : List String) : List Nat :=
   retNames.map (fun name => (state.getVar name).getD 0)
 
+/-- Internal helper calls execute with a fresh local-variable frame. They keep the
+caller's storage / memory / transaction context, but only helper params and
+declared return slots are in scope at function entry. -/
+private def prepareInternalCalleeState
+    (callerState : IRState) (helper : IRInternalFunctionDef) (args : List Nat) : IRState :=
+  let paramBindings := helper.params.zip args
+  let retBindings := helper.rets.map (fun name => (name, 0))
+  { callerState with vars := [] }.setVars (paramBindings ++ retBindings)
+
+@[simp] private theorem prepareInternalCalleeState_vars
+    (callerState : IRState) (helper : IRInternalFunctionDef) (args : List Nat) :
+    (prepareInternalCalleeState callerState helper args).vars =
+      ({ callerState with vars := [] }.setVars
+        (helper.params.zip args ++ helper.rets.map (fun name => (name, 0)))).vars := by
+  simp [prepareInternalCalleeState]
+
 /-- Legacy IR-theorem compatibility subset for external bodies. This excludes the
 helper-only Yul forms whose semantics differ from the current helper-free
 interpreter target (`letMany`, `leave`, `switch`, and `for`) while still
@@ -337,9 +353,7 @@ def execIRInternalFunctionWithInternals
   | 0, callerState, _helper, _args => .revert callerState
   | Nat.succ fuel', callerState, helper, args =>
       if helper.params.length = args.length then
-        let paramBindings := helper.params.zip args
-        let retBindings := helper.rets.map (fun name => (name, 0))
-        let calleeState := callerState.setVars (paramBindings ++ retBindings)
+        let calleeState := prepareInternalCalleeState callerState helper args
         match execIRStmtsWithInternals contract fuel' calleeState helper.body with
         | .continue finalState =>
             .values (internalReturnValues finalState helper.rets)
@@ -567,6 +581,30 @@ termination_by stmts => (fuel, stmts.length)
 decreasing_by all_goals simp_wf; all_goals omega
 
 end
+
+/-! ## Helper Scope Sanity Checks -/
+
+/-- Helper bodies do not inherit caller-only locals. If a helper reads an
+identifier that is neither a parameter nor a declared return slot, execution
+fails against the fresh callee frame instead of silently seeing the caller's
+binding. -/
+theorem execIRInternalFunctionWithInternals_hides_caller_only_locals :
+    let callerState := (IRState.initial 0).setVar "callerOnly" 7
+    let helper : IRInternalFunctionDef :=
+      { name := "helper"
+        params := []
+        rets := ["ret"]
+        body := [.assign "ret" (.ident "callerOnly")] }
+    let contract : IRContract :=
+      { name := "C"
+        deploy := []
+        functions := []
+        usesMapping := false }
+    execIRInternalFunctionWithInternals contract 2 callerState helper [] =
+      .revert callerState := by
+  simp [execIRInternalFunctionWithInternals, prepareInternalCalleeState,
+    execIRStmtsWithInternals, execIRStmtWithInternals,
+    IRState.initial, IRState.setVar, IRState.setVars]
 
 /-! ## IR Statement Execution (Fuel-Based, Total)
 

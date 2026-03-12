@@ -2958,6 +2958,128 @@ theorem interpretIRWithInternalsZeroConservativeExtensionGoal_of_disjoint
     (disjointRuntimeContract_of_legacyCompatibleRuntimeContract contract hlegacy)
     tx initialState
 
+/-! ## Positive helper-call characterization
+
+The conservative extension chain above covers the case where function bodies are
+disjoint from the internal table.  The following theorems characterize what happens
+when a call **does** hit an internal helper: they give explicit unfolding equalities
+for `evalIRCallWithInternals` and `execIRStmtWithInternals` on internal-function
+call forms.  These are the IR-side building blocks that downstream compilation-model
+proofs (for `Stmt.internalCallAssign` and `Expr.internalCall`) will consume. -/
+
+/-- When argument evaluation succeeds and the callee is found in the internal table,
+`evalIRCallWithInternals` delegates to `execIRInternalFunctionWithInternals`
+(consuming one unit of fuel for the call itself). -/
+theorem evalIRCallWithInternals_of_internal_function
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (func : String) (args : List YulExpr)
+    (helper : IRInternalFunctionDef) (argVals : List Nat) (state' : IRState)
+    (hargs : evalIRExprsWithInternals contract (fuel + 1) state args = .values argVals state')
+    (hfind : findInternalFunction? contract func = some helper) :
+    evalIRCallWithInternals contract (fuel + 1) state func args =
+      execIRInternalFunctionWithInternals contract fuel state' helper argVals := by
+  simp only [evalIRCallWithInternals, hargs, hfind]
+
+/-- When argument evaluation succeeds and no internal function is found,
+`evalIRCallWithInternals` falls through to the builtin evaluation path. -/
+theorem evalIRCallWithInternals_of_builtin
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (func : String) (args : List YulExpr)
+    (argVals : List Nat) (state' : IRState)
+    (hargs : evalIRExprsWithInternals contract fuel state args = .values argVals state')
+    (hfind : findInternalFunction? contract func = none) :
+    evalIRCallWithInternals contract fuel state func args =
+      match Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext
+          Compiler.Proofs.YulGeneration.defaultBuiltinBackend
+          state'.storage state'.sender state'.msgValue state'.thisAddress
+          state'.blockTimestamp state'.blockNumber state'.chainId state'.blobBaseFee
+          state'.selector state'.calldata func argVals with
+      | some value => .values [value] state'
+      | none => .revert state' := by
+  simp only [evalIRCallWithInternals, hargs, hfind]
+
+/-- When argument evaluation propagates a control-flow effect (stop/return/revert),
+`evalIRCallWithInternals` propagates it unchanged. -/
+theorem evalIRCallWithInternals_of_args_stop
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (func : String) (args : List YulExpr) (state' : IRState)
+    (hargs : evalIRExprsWithInternals contract fuel state args = .stop state') :
+    evalIRCallWithInternals contract fuel state func args = .stop state' := by
+  simp only [evalIRCallWithInternals, hargs]
+
+theorem evalIRCallWithInternals_of_args_return
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (func : String) (args : List YulExpr) (value : Nat) (state' : IRState)
+    (hargs : evalIRExprsWithInternals contract fuel state args = .return value state') :
+    evalIRCallWithInternals contract fuel state func args = .return value state' := by
+  simp only [evalIRCallWithInternals, hargs]
+
+theorem evalIRCallWithInternals_of_args_revert
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (func : String) (args : List YulExpr) (state' : IRState)
+    (hargs : evalIRExprsWithInternals contract fuel state args = .revert state') :
+    evalIRCallWithInternals contract fuel state func args = .revert state' := by
+  simp only [evalIRCallWithInternals, hargs]
+
+/-- `execIRStmtWithInternals` for `.letMany names (.call func args)` unfolds
+to `evalIRCallWithInternals` followed by a length-check and variable binding.
+This is the IR execution path for compiled `Stmt.internalCallAssign`. -/
+theorem execIRStmtWithInternals_letMany_call
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (names : List String) (func : String) (args : List YulExpr) :
+    execIRStmtWithInternals contract (fuel + 1) state (.letMany names (.call func args)) =
+      match evalIRCallWithInternals contract fuel state func args with
+      | .values values state' =>
+          if names.length = values.length then
+            .continue (state'.setVars (names.zip values))
+          else
+            .revert state'
+      | .stop state' => .stop state'
+      | .return value' state' => .return value' state'
+      | .revert state' => .revert state' := by
+  simp only [execIRStmtWithInternals]
+
+/-- `evalIRExprWithInternals` for `.call func args` unfolds to a pattern match
+on `evalIRCallWithInternals`: a single-valued result becomes a value, while
+wrong-count results revert. -/
+theorem evalIRExprWithInternals_call
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (func : String) (args : List YulExpr) :
+    evalIRExprWithInternals contract fuel state (.call func args) =
+      match evalIRCallWithInternals contract fuel state func args with
+      | .values [value] state' => .value value state'
+      | .values _ state' => .revert state'
+      | .stop state' => .stop state'
+      | .return value state' => .return value state'
+      | .revert state' => .revert state' := by
+  simp only [evalIRExprWithInternals]
+
+/-- Combined characterization for `Stmt.internalCallAssign` at the IR level:
+when `.letMany names (.call func args)` executes with args evaluating to
+`argVals` and `func` resolving to an internal helper, the result is determined
+by `execIRInternalFunctionWithInternals`.  This chains
+`execIRStmtWithInternals_letMany_call` + `evalIRCallWithInternals_of_internal_function`. -/
+theorem execIRStmtWithInternals_letMany_call_internal
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (names : List String) (func : String) (args : List YulExpr)
+    (helper : IRInternalFunctionDef) (argVals : List Nat) (state' : IRState)
+    (hargs : evalIRExprsWithInternals contract (fuel + 1) state args = .values argVals state')
+    (hfind : findInternalFunction? contract func = some helper) :
+    execIRStmtWithInternals contract (fuel + 2) state (.letMany names (.call func args)) =
+      match execIRInternalFunctionWithInternals contract fuel state' helper argVals with
+      | .values values state'' =>
+          if names.length = values.length then
+            .continue (state''.setVars (names.zip values))
+          else
+            .revert state''
+      | .stop state'' => .stop state''
+      | .return value' state'' => .return value' state''
+      | .revert state'' => .revert state'' := by
+  rw [show fuel + 2 = (fuel + 1) + 1 from by omega]
+  rw [execIRStmtWithInternals_letMany_call]
+  rw [evalIRCallWithInternals_of_internal_function contract fuel state func args helper argVals
+    state' hargs hfind]
+
 @[simp] theorem applyIRTransactionContext_sender
     (tx : IRTransaction) (initialState : IRState) :
     (applyIRTransactionContext tx initialState).sender = tx.sender := by

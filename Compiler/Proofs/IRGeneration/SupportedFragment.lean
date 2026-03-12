@@ -33,11 +33,17 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       {stmts : List Stmt} :
       FunctionBody.StmtListTerminalCore scope stmts →
       SupportedStmtList fields scope stmts
-  | legacyProgram
+  | requireClause
       {scope : List String}
-      (program : RequireFamilyClausesTailProgram fields)
+      (clause : RequireLiteralGuardFamilyClause)
       {rest : List Stmt} :
-      SupportedStmtList fields (List.foldl stmtNextScope scope program.toStmts) rest →
-      SupportedStmtList fields scope (program.toStmts ++ rest)
+      SupportedStmtList fields scope rest →
+      SupportedStmtList fields scope (clause.toStmt :: rest)
+  | legacyTail
+      {scope : List String}
+      (tail : RequireFamilyClausesTail fields)
+      {rest : List Stmt} :
+      SupportedStmtList fields (List.foldl stmtNextScope scope tail.toStmts) rest →
+      SupportedStmtList fields scope (tail.toStmts ++ rest)
 
 end Compiler.Proofs.IRGeneration

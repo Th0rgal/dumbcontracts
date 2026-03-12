@@ -1159,19 +1159,16 @@ def SupportedFunction.helperFuel
     (hSupported : SupportedFunction spec fn) : Nat :=
   hSupported.body.calls.helpers.helperRank
 
-private theorem requireFamilyClausesTailProgram_helperSurfaceClosed
+private theorem requireFamilyClausesTail_helperSurfaceClosed
     {fields : List Field}
-    (program : RequireFamilyClausesTailProgram fields) :
-    stmtListTouchesUnsupportedHelperSurface program.toStmts = false := by
-  cases program with
-  | mk clauses tail =>
-      cases tail <;>
-        simp [RequireFamilyClausesTailProgram.toStmts,
-          RequireFamilyClausesTail.toStmts,
-          RequireLiteralGuardFamilyClause.toStmt,
-          stmtListTouchesUnsupportedHelperSurface,
-          stmtTouchesUnsupportedHelperSurface,
-          exprTouchesUnsupportedHelperSurface]
+    (tail : RequireFamilyClausesTail fields) :
+    stmtListTouchesUnsupportedHelperSurface tail.toStmts = false := by
+  cases tail <;>
+    simp [RequireFamilyClausesTail.toStmts,
+      RequireLiteralGuardFamilyClause.toStmt,
+      stmtListTouchesUnsupportedHelperSurface,
+      stmtTouchesUnsupportedHelperSurface,
+      exprTouchesUnsupportedHelperSurface]
 
 private theorem stmtListCompileCore_helperSurfaceClosed
     {scope : List String}
@@ -1242,10 +1239,16 @@ theorem SupportedStmtList.helperSurfaceClosed
       exact stmtListCompileCore_helperSurfaceClosed hcore
   | terminalCore hterminal =>
       exact stmtListTerminalCore_helperSurfaceClosed hterminal
-  | legacyProgram program htail ih =>
+  | requireClause clause hrest ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        RequireLiteralGuardFamilyClause.toStmt,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface,
+        ih]
+  | legacyTail tail htail ih =>
       simpa [stmtListTouchesUnsupportedHelperSurface,
-        requireFamilyClausesTailProgram_helperSurfaceClosed, ih]
-        using (requireFamilyClausesTailProgram_helperSurfaceClosed program)
+        requireFamilyClausesTail_helperSurfaceClosed, ih]
+        using (requireFamilyClausesTail_helperSurfaceClosed tail)
 
 theorem exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
     {expr : Expr}

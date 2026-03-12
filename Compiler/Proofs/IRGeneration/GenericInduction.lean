@@ -4613,6 +4613,26 @@ private theorem stmtListGenericCore_of_requireClausesThenLetAssignMulSetStorageL
               simp [stmtNextScope, collectStmtNames, FunctionBody.exprBoundNames] at hmem ⊢
               simpa using hmem))))
 
+private theorem stmtListGenericCore_singleton_requireLiteralGuardFamilyClause
+    {fields : List Field}
+    {scope : List String}
+    (clause : Verity.Core.Free.RequireLiteralGuardFamilyClause) :
+    StmtListGenericCore fields scope [clause.toStmt] := by
+  exact stmtListGenericCore_of_stmtListCompileCore
+    (fields := fields)
+    (scope := scope)
+    (by
+      refine FunctionBody.StmtListCompileCore.require_ ?_ ?_ FunctionBody.StmtListCompileCore.nil
+      · cases clause with
+        | mk family n m p q message =>
+            cases family <;> repeat constructor
+      · intro name hmem
+        cases clause with
+        | mk family n m p q message =>
+            cases family <;>
+              simp [Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt,
+                FunctionBody.exprBoundNames] at hmem)
+
 private theorem stmtListGenericCore_of_requireFamilyClausesTailProgram_of_surface
     {fields : List Field}
     {scope : List String}
@@ -4649,35 +4669,54 @@ private theorem stmtListGenericCore_of_requireFamilyClausesTailProgram_of_surfac
             (fields := fields) (scope := scope) hnoConflict clauses fieldName tmp slot n m hfind
         | cases hsurface
 
-private theorem stmtListGenericCore_of_supportedStmtList_legacyProgram_of_surface
+private theorem stmtListGenericCore_of_requireFamilyClausesTail_of_surface
+    {fields : List Field}
+    {scope : List String}
+    (hnoConflict : firstFieldWriteSlotConflict fields = none)
+    (tail : Verity.Core.Free.RequireFamilyClausesTail fields)
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface
+        (Verity.Core.Free.RequireFamilyClausesTail.toStmts tail) = false) :
+    StmtListGenericCore fields scope
+      (Verity.Core.Free.RequireFamilyClausesTail.toStmts tail) := by
+  simpa [Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts]
+    using stmtListGenericCore_of_requireFamilyClausesTailProgram_of_surface
+      (fields := fields)
+      (scope := scope)
+      hnoConflict
+      ({ clauses := [], tail := tail } :
+        Verity.Core.Free.RequireFamilyClausesTailProgram fields)
+      (by simpa [Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts] using hsurface)
+
+private theorem stmtListGenericCore_of_supportedStmtList_legacyTail_of_surface
     {fields : List Field}
     {scope : List String}
     {rest : List Stmt}
     (hnoConflict : firstFieldWriteSlotConflict fields = none)
-    (program : Verity.Core.Free.RequireFamilyClausesTailProgram fields)
+    (tail : Verity.Core.Free.RequireFamilyClausesTail fields)
     (htail : SupportedStmtList fields
       (List.foldl stmtNextScope scope
-        (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program)) rest)
+        (Verity.Core.Free.RequireFamilyClausesTail.toStmts tail)) rest)
     (ih : stmtListTouchesUnsupportedContractSurface rest = false →
       StmtListGenericCore fields
         (List.foldl stmtNextScope scope
-          (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program)) rest)
+          (Verity.Core.Free.RequireFamilyClausesTail.toStmts tail)) rest)
     (hsurface :
       stmtListTouchesUnsupportedContractSurface
-        (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program ++ rest) = false) :
+        (Verity.Core.Free.RequireFamilyClausesTail.toStmts tail ++ rest) = false) :
     StmtListGenericCore fields scope
-      (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program ++ rest) := by
+      (Verity.Core.Free.RequireFamilyClausesTail.toStmts tail ++ rest) := by
   have hsplit :
       stmtListTouchesUnsupportedContractSurface
-          (Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts program) ||
+          (Verity.Core.Free.RequireFamilyClausesTail.toStmts tail) ||
         stmtListTouchesUnsupportedContractSurface rest = false := by
     simpa [stmtListTouchesUnsupportedContractSurface_append] using hsurface
   exact stmtListGenericCore_append
-    (stmtListGenericCore_of_requireFamilyClausesTailProgram_of_surface
+    (stmtListGenericCore_of_requireFamilyClausesTail_of_surface
       (fields := fields)
       (scope := scope)
       hnoConflict
-      program
+      tail
       (Bool.or_eq_false.mp hsplit).1)
     (ih (Bool.or_eq_false.mp hsplit).2)
 
@@ -4694,12 +4733,23 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
       exact stmtListGenericCore_of_stmtListCompileCore hcore
   | terminalCore hterminal =>
       exact stmtListGenericCore_of_stmtListTerminalCore hterminal
-  | @legacyProgram _ _ program rest htail ih =>
-      exact stmtListGenericCore_of_supportedStmtList_legacyProgram_of_surface
+  | requireClause clause hrest ih =>
+      have hsplit :
+          stmtTouchesUnsupportedContractSurface clause.toStmt ||
+            stmtListTouchesUnsupportedContractSurface rest = false := by
+        simpa [stmtListTouchesUnsupportedContractSurface] using hsurface
+      exact stmtListGenericCore_append
+        (by
+          simpa using stmtListGenericCore_singleton_requireLiteralGuardFamilyClause
+            (fields := fields) (scope := scope) clause)
+        (by
+          simpa using ih (Bool.or_eq_false.mp hsplit).2)
+  | @legacyTail _ _ tail rest htail ih =>
+      exact stmtListGenericCore_of_supportedStmtList_legacyTail_of_surface
         (fields := fields)
         (scope := scope)
         hnoConflict
-        program
+        tail
         htail
         ih
         hsurface

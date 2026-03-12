@@ -158,7 +158,9 @@ and `interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtCompatibility`
 so stmt-list compatibility, function compatibility, the dispatch-local theorem,
 and the contract-level theorem all reduce to stmt compatibility. That leaves
 the remaining proof work as the stmt theorem for
-`runtimeContractOfFunctions`-style contracts over the subset. After that, the
+`runtimeContractOfFunctions`-style contracts over the subset, concentrated in
+the special expression-statement cases (`sstore`, `mstore`, `return`,
+`revert`) plus nested `if`/`block` transport. After that, the
 broader theorem stack can instantiate the already-defined helper-aware wrapper
 theorems rather than requiring another theorem-interface refactor.
 The helper-aware compiled target remains available as total fuel-indexed

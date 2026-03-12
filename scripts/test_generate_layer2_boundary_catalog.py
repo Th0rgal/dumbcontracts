@@ -58,6 +58,18 @@ class GenerateLayer2BoundaryCatalogTests(unittest.TestCase):
         self.assertEqual(
             catalog["supported_spec_split"]["helper_boundary"][
                 "compiled_target_compatibility_subset"
+            ]["remaining_stmt_compatibility_surface"],
+            [
+                "special_expr_stmt_sstore",
+                "special_expr_stmt_mstore",
+                "special_expr_stmt_return",
+                "special_expr_stmt_revert",
+                "nested_if_block_stmt_transport",
+            ],
+        )
+        self.assertEqual(
+            catalog["supported_spec_split"]["helper_boundary"][
+                "compiled_target_compatibility_subset"
             ]["dispatch_local_surface"],
             "Compiler.Proofs.IRGeneration.IRInterpreter."
             "LegacyCompatibleRuntimeDispatch",

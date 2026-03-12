@@ -309,6 +309,8 @@ now sits under the post-generic widening/completeness plan in
   contract-level lift are all reduced to stmt compatibility rather than
   remaining independent proof tasks;
   the remaining compiled-side proof step is therefore the stmt theorem itself,
+  concentrated in the special expression-statement cases (`sstore`, `mstore`,
+  `return`, `revert`) plus nested `if`/`block` transport on that subset,
   after which the conservative-extension goal from legacy `interpretIR` to
   `interpretIRWithInternals` on that subset follows by composition,
   and `Function.lean`, `Dispatch.lean`, and `Contract.lean` now already expose

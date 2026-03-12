@@ -8469,4 +8469,72 @@ theorem compiledStmtStepWithHelpersAndHelperIR_internalCall
   · rw [hshape', hFuelEq]
   · simpa [singletonIR] using hMatch
 
+/-- Non-vacuous list-level constructor for a direct helper-return-binding head.
+This packages `compiledStmtStepWithHelpersAndHelperIR_internalCallAssign` into
+the split direct-helper step interface expected by the exact helper-aware list
+induction seam. -/
+theorem stmtListDirectInternalHelperAssignStepInterface_cons_internalCallAssign
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {names : List String} {calleeName : String} {args : List Expr}
+    {compiledIR : List YulStmt}
+    {rest : List Stmt}
+    (hstep :
+      CompiledStmtStepWithHelpersAndHelperIR
+        runtimeContract spec fields scope
+        (Stmt.internalCallAssign names calleeName args)
+        compiledIR)
+    (hrest :
+      StmtListDirectInternalHelperAssignStepInterface
+        runtimeContract
+        spec
+        fields
+        (stmtNextScope scope (Stmt.internalCallAssign names calleeName args))
+        rest) :
+    StmtListDirectInternalHelperAssignStepInterface
+      runtimeContract
+      spec
+      fields
+      scope
+      (Stmt.internalCallAssign names calleeName args :: rest) := by
+  refine .cons ?_ hrest
+  intro _
+  exact ⟨compiledIR, hstep⟩
+
+/-- Non-vacuous list-level constructor for a direct helper statement head.
+This packages `compiledStmtStepWithHelpersAndHelperIR_internalCall` into the
+split direct-helper call interface expected by the exact helper-aware list
+induction seam. -/
+theorem stmtListDirectInternalHelperCallStepInterface_cons_internalCall
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {calleeName : String} {args : List Expr}
+    {compiledIR : List YulStmt}
+    {rest : List Stmt}
+    (hstep :
+      CompiledStmtStepWithHelpersAndHelperIR
+        runtimeContract spec fields scope
+        (Stmt.internalCall calleeName args)
+        compiledIR)
+    (hrest :
+      StmtListDirectInternalHelperCallStepInterface
+        runtimeContract
+        spec
+        fields
+        (stmtNextScope scope (Stmt.internalCall calleeName args))
+        rest) :
+    StmtListDirectInternalHelperCallStepInterface
+      runtimeContract
+      spec
+      fields
+      scope
+      (Stmt.internalCall calleeName args :: rest) := by
+  refine .cons ?_ hrest
+  intro _
+  exact ⟨compiledIR, hstep⟩
+
 end Compiler.Proofs.IRGeneration

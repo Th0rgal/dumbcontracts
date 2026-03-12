@@ -1715,7 +1715,7 @@ theorem supported_function_correct_with_helper_proofs
           (state := { world := SourceSemantics.withTransactionContext initialWorld tx
                       bindings := bindings })
           (stmts := fn.body)
-          hsupportedFn.body.stmtList.helperSurfaceClosed
+          hsupportedFn.body.helperSurfaceClosed
       simpa [SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal] using
         hbodyHelperGoal.trans hsource
     · have hscope :
@@ -1749,7 +1749,7 @@ theorem supported_function_correct_with_helper_proofs
         (by simpa [SourceSemantics.effectiveFields] using hSupported.normalizedFields)
         hSupported.noEvents
         hSupported.noErrors
-        hsupportedFn.body.stmtList.helperSurfaceClosed
+        hsupportedFn.body.helperSurfaceClosed
         hgeneric
         hbodyCompile
         hscope

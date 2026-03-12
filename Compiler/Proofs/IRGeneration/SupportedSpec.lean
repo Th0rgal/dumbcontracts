@@ -1085,6 +1085,7 @@ directly into the top-level `SupportedSpec` inventory. Each sub-interface is a
 feature-local place to hang future widening work. -/
 structure SupportedBodyInterface (spec : CompilationModel) (fn : FunctionSpec) : Prop where
   stmtList : SupportedStmtList spec.fields fn.body
+  helperSurfaceClosed : stmtListTouchesUnsupportedHelperSurface fn.body = false
   core : SupportedBodyCoreInterface fn
   state : SupportedBodyStateInterface fn
   calls : SupportedBodyCallInterface spec fn
@@ -1669,7 +1670,14 @@ theorem SupportedBodyCallInterface.surfaceClosed
     (hBody : SupportedBodyInterface spec fn) :
     stmtListTouchesUnsupportedCallSurface fn.body = false := by
   rw [stmtListTouchesUnsupportedCallSurface_eq_featureOr]
-  simp [hBody.stmtList.helperSurfaceClosed, hBody.calls.foreign, hBody.calls.lowLevel]
+  simp [hBody.helperSurfaceClosed, hBody.calls.foreign, hBody.calls.lowLevel]
+
+theorem SupportedBodyInterface.internalHelperSurfaceClosed
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hBody : SupportedBodyInterface spec fn) :
+    stmtListTouchesInternalHelperSurface fn.body = false := by
+  exact stmtListTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
+    hBody.helperSurfaceClosed
 
 theorem SupportedBodyInterface.surfaceClosed
     {spec : CompilationModel} {fn : FunctionSpec}
@@ -2167,10 +2175,11 @@ private theorem counter_supported_function :
               Verity.Core.Free.SupportedStmtFragment.toStmts,
               Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts,
               Verity.Core.Free.RequireFamilyClausesTail.toStmts]
+          helperSurfaceClosed := by decide
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }
-           calls :=
-             { helpers :=
+            calls :=
+              { helpers :=
                  { helperRank := 0
                    callNamesNodup := helperCallNames_nodup _
                    summaryOf := by
@@ -2256,10 +2265,11 @@ private theorem simpleStorage_supported_function :
               Verity.Core.Free.SupportedStmtFragment.toStmts,
               Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts,
               Verity.Core.Free.RequireFamilyClausesTail.toStmts]
+          helperSurfaceClosed := by decide
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }
-           calls :=
-             { helpers :=
+            calls :=
+              { helpers :=
                  { helperRank := 0
                    callNamesNodup := helperCallNames_nodup _
                    summaryOf := by

@@ -128,6 +128,14 @@ work is now split into:
   so future helper-rich bodies only need new exact proofs at helper-surface-
   positive heads while helper-free heads keep reusing the legacy generic step
   library
+- a matching weaker source-side reuse witness
+  `StmtListHelperFreeStepInterface` plus the direct split bridges
+  `stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`
+  and
+  `supported_function_body_correct_from_exact_state_generic_helper_surface_steps_and_helper_ir`,
+  so helper-rich bodies no longer need the whole list to satisfy
+  `StmtListGenericCore` before they can target the exact helper-aware compiled
+  body theorem
 - a derivation of that compiled-side witness from the existing supported-body
   surface via
   `stmtListCompiledLegacyCompatible_of_supportedContractSurface` and

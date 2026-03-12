@@ -294,6 +294,14 @@ now sits under the post-generic widening/completeness plan in
   `stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
   so only helper-surface-positive heads need genuinely new exact step proofs
   while helper-free heads keep reusing the existing library. On today's
+  boundary the source-side reuse seam is now split the same way via
+  `StmtListHelperFreeStepInterface`,
+  `stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible`,
+  and
+  `supported_function_body_correct_from_exact_state_generic_helper_surface_steps_and_helper_ir`,
+  so future helper-rich bodies no longer need the whole list to satisfy
+  `StmtListGenericCore` before they can land in the exact helper-aware body
+  theorem. On today's
   supported fragment that weaker witness is derived directly via
   `stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface` /
   `SupportedBodyInterface.compiledHelperFreeLegacyCompatible`, and the

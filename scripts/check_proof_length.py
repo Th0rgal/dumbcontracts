@@ -269,11 +269,14 @@ ALLOWLIST: set[str] = {
     "exec_compileStmtList_generic_with_helpers_and_helper_ir_sizeOf_extraFuel_step",
     "supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir_raw",
     # Issue #1630 / PR #1639 follow-up — exact helper-aware split reuse bridge:
-    # this theorem is the one list-level transport that separates helper-free
-    # head reuse from genuinely new helper-surface-positive step obligations.
-    # Keeping the split centralized makes the remaining helper-rich proof work
-    # land at a single named seam instead of duplicating the branch logic.
+    # these theorems are the one list/body-level transport layer that
+    # separates helper-free head reuse from genuinely new helper-surface-
+    # positive step obligations. Keeping the split centralized makes the
+    # remaining helper-rich proof work land at a single named seam instead of
+    # duplicating the branch logic.
+    "stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible",
     "stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible",
+    "supported_function_body_correct_from_exact_state_generic_helper_surface_steps_and_helper_ir",
     # Issue #1630 / PR #1639 follow-up — current-fragment exact helper-aware body wrapper:
     # this theorem keeps the public body-proof surface stable while deriving the
     # new compiled-side legacy-compatibility witness and lifting the existing

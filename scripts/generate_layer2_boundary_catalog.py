@@ -286,6 +286,10 @@ def build_catalog() -> dict:
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "StmtListHelperFreeCompiledLegacyCompatible"
                     ),
+                    "source_helper_free_step_interface": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "StmtListHelperFreeStepInterface"
+                    ),
                     "helper_surface_step_interface": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "StmtListHelperSurfaceStepInterface"
@@ -306,8 +310,19 @@ def build_catalog() -> dict:
                     ),
                     "helper_surface_split_bridge": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "stmtListGenericWithHelpersAndHelperIR_of_helperFree"
+                        "StepInterface_and_helperSurfaceStepInterface_and_"
+                        "helperFreeCompiledLegacyCompatible"
+                    ),
+                    "helper_surface_split_bridge_from_core": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
                         "stmtListGenericWithHelpersAndHelperIR_of_core_"
                         "helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible"
+                    ),
+                    "helper_surface_split_body_bridge": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "supported_function_body_correct_from_exact_state_"
+                        "generic_helper_surface_steps_and_helper_ir"
                     ),
                     "direct_body_goal": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
@@ -363,20 +378,30 @@ def build_catalog() -> dict:
                         "and_compiledLegacyCompatible; it now also splits the "
                         "future helper-rich reuse seam into the weaker "
                         "compiled witness "
-                        "StmtListHelperFreeCompiledLegacyCompatible and the "
+                        "StmtListHelperFreeCompiledLegacyCompatible, the weaker "
+                        "source witness StmtListHelperFreeStepInterface, and the "
                         "list-local exact helper-step interface "
-                        "StmtListHelperSurfaceStepInterface, combined by "
+                        "StmtListHelperSurfaceStepInterface, combined directly by "
+                        "stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_"
+                        "and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible "
+                        "and, for legacy callers, by "
                         "stmtListGenericWithHelpersAndHelperIR_of_core_"
                         "helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible; "
-                        "and it now derives that weaker compiled-side witness "
+                        "the matching body-level split bridge is "
+                        "supported_function_body_correct_from_exact_state_"
+                        "generic_helper_surface_steps_and_helper_ir; and it now derives "
+                        "that weaker compiled-side witness "
                         "on today's supported fragment via "
                         "stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface / "
-                        "SupportedBodyInterface.compiledHelperFreeLegacyCompatible, so "
+                        "SupportedBodyInterface.compiledHelperFreeLegacyCompatible "
+                        "and the weaker source witness via "
+                        "stmtListHelperFreeStepInterface_of_core, so "
                         "already-proved helper-free cases can still be reused "
                         "in the exact helper-aware compiled seam without a "
-                        "caller-supplied witness on the current boundary while "
-                        "future helper-rich proofs only need exact step proofs "
-                        "at helper-surface-positive heads; "
+                        "caller-supplied witness on the current boundary and without "
+                        "requiring future helper-rich bodies to satisfy "
+                        "StmtListGenericCore wholesale; future helper-rich proofs "
+                        "only need exact step proofs at helper-surface-positive heads; "
                         "which feeds the function-level theorem "
                         "supported_function_correct_with_helper_proofs_body_goal; "
                         "the legacy conservative-extension goal remains only "
@@ -418,8 +443,8 @@ def build_catalog() -> dict:
                         "SupportedStmtList fragment that currently proves "
                         "SupportedStmtList.helperSurfaceClosed; on the current boundary the "
                         "already-proved helper-free cases now lift into the "
-                        "earlier helper-aware source seam automatically and "
-                        "also into the exact compiled seam automatically via "
+                        "exact seam automatically via "
+                        "StmtListHelperFreeStepInterface and "
                         "StmtListHelperFreeCompiledLegacyCompatible, so the "
                         "remaining blocker there is only the genuinely new "
                         "helper-surface-positive reasoning. "

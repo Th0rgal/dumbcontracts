@@ -197,6 +197,22 @@ inductive StmtListGenericCore (fields : List Field) : List String → List Stmt 
       StmtListGenericCore fields (stmtNextScope scope stmt) rest →
       StmtListGenericCore fields scope (stmt :: rest)
 
+/-- Weaker source-side reuse witness for the future helper-rich induction path:
+only helper-surface-closed heads must come with the existing helper-free
+generic step proof. Helper-surface-positive heads can instead be discharged by a
+dedicated exact helper-aware step proof at the point where the exact seam is
+assembled. -/
+inductive StmtListHelperFreeStepInterface
+    (fields : List Field) : List String → List Stmt → Prop where
+  | nil {scope : List String} :
+      StmtListHelperFreeStepInterface fields scope []
+  | cons {scope : List String} {stmt : Stmt} {rest : List Stmt} :
+      (stmtTouchesUnsupportedHelperSurface stmt = false →
+        ∃ compiledIR,
+          CompiledStmtStep fields scope stmt compiledIR) →
+      StmtListHelperFreeStepInterface fields (stmtNextScope scope stmt) rest →
+      StmtListHelperFreeStepInterface fields scope (stmt :: rest)
+
 /-- Statement lists whose heads all admit a helper-aware generic compiled-step
 proof. This is the exact induction-level seam needed to consume helper-summary
 soundness and decreasing-rank evidence without reusing the helper-free
@@ -272,12 +288,10 @@ inductive StmtListHelperSurfaceStepInterface
   | nil {scope : List String} :
       StmtListHelperSurfaceStepInterface runtimeContract spec fields scope []
   | cons {scope : List String} {stmt : Stmt} {rest : List Stmt} :
-      (∀ {compiledIR},
-        CompilationModel.compileStmt fields [] [] .calldata [] false scope stmt =
-          Except.ok compiledIR →
-        stmtTouchesUnsupportedHelperSurface stmt = true →
-        CompiledStmtStepWithHelpersAndHelperIR
-          runtimeContract spec fields scope stmt compiledIR) →
+      (stmtTouchesUnsupportedHelperSurface stmt = true →
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract spec fields scope stmt compiledIR) →
       StmtListHelperSurfaceStepInterface
         runtimeContract spec fields (stmtNextScope scope stmt) rest →
       StmtListHelperSurfaceStepInterface runtimeContract spec fields scope (stmt :: rest)
@@ -562,6 +576,23 @@ theorem stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface
       exact legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface
         hnoPacked hstmtSurface hcompile
 
+/-- Any full helper-free generic statement-list proof also gives the weaker
+source-side reuse witness needed by the future helper-rich exact seam: only the
+helper-free heads retain the old generic-step obligation. -/
+theorem stmtListHelperFreeStepInterface_of_core
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hgeneric : StmtListGenericCore fields scope stmts) :
+    StmtListHelperFreeStepInterface fields scope stmts := by
+  induction hgeneric with
+  | nil =>
+      exact .nil
+  | @cons scope stmt compiledIR rest hstep htail ih =>
+      refine .cons ?_ ih
+      intro _
+      exact ⟨compiledIR, hstep⟩
+
 /-- Helper-surface-closed statement lists satisfy the exact helper-surface step
 interface vacuously: no head ever needs a genuinely new helper-aware step
 proof. -/
@@ -582,7 +613,7 @@ theorem stmtListHelperSurfaceStepInterface_of_helperSurfaceClosed
       have hrestSurface : stmtListTouchesUnsupportedHelperSurface rest = false := by
         simpa [stmtListTouchesUnsupportedHelperSurface] using (Bool.or_eq_false.mp hsurface).2
       refine .cons ?_ (ih hrestSurface)
-      intro compiledIR _ hhelper
+      intro hhelper
       rw [hstmtSurface] at hhelper
       cases hhelper
 
@@ -681,6 +712,43 @@ helper-free heads still reuse the legacy generic step library plus the weaker
 helper-free compiled compatibility witness, while helper-positive heads are
 discharged only through a dedicated exact helper-aware step interface. -/
 theorem
+    stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hhelperFree : StmtListHelperFreeStepInterface fields scope stmts)
+    (hsteps : StmtListHelperSurfaceStepInterface runtimeContract spec fields scope stmts)
+    (hlegacy : StmtListHelperFreeCompiledLegacyCompatible fields scope stmts)
+    (hinternal : runtimeContract.internalFunctions = []) :
+    StmtListGenericWithHelpersAndHelperIR runtimeContract spec fields scope stmts := by
+  induction hsteps generalizing hhelperFree hlegacy with
+  | nil =>
+      exact .nil
+  | @cons scope stmt rest hheadStep htailSteps ih =>
+      cases hhelperFree with
+      | cons hheadFree htailFree =>
+          cases hlegacy with
+          | cons hheadLegacy htailLegacy =>
+              by_cases hsurface : stmtTouchesUnsupportedHelperSurface stmt = false
+              · rcases hheadFree hsurface with ⟨compiledIR, hcore⟩
+                exact .cons
+                  ((hcore.withHelpers_of_helperSurfaceClosed hsurface)
+                    .withHelperIR_of_legacyCompatible
+                      (hheadLegacy hsurface compiledIR hcore.compileOk)
+                      hinternal)
+                  (ih htailFree htailLegacy)
+              · have hsurfaceTrue : stmtTouchesUnsupportedHelperSurface stmt = true := by
+                  cases hstmt : stmtTouchesUnsupportedHelperSurface stmt <;> simp [hstmt] at hsurface ⊢
+                rcases hheadStep hsurfaceTrue with ⟨compiledIR, hcompiled⟩
+                exact .cons hcompiled (ih htailFree htailLegacy)
+
+/-- Exact helper-aware list bridge that splits the remaining work cleanly:
+helper-free heads still reuse the legacy generic step library plus the weaker
+helper-free compiled compatibility witness, while helper-positive heads are
+discharged only through a dedicated exact helper-aware step interface. -/
+theorem
     stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible
     {runtimeContract : IRContract}
     {spec : CompilationModel}
@@ -692,25 +760,14 @@ theorem
     (hlegacy : StmtListHelperFreeCompiledLegacyCompatible fields scope stmts)
     (hinternal : runtimeContract.internalFunctions = []) :
     StmtListGenericWithHelpersAndHelperIR runtimeContract spec fields scope stmts := by
-  induction hgeneric generalizing hsteps hlegacy with
-  | nil =>
-      exact .nil
-  | @cons scope stmt compiledIR rest hstep hrest ih =>
-      cases hsteps with
-      | cons hheadStep htailSteps =>
-          cases hlegacy with
-          | cons hheadLegacy htailLegacy =>
-              by_cases hsurface : stmtTouchesUnsupportedHelperSurface stmt = false
-              · exact .cons
-                  ((hstep.withHelpers_of_helperSurfaceClosed hsurface).withHelperIR_of_legacyCompatible
-                    (hheadLegacy hsurface compiledIR hstep.compileOk)
-                    hinternal)
-                  (ih htailSteps htailLegacy)
-              · have hsurfaceTrue : stmtTouchesUnsupportedHelperSurface stmt = true := by
-                  cases hstmt : stmtTouchesUnsupportedHelperSurface stmt <;> simp [hstmt] at hsurface ⊢
-                exact .cons
-                  (hheadStep hstep.compileOk hsurfaceTrue)
-                  (ih htailSteps htailLegacy)
+  exact
+    stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (hhelperFree := stmtListHelperFreeStepInterface_of_core hgeneric)
+      (hsteps := hsteps)
+      (hlegacy := hlegacy)
+      hinternal
 
 /-- On helper-surface-closed statement lists, the new exact helper-aware list
 bridge collapses to the old helper-free lifting path, but only needs the weaker
@@ -5382,6 +5439,84 @@ theorem
       hextraFuel hnormalized hnoEvents hnoErrors hgeneric hbodyCompile hscope
       hbounded hstateRuntime hstateBindings
 
+/-- Body-level exact helper-aware bridge for the future helper-rich theorem
+path: helper-free heads only need the weaker helper-free source/compiled reuse
+witnesses, while helper-surface-positive heads are supplied directly by the
+exact helper-step interface. This removes the structural requirement that the
+whole body already satisfy `StmtListGenericCore` before helper-rich cases can
+enter the exact compiled theorem target. -/
+theorem
+    supported_function_body_correct_from_exact_state_generic_helper_surface_steps_and_helper_ir
+    (runtimeContract : IRContract)
+    (model : CompilationModel)
+    (fn : FunctionSpec)
+    (bodyStmts : List YulStmt)
+    (helperFuel : Nat)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (state : IRState)
+    (bindings : List (String × Nat))
+    (extraFuel : Nat)
+    (hextraFuel : sizeOf bodyStmts - bodyStmts.length ≤ extraFuel)
+    (hnormalized : SourceSemantics.effectiveFields model = model.fields)
+    (hnoEvents : model.events = [])
+    (hnoErrors : model.errors = [])
+    (hhelperFree :
+      StmtListHelperFreeStepInterface
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hsteps :
+      StmtListHelperSurfaceStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hlegacy :
+      StmtListHelperFreeCompiledLegacyCompatible
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hscope :
+      FunctionBody.scopeNamesPresent (fn.params.map (·.name)) bindings)
+    (hbounded : FunctionBody.bindingsBounded bindings)
+    (hstateRuntime :
+      FunctionBody.runtimeStateMatchesIR
+        (SourceSemantics.effectiveFields model)
+        { world := SourceSemantics.withTransactionContext initialWorld tx
+          bindings := [] }
+        state)
+    (hstateBindings :
+      FunctionBody.bindingsExactlyMatchIRVars bindings state)
+    (hinternal : runtimeContract.internalFunctions = []) :
+    SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
+      runtimeContract
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
+  have hgeneric :
+      StmtListGenericWithHelpersAndHelperIR
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body :=
+    stmtListGenericWithHelpersAndHelperIR_of_helperFreeStepInterface_and_helperSurfaceStepInterface_and_helperFreeCompiledLegacyCompatible
+      (runtimeContract := runtimeContract)
+      (spec := model)
+      (hhelperFree := hhelperFree)
+      (hsteps := hsteps)
+      (hlegacy := hlegacy)
+      hinternal
+  exact
+    supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir
+      runtimeContract
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
+      hextraFuel hnormalized hnoEvents hnoErrors hgeneric hbodyCompile hscope
+      hbounded hstateRuntime hstateBindings
+
 /-- Current-fragment wrapper that lands directly in the exact helper-aware
 compiled body goal. This keeps the existing helper-free step library reusable,
 but removes the need for callers to supply a separate
@@ -5441,24 +5576,26 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
         hnoPacked
         hcontractSurface)
   have hgenericExact :
-      StmtListGenericWithHelpersAndHelperIR
-        runtimeContract
-        model
+      StmtListHelperFreeStepInterface
         (SourceSemantics.effectiveFields model)
         (fn.params.map (·.name))
         fn.body :=
-    stmtListGenericWithHelpersAndHelperIR_of_core_helperSurfaceClosed_and_helperFreeCompiledLegacyCompatible
-      (runtimeContract := runtimeContract)
-      (spec := model)
-      (hgeneric := hgeneric)
-      (hsurface := hhelperSurface)
-      (hlegacy := hlegacy)
-      hinternal
-  exact supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir
-    runtimeContract
-    model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
-    hextraFuel hnormalized hnoEvents hnoErrors hgenericExact hbodyCompile
-    hscope hbounded hstateRuntime hstateBindings
+    stmtListHelperFreeStepInterface_of_core hgeneric
+  exact
+    supported_function_body_correct_from_exact_state_generic_helper_surface_steps_and_helper_ir
+      runtimeContract
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
+      hextraFuel hnormalized hnoEvents hnoErrors hgenericExact
+      (stmtListHelperSurfaceStepInterface_of_helperSurfaceClosed
+        (runtimeContract := runtimeContract)
+        (spec := model)
+        (fields := SourceSemantics.effectiveFields model)
+        (scope := fn.params.map (·.name))
+        (stmts := fn.body)
+        hhelperSurface)
+      hlegacy
+      hbodyCompile
+      hscope hbounded hstateRuntime hstateBindings hinternal
 
 /-- Goal-based helper-aware wrapper around the generic body/IR preservation
 theorem. This keeps the current helper-free collapse available as a corollary,

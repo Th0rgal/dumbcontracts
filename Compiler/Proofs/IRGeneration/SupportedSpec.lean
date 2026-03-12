@@ -390,6 +390,14 @@ def stmtTouchesUnsupportedStateSurface : Stmt → Bool
       exprTouchesUnsupportedStateSurface count ||
         stmtListTouchesUnsupportedStateSurface body
 
+/-- Weaker Tier 2 state-surface gate used by the singleton mapping-write bridge:
+all existing unsupported stateful forms remain excluded except for the three
+singleton mapping-write heads already covered by dedicated compiled-step
+theorems. -/
+def stmtTouchesUnsupportedStateSurfaceExceptMappingWrites : Stmt → Bool
+  | .setMapping _ _ _ | .setMapping2 _ _ _ _ | .setMappingUint _ _ _ => false
+  | stmt => stmtTouchesUnsupportedStateSurface stmt
+
 /-- Helper/foreign/runtime-call statement surfaces still outside the current
 generic theorem. -/
 def stmtTouchesUnsupportedCallSurface : Stmt → Bool
@@ -629,6 +637,12 @@ def stmtListTouchesUnsupportedStateSurface : List Stmt → Bool
   | stmt :: rest =>
       stmtTouchesUnsupportedStateSurface stmt ||
         stmtListTouchesUnsupportedStateSurface rest
+
+def stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites : List Stmt → Bool
+  | [] => false
+  | stmt :: rest =>
+      stmtTouchesUnsupportedStateSurfaceExceptMappingWrites stmt ||
+        stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites rest
 
 def stmtListTouchesUnsupportedCallSurface : List Stmt → Bool
   | [] => false
@@ -1877,6 +1891,37 @@ private theorem stmtTouchesUnsupportedContractSurface_eq_false_of_featureClosed
   all_goals
     cases hcore
 
+private theorem stmtTouchesUnsupportedContractSurfaceExceptMappingWrites_eq_false_of_featureClosed
+    (stmt : Stmt)
+    (hcore : stmtTouchesUnsupportedCoreSurface stmt = false)
+    (hstate : stmtTouchesUnsupportedStateSurfaceExceptMappingWrites stmt = false)
+    (hcalls : stmtTouchesUnsupportedCallSurface stmt = false)
+    (heffects : stmtTouchesUnsupportedEffectSurface stmt = false) :
+    stmtTouchesUnsupportedContractSurfaceExceptMappingWrites stmt = false := by
+  cases stmt <;> simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites] at *
+  case letVar name value =>
+    exact exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed value hcore
+      (by simpa [stmtTouchesUnsupportedStateSurfaceExceptMappingWrites] using hstate)
+      hcalls
+  case assignVar name value =>
+    exact exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed value hcore
+      (by simpa [stmtTouchesUnsupportedStateSurfaceExceptMappingWrites] using hstate)
+      hcalls
+  case setStorage fieldName value =>
+    exact exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed value hcore
+      (by simpa [stmtTouchesUnsupportedStateSurfaceExceptMappingWrites] using hstate)
+      hcalls
+  case require cond message =>
+    exact exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed cond hcore
+      (by simpa [stmtTouchesUnsupportedStateSurfaceExceptMappingWrites] using hstate)
+      hcalls
+  case return value =>
+    exact exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed value hcore
+      (by simpa [stmtTouchesUnsupportedStateSurfaceExceptMappingWrites] using hstate)
+      hcalls
+  all_goals
+    first | rfl | cases hcore
+
 private theorem stmtListFeatureClosed_cons_inv
     (stmt : Stmt)
     (rest : List Stmt)
@@ -1908,6 +1953,39 @@ private theorem stmtListFeatureClosed_cons_inv
   · simpa [stmtListTouchesUnsupportedEffectSurface] using (Bool.or_eq_false.mp heffects).1
   · simpa [stmtListTouchesUnsupportedEffectSurface] using (Bool.or_eq_false.mp heffects).2
 
+private theorem stmtListFeatureClosedExceptMappingWrites_cons_inv
+    (stmt : Stmt)
+    (rest : List Stmt)
+    (hcore : stmtListTouchesUnsupportedCoreSurface (stmt :: rest) = false)
+    (hstate : stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites (stmt :: rest) = false)
+    (hcalls : stmtListTouchesUnsupportedCallSurface (stmt :: rest) = false)
+    (heffects : stmtListTouchesUnsupportedEffectSurface (stmt :: rest) = false) :
+    stmtTouchesUnsupportedCoreSurface stmt = false ∧
+    stmtListTouchesUnsupportedCoreSurface rest = false ∧
+    stmtTouchesUnsupportedStateSurfaceExceptMappingWrites stmt = false ∧
+    stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites rest = false ∧
+    stmtTouchesUnsupportedCallSurface stmt = false ∧
+    stmtListTouchesUnsupportedCallSurface rest = false ∧
+    stmtTouchesUnsupportedEffectSurface stmt = false ∧
+    stmtListTouchesUnsupportedEffectSurface rest = false := by
+  constructor
+  · simpa [stmtListTouchesUnsupportedCoreSurface] using (Bool.or_eq_false.mp hcore).1
+  constructor
+  · simpa [stmtListTouchesUnsupportedCoreSurface] using (Bool.or_eq_false.mp hcore).2
+  constructor
+  · simpa [stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites] using
+      (Bool.or_eq_false.mp hstate).1
+  constructor
+  · simpa [stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites] using
+      (Bool.or_eq_false.mp hstate).2
+  constructor
+  · simpa [stmtListTouchesUnsupportedCallSurface] using (Bool.or_eq_false.mp hcalls).1
+  constructor
+  · simpa [stmtListTouchesUnsupportedCallSurface] using (Bool.or_eq_false.mp hcalls).2
+  constructor
+  · simpa [stmtListTouchesUnsupportedEffectSurface] using (Bool.or_eq_false.mp heffects).1
+  · simpa [stmtListTouchesUnsupportedEffectSurface] using (Bool.or_eq_false.mp heffects).2
+
 theorem stmtListTouchesUnsupportedContractSurface_eq_false_of_featureClosed
     (stmts : List Stmt)
     (hcore : stmtListTouchesUnsupportedCoreSurface stmts = false)
@@ -1930,6 +2008,29 @@ theorem stmtListTouchesUnsupportedContractSurface_eq_false_of_featureClosed
           stmtListTouchesUnsupportedContractSurface rest = false :=
         ih hcoreRest hstateRest hcallsRest heffectsRest
       simp [stmtListTouchesUnsupportedContractSurface, hstmt, hrest]
+
+theorem stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites_eq_false_of_featureClosed
+    (stmts : List Stmt)
+    (hcore : stmtListTouchesUnsupportedCoreSurface stmts = false)
+    (hstate : stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites stmts = false)
+    (hcalls : stmtListTouchesUnsupportedCallSurface stmts = false)
+    (heffects : stmtListTouchesUnsupportedEffectSurface stmts = false) :
+    stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites stmts = false := by
+  induction stmts with
+  | nil =>
+      simp [stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites]
+  | cons stmt rest ih =>
+      rcases stmtListFeatureClosedExceptMappingWrites_cons_inv stmt rest hcore hstate hcalls heffects with
+        ⟨hcoreStmt, hcoreRest, hstateStmt, hstateRest,
+          hcallsStmt, hcallsRest, heffectsStmt, heffectsRest⟩
+      have hstmt :
+          stmtTouchesUnsupportedContractSurfaceExceptMappingWrites stmt = false :=
+        stmtTouchesUnsupportedContractSurfaceExceptMappingWrites_eq_false_of_featureClosed stmt
+          hcoreStmt hstateStmt hcallsStmt heffectsStmt
+      have hrest :
+          stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites rest = false :=
+        ih hcoreRest hstateRest hcallsRest heffectsRest
+      simp [stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites, hstmt, hrest]
 
 private theorem
     exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed_mappingChain

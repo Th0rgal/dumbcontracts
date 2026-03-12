@@ -5964,6 +5964,31 @@ theorem stmtListHelperFreeStepInterface_of_supportedStmtList_of_surface_exceptMa
       hsafety
       hsurface)
 
+theorem stmtListHelperFreeStepInterface_of_supportedStmtList_of_featureClosed_exceptMappingWrites
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hnoConflict : firstFieldWriteSlotConflict fields = none)
+    (hSupported : SupportedStmtList fields scope stmts)
+    (hcore : stmtListTouchesUnsupportedCoreSurface stmts = false)
+    (hstate : stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites stmts = false)
+    (hcalls : stmtListTouchesUnsupportedCallSurface stmts = false)
+    (heffects : stmtListTouchesUnsupportedEffectSurface stmts = false)
+    (hsafety : SupportedStmtListMappingWriteSlotSafety fields) :
+    StmtListHelperFreeStepInterface fields scope stmts := by
+  have hsurface :
+      stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites stmts = false :=
+    stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites_eq_false_of_featureClosed
+      stmts hcore hstate hcalls heffects
+  exact stmtListHelperFreeStepInterface_of_supportedStmtList_of_surface_exceptMappingWrites
+    (fields := fields)
+    (scope := scope)
+    (stmts := stmts)
+    hnoConflict
+    hSupported
+    hsafety
+    hsurface
+
 /-- The supported-body interface also derives the weaker source-side reuse
 witness needed by the exact helper-aware seam: helper-free heads retain the
 legacy generic-step obligation, while helper-positive heads can be discharged

@@ -84,6 +84,7 @@ ALLOWLIST: set[str] = {
     # relation in one place. Further decomposition is possible after more write
     # families share the same abstraction.
     "compiledStmtStep_setMappingUint_singleSlot_of_slotSafety_preserves",
+    "compiledStmtStep_setMapping_singleSlot_of_slotSafety_preserves",
     # Generic Layer 2 param-loading list theorem (Issue #1510 / PR #1554):
     # centralizes the scalar-head induction for `genParamLoadBodyFrom`; further
     # decomposition is possible later, but keeping the recursion in one place

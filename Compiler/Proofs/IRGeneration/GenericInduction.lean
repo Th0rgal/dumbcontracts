@@ -4398,6 +4398,69 @@ theorem compiledStmtStep_setStorageAddr_singleSlot
   preserves := compiledStmtStep_setStorageAddr_singleSlot_preserves
     hcore hinScope hfind hwriteSlots hnoConflict hvalueIR
 
+private theorem compiledStmtStep_mstore_single_preserves
+    {fields : List Field}
+    {scope : List String}
+    {offset value : Expr}
+    {offsetIR valueIR : YulExpr}
+    (hcoreOffset : FunctionBody.ExprCompileCore offset)
+    (hinScopeOffset : FunctionBody.exprBoundNamesInScope offset scope)
+    (hcoreValue : FunctionBody.ExprCompileCore value)
+    (hinScopeValue : FunctionBody.exprBoundNamesInScope value scope)
+    (hoffsetIR : CompilationModel.compileExpr fields .calldata offset = Except.ok offsetIR)
+    (hvalueIR : CompilationModel.compileExpr fields .calldata value = Except.ok valueIR) :
+    CompiledStmtStep.Preserves fields scope
+      (.mstore offset value)
+      [YulStmt.expr (YulExpr.call "mstore" [offsetIR, valueIR])] := by
+  intro runtime state extraFuel hexact hscope hbounded hruntime hslack
+  let compiledIR := [YulStmt.expr (YulExpr.call "mstore" [offsetIR, valueIR])]
+  let offsetNat := SourceSemantics.evalExpr fields runtime offset
+  let valueNat := SourceSemantics.evalExpr fields runtime value
+  have hOffsetEval :=
+    FunctionBody.eval_compileExpr_core_of_scope
+      hcoreOffset hexact hinScopeOffset hbounded
+      (FunctionBody.exprBoundNamesPresent_of_scope hscope hinScopeOffset)
+      hruntime
+  have hValueEval :=
+    FunctionBody.eval_compileExpr_core_of_scope
+      hcoreValue hexact hinScopeValue hbounded
+      (FunctionBody.exprBoundNamesPresent_of_scope hscope hinScopeValue)
+      hruntime
+  rw [hoffsetIR] at hOffsetEval
+  rw [hvalueIR] at hValueEval
+  have hExecStmt :
+      execIRStmt (extraFuel + 1) state
+        (YulStmt.expr (YulExpr.call "mstore" [offsetIR, valueIR])) =
+          .continue
+            { state with
+                memory := fun o =>
+                  if o = offsetNat then valueNat else state.memory o } := by
+    simpa [offsetNat, valueNat, execIRStmt, evalIRExprs, hOffsetEval, hValueEval]
+  refine ⟨_, _, ?_⟩
+  · simp [SourceSemantics.execStmt, offsetNat, valueNat]
+  · simpa [compiledIR, execIRStmts, hExecStmt]
+  · refine And.intro ?_ <| And.intro ?_ <| And.intro hbounded hscope
+    · simpa [FunctionBody.runtimeStateMatchesIR] using hruntime
+    · simpa [FunctionBody.bindingsExactlyMatchIRVarsOnScope] using hexact
+
+theorem compiledStmtStep_mstore_single
+    {fields : List Field}
+    {scope : List String}
+    {offset value : Expr}
+    {offsetIR valueIR : YulExpr}
+    (hcoreOffset : FunctionBody.ExprCompileCore offset)
+    (hinScopeOffset : FunctionBody.exprBoundNamesInScope offset scope)
+    (hcoreValue : FunctionBody.ExprCompileCore value)
+    (hinScopeValue : FunctionBody.exprBoundNamesInScope value scope)
+    (hoffsetIR : CompilationModel.compileExpr fields .calldata offset = Except.ok offsetIR)
+    (hvalueIR : CompilationModel.compileExpr fields .calldata value = Except.ok valueIR) :
+    CompiledStmtStep fields scope (.mstore offset value)
+      [YulStmt.expr (YulExpr.call "mstore" [offsetIR, valueIR])] where
+  compileOk := by
+    simp [CompilationModel.compileStmt, hoffsetIR, hvalueIR]
+  preserves := compiledStmtStep_mstore_single_preserves
+    hcoreOffset hinScopeOffset hcoreValue hinScopeValue hoffsetIR hvalueIR
+
 private theorem compiledStmtStep_setMappingUint_singleSlot_of_slotSafety_preserves
     {fields : List Field}
     {scope : List String}
@@ -6792,6 +6855,28 @@ private theorem stmtListGenericCore_singleton_setStorageAddr_singleSlot
     (hnoConflict := hnoConflict)
     (hvalueIR := hvalueIR)
 
+private theorem stmtListGenericCore_singleton_mstore_single
+    {fields : List Field}
+    {scope : List String}
+    {offset value : Expr}
+    (hcoreOffset : FunctionBody.ExprCompileCore offset)
+    (hinScopeOffset : FunctionBody.exprBoundNamesInScope offset scope)
+    (hcoreValue : FunctionBody.ExprCompileCore value)
+    (hinScopeValue : FunctionBody.exprBoundNamesInScope value scope) :
+    StmtListGenericCore fields scope [Stmt.mstore offset value] := by
+  rcases FunctionBody.compileExpr_core_ok (fields := fields) hcoreOffset with
+    ⟨offsetIR, hoffsetIR⟩
+  rcases FunctionBody.compileExpr_core_ok (fields := fields) hcoreValue with
+    ⟨valueIR, hvalueIR⟩
+  refine StmtListGenericCore.cons ?_ StmtListGenericCore.nil
+  exact compiledStmtStep_mstore_single
+    (hcoreOffset := hcoreOffset)
+    (hinScopeOffset := hinScopeOffset)
+    (hcoreValue := hcoreValue)
+    (hinScopeValue := hinScopeValue)
+    (hoffsetIR := hoffsetIR)
+    (hvalueIR := hvalueIR)
+
 private theorem stmtListGenericCore_of_requireClausesOnly
     {fields : List Field}
     {scope : List String}
@@ -7255,6 +7340,23 @@ private theorem stmtListGenericCore_of_supportedStmtList_setStorageAddrSingleSlo
     (hfind := hfind)
     (hcore := hcore)
     (hinScope := hinScope)
+
+private theorem stmtListGenericCore_of_supportedStmtList_mstoreSingle_of_surface
+    {fields : List Field}
+    {scope : List String}
+    {offset value : Expr}
+    (hcoreOffset : FunctionBody.ExprCompileCore offset)
+    (hinScopeOffset : FunctionBody.exprBoundNamesInScope offset scope)
+    (hcoreValue : FunctionBody.ExprCompileCore value)
+    (hinScopeValue : FunctionBody.exprBoundNamesInScope value scope) :
+    StmtListGenericCore fields scope [Stmt.mstore offset value] :=
+  stmtListGenericCore_singleton_mstore_single
+    (fields := fields)
+    (scope := scope)
+    (hcoreOffset := hcoreOffset)
+    (hinScopeOffset := hinScopeOffset)
+    (hcoreValue := hcoreValue)
+    (hinScopeValue := hinScopeValue)
 
 private theorem compileExprList_core_ok
     {fields : List Field}
@@ -8203,6 +8305,9 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
   | setStorageAddrSingleSlot hcore hinScope hfind =>
       exact stmtListGenericCore_of_supportedStmtList_setStorageAddrSingleSlot_of_surface
         (fields := fields) hnoConflict hfind hcore hinScope
+  | mstoreSingle hcoreOffset hinScopeOffset hcoreValue hinScopeValue =>
+      exact stmtListGenericCore_of_supportedStmtList_mstoreSingle_of_surface
+        (fields := fields) hcoreOffset hinScopeOffset hcoreValue hinScopeValue
   | letStorageField hfind => exact False.elim (false_of_supportedStmtList_letStorageField_surface hsurface)
   | returnMapping hkey hscope hslot => exact False.elim (false_of_supportedStmtList_returnMapping_surface hsurface)
   | letMapping hkey hscope hslot => exact False.elim (false_of_supportedStmtList_letMapping_surface hsurface)
@@ -8258,6 +8363,9 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface_exceptMappingWrites
   | setStorageAddrSingleSlot hcore hinScope hfind =>
       exact stmtListGenericCore_of_supportedStmtList_setStorageAddrSingleSlot_of_surface
         (fields := fields) hnoConflict hfind hcore hinScope
+  | mstoreSingle hcoreOffset hinScopeOffset hcoreValue hinScopeValue =>
+      exact stmtListGenericCore_of_supportedStmtList_mstoreSingle_of_surface
+        (fields := fields) hcoreOffset hinScopeOffset hcoreValue hinScopeValue
   | letStorageField hfind =>
       have hsurfaceBase :
           stmtListTouchesUnsupportedContractSurface [Stmt.letVar tmp (Expr.storage fieldName)] = false := by

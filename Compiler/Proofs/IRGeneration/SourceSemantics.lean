@@ -594,6 +594,10 @@ mutual
         | some slots, some resolved =>
             .continue { state with world := writeAddressSlots state.world slots resolved }
         | _, _ => .revert
+    | state, .mstore offset value =>
+        match evalExpr fields state offset, evalExpr fields state value with
+        | some _, some _ => .continue state
+        | _, _ => .revert
     | state, .require cond _ =>
         match evalExpr fields state cond with
         | some resolved =>
@@ -1035,6 +1039,11 @@ mutual
         match findFieldWriteSlots fields fieldName, evalExprWithHelpers spec fields fuel state value with
         | some slots, some resolved =>
             .continue { state with world := writeAddressSlots state.world slots resolved }
+        | _, _ => .revert
+    | state, .mstore offset value =>
+        match evalExprWithHelpers spec fields fuel state offset,
+            evalExprWithHelpers spec fields fuel state value with
+        | some _, some _ => .continue state
         | _, _ => .revert
     | state, .require cond _ =>
         match evalExprWithHelpers spec fields fuel state cond with

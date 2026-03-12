@@ -329,7 +329,7 @@ def stmtTouchesUnsupportedEffectSurface : Stmt → Bool
   | .returnBytes _ | .returnStorageWords _ | .emit _ _ | .rawLog _ _ _
   | .externalCallBind _ _ _ | .ecm _ _ => true
   | .letVar _ _ | .assignVar _ _ | .setStorage _ _ | .setStorageAddr _ _
-  | .require _ _ | .return _ | .mstore _ _ | .tstore _ _ | .stop
+  | .require _ _ | .return _ | .mstore _ _ | .stop
   | .setMapping _ _ _ | .setMappingWord _ _ _ _
   | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
   | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _ | .setMappingChain _ _ _
@@ -414,10 +414,10 @@ def stmtTouchesUnsupportedCallSurface : Stmt → Bool
   | .require cond _ | .return cond =>
       exprTouchesUnsupportedCallSurface cond
   | .internalCall _ _ | .internalCallAssign _ _ _ => true
-  | .mstore _ _ | .tstore _ _ | .calldatacopy _ _ _
+  | .tstore _ _ | .calldatacopy _ _ _
   | .returndataCopy _ _ _ | .revertReturndata | .externalCallBind _ _ _
   | .ecm _ _ => true
-  | .stop | .setStorageAddr _ _
+  | .stop | .setStorageAddr _ _ | .mstore _ _
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
@@ -587,9 +587,9 @@ def stmtTouchesUnsupportedLowLevelSurface : Stmt → Bool
       exprTouchesUnsupportedLowLevelSurface value
   | .require cond _ | .return cond =>
       exprTouchesUnsupportedLowLevelSurface cond
-  | .mstore _ _ | .tstore _ _ | .calldatacopy _ _ _
+  | .tstore _ _ | .calldatacopy _ _ _
   | .returndataCopy _ _ _ | .revertReturndata => true
-  | .stop | .setStorageAddr _ _
+  | .stop | .setStorageAddr _ _ | .mstore _ _
   | .internalCall _ _ | .internalCallAssign _ _ _ | .externalCallBind _ _ _
   | .ecm _ _ | .setMapping _ _ _ | .setMappingWord _ _ _ _
   | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
@@ -614,8 +614,8 @@ def stmtTouchesUnsupportedContractSurface (stmt : Stmt) : Bool :=
       exprTouchesUnsupportedContractSurface value
   | .require cond _ | .return cond =>
       exprTouchesUnsupportedContractSurface cond
-  | .mstore _ _ | .tstore _ _ => true
-  | .stop => false
+  | .tstore _ _ => true
+  | .stop | .mstore _ _ => false
   | .ite _ _ _ => true
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
@@ -1390,6 +1390,18 @@ private theorem supportedStmtList_setStorageAddrSingleSlot_helperSurfaceClosed
     exprTouchesUnsupportedHelperSurface,
     exprCompileCore_helperSurfaceClosed hvalue]
 
+private theorem supportedStmtList_mstoreSingle_helperSurfaceClosed
+    {offset value : Expr}
+    (hoffset : FunctionBody.ExprCompileCore offset)
+    (hvalue : FunctionBody.ExprCompileCore value) :
+    stmtListTouchesUnsupportedHelperSurface
+      [Stmt.mstore offset value] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface,
+    exprCompileCore_helperSurfaceClosed hoffset,
+    exprCompileCore_helperSurfaceClosed hvalue]
+
 private theorem supportedStmtList_letMapping_helperSurfaceClosed
     {tmp fieldName : String}
     {key : Expr}
@@ -1608,6 +1620,8 @@ theorem SupportedStmtList.helperSurfaceClosed
         exprTouchesUnsupportedHelperSurface]
   | setStorageAddrSingleSlot hcore hinScope hfind =>
       exact supportedStmtList_setStorageAddrSingleSlot_helperSurfaceClosed hcore
+  | mstoreSingle hoffset hscopeOffset hvalue hscopeValue =>
+      exact supportedStmtList_mstoreSingle_helperSurfaceClosed hoffset hvalue
   | letStorageField hfind => exact supportedStmtList_letStorageField_helperSurfaceClosed
   | returnMapping hkey hscope hslot => exact supportedStmtList_returnMapping_helperSurfaceClosed hkey
   | letMapping hkey hscope hslot => exact supportedStmtList_letMapping_helperSurfaceClosed hkey
@@ -2933,7 +2947,7 @@ theorem SupportedSpecExceptMappingWrites.selectorFunctionReturnsSupported
 
 @[simp] theorem stmtTouchesUnsupportedContractSurface_mstore
     (offset value : Expr) :
-    stmtTouchesUnsupportedContractSurface (.mstore offset value) = true := by
+    stmtTouchesUnsupportedContractSurface (.mstore offset value) = false := by
   simp [stmtTouchesUnsupportedContractSurface, stmtTouchesUnsupportedCoreSurface,
     stmtTouchesUnsupportedStateSurface, stmtTouchesUnsupportedCallSurface,
     stmtTouchesUnsupportedEffectSurface]

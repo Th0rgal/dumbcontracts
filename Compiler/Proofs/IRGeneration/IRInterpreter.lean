@@ -1245,6 +1245,33 @@ theorem execIRStmtWithInternals_eq_execIRStmt_of_stmtListCompatibility
       simp [execIRStmtsWithInternals, execIRStmts, hwith, hlegacy] at hsingleton ⊢ <;>
       simpa using hsingleton
 
+/-- The helper-free conservative-extension interface is now machine-assembled from
+the already-proved expr layer plus a single stmt compatibility theorem. This
+makes the remaining compiled-side blocker literally one interface field rather
+than a loose collection of downstream obligations. -/
+theorem interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtCompatibility
+    (contract : IRContract)
+    (hstmt :
+      contract.internalFunctions = [] →
+        ∀ fuel state stmt,
+          LegacyCompatibleExternalStmt stmt →
+            execIRStmtWithInternals contract fuel state stmt =
+              match execIRStmt fuel state stmt with
+              | .continue next => .continue next
+              | .return value next => .return value next
+              | .stop next => .stop next
+              | .revert next => .revert next) :
+    InterpretIRWithInternalsZeroConservativeExtensionInterfaces contract := by
+  refine
+    { exprCompatibility := evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract
+      exprListCompatibility := evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract
+      stmtCompatibility := hstmt
+      stmtListCompatibility :=
+        execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility contract hstmt
+      functionCompatibility :=
+        execIRFunctionWithInternals_eq_execIRFunction_of_stmtListCompatibility contract
+          (execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility contract hstmt) }
+
 /-- Shared transaction-context initialization used by both legacy and helper-aware
 top-level IR interpreters. Making this explicit removes boilerplate from the
 remaining conservative-extension proof target. -/

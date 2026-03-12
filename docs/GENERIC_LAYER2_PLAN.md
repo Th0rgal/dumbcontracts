@@ -297,6 +297,10 @@ now sits under the post-generic widening/completeness plan in
   `evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal`, and the wrapper theorem
   `InterpretIRWithInternalsZeroConservativeExtensionExprInterfaces`;
   `IRInterpreter.lean` now also proves
+  `interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtCompatibility`,
+  so the full helper-free conservative-extension interface object is assembled
+  from those expr lemmas plus a single stmt theorem;
+  `IRInterpreter.lean` now also proves
   `execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility`,
   `execIRFunctionWithInternals_eq_execIRFunction_of_stmtCompatibility`,
   `interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtCompatibility`,

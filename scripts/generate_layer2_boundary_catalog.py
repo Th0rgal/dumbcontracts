@@ -159,7 +159,7 @@ def build_catalog() -> dict:
                 "compiled_side_blocker_issue": 1638,
                 "compiled_target_compatibility_subset": {
                     "name": "legacy_compatible_external_body_yul_subset",
-                    "status": "expr_and_stmt_list_layers_reduce_to_stmt",
+                    "status": "full_interface_reduces_to_stmt",
                     "source": (
                         "Compiler.Proofs.IRGeneration.IRInterpreter."
                         "LegacyCompatibleExternalStmtList"
@@ -185,16 +185,24 @@ def build_catalog() -> dict:
                         "Compiler.Proofs.IRGeneration.IRInterpreter."
                         "InterpretIRWithInternalsZeroConservativeExtensionInterfaces"
                     ),
+                    "interface_builder_surface": (
+                        "Compiler.Proofs.IRGeneration.IRInterpreter."
+                        "interpretIRWithInternalsZeroConservativeExtensionInterfaces_"
+                        "of_stmtCompatibility"
+                    ),
                     "required_goal": (
                         "finish the now-explicit zero-helper-fuel conservative-"
                         "extension path for helper-free runtime contracts with "
                         "legacy-compatible external bodies: expr and expr-list "
                         "compatibility are proved, the shared transaction-"
                         "context step is factored through applyIRTransactionContext, "
-                        "and IRInterpreter.lean now also proves that stmt-list "
-                        "compatibility, function compatibility, the dispatch-"
-                        "local selected-function theorem, and the contract-"
-                        "level goal all reduce to stmt compatibility via "
+                        "and IRInterpreter.lean now also proves that the full "
+                        "helper-free conservative-extension interface object, "
+                        "stmt-list compatibility, function compatibility, the "
+                        "dispatch-local selected-function theorem, and the "
+                        "contract-level goal all reduce to stmt compatibility via "
+                        "interpretIRWithInternalsZeroConservativeExtensionInterfaces_"
+                        "of_stmtCompatibility, "
                         "execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility, "
                         "execIRFunctionWithInternals_eq_execIRFunction_of_stmtCompatibility, "
                         "interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_"
@@ -230,10 +238,12 @@ def build_catalog() -> dict:
                     "InterpretIRWithInternalsZeroConservativeExtensionInterfaces "
                     "for helper-free runtime contracts already built by "
                     "Dispatch.runtimeContractOfFunctions, using the already-"
-                    "proved expr / expr-list compatibility. The stmt-list, "
-                    "function, dispatch-local, and contract-level helper-free "
-                    "conservative-extension theorems then follow by the "
-                    "composition lemmas "
+                    "proved expr / expr-list compatibility. The full interface "
+                    "object plus the stmt-list, function, dispatch-local, and "
+                    "contract-level helper-free conservative-extension theorems "
+                    "then follow by the composition lemmas "
+                    "interpretIRWithInternalsZeroConservativeExtensionInterfaces_"
+                    "of_stmtCompatibility, "
                     "execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility, "
                     "execIRFunctionWithInternals_eq_execIRFunction_of_stmtCompatibility, "
                     "interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_"

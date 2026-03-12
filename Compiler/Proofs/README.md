@@ -112,6 +112,11 @@ work is now split into:
   `InterpretIRWithInternalsZeroConservativeExtensionGoal` plus an explicit
   legacy-compatibility witness instead of a raw equality, including
   `compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal`
+- an interface-builder theorem
+  `interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtCompatibility`
+  in `IRInterpreter.lean`, which assembles the full helper-free conservative-
+  extension interface object from the already-proved expr / expr-list lemmas
+  plus one stmt theorem
 - a dedicated world-preservation hook for expression-position helper callees
 - a strictly decreasing helper-rank interface for direct callees, so future
   helper composition can target a well-founded measure instead of raw fuel

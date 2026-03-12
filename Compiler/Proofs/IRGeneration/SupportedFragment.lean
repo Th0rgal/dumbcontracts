@@ -33,12 +33,28 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       {stmts : List Stmt} :
       FunctionBody.StmtListTerminalCore scope stmts →
       SupportedStmtList fields scope stmts
+  | setStorageSingleSlot
+      {scope : List String}
+      {fieldName : String}
+      {value : Expr}
+      {slot : Nat} :
+      FunctionBody.ExprCompileCore value →
+      FunctionBody.exprBoundNamesInScope value scope →
+      findFieldWithResolvedSlot fields fieldName =
+        some ({ name := fieldName, ty := FieldType.uint256 }, slot) →
+      SupportedStmtList fields scope [Stmt.setStorage fieldName value]
   | requireClause
       {scope : List String}
       (clause : RequireLiteralGuardFamilyClause)
       {rest : List Stmt} :
       SupportedStmtList fields scope rest →
       SupportedStmtList fields scope (clause.toStmt :: rest)
+  | append
+      {scope : List String}
+      {prefix suffix : List Stmt} :
+      SupportedStmtList fields scope prefix →
+      SupportedStmtList fields (List.foldl stmtNextScope scope prefix) suffix →
+      SupportedStmtList fields scope (prefix ++ suffix)
   | legacyTail
       {scope : List String}
       (tail : RequireFamilyClausesTail fields)

@@ -4720,6 +4720,26 @@ private theorem stmtListGenericCore_of_supportedStmtList_legacyTail_of_surface
       (Bool.or_eq_false.mp hsplit).1)
     (ih (Bool.or_eq_false.mp hsplit).2)
 
+private theorem stmtListGenericCore_of_supportedStmtList_append_of_surface
+    {fields : List Field}
+    {scope prefix suffix : List Stmt}
+    (hprefix : SupportedStmtList fields scope prefix)
+    (hsuffix : SupportedStmtList fields (List.foldl stmtNextScope scope prefix) suffix)
+    (ihPrefix : stmtListTouchesUnsupportedContractSurface prefix = false →
+      StmtListGenericCore fields scope prefix)
+    (ihSuffix : stmtListTouchesUnsupportedContractSurface suffix = false →
+      StmtListGenericCore fields (List.foldl stmtNextScope scope prefix) suffix)
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface (prefix ++ suffix) = false) :
+    StmtListGenericCore fields scope (prefix ++ suffix) := by
+  have hsplit :
+      stmtListTouchesUnsupportedContractSurface prefix ||
+        stmtListTouchesUnsupportedContractSurface suffix = false := by
+    simpa [stmtListTouchesUnsupportedContractSurface_append] using hsurface
+  exact stmtListGenericCore_append
+    (ihPrefix (Bool.or_eq_false.mp hsplit).1)
+    (ihSuffix (Bool.or_eq_false.mp hsplit).2)
+
 theorem stmtListGenericCore_of_supportedStmtList_of_surface
     {fields : List Field}
     {scope : List String}
@@ -4733,6 +4753,14 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
       exact stmtListGenericCore_of_stmtListCompileCore hcore
   | terminalCore hterminal =>
       exact stmtListGenericCore_of_stmtListTerminalCore hterminal
+  | setStorageSingleSlot hcore hinScope hfind =>
+      exact stmtListGenericCore_singleton_setStorage_singleSlot
+        (fields := fields)
+        (scope := scope)
+        (hnoConflict := hnoConflict)
+        (hfind := hfind)
+        (hcore := hcore)
+        (hinScope := hinScope)
   | requireClause clause hrest ih =>
       have hsplit :
           stmtTouchesUnsupportedContractSurface clause.toStmt ||
@@ -4744,6 +4772,9 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
             (fields := fields) (scope := scope) clause)
         (by
           simpa using ih (Bool.or_eq_false.mp hsplit).2)
+  | append hprefix hsuffix ihPrefix ihSuffix =>
+      exact stmtListGenericCore_of_supportedStmtList_append_of_surface
+        hprefix hsuffix ihPrefix ihSuffix hsurface
   | @legacyTail _ _ tail rest htail ih =>
       exact stmtListGenericCore_of_supportedStmtList_legacyTail_of_surface
         (fields := fields)

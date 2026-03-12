@@ -1239,12 +1239,18 @@ theorem SupportedStmtList.helperSurfaceClosed
       exact stmtListCompileCore_helperSurfaceClosed hcore
   | terminalCore hterminal =>
       exact stmtListTerminalCore_helperSurfaceClosed hterminal
+  | setStorageSingleSlot hcore hinScope hfind =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface]
   | requireClause clause hrest ih =>
       simp [stmtListTouchesUnsupportedHelperSurface,
         RequireLiteralGuardFamilyClause.toStmt,
         stmtTouchesUnsupportedHelperSurface,
         exprTouchesUnsupportedHelperSurface,
         ih]
+  | append hprefix hsuffix ihPrefix ihSuffix =>
+      simp [stmtListTouchesUnsupportedHelperSurface_append, ihPrefix, ihSuffix]
   | legacyTail tail htail ih =>
       simpa [stmtListTouchesUnsupportedHelperSurface,
         requireFamilyClausesTail_helperSurfaceClosed, ih]

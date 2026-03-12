@@ -58,7 +58,8 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "`interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtSubgoals`",
             "`compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal`",
             "total fuel-indexed helper-aware IR semantics",
-            "special expression-statement cases (`sstore`, `mstore`, `return`, `revert`) plus nested `if`/`block` transport",
+            "direct helper-free lemmas for `mstore`, `revert`, `return`, and mapping-slot `sstore`",
+            "full `expr` compatibility theorem plus nested `if`/`block` transport",
         ],
         "ROADMAP": [
             "`artifacts/layer2_boundary_catalog.json`",
@@ -73,7 +74,8 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "`interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtSubgoals`",
             "`compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal`",
             "total fuel-indexed helper-aware IR semantics",
-            "special expression-statement cases (`sstore`, `mstore`, `return`, `revert`) plus nested `if`/`block` transport",
+            "direct helper-free lemmas for `mstore`, `revert`, `return`, and mapping-slot `sstore`",
+            "full `expr` compatibility theorem plus nested `if`/`block` transport",
             "[#1638]",
         ],
         "VERIFICATION_STATUS": [
@@ -89,7 +91,8 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "`interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtSubgoals`",
             "`compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal`",
             "total fuel-indexed helper-aware IR semantics",
-            "special expression-statement cases (`sstore`, `mstore`, `return`, `revert`) plus nested `if`/`block` transport",
+            "direct helper-free lemmas for `mstore`, `revert`, `return`, and mapping-slot `sstore`",
+            "full `expr` compatibility theorem plus nested `if`/`block` transport",
             "[#1638]",
         ],
         "COMPILER_PROOFS_README": [
@@ -105,7 +108,8 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "`interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtSubgoals`",
             "`compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal`",
             "total fuel-indexed helper-aware IR semantics",
-            "special expression-statement cases (`sstore`, `mstore`, `return`, `revert`) plus nested `if`/`block` transport",
+            "direct helper-free lemmas for `mstore`, `revert`, `return`, and mapping-slot `sstore`",
+            "full `expr` compatibility theorem plus nested `if`/`block` transport",
             "[#1638]",
         ],
     }

@@ -312,8 +312,10 @@ now sits under the post-generic widening/completeness plan in
   remaining independent proof tasks;
   the remaining compiled-side proof step is therefore to fill
   `InterpretIRWithInternalsZeroConservativeExtensionStmtSubgoals`,
-  concentrated in the special expression-statement cases (`sstore`, `mstore`,
-  `return`, `revert`) plus nested `if`/`block` transport on that subset,
+  where `IRInterpreter.lean` now already provides direct helper-free lemmas for
+  `mstore`, `revert`, `return`, and mapping-slot `sstore`, leaving the remaining
+  assembly as the full `expr` compatibility theorem plus nested `if`/`block`
+  transport on that subset,
   after which the conservative-extension goal from legacy `interpretIR` to
   `interpretIRWithInternals` on that subset follows by composition,
   and `Function.lean`, `Dispatch.lean`, and `Contract.lean` now already expose

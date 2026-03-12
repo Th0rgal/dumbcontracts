@@ -168,9 +168,10 @@ so stmt-list compatibility, function compatibility, the dispatch-local theorem,
 and the contract-level theorem all reduce to a named stmt-subgoal interface.
 That leaves the remaining proof work as the fields of
 `InterpretIRWithInternalsZeroConservativeExtensionStmtSubgoals` for
-`runtimeContractOfFunctions`-style contracts over the subset, concentrated in
-the special expression-statement cases (`sstore`, `mstore`, `return`,
-`revert`) plus nested `if`/`block` transport. After that, the
+`runtimeContractOfFunctions`-style contracts over the subset. `IRInterpreter.lean`
+now already exposes direct helper-free lemmas for `mstore`, `revert`, `return`,
+and mapping-slot `sstore`, so the remaining assembly is the full `expr`
+compatibility theorem plus nested `if`/`block` transport. After that, the
 broader theorem stack can instantiate the already-defined helper-aware wrapper
 theorems rather than requiring another theorem-interface refactor.
 The helper-aware compiled target remains available as total fuel-indexed

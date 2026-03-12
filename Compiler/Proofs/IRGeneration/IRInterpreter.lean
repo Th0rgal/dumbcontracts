@@ -1130,6 +1130,94 @@ theorem execIRStmtWithInternals_sstore_mappingSlot_succ_of_no_internal
     evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal,
     hbase, hkey, hval]
 
+/-- Helper-free helper-aware execution also preserves legacy `mstore` semantics.
+This isolates `mstore` as a closed compiled-side subcase rather than leaving it
+implicit inside the larger stmt-compatibility theorem. -/
+theorem execIRStmtWithInternals_eq_execIRStmt_mstore_of_no_internal
+    (contract : IRContract)
+    (hinternal : contract.internalFunctions = [])
+    (fuel : Nat) (state : IRState)
+    (offsetExpr valExpr : YulExpr) :
+    execIRStmtWithInternals contract fuel state
+      (YulStmt.expr (YulExpr.call "mstore" [offsetExpr, valExpr])) =
+        match execIRStmt fuel state
+          (YulStmt.expr (YulExpr.call "mstore" [offsetExpr, valExpr])) with
+        | .continue next => .continue next
+        | .return value next => .return value next
+        | .stop next => .stop next
+        | .revert next => .revert next := by
+  cases fuel with
+  | zero =>
+      simp [execIRStmtWithInternals, execIRStmt]
+  | succ fuel =>
+      cases hoffset : evalIRExpr state offsetExpr <;>
+        cases hval : evalIRExpr state valExpr <;>
+          simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+            evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal,
+            hoffset, hval]
+
+/-- Helper-free helper-aware execution preserves legacy `revert` statement
+semantics. -/
+theorem execIRStmtWithInternals_eq_execIRStmt_revert_of_no_internal
+    (contract : IRContract)
+    (hinternal : contract.internalFunctions = [])
+    (fuel : Nat) (state : IRState)
+    (offsetExpr sizeExpr : YulExpr) :
+    execIRStmtWithInternals contract fuel state
+      (YulStmt.expr (YulExpr.call "revert" [offsetExpr, sizeExpr])) =
+        match execIRStmt fuel state
+          (YulStmt.expr (YulExpr.call "revert" [offsetExpr, sizeExpr])) with
+        | .continue next => .continue next
+        | .return value next => .return value next
+        | .stop next => .stop next
+        | .revert next => .revert next := by
+  cases fuel with
+  | zero =>
+      simp [execIRStmtWithInternals, execIRStmt]
+  | succ fuel =>
+      cases hoffset : evalIRExpr state offsetExpr <;>
+        cases hsize : evalIRExpr state sizeExpr <;>
+          simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+            evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal,
+            hoffset, hsize]
+
+/-- Helper-free helper-aware execution preserves legacy `return` statement
+semantics. -/
+theorem execIRStmtWithInternals_eq_execIRStmt_return_of_no_internal
+    (contract : IRContract)
+    (hinternal : contract.internalFunctions = [])
+    (fuel : Nat) (state : IRState)
+    (offsetExpr sizeExpr : YulExpr) :
+    execIRStmtWithInternals contract fuel state
+      (YulStmt.expr (YulExpr.call "return" [offsetExpr, sizeExpr])) =
+        match execIRStmt fuel state
+          (YulStmt.expr (YulExpr.call "return" [offsetExpr, sizeExpr])) with
+        | .continue next => .continue next
+        | .return value next => .return value next
+        | .stop next => .stop next
+        | .revert next => .revert next := by
+  cases fuel with
+  | zero =>
+      simp [execIRStmtWithInternals, execIRStmt]
+  | succ fuel =>
+      cases hoffset : evalIRExpr state offsetExpr with
+      | none =>
+          cases hsize : evalIRExpr state sizeExpr <;>
+            simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+              evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal,
+              hoffset, hsize]
+      | some offset =>
+          cases hsize : evalIRExpr state sizeExpr with
+          | none =>
+              simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+                evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal,
+                hoffset, hsize]
+          | some size =>
+              by_cases h32 : size = 32 <;>
+                simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+                  evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal,
+                  hoffset, hsize, h32]
+
 /-- The helper-free conservative-extension interface is now discharged for the
 expression layer: both single-expression and expression-list helper-aware
 evaluation collapse definitionally to the legacy helper-free evaluator when the
@@ -1266,8 +1354,8 @@ structure InterpretIRWithInternalsZeroConservativeExtensionStmtSubgoals
             | .revert next => .revert next
 
 /-- The old prose-only description of the remaining stmt blocker is now a real
-proof interface object. Filling these three fields is sufficient to recover the
-full single-statement compatibility theorem. -/
+proof interface object. Filling these three fields is sufficient to recover the full
+single-statement compatibility theorem. -/
 theorem execIRStmtWithInternals_eq_execIRStmt_of_stmtSubgoals
     (contract : IRContract)
     (hsubgoals :

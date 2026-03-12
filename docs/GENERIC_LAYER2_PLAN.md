@@ -272,16 +272,21 @@ now sits under the post-generic widening/completeness plan in
   boundaries are control-flow complete rather than top-level-only, and
   compatibility lemmas still prove that the helper-aware semantics collapses to
   the existing helper-free semantics on the current `SupportedSpec` fragment.
-  That source-side seam is now named directly as
+  That helper-free collapse seam is now named directly as
   `SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal`, with
   goal wrappers `supported_function_body_correct_from_exact_state_generic_with_helpers_goal`
-  and `supported_function_correct_with_helper_proofs_goal`
+  and `supported_function_correct_with_helper_proofs_goal`; the exact future
+  helper-rich body target is now exposed separately as
+  `SupportedFunctionBodyWithHelpersIRPreservationGoal`, feeding
+  `supported_function_correct_with_helper_proofs_body_goal`
 - the remaining helper blocker is now pinned down more precisely in
   [`artifacts/layer2_boundary_catalog.json`](../artifacts/layer2_boundary_catalog.json):
   callers still derive generic body proofs through the helper-free `SupportedStmtList` witness,
   the generic body theorem now already targets the helper-aware source semantics family under the current fail-closed helper gate,
-  but summary-soundness/rank evidence is still not consumed inside a proof of
-  that named source-side goal,
+  but summary-soundness/rank evidence is still not consumed inside a direct
+  proof of `SupportedFunctionBodyWithHelpersIRPreservationGoal`; the older
+  conservative-extension goal remains only the current helper-free discharge
+  path,
   `IRInterpreter.lean` now formalizes the intended legacy-compatible external-body Yul subset as
   `LegacyCompatibleExternalStmtList`,
   and `IRInterpreter.lean` now also encodes the exact first compiled-side retarget theorem as
@@ -376,8 +381,12 @@ The first theorem does not need to cover everything. It may explicitly leave out
   without any extra caller-supplied compiled-side premise. The remaining work
   on today’s theorem domain is therefore no longer the helper-free compiled-side
   witness, but consuming helper-summary soundness/rank evidence through
-  `SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal` so
-  `calls.helperCompatibility` can disappear. The longer-term widening step still
+  `SupportedFunctionBodyWithHelpersIRPreservationGoal` so
+  `calls.helperCompatibility` can disappear from the theorem path. The
+  helper-free collapse goal
+  `SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal` remains
+  only as the current discharge path on today’s fragment. The longer-term
+  widening step still
   needs a weaker compiled-side retarget boundary that can tolerate helper tables
   without requiring `internalFunctions = []` once helper-rich features move
   inside the theorem domain. The helper-aware interpreter remains a total

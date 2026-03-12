@@ -3716,9 +3716,36 @@ theorem supported_function_body_correct_from_exact_state_generic
   · simpa [hfuel] using rfl
   · simpa [hfuel, sizeSlack] using hgenericSem
 
+/-- Exact helper-aware body/IR preservation target for the non-core generic
+body theorem. This is the future source-side seam for helper-rich bodies: prove
+the helper-aware source body semantics directly against the compiled IR body,
+rather than trying to collapse helper-aware source semantics back to the legacy
+helper-free source semantics. -/
+def SupportedFunctionBodyWithHelpersIRPreservationGoal
+    (model : CompilationModel)
+    (fn : FunctionSpec)
+    (bodyStmts : List YulStmt)
+    (helperFuel : Nat)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (state : IRState)
+    (bindings : List (String × Nat))
+    (extraFuel : Nat) : Prop :=
+  ∃ sourceResult irExec,
+    SourceSemantics.execStmtListWithHelpers
+      model
+      (SourceSemantics.effectiveFields model)
+      helperFuel
+      { world := SourceSemantics.withTransactionContext initialWorld tx
+        bindings := bindings }
+      fn.body = sourceResult ∧
+    execIRStmts (bodyStmts.length + extraFuel + 1) state bodyStmts = irExec ∧
+    FunctionBody.stmtResultMatchesIRExec
+      (SourceSemantics.effectiveFields model) sourceResult irExec
+
 /-- Goal-based helper-aware wrapper around the generic body/IR preservation
-theorem. This isolates the remaining source-side helper-composition seam as an
-explicit conservative-extension proposition over `execStmtListWithHelpers`. -/
+theorem. This keeps the current helper-free collapse available as a corollary,
+while making the direct helper-aware body/IR target explicit in Lean. -/
 theorem supported_function_body_correct_from_exact_state_generic_with_helpers_goal
     (model : CompilationModel)
     (fn : FunctionSpec)
@@ -3760,17 +3787,8 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_go
         state)
     (hstateBindings :
       FunctionBody.bindingsExactlyMatchIRVars bindings state) :
-    ∃ sourceResult irExec,
-      SourceSemantics.execStmtListWithHelpers
-        model
-        (SourceSemantics.effectiveFields model)
-        helperFuel
-        { world := SourceSemantics.withTransactionContext initialWorld tx
-          bindings := bindings }
-        fn.body = sourceResult ∧
-      execIRStmts (bodyStmts.length + extraFuel + 1) state bodyStmts = irExec ∧
-      FunctionBody.stmtResultMatchesIRExec
-        (SourceSemantics.effectiveFields model) sourceResult irExec := by
+    SupportedFunctionBodyWithHelpersIRPreservationGoal
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
   rcases supported_function_body_correct_from_exact_state_generic
       model fn bodyStmts tx initialWorld state bindings extraFuel hextraFuel
       hnormalized hnoEvents hnoErrors hgeneric hbodyCompile hscope hbounded
@@ -3820,17 +3838,8 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers
         state)
     (hstateBindings :
       FunctionBody.bindingsExactlyMatchIRVars bindings state) :
-    ∃ sourceResult irExec,
-      SourceSemantics.execStmtListWithHelpers
-        model
-        (SourceSemantics.effectiveFields model)
-        helperFuel
-        { world := SourceSemantics.withTransactionContext initialWorld tx
-          bindings := bindings }
-        fn.body = sourceResult ∧
-      execIRStmts (bodyStmts.length + extraFuel + 1) state bodyStmts = irExec ∧
-      FunctionBody.stmtResultMatchesIRExec
-        (SourceSemantics.effectiveFields model) sourceResult irExec := by
+    SupportedFunctionBodyWithHelpersIRPreservationGoal
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
   have hhelperGoal :
       SourceSemantics.ExecStmtListWithHelpersConservativeExtensionGoal
         model

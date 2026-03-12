@@ -255,22 +255,32 @@ def build_catalog() -> dict:
                         "Compiler.Proofs.IRGeneration.SourceSemantics."
                         "ExecStmtListWithHelpersConservativeExtensionGoal"
                     ),
+                    "direct_body_goal": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "SupportedFunctionBodyWithHelpersIRPreservationGoal"
+                    ),
                     "body_goal_wrapper": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "supported_function_body_correct_from_exact_state_"
                         "generic_with_helpers_goal"
+                    ),
+                    "function_body_goal_wrapper": (
+                        "Compiler.Proofs.IRGeneration.Function."
+                        "supported_function_correct_with_helper_proofs_body_goal"
                     ),
                     "function_goal_wrapper": (
                         "Compiler.Proofs.IRGeneration.Function."
                         "supported_function_correct_with_helper_proofs_goal"
                     ),
                     "status": (
-                        "the remaining source-side helper-composition seam is "
-                        "now an explicit goal surface consumed by the body- "
-                        "and function-level helper-aware theorems; the legacy "
-                        "helperCompatibility gate is retained only as the "
-                        "current way to discharge that goal on today’s "
-                        "supported fragment"
+                        "the exact future source-side helper seam is now the "
+                        "direct helper-aware body/IR goal "
+                        "SupportedFunctionBodyWithHelpersIRPreservationGoal, "
+                        "which feeds the function-level theorem "
+                        "supported_function_correct_with_helper_proofs_body_goal; "
+                        "the legacy conservative-extension goal remains only "
+                        "as the current helper-free wrapper used to discharge "
+                        "that body goal on today’s supported fragment"
                     ),
                 },
                 "decreasing_rank_measure": (
@@ -292,7 +302,8 @@ def build_catalog() -> dict:
                     "The immediate blocker on today’s theorem domain is "
                     "therefore no longer a helper-free compiled-side witness, "
                     "but consuming helper-summary soundness/rank evidence in "
-                    "the body/IR composition interface so "
+                    "a direct proof of "
+                    "SupportedFunctionBodyWithHelpersIRPreservationGoal so "
                     "calls.helperCompatibility can disappear. The longer-term "
                     "widening step still needs a weaker compiled-side retarget "
                     "boundary so helper tables can remain present without "

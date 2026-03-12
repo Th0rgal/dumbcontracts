@@ -245,6 +245,12 @@ ALLOWLIST: set[str] = {
     "interpretContract_correct_of_compiled_functions_with_helper_proofs",
     "compileFunctionSpec_correct_generic_with_helper_proofs",
     "compile_preserves_semantics_with_helper_proofs",
+    # Issue #1630 / PR #1639 follow-up — direct helper-aware function theorem:
+    # this theorem factors the exact future helper seam out of the existing
+    # non-core function proof while preserving the compiler-facing API shape.
+    # Its length comes from one-time transport/fuel assembly that was already
+    # present in the surrounding wrapper; splitting further is follow-up cleanup.
+    "supported_function_correct_with_helper_proofs_body_goal",
     # Issue #1638 / PR #1639 — helper-aware compiled-target retarget wrappers:
     # these theorems preserve the public Layer 2 theorem signatures while
     # swapping in the helper-aware compiled semantics target or goal surface.

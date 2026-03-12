@@ -1173,18 +1173,6 @@ private theorem requireFamilyClausesTailProgram_helperSurfaceClosed
           stmtTouchesUnsupportedHelperSurface,
           exprTouchesUnsupportedHelperSurface]
 
-private theorem legacyEmit_helperSurfaceClosed
-    (clauses : List RequireLiteralGuardFamilyClause)
-    (eventName : String)
-    (args : List Nat) :
-    stmtListTouchesUnsupportedHelperSurface
-      (clauses.map RequireLiteralGuardFamilyClause.toStmt ++
-        [Stmt.emit eventName (args.map Expr.literal)]) = false := by
-  simp [stmtListTouchesUnsupportedHelperSurface,
-    RequireLiteralGuardFamilyClause.toStmt,
-    stmtTouchesUnsupportedHelperSurface,
-    exprTouchesUnsupportedHelperSurface]
-
 private theorem stmtListCompileCore_helperSurfaceClosed
     {scope : List String}
     {stmts : List Stmt}
@@ -1258,10 +1246,6 @@ theorem SupportedStmtList.helperSurfaceClosed
       simpa [stmtListTouchesUnsupportedHelperSurface,
         requireFamilyClausesTailProgram_helperSurfaceClosed, ih]
         using (requireFamilyClausesTailProgram_helperSurfaceClosed program)
-  | legacyEmit clauses eventName args _ htail ih =>
-      simpa [stmtListTouchesUnsupportedHelperSurface,
-        legacyEmit_helperSurfaceClosed, ih]
-        using (legacyEmit_helperSurfaceClosed clauses eventName args)
 
 theorem exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
     {expr : Expr}

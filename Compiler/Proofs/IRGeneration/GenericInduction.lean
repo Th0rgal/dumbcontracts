@@ -4681,31 +4681,6 @@ private theorem stmtListGenericCore_of_supportedStmtList_legacyProgram_of_surfac
       (Bool.or_eq_false.mp hsplit).1)
     (ih (Bool.or_eq_false.mp hsplit).2)
 
-private theorem false_of_supportedStmtList_legacyEmit_surface
-    (clauses : List Verity.Core.Free.RequireLiteralGuardFamilyClause)
-    (eventName : String)
-    (args : List Nat)
-    (rest : List Stmt)
-    (hsurface :
-      stmtListTouchesUnsupportedContractSurface
-        ((clauses.map Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt ++
-          [Stmt.emit eventName (args.map Expr.literal)]) ++ rest) = false) :
-    False := by
-  have hsplit :
-      stmtListTouchesUnsupportedContractSurface
-          (clauses.map Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt ++
-            [Stmt.emit eventName (args.map Expr.literal)]) ||
-        stmtListTouchesUnsupportedContractSurface rest = false := by
-    simpa [stmtListTouchesUnsupportedContractSurface_append] using hsurface
-  have hheadSurface :
-      stmtListTouchesUnsupportedContractSurface
-        (clauses.map Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt ++
-          [Stmt.emit eventName (args.map Expr.literal)]) = false :=
-    (Bool.or_eq_false.mp hsplit).1
-  simp [stmtListTouchesUnsupportedContractSurface,
-    stmtTouchesUnsupportedContractSurface,
-    exprTouchesUnsupportedContractSurface] at hheadSurface
-
 theorem stmtListGenericCore_of_supportedStmtList_of_surface
     {fields : List Field}
     {scope : List String}
@@ -4728,9 +4703,6 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
         htail
         ih
         hsurface
-  | @legacyEmit _ _ clauses eventName args hargs rest htail ih =>
-      exact False.elim
-        (false_of_supportedStmtList_legacyEmit_surface clauses eventName args rest hsurface)
 
 /-- The current supported statement-list witness already suffices for the
 weaker helper-free source-step interface consumed by the exact helper-aware

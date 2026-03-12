@@ -390,11 +390,11 @@ def stmtTouchesUnsupportedStateSurface : Stmt → Bool
       exprTouchesUnsupportedStateSurface count ||
         stmtListTouchesUnsupportedStateSurface body
 
-/-- Weaker Tier 2 state-surface gate used by the singleton mapping-write bridge:
-all existing unsupported stateful forms remain excluded except for the three
-singleton mapping-write heads already covered by dedicated compiled-step
-theorems. -/
+/-- Weaker Tier 2 state-surface gate used by the singleton storage-write bridge:
+all existing unsupported stateful forms remain excluded except for the proved
+singleton mapping-write heads and scalar address-slot writes. -/
 def stmtTouchesUnsupportedStateSurfaceExceptMappingWrites : Stmt → Bool
+  | .setStorageAddr _ _
   | .setMapping _ _ _ | .setMapping2 _ _ _ _ | .setMappingUint _ _ _ => false
   | stmt => stmtTouchesUnsupportedStateSurface stmt
 
@@ -617,12 +617,12 @@ def stmtTouchesUnsupportedContractSurface (stmt : Stmt) : Bool :=
   | .emit _ _ | .internalCall _ _ | .internalCallAssign _ _ _
   | .rawLog _ _ _ | .externalCallBind _ _ _ | .ecm _ _ => true
 
-/-- Weaker contract-surface gate used by the Tier 2 singleton mapping-write
-bridge: ordinary unsupported contract effects remain excluded, but the three
-singleton mapping-write heads already covered by dedicated compiled-step
-theorems are admitted. -/
+/-- Weaker contract-surface gate used by the Tier 2 singleton storage-write
+bridge: ordinary unsupported contract effects remain excluded, but the proved
+singleton mapping-write heads and scalar address-slot writes are admitted. -/
 def stmtTouchesUnsupportedContractSurfaceExceptMappingWrites (stmt : Stmt) : Bool :=
   match stmt with
+  | .setStorageAddr _ _
   | .setMapping _ _ _ | .setMapping2 _ _ _ _ | .setMappingUint _ _ _ => false
   | _ => stmtTouchesUnsupportedContractSurface stmt
 
@@ -1125,7 +1125,8 @@ structure SupportedBodyInterface (spec : CompilationModel) (fn : FunctionSpec) :
   noLocalObligations : fn.localObligations = []
 
 /-- Tier 2 body-level interface that weakens only the state-surface closure to
-admit mapping writes; all other fail-closed boundaries remain unchanged. -/
+admit the currently proved singleton storage-write shapes; all other fail-closed
+boundaries remain unchanged. -/
 structure SupportedBodyInterfaceExceptMappingWrites
     (spec : CompilationModel) (fn : FunctionSpec) : Prop where
   stmtList : SupportedStmtList spec.fields (fn.params.map (·.name)) fn.body
@@ -1146,7 +1147,7 @@ structure SupportedFunction (spec : CompilationModel) (fn : FunctionSpec) : Prop
   body : SupportedBodyInterface spec fn
 
 /-- Tier 2 function-level support witness that weakens only the body state
-surface closure to admit singleton mapping writes. -/
+surface closure to admit the currently proved singleton storage-write shapes. -/
 structure SupportedFunctionExceptMappingWrites
     (spec : CompilationModel) (fn : FunctionSpec) : Prop where
   nonInternal : fn.isInternal = false
@@ -1190,7 +1191,7 @@ structure SupportedSpec (spec : CompilationModel) (selectors : List Nat) : Prop 
     ∀ fn, fn ∈ spec.functions → SupportedFunction spec fn
 
 /-- Tier 2 whole-contract support witness that weakens only the function-body
-state closure to admit singleton mapping writes. -/
+state closure to admit the currently proved singleton storage-write shapes. -/
 structure SupportedSpecExceptMappingWrites
     (spec : CompilationModel) (selectors : List Nat) : Prop where
   invariants : SupportedSpecInvariants spec selectors

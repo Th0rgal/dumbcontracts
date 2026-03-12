@@ -1337,7 +1337,7 @@ theorem compile_preserves_semantics
     (hSupported := hSupported) tx initialWorld] using hcontract
 
 /-- Whole-contract Tier 2 bridge for specs whose selector-dispatched bodies use
-the alternate mapping-write-admitting state interface. This keeps the contract
+the alternate singleton-storage-write state interface. This keeps the contract
 proof on the same generic dispatch skeleton while widening only the function
 correctness theorem it instantiates. -/
 theorem compile_preserves_semantics_except_mapping_writes

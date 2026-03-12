@@ -1463,10 +1463,10 @@ theorem supported_function_correct_with_helper_proofs_body_goal
   simpa [hadequacy] using hfuel'
 
 /-- Function-level Tier 2 bridge for bodies admitted by the alternate
-mapping-write state interface. This keeps the theorem local to one function:
-global normalization and no-event/no-error assumptions remain explicit, while
-the body proof can now use the non-vacuous singleton mapping-write step
-interfaces instead of contradiction. -/
+singleton storage-write state interface. This keeps the theorem local to one
+function: global normalization and no-event/no-error assumptions remain
+explicit, while the body proof can now use the non-vacuous singleton
+mapping-write step interfaces instead of contradiction. -/
 theorem supported_function_correct_with_body_interface_except_mapping_writes
     (model : CompilationModel)
     (fn : FunctionSpec)

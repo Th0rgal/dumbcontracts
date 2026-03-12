@@ -86,6 +86,12 @@ ALLOWLIST: set[str] = {
     "compiledStmtStep_setMappingUint_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping2_singleSlot_of_slotSafety_preserves",
+    # Tier-4 runtime-helper-table packaging: these theorems intentionally keep
+    # the witness-to-lookup extraction and the final IR characterization in one
+    # place so later helper-rank induction can consume a single structured seam
+    # instead of repeating the same `findInternalFunction?` plumbing.
+    "execIRStmtsWithInternals_of_internalCallAssign_compiledHelperWitness",
+    "execIRStmtsWithInternals_of_internalCall_compiledHelperWitness",
     # Tier-2 supported-list bridge with explicit mapping slot-safety hypotheses:
     # long because it keeps the constructor-by-constructor migration from
     # contradiction to construction in one theorem while the broader supported

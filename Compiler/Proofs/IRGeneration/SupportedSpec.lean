@@ -1766,6 +1766,17 @@ theorem SupportedBodyHelperInterface.exprSummaryPreservesWorld
       (hHelpers.summaryContractOfCall hcall) :=
   hHelpers.exprCallsPreserveWorld calleeName hmem
 
+theorem SupportedRuntimeHelperTableInterface.compiledOfCall
+    {spec : CompilationModel}
+    {runtimeContract : IRContract}
+    {fn : FunctionSpec}
+    (hRuntime : SupportedRuntimeHelperTableInterface spec runtimeContract)
+    (hHelpers : SupportedBodyHelperInterface spec fn)
+    {calleeName : String}
+    (hmem : calleeName ∈ helperCallNames fn) :
+    SupportedCompiledInternalHelperWitness spec runtimeContract calleeName :=
+  hRuntime.compiledOfWitness calleeName (hHelpers.summaryOfCall hmem)
+
 theorem stmtListTouchesUnsupportedContractSurface_eq_featureOr
     (stmts : List Stmt) :
     stmtListTouchesUnsupportedContractSurface stmts =

@@ -1146,7 +1146,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_requireClausesThenLetAssignSubSetStorageLocalLiteral  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_requireClausesThenLetAssignMulSetStorageLocalLiteral  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_singleton_requireLiteralGuardFamilyClause  -- private
--- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtLegacyTail_of_surface  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_supportedStmtList_append_of_surface  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_supportedStmtList_requireClause_of_surface  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_ite_surface  -- private
@@ -1161,9 +1160,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_setMappingUintSingle_surface  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_setMappingSingle_surface  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_setMapping2Single_surface  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_rawLogLiterals_surface  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_surface  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop_surface  -- private
--- #print axioms Compiler.Proofs.IRGeneration.false_of_supportedStmtList_legacyTail_surface  -- private
 #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_supportedStmtList_of_surface
 #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeStepInterface_of_supportedStmtList_of_surface
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterface.helperFreeStepInterface
@@ -1410,7 +1409,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.paramNamesNodup
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.paramsSupported
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.returnsSupported
--- #print axioms Compiler.Proofs.IRGeneration.supportedStmtLegacyTail_helperSurfaceClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.exprCompileCore_helperSurfaceClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListCompileCore_helperSurfaceClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListTerminalCore_helperSurfaceClosed  -- private
@@ -1422,6 +1420,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.supportedStmtList_setMappingUintSingle_helperSurfaceClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.supportedStmtList_setMappingSingle_helperSurfaceClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.supportedStmtList_setMapping2Single_helperSurfaceClosed  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.supportedStmtList_rawLogLiterals_helperSurfaceClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_helperSurfaceClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.supportedStmtList_letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop_helperSurfaceClosed  -- private
 #print axioms Compiler.Proofs.IRGeneration.SupportedStmtList.helperSurfaceClosed
@@ -1611,4 +1610,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1480 theorems/lemmas (1159 public, 321 private)
+-- Total: 1479 theorems/lemmas (1159 public, 320 private)

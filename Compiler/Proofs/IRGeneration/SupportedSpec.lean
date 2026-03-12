@@ -1159,16 +1159,6 @@ def SupportedFunction.helperFuel
     (hSupported : SupportedFunction spec fn) : Nat :=
   hSupported.body.calls.helpers.helperRank
 
-private theorem supportedStmtLegacyTail_helperSurfaceClosed
-    {fields : List Field}
-    (tail : SupportedStmtLegacyTail fields) :
-    stmtListTouchesUnsupportedHelperSurface tail.toStmts = false := by
-  cases tail <;>
-    simp [SupportedStmtLegacyTail.toStmts,
-      stmtListTouchesUnsupportedHelperSurface,
-      stmtTouchesUnsupportedHelperSurface,
-      exprTouchesUnsupportedHelperSurface]
-
 private theorem exprCompileCore_helperSurfaceClosed
     {expr : Expr}
     (hcore : FunctionBody.ExprCompileCore expr) :
@@ -1346,6 +1336,15 @@ private theorem supportedStmtList_setMapping2Single_helperSurfaceClosed
     exprCompileCore_helperSurfaceClosed hkey2,
     exprCompileCore_helperSurfaceClosed hvalue]
 
+private theorem supportedStmtList_rawLogLiterals_helperSurfaceClosed
+    {topics : List Nat}
+    {dataOffset dataSize : Nat} :
+    stmtListTouchesUnsupportedHelperSurface
+      [Stmt.rawLog (topics.map Expr.literal) (Expr.literal dataOffset) (Expr.literal dataSize)] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface]
+
 private theorem supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_helperSurfaceClosed
     {ownerField senderVar ownerVar paramName msg1 msg2 : String} :
     stmtListTouchesUnsupportedHelperSurface
@@ -1398,6 +1397,7 @@ theorem SupportedStmtList.helperSurfaceClosed
   | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingUintSingle_helperSurfaceClosed hkey hvalue
   | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingSingle_helperSurfaceClosed hkey hvalue
   | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot => exact supportedStmtList_setMapping2Single_helperSurfaceClosed hkey1 hkey2 hvalue
+  | rawLogLiterals htopics => exact supportedStmtList_rawLogLiterals_helperSurfaceClosed
   | letCallerLetStorageReqEqReqNeqSetStorageParamStop hOwner hne_sv_p hne_ov_p hne_ov_sv =>
       exact supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_helperSurfaceClosed
   | letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop
@@ -1417,10 +1417,6 @@ theorem SupportedStmtList.helperSurfaceClosed
         ihThen, ihElse]
   | append hprefix hsuffix ihPrefix ihSuffix =>
       simp [stmtListTouchesUnsupportedHelperSurface_append, ihPrefix, ihSuffix]
-  | legacyTail tail htail ih =>
-      simpa [stmtListTouchesUnsupportedHelperSurface,
-        supportedStmtLegacyTail_helperSurfaceClosed, ih]
-        using (supportedStmtLegacyTail_helperSurfaceClosed tail)
 
 theorem exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
     {expr : Expr}

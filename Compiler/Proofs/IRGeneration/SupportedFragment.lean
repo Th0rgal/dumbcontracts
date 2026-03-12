@@ -5,9 +5,9 @@ Scoped proof-layer support witness for statement lists.
 
 `SupportedStmtList` is now a compositional public grammar: it can expose either
 the existing generic compile-core / terminal-core statement grammars directly,
-or splice in one of the still-legacy residual tails while the remaining
-unsupported control-flow / mapping-write shapes are being migrated off the
-hardcoded inventory.
+or admit the remaining non-generic singleton / structured statement shapes
+through first-class constructors while the generic-core bridge continues to
+grow.
 -/
 
 namespace Compiler.Proofs.IRGeneration
@@ -16,27 +16,12 @@ open Compiler
 open Compiler.CompilationModel
 open Verity.Core.Free
 
-/-- Residual exact-source tails not yet absorbed by the compositional
-`SupportedStmtList` grammar. Everything left here still depends on unsupported
-contract-surface features such as mapping access or event emission. -/
-inductive SupportedStmtLegacyTail (fields : List Field) : Type where
-  | rawLogLiterals
-      (topics : List Nat) (dataOffset dataSize : Nat)
-      (htopics : topics.length ≤ 4)
-
-def SupportedStmtLegacyTail.toStmts
-    {fields : List Field} (tail : SupportedStmtLegacyTail fields) : List Stmt :=
-  match tail with
-  | .rawLogLiterals topics dataOffset dataSize _ =>
-      [Stmt.rawLog (topics.map Expr.literal) (Expr.literal dataOffset) (Expr.literal dataSize)]
-
 /-- Proof-layer compositional witness for supported statement lists.
 
 The witness is scoped because the generic compile-core grammars track local name
-availability explicitly. Legacy tail-program leaves remain available as a
-transitional constructor so existing non-core storage/write shapes continue to
-fit under the same body interface while the old fragment inventory is
-dismantled. -/
+availability explicitly. The remaining non-generic storage / event shapes are
+admitted directly as individual constructors so callers can still compose them
+with `requireClause`, `ite`, and `append` under the same body interface. -/
 inductive SupportedStmtList (fields : List Field) : List String → List Stmt → Prop where
   | compileCore
       {scope : List String}
@@ -142,6 +127,13 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       FunctionBody.exprBoundNamesInScope value scope →
       findFieldSlot fields fieldName = some slot →
       SupportedStmtList fields scope [Stmt.setMapping2 fieldName key1 key2 value]
+  | rawLogLiterals
+      {scope : List String}
+      {topics : List Nat}
+      {dataOffset dataSize : Nat} :
+      topics.length ≤ 4 →
+      SupportedStmtList fields scope
+        [Stmt.rawLog (topics.map Expr.literal) (Expr.literal dataOffset) (Expr.literal dataSize)]
   | letCallerLetStorageReqEqReqNeqSetStorageParamStop
       {scope : List String}
       {ownerField senderVar ownerVar paramName msg1 msg2 : String}
@@ -205,11 +197,5 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       SupportedStmtList fields scope prefix →
       SupportedStmtList fields (List.foldl stmtNextScope scope prefix) suffix →
       SupportedStmtList fields scope (prefix ++ suffix)
-  | legacyTail
-      {scope : List String}
-      (tail : SupportedStmtLegacyTail fields)
-      {rest : List Stmt} :
-      SupportedStmtList fields (List.foldl stmtNextScope scope tail.toStmts) rest →
-      SupportedStmtList fields scope (tail.toStmts ++ rest)
 
 end Compiler.Proofs.IRGeneration

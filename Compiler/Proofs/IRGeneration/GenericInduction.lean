@@ -4633,23 +4633,6 @@ private theorem stmtListGenericCore_singleton_requireLiteralGuardFamilyClause
               simp [Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt,
                 FunctionBody.exprBoundNames] at hmem)
 
-private theorem false_of_supportedStmtLegacyTail_of_surface
-    {fields : List Field}
-    (tail : SupportedStmtLegacyTail fields)
-    (hsurface :
-      stmtListTouchesUnsupportedContractSurface
-        tail.toStmts = false) :
-    False := by
-  cases tail <;>
-    simp [SupportedStmtLegacyTail.toStmts,
-      stmtListTouchesUnsupportedContractSurface,
-      stmtTouchesUnsupportedContractSurface,
-      exprTouchesUnsupportedContractSurface,
-      exprTouchesUnsupportedCoreSurface,
-      exprTouchesUnsupportedStateSurface,
-      exprTouchesUnsupportedCallSurface,
-      stmtTouchesUnsupportedEffectSurface] at hsurface
-
 private theorem stmtListGenericCore_of_supportedStmtList_append_of_surface
     {fields : List Field}
     {scope prefix suffix : List Stmt}
@@ -4846,6 +4829,23 @@ private theorem false_of_supportedStmtList_setMapping2Single_surface
       exprTouchesUnsupportedContractSurface])
     hsurface
 
+private theorem false_of_supportedStmtList_rawLogLiterals_surface
+    {topics : List Nat}
+    {dataOffset dataSize : Nat}
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface
+        [Stmt.rawLog (topics.map Expr.literal) (Expr.literal dataOffset) (Expr.literal dataSize)] = false) :
+    False :=
+  false_of_supportedStmtList_singleton_stmt_surface
+    (stmt := Stmt.rawLog (topics.map Expr.literal) (Expr.literal dataOffset) (Expr.literal dataSize))
+    (by simp [stmtTouchesUnsupportedContractSurface,
+      exprTouchesUnsupportedContractSurface,
+      exprTouchesUnsupportedCoreSurface,
+      exprTouchesUnsupportedStateSurface,
+      exprTouchesUnsupportedCallSurface,
+      stmtTouchesUnsupportedEffectSurface])
+    hsurface
+
 private theorem false_of_supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_surface
     {ownerField senderVar ownerVar paramName msg1 msg2 : String}
     (hsurface :
@@ -4889,22 +4889,6 @@ private theorem false_of_supportedStmtList_letCallerLetStorageReqEqLetStorageReq
     exprTouchesUnsupportedCallSurface,
     stmtTouchesUnsupportedEffectSurface] at hsurface
 
-private theorem false_of_supportedStmtList_legacyTail_surface
-    {fields : List Field}
-    {tail : SupportedStmtLegacyTail fields}
-    {rest : List Stmt}
-    (hsurface :
-      stmtListTouchesUnsupportedContractSurface (tail.toStmts ++ rest) = false) :
-    False := by
-  have hsplit :
-      stmtListTouchesUnsupportedContractSurface tail.toStmts ||
-        stmtListTouchesUnsupportedContractSurface rest = false := by
-    simpa [stmtListTouchesUnsupportedContractSurface_append] using hsurface
-  exact false_of_supportedStmtLegacyTail_of_surface
-    (fields := fields)
-    tail
-    (Bool.or_eq_false.mp hsplit).1
-
 theorem stmtListGenericCore_of_supportedStmtList_of_surface
     {fields : List Field}
     {scope : List String}
@@ -4927,6 +4911,7 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
   | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMappingUintSingle_surface hsurface)
   | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMappingSingle_surface hsurface)
   | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMapping2Single_surface hsurface)
+  | rawLogLiterals htopics => exact False.elim (false_of_supportedStmtList_rawLogLiterals_surface hsurface)
   | letCallerLetStorageReqEqReqNeqSetStorageParamStop hOwner hne_sv_p hne_ov_p hne_ov_sv =>
       exact False.elim (false_of_supportedStmtList_letCallerLetStorageReqEqReqNeqSetStorageParamStop_surface hsurface)
   | letCallerLetStorageReqEqLetStorageReqNeqSetStorageParamStop
@@ -4938,9 +4923,6 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
   | ite hcond hscope hthen helse ihThen ihElse => exact False.elim (false_of_supportedStmtList_ite_list_surface hsurface)
   | append hprefix hsuffix ihPrefix ihSuffix =>
       exact stmtListGenericCore_of_supportedStmtList_append_of_surface hprefix hsuffix ihPrefix ihSuffix hsurface
-  | @legacyTail _ _ tail rest htail ih =>
-      exact False.elim (false_of_supportedStmtList_legacyTail_surface
-        (fields := fields) (tail := tail) (rest := rest) hsurface)
 
 /-- The current supported statement-list witness already suffices for the
 weaker helper-free source-step interface consumed by the exact helper-aware

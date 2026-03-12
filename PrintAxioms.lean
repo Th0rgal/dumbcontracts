@@ -1115,16 +1115,23 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.scopeNamesIncluded_foldl_stmtNextScope  -- private
 #print axioms Compiler.Proofs.IRGeneration.compileStmtList_ok_of_stmtListGenericCore
 #print axioms Compiler.Proofs.IRGeneration.compileStmtList_ok_of_stmtListGenericWithHelpers
+#print axioms Compiler.Proofs.IRGeneration.compileStmtList_ok_of_stmtListGenericWithHelpersAndHelperIR
 #print axioms Compiler.Proofs.IRGeneration.stmtStepMatchesIRExec_of_included
+#print axioms Compiler.Proofs.IRGeneration.stmtStepMatchesIRExecWithInternals_of_included
 #print axioms Compiler.Proofs.IRGeneration.stmtStepMatchesIRExec_implies_stmtResultMatchesIRExec
+#print axioms Compiler.Proofs.IRGeneration.stmtStepMatchesIRExecWithInternals_implies_stmtResultMatchesIRExecWithInternals
 -- #print axioms Compiler.Proofs.IRGeneration.yulStmtList_sizeOf_append_left_le  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.scopeNamesIncluded_stmtNextScope  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.execIRStmts_append_of_continue  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.execIRStmts_append_of_not_continue  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.execIRStmtsWithInternals_append_of_continue  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.execIRStmtsWithInternals_append_of_not_continue  -- private
 #print axioms Compiler.Proofs.IRGeneration.exec_compileStmtList_generic_sizeOf_extraFuel_step
 #print axioms Compiler.Proofs.IRGeneration.exec_compileStmtList_generic_with_helpers_sizeOf_extraFuel_step
+#print axioms Compiler.Proofs.IRGeneration.exec_compileStmtList_generic_with_helpers_and_helper_ir_sizeOf_extraFuel_step
 #print axioms Compiler.Proofs.IRGeneration.exec_compileStmtList_generic_sizeOf_extraFuel
 #print axioms Compiler.Proofs.IRGeneration.exec_compileStmtList_generic_with_helpers_sizeOf_extraFuel
+#print axioms Compiler.Proofs.IRGeneration.exec_compileStmtList_generic_with_helpers_and_helper_ir_sizeOf_extraFuel
 #print axioms Compiler.Proofs.IRGeneration.supported_function_body_correct_from_exact_state_generic
 -- #print axioms Compiler.Proofs.IRGeneration.supported_function_body_correct_from_exact_state_generic_helper_steps_raw  -- private
 #print axioms Compiler.Proofs.IRGeneration.supported_function_body_with_helpers_and_helper_ir_goal_of_legacy_ir_goal
@@ -1419,4 +1426,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1285 theorems/lemmas (1009 public, 276 private)
+-- Total: 1292 theorems/lemmas (1014 public, 278 private)

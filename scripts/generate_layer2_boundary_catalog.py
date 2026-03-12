@@ -270,6 +270,19 @@ def build_catalog() -> dict:
                         "supported_function_body_correct_from_exact_state_"
                         "generic_helper_steps"
                     ),
+                    "induction_step_interface_helper_ir": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "CompiledStmtStepWithHelpersAndHelperIR"
+                    ),
+                    "induction_list_interface_helper_ir": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "StmtListGenericWithHelpersAndHelperIR"
+                    ),
+                    "induction_body_theorem_helper_ir": (
+                        "Compiler.Proofs.IRGeneration.GenericInduction."
+                        "supported_function_body_correct_from_exact_state_"
+                        "generic_helper_steps_and_helper_ir"
+                    ),
                     "direct_body_goal": (
                         "Compiler.Proofs.IRGeneration.GenericInduction."
                         "SupportedFunctionBodyWithHelpersIRPreservationGoal"
@@ -307,6 +320,14 @@ def build_catalog() -> dict:
                         "plus the body theorem "
                         "supported_function_body_correct_from_exact_state_"
                         "generic_helper_steps that consumes them; "
+                        "it now also exposes the exact helper-aware compiled "
+                        "induction seam "
+                        "CompiledStmtStepWithHelpersAndHelperIR / "
+                        "StmtListGenericWithHelpersAndHelperIR plus the body "
+                        "theorem "
+                        "supported_function_body_correct_from_exact_state_"
+                        "generic_helper_steps_and_helper_ir targeting "
+                        "SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal; "
                         "which feeds the function-level theorem "
                         "supported_function_correct_with_helper_proofs_body_goal; "
                         "the legacy conservative-extension goal remains only "
@@ -335,14 +356,17 @@ def build_catalog() -> dict:
                     "The immediate blocker on today’s theorem domain is "
                         "therefore no longer a helper-free compiled-side witness, "
                         "but consuming helper-summary soundness/rank evidence in "
-                        "the genuinely new helper-call cases of helper-aware "
-                        "CompiledStmtStepWithHelpers / StmtListGenericWithHelpers "
-                        "proofs and then into a direct proof of "
-                        "SupportedFunctionBodyWithHelpersIRPreservationGoal "
+                        "the genuinely new helper-call cases of the exact "
+                        "helper-aware compiled induction seam "
+                        "CompiledStmtStepWithHelpersAndHelperIR / "
+                        "StmtListGenericWithHelpersAndHelperIR "
+                        "and then into a direct proof of "
+                        "SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal "
                         "while widening or replacing the helper-excluding "
                         "SupportedStmtList fragment that currently proves "
                         "SupportedStmtList.helperSurfaceClosed; the already-proved "
-                        "helper-free cases now lift into that seam automatically. "
+                        "helper-free cases now lift into the earlier "
+                        "helper-aware source seam automatically. "
                         "The longer-term "
                         "widening step still needs a weaker compiled-side retarget "
                         "boundary so helper tables can remain present without "

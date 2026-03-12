@@ -259,6 +259,15 @@ ALLOWLIST: set[str] = {
     # helper-step proofs begin consuming summary soundness/rank evidence.
     "exec_compileStmtList_generic_with_helpers_sizeOf_extraFuel_step",
     "supported_function_body_correct_from_exact_state_generic_helper_steps_raw",
+    "supported_function_body_correct_from_exact_state_generic_helper_steps",
+    # Issue #1630 / PR #1639 follow-up — exact helper-aware compiled induction seam:
+    # this theorem and its list-composition transport are the first exact
+    # induction-level surface over `execIRStmtsWithInternals`. Their length
+    # comes from mirroring the existing helper-aware stmt-list composition once
+    # at the correct compiled semantics target; decomposition is follow-up
+    # cleanup once the real helper-call step proofs land.
+    "exec_compileStmtList_generic_with_helpers_and_helper_ir_sizeOf_extraFuel_step",
+    "supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir_raw",
     "supported_function_correct_with_helper_proofs_body_goal",
     # Issue #1638 / PR #1639 — helper-aware compiled-target retarget wrappers:
     # these theorems preserve the public Layer 2 theorem signatures while

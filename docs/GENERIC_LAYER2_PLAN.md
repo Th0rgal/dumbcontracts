@@ -276,7 +276,14 @@ now sits under the post-generic widening/completeness plan in
   the remaining helper work now has an explicit statement-induction goal
   surface instead of only a body/function wrapper target, and the already-proved
   helper-free cases can be reused directly inside that seam rather than
-  re-proved there. `Contract.lean` now mirrors that at the public theorem surface via
+  re-proved there. `GenericInduction.lean` now also exposes the exact
+  helper-aware compiled induction seam
+  `CompiledStmtStepWithHelpersAndHelperIR` /
+  `StmtListGenericWithHelpersAndHelperIR` plus the exact induction-level body
+  theorem
+  `supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir`,
+  so future helper-rich proofs can target `execIRStmtsWithInternals` directly.
+  `Contract.lean` now mirrors that at the public theorem surface via
   helper-proof-carrying variants such as
   `compile_preserves_semantics_with_helper_proofs`; the
   feature-local `state` / `calls` / `effects` scans recurse through nested `ite` / `forEach` bodies so those
@@ -299,8 +306,8 @@ now sits under the post-generic widening/completeness plan in
   but summary-soundness/rank evidence is still not consumed inside a direct
   proof of `SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal`; more
   precisely, that evidence is not yet consumed through the genuinely new
-  helper-call cases in `CompiledStmtStepWithHelpers` /
-  `StmtListGenericWithHelpers` and then into a proof of
+  helper-call cases in `CompiledStmtStepWithHelpersAndHelperIR` /
+  `StmtListGenericWithHelpersAndHelperIR` and then into a proof of
   `SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal`; the older
   conservative-extension goal remains only the abstract helper-free discharge
   path,

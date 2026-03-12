@@ -109,6 +109,12 @@ work is now split into:
   `supported_function_body_correct_from_exact_state_generic_helper_steps`, so
   future helper-summary/rank proofs have an explicit induction target instead of
   only a body/function wrapper seam
+- an exact helper-aware compiled induction seam
+  `CompiledStmtStepWithHelpersAndHelperIR` /
+  `StmtListGenericWithHelpersAndHelperIR` plus the induction-level body theorem
+  `supported_function_body_correct_from_exact_state_generic_helper_steps_and_helper_ir`,
+  so future helper-rich proofs can target `execIRStmtsWithInternals` directly
+  instead of trying to consume helper-call cases through legacy `execIRStmts`
 - matching helper-proof-carrying theorem variants in `Function.lean`,
   `Dispatch.lean`, and `Contract.lean`, so the public Layer 2 theorem family
   already exposes that input without changing the current trusted boundary
@@ -143,7 +149,7 @@ work is now split into:
 The exact blocker for removing that temporary helper gate is now machine-readable
 in `artifacts/layer2_boundary_catalog.json`: callers still derive body closure
 through the helper-free `SupportedStmtList`, summary-soundness evidence still is
-not threaded through the helper-aware body/IR preservation proof, and the
+not threaded through the exact helper-aware compiled body/IR preservation proof, and the
 current public theorem stack still runs through the helper-free runtime
 constructor `Dispatch.runtimeContractOfFunctions`, which now has an explicit
 `internalFunctions = []` lemma. The intended compiled-side compatibility subset

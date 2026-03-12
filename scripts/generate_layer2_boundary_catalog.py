@@ -165,6 +165,18 @@ def build_catalog() -> dict:
                 "proof_contract": "InternalHelperSummaryContract",
                 "proof_soundness_slot": "SupportedSpecHelperProofs",
                 "reusable_proof_catalog": "SupportedHelperSummaryProofCatalog",
+                "runtime_helper_table_interface": (
+                    "Compiler.Proofs.IRGeneration."
+                    "SupportedRuntimeHelperTableInterface"
+                ),
+                "compiled_helper_witness": (
+                    "Compiler.Proofs.IRGeneration."
+                    "SupportedCompiledInternalHelperWitness"
+                ),
+                "compile_closure_theorem": (
+                    "Compiler.Proofs.IRGeneration.Contract."
+                    "compile_ok_yields_supportedRuntimeHelperTableInterface"
+                ),
                 "compiled_side_blocker_issue": 1638,
                 "compiled_target_compatibility_subset": {
                     "name": "legacy_compatible_external_body_yul_subset",

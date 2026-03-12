@@ -1,5 +1,6 @@
 import Compiler.Proofs.IRGeneration.SupportedFragment
 import Compiler.CompilationModel.AbiHelpers
+import Compiler.CompilationModel.Dispatch
 import Compiler.CompilationModel.UsageAnalysis
 import Compiler.CompilationModel.SelectorInteropHelpers
 import Compiler.TypedIRCompilerCorrectness
@@ -1016,6 +1017,39 @@ structure SupportedInternalHelperWitness
   callee : FunctionSpec
   summary : SupportedInternalHelperSummary spec callee
   nameEq : callee.name = calleeName
+
+/-- Compiled-side witness for a source-defined internal helper inside a runtime
+contract's helper table. This is the compositional bridge between the
+source-side helper summary inventory and the helper-aware IR interpreter target:
+it records exactly which internal-function definition in `runtimeContract`
+came from compiling a supported source helper. -/
+structure SupportedCompiledInternalHelperWitness
+    (spec : CompilationModel)
+    (runtimeContract : IRContract)
+    (calleeName : String) : Prop where
+  sourceWitness : SupportedInternalHelperWitness spec calleeName
+  compiledStmt : YulStmt
+  compileOk :
+    compileInternalFunction
+        (applySlotAliasRanges spec.fields spec.slotAliasRanges)
+        spec.events
+        spec.errors
+        sourceWitness.callee =
+      Except.ok compiledStmt
+  presentInRuntime :
+    compiledStmt ∈ runtimeContract.internalFunctions
+
+/-- Runtime-contract inventory of source-defined internal helpers.
+This keeps future exact helper-step proofs generic: they can require a
+compositional mapping from source helper witnesses to compiled helper bodies,
+instead of baking ad hoc assumptions about a particular runtime contract's
+internal helper table into each theorem. -/
+structure SupportedRuntimeHelperTableInterface
+    (spec : CompilationModel)
+    (runtimeContract : IRContract) : Prop where
+  compiledOfWitness :
+    ∀ calleeName (witness : SupportedInternalHelperWitness spec calleeName),
+      SupportedCompiledInternalHelperWitness spec runtimeContract calleeName
 
 /-- Helper-call boundary for the current generic theorem.
 It already inventories helper callees via positive summary witnesses, but it

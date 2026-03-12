@@ -57,6 +57,55 @@ private theorem compiled_functions_forall₂_of_mapM_ok
           cases hmap
           exact List.Forall₂.cons hstep (ih _ htail)
 
+private theorem compiled_internal_functions_forall₂_of_mapM_ok
+    (fields : List Field)
+    (events : List EventDef)
+    (errors : List ErrorDef) :
+    ∀ (entries : List FunctionSpec) internalDefs,
+      (entries.mapM (compileInternalFunction fields events errors)) =
+        Except.ok internalDefs →
+      List.Forall₂
+        (fun fn internalDef =>
+          compileInternalFunction fields events errors fn = Except.ok internalDef)
+        entries internalDefs := by
+  intro entries
+  induction entries with
+  | nil =>
+      intro internalDefs hmap
+      cases hmap
+      simp
+  | cons entry entries ih =>
+      intro internalDefs hmap
+      rcases hstep : compileInternalFunction fields events errors entry with _ | internalDef
+      · simp only [List.mapM_cons, hstep, bind, Except.bind] at hmap
+        cases hmap
+      · rcases htail :
+          List.mapM (compileInternalFunction fields events errors) entries with _ | internalDefsTail
+        · simp only [List.mapM_cons, hstep, htail, bind, Except.bind] at hmap
+          cases hmap
+        · simp only [List.mapM_cons, hstep, htail, bind, Except.bind] at hmap
+          cases hmap
+          exact List.Forall₂.cons hstep (ih _ htail)
+
+private theorem exists_right_of_forall₂_mem_left
+    {α β : Type}
+    {R : α → β → Prop}
+    {xs : List α}
+    {ys : List β}
+    (hrel : List.Forall₂ R xs ys)
+    {x : α}
+    (hmem : x ∈ xs) :
+    ∃ y, y ∈ ys ∧ R x y := by
+  induction hrel with
+  | nil =>
+      cases hmem
+  | @cons headX headY tailX tailY hhead htail ih =>
+      simp only [List.mem_cons] at hmem
+      rcases hmem with rfl | hmemTail
+      · exact ⟨headY, by simp, hhead⟩
+      · rcases ih hmemTail with ⟨y, hy, hRy⟩
+        exact ⟨y, by simp [hy], hRy⟩
+
 private theorem field_mem_of_findFieldWithResolvedSlot_some
     {fields : List Field}
     {fieldName : String}
@@ -685,6 +734,102 @@ theorem compile_ok_yields_internalFunctions_nil
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
+      (ir := ir)
+      (hcore := hcompile)
+
+private theorem compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (ir : IRContract)
+    (hcore : compileValidatedCore model selectors = Except.ok ir) :
+    SupportedRuntimeHelperTableInterface model ir := by
+  let internalFns := model.functions.filter (·.isInternal)
+  unfold compileValidatedCore at hcore
+  rcases hfunctions :
+      ((model.functions.filter
+          (fun fn => !fn.isInternal && !isInteropEntrypointName fn.name)).zip selectors).mapM
+        (fun x => compileFunctionSpec (applySlotAliasRanges model.fields model.slotAliasRanges)
+          model.events model.errors x.2 x.1) with _ | functions
+  · simp [hfunctions] at hcore
+  · simp [hfunctions] at hcore
+    rcases hcompiledInternal :
+        internalFns.mapM
+          (compileInternalFunction
+            (applySlotAliasRanges model.fields model.slotAliasRanges)
+            model.events
+            model.errors) with _ | internalFuncDefs
+    · simp [internalFns, hcompiledInternal] at hcore
+    · simp [internalFns, hcompiledInternal] at hcore
+      rcases hfallback :
+          pickUniqueFunctionByName "fallback" model.functions with _ | fallbackSpec
+      · simp [hfallback] at hcore
+      · simp [hfallback] at hcore
+        rcases hreceive :
+            pickUniqueFunctionByName "receive" model.functions with _ | receiveSpec
+        · simp [hreceive] at hcore
+        · simp [hreceive] at hcore
+          rcases hfallbackEntry :
+              fallbackSpec.mapM
+                (compileSpecialEntrypoint
+                  (applySlotAliasRanges model.fields model.slotAliasRanges)
+                  model.events
+                  model.errors) with _ | fallbackEntrypoint
+          · simp [hfallbackEntry] at hcore
+          · simp [hfallbackEntry] at hcore
+            rcases hreceiveEntry :
+                receiveSpec.mapM
+                  (compileSpecialEntrypoint
+                    (applySlotAliasRanges model.fields model.slotAliasRanges)
+                    model.events
+                    model.errors) with _ | receiveEntrypoint
+            · simp [hreceiveEntry] at hcore
+            · simp [hreceiveEntry] at hcore
+              cases hcore
+              refine ⟨?_⟩
+              intro calleeName witness
+              have hmemInternal : witness.callee ∈ internalFns := by
+                exact List.mem_filter.mpr ⟨witness.summary.present, witness.summary.internal⟩
+              have hcompiled :
+                  List.Forall₂
+                    (fun fn internalDef =>
+                      compileInternalFunction
+                          (applySlotAliasRanges model.fields model.slotAliasRanges)
+                          model.events
+                          model.errors
+                          fn = Except.ok internalDef)
+                    internalFns
+                    internalFuncDefs :=
+                compiled_internal_functions_forall₂_of_mapM_ok
+                  (applySlotAliasRanges model.fields model.slotAliasRanges)
+                  model.events
+                  model.errors
+                  internalFns
+                  internalFuncDefs
+                  hcompiledInternal
+              rcases exists_right_of_forall₂_mem_left hcompiled hmemInternal with
+                ⟨compiledStmt, hmemCompiled, hcompileStmt⟩
+              refine
+                { sourceWitness := witness
+                  compiledStmt := compiledStmt
+                  compileOk := ?_
+                  presentInRuntime := ?_ }
+              · simpa using hcompileStmt
+              · simp [hmemCompiled]
+
+theorem compile_ok_yields_supportedRuntimeHelperTableInterface
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (ir : IRContract)
+    (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
+    SupportedRuntimeHelperTableInterface model ir := by
+  unfold CompilationModel.compile at hcompile
+  simp only [bind, Except.bind] at hcompile
+  rcases hvalidate : validateCompileInputs model selectors with _ | validated
+  · simp [hvalidate] at hcompile
+  · simp [hvalidate] at hcompile
+    exact compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface
+      (model := model)
+      (selectors := selectors)
       (ir := ir)
       (hcore := hcompile)
 

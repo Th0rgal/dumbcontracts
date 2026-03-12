@@ -118,6 +118,12 @@ ALLOWLIST: set[str] = {
     "compileRequireFailCond_core_ok",
     "eval_compileRequireFailCond_core_onExpr",
     "exec_compileStmt_return_core",
+    # Helper-table closure theorem for the exact helper-aware Layer 2 seam
+    # (Issue #1630 follow-up): long because it destructures the whole
+    # `compileValidatedCore` assembly pipeline once to recover the compiled
+    # source-helper table as a reusable interface, avoiding repetition in the
+    # later direct/expr/structural helper-step proofs.
+    "compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface",
     "exec_compileStmt_return_core_extraFuel",
     "compileStmtList_core_ok",
     "compileStmt_terminal_ite_ok_inv",

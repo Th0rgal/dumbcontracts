@@ -209,6 +209,8 @@
           "status": "the source-side helper-composition seam is now an explicit conservative-extension goal consumed by GenericInduction/Function goal wrappers, but helper summary-soundness/rank evidence is not yet threaded through the exact helper-surface step interface and then into a proof of that goal"
         }
       ],
+      "compile_closure_theorem": "Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_supportedRuntimeHelperTableInterface",
+      "compiled_helper_witness": "Compiler.Proofs.IRGeneration.SupportedCompiledInternalHelperWitness",
       "compiled_side_blocker_issue": 1638,
       "compiled_target_compatibility_subset": {
         "closed_expr_stmt_subcases": [
@@ -246,6 +248,7 @@
       "proof_contract": "InternalHelperSummaryContract",
       "proof_soundness_slot": "SupportedSpecHelperProofs",
       "reusable_proof_catalog": "SupportedHelperSummaryProofCatalog",
+      "runtime_helper_table_interface": "Compiler.Proofs.IRGeneration.SupportedRuntimeHelperTableInterface",
       "source_helper_goal_surface": {
         "body_goal_wrapper": "Compiler.Proofs.IRGeneration.GenericInduction.supported_function_body_correct_from_exact_state_generic_with_helpers_goal",
         "compiled_helper_free_legacy_compatibility_interface": "Compiler.Proofs.IRGeneration.GenericInduction.StmtListHelperFreeCompiledLegacyCompatible",

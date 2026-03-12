@@ -266,7 +266,13 @@ now sits under the post-generic widening/completeness plan in
   (`SupportedHelperSummaryProofCatalog`) and derives the theorem-level wrapper
   `SupportedSpecHelperProofs` from that catalog, so each internal helper
   summary can be proved once and reused across every caller instead of being
-  replumbed per external function. `GenericInduction.lean` now also exposes the
+  replumbed per external function. `SupportedSpec.lean` now also defines the
+  compiled-side bridge `SupportedCompiledInternalHelperWitness` /
+  `SupportedRuntimeHelperTableInterface`, and `Contract.lean` proves
+  `compile_ok_yields_supportedRuntimeHelperTableInterface`, so exact helper-step
+  proofs can consume a generic source-helper-to-runtime-helper-table interface
+  instead of reconstructing helper membership from whole-contract compilation
+  each time. `GenericInduction.lean` now also exposes the
   helper-aware induction interfaces `CompiledStmtStepWithHelpers` /
   `StmtListGenericWithHelpers`, the fail-closed lifting bridge
   `CompiledStmtStep.withHelpers_of_helperSurfaceClosed` /

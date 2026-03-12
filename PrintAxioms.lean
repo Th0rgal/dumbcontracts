@@ -668,6 +668,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- Compiler/Proofs/IRGeneration/Contract.lean
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.pickUniqueFunctionByName_eq_ok_none_of_absent  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.compiled_functions_forall₂_of_mapM_ok  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.Contract.compiled_internal_functions_forall₂_of_mapM_ok  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.Contract.exists_right_of_forall₂_mem_left  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.field_mem_of_findFieldWithResolvedSlot_some  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.legacyCompatibleExternalStmtList_append  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.legacyCompatibleExternalStmtList_of_exprStmtExprs  -- private
@@ -693,6 +695,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_of_compiled_functions
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_compiled_functions
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_internalFunctions_nil
+-- #print axioms Compiler.Proofs.IRGeneration.Contract.compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface  -- private
+#print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_supportedRuntimeHelperTableInterface
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_ok_yields_legacyCompatibleExternalStmtList
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.compiled_functions_legacyCompatibleExternalBodies  -- private
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_legacyCompatibleExternalBodies
@@ -1484,4 +1488,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1350 theorems/lemmas (1067 public, 283 private)
+-- Total: 1354 theorems/lemmas (1068 public, 286 private)

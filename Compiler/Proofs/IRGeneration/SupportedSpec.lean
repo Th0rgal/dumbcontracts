@@ -1017,6 +1017,9 @@ structure SupportedBodyCoreInterface (fn : FunctionSpec) : Prop where
 structure SupportedBodyStateInterface (fn : FunctionSpec) : Prop where
   surfaceClosed : stmtListTouchesUnsupportedStateSurface fn.body = false
 
+structure SupportedBodyStateInterfaceExceptMappingWrites (fn : FunctionSpec) : Prop where
+  surfaceClosed : stmtListTouchesUnsupportedStateSurfaceExceptMappingWrites fn.body = false
+
 structure InternalHelperSummaryContract where
   post : Nat → Verity.ContractState → List Nat → Bool → Option Nat → Verity.ContractState → Prop
 
@@ -1117,6 +1120,17 @@ structure SupportedBodyInterface (spec : CompilationModel) (fn : FunctionSpec) :
   stmtList : SupportedStmtList spec.fields (fn.params.map (·.name)) fn.body
   core : SupportedBodyCoreInterface fn
   state : SupportedBodyStateInterface fn
+  calls : SupportedBodyCallInterface spec fn
+  effects : SupportedBodyEffectInterface fn
+  noLocalObligations : fn.localObligations = []
+
+/-- Tier 2 body-level interface that weakens only the state-surface closure to
+admit mapping writes; all other fail-closed boundaries remain unchanged. -/
+structure SupportedBodyInterfaceExceptMappingWrites
+    (spec : CompilationModel) (fn : FunctionSpec) : Prop where
+  stmtList : SupportedStmtList spec.fields (fn.params.map (·.name)) fn.body
+  core : SupportedBodyCoreInterface fn
+  state : SupportedBodyStateInterfaceExceptMappingWrites fn
   calls : SupportedBodyCallInterface spec fn
   effects : SupportedBodyEffectInterface fn
   noLocalObligations : fn.localObligations = []
@@ -1667,6 +1681,12 @@ theorem SupportedBodyInterface.helperSurfaceClosed
     stmtListTouchesUnsupportedHelperSurface fn.body = false := by
   exact hBody.stmtList.helperSurfaceClosed
 
+theorem SupportedBodyInterfaceExceptMappingWrites.helperSurfaceClosed
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hBody : SupportedBodyInterfaceExceptMappingWrites spec fn) :
+    stmtListTouchesUnsupportedHelperSurface fn.body = false := by
+  exact hBody.stmtList.helperSurfaceClosed
+
 theorem SupportedBodyHelperInterface.summaryOfCall
     {spec : CompilationModel} {fn : FunctionSpec}
     (hHelpers : SupportedBodyHelperInterface spec fn)
@@ -2127,6 +2147,13 @@ theorem stmtListTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClose
 theorem SupportedBodyCallInterface.surfaceClosed
     {spec : CompilationModel} {fn : FunctionSpec}
     (hBody : SupportedBodyInterface spec fn) :
+    stmtListTouchesUnsupportedCallSurface fn.body = false := by
+  rw [stmtListTouchesUnsupportedCallSurface_eq_featureOr]
+  simp [hBody.helperSurfaceClosed, hBody.calls.foreign, hBody.calls.lowLevel]
+
+theorem SupportedBodyCallInterface.surfaceClosed_exceptMappingWrites
+    {spec : CompilationModel} {fn : FunctionSpec}
+    (hBody : SupportedBodyInterfaceExceptMappingWrites spec fn) :
     stmtListTouchesUnsupportedCallSurface fn.body = false := by
   rw [stmtListTouchesUnsupportedCallSurface_eq_featureOr]
   simp [hBody.helperSurfaceClosed, hBody.calls.foreign, hBody.calls.lowLevel]

@@ -1188,6 +1188,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeStepInterface_of_supportedStmtList_of_surface_exceptMappingWrites
 #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeStepInterface_of_supportedStmtList_of_featureClosed_exceptMappingWrites
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterface.helperFreeStepInterface
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterfaceExceptMappingWrites.helperFreeStepInterface
 -- #print axioms Compiler.Proofs.IRGeneration.exprBoundNamesInScope_of_scopeNamesIncluded  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_stmtListCompileCore_of_scopeNamesIncluded  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericCore_of_stmtListTerminalCore_of_scopeNamesIncluded  -- private
@@ -1463,6 +1464,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesStructuralInternalHelperSurface_eq_false_of_helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedStmtList.internalHelperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterface.helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterfaceExceptMappingWrites.helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.summaryOfCall
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.summaryContractOfCall
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.calleeRank_lt
@@ -1480,6 +1482,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.stmtTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyCallInterface.surfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.SupportedBodyCallInterface.surfaceClosed_exceptMappingWrites
 -- #print axioms Compiler.Proofs.IRGeneration.exprUsesArrayElement_eq_false_of_coreClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.exprUsesStorageArrayElement_eq_false_of_coreClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.exprUsesDynamicBytesEq_eq_false_of_coreClosed  -- private
@@ -1635,4 +1638,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1504 theorems/lemmas (1166 public, 338 private)
+-- Total: 1507 theorems/lemmas (1169 public, 338 private)

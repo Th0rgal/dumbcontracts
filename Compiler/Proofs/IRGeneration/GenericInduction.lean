@@ -6014,6 +6014,25 @@ theorem SupportedBodyInterface.helperFreeStepInterface
     hBody.stmtList
     hsurface
 
+theorem SupportedBodyInterfaceExceptMappingWrites.helperFreeStepInterface
+    {spec : CompilationModel}
+    {fn : FunctionSpec}
+    (hBody : SupportedBodyInterfaceExceptMappingWrites spec fn)
+    (hnoConflict : firstFieldWriteSlotConflict spec.fields = none)
+    (hsafety : SupportedStmtListMappingWriteSlotSafety spec.fields) :
+    StmtListHelperFreeStepInterface spec.fields (fn.params.map (·.name)) fn.body := by
+  exact stmtListHelperFreeStepInterface_of_supportedStmtList_of_featureClosed_exceptMappingWrites
+    (fields := spec.fields)
+    (scope := fn.params.map (·.name))
+    (stmts := fn.body)
+    hnoConflict
+    hBody.stmtList
+    hBody.core.surfaceClosed
+    hBody.state.surfaceClosed
+    (SupportedBodyCallInterface.surfaceClosed_exceptMappingWrites (hBody := hBody))
+    hBody.effects.surfaceClosed
+    hsafety
+
 private theorem exprBoundNamesInScope_of_scopeNamesIncluded
     {expr : Expr}
     {scope largerScope : List String}

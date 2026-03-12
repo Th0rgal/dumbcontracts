@@ -1054,6 +1054,28 @@ theorem stmtListGenericWithHelpers_of_core_and_helperSurfaceClosed
         (hstep.withHelpers_of_helperSurfaceClosed hsurface.1)
         (ih hsurface.2)
 
+/-- Lift the weaker helper-free step interface into the helper-aware generic
+induction world when the whole list is helper-surface closed. This removes the
+need to materialize a full legacy `StmtListGenericCore` witness at callers that
+only target the helper-aware body theorem. -/
+theorem stmtListGenericWithHelpers_of_helperFreeStepInterface_and_helperSurfaceClosed
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hhelperFree : StmtListHelperFreeStepInterface fields scope stmts)
+    (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
+    StmtListGenericWithHelpers spec fields scope stmts := by
+  induction hhelperFree generalizing hsurface with
+  | nil =>
+      exact .nil
+  | @cons scope stmt rest hhead htail ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false] at hsurface
+      rcases hhead hsurface.1 with ⟨compiledIR, hstep⟩
+      exact .cons
+        (hstep.withHelpers_of_helperSurfaceClosed hsurface.1)
+        (ih hsurface.2)
+
 /-- Any helper-aware generic statement-step proof already closes the exact
 helper-aware compiled-side step goal when the compiled head stays inside the
 legacy-compatible external Yul subset and the runtime contract has no internal
@@ -6989,8 +7011,8 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers
     (hnoEvents : model.events = [])
     (hnoErrors : model.errors = [])
     (hhelperSurface : stmtListTouchesUnsupportedHelperSurface fn.body = false)
-    (hgeneric :
-      StmtListGenericCore
+    (hhelperFree :
+      StmtListHelperFreeStepInterface
         (SourceSemantics.effectiveFields model)
         (fn.params.map (·.name))
         fn.body)
@@ -7016,9 +7038,9 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers
         (SourceSemantics.effectiveFields model)
         (fn.params.map (·.name))
         fn.body :=
-    stmtListGenericWithHelpers_of_core_and_helperSurfaceClosed
+    stmtListGenericWithHelpers_of_helperFreeStepInterface_and_helperSurfaceClosed
       (spec := model)
-      (hgeneric := hgeneric)
+      (hhelperFree := hhelperFree)
       hhelperSurface
   exact supported_function_body_correct_from_exact_state_generic_helper_steps
     model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel

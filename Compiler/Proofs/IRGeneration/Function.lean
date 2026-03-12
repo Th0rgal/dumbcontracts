@@ -1558,14 +1558,14 @@ theorem supported_function_correct_with_helper_proofs_goal
             (spec := model)
             (selectors := selectors)
             hvalidateInputs
-      have hgeneric :
-          StmtListGenericCore
+      have hhelperFree :
+          StmtListHelperFreeStepInterface
             (SourceSemantics.effectiveFields model)
             (fn.params.map (·.name))
             fn.body :=
-        hsupportedFn.body.genericCore
+        hsupportedFn.body.helperFreeStepInterface
           (by simpa [SourceSemantics.effectiveFields] using hnoConflict)
-      exact supported_function_body_correct_from_exact_state_generic_with_helpers_goal
+      exact supported_function_body_correct_from_exact_state_generic_with_helpers
         model fn bodyStmts hSupported.helperFuel tx initialWorld
         (ParamLoading.applyBindingsToIRState
           (prebindRawArgs initialState fn.params) bindings)
@@ -1573,8 +1573,8 @@ theorem supported_function_correct_with_helper_proofs_goal
         (by simpa [SourceSemantics.effectiveFields] using hSupported.normalizedFields)
         hSupported.noEvents
         hSupported.noErrors
-        hbodyHelperGoal
-        hgeneric
+        hsupportedFn.body.helperSurfaceClosed
+        hhelperFree
         hbodyCompile
         hscope
         hbounded
@@ -1734,12 +1734,12 @@ theorem supported_function_correct_with_helper_proofs
             (spec := model)
             (selectors := selectors)
             hvalidateInputs
-      have hgeneric :
-          StmtListGenericCore
+      have hhelperFree :
+          StmtListHelperFreeStepInterface
             (SourceSemantics.effectiveFields model)
             (fn.params.map (·.name))
             fn.body :=
-        hsupportedFn.body.genericCore
+        hsupportedFn.body.helperFreeStepInterface
           (by simpa [SourceSemantics.effectiveFields] using hnoConflict)
       exact supported_function_body_correct_from_exact_state_generic_with_helpers
         model fn bodyStmts hSupported.helperFuel tx initialWorld
@@ -1750,7 +1750,7 @@ theorem supported_function_correct_with_helper_proofs
         hSupported.noEvents
         hSupported.noErrors
         hsupportedFn.body.helperSurfaceClosed
-        hgeneric
+        hhelperFree
         hbodyCompile
         hscope
         hbounded

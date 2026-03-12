@@ -89,6 +89,11 @@ ALLOWLIST: set[str] = {
     "compiledStmtStep_setStructMember_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping2_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping2Word_singleSlot_of_slotSafety_preserves",
+    # Tier-2 `setMappingChain` singleton mapping-write bridge: long because the
+    # proof threads a list-of-keys evaluation witness through the folded
+    # `mappingSlot` IR expression and the concrete source/IR post-state update in
+    # one reusable compiled-step theorem.
+    "compiledStmtStep_setMappingChain_singleSlot_of_slotSafety_preserves",
     # Tier-2 `setMappingPackedWord` singleton mapping-write bridge: long because
     # the compiled form introduces compat temporaries plus a read-modify-write
     # packed-slot update, so the proof currently keeps the concrete block-level
@@ -118,6 +123,7 @@ ALLOWLIST: set[str] = {
     # long because it keeps the constructor-by-constructor migration from
     # contradiction to construction in one theorem while the broader supported
     # surface still uses the stricter fail-closed predicate.
+    "stmtListGenericCore_of_supportedStmtList_of_surface",
     "stmtListGenericCore_of_supportedStmtList_of_surface_exceptMappingWrites",
     # Generic Layer 2 param-loading list theorem (Issue #1510 / PR #1554):
     # centralizes the scalar-head induction for `genParamLoadBodyFrom`; further

@@ -113,6 +113,18 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       FunctionBody.exprBoundNamesInScope value scope →
       findFieldSlot fields fieldName = some slot →
       SupportedStmtList fields scope [Stmt.setMappingUint fieldName key value]
+  | setMappingChainSingle
+      {scope : List String}
+      {fieldName : String}
+      {keys : List Expr}
+      {value : Expr}
+      {slot : Nat} :
+      (∀ key ∈ keys, FunctionBody.ExprCompileCore key) →
+      (∀ key ∈ keys, FunctionBody.exprBoundNamesInScope key scope) →
+      FunctionBody.ExprCompileCore value →
+      FunctionBody.exprBoundNamesInScope value scope →
+      findFieldSlot fields fieldName = some slot →
+      SupportedStmtList fields scope [Stmt.setMappingChain fieldName keys value]
   | setMappingSingle
       {scope : List String}
       {fieldName : String}

@@ -332,7 +332,7 @@ def stmtTouchesUnsupportedEffectSurface : Stmt → Bool
   | .require _ _ | .return _ | .mstore _ _ | .tstore _ _ | .stop
   | .setMapping _ _ _ | .setMappingWord _ _ _ _
   | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
-  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _ | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
   | .calldatacopy _ _ _ | .returndataCopy _ _ _ | .revertReturndata
@@ -358,6 +358,7 @@ def stmtTouchesUnsupportedCoreSurface : Stmt → Bool
   | .mstore _ _ | .tstore _ _
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
   | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
@@ -377,6 +378,7 @@ def stmtTouchesUnsupportedStateSurface : Stmt → Bool
       exprTouchesUnsupportedStateSurface value
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _ => true
   | .stop | .mstore _ _ | .tstore _ _
@@ -401,7 +403,7 @@ def stmtTouchesUnsupportedStateSurfaceExceptMappingWrites : Stmt → Bool
   | .setMapping2 _ _ _ _
   | .setMapping2Word _ _ _ _ _ | .setStructMember _ _ _ _
   | .setStructMember2 _ _ _ _ _
-  | .setMappingUint _ _ _ => false
+  | .setMappingUint _ _ _ | .setMappingChain _ _ _ => false
   | stmt => stmtTouchesUnsupportedStateSurface stmt
 
 /-- Helper/foreign/runtime-call statement surfaces still outside the current
@@ -441,7 +443,7 @@ def stmtTouchesUnsupportedHelperSurface : Stmt → Bool
   | .returndataCopy _ _ _ | .revertReturndata | .externalCallBind _ _ _
   | .ecm _ _ | .setMapping _ _ _ | .setMappingWord _ _ _ _
   | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
-  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _ | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
   | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
@@ -468,7 +470,7 @@ def stmtTouchesInternalHelperSurface : Stmt → Bool
   | .returndataCopy _ _ _ | .revertReturndata | .externalCallBind _ _ _
   | .ecm _ _ | .setMapping _ _ _ | .setMappingWord _ _ _ _
   | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
-  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _ | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _
   | .setStorageArrayElement _ _ _ | .requireError _ _ _
@@ -567,6 +569,7 @@ def stmtTouchesUnsupportedForeignSurface : Stmt → Bool
   | .calldatacopy _ _ _ | .returndataCopy _ _ _ | .revertReturndata
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
   | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
@@ -590,7 +593,7 @@ def stmtTouchesUnsupportedLowLevelSurface : Stmt → Bool
   | .internalCall _ _ | .internalCallAssign _ _ _ | .externalCallBind _ _ _
   | .ecm _ _ | .setMapping _ _ _ | .setMappingWord _ _ _ _
   | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
-  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _ | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
   | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
@@ -616,6 +619,7 @@ def stmtTouchesUnsupportedContractSurface (stmt : Stmt) : Bool :=
   | .ite _ _ _ => true
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
+  | .setMappingChain _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
   | .storageArrayPush _ _ | .storageArrayPop _ | .setStorageArrayElement _ _ _
   | .requireError _ _ _ | .revertError _ _ | .returnValues _ | .returnArray _
@@ -629,9 +633,10 @@ bridge: ordinary unsupported contract effects remain excluded, but the proved
 singleton mapping-write heads are admitted. -/
 def stmtTouchesUnsupportedContractSurfaceExceptMappingWrites (stmt : Stmt) : Bool :=
   match stmt with
-  | .setMapping _ _ _ | .setMappingPackedWord _ _ _ _ _
+  | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _
-  | .setMappingUint _ _ _ => false
+  | .setMappingUint _ _ _ | .setMappingChain _ _ _
+  | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _ => false
   | _ => stmtTouchesUnsupportedContractSurface stmt
 
 def stmtListTouchesUnsupportedCoreSurface : List Stmt → Bool
@@ -1281,6 +1286,22 @@ private theorem exprCompileCore_helperSurfaceClosed
   | logicalNot _ ih =>
       simp [exprTouchesUnsupportedHelperSurface, ih]
 
+private theorem exprListCompileCore_helperSurfaceClosed
+    {exprs : List Expr}
+    (hcore : ∀ expr ∈ exprs, FunctionBody.ExprCompileCore expr) :
+    exprListTouchesUnsupportedHelperSurface exprs = false := by
+  induction exprs with
+  | nil =>
+      simp [exprListTouchesUnsupportedHelperSurface]
+  | cons expr rest ih =>
+      have hhead : FunctionBody.ExprCompileCore expr := hcore expr (by simp)
+      have htail : ∀ e ∈ rest, FunctionBody.ExprCompileCore e := by
+        intro e he
+        exact hcore e (by simp [he])
+      simp [exprListTouchesUnsupportedHelperSurface,
+        exprCompileCore_helperSurfaceClosed hhead,
+        ih htail]
+
 private theorem stmtListCompileCore_helperSurfaceClosed
     {scope : List String}
     {stmts : List Stmt}
@@ -1415,6 +1436,20 @@ private theorem supportedStmtList_setMappingUintSingle_helperSurfaceClosed
     stmtTouchesUnsupportedHelperSurface,
     exprTouchesUnsupportedHelperSurface,
     exprCompileCore_helperSurfaceClosed hkey,
+    exprCompileCore_helperSurfaceClosed hvalue]
+
+private theorem supportedStmtList_setMappingChainSingle_helperSurfaceClosed
+    {fieldName : String}
+    {keys : List Expr}
+    {value : Expr}
+    (hkeys : ∀ key ∈ keys, FunctionBody.ExprCompileCore key)
+    (hvalue : FunctionBody.ExprCompileCore value) :
+    stmtListTouchesUnsupportedHelperSurface
+      [Stmt.setMappingChain fieldName keys value] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface,
+    exprListCompileCore_helperSurfaceClosed hkeys,
     exprCompileCore_helperSurfaceClosed hvalue]
 
 private theorem supportedStmtList_setMappingSingle_helperSurfaceClosed
@@ -1579,6 +1614,8 @@ theorem SupportedStmtList.helperSurfaceClosed
   | letMapping2 hkey1 hscope1 hkey2 hscope2 hslot => exact supportedStmtList_letMapping2_helperSurfaceClosed hkey1 hkey2
   | letMappingUint hkey hscope hslot => exact supportedStmtList_letMappingUint_helperSurfaceClosed hkey
   | setMappingUintSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingUintSingle_helperSurfaceClosed hkey hvalue
+  | setMappingChainSingle hkeys hscopeKeys hvalue hscopeValue hslot =>
+      exact supportedStmtList_setMappingChainSingle_helperSurfaceClosed hkeys hvalue
   | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingSingle_helperSurfaceClosed hkey hvalue
   | setMappingWordSingle hkey hscopeKey hvalue hscopeValue hslot =>
       exact supportedStmtList_setMappingWordSingle_helperSurfaceClosed hkey hvalue

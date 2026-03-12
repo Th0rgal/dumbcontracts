@@ -145,8 +145,6 @@ jobs:
               - 'lean-toolchain'
               - 'foundry.toml'
             macro_fuzz:
-              - '.github/actions/**'
-              - '.github/workflows/verify.yml'
               - 'Verity/Macro/**'
               - 'Compiler/**'
               - '!Compiler/Proofs/**'
@@ -197,10 +195,6 @@ jobs:
 
       - name: Check macro round-trip fuzz coverage
         run: python3 scripts/check_macro_roundtrip_fuzz_coverage.py
-
-      - name: Run macro round-trip fuzz harness
-        if: needs.changes.outputs.macro_fuzz == 'true'
-        run: lake exe macro-roundtrip-fuzz
 
       - name: Check for axioms in proof files
         run: |
@@ -266,6 +260,27 @@ jobs:
             axiom-report.md
             axiom-report-raw.log
 
+  macro-fuzz:
+    runs-on: blacksmith-8vcpu-ubuntu-2404
+    timeout-minutes: 20
+    needs: [changes, checks]
+    if: needs.checks.result == 'success' && needs.changes.outputs.macro_fuzz == 'true'
+    env:
+      LEAN_NUM_THREADS: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Lean
+        id: setup-lean
+        uses: ./.github/actions/setup-lean
+        with:
+          cache-key-prefix: lake
+
+      - name: Run macro round-trip fuzz harness
+        run: lake exe macro-roundtrip-fuzz
+
   build-compiler:
     runs-on: blacksmith-16vcpu-ubuntu-2404
     timeout-minutes: 90
@@ -284,21 +299,14 @@ jobs:
         with:
           cache-key-prefix: lake-compiler
 
-      - name: Build compiler and regression targets
+      - name: Build compiler artifacts
         run: |
           set -- $(grep -vE '^[[:space:]]*($|#)' packages/verity-examples/contracts.manifest)
           stdbuf -oL -eL lake build \
             "$@" \
             verity-compiler \
             verity-compiler-patched \
-            compiler-main-test \
-            Compiler.CompilationModelFeatureTest
-
-      - name: Run compiler CLI regression module
-        run: stdbuf -oL -eL lake exe compiler-main-test
-
-      - name: Run CompilationModel feature regression module
-        run: lake build Compiler.CompilationModelFeatureTest
+            difftest-interpreter
 
       - name: Build difftest interpreter
         run: lake build difftest-interpreter
@@ -490,6 +498,29 @@ jobs:
           name: parity-pack-identity-report
           path: compiler/parity-pack-identity-report.json
 
+  compiler-regressions:
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    timeout-minutes: 60
+    needs: [changes, checks]
+    if: needs.checks.result == 'success' && needs.changes.outputs.compiler == 'true'
+    env:
+      LEAN_NUM_THREADS: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Lean
+        uses: ./.github/actions/setup-lean
+        with:
+          cache-key-prefix: lake-compiler
+
+      - name: Run compiler CLI regression module
+        run: stdbuf -oL -eL lake exe compiler-main-test
+
+      - name: Run CompilationModel feature regression module
+        run: lake build Compiler.CompilationModelFeatureTest
+
   lean-profile:
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 45
@@ -636,7 +667,7 @@ jobs:
 
   failure-hints:
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    needs: [checks, build, build-compiler, foundry-gas-calibration, foundry, foundry-patched, foundry-multi-seed]
+    needs: [checks, build, macro-fuzz, build-compiler, compiler-regressions, foundry-gas-calibration, foundry, foundry-patched, foundry-multi-seed]
     if: always() && github.event_name == 'pull_request' && contains(join(needs.*.result, ','), 'failure')
     permissions:
       contents: read

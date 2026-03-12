@@ -89,6 +89,15 @@ ALLOWLIST: set[str] = {
     "compiledStmtStep_setStructMember_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping2_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping2Word_singleSlot_of_slotSafety_preserves",
+    # Tier-2 `setMappingPackedWord` singleton mapping-write bridge: long because
+    # the compiled form introduces compat temporaries plus a read-modify-write
+    # packed-slot update, so the proof currently keeps the concrete block-level
+    # IR execution and the source/IR post-state alignment in one theorem.
+    "compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety_preserves",
+    # Thin wrapper over the packed-word preservation theorem above. Its size
+    # comes from spelling out the exact compiled Yul block shape consumed by the
+    # generic singleton bridge.
+    "compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety",
     # Tier-2 `setStructMember2` singleton mapping-write bridge: mirrors the
     # existing `setMapping2Word` proof shape but keeps the struct-member layout
     # witness and the concrete post-state alignment in one theorem so the

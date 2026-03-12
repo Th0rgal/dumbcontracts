@@ -397,7 +397,8 @@ def stmtTouchesUnsupportedStateSurface : Stmt → Bool
 all existing unsupported stateful forms remain excluded except for the proved
 singleton mapping-write heads. -/
 def stmtTouchesUnsupportedStateSurfaceExceptMappingWrites : Stmt → Bool
-  | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMapping2 _ _ _ _
+  | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
+  | .setMapping2 _ _ _ _
   | .setMapping2Word _ _ _ _ _ | .setStructMember _ _ _ _
   | .setStructMember2 _ _ _ _ _
   | .setMappingUint _ _ _ => false
@@ -628,7 +629,8 @@ bridge: ordinary unsupported contract effects remain excluded, but the proved
 singleton mapping-write heads are admitted. -/
 def stmtTouchesUnsupportedContractSurfaceExceptMappingWrites (stmt : Stmt) : Bool :=
   match stmt with
-  | .setMapping _ _ _ | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _
+  | .setMapping _ _ _ | .setMappingPackedWord _ _ _ _ _
+  | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _
   | .setMappingUint _ _ _ => false
   | _ => stmtTouchesUnsupportedContractSurface stmt
 
@@ -1486,6 +1488,21 @@ private theorem supportedStmtList_setMapping2WordSingle_helperSurfaceClosed
     exprCompileCore_helperSurfaceClosed hkey2,
     exprCompileCore_helperSurfaceClosed hvalue]
 
+private theorem supportedStmtList_setMappingPackedWordSingle_helperSurfaceClosed
+    {fieldName : String}
+    {key value : Expr}
+    {wordOffset : Nat}
+    {packed : PackedBits}
+    (hkey : FunctionBody.ExprCompileCore key)
+    (hvalue : FunctionBody.ExprCompileCore value) :
+    stmtListTouchesUnsupportedHelperSurface
+      [Stmt.setMappingPackedWord fieldName key wordOffset packed value] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface,
+    exprCompileCore_helperSurfaceClosed hkey,
+    exprCompileCore_helperSurfaceClosed hvalue]
+
 private theorem supportedStmtList_setStructMember2Single_helperSurfaceClosed
     {fieldName memberName : String}
     {key1 key2 value : Expr}
@@ -1565,6 +1582,9 @@ theorem SupportedStmtList.helperSurfaceClosed
   | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact supportedStmtList_setMappingSingle_helperSurfaceClosed hkey hvalue
   | setMappingWordSingle hkey hscopeKey hvalue hscopeValue hslot =>
       exact supportedStmtList_setMappingWordSingle_helperSurfaceClosed hkey hvalue
+  | setMappingPackedWordSingle hkey hscopeKey hvalue hscopeValue
+      hcompatValue hcompatPacked hcompatSlotWord hcompatSlotCleared hpacked hslot =>
+      exact supportedStmtList_setMappingPackedWordSingle_helperSurfaceClosed hkey hvalue
   | setStructMemberSingle hkey hscopeKey hvalue hscopeValue hslot hmembers hmember =>
       exact supportedStmtList_setStructMemberSingle_helperSurfaceClosed hkey hvalue
   | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot => exact supportedStmtList_setMapping2Single_helperSurfaceClosed hkey1 hkey2 hvalue

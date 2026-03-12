@@ -136,6 +136,25 @@ def writeAddressKeyedMappingWordSlots
     storage := fun slot =>
       if targets.contains slot then word else world.storage slot }
 
+def packedWordWrite (current value : Nat) (packed : PackedBits) : Nat :=
+  let maskNat := packedMaskNat packed
+  let shiftedMaskNat := packedShiftedMaskNat packed
+  let packedValue := Verity.Core.Uint256.and value maskNat
+  let cleared := Verity.Core.Uint256.and current (Verity.Core.Uint256.not shiftedMaskNat)
+  (Verity.Core.Uint256.or cleared (Verity.Core.Uint256.shl packed.offset packedValue)).val
+
+def writeAddressKeyedMappingPackedWordSlots
+    (world : Verity.ContractState) (slots : List Nat) (key wordOffset : Nat)
+    (packed : PackedBits) (value : Nat) :
+    Verity.ContractState :=
+  let targets := slots.map (fun slot => Compiler.Proofs.abstractMappingSlot slot key + wordOffset)
+  { world with
+    storage := fun slot =>
+      if targets.contains slot then
+        packedWordWrite (world.storage slot).val value packed
+      else
+        world.storage slot }
+
 def writeUintKeyedMappingSlots
     (world : Verity.ContractState) (slots : List Nat) (key value : Nat) :
     Verity.ContractState :=
@@ -431,9 +450,22 @@ mutual
             evalExpr fields state value with
         | some slots@(_ :: _), some resolvedKey, some resolved =>
             .continue
-              { state with
-                  world := writeAddressKeyedMappingWordSlots
-                    state.world slots resolvedKey wordOffset resolved }
+               { state with
+                   world := writeAddressKeyedMappingWordSlots
+                     state.world slots resolvedKey wordOffset resolved }
+        | _, _, _ => .revert
+    | state, .setMappingPackedWord fieldName key wordOffset packed value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExpr fields state key,
+            evalExpr fields state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            if packedBitsValid packed then
+              .continue
+                { state with
+                    world := writeAddressKeyedMappingPackedWordSlots
+                      state.world slots resolvedKey wordOffset packed resolved }
+            else
+              .revert
         | _, _, _ => .revert
     | state, .setStructMember fieldName key memberName value =>
         match findFieldWriteSlots fields fieldName,
@@ -848,9 +880,22 @@ mutual
             evalExprWithHelpers spec fields fuel state value with
         | some slots@(_ :: _), some resolvedKey, some resolved =>
             .continue
-              { state with
-                  world := writeAddressKeyedMappingWordSlots
-                    state.world slots resolvedKey wordOffset resolved }
+               { state with
+                   world := writeAddressKeyedMappingWordSlots
+                     state.world slots resolvedKey wordOffset resolved }
+        | _, _, _ => .revert
+    | state, .setMappingPackedWord fieldName key wordOffset packed value =>
+        match findFieldWriteSlots fields fieldName,
+            evalExprWithHelpers spec fields fuel state key,
+            evalExprWithHelpers spec fields fuel state value with
+        | some slots@(_ :: _), some resolvedKey, some resolved =>
+            if packedBitsValid packed then
+              .continue
+                { state with
+                    world := writeAddressKeyedMappingPackedWordSlots
+                      state.world slots resolvedKey wordOffset packed resolved }
+            else
+              .revert
         | _, _, _ => .revert
     | state, .setStructMember fieldName key memberName value =>
         match findFieldWriteSlots fields fieldName,

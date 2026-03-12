@@ -3188,6 +3188,21 @@ private theorem encodeStorageAt_writeAddressKeyedMappingWordSlots_singleton_othe
   simp [SourceSemantics.encodeStorageAt, SourceSemantics.writeAddressKeyedMappingWordSlots,
     List.contains_eq_true, hneq]
 
+private theorem encodeStorageAt_writeAddressKeyedMappingPackedWordSlots_singleton_other
+    {fields : List Field}
+    {world : Verity.ContractState}
+    {slot key wordOffset query value : Nat}
+    {packed : PackedBits}
+    (hneq : query ≠ Compiler.Proofs.abstractMappingSlot slot key + wordOffset) :
+    SourceSemantics.encodeStorageAt fields
+      (SourceSemantics.writeAddressKeyedMappingPackedWordSlots
+        world [slot] key wordOffset packed value)
+      query =
+      SourceSemantics.encodeStorageAt fields world query := by
+  simp [SourceSemantics.encodeStorageAt,
+    SourceSemantics.writeAddressKeyedMappingPackedWordSlots,
+    List.contains_eq_true, hneq]
+
 private def findResolvedFieldAtSlotCopy (fields : List Field) (slot : Nat) : Option Field :=
   let rec go (remaining : List Field) (idx : Nat) : Option Field :=
     match remaining with
@@ -3573,6 +3588,29 @@ private theorem encodeStorageAt_writeAddressKeyedMappingWordSlots_singleton_eq_w
   rw [encodeStorageAt_eq_copy, encodeStorageAtCopy, hresolved, hdyn]
   simp [SourceSemantics.writeAddressKeyedMappingWordSlots]
 
+private theorem encodeStorageAt_writeAddressKeyedMappingPackedWordSlots_singleton_eq_written
+    {fields : List Field}
+    {world : Verity.ContractState}
+    {slot key wordOffset value : Nat}
+    {packed : PackedBits}
+    (hresolved :
+      findResolvedFieldAtSlotCopy fields
+        (Compiler.Proofs.abstractMappingSlot slot key + wordOffset) = none)
+    (hdyn :
+      findDynamicArrayElementAtSlotCopy fields world
+        (Compiler.Proofs.abstractMappingSlot slot key + wordOffset) = none) :
+    SourceSemantics.encodeStorageAt fields
+      (SourceSemantics.writeAddressKeyedMappingPackedWordSlots
+        world [slot] key wordOffset packed value)
+      (Compiler.Proofs.abstractMappingSlot slot key + wordOffset) =
+      SourceSemantics.packedWordWrite
+        (world.storage (Compiler.Proofs.abstractMappingSlot slot key + wordOffset)).val
+        value
+        packed := by
+  rw [encodeStorageAt_eq_copy, encodeStorageAtCopy, hresolved, hdyn]
+  simp [SourceSemantics.writeAddressKeyedMappingPackedWordSlots,
+    SourceSemantics.packedWordWrite]
+
 private theorem encodeStorageAt_writeAddressKeyedMapping2Slots_singleton_other
     {fields : List Field}
     {world : Verity.ContractState}
@@ -3851,6 +3889,47 @@ private theorem runtimeStateMatchesIR_writeAddressKeyedMappingWordSlot
     simp [hEq, encodeStorageAt_writeAddressKeyedMappingWordSlots_singleton_other
       (fields := fields) (world := runtime.world) (slot := slot) (key := key)
       (wordOffset := wordOffset) (query := query) (value := value) hEq]
+
+private theorem runtimeStateMatchesIR_writeAddressKeyedMappingPackedWordSlot
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    {slot key wordOffset value : Nat}
+    {packed : PackedBits}
+    (hruntime : FunctionBody.runtimeStateMatchesIR fields runtime state)
+    (hresolved :
+      findResolvedFieldAtSlotCopy fields
+        (Compiler.Proofs.abstractMappingSlot slot key + wordOffset) = none)
+    (hdyn :
+      findDynamicArrayElementAtSlotCopy fields runtime.world
+        (Compiler.Proofs.abstractMappingSlot slot key + wordOffset) = none) :
+    FunctionBody.runtimeStateMatchesIR fields
+      { runtime with
+          world := SourceSemantics.writeAddressKeyedMappingPackedWordSlots
+            runtime.world [slot] key wordOffset packed value }
+      { state with
+          storage := Compiler.Proofs.abstractStoreStorageOrMapping
+            state.storage
+            (Compiler.Proofs.abstractMappingSlot slot key + wordOffset)
+            (SourceSemantics.packedWordWrite
+              (state.storage (Compiler.Proofs.abstractMappingSlot slot key + wordOffset))
+              value
+              packed) } := by
+  rcases hruntime with
+    ⟨hstorage, hsender, hmsgValue, hthis, htimestamp, hblock, hchain, hret, hevents⟩
+  refine ⟨?_, hsender, hmsgValue, hthis, htimestamp, hblock, hchain, hret, hevents⟩
+  funext query
+  by_cases hEq : query = Compiler.Proofs.abstractMappingSlot slot key + wordOffset
+  · subst hEq
+    rw [Compiler.Proofs.abstractStoreStorageOrMapping_eq]
+    simp [hstorage]
+    exact encodeStorageAt_writeAddressKeyedMappingPackedWordSlots_singleton_eq_written
+      (fields := fields) (world := runtime.world) (slot := slot) (key := key)
+      (wordOffset := wordOffset) (packed := packed) (value := value) hresolved hdyn
+  · rw [Compiler.Proofs.abstractStoreStorageOrMapping_eq, hstorage]
+    simp [hEq, encodeStorageAt_writeAddressKeyedMappingPackedWordSlots_singleton_other
+      (fields := fields) (world := runtime.world) (slot := slot) (key := key)
+      (wordOffset := wordOffset) (packed := packed) (query := query) (value := value) hEq]
 
 private theorem runtimeStateMatchesIR_writeAddressKeyedMapping2Slot
     {fields : List Field}
@@ -4643,6 +4722,389 @@ theorem compiledStmtStep_setMappingWord_singleSlot_of_slotSafety
       hmapping, hwriteSlots, hkeyIR, hvalueIR]
   preserves := compiledStmtStep_setMappingWord_singleSlot_of_slotSafety_preserves
     hcoreKey hinScopeKey hcoreValue hinScopeValue hwriteSlots hslotSafety hkeyIR hvalueIR
+
+private theorem compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety_preserves
+    {fields : List Field}
+    {scope : List String}
+    {fieldName : String}
+    {key value : Expr}
+    {wordOffset : Nat}
+    {packed : PackedBits}
+    {keyIR valueIR : YulExpr}
+    {slot : Nat}
+    (hcoreKey : FunctionBody.ExprCompileCore key)
+    (hinScopeKey : FunctionBody.exprBoundNamesInScope key scope)
+    (hcoreValue : FunctionBody.ExprCompileCore value)
+    (hinScopeValue : FunctionBody.exprBoundNamesInScope value scope)
+    (hcompatValue : "__compat_value" ∉ scope)
+    (hcompatPacked : "__compat_packed" ∉ scope)
+    (hcompatSlotWord : "__compat_slot_word" ∉ scope)
+    (hcompatSlotCleared : "__compat_slot_cleared" ∉ scope)
+    (hpacked : packedBitsValid packed = true)
+    (hwriteSlots : findFieldWriteSlots fields fieldName = some [slot])
+    (hslotSafety :
+      ∀ runtime keyNat,
+        SourceSemantics.evalExpr fields runtime key = some keyNat →
+          findResolvedFieldAtSlotCopy fields
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none ∧
+          findDynamicArrayElementAtSlotCopy fields runtime.world
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none)
+    (hkeyIR : CompilationModel.compileExpr fields .calldata key = Except.ok keyIR)
+    (hvalueIR : CompilationModel.compileExpr fields .calldata value = Except.ok valueIR) :
+    ∀ (runtime : SourceSemantics.RuntimeState)
+      (state : IRState)
+      (extraFuel : Nat),
+      FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings state →
+      FunctionBody.scopeNamesPresent scope runtime.bindings →
+      FunctionBody.bindingsBounded runtime.bindings →
+      FunctionBody.runtimeStateMatchesIR fields runtime state →
+      sizeOf [YulStmt.block
+        [ YulStmt.let_ "__compat_value" valueIR
+        , YulStmt.let_ "__compat_packed"
+            (YulExpr.call "and" [YulExpr.ident "__compat_value",
+              YulExpr.lit (packedMaskNat packed)])
+        , YulStmt.let_ "__compat_slot_word"
+            (YulExpr.call "sload"
+              [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+               if wordOffset == 0 then mappingBase
+               else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]])
+        , YulStmt.let_ "__compat_slot_cleared"
+            (YulExpr.call "and"
+              [YulExpr.ident "__compat_slot_word",
+                YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]])
+        , YulStmt.expr
+            (YulExpr.call "sstore"
+              [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+               if wordOffset == 0 then mappingBase
+               else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset],
+               YulExpr.call "or"
+                 [YulExpr.ident "__compat_slot_cleared",
+                   YulExpr.call "shl"
+                     [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]]])]] -
+        [YulStmt.block
+          [ YulStmt.let_ "__compat_value" valueIR
+          , YulStmt.let_ "__compat_packed"
+              (YulExpr.call "and" [YulExpr.ident "__compat_value",
+                YulExpr.lit (packedMaskNat packed)])
+          , YulStmt.let_ "__compat_slot_word"
+              (YulExpr.call "sload"
+                [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+                 if wordOffset == 0 then mappingBase
+                 else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]])
+          , YulStmt.let_ "__compat_slot_cleared"
+              (YulExpr.call "and"
+                [YulExpr.ident "__compat_slot_word",
+                  YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]])
+          , YulStmt.expr
+              (YulExpr.call "sstore"
+                [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+                 if wordOffset == 0 then mappingBase
+                 else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset],
+                 YulExpr.call "or"
+                   [YulExpr.ident "__compat_slot_cleared",
+                     YulExpr.call "shl"
+                       [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]]])]].length ≤
+        extraFuel →
+      ∃ sourceResult irExec,
+        SourceSemantics.execStmt fields runtime
+          (.setMappingPackedWord fieldName key wordOffset packed value) = sourceResult ∧
+        execIRStmts
+            ([YulStmt.block
+              [ YulStmt.let_ "__compat_value" valueIR
+              , YulStmt.let_ "__compat_packed"
+                  (YulExpr.call "and" [YulExpr.ident "__compat_value",
+                    YulExpr.lit (packedMaskNat packed)])
+              , YulStmt.let_ "__compat_slot_word"
+                  (YulExpr.call "sload"
+                    [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+                     if wordOffset == 0 then mappingBase
+                     else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]])
+              , YulStmt.let_ "__compat_slot_cleared"
+                  (YulExpr.call "and"
+                    [YulExpr.ident "__compat_slot_word",
+                      YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]])
+              , YulStmt.expr
+                  (YulExpr.call "sstore"
+                    [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+                     if wordOffset == 0 then mappingBase
+                     else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset],
+                     YulExpr.call "or"
+                       [YulExpr.ident "__compat_slot_cleared",
+                         YulExpr.call "shl"
+                           [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]]])]].length +
+              extraFuel + 1)
+            state
+            [YulStmt.block
+              [ YulStmt.let_ "__compat_value" valueIR
+              , YulStmt.let_ "__compat_packed"
+                  (YulExpr.call "and" [YulExpr.ident "__compat_value",
+                    YulExpr.lit (packedMaskNat packed)])
+              , YulStmt.let_ "__compat_slot_word"
+                  (YulExpr.call "sload"
+                    [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+                     if wordOffset == 0 then mappingBase
+                     else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]])
+              , YulStmt.let_ "__compat_slot_cleared"
+                  (YulExpr.call "and"
+                    [YulExpr.ident "__compat_slot_word",
+                      YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]])
+              , YulStmt.expr
+                  (YulExpr.call "sstore"
+                    [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+                     if wordOffset == 0 then mappingBase
+                     else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset],
+                     YulExpr.call "or"
+                       [YulExpr.ident "__compat_slot_cleared",
+                         YulExpr.call "shl"
+                           [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]]])]] = irExec ∧
+        stmtStepMatchesIRExec fields
+          (stmtNextScope scope (.setMappingPackedWord fieldName key wordOffset packed value))
+          sourceResult
+          irExec := by
+  intro runtime state extraFuel hexact hscope hbounded hruntime hslack
+  let writeSlotExpr :=
+    let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+    if wordOffset == 0 then mappingBase else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]
+  let blockBody :=
+    [ YulStmt.let_ "__compat_value" valueIR
+    , YulStmt.let_ "__compat_packed"
+        (YulExpr.call "and" [YulExpr.ident "__compat_value", YulExpr.lit (packedMaskNat packed)])
+    , YulStmt.let_ "__compat_slot_word" (YulExpr.call "sload" [writeSlotExpr])
+    , YulStmt.let_ "__compat_slot_cleared"
+        (YulExpr.call "and"
+          [YulExpr.ident "__compat_slot_word",
+            YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]])
+    , YulStmt.expr
+        (YulExpr.call "sstore"
+          [writeSlotExpr,
+            YulExpr.call "or"
+              [YulExpr.ident "__compat_slot_cleared",
+                YulExpr.call "shl"
+                  [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]]]) ]
+  let compiledIR := [YulStmt.block blockBody]
+  let keyNat := SourceSemantics.evalExpr fields runtime key
+  let valueNat := SourceSemantics.evalExpr fields runtime value
+  let targetSlot := Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset
+  let oldWordNat := state.storage targetSlot
+  let storedWordNat := SourceSemantics.packedWordWrite oldWordNat valueNat packed
+  have hkeySourceEval :=
+    FunctionBody.eval_compileExpr_core_of_scope
+      hcoreKey hexact hinScopeKey hbounded
+      (FunctionBody.exprBoundNamesPresent_of_scope hscope hinScopeKey)
+      hruntime
+  have hvalueSourceEval :=
+    FunctionBody.eval_compileExpr_core_of_scope
+      hcoreValue hexact hinScopeValue hbounded
+      (FunctionBody.exprBoundNamesPresent_of_scope hscope hinScopeValue)
+      hruntime
+  rw [hkeyIR] at hkeySourceEval
+  rw [hvalueIR] at hvalueSourceEval
+  have hkeyEval : evalIRExpr state keyIR = some keyNat := by
+    simpa [keyNat] using hkeySourceEval
+  have hvalueEval : evalIRExpr state valueIR = some valueNat := by
+    simpa [valueNat] using hvalueSourceEval
+  rcases hslotSafety runtime keyNat (by simpa [keyNat] using hkeySourceEval) with
+    ⟨hresolvedNone, hdynNone⟩
+  have hWriteSlotEval : evalIRExpr state writeSlotExpr = some targetSlot := by
+    dsimp [writeSlotExpr, targetSlot]
+    by_cases hzero : wordOffset = 0
+    · subst hzero
+      simp [evalIRExpr, hkeyEval]
+    · simp [evalIRExpr, hkeyEval, hzero]
+  have hCompatValue :
+      execIRStmt (extraFuel + 1) state (YulStmt.let_ "__compat_value" valueIR) =
+        .continue (state.setVar "__compat_value" valueNat) := by
+    simp [execIRStmt, hvalueEval]
+  have hPackedEval :
+      evalIRExpr (state.setVar "__compat_value" valueNat)
+        (YulExpr.call "and" [YulExpr.ident "__compat_value", YulExpr.lit (packedMaskNat packed)]) =
+          some (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val := by
+    simp [evalIRExpr, IRState.getVar]
+  have hCompatPacked :
+      execIRStmt (extraFuel + 1) (state.setVar "__compat_value" valueNat)
+        (YulStmt.let_ "__compat_packed"
+          (YulExpr.call "and" [YulExpr.ident "__compat_value", YulExpr.lit (packedMaskNat packed)])) =
+        .continue
+          ((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+            (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val) := by
+    simp [execIRStmt, hPackedEval]
+  have hSlotWordEval :
+      evalIRExpr
+        (((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+          (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val))
+        (YulExpr.call "sload" [writeSlotExpr]) = some oldWordNat := by
+    simp [evalIRExpr, hWriteSlotEval, oldWordNat]
+  have hCompatSlotWord :
+      execIRStmt (extraFuel + 1)
+        (((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+          (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val))
+        (YulStmt.let_ "__compat_slot_word" (YulExpr.call "sload" [writeSlotExpr])) =
+        .continue
+          ((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+            (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+            "__compat_slot_word" oldWordNat) := by
+    simp [execIRStmt, hSlotWordEval]
+  have hSlotClearedEval :
+      evalIRExpr
+        ((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+          (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+          "__compat_slot_word" oldWordNat)
+        (YulExpr.call "and"
+          [YulExpr.ident "__compat_slot_word",
+            YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]]) =
+          some (Verity.Core.Uint256.and oldWordNat
+            (Verity.Core.Uint256.not (packedShiftedMaskNat packed))).val := by
+    simp [evalIRExpr, IRState.getVar]
+  have hCompatSlotCleared :
+      execIRStmt (extraFuel + 1)
+        ((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+          (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+          "__compat_slot_word" oldWordNat)
+        (YulStmt.let_ "__compat_slot_cleared"
+          (YulExpr.call "and"
+            [YulExpr.ident "__compat_slot_word",
+              YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]])) =
+        .continue
+          (((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+            (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+            "__compat_slot_word" oldWordNat)).setVar "__compat_slot_cleared"
+            (Verity.Core.Uint256.and oldWordNat
+              (Verity.Core.Uint256.not (packedShiftedMaskNat packed))).val) := by
+    simp [execIRStmt, hSlotClearedEval]
+  have hStoredEval :
+      evalIRExpr
+        (((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+          (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+          "__compat_slot_word" oldWordNat)).setVar "__compat_slot_cleared"
+          (Verity.Core.Uint256.and oldWordNat
+            (Verity.Core.Uint256.not (packedShiftedMaskNat packed))).val)
+        (YulExpr.call "or"
+          [YulExpr.ident "__compat_slot_cleared",
+            YulExpr.call "shl" [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]]) =
+          some storedWordNat := by
+    simp [evalIRExpr, IRState.getVar, storedWordNat, SourceSemantics.packedWordWrite]
+  refine ⟨_, _, ?_⟩
+  · simp [SourceSemantics.execStmt, hwriteSlots, keyNat, valueNat, hpacked,
+      SourceSemantics.writeAddressKeyedMappingPackedWordSlots]
+  · have hBody :
+        execIRStmts extraFuel state blockBody =
+          .continue
+            ((((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+              (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+              "__compat_slot_word" oldWordNat)).setVar "__compat_slot_cleared"
+              (Verity.Core.Uint256.and oldWordNat
+                (Verity.Core.Uint256.not (packedShiftedMaskNat packed))).val) with
+              storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage targetSlot storedWordNat) := by
+      simp [execIRStmts, blockBody, hCompatValue, hCompatPacked, hCompatSlotWord,
+        hCompatSlotCleared, execIRStmt, hWriteSlotEval, hStoredEval,
+        Compiler.Proofs.abstractStoreStorageOrMapping_eq]
+    have hWhole :
+        execIRStmts (compiledIR.length + extraFuel + 1) state compiledIR =
+          .continue
+            ((((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+              (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+              "__compat_slot_word" oldWordNat)).setVar "__compat_slot_cleared"
+              (Verity.Core.Uint256.and oldWordNat
+                (Verity.Core.Uint256.not (packedShiftedMaskNat packed))).val) with
+              storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage targetSlot storedWordNat) := by
+      simpa [compiledIR] using
+        execIRStmts_single_block_of_continue
+          extraFuel
+          state
+          ((((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+            (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+            "__compat_slot_word" oldWordNat)).setVar "__compat_slot_cleared"
+            (Verity.Core.Uint256.and oldWordNat
+              (Verity.Core.Uint256.not (packedShiftedMaskNat packed))).val) with
+            storage := Compiler.Proofs.abstractStoreStorageOrMapping state.storage targetSlot storedWordNat)
+          blockBody
+          hBody
+      simpa [targetSlot, storedWordNat] using hWhole
+  · refine And.intro ?_ <| And.intro ?_ <| And.intro hbounded hscope
+    · have hruntime1 := FunctionBody.runtimeStateMatchesIR_setVar_irrelevant hruntime
+      have hruntime2 := FunctionBody.runtimeStateMatchesIR_setVar_irrelevant hruntime1
+      have hruntime3 := FunctionBody.runtimeStateMatchesIR_setVar_irrelevant hruntime2
+      have hruntime4 := FunctionBody.runtimeStateMatchesIR_setVar_irrelevant hruntime3
+      simpa [targetSlot, storedWordNat] using
+        runtimeStateMatchesIR_writeAddressKeyedMappingPackedWordSlot
+          (runtime := runtime)
+          (state := (((((state.setVar "__compat_value" valueNat).setVar "__compat_packed"
+            (Verity.Core.Uint256.and valueNat (packedMaskNat packed)).val)).setVar
+            "__compat_slot_word" oldWordNat)).setVar "__compat_slot_cleared"
+            (Verity.Core.Uint256.and oldWordNat
+              (Verity.Core.Uint256.not (packedShiftedMaskNat packed))).val))
+          (slot := slot) (key := keyNat) (wordOffset := wordOffset) (packed := packed)
+          (value := valueNat) hruntime4 hresolvedNone hdynNone
+    · have hexact1 :=
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope_setVar_irrelevant hexact hcompatValue
+      have hexact2 :=
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope_setVar_irrelevant hexact1 hcompatPacked
+      have hexact3 :=
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope_setVar_irrelevant hexact2 hcompatSlotWord
+      have hexact4 :=
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope_setVar_irrelevant hexact3 hcompatSlotCleared
+      exact hexact4
+
+theorem compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety
+    {fields : List Field}
+    {scope : List String}
+    {fieldName : String}
+    {key value : Expr}
+    {wordOffset : Nat}
+    {packed : PackedBits}
+    {keyIR valueIR : YulExpr}
+    {slot : Nat}
+    (hmapping : isMapping fields fieldName = true)
+    (hcoreKey : FunctionBody.ExprCompileCore key)
+    (hinScopeKey : FunctionBody.exprBoundNamesInScope key scope)
+    (hcoreValue : FunctionBody.ExprCompileCore value)
+    (hinScopeValue : FunctionBody.exprBoundNamesInScope value scope)
+    (hcompatValue : "__compat_value" ∉ scope)
+    (hcompatPacked : "__compat_packed" ∉ scope)
+    (hcompatSlotWord : "__compat_slot_word" ∉ scope)
+    (hcompatSlotCleared : "__compat_slot_cleared" ∉ scope)
+    (hpacked : packedBitsValid packed = true)
+    (hwriteSlots : findFieldWriteSlots fields fieldName = some [slot])
+    (hslotSafety :
+      ∀ runtime keyNat,
+        SourceSemantics.evalExpr fields runtime key = some keyNat →
+          findResolvedFieldAtSlotCopy fields
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none ∧
+          findDynamicArrayElementAtSlotCopy fields runtime.world
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none)
+    (hkeyIR : CompilationModel.compileExpr fields .calldata key = Except.ok keyIR)
+    (hvalueIR : CompilationModel.compileExpr fields .calldata value = Except.ok valueIR) :
+    CompiledStmtStep fields scope (.setMappingPackedWord fieldName key wordOffset packed value)
+      [YulStmt.block
+        [ YulStmt.let_ "__compat_value" valueIR
+        , YulStmt.let_ "__compat_packed"
+            (YulExpr.call "and" [YulExpr.ident "__compat_value",
+              YulExpr.lit (packedMaskNat packed)])
+        , YulStmt.let_ "__compat_slot_word"
+            (YulExpr.call "sload"
+              [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+               if wordOffset == 0 then mappingBase
+               else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset]])
+        , YulStmt.let_ "__compat_slot_cleared"
+            (YulExpr.call "and"
+              [YulExpr.ident "__compat_slot_word",
+                YulExpr.call "not" [YulExpr.lit (packedShiftedMaskNat packed)]])
+        , YulStmt.expr
+            (YulExpr.call "sstore"
+              [let mappingBase := YulExpr.call "mappingSlot" [YulExpr.lit slot, keyIR]
+               if wordOffset == 0 then mappingBase
+               else YulExpr.call "add" [mappingBase, YulExpr.lit wordOffset],
+               YulExpr.call "or"
+                 [YulExpr.ident "__compat_slot_cleared",
+                   YulExpr.call "shl"
+                     [YulExpr.lit packed.offset, YulExpr.ident "__compat_packed"]]])]] where
+  compileOk := by
+    simp [CompilationModel.compileStmt, CompilationModel.compileMappingPackedSlotWrite,
+      hmapping, hpacked, hwriteSlots, hkeyIR, hvalueIR]
+  preserves := compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety_preserves
+    hcoreKey hinScopeKey hcoreValue hinScopeValue
+    hcompatValue hcompatPacked hcompatSlotWord hcompatSlotCleared
+    hpacked hwriteSlots hslotSafety hkeyIR hvalueIR
 
 private theorem compiledStmtStep_setStructMember_singleSlot_of_slotSafety_preserves
     {fields : List Field}
@@ -6640,6 +7102,30 @@ structure SupportedStmtListMappingWriteSlotSafety (fields : List Field) : Prop w
             (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none ∧
           findDynamicArrayElementAtSlotCopy fields runtime.world
             (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none)
+  setMappingPackedWordSingle :
+    ∀ {scope : List String}
+      {fieldName : String}
+      {key value : Expr}
+      {wordOffset slot : Nat}
+      {packed : PackedBits},
+      FunctionBody.ExprCompileCore key →
+      FunctionBody.exprBoundNamesInScope key scope →
+      FunctionBody.ExprCompileCore value →
+      FunctionBody.exprBoundNamesInScope value scope →
+      "__compat_value" ∉ scope →
+      "__compat_packed" ∉ scope →
+      "__compat_slot_word" ∉ scope →
+      "__compat_slot_cleared" ∉ scope →
+      packedBitsValid packed = true →
+      findFieldSlot fields fieldName = some slot →
+      isMapping fields fieldName = true ∧
+      findFieldWriteSlots fields fieldName = some [slot] ∧
+      (∀ runtime keyNat,
+        SourceSemantics.evalExpr fields runtime key = some keyNat →
+          findResolvedFieldAtSlotCopy fields
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none ∧
+          findDynamicArrayElementAtSlotCopy fields runtime.world
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none)
   setStructMemberSingle :
     ∀ {scope : List String}
       {fieldName memberName : String}
@@ -6845,6 +7331,53 @@ private theorem stmtListGenericCore_singleton_setMappingWordSingle_of_slotSafety
     (hinScopeKey := hinScopeKey)
     (hcoreValue := hcoreValue)
     (hinScopeValue := hinScopeValue)
+    (hwriteSlots := hwriteSlots)
+    (hslotSafety := hslotSafety)
+    (hkeyIR := hkeyIR)
+    (hvalueIR := hvalueIR)
+
+private theorem stmtListGenericCore_singleton_setMappingPackedWordSingle_of_slotSafety
+    {fields : List Field}
+    {scope : List String}
+    {fieldName : String}
+    {wordOffset slot : Nat}
+    {packed : PackedBits}
+    {key value : Expr}
+    (hcoreKey : FunctionBody.ExprCompileCore key)
+    (hinScopeKey : FunctionBody.exprBoundNamesInScope key scope)
+    (hcoreValue : FunctionBody.ExprCompileCore value)
+    (hinScopeValue : FunctionBody.exprBoundNamesInScope value scope)
+    (hcompatValue : "__compat_value" ∉ scope)
+    (hcompatPacked : "__compat_packed" ∉ scope)
+    (hcompatSlotWord : "__compat_slot_word" ∉ scope)
+    (hcompatSlotCleared : "__compat_slot_cleared" ∉ scope)
+    (hpacked : packedBitsValid packed = true)
+    (hmapping : isMapping fields fieldName = true)
+    (hwriteSlots : findFieldWriteSlots fields fieldName = some [slot])
+    (hslotSafety :
+      ∀ runtime keyNat,
+        SourceSemantics.evalExpr fields runtime key = some keyNat →
+          findResolvedFieldAtSlotCopy fields
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none ∧
+          findDynamicArrayElementAtSlotCopy fields runtime.world
+            (Compiler.Proofs.abstractMappingSlot slot keyNat + wordOffset) = none) :
+    StmtListGenericCore fields scope [Stmt.setMappingPackedWord fieldName key wordOffset packed value] := by
+  rcases FunctionBody.compileExpr_core_ok (fields := fields) hcoreKey with
+    ⟨keyIR, hkeyIR⟩
+  rcases FunctionBody.compileExpr_core_ok (fields := fields) hcoreValue with
+    ⟨valueIR, hvalueIR⟩
+  refine StmtListGenericCore.cons ?_ StmtListGenericCore.nil
+  exact compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety
+    (hmapping := hmapping)
+    (hcoreKey := hcoreKey)
+    (hinScopeKey := hinScopeKey)
+    (hcoreValue := hcoreValue)
+    (hinScopeValue := hinScopeValue)
+    (hcompatValue := hcompatValue)
+    (hcompatPacked := hcompatPacked)
+    (hcompatSlotWord := hcompatSlotWord)
+    (hcompatSlotCleared := hcompatSlotCleared)
+    (hpacked := hpacked)
     (hwriteSlots := hwriteSlots)
     (hslotSafety := hslotSafety)
     (hkeyIR := hkeyIR)
@@ -7158,6 +7691,21 @@ private theorem false_of_supportedStmtList_setMappingWordSingle_surface
       exprTouchesUnsupportedContractSurface])
     hsurface
 
+private theorem false_of_supportedStmtList_setMappingPackedWordSingle_surface
+    {fieldName : String}
+    {key value : Expr}
+    {wordOffset : Nat}
+    {packed : PackedBits}
+    (hsurface :
+      stmtListTouchesUnsupportedContractSurface
+        [Stmt.setMappingPackedWord fieldName key wordOffset packed value] = false) :
+    False :=
+  false_of_supportedStmtList_singleton_stmt_surface
+    (stmt := Stmt.setMappingPackedWord fieldName key wordOffset packed value)
+    (by simp [stmtTouchesUnsupportedContractSurface,
+      exprTouchesUnsupportedContractSurface])
+    hsurface
+
 private theorem false_of_supportedStmtList_setStructMemberSingle_surface
     {fieldName memberName : String}
     {key value : Expr}
@@ -7297,6 +7845,9 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
   | setMappingSingle hkey hscopeKey hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMappingSingle_surface hsurface)
   | setMappingWordSingle hkey hscopeKey hvalue hscopeValue hslot =>
       exact False.elim (false_of_supportedStmtList_setMappingWordSingle_surface hsurface)
+  | setMappingPackedWordSingle hkey hscopeKey hvalue hscopeValue
+      hcompatValue hcompatPacked hcompatSlotWord hcompatSlotCleared hpacked hslot =>
+      exact False.elim (false_of_supportedStmtList_setMappingPackedWordSingle_surface hsurface)
   | setStructMemberSingle hkey hscopeKey hvalue hscopeValue hslot hmembers hmember =>
       exact False.elim (false_of_supportedStmtList_setStructMemberSingle_surface hsurface)
   | setMapping2Single hkey1 hscope1 hkey2 hscope2 hvalue hscopeValue hslot => exact False.elim (false_of_supportedStmtList_setMapping2Single_surface hsurface)
@@ -7414,6 +7965,26 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface_exceptMappingWrites
         (hinScopeKey := hscopeKey)
         (hcoreValue := hvalue)
         (hinScopeValue := hscopeValue)
+        (hmapping := hmapping)
+        (hwriteSlots := hwriteSlots)
+        (hslotSafety := hslotSafety)
+  | setMappingPackedWordSingle hkey hscopeKey hvalue hscopeValue
+      hcompatValue hcompatPacked hcompatSlotWord hcompatSlotCleared hpacked hslot =>
+      rcases hsafety.setMappingPackedWordSingle
+          hkey hscopeKey hvalue hscopeValue hpacked hslot with
+        ⟨hmapping, hwriteSlots, hslotSafety⟩
+      exact stmtListGenericCore_singleton_setMappingPackedWordSingle_of_slotSafety
+        (fields := fields)
+        (scope := scope)
+        (hcoreKey := hkey)
+        (hinScopeKey := hscopeKey)
+        (hcoreValue := hvalue)
+        (hinScopeValue := hscopeValue)
+        (hcompatValue := hcompatValue)
+        (hcompatPacked := hcompatPacked)
+        (hcompatSlotWord := hcompatSlotWord)
+        (hcompatSlotCleared := hcompatSlotCleared)
+        (hpacked := hpacked)
         (hmapping := hmapping)
         (hwriteSlots := hwriteSlots)
         (hslotSafety := hslotSafety)

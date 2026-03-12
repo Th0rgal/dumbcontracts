@@ -135,6 +135,24 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       FunctionBody.exprBoundNamesInScope value scope →
       findFieldSlot fields fieldName = some slot →
       SupportedStmtList fields scope [Stmt.setMappingWord fieldName key wordOffset value]
+  | setMappingPackedWordSingle
+      {scope : List String}
+      {fieldName : String}
+      {key value : Expr}
+      {wordOffset slot : Nat}
+      {packed : PackedBits} :
+      FunctionBody.ExprCompileCore key →
+      FunctionBody.exprBoundNamesInScope key scope →
+      FunctionBody.ExprCompileCore value →
+      FunctionBody.exprBoundNamesInScope value scope →
+      "__compat_value" ∉ scope →
+      "__compat_packed" ∉ scope →
+      "__compat_slot_word" ∉ scope →
+      "__compat_slot_cleared" ∉ scope →
+      packedBitsValid packed = true →
+      findFieldSlot fields fieldName = some slot →
+      SupportedStmtList fields scope
+        [Stmt.setMappingPackedWord fieldName key wordOffset packed value]
   | setStructMemberSingle
       {scope : List String}
       {fieldName memberName : String}

@@ -371,7 +371,8 @@ def stmtTouchesUnsupportedStateSurface : Stmt → Bool
       exprTouchesUnsupportedStateSurface value
   | .require cond _ | .return cond =>
       exprTouchesUnsupportedStateSurface cond
-  | .setStorageAddr _ _ => true
+  | .setStorageAddr _ value =>
+      exprTouchesUnsupportedStateSurface value
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
@@ -392,9 +393,8 @@ def stmtTouchesUnsupportedStateSurface : Stmt → Bool
 
 /-- Weaker Tier 2 state-surface gate used by the singleton storage-write bridge:
 all existing unsupported stateful forms remain excluded except for the proved
-singleton mapping-write heads and scalar address-slot writes. -/
+singleton mapping-write heads. -/
 def stmtTouchesUnsupportedStateSurfaceExceptMappingWrites : Stmt → Bool
-  | .setStorageAddr _ _
   | .setMapping _ _ _ | .setMapping2 _ _ _ _ | .setMappingUint _ _ _ => false
   | stmt => stmtTouchesUnsupportedStateSurface stmt
 
@@ -619,10 +619,9 @@ def stmtTouchesUnsupportedContractSurface (stmt : Stmt) : Bool :=
 
 /-- Weaker contract-surface gate used by the Tier 2 singleton storage-write
 bridge: ordinary unsupported contract effects remain excluded, but the proved
-singleton mapping-write heads and scalar address-slot writes are admitted. -/
+singleton mapping-write heads are admitted. -/
 def stmtTouchesUnsupportedContractSurfaceExceptMappingWrites (stmt : Stmt) : Bool :=
   match stmt with
-  | .setStorageAddr _ _
   | .setMapping _ _ _ | .setMapping2 _ _ _ _ | .setMappingUint _ _ _ => false
   | _ => stmtTouchesUnsupportedContractSurface stmt
 
@@ -2775,7 +2774,8 @@ theorem SupportedSpecExceptMappingWrites.selectorFunctionReturnsSupported
 
 @[simp] theorem stmtTouchesUnsupportedContractSurface_setStorageAddr
     (field : String) (value : Expr) :
-    stmtTouchesUnsupportedContractSurface (.setStorageAddr field value) = true := by
+    stmtTouchesUnsupportedContractSurface (.setStorageAddr field value) =
+      exprTouchesUnsupportedContractSurface value := by
   simp [stmtTouchesUnsupportedContractSurface, stmtTouchesUnsupportedCoreSurface,
     stmtTouchesUnsupportedStateSurface, stmtTouchesUnsupportedCallSurface,
     stmtTouchesUnsupportedEffectSurface]

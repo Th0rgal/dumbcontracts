@@ -3443,6 +3443,194 @@ theorem execIRStmtsWithInternals_singleton_letMany_call_internal
   exact execIRStmtWithInternals_letMany_call_internal
     contract fuel state names func args helper argVals state' hargs hfind
 
+/-! ## Compilation output shape theorems
+
+These theorems decompose the output of compilation functions to extract the
+exact IR structure, bridging compilation model data to `findInternalFunction?`. -/
+
+/-- The output of a successful `compileInternalFunction` is always a `funcDef`
+with Yul name `internalFunctionYulName spec.name` and parameter names
+`spec.params.map (·.name)`. -/
+theorem compileInternalFunction_output_shape
+    {fields : List CompilationModel.Field}
+    {events : List CompilationModel.EventDef}
+    {errors : List CompilationModel.ErrorDef}
+    {spec : CompilationModel.FunctionSpec} {stmt : YulStmt}
+    (hok : CompilationModel.compileInternalFunction fields events errors spec = Except.ok stmt) :
+    ∃ retNames bodyStmts,
+      stmt = YulStmt.funcDef
+        (CompilationModel.internalFunctionYulName spec.name)
+        (spec.params.map (·.name))
+        retNames bodyStmts := by
+  simp only [CompilationModel.compileInternalFunction, bind, Except.bind] at hok
+  -- Split on each fallible sub-computation; error cases are contradictory.
+  match hval : CompilationModel.validateFunctionSpec spec with
+  | .error e => simp [hval] at hok
+  | .ok () =>
+    simp [hval] at hok
+    match hret : CompilationModel.functionReturns spec with
+    | .error e => simp [hret] at hok
+    | .ok returns =>
+      simp [hret] at hok
+      -- At this point `hok` should be about compileStmtList >>= pure funcDef = ok stmt
+      -- The private `freshInternalRetNames` is opaque; we just split on the
+      -- remaining compileStmtList result.
+      revert hok
+      generalize CompilationModel.compileStmtList _ _ _ _ _ _ _ _ = compileResult
+      intro hok
+      match compileResult with
+      | .error e => simp at hok
+      | .ok bodyStmts =>
+        simp only [pure, Except.pure, Except.ok.injEq] at hok
+        exact ⟨_, _, hok.symm⟩
+
+/-- If `compileInternalFunction` succeeds and the result is in the runtime
+contract's internal function table, then `findInternalFunction?` finds the
+corresponding helper definition. -/
+theorem findInternalFunction?_of_compileInternalFunction_mem
+    {fields : List CompilationModel.Field}
+    {events : List CompilationModel.EventDef}
+    {errors : List CompilationModel.ErrorDef}
+    {spec : CompilationModel.FunctionSpec} {compiledStmt : YulStmt}
+    {contract : IRContract}
+    (hok : CompilationModel.compileInternalFunction fields events errors spec = Except.ok compiledStmt)
+    (hmem : compiledStmt ∈ contract.internalFunctions) :
+    (findInternalFunction? contract (CompilationModel.internalFunctionYulName spec.name)).isSome = true := by
+  obtain ⟨retNames, bodyStmts, hshape⟩ := compileInternalFunction_output_shape hok
+  rw [hshape] at hmem
+  exact findInternalFunction?_isSome_of_funcDef_mem contract _ _ _ _ hmem
+
+/-- Stronger version: under a uniqueness assumption on helper names in the
+runtime contract, `findInternalFunction?` returns the exact compiled helper
+definition. The uniqueness condition says that any internal-function definition
+in the contract with the same Yul name has the same params, rets, and body. -/
+theorem findInternalFunction?_exact_of_compileInternalFunction_mem_unique
+    {fields : List CompilationModel.Field}
+    {events : List CompilationModel.EventDef}
+    {errors : List CompilationModel.ErrorDef}
+    {spec : CompilationModel.FunctionSpec} {compiledStmt : YulStmt}
+    {contract : IRContract}
+    (hok : CompilationModel.compileInternalFunction fields events errors spec = Except.ok compiledStmt)
+    (hmem : compiledStmt ∈ contract.internalFunctions)
+    (hunique : ∀ stmt ∈ contract.internalFunctions,
+      ∀ p r b, irInternalFunctionDefOfStmt? stmt =
+        some ⟨CompilationModel.internalFunctionYulName spec.name, p, r, b⟩ →
+        stmt = compiledStmt) :
+    ∃ retNames bodyStmts,
+      findInternalFunction? contract (CompilationModel.internalFunctionYulName spec.name) =
+        some { name := CompilationModel.internalFunctionYulName spec.name,
+               params := spec.params.map (·.name),
+               rets := retNames,
+               body := bodyStmts } ∧
+      compiledStmt = YulStmt.funcDef
+        (CompilationModel.internalFunctionYulName spec.name)
+        (spec.params.map (·.name))
+        retNames bodyStmts := by
+  obtain ⟨retNames, bodyStmts, hshape⟩ := compileInternalFunction_output_shape hok
+  refine ⟨retNames, bodyStmts, ?_, hshape⟩
+  rw [hshape] at hmem
+  apply findInternalFunction?_exact_of_funcDef_mem_unique contract _ _ _ _ hmem
+  intro stmt hstmt_mem p r b hir
+  have heq := hunique stmt hstmt_mem p r b hir
+  rw [heq, hshape] at hir
+  simp [irInternalFunctionDefOfStmt?] at hir
+  exact ⟨hir.1.symm, hir.2.1.symm, hir.2.2.symm⟩
+
+/-! ## Compilation shape for `Stmt.internalCallAssign` and `Stmt.internalCall`
+
+These extract the exact compiled IR for internal call statements, which
+downstream proofs need to supply `CompiledStmtStepWithHelpersAndHelperIR.compileOk`. -/
+
+/-- Compilation of `Stmt.internalCallAssign` produces exactly
+`[.letMany names (.call (internalFunctionYulName functionName) argExprs)]`
+when argument compilation succeeds. -/
+theorem compileStmt_internalCallAssign_shape
+    {fields : List CompilationModel.Field} {scope : List String}
+    {names : List String} {functionName : String}
+    {args : List CompilationModel.Expr}
+    {compiledIR : List YulStmt}
+    (hok : CompilationModel.compileStmt fields [] [] .calldata [] false scope
+      (CompilationModel.Stmt.internalCallAssign names functionName args) = Except.ok compiledIR) :
+    ∃ argExprs,
+      CompilationModel.compileExprList fields .calldata args = Except.ok argExprs ∧
+      compiledIR = [YulStmt.letMany names
+        (YulExpr.call (CompilationModel.internalFunctionYulName functionName) argExprs)] := by
+  simp only [CompilationModel.compileStmt, bind, Except.bind] at hok
+  match hargs : CompilationModel.compileExprList fields .calldata args with
+  | .error e => simp [hargs] at hok
+  | .ok argExprs =>
+    refine ⟨argExprs, rfl, ?_⟩
+    simp [hargs, pure, Except.pure] at hok
+    exact hok.symm
+
+/-- Compilation of `Stmt.internalCall` produces exactly
+`[.expr (.call (internalFunctionYulName functionName) argExprs)]`
+when argument compilation succeeds. -/
+theorem compileStmt_internalCall_shape
+    {fields : List CompilationModel.Field} {scope : List String}
+    {functionName : String} {args : List CompilationModel.Expr}
+    {compiledIR : List YulStmt}
+    (hok : CompilationModel.compileStmt fields [] [] .calldata [] false scope
+      (CompilationModel.Stmt.internalCall functionName args) = Except.ok compiledIR) :
+    ∃ argExprs,
+      CompilationModel.compileExprList fields .calldata args = Except.ok argExprs ∧
+      compiledIR = [YulStmt.expr
+        (YulExpr.call (CompilationModel.internalFunctionYulName functionName) argExprs)] := by
+  simp only [CompilationModel.compileStmt, bind, Except.bind] at hok
+  match hargs : CompilationModel.compileExprList fields .calldata args with
+  | .error e => simp [hargs] at hok
+  | .ok argExprs =>
+    refine ⟨argExprs, rfl, ?_⟩
+    simp [hargs, pure, Except.pure] at hok
+    exact hok.symm
+
+/-! ## End-to-end helper call execution characterization
+
+These combine compilation shape extraction with IR execution characterization
+to give a complete picture of what happens when an internal call statement
+compiles to IR and executes. -/
+
+/-- For `Stmt.internalCallAssign`, when compilation succeeds and the helper
+function is found in the runtime contract, the compiled IR's list-level
+execution reduces to `execIRInternalFunctionWithInternals` applied to the
+evaluated arguments. This is the complete IR-side characterization needed
+for the `CompiledStmtStepWithHelpersAndHelperIR.preserves` goal. -/
+theorem execIRStmtsWithInternals_of_internalCallAssign_compile
+    {fields : List CompilationModel.Field} {scope : List String}
+    {names : List String} {functionName : String}
+    {args : List CompilationModel.Expr}
+    {compiledIR : List YulStmt}
+    (contract : IRContract) (fuel : Nat) (state : IRState)
+    (helper : IRInternalFunctionDef) (argVals : List Nat) (state' : IRState)
+    (hok : CompilationModel.compileStmt fields [] [] .calldata [] false scope
+      (CompilationModel.Stmt.internalCallAssign names functionName args) = Except.ok compiledIR)
+    (hfind : findInternalFunction? contract
+      (CompilationModel.internalFunctionYulName functionName) = some helper)
+    (argExprs : List YulExpr)
+    (hargCompile : CompilationModel.compileExprList fields .calldata args = Except.ok argExprs)
+    (hargs : evalIRExprsWithInternals contract (fuel + 1) state argExprs = .values argVals state') :
+    compiledIR = [YulStmt.letMany names
+      (YulExpr.call (CompilationModel.internalFunctionYulName functionName) argExprs)] ∧
+    execIRStmtsWithInternals contract (fuel + 3) state compiledIR =
+      match execIRInternalFunctionWithInternals contract fuel state' helper argVals with
+      | .values values state'' =>
+          if names.length = values.length then
+            .continue (state''.setVars (names.zip values))
+          else .revert state''
+      | .stop state'' => .stop state''
+      | .return value' state'' => .return value' state''
+      | .revert state'' => .revert state'' := by
+  obtain ⟨argExprs', hargOk, hshape⟩ := compileStmt_internalCallAssign_shape hok
+  have hArgEq : argExprs' = argExprs := by
+    simp [hargCompile] at hargOk; exact hargOk.symm
+  subst hArgEq
+  exact ⟨hshape, by
+    rw [hshape]
+    exact execIRStmtsWithInternals_singleton_letMany_call_internal
+      contract fuel state names
+      (CompilationModel.internalFunctionYulName functionName)
+      argExprs' helper argVals state' hargs hfind⟩
+
 @[simp] theorem applyIRTransactionContext_sender
     (tx : IRTransaction) (initialState : IRState) :
     (applyIRTransactionContext tx initialState).sender = tx.sender := by

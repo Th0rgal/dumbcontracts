@@ -4665,6 +4665,18 @@ theorem SupportedBodyInterface.genericCore
     hBody.stmtList
     hBody.surfaceClosed
 
+/-- The supported-body interface also derives the weaker source-side reuse
+witness needed by the exact helper-aware seam: helper-free heads retain the
+legacy generic-step obligation, while helper-positive heads can be discharged
+separately. -/
+theorem SupportedBodyInterface.helperFreeStepInterface
+    {spec : CompilationModel}
+    {fn : FunctionSpec}
+    (hBody : SupportedBodyInterface spec fn)
+    (hnoConflict : firstFieldWriteSlotConflict spec.fields = none) :
+    StmtListHelperFreeStepInterface spec.fields (fn.params.map (·.name)) fn.body :=
+  stmtListHelperFreeStepInterface_of_core (hBody.genericCore hnoConflict)
+
 /-- The current supported-body interface is already strong enough to derive the
 compiled-side legacy-compatibility witness needed by the exact helper-aware
 induction seam. -/
@@ -6822,8 +6834,8 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
     (hnoPacked : ∀ field ∈ model.fields, field.packedBits = none)
     (hhelperSurface : stmtListTouchesUnsupportedHelperSurface fn.body = false)
     (hcontractSurface : stmtListTouchesUnsupportedContractSurface fn.body = false)
-    (hgeneric :
-      StmtListGenericCore
+    (hhelperFree :
+      StmtListHelperFreeStepInterface
         (SourceSemantics.effectiveFields model)
         (fn.params.map (·.name))
         fn.body)
@@ -6857,17 +6869,11 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
         (stmts := fn.body)
         hnoPacked
         hcontractSurface)
-  have hgenericExact :
-      StmtListHelperFreeStepInterface
-        (SourceSemantics.effectiveFields model)
-        (fn.params.map (·.name))
-        fn.body :=
-    stmtListHelperFreeStepInterface_of_core hgeneric
   exact
     supported_function_body_correct_from_exact_state_generic_finer_split_internal_helper_surface_steps_and_helper_ir
       runtimeContract
       model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
-      hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hgenericExact
+      hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hhelperFree
       (stmtListDirectInternalHelperCallStepInterface_of_helperSurfaceClosed
         (runtimeContract := runtimeContract)
         (spec := model)

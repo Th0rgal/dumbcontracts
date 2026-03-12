@@ -4704,14 +4704,21 @@ theorem SupportedBodyInterface.helperFreeStepInterface
     {fn : FunctionSpec}
     (hBody : SupportedBodyInterface spec fn)
     (hnoConflict : firstFieldWriteSlotConflict spec.fields = none) :
-    StmtListHelperFreeStepInterface spec.fields (fn.params.map (·.name)) fn.body :=
+    StmtListHelperFreeStepInterface spec.fields (fn.params.map (·.name)) fn.body := by
+  have hsurface :
+      stmtListTouchesUnsupportedContractSurface fn.body = false :=
+    stmtListTouchesUnsupportedContractSurface_eq_false_of_featureClosed fn.body
+      hBody.core.surfaceClosed
+      hBody.state.surfaceClosed
+      (SupportedBodyCallInterface.surfaceClosed (hBody := hBody))
+      hBody.effects.surfaceClosed
   stmtListHelperFreeStepInterface_of_supportedStmtList_of_surface
     (fields := spec.fields)
     (scope := fn.params.map (·.name))
     (stmts := fn.body)
     hnoConflict
     hBody.stmtList
-    hBody.surfaceClosed
+    hsurface
 
 private theorem exprBoundNamesInScope_of_scopeNamesIncluded
     {expr : Expr}

@@ -1676,23 +1676,6 @@ theorem SupportedBodyCallInterface.surfaceClosed
   rw [stmtListTouchesUnsupportedCallSurface_eq_featureOr]
   simp [hBody.helperSurfaceClosed, hBody.calls.foreign, hBody.calls.lowLevel]
 
-theorem SupportedBodyInterface.internalHelperSurfaceClosed
-    {spec : CompilationModel} {fn : FunctionSpec}
-    (hBody : SupportedBodyInterface spec fn) :
-    stmtListTouchesInternalHelperSurface fn.body = false := by
-  exact stmtListTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
-    hBody.helperSurfaceClosed
-
-theorem SupportedBodyInterface.surfaceClosed
-    {spec : CompilationModel} {fn : FunctionSpec}
-    (hBody : SupportedBodyInterface spec fn) :
-    stmtListTouchesUnsupportedContractSurface fn.body = false := by
-  exact stmtListTouchesUnsupportedContractSurface_eq_false_of_featureClosed fn.body
-    hBody.core.surfaceClosed
-    hBody.state.surfaceClosed
-    (SupportedBodyCallInterface.surfaceClosed (hBody := hBody))
-    hBody.effects.surfaceClosed
-
 private theorem exprUsesArrayElement_eq_false_of_coreClosed
     {expr : Expr}
     (hcore : exprTouchesUnsupportedCoreSurface expr = false) :

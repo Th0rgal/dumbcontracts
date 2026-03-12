@@ -235,6 +235,21 @@ ALLOWLIST: set[str] = {
     "interpretContract_correct_of_compiled_functions_with_helper_proofs",
     "compileFunctionSpec_correct_generic_with_helper_proofs",
     "compile_preserves_semantics_with_helper_proofs",
+    # Issue #1638 / PR #1639 — helper-aware compiled-target retarget wrappers:
+    # these theorems preserve the public Layer 2 theorem signatures while
+    # swapping in the helper-aware compiled semantics target or goal surface.
+    # They are mostly API-preserving composition lemmas; decomposition is
+    # follow-up cleanup once the remaining stmt-level conservative-extension
+    # theorem lands and the helper-aware path becomes the default theorem stack.
+    "compileFunctionSpec_correct_generic_with_helper_proofs_and_helper_ir",
+    "interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir",
+    "interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_goal",
+    # Issue #1638 / PR #1639 — compiled-side helper retarget seam:
+    # this theorem is the one list-composition proof that shows the open helper
+    # blocker lives at single-statement compatibility rather than list plumbing.
+    # Its length comes from the constructor-by-constructor composition over the
+    # legacy-compatible Yul stmt-list fragment.
+    "execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility",
     # Issue #1630 / PR #1633 — feature-interface compatibility bridge:
     # this private theorem is the one place that folds the split `core` / `state`
     # / `calls` booleans back into the legacy `exprTouchesUnsupportedContractSurface`

@@ -146,13 +146,13 @@ next compiled-side substep is therefore more precise than before:
 `LegacyCompatibleRuntimeDispatch`, and now also proves
 `interpretIRWithInternalsZeroConservativeExtensionGoal_of_dispatchGoal` so that
 the contract-level lift is no longer part of the open blocker. It also proves
-`execIRStmtWithInternals_eq_execIRStmt_of_stmtListCompatibility`,
-`execIRFunctionWithInternals_eq_execIRFunction_of_stmtListCompatibility`,
-`interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtListCompatibility`,
-and `interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtListCompatibility`,
-so stmt compatibility, function compatibility, the dispatch-local theorem, and
-the contract-level theorem all reduce to stmt-list compatibility. That leaves
-the remaining proof work as the stmt-list theorem for
+`execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility`,
+`execIRFunctionWithInternals_eq_execIRFunction_of_stmtCompatibility`,
+`interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtCompatibility`,
+and `interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtCompatibility`,
+so stmt-list compatibility, function compatibility, the dispatch-local theorem,
+and the contract-level theorem all reduce to stmt compatibility. That leaves
+the remaining proof work as the stmt theorem for
 `runtimeContractOfFunctions`-style contracts over the subset. After that, the
 broader theorem stack can instantiate the already-defined helper-aware wrapper
 theorems rather than requiring another theorem-interface refactor.

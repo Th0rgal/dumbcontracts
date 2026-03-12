@@ -297,14 +297,14 @@ now sits under the post-generic widening/completeness plan in
   `evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal`, and the wrapper theorem
   `InterpretIRWithInternalsZeroConservativeExtensionExprInterfaces`;
   `IRInterpreter.lean` now also proves
-  `execIRFunctionWithInternals_eq_execIRFunction_of_stmtListCompatibility`,
-  `execIRStmtWithInternals_eq_execIRStmt_of_stmtListCompatibility`,
-  `interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtListCompatibility`,
-  and `interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtListCompatibility`,
-  so stmt compatibility, function compatibility, the dispatch-local cut, and the
-  contract-level lift are all reduced to stmt-list compatibility rather than
+  `execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility`,
+  `execIRFunctionWithInternals_eq_execIRFunction_of_stmtCompatibility`,
+  `interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtCompatibility`,
+  and `interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtCompatibility`,
+  so stmt-list compatibility, function compatibility, the dispatch-local cut, and the
+  contract-level lift are all reduced to stmt compatibility rather than
   remaining independent proof tasks;
-  the remaining compiled-side proof step is therefore the stmt-list theorem itself,
+  the remaining compiled-side proof step is therefore the stmt theorem itself,
   after which the conservative-extension goal from legacy `interpretIR` to
   `interpretIRWithInternals` on that subset follows by composition,
   and `Function.lean`, `Dispatch.lean`, and `Contract.lean` now already expose

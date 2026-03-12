@@ -1077,6 +1077,114 @@ theorem interpretIRWithInternalsZeroConservativeExtensionExprInterfaces
   exact ⟨evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract,
     evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract⟩
 
+/-- Statement-list compatibility is mechanically derivable from single-statement
+compatibility: once the head step is known to coincide, the remaining list proof
+is just tail composition on the same fuel/state. This isolates the compiled-side
+helper retarget blocker to the stmt layer rather than the whole stmt-list layer. -/
+theorem execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility
+    (contract : IRContract)
+    (hstmt :
+      contract.internalFunctions = [] →
+        ∀ fuel state stmt,
+          LegacyCompatibleExternalStmt stmt →
+            execIRStmtWithInternals contract fuel state stmt =
+              match execIRStmt fuel state stmt with
+              | .continue next => .continue next
+              | .return value next => .return value next
+              | .stop next => .stop next
+              | .revert next => .revert next) :
+    contract.internalFunctions = [] →
+      ∀ fuel state stmts,
+        LegacyCompatibleExternalStmtList stmts →
+          execIRStmtsWithInternals contract fuel state stmts =
+            match execIRStmts fuel state stmts with
+            | .continue next => .continue next
+            | .return value next => .return value next
+            | .stop next => .stop next
+            | .revert next => .revert next := by
+  intro hinternal fuel state stmts hlegacy
+  induction hlegacy generalizing fuel state with
+  | nil =>
+      cases fuel <;> simp [execIRStmtsWithInternals, execIRStmts]
+  | comment msg rest hrest ih =>
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsWithInternals, execIRStmts]
+      | succ fuel =>
+          have hhead :=
+            hstmt hinternal fuel state (.comment msg)
+              (LegacyCompatibleExternalStmtList.comment msg [] LegacyCompatibleExternalStmtList.nil)
+          rw [execIRStmtsWithInternals, execIRStmts, hhead]
+          cases hstep : execIRStmt fuel state (.comment msg) <;>
+            simp [ih]
+  | let_ name value rest hrest ih =>
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsWithInternals, execIRStmts]
+      | succ fuel =>
+          have hhead :=
+            hstmt hinternal fuel state (.let_ name value)
+              (LegacyCompatibleExternalStmtList.let_ name value [] LegacyCompatibleExternalStmtList.nil)
+          rw [execIRStmtsWithInternals, execIRStmts, hhead]
+          cases hstep : execIRStmt fuel state (.let_ name value) <;>
+            simp [ih]
+  | assign name value rest hrest ih =>
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsWithInternals, execIRStmts]
+      | succ fuel =>
+          have hhead :=
+            hstmt hinternal fuel state (.assign name value)
+              (LegacyCompatibleExternalStmtList.assign name value [] LegacyCompatibleExternalStmtList.nil)
+          rw [execIRStmtsWithInternals, execIRStmts, hhead]
+          cases hstep : execIRStmt fuel state (.assign name value) <;>
+            simp [ih]
+  | expr value rest hrest ih =>
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsWithInternals, execIRStmts]
+      | succ fuel =>
+          have hhead :=
+            hstmt hinternal fuel state (.expr value)
+              (LegacyCompatibleExternalStmtList.expr value [] LegacyCompatibleExternalStmtList.nil)
+          rw [execIRStmtsWithInternals, execIRStmts, hhead]
+          cases hstep : execIRStmt fuel state (.expr value) <;>
+            simp [ih]
+  | if_ cond body rest hbody hrest ihBody ihRest =>
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsWithInternals, execIRStmts]
+      | succ fuel =>
+          have hhead :=
+            hstmt hinternal fuel state (.if_ cond body)
+              (LegacyCompatibleExternalStmtList.if_ cond body [] hbody LegacyCompatibleExternalStmtList.nil)
+          rw [execIRStmtsWithInternals, execIRStmts, hhead]
+          cases hstep : execIRStmt fuel state (.if_ cond body) <;>
+            simp [ihRest]
+  | block body rest hbody hrest ihBody ihRest =>
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsWithInternals, execIRStmts]
+      | succ fuel =>
+          have hhead :=
+            hstmt hinternal fuel state (.block body)
+              (LegacyCompatibleExternalStmtList.block body [] hbody LegacyCompatibleExternalStmtList.nil)
+          rw [execIRStmtsWithInternals, execIRStmts, hhead]
+          cases hstep : execIRStmt fuel state (.block body) <;>
+            simp [ihRest]
+  | funcDef name params rets body rest hbody hrest ihBody ihRest =>
+      cases fuel with
+      | zero =>
+          simp [execIRStmtsWithInternals, execIRStmts]
+      | succ fuel =>
+          have hhead :=
+            hstmt hinternal fuel state (.funcDef name params rets body)
+              (LegacyCompatibleExternalStmtList.funcDef
+                name params rets body [] hbody LegacyCompatibleExternalStmtList.nil)
+          rw [execIRStmtsWithInternals, execIRStmts, hhead]
+          cases hstep : execIRStmt fuel state (.funcDef name params rets body) <;>
+            simp [ihRest]
+
 /-- Once statement-list compatibility is proved, the function-level compatibility
 field in `InterpretIRWithInternalsZeroConservativeExtensionInterfaces` is just
 plumbing: both interpreters initialize parameters identically and run the same
@@ -1248,6 +1356,64 @@ theorem interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtListCompati
   exact interpretIRWithInternalsZeroConservativeExtensionGoal_of_dispatchGoal contract
     (interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtListCompatibility
       contract hstmtList)
+
+/-- With the list-composition theorem above, the remaining compiled-side helper-free
+retarget blocker can be stated directly at the stmt layer. -/
+theorem execIRFunctionWithInternals_eq_execIRFunction_of_stmtCompatibility
+    (contract : IRContract)
+    (hstmt :
+      contract.internalFunctions = [] →
+        ∀ fuel state stmt,
+          LegacyCompatibleExternalStmt stmt →
+            execIRStmtWithInternals contract fuel state stmt =
+              match execIRStmt fuel state stmt with
+              | .continue next => .continue next
+              | .return value next => .return value next
+              | .stop next => .stop next
+              | .revert next => .revert next) :
+    contract.internalFunctions = [] →
+      ∀ fn args initialState,
+        LegacyCompatibleExternalStmtList fn.body →
+          execIRFunctionWithInternals contract 0 fn args initialState =
+            execIRFunction fn args initialState := by
+  apply execIRFunctionWithInternals_eq_execIRFunction_of_stmtListCompatibility
+  exact execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility contract hstmt
+
+/-- Dispatch-local conservative extension is also mechanical once single-statement
+compatibility is available. -/
+theorem interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtCompatibility
+    (contract : IRContract)
+    (hstmt :
+      contract.internalFunctions = [] →
+        ∀ fuel state stmt,
+          LegacyCompatibleExternalStmt stmt →
+            execIRStmtWithInternals contract fuel state stmt =
+              match execIRStmt fuel state stmt with
+              | .continue next => .continue next
+              | .return value next => .return value next
+              | .stop next => .stop next
+              | .revert next => .revert next) :
+    InterpretIRWithInternalsZeroConservativeExtensionDispatchGoal contract := by
+  apply interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtListCompatibility
+  exact execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility contract hstmt
+
+/-- The public contract-level conservative-extension goal now also reduces to the
+single-statement compatibility theorem. -/
+theorem interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtCompatibility
+    (contract : IRContract)
+    (hstmt :
+      contract.internalFunctions = [] →
+        ∀ fuel state stmt,
+          LegacyCompatibleExternalStmt stmt →
+            execIRStmtWithInternals contract fuel state stmt =
+              match execIRStmt fuel state stmt with
+              | .continue next => .continue next
+              | .return value next => .return value next
+              | .stop next => .stop next
+              | .revert next => .revert next) :
+    InterpretIRWithInternalsZeroConservativeExtensionGoal contract := by
+  apply interpretIRWithInternalsZeroConservativeExtensionGoal_of_stmtListCompatibility
+  exact execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility contract hstmt
 
 @[simp] theorem applyIRTransactionContext_sender
     (tx : IRTransaction) (initialState : IRState) :

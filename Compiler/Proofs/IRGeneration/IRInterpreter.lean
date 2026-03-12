@@ -1264,11 +1264,11 @@ theorem interpretIRWithInternalsZeroConservativeExtensionExprInterfaces
   exact ⟨evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract,
     evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract⟩
 
-/-- The non-semantic singleton stmt cases are already helper-free compatible.
-This removes singleton boilerplate from the remaining compiled-side proof work,
-which can now focus on expression statements plus nested `if` / `block`
-transport. -/
-theorem execIRStmtWithInternals_eq_execIRStmt_of_exprIfBlockCompatibility
+/-- Statement-list compatibility is also derivable from expression-statement
+compatibility alone on the legacy-compatible external subset. This collapses the
+remaining compiled-side helper-free retarget seam to one semantic field instead
+of separate stmt, `if`, `block`, and stmt-list obligations. -/
+theorem execIRStmtsWithInternals_eq_execIRStmts_of_exprCompatibility
     (contract : IRContract)
     (hexpr :
       contract.internalFunctions = [] →
@@ -1278,27 +1278,167 @@ theorem execIRStmtWithInternals_eq_execIRStmt_of_exprIfBlockCompatibility
             | .continue next => .continue next
             | .return value next => .return value next
             | .stop next => .stop next
-            | .revert next => .revert next)
-    (hif :
+            | .revert next => .revert next) :
+    contract.internalFunctions = [] →
+      ∀ fuel state stmts,
+        LegacyCompatibleExternalStmtList stmts →
+          execIRStmtsWithInternals contract fuel state stmts =
+            match execIRStmts fuel state stmts with
+            | .continue next => .continue next
+            | .return value next => .return value next
+            | .stop next => .stop next
+            | .revert next => .revert next
+  | hinternal, fuel, state, stmts, hlegacy => by
+      induction hlegacy generalizing fuel state with
+      | nil =>
+          cases fuel <;> simp [execIRStmtsWithInternals, execIRStmts]
+      | comment msg rest hrest ih =>
+          cases fuel with
+          | zero =>
+              simp [execIRStmtsWithInternals, execIRStmts]
+          | succ fuel =>
+              have hhead :
+                  execIRStmtWithInternals contract fuel state (.comment msg) =
+                    match execIRStmt fuel state (.comment msg) with
+                    | .continue next => .continue next
+                    | .return value next => .return value next
+                    | .stop next => .stop next
+                    | .revert next => .revert next := by
+                cases fuel <;> simp [execIRStmtWithInternals, execIRStmt]
+              rw [execIRStmtsWithInternals, execIRStmts, hhead]
+              cases hstep : execIRStmt fuel state (.comment msg) <;>
+                simp [ih]
+      | let_ name value rest hrest ih =>
+          cases fuel with
+          | zero =>
+              simp [execIRStmtsWithInternals, execIRStmts]
+          | succ fuel =>
+              have hhead :
+                  execIRStmtWithInternals contract fuel state (.let_ name value) =
+                    match execIRStmt fuel state (.let_ name value) with
+                    | .continue next => .continue next
+                    | .return value next => .return value next
+                    | .stop next => .stop next
+                    | .revert next => .revert next := by
+                cases fuel with
+                | zero =>
+                    simp [execIRStmtWithInternals, execIRStmt]
+                | succ fuel =>
+                    cases hval : evalIRExpr state value <;>
+                      simp [execIRStmtWithInternals, execIRStmt,
+                        evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal, hval]
+              rw [execIRStmtsWithInternals, execIRStmts, hhead]
+              cases hstep : execIRStmt fuel state (.let_ name value) <;>
+                simp [ih]
+      | assign name value rest hrest ih =>
+          cases fuel with
+          | zero =>
+              simp [execIRStmtsWithInternals, execIRStmts]
+          | succ fuel =>
+              have hhead :
+                  execIRStmtWithInternals contract fuel state (.assign name value) =
+                    match execIRStmt fuel state (.assign name value) with
+                    | .continue next => .continue next
+                    | .return value next => .return value next
+                    | .stop next => .stop next
+                    | .revert next => .revert next := by
+                cases fuel with
+                | zero =>
+                    simp [execIRStmtWithInternals, execIRStmt]
+                | succ fuel =>
+                    cases hval : evalIRExpr state value <;>
+                      simp [execIRStmtWithInternals, execIRStmt,
+                        evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal, hval]
+              rw [execIRStmtsWithInternals, execIRStmts, hhead]
+              cases hstep : execIRStmt fuel state (.assign name value) <;>
+                simp [ih]
+      | expr value rest hrest ih =>
+          cases fuel with
+          | zero =>
+              simp [execIRStmtsWithInternals, execIRStmts]
+          | succ fuel =>
+              have hhead := hexpr hinternal fuel state value
+              rw [execIRStmtsWithInternals, execIRStmts, hhead]
+              cases hstep : execIRStmt fuel state (.expr value) <;>
+                simp [ih]
+      | if_ cond body rest hbody hrest ihBody ihRest =>
+          cases fuel with
+          | zero =>
+              simp [execIRStmtsWithInternals, execIRStmts]
+          | succ fuel =>
+              have hhead :
+                  execIRStmtWithInternals contract fuel state (.if_ cond body) =
+                    match execIRStmt fuel state (.if_ cond body) with
+                    | .continue next => .continue next
+                    | .return value next => .return value next
+                    | .stop next => .stop next
+                    | .revert next => .revert next := by
+                cases fuel with
+                | zero =>
+                    simp [execIRStmtWithInternals, execIRStmt]
+                | succ fuel =>
+                    rw [execIRStmtWithInternals, execIRStmt]
+                    rw [evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal fuel state cond]
+                    cases hcond : evalIRExpr state cond with
+                    | none =>
+                        simp
+                    | some condValue =>
+                        by_cases hnonzero : condValue ≠ 0
+                        · simp [hnonzero, ihBody fuel state]
+                        · simp [hnonzero]
+              rw [execIRStmtsWithInternals, execIRStmts, hhead]
+              cases hstep : execIRStmt fuel state (.if_ cond body) <;>
+                simp [ihRest]
+      | block body rest hbody hrest ihBody ihRest =>
+          cases fuel with
+          | zero =>
+              simp [execIRStmtsWithInternals, execIRStmts]
+          | succ fuel =>
+              have hhead :
+                  execIRStmtWithInternals contract fuel state (.block body) =
+                    match execIRStmt fuel state (.block body) with
+                    | .continue next => .continue next
+                    | .return value next => .return value next
+                    | .stop next => .stop next
+                    | .revert next => .revert next := by
+                cases fuel with
+                | zero =>
+                    simp [execIRStmtWithInternals, execIRStmt]
+                | succ fuel =>
+                    simpa [execIRStmtWithInternals, execIRStmt] using ihBody fuel state
+              rw [execIRStmtsWithInternals, execIRStmts, hhead]
+              cases hstep : execIRStmt fuel state (.block body) <;>
+                simp [ihRest]
+      | funcDef name params rets body rest hbody hrest ihBody ihRest =>
+          cases fuel with
+          | zero =>
+              simp [execIRStmtsWithInternals, execIRStmts]
+          | succ fuel =>
+              have hhead :
+                  execIRStmtWithInternals contract fuel state (.funcDef name params rets body) =
+                    match execIRStmt fuel state (.funcDef name params rets body) with
+                    | .continue next => .continue next
+                    | .return value next => .return value next
+                    | .stop next => .stop next
+                    | .revert next => .revert next := by
+                simp [execIRStmtWithInternals, execIRStmt]
+              rw [execIRStmtsWithInternals, execIRStmts, hhead]
+              cases hstep : execIRStmt fuel state (.funcDef name params rets body) <;>
+                simp [ihRest]
+
+/-- Single-statement compatibility now follows mechanically from the list theorem:
+a compatible stmt is just a compatible singleton stmt list. -/
+theorem execIRStmtWithInternals_eq_execIRStmt_of_exprCompatibility
+    (contract : IRContract)
+    (hexpr :
       contract.internalFunctions = [] →
-        ∀ fuel state cond body,
-          LegacyCompatibleExternalStmtList body →
-            execIRStmtWithInternals contract fuel state (.if_ cond body) =
-              match execIRStmt fuel state (.if_ cond body) with
-              | .continue next => .continue next
-              | .return value next => .return value next
-              | .stop next => .stop next
-              | .revert next => .revert next)
-    (hblock :
-      contract.internalFunctions = [] →
-        ∀ fuel state body,
-          LegacyCompatibleExternalStmtList body →
-            execIRStmtWithInternals contract fuel state (.block body) =
-              match execIRStmt fuel state (.block body) with
-              | .continue next => .continue next
-              | .return value next => .return value next
-              | .stop next => .stop next
-              | .revert next => .revert next) :
+        ∀ fuel state expr,
+          execIRStmtWithInternals contract fuel state (.expr expr) =
+            match execIRStmt fuel state (.expr expr) with
+            | .continue next => .continue next
+            | .return value next => .return value next
+            | .stop next => .stop next
+            | .revert next => .revert next) :
     contract.internalFunctions = [] →
       ∀ fuel state stmt,
         LegacyCompatibleExternalStmt stmt →
@@ -1309,45 +1449,19 @@ theorem execIRStmtWithInternals_eq_execIRStmt_of_exprIfBlockCompatibility
             | .stop next => .stop next
             | .revert next => .revert next := by
   intro hinternal fuel state stmt hstmt
-  cases hstmt with
-  | comment msg rest hrest =>
-      cases hrest
-      cases fuel <;> simp [execIRStmtWithInternals, execIRStmt]
-  | let_ name value rest hrest =>
-      cases hrest
-      cases fuel with
-      | zero =>
-          simp [execIRStmtWithInternals, execIRStmt]
-      | succ fuel =>
-          cases hval : evalIRExpr state value <;>
-            simp [execIRStmtWithInternals, execIRStmt,
-              evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal, hval]
-  | assign name value rest hrest =>
-      cases hrest
-      cases fuel with
-      | zero =>
-          simp [execIRStmtWithInternals, execIRStmt]
-      | succ fuel =>
-          cases hval : evalIRExpr state value <;>
-            simp [execIRStmtWithInternals, execIRStmt,
-              evalIRExprWithInternals_eq_evalIRExpr_of_no_internal contract hinternal, hval]
-  | expr value rest hrest =>
-      cases hrest
-      exact hexpr hinternal fuel state value
-  | if_ cond body rest hbody hrest =>
-      cases hrest
-      exact hif hinternal fuel state cond body hbody
-  | block body rest hbody hrest =>
-      cases hrest
-      exact hblock hinternal fuel state body hbody
-  | funcDef name params rets body rest hbody hrest =>
-      cases hrest
-      simp [execIRStmtWithInternals, execIRStmt]
+  have hsingleton :=
+    execIRStmtsWithInternals_eq_execIRStmts_of_exprCompatibility
+      contract hexpr hinternal (fuel + 1) state [stmt] hstmt
+  cases hwith : execIRStmtWithInternals contract fuel state stmt <;>
+    cases hlegacy : execIRStmt fuel state stmt <;>
+      simp [execIRStmtsWithInternals, execIRStmts, hwith, hlegacy] at hsingleton ⊢ <;>
+      simpa using hsingleton
 
 /-- The remaining single-statement helper-free conservative-extension seam is now
-packaged as an explicit three-part interface: the real semantic work sits in
-`YulStmt.expr`, while `if` and `block` only need recursive transport over the
-same legacy-compatible subset. -/
+packaged as an explicit one-field interface: the real semantic work sits in
+`YulStmt.expr`, while `if`, `block`, stmt-list, function, dispatch, and
+contract transport are already derivable compositionally on the same
+legacy-compatible subset. -/
 structure InterpretIRWithInternalsZeroConservativeExtensionStmtSubgoals
     (contract : IRContract) where
   exprCompatibility :
@@ -1359,29 +1473,9 @@ structure InterpretIRWithInternalsZeroConservativeExtensionStmtSubgoals
           | .return value next => .return value next
           | .stop next => .stop next
           | .revert next => .revert next
-  ifCompatibility :
-    contract.internalFunctions = [] →
-      ∀ fuel state cond body,
-        LegacyCompatibleExternalStmtList body →
-          execIRStmtWithInternals contract fuel state (.if_ cond body) =
-            match execIRStmt fuel state (.if_ cond body) with
-            | .continue next => .continue next
-            | .return value next => .return value next
-            | .stop next => .stop next
-            | .revert next => .revert next
-  blockCompatibility :
-    contract.internalFunctions = [] →
-      ∀ fuel state body,
-        LegacyCompatibleExternalStmtList body →
-          execIRStmtWithInternals contract fuel state (.block body) =
-            match execIRStmt fuel state (.block body) with
-            | .continue next => .continue next
-            | .return value next => .return value next
-            | .stop next => .stop next
-            | .revert next => .revert next
 
 /-- The old prose-only description of the remaining stmt blocker is now a real
-proof interface object. Filling these three fields is sufficient to recover the full
+proof interface object. Filling this one field is sufficient to recover the full
 single-statement compatibility theorem. -/
 theorem execIRStmtWithInternals_eq_execIRStmt_of_stmtSubgoals
     (contract : IRContract)
@@ -1396,9 +1490,8 @@ theorem execIRStmtWithInternals_eq_execIRStmt_of_stmtSubgoals
             | .return value next => .return value next
             | .stop next => .stop next
             | .revert next => .revert next := by
-  exact execIRStmtWithInternals_eq_execIRStmt_of_exprIfBlockCompatibility
-    contract hsubgoals.exprCompatibility hsubgoals.ifCompatibility
-    hsubgoals.blockCompatibility
+  exact execIRStmtWithInternals_eq_execIRStmt_of_exprCompatibility
+    contract hsubgoals.exprCompatibility
 
 
 /-- Statement-list compatibility is mechanically derivable from single-statement

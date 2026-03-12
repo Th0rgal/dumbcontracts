@@ -303,6 +303,12 @@ now sits under the post-generic widening/completeness plan in
   so the full helper-free conservative-extension interface object is assembled
   from a compositional Lean subgoal object rather than only a prose checklist;
   `IRInterpreter.lean` now also proves
+  `execIRStmtsWithInternals_eq_execIRStmts_of_exprCompatibility` and
+  `execIRStmtWithInternals_eq_execIRStmt_of_exprCompatibility`, so the
+  structural `if` / `block` transport on that subset is already discharged and
+  the named stmt-subgoal interface now carries only the residual expr-statement
+  compatibility surface;
+  `IRInterpreter.lean` now also proves
   `execIRStmtsWithInternals_eq_execIRStmts_of_stmtCompatibility`,
   `execIRFunctionWithInternals_eq_execIRFunction_of_stmtCompatibility`,
   `interpretIRWithInternalsZeroConservativeExtensionDispatchGoal_of_stmtCompatibility`,
@@ -316,7 +322,7 @@ now sits under the post-generic widening/completeness plan in
   cases via `exprStmtUsesDedicatedBuiltinSemantics` and already provides direct
   helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot
   `sstore`, leaving the remaining assembly as the residual expr-statement
-  compatibility surface plus nested `if`/`block` transport on that subset,
+  compatibility surface itself,
   after which the conservative-extension goal from legacy `interpretIR` to
   `interpretIRWithInternals` on that subset follows by composition,
   and `Function.lean`, `Dispatch.lean`, and `Contract.lean` now already expose

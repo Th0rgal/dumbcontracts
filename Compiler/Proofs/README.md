@@ -166,14 +166,17 @@ the contract-level lift is no longer part of the open blocker. It also proves
 `interpretIRWithInternalsZeroConservativeExtensionInterfaces_of_stmtSubgoals`,
 so stmt-list compatibility, function compatibility, the dispatch-local theorem,
 and the contract-level theorem all reduce to a named stmt-subgoal interface.
-That leaves the remaining proof work as the fields of
-`InterpretIRWithInternalsZeroConservativeExtensionStmtSubgoals` for
+`IRInterpreter.lean` now also proves
+`execIRStmtsWithInternals_eq_execIRStmts_of_exprCompatibility` and
+`execIRStmtWithInternals_eq_execIRStmt_of_exprCompatibility`, so the structural
+`if` / `block` transport is already discharged and the named stmt-subgoal
+interface has shrunk to the residual expr-statement compatibility surface for
 `runtimeContractOfFunctions`-style contracts over the subset. `IRInterpreter.lean`
 now classifies dedicated expr-statement builtin cases through
 `exprStmtUsesDedicatedBuiltinSemantics` and already exposes direct helper-free
 lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`, so
 the remaining assembly is the residual expr-statement compatibility surface
-plus nested `if`/`block` transport. After that, the
+itself. After that, the
 broader theorem stack can instantiate the already-defined helper-aware wrapper
 theorems rather than requiring another theorem-interface refactor.
 The helper-aware compiled target remains available as total fuel-indexed

@@ -60,7 +60,7 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "total fuel-indexed helper-aware IR semantics",
             "`exprStmtUsesDedicatedBuiltinSemantics`",
             "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`",
-            "residual expr-statement compatibility surface plus nested `if`/`block` transport",
+            "residual expr-statement compatibility surface itself",
         ],
         "ROADMAP": [
             "`artifacts/layer2_boundary_catalog.json`",
@@ -77,7 +77,7 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "total fuel-indexed helper-aware IR semantics",
             "`exprStmtUsesDedicatedBuiltinSemantics`",
             "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`",
-            "residual expr-statement compatibility surface plus nested `if`/`block` transport",
+            "residual expr-statement compatibility surface itself",
             "[#1638]",
         ],
         "VERIFICATION_STATUS": [
@@ -95,7 +95,7 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "total fuel-indexed helper-aware IR semantics",
             "`exprStmtUsesDedicatedBuiltinSemantics`",
             "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`",
-            "residual expr-statement compatibility surface plus nested `if`/`block` transport",
+            "residual expr-statement compatibility surface itself",
             "[#1638]",
         ],
         "COMPILER_PROOFS_README": [
@@ -113,7 +113,7 @@ def expected_snippets(catalog: dict) -> dict[str, list[str]]:
             "total fuel-indexed helper-aware IR semantics",
             "`exprStmtUsesDedicatedBuiltinSemantics`",
             "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`",
-            "residual expr-statement compatibility surface plus nested `if`/`block` transport",
+            "residual expr-statement compatibility surface itself",
             "[#1638]",
         ],
     }

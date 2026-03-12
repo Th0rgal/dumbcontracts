@@ -55,7 +55,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "total fuel-indexed helper-aware IR semantics\n"
                 "`exprStmtUsesDedicatedBuiltinSemantics`\n"
                 "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`\n"
-                "residual expr-statement compatibility surface plus nested `if`/`block` transport\n"
+                "residual expr-statement compatibility surface itself\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
             ),
             "ROADMAP": (
@@ -73,7 +73,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "total fuel-indexed helper-aware IR semantics\n"
                 "`exprStmtUsesDedicatedBuiltinSemantics`\n"
                 "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`\n"
-                "residual expr-statement compatibility surface plus nested `if`/`block` transport\n"
+                "residual expr-statement compatibility surface itself\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
                 "[#1638]\n"
             ),
@@ -92,7 +92,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "total fuel-indexed helper-aware IR semantics\n"
                 "`exprStmtUsesDedicatedBuiltinSemantics`\n"
                 "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`\n"
-                "residual expr-statement compatibility surface plus nested `if`/`block` transport\n"
+                "residual expr-statement compatibility surface itself\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
                 "[#1638]\n"
             ),
@@ -111,7 +111,7 @@ class Layer2BoundaryCatalogSyncTests(unittest.TestCase):
                 "total fuel-indexed helper-aware IR semantics\n"
                 "`exprStmtUsesDedicatedBuiltinSemantics`\n"
                 "direct helper-free lemmas for `stop`, `mstore`, `revert`, `return`, and mapping-slot `sstore`\n"
-                "residual expr-statement compatibility surface plus nested `if`/`block` transport\n"
+                "residual expr-statement compatibility surface itself\n"
                 "`InterpretIRWithInternalsZeroConservativeExtensionInterfaces`\n"
                 "[#1638]\n"
             ),

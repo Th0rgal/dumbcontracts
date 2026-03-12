@@ -1083,7 +1083,7 @@ syntactic support inventory local to the body witness instead of baking it
 directly into the top-level `SupportedSpec` inventory. Each sub-interface is a
 feature-local place to hang future widening work. -/
 structure SupportedBodyInterface (spec : CompilationModel) (fn : FunctionSpec) : Prop where
-  stmtList : SupportedStmtList spec.fields fn.body
+  stmtList : SupportedStmtList spec.fields (fn.params.map (·.name)) fn.body
   helperSurfaceClosed : stmtListTouchesUnsupportedHelperSurface fn.body = false
   core : SupportedBodyCoreInterface fn
   state : SupportedBodyStateInterface fn
@@ -1173,27 +1173,76 @@ private theorem supportedStmtFragment_helperSurfaceClosed
       stmtTouchesUnsupportedHelperSurface,
       exprTouchesUnsupportedHelperSurface]
 
-private theorem supportedStmtFragments_helperSurfaceClosed
-    {fields : List Field}
-    (fragments : List (SupportedStmtFragment fields)) :
-    stmtListTouchesUnsupportedHelperSurface
-      (supportedStmtFragmentsToStmts fragments) = false := by
-  induction fragments with
+private theorem stmtListCompileCore_helperSurfaceClosed
+    {scope : List String}
+    {stmts : List Stmt}
+    (hcore : FunctionBody.StmtListCompileCore scope stmts) :
+    stmtListTouchesUnsupportedHelperSurface stmts = false := by
+  induction hcore with
   | nil =>
-      simp [supportedStmtFragmentsToStmts, stmtListTouchesUnsupportedHelperSurface]
-  | cons fragment rest ih =>
-      simpa [supportedStmtFragmentsToStmts, stmtListTouchesUnsupportedHelperSurface,
-        supportedStmtFragment_helperSurfaceClosed, ih]
+      simp [stmtListTouchesUnsupportedHelperSurface]
+  | letVar _ _ _ ih
+    | assignVar _ _ _ ih
+    | return_ _ _ _ ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface,
+        ih]
+  | require_ _ _ _ ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface,
+        ih]
+  | stop _ ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        ih]
+
+private theorem stmtListTerminalCore_helperSurfaceClosed
+    {scope : List String}
+    {stmts : List Stmt}
+    (hterminal : FunctionBody.StmtListTerminalCore scope stmts) :
+    stmtListTouchesUnsupportedHelperSurface stmts = false := by
+  induction hterminal with
+  | letVar _ _ _ ih
+    | assignVar _ _ _ ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface,
+        ih]
+  | require_ _ _ _ ih =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface,
+        ih]
+  | return_ _ _ hrest =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface,
+        stmtListCompileCore_helperSurfaceClosed hrest]
+  | stop hrest =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        stmtListCompileCore_helperSurfaceClosed hrest]
+  | ite _ _ hthen helse hrest ihThen ihElse =>
+      simp [stmtListTouchesUnsupportedHelperSurface,
+        stmtTouchesUnsupportedHelperSurface,
+        exprTouchesUnsupportedHelperSurface,
+        ihThen, ihElse,
+        stmtListCompileCore_helperSurfaceClosed hrest]
 
 theorem SupportedStmtList.helperSurfaceClosed
     {fields : List Field}
+    {scope : List String}
     {stmts : List Stmt}
-    (hSupported : SupportedStmtList fields stmts) :
+    (hSupported : SupportedStmtList fields scope stmts) :
     stmtListTouchesUnsupportedHelperSurface stmts = false := by
   induction hSupported with
-  | nil =>
-      simp [stmtListTouchesUnsupportedHelperSurface]
-  | cons fragment htail ih =>
+  | compileCore hcore =>
+      exact stmtListCompileCore_helperSurfaceClosed hcore
+  | terminalCore hterminal =>
+      exact stmtListTerminalCore_helperSurfaceClosed hterminal
+  | legacyCons fragment htail ih =>
       simpa [stmtListTouchesUnsupportedHelperSurface,
         supportedStmtFragment_helperSurfaceClosed, ih]
         using (supportedStmtFragment_helperSurfaceClosed fragment)
@@ -1403,8 +1452,9 @@ theorem stmtListTouchesStructuralInternalHelperSurface_eq_false_of_helperSurface
 
 theorem SupportedStmtList.internalHelperSurfaceClosed
     {fields : List Field}
+    {scope : List String}
     {stmts : List Stmt}
-    (hSupported : SupportedStmtList fields stmts) :
+    (hSupported : SupportedStmtList fields scope stmts) :
     stmtListTouchesInternalHelperSurface stmts = false := by
   exact stmtListTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
     hSupported.helperSurfaceClosed
@@ -2259,12 +2309,12 @@ private theorem counter_supported_function :
       returns := { resolved := ⟨[.uint256], rfl, trivial⟩ }
       body :=
         { stmtList := by
-            refine .cons
-              (Verity.Core.Free.SupportedStmtFragment.requireClausesThenReturnLiteral [] 42)
-              .nil
-            simp [Verity.Core.Free.SupportedStmtFragment.toStmts,
-              Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts,
-              Verity.Core.Free.RequireFamilyClausesTail.toStmts]
+            refine .compileCore ?_
+            refine FunctionBody.StmtListCompileCore.return_ (.literal 42) ?_ ?_
+            · exact FunctionBody.ExprCompileCore.literal 42
+            · intro name hname
+              simp at hname
+            · exact FunctionBody.StmtListCompileCore.nil
           helperSurfaceClosed := by decide
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }
@@ -2350,12 +2400,12 @@ private theorem simpleStorage_supported_function :
       returns := { resolved := ⟨[.uint256], rfl, trivial⟩ }
       body :=
         { stmtList := by
-            refine .cons
-              (Verity.Core.Free.SupportedStmtFragment.requireClausesThenReturnLiteral [] 11)
-              .nil
-            simp [Verity.Core.Free.SupportedStmtFragment.toStmts,
-              Verity.Core.Free.RequireFamilyClausesTailProgram.toStmts,
-              Verity.Core.Free.RequireFamilyClausesTail.toStmts]
+            refine .compileCore ?_
+            refine FunctionBody.StmtListCompileCore.return_ (.literal 11) ?_ ?_
+            · exact FunctionBody.ExprCompileCore.literal 11
+            · intro name hname
+              simp at hname
+            · exact FunctionBody.StmtListCompileCore.nil
           helperSurfaceClosed := by decide
           core := { surfaceClosed := by decide }
           state := { surfaceClosed := by decide }

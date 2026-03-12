@@ -1,41 +1,42 @@
 import Compiler.TypedIRCompilerCorrectness
 
 /-!
-Current generic Layer-2 theorem surface for the supported statement fragment.
+Scoped proof-layer support witness for statement lists.
 
-This module does not prove generic `CompilationModel.compile` correctness for
-arbitrary specs. It exposes the existing structural theorem from
-`Compiler.TypedIRCompilerCorrectness` under the compiler-proof namespace so the
-current generic boundary is explicit and documented where Layer 2 proofs live.
+`SupportedStmtList` is now a compositional public grammar: it can expose either
+the existing generic compile-core / terminal-core statement grammars directly,
+or splice in one of the still-legacy `SupportedStmtFragment` leaves while the
+remaining storage-write shapes are being migrated off the hardcoded inventory.
 -/
 
 namespace Compiler.Proofs.IRGeneration
 
+open Compiler
+open Compiler.CompilationModel
 open Verity.Core.Free
 
-/-- Proof-layer compositional witness for lists assembled from the legacy
-supported statement fragments. This removes the raw existential list encoding
-from the public IR-generation interfaces while staying definitionally aligned
-with the current core fragment inventory. -/
-inductive SupportedStmtList (fields : List CompilationModel.Field) : List CompilationModel.Stmt → Prop where
-  | nil : SupportedStmtList fields []
-  | cons
-      (fragment : SupportedStmtFragment fields)
-      {rest : List CompilationModel.Stmt} :
-      SupportedStmtList fields rest →
-      SupportedStmtList fields (fragment.toStmts ++ rest)
+/-- Proof-layer compositional witness for supported statement lists.
 
-theorem SupportedStmtList.toLegacy
-    {fields : List CompilationModel.Field}
-    {stmts : List CompilationModel.Stmt}
-    (hSupported : SupportedStmtList fields stmts) :
-    Verity.Core.Free.SupportedStmtList fields stmts := by
-  induction hSupported with
-  | nil =>
-      refine ⟨[], by simp [Verity.Core.Free.supportedStmtFragmentsToStmts]⟩
-  | @cons fragment rest htail ih =>
-      rcases ih with ⟨fragments, hfragments⟩
-      refine ⟨fragment :: fragments, ?_⟩
-      simp [Verity.Core.Free.supportedStmtFragmentsToStmts, hfragments]
+The witness is scoped because the generic compile-core grammars track local name
+availability explicitly. Legacy fragment leaves remain available as a
+transitional constructor so existing non-core storage/write shapes continue to
+fit under the same body interface while the fragment inventory is dismantled. -/
+inductive SupportedStmtList (fields : List Field) : List String → List Stmt → Prop where
+  | compileCore
+      {scope : List String}
+      {stmts : List Stmt} :
+      FunctionBody.StmtListCompileCore scope stmts →
+      SupportedStmtList fields scope stmts
+  | terminalCore
+      {scope : List String}
+      {stmts : List Stmt} :
+      FunctionBody.StmtListTerminalCore scope stmts →
+      SupportedStmtList fields scope stmts
+  | legacyCons
+      {scope : List String}
+      (fragment : SupportedStmtFragment fields)
+      {rest : List Stmt} :
+      SupportedStmtList fields (List.foldl stmtNextScope scope fragment.toStmts) rest →
+      SupportedStmtList fields scope (fragment.toStmts ++ rest)
 
 end Compiler.Proofs.IRGeneration

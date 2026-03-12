@@ -4652,13 +4652,15 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
     {scope : List String}
     {stmts : List Stmt}
     (hnoConflict : firstFieldWriteSlotConflict fields = none)
-    (hSupported : SupportedStmtList fields stmts)
+    (hSupported : SupportedStmtList fields scope stmts)
     (hsurface : stmtListTouchesUnsupportedContractSurface stmts = false) :
     StmtListGenericCore fields scope stmts := by
-  induction hSupported generalizing scope with
-  | nil =>
-      simpa using (StmtListGenericCore.nil (fields := fields) (scope := scope))
-  | @cons fragment rest htail ih =>
+  induction hSupported with
+  | compileCore hcore =>
+      exact stmtListGenericCore_of_stmtListCompileCore hcore
+  | terminalCore hterminal =>
+      exact stmtListGenericCore_of_stmtListTerminalCore hterminal
+  | @legacyCons _ _ fragment rest htail ih =>
       have hsplit :
           stmtListTouchesUnsupportedContractSurface
               (Verity.Core.Free.SupportedStmtFragment.toStmts fragment) ||
@@ -4678,10 +4680,7 @@ theorem stmtListGenericCore_of_supportedStmtList_of_surface
           hnoConflict
           fragment
           hheadSurface)
-        (ih
-          (scope := List.foldl stmtNextScope scope
-            (Verity.Core.Free.SupportedStmtFragment.toStmts fragment))
-          htailSurface)
+        (ih htailSurface)
 
 /-- The current supported statement-list witness already suffices for the
 weaker helper-free source-step interface consumed by the exact helper-aware
@@ -4693,7 +4692,7 @@ theorem stmtListHelperFreeStepInterface_of_supportedStmtList_of_surface
     {scope : List String}
     {stmts : List Stmt}
     (hnoConflict : firstFieldWriteSlotConflict fields = none)
-    (hSupported : SupportedStmtList fields stmts)
+    (hSupported : SupportedStmtList fields scope stmts)
     (hsurface : stmtListTouchesUnsupportedContractSurface stmts = false) :
     StmtListHelperFreeStepInterface fields scope stmts :=
   stmtListHelperFreeStepInterface_of_core

@@ -40,7 +40,6 @@ import Compiler.Proofs.IRGeneration.GenericInduction
 import Compiler.Proofs.IRGeneration.IRInterpreter
 import Compiler.Proofs.IRGeneration.ParamLoading
 import Compiler.Proofs.IRGeneration.SourceSemantics
-import Compiler.Proofs.IRGeneration.SupportedFragment
 import Compiler.Proofs.IRGeneration.SupportedSpec
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeLemmas
@@ -1384,9 +1383,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.supportedSourceFunctionSemantics_eq_interpretFunction_of_selectorDispatched
 #print axioms Compiler.Proofs.IRGeneration.supportedSourceContractSemantics_eq_sourceContractSemantics
 
--- Compiler/Proofs/IRGeneration/SupportedFragment.lean
-#print axioms Compiler.Proofs.IRGeneration.SupportedStmtList.toLegacy
-
 -- Compiler/Proofs/IRGeneration/SupportedSpec.lean
 #print axioms Compiler.Proofs.IRGeneration.helperCallNames_nodup
 #print axioms Compiler.Proofs.IRGeneration.exprHelperCallNames_nodup
@@ -1397,7 +1393,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.paramsSupported
 #print axioms Compiler.Proofs.IRGeneration.SupportedFunction.returnsSupported
 -- #print axioms Compiler.Proofs.IRGeneration.supportedStmtFragment_helperSurfaceClosed  -- private
--- #print axioms Compiler.Proofs.IRGeneration.supportedStmtFragments_helperSurfaceClosed  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.stmtListCompileCore_helperSurfaceClosed  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.stmtListTerminalCore_helperSurfaceClosed  -- private
 #print axioms Compiler.Proofs.IRGeneration.SupportedStmtList.helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.stmtTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed
@@ -1584,4 +1581,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1450 theorems/lemmas (1159 public, 291 private)
+-- Total: 1450 theorems/lemmas (1158 public, 292 private)

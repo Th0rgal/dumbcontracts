@@ -2360,6 +2360,90 @@ theorem
       (hfnBodyDisjoint := hfnBodyDisjoint)
       (hcalldataSizeFits := hcalldataSizeFits)
 
+/-- Function-level Tier 4 wrapper on the assign-only callee-local bridge
+boundary. Under the current fragment the direct-helper void-call bridge side is
+still vacuous, so callers only need to package one reusable assign bridge per
+referenced helper callee. -/
+theorem
+    supported_function_correct_with_helper_proofs_direct_internal_helper_assign_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (runtimeContract : IRContract)
+    (fn : FunctionSpec)
+    (selector : Nat)
+    (returns : List ParamType)
+    (bodyStmts : List YulStmt)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (bindings : List (String × Nat))
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hvalidate : validateFunctionSpec fn = Except.ok ())
+    (hreturns : functionReturns fn = Except.ok returns)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hcompile :
+      compileFunctionSpec model.fields model.events model.errors selector fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
+    (htxNormalized : TxContextNormalized tx)
+    (hheadAssignBridge :
+      DirectInternalHelperPerCalleeAssignBridgeCatalog
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        fn)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hfnBodyDisjoint :
+      YulStmtListCallsDisjointFromInternalTable runtimeContract irFn.body)
+    (hcalldataSizeFits : TxCalldataSizeFitsEvm tx) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+      (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  exact
+    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (hHelperProofs := hHelperProofs)
+      (hvalidateInputs := hvalidateInputs)
+      (runtimeContract := runtimeContract)
+      (fn := fn)
+      (selector := selector)
+      (returns := returns)
+      (bodyStmts := bodyStmts)
+      (irFn := irFn)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (bindings := bindings)
+      (hfn := hfn)
+      (hvalidate := hvalidate)
+      (hreturns := hreturns)
+      (hbodyCompile := hbodyCompile)
+      (hcompile := hcompile)
+      (hbind := hbind)
+      (htxNormalized := htxNormalized)
+      (hcallee :=
+        directInternalHelperPerCalleeBridgeCatalog_of_supportedBody_and_assignBridgeCatalog
+          (runtimeContract := runtimeContract)
+          (spec := model)
+          (fields := SourceSemantics.effectiveFields model)
+          (fn := fn)
+          (hSupported.supportedFunctionOfSelectorDispatched hfn).body
+          hheadAssignBridge)
+      (hdisjoint := hdisjoint)
+      (hfnBodyDisjoint := hfnBodyDisjoint)
+      (hcalldataSizeFits := hcalldataSizeFits)
+
 /-- Function-level Tier 4 wrapper on the fully split callee-local boundary.
 Compile-side obligations for direct helper heads and semantic bridge
 obligations are supplied independently, then reassembled mechanically into the

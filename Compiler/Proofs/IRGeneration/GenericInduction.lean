@@ -11776,6 +11776,38 @@ structure DirectInternalHelperPerCalleeBridgeCatalog
       calleeName ∈ helperCallNames fn →
       DirectInternalHelperAssignHeadStepBridge runtimeContract spec fields calleeName
 
+/-- Assign-only half of the callee-local Tier 4 bridge inventory. This isolates
+the roadmap's current blocker, namely helper-return-binding steps, while the
+void-call half remains mechanically vacuous under the current fragment. -/
+structure DirectInternalHelperPerCalleeAssignBridgeCatalog
+    (runtimeContract : IRContract)
+    (spec : CompilationModel)
+    (fields : List Field)
+    (fn : FunctionSpec) : Prop where
+  assign :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      DirectInternalHelperAssignHeadStepBridge runtimeContract spec fields calleeName
+
+/-- Reassemble the full callee-local bridge catalog from the current supported
+body witness plus the assign-only bridge half. The call half is vacuous because
+`SupportedStmtList` still excludes direct helper calls from the fragment. -/
+theorem directInternalHelperPerCalleeBridgeCatalog_of_supportedBody_and_assignBridgeCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hbody : SupportedBodyInterface spec fn)
+    (hassign :
+      DirectInternalHelperPerCalleeAssignBridgeCatalog runtimeContract spec fields fn) :
+    DirectInternalHelperPerCalleeBridgeCatalog runtimeContract spec fields fn := by
+  refine ⟨?_, ?_⟩
+  · intro calleeName hmem
+    exfalso
+    simpa [hbody.helperCallNames_nil] using hmem
+  · intro calleeName hmem
+    exact hassign.assign hmem
+
 /-- Split compile-side Tier 4 inventory. This isolates the purely compilation
 obligations from the semantic bridge obligations so future fragment widening can
 discharge compile success generically once direct helper calls are admitted into

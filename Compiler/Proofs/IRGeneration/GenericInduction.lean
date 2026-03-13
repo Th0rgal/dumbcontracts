@@ -11591,6 +11591,35 @@ theorem stmtListDirectInternalHelperAssignStepInterface_cons_internalCallAssign
   intro _
   exact ⟨compiledIR, hstep⟩
 
+/-- Assemble the exact direct-helper-assign list interface from a reusable
+single-head constructor. This pushes future helper-rank induction down to the
+only genuinely new work: constructing the `Stmt.internalCallAssign` head step
+itself. -/
+theorem stmtListDirectInternalHelperAssignStepInterface_of_internalCallAssignSteps
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hstep :
+      ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract spec fields scope
+            (Stmt.internalCallAssign names calleeName args)
+            compiledIR) :
+    StmtListDirectInternalHelperAssignStepInterface runtimeContract spec fields scope stmts := by
+  induction stmts generalizing scope with
+  | nil =>
+      exact .nil
+  | cons stmt rest ih =>
+      refine .cons ?_ (ih hstep)
+      intro hdirect
+      cases stmt <;> simp [stmtTouchesDirectInternalHelperAssignSurface] at hdirect
+      rcases hstep (scope := scope) (names := names) (calleeName := calleeName) (args := args) with
+        ⟨compiledIR, hcompiled⟩
+      exact ⟨compiledIR, hcompiled⟩
+
 /-- Non-vacuous list-level constructor for a direct helper statement head.
 This packages `compiledStmtStepWithHelpersAndHelperIR_internalCall` into the
 split direct-helper call interface expected by the exact helper-aware list
@@ -11624,6 +11653,36 @@ theorem stmtListDirectInternalHelperCallStepInterface_cons_internalCall
   refine .cons ?_ hrest
   intro _
   exact ⟨compiledIR, hstep⟩
+
+/-- Assemble the exact direct-helper-call list interface from a reusable
+single-head constructor. This is the theorem future helper-rank induction
+should target: once it can build `CompiledStmtStepWithHelpersAndHelperIR` for
+an arbitrary `Stmt.internalCall` head, the surrounding list recursion is
+mechanical. -/
+theorem stmtListDirectInternalHelperCallStepInterface_of_internalCallSteps
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hstep :
+      ∀ {scope : List String} {calleeName : String} {args : List Expr},
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract spec fields scope
+            (Stmt.internalCall calleeName args)
+            compiledIR) :
+    StmtListDirectInternalHelperCallStepInterface runtimeContract spec fields scope stmts := by
+  induction stmts generalizing scope with
+  | nil =>
+      exact .nil
+  | cons stmt rest ih =>
+      refine .cons ?_ (ih hstep)
+      intro hdirect
+      cases stmt <;> simp [stmtTouchesDirectInternalHelperCallSurface] at hdirect
+      rcases hstep (scope := scope) (calleeName := calleeName) (args := args) with
+        ⟨compiledIR, hcompiled⟩
+      exact ⟨compiledIR, hcompiled⟩
 
 private theorem internalFunctionYulName_ne_stop
     (calleeName : String) :

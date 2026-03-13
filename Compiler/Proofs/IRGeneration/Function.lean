@@ -1919,6 +1919,106 @@ theorem
       hreturns hbodyCompile hcompile hbind htxNormalized hhelperFree hcall hassign
       hexpr hstruct hresidual hdisjoint hfnBodyDisjoint hcalldataSizeFits
 
+/-- Function-level direct-helper wrapper stated over reusable single-head
+helper-step builders instead of preassembled list interfaces. This is the
+closest current theorem boundary to the eventual helper-rank induction:
+once rank induction can build the exact `Stmt.internalCall` /
+`Stmt.internalCallAssign` head steps, the surrounding list-interface plumbing is
+discharged here. -/
+theorem
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_steps_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (runtimeContract : IRContract)
+    (fn : FunctionSpec)
+    (selector : Nat)
+    (returns : List ParamType)
+    (bodyStmts : List YulStmt)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (bindings : List (String × Nat))
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hvalidate : validateFunctionSpec fn = Except.ok ())
+    (hreturns : functionReturns fn = Except.ok returns)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hcompile :
+      compileFunctionSpec model.fields model.events model.errors selector fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
+    (htxNormalized : TxContextNormalized tx)
+    (hcallStep :
+      ∀ {scope : List String} {calleeName : String} {args : List Expr},
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract
+            model
+            (SourceSemantics.effectiveFields model)
+            scope
+            (Stmt.internalCall calleeName args)
+            compiledIR)
+    (hassignStep :
+      ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract
+            model
+            (SourceSemantics.effectiveFields model)
+            scope
+            (Stmt.internalCallAssign names calleeName args)
+            compiledIR)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hfnBodyDisjoint :
+      YulStmtListCallsDisjointFromInternalTable runtimeContract irFn.body)
+    (hcalldataSizeFits : TxCalldataSizeFitsEvm tx) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+      (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  have hcall :
+      StmtListDirectInternalHelperCallStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body :=
+    stmtListDirectInternalHelperCallStepInterface_of_internalCallSteps
+      (runtimeContract := runtimeContract)
+      (spec := model)
+      (fields := SourceSemantics.effectiveFields model)
+      (scope := fn.params.map (·.name))
+      (stmts := fn.body)
+      hcallStep
+  have hassign :
+      StmtListDirectInternalHelperAssignStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body :=
+    stmtListDirectInternalHelperAssignStepInterface_of_internalCallAssignSteps
+      (runtimeContract := runtimeContract)
+      (spec := model)
+      (fields := SourceSemantics.effectiveFields model)
+      (scope := fn.params.map (·.name))
+      (stmts := fn.body)
+      hassignStep
+  exact
+    supported_function_correct_with_helper_proofs_direct_internal_helper_surface_steps_and_helper_ir_of_bodyCallsDisjoint
+      model selectors hSupported hHelperProofs hvalidateInputs runtimeContract
+      fn selector returns bodyStmts irFn tx initialWorld bindings hfn hvalidate
+      hreturns hbodyCompile hcompile hbind htxNormalized hcall hassign hdisjoint
+      hfnBodyDisjoint hcalldataSizeFits
+
 /-- Function-level Tier 2 bridge for bodies admitted by the alternate
 singleton storage-write state interface. This keeps the theorem local to one
 function: global normalization and no-event/no-error assumptions remain

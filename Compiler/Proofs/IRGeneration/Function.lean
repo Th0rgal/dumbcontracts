@@ -2446,10 +2446,8 @@ theorem
 
 /-- Function-level Tier 4 wrapper on the fully split callee-local boundary.
 Compile-side obligations for direct helper heads and semantic bridge
-obligations are supplied independently, then reassembled mechanically into the
-existing per-callee bridge catalog. This is the narrowest current theorem seam
-for future work that will split between fragment widening and helper-rank
-induction. -/
+obligations are supplied independently, then assembled directly into the exact
+body-level head-step catalog future rank induction should build. -/
 theorem
     supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_semantic_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
     (model : CompilationModel)
@@ -2501,7 +2499,7 @@ theorem
       (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   exact
-    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -2523,8 +2521,8 @@ theorem
       (hcompile := hcompile)
       (hbind := hbind)
       (htxNormalized := htxNormalized)
-      (hcallee :=
-        directInternalHelperPerCalleeBridgeCatalog_of_compileCatalog_and_semanticBridgeCatalog
+      (hcatalog :=
+        directInternalHelperHeadStepCatalog_of_compileCatalog_and_semanticBridgeCatalog
           (runtimeContract := runtimeContract)
           (spec := model)
           (fields := SourceSemantics.effectiveFields model)
@@ -2538,7 +2536,8 @@ theorem
 /-- Function-level Tier 4 wrapper that isolates runtime helper witness lookup
 from the remaining semantic singleton-step work. The runtime witness catalog can
 be produced independently from a compiled helper table, leaving the semantic
-core as the only future rank-induction obligation. -/
+core as the only future rank-induction obligation, while this wrapper now lands
+directly on the exact body-level head-step catalog. -/
 theorem
     supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_witness_catalog_and_semantic_core_catalog_and_helper_ir_of_bodyCallsDisjoint
     (model : CompilationModel)
@@ -2595,7 +2594,7 @@ theorem
       (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   exact
-    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_semantic_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -2617,13 +2616,13 @@ theorem
       (hcompile := hcompile)
       (hbind := hbind)
       (htxNormalized := htxNormalized)
-      (hheadCompile := hheadCompile)
-      (hheadSemantic :=
-        directInternalHelperPerCalleeSemanticBridgeCatalog_of_runtimeWitnessCatalog_and_semanticCoreCatalog
+      (hcatalog :=
+        directInternalHelperHeadStepCatalog_of_compileCatalog_and_runtimeWitnessCatalog_and_semanticCoreCatalog
           (runtimeContract := runtimeContract)
           (spec := model)
           (fields := SourceSemantics.effectiveFields model)
           (fn := fn)
+          hheadCompile
           hruntimeWitness
           hheadSemantic)
       (hdisjoint := hdisjoint)
@@ -2633,7 +2632,8 @@ theorem
 /-- Function-level Tier 4 wrapper on the smaller semantic-kernel seam. Source
 helper witnesses and helper-summary soundness are recovered from the supported
 function inventory already present at this theorem boundary, so callers only
-need to provide the irreducible semantic kernel plus compile/runtime catalogs. -/
+need to provide the irreducible semantic kernel plus compile/runtime catalogs,
+and this wrapper now lands directly on the exact body-level head-step catalog. -/
 theorem
     supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_witness_catalog_and_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
     (model : CompilationModel)
@@ -2691,7 +2691,7 @@ theorem
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   let hHelpers := (hSupported.supportedFunctionOfSelectorDispatched hfn).body.calls.helpers
   exact
-    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_witness_catalog_and_semantic_core_catalog_and_helper_ir_of_bodyCallsDisjoint
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -2713,15 +2713,15 @@ theorem
       (hcompile := hcompile)
       (hbind := hbind)
       (htxNormalized := htxNormalized)
-      (hheadCompile := hheadCompile)
-      (hruntimeWitness := hruntimeWitness)
-      (hheadSemantic :=
-        directInternalHelperPerCalleeSemanticCoreCatalog_of_supportedBodyHelpers_and_helperSummariesSound_and_semanticKernelCatalog
+      (hcatalog :=
+        directInternalHelperHeadStepCatalog_of_supportedBodyHelpers_and_compileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_semanticKernelCatalog
           (runtimeContract := runtimeContract)
           (spec := model)
           (fields := SourceSemantics.effectiveFields model)
           (fn := fn)
           hHelpers
+          hheadCompile
+          hruntimeWitness
           (SourceSemantics.SupportedSpecHelperProofs.functionSummariesSound
             hSupported hHelperProofs hfn)
           hheadKernel)
@@ -2733,7 +2733,8 @@ theorem
 catalog boundary. The compiled runtime helper table already determines the
 per-callee runtime witness inventory for `fn`, so callers only need to supply
 the global table together with the compile catalog and irreducible semantic
-kernel. -/
+kernel, and this wrapper now lands directly on the exact body-level head-step
+catalog. -/
 theorem
     supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_helper_table_and_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
     (model : CompilationModel)
@@ -2787,7 +2788,7 @@ theorem
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   let hHelpers := (hSupported.supportedFunctionOfSelectorDispatched hfn).body.calls.helpers
   exact
-    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_witness_catalog_and_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -2809,15 +2810,23 @@ theorem
       (hcompile := hcompile)
       (hbind := hbind)
       (htxNormalized := htxNormalized)
-      (hheadCompile := hheadCompile)
-      (hruntimeWitness :=
-        directInternalHelperPerCalleeRuntimeWitnessCatalog_of_runtimeHelperTable
+      (hcatalog :=
+        directInternalHelperHeadStepCatalog_of_supportedBodyHelpers_and_compileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_semanticKernelCatalog
           (runtimeContract := runtimeContract)
           (spec := model)
+          (fields := SourceSemantics.effectiveFields model)
           (fn := fn)
-          hRuntime
-          hHelpers)
-      (hheadKernel := hheadKernel)
+          hHelpers
+          hheadCompile
+          (directInternalHelperPerCalleeRuntimeWitnessCatalog_of_runtimeHelperTable
+            (runtimeContract := runtimeContract)
+            (spec := model)
+            (fn := fn)
+            hRuntime
+            hHelpers)
+          (SourceSemantics.SupportedSpecHelperProofs.functionSummariesSound
+            hSupported hHelperProofs hfn)
+          hheadKernel)
       (hdisjoint := hdisjoint)
       (hfnBodyDisjoint := hfnBodyDisjoint)
       (hcalldataSizeFits := hcalldataSizeFits)

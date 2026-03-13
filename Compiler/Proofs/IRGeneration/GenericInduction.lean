@@ -12629,6 +12629,98 @@ theorem directInternalHelperHeadStepCatalog_of_perCalleeBridgeCatalog
         (fn := fn)
         hcallee)
 
+/-- Assemble the exact body-level direct-helper head-step catalog directly from
+the split compile/semantic Tier 4 inventories. This removes the last per-callee
+bridge detour once callers already provide the compile catalog and semantic
+bridge data separately. -/
+theorem directInternalHelperHeadStepCatalog_of_compileCatalog_and_semanticBridgeCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hcompile : DirectInternalHelperPerCalleeCompileCatalog spec fields fn)
+    (hsemantic :
+      DirectInternalHelperPerCalleeSemanticBridgeCatalog runtimeContract spec fields fn) :
+    DirectInternalHelperHeadStepCatalog runtimeContract spec fields fn := by
+  exact
+    directInternalHelperHeadStepCatalog_of_perCalleeBridgeCatalog
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (fields := fields)
+      (fn := fn)
+      (directInternalHelperPerCalleeBridgeCatalog_of_compileCatalog_and_semanticBridgeCatalog
+        (runtimeContract := runtimeContract)
+        (spec := spec)
+        (fields := fields)
+        (fn := fn)
+        hcompile
+        hsemantic)
+
+/-- Assemble the exact body-level direct-helper head-step catalog directly from
+the split compile/runtime-witness/semantic-core Tier 4 inventories. This keeps
+the theorem seam on the precise head-step catalog even before helper-summary
+facts are reintroduced. -/
+theorem directInternalHelperHeadStepCatalog_of_compileCatalog_and_runtimeWitnessCatalog_and_semanticCoreCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hcompile : DirectInternalHelperPerCalleeCompileCatalog spec fields fn)
+    (hruntime :
+      DirectInternalHelperPerCalleeRuntimeWitnessCatalog runtimeContract spec fn)
+    (hsemantic :
+      DirectInternalHelperPerCalleeSemanticCoreCatalog runtimeContract spec fields fn) :
+    DirectInternalHelperHeadStepCatalog runtimeContract spec fields fn := by
+  exact
+    directInternalHelperHeadStepCatalog_of_compileCatalog_and_semanticBridgeCatalog
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (fields := fields)
+      (fn := fn)
+      hcompile
+      (directInternalHelperPerCalleeSemanticBridgeCatalog_of_runtimeWitnessCatalog_and_semanticCoreCatalog
+        (runtimeContract := runtimeContract)
+        (spec := spec)
+        (fields := fields)
+        (fn := fn)
+        hruntime
+        hsemantic)
+
+/-- Assemble the exact body-level direct-helper head-step catalog directly from
+the split compile/runtime-witness/semantic-kernel Tier 4 inventories plus the
+current supported-body helper summaries. This is the direct landing point for
+future helper-rank induction once the semantic kernel is all that remains
+non-vacuous. -/
+theorem directInternalHelperHeadStepCatalog_of_supportedBodyHelpers_and_compileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_semanticKernelCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hhelpers : SupportedBodyHelpersInterface spec fn)
+    (hcompile : DirectInternalHelperPerCalleeCompileCatalog spec fields fn)
+    (hruntime :
+      DirectInternalHelperPerCalleeRuntimeWitnessCatalog runtimeContract spec fn)
+    (hsummaries : SupportedBodyHelperSummariesSound spec fn hhelpers)
+    (hkernel :
+      DirectInternalHelperPerCalleeSemanticKernelCatalog runtimeContract spec fields fn) :
+    DirectInternalHelperHeadStepCatalog runtimeContract spec fields fn := by
+  exact
+    directInternalHelperHeadStepCatalog_of_compileCatalog_and_runtimeWitnessCatalog_and_semanticCoreCatalog
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (fields := fields)
+      (fn := fn)
+      hcompile
+      hruntime
+      (directInternalHelperPerCalleeSemanticCoreCatalog_of_supportedBodyHelpers_and_helperSummariesSound_and_semanticKernelCatalog
+        (runtimeContract := runtimeContract)
+        (spec := spec)
+        (fields := fields)
+        (fn := fn)
+        hhelpers
+        hsummaries
+        hkernel)
+
 /-- Assemble the reusable direct-helper head-step catalog directly from the
 current helper-free supported-body witness plus the assign-only per-callee
 bridge inventory. This removes one more derived Tier 4 seam while preserving the

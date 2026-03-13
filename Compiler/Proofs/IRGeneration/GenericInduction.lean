@@ -11799,6 +11799,94 @@ structure DirectInternalHelperPerCalleeCompileCatalog
           CompilationModel.compileStmt fields [] [] .calldata [] false scope
             (Stmt.internalCallAssign names calleeName args) = Except.ok compiledIR
 
+/-- Callee-local runtime-helper witness inventory. This isolates the part of the
+Tier 4 seam that is already discharged by the compiled runtime helper table, so
+future helper-rank induction does not need to thread lookup/presence facts
+through every direct-helper singleton proof. -/
+structure DirectInternalHelperPerCalleeRuntimeWitnessCatalog
+    (runtimeContract : IRContract)
+    (spec : CompilationModel)
+    (fn : FunctionSpec) : Prop where
+  witness :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      SupportedCompiledInternalHelperWitness spec runtimeContract calleeName
+
+/-- Build the callee-local runtime-helper witness inventory directly from the
+global runtime helper table and the body's existing helper witness inventory. -/
+theorem directInternalHelperPerCalleeRuntimeWitnessCatalog_of_runtimeHelperTable
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fn : FunctionSpec}
+    (hRuntime : SupportedRuntimeHelperTableInterface spec runtimeContract)
+    (hHelpers : SupportedBodyHelperInterface spec fn) :
+    DirectInternalHelperPerCalleeRuntimeWitnessCatalog runtimeContract spec fn := by
+  refine ⟨?_⟩
+  intro calleeName hmem
+  exact hRuntime.compiledOfCall hHelpers hmem
+
+/-- Split semantic Tier 4 core. This keeps the end-to-end source/IR step
+alignment separate from both compile-success obligations and runtime helper
+lookup obligations, matching the eventual division between helper-rank
+induction and contract-level helper-table construction. -/
+structure DirectInternalHelperPerCalleeSemanticCoreCatalog
+    (runtimeContract : IRContract)
+    (spec : CompilationModel)
+    (fields : List Field)
+    (fn : FunctionSpec) : Prop where
+  call :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      ∀ (compiledHelper :
+          SupportedCompiledInternalHelperWitness spec runtimeContract calleeName)
+        {scope : List String} {args : List Expr}
+        {compiledIR : List YulStmt} {argExprs : List YulExpr},
+        CompilationModel.compileStmt fields [] [] .calldata [] false scope
+          (Stmt.internalCall calleeName args) = Except.ok compiledIR →
+        CompilationModel.compileExprList fields .calldata args = Except.ok argExprs →
+        ∀ (runtime : SourceSemantics.RuntimeState)
+          (state : IRState)
+          (helperFuel : Nat)
+          (irFuel : Nat),
+          0 < helperFuel →
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings state →
+          FunctionBody.scopeNamesPresent scope runtime.bindings →
+          FunctionBody.bindingsBounded runtime.bindings →
+          FunctionBody.runtimeStateMatchesIR fields runtime state →
+          stmtStepMatchesIRExecWithInternals fields
+            (stmtNextScope scope (Stmt.internalCall calleeName args))
+            (SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+              (Stmt.internalCall calleeName args))
+            (execIRStmtsWithInternals runtimeContract (irFuel + 3) state
+              [YulStmt.expr (YulExpr.call
+                (CompilationModel.internalFunctionYulName calleeName) argExprs)])
+  assign :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      ∀ (compiledHelper :
+          SupportedCompiledInternalHelperWitness spec runtimeContract calleeName)
+        {scope : List String} {names : List String} {args : List Expr}
+        {compiledIR : List YulStmt} {argExprs : List YulExpr},
+        CompilationModel.compileStmt fields [] [] .calldata [] false scope
+          (Stmt.internalCallAssign names calleeName args) = Except.ok compiledIR →
+        CompilationModel.compileExprList fields .calldata args = Except.ok argExprs →
+        ∀ (runtime : SourceSemantics.RuntimeState)
+          (state : IRState)
+          (helperFuel : Nat)
+          (irFuel : Nat),
+          0 < helperFuel →
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings state →
+          FunctionBody.scopeNamesPresent scope runtime.bindings →
+          FunctionBody.bindingsBounded runtime.bindings →
+          FunctionBody.runtimeStateMatchesIR fields runtime state →
+          stmtStepMatchesIRExecWithInternals fields
+            (stmtNextScope scope (Stmt.internalCallAssign names calleeName args))
+            (SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+              (Stmt.internalCallAssign names calleeName args))
+            (execIRStmtsWithInternals runtimeContract (irFuel + 3) state
+              [YulStmt.letMany names (YulExpr.call
+                (CompilationModel.internalFunctionYulName calleeName) argExprs)])
+
 /-- Split semantic Tier 4 inventory. This keeps the end-to-end source/IR step
 alignment separate from the compile-success obligations, matching the eventual
 division between helper-rank induction and fragment-widening compile lemmas. -/
@@ -11855,6 +11943,27 @@ structure DirectInternalHelperPerCalleeSemanticBridgeCatalog
             (execIRStmtsWithInternals runtimeContract (irFuel + 3) state
               [YulStmt.letMany names (YulExpr.call
                 (CompilationModel.internalFunctionYulName calleeName) argExprs)])
+
+/-- Reassemble the existing semantic bridge inventory once runtime helper
+witnesses are available callee-locally. This leaves future rank induction with
+just the genuinely semantic work while contract compilation can discharge the
+runtime witness side independently. -/
+theorem
+    directInternalHelperPerCalleeSemanticBridgeCatalog_of_runtimeWitnessCatalog_and_semanticCoreCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hruntime :
+      DirectInternalHelperPerCalleeRuntimeWitnessCatalog runtimeContract spec fn)
+    (hsemantic :
+      DirectInternalHelperPerCalleeSemanticCoreCatalog runtimeContract spec fields fn) :
+    DirectInternalHelperPerCalleeSemanticBridgeCatalog runtimeContract spec fields fn := by
+  refine ⟨?_, ?_⟩
+  · intro calleeName hmem scope args compiledIR argExprs hstmt hargs
+    exact hsemantic.call hmem (hruntime.witness hmem) hstmt hargs
+  · intro calleeName hmem scope names args compiledIR argExprs hstmt hargs
+    exact hsemantic.assign hmem (hruntime.witness hmem) hstmt hargs
 
 /-- Reassemble the existing callee-local Tier 4 bridge object after splitting the
 compile and semantic obligations. This is the intended future landing point for

@@ -2878,9 +2878,8 @@ theorem
       (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   have hsupportedFn := hSupported.supportedFunctionOfSelectorDispatched hfn
-  have hHelpers := hsupportedFn.body.calls.helpers
   exact
-    supported_function_correct_with_helper_proofs_direct_internal_helper_assign_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -2902,20 +2901,20 @@ theorem
       (hcompile := hcompile)
       (hbind := hbind)
       (htxNormalized := htxNormalized)
-      (hheadAssignBridge :=
-        directInternalHelperPerCalleeAssignBridgeCatalog_of_assignCompileCatalog_and_runtimeWitnessCatalog_and_supportedBodyHelpers_and_helperSummariesSound_and_assignSemanticKernelCatalog
+      (hcatalog :=
+        directInternalHelperHeadStepCatalog_of_supportedBody_and_assignCompileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_assignSemanticKernelCatalog
           (runtimeContract := runtimeContract)
           (spec := model)
           (fields := SourceSemantics.effectiveFields model)
           (fn := fn)
+          hsupportedFn.body
           hheadAssignCompile
           (directInternalHelperPerCalleeRuntimeWitnessCatalog_of_runtimeHelperTable
             (runtimeContract := runtimeContract)
             (spec := model)
             (fn := fn)
             hRuntime
-            hHelpers)
-          hHelpers
+            hsupportedFn.body.calls.helpers)
           (SourceSemantics.SupportedSpecHelperProofs.functionSummariesSound
             hSupported hHelperProofs hfn)
           hheadAssignKernel)

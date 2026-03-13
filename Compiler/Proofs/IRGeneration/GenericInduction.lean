@@ -12255,6 +12255,46 @@ theorem
         hstmt
         hargs
 
+/-- Assemble the exact body-level direct-helper head-step catalog directly from
+the split assign-side Tier 4 ingredients plus the current supported-body
+witness. This keeps downstream theorem seams on the reusable head-step catalog
+that future rank induction should ultimately construct, instead of forcing them
+to route through the intermediate assign-bridge layer. -/
+theorem
+    directInternalHelperHeadStepCatalog_of_supportedBody_and_assignCompileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_assignSemanticKernelCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hbody : SupportedBodyInterface spec fn)
+    (hcompile :
+      DirectInternalHelperPerCalleeAssignCompileCatalog spec fields fn)
+    (hruntime :
+      DirectInternalHelperPerCalleeRuntimeWitnessCatalog runtimeContract spec fn)
+    (hsummaries :
+      SupportedBodyHelperSummariesSound spec fn hbody.calls.helpers)
+    (hkernel :
+      DirectInternalHelperPerCalleeAssignSemanticKernelCatalog
+        runtimeContract spec fields fn) :
+    DirectInternalHelperHeadStepCatalog runtimeContract spec fields fn := by
+  exact
+    directInternalHelperHeadStepCatalog_of_supportedBody_and_assignBridgeCatalog
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (fields := fields)
+      (fn := fn)
+      hbody
+      (directInternalHelperPerCalleeAssignBridgeCatalog_of_assignCompileCatalog_and_runtimeWitnessCatalog_and_supportedBodyHelpers_and_helperSummariesSound_and_assignSemanticKernelCatalog
+        (runtimeContract := runtimeContract)
+        (spec := spec)
+        (fields := fields)
+        (fn := fn)
+        hcompile
+        hruntime
+        hbody.calls.helpers
+        hsummaries
+        hkernel)
+
 /-- Split semantic Tier 4 inventory. This keeps the end-to-end source/IR step
 alignment separate from the compile-success obligations, matching the eventual
 division between helper-rank induction and fragment-widening compile lemmas. -/

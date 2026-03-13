@@ -218,6 +218,7 @@ ALLOWLIST: set[str] = {
     # legacy-compatible Yul witness, and the other packages the alternate
     # contract-surface disjointness proof into the exact helper-aware body goal.
     "legacyCompatibleExternalStmtList_of_compileSetMapping2_ok",
+    "supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir_except_mapping_writes_callsDisjoint",
     "supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir_except_mapping_writes",
     # Issue #1564 / PR #1606:
     # these are the pre-existing long terminal-ite branch-entry transport
@@ -391,6 +392,7 @@ ALLOWLIST: set[str] = {
     # this theorem keeps the public body-proof surface stable while deriving the
     # new compiled-side legacy-compatibility witness and lifting the existing
     # helper-free generic core into the exact helper-aware compiled seam.
+    "supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir_callsDisjoint",
     "supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir",
     "supported_function_correct_with_helper_proofs_body_goal",
     # Issue #1638 / PR #1639 — helper-aware compiled-target retarget wrappers:

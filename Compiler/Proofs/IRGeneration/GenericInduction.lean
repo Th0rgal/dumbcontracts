@@ -10882,6 +10882,103 @@ theorem supported_function_body_correct_from_exact_state_generic_finer_split_int
       hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hgeneric hbodyCompile hscope
       hbounded hstateRuntime hstateBindings
 
+/-- Current-fragment disjointness-based wrapper that lands directly in the exact
+helper-aware compiled body goal. This keeps the existing helper-free step
+library reusable while exposing the weaker compiled-side condition that later
+helper-table work actually needs. -/
+theorem supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir_callsDisjoint
+    (runtimeContract : IRContract)
+    (model : CompilationModel)
+    (fn : FunctionSpec)
+    (bodyStmts : List YulStmt)
+    (helperFuel : Nat)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (state : IRState)
+    (bindings : List (String × Nat))
+    (extraFuel : Nat)
+    (hextraFuel : sizeOf bodyStmts - bodyStmts.length ≤ extraFuel)
+    (hfuelPos : 0 < helperFuel)
+    (hnormalized : SourceSemantics.effectiveFields model = model.fields)
+    (hnoEvents : model.events = [])
+    (hnoErrors : model.errors = [])
+    (hnoPacked : ∀ field ∈ model.fields, field.packedBits = none)
+    (hcontractSurface : stmtListTouchesUnsupportedContractSurface fn.body = false)
+    (hhelperFree :
+      StmtListHelperFreeStepInterface
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hscope :
+      FunctionBody.scopeNamesPresent (fn.params.map (·.name)) bindings)
+    (hbounded : FunctionBody.bindingsBounded bindings)
+    (hstateRuntime :
+      FunctionBody.runtimeStateMatchesIR
+        (SourceSemantics.effectiveFields model)
+        { world := SourceSemantics.withTransactionContext initialWorld tx
+          bindings := [] }
+        state)
+    (hstateBindings :
+      FunctionBody.bindingsExactlyMatchIRVars bindings state)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body) :
+    SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
+      runtimeContract
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
+  have hhelperSurface : stmtListTouchesUnsupportedHelperSurface fn.body = false :=
+    stmtListTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed
+      hcontractSurface
+  exact
+    supported_function_body_correct_from_exact_state_generic_finer_split_internal_helper_surface_steps_and_helper_ir_callsDisjoint
+      runtimeContract
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
+      hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hhelperFree
+      (stmtListDirectInternalHelperCallStepInterface_of_helperSurfaceClosed
+        (runtimeContract := runtimeContract)
+        (spec := model)
+        (fields := SourceSemantics.effectiveFields model)
+        (scope := fn.params.map (·.name))
+        (stmts := fn.body)
+        hhelperSurface)
+      (stmtListDirectInternalHelperAssignStepInterface_of_helperSurfaceClosed
+        (runtimeContract := runtimeContract)
+        (spec := model)
+        (fields := SourceSemantics.effectiveFields model)
+        (scope := fn.params.map (·.name))
+        (stmts := fn.body)
+        hhelperSurface)
+      (stmtListExprInternalHelperStepInterface_of_helperSurfaceClosed
+        (runtimeContract := runtimeContract)
+        (spec := model)
+        (fields := SourceSemantics.effectiveFields model)
+        (scope := fn.params.map (·.name))
+        (stmts := fn.body)
+        hhelperSurface)
+      (stmtListStructuralInternalHelperStepInterface_of_helperSurfaceClosed
+        (runtimeContract := runtimeContract)
+        (spec := model)
+        (fields := SourceSemantics.effectiveFields model)
+        (scope := fn.params.map (·.name))
+        (stmts := fn.body)
+        hhelperSurface)
+      (stmtListResidualHelperSurfaceStepInterface_of_helperSurfaceClosed
+        (runtimeContract := runtimeContract)
+        (spec := model)
+        (fields := SourceSemantics.effectiveFields model)
+        (scope := fn.params.map (·.name))
+        (stmts := fn.body)
+        hhelperSurface)
+      hdisjoint
+      hbodyCompile
+      hscope hbounded hstateRuntime hstateBindings
+
 /-- Current-fragment wrapper that lands directly in the exact helper-aware
 compiled body goal. This keeps the existing helper-free step library reusable,
 but removes the need for callers to supply a separate
@@ -10928,9 +11025,6 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
     SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
       runtimeContract
       model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
-  have hhelperSurface : stmtListTouchesUnsupportedHelperSurface fn.body = false :=
-    stmtListTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed
-      hcontractSurface
   have hdisjoint :
       StmtListHelperFreeCompiledCallsDisjoint
         runtimeContract
@@ -10946,6 +11040,68 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
         hnoPacked
         hcontractSurface
         hinternal)
+  exact
+    supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir_callsDisjoint
+      runtimeContract
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
+      hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hnoPacked hcontractSurface
+      hhelperFree hbodyCompile hscope hbounded hstateRuntime hstateBindings hdisjoint
+
+/-- Tier 2 disjointness-based exact helper-aware wrapper for the alternate
+singleton mapping-write contract surface. This keeps the helper-aware
+compiled-body seam available even before those writes are promoted onto the
+default support path, without assuming the runtime helper table is empty. -/
+theorem
+    supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir_except_mapping_writes_callsDisjoint
+    (runtimeContract : IRContract)
+    (model : CompilationModel)
+    (fn : FunctionSpec)
+    (bodyStmts : List YulStmt)
+    (helperFuel : Nat)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (state : IRState)
+    (bindings : List (String × Nat))
+    (extraFuel : Nat)
+    (hextraFuel : sizeOf bodyStmts - bodyStmts.length ≤ extraFuel)
+    (hfuelPos : 0 < helperFuel)
+    (hnormalized : SourceSemantics.effectiveFields model = model.fields)
+    (hnoEvents : model.events = [])
+    (hnoErrors : model.errors = [])
+    (hnoPacked : ∀ field ∈ model.fields, field.packedBits = none)
+    (hcontractSurface :
+      stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites fn.body = false)
+    (hhelperFree :
+      StmtListHelperFreeStepInterface
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hscope :
+      FunctionBody.scopeNamesPresent (fn.params.map (·.name)) bindings)
+    (hbounded : FunctionBody.bindingsBounded bindings)
+    (hstateRuntime :
+      FunctionBody.runtimeStateMatchesIR
+        (SourceSemantics.effectiveFields model)
+        { world := SourceSemantics.withTransactionContext initialWorld tx
+          bindings := [] }
+        state)
+    (hstateBindings :
+      FunctionBody.bindingsExactlyMatchIRVars bindings state)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body) :
+    SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
+      runtimeContract
+      model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
+  have hhelperSurface : stmtListTouchesUnsupportedHelperSurface fn.body = false :=
+    stmtListTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed_exceptMappingWrites
+      hcontractSurface
   exact
     supported_function_body_correct_from_exact_state_generic_finer_split_internal_helper_surface_steps_and_helper_ir_callsDisjoint
       runtimeContract
@@ -11035,9 +11191,6 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
     SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
       runtimeContract
       model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel := by
-  have hhelperSurface : stmtListTouchesUnsupportedHelperSurface fn.body = false :=
-    stmtListTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed_exceptMappingWrites
-      hcontractSurface
   have hdisjoint :
       StmtListHelperFreeCompiledCallsDisjoint
         runtimeContract
@@ -11054,48 +11207,11 @@ theorem supported_function_body_correct_from_exact_state_generic_with_helpers_an
         hcontractSurface
         hinternal)
   exact
-    supported_function_body_correct_from_exact_state_generic_finer_split_internal_helper_surface_steps_and_helper_ir_callsDisjoint
+    supported_function_body_correct_from_exact_state_generic_with_helpers_and_helper_ir_except_mapping_writes_callsDisjoint
       runtimeContract
       model fn bodyStmts helperFuel tx initialWorld state bindings extraFuel
-      hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hhelperFree
-      (stmtListDirectInternalHelperCallStepInterface_of_helperSurfaceClosed
-        (runtimeContract := runtimeContract)
-        (spec := model)
-        (fields := SourceSemantics.effectiveFields model)
-        (scope := fn.params.map (·.name))
-        (stmts := fn.body)
-        hhelperSurface)
-      (stmtListDirectInternalHelperAssignStepInterface_of_helperSurfaceClosed
-        (runtimeContract := runtimeContract)
-        (spec := model)
-        (fields := SourceSemantics.effectiveFields model)
-        (scope := fn.params.map (·.name))
-        (stmts := fn.body)
-        hhelperSurface)
-      (stmtListExprInternalHelperStepInterface_of_helperSurfaceClosed
-        (runtimeContract := runtimeContract)
-        (spec := model)
-        (fields := SourceSemantics.effectiveFields model)
-        (scope := fn.params.map (·.name))
-        (stmts := fn.body)
-        hhelperSurface)
-      (stmtListStructuralInternalHelperStepInterface_of_helperSurfaceClosed
-        (runtimeContract := runtimeContract)
-        (spec := model)
-        (fields := SourceSemantics.effectiveFields model)
-        (scope := fn.params.map (·.name))
-        (stmts := fn.body)
-        hhelperSurface)
-      (stmtListResidualHelperSurfaceStepInterface_of_helperSurfaceClosed
-        (runtimeContract := runtimeContract)
-        (spec := model)
-        (fields := SourceSemantics.effectiveFields model)
-        (scope := fn.params.map (·.name))
-        (stmts := fn.body)
-        hhelperSurface)
-      hdisjoint
-      hbodyCompile
-      hscope hbounded hstateRuntime hstateBindings
+      hextraFuel hfuelPos hnormalized hnoEvents hnoErrors hnoPacked hcontractSurface
+      hhelperFree hbodyCompile hscope hbounded hstateRuntime hstateBindings hdisjoint
 
 /-- Goal-based helper-aware wrapper around the generic body/IR preservation
 theorem. This keeps the current helper-free collapse available as a corollary,

@@ -2879,7 +2879,7 @@ theorem
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   have hsupportedFn := hSupported.supportedFunctionOfSelectorDispatched hfn
   exact
-    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -2901,8 +2901,8 @@ theorem
       (hcompile := hcompile)
       (hbind := hbind)
       (htxNormalized := htxNormalized)
-      (hcatalog :=
-        directInternalHelperHeadStepCatalog_of_supportedBody_and_assignCompileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_assignSemanticKernelCatalog
+      (hbridge :=
+        directInternalHelperHeadStepBridgeCatalog_of_supportedBody_and_assignCompileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_assignSemanticKernelCatalog
           (runtimeContract := runtimeContract)
           (spec := model)
           (fields := SourceSemantics.effectiveFields model)

@@ -12261,6 +12261,47 @@ witness. This keeps downstream theorem seams on the reusable head-step catalog
 that future rank induction should ultimately construct, instead of forcing them
 to route through the intermediate assign-bridge layer. -/
 theorem
+    directInternalHelperHeadStepBridgeCatalog_of_supportedBody_and_assignCompileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_assignSemanticKernelCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hbody : SupportedBodyInterface spec fn)
+    (hcompile :
+      DirectInternalHelperPerCalleeAssignCompileCatalog spec fields fn)
+    (hruntime :
+      DirectInternalHelperPerCalleeRuntimeWitnessCatalog runtimeContract spec fn)
+    (hsummaries :
+      SupportedBodyHelperSummariesSound spec fn hbody.calls.helpers)
+    (hkernel :
+      DirectInternalHelperPerCalleeAssignSemanticKernelCatalog
+        runtimeContract spec fields fn) :
+    DirectInternalHelperHeadStepBridgeCatalog runtimeContract spec fields fn := by
+  exact
+    directInternalHelperHeadStepBridgeCatalog_of_supportedBody_and_assignBridgeCatalog
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (fields := fields)
+      (fn := fn)
+      hbody
+      (directInternalHelperPerCalleeAssignBridgeCatalog_of_assignCompileCatalog_and_runtimeWitnessCatalog_and_supportedBodyHelpers_and_helperSummariesSound_and_assignSemanticKernelCatalog
+        (runtimeContract := runtimeContract)
+        (spec := spec)
+        (fields := fields)
+        (fn := fn)
+        hcompile
+        hruntime
+        hbody.calls.helpers
+        hsummaries
+        hkernel)
+
+/-- Assemble the exact body-level direct-helper head-step catalog directly from
+the split assign-side Tier 4 ingredients plus the current supported-body
+witness. This keeps downstream theorem seams on the reusable head-step catalog
+that future rank induction should ultimately construct, and now lands first on
+the exact body-level bridge catalog rather than the derived per-callee
+assign-bridge layer. -/
+theorem
     directInternalHelperHeadStepCatalog_of_supportedBody_and_assignCompileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_assignSemanticKernelCatalog
     {runtimeContract : IRContract}
     {spec : CompilationModel}
@@ -12278,20 +12319,19 @@ theorem
         runtimeContract spec fields fn) :
     DirectInternalHelperHeadStepCatalog runtimeContract spec fields fn := by
   exact
-    directInternalHelperHeadStepCatalog_of_supportedBody_and_assignBridgeCatalog
+    directInternalHelperHeadStepCatalog_of_bridgeCatalog
       (runtimeContract := runtimeContract)
       (spec := spec)
       (fields := fields)
       (fn := fn)
-      hbody
-      (directInternalHelperPerCalleeAssignBridgeCatalog_of_assignCompileCatalog_and_runtimeWitnessCatalog_and_supportedBodyHelpers_and_helperSummariesSound_and_assignSemanticKernelCatalog
+      (directInternalHelperHeadStepBridgeCatalog_of_supportedBody_and_assignCompileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_assignSemanticKernelCatalog
         (runtimeContract := runtimeContract)
         (spec := spec)
         (fields := fields)
         (fn := fn)
+        hbody
         hcompile
         hruntime
-        hbody.calls.helpers
         hsummaries
         hkernel)
 

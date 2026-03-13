@@ -11776,6 +11776,116 @@ structure DirectInternalHelperPerCalleeBridgeCatalog
       calleeName ∈ helperCallNames fn →
       DirectInternalHelperAssignHeadStepBridge runtimeContract spec fields calleeName
 
+/-- Split compile-side Tier 4 inventory. This isolates the purely compilation
+obligations from the semantic bridge obligations so future fragment widening can
+discharge compile success generically once direct helper calls are admitted into
+the supported statement witness. -/
+structure DirectInternalHelperPerCalleeCompileCatalog
+    (spec : CompilationModel)
+    (fields : List Field)
+    (fn : FunctionSpec) : Prop where
+  call :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      ∀ {scope : List String} {args : List Expr},
+        ∃ compiledIR,
+          CompilationModel.compileStmt fields [] [] .calldata [] false scope
+            (Stmt.internalCall calleeName args) = Except.ok compiledIR
+  assign :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      ∀ {scope : List String} {names : List String} {args : List Expr},
+        ∃ compiledIR,
+          CompilationModel.compileStmt fields [] [] .calldata [] false scope
+            (Stmt.internalCallAssign names calleeName args) = Except.ok compiledIR
+
+/-- Split semantic Tier 4 inventory. This keeps the end-to-end source/IR step
+alignment separate from the compile-success obligations, matching the eventual
+division between helper-rank induction and fragment-widening compile lemmas. -/
+structure DirectInternalHelperPerCalleeSemanticBridgeCatalog
+    (runtimeContract : IRContract)
+    (spec : CompilationModel)
+    (fields : List Field)
+    (fn : FunctionSpec) : Prop where
+  call :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      ∀ {scope : List String} {args : List Expr}
+          {compiledIR : List YulStmt} {argExprs : List YulExpr},
+        CompilationModel.compileStmt fields [] [] .calldata [] false scope
+          (Stmt.internalCall calleeName args) = Except.ok compiledIR →
+        CompilationModel.compileExprList fields .calldata args = Except.ok argExprs →
+        ∀ (runtime : SourceSemantics.RuntimeState)
+          (state : IRState)
+          (helperFuel : Nat)
+          (irFuel : Nat),
+          0 < helperFuel →
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings state →
+          FunctionBody.scopeNamesPresent scope runtime.bindings →
+          FunctionBody.bindingsBounded runtime.bindings →
+          FunctionBody.runtimeStateMatchesIR fields runtime state →
+          stmtStepMatchesIRExecWithInternals fields
+            (stmtNextScope scope (Stmt.internalCall calleeName args))
+            (SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+              (Stmt.internalCall calleeName args))
+            (execIRStmtsWithInternals runtimeContract (irFuel + 3) state
+              [YulStmt.expr (YulExpr.call
+                (CompilationModel.internalFunctionYulName calleeName) argExprs)])
+  assign :
+    ∀ {calleeName : String},
+      calleeName ∈ helperCallNames fn →
+      ∀ {scope : List String} {names : List String} {args : List Expr}
+          {compiledIR : List YulStmt} {argExprs : List YulExpr},
+        CompilationModel.compileStmt fields [] [] .calldata [] false scope
+          (Stmt.internalCallAssign names calleeName args) = Except.ok compiledIR →
+        CompilationModel.compileExprList fields .calldata args = Except.ok argExprs →
+        ∀ (runtime : SourceSemantics.RuntimeState)
+          (state : IRState)
+          (helperFuel : Nat)
+          (irFuel : Nat),
+          0 < helperFuel →
+          FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings state →
+          FunctionBody.scopeNamesPresent scope runtime.bindings →
+          FunctionBody.bindingsBounded runtime.bindings →
+          FunctionBody.runtimeStateMatchesIR fields runtime state →
+          stmtStepMatchesIRExecWithInternals fields
+            (stmtNextScope scope (Stmt.internalCallAssign names calleeName args))
+            (SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+              (Stmt.internalCallAssign names calleeName args))
+            (execIRStmtsWithInternals runtimeContract (irFuel + 3) state
+              [YulStmt.letMany names (YulExpr.call
+                (CompilationModel.internalFunctionYulName calleeName) argExprs)])
+
+/-- Reassemble the existing callee-local Tier 4 bridge object after splitting the
+compile and semantic obligations. This is the intended future landing point for
+independent fragment-widening and helper-rank-induction developments. -/
+theorem directInternalHelperPerCalleeBridgeCatalog_of_compileCatalog_and_semanticBridgeCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hcompile : DirectInternalHelperPerCalleeCompileCatalog spec fields fn)
+    (hsemantic :
+      DirectInternalHelperPerCalleeSemanticBridgeCatalog runtimeContract spec fields fn) :
+    DirectInternalHelperPerCalleeBridgeCatalog runtimeContract spec fields fn := by
+  refine ⟨?_, ?_⟩
+  · intro calleeName hmem
+    refine
+      { compile := ?_
+        bridge := ?_ }
+    · intro scope args
+      exact hcompile.call hmem (scope := scope) (args := args)
+    · intro scope args compiledIR argExprs hstmt hargs
+      exact hsemantic.call hmem hstmt hargs
+  · intro calleeName hmem
+    refine
+      { compile := ?_
+        bridge := ?_ }
+    · intro scope names args
+      exact hcompile.assign hmem (scope := scope) (names := names) (args := args)
+    · intro scope names args compiledIR argExprs hstmt hargs
+      exact hsemantic.assign hmem hstmt hargs
+
 /-- Assemble the existing body-level direct-helper bridge catalog from the more
 rank-induction-friendly per-callee bridge inventory. -/
 theorem directInternalHelperHeadStepBridgeCatalog_of_perCalleeBridgeCatalog

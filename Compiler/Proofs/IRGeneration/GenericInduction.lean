@@ -12217,6 +12217,44 @@ theorem
         hstmt
         hargs
 
+/-- Assemble the assign-only callee-local Tier 4 bridge inventory directly from
+the assign compile catalog, callee-local runtime helper witnesses, the
+supported body's helper-summary inventory, and the irreducible assign semantic
+kernel. This packages the exact assign-side proof object future rank induction
+should ultimately construct. -/
+theorem
+    directInternalHelperPerCalleeAssignBridgeCatalog_of_assignCompileCatalog_and_runtimeWitnessCatalog_and_supportedBodyHelpers_and_helperSummariesSound_and_assignSemanticKernelCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hcompile :
+      DirectInternalHelperPerCalleeAssignCompileCatalog spec fields fn)
+    (hruntime :
+      DirectInternalHelperPerCalleeRuntimeWitnessCatalog runtimeContract spec fn)
+    (hHelpers : SupportedBodyHelperInterface spec fn)
+    (hsummaries : SupportedBodyHelperSummariesSound spec fn hHelpers)
+    (hkernel :
+      DirectInternalHelperPerCalleeAssignSemanticKernelCatalog
+        runtimeContract spec fields fn) :
+    DirectInternalHelperPerCalleeAssignBridgeCatalog runtimeContract spec fields fn := by
+  refine ⟨?_⟩
+  intro calleeName hmem
+  refine
+    { compile := ?_
+      bridge := ?_ }
+  · intro scope names args
+    exact hcompile.assign hmem (scope := scope) (names := names) (args := args)
+  · intro scope names args compiledIR argExprs hstmt hargs
+    exact
+      hkernel.assign
+        hmem
+        (hHelpers.summaryOfCall hmem)
+        (hsummaries calleeName hmem)
+        (hruntime.witness hmem)
+        hstmt
+        hargs
+
 /-- Split semantic Tier 4 inventory. This keeps the end-to-end source/IR step
 alignment separate from the compile-success obligations, matching the eventual
 division between helper-rank induction and fragment-widening compile lemmas. -/

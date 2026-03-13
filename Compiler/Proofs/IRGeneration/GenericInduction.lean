@@ -11591,6 +11591,38 @@ theorem stmtListDirectInternalHelperAssignStepInterface_cons_internalCallAssign
   intro _
   exact ⟨compiledIR, hstep⟩
 
+/-- Exact Tier 4 head-step proof object for a function body's direct internal
+helper surface. Future helper-rank induction should construct this single
+catalog once, then reuse the mechanical list-interface assembly theorems
+downstream. -/
+structure DirectInternalHelperHeadStepCatalog
+    (runtimeContract : IRContract)
+    (spec : CompilationModel)
+    (fields : List Field)
+    (fn : FunctionSpec) : Prop where
+  call :
+    ∀ {scope : List String} {calleeName : String} {args : List Expr},
+      calleeName ∈ helperCallNames fn →
+      ∃ compiledIR,
+        CompiledStmtStepWithHelpersAndHelperIR
+          runtimeContract
+          spec
+          fields
+          scope
+          (Stmt.internalCall calleeName args)
+          compiledIR
+  assign :
+    ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+      calleeName ∈ helperCallNames fn →
+      ∃ compiledIR,
+        CompiledStmtStepWithHelpersAndHelperIR
+          runtimeContract
+          spec
+          fields
+          scope
+          (Stmt.internalCallAssign names calleeName args)
+          compiledIR
+
 /-- Assemble the exact direct-helper-assign list interface from a reusable
 single-head constructor. This pushes future helper-rank induction down to the
 only genuinely new work: constructing the `Stmt.internalCallAssign` head step
@@ -11762,6 +11794,47 @@ theorem stmtListDirectInternalHelperCallStepInterface_of_internalCallSteps_of_he
         intro scope calleeName args hmem
         exact hstep (scope := scope) (calleeName := calleeName) (args := args)
           (by simp [stmtListInternalHelperCallNames, hmem])
+
+/-- Assemble both exact direct-helper list interfaces from a single body-local
+head-step catalog. This keeps the list recursion mechanical so future
+rank-decreasing helper proofs can focus on constructing one catalog object. -/
+theorem stmtListDirectInternalHelperStepInterfaces_of_headStepCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {fn : FunctionSpec} :
+    DirectInternalHelperHeadStepCatalog runtimeContract spec fields fn →
+    StmtListDirectInternalHelperCallStepInterface
+      runtimeContract
+      spec
+      fields
+      scope
+      fn.body ∧
+    StmtListDirectInternalHelperAssignStepInterface
+      runtimeContract
+      spec
+      fields
+      scope
+      fn.body := by
+  intro hcatalog
+  constructor
+  · exact
+      stmtListDirectInternalHelperCallStepInterface_of_internalCallSteps_of_helperCallNames
+        (runtimeContract := runtimeContract)
+        (spec := spec)
+        (fields := fields)
+        (scope := scope)
+        (stmts := fn.body)
+        hcatalog.call
+  · exact
+      stmtListDirectInternalHelperAssignStepInterface_of_internalCallAssignSteps_of_helperCallNames
+        (runtimeContract := runtimeContract)
+        (spec := spec)
+        (fields := fields)
+        (scope := scope)
+        (stmts := fn.body)
+        hcatalog.assign
 
 private theorem internalFunctionYulName_ne_stop
     (calleeName : String) :

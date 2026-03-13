@@ -1569,6 +1569,43 @@ theorem compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal
       tx
       (FunctionBody.initialIRStateForTx model tx initialWorld))
 
+/-- Disjointness-based helper-aware whole-contract wrapper.
+This replaces the legacy-compatible runtime assumption with the weaker
+`DisjointRuntimeContract` boundary that future helper-table compilation should
+still satisfy even after `ir.internalFunctions` stops being empty. -/
+theorem compile_preserves_semantics_with_helper_proofs_and_helper_ir_of_disjointRuntimeContract
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (ir : IRContract)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (htxNormalized : Function.TxContextNormalized tx)
+    (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
+    (hcompile : CompilationModel.compile model selectors = Except.ok ir)
+    (hdisjointIR : DisjointRuntimeContract ir) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
+      (interpretIRWithInternals ir 0 tx
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  exact compile_preserves_semantics_with_helper_proofs_and_helper_ir
+    (model := model)
+    (selectors := selectors)
+    (hSupported := hSupported)
+    (hHelperProofs := hHelperProofs)
+    (ir := ir)
+    (tx := tx)
+    (initialWorld := initialWorld)
+    (htxNormalized := htxNormalized)
+    (hcalldataSizeFits := hcalldataSizeFits)
+    (hcompile := hcompile)
+    (hhelperIR :=
+      interpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint_closed ir
+        hdisjointIR
+        tx
+        (FunctionBody.initialIRStateForTx model tx initialWorld))
+
 /-- Direct helper-aware whole-contract theorem on the current legacy-compatible
 runtime-contract boundary. The helper-aware compiled-side conservative-extension
 goal is now closed in `IRInterpreter.lean`, so theorem users no longer need to

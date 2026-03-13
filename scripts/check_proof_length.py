@@ -154,6 +154,11 @@ ALLOWLIST: set[str] = {
     # in one compiler-facing theorem so later whole-contract correctness can
     # consume a single dispatch boundary instead of reassembling these cases.
     "interpretContract_correct_of_compiled_functions",
+    # Tier-4 disjoint-runtime dispatch wrapper: this theorem is slightly over
+    # the hard limit because it keeps the full helper-aware dispatch theorem
+    # signature intact while swapping only the compiled-side runtime premise
+    # from legacy-compatibility to disjointness.
+    "interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_of_disjointRuntimeContract",
     # Generic Layer 2 proof-spine carryover from PR #1554:
     # these theorems predate the hard-limit gate and currently centralize the
     # structural-fuel/whole-fuel transports, terminal-ite normalization, and

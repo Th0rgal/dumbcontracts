@@ -713,6 +713,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs_and_helper_ir
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal
+#print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs_and_helper_ir_of_disjointRuntimeContract
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs_and_helper_ir_closed
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_with_helper_proofs_and_helper_ir_supported
 #print axioms Compiler.Proofs.IRGeneration.Contract.counter_supported_spec_compile_preserves_semantics
@@ -720,6 +721,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- Compiler/Proofs/IRGeneration/Dispatch.lean
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.runtimeContractOfFunctions_internalFunctions
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.runtimeContractOfFunctions_legacyCompatible
+#print axioms Compiler.Proofs.IRGeneration.Dispatch.runtimeContractOfFunctions_disjoint
 -- #print axioms Compiler.Proofs.IRGeneration.Dispatch.decodeSupportedParamWord_some_of_supported  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Dispatch.bindSupportedParams_some_of_supported  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Dispatch.find_compiledFunction_some_of_forall₂  -- private
@@ -728,6 +730,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_goal
+#print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_of_disjointRuntimeContract
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_closed
 
 -- Compiler/Proofs/IRGeneration/Function.lean
@@ -1756,4 +1759,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1625 theorems/lemmas (1222 public, 403 private)
+-- Total: 1628 theorems/lemmas (1225 public, 403 private)

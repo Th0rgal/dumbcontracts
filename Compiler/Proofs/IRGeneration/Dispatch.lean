@@ -30,6 +30,17 @@ theorem runtimeContractOfFunctions_legacyCompatible
   intro fn hmem
   exact hlegacyBodies fn hmem
 
+theorem runtimeContractOfFunctions_disjoint
+    (name : String) (functions : List IRFunction)
+    (hdisjointBodies :
+      ∀ fn ∈ functions,
+        YulStmtListCallsDisjointFromInternalTable
+          (runtimeContractOfFunctions name functions)
+          fn.body) :
+    DisjointRuntimeContract (runtimeContractOfFunctions name functions) := by
+  intro fn hmem
+  exact hdisjointBodies fn hmem
+
 private theorem decodeSupportedParamWord_some_of_supported
     (ty : ParamType) (word : Nat) (hsupported : SupportedExternalParamType ty) :
     ∃ value, SourceSemantics.decodeSupportedParamWord ty word = some value := by
@@ -414,6 +425,59 @@ theorem interpretContract_correct_of_compiled_functions_with_helper_proofs_and_h
     (hhelperIR :=
       hhelperIRGoal
         (runtimeContractOfFunctions_legacyCompatible model.name irFns hlegacyBodies)
+        tx
+        (FunctionBody.initialIRStateForTx model tx initialWorld))
+
+/-- Disjointness-based helper-aware dispatch wrapper.
+This drops the stronger legacy-compatibility runtime assumption in favor of the
+compiled-side condition actually needed by
+`interpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint`. -/
+theorem interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_of_disjointRuntimeContract
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (irFns : List IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (hcompiled :
+      List.Forall₂
+        (fun entry irFn =>
+          compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+        (SourceSemantics.selectorFunctionPairs model selectors)
+        irFns)
+    (hparamsSupported :
+      ∀ fn ∈ selectorDispatchedFunctions model,
+        ∀ param ∈ fn.params, SupportedExternalParamType param.ty)
+    (hfunction :
+      ∀ fn sel irFn bindings,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
+        FunctionBody.sourceResultMatchesIRResult
+          (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+          (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)))
+    (hdisjointIR :
+      DisjointRuntimeContract (runtimeContractOfFunctions model.name irFns)) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
+      (interpretIRWithInternals (runtimeContractOfFunctions model.name irFns) 0 tx
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  exact interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir
+    (model := model)
+    (selectors := selectors)
+    (hSupported := hSupported)
+    (hHelperProofs := hHelperProofs)
+    (irFns := irFns)
+    (tx := tx)
+    (initialWorld := initialWorld)
+    (hcompiled := hcompiled)
+    (hparamsSupported := hparamsSupported)
+    (hfunction := hfunction)
+    (hhelperIR :=
+      interpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint_closed
+        (runtimeContractOfFunctions model.name irFns)
+        hdisjointIR
         tx
         (FunctionBody.initialIRStateForTx model tx initialWorld))
 

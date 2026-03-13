@@ -1429,6 +1429,95 @@ theorem
     (hfnBodyDisjoint := by simpa using hfnBodyDisjoint)
     (hcalldataSizeFits := hcalldataSizeFits)
 
+/-- Compile-facing Tier 4 wrapper whose direct-helper head-step assumptions are
+indexed only by helper callees that actually occur in the current function
+body. This matches the body-local helper-rank inventory. -/
+theorem
+    compileFunctionSpec_correct_generic_with_helper_proofs_direct_internal_helper_body_call_names_head_steps_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (runtimeContract : IRContract)
+    (fn : FunctionSpec)
+    (sel : Nat)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (htxNormalized : Function.TxContextNormalized tx)
+    (bindings : List (String × Nat))
+    (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hcompileFn :
+      compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
+    (hcallStep :
+      ∀ {scope : List String} {calleeName : String} {args : List Expr},
+        calleeName ∈ helperCallNames fn →
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract
+            model
+            (SourceSemantics.effectiveFields model)
+            scope
+            (Stmt.internalCall calleeName args)
+            compiledIR)
+    (hassignStep :
+      ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+        calleeName ∈ helperCallNames fn →
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract
+            model
+            (SourceSemantics.effectiveFields model)
+            scope
+            (Stmt.internalCallAssign names calleeName args)
+            compiledIR)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hfnBodyDisjoint :
+      YulStmtListCallsDisjointFromInternalTable runtimeContract irFn.body) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+      (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  rcases Function.compileFunctionSpec_ok_components
+      model.fields model.events model.errors sel fn irFn hcompileFn with
+    ⟨returns, bodyStmts, hvalidate, hreturns, hbodyCompile, hirFn⟩
+  subst hirFn
+  exact Function.supported_function_correct_with_helper_proofs_direct_internal_helper_body_call_names_head_steps_and_helper_ir_of_bodyCallsDisjoint
+    (model := model)
+    (selectors := selectors)
+    (hSupported := hSupported)
+    (hHelperProofs := hHelperProofs)
+    (hvalidateInputs := hvalidateInputs)
+    (runtimeContract := runtimeContract)
+    (fn := fn)
+    (selector := sel)
+    (returns := returns)
+    (bodyStmts := bodyStmts)
+    (irFn := Function.compiledFunctionIR sel fn returns bodyStmts)
+    (tx := tx)
+    (initialWorld := initialWorld)
+    (bindings := bindings)
+    (hfn := hfn)
+    (hvalidate := hvalidate)
+    (hreturns := hreturns)
+    (hbodyCompile := hbodyCompile)
+    (hcompile := by simpa using hcompileFn)
+    (hbind := hbind)
+    (htxNormalized := htxNormalized)
+    (hcallStep := hcallStep)
+    (hassignStep := hassignStep)
+    (hdisjoint := hdisjoint)
+    (hfnBodyDisjoint := by simpa using hfnBodyDisjoint)
+    (hcalldataSizeFits := hcalldataSizeFits)
+
 /-- Primary whole-contract Layer 2 theorem: compilation preserves semantics
 for any supported `CompilationModel`. No contract-specific bridge premise.
 Layer 2 itself is axiom-free; the remaining documented project axiom is the

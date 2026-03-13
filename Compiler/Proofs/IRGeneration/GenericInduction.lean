@@ -11620,6 +11620,46 @@ theorem stmtListDirectInternalHelperAssignStepInterface_of_internalCallAssignSte
         ⟨compiledIR, hcompiled⟩
       exact ⟨compiledIR, hcompiled⟩
 
+/-- Assemble the exact direct-helper-assign list interface from head-step
+constructors indexed only by helper callees that actually occur in the current
+statement list. This is the precise seam future helper-rank induction should
+target: it no longer needs to quantify over arbitrary helper names unrelated to
+the body under proof. -/
+theorem stmtListDirectInternalHelperAssignStepInterface_of_internalCallAssignSteps_of_helperCallNames
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hstep :
+      ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+        calleeName ∈ (stmtListInternalHelperCallNames stmts).eraseDups →
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract spec fields scope
+            (Stmt.internalCallAssign names calleeName args)
+            compiledIR) :
+    StmtListDirectInternalHelperAssignStepInterface runtimeContract spec fields scope stmts := by
+  induction stmts generalizing scope with
+  | nil =>
+      exact .nil
+  | cons stmt rest ih =>
+      refine .cons ?_ ?_
+      · intro hdirect
+        cases stmt <;> simp [stmtTouchesDirectInternalHelperAssignSurface] at hdirect
+        rcases hstep
+            (scope := scope)
+            (names := names)
+            (calleeName := calleeName)
+            (args := args)
+            (by simp [stmtListInternalHelperCallNames, helperCallNames]) with
+          ⟨compiledIR, hcompiled⟩
+        exact ⟨compiledIR, hcompiled⟩
+      · apply ih
+        intro scope names calleeName args hmem
+        exact hstep (scope := scope) (names := names) (calleeName := calleeName) (args := args)
+          (by simp [stmtListInternalHelperCallNames, hmem])
+
 /-- Non-vacuous list-level constructor for a direct helper statement head.
 This packages `compiledStmtStepWithHelpersAndHelperIR_internalCall` into the
 split direct-helper call interface expected by the exact helper-aware list
@@ -11683,6 +11723,45 @@ theorem stmtListDirectInternalHelperCallStepInterface_of_internalCallSteps
       rcases hstep (scope := scope) (calleeName := calleeName) (args := args) with
         ⟨compiledIR, hcompiled⟩
       exact ⟨compiledIR, hcompiled⟩
+
+/-- Assemble the exact direct-helper-call list interface from head-step
+constructors indexed only by helper callees that actually occur in the current
+statement list. This matches the `helperCallNames`-based rank inventory carried
+by `SupportedBodyHelperInterface`, avoiding arbitrary-name quantification at the
+function theorem boundary. -/
+theorem stmtListDirectInternalHelperCallStepInterface_of_internalCallSteps_of_helperCallNames
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {scope : List String}
+    {stmts : List Stmt}
+    (hstep :
+      ∀ {scope : List String} {calleeName : String} {args : List Expr},
+        calleeName ∈ (stmtListInternalHelperCallNames stmts).eraseDups →
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            runtimeContract spec fields scope
+            (Stmt.internalCall calleeName args)
+            compiledIR) :
+    StmtListDirectInternalHelperCallStepInterface runtimeContract spec fields scope stmts := by
+  induction stmts generalizing scope with
+  | nil =>
+      exact .nil
+  | cons stmt rest ih =>
+      refine .cons ?_ ?_
+      · intro hdirect
+        cases stmt <;> simp [stmtTouchesDirectInternalHelperCallSurface] at hdirect
+        rcases hstep
+            (scope := scope)
+            (calleeName := calleeName)
+            (args := args)
+            (by simp [stmtListInternalHelperCallNames, helperCallNames]) with
+          ⟨compiledIR, hcompiled⟩
+        exact ⟨compiledIR, hcompiled⟩
+      · apply ih
+        intro scope calleeName args hmem
+        exact hstep (scope := scope) (calleeName := calleeName) (args := args)
+          (by simp [stmtListInternalHelperCallNames, hmem])
 
 private theorem internalFunctionYulName_ne_stop
     (calleeName : String) :

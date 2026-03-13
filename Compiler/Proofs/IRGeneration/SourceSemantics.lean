@@ -1859,10 +1859,30 @@ def supportedSourceFunctionSemantics
   SourceSemantics.interpretFunctionWithHelpers
     spec hSupported.helperFuel fn tx initialWorld
 
+def supportedSourceFunctionSemanticsExceptMappingWrites
+    (spec : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
+    (fn : FunctionSpec)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState) :
+    SourceSemantics.SourceContractResult :=
+  SourceSemantics.interpretFunctionWithHelpers
+    spec hSupported.helperFuel fn tx initialWorld
+
 def supportedSourceContractSemantics
     (spec : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState) :
+    SourceSemantics.SourceContractResult :=
+  sourceContractSemanticsWithHelpers spec selectors hSupported.helperFuel tx initialWorld
+
+def supportedSourceContractSemanticsExceptMappingWrites
+    (spec : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
     (tx : IRTransaction)
     (initialWorld : Verity.ContractState) :
     SourceSemantics.SourceContractResult :=
@@ -1899,6 +1919,25 @@ theorem supportedSourceFunctionSemantics_eq_interpretFunction_of_selectorDispatc
     (initialWorld := initialWorld)
     ((hSupported.supportedFunctionOfSelectorDispatched hfn).body.calls.helpers.surfaceClosed)
 
+theorem supportedSourceFunctionSemanticsExceptMappingWrites_eq_interpretFunction_of_selectorDispatched
+    {spec : CompilationModel}
+    {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
+    {fn : FunctionSpec}
+    (hfn : fn ∈ selectorDispatchedFunctions spec)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState) :
+    supportedSourceFunctionSemanticsExceptMappingWrites spec selectors hSupported fn tx initialWorld =
+      SourceSemantics.interpretFunction spec fn tx initialWorld := by
+  unfold supportedSourceFunctionSemanticsExceptMappingWrites
+  exact SourceSemantics.interpretFunctionWithHelpers_eq_interpretFunction_of_helperSurfaceClosed
+    (spec := spec)
+    (fuel := hSupported.helperFuel)
+    (fn := fn)
+    (tx := tx)
+    (initialWorld := initialWorld)
+    ((hSupported.supportedFunctionOfSelectorDispatched hfn).body.calls.helpers.surfaceClosed)
+
 theorem supportedSourceContractSemantics_eq_sourceContractSemantics
     {spec : CompilationModel}
     {selectors : List Nat}
@@ -1909,6 +1948,24 @@ theorem supportedSourceContractSemantics_eq_sourceContractSemantics
       sourceContractSemantics spec selectors tx initialWorld := by
   exact sourceContractSemanticsWithHelpers_eq_sourceContractSemantics_of_supportedSpec
     hSupported hSupported.helperFuel tx initialWorld
+
+theorem supportedSourceContractSemanticsExceptMappingWrites_eq_sourceContractSemantics
+    {spec : CompilationModel}
+    {selectors : List Nat}
+    (hSupported : SupportedSpecExceptMappingWrites spec selectors)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState) :
+    supportedSourceContractSemanticsExceptMappingWrites spec selectors hSupported tx initialWorld =
+      sourceContractSemantics spec selectors tx initialWorld := by
+  exact SourceSemantics.interpretContractWithHelpers_eq_interpretContract_of_helperSurfaceClosed
+    (spec := spec)
+    (selectors := selectors)
+    (fuel := hSupported.helperFuel)
+    (tx := tx)
+    (initialWorld := initialWorld)
+    (by
+      intro fn hfn
+      exact (hSupported.supportedFunctionOfSelectorDispatched hfn).body.calls.helpers.surfaceClosed)
 
 example :
     (sourceContractSemantics simpleStorageSupportedSpecModel [0x2e64cec1]

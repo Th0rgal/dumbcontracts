@@ -1098,6 +1098,52 @@ theorem compileFunctionSpec_correct_generic
   simpa [supportedSourceFunctionSemantics_eq_interpretFunction_of_selectorDispatched
     (hSupported := hSupported) hfn tx initialWorld] using hcorrect
 
+/-- Tier 2 generic function-level closure from
+`SupportedSpecExceptMappingWrites` and successful `compileFunctionSpec`. This
+exposes the widened singleton storage-write fragment on the same public theorem
+surface as the ordinary supported-function wrapper. -/
+theorem compileFunctionSpec_correct_generic_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors)
+    (fn : FunctionSpec)
+    (sel : Nat)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (htxNormalized : Function.TxContextNormalized tx)
+    (bindings : List (String × Nat))
+    (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
+    (hnoConflict : firstFieldWriteSlotConflict model.fields = none)
+    (hsafety : SupportedStmtListMappingWriteSlotSafety model.fields)
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hcompileFn :
+      compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceFunctionSemanticsExceptMappingWrites model selectors hSupported fn tx initialWorld)
+      (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  have hcorrect :=
+    Function.supported_function_correct_except_mapping_writes
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (fn := fn)
+      (selector := sel)
+      (irFn := irFn)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (bindings := bindings)
+      (hfn := hfn)
+      (hcompileFn := hcompileFn)
+      (hbind := hbind)
+      (hnoConflict := hnoConflict)
+      (hsafety := hsafety)
+      (htxNormalized := htxNormalized)
+      (hcalldataSizeFits := hcalldataSizeFits)
+  simpa [supportedSourceFunctionSemanticsExceptMappingWrites_eq_interpretFunction_of_selectorDispatched
+    (hSupported := hSupported) hfn tx initialWorld] using hcorrect
+
 /-- Helper-proof-carrying function-level generic theorem.
 This is the proof-ready theorem surface for the next helper-composition step.
 Today the additional helper-proof argument is compatibility-redundant because
@@ -2502,7 +2548,7 @@ theorem compile_preserves_semantics_except_mapping_writes
     (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
     (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
     FunctionBody.sourceResultMatchesIRResult
-      (sourceContractSemantics model selectors tx initialWorld)
+      (supportedSourceContractSemanticsExceptMappingWrites model selectors hSupported tx initialWorld)
       (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
   have hcompiled :
       List.Forall₂
@@ -2526,33 +2572,33 @@ theorem compile_preserves_semantics_except_mapping_writes
         compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
         SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
         FunctionBody.sourceResultMatchesIRResult
-          (SourceSemantics.interpretFunction model fn tx initialWorld)
+          (supportedSourceFunctionSemanticsExceptMappingWrites model selectors hSupported fn tx initialWorld)
           (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
     intro fn sel irFn bindings hfn hcompileFn hbind
-    exact Function.supported_function_correct_except_mapping_writes
+    exact compileFunctionSpec_correct_generic_except_mapping_writes
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
       (fn := fn)
-      (selector := sel)
+      (sel := sel)
       (irFn := irFn)
       (tx := tx)
       (initialWorld := initialWorld)
       (bindings := bindings)
+      (htxNormalized := htxNormalized)
+      (hcalldataSizeFits := hcalldataSizeFits)
+      (hnoConflict := hnoConflict)
+      (hsafety := hsafety)
       (hfn := hfn)
       (hcompileFn := hcompileFn)
       (hbind := hbind)
-      (hnoConflict := hnoConflict)
-      (hsafety := hsafety)
-      (htxNormalized := htxNormalized)
-      (hcalldataSizeFits := hcalldataSizeFits)
-  exact compile_preserves_semantics_of_compiled_functions
+  exact Dispatch.interpretContract_correct_of_compiled_functions_except_mapping_writes
     (model := model)
     (selectors := selectors)
-    (ir := ir)
+    (hSupported := hSupported)
+    (irFns := ir.functions)
     (tx := tx)
     (initialWorld := initialWorld)
-    (_hcompile := hcompile)
     (hcompiled := hcompiled)
     (hparamsSupported := hparamsSupported)
     (hfunction := hfunction)

@@ -170,8 +170,7 @@ theorem interpretContract_correct_of_compiled_functions
     (initialWorld : Verity.ContractState)
     (hcompiled :
       List.Forall₂
-        (fun entry irFn =>
-          compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+        (fun entry irFn => compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
         (SourceSemantics.selectorFunctionPairs model selectors)
         irFns)
     (hparamsSupported :
@@ -320,6 +319,81 @@ theorem interpretContract_correct_of_compiled_functions_with_helper_proofs
       (hfunction := hlegacyFunction)
   simpa [supportedSourceContractSemantics_eq_sourceContractSemantics
     (hSupported := hSupported) tx initialWorld] using hlegacy
+
+private theorem legacy_function_correct_of_supportedSourceFunctionSemanticsExceptMappingWrites
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (hfunction :
+      ∀ fn sel irFn bindings,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
+        FunctionBody.sourceResultMatchesIRResult
+          (supportedSourceFunctionSemanticsExceptMappingWrites model selectors hSupported fn tx initialWorld)
+          (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld))) :
+    ∀ fn sel irFn bindings,
+      fn ∈ selectorDispatchedFunctions model →
+      compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+      SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
+      FunctionBody.sourceResultMatchesIRResult
+        (SourceSemantics.interpretFunction model fn tx initialWorld)
+        (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  intro fn sel irFn bindings hfn hcompileFn hbind
+  simpa [supportedSourceFunctionSemanticsExceptMappingWrites_eq_interpretFunction_of_selectorDispatched
+    (hSupported := hSupported) hfn tx initialWorld] using
+    hfunction fn sel irFn bindings hfn hcompileFn hbind
+
+/-- Tier 2 dispatch wrapper for the alternate singleton-storage-write support
+witness. This keeps the public theorem surface aligned with the ordinary
+`SupportedSpec` path while reusing the existing legacy dispatch skeleton. -/
+theorem interpretContract_correct_of_compiled_functions_except_mapping_writes
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpecExceptMappingWrites model selectors)
+    (irFns : List IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (hcompiled :
+      List.Forall₂
+        (fun entry irFn =>
+          compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+        (SourceSemantics.selectorFunctionPairs model selectors)
+        irFns)
+    (hparamsSupported :
+      ∀ fn ∈ selectorDispatchedFunctions model,
+        ∀ param ∈ fn.params, SupportedExternalParamType param.ty)
+    (hfunction :
+      ∀ fn sel irFn bindings,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
+        FunctionBody.sourceResultMatchesIRResult
+          (supportedSourceFunctionSemanticsExceptMappingWrites model selectors hSupported fn tx initialWorld)
+          (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld))) :
+    FunctionBody.sourceResultMatchesIRResult (supportedSourceContractSemanticsExceptMappingWrites model selectors hSupported tx initialWorld)
+      (interpretIR (runtimeContractOfFunctions model.name irFns) tx
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  simpa [supportedSourceContractSemanticsExceptMappingWrites_eq_sourceContractSemantics
+    (hSupported := hSupported) tx initialWorld] using
+    (interpretContract_correct_of_compiled_functions
+      (model := model)
+      (selectors := selectors)
+      (irFns := irFns)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (hcompiled := hcompiled)
+      (hparamsSupported := hparamsSupported)
+      (hfunction :=
+        legacy_function_correct_of_supportedSourceFunctionSemanticsExceptMappingWrites
+          (model := model)
+          (selectors := selectors)
+          (hSupported := hSupported)
+          (tx := tx)
+          (initialWorld := initialWorld)
+          hfunction))
 
 /-- Helper-aware compiled-side wrapper for the dispatch theorem.
 This packages the remaining compiled-side retarget work as a single

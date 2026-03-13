@@ -705,6 +705,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_legacyCompatibleExternalBodies
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_legacyCompatibleRuntimeContract
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic
+#print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic_except_mapping_writes
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic_with_helper_proofs
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic_with_helper_proofs_and_helper_ir
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic_with_helper_proofs_and_helper_ir_of_bodyCallsDisjoint
@@ -728,6 +729,8 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.Dispatch.find_compiledFunction_none_of_forall₂  -- private
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs
+-- #print axioms Compiler.Proofs.IRGeneration.Dispatch.legacy_function_correct_of_supportedSourceFunctionSemanticsExceptMappingWrites  -- private
+#print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_except_mapping_writes
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_goal
 #print axioms Compiler.Proofs.IRGeneration.Dispatch.interpretContract_correct_of_compiled_functions_with_helper_proofs_and_helper_ir_of_disjointRuntimeContract
@@ -1534,7 +1537,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.SourceSemantics.interpretContractWithHelpers_eq_interpretContract_of_supportedSpec
 #print axioms Compiler.Proofs.IRGeneration.sourceContractSemanticsWithHelpers_eq_sourceContractSemantics_of_supportedSpec
 #print axioms Compiler.Proofs.IRGeneration.supportedSourceFunctionSemantics_eq_interpretFunction_of_selectorDispatched
+#print axioms Compiler.Proofs.IRGeneration.supportedSourceFunctionSemanticsExceptMappingWrites_eq_interpretFunction_of_selectorDispatched
 #print axioms Compiler.Proofs.IRGeneration.supportedSourceContractSemantics_eq_sourceContractSemantics
+#print axioms Compiler.Proofs.IRGeneration.supportedSourceContractSemanticsExceptMappingWrites_eq_sourceContractSemantics
 
 -- Compiler/Proofs/IRGeneration/SupportedSpec.lean
 #print axioms Compiler.Proofs.IRGeneration.helperCallNames_nodup
@@ -1791,4 +1796,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1660 theorems/lemmas (1252 public, 408 private)
+-- Total: 1665 theorems/lemmas (1256 public, 409 private)

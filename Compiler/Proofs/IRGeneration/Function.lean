@@ -2738,6 +2738,104 @@ theorem
       (hfnBodyDisjoint := hfnBodyDisjoint)
       (hcalldataSizeFits := hcalldataSizeFits)
 
+/-- Function-level Tier 4 wrapper on the split semantic-kernel boundary. The
+remaining helper-rank work can now discharge direct helper void calls and
+direct helper return-binding calls independently, while runtime helper-table
+facts are still reconstructed mechanically. -/
+theorem
+    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_helper_table_and_call_semantic_kernel_catalog_and_assign_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (runtimeContract : IRContract)
+    (hRuntime : SupportedRuntimeHelperTableInterface model runtimeContract)
+    (fn : FunctionSpec)
+    (selector : Nat)
+    (returns : List ParamType)
+    (bodyStmts : List YulStmt)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (bindings : List (String × Nat))
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hvalidate : validateFunctionSpec fn = Except.ok ())
+    (hreturns : functionReturns fn = Except.ok returns)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hcompile :
+      compileFunctionSpec model.fields model.events model.errors selector fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
+    (htxNormalized : TxContextNormalized tx)
+    (hheadCompile :
+      DirectInternalHelperPerCalleeCompileCatalog
+        model
+        (SourceSemantics.effectiveFields model)
+        fn)
+    (hheadCallKernel :
+      DirectInternalHelperPerCalleeCallSemanticKernelCatalog
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        fn)
+    (hheadAssignKernel :
+      DirectInternalHelperPerCalleeAssignSemanticKernelCatalog
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        fn)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hfnBodyDisjoint :
+      YulStmtListCallsDisjointFromInternalTable runtimeContract irFn.body)
+    (hcalldataSizeFits : TxCalldataSizeFitsEvm tx) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+      (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  exact
+    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_helper_table_and_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (hHelperProofs := hHelperProofs)
+      (hvalidateInputs := hvalidateInputs)
+      (runtimeContract := runtimeContract)
+      (hRuntime := hRuntime)
+      (fn := fn)
+      (selector := selector)
+      (returns := returns)
+      (bodyStmts := bodyStmts)
+      (irFn := irFn)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (bindings := bindings)
+      (hfn := hfn)
+      (hvalidate := hvalidate)
+      (hreturns := hreturns)
+      (hbodyCompile := hbodyCompile)
+      (hcompile := hcompile)
+      (hbind := hbind)
+      (htxNormalized := htxNormalized)
+      (hheadCompile := hheadCompile)
+      (hheadKernel :=
+        directInternalHelperPerCalleeSemanticKernelCatalog_of_callCatalog_and_assignCatalog
+          (runtimeContract := runtimeContract)
+          (spec := model)
+          (fields := SourceSemantics.effectiveFields model)
+          (fn := fn)
+          hheadCallKernel
+          hheadAssignKernel)
+      (hdisjoint := hdisjoint)
+      (hfnBodyDisjoint := hfnBodyDisjoint)
+      (hcalldataSizeFits := hcalldataSizeFits)
+
 /-- Function-level Tier 2 bridge for bodies admitted by the alternate
 singleton storage-write state interface. This keeps the theorem local to one
 function: global normalization and no-event/no-error assumptions remain

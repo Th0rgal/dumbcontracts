@@ -88,6 +88,10 @@ ALLOWLIST: set[str] = {
     "compiledStmtStep_setMappingWord_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setStructMember_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMapping2_singleSlot_of_slotSafety_preserves",
+    # Tier-4 semantic-kernel reassembly theorem: long due to the intentionally
+    # explicit call/assign split carried through a very long declaration name.
+    # The proof body itself is mechanical projection/repackaging.
+    "directInternalHelperPerCalleeSemanticKernelCatalog_of_callCatalog_and_assignCatalog",
     "compiledStmtStep_setMapping2Word_singleSlot_of_slotSafety_preserves",
     # Tier-2 `setMappingChain` singleton mapping-write bridge: long because the
     # proof threads a list-of-keys evaluation witness through the folded

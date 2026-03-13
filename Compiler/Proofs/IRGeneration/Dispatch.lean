@@ -1638,9 +1638,10 @@ theorem
       (hbodyDisjoint := hbodyDisjoint)
 
 /-- Dispatch-level Tier 4 wrapper on the split semantic-kernel boundary. This
-lets callers provide void-call and return-binding helper kernels separately for
-each dispatched function while the existing combined semantic-kernel theorem is
-reassembled mechanically here. -/
+keeps the public dispatch theorem aligned with the roadmap's assign-first
+helper wiring: callers provide only the assign-side compile catalog plus the
+assign semantic kernel for each dispatched function, and the proof now lands
+directly on the corresponding contract-level assign-first wrapper. -/
 theorem
     interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_assign_compile_catalog_and_runtime_helper_table_and_assign_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
     (model : CompilationModel)
@@ -1700,8 +1701,44 @@ theorem
       (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
       (interpretIRWithInternals (runtimeContractOfFunctions model.name irFns) 0 tx
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  have hsurfaceFunction :
+      ∀ fn sel irFn bindings,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
+        FunctionBody.sourceResultMatchesIRResult
+          (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+          (execIRFunctionWithInternals
+            (runtimeContractOfFunctions model.name irFns) 0
+            irFn tx.args
+            (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+    intro fn sel irFn bindings hfn hcompileFn hbind
+    exact
+      Contract.compileFunctionSpec_correct_generic_with_helper_proofs_direct_internal_helper_assign_compile_catalog_and_runtime_helper_table_and_assign_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
+        (model := model)
+        (selectors := selectors)
+        (hSupported := hSupported)
+        (hHelperProofs := hHelperProofs)
+        (hvalidateInputs := hvalidateInputs)
+        (runtimeContract := runtimeContractOfFunctions model.name irFns)
+        (hRuntime := hRuntime)
+        (fn := fn)
+        (sel := sel)
+        (irFn := irFn)
+        (tx := tx)
+        (initialWorld := initialWorld)
+        (htxNormalized := htxNormalized)
+        (bindings := bindings)
+        (hcalldataSizeFits := hcalldataSizeFits)
+        (hfn := hfn)
+        (hcompileFn := hcompileFn)
+        (hbind := hbind)
+        (hheadAssignCompile := hheadAssignCompile fn hfn)
+        (hheadAssignKernel := hheadAssignKernel fn hfn)
+        (hdisjoint := hdisjoint fn hfn)
+        (hfnBodyDisjoint := hbodyDisjoint fn sel irFn hfn hcompileFn)
   exact
-    interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_per_callee_compile_catalog_and_runtime_helper_table_and_assign_semantic_kernel_catalog_and_helper_ir_of_bodyCallsDisjoint
+    interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_surface_steps_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -1709,27 +1746,9 @@ theorem
       (irFns := irFns)
       (tx := tx)
       (initialWorld := initialWorld)
-      (hvalidateInputs := hvalidateInputs)
-      (htxNormalized := htxNormalized)
-      (hcalldataSizeFits := hcalldataSizeFits)
       (hcompiled := hcompiled)
       (hparamsSupported := hparamsSupported)
-      (hRuntime := hRuntime)
-      (hheadCompile := by
-        intro fn hfn
-        exact
-          directInternalHelperPerCalleeCompileCatalog_of_callCatalog_and_assignCatalog
-            (spec := model)
-            (fields := SourceSemantics.effectiveFields model)
-            (fn := fn)
-            (directInternalHelperPerCalleeCallCompileCatalog_of_supportedBody
-              (spec := model)
-              (fields := SourceSemantics.effectiveFields model)
-              (fn := fn)
-              (hSupported.supportedFunctionOfSelectorDispatched hfn).body)
-            (hheadAssignCompile fn hfn))
-      (hheadAssignKernel := hheadAssignKernel)
-      (hdisjoint := hdisjoint)
+      (hfunction := hsurfaceFunction)
       (hbodyDisjoint := hbodyDisjoint)
 
 /-- Dispatch-level Tier 4 wrapper on the split semantic-kernel boundary. This

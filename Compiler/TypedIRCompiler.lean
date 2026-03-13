@@ -119,6 +119,43 @@ private def ensureTypedIRScalarStorageFieldSupported (fieldName : String) (field
       { name := name, ty := ty, slot := slot, packedBits := none, aliasSlots := aliasSlots } =
         Except.ok () := rfl
 
+@[simp] private theorem ensureTypedIRScalarStorageFieldSupported_uint256
+    (fieldName name context : String) (slot : Option Nat)
+    (packedBits : Option PackedBits) (aliasSlots : List Nat) :
+    ensureTypedIRScalarStorageFieldSupported fieldName
+      { name := name, ty := .uint256, slot := slot, packedBits := packedBits, aliasSlots := aliasSlots }
+      context = Except.ok () := rfl
+
+@[simp] private theorem ensureTypedIRScalarStorageFieldSupported_address
+    (fieldName name context : String) (slot : Option Nat)
+    (packedBits : Option PackedBits) (aliasSlots : List Nat) :
+    ensureTypedIRScalarStorageFieldSupported fieldName
+      { name := name, ty := .address, slot := slot, packedBits := packedBits, aliasSlots := aliasSlots }
+      context = Except.ok () := rfl
+
+@[simp] private theorem ensureTypedIRScalarStorageFieldSupported_mappingTyped
+    (fieldName name context : String) (mt : MappingType) (slot : Option Nat)
+    (packedBits : Option PackedBits) (aliasSlots : List Nat) :
+    ensureTypedIRScalarStorageFieldSupported fieldName
+      { name := name, ty := .mappingTyped mt, slot := slot, packedBits := packedBits, aliasSlots := aliasSlots }
+      context = Except.ok () := rfl
+
+@[simp] private theorem ensureTypedIRScalarStorageFieldSupported_mappingStruct
+    (fieldName name context : String) (keyType : MappingKeyType) (members : List StructMember)
+    (slot : Option Nat) (packedBits : Option PackedBits) (aliasSlots : List Nat) :
+    ensureTypedIRScalarStorageFieldSupported fieldName
+      { name := name, ty := .mappingStruct keyType members, slot := slot, packedBits := packedBits,
+        aliasSlots := aliasSlots }
+      context = Except.ok () := rfl
+
+@[simp] private theorem ensureTypedIRScalarStorageFieldSupported_mappingStruct2
+    (fieldName name context : String) (outerKey innerKey : MappingKeyType) (members : List StructMember)
+    (slot : Option Nat) (packedBits : Option PackedBits) (aliasSlots : List Nat) :
+    ensureTypedIRScalarStorageFieldSupported fieldName
+      { name := name, ty := .mappingStruct2 outerKey innerKey members, slot := slot, packedBits := packedBits,
+        aliasSlots := aliasSlots }
+      context = Except.ok () := rfl
+
 private def compileStorageRead (fields : List Field) (fieldName : String)
     (requireAddressField : Bool := false) : Except String SomeTExpr := do
   match findFieldWithResolvedSlot fields fieldName with
@@ -398,6 +435,10 @@ private def compileBranch (fields : List Field) (stmts : List Stmt) : CompileM (
   return branchState.body.toList
 
 end
+
+@[simp] private theorem compileExpr_literal_run (fields : List Field) (n : Nat) (st : CompileState) :
+    StateT.run (compileExpr fields (Expr.literal n)) st =
+      Except.ok (⟨Ty.uint256, TExpr.uintLit n⟩, st) := rfl
 
 private def registerParam (param : Param) : CompileM Unit := do
   let ty ← liftExcept <| paramTypeToTy param.ty

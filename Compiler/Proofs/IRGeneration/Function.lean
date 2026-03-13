@@ -1378,6 +1378,9 @@ theorem supported_function_correct_with_helper_proofs_body_goal
     (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
     (htxNormalized : TxContextNormalized tx)
     (extraFuel : Nat)
+    (hcompiledBodyFuel :
+      (genParamLoads fn.params ++ bodyStmts).length + extraFuel =
+        sizeOf (compiledFunctionIR selector fn returns bodyStmts).body)
     (hbodyCorrect :
       SupportedFunctionBodyWithHelpersIRPreservationGoal
         model fn bodyStmts hSupported.helperFuel tx initialWorld
@@ -1419,23 +1422,13 @@ theorem supported_function_correct_with_helper_proofs_body_goal
       (hSupported.selectorFunctionParamsSupported hfn)
       hcalldataSizeFits hbind hsource hbodyExec hmatch
   subst hirFn
-  have hbodyFuel :
-      (genParamLoads fn.params ++ bodyStmts).length + extraFuel =
-        sizeOf (compiledFunctionIR selector fn returns bodyStmts).body := by
-    have hlenle :
-        (compiledFunctionIR selector fn returns bodyStmts).body.length ≤
-          sizeOf (compiledFunctionIR selector fn returns bodyStmts).body := by
-      exact Nat.le_of_add_le_add_right
-        (compiledFunctionIR_body_length_le_sizeOf selector fn returns bodyStmts)
-    dsimp [extraFuel]
-    simpa [compiledFunctionIR] using Nat.add_sub_of_le hlenle
   have hfuelEq' :
       bodyStmts.length + (1 + ((genParamLoads fn.params).length + extraFuel)) =
         1 + sizeOf (genParamLoads fn.params ++ bodyStmts) := by
     have hbodyFuel' :
         (genParamLoads fn.params ++ bodyStmts).length + extraFuel =
           sizeOf (genParamLoads fn.params ++ bodyStmts) := by
-      simpa [compiledFunctionIR] using hbodyFuel
+      simpa [compiledFunctionIR] using hcompiledBodyFuel
     calc
       bodyStmts.length + (1 + ((genParamLoads fn.params).length + extraFuel))
           = ((genParamLoads fn.params ++ bodyStmts).length + extraFuel) + 1 := by
@@ -1492,6 +1485,9 @@ theorem supported_function_correct_with_helper_proofs_body_goal_and_helper_ir
     (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
     (htxNormalized : TxContextNormalized tx)
     (extraFuel : Nat)
+    (hcompiledBodyFuel :
+      (genParamLoads fn.params ++ bodyStmts).length + extraFuel =
+        sizeOf (compiledFunctionIR selector fn returns bodyStmts).body)
     (hbodyCorrect :
       SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
         runtimeContract
@@ -1535,7 +1531,7 @@ theorem supported_function_correct_with_helper_proofs_body_goal_and_helper_ir
     supported_function_correct_with_helper_proofs_body_goal
       model selectors hSupported hHelperProofs hvalidateInputs fn selector returns
       bodyStmts irFn tx initialWorld bindings hfn hvalidate hreturns hbodyCompile
-      hcompile hbind htxNormalized extraFuel hlegacyBody hcalldataSizeFits
+      hcompile hbind htxNormalized extraFuel hcompiledBodyFuel hlegacyBody hcalldataSizeFits
   simpa [hhelperIR] using hlegacy
 
 /-- Structured exact helper-aware function/IR wrapper under compiled-body
@@ -1568,6 +1564,9 @@ theorem supported_function_correct_with_helper_proofs_body_goal_and_helper_ir_of
     (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
     (htxNormalized : TxContextNormalized tx)
     (extraFuel : Nat)
+    (hcompiledBodyFuel :
+      (genParamLoads fn.params ++ bodyStmts).length + extraFuel =
+        sizeOf (compiledFunctionIR selector fn returns bodyStmts).body)
     (hbodyCorrect :
       SupportedFunctionBodyWithHelpersAndHelperIRPreservationGoal
         runtimeContract
@@ -1602,7 +1601,7 @@ theorem supported_function_correct_with_helper_proofs_body_goal_and_helper_ir_of
     supported_function_correct_with_helper_proofs_body_goal_and_helper_ir
       model selectors hSupported hHelperProofs hvalidateInputs runtimeContract
       fn selector returns bodyStmts irFn tx initialWorld bindings hfn hvalidate
-      hreturns hbodyCompile hcompile hbind htxNormalized extraFuel hbodyCorrect
+      hreturns hbodyCompile hcompile hbind htxNormalized extraFuel hcompiledBodyFuel hbodyCorrect
       hbodyDisjoint
       (execIRFunctionWithInternals_eq_execIRFunction_of_bodyCallsDisjoint
         runtimeContract
@@ -1749,6 +1748,17 @@ theorem
     dsimp [extraFuel]
     simpa [compiledFunctionIR] using
       yulStmtList_extraFuel_append_ge (genParamLoads fn.params) bodyStmts
+  have hcompiledBodyFuel :
+      (genParamLoads fn.params ++ bodyStmts).length + extraFuel =
+        sizeOf (compiledFunctionIR selector fn returns bodyStmts).body := by
+    subst hirFn
+    dsimp [extraFuel]
+    have hlenle :
+        (compiledFunctionIR selector fn returns bodyStmts).body.length ≤
+          sizeOf (compiledFunctionIR selector fn returns bodyStmts).body := by
+      exact Nat.le_of_add_le_add_right
+        (compiledFunctionIR_body_length_le_sizeOf selector fn returns bodyStmts)
+    simpa [compiledFunctionIR] using Nat.add_sub_of_le hlenle
   have hscope :
       FunctionBody.scopeNamesPresent (fn.params.map (·.name)) bindings := by
     intro name hmem
@@ -1793,7 +1803,7 @@ theorem
     supported_function_correct_with_helper_proofs_body_goal_and_helper_ir_of_bodyCallsDisjoint
       model selectors hSupported hHelperProofs hvalidateInputs runtimeContract
       fn selector returns bodyStmts irFn tx initialWorld bindings hfn hvalidate
-      hreturns hbodyCompile hcompile hbind htxNormalized extraFuel hbodyCorrect
+      hreturns hbodyCompile hcompile hbind htxNormalized extraFuel hcompiledBodyFuel hbodyCorrect
       hfnBodyDisjoint hcalldataSizeFits
 
 /-- Function-level exact helper-aware wrapper that isolates the genuinely new
@@ -3217,6 +3227,17 @@ theorem supported_function_correct_with_body_interface_except_mapping_writes
     dsimp [extraFuel]
     simpa [compiledFunctionIR] using
       yulStmtList_extraFuel_append_ge (genParamLoads fn.params) bodyStmts
+  have hcompiledBodyFuel :
+      (genParamLoads fn.params ++ bodyStmts).length + extraFuel =
+        sizeOf (compiledFunctionIR selector fn returns bodyStmts).body := by
+    subst hirFn
+    dsimp [extraFuel]
+    have hlenle :
+        (compiledFunctionIR selector fn returns bodyStmts).body.length ≤
+          sizeOf (compiledFunctionIR selector fn returns bodyStmts).body := by
+      exact Nat.le_of_add_le_add_right
+        (compiledFunctionIR_body_length_le_sizeOf selector fn returns bodyStmts)
+    simpa [compiledFunctionIR] using Nat.add_sub_of_le hlenle
   have hbodyWithHelpers :
       SupportedFunctionBodyWithHelpersIRPreservationGoal
         model fn bodyStmts helperFuel tx initialWorld
@@ -3597,7 +3618,7 @@ theorem supported_function_correct_with_helper_proofs_goal
   exact supported_function_correct_with_helper_proofs_body_goal
     model selectors hSupported hHelperProofs hvalidateInputs fn selector returns
     bodyStmts irFn tx initialWorld bindings hfn hvalidate hreturns hbodyCompile
-    hcompile hbind htxNormalized extraFuel hbodyWithHelpers hcalldataSizeFits
+    hcompile hbind htxNormalized extraFuel hcompiledBodyFuel hbodyWithHelpers hcalldataSizeFits
 
 /-- Helper-proof-carrying variant of `supported_function_correct`.
 This still closes the source-side helper seam through the temporary
@@ -3773,7 +3794,7 @@ theorem supported_function_correct_with_helper_proofs
   exact supported_function_correct_with_helper_proofs_body_goal
     model selectors hSupported hHelperProofs hvalidateInputs fn selector returns
     bodyStmts irFn tx initialWorld bindings hfn hvalidate hreturns hbodyCompile
-    hcompile hbind htxNormalized extraFuel hbodyWithHelpers hcalldataSizeFits
+    hcompile hbind htxNormalized extraFuel hcompiledBodyFuel hbodyWithHelpers hcalldataSizeFits
 
 end Function
 

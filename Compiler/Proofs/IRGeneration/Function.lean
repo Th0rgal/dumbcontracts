@@ -2276,6 +2276,90 @@ theorem
       (hfnBodyDisjoint := hfnBodyDisjoint)
       (hcalldataSizeFits := hcalldataSizeFits)
 
+/-- Function-level Tier 4 wrapper on the callee-local bridge boundary. This
+matches `SupportedBodyHelperInterface.calleeRanksDecrease` directly: callers
+provide one reusable call bridge and one reusable assign bridge per helper
+callee referenced by `fn.body`, and the body-level bridge catalog is assembled
+here. -/
+theorem
+    supported_function_correct_with_helper_proofs_direct_internal_helper_per_callee_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (runtimeContract : IRContract)
+    (fn : FunctionSpec)
+    (selector : Nat)
+    (returns : List ParamType)
+    (bodyStmts : List YulStmt)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (bindings : List (String × Nat))
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hvalidate : validateFunctionSpec fn = Except.ok ())
+    (hreturns : functionReturns fn = Except.ok returns)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hcompile :
+      compileFunctionSpec model.fields model.events model.errors selector fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
+    (htxNormalized : TxContextNormalized tx)
+    (hcallee :
+      DirectInternalHelperPerCalleeBridgeCatalog
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        fn)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hfnBodyDisjoint :
+      YulStmtListCallsDisjointFromInternalTable runtimeContract irFn.body)
+    (hcalldataSizeFits : TxCalldataSizeFitsEvm tx) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+      (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  exact
+    supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (hHelperProofs := hHelperProofs)
+      (hvalidateInputs := hvalidateInputs)
+      (runtimeContract := runtimeContract)
+      (fn := fn)
+      (selector := selector)
+      (returns := returns)
+      (bodyStmts := bodyStmts)
+      (irFn := irFn)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (bindings := bindings)
+      (hfn := hfn)
+      (hvalidate := hvalidate)
+      (hreturns := hreturns)
+      (hbodyCompile := hbodyCompile)
+      (hcompile := hcompile)
+      (hbind := hbind)
+      (htxNormalized := htxNormalized)
+      (hbridge :=
+        directInternalHelperHeadStepBridgeCatalog_of_perCalleeBridgeCatalog
+          (runtimeContract := runtimeContract)
+          (spec := model)
+          (fields := SourceSemantics.effectiveFields model)
+          (fn := fn)
+          hcallee)
+      (hdisjoint := hdisjoint)
+      (hfnBodyDisjoint := hfnBodyDisjoint)
+      (hcalldataSizeFits := hcalldataSizeFits)
+
 /-- Function-level Tier 2 bridge for bodies admitted by the alternate
 singleton storage-write state interface. This keeps the theorem local to one
 function: global normalization and no-event/no-error assumptions remain

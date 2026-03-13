@@ -578,6 +578,118 @@ theorem
     (hfunction := hlegacyFunction)
     (hdisjointIR := hdisjointIR)
 
+/-- Dispatch-level Tier 4 wrapper stated over reusable single-head direct
+helper step builders. This lets future rank-decreasing helper induction target
+the public whole-contract theorem boundary directly, without first assembling
+per-function list interfaces. -/
+theorem
+    interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_head_steps_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (irFns : List IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (htxNormalized : Function.TxContextNormalized tx)
+    (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
+    (hcompiled :
+      List.Forall₂
+        (fun entry irFn =>
+          compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+        (SourceSemantics.selectorFunctionPairs model selectors)
+        irFns)
+    (hparamsSupported :
+      ∀ fn ∈ selectorDispatchedFunctions model,
+        ∀ param ∈ fn.params, SupportedExternalParamType param.ty)
+    (hcallStep :
+      ∀ {scope : List String} {calleeName : String} {args : List Expr},
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            (runtimeContractOfFunctions model.name irFns)
+            model
+            (SourceSemantics.effectiveFields model)
+            scope
+            (Stmt.internalCall calleeName args)
+            compiledIR)
+    (hassignStep :
+      ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+        ∃ compiledIR,
+          CompiledStmtStepWithHelpersAndHelperIR
+            (runtimeContractOfFunctions model.name irFns)
+            model
+            (SourceSemantics.effectiveFields model)
+            scope
+            (Stmt.internalCallAssign names calleeName args)
+            compiledIR)
+    (hdisjoint :
+      ∀ fn,
+        fn ∈ selectorDispatchedFunctions model →
+        StmtListHelperFreeCompiledCallsDisjoint
+          (runtimeContractOfFunctions model.name irFns)
+          (SourceSemantics.effectiveFields model)
+          (fn.params.map (·.name))
+          fn.body)
+    (hbodyDisjoint :
+      ∀ fn sel irFn,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        YulStmtListCallsDisjointFromInternalTable
+          (runtimeContractOfFunctions model.name irFns)
+          irFn.body) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
+      (interpretIRWithInternals (runtimeContractOfFunctions model.name irFns) 0 tx
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  have hsurfaceFunction :
+      ∀ fn sel irFn bindings,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        SourceSemantics.bindSupportedParams fn.params tx.args = some bindings →
+        FunctionBody.sourceResultMatchesIRResult
+          (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+          (execIRFunctionWithInternals
+            (runtimeContractOfFunctions model.name irFns) 0
+            irFn tx.args
+            (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+    intro fn sel irFn bindings hfn hcompileFn hbind
+    exact Contract.compileFunctionSpec_correct_generic_with_helper_proofs_direct_internal_helper_head_steps_and_helper_ir_of_bodyCallsDisjoint
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (hHelperProofs := hHelperProofs)
+      (hvalidateInputs := hvalidateInputs)
+      (runtimeContract := runtimeContractOfFunctions model.name irFns)
+      (fn := fn)
+      (sel := sel)
+      (irFn := irFn)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (htxNormalized := htxNormalized)
+      (bindings := bindings)
+      (hcalldataSizeFits := hcalldataSizeFits)
+      (hfn := hfn)
+      (hcompileFn := hcompileFn)
+      (hbind := hbind)
+      (hcallStep := hcallStep)
+      (hassignStep := hassignStep)
+      (hdisjoint := hdisjoint fn hfn)
+      (hfnBodyDisjoint := hbodyDisjoint fn sel irFn hfn hcompileFn)
+  exact
+    interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_surface_steps_and_helper_ir_of_bodyCallsDisjoint
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (hHelperProofs := hHelperProofs)
+      (irFns := irFns)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (hcompiled := hcompiled)
+      (hparamsSupported := hparamsSupported)
+      (hfunction := hsurfaceFunction)
+      (hbodyDisjoint := hbodyDisjoint)
+
 /-- Direct helper-aware dispatch theorem on the current legacy-compatible
 runtime-contract boundary. The compiled-side conservative-extension theorem is
 now closed in `IRInterpreter.lean`, so callers no longer need to supply it as

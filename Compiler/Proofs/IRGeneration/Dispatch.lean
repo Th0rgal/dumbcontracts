@@ -1094,7 +1094,9 @@ theorem
 /-- Dispatch-level Tier 4 wrapper on the assign-only callee-local bridge
 boundary. Under the current fragment, each dispatched body only needs reusable
 helper-return-binding bridges; the void-call half is still vacuous and is
-reassembled mechanically here. -/
+reassembled mechanically here, and the wrapper now lands directly on the exact
+contract-level head-step catalog target instead of routing through the narrower
+assign-bridge theorem chain. -/
 theorem
     interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_assign_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
     (model : CompilationModel)
@@ -1156,7 +1158,7 @@ theorem
             (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
     intro fn sel irFn bindings hfn hcompileFn hbind
     exact
-      Contract.compileFunctionSpec_correct_generic_with_helper_proofs_direct_internal_helper_assign_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+      Contract.compileFunctionSpec_correct_generic_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
         (model := model)
         (selectors := selectors)
         (hSupported := hSupported)
@@ -1174,7 +1176,14 @@ theorem
         (hfn := hfn)
         (hcompileFn := hcompileFn)
         (hbind := hbind)
-        (hheadAssignBridge := hheadAssignBridge fn hfn)
+        (hcatalog :=
+          directInternalHelperHeadStepCatalog_of_supportedBody_and_assignBridgeCatalog
+            (runtimeContract := runtimeContractOfFunctions model.name irFns)
+            (spec := model)
+            (fields := SourceSemantics.effectiveFields model)
+            (fn := fn)
+            (hSupported.supportedFunctionOfSelectorDispatched hfn).body
+            (hheadAssignBridge fn hfn))
         (hdisjoint := hdisjoint fn hfn)
         (hfnBodyDisjoint := hbodyDisjoint fn sel irFn hfn hcompileFn)
   exact

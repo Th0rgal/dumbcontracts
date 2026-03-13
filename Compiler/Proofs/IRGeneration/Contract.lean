@@ -1745,7 +1745,9 @@ theorem
 /-- Compile-facing Tier 4 wrapper on the assign-only callee-local bridge
 boundary. Under the current fragment, the void-call helper bridge half is still
 vacuous, so callers only need one reusable assign bridge per referenced helper
-callee. -/
+callee, and this wrapper now lands directly on the exact body-level
+head-step catalog target instead of routing through the narrower function-level
+assign-bridge theorem. -/
 theorem
     compileFunctionSpec_correct_generic_with_helper_proofs_direct_internal_helper_assign_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
     (model : CompilationModel)
@@ -1789,7 +1791,7 @@ theorem
     ⟨returns, bodyStmts, hvalidate, hreturns, hbodyCompile, hirFn⟩
   subst hirFn
   exact
-    Function.supported_function_correct_with_helper_proofs_direct_internal_helper_assign_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+    Function.supported_function_correct_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
       (model := model)
       (selectors := selectors)
       (hSupported := hSupported)
@@ -1811,7 +1813,14 @@ theorem
       (hcompile := by simpa using hcompileFn)
       (hbind := hbind)
       (htxNormalized := htxNormalized)
-      (hheadAssignBridge := hheadAssignBridge)
+      (hcatalog :=
+        directInternalHelperHeadStepCatalog_of_supportedBody_and_assignBridgeCatalog
+          (runtimeContract := runtimeContract)
+          (spec := model)
+          (fields := SourceSemantics.effectiveFields model)
+          (fn := fn)
+          (hSupported.supportedFunctionOfSelectorDispatched hfn).body
+          hheadAssignBridge)
       (hdisjoint := hdisjoint)
       (hfnBodyDisjoint := by simpa using hfnBodyDisjoint)
       (hcalldataSizeFits := hcalldataSizeFits)

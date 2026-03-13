@@ -11623,6 +11623,178 @@ structure DirectInternalHelperHeadStepCatalog
           (Stmt.internalCallAssign names calleeName args)
           compiledIR
 
+/-- Mid-level Tier 4 seam: future rank induction can package direct-helper
+singletons here by proving compilation succeeds for the head and that the exact
+singleton IR execution matches the source helper-aware step. The mechanical
+`CompiledStmtStepWithHelpersAndHelperIR` construction into
+`DirectInternalHelperHeadStepCatalog` is then shared. -/
+structure DirectInternalHelperHeadStepBridgeCatalog
+    (runtimeContract : IRContract)
+    (spec : CompilationModel)
+    (fields : List Field)
+    (fn : FunctionSpec) : Prop where
+  callCompile :
+    ∀ {scope : List String} {calleeName : String} {args : List Expr},
+      calleeName ∈ helperCallNames fn →
+      ∃ compiledIR,
+        CompilationModel.compileStmt fields [] [] .calldata [] false scope
+          (Stmt.internalCall calleeName args) = Except.ok compiledIR
+  callBridge :
+    ∀ {scope : List String} {calleeName : String} {args : List Expr}
+        {compiledIR : List YulStmt} {argExprs : List YulExpr},
+      calleeName ∈ helperCallNames fn →
+      CompilationModel.compileStmt fields [] [] .calldata [] false scope
+        (Stmt.internalCall calleeName args) = Except.ok compiledIR →
+      CompilationModel.compileExprList fields .calldata args = Except.ok argExprs →
+      ∀ (runtime : SourceSemantics.RuntimeState)
+        (state : IRState)
+        (helperFuel : Nat)
+        (irFuel : Nat),
+        0 < helperFuel →
+        FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings state →
+        FunctionBody.scopeNamesPresent scope runtime.bindings →
+        FunctionBody.bindingsBounded runtime.bindings →
+        FunctionBody.runtimeStateMatchesIR fields runtime state →
+        stmtStepMatchesIRExecWithInternals fields
+          (stmtNextScope scope (Stmt.internalCall calleeName args))
+          (SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+            (Stmt.internalCall calleeName args))
+          (execIRStmtsWithInternals runtimeContract (irFuel + 3) state
+            [YulStmt.expr (YulExpr.call
+              (CompilationModel.internalFunctionYulName calleeName) argExprs)])
+  assignCompile :
+    ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+      calleeName ∈ helperCallNames fn →
+      ∃ compiledIR,
+        CompilationModel.compileStmt fields [] [] .calldata [] false scope
+          (Stmt.internalCallAssign names calleeName args) = Except.ok compiledIR
+  assignBridge :
+    ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr}
+        {compiledIR : List YulStmt} {argExprs : List YulExpr},
+      calleeName ∈ helperCallNames fn →
+      CompilationModel.compileStmt fields [] [] .calldata [] false scope
+        (Stmt.internalCallAssign names calleeName args) = Except.ok compiledIR →
+      CompilationModel.compileExprList fields .calldata args = Except.ok argExprs →
+      ∀ (runtime : SourceSemantics.RuntimeState)
+        (state : IRState)
+        (helperFuel : Nat)
+        (irFuel : Nat),
+        0 < helperFuel →
+        FunctionBody.bindingsExactlyMatchIRVarsOnScope scope runtime.bindings state →
+        FunctionBody.scopeNamesPresent scope runtime.bindings →
+        FunctionBody.bindingsBounded runtime.bindings →
+        FunctionBody.runtimeStateMatchesIR fields runtime state →
+        stmtStepMatchesIRExecWithInternals fields
+          (stmtNextScope scope (Stmt.internalCallAssign names calleeName args))
+          (SourceSemantics.execStmtWithHelpers spec fields helperFuel runtime
+            (Stmt.internalCallAssign names calleeName args))
+          (execIRStmtsWithInternals runtimeContract (irFuel + 3) state
+            [YulStmt.letMany names (YulExpr.call
+              (CompilationModel.internalFunctionYulName calleeName) argExprs)])
+
+private theorem directInternalHelperHeadStepCatalog_call_of_bridgeCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hbridge : DirectInternalHelperHeadStepBridgeCatalog runtimeContract spec fields fn) :
+    ∀ {scope : List String} {calleeName : String} {args : List Expr},
+      calleeName ∈ helperCallNames fn →
+      ∃ compiledIR,
+        CompiledStmtStepWithHelpersAndHelperIR
+          runtimeContract
+          spec
+          fields
+          scope
+          (Stmt.internalCall calleeName args)
+          compiledIR := by
+  intro scope calleeName args hmem
+  rcases hbridge.callCompile (scope := scope) (calleeName := calleeName)
+      (args := args) hmem with ⟨compiledIR, hcompile⟩
+  obtain ⟨argExprs, hargCompile, _⟩ := compileStmt_internalCall_shape hcompile
+  refine ⟨compiledIR, ?_⟩
+  exact
+    compiledStmtStepWithHelpersAndHelperIR_internalCall
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (fields := fields)
+      (scope := scope)
+      (calleeName := calleeName)
+      (args := args)
+      (compiledIR := compiledIR)
+      (argExprs := argExprs)
+      hcompile
+      hargCompile
+      (hbridge.callBridge
+        (scope := scope)
+        (calleeName := calleeName)
+        (args := args)
+        (compiledIR := compiledIR)
+        (argExprs := argExprs)
+        hmem
+        hcompile
+        hargCompile)
+
+private theorem directInternalHelperHeadStepCatalog_assign_of_bridgeCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hbridge : DirectInternalHelperHeadStepBridgeCatalog runtimeContract spec fields fn) :
+    ∀ {scope : List String} {names : List String} {calleeName : String} {args : List Expr},
+      calleeName ∈ helperCallNames fn →
+      ∃ compiledIR,
+        CompiledStmtStepWithHelpersAndHelperIR
+          runtimeContract
+          spec
+          fields
+          scope
+          (Stmt.internalCallAssign names calleeName args)
+          compiledIR := by
+  intro scope names calleeName args hmem
+  rcases hbridge.assignCompile (scope := scope) (names := names)
+      (calleeName := calleeName) (args := args) hmem with ⟨compiledIR, hcompile⟩
+  obtain ⟨argExprs, hargCompile, _⟩ := compileStmt_internalCallAssign_shape hcompile
+  refine ⟨compiledIR, ?_⟩
+  exact
+    compiledStmtStepWithHelpersAndHelperIR_internalCallAssign
+      (runtimeContract := runtimeContract)
+      (spec := spec)
+      (fields := fields)
+      (scope := scope)
+      (names := names)
+      (calleeName := calleeName)
+      (args := args)
+      (compiledIR := compiledIR)
+      (argExprs := argExprs)
+      hcompile
+      hargCompile
+      (hbridge.assignBridge
+        (scope := scope)
+        (names := names)
+        (calleeName := calleeName)
+        (args := args)
+        (compiledIR := compiledIR)
+        (argExprs := argExprs)
+        hmem
+        hcompile
+        hargCompile)
+
+/-- Build the reusable direct-helper head-step catalog from the lighter bridge
+catalog seam. This keeps future helper-rank induction focused on exact singleton
+bridges instead of reconstructing `CompiledStmtStepWithHelpersAndHelperIR`
+objects by hand at every theorem layer. -/
+theorem directInternalHelperHeadStepCatalog_of_bridgeCatalog
+    {runtimeContract : IRContract}
+    {spec : CompilationModel}
+    {fields : List Field}
+    {fn : FunctionSpec}
+    (hbridge : DirectInternalHelperHeadStepBridgeCatalog runtimeContract spec fields fn) :
+    DirectInternalHelperHeadStepCatalog runtimeContract spec fields fn := by
+  refine ⟨?_, ?_⟩
+  · exact directInternalHelperHeadStepCatalog_call_of_bridgeCatalog hbridge
+  · exact directInternalHelperHeadStepCatalog_assign_of_bridgeCatalog hbridge
+
 /-- Assemble the exact direct-helper-assign list interface from a reusable
 single-head constructor. This pushes future helper-rank induction down to the
 only genuinely new work: constructing the `Stmt.internalCallAssign` head step

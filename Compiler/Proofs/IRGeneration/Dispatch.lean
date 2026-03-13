@@ -907,6 +907,84 @@ theorem
       (hfunction := hsurfaceFunction)
       (hbodyDisjoint := hbodyDisjoint)
 
+/-- Dispatch-level Tier 4 wrapper one seam earlier than
+`...head_step_catalog...`: callers provide a singleton direct-helper bridge
+catalog per dispatched function, and the reusable head-step catalogs are
+assembled here before dispatch-level reuse. -/
+theorem
+    interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_head_step_bridge_catalog_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (irFns : List IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (htxNormalized : Function.TxContextNormalized tx)
+    (hcalldataSizeFits : Function.TxCalldataSizeFitsEvm tx)
+    (hcompiled :
+      List.Forall₂
+        (fun entry irFn =>
+          compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
+        (SourceSemantics.selectorFunctionPairs model selectors)
+        irFns)
+    (hparamsSupported :
+      ∀ fn ∈ selectorDispatchedFunctions model,
+        ∀ param ∈ fn.params, SupportedExternalParamType param.ty)
+    (hbridge :
+      ∀ fn,
+        fn ∈ selectorDispatchedFunctions model →
+        DirectInternalHelperHeadStepBridgeCatalog
+          (runtimeContractOfFunctions model.name irFns)
+          model
+          (SourceSemantics.effectiveFields model)
+          fn)
+    (hdisjoint :
+      ∀ fn,
+        fn ∈ selectorDispatchedFunctions model →
+        StmtListHelperFreeCompiledCallsDisjoint
+          (runtimeContractOfFunctions model.name irFns)
+          (SourceSemantics.effectiveFields model)
+          (fn.params.map (·.name))
+          fn.body)
+    (hbodyDisjoint :
+      ∀ fn sel irFn,
+        fn ∈ selectorDispatchedFunctions model →
+        compileFunctionSpec model.fields model.events model.errors sel fn = Except.ok irFn →
+        YulStmtListCallsDisjointFromInternalTable
+          (runtimeContractOfFunctions model.name irFns)
+          irFn.body) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
+      (interpretIRWithInternals (runtimeContractOfFunctions model.name irFns) 0 tx
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  exact
+    interpretContract_correct_of_compiled_functions_with_helper_proofs_direct_internal_helper_head_step_catalog_and_helper_ir_of_bodyCallsDisjoint
+      (model := model)
+      (selectors := selectors)
+      (hSupported := hSupported)
+      (hHelperProofs := hHelperProofs)
+      (irFns := irFns)
+      (tx := tx)
+      (initialWorld := initialWorld)
+      (hvalidateInputs := hvalidateInputs)
+      (htxNormalized := htxNormalized)
+      (hcalldataSizeFits := hcalldataSizeFits)
+      (hcompiled := hcompiled)
+      (hparamsSupported := hparamsSupported)
+      (hcatalog := by
+        intro fn hfn
+        exact
+          directInternalHelperHeadStepCatalog_of_bridgeCatalog
+            (runtimeContract := runtimeContractOfFunctions model.name irFns)
+            (spec := model)
+            (fields := SourceSemantics.effectiveFields model)
+            (fn := fn)
+            (hbridge fn hfn))
+      (hdisjoint := hdisjoint)
+      (hbodyDisjoint := hbodyDisjoint)
+
 /-- Direct helper-aware dispatch theorem on the current legacy-compatible
 runtime-contract boundary. The compiled-side conservative-extension theorem is
 now closed in `IRInterpreter.lean`, so callers no longer need to supply it as

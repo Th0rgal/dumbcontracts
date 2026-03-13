@@ -3902,10 +3902,10 @@ theorem execIRStmtsWithInternals_of_internalCall_compile
         simp [CompilationModel.internalFunctionYulName, CompilationModel.internalFunctionPrefix] at hHead
         cases hHead with
         | inl h =>
-            have hcontra : (toString "").data.head? ≠ some 't' := by native_decide
+            have hcontra : (toString "").data.head? ≠ some 't' := by decide
             exact hcontra h
         | inr h =>
-            have hcontra : (toString "internal_").data.head? ≠ some 't' := by native_decide
+            have hcontra : (toString "internal_").data.head? ≠ some 't' := by decide
             exact hcontra h.2)
       hrevert hreturn⟩
 

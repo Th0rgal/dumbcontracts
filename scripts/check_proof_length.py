@@ -119,6 +119,10 @@ ALLOWLIST: set[str] = {
     # instead of repeating the same `findInternalFunction?` plumbing.
     "execIRStmtsWithInternals_of_internalCallAssign_compiledHelperWitness",
     "execIRStmtsWithInternals_of_internalCall_compiledHelperWitness",
+    # Tier-3 direct-helper call packaging: long only because it now carries the
+    # builtin-name exclusion proof for the transient-storage builtin alongside
+    # the existing helper witness extraction and singleton IR execution shape.
+    "execIRStmtsWithInternals_of_internalCall_compile",
     # Tier-2 supported-list bridge with explicit mapping slot-safety hypotheses:
     # long because it keeps the constructor-by-constructor migration from
     # contradiction to construction in one theorem while the broader supported

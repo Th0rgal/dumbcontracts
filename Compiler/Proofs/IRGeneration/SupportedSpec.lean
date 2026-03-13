@@ -414,10 +414,10 @@ def stmtTouchesUnsupportedCallSurface : Stmt → Bool
   | .require cond _ | .return cond =>
       exprTouchesUnsupportedCallSurface cond
   | .internalCall _ _ | .internalCallAssign _ _ _ => true
-  | .tstore _ _ | .calldatacopy _ _ _
+  | .calldatacopy _ _ _
   | .returndataCopy _ _ _ | .revertReturndata | .externalCallBind _ _ _
   | .ecm _ _ => true
-  | .stop | .setStorageAddr _ _ | .mstore _ _
+  | .stop | .setStorageAddr _ _ | .mstore _ _ | .tstore _ _
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
   | .setStructMember _ _ _ _ | .setStructMember2 _ _ _ _ _
@@ -587,9 +587,9 @@ def stmtTouchesUnsupportedLowLevelSurface : Stmt → Bool
       exprTouchesUnsupportedLowLevelSurface value
   | .require cond _ | .return cond =>
       exprTouchesUnsupportedLowLevelSurface cond
-  | .tstore _ _ | .calldatacopy _ _ _
+  | .calldatacopy _ _ _
   | .returndataCopy _ _ _ | .revertReturndata => true
-  | .stop | .setStorageAddr _ _ | .mstore _ _
+  | .stop | .setStorageAddr _ _ | .mstore _ _ | .tstore _ _
   | .internalCall _ _ | .internalCallAssign _ _ _ | .externalCallBind _ _ _
   | .ecm _ _ | .setMapping _ _ _ | .setMappingWord _ _ _ _
   | .setMappingPackedWord _ _ _ _ _ | .setMapping2 _ _ _ _
@@ -614,8 +614,7 @@ def stmtTouchesUnsupportedContractSurface (stmt : Stmt) : Bool :=
       exprTouchesUnsupportedContractSurface value
   | .require cond _ | .return cond =>
       exprTouchesUnsupportedContractSurface cond
-  | .tstore _ _ => true
-  | .stop | .mstore _ _ => false
+  | .stop | .mstore _ _ | .tstore _ _ => false
   | .ite _ _ _ => true
   | .setMapping _ _ _ | .setMappingWord _ _ _ _ | .setMappingPackedWord _ _ _ _ _
   | .setMapping2 _ _ _ _ | .setMapping2Word _ _ _ _ _ | .setMappingUint _ _ _
@@ -1402,6 +1401,18 @@ private theorem supportedStmtList_mstoreSingle_helperSurfaceClosed
     exprCompileCore_helperSurfaceClosed hoffset,
     exprCompileCore_helperSurfaceClosed hvalue]
 
+private theorem supportedStmtList_tstoreSingle_helperSurfaceClosed
+    {offset value : Expr}
+    (hoffset : FunctionBody.ExprCompileCore offset)
+    (hvalue : FunctionBody.ExprCompileCore value) :
+    stmtListTouchesUnsupportedHelperSurface
+      [Stmt.tstore offset value] = false := by
+  simp [stmtListTouchesUnsupportedHelperSurface,
+    stmtTouchesUnsupportedHelperSurface,
+    exprTouchesUnsupportedHelperSurface,
+    exprCompileCore_helperSurfaceClosed hoffset,
+    exprCompileCore_helperSurfaceClosed hvalue]
+
 private theorem supportedStmtList_letMapping_helperSurfaceClosed
     {tmp fieldName : String}
     {key : Expr}
@@ -1622,6 +1633,8 @@ theorem SupportedStmtList.helperSurfaceClosed
       exact supportedStmtList_setStorageAddrSingleSlot_helperSurfaceClosed hcore
   | mstoreSingle hoffset hscopeOffset hvalue hscopeValue =>
       exact supportedStmtList_mstoreSingle_helperSurfaceClosed hoffset hvalue
+  | tstoreSingle hoffset hscopeOffset hvalue hscopeValue =>
+      exact supportedStmtList_tstoreSingle_helperSurfaceClosed hoffset hvalue
   | letStorageField hfind => exact supportedStmtList_letStorageField_helperSurfaceClosed
   | returnMapping hkey hscope hslot => exact supportedStmtList_returnMapping_helperSurfaceClosed hkey
   | letMapping hkey hscope hslot => exact supportedStmtList_letMapping_helperSurfaceClosed hkey
@@ -2969,7 +2982,7 @@ theorem SupportedSpecExceptMappingWrites.selectorFunctionReturnsSupported
 
 @[simp] theorem stmtTouchesUnsupportedContractSurface_tstore
     (offset value : Expr) :
-    stmtTouchesUnsupportedContractSurface (.tstore offset value) = true := by
+    stmtTouchesUnsupportedContractSurface (.tstore offset value) = false := by
   simp [stmtTouchesUnsupportedContractSurface, stmtTouchesUnsupportedCoreSurface,
     stmtTouchesUnsupportedStateSurface, stmtTouchesUnsupportedCallSurface,
     stmtTouchesUnsupportedEffectSurface]

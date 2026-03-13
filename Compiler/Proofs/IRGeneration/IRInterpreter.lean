@@ -86,6 +86,8 @@ structure IRState where
   vars : List (String × Nat)
   /-- Storage slots (slot → value) -/
   storage : Nat → Nat
+  /-- Transient storage slots (slot → value). -/
+  transientStorage : Nat → Nat := fun _ => 0
   /-- Memory words (offset → value) -/
   memory : Nat → Nat
   /-- Calldata words (argument index → value) -/
@@ -116,6 +118,7 @@ structure IRState where
 def IRState.initial (sender : Nat) : IRState :=
   { vars := []
     storage := fun _ => 0
+    transientStorage := fun _ => 0
     memory := fun _ => 0
     calldata := []
     returnValue := none
@@ -499,6 +502,18 @@ def execIRStmtWithInternals
               | .stop state' => .stop state'
               | .return value' state' => .return value' state'
               | .revert state' => .revert state'
+          | .call "tstore" [offsetExpr, valExpr] =>
+              match evalIRExprsWithInternals contract fuel state [offsetExpr, valExpr] with
+              | .values [offset, val] state' =>
+                  .continue {
+                    state' with
+                    transientStorage := fun o =>
+                      if o = offset then val else state'.transientStorage o
+                  }
+              | .values _ state' => .revert state'
+              | .stop state' => .stop state'
+              | .return value' state' => .return value' state'
+              | .revert state' => .revert state'
           | .call "stop" [] => .stop state
           | .call "revert" [offsetExpr, sizeExpr] =>
               match evalIRExprsWithInternals contract fuel state [offsetExpr, sizeExpr] with
@@ -699,6 +714,15 @@ def execIRStmt : Nat → IRState → YulStmt → IRExecResult
               match evalIRExpr state offsetExpr, evalIRExpr state valExpr with
               | some offset, some val =>
                 .continue { state with memory := fun o => if o = offset then val else state.memory o }
+              | _, _ => .revert state
+          | .call "tstore" [offsetExpr, valExpr] =>
+              match evalIRExpr state offsetExpr, evalIRExpr state valExpr with
+              | some offset, some val =>
+                .continue {
+                  state with
+                  transientStorage := fun o =>
+                    if o = offset then val else state.transientStorage o
+                }
               | _, _ => .revert state
           | .call "stop" [] => .stop state
           | .call "revert" [_, _] => .revert state
@@ -1591,44 +1615,52 @@ theorem execIRStmtWithInternals_eq_execIRStmt_expr_of_callsDisjoint
                                   evalIRExprsWithInternals_eq_evalIRExprs_of_callsDisjoint
                                     contract fuel state [arg, arg2] hpair_d,
                                   hoffset, hval]
-                          · by_cases hrevert : func = "revert"
-                            · subst hrevert
-                              -- revert uses evalIRExprsWithInternals
+                          · by_cases htstore : func = "tstore"
+                            · subst htstore
                               cases hoffset : evalIRExpr state arg <;>
-                                cases hsize : evalIRExpr state arg2 <;>
+                                cases hval : evalIRExpr state arg2 <;>
                                   simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
                                     evalIRExprsWithInternals_eq_evalIRExprs_of_callsDisjoint
                                       contract fuel state [arg, arg2] hpair_d,
-                                    hoffset, hsize]
-                            · by_cases hreturn : func = "return"
-                              · subst hreturn
-                                -- return uses evalIRExprsWithInternals + size = 32 branch
-                                cases hoffset : evalIRExpr state arg with
-                                | none =>
-                                    cases hsize : evalIRExpr state arg2 <;>
-                                      simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
-                                        evalIRExprsWithInternals_eq_evalIRExprs_of_callsDisjoint
-                                          contract fuel state [arg, arg2] hpair_d,
-                                        hoffset, hsize]
-                                | some offset =>
-                                    cases hsize : evalIRExpr state arg2 with
-                                    | none =>
+                                    hoffset, hval]
+                            · by_cases hrevert : func = "revert"
+                              · subst hrevert
+                                -- revert uses evalIRExprsWithInternals
+                                cases hoffset : evalIRExpr state arg <;>
+                                  cases hsize : evalIRExpr state arg2 <;>
+                                    simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+                                      evalIRExprsWithInternals_eq_evalIRExprs_of_callsDisjoint
+                                        contract fuel state [arg, arg2] hpair_d,
+                                      hoffset, hsize]
+                              · by_cases hreturn : func = "return"
+                                · subst hreturn
+                                  -- return uses evalIRExprsWithInternals + size = 32 branch
+                                  cases hoffset : evalIRExpr state arg with
+                                  | none =>
+                                      cases hsize : evalIRExpr state arg2 <;>
                                         simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
                                           evalIRExprsWithInternals_eq_evalIRExprs_of_callsDisjoint
                                             contract fuel state [arg, arg2] hpair_d,
                                           hoffset, hsize]
-                                    | some size =>
-                                        by_cases h32 : size = 32 <;>
+                                  | some offset =>
+                                      cases hsize : evalIRExpr state arg2 with
+                                      | none =>
                                           simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
                                             evalIRExprsWithInternals_eq_evalIRExprs_of_callsDisjoint
                                               contract fuel state [arg, arg2] hpair_d,
-                                            hoffset, hsize, h32]
-                              · -- Generic two-arg call (not sstore/mstore/revert/return)
-                                cases hcall : evalIRExpr state (.call func [arg, arg2]) <;>
-                                  simp [execIRStmtWithInternals, execIRStmt,
-                                    evalIRCallWithInternals_stmt_eq_of_callsDisjoint contract fuel
-                                      state func [arg, arg2] hdisjoint,
-                                    hsstore, hmstore, hrevert, hreturn, hcall]
+                                            hoffset, hsize]
+                                      | some size =>
+                                          by_cases h32 : size = 32 <;>
+                                            simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+                                              evalIRExprsWithInternals_eq_evalIRExprs_of_callsDisjoint
+                                                contract fuel state [arg, arg2] hpair_d,
+                                              hoffset, hsize, h32]
+                                · -- Generic two-arg call (not sstore/mstore/tstore/revert/return)
+                                  cases hcall : evalIRExpr state (.call func [arg, arg2]) <;>
+                                    simpa [execIRStmtWithInternals, execIRStmt,
+                                      hsstore, hmstore, htstore, hrevert, hreturn, hcall] using
+                                      evalIRCallWithInternals_stmt_eq_of_callsDisjoint contract
+                                        fuel state func [arg, arg2] hdisjoint
                     | cons arg3 rest =>
                         cases hcall : evalIRExpr state (.call func (arg :: arg2 :: arg3 :: rest)) <;>
                           simp [execIRStmtWithInternals, execIRStmt,
@@ -1980,6 +2012,7 @@ compatibility lemmas on the helper-free compiled-side retarget track. -/
 def exprStmtUsesDedicatedBuiltinSemantics : YulExpr → Bool
   | .call "sstore" [_, _] => true
   | .call "mstore" [_, _] => true
+  | .call "tstore" [_, _] => true
   | .call "stop" [] => true
   | .call "revert" [_, _] => true
   | .call "return" [_, _] => true
@@ -1997,6 +2030,29 @@ theorem execIRStmtWithInternals_eq_execIRStmt_mstore_of_no_internal
       (YulStmt.expr (YulExpr.call "mstore" [offsetExpr, valExpr])) =
         match execIRStmt fuel state
           (YulStmt.expr (YulExpr.call "mstore" [offsetExpr, valExpr])) with
+        | .continue next => .continue next
+        | .return value next => .return value next
+        | .stop next => .stop next
+        | .revert next => .revert next := by
+  cases fuel with
+  | zero =>
+      simp [execIRStmtWithInternals, execIRStmt]
+  | succ fuel =>
+      cases hoffset : evalIRExpr state offsetExpr <;>
+        cases hval : evalIRExpr state valExpr <;>
+          simp [execIRStmtWithInternals, execIRStmt, evalIRExprs,
+            evalIRExprsWithInternals_eq_evalIRExprs_of_no_internal contract hinternal,
+            hoffset, hval]
+
+theorem execIRStmtWithInternals_eq_execIRStmt_tstore_of_no_internal
+    (contract : IRContract)
+    (hinternal : contract.internalFunctions = [])
+    (fuel : Nat) (state : IRState)
+    (offsetExpr valExpr : YulExpr) :
+    execIRStmtWithInternals contract fuel state
+      (YulStmt.expr (YulExpr.call "tstore" [offsetExpr, valExpr])) =
+        match execIRStmt fuel state
+          (YulStmt.expr (YulExpr.call "tstore" [offsetExpr, valExpr])) with
         | .continue next => .continue next
         | .return value next => .return value next
         | .stop next => .stop next
@@ -2262,19 +2318,23 @@ theorem execIRStmtWithInternals_eq_execIRStmt_expr_of_no_internal
                             · subst hmstore
                               simpa using execIRStmtWithInternals_eq_execIRStmt_mstore_of_no_internal
                                 contract hinternal (Nat.succ fuel) state arg arg2
-                            · by_cases hrevert : func = "revert"
-                              · subst hrevert
-                                simpa using execIRStmtWithInternals_eq_execIRStmt_revert_of_no_internal
+                            · by_cases htstore : func = "tstore"
+                              · subst htstore
+                                simpa using execIRStmtWithInternals_eq_execIRStmt_tstore_of_no_internal
                                   contract hinternal (Nat.succ fuel) state arg arg2
-                              · by_cases hreturn : func = "return"
-                                · subst hreturn
-                                  simpa using execIRStmtWithInternals_eq_execIRStmt_return_of_no_internal
+                              · by_cases hrevert : func = "revert"
+                                · subst hrevert
+                                  simpa using execIRStmtWithInternals_eq_execIRStmt_revert_of_no_internal
                                     contract hinternal (Nat.succ fuel) state arg arg2
-                                · cases hcall : evalIRExpr state (.call func [arg, arg2]) <;>
-                                    simp [execIRStmtWithInternals, execIRStmt,
-                                      evalIRCallWithInternals_stmt_eq_of_no_internal contract
-                                        hinternal fuel state func [arg, arg2],
-                                      hsstore, hmstore, hrevert, hreturn, hcall]
+                                · by_cases hreturn : func = "return"
+                                  · subst hreturn
+                                    simpa using execIRStmtWithInternals_eq_execIRStmt_return_of_no_internal
+                                      contract hinternal (Nat.succ fuel) state arg arg2
+                                  · cases hcall : evalIRExpr state (.call func [arg, arg2]) <;>
+                                      simpa [execIRStmtWithInternals, execIRStmt,
+                                        hsstore, hmstore, htstore, hrevert, hreturn, hcall] using
+                                        evalIRCallWithInternals_stmt_eq_of_no_internal contract
+                                          hinternal fuel state func [arg, arg2]
                       | cons arg3 rest =>
                           cases hcall : evalIRExpr state (.call func (arg :: arg2 :: arg3 :: rest)) <;>
                             simp [execIRStmtWithInternals, execIRStmt,
@@ -3527,7 +3587,8 @@ theorem execIRStmtWithInternals_expr_call_internal
     (hargs : evalIRExprsWithInternals contract (fuel + 1) state args = .values argVals state')
     (hfind : findInternalFunction? contract func = some helper)
     (hstop : func ≠ "stop") (hsstore : func ≠ "sstore")
-    (hmstore : func ≠ "mstore") (hrevert : func ≠ "revert")
+    (hmstore : func ≠ "mstore") (htstore : func ≠ "tstore")
+    (hrevert : func ≠ "revert")
     (hreturn : func ≠ "return") :
     execIRStmtWithInternals contract (fuel + 2) state (.expr (.call func args)) =
       match execIRInternalFunctionWithInternals contract fuel state' helper argVals with
@@ -3550,7 +3611,7 @@ theorem execIRStmtWithInternals_expr_call_internal
     | cons arg2 rest =>
       cases rest with
       | nil =>
-        simp [execIRStmtWithInternals, hsstore, hmstore, hrevert, hreturn,
+        simp [execIRStmtWithInternals, hsstore, hmstore, htstore, hrevert, hreturn,
           evalIRCallWithInternals, hargs, hfind]
       | cons arg3 rest =>
         simp [execIRStmtWithInternals, evalIRCallWithInternals, hargs, hfind]
@@ -3567,7 +3628,8 @@ theorem execIRStmtsWithInternals_singleton_expr_call_internal
     (hargs : evalIRExprsWithInternals contract (fuel + 1) state args = .values argVals state')
     (hfind : findInternalFunction? contract func = some helper)
     (hstop : func ≠ "stop") (hsstore : func ≠ "sstore")
-    (hmstore : func ≠ "mstore") (hrevert : func ≠ "revert")
+    (hmstore : func ≠ "mstore") (htstore : func ≠ "tstore")
+    (hrevert : func ≠ "revert")
     (hreturn : func ≠ "return") :
     execIRStmtsWithInternals contract (fuel + 3) state
       [YulStmt.expr (YulExpr.call func args)] =
@@ -3580,7 +3642,7 @@ theorem execIRStmtsWithInternals_singleton_expr_call_internal
   rw [execIRStmtsWithInternals_singleton]
   exact execIRStmtWithInternals_expr_call_internal
     contract fuel state func args helper argVals state' hargs hfind
-    hstop hsstore hmstore hrevert hreturn
+    hstop hsstore hmstore htstore hrevert hreturn
 
 /-! ## Compilation output shape theorems
 
@@ -3813,7 +3875,19 @@ theorem execIRStmtsWithInternals_of_internalCall_compile
       contract fuel state
       (CompilationModel.internalFunctionYulName functionName)
       argExprs' helper argVals state' hargs hfind
-      hstop hsstore hmstore hrevert hreturn⟩
+      hstop hsstore hmstore
+      (by
+        intro hEq
+        have hHead := congrArg (fun s => s.toList.head?) hEq
+        simp [CompilationModel.internalFunctionYulName, CompilationModel.internalFunctionPrefix] at hHead
+        cases hHead with
+        | inl h =>
+            have hcontra : (toString "").data.head? ≠ some 't' := by native_decide
+            exact hcontra h
+        | inr h =>
+            have hcontra : (toString "internal_").data.head? ≠ some 't' := by native_decide
+            exact hcontra h.2)
+      hrevert hreturn⟩
 
 @[simp] theorem applyIRTransactionContext_sender
     (tx : IRTransaction) (initialState : IRState) :

@@ -150,6 +150,7 @@ def runtimeStateMatchesIR
     (runtime : SourceSemantics.RuntimeState)
     (state : IRState) : Prop :=
   state.storage = SourceSemantics.encodeStorageAt fields runtime.world ∧
+  state.transientStorage = fun slot => (runtime.world.transientStorage slot).val ∧
   state.sender = runtime.world.sender.val ∧
   state.msgValue = runtime.world.msgValue.val ∧
   state.thisAddress = runtime.world.thisAddress.val ∧
@@ -165,6 +166,7 @@ def initialIRStateForTx
     (initialWorld : Verity.ContractState) : IRState :=
   { vars := []
     storage := SourceSemantics.encodeStorage spec initialWorld
+    transientStorage := fun slot => (initialWorld.transientStorage slot).val
     memory := fun _ => 0
     calldata := tx.args
     returnValue := none
@@ -3122,6 +3124,24 @@ theorem runtimeStateMatchesIR_setMemory
     (offset value : Nat) :
     runtimeStateMatchesIR fields runtime
       { state with memory := fun o => if o = offset then value else state.memory o } := by
+  cases runtime
+  cases state
+  simpa [runtimeStateMatchesIR]
+
+theorem runtimeStateMatchesIR_setTransientStorage
+    {fields : List Field}
+    {runtime : SourceSemantics.RuntimeState}
+    {state : IRState}
+    (hmatch : runtimeStateMatchesIR fields runtime state)
+    (offset value : Nat) :
+    runtimeStateMatchesIR fields
+      { runtime with
+          world := {
+            runtime.world with
+            transientStorage := fun o => if o = offset then value else runtime.world.transientStorage o
+          } }
+      { state with
+          transientStorage := fun o => if o = offset then value else state.transientStorage o } := by
   cases runtime
   cases state
   simpa [runtimeStateMatchesIR]

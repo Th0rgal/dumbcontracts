@@ -61,6 +61,14 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       FunctionBody.ExprCompileCore value →
       FunctionBody.exprBoundNamesInScope value scope →
       SupportedStmtList fields scope [Stmt.mstore offset value]
+  | tstoreSingle
+      {scope : List String}
+      {offset value : Expr} :
+      FunctionBody.ExprCompileCore offset →
+      FunctionBody.exprBoundNamesInScope offset scope →
+      FunctionBody.ExprCompileCore value →
+      FunctionBody.exprBoundNamesInScope value scope →
+      SupportedStmtList fields scope [Stmt.tstore offset value]
   | letStorageField
       {scope : List String}
       {tmp : String}

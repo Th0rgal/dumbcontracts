@@ -598,6 +598,18 @@ mutual
         match evalExpr fields state offset, evalExpr fields state value with
         | some _, some _ => .continue state
         | _, _ => .revert
+    | state, .tstore offset value =>
+        match evalExpr fields state offset, evalExpr fields state value with
+        | some resolvedOffset, some resolvedValue =>
+            .continue {
+              state with
+              world := {
+                state.world with
+                transientStorage := fun o =>
+                  if o = resolvedOffset then resolvedValue else state.world.transientStorage o
+              }
+            }
+        | _, _ => .revert
     | state, .require cond _ =>
         match evalExpr fields state cond with
         | some resolved =>
@@ -1044,6 +1056,19 @@ mutual
         match evalExprWithHelpers spec fields fuel state offset,
             evalExprWithHelpers spec fields fuel state value with
         | some _, some _ => .continue state
+        | _, _ => .revert
+    | state, .tstore offset value =>
+        match evalExprWithHelpers spec fields fuel state offset,
+            evalExprWithHelpers spec fields fuel state value with
+        | some resolvedOffset, some resolvedValue =>
+            .continue {
+              state with
+              world := {
+                state.world with
+                transientStorage := fun o =>
+                  if o = resolvedOffset then resolvedValue else state.world.transientStorage o
+              }
+            }
         | _, _ => .revert
     | state, .require cond _ =>
         match evalExprWithHelpers spec fields fuel state cond with

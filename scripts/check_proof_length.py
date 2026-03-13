@@ -123,6 +123,10 @@ ALLOWLIST: set[str] = {
     # instead of repeating the same `findInternalFunction?` plumbing.
     "execIRStmtsWithInternals_of_internalCallAssign_compiledHelperWitness",
     "execIRStmtsWithInternals_of_internalCall_compiledHelperWitness",
+    # Tier-4 head-step catalog packaging from runtime witnesses: long because
+    # it still centralizes the mechanical witness-to-head-step assembly before
+    # future rank induction can replace the vacuous helper interface.
+    "directInternalHelperHeadStepCatalog_of_supportedBodyHelpers_and_compileCatalog_and_runtimeWitnessCatalog_and_helperSummariesSound_and_semanticKernelCatalog",
     # Tier-3 direct-helper call packaging: long only because it now carries the
     # builtin-name exclusion proof for the transient-storage builtin alongside
     # the existing helper witness extraction and singleton IR execution shape.

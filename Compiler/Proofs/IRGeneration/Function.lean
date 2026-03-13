@@ -1796,6 +1796,129 @@ theorem
       hreturns hbodyCompile hcompile hbind htxNormalized extraFuel hbodyCorrect
       hfnBodyDisjoint hcalldataSizeFits
 
+/-- Function-level exact helper-aware wrapper that isolates the genuinely new
+Tier 4 obligations. The still-vacuous helper-free / expr / structural /
+residual interfaces are discharged directly from the existing supported-body
+witness, so future rank induction only needs to provide the direct statement-
+position helper call and helper-assign interfaces together with compiled-body
+disjointness. -/
+theorem
+    supported_function_correct_with_helper_proofs_direct_internal_helper_surface_steps_and_helper_ir_of_bodyCallsDisjoint
+    (model : CompilationModel)
+    (selectors : List Nat)
+    (hSupported : SupportedSpec model selectors)
+    (hHelperProofs : SourceSemantics.SupportedSpecHelperProofs model selectors hSupported)
+    (hvalidateInputs : validateCompileInputs model selectors = Except.ok ())
+    (runtimeContract : IRContract)
+    (fn : FunctionSpec)
+    (selector : Nat)
+    (returns : List ParamType)
+    (bodyStmts : List YulStmt)
+    (irFn : IRFunction)
+    (tx : IRTransaction)
+    (initialWorld : Verity.ContractState)
+    (bindings : List (String × Nat))
+    (hfn : fn ∈ selectorDispatchedFunctions model)
+    (hvalidate : validateFunctionSpec fn = Except.ok ())
+    (hreturns : functionReturns fn = Except.ok returns)
+    (hbodyCompile :
+      compileStmtList model.fields model.events model.errors .calldata [] false
+        (fn.params.map (·.name)) fn.body = Except.ok bodyStmts)
+    (hcompile :
+      compileFunctionSpec model.fields model.events model.errors selector fn = Except.ok irFn)
+    (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings)
+    (htxNormalized : TxContextNormalized tx)
+    (hcall :
+      StmtListDirectInternalHelperCallStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hassign :
+      StmtListDirectInternalHelperAssignStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hdisjoint :
+      StmtListHelperFreeCompiledCallsDisjoint
+        runtimeContract
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body)
+    (hfnBodyDisjoint :
+      YulStmtListCallsDisjointFromInternalTable runtimeContract irFn.body)
+    (hcalldataSizeFits : TxCalldataSizeFitsEvm tx) :
+    FunctionBody.sourceResultMatchesIRResult
+      (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
+      (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
+  let hsupportedFn := hSupported.supportedFunctionOfSelectorDispatched hfn
+  have hnoConflict :
+      firstFieldWriteSlotConflict (SourceSemantics.effectiveFields model) = none := by
+    simpa [SourceSemantics.effectiveFields] using
+      firstFieldWriteSlotConflict_eq_none_of_validateCompileInputs
+        (spec := model)
+        (selectors := selectors)
+        hvalidateInputs
+  have hhelperFree :
+      StmtListHelperFreeStepInterface
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body :=
+    hsupportedFn.body.helperFreeStepInterface
+      hnoConflict
+  have hexpr :
+      StmtListExprInternalHelperStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body :=
+    stmtListExprInternalHelperStepInterface_of_helperSurfaceClosed
+      (runtimeContract := runtimeContract)
+      (spec := model)
+      (fields := SourceSemantics.effectiveFields model)
+      (scope := fn.params.map (·.name))
+      (stmts := fn.body)
+      hsupportedFn.body.helperSurfaceClosed
+  have hstruct :
+      StmtListStructuralInternalHelperStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body :=
+    stmtListStructuralInternalHelperStepInterface_of_helperSurfaceClosed
+      (runtimeContract := runtimeContract)
+      (spec := model)
+      (fields := SourceSemantics.effectiveFields model)
+      (scope := fn.params.map (·.name))
+      (stmts := fn.body)
+      hsupportedFn.body.helperSurfaceClosed
+  have hresidual :
+      StmtListResidualHelperSurfaceStepInterface
+        runtimeContract
+        model
+        (SourceSemantics.effectiveFields model)
+        (fn.params.map (·.name))
+        fn.body :=
+    stmtListResidualHelperSurfaceStepInterface_of_helperSurfaceClosed
+      (runtimeContract := runtimeContract)
+      (spec := model)
+      (fields := SourceSemantics.effectiveFields model)
+      (scope := fn.params.map (·.name))
+      (stmts := fn.body)
+      hsupportedFn.body.helperSurfaceClosed
+  exact
+    supported_function_correct_with_helper_proofs_split_internal_helper_surface_steps_and_helper_ir_of_bodyCallsDisjoint
+      model selectors hSupported hHelperProofs hvalidateInputs runtimeContract
+      fn selector returns bodyStmts irFn tx initialWorld bindings hfn hvalidate
+      hreturns hbodyCompile hcompile hbind htxNormalized hhelperFree hcall hassign
+      hexpr hstruct hresidual hdisjoint hfnBodyDisjoint hcalldataSizeFits
+
 /-- Function-level Tier 2 bridge for bodies admitted by the alternate
 singleton storage-write state interface. This keeps the theorem local to one
 function: global normalization and no-event/no-error assumptions remain

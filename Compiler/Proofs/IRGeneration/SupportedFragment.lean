@@ -305,9 +305,9 @@ inductive SupportedStmtList (fields : List Field) : List String → List Stmt �
       SupportedStmtList fields scope [Stmt.ite cond thenBranch elseBranch]
   | append
       {scope : List String}
-      {prefix suffix : List Stmt} :
-      SupportedStmtList fields scope prefix →
-      SupportedStmtList fields (List.foldl stmtNextScope scope prefix) suffix →
-      SupportedStmtList fields scope (prefix ++ suffix)
+      {pfx sfx : List Stmt} :
+      SupportedStmtList fields scope pfx →
+      SupportedStmtList fields (List.foldl stmtNextScope scope pfx) sfx →
+      SupportedStmtList fields scope (pfx ++ sfx)
 
 end Compiler.Proofs.IRGeneration

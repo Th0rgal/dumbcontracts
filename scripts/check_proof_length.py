@@ -451,6 +451,11 @@ ALLOWLIST: set[str] = {
     # Decomposing it now would only spread the temporary compatibility transport.
     "exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed",
     "firstFieldWriteSlotConflict_eq_none_of_validateCompileInputs",
+    # Issue #1630 / SourceSemantics helper-surface closure:
+    # this theorem is 51 lines (1 over limit) due to the explicit
+    # List.find? / Option.bind witness extraction needed to recover the
+    # unique internal function from the compiled helper table.
+    "findUniqueInternalFunction",
 }
 
 # Directories containing proof files to scan.

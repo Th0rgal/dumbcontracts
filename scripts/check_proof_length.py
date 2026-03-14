@@ -69,6 +69,8 @@ ALLOWLIST: set[str] = {
     # comes from spelling out the full typed-IR output, not from proof
     # complexity (each closes with a single simp+rfl).
     "compileStmts_letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop_run",
+    # SupportedSpec local lemma replacing removed List.nodup_eraseDups from stdlib:
+    "mem_eraseDups_iff",
     "compileStmts_letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop_run",
     "compileStmts_letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop_run",
     "compileStmts_letCallerLetMapping2IteParamReqSetMapping2Stop_run",

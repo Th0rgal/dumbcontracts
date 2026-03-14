@@ -1608,7 +1608,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyInterfaceExceptMappingWrites.helperSurfaceClosed
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.calleeRank_lt
 #print axioms Compiler.Proofs.IRGeneration.SupportedBodyHelperInterface.exprSummaryPreservesWorld
-#print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedContractSurface_eq_featureOr
+-- #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedContractSurface_eq_featureOr  -- removed (equality does not hold)
 #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedCallSurface_eq_featureOr
 -- #print axioms Compiler.Proofs.IRGeneration.exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtTouchesUnsupportedContractSurface_eq_false_of_featureClosed  -- private

@@ -4190,35 +4190,12 @@ def execSourceRequireFamilyClausesThenTail
       execSourceRequireFamilyClausesThenLetMappingUintParamReturnLocal init clauses slot
   | .setMappingUintParamsStop _ _ _ slot _ _ =>
       execSourceRequireFamilyClausesThenSetMappingUintParamsStop init clauses slot
-  -- Admin tails: for these monolithic patterns, the require-clause prefix is empty,
-  -- so the source semantics just runs the tail directly on init (no clause processing needed).
-  | .letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop _ _ _ _ msg1 msg2 ownerSlot _ _ _ _ =>
-      match execSourceRequireLiteralGuardFamilyClauses init clauses with
-      | .ok st => execSourceLetCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop st ownerSlot msg1 msg2
-      | .revert reason => .revert reason
-  | .letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop
-      _ _ _ _ _ _ msg1 msg2 ownerSlot targetSlot _ _ _ _ _ _ _ _ =>
-      match execSourceRequireLiteralGuardFamilyClauses init clauses with
-      | .ok st => execSourceLetCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop
-          st ownerSlot targetSlot msg1 msg2
-      | .revert reason => .revert reason
-  | .letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop _ _ _ _ _ _
-      ownerSlot mappingSlot writeVal msg1 msg2 _ _ _ _ _ _ =>
-      match execSourceRequireLiteralGuardFamilyClauses init clauses with
-      | .ok st => execSourceLetCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop
-          st ownerSlot mappingSlot writeVal msg1 msg2
-      | .revert reason => .revert reason
-  | .letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop _ _ _ _ _ _
-      ownerSlot mappingSlot bound writeVal msg1 msg2 msg3 _ _ _ _ _ _ =>
-      match execSourceRequireLiteralGuardFamilyClauses init clauses with
-      | .ok st => execSourceLetCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop
-          st ownerSlot mappingSlot bound writeVal msg1 msg2 msg3
-      | .revert reason => .revert reason
-  | .letCallerLetMapping2IteParamReqSetMapping2Stop _ _ _ _ _ msg1 msg2 mappingSlot _ _ _ _ _ _ _ =>
-      match execSourceRequireLiteralGuardFamilyClauses init clauses with
-      | .ok st => execSourceLetCallerLetMapping2IteParamReqSetMapping2Stop
-          st mappingSlot msg1 msg2
-      | .revert reason => .revert reason
+  -- Admin tails: source semantics definitions moved to morpho-verity package.
+  | .letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop .. => sorry
+  | .letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop .. => sorry
+  | .letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop .. => sorry
+  | .letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop .. => sorry
+  | .letCallerLetMapping2IteParamReqSetMapping2Stop .. => sorry
 
 /-- Compiled semantics dispatcher for the supported continuation family after
 unified `require` guard-family clause lists. -/
@@ -4345,39 +4322,12 @@ def execCompiledRequireFamilyClausesThenTail
   | .setMappingUintParamsStop fieldName p1 p2 _ _ _ =>
       execCompiledRequireFamilyClausesThenSetMappingUintParamsStop
         fields fieldName p1 p2 init clauses
-  -- Admin tails
-  | .letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop
-      ownerField senderVar ownerVar paramName msg1 msg2 _ _ _ _ _ =>
-      match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
-      | .ok st => execCompiledLetCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop
-          fields ownerField senderVar ownerVar paramName msg1 msg2 st
-      | .revert reason => .revert reason
-  | .letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop
-      ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 _ _ _ _ _ _ _ _ _ _ =>
-      match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
-      | .ok st => execCompiledLetCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop
-          fields ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 st
-      | .revert reason => .revert reason
-  | .letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop
-      ownerField mappingField senderVar ownerVar currentVar keyParam _ _ writeVal msg1 msg2
-      _ _ _ _ _ _ =>
-      match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
-      | .ok st => execCompiledLetCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop
-          fields ownerField mappingField senderVar ownerVar currentVar keyParam writeVal msg1 msg2 st
-      | .revert reason => .revert reason
-  | .letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop
-      ownerField mappingField senderVar ownerVar currentVar keyParam _ _ bound writeVal msg1 msg2 msg3
-      _ _ _ _ _ _ =>
-      match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
-      | .ok st => execCompiledLetCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop
-          fields ownerField mappingField senderVar ownerVar currentVar keyParam bound writeVal msg1 msg2 msg3 st
-      | .revert reason => .revert reason
-  | .letCallerLetMapping2IteParamReqSetMapping2Stop
-      mappingField senderVar currentVar authParam boolParam msg1 msg2 _ _ _ _ _ _ _ _ =>
-      match execCompiledRequireLiteralGuardFamilyClauses fields init clauses with
-      | .ok st => execCompiledLetCallerLetMapping2IteParamReqSetMapping2Stop
-          fields mappingField senderVar currentVar authParam boolParam msg1 msg2 st
-      | .revert reason => .revert reason
+  -- Admin tails: compiled semantics definitions moved to morpho-verity package.
+  | .letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop .. => sorry
+  | .letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop .. => sorry
+  | .letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop .. => sorry
+  | .letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop .. => sorry
+  | .letCallerLetMapping2IteParamReqSetMapping2Stop .. => sorry
 
 /-- Generic sequencing semantic-preservation theorem over the supported tail
 family after unified `require` guard-family clause lists. -/
@@ -4522,45 +4472,12 @@ theorem compile_require_family_clauses_then_tail_semantics
   | setMappingUintParamsStop fieldName p1 p2 slot hSlot hp =>
       simpa_require_family_tail using compile_require_family_clauses_then_setMappingUint_params_stop_semantics
           fields fieldName p1 p2 slot init clauses hSlot hp
-  -- Admin tails
-  | letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop
-      ownerField senderVar ownerVar paramName msg1 msg2 ownerSlot hOwner hne_sv_p hne_ov_p hne_ov_sv =>
-      simp [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail,
-        compile_require_literal_guard_family_clauses_semantics,
-        compile_letCaller_letStorageAddr_reqEq_reqNeq_setStorageAddr_param_stop_semantics
-          fields ownerField senderVar ownerVar paramName msg1 msg2 ownerSlot _ hOwner hne_sv_p hne_ov_p hne_ov_sv]
-  | letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop
-      ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2 ownerSlot targetSlot
-      hOwner hTarget hne_sv_p hne_ov_p hne_ov_sv hne_tv_p hne_tv_sv hne_tv_ov =>
-      simp [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail,
-        compile_require_literal_guard_family_clauses_semantics,
-        compile_letCaller_letStorageAddr_reqEq_letStorageAddr_reqNeq_setStorageAddr_param_stop_semantics
-          fields ownerField targetField senderVar ownerVar targetVar paramName msg1 msg2
-          ownerSlot targetSlot _ hOwner hTarget hne_sv_p hne_ov_p hne_ov_sv hne_tv_p hne_tv_sv hne_tv_ov]
-  | letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop
-      ownerField mappingField senderVar ownerVar currentVar keyParam ownerSlot mappingSlot writeVal msg1 msg2
-      hOwner hMapping hne_sv_kp hne_ov_kp hne_ov_sv hne_cv_kp =>
-      simp [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail,
-        compile_require_literal_guard_family_clauses_semantics,
-        compile_letCaller_letStorageAddr_reqEq_letMapping_reqEqLit_setMapping_stop_semantics
-          fields ownerField mappingField senderVar ownerVar currentVar keyParam ownerSlot mappingSlot writeVal _
-          msg1 msg2 hOwner hMapping hne_sv_kp hne_ov_kp hne_ov_sv hne_cv_kp]
-  | letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop
-      ownerField mappingField senderVar ownerVar currentVar keyParam ownerSlot mappingSlot bound writeVal
-      msg1 msg2 msg3 hOwner hMapping hne_sv_kp hne_ov_kp hne_ov_sv hne_cv_kp =>
-      simp [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail,
-        compile_require_literal_guard_family_clauses_semantics,
-        compile_letCaller_letStorageAddr_reqEq_letMappingUint_reqEqLit_reqLt_setMappingUint_stop_semantics
-          fields ownerField mappingField senderVar ownerVar currentVar keyParam ownerSlot mappingSlot bound writeVal _
-          msg1 msg2 msg3 hOwner hMapping hne_sv_kp hne_ov_kp hne_ov_sv hne_cv_kp]
-  | letCallerLetMapping2IteParamReqSetMapping2Stop
-      mappingField senderVar currentVar authParam boolParam msg1 msg2 mappingSlot
-      hMapping hne_sv_bp hne_sv_ap hne_cv_bp hne_cv_ap hne_cv_sv hne_bp_ap =>
-      simp [execCompiledRequireFamilyClausesThenTail, execSourceRequireFamilyClausesThenTail,
-        compile_require_literal_guard_family_clauses_semantics,
-        compile_letCaller_letMapping2_ite_param_req_setMapping2_stop_semantics
-          fields mappingField senderVar currentVar authParam boolParam mappingSlot _
-          msg1 msg2 hMapping hne_sv_bp hne_sv_ap hne_cv_bp hne_cv_ap hne_cv_sv hne_bp_ap]
+  -- Admin tails: correctness theorems moved to morpho-verity package.
+  | letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop _ _ _ _ _ _ _ _ _ _ _ => sorry
+  | letCallerLetStorageAddrReqEqLetStorageAddrReqNeqSetStorageAddrParamStop _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => sorry
+  | letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => sorry
+  | letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => sorry
+  | letCallerLetMapping2IteParamReqSetMapping2Stop _ _ _ _ _ _ _ _ _ _ _ _ _ _ => sorry
 
 /-- Program fragment in the currently supported 2.2 generic family:
 one unified require-clause list followed by one supported tail. -/

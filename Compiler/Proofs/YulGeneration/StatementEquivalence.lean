@@ -42,7 +42,7 @@ theorem evalIRExpr_eq_evalYulExpr (selector : Nat) (irState : IRState) (expr : Y
       exact evalIRCall_eq_evalYulCall selector irState func args
 termination_by exprSize expr
 decreasing_by
-  simp [exprSize, exprsSize]
+  simp [exprSize]
 
 /-- List version: IR and Yul list evaluation are identical when states are aligned.
 Follows from `evalIRExpr_eq_evalYulExpr` by structural induction on the list. -/
@@ -57,7 +57,7 @@ theorem evalIRExprs_eq_evalYulExprs (selector : Nat) (irState : IRState) (exprs 
 termination_by exprsSize exprs
 decreasing_by
   all_goals
-    simp [exprsSize, exprSize]
+    simp [exprsSize]
     omega
 
 /-- Call version: IR and Yul call evaluation are identical when states are aligned. -/
@@ -68,7 +68,7 @@ theorem evalIRCall_eq_evalYulCall (selector : Nat) (irState : IRState) (func : S
   rfl
 termination_by exprsSize args + 1
 decreasing_by
-  simp [exprsSize, exprSize]
+  simp
 
 end
 
@@ -129,6 +129,7 @@ private theorem stmt_align_contra
   simpa [hIR, hYul] using hStmt
 
 set_option maxHeartbeats 800000 in
+set_option linter.unusedSimpArgs false in
 private theorem stmt_and_stmts_equiv :
     ∀ fuel,
       (∀ selector stmt irState yulState,
@@ -190,6 +191,9 @@ private theorem stmt_and_stmts_equiv :
                 · -- mstore: match on 2 evals
                   simp only [evalIRExpr_eq_evalYulExpr selector, yulStateOfIR] at *
                   split <;> simp_all [execResultsAligned, statesAligned, yulStateOfIR]
+                · -- tstore: match on 2 evals
+                  simp only [evalIRExpr_eq_evalYulExpr selector, yulStateOfIR] at *
+                  split <;> simp_all [execResultsAligned, statesAligned, yulStateOfIR]
                 · -- stop
                   simp [execResultsAligned, statesAligned, yulStateOfIR]
                 · -- revert
@@ -241,7 +245,8 @@ private theorem stmt_and_stmts_equiv :
             | none =>
                 have hEval' :
                     evalYulExpr
-                  { vars := irState.vars, storage := irState.storage, memory := irState.memory,
+                  { vars := irState.vars, storage := irState.storage,
+                        transientStorage := irState.transientStorage, memory := irState.memory,
                         calldata := irState.calldata, selector := irState.selector,
                         returnValue := irState.returnValue, sender := irState.sender,
                         msgValue := irState.msgValue, thisAddress := irState.thisAddress,
@@ -254,7 +259,8 @@ private theorem stmt_and_stmts_equiv :
             | some v =>
                 have hEval' :
                     evalYulExpr
-                  { vars := irState.vars, storage := irState.storage, memory := irState.memory,
+                  { vars := irState.vars, storage := irState.storage,
+                        transientStorage := irState.transientStorage, memory := irState.memory,
                         calldata := irState.calldata, selector := irState.selector,
                         returnValue := irState.returnValue, sender := irState.sender,
                         msgValue := irState.msgValue, thisAddress := irState.thisAddress,
@@ -562,7 +568,7 @@ theorem return_equiv (selector : Nat) (fuel : Nat)
     (offsetExpr sizeExpr : YulExpr)
     (irState : IRState) (yulState : YulState)
     (halign : statesAligned selector irState yulState)
-    (hfuel : fuel > 0) :
+    (_hfuel : fuel > 0) :
     execResultsAligned selector
       (execIRStmtFuel fuel irState (YulStmt.expr (.call "return" [offsetExpr, sizeExpr])))
       (execYulStmtFuel fuel yulState (YulStmt.expr (.call "return" [offsetExpr, sizeExpr]))) := by
@@ -573,7 +579,7 @@ theorem revert_equiv (selector : Nat) (fuel : Nat)
     (offsetExpr sizeExpr : YulExpr)
     (irState : IRState) (yulState : YulState)
     (halign : statesAligned selector irState yulState)
-    (hfuel : fuel > 0) :
+    (_hfuel : fuel > 0) :
     execResultsAligned selector
       (execIRStmtFuel fuel irState (YulStmt.expr (.call "revert" [offsetExpr, sizeExpr])))
       (execYulStmtFuel fuel yulState (YulStmt.expr (.call "revert" [offsetExpr, sizeExpr]))) := by

@@ -65,9 +65,9 @@ ALLOWLIST: set[str] = {
     # centralizes many continuation cases; temporary allowlist to unblock CI
     # while decomposing into helper lemmas in follow-up 2.2 slices.
     "compile_require_family_clauses_then_tail_semantics",
-    # Morpho Blue admin function compilation fragments — mechanical proofs
-    # whose length comes from spelling out the full typed-IR output, not
-    # from proof complexity (each closes with a single simp+rfl).
+    # Admin function compilation fragments — mechanical proofs whose length
+    # comes from spelling out the full typed-IR output, not from proof
+    # complexity (each closes with a single simp+rfl).
     "compileStmts_letCallerLetStorageAddrReqEqReqNeqSetStorageAddrParamStop_run",
     "compileStmts_letCallerLetStorageAddrReqEqLetMappingReqEqLitSetMappingStop_run",
     "compileStmts_letCallerLetStorageAddrReqEqLetMappingUintReqEqLitReqLtSetMappingUintStop_run",

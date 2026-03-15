@@ -1230,7 +1230,30 @@ theorem eval_compileExpr_eq_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.eq lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.eq lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_eq_ok hlhsCompile hrhsCompile
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.eq lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (SourceSemantics.boolWord (decide (l = r)))) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [hcompile, Except.toOption, Option.getD, bind, Option.bind, pure]
+  rw [show evalIRExpr state (YulExpr.call "eq" [lhsIR, rhsIR]) =
+    some (SourceSemantics.boolWord (irLhsVal % Compiler.Constants.evmModulus =
+      irRhsVal % Compiler.Constants.evmModulus)) from evalIRExpr_eq_of_eval hirLhs hirRhs]
+  simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt]
 
 theorem eval_compileExpr_lt_of_compiled
     {fields : List Field}
@@ -1247,7 +1270,30 @@ theorem eval_compileExpr_lt_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.lt lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.lt lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_lt_ok hlhsCompile hrhsCompile
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.lt lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (SourceSemantics.boolWord (decide (l < r)))) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [hcompile, Except.toOption, Option.getD, bind, Option.bind, pure]
+  rw [show evalIRExpr state (YulExpr.call "lt" [lhsIR, rhsIR]) =
+    some (SourceSemantics.boolWord (irLhsVal % Compiler.Constants.evmModulus <
+      irRhsVal % Compiler.Constants.evmModulus)) from evalIRExpr_lt_of_eval hirLhs hirRhs]
+  simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt]
 
 theorem eval_compileExpr_gt_of_compiled
     {fields : List Field}
@@ -1264,7 +1310,30 @@ theorem eval_compileExpr_gt_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.gt lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.gt lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_gt_ok hlhsCompile hrhsCompile
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.gt lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (SourceSemantics.boolWord (decide (r < l)))) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [hcompile, Except.toOption, Option.getD, bind, Option.bind, pure]
+  rw [show evalIRExpr state (YulExpr.call "gt" [lhsIR, rhsIR]) =
+    some (SourceSemantics.boolWord (irRhsVal % Compiler.Constants.evmModulus <
+      irLhsVal % Compiler.Constants.evmModulus)) from evalIRExpr_gt_of_eval hirLhs hirRhs]
+  simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt]
 
 theorem eval_compileExpr_ge_of_compiled
     {fields : List Field}
@@ -1281,7 +1350,51 @@ theorem eval_compileExpr_ge_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.ge lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.ge lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_ge_ok hlhsCompile hrhsCompile
+  have hltEval :
+      evalIRExpr state (YulExpr.call "lt" [lhsIR, rhsIR]) =
+        some (SourceSemantics.boolWord
+          (irLhsVal % Compiler.Constants.evmModulus <
+            irRhsVal % Compiler.Constants.evmModulus)) := by
+    simpa using evalIRExpr_lt_of_eval hirLhs hirRhs
+  have hinnerLt :
+      SourceSemantics.boolWord
+        (irLhsVal % Compiler.Constants.evmModulus <
+          irRhsVal % Compiler.Constants.evmModulus) <
+        Compiler.Constants.evmModulus :=
+    boolWord_lt_evmModulus _
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.ge lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some (SourceSemantics.boolWord
+            (SourceSemantics.boolWord
+              (irLhsVal % Compiler.Constants.evmModulus <
+                irRhsVal % Compiler.Constants.evmModulus) = 0)) := by
+    simpa [hcompile] using evalIRExpr_iszero_of_lt hltEval hinnerLt
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.ge lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (SourceSemantics.boolWord (decide (r ≤ l)))) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [bind, Option.bind, pure, heval]
+  by_cases hlt : irLhsVal < irRhsVal
+  · have hnotle : ¬ irRhsVal ≤ irLhsVal := Nat.not_le_of_gt hlt
+    simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt, hlt, hnotle, SourceSemantics.boolWord]
+  · have hle : irRhsVal ≤ irLhsVal := Nat.le_of_not_gt hlt
+    simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt, hlt, hle, SourceSemantics.boolWord]
 
 theorem eval_compileExpr_le_of_compiled
     {fields : List Field}
@@ -1298,7 +1411,51 @@ theorem eval_compileExpr_le_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.le lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.le lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_le_ok hlhsCompile hrhsCompile
+  have hgtEval :
+      evalIRExpr state (YulExpr.call "gt" [lhsIR, rhsIR]) =
+        some (SourceSemantics.boolWord
+          (irRhsVal % Compiler.Constants.evmModulus <
+            irLhsVal % Compiler.Constants.evmModulus)) := by
+    simpa using evalIRExpr_gt_of_eval hirLhs hirRhs
+  have hinnerLt :
+      SourceSemantics.boolWord
+        (irRhsVal % Compiler.Constants.evmModulus <
+          irLhsVal % Compiler.Constants.evmModulus) <
+        Compiler.Constants.evmModulus :=
+    boolWord_lt_evmModulus _
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.le lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some (SourceSemantics.boolWord
+            (SourceSemantics.boolWord
+              (irRhsVal % Compiler.Constants.evmModulus <
+                irLhsVal % Compiler.Constants.evmModulus) = 0)) := by
+    simpa [hcompile] using evalIRExpr_iszero_of_lt hgtEval hinnerLt
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.le lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (SourceSemantics.boolWord (decide (l ≤ r)))) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [bind, Option.bind, pure, heval]
+  by_cases hgt : irRhsVal < irLhsVal
+  · have hnotle : ¬ irLhsVal ≤ irRhsVal := Nat.not_le_of_gt hgt
+    simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt, hgt, hnotle, SourceSemantics.boolWord]
+  · have hle : irLhsVal ≤ irRhsVal := Nat.le_of_not_gt hgt
+    simp [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt, hgt, hle, SourceSemantics.boolWord]
 
 theorem eval_compileExpr_logicalNot_of_compiled
     {fields : List Field}
@@ -1312,7 +1469,25 @@ theorem eval_compileExpr_logicalNot_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.logicalNot expr) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.logicalNot expr)) := by
-          sorry
+  rcases hexprVal : SourceSemantics.evalExpr fields runtime expr with _ | vexpr
+  · simp only [hexprVal, bind, Option.bind, pure] at hexprEval
+    revert hexprEval; cases evalIRExpr state exprIR <;> simp
+  rcases hirExpr : evalIRExpr state exprIR with _ | irExprVal
+  · simp [hexprVal, hirExpr] at hexprEval
+  simp only [hexprVal, hirExpr, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hexprEval hexprLt
+  subst hexprEval
+  have hcompile := compileExpr_logicalNot_ok hexprCompile
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.logicalNot expr) |>.toOption.getD (YulExpr.lit 0)) =
+          some (SourceSemantics.boolWord (irExprVal = 0)) := by
+    simpa [hcompile] using evalIRExpr_iszero_of_lt hirExpr hexprLt
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.logicalNot expr) =
+    (do let v ← SourceSemantics.evalExpr fields runtime expr
+        pure (SourceSemantics.boolWord (decide (v = 0)))) := rfl
+  rw [hevalExpr, hexprVal]
+  simp only [bind, Option.bind, pure, heval]
 
 theorem eval_compileExpr_logicalAnd_of_compiled
     {fields : List Field}
@@ -1329,7 +1504,57 @@ theorem eval_compileExpr_logicalAnd_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.logicalAnd lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.logicalAnd lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_logicalAnd_ok hlhsCompile hrhsCompile
+  have hlhsBool :
+      evalIRExpr state (CompilationModel.yulToBool lhsIR) =
+        some (SourceSemantics.boolWord (irLhsVal ≠ 0)) := by
+    simpa using evalIRExpr_yulToBool_of_lt hirLhs hlhsLt
+  have hrhsBool :
+      evalIRExpr state (CompilationModel.yulToBool rhsIR) =
+        some (SourceSemantics.boolWord (irRhsVal ≠ 0)) := by
+    simpa using evalIRExpr_yulToBool_of_lt hirRhs hrhsLt
+  have hcall :
+      evalIRExpr state
+        (YulExpr.call "and" [CompilationModel.yulToBool lhsIR, CompilationModel.yulToBool rhsIR]) =
+          some ((SourceSemantics.boolWord (irLhsVal ≠ 0)) &&&
+            (SourceSemantics.boolWord (irRhsVal ≠ 0))) := by
+    simpa only
+      [Nat.mod_eq_of_lt (boolWord_lt_evmModulus (decide (irLhsVal ≠ 0))),
+      Nat.mod_eq_of_lt (boolWord_lt_evmModulus (decide (irRhsVal ≠ 0)))] using
+      evalIRExpr_and_of_eval hlhsBool hrhsBool
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.logicalAnd lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some ((SourceSemantics.boolWord (irLhsVal ≠ 0)) &&&
+            (SourceSemantics.boolWord (irRhsVal ≠ 0))) := by
+    simpa [hcompile] using hcall
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.logicalAnd lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (SourceSemantics.boolWord (decide (l != 0) && decide (r != 0)))) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [bind, Option.bind, pure, heval, Option.some.injEq]
+  rw [boolWord_and]
+  by_cases hlhsZero : irLhsVal = 0
+  · by_cases hrhsZero : irRhsVal = 0
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
+  · by_cases hrhsZero : irRhsVal = 0
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
 
 theorem eval_compileExpr_logicalOr_of_compiled
     {fields : List Field}
@@ -1346,7 +1571,57 @@ theorem eval_compileExpr_logicalOr_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.logicalOr lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.logicalOr lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_logicalOr_ok hlhsCompile hrhsCompile
+  have hlhsBool :
+      evalIRExpr state (CompilationModel.yulToBool lhsIR) =
+        some (SourceSemantics.boolWord (irLhsVal ≠ 0)) := by
+    simpa using evalIRExpr_yulToBool_of_lt hirLhs hlhsLt
+  have hrhsBool :
+      evalIRExpr state (CompilationModel.yulToBool rhsIR) =
+        some (SourceSemantics.boolWord (irRhsVal ≠ 0)) := by
+    simpa using evalIRExpr_yulToBool_of_lt hirRhs hrhsLt
+  have hcall :
+      evalIRExpr state
+        (YulExpr.call "or" [CompilationModel.yulToBool lhsIR, CompilationModel.yulToBool rhsIR]) =
+          some ((SourceSemantics.boolWord (irLhsVal ≠ 0)) |||
+            (SourceSemantics.boolWord (irRhsVal ≠ 0))) := by
+    simpa only
+      [Nat.mod_eq_of_lt (boolWord_lt_evmModulus (decide (irLhsVal ≠ 0))),
+      Nat.mod_eq_of_lt (boolWord_lt_evmModulus (decide (irRhsVal ≠ 0)))] using
+      evalIRExpr_or_of_eval hlhsBool hrhsBool
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.logicalOr lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some ((SourceSemantics.boolWord (irLhsVal ≠ 0)) |||
+            (SourceSemantics.boolWord (irRhsVal ≠ 0))) := by
+    simpa [hcompile] using hcall
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.logicalOr lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (SourceSemantics.boolWord (decide (l != 0) || decide (r != 0)))) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [bind, Option.bind, pure, heval, Option.some.injEq]
+  rw [boolWord_or]
+  by_cases hlhsZero : irLhsVal = 0
+  · by_cases hrhsZero : irRhsVal = 0
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
+  · by_cases hrhsZero : irRhsVal = 0
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
+    · simp [hlhsZero, hrhsZero, SourceSemantics.boolWord]
 
 theorem eval_compileExpr_add_of_compiled
     {fields : List Field}
@@ -1361,7 +1636,34 @@ theorem eval_compileExpr_add_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.add lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.add lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq] at hlhsEval hrhsEval
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_add_ok hlhsCompile hrhsCompile
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.add lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some ((irLhsVal + irRhsVal) % Compiler.Constants.evmModulus) := by
+    simpa [hcompile] using evalIRExpr_add_of_eval hirLhs hirRhs
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.add lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (((l : Verity.Core.Uint256) + (r : Verity.Core.Uint256)) : Verity.Core.Uint256).val) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [bind, Option.bind, pure, heval, Option.some.injEq]
+  rw [Nat.add_mod]
+  simp [HAdd.hAdd, Verity.Core.Uint256.add, Verity.Core.Uint256.ofNat,
+    Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus, Verity.Core.UINT256_MODULUS]
 
 theorem eval_compileExpr_mul_of_compiled
     {fields : List Field}
@@ -1376,7 +1678,34 @@ theorem eval_compileExpr_mul_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.mul lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.mul lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq] at hlhsEval hrhsEval
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_mul_ok hlhsCompile hrhsCompile
+  have heval :
+      evalIRExpr state
+        (CompilationModel.compileExpr fields .calldata (.mul lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
+          some ((irLhsVal * irRhsVal) % Compiler.Constants.evmModulus) := by
+    simpa [hcompile] using evalIRExpr_mul_of_eval hirLhs hirRhs
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.mul lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (((l : Verity.Core.Uint256) * (r : Verity.Core.Uint256)) : Verity.Core.Uint256).val) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [bind, Option.bind, pure, heval, Option.some.injEq]
+  rw [Nat.mul_mod]
+  simp [HMul.hMul, Verity.Core.Uint256.mul, Verity.Core.Uint256.ofNat,
+    Verity.Core.Uint256.modulus, Compiler.Constants.evmModulus, Verity.Core.UINT256_MODULUS]
 theorem uint256_val_ofNat_eq
     {n : Nat}
     (hn : n < Compiler.Constants.evmModulus) :
@@ -1469,7 +1798,29 @@ theorem eval_compileExpr_div_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.div lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.div lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_div_ok hlhsCompile hrhsCompile
+  have heval := evalIRExpr_div_of_eval hirLhs hirRhs
+  simp only [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt] at heval
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.div lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (((l : Verity.Core.Uint256) / (r : Verity.Core.Uint256)) : Verity.Core.Uint256).val) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [hcompile, Except.toOption, Option.getD, bind, Option.bind, pure, heval, Option.some.injEq]
+  rw [uint256_div_val_eq hlhsLt hrhsLt]
 
 theorem eval_compileExpr_sub_of_compiled
     {fields : List Field}
@@ -1486,7 +1837,29 @@ theorem eval_compileExpr_sub_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.sub lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.sub lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_sub_ok hlhsCompile hrhsCompile
+  have heval := evalIRExpr_sub_of_eval hirLhs hirRhs
+  simp only [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt] at heval
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.sub lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (((l : Verity.Core.Uint256) - (r : Verity.Core.Uint256)) : Verity.Core.Uint256).val) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [hcompile, Except.toOption, Option.getD, bind, Option.bind, pure, heval, Option.some.injEq]
+  rw [uint256_sub_val_eq hlhsLt hrhsLt]
 
 theorem eval_compileExpr_mod_of_compiled
     {fields : List Field}
@@ -1503,7 +1876,29 @@ theorem eval_compileExpr_mod_of_compiled
     evalIRExpr state
       (CompilationModel.compileExpr fields .calldata (.mod lhs rhs) |>.toOption.getD (YulExpr.lit 0)) =
         some (SourceSemantics.evalExpr fields runtime (.mod lhs rhs)) := by
-          sorry
+  rcases hlhsVal : SourceSemantics.evalExpr fields runtime lhs with _ | vlhs
+  · simp only [hlhsVal, bind, Option.bind, pure] at hlhsEval
+    revert hlhsEval; cases evalIRExpr state lhsIR <;> simp
+  rcases hrhsVal : SourceSemantics.evalExpr fields runtime rhs with _ | vrhs
+  · simp only [hrhsVal, bind, Option.bind, pure] at hrhsEval
+    revert hrhsEval; cases evalIRExpr state rhsIR <;> simp
+  rcases hirLhs : evalIRExpr state lhsIR with _ | irLhsVal
+  · simp [hlhsVal, hirLhs] at hlhsEval
+  rcases hirRhs : evalIRExpr state rhsIR with _ | irRhsVal
+  · simp [hrhsVal, hirRhs] at hrhsEval
+  simp only [hlhsVal, hrhsVal, hirLhs, hirRhs, bind, Option.bind, pure,
+    Option.some.injEq, Option.some_lt_some] at hlhsEval hrhsEval hlhsLt hrhsLt
+  subst hlhsEval; subst hrhsEval
+  have hcompile := compileExpr_mod_ok hlhsCompile hrhsCompile
+  have heval := evalIRExpr_mod_of_eval hirLhs hirRhs
+  simp only [Nat.mod_eq_of_lt hlhsLt, Nat.mod_eq_of_lt hrhsLt] at heval
+  have hevalExpr : SourceSemantics.evalExpr fields runtime (.mod lhs rhs) =
+    (do let l ← SourceSemantics.evalExpr fields runtime lhs
+        let r ← SourceSemantics.evalExpr fields runtime rhs
+        pure (((l : Verity.Core.Uint256) % (r : Verity.Core.Uint256)) : Verity.Core.Uint256).val) := rfl
+  rw [hevalExpr, hlhsVal, hrhsVal]
+  simp only [hcompile, Except.toOption, Option.getD, bind, Option.bind, pure, heval, Option.some.injEq]
+  rw [uint256_mod_val_eq hlhsLt hrhsLt]
 
 theorem evalExpr_literal_lt_evmModulus
     (fields : List Field)

@@ -11,7 +11,20 @@ private theorem pickUniqueFunctionByName_eq_ok_none_of_absent
     (name : String) (funcs : List FunctionSpec)
     (habsent : ∀ fn ∈ funcs, fn.name != name) :
     pickUniqueFunctionByName name funcs = Except.ok none := by
-      sorry
+  induction funcs with
+  | nil =>
+      rfl
+  | cons fn rest ih =>
+      have hfn : (fn.name == name) = false := by
+        by_cases heq : fn.name = name
+        · have habs := habsent fn (by simp)
+          simp [heq] at habs
+        · simp [heq]
+      have hrest : ∀ fn' ∈ rest, fn'.name != name := by
+        intro fn' hmem
+        exact habsent fn' (by simp [hmem])
+      have ih' := ih hrest
+      simpa [pickUniqueFunctionByName, hfn] using ih'
 private theorem compiled_functions_forall₂_of_mapM_ok
     (fields : List Field)
     (events : List EventDef)
@@ -23,7 +36,26 @@ private theorem compiled_functions_forall₂_of_mapM_ok
         (fun (entry : FunctionSpec × Nat) irFn =>
           compileFunctionSpec fields events errors entry.2 entry.1 = Except.ok irFn)
         entries irFns := by
-          sorry
+  intro entries
+  induction entries with
+  | nil =>
+      intro irFns hmap
+      cases hmap
+      simp
+  | cons entry entries ih =>
+      intro irFns hmap
+      rcases hstep : compileFunctionSpec fields events errors entry.2 entry.1 with _ | irFn
+      · simp only [List.mapM_cons, hstep, bind, Except.bind] at hmap
+        cases hmap
+      · rcases htail : List.mapM
+            (fun (entry : FunctionSpec × Nat) =>
+              compileFunctionSpec fields events errors entry.2 entry.1) entries with _ | irFnsTail
+        · simp only [List.mapM_cons, hstep, htail, bind, Except.bind] at hmap
+          cases hmap
+        · simp only [List.mapM_cons, hstep, htail, bind, Except.bind] at hmap
+          cases hmap
+          exact List.Forall₂.cons hstep (ih _ htail)
+
 private theorem compiled_internal_functions_forall₂_of_mapM_ok
     (fields : List Field)
     (events : List EventDef)

@@ -1054,6 +1054,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 
 -- Compiler/Proofs/IRGeneration/GenericInduction.lean
 -- #print axioms Compiler.Proofs.IRGeneration.CompiledStmtStep.withHelpers_of_helperSurfaceClosed  -- sorry
+-- #print axioms Compiler.Proofs.IRGeneration.legacyCompat_of_all_expr  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.revertWithMessage_all_expr  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_revertWithMessage  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPackedFields  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_of_compileStmt_ok_letVar  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_of_compileStmt_ok_assignVar  -- private
@@ -1063,7 +1066,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_of_compileStmtList_ok_on_supportedContractSurface  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListCompiledLegacyCompatible_of_supportedContractSurface  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeCompiledLegacyCompatible_of_compiledLegacyCompatible  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeCompiledLegacyCompatible_of_compiledLegacyCompatible
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeCompiledCallsDisjoint_of_supportedContractSurface  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_of_exprMap  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.legacyCompatibleExternalStmtList_of_letBindings  -- private
@@ -1073,18 +1076,18 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListCompiledLegacyCompatible_of_supportedContractSurface_exceptMappingWrites  -- sorry
 #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface_exceptMappingWrites
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeCompiledCallsDisjoint_of_supportedContractSurface_exceptMappingWrites  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeStepInterface_of_core  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListHelperSurfaceStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListInternalHelperSurfaceStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperCallStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperAssignStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperStepInterface_of_callStepInterface_and_assignStepInterface  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListExprInternalHelperStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListStructuralInternalHelperStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListInternalHelperSurfaceStepInterface_of_directInternalHelperStepInterface_and_exprInternalHelperStepInterface_and_structuralInternalHelperStepInterface  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListResidualHelperSurfaceStepInterface_of_helperSurfaceClosed  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.stmtListHelperSurfaceStepInterface_of_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.stmtListHelperFreeStepInterface_of_core
+#print axioms Compiler.Proofs.IRGeneration.stmtListHelperSurfaceStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListInternalHelperSurfaceStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperCallStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperAssignStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperStepInterface_of_callStepInterface_and_assignStepInterface
+#print axioms Compiler.Proofs.IRGeneration.stmtListDirectInternalHelperStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListExprInternalHelperStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListStructuralInternalHelperStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListInternalHelperSurfaceStepInterface_of_directInternalHelperStepInterface_and_exprInternalHelperStepInterface_and_structuralInternalHelperStepInterface
+#print axioms Compiler.Proofs.IRGeneration.stmtListResidualHelperSurfaceStepInterface_of_helperSurfaceClosed
+#print axioms Compiler.Proofs.IRGeneration.stmtListHelperSurfaceStepInterface_of_internalHelperSurfaceStepInterface_and_residualHelperSurfaceStepInterface
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericWithHelpers_of_core_and_helperSurfaceClosed  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListGenericWithHelpers_of_helperFreeStepInterface_and_helperSurfaceClosed  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.CompiledStmtStepWithHelpers.withHelperIR_of_legacyCompatible  -- sorry
@@ -1787,4 +1790,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1656 theorems/lemmas (988 active, 421 private, 247 sorry)
+-- Total: 1659 theorems/lemmas (1001 active, 424 private, 234 sorry)

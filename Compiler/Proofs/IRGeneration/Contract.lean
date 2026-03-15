@@ -108,12 +108,8 @@ private theorem field_mem_of_findFieldWithResolvedSlot_some
     {f : Field}
     {slot : Nat}
     (hfind : findFieldWithResolvedSlot fields fieldName = some (f, slot)) :
-    f ∈ fields := by
-      -- findFieldWithResolvedSlot wraps a private recursive search; add the helper
-      -- lemma directly in Types.lean's namespace where the private is visible.
-      -- For now, we reason generically: if the Option lookup succeeds, the field
-      -- must appear in the list.  We use `findFieldSlot` as an auxiliary witness.
-      sorry
+    f ∈ fields :=
+  findFieldWithResolvedSlot_mem hfind
 -- private theorem legacyCompatibleExternalStmtList_append
 --     (pfx suffix : List Yul.YulStmt)
 --     (hprefix : LegacyCompatibleExternalStmtList pfx)
@@ -169,7 +165,65 @@ private theorem legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPa
       CompilationModel.compileSetStorage fields .calldata fieldName value =
         Except.ok bodyIR) :
     LegacyCompatibleExternalStmtList bodyIR := by
-      sorry
+      simp only [CompilationModel.compileSetStorage, bind, Except.bind] at hcompile
+      split at hcompile
+      · cases hcompile  -- isMapping = true → throws
+      · -- isMapping = false
+        revert hcompile
+        cases hfind : findFieldWithResolvedSlot fields fieldName with
+        | none => simp
+        | some p =>
+            obtain ⟨f, slot⟩ := p
+            simp only [Except.bind]
+            -- handle requireAddressField branch
+            split
+            · -- requireAddressField = true
+              split
+              · -- f.ty = address
+                simp only [pure, Except.pure, Except.bind]
+                intro hrest; revert hrest
+                -- Now use hnoPacked to eliminate packed branches
+                have hfmem := findFieldWithResolvedSlot_mem hfind
+                have hnoP := hnoPacked f hfmem
+                cases CompilationModel.compileExpr fields .calldata value with
+                | error e => simp
+                | ok valExpr =>
+                    simp only [Except.bind]
+                    cases hslots : (slot :: f.aliasSlots) with
+                    | nil => simp
+                    | cons s rest =>
+                        cases rest with
+                        | nil =>
+                            simp only [hnoP]
+                            intro h; cases h; exact .expr _ _ .nil
+                        | cons s2 rest' =>
+                            simp only [hnoP]
+                            intro h; cases h
+                            exact .block _ _
+                              (.let_ _ _ _ (legacyCompatibleExternalStmtList_of_exprStmtMap _ _)) .nil
+              · -- f.ty ≠ address → throws
+                simp
+            · -- requireAddressField = false
+              simp only [pure, Except.pure, Except.bind]
+              intro hrest; revert hrest
+              have hfmem := findFieldWithResolvedSlot_mem hfind
+              have hnoP := hnoPacked f hfmem
+              cases CompilationModel.compileExpr fields .calldata value with
+              | error e => simp
+              | ok valExpr =>
+                  simp only [Except.bind]
+                  cases hslots : (slot :: f.aliasSlots) with
+                  | nil => simp
+                  | cons s rest =>
+                      cases rest with
+                      | nil =>
+                          simp only [hnoP]
+                          intro h; cases h; exact .expr _ _ .nil
+                      | cons s2 rest' =>
+                          simp only [hnoP]
+                          intro h; cases h
+                          exact .block _ _
+                            (.let_ _ _ _ (legacyCompatibleExternalStmtList_of_exprStmtMap _ _)) .nil
 private theorem legacyCompatibleExternalStmtList_of_compileStmt_ok_letVar
     {fields : List Field}
     {inScopeNames : List String}

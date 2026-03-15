@@ -334,7 +334,27 @@ private theorem legacyCompatibleExternalStmtList_genParamLoadBodyFrom_cons_scala
     LegacyCompatibleExternalStmtList
       (CompilationModel.genParamLoadBodyFrom
         loadWord sizeExpr headSize baseOffset (param :: rest) headOffset) := by
-          sorry
+      simp only [CompilationModel.genParamLoadBodyFrom]
+      cases hty : param.ty with
+      | uint256 =>
+          simp only [CompilationModel.genScalarLoad]
+          exact .let_ _ _ _ (by rw [hty] at hrest; exact hrest)
+      | uint8 =>
+          simp only [CompilationModel.genScalarLoad]
+          exact .let_ _ _ _ (by rw [hty] at hrest; exact hrest)
+      | address =>
+          simp only [CompilationModel.genScalarLoad]
+          exact .let_ _ _ _ (by rw [hty] at hrest; exact hrest)
+      | bytes32 =>
+          simp only [CompilationModel.genScalarLoad]
+          exact .let_ _ _ _ (by rw [hty] at hrest; exact hrest)
+      | int256 => exact absurd hparam (by simp [SupportedExternalParamType, hty])
+      | bool => exact absurd hparam (by simp [SupportedExternalParamType, hty])
+      | string => exact absurd hparam (by simp [SupportedExternalParamType, hty])
+      | bytes => exact absurd hparam (by simp [SupportedExternalParamType, hty])
+      | array => exact absurd hparam (by simp [SupportedExternalParamType, hty])
+      | tuple => exact absurd hparam (by simp [SupportedExternalParamType, hty])
+      | fixedArray => exact absurd hparam (by simp [SupportedExternalParamType, hty])
 private theorem legacyCompatibleExternalStmtList_genParamLoadBodyFrom_of_supported
     (loadWord : Yul.YulExpr → Yul.YulExpr)
     (sizeExpr : Yul.YulExpr)
@@ -345,12 +365,20 @@ private theorem legacyCompatibleExternalStmtList_genParamLoadBodyFrom_of_support
     LegacyCompatibleExternalStmtList
       (CompilationModel.genParamLoadBodyFrom
         loadWord sizeExpr headSize baseOffset params headOffset) := by
-          sorry
+      induction params generalizing headOffset with
+      | nil => simp [CompilationModel.genParamLoadBodyFrom]; exact .nil
+      | cons param rest ih =>
+          apply legacyCompatibleExternalStmtList_genParamLoadBodyFrom_cons_scalar
+          · exact hparams param (.head _)
+          · exact ih _ (fun p hp => hparams p (.tail _ hp))
 private theorem legacyCompatibleExternalStmtList_genParamLoads_of_supported
     (params : List Param)
     (hparams : ∀ param ∈ params, SupportedExternalParamType param.ty) :
     LegacyCompatibleExternalStmtList (CompilationModel.genParamLoads params) := by
-      sorry
+      simp only [CompilationModel.genParamLoads, CompilationModel.genParamLoadsFrom]
+      exact .if_ _ _ _
+        (.expr _ _ .nil)
+        (legacyCompatibleExternalStmtList_genParamLoadBodyFrom_of_supported _ _ _ _ _ _ hparams)
 private theorem legacyCompatibleExternalStmtList_of_compileStmtList_ok_on_supportedContractSurface
     {fields : List Field}
     {inScopeNames : List String}

@@ -784,19 +784,19 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVars_nil_initialIRStateForTx
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_ident_of_exact_bindings
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_ident_of_scope_bindings
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_caller_of_runtimeStateMatchesIR  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_contractAddress_of_runtimeStateMatchesIR  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_msgValue_of_runtimeStateMatchesIR  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_blockTimestamp_of_runtimeStateMatchesIR  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_blockNumber_of_runtimeStateMatchesIR  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_chainid_of_runtimeStateMatchesIR  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_caller  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_contractAddress  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_msgValue  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_blockTimestamp  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_blockNumber  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_chainid  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_literal  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_caller_of_runtimeStateMatchesIR
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_contractAddress_of_runtimeStateMatchesIR
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_msgValue_of_runtimeStateMatchesIR
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_blockTimestamp_of_runtimeStateMatchesIR
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_blockNumber_of_runtimeStateMatchesIR
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_chainid_of_runtimeStateMatchesIR
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_caller
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_contractAddress
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_msgValue
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_blockTimestamp
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_blockNumber
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_chainid
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_literal
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.boolWord_eq_if
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_iszero_of_lt
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_yulToBool_of_lt
@@ -834,10 +834,10 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsMatchIRVars_setVar_bindValue
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVars_applyBindingsToIRState
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_sload_of_runtimeStateMatchesIR
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_param_of_exact_bindings  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_localVar_of_exact_bindings  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_param_of_expr_bindings  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_localVar_of_expr_bindings  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_param_of_exact_bindings
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_localVar_of_exact_bindings
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_param_of_expr_bindings
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_localVar_of_expr_bindings
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.boolWord_lt_evmModulus
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.boolWord_and
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.boolWord_or
@@ -883,9 +883,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileRequireFailCond_core_ok
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileRequireFailCond_core_onExpr  -- sorry
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileRequireFailCond_core
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.runtimeStateMatchesIR_setVar_bindValue  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.runtimeStateMatchesIR_setVar_bindValue
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.runtimeStateMatchesIR_setVar_irrelevant
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmt_core_ok  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmt_core_ok
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.runtimeStateMatchesIR_setMemory
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.runtimeStateMatchesIR_setTransientStorage  -- sorry
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVars_setMemory
@@ -893,16 +893,16 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVarsOnScope_setVar_irrelevant
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVarsOnScope_setVar_bindValue
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.encodeEvents_withTransactionContext
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.encodeStorage_withTransactionContext  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.encodeStorage_withTransactionContext
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.exec_compileStmt_letVar_core  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.exec_compileStmt_assignVar_core  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.exec_compileStmt_return_core  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.exec_compileStmt_return_core_extraFuel  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.exec_compileStmt_stop_core  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.exec_compileStmt_stop_core_extraFuel  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVarsOnScope_implies_onExpr  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVarsOnScope_implies_onExpr
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.eval_compileRequireFailCond_core_of_scope
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVarsOnScope_of_included  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.bindingsExactlyMatchIRVarsOnScope_of_included
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.exprBoundNamesPresent_of_scope
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.scopeNamesPresent_of_included
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.scopeNamesPresent_bindValue
@@ -911,13 +911,13 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.stmtListTerminalCore_stop_tail_compileCore
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.stmtListTerminalCore_ite_tail_compileCore
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.stmtListTerminalCore_ne_nil
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmt_core_ok_any_scope  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmt_core_ok_any_scope
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_cons_ok_of_compileStmt_ok
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_cons_ok_inv  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmt_terminal_ite_ok_inv  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_terminal_ite_ok_inv  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_core_ok  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_terminal_core_ok  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_core_ok
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_terminal_core_ok
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compileStmtList_terminal_core_ok_nonempty  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.yulStmtList_length_le_sizeOf  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.compiledIteBlockSize_ge_thenBranchLength  -- private
@@ -1018,9 +1018,9 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmt_compiled_terminal_ite_else_branch_entry_tailFuel
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmts_compiled_terminal_ite_then_of_irExec  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmts_compiled_terminal_ite_else_of_irExec  -- private
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execStmtList_terminal_core_not_continue  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.stmtResultMatchesIRExec_ir_not_continue_of_source_not_continue  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.stmtResultMatchesIRExec_ir_not_continue_of_terminal_core  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.execStmtList_terminal_core_not_continue
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.stmtResultMatchesIRExec_ir_not_continue_of_source_not_continue
+#print axioms Compiler.Proofs.IRGeneration.FunctionBody.stmtResultMatchesIRExec_ir_not_continue_of_terminal_core
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execStmtList_terminal_core_ite_then_eq  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execStmtList_terminal_core_ite_else_eq  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.FunctionBody.execIRStmts_compiled_return_core_append_wholeFuel  -- sorry
@@ -1801,4 +1801,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1670 theorems/lemmas (1049 active, 435 private, 186 sorry)
+-- Total: 1670 theorems/lemmas (1077 active, 435 private, 158 sorry)

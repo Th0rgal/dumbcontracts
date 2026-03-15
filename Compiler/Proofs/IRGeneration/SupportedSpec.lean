@@ -1206,7 +1206,7 @@ structure SupportedCompiledInternalHelperWitness
     (runtimeContract : IRContract)
     (calleeName : String) where
   sourceWitness : SupportedInternalHelperWitness spec calleeName
-  compiledStmt : YulStmt
+  compiledStmt : Yul.YulStmt
   compileOk :
     compileInternalFunction
         (applySlotAliasRanges spec.fields spec.slotAliasRanges)

@@ -102,6 +102,17 @@ private theorem exists_right_of_forall₂_mem_left
       | tail _ hmem' =>
           rcases ih hmem' with ⟨y, hy, hr⟩
           exact ⟨y, .tail _ hy, hr⟩
+private noncomputable def forall₂_mem_left_data
+    {α β : Type}
+    {R : α → β → Prop}
+    {xs : List α}
+    {ys : List β}
+    (hrel : List.Forall₂ R xs ys)
+    {x : α}
+    (hmem : x ∈ xs) :
+    { y : β // y ∈ ys ∧ R x y } :=
+  have hexists := exists_right_of_forall₂_mem_left hrel hmem
+  ⟨hexists.choose, hexists.choose_spec⟩
 private theorem field_mem_of_findFieldWithResolvedSlot_some
     {fields : List Field}
     {fieldName : String}
@@ -709,14 +720,44 @@ theorem compile_ok_yields_internalFunctions_nil
       simp only [CompilationModel.compile, bind, Except.bind] at hcompile
       revert hcompile; cases validateCompileInputs model selectors <;> simp_all
     exact compileValidatedCore_ok_yields_internalFunctions_nil model selectors hSupported ir hcore
-private def compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface
+private noncomputable def compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface
     (model : CompilationModel)
     (selectors : List Nat)
     (ir : IRContract)
     (hcore : compileValidatedCore model selectors = Except.ok ir) :
     SupportedRuntimeHelperTableInterface model ir := by
-      sorry
-def compile_ok_yields_supportedRuntimeHelperTableInterface
+      constructor; intro calleeName witness
+      simp only [compileValidatedCore, bind, Except.bind] at hcore
+      revert hcore
+      -- Thread through 7 monadic binds; error branches are impossible
+      split <;> [exact nofun; skip]
+      split <;> [exact nofun; skip]
+      split <;> [exact nofun; skip]
+      split <;> [exact nofun; skip]
+      split <;> [exact nofun; skip]
+      split <;> [exact nofun; skip]
+      split <;> [exact nofun; skip]
+      simp only [pure, Except.pure]; intro hir; cases hir
+      have hcallee_filtered : witness.callee ∈
+          model.functions.filter (·.isInternal) :=
+        List.mem_filter.mpr ⟨witness.summary.present, witness.summary.internal⟩
+      have hinternalMapM := ‹List.mapM
+        (compileInternalFunction (applySlotAliasRanges model.fields model.slotAliasRanges)
+          model.events model.errors)
+        (List.filter (fun x => x.isInternal) model.functions) = Except.ok _›
+      have hforall₂ := compiled_internal_functions_forall₂_of_mapM_ok
+        (applySlotAliasRanges model.fields model.slotAliasRanges)
+        model.events model.errors
+        (model.functions.filter (·.isInternal)) _ hinternalMapM
+      let ⟨cStmt, hmem_defs, hcompileOk⟩ :=
+        forall₂_mem_left_data hforall₂ hcallee_filtered
+      exact {
+        sourceWitness := witness
+        compiledStmt := cStmt
+        compileOk := hcompileOk
+        presentInRuntime := List.mem_append_right _ hmem_defs
+      }
+noncomputable def compile_ok_yields_supportedRuntimeHelperTableInterface
     (model : CompilationModel)
     (selectors : List Nat)
     (ir : IRContract)

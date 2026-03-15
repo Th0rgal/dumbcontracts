@@ -670,8 +670,6 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.compiled_internal_functions_forall₂_of_mapM_ok  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.exists_right_of_forall₂_mem_left  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.field_mem_of_findFieldWithResolvedSlot_some  -- private
--- #print axioms Compiler.Proofs.IRGeneration.Contract.legacyCompatibleExternalStmtList_append  -- private
--- #print axioms Compiler.Proofs.IRGeneration.Contract.legacyCompatibleExternalStmtList_of_exprStmtExprs  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.legacyCompatibleExternalStmtList_revertWithMessage  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPackedFields  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.legacyCompatibleExternalStmtList_of_compileStmt_ok_letVar  -- private
@@ -698,10 +696,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_compiled_functions
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_compiled_functions_except_mapping_writes
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_internalFunctions_nil
--- #print axioms Compiler.Proofs.IRGeneration.Contract.compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface  -- private
-#print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_supportedRuntimeHelperTableInterface
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_ok_yields_legacyCompatibleExternalStmtList
--- #print axioms Compiler.Proofs.IRGeneration.Contract.compiled_functions_legacyCompatibleExternalBodies  -- private
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_legacyCompatibleExternalBodies
 #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_legacyCompatibleRuntimeContract
 #print axioms Compiler.Proofs.IRGeneration.Contract.compileFunctionSpec_correct_generic
@@ -1789,4 +1784,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1658 theorems/lemmas (1236 public, 422 private)
+-- Total: 1653 theorems/lemmas (1235 public, 418 private)

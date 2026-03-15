@@ -701,7 +701,9 @@ theorem stmtListHelperFreeStepInterface_of_core
     {stmts : List Stmt}
     (hgeneric : StmtListGenericCore fields scope stmts) :
     StmtListHelperFreeStepInterface fields scope stmts := by
-      sorry
+      induction hgeneric with
+      | nil => exact .nil
+      | cons hstep _ ih => exact .cons (fun _ => ⟨_, hstep⟩) ih
 /-- Helper-surface-closed statement lists satisfy the exact helper-surface step
 interface vacuously: no head ever needs a genuinely new helper-aware step
 proof. -/
@@ -713,7 +715,11 @@ theorem stmtListHelperSurfaceStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListHelperSurfaceStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h => absurd h (by simp [hsurface.1])) (ih hsurface.2)
 /-- Helper-surface-closed statement lists also satisfy the narrower exact
 internal-helper step interface vacuously. -/
 theorem stmtListInternalHelperSurfaceStepInterface_of_helperSurfaceClosed
@@ -724,7 +730,11 @@ theorem stmtListInternalHelperSurfaceStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListInternalHelperSurfaceStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h => absurd h (by simp [stmtTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed hsurface.1])) (ih hsurface.2)
 /-- Helper-surface-closed statement lists also satisfy the direct
 statement-position internal-helper interface vacuously. -/
 theorem stmtListDirectInternalHelperCallStepInterface_of_helperSurfaceClosed
@@ -735,7 +745,11 @@ theorem stmtListDirectInternalHelperCallStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListDirectInternalHelperCallStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h => absurd h (by simp [stmtTouchesDirectInternalHelperCallSurface_eq_false_of_helperSurfaceClosed hsurface.1])) (ih hsurface.2)
 /-- Helper-surface-closed statement lists also satisfy the direct helper-return
 binding interface vacuously. -/
 theorem stmtListDirectInternalHelperAssignStepInterface_of_helperSurfaceClosed
@@ -746,7 +760,11 @@ theorem stmtListDirectInternalHelperAssignStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListDirectInternalHelperAssignStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h => absurd h (by simp [stmtTouchesDirectInternalHelperAssignSurface_eq_false_of_helperSurfaceClosed hsurface.1])) (ih hsurface.2)
 /-- Assemble the coarser direct helper interface from the two source-summary
 shapes it still contains: void helper statements and helper-return bindings. -/
 theorem stmtListDirectInternalHelperStepInterface_of_callStepInterface_and_assignStepInterface
@@ -760,7 +778,17 @@ theorem stmtListDirectInternalHelperStepInterface_of_callStepInterface_and_assig
     (hassign :
       StmtListDirectInternalHelperAssignStepInterface runtimeContract spec fields scope stmts) :
     StmtListDirectInternalHelperStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction hcall with
+      | nil => exact .nil
+      | cons hc _ ih =>
+        cases hassign with
+        | cons ha hassign' =>
+          exact .cons (fun h => by
+            rw [stmtTouchesDirectInternalHelperSurface_eq_split,
+              Bool.or_eq_true_iff] at h
+            cases h with
+            | inl h => exact hc h
+            | inr h => exact ha h) (ih hassign')
 /-- Helper-surface-closed statement lists also satisfy the direct
 statement-position internal-helper interface vacuously. -/
 theorem stmtListDirectInternalHelperStepInterface_of_helperSurfaceClosed
@@ -771,7 +799,11 @@ theorem stmtListDirectInternalHelperStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListDirectInternalHelperStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h => absurd h (by simp [stmtTouchesDirectInternalHelperSurface_eq_false_of_helperSurfaceClosed hsurface.1])) (ih hsurface.2)
 /-- Helper-surface-closed statement lists also satisfy the expression-position
 internal-helper interface vacuously. -/
 theorem stmtListExprInternalHelperStepInterface_of_helperSurfaceClosed
@@ -782,7 +814,11 @@ theorem stmtListExprInternalHelperStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListExprInternalHelperStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h => absurd h (by simp [stmtTouchesExprInternalHelperSurface_eq_false_of_helperSurfaceClosed hsurface.1])) (ih hsurface.2)
 /-- Helper-surface-closed statement lists also satisfy the structural
 internal-helper interface vacuously. -/
 theorem stmtListStructuralInternalHelperStepInterface_of_helperSurfaceClosed
@@ -793,7 +829,11 @@ theorem stmtListStructuralInternalHelperStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListStructuralInternalHelperStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h => absurd h (by simp [stmtTouchesStructuralInternalHelperSurface_eq_false_of_helperSurfaceClosed hsurface.1])) (ih hsurface.2)
 /-- Assemble the coarse internal-helper interface from the narrower proof-cut
 interfaces that match the actual proof obligations: direct helper statements,
 expression-position helper calls, and recursive structural transport. -/
@@ -810,7 +850,20 @@ theorem stmtListInternalHelperSurfaceStepInterface_of_directInternalHelperStepIn
     (hstruct :
       StmtListStructuralInternalHelperStepInterface runtimeContract spec fields scope stmts) :
     StmtListInternalHelperSurfaceStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction hdirect with
+      | nil => exact .nil
+      | cons hd _ ih =>
+        cases hexpr with
+        | cons he hexpr' =>
+          cases hstruct with
+          | cons hs hstruct' =>
+            exact .cons (fun h => by
+              rw [stmtTouchesInternalHelperSurface_eq_split,
+                Bool.or_eq_true_iff, Bool.or_eq_true_iff] at h
+              rcases h with (h | h) | h
+              · exact hd h
+              · exact he h
+              · exact hs h) (ih hexpr' hstruct')
 /-- Helper-surface-closed statement lists also satisfy the residual non-helper
 exact step interface vacuously. -/
 theorem stmtListResidualHelperSurfaceStepInterface_of_helperSurfaceClosed
@@ -821,7 +874,11 @@ theorem stmtListResidualHelperSurfaceStepInterface_of_helperSurfaceClosed
     {stmts : List Stmt}
     (hsurface : stmtListTouchesUnsupportedHelperSurface stmts = false) :
     StmtListResidualHelperSurfaceStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons stmt rest ih =>
+        simp [stmtListTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        exact .cons (fun h _ => absurd h (by simp [hsurface.1])) (ih hsurface.2)
 /-- Assemble the coarse exact helper-surface step interface from the split
 interfaces: genuine internal-helper heads are proved through the narrow helper
 surface interface, while the residual coarse-surface heads are discharged
@@ -837,7 +894,15 @@ theorem stmtListHelperSurfaceStepInterface_of_internalHelperSurfaceStepInterface
     (hresidual :
       StmtListResidualHelperSurfaceStepInterface runtimeContract spec fields scope stmts) :
     StmtListHelperSurfaceStepInterface runtimeContract spec fields scope stmts := by
-      sorry
+      induction hinternal with
+      | nil => exact .nil
+      | cons hi _ ih =>
+        cases hresidual with
+        | cons hr hresidual' =>
+          exact .cons (fun h => by
+            cases hq : stmtTouchesInternalHelperSurface _ with
+            | true => exact hi hq
+            | false => exact hr h hq) (ih hresidual')
 /-- Lift an existing helper-free generic statement-list proof into the
 helper-aware induction world when the whole list is helper-surface closed. This
 is the current fail-closed bridge from the legacy generic library to the new

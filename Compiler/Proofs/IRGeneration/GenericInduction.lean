@@ -3594,6 +3594,17 @@ private theorem stmtListTouchesUnsupportedContractSurface_append
           | cons h t ih =>
             simp only [List.cons_append, stmtListTouchesUnsupportedContractSurface, ih,
               Bool.or_assoc]
+private theorem stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites_append
+    {pfx suffix : List Stmt} :
+    stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites (pfx ++ suffix) =
+      (stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites pfx ||
+        stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites suffix) := by
+          induction pfx with
+          | nil => simp [stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites]
+          | cons h t ih =>
+            simp only [List.cons_append,
+              stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites, ih,
+              Bool.or_assoc]
 private theorem stmtListCompileCore_of_requireLiteralGuardFamilyClauses
     {scope : List String}
     (clauses : List Verity.Core.Free.RequireLiteralGuardFamilyClause) :
@@ -3801,7 +3812,14 @@ private theorem stmtListGenericCore_of_supportedStmtList_append_of_surface
     (hsurface :
       stmtListTouchesUnsupportedContractSurface (pfx ++ suffix) = false) :
     StmtListGenericCore fields scope (pfx ++ suffix) := by
-      sorry
+      rw [stmtListTouchesUnsupportedContractSurface_append] at hsurface
+      simp [Bool.or_eq_false_iff] at hsurface
+      have hpfx := ihPrefix hsurface.1
+      have hsfx := ihSuffix hsurface.2
+      clear ihPrefix ihSuffix hprefix hsuffix hsurface
+      induction hpfx with
+      | nil => exact hsfx
+      | cons hstep _ ih => exact .cons hstep (ih hsfx)
 private theorem stmtListGenericCore_of_supportedStmtList_requireClause_of_surface
     {fields : List Field}
     {scope : List String}
@@ -3827,7 +3845,14 @@ private theorem stmtListGenericCore_of_supportedStmtList_append_of_surface_excep
     (hsurface :
       stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites (pfx ++ suffix) = false) :
     StmtListGenericCore fields scope (pfx ++ suffix) := by
-      sorry
+      rw [stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites_append] at hsurface
+      simp [Bool.or_eq_false_iff] at hsurface
+      have hpfx := ihPrefix hsurface.1
+      have hsfx := ihSuffix hsurface.2
+      clear ihPrefix ihSuffix hprefix hsuffix hsurface
+      induction hpfx with
+      | nil => exact hsfx
+      | cons hstep _ ih => exact .cons hstep (ih hsfx)
 private theorem stmtListGenericCore_of_supportedStmtList_requireClause_of_surface_exceptMappingWrites
     {fields : List Field}
     {scope : List String}
@@ -4711,8 +4736,8 @@ private theorem exprBoundNamesInScope_of_scopeNamesIncluded
     {scope largerScope : List String}
     (hinScope : FunctionBody.exprBoundNamesInScope expr scope)
     (hincluded : FunctionBody.scopeNamesIncluded scope largerScope) :
-    FunctionBody.exprBoundNamesInScope expr largerScope := by
-      sorry
+    FunctionBody.exprBoundNamesInScope expr largerScope :=
+  fun name hmem => hincluded name (hinScope name hmem)
 private theorem stmtListGenericCore_of_stmtListCompileCore_of_scopeNamesIncluded
     {fields : List Field}
     {scope largerScope : List String}
@@ -4888,7 +4913,26 @@ private theorem execIRStmts_append_of_continue
     (hhead : execIRStmts fuel state head = .continue next) :
     execIRStmts fuel state (head ++ tail) =
       execIRStmts (fuel - head.length) next tail := by
-        sorry
+        induction head generalizing fuel state with
+        | nil =>
+          simp [execIRStmts] at hhead
+          subst hhead
+          simp [List.length]
+        | cons stmt rest ih =>
+          simp only [List.cons_append]
+          cases fuel with
+          | zero =>
+            simp [execIRStmts] at hhead
+          | succ fuel' =>
+            simp only [execIRStmts] at hhead ⊢
+            cases heq : execIRStmt fuel' state stmt with
+            | «continue» s' =>
+              simp only [heq] at hhead ⊢
+              simp only [List.length_cons, Nat.succ_sub_succ_eq_sub]
+              exact ih fuel' s' hhead
+            | «return» v s => simp [heq, execIRStmts] at hhead
+            | stop s => simp [heq, execIRStmts] at hhead
+            | revert s => simp [heq, execIRStmts] at hhead
 private theorem execIRStmts_append_of_not_continue
     (fuel : Nat)
     (state : IRState)
@@ -4897,7 +4941,25 @@ private theorem execIRStmts_append_of_not_continue
     (hhead : execIRStmts fuel state head = irExec)
     (hnot : ∀ next, irExec ≠ .continue next) :
     execIRStmts fuel state (head ++ tail) = irExec := by
-      sorry
+      induction head generalizing fuel state with
+      | nil =>
+        simp [execIRStmts] at hhead
+        exact absurd hhead.symm (hnot state)
+      | cons stmt rest ih =>
+        simp only [List.cons_append]
+        cases fuel with
+        | zero =>
+          simp [execIRStmts] at hhead ⊢
+          exact hhead
+        | succ fuel' =>
+          simp only [execIRStmts] at hhead ⊢
+          cases heq : execIRStmt fuel' state stmt with
+          | «continue» s' =>
+            simp only [heq] at hhead ⊢
+            exact ih fuel' s' hhead
+          | «return» v s => simp only [heq] at hhead ⊢; exact hhead
+          | stop s => simp only [heq] at hhead ⊢; exact hhead
+          | revert s => simp only [heq] at hhead ⊢; exact hhead
 private theorem execIRStmtsWithInternals_append_of_continue
     (runtimeContract : IRContract)
     (fuel : Nat)
@@ -4907,7 +4969,27 @@ private theorem execIRStmtsWithInternals_append_of_continue
       execIRStmtsWithInternals runtimeContract fuel state head = .continue next) :
     execIRStmtsWithInternals runtimeContract fuel state (head ++ tail) =
       execIRStmtsWithInternals runtimeContract (fuel - head.length) next tail := by
-        sorry
+        induction head generalizing fuel state with
+        | nil =>
+          simp [execIRStmtsWithInternals] at hhead
+          subst hhead
+          simp [List.length]
+        | cons stmt rest ih =>
+          simp only [List.cons_append]
+          cases fuel with
+          | zero =>
+            simp [execIRStmtsWithInternals] at hhead
+          | succ fuel' =>
+            simp only [execIRStmtsWithInternals] at hhead ⊢
+            cases heq : execIRStmtWithInternals runtimeContract fuel' state stmt with
+            | «continue» s' =>
+              simp only [heq] at hhead ⊢
+              simp only [List.length_cons, Nat.succ_sub_succ_eq_sub]
+              exact ih fuel' s' hhead
+            | «return» v s => simp [heq, execIRStmtsWithInternals] at hhead
+            | stop s => simp [heq, execIRStmtsWithInternals] at hhead
+            | revert s => simp [heq, execIRStmtsWithInternals] at hhead
+            | «leave» s => simp [heq, execIRStmtsWithInternals] at hhead
 private theorem execIRStmtsWithInternals_append_of_not_continue
     (runtimeContract : IRContract)
     (fuel : Nat)
@@ -4918,7 +5000,26 @@ private theorem execIRStmtsWithInternals_append_of_not_continue
       execIRStmtsWithInternals runtimeContract fuel state head = irExec)
     (hnot : ∀ next, irExec ≠ .continue next) :
     execIRStmtsWithInternals runtimeContract fuel state (head ++ tail) = irExec := by
-      sorry
+      induction head generalizing fuel state with
+      | nil =>
+        simp [execIRStmtsWithInternals] at hhead
+        exact absurd hhead.symm (hnot state)
+      | cons stmt rest ih =>
+        simp only [List.cons_append]
+        cases fuel with
+        | zero =>
+          simp [execIRStmtsWithInternals] at hhead ⊢
+          exact hhead
+        | succ fuel' =>
+          simp only [execIRStmtsWithInternals] at hhead ⊢
+          cases heq : execIRStmtWithInternals runtimeContract fuel' state stmt with
+          | «continue» s' =>
+            simp only [heq] at hhead ⊢
+            exact ih fuel' s' hhead
+          | «return» v s => simp only [heq] at hhead ⊢; exact hhead
+          | stop s => simp only [heq] at hhead ⊢; exact hhead
+          | revert s => simp only [heq] at hhead ⊢; exact hhead
+          | «leave» s => simp only [heq] at hhead ⊢; exact hhead
 theorem exec_compileStmtList_generic_sizeOf_extraFuel_step
     {fields : List Field}
     {runtime : SourceSemantics.RuntimeState}

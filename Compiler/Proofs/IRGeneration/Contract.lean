@@ -287,14 +287,16 @@ private theorem filterInternalFunctions_eq_nil_of_supported
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpec model selectors) :
-    model.functions.filter (·.isInternal) = [] := by
-      sorry
+    model.functions.filter (·.isInternal) = [] :=
+  filterInternalFunctions_eq_nil_of_all_nonInternal model.functions
+    (fun fn hfn => (hSupported.functions fn hfn).nonInternal)
 private theorem filterInternalFunctions_eq_nil_of_supported_except_mapping_writes
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpecExceptMappingWrites model selectors) :
-    model.functions.filter (·.isInternal) = [] := by
-      sorry
+    model.functions.filter (·.isInternal) = [] :=
+  filterInternalFunctions_eq_nil_of_all_nonInternal model.functions
+    (fun fn hfn => (hSupported.functions fn hfn).nonInternal)
 private theorem compileValidatedCore_ok_yields_internalFunctions_nil
     (model : CompilationModel)
     (selectors : List Nat)
@@ -308,15 +310,15 @@ theorem supported_params_of_supportedSpec
     (selectors : List Nat)
     (hSupported : SupportedSpec model selectors) :
     ∀ fn ∈ selectorDispatchedFunctions model,
-      ∀ param ∈ fn.params, SupportedExternalParamType param.ty := by
-        sorry
+      ∀ param ∈ fn.params, SupportedExternalParamType param.ty :=
+  fun fn hfn => hSupported.selectorFunctionParamsSupported hfn
 theorem supported_params_of_supportedSpec_except_mapping_writes
     (model : CompilationModel)
     (selectors : List Nat)
     (hSupported : SupportedSpecExceptMappingWrites model selectors) :
     ∀ fn ∈ selectorDispatchedFunctions model,
-      ∀ param ∈ fn.params, SupportedExternalParamType param.ty := by
-        sorry
+      ∀ param ∈ fn.params, SupportedExternalParamType param.ty :=
+  fun fn hfn => hSupported.selectorFunctionParamsSupported hfn
 theorem interpretIR_eq_runtimeContractOfFunctions
     (ir : IRContract)
     (runtimeName : String)
@@ -326,7 +328,7 @@ theorem interpretIR_eq_runtimeContractOfFunctions
     (hfunctions : ir.functions = irFns) :
     interpretIR ir tx initialState =
       interpretIR (Dispatch.runtimeContractOfFunctions runtimeName irFns) tx initialState := by
-        sorry
+    simp only [interpretIR, Dispatch.runtimeContractOfFunctions, hfunctions]
 theorem interpretContract_correct_of_ir_functions
     (model : CompilationModel)
     (selectors : List Nat)
@@ -355,7 +357,10 @@ theorem interpretContract_correct_of_ir_functions
     FunctionBody.sourceResultMatchesIRResult
       (SourceSemantics.interpretContract model selectors tx initialWorld)
       (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-        sorry
+    rw [interpretIR_eq_runtimeContractOfFunctions ir model.name irFns tx
+          (FunctionBody.initialIRStateForTx model tx initialWorld) hfunctions]
+    exact Dispatch.interpretContract_correct_of_compiled_functions
+      model selectors irFns tx initialWorld hcompiled hparamsSupported hfunction
 theorem compile_preserves_semantics_of_compiled_functions
     (model : CompilationModel)
     (selectors : List Nat)
@@ -382,8 +387,9 @@ theorem compile_preserves_semantics_of_compiled_functions
           (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld))) :
     FunctionBody.sourceResultMatchesIRResult
       (SourceSemantics.interpretContract model selectors tx initialWorld)
-      (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-        sorry
+      (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  interpretContract_correct_of_ir_functions model selectors ir ir.functions tx initialWorld
+    rfl hcompiled hparamsSupported hfunction
 /-- Derive the compiled runtime function table directly from
 `CompilationModel.compile = Except.ok ir` and `SupportedSpec`, without any
 intermediate `List.Forall₂` hypothesis supplied by callers. -/

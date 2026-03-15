@@ -688,11 +688,11 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.filterInternalFunctions_eq_nil_of_supported  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.filterInternalFunctions_eq_nil_of_supported_except_mapping_writes  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.compileValidatedCore_ok_yields_internalFunctions_nil  -- private
--- #print axioms Compiler.Proofs.IRGeneration.Contract.supported_params_of_supportedSpec  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.Contract.supported_params_of_supportedSpec_except_mapping_writes  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.Contract.interpretIR_eq_runtimeContractOfFunctions  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.Contract.supported_params_of_supportedSpec
+#print axioms Compiler.Proofs.IRGeneration.Contract.supported_params_of_supportedSpec_except_mapping_writes
+#print axioms Compiler.Proofs.IRGeneration.Contract.interpretIR_eq_runtimeContractOfFunctions
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.interpretContract_correct_of_ir_functions  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_of_compiled_functions  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.Contract.compile_preserves_semantics_of_compiled_functions
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_compiled_functions  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_compiled_functions_except_mapping_writes  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_internalFunctions_nil  -- sorry
@@ -1785,4 +1785,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1654 theorems/lemmas (981 active, 419 private, 254 sorry)
+-- Total: 1654 theorems/lemmas (985 active, 419 private, 250 sorry)

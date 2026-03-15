@@ -398,7 +398,10 @@ theorem compile_ok_yields_compiled_functions
         compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
       (SourceSemantics.selectorFunctionPairs model selectors)
       ir.functions := by
-        sorry
+    have hcore : compileValidatedCore model selectors = Except.ok ir := by
+      simp only [CompilationModel.compile, bind, Except.bind] at hcompile
+      revert hcompile; cases validateCompileInputs model selectors <;> simp_all
+    exact compileValidatedCore_ok_yields_compiled_functions model selectors hSupported ir hcore
 theorem compile_ok_yields_compiled_functions_except_mapping_writes
     (model : CompilationModel)
     (selectors : List Nat)
@@ -410,7 +413,11 @@ theorem compile_ok_yields_compiled_functions_except_mapping_writes
         compileFunctionSpec model.fields model.events model.errors entry.2 entry.1 = Except.ok irFn)
       (SourceSemantics.selectorFunctionPairs model selectors)
       ir.functions := by
-        sorry
+    have hcore : compileValidatedCore model selectors = Except.ok ir := by
+      simp only [CompilationModel.compile, bind, Except.bind] at hcompile
+      revert hcompile; cases validateCompileInputs model selectors <;> simp_all
+    exact compileValidatedCore_ok_yields_compiled_functions_except_mapping_writes
+      model selectors hSupported ir hcore
 theorem compile_ok_yields_internalFunctions_nil
     (model : CompilationModel)
     (selectors : List Nat)
@@ -418,7 +425,10 @@ theorem compile_ok_yields_internalFunctions_nil
     (ir : IRContract)
     (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
     ir.internalFunctions = [] := by
-      sorry
+    have hcore : compileValidatedCore model selectors = Except.ok ir := by
+      simp only [CompilationModel.compile, bind, Except.bind] at hcompile
+      revert hcompile; cases validateCompileInputs model selectors <;> simp_all
+    exact compileValidatedCore_ok_yields_internalFunctions_nil model selectors hSupported ir hcore
 private def compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface
     (model : CompilationModel)
     (selectors : List Nat)
@@ -432,7 +442,11 @@ def compile_ok_yields_supportedRuntimeHelperTableInterface
     (ir : IRContract)
     (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
     SupportedRuntimeHelperTableInterface model ir := by
-      sorry
+    have hcore : compileValidatedCore model selectors = Except.ok ir := by
+      simp only [CompilationModel.compile, bind, Except.bind] at hcompile
+      revert hcompile; cases validateCompileInputs model selectors <;> simp_all
+    exact compileValidatedCore_ok_yields_supportedRuntimeHelperTableInterface
+      model selectors ir hcore
 /-- On the current `SupportedSpec` fragment, successful external-function
 compilation already yields legacy-compatible helper-free IR bodies. -/
 theorem compileFunctionSpec_ok_yields_legacyCompatibleExternalStmtList
@@ -499,8 +513,9 @@ theorem compile_ok_yields_legacyCompatibleRuntimeContract
     (hSupported : SupportedSpec model selectors)
     (ir : IRContract)
     (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
-    LegacyCompatibleRuntimeContract ir := by
-      sorry
+    LegacyCompatibleRuntimeContract ir :=
+  ⟨compile_ok_yields_internalFunctions_nil model selectors hSupported ir hcompile,
+   compile_ok_yields_legacyCompatibleExternalBodies model selectors hSupported ir hcompile⟩
 /-- Generic function-level closure from `SupportedSpec` and successful
 `compileFunctionSpec`, with no residual body-level premises such as `hsource`,
 `hbodyExec`, or `hmatch`. -/
@@ -576,8 +591,10 @@ theorem compileFunctionSpec_correct_generic_with_helper_proofs
     (hbind : SourceSemantics.bindSupportedParams fn.params tx.args = some bindings) :
     FunctionBody.sourceResultMatchesIRResult
       (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
-      (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-        sorry
+      (execIRFunction irFn tx.args (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  compileFunctionSpec_correct_generic
+    model selectors hSupported hvalidateInputs fn sel irFn tx initialWorld
+    htxNormalized bindings hcalldataSizeFits hfn hcompileFn hbind
 /-- Helper-aware compiled-side wrapper for the generic function theorem.
 This does not strengthen the current proof boundary by itself: it factors the
 eventual retarget from `execIRFunction` to `execIRFunctionWithInternals` behind
@@ -611,7 +628,10 @@ theorem compileFunctionSpec_correct_generic_with_helper_proofs_and_helper_ir
       (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
       (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-          sorry
+    rw [hhelperIR]
+    exact compileFunctionSpec_correct_generic_with_helper_proofs
+      model selectors hSupported hHelperProofs hvalidateInputs fn sel irFn tx initialWorld
+      htxNormalized bindings hcalldataSizeFits hfn hcompileFn hbind
 /-- Structured helper-aware compiled-side wrapper for the generic function
 theorem. This replaces the raw function-level conservative-extension equality
 premise by the compiled-body disjointness witness that proves it. -/
@@ -639,8 +659,13 @@ theorem compileFunctionSpec_correct_generic_with_helper_proofs_and_helper_ir_of_
     FunctionBody.sourceResultMatchesIRResult
       (supportedSourceFunctionSemantics model selectors hSupported fn tx initialWorld)
       (execIRFunctionWithInternals runtimeContract 0 irFn tx.args
-        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-          sorry
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  compileFunctionSpec_correct_generic_with_helper_proofs_and_helper_ir
+    model selectors hSupported hHelperProofs hvalidateInputs runtimeContract fn sel irFn
+    tx initialWorld htxNormalized bindings hcalldataSizeFits hfn hcompileFn hbind
+    (execIRFunctionWithInternals_eq_execIRFunction_of_bodyCallsDisjoint
+      runtimeContract irFn tx.args
+      (FunctionBody.initialIRStateForTx model tx initialWorld) hbodyDisjoint)
 -- /-- Narrow helper-aware compileFunctionSpec wrapper aligned with the current
 -- Tier 4 direct-helper seam. This keeps the public compile theorem on the exact
 -- helper-aware IR boundary while requiring callers to discharge only the direct
@@ -1395,8 +1420,9 @@ theorem compile_preserves_semantics_with_helper_proofs
     (hcompile : CompilationModel.compile model selectors = Except.ok ir) :
     FunctionBody.sourceResultMatchesIRResult
       (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
-      (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-        sorry
+      (interpretIR ir tx (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  compile_preserves_semantics model selectors hSupported ir tx initialWorld
+    htxNormalized hcalldataSizeFits hcompile
 /-- Helper-aware compiled-side wrapper for the whole-contract theorem.
 The remaining compiled-side blocker is exactly the conservative-extension proof
 that supplies `hhelperIR`; once that theorem is available, the public Layer 2
@@ -1422,7 +1448,10 @@ theorem compile_preserves_semantics_with_helper_proofs_and_helper_ir
       (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
       (interpretIRWithInternals ir 0 tx
         (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-          sorry
+    rw [hhelperIR]
+    exact compile_preserves_semantics_with_helper_proofs
+      model selectors hSupported hHelperProofs ir tx initialWorld
+      htxNormalized hcalldataSizeFits hcompile
 /-- Structured helper-aware whole-contract wrapper.
 This consumes the named compiled-side conservative-extension target together
 with its explicit runtime-contract compatibility witness, instead of requiring
@@ -1444,8 +1473,11 @@ theorem compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal
     FunctionBody.sourceResultMatchesIRResult
       (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
       (interpretIRWithInternals ir 0 tx
-        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-          sorry
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  compile_preserves_semantics_with_helper_proofs_and_helper_ir
+    model selectors hSupported hHelperProofs ir tx initialWorld
+    htxNormalized hcalldataSizeFits hcompile
+    (hhelperIRGoal hlegacyIR tx (FunctionBody.initialIRStateForTx model tx initialWorld))
 /-- Disjointness-based helper-aware whole-contract wrapper.
 This replaces the legacy-compatible runtime assumption with the weaker
 `DisjointRuntimeContract` boundary that future helper-table compilation should
@@ -1465,8 +1497,12 @@ theorem compile_preserves_semantics_with_helper_proofs_and_helper_ir_of_disjoint
     FunctionBody.sourceResultMatchesIRResult
       (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
       (interpretIRWithInternals ir 0 tx
-        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-          sorry
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  compile_preserves_semantics_with_helper_proofs_and_helper_ir
+    model selectors hSupported hHelperProofs ir tx initialWorld
+    htxNormalized hcalldataSizeFits hcompile
+    (interpretIRWithInternalsZeroConservativeExtensionGoalOfDisjoint_closed ir
+      hdisjointIR tx (FunctionBody.initialIRStateForTx model tx initialWorld))
 /-- Direct helper-aware whole-contract theorem on the current legacy-compatible
 runtime-contract boundary. The helper-aware compiled-side conservative-extension
 goal is now closed in `IRInterpreter.lean`, so theorem users no longer need to
@@ -1486,8 +1522,11 @@ theorem compile_preserves_semantics_with_helper_proofs_and_helper_ir_closed
     FunctionBody.sourceResultMatchesIRResult
       (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
       (interpretIRWithInternals ir 0 tx
-        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-          sorry
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  compile_preserves_semantics_with_helper_proofs_and_helper_ir_goal
+    model selectors hSupported hHelperProofs ir tx initialWorld
+    htxNormalized hcalldataSizeFits hcompile hlegacyIR
+    (interpretIRWithInternalsZeroConservativeExtensionGoal_closed ir)
 /-- On the current `SupportedSpec` theorem domain, the helper-aware whole-contract
 wrapper no longer needs callers to provide a manual legacy-compatibility witness:
 successful `CompilationModel.compile` already yields the required runtime shape. -/
@@ -1505,8 +1544,11 @@ theorem compile_preserves_semantics_with_helper_proofs_and_helper_ir_supported
     FunctionBody.sourceResultMatchesIRResult
       (supportedSourceContractSemantics model selectors hSupported tx initialWorld)
       (interpretIRWithInternals ir 0 tx
-        (FunctionBody.initialIRStateForTx model tx initialWorld)) := by
-          sorry
+        (FunctionBody.initialIRStateForTx model tx initialWorld)) :=
+  compile_preserves_semantics_with_helper_proofs_and_helper_ir_closed
+    model selectors hSupported hHelperProofs ir tx initialWorld
+    htxNormalized hcalldataSizeFits hcompile
+    (compile_ok_yields_legacyCompatibleRuntimeContract model selectors hSupported ir hcompile)
 /-- First direct consumer of the generic Layer 2 theorem surface: the existing
 supported single-function demo model can now obtain whole-contract correctness
 by instantiating `compile_preserves_semantics`, with no contract-specific body
@@ -1523,8 +1565,9 @@ theorem counter_supported_spec_compile_preserves_semantics
       (supportedSourceContractSemantics
         counterSupportedSpecModel [0xa87d942c] counter_supported_spec tx initialWorld)
       (interpretIR ir tx
-        (FunctionBody.initialIRStateForTx counterSupportedSpecModel tx initialWorld)) := by
-          sorry
+        (FunctionBody.initialIRStateForTx counterSupportedSpecModel tx initialWorld)) :=
+  compile_preserves_semantics counterSupportedSpecModel [0xa87d942c]
+    counter_supported_spec ir tx initialWorld htxNormalized hcalldataSizeFits hcompile
 end Contract
 
 end Compiler.Proofs.IRGeneration

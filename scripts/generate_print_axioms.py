@@ -40,8 +40,8 @@ def file_to_module(path: Path) -> str:
     return ".".join(rel.parts)
 
 
-def extract_theorems(path: Path) -> list[tuple[str, bool, bool]]:
-    """Extract (fully_qualified_name, is_private, is_sorry) triples from a Lean file.
+def extract_theorems(path: Path) -> list[tuple[str, bool, bool, list[str]]]:
+    """Extract (fully_qualified_name, is_private, is_sorry, proof_lines) from a Lean file.
 
     FQN construction: In Lean 4 the fully-qualified name of a declaration is
     determined by the namespace stack, not the module (file) path. So a theorem
@@ -60,6 +60,10 @@ def extract_theorems(path: Path) -> list[tuple[str, bool, bool]]:
     with ``:= by sorry`` or ``:= by\\n  sorry``.  We scan forward from
     the theorem declaration until we find the ``:= by`` proof opener,
     then check if the next non-blank line is ``sorry``.
+
+    Transitive sorry propagation happens in ``generate()`` after all files
+    are parsed: any theorem whose proof body references a sorry'd theorem
+    (by local name) is also marked sorry.
     """
     text = path.read_text()
     stripped_text = strip_lean_comments(text)
@@ -67,7 +71,7 @@ def extract_theorems(path: Path) -> list[tuple[str, bool, bool]]:
 
     # Track namespace stack (each entry is a dotted namespace name)
     ns_stack: list[str] = []
-    results: list[tuple[str, bool, bool]] = []
+    results: list[tuple[str, bool, bool, list[str]]] = []
 
     i = 0
     while i < len(lines):
@@ -123,7 +127,13 @@ def extract_theorems(path: Path) -> list[tuple[str, bool, bool]]:
             # looking for `:= by` and then checking if the proof body
             # is just `sorry`.
             is_sorry = False
-            for j in range(i, min(i + 50, len(lines))):
+            proof_lines: list[str] = []
+            proof_started = False
+            _NEXT_DECL_RE = re.compile(
+                r"^(?:@\[[^\]]*\]\s*)*(?:private\s+)?(?:protected\s+)?"
+                r"(?:theorem|lemma|def|structure|inductive|class|instance|namespace|section|end)\b"
+            )
+            for j in range(i, min(i + 500, len(lines))):
                 check_line = lines[j].strip()
                 # `:= by sorry` on one line
                 if ":= by sorry" in check_line:
@@ -131,6 +141,7 @@ def extract_theorems(path: Path) -> list[tuple[str, bool, bool]]:
                     break
                 # `:= by` ending a line — check next non-blank for sorry
                 if check_line.endswith(":= by"):
+                    proof_started = True
                     for k in range(j + 1, min(j + 4, len(lines))):
                         next_line = lines[k].strip()
                         if not next_line:
@@ -138,20 +149,21 @@ def extract_theorems(path: Path) -> list[tuple[str, bool, bool]]:
                         if next_line == "sorry":
                             is_sorry = True
                         break
-                    break
+                    if is_sorry:
+                        break
+                    continue
                 # `:= sorry` (term-mode sorry)
                 if check_line.endswith(":= sorry"):
                     is_sorry = True
                     break
-                # Hit next declaration — stop looking
-                if j > i and re.match(
-                    r"^(?:@\[[^\]]*\]\s*)*(?:private\s+)?(?:protected\s+)?"
-                    r"(?:theorem|lemma|def|structure|inductive|class|instance|namespace|section|end)\b",
-                    check_line,
-                ):
+                # Hit next declaration — stop collecting proof body
+                if j > i and _NEXT_DECL_RE.match(check_line):
                     break
+                # Collect proof body lines (after := by)
+                if proof_started and check_line:
+                    proof_lines.append(check_line)
 
-            results.append((fqn, is_private, is_sorry))
+            results.append((fqn, is_private, is_sorry, proof_lines))
 
         i += 1
 
@@ -185,23 +197,90 @@ def generate() -> str:
         and str(f.relative_to(ROOT)) not in EXCLUDED_PATHS
     ]
 
+    # Collect all theorems from all files
+    file_theorems: list[tuple[Path, list[tuple[str, bool, bool, list[str]]]]] = []
+    for path in all_files:
+        theorems = extract_theorems(path)
+        if theorems:
+            file_theorems.append((path, theorems))
+
+    # Build set of directly sorry'd local names (for transitive detection)
+    sorry_local_names: set[str] = set()
+    for _, theorems in file_theorems:
+        for fqn, is_private, is_sorry, _ in theorems:
+            if is_sorry:
+                # Add both the FQN and the local name (last component)
+                sorry_local_names.add(fqn)
+                sorry_local_names.add(fqn.rsplit(".", 1)[-1])
+
+    # Propagate sorry transitively: if a non-sorry theorem's proof body
+    # references any sorry'd theorem (by local name), mark it sorry too.
+    # Repeat until fixpoint to handle multi-level chains.
+    # We use word-boundary matching to avoid false positives from substring
+    # overlap (e.g. "lookupBinding?_some_of_mem" matching inside
+    # "bindSupportedParams_lookupBinding?_some_of_mem").
+    all_theorems_flat: list[tuple[str, bool, bool, list[str]]] = [
+        t for _, theorems in file_theorems for t in theorems
+    ]
+
+    def _body_references_sorry(body_text: str, sorry_names: set[str]) -> bool:
+        """Check if body_text references any sorry'd name as a whole identifier."""
+        for sname in sorry_names:
+            idx = 0
+            while True:
+                pos = body_text.find(sname, idx)
+                if pos == -1:
+                    break
+                # Check word boundary: char before must be non-alnum/underscore
+                # (or start of string), char after must be non-alnum/underscore
+                # (or end of string).
+                before_ok = pos == 0 or not (body_text[pos - 1].isalnum() or body_text[pos - 1] == "_")
+                end = pos + len(sname)
+                after_ok = end == len(body_text) or not (body_text[end].isalnum() or body_text[end] == "_")
+                if before_ok and after_ok:
+                    return True
+                idx = pos + 1
+        return False
+
+    changed = True
+    while changed:
+        changed = False
+        new_sorry_names: set[str] = set()
+        for fqn, is_private, is_sorry, proof_lines in all_theorems_flat:
+            if is_sorry or is_private:
+                continue
+            if fqn in sorry_local_names or fqn.rsplit(".", 1)[-1] in sorry_local_names:
+                continue
+            body_text = " ".join(proof_lines)
+            if _body_references_sorry(body_text, sorry_local_names):
+                new_sorry_names.add(fqn)
+                new_sorry_names.add(fqn.rsplit(".", 1)[-1])
+        if new_sorry_names - sorry_local_names:
+            sorry_local_names |= new_sorry_names
+            changed = True
+
+    # Build the sorry FQN set for output
+    sorry_fqns: set[str] = set()
+    for fqn, is_private, is_sorry, proof_lines in all_theorems_flat:
+        if is_sorry or is_private:
+            continue
+        local = fqn.rsplit(".", 1)[-1]
+        if fqn in sorry_local_names or local in sorry_local_names:
+            sorry_fqns.add(fqn)
+
     imports: list[str] = []
     sections: list[str] = []
 
-    for path in all_files:
-        theorems = extract_theorems(path)
-        if not theorems:
-            continue
-
+    for path, theorems in file_theorems:
         module = file_to_module(path)
         imports.append(f"import {module}")
 
         rel = path.relative_to(ROOT)
         lines = [f"\n-- {rel}"]
-        for fqn, is_private, is_sorry in theorems:
+        for fqn, is_private, is_sorry, _ in theorems:
             if is_private:
                 lines.append(f"-- #print axioms {fqn}  -- private")
-            elif is_sorry:
+            elif is_sorry or fqn in sorry_fqns:
                 lines.append(f"-- #print axioms {fqn}  -- sorry")
             else:
                 lines.append(f"#print axioms {fqn}")
@@ -210,21 +289,21 @@ def generate() -> str:
 
     active_count = sum(
         1
-        for path in all_files
-        for _, priv, sorry in extract_theorems(path)
-        if not priv and not sorry
+        for _, theorems in file_theorems
+        for fqn, priv, sorry, _ in theorems
+        if not priv and not sorry and fqn not in sorry_fqns
     )
     private_count = sum(
         1
-        for path in all_files
-        for _, priv, _ in extract_theorems(path)
+        for _, theorems in file_theorems
+        for _, priv, _, _ in theorems
         if priv
     )
     sorry_count = sum(
         1
-        for path in all_files
-        for _, priv, sorry in extract_theorems(path)
-        if sorry and not priv
+        for _, theorems in file_theorems
+        for fqn, priv, sorry, _ in theorems
+        if (sorry or fqn in sorry_fqns) and not priv
     )
     total = active_count + private_count + sorry_count
 

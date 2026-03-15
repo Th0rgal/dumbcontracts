@@ -471,6 +471,14 @@ ALLOWLIST: set[str] = {
     # constructors: 9 supported cases dispatch to helper lemmas, 29 unsupported
     # cases derive contradiction from stmtTouchesUnsupportedContractSurface.
     "legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface",
+    # The exceptMappingWrites surface theorem (155 lines) exhaustively case-splits
+    # on all 38 Stmt constructors: 18 supported cases dispatch to helper lemmas
+    # (9 original + 9 mapping-related), 20 unsupported derive contradiction.
+    "legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface_exceptMappingWrites",
+    # The compileSetStructMember2 helper (75 lines) handles nested match on
+    # isMapping2, findStructMembers, findStructMember, findFieldWriteSlots,
+    # 3 compileExpr binds, slots match, and member.packed match.
+    "legacyCompatibleExternalStmtList_of_compileSetStructMember2_ok",
 }
 
 # Directories containing proof files to scan.

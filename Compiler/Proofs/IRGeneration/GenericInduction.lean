@@ -498,6 +498,17 @@ private theorem legacyCompatibleExternalStmtList_of_letBindings
         | nil => simp; exact hrest
         | cons b bs ih => exact .let_ b.1 b.2 _ ih
 
+private theorem legacyCompatibleExternalStmtList_of_all
+    {stmts : List YulStmt}
+    (h : ∀ s ∈ stmts, LegacyCompatibleExternalStmt s) :
+    LegacyCompatibleExternalStmtList stmts := by
+      induction stmts with
+      | nil => exact .nil
+      | cons hd tl ih =>
+        exact legacyCompatibleExternalStmtList_append
+          (h hd List.mem_cons_self)
+          (ih (fun s hs => h s (List.mem_cons_of_mem _ hs)))
+
 /-- The current helper-free compiled theorem target already accepts the scalar
 storage write emitted by `compileSetStorage` when packed-field writes are
 excluded. -/
@@ -826,7 +837,26 @@ private theorem legacyCompatibleExternalStmtList_of_compileMappingSlotWrite_ok
       CompilationModel.compileMappingSlotWrite fields field keyExpr valueExpr label wordOffset =
         Except.ok bodyIR) :
     LegacyCompatibleExternalStmtList bodyIR := by
-      sorry
+      simp only [CompilationModel.compileMappingSlotWrite] at hcompile
+      split at hcompile
+      · simp at hcompile -- !isMapping → error
+      · split at hcompile -- findFieldWriteSlots
+        · next slots =>
+          split at hcompile -- match slots
+          · simp at hcompile -- [] → error
+          · next singleSlot =>
+            cases hcompile; exact .expr _ [] .nil
+          · next a as =>
+            cases hcompile
+            apply LegacyCompatibleExternalStmtList.block _ []
+            · exact .let_ _ _ _
+                (.let_ _ _ _
+                  (legacyCompatibleExternalStmtList_of_all_expr
+                    (fun s hs => by
+                      simp [List.mem_map] at hs
+                      obtain ⟨slot', _, rfl⟩ := hs; exact ⟨_, rfl⟩)))
+            · exact .nil
+        · simp at hcompile -- none → error
 private theorem legacyCompatibleExternalStmtList_of_compileSetMapping2_ok
     {fields : List Field}
     {dynamicSource : DynamicDataSource}
@@ -837,7 +867,260 @@ private theorem legacyCompatibleExternalStmtList_of_compileSetMapping2_ok
       CompilationModel.compileSetMapping2 fields dynamicSource field key1 key2 value =
         Except.ok bodyIR) :
     LegacyCompatibleExternalStmtList bodyIR := by
-      sorry
+      simp only [CompilationModel.compileSetMapping2] at hcompile
+      split at hcompile
+      · simp at hcompile -- !isMapping2 → error
+      · split at hcompile -- findFieldWriteSlots
+        · next slots =>
+          simp only [bind, Except.bind, pure, Except.pure] at hcompile
+          split at hcompile -- ← compileExpr key1
+          · simp at hcompile
+          · split at hcompile -- ← compileExpr key2
+            · simp at hcompile
+            · split at hcompile -- ← compileExpr value
+              · simp at hcompile
+              · next valueExpr =>
+                split at hcompile -- match slots
+                · simp at hcompile -- [] → error
+                · next singleSlot =>
+                  cases hcompile; exact .expr _ [] .nil
+                · next a as =>
+                  cases hcompile
+                  apply LegacyCompatibleExternalStmtList.block _ []
+                  · exact .let_ _ _ _
+                      (.let_ _ _ _
+                        (.let_ _ _ _
+                          (legacyCompatibleExternalStmtList_of_all_expr
+                            (fun s hs => by
+                              simp [List.mem_map] at hs
+                              obtain ⟨slot', _, rfl⟩ := hs; exact ⟨_, rfl⟩))))
+                  · exact .nil
+        · simp at hcompile -- none → error
+private theorem legacyCompatibleExternalStmtList_of_compileMappingPackedSlotWrite_ok
+    {fields : List Field}
+    {field : String}
+    {keyExpr valueExpr : YulExpr}
+    {wordOffset : Nat}
+    {packed : PackedBits}
+    {label : String}
+    {bodyIR : List YulStmt}
+    (hcompile :
+      CompilationModel.compileMappingPackedSlotWrite fields field keyExpr valueExpr
+        wordOffset packed label = Except.ok bodyIR) :
+    LegacyCompatibleExternalStmtList bodyIR := by
+      simp only [CompilationModel.compileMappingPackedSlotWrite] at hcompile
+      split at hcompile
+      · simp at hcompile -- !isMapping → error
+      · split at hcompile
+        · simp at hcompile -- !packedBitsValid → error
+        · split at hcompile -- findFieldWriteSlots
+          · next slots =>
+            split at hcompile -- match slots
+            · simp at hcompile -- [] → error
+            · next singleSlot =>
+              cases hcompile
+              exact .block _ [] (.let_ _ _ _ (.let_ _ _ _ (.let_ _ _ _ (.let_ _ _ _ (.expr _ _ .nil))))) .nil
+            · next a as =>
+              cases hcompile
+              apply LegacyCompatibleExternalStmtList.block _ []
+              · exact .let_ _ _ _
+                  (.let_ _ _ _
+                    (.let_ _ _ _
+                      (legacyCompatibleExternalStmtList_of_all
+                        (fun s hs => by
+                          simp [List.mem_map] at hs
+                          obtain ⟨slot', _, rfl⟩ := hs
+                          exact .block _ [] (.let_ _ _ _ (.let_ _ _ _ (.expr _ _ .nil))) .nil))))
+              · exact .nil
+          · simp at hcompile -- none → error
+private theorem legacyCompatibleExternalStmtList_of_compileSetMapping2Word_ok
+    {fields : List Field}
+    {dynamicSource : DynamicDataSource}
+    {field : String}
+    {key1 key2 : Expr}
+    {wordOffset : Nat}
+    {value : Expr}
+    {bodyIR : List YulStmt}
+    (hcompile :
+      CompilationModel.compileSetMapping2Word fields dynamicSource field key1 key2 wordOffset value =
+        Except.ok bodyIR) :
+    LegacyCompatibleExternalStmtList bodyIR := by
+      simp only [CompilationModel.compileSetMapping2Word] at hcompile
+      split at hcompile
+      · simp at hcompile
+      · split at hcompile
+        · next slots =>
+          simp only [bind, Except.bind, pure, Except.pure] at hcompile
+          split at hcompile
+          · simp at hcompile
+          · split at hcompile
+            · simp at hcompile
+            · split at hcompile
+              · simp at hcompile
+              · next valueExpr =>
+                split at hcompile
+                · simp at hcompile
+                · next singleSlot =>
+                  cases hcompile; exact .expr _ [] .nil
+                · next a as =>
+                  cases hcompile
+                  apply LegacyCompatibleExternalStmtList.block _ []
+                  · exact .let_ _ _ _
+                      (.let_ _ _ _
+                        (.let_ _ _ _
+                          (legacyCompatibleExternalStmtList_of_all_expr
+                            (fun s hs => by
+                              simp [List.mem_map] at hs
+                              obtain ⟨slot', _, rfl⟩ := hs; exact ⟨_, rfl⟩))))
+                  · exact .nil
+        · simp at hcompile
+private theorem legacyCompatibleExternalStmtList_of_compileSetMappingChain_ok
+    {fields : List Field}
+    {dynamicSource : DynamicDataSource}
+    {field : String}
+    {keys : List Expr}
+    {value : Expr}
+    {bodyIR : List YulStmt}
+    (hcompile :
+      CompilationModel.compileSetMappingChain fields dynamicSource field keys value =
+        Except.ok bodyIR) :
+    LegacyCompatibleExternalStmtList bodyIR := by
+      simp only [CompilationModel.compileSetMappingChain] at hcompile
+      split at hcompile
+      · simp at hcompile
+      · split at hcompile
+        · next slots =>
+          simp only [bind, Except.bind, pure, Except.pure] at hcompile
+          split at hcompile -- ← compileExprList
+          · simp at hcompile
+          · split at hcompile -- ← compileExpr
+            · simp at hcompile
+            · next valueExpr =>
+              split at hcompile -- match slots
+              · simp at hcompile
+              · next singleSlot =>
+                cases hcompile; exact .expr _ [] .nil
+              · next a as =>
+                cases hcompile
+                apply LegacyCompatibleExternalStmtList.block _ []
+                · exact legacyCompatibleExternalStmtList_append
+                    (.let_ _ _ _
+                      (legacyCompatibleExternalStmtList_of_all
+                        (fun s hs => by
+                          have := List.mem_map.mp hs
+                          obtain ⟨pair, _, rfl⟩ := this
+                          exact .let_ _ _ _ .nil)))
+                    (legacyCompatibleExternalStmtList_of_all_expr
+                      (fun s hs => by
+                        simp [List.mem_map] at hs
+                        obtain ⟨slot', _, rfl⟩ := hs; exact ⟨_, rfl⟩))
+                · exact .nil
+        · simp at hcompile
+private theorem legacyCompatibleExternalStmtList_of_compileSetStructMember_ok
+    {fields : List Field}
+    {dynamicSource : DynamicDataSource}
+    {field : String}
+    {key : Expr}
+    {memberName : String}
+    {value : Expr}
+    {bodyIR : List YulStmt}
+    (hcompile :
+      CompilationModel.compileSetStructMember fields dynamicSource field key memberName value =
+        Except.ok bodyIR) :
+    LegacyCompatibleExternalStmtList bodyIR := by
+      simp only [CompilationModel.compileSetStructMember, bind, Except.bind, pure, Except.pure]
+        at hcompile
+      split at hcompile
+      · simp at hcompile -- isMapping2 → error
+      · split at hcompile -- findStructMembers
+        · simp at hcompile -- none → error
+        · next members =>
+          split at hcompile -- findStructMember
+          · simp at hcompile -- none → error
+          · next member =>
+            split at hcompile -- member.packed
+            · -- none → compileMappingSlotWrite
+              split at hcompile
+              · simp at hcompile
+              · split at hcompile
+                · simp at hcompile
+                · exact legacyCompatibleExternalStmtList_of_compileMappingSlotWrite_ok hcompile
+            · -- some packed → compileMappingPackedSlotWrite
+              split at hcompile
+              · simp at hcompile
+              · split at hcompile
+                · simp at hcompile
+                · exact legacyCompatibleExternalStmtList_of_compileMappingPackedSlotWrite_ok hcompile
+private theorem legacyCompatibleExternalStmtList_of_compileSetStructMember2_ok
+    {fields : List Field}
+    {dynamicSource : DynamicDataSource}
+    {field : String}
+    {key1 key2 : Expr}
+    {memberName : String}
+    {value : Expr}
+    {bodyIR : List YulStmt}
+    (hcompile :
+      CompilationModel.compileSetStructMember2 fields dynamicSource field key1 key2 memberName value =
+        Except.ok bodyIR) :
+    LegacyCompatibleExternalStmtList bodyIR := by
+      simp only [CompilationModel.compileSetStructMember2] at hcompile
+      split at hcompile
+      · simp at hcompile -- !isMapping2 → error
+      · split at hcompile -- findStructMembers
+        · simp at hcompile -- none → error
+        · next members =>
+          split at hcompile -- findStructMember
+          · simp at hcompile -- none → error
+          · next member =>
+            split at hcompile -- findFieldWriteSlots
+            · next slots =>
+              simp only [bind, Except.bind, pure, Except.pure] at hcompile
+              split at hcompile -- ← compileExpr key1
+              · simp at hcompile
+              · split at hcompile -- ← compileExpr key2
+                · simp at hcompile
+                · split at hcompile -- ← compileExpr value
+                  · simp at hcompile
+                  · next valueExpr =>
+                    split at hcompile -- match slots
+                    · simp at hcompile -- [] → error
+                    · next singleSlot =>
+                      split at hcompile -- member.packed
+                      · cases hcompile; exact .expr _ [] .nil -- none → sstore
+                      · next packed =>
+                        cases hcompile
+                        exact .block _ []
+                          (.let_ _ _ _ (.let_ _ _ _ (.let_ _ _ _ (.let_ _ _ _ (.expr _ _ .nil)))))
+                          .nil
+                    · next a as =>
+                      split at hcompile -- member.packed
+                      · -- none → block with sstore exprs
+                        cases hcompile
+                        apply LegacyCompatibleExternalStmtList.block _ []
+                        · exact .let_ _ _ _
+                            (.let_ _ _ _
+                              (.let_ _ _ _
+                                (legacyCompatibleExternalStmtList_of_all_expr
+                                  (fun s hs => by
+                                    simp [List.mem_map] at hs
+                                    obtain ⟨slot', _, rfl⟩ := hs; exact ⟨_, rfl⟩))))
+                        · exact .nil
+                      · -- some packed → block with packed storage writes
+                        cases hcompile
+                        apply LegacyCompatibleExternalStmtList.block _ []
+                        · exact .let_ _ _ _
+                            (.let_ _ _ _
+                              (.block _ []
+                                (.let_ _ _ _
+                                  (.let_ _ _ _
+                                    (legacyCompatibleExternalStmtList_of_all
+                                      (fun s hs => by
+                                        simp [List.mem_map] at hs
+                                        obtain ⟨slot', _, rfl⟩ := hs
+                                        exact .block _ [] (.let_ _ _ _ (.let_ _ _ _ (.expr _ _ .nil))) .nil))))
+                                .nil))
+                        · exact .nil
+            · simp at hcompile -- none → error
 /-- On the Tier 2 alternate contract surface, successful single-statement
 compilation still stays inside the legacy helper-free external Yul subset. This
 extends the exact helper-aware compiled seam to the already-proved singleton
@@ -854,7 +1137,148 @@ theorem legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractS
       CompilationModel.compileStmt
         fields [] [] .calldata [] false inScopeNames stmt = Except.ok bodyIR) :
     LegacyCompatibleExternalStmtList bodyIR := by
-      sorry
+      cases stmt with
+      | letVar name value =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_letVar hcompile
+      | assignVar name value =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_assignVar hcompile
+      | setStorage fieldName value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPackedFields
+          hnoPacked hcompile
+      | setStorageAddr fieldName value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPackedFields
+          hnoPacked hcompile
+      | require cond message =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_require hcompile
+      | «return» value =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_return hcompile
+      | stop =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_stop hcompile
+      | mstore offset value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · next oExpr =>
+          split at hcompile
+          · simp at hcompile
+          · next vExpr =>
+            cases hcompile; exact .expr _ [] .nil
+      | tstore offset value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · next oExpr =>
+          split at hcompile
+          · simp at hcompile
+          · next vExpr =>
+            cases hcompile; exact .expr _ [] .nil
+      -- 9 mapping constructors newly supported on the Tier 2 surface
+      | setMapping field key value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · split at hcompile
+          · simp at hcompile
+          · exact legacyCompatibleExternalStmtList_of_compileMappingSlotWrite_ok hcompile
+      | setMappingWord field key wordOffset value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · split at hcompile
+          · simp at hcompile
+          · exact legacyCompatibleExternalStmtList_of_compileMappingSlotWrite_ok hcompile
+      | setMappingPackedWord field key wordOffset packed value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · split at hcompile
+          · simp at hcompile
+          · exact legacyCompatibleExternalStmtList_of_compileMappingPackedSlotWrite_ok hcompile
+      | setMapping2 field key1 key2 value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetMapping2_ok hcompile
+      | setMapping2Word field key1 key2 wordOffset value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetMapping2Word_ok hcompile
+      | setMappingUint field key value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · split at hcompile
+          · simp at hcompile
+          · exact legacyCompatibleExternalStmtList_of_compileMappingSlotWrite_ok hcompile
+      | setMappingChain field keys value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetMappingChain_ok hcompile
+      | setStructMember field key memberName value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetStructMember_ok hcompile
+      | setStructMember2 field key1 key2 memberName value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetStructMember2_ok hcompile
+      -- unsupported cases: derive contradiction from hsurface
+      | ite _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | storageArrayPush _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | storageArrayPop _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | setStorageArrayElement _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | requireError _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | revertError _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnValues _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnArray _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnBytes _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnStorageWords _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | calldatacopy _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | returndataCopy _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | revertReturndata =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | forEach _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | emit _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | internalCall _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | internalCallAssign _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | rawLog _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | externalCallBind _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
+      | ecm _ _ =>
+        simp [stmtTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              stmtTouchesUnsupportedContractSurface] at hsurface
 /-- Tier 2 list-level legacy-compatibility witness for the alternate singleton
 mapping-write surface. -/
 theorem stmtListCompiledLegacyCompatible_of_supportedContractSurface_exceptMappingWrites
@@ -864,7 +1288,17 @@ theorem stmtListCompiledLegacyCompatible_of_supportedContractSurface_exceptMappi
     (hnoPacked : ∀ field ∈ fields, field.packedBits = none)
     (hsurface : stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites stmts = false) :
     StmtListCompiledLegacyCompatible fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons s ss ih =>
+        simp [stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              Bool.or_eq_false_iff] at hsurface
+        obtain ⟨hsHead, hsTail⟩ := hsurface
+        exact .cons
+          (fun _ hcomp =>
+            legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface_exceptMappingWrites
+              hnoPacked hsHead hcomp)
+          (ih hsTail)
 /-- Tier 2 exact-seam helper-free compiled compatibility witness. -/
 theorem stmtListHelperFreeCompiledLegacyCompatible_of_supportedContractSurface_exceptMappingWrites
     {fields : List Field}
@@ -892,7 +1326,19 @@ theorem stmtListHelperFreeCompiledCallsDisjoint_of_supportedContractSurface_exce
     (hsurface : stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites stmts = false)
     (hinternal : runtimeContract.internalFunctions = []) :
     StmtListHelperFreeCompiledCallsDisjoint runtimeContract fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons s ss ih =>
+        simp [stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites,
+              Bool.or_eq_false_iff] at hsurface
+        obtain ⟨hsHead, hsTail⟩ := hsurface
+        exact .cons
+          (fun _ _ hcomp =>
+            YulStmtListCallsDisjointFromInternalTable_of_internalFunctions_nil
+              runtimeContract hinternal _
+              (legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface_exceptMappingWrites
+                hnoPacked hsHead hcomp))
+          (ih hsTail)
 /-- Any full helper-free generic statement-list proof also gives the weaker
 source-side reuse witness needed by the future helper-rich exact seam: only the
 helper-free heads retain the old generic-step obligation. -/

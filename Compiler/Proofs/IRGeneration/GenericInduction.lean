@@ -1508,7 +1508,29 @@ private theorem collectExprNames_mem_exprBoundNames_of_core
     {expr : Expr}
     (hcore : FunctionBody.ExprCompileCore expr) :
     ∀ name, name ∈ collectExprNames expr → name ∈ FunctionBody.exprBoundNames expr := by
-      sorry
+      induction hcore with
+      | literal => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | param => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | localVar => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | caller => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | contractAddress => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | msgValue => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | blockTimestamp => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | blockNumber => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | chainid => simp [collectExprNames, FunctionBody.exprBoundNames]
+      | logicalNot _ ih =>
+        simp [collectExprNames, FunctionBody.exprBoundNames]; exact ih
+      | add _ _ ihl ihr | sub _ _ ihl ihr | mul _ _ ihl ihr
+      | div _ _ ihl ihr | mod _ _ ihl ihr
+      | eq _ _ ihl ihr | lt _ _ ihl ihr | gt _ _ ihl ihr
+      | ge _ _ ihl ihr | le _ _ ihl ihr
+      | logicalAnd _ _ ihl ihr | logicalOr _ _ ihl ihr =>
+        intro name hmem
+        simp only [collectExprNames, List.mem_append] at hmem
+        simp only [FunctionBody.exprBoundNames, List.mem_append]
+        cases hmem with
+        | inl h => exact Or.inl (ihl name h)
+        | inr h => exact Or.inr (ihr name h)
 private theorem stmtListScopeDiscipline_scope_names
     {fieldNames : List String}
     {scope : List String}
@@ -1568,8 +1590,12 @@ theorem compiledStmtStep_return
 theorem compiledStmtStep_stop
     {fields : List Field}
     {scope : List String} :
-    CompiledStmtStep fields scope .stop [YulStmt.expr (YulExpr.call "stop" [])] := by
-      sorry
+    CompiledStmtStep fields scope .stop [YulStmt.expr (YulExpr.call "stop" [])] where
+  compileOk := by simp [CompilationModel.compileStmt, pure, Except.pure]
+  preserves := by
+    intro runtime state extraFuel _hexact _hscope _hbounded hruntime _hfuel
+    exact ⟨.stop runtime, .stop state, rfl,
+      by simp [execIRStmts], by simp [stmtStepMatchesIRExec]; exact hruntime⟩
 private theorem encodeStorageAt_writeUintSlots_singleton_other
     {fields : List Field}
     {world : Verity.ContractState}
@@ -2267,7 +2293,7 @@ private theorem execIRStmts_single_block_of_continue
     (body : List YulStmt)
     (hbody : execIRStmts fuel state body = .continue next) :
     execIRStmts (fuel + 2) state [YulStmt.block body] = .continue next := by
-      sorry
+      simp [execIRStmts, execIRStmt, hbody]
 private theorem compatValue_not_mem_scope_of_reservedPrefix
     {scope : List String}
     (hscopeReserved : scopeAvoidsReservedCompilerPrefix scope) :
@@ -3605,12 +3631,53 @@ private theorem stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites_app
             simp only [List.cons_append,
               stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites, ih,
               Bool.or_assoc]
+private theorem exprCompileCore_requireLiteralGuardFamilyClause
+    (clause : Verity.Core.Free.RequireLiteralGuardFamilyClause) :
+    FunctionBody.ExprCompileCore
+      (match clause.family with
+        | .binary .eq => Expr.eq (.literal clause.n) (.literal clause.m)
+        | .binary .notEq => Expr.logicalNot (.eq (.literal clause.n) (.literal clause.m))
+        | .binary .lt => Expr.lt (.literal clause.n) (.literal clause.m)
+        | .binary .gt => Expr.gt (.literal clause.n) (.literal clause.m)
+        | .binary .ge => Expr.ge (.literal clause.n) (.literal clause.m)
+        | .binary .le => Expr.le (.literal clause.n) (.literal clause.m)
+        | .andEqLt => Expr.logicalAnd (.eq (.literal clause.n) (.literal clause.m))
+            (.lt (.literal clause.p) (.literal clause.q))
+        | .orEqLt => Expr.logicalOr (.eq (.literal clause.n) (.literal clause.m))
+            (.lt (.literal clause.p) (.literal clause.q))) := by
+  cases clause with | mk family n m p q message =>
+  cases family with
+  | binary guard =>
+    cases guard with
+    | eq => exact .eq (.literal _) (.literal _)
+    | notEq => exact .logicalNot (.eq (.literal _) (.literal _))
+    | lt => exact .lt (.literal _) (.literal _)
+    | gt => exact .gt (.literal _) (.literal _)
+    | ge => exact .ge (.literal _) (.literal _)
+    | le => exact .le (.literal _) (.literal _)
+  | andEqLt => exact .logicalAnd (.eq (.literal _) (.literal _)) (.lt (.literal _) (.literal _))
+  | orEqLt => exact .logicalOr (.eq (.literal _) (.literal _)) (.lt (.literal _) (.literal _))
 private theorem stmtListCompileCore_of_requireLiteralGuardFamilyClauses
     {scope : List String}
     (clauses : List Verity.Core.Free.RequireLiteralGuardFamilyClause) :
     FunctionBody.StmtListCompileCore scope
       (clauses.map Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt) := by
-        sorry
+        induction clauses with
+        | nil => exact .nil
+        | cons clause rest ih =>
+          simp only [List.map_cons]
+          unfold Verity.Core.Free.RequireLiteralGuardFamilyClause.toStmt
+          apply FunctionBody.StmtListCompileCore.require_
+          · exact exprCompileCore_requireLiteralGuardFamilyClause clause
+          · intro name hmem
+            cases clause with | mk family n m p q message =>
+            cases family with
+            | binary guard =>
+              cases guard <;>
+                simp [FunctionBody.exprBoundNames] at hmem
+            | andEqLt | orEqLt =>
+              simp [FunctionBody.exprBoundNames] at hmem
+          · exact ih
 private theorem stmtNextScope_requireLiteralGuardFamilyClause
     {scope : List String}
     (clause : Verity.Core.Free.RequireLiteralGuardFamilyClause) :

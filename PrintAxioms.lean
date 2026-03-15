@@ -1124,7 +1124,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.compiledStmtStep_assignVar  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.compiledStmtStep_require  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.compiledStmtStep_return  -- sorry
--- #print axioms Compiler.Proofs.IRGeneration.compiledStmtStep_stop  -- sorry
+#print axioms Compiler.Proofs.IRGeneration.compiledStmtStep_stop
 -- #print axioms Compiler.Proofs.IRGeneration.encodeStorageAt_writeUintSlots_singleton_other  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.encodeStorageAt_writeUintSlots_other  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.encodeStorageAt_writeUintKeyedMappingSlots_singleton_other  -- private
@@ -1200,6 +1200,7 @@ import Compiler.Proofs.YulGeneration.Equivalence
 -- #print axioms Compiler.Proofs.IRGeneration.compiledStmtStep_ite  -- sorry
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedContractSurface_append  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListTouchesUnsupportedContractSurfaceExceptMappingWrites_append  -- private
+-- #print axioms Compiler.Proofs.IRGeneration.exprCompileCore_requireLiteralGuardFamilyClause  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtListCompileCore_of_requireLiteralGuardFamilyClauses  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.stmtNextScope_requireLiteralGuardFamilyClause  -- private
 -- #print axioms Compiler.Proofs.IRGeneration.foldl_stmtNextScope_requireLiteralGuardFamilyClauses  -- private
@@ -1792,4 +1793,4 @@ import Compiler.Proofs.YulGeneration.Equivalence
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_fuel_goal_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv_and_adequacy
 #print axioms Compiler.Proofs.YulGeneration.ir_yul_function_equiv_from_state_of_stmt_equiv
--- Total: 1661 theorems/lemmas (1006 active, 426 private, 229 sorry)
+-- Total: 1662 theorems/lemmas (1007 active, 427 private, 228 sorry)

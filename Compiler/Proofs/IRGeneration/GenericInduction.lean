@@ -459,6 +459,45 @@ private theorem legacyCompatibleExternalStmtList_revertWithMessage
     LegacyCompatibleExternalStmtList (revertWithMessage message) :=
   legacyCompat_of_all_expr _ (revertWithMessage_all_expr message)
 
+private theorem legacyCompatibleExternalStmtList_append
+    {xs ys : List YulStmt}
+    (hxs : LegacyCompatibleExternalStmtList xs)
+    (hys : LegacyCompatibleExternalStmtList ys) :
+    LegacyCompatibleExternalStmtList (xs ++ ys) := by
+      induction hxs with
+      | nil => exact hys
+      | comment msg rest _ ih => exact .comment msg _ ih
+      | let_ n v rest _ ih => exact .let_ n v _ ih
+      | assign n v rest _ ih => exact .assign n v _ ih
+      | expr v rest _ ih => exact .expr v _ ih
+      | if_ c body rest hbody _ _ ihrest => exact .if_ c body _ hbody ihrest
+      | block body rest hbody _ _ ihrest => exact .block body _ hbody ihrest
+      | funcDef n p r body rest hbody _ _ ihrest => exact .funcDef n p r body _ hbody ihrest
+private theorem legacyCompatibleExternalStmtList_of_exprMap
+    (exprs : List YulExpr) :
+    LegacyCompatibleExternalStmtList (exprs.map YulStmt.expr) := by
+      induction exprs with
+      | nil => exact .nil
+      | cons e es ih => exact .expr e _ ih
+private theorem legacyCompatibleExternalStmtList_of_all_expr
+    {stmts : List YulStmt}
+    (h : ∀ s ∈ stmts, ∃ e, s = YulStmt.expr e) :
+    LegacyCompatibleExternalStmtList stmts := by
+      induction stmts with
+      | nil => exact .nil
+      | cons hd tl ih =>
+        obtain ⟨e, rfl⟩ := h hd List.mem_cons_self
+        exact .expr e _ (ih (fun s hs => h s (List.mem_cons_of_mem _ hs)))
+private theorem legacyCompatibleExternalStmtList_of_letBindings
+    (bindings : List (String × YulExpr))
+    (rest : List YulStmt)
+    (hrest : LegacyCompatibleExternalStmtList rest) :
+    LegacyCompatibleExternalStmtList
+      (bindings.map (fun binding => YulStmt.let_ binding.1 binding.2) ++ rest) := by
+        induction bindings with
+        | nil => simp; exact hrest
+        | cons b bs ih => exact .let_ b.1 b.2 _ ih
+
 /-- The current helper-free compiled theorem target already accepts the scalar
 storage write emitted by `compileSetStorage` when packed-field writes are
 excluded. -/
@@ -467,12 +506,65 @@ theorem legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPackedFiel
     {fieldName : String}
     {value : Expr}
     {bodyIR : List YulStmt}
+    {requireAddressField : Bool}
     (hnoPacked : ∀ field ∈ fields, field.packedBits = none)
     (hcompile :
-      CompilationModel.compileSetStorage fields .calldata fieldName value =
-        Except.ok bodyIR) :
+      CompilationModel.compileSetStorage fields .calldata fieldName value
+        requireAddressField = Except.ok bodyIR) :
     LegacyCompatibleExternalStmtList bodyIR := by
-      sorry
+      simp only [CompilationModel.compileSetStorage] at hcompile
+      split at hcompile
+      · simp at hcompile -- isMapping → error
+      · split at hcompile
+        · next f slot hfind =>
+          have hpacked : f.packedBits = none :=
+            hnoPacked f (findFieldWithResolvedSlot_mem hfind)
+          simp only [bind, Except.bind, pure, Except.pure] at hcompile
+          -- handle the requireAddressField guard
+          split at hcompile
+          · -- requireAddressField = true → match f.ty
+            split at hcompile
+            · -- .address → pure ()
+              split at hcompile -- compileExpr
+              · simp at hcompile
+              · next valueExpr =>
+                split at hcompile -- slots
+                · simp at hcompile
+                · next singleSlot =>
+                  simp [hpacked] at hcompile; cases hcompile
+                  exact .expr _ [] .nil
+                · next a as =>
+                  simp [hpacked] at hcompile; cases hcompile
+                  apply LegacyCompatibleExternalStmtList.block _ []
+                  · exact .let_ _ _ _
+                      (.expr _ _
+                        (legacyCompatibleExternalStmtList_of_all_expr
+                          (fun s hs => by
+                            simp [List.mem_map, Function.comp] at hs
+                            obtain ⟨slot', _, rfl⟩ := hs; exact ⟨_, rfl⟩)))
+                  · exact .nil
+            · -- non-address → throw
+              simp at hcompile
+          · -- requireAddressField = false → skip guard
+            split at hcompile -- compileExpr
+            · simp at hcompile
+            · next valueExpr =>
+              split at hcompile -- slots
+              · simp at hcompile
+              · next singleSlot =>
+                simp [hpacked] at hcompile; cases hcompile
+                exact .expr _ [] .nil
+              · next a as =>
+                simp [hpacked] at hcompile; cases hcompile
+                apply LegacyCompatibleExternalStmtList.block _ []
+                · exact .let_ _ _ _
+                    (.expr _ _
+                      (legacyCompatibleExternalStmtList_of_all_expr
+                        (fun s hs => by
+                          simp [List.mem_map, Function.comp] at hs
+                          obtain ⟨slot', _, rfl⟩ := hs; exact ⟨_, rfl⟩)))
+                · exact .nil
+        · simp at hcompile -- none → error
 private theorem legacyCompatibleExternalStmtList_of_compileStmt_ok_letVar
     {fields : List Field}
     {inScopeNames : List String}
@@ -559,7 +651,82 @@ theorem legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractS
       CompilationModel.compileStmt
         fields [] [] .calldata [] false inScopeNames stmt = Except.ok bodyIR) :
     LegacyCompatibleExternalStmtList bodyIR := by
-      sorry
+      cases stmt with
+      | letVar name value =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_letVar hcompile
+      | assignVar name value =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_assignVar hcompile
+      | setStorage fieldName value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPackedFields
+          hnoPacked hcompile
+      | setStorageAddr fieldName value =>
+        simp only [compileStmt] at hcompile
+        exact legacyCompatibleExternalStmtList_of_compileSetStorage_ok_of_noPackedFields
+          hnoPacked hcompile
+      | require cond message =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_require hcompile
+      | «return» value =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_return hcompile
+      | stop =>
+        exact legacyCompatibleExternalStmtList_of_compileStmt_ok_stop hcompile
+      | mstore offset value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · next oExpr =>
+          split at hcompile
+          · simp at hcompile
+          · next vExpr =>
+            cases hcompile; exact .expr _ [] .nil
+      | tstore offset value =>
+        simp only [compileStmt, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile
+        · simp at hcompile
+        · next oExpr =>
+          split at hcompile
+          · simp at hcompile
+          · next vExpr =>
+            cases hcompile; exact .expr _ [] .nil
+      | ite _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | storageArrayPush _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | storageArrayPop _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setStorageArrayElement _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setMapping _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setMappingWord _ _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setMappingPackedWord _ _ _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setMapping2 _ _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setMapping2Word _ _ _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setMappingUint _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setMappingChain _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setStructMember _ _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | setStructMember2 _ _ _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | requireError _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | revertError _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnValues _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnArray _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnBytes _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | returnStorageWords _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | calldatacopy _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | returndataCopy _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | revertReturndata => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | forEach _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | emit _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | internalCall _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | internalCallAssign _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | rawLog _ _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | externalCallBind _ _ _ =>
+        simp [stmtTouchesUnsupportedContractSurface] at hsurface
+      | ecm _ _ => simp [stmtTouchesUnsupportedContractSurface] at hsurface
 /-- On the current supported contract surface, successful statement-list
 compilation stays inside the legacy helper-free external Yul subset. -/
 theorem legacyCompatibleExternalStmtList_of_compileStmtList_ok_on_supportedContractSurface
@@ -573,7 +740,25 @@ theorem legacyCompatibleExternalStmtList_of_compileStmtList_ok_on_supportedContr
       CompilationModel.compileStmtList
         fields [] [] .calldata [] false inScopeNames stmts = Except.ok bodyIR) :
     LegacyCompatibleExternalStmtList bodyIR := by
-      sorry
+      induction stmts generalizing inScopeNames bodyIR with
+      | nil =>
+        simp [compileStmtList, pure, Except.pure] at hcompile
+        subst hcompile; exact .nil
+      | cons s ss ih =>
+        simp [stmtListTouchesUnsupportedContractSurface, Bool.or_eq_false_iff] at hsurface
+        obtain ⟨hsHead, hsTail⟩ := hsurface
+        simp only [compileStmtList, bind, Except.bind, pure, Except.pure] at hcompile
+        split at hcompile -- compileStmt
+        · simp at hcompile
+        · next headIR =>
+          split at hcompile -- compileStmtList recursive
+          · simp at hcompile
+          · next tailIR =>
+            cases hcompile
+            exact legacyCompatibleExternalStmtList_append
+              (legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface
+                hnoPacked hsHead ‹_›)
+              (ih hsTail ‹_›)
 /-- Derive the compiled-side legacy-compatibility witness needed by the exact
 helper-aware induction seam from the existing supported contract-surface scan. -/
 theorem stmtListCompiledLegacyCompatible_of_supportedContractSurface
@@ -583,7 +768,16 @@ theorem stmtListCompiledLegacyCompatible_of_supportedContractSurface
     (hnoPacked : ∀ field ∈ fields, field.packedBits = none)
     (hsurface : stmtListTouchesUnsupportedContractSurface stmts = false) :
     StmtListCompiledLegacyCompatible fields scope stmts := by
-      sorry
+      induction stmts generalizing scope with
+      | nil => exact .nil
+      | cons s ss ih =>
+        simp [stmtListTouchesUnsupportedContractSurface, Bool.or_eq_false_iff] at hsurface
+        obtain ⟨hsHead, hsTail⟩ := hsurface
+        exact .cons
+          (fun _ hcomp =>
+            legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface
+              hnoPacked hsHead hcomp)
+          (ih hsTail)
 /-- Any list-level compiled witness for full legacy compatibility also suffices
 for the weaker exact-seam witness that only constrains helper-free heads. -/
 theorem stmtListHelperFreeCompiledLegacyCompatible_of_compiledLegacyCompatible
@@ -609,22 +803,18 @@ theorem stmtListHelperFreeCompiledCallsDisjoint_of_supportedContractSurface
     (hsurface : stmtListTouchesUnsupportedContractSurface stmts = false)
     (hinternal : runtimeContract.internalFunctions = []) :
     StmtListHelperFreeCompiledCallsDisjoint runtimeContract fields scope stmts := by
-      sorry
-private theorem legacyCompatibleExternalStmtList_of_exprMap
-    (exprs : List YulExpr) :
-    LegacyCompatibleExternalStmtList (exprs.map YulStmt.expr) := by
-      induction exprs with
+      induction stmts generalizing scope with
       | nil => exact .nil
-      | cons e es ih => exact .expr e _ ih
-private theorem legacyCompatibleExternalStmtList_of_letBindings
-    (bindings : List (String × YulExpr))
-    (rest : List YulStmt)
-    (hrest : LegacyCompatibleExternalStmtList rest) :
-    LegacyCompatibleExternalStmtList
-      (bindings.map (fun binding => YulStmt.let_ binding.1 binding.2) ++ rest) := by
-        induction bindings with
-        | nil => simp; exact hrest
-        | cons b bs ih => exact .let_ b.1 b.2 _ ih
+      | cons s ss ih =>
+        simp [stmtListTouchesUnsupportedContractSurface, Bool.or_eq_false_iff] at hsurface
+        obtain ⟨hsHead, hsTail⟩ := hsurface
+        exact .cons
+          (fun _ _ hcomp =>
+            YulStmtListCallsDisjointFromInternalTable_of_internalFunctions_nil
+              runtimeContract hinternal _
+              (legacyCompatibleExternalStmtList_of_compileStmt_ok_on_supportedContractSurface
+                hnoPacked hsHead hcomp))
+          (ih hsTail)
 private theorem legacyCompatibleExternalStmtList_of_compileMappingSlotWrite_ok
     {fields : List Field}
     {field : String}

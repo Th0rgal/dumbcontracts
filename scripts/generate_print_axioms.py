@@ -40,8 +40,8 @@ def file_to_module(path: Path) -> str:
     return ".".join(rel.parts)
 
 
-def extract_theorems(path: Path) -> list[tuple[str, bool]]:
-    """Extract (fully_qualified_name, is_private) pairs from a Lean file.
+def extract_theorems(path: Path) -> list[tuple[str, bool, bool]]:
+    """Extract (fully_qualified_name, is_private, is_sorry) triples from a Lean file.
 
     FQN construction: In Lean 4 the fully-qualified name of a declaration is
     determined by the namespace stack, not the module (file) path. So a theorem
@@ -55,6 +55,11 @@ def extract_theorems(path: Path) -> list[tuple[str, bool]]:
     Comment handling: Uses the shared ``strip_lean_comments`` lexer which
     correctly handles nested block comments, inline block comments, line
     comments, and string literals.
+
+    Sorry detection: A theorem is marked sorry'd if its proof body ends
+    with ``:= by sorry`` or ``:= by\\n  sorry``.  We scan forward from
+    the theorem declaration until we find the ``:= by`` proof opener,
+    then check if the next non-blank line is ``sorry``.
     """
     text = path.read_text()
     stripped_text = strip_lean_comments(text)
@@ -62,19 +67,22 @@ def extract_theorems(path: Path) -> list[tuple[str, bool]]:
 
     # Track namespace stack (each entry is a dotted namespace name)
     ns_stack: list[str] = []
-    results: list[tuple[str, bool]] = []
+    results: list[tuple[str, bool, bool]] = []
 
-    for line in lines:
-        stripped = line.strip()
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
 
         # Skip blank lines
         if not stripped:
+            i += 1
             continue
 
         # Track namespace openings
         ns_match = re.match(r"^namespace\s+(\S+)", stripped)
         if ns_match:
             ns_stack.append(ns_match.group(1))
+            i += 1
             continue
 
         # Track namespace closings: only pop when ``end X`` matches the top
@@ -85,10 +93,12 @@ def extract_theorems(path: Path) -> list[tuple[str, bool]]:
             end_name = end_match.group(1)
             if ns_stack and ns_stack[-1] == end_name:
                 ns_stack.pop()
+            i += 1
             continue
 
         # Bare ``end`` (no name): closes mutual/section, never a namespace
         if stripped == "end":
+            i += 1
             continue
 
         # Match theorem/lemma declarations, including those with attribute
@@ -109,7 +119,41 @@ def extract_theorems(path: Path) -> list[tuple[str, bool]]:
             else:
                 fqn = f"{name}"
 
-            results.append((fqn, is_private))
+            # Detect sorry'd proofs: scan forward from the declaration
+            # looking for `:= by` and then checking if the proof body
+            # is just `sorry`.
+            is_sorry = False
+            for j in range(i, min(i + 50, len(lines))):
+                check_line = lines[j].strip()
+                # `:= by sorry` on one line
+                if ":= by sorry" in check_line:
+                    is_sorry = True
+                    break
+                # `:= by` ending a line — check next non-blank for sorry
+                if check_line.endswith(":= by"):
+                    for k in range(j + 1, min(j + 4, len(lines))):
+                        next_line = lines[k].strip()
+                        if not next_line:
+                            continue
+                        if next_line == "sorry":
+                            is_sorry = True
+                        break
+                    break
+                # `:= sorry` (term-mode sorry)
+                if check_line.endswith(":= sorry"):
+                    is_sorry = True
+                    break
+                # Hit next declaration — stop looking
+                if j > i and re.match(
+                    r"^(?:@\[[^\]]*\]\s*)*(?:private\s+)?(?:protected\s+)?"
+                    r"(?:theorem|lemma|def|structure|inductive|class|instance|namespace|section|end)\b",
+                    check_line,
+                ):
+                    break
+
+            results.append((fqn, is_private, is_sorry))
+
+        i += 1
 
     return results
 
@@ -154,26 +198,35 @@ def generate() -> str:
 
         rel = path.relative_to(ROOT)
         lines = [f"\n-- {rel}"]
-        for fqn, is_private in theorems:
+        for fqn, is_private, is_sorry in theorems:
             if is_private:
                 lines.append(f"-- #print axioms {fqn}  -- private")
+            elif is_sorry:
+                lines.append(f"-- #print axioms {fqn}  -- sorry")
             else:
                 lines.append(f"#print axioms {fqn}")
 
         sections.append("\n".join(lines))
 
-    public_count = sum(
+    active_count = sum(
         1
         for path in all_files
-        for _, priv in extract_theorems(path)
-        if not priv
+        for _, priv, sorry in extract_theorems(path)
+        if not priv and not sorry
     )
     private_count = sum(
         1
         for path in all_files
-        for _, priv in extract_theorems(path)
+        for _, priv, _ in extract_theorems(path)
         if priv
     )
+    sorry_count = sum(
+        1
+        for path in all_files
+        for _, priv, sorry in extract_theorems(path)
+        if sorry and not priv
+    )
+    total = active_count + private_count + sorry_count
 
     header = (
         "-- Auto-generated by scripts/generate_print_axioms.py\n"
@@ -182,8 +235,8 @@ def generate() -> str:
     )
 
     footer = (
-        f"\n-- Total: {public_count + private_count} theorems/lemmas"
-        f" ({public_count} public, {private_count} private)\n"
+        f"\n-- Total: {total} theorems/lemmas"
+        f" ({active_count} active, {private_count} private, {sorry_count} sorry)\n"
     )
 
     return header + "\n" + "\n".join(imports) + "\n" + "\n".join(sections) + footer
@@ -204,7 +257,8 @@ def main() -> None:
         print(f"OK: {OUTPUT} is up to date.")
     else:
         OUTPUT.write_text(content)
-        print(f"Generated {OUTPUT} with {content.count('#print axioms')} #print axioms statements.")
+        active = sum(1 for line in content.splitlines() if line.startswith("#print axioms"))
+        print(f"Generated {OUTPUT} with {active} active #print axioms statements.")
 
 
 if __name__ == "__main__":

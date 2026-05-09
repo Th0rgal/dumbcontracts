@@ -1059,6 +1059,9 @@ ALLOWLIST_REGEXES: tuple[re.Pattern[str], ...] = tuple(
     for pattern in (
         r"^compile_preserves_native_evmYulLean_",
         r"^nativeDispatcherExecMatchesIRPositive_of_buildSwitch_",
+        r"^nativeGenerated(?:SelectorHit|CallDispatcherResult|CallDispatcherMatchesIR)_",
+        r"^nativeGeneratedSelectorHit(?:SuccessUserBody)?LoweredArtifacts.*$",
+        r"^NativeGenerated(?:SelectorHit|SelectedUserBody).*",
         r"^contractDispatcherExecResult_buildSwitch_noFallback_noReceive_",
         r"^contractDispatcherExecResult_block_lowerNativeSwitchBlock_",
         r"^exec_(?:block_)?lowerNativeSwitchBlock_.*"
@@ -1073,12 +1076,32 @@ ALLOWLIST_REGEXES: tuple[re.Pattern[str], ...] = tuple(
         r"(?:mappingContract|nativePreservableStraightStmt|"
         r"lowerStmtGroupNativeWithSwitchIds_expr_|"
         r"lowerStmtsNativeWithSwitchIds_of_nativePreservableStraightStmts)",
+        r"^Native(?:MappingFreePreservableStraightStmt|PreservableStraightStmt)"
+        r"\.of_bridgedStraightStmt$",
+        r"^NativeStmtPreservesWord_(?:lowerStmtGroupNativeWithSwitchIds|"
+        r"of_mem_lowerStmtsNativeWithSwitchIds)_of_mappingFreePreservableStraightStmt",
+        r"^NativeStmtPreservesWord_let(?:Many)?_lowerExprNative_of_mappingFreeBridgedExpr$",
+        r"^NativeBlockPreservesWord_switchCaseBody_"
+        r"(?:payable|nonpayable)_of_user_body$",
         r"^native_(?:mappingSlot_call_preserves_lookup|"
         r"mappingSlot_call_preserves_lookup_state|"
         r"call_preserves_lookup_of_revivable_body)$",
+        r"^nativeGeneratedSelectorHitBodyPreservesMatched_of_user_body_preserves$",
+        r"^nativeGeneratedSelectorHit_success_of_user_body_exec_bridge_atFuel_revived.*$",
+        r"^nativeResultsMatchOn_execIRFunction_.*_markedPrefix$",
         r"^nativeMappingSlotFunctionDefinition_exec_revivable$",
+        r"^execIRFunction_(?:zeroParam|oneParam|mstore0)_.*$",
+        r"^projectResult_literalReturnHit_eq$",
+        r"^exec_block_(?:store0_calldataload4_stop|simpleStorageLoweredStoreCaseBodyTail2)"
+        r"_markedPrefix_halt$",
+        r"^exec_switchCaseBody_nonpayable_calldata_revert_fuel$",
+        r"^exec_if_lowerExprNative_lt_calldatasize_take_lt_revert_fuel$",
+        r"^lowerStmtGroupNativeWithSwitchIds_ok_of_yulStmtContainsFuncDef_false$",
+        r"^lowerStmtsNativeWithSwitchIds_switchCaseBody_payable_revert_eq$",
+        r"^lowerRuntimeContractNative_of_compile_ok_supported_exists$",
         r"^lowerStmtsNative(?:WithSwitchIds)?_buildSwitch_noFallback_noReceive_ok_block$",
         r"^lowerStmtsNativeWithSwitchIds_switchCaseBody_nonpayable_eq$",
+        r"^lowerStmtsNativeWithSwitchIds_switchCaseBody_nonpayable_revert_eq$",
         r"^sizeOf_(?:buildSwitch_noFallback_noReceive_ge_source_cases_length"
         r"(?:_plus24)?|emitYul_runtimeCode_mapping_ge_lowered_cases_length"
         r"(?:_plus24)?)$",

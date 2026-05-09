@@ -5940,7 +5940,7 @@ theorem validateGeneratedRuntimeNativeFragment_of_compile_ok_supported_except_ma
 /-- The direct generated-runtime `callDispatcher` result is the executable
 native harness result once the supported emitted runtime lowers successfully
 and its native environment is valid. -/
-theorem nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported
+private theorem nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported
     {spec : CompilationModel.CompilationModel} {selectors : List Nat}
     {irContract : IRContract}
     (tx : IRTransaction) (state : IRState) (observableSlots : List Nat)
@@ -5967,7 +5967,7 @@ theorem nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_low
   simp [nativeGeneratedCallDispatcherResultOf, Compiler.emitYul,
     Compiler.runtimeCode, Compiler.CodegenCommon.emitYul]
 
-theorem nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported_except_mapping_writes_stmt_safety
+private theorem nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported_except_mapping_writes_stmt_safety
     {spec : CompilationModel.CompilationModel} {selectors : List Nat}
     {irContract : IRContract}
     (tx : IRTransaction) (state : IRState) (observableSlots : List Nat)
@@ -10535,7 +10535,7 @@ This is the direct `nativeGeneratedCallDispatcherResultOf` selector-miss case:
 successful whole-runtime lowering is decomposed into the generated dispatcher
 shape, and the generic native selector-miss execution lemma supplies the
 projected native result match. -/
-theorem nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_of_compile_ok_supported
+private theorem nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)
@@ -10672,7 +10672,7 @@ theorem nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_exists_of_co
 When the selected generated function is non-payable and the transaction value is
 nonzero modulo the EVM word modulus, both the generated native dispatcher and
 the IR interpreter revert before entering the user body. -/
-theorem nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_of_compile_ok_supported
+private theorem nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)
@@ -10807,7 +10807,7 @@ theorem nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_reve
 When the selected generated function is value-safe but the transaction calldata
 does not contain all selected ABI arguments, both the generated native
 dispatcher and the IR interpreter revert before entering the user body. -/
-theorem nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_of_compile_ok_supported
+private theorem nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)
@@ -14397,7 +14397,7 @@ private theorem compile_preserves_native_evmYulLean_callDispatcher_selector_hit_
 The emitted-runtime mapping split and concrete dispatcher lowering are hidden.
 The remaining obligations are the selected lowered body error execution,
 projection of that native error, and the resulting IR/native match. -/
-theorem nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_of_compile_ok_supported
+private theorem nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)
@@ -14787,7 +14787,7 @@ The emitted-runtime mapping split and concrete dispatcher lowering are hidden.
 The remaining obligations are the selected lowered body normal execution,
 matched-flag preservation, projection of the restored native state, and the
 resulting IR/native match. -/
-theorem nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_of_compile_ok_supported
+private theorem nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)
@@ -14972,7 +14972,7 @@ with the selected-body result quantified inside the continuation.
 
 This exposes deterministic lowered selector-hit artifacts before the body proof
 chooses its normal `final/nativeYul` result. -/
-theorem nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_forall_of_compile_ok_supported
+private theorem nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_forall_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)
@@ -15250,7 +15250,7 @@ theorem nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_exists_of_
 Unlike the selector-hit success theorem, this exposes the selected native case
 body without fixing a `final` native state or projected `YulResult`. This is the
 artifact source needed by the future body-semantics bridge. -/
-theorem nativeGeneratedSelectorHitLoweredArtifacts_of_compile_ok_supported
+private theorem nativeGeneratedSelectorHitLoweredArtifacts_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)
@@ -15329,7 +15329,7 @@ The generic artifact theorem above exposes the selected generated
 `switchCaseBody fn` wrapper. This success-branch variant also exposes the
 lowered `fn.body` with the same final switch id, which is the exact native body
 target needed by the remaining function-body semantics bridge. -/
-theorem nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_of_compile_ok_supported
+private theorem nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_of_compile_ok_supported
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)

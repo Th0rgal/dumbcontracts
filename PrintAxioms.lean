@@ -988,8 +988,8 @@ end Verity.AxiomAudit
   Compiler.Proofs.EndToEnd.validateGeneratedRuntimeNativeFragment_of_compile_ok_supported_safeBodies
   Compiler.Proofs.EndToEnd.validateGeneratedRuntimeNativeFragment_of_compile_ok_supported
   Compiler.Proofs.EndToEnd.validateGeneratedRuntimeNativeFragment_of_compile_ok_supported_except_mapping_writes_stmt_safety
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported_except_mapping_writes_stmt_safety
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported  -- private
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported_except_mapping_writes_stmt_safety  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_ofIR_environment  -- private
@@ -1109,10 +1109,10 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_selector_miss_mapping_canonical  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_callDispatcher_selector_miss_mapping_canonical  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_callDispatcher_selector_miss_lowered_runtime  -- private
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_of_compile_ok_supported
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_of_compile_ok_supported  -- private
   Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_exists_of_compile_ok_supported
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_of_compile_ok_supported
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_of_compile_ok_supported
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_of_compile_ok_supported  -- private
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_of_compile_ok_supported  -- private
   Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_exists_of_compile_ok_supported
   Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_exists_of_compile_ok_supported
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_callDispatcher_selector_miss_lowered_runtime_selectors_range  -- private
@@ -1140,14 +1140,14 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_selector_hit_error_mapping_canonical  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_callDispatcher_selector_hit_error_mapping_canonical  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_callDispatcher_selector_hit_error_lowered_runtime  -- private
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_of_compile_ok_supported
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_of_compile_ok_supported  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_error_artifact_matchesIR_of_compile_ok_supported  -- private
   Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_exists_of_compile_ok_supported
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_of_compile_ok_supported
-  Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_forall_of_compile_ok_supported
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_of_compile_ok_supported  -- private
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_forall_of_compile_ok_supported  -- private
   Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_exists_of_compile_ok_supported
-  Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitLoweredArtifacts_of_compile_ok_supported
-  Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_of_compile_ok_supported
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitLoweredArtifacts_of_compile_ok_supported  -- private
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_of_compile_ok_supported  -- private
   Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitBodyHaltExecBridgeAtFuel.of_selected_user_body_halt  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitSuccessBridge.of_body_halt_exec_atFuel  -- private
@@ -5481,4 +5481,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5195 theorems/lemmas (3516 public, 1679 private, 0 sorry'd)
+-- Total: 5195 theorems/lemmas (3506 public, 1689 private, 0 sorry'd)

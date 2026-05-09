@@ -17305,6 +17305,22 @@ private theorem nativeStmtsWriteNames_not_mem_of_three_prefix
       (nativeStmtsWriteNames_not_mem_of_two_prefix name a b (c :: rest)
         hFresh)
 
+private theorem lowerStmtsNativeWithSwitchIds_ok_body_eq_of_same_input
+    (reservedNames : List String) (start : Nat)
+    (body : List Yul.YulStmt)
+    (bodyNative₁ bodyNative₂ : List EvmYul.Yul.Ast.Stmt)
+    (end₁ end₂ : Nat)
+    (h₁ :
+      Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+          reservedNames start body = .ok (bodyNative₁, end₁))
+    (h₂ :
+      Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+          reservedNames start body = .ok (bodyNative₂, end₂)) :
+    bodyNative₁ = bodyNative₂ ∧ end₁ = end₂ := by
+  rw [h₁] at h₂
+  simp only [Except.ok.injEq, Prod.mk.injEq] at h₂
+  exact h₂
+
 private theorem nativeGeneratedSelectedUserBodyMatchedFresh_payable_of_caseFresh
     (fn : IRFunction) (reservedNames : List String)
     (matchedName : String) (body' : List EvmYul.Yul.Ast.Stmt)

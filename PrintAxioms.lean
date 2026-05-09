@@ -1169,6 +1169,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_nativeStmtsWriteNames_not_mem  -- private
   -- Compiler.Proofs.EndToEnd.nativeStmtsWriteNames_not_mem_of_two_prefix  -- private
   -- Compiler.Proofs.EndToEnd.nativeStmtsWriteNames_not_mem_of_three_prefix  -- private
+  -- Compiler.Proofs.EndToEnd.lowerStmtsNativeWithSwitchIds_ok_body_eq_of_same_input  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectedUserBodyMatchedFresh_payable_of_caseFresh  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectedUserBodyMatchedFresh_nonpayable_of_caseFresh  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectedUserBodyMatchedFresh_of_switchFresh  -- private
@@ -5464,4 +5465,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5178 theorems/lemmas (3512 public, 1666 private, 0 sorry'd)
+-- Total: 5179 theorems/lemmas (3512 public, 1667 private, 0 sorry'd)

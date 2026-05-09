@@ -311,6 +311,11 @@ scope so the native path does not look more complete than it is:
   `generatedRuntimeSelectedFunctionBodyBridged_of_compile_ok_supported`,
   `lowerStmtsNativeWithSwitchIds_selectedFunctionBody_exists_of_compile_ok_supported`,
   `selectedFunctionBodyBridgedAndLowered_of_compile_ok_supported`, and
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.selected_body_closure_of_compile_ok_supported`,
+  which packages the selected `BridgedStmts` witness, selected native-body
+  lowering success, and generated calldata-threshold fact from `SupportedSpec +
+  compile` without claiming native execution semantics. The dispatcher
+  artifact handoff remains tracked by
   `nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported`.
   A fully closed
   `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_compile_ok_supported`

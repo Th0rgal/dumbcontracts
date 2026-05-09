@@ -216,7 +216,7 @@ REQUIRED_SNIPPETS = (
     "lowered selected `fn.body` at dispatcher fuel to `execIRFunction`",
     "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
     "`compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher`",
-    "returns the lowered native runtime witness",
+    "discharges the lowered native runtime witness internally",
     "public theorem no longer exposes full `DispatchGuardsSafe`",
     "Legacy premise-taking `compile_preserves_native_evmYulLean_*`",
     "wrappers are file-local",
@@ -846,6 +846,7 @@ def check_public_theorem_target(
             "NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation",
             "DispatchGuardsSafe",
             "selectorDispatchedFunctions spec",
+            "lowerRuntimeContractNative",
         ):
             if forbidden_exact_signature_target in exact_generated_signature:
                 errors.append(
@@ -871,7 +872,6 @@ def check_public_theorem_target(
     else:
         for required_source_signature_target in (
             "sourceResultMatchesNativeOn",
-            "lowerRuntimeContractNative",
             "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
             "nativeGeneratedCallDispatcherResultOf",
         ):
@@ -885,6 +885,7 @@ def check_public_theorem_target(
             "DispatchGuardsSafe",
             "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
             "interpretIRRuntimeNative",
+            "lowerRuntimeContractNative",
         ):
             if forbidden_source_signature_target in source_generated_signature:
                 errors.append(

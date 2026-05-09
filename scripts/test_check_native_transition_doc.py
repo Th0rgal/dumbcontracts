@@ -500,6 +500,44 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
             errors,
         )
 
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_lower_witness(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "nativeResultsMatchOn observableSlots",
+            "Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative\n"
+            "        (Compiler.emitYul irContract).runtimeCode = .ok nativeContract ∧\n"
+            "      nativeResultsMatchOn observableSlots",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("lowerRuntimeContractNative" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_source_level_lower_witness(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher",
+            "sourceResultMatchesNativeOn observableSlots",
+            "Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative\n"
+            "        (Compiler.emitYul irContract).runtimeCode = .ok nativeContract ∧\n"
+            "      sourceResultMatchesNativeOn observableSlots",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("lowerRuntimeContractNative" in error for error in errors),
+            errors,
+        )
+
     def test_public_theorem_target_guard_rejects_private_selected_user_body_halt_bridge(self) -> None:
         end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
             "def NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",

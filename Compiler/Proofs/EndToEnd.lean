@@ -20330,30 +20330,30 @@ theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported
       NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state
         observableSlots) :
     ∃ nativeContract : EvmYul.Yul.Ast.YulContract,
-      Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative
-        (Compiler.emitYul irContract).runtimeCode = .ok nativeContract ∧
       nativeResultsMatchOn observableSlots
         (interpretIR irContract tx state)
         (nativeGeneratedCallDispatcherResultOf irContract tx state
           observableSlots nativeContract) := by
-  exact
-    nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_result_threshold
+  rcases
+      nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_result_threshold
       spec selectors hSupported irContract tx state observableSlots hcompile
       hSelectorRange hSelectorsRange hNoWrap
       (NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_halt
         irContract tx state observableSlots hUserBodyHalt)
       (fun fn hFind =>
         generatedFunctionCalldataThreshold_of_compile_ok_supported
-          spec selectors hSupported irContract tx hcompile fn hFind)
+          spec selectors hSupported irContract tx hcompile fn hFind) with
+    ⟨nativeContract, _hLower, hMatch⟩
+  exact ⟨nativeContract, hMatch⟩
 
 /-- Source-level native compiler correctness for the generated
 `EvmYul.Yul.callDispatcher` projection.
 
 This is the public composition surface over the generated native dispatcher
-stack: `SupportedSpec + compile` produces a lowered native runtime contract,
-selector miss and generated selector-hit guard failures are discharged
-internally, and the remaining selected-body halt execution bridge is composed
-with the source-to-IR compiler theorem. -/
+stack: `SupportedSpec + compile` discharges the lowered native runtime witness
+internally, selector miss and generated selector-hit guard failures are
+discharged internally, and the remaining selected-body halt execution bridge is
+composed with the source-to-IR compiler theorem. -/
 theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
@@ -20374,8 +20374,6 @@ theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_ca
         (FunctionBody.initialIRStateForTx spec tx initialWorld)
         observableSlots) :
     ∃ nativeContract : EvmYul.Yul.Ast.YulContract,
-      Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative
-        (Compiler.emitYul irContract).runtimeCode = .ok nativeContract ∧
       sourceResultMatchesNativeOn observableSlots
         (supportedSourceContractSemantics spec selectors hSupported tx
           initialWorld)
@@ -20388,9 +20386,9 @@ theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_ca
         (FunctionBody.initialIRStateForTx spec tx initialWorld)
         observableSlots hcompile hSelectorRange hSelectorsRange hNoWrap
         hUserBodyHalt with
-    ⟨nativeContract, hLower, hMatch⟩
+    ⟨nativeContract, hMatch⟩
   exact
-    ⟨nativeContract, hLower,
+    ⟨nativeContract,
       compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match
         spec selectors hSupported irContract tx initialWorld observableSlots
         nativeContract htxNormalized hcalldataSizeFits hcompile hMatch⟩

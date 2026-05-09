@@ -244,6 +244,8 @@ REQUIRED_SNIPPETS = (
     "combines those lowered artifacts with the selected-body closure facts",
     "selectedUserBodyClosureAndMatchedFresh_of_compile_ok_supported_switchFresh",
     "recovers matched-flag freshness for the actual lowered user body",
+    "before the selected-body preservation callback loses the current",
+    "widen the preservation callback to carry",
     "singleton-`leave` base case",
     "execIRStmts_single_leave_succ_succ",
     "exec_block_leave_ok_add_ten",

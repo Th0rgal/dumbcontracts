@@ -324,7 +324,14 @@ scope so the native path does not look more complete than it is:
   available,
   `selectedUserBodyClosureAndMatchedFresh_of_compile_ok_supported_switchFresh`
   also strips the generated guard prefix and recovers matched-flag freshness
-  for the actual lowered user body.
+  for the actual lowered user body. That freshness handoff still has to be
+  consumed before the selected-body preservation callback loses the current
+  `hLowerCases` fact: the later result-bridge callback only sees the selected
+  `hBodyLower`/`hUserBodyLower` pair, while switch-case freshness is stated over
+  the full lowered `cases'` list. The next adapter should therefore stay at the
+  dispatcher artifact boundary, or widen the preservation callback to carry
+  `hLowerCases`, instead of trying to reconstruct whole-case freshness from a
+  selected body lowering alone.
   A fully closed
   `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_compile_ok_supported`
   lemma is still missing. The proof cannot be completed from the current

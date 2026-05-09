@@ -1427,8 +1427,8 @@ private theorem yulCodegen_preserves_semantics_via_reference_oracle
       yulStmtsLoopFree fn.body = true)
     (hbody : ∀ fn, fn ∈ contract.functions →
       resultsMatch
-        (execIRFunction fn tx.args (initialState.withTx tx))
-        (interpretYulBody fn tx (initialState.withTx tx))) :
+        (execIRFunction fn tx.args ({ initialState.withTx tx with returnValue := none }))
+        (interpretYulBody fn tx ({ initialState.withTx tx with returnValue := none }))) :
     resultsMatch
       (interpretIR contract tx initialState)
       (interpretYulFromIR contract tx initialState) := by
@@ -1547,7 +1547,13 @@ private theorem yulCodegen_preserves_semantics_via_reference_oracle
           have := sizeOf_append_ge_length_add prefix_ [switchStmt]; omega
         omega
       by_cases hlen : fn.params.length ≤ tx.args.length
-      · simpa [hlen] using
+      · have hNoValueRevert :
+            ¬ (fn.payable = false ∧ ¬tx.msgValue % evmModulus = 0) := by
+          intro h
+          rcases (hdispatchGuardSafe fn hmem).1 with hPayable | hZeroValue
+          · simp [h.1] at hPayable
+          · exact h.2 hZeroValue
+        simpa [hlen, hNoValueRevert] using
           (SwitchCaseBodyBridge fn tx
             { initialState with
               sender := tx.sender
@@ -1558,6 +1564,7 @@ private theorem yulCodegen_preserves_semantics_via_reference_oracle
               chainId := tx.chainId
               blobBaseFee := tx.blobBaseFee
               calldata := tx.args
+              returnValue := none
               selector := tx.functionSelector }
             (m + 2) (hHasSelectorDead fn hmem) (hNoHasSelector fn hmem)
             (hLoopFree fn hmem) hFuelBody (hdispatchGuardSafe fn hmem) hNoWrap hlen hmatch)
@@ -1572,6 +1579,7 @@ private theorem yulCodegen_preserves_semantics_via_reference_oracle
               chainId := tx.chainId
               blobBaseFee := tx.blobBaseFee
               calldata := tx.args
+              returnValue := none
               selector := tx.functionSelector }
             m (hdispatchGuardSafe fn hmem) hNoWrap hlen)
 

@@ -534,6 +534,47 @@ private theorem calldataToByteArray_fold_get?_left
                 omega
         _ = acc.get? i := byteArray_get?_append_left h
 
+private theorem calldataToByteArray_fold_get?_word
+    (wordBytes : Nat → ByteArray)
+    (hWord : ∀ w, (wordBytes w).size = 32)
+    (hByte :
+      ∀ w i, i < 32 →
+        (wordBytes w).get? i =
+          some (UInt8.ofNat (w / 2^((31 - i) * 8) % 256))) :
+    ∀ (acc : ByteArray) (calldata : List Nat) (idx arg : Nat)
+      (rest : List Nat) (i : Nat),
+      calldata.drop idx = arg :: rest →
+      i < 32 →
+      (calldata.foldl (init := acc) fun acc w => acc ++ wordBytes w).get?
+          (acc.size + 32 * idx + i) =
+        some (UInt8.ofNat (arg / 2^((31 - i) * 8) % 256)) := by
+  intro acc calldata idx
+  induction idx generalizing acc calldata with
+  | zero =>
+      intro arg rest i hdrop hi
+      simp only [List.drop_zero] at hdrop
+      subst calldata
+      simp only [List.foldl_cons]
+      rw [calldataToByteArray_fold_get?_left wordBytes hWord]
+      · rw [byteArray_get?_append_right]
+        · simpa using hByte arg i hi
+        · omega
+        · rw [ByteArray.size_append, hWord]
+          omega
+      · rw [ByteArray.size_append, hWord]
+        omega
+  | succ idx ih =>
+      intro arg rest i hdrop hi
+      cases calldata with
+      | nil =>
+          simp at hdrop
+      | cons head tail =>
+          simp only [List.drop_succ_cons] at hdrop
+          simp only [List.foldl_cons]
+          have h := ih (acc ++ wordBytes head) tail arg rest i hdrop hi
+          simpa [ByteArray.size_append, hWord, Nat.mul_add, Nat.add_assoc,
+            Nat.add_comm, Nat.add_left_comm] using h
+
 /-- The bridged calldata byte array has the same observable length as Verity's
     `calldatasize`: 4 selector bytes plus 32 bytes per calldata word. -/
 theorem calldataToByteArray_size (selector : Nat) (calldata : List Nat) :
@@ -670,23 +711,59 @@ theorem calldataToByteArray_arg0Byte
   have hWord : ∀ w, (wordBytes w).size = 32 := by
     intro w
     simp [wordBytes]
-  have hAccSize : (selectorBytes ++ wordBytes arg).size = 36 := by
-    rw [ByteArray.size_append]
-    simp [selectorBytes, wordBytes]
-  simp only [List.foldl_cons]
-  rw [calldataToByteArray_fold_get?_left wordBytes hWord]
-  · rw [byteArray_get?_append_right]
-    · unfold ByteArray.get?
-      split
-      · apply congrArg some
-        simp [ByteArray.get]
-      · rename_i hge
-        exact False.elim (hge (by simp; omega))
-    · simp
-    · rw [hAccSize]
-      omega
-  · rw [hAccSize]
-    omega
+  have hByte :
+      ∀ w i, i < 32 →
+        (wordBytes w).get? i =
+          some (UInt8.ofNat (w / 2^((31 - i) * 8) % 256)) := by
+    intro w i hi
+    unfold ByteArray.get?
+    split
+    · apply congrArg some
+      simp [ByteArray.get, wordBytes]
+    · rename_i hnot
+      exact False.elim (hnot (by simp [wordBytes, hi]))
+  have h :=
+    calldataToByteArray_fold_get?_word wordBytes hWord hByte selectorBytes
+      (arg :: rest) 0 arg rest i rfl hi
+  simpa [selectorBytes] using h
+
+/-- Byte-level projection for any aligned ABI argument word in bridged calldata.
+    If `calldata.drop idx = arg :: rest`, then byte `4 + 32*idx + i` is the
+    `i`th big-endian byte of `arg`. -/
+theorem calldataToByteArray_argByte_of_drop_eq_cons
+    (selector : Nat) (calldata : List Nat) (idx arg : Nat) (rest : List Nat)
+    (hdrop : calldata.drop idx = arg :: rest) (i : Nat) (hi : i < 32) :
+    (calldataToByteArray selector calldata).get? (4 + 32 * idx + i) =
+      some (UInt8.ofNat (arg / 2 ^ ((31 - i) * 8) % 256)) := by
+  unfold calldataToByteArray
+  let selectorBytes : ByteArray :=
+    ByteArray.ofFn fun i : Fin 4 =>
+      match i.1 with
+      | 0 => UInt8.ofNat (selector / 2^24 % 256)
+      | 1 => UInt8.ofNat (selector / 2^16 % 256)
+      | 2 => UInt8.ofNat (selector / 2^8 % 256)
+      | _ => UInt8.ofNat (selector % 256)
+  let wordBytes : Nat → ByteArray := fun w =>
+    ByteArray.ofFn fun i : Fin 32 =>
+      UInt8.ofNat (w / 2^((31 - i.1) * 8) % 256)
+  have hWord : ∀ w, (wordBytes w).size = 32 := by
+    intro w
+    simp [wordBytes]
+  have hByte :
+      ∀ w i, i < 32 →
+        (wordBytes w).get? i =
+          some (UInt8.ofNat (w / 2^((31 - i) * 8) % 256)) := by
+    intro w i hi
+    unfold ByteArray.get?
+    split
+    · apply congrArg some
+      simp [ByteArray.get, wordBytes]
+    · rename_i hnot
+      exact False.elim (hnot (by simp [wordBytes, hi]))
+  have h :=
+    calldataToByteArray_fold_get?_word wordBytes hWord hByte selectorBytes
+      calldata idx arg rest i hdrop hi
+  simpa [selectorBytes] using h
 
 /-! ## Full State Conversion
 

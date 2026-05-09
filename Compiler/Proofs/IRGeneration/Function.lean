@@ -238,6 +238,30 @@ theorem compileFunctionSpec_ok_selector
         injection hcompile with hEq
         simpa using congrArg IRFunction.selector hEq.symm
 
+theorem compileFunctionSpec_ok_payable
+    (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
+    (selector : Nat) (spec : FunctionSpec) (irFn : IRFunction)
+    (hcompile : compileFunctionSpec fields events errors [] selector spec = Except.ok irFn) :
+    irFn.payable = spec.isPayable := by
+  unfold CompilationModel.compileFunctionSpec at hcompile
+  cases hvalidate : validateFunctionSpec spec
+  · rw [hvalidate] at hcompile
+    cases hcompile
+  case ok _ =>
+    cases hreturns : functionReturns spec
+    · rw [hvalidate, hreturns] at hcompile
+      cases hcompile
+    case ok returns =>
+      cases hbody :
+          compileStmtList fields events errors .calldata [] false
+            (spec.params.map (·.name)) [] spec.body
+      · rw [hvalidate, hreturns, hbody] at hcompile
+        cases hcompile
+      case ok bodyStmts =>
+        rw [hvalidate, hreturns, hbody] at hcompile
+        injection hcompile with hEq
+        simpa using congrArg IRFunction.payable hEq.symm
+
 theorem compileFunctionSpec_ok_components
     (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
     (selector : Nat) (spec : FunctionSpec) (irFn : IRFunction)

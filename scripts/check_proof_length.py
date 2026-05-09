@@ -85,6 +85,15 @@ ALLOWLIST: set[str] = {
     "compiledStmtStep_setMappingChain_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety_preserves",
     "compiledStmtStep_setMappingPackedWord_singleSlot_of_slotSafety",
+    # Native selected-body handoff: splits generated switch-case freshness into
+    # the actual lowered user-body freshness used by the remaining native
+    # selected-body execution bridge.
+    "nativeGeneratedSelectedUserBodyMatchedFresh_of_switchFresh",
+    # Native selected-body handoff: packages compile-derived closure facts with
+    # switch-freshness-derived matched-flag freshness for the actual lowered
+    # user body. This deliberately stays private until the execution bridge is
+    # closed.
+    "selectedUserBodyClosureAndMatchedFresh_of_compile_ok_supported_switchFresh",
     # --- Helper-aware result packaging bridge ---
     "interpretFunctionWithHelpers_eq_execResultToIRResultWithInternals_of_body",
     "compiledStmtStep_setStructMember2_singleSlot_of_slotSafety_preserves",

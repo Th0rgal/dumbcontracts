@@ -316,7 +316,15 @@ scope so the native path does not look more complete than it is:
   lowering success, and generated calldata-threshold fact from `SupportedSpec +
   compile` without claiming native execution semantics. The dispatcher
   artifact handoff remains tracked by
-  `nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported`.
+  `nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported`,
+  and
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.selected_body_artifacts_of_compile_ok_supported`
+  combines those lowered artifacts with the selected-body closure facts for the
+  actual dispatcher-selected `fn.body`. When generated switch-case freshness is
+  available,
+  `selectedUserBodyClosureAndMatchedFresh_of_compile_ok_supported_switchFresh`
+  also strips the generated guard prefix and recovers matched-flag freshness
+  for the actual lowered user body.
   A fully closed
   `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_compile_ok_supported`
   lemma is still missing. The proof cannot be completed from the current

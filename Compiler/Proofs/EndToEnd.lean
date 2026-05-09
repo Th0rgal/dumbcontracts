@@ -15566,6 +15566,72 @@ theorem nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_comp
     body', bodyNative, bodyStart, bodyEnd, userBodyStart, hLowerCases, hCase,
     hBodyLower, hUserBodyLower⟩
 
+/-- Selector-hit lowered artifacts plus compile-derived selected-body closure.
+
+This is the concrete artifact handoff for the remaining selected-body native
+execution theorem: it exposes the actual lowered `fn.body` artifacts selected
+by the dispatcher proof together with the compile-derived `BridgedStmts` and
+calldata-threshold facts. It intentionally does not claim native execution or
+projection semantics for the selected body. -/
+private theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.selected_body_artifacts_of_compile_ok_supported
+    (spec : CompilationModel.CompilationModel) (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors)
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (state : IRState)
+    (observableSlots : List Nat)
+    (fn : IRFunction)
+    (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
+    (hFind :
+      irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+        some fn)
+    (hSelectorRange : tx.functionSelector < Compiler.Constants.selectorModulus)
+    (hSelectorsRange :
+      ∀ selector, selector ∈ selectors →
+        selector < Compiler.Constants.selectorModulus)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (hguards : DispatchGuardsSafe fn tx)
+    (hArgs : fn.params.length ≤ tx.args.length) :
+    ∃ (nativeContract : EvmYul.Yul.Ast.YulContract),
+      Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative
+        (Compiler.emitYul irContract).runtimeCode = .ok nativeContract ∧
+      ∃ (reservedNames : List String) (n0 : Nat)
+        (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt)) (midN : Nat)
+        (body' bodyNative : List EvmYul.Yul.Ast.Stmt)
+        (bodyStart bodyEnd userBodyStart : Nat),
+        Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds
+          reservedNames
+          (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+            reservedNames n0 + 1)
+          (Compiler.Proofs.YulGeneration.Backends.Native.buildSwitchSourceCases
+            irContract.functions) = .ok (cases', midN) ∧
+        cases'.find? (fun entry => entry.1 == tx.functionSelector) =
+          some (tx.functionSelector, body') ∧
+        Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+          reservedNames bodyStart
+          (Compiler.Proofs.YulGeneration.Backends.Native.switchCaseBody fn) =
+            .ok (body', bodyEnd) ∧
+        Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+          reservedNames userBodyStart fn.body =
+            .ok (bodyNative, bodyEnd) ∧
+        Compiler.Proofs.YulGeneration.Backends.BridgedStmts fn.body ∧
+        4 + fn.params.length * 32 < EvmYul.UInt256.size := by
+  rcases
+    nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported
+      spec selectors hSupported irContract tx state observableSlots fn hcompile
+      hFind hSelectorRange hSelectorsRange hNoWrap hguards hArgs with
+    ⟨nativeContract, hLowerRuntime, reservedNames, n0, cases', midN, body',
+      bodyNative, bodyStart, bodyEnd, userBodyStart, hLowerCases, hCase,
+      hBodyLower, hUserBodyLower⟩
+  rcases
+    NativeGeneratedSelectedUserBodyResultBridgeAtFuel.selected_body_closure_of_compile_ok_supported
+      spec selectors hSupported irContract tx hcompile fn reservedNames
+      userBodyStart hFind with
+    ⟨hBridged, _hLowered, hThreshold⟩
+  exact ⟨nativeContract, hLowerRuntime, reservedNames, n0, cases', midN,
+    body', bodyNative, bodyStart, bodyEnd, userBodyStart, hLowerCases, hCase,
+    hBodyLower, hUserBodyLower, hBridged, hThreshold⟩
+
 /-- Selector-hit bridge premise for the final generated-dispatcher composition.
 
 The selector miss case is closed generically by
@@ -17476,6 +17542,65 @@ private theorem nativeGeneratedSelectedUserBodyMatchedFresh_of_switchFresh
       nativeGeneratedSelectedUserBodyMatchedFresh_nonpayable_of_caseFresh
         fn reservedNames matchedName body' bodyStart bodyEnd hNonPayable
         hBodyLower hCaseFresh
+
+/-- Compile-derived selected-body closure plus the dispatcher-marker freshness
+fact obtained from generated switch-case freshness.
+
+This is the Track 1/5/6 handoff fact for the selected-body bridge: supported
+compiler output supplies the bridged source body and calldata threshold, while
+`nativeSwitchTempsFreshForNativeBodies` on the generated cases is enough to
+strip the generated guard prefix and recover freshness for the actual lowered
+user body. -/
+private theorem selectedUserBodyClosureAndMatchedFresh_of_compile_ok_supported_switchFresh
+    (spec : CompilationModel.CompilationModel) (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors)
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
+    (fn : IRFunction)
+    (reservedNames : List String) (n0 : Nat)
+    (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt))
+    (body' : List EvmYul.Yul.Ast.Stmt)
+    (bodyStart bodyEnd : Nat)
+    (hFind :
+      irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+        some fn)
+    (hCase :
+      cases'.find? (fun entry => entry.1 == tx.functionSelector) =
+        some (tx.functionSelector, body'))
+    (hBodyLower :
+      Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+          reservedNames bodyStart
+          (Compiler.Proofs.YulGeneration.Backends.Native.switchCaseBody fn) =
+            .ok (body', bodyEnd))
+    (hFresh :
+      Compiler.Proofs.YulGeneration.Backends.nativeSwitchTempsFreshForNativeBodies
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0)
+        cases'
+        [Compiler.Proofs.YulGeneration.Backends.Native.nativeRevertZeroZeroStmt]) :
+    Compiler.Proofs.YulGeneration.Backends.BridgedStmts fn.body ∧
+      (∃ (bodyNative : List EvmYul.Yul.Ast.Stmt) (userBodyStart : Nat),
+        Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+            reservedNames userBodyStart fn.body =
+              .ok (bodyNative, bodyEnd) ∧
+        Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+            (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+              reservedNames n0) ∉
+          Compiler.Proofs.YulGeneration.Backends.nativeStmtsWriteNames
+            bodyNative) ∧
+      4 + fn.params.length * 32 < EvmYul.UInt256.size := by
+  have hBridged :
+      Compiler.Proofs.YulGeneration.Backends.BridgedStmts fn.body :=
+    generatedRuntimeSelectedFunctionBodyBridged_of_compile_ok_supported
+      hcompile hSupported hFind
+  have hMatchedFresh :=
+    nativeGeneratedSelectedUserBodyMatchedFresh_of_switchFresh
+      tx fn reservedNames n0 cases' body' bodyStart bodyEnd
+      hCase hBodyLower hFresh
+  exact ⟨hBridged, hMatchedFresh,
+    generatedFunctionCalldataThreshold_of_compile_ok_supported
+      spec selectors hSupported irContract tx hcompile fn hFind⟩
 
 private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_mappingFreePreservableStraightStmts
     (irContract : IRContract)

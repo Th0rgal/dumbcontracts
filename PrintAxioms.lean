@@ -1150,6 +1150,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitLoweredArtifacts_of_compile_ok_supported  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_of_compile_ok_supported  -- private
   Compiler.Proofs.EndToEnd.nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported
+  -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectedUserBodyResultBridgeAtFuel.selected_body_artifacts_of_compile_ok_supported  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitBodyHaltExecBridgeAtFuel.of_selected_user_body_halt  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitSuccessBridge.of_body_halt_exec_atFuel  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitSuccessBridge.of_selected_user_body_halt_exec_atFuel  -- private
@@ -1174,6 +1175,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectedUserBodyMatchedFresh_payable_of_caseFresh  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectedUserBodyMatchedFresh_nonpayable_of_caseFresh  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedSelectedUserBodyMatchedFresh_of_switchFresh  -- private
+  -- Compiler.Proofs.EndToEnd.selectedUserBodyClosureAndMatchedFresh_of_compile_ok_supported_switchFresh  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_mappingFreePreservableStraightStmts  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_mappingFreePreservableStraightStmts  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree  -- private
@@ -5482,4 +5484,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5196 theorems/lemmas (3506 public, 1690 private, 0 sorry'd)
+-- Total: 5198 theorems/lemmas (3506 public, 1692 private, 0 sorry'd)

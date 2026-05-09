@@ -340,6 +340,14 @@ scope so the native path does not look more complete than it is:
   carrying it back to the generated dispatcher theorem,
   mirroring the earlier mapping-free `switchFresh` adapter while keeping
   mapping-specific straight-body side conditions private.
+  The dispatcher wrappers can now consume the smaller per-case lowering
+  freshness premise through
+  `nativeGeneratedSwitchTempsFreshForNativeBodies_of_case_body_fresh`,
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree_caseFresh`,
+  and
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mapping_caseFresh`;
+  the remaining freshness work is to derive that per-case premise from the
+  generated straight-body shape and reserved-name set.
   A fully closed
   `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_compile_ok_supported`
   lemma is still missing. The proof cannot be completed from the current

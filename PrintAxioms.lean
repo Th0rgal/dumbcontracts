@@ -1228,6 +1228,9 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree_switchFresh  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mapping_switchFresh  -- private
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedSwitchTempsFreshForNativeBodies_of_case_body_fresh  -- private
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree_caseFresh  -- private
+  -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mapping_caseFresh  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_result  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_result_threshold  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body  -- private
@@ -5487,4 +5490,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5201 theorems/lemmas (3506 public, 1695 private, 0 sorry'd)
+-- Total: 5204 theorems/lemmas (3506 public, 1698 private, 0 sorry'd)

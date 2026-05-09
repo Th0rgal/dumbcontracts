@@ -2856,9 +2856,11 @@ end Verity.AxiomAudit
   Compiler.Proofs.IRGeneration.SupportedConstructor.paramsSupported
   Compiler.Proofs.IRGeneration.SupportedFunction.paramNamesNodup
   Compiler.Proofs.IRGeneration.SupportedFunction.paramsSupported
+  Compiler.Proofs.IRGeneration.SupportedFunction.paramCalldataThreshold
   Compiler.Proofs.IRGeneration.SupportedFunction.returnsSupported
   Compiler.Proofs.IRGeneration.SupportedFunctionExceptMappingWrites.paramNamesNodup
   Compiler.Proofs.IRGeneration.SupportedFunctionExceptMappingWrites.paramsSupported
+  Compiler.Proofs.IRGeneration.SupportedFunctionExceptMappingWrites.paramCalldataThreshold
   Compiler.Proofs.IRGeneration.SupportedFunctionExceptMappingWrites.returnsSupported
   -- Compiler.Proofs.IRGeneration.exprCompileCore_helperSurfaceClosed  -- private
   -- Compiler.Proofs.IRGeneration.exprCompileCore_internalHelperCallNames_nil  -- private
@@ -2990,7 +2992,9 @@ end Verity.AxiomAudit
   Compiler.Proofs.IRGeneration.SupportedSpec.noReceive
   Compiler.Proofs.IRGeneration.SupportedSpecExceptMappingWrites.noReceive
   Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionParamsSupported
+  Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionParamCalldataThreshold
   Compiler.Proofs.IRGeneration.SupportedSpecExceptMappingWrites.selectorFunctionParamsSupported
+  Compiler.Proofs.IRGeneration.SupportedSpecExceptMappingWrites.selectorFunctionParamCalldataThreshold
   Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionParamNamesNodup
   Compiler.Proofs.IRGeneration.SupportedSpecExceptMappingWrites.selectorFunctionParamNamesNodup
   Compiler.Proofs.IRGeneration.SupportedSpec.selectorFunctionReturnsSupported
@@ -5455,4 +5459,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5169 theorems/lemmas (3508 public, 1661 private, 0 sorry'd)
+-- Total: 5173 theorems/lemmas (3512 public, 1661 private, 0 sorry'd)

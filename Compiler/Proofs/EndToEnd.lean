@@ -18063,6 +18063,201 @@ private theorem nativeGeneratedSelectorHitBodyPreservesMatched_of_user_body_pres
         calldataGuardBody bodyNative bodyStart bodyEnd hNonPayable hBodyLower
         hBodyShape hUserPreserves
 
+private theorem nativeGeneratedSelectorHitBodyPreservesMatched_mappingFree_payable
+    (tx : IRTransaction) (fn : IRFunction)
+    (nativeContract : EvmYul.Yul.Ast.YulContract)
+    (reservedNames : List String) (n0 : Nat)
+    (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt))
+    (body' : List EvmYul.Yul.Ast.Stmt) (bodyStart bodyEnd : Nat)
+    (hBodyStraight :
+      Compiler.Proofs.YulGeneration.Backends.Native.NativeMappingFreePreservableStraightStmts
+        fn.body)
+    (hPayable : fn.payable = true)
+    (hCase :
+      cases'.find? (fun entry => entry.1 == tx.functionSelector) =
+        some (tx.functionSelector, body'))
+    (hBodyLower :
+      Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+        reservedNames bodyStart
+        (Compiler.Proofs.YulGeneration.Backends.Native.switchCaseBody fn) =
+          .ok (body', bodyEnd))
+    (hSwitchFresh :
+      Compiler.Proofs.YulGeneration.Backends.nativeSwitchTempsFreshForNativeBodies
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0)
+        cases'
+        [Compiler.Proofs.YulGeneration.Backends.Native.nativeRevertZeroZeroStmt]) :
+    Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord
+      (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0))
+      (EvmYul.UInt256.ofNat 1) body' (some nativeContract) := by
+  let switchId := Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId reservedNames n0
+  let matchedName := Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName switchId
+  have hCaseFresh :
+      matchedName ∉
+        Compiler.Proofs.YulGeneration.Backends.nativeStmtsWriteNames body' := by
+    simpa [matchedName] using
+      Compiler.Proofs.YulGeneration.Backends.Native.nativeSwitchTempsFreshForNativeBodies_find_hit_matched_not_mem
+        switchId tx.functionSelector tx.functionSelector body'
+        [Compiler.Proofs.YulGeneration.Backends.Native.nativeRevertZeroZeroStmt]
+        cases' hSwitchFresh hCase
+  rcases
+    Compiler.Proofs.YulGeneration.Backends.Native.lowerStmtsNativeWithSwitchIds_switchCaseBody_payable_eq
+      reservedNames bodyStart fn body' bodyEnd hPayable hBodyLower with
+    ⟨guardBody, bodyNative, userBodyStart, hBodyShape, hUserBodyLower⟩
+  have hUserFresh :
+      matchedName ∉
+        Compiler.Proofs.YulGeneration.Backends.nativeStmtsWriteNames bodyNative := by
+    rw [hBodyShape] at hCaseFresh
+    exact nativeStmtsWriteNames_not_mem_of_two_prefix matchedName
+      (EvmYul.Yul.Ast.Stmt.Block [])
+      (EvmYul.Yul.Ast.Stmt.If
+        (Compiler.Proofs.YulGeneration.Backends.lowerExprNative
+          (Yul.YulExpr.call "lt"
+            [Yul.YulExpr.call "calldatasize" [],
+             Yul.YulExpr.lit (4 + fn.params.length * 32)]))
+        guardBody)
+      bodyNative hCaseFresh
+  have hUserPreserves :
+      Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord
+        matchedName (EvmYul.UInt256.ofNat 1) bodyNative
+        (some nativeContract) := by
+    exact
+      Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_mappingFreePreservableStraightStmts
+        matchedName (EvmYul.UInt256.ofNat 1) reservedNames userBodyStart
+        fn.body bodyNative bodyEnd (some nativeContract) hBodyStraight
+        hUserBodyLower hUserFresh
+  simpa [matchedName, switchId] using
+    NativeBlockPreservesWord_switchCaseBody_payable_of_user_body
+      fn nativeContract reservedNames n0 body' guardBody bodyNative bodyStart
+      bodyEnd hPayable hBodyLower hBodyShape hUserPreserves
+
+private theorem nativeGeneratedSelectorHitBodyPreservesMatched_mappingFree_nonpayable
+    (tx : IRTransaction) (fn : IRFunction)
+    (nativeContract : EvmYul.Yul.Ast.YulContract)
+    (reservedNames : List String) (n0 : Nat)
+    (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt))
+    (body' : List EvmYul.Yul.Ast.Stmt) (bodyStart bodyEnd : Nat)
+    (hBodyStraight :
+      Compiler.Proofs.YulGeneration.Backends.Native.NativeMappingFreePreservableStraightStmts
+        fn.body)
+    (hNonPayable : fn.payable = false)
+    (hCase :
+      cases'.find? (fun entry => entry.1 == tx.functionSelector) =
+        some (tx.functionSelector, body'))
+    (hBodyLower :
+      Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+        reservedNames bodyStart
+        (Compiler.Proofs.YulGeneration.Backends.Native.switchCaseBody fn) =
+          .ok (body', bodyEnd))
+    (hSwitchFresh :
+      Compiler.Proofs.YulGeneration.Backends.nativeSwitchTempsFreshForNativeBodies
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0)
+        cases'
+        [Compiler.Proofs.YulGeneration.Backends.Native.nativeRevertZeroZeroStmt]) :
+    Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord
+      (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0))
+      (EvmYul.UInt256.ofNat 1) body' (some nativeContract) := by
+  let switchId := Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId reservedNames n0
+  let matchedName := Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName switchId
+  have hCaseFresh :
+      matchedName ∉
+        Compiler.Proofs.YulGeneration.Backends.nativeStmtsWriteNames body' := by
+    simpa [matchedName] using
+      Compiler.Proofs.YulGeneration.Backends.Native.nativeSwitchTempsFreshForNativeBodies_find_hit_matched_not_mem
+        switchId tx.functionSelector tx.functionSelector body'
+        [Compiler.Proofs.YulGeneration.Backends.Native.nativeRevertZeroZeroStmt]
+        cases' hSwitchFresh hCase
+  rcases
+    Compiler.Proofs.YulGeneration.Backends.Native.lowerStmtsNativeWithSwitchIds_switchCaseBody_nonpayable_eq
+      reservedNames bodyStart fn body' bodyEnd hNonPayable hBodyLower with
+    ⟨callvalueGuardBody, calldataGuardBody, bodyNative, userBodyStart,
+      hBodyShape, hUserBodyLower⟩
+  have hUserFresh :
+      matchedName ∉
+        Compiler.Proofs.YulGeneration.Backends.nativeStmtsWriteNames bodyNative := by
+    rw [hBodyShape] at hCaseFresh
+    exact nativeStmtsWriteNames_not_mem_of_three_prefix matchedName
+      (EvmYul.Yul.Ast.Stmt.Block [])
+      (EvmYul.Yul.Ast.Stmt.If
+        (Compiler.Proofs.YulGeneration.Backends.lowerExprNative
+          (Yul.YulExpr.call "callvalue" []))
+        callvalueGuardBody)
+      (EvmYul.Yul.Ast.Stmt.If
+        (Compiler.Proofs.YulGeneration.Backends.lowerExprNative
+          (Yul.YulExpr.call "lt"
+            [Yul.YulExpr.call "calldatasize" [],
+             Yul.YulExpr.lit (4 + fn.params.length * 32)]))
+        calldataGuardBody)
+      bodyNative hCaseFresh
+  have hUserPreserves :
+      Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord
+        matchedName (EvmYul.UInt256.ofNat 1) bodyNative
+        (some nativeContract) := by
+    exact
+      Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_mappingFreePreservableStraightStmts
+        matchedName (EvmYul.UInt256.ofNat 1) reservedNames userBodyStart
+        fn.body bodyNative bodyEnd (some nativeContract) hBodyStraight
+        hUserBodyLower hUserFresh
+  simpa [matchedName, switchId] using
+    NativeBlockPreservesWord_switchCaseBody_nonpayable_of_user_body
+      fn nativeContract reservedNames n0 body' callvalueGuardBody
+      calldataGuardBody bodyNative bodyStart bodyEnd hNonPayable hBodyLower
+      hBodyShape hUserPreserves
+
+private theorem nativeGeneratedSelectorHitBodyPreservesMatched_mappingFree_of_switchFresh
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (hBodyStraight :
+      ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+          some fn →
+        Compiler.Proofs.YulGeneration.Backends.Native.NativeMappingFreePreservableStraightStmts
+          fn.body) :
+    ∀ (nativeContract : EvmYul.Yul.Ast.YulContract) (fn : IRFunction)
+      (reservedNames : List String) (n0 : Nat)
+      (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt))
+      (body' : List EvmYul.Yul.Ast.Stmt) (bodyStart bodyEnd : Nat),
+      Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative
+          (Compiler.emitYul irContract).runtimeCode = .ok nativeContract →
+      irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+          some fn →
+      cases'.find? (fun entry => entry.1 == tx.functionSelector) =
+          some (tx.functionSelector, body') →
+      Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+          reservedNames bodyStart
+          (Compiler.Proofs.YulGeneration.Backends.Native.switchCaseBody fn) =
+            .ok (body', bodyEnd) →
+      Compiler.Proofs.YulGeneration.Backends.nativeSwitchTempsFreshForNativeBodies
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0)
+        cases'
+        [Compiler.Proofs.YulGeneration.Backends.Native.nativeRevertZeroZeroStmt] →
+      ∀ pre suffix,
+        cases' = pre ++ (tx.functionSelector, body') :: suffix →
+        Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord
+          (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+            (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+              reservedNames n0))
+          (EvmYul.UInt256.ofNat 1) body' (some nativeContract) := by
+  intro nativeContract fn reservedNames n0 cases' body' bodyStart bodyEnd
+    _hLowerRuntime hFind hCase hBodyLower hSwitchFresh _pre _suffix _hCases
+  by_cases hPayable : fn.payable
+  · exact
+      nativeGeneratedSelectorHitBodyPreservesMatched_mappingFree_payable
+        tx fn nativeContract reservedNames n0 cases' body' bodyStart bodyEnd
+        (hBodyStraight fn hFind) (by simpa using hPayable) hCase hBodyLower
+        hSwitchFresh
+  · exact
+      nativeGeneratedSelectorHitBodyPreservesMatched_mappingFree_nonpayable
+        tx fn nativeContract reservedNames n0 cases' body' bodyStart bodyEnd
+        (hBodyStraight fn hFind) (Bool.eq_false_iff.2 hPayable) hCase
+        hBodyLower hSwitchFresh
+
 /-- Recombine the factored selected user-body execution and preservation
 bridges into the existing all-in-one bridge consumed by the dispatcher stack. -/
 private theorem NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_exec_only_and_preserves

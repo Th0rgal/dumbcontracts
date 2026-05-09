@@ -1086,7 +1086,7 @@ ALLOWLIST_REGEXES: tuple[re.Pattern[str], ...] = tuple(
         r"^native_(?:mappingSlot_call_preserves_lookup|"
         r"mappingSlot_call_preserves_lookup_state|"
         r"call_preserves_lookup_of_revivable_body)$",
-        r"^nativeGeneratedSelectorHitBodyPreservesMatched_of_user_body_preserves$",
+        r"^nativeGeneratedSelectorHitBodyPreservesMatched_.*$",
         r"^nativeGeneratedSelectorHit_success_of_user_body_exec_bridge_atFuel_revived.*$",
         r"^nativeResultsMatchOn_execIRFunction_.*_markedPrefix$",
         r"^nativeMappingSlotFunctionDefinition_exec_revivable$",

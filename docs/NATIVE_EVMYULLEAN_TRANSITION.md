@@ -111,7 +111,10 @@ materializes pre-state storage for those slots.
   `validateGeneratedRuntimeNativeFragment_of_compile_ok_supported_safe`, so the
   executable generated-runtime validator is closed from the same public
   `SupportedSpec`, static-parameter, and safe-body hypotheses as the native
-  wrapper seams. The helper-free native lowering boundary is also named by
+  wrapper seams. Full generated-runtime native lowering success is named by
+  `lowerRuntimeContractNative_of_compile_ok_supported_exists`, directly
+  packaging `SupportedSpec + compile` into an executable
+  `lowerRuntimeContractNative` witness. The helper-free native lowering boundary is also named by
   `lowerRuntimeContractNative_emitYul_noMapping_noInternals_noFallback_noReceive`
   in the native harness and by
   `lowerRuntimeContractNative_of_compile_ok_supported_noMapping` for compiled
@@ -254,6 +257,122 @@ oracle, not as the semantic target in the public theorem stack.
 The following verified user reports should stay explicit in the transition
 scope so the native path does not look more complete than it is:
 
+- The public supported generated `callDispatcher` theorem is now composed down
+  to native `EvmYul.Yul.callDispatcher`, with selector miss and generated
+  selector-hit guard failures discharged internally. The closed generic case
+  wrappers are
+  `nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_exists_of_compile_ok_supported`,
+  `nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_exists_of_compile_ok_supported`,
+  and
+  `nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_exists_of_compile_ok_supported`.
+  The artifact/error continuation path remains named by
+  `nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_exists_of_compile_ok_supported`.
+  Its remaining success-path blocker is the selected user-body result boundary:
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel`. The normal-return side
+  still needs a generic native execution proof for
+  `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived`, connecting the
+  lowered selected `fn.body` at dispatcher fuel to `execIRFunction`; the
+  halt-channel side is currently supplied by
+  `NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel`. The source-level
+  public composition theorem
+  `compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher`
+  now packages that generated dispatcher result with the source-to-IR compiler
+  theorem and returns the lowered native runtime witness. The public IR/native
+  theorem keeps the direct projected result target. The public theorem no longer exposes full `DispatchGuardsSafe`; it only carries the source-level
+  selected function calldata-threshold inventory, while
+  `generatedFunctionCalldataThreshold_of_compile_ok_supported` transports that
+  inventory across `compile` to the generated IR function selected by the
+  dispatcher. Legacy premise-taking `compile_preserves_native_evmYulLean_*`
+  wrappers are file-local; the public `compile_preserves_native_evmYulLean_*`
+  surface is limited to the direct `nativeGeneratedCallDispatcherResultOf`
+  composition theorem and the generated `SupportedSpec + compile` composition
+  theorem. The private success bridge rebuilds `DispatchGuardsSafe` after
+  the generated value and argument guards have selected the success branch.
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mapping`
+  packages the mapping-helper straight-body preservation path through
+  `NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_bridgedStraightStmts`.
+  The no-mapping helper-free straight-body preservation bridge is now split
+  out as `NativeMappingFreeBridgedExpr`,
+  `NativeExprPreservesWord_lowerExprNative_of_mappingFreeBridgedExpr`,
+  `NativeMappingFreePreservableStraightStmt`,
+  `NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_mappingFreePreservableStraightStmts`,
+  and
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_mappingFreePreservableStraightStmts`.
+  Historical `BridgedStraightStmts` no-mapping bodies can now enter that same
+  actual-runtime path through `NativeMappingFreeSideConditionForBridgedStraightStmt`,
+  `NativeMappingFreePreservableStraightStmts.of_bridgedStraightStmts`, and
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree`.
+  The dispatcher-level adapter
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree`
+  composes that result bridge with the supported `compile` theorem stack.
+  The compile-to-body handoff is tracked by
+  `generatedRuntimeSelectedFunctionBodyBridged_of_compile_ok_supported`,
+  `lowerStmtsNativeWithSwitchIds_selectedFunctionBody_exists_of_compile_ok_supported`,
+  `selectedFunctionBodyBridgedAndLowered_of_compile_ok_supported`, and
+  `nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported`.
+  The normal-return execution side now has a sound singleton-`leave` base case:
+  `execIRStmts_single_leave_succ_succ`,
+  `exec_block_leave_ok_add_ten`, and
+  `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body`.
+  This does not close the dispatcher result boundary because native `leave`
+  exits through a revivable checkpoint, so the existing matched-flag
+  preservation predicate is not the right continuation fact for that shape.
+  The halt-channel side now also has a singleton-`stop` base case:
+  `execIRFunction_single_stop`, `exec_block_stop_halt_add_ten`, and
+  `NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_stop_body`; it
+  composes through
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_stop_body` and
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body`.
+  The halt-channel scalar-return side now also covers literal external
+  returns via `execIRFunction_mstore0_lit_return32`,
+  `exec_lowerExprNative_mstore_lit_lit_ok_fuel`,
+  `NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_lit_return32`,
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_lit_return32`,
+  and
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_lit_return32`.
+  Single-argument external returns are covered by
+  `execIRFunction_mstore0_calldataload4_return32_of_args_cons`,
+  `exec_lowerExprNative_mstore_lit_calldataload_lit_ok_fuel`,
+  `NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_calldataload4_return32`,
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_calldataload4_return32`,
+  and
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload4_return32`.
+  The reusable aligned-calldata return seams are
+  `execIRFunction_mstore0_calldataload_aligned_return32`,
+  `initialState_calldataload_aligned_arg_word`,
+  `exec_lowerExprNative_mstore_lit_calldataload_lit_ok_fuel`, and
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload_aligned_return32`
+  under the explicit `ByteArray.readBytes` offset condition
+  `4 + 32 * idx < 2^64`.
+  The remaining normal-return blocker is the generic body-shape discovery path:
+  generated selected bodies still need to identify arbitrary scalar return
+  bodies and supply the mapping-free straight-body predicate automatically. A
+  direct source-shape handoff cannot simply reuse the raw two-statement exact
+  return lemmas, because `compileFunctionSpec` prepends `genParamLoads`; even
+  zero-parameter functions carry the generated calldata-size guard in
+  `fn.body`. The zero-parameter literal-return instance is now closed through
+  the guarded generated shape with
+  `NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_lit_return32`,
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_lit_return32`,
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_lit_return32`,
+  and the source-shape wrapper
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_lit_return32`.
+  The matching zero-parameter storage-return shape is closed with
+  `NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_sload0_return32`,
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_sload0_return32`,
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_sload0_return32`,
+  and
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_sload0_return32`.
+  The generated one-argument setter shape now also closes through the generated
+  parameter-load guard and `value` binding:
+  `execIRFunction_oneParam_store0_value_stop`,
+  `NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_oneParam_store0_value_stop`,
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_oneParam_store0_value_stop`,
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_oneParam_store0_value_stop`,
+  and
+  `nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_oneParam_store0_value_stop`,
+  with the source/native preservation wrapper
+  `compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher_source_oneParam_store0_value_stop`.
 - [#1741](https://github.com/lfglabs-dev/verity/issues/1741):
   `blockTimestamp` is bridged through native EVMYulLean execution, and native
   smoke coverage now checks `timestamp()`/`number()` state reads. Native

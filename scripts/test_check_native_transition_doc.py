@@ -28,6 +28,22 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
         text = check.DOD_DOC.read_text(encoding="utf-8")
         self.assertEqual(check.check_definition_of_done_doc(text), [])
 
+    def test_current_yul_generation_readme_passes(self) -> None:
+        text = check.YULGEN_README.read_text(encoding="utf-8")
+        self.assertEqual(check.check_yul_generation_readme(text), [])
+
+    def test_yul_generation_readme_rejects_legacy_main_preservation_status(self) -> None:
+        text = check.YULGEN_README.read_text(encoding="utf-8").replace(
+            "**`Preservation.lean`** - Legacy Layer 3 preservation theorem",
+            "**`Preservation.lean`** - Main Layer 3 preservation theorem",
+            1,
+        )
+        errors = check.check_yul_generation_readme(text)
+        self.assertTrue(
+            any("Main Layer 3 preservation theorem" in error for error in errors),
+            errors,
+        )
+
     def test_definition_of_done_doc_rejects_removed_fuel_wrapper_target(self) -> None:
         text = check.DOD_DOC.read_text(encoding="utf-8").replace(
             "interpretYulRuntimeWithBackend .evmYulLean",
@@ -108,6 +124,174 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
             errors,
         )
 
+    def test_rejects_missing_selected_user_body_result_blocker(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel",
+            "NativeGeneratedSelectedUserBodyHiddenBridgeAtFuel",
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyResultBridgeAtFuel" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_threshold_only_public_guard_caveat(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "selected function calldata-threshold inventory",
+            "selected function full guard inventory",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("calldata-threshold" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_no_mapping_helper_free_preservation_caveat(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "no-mapping helper-free straight-body preservation bridge",
+            "selected user-body preservation bridge",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("no-mapping helper-free straight-body preservation" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_mapping_free_preservation_progress_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_mappingFreePreservableStraightStmts",
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_genericStraightStmts",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("mappingFreePreservableStraightStmts" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_singleton_leave_exec_only_progress_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body",
+            "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_hidden_body",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("of_leave_body" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_singleton_stop_halt_progress_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_stop_body",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_hidden_stop_body",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("of_stop_body" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_singleton_stop_dispatcher_progress_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_stop_body",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("compile_ok_supported_stop_body" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_literal_return_dispatcher_progress_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_lit_return32",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_lit_return32",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("mstore0_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_calldataload_return_dispatcher_progress_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload4_return32",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_calldataload4_return32",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("mstore0_calldataload4_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_aligned_calldata_return_seam_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "execIRFunction_mstore0_calldataload_aligned_return32",
+            "execIRFunction_mstore0_calldataload_hidden_return32",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("calldataload_aligned_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_source_level_generated_dispatcher_public_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher",
+            "compile_preserves_native_evmYulLean_of_compile_ok_supported_hidden_callDispatcher",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher" in error
+                for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_legacy_compile_preserves_private_surface_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "Legacy premise-taking `compile_preserves_native_evmYulLean_*`",
+            "Legacy premise-taking `compile_preserves_native_evmYulLean_hidden`",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("compile_preserves_native_evmYulLean_*" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_mapping_free_bridged_straight_adapter_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree",
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_hidden",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("bridgedStraightStmts_mappingFree" in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_missing_mapping_free_dispatcher_adapter_note(self) -> None:
+        text = check.DOC.read_text(encoding="utf-8").replace(
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_hidden",
+            1,
+        )
+        errors = check.check_doc(text)
+        self.assertTrue(
+            any("bridgedStraightStmts_mappingFree" in error for error in errors),
+            errors,
+        )
+
     def test_public_theorem_target_guard_accepts_current_transition_shape(self) -> None:
         errors = check.check_public_theorem_target(
             check.END_TO_END.read_text(encoding="utf-8"),
@@ -132,6 +316,38 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
             errors,
         )
 
+    def test_public_theorem_target_guard_rejects_missing_mapping_free_expression_seam(self) -> None:
+        native_harness_text = check.NATIVE_HARNESS.read_text(encoding="utf-8").replace(
+            "theorem NativeExprPreservesWord_lowerExprNative_of_mappingFreeBridgedExpr",
+            "theorem NativeExprPreservesWord_lowerExprNative_of_hiddenMappingFreeBridgedExpr",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            native_harness_text,
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("mappingFreeBridgedExpr" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_mapping_free_block_seam(self) -> None:
+        native_harness_text = check.NATIVE_HARNESS.read_text(encoding="utf-8").replace(
+            "theorem NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_mappingFreePreservableStraightStmts",
+            "theorem NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_hiddenMappingFreePreservableStraightStmts",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            native_harness_text,
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("mappingFreePreservableStraightStmts" in error for error in errors),
+            errors,
+        )
+
     def test_public_theorem_target_guard_rejects_missing_call_dispatcher_result_surface(self) -> None:
         end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
             "noncomputable def nativeGeneratedCallDispatcherResultOf",
@@ -145,6 +361,1135 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
         )
         self.assertTrue(
             any("nativeGeneratedCallDispatcherResultOf" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_exact_call_dispatcher_theorem(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "\ntheorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported\n"
+            "    (spec : CompilationModel.CompilationModel)",
+            "\ntheorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden\n"
+            "    (spec : CompilationModel.CompilationModel)",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_theorem_adapter_target(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "nativeGeneratedCallDispatcherResultOf",
+            "Compiler.Proofs.YulGeneration.Backends.Native.interpretIRRuntimeNative",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("interpretIRRuntimeNative" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_theorem_without_selected_user_body_halt_bridge(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
+            "NativeGeneratedSelectedUserBodyHiddenHaltExecBridgeAtFuel",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_source_level_generated_theorem_without_source_target(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher",
+            "sourceResultMatchesNativeOn",
+            "nativeResultsMatchOn",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("sourceResultMatchesNativeOn" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_source_level_generated_theorem_old_runtime_target(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher",
+            "nativeGeneratedCallDispatcherResultOf",
+            "Compiler.Proofs.YulGeneration.Backends.Native.interpretIRRuntimeNative",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("interpretIRRuntimeNative" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_legacy_compile_preserves_public_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem compile_preserves_native_evmYulLean_selector_miss_noMapping_canonical",
+            "theorem compile_preserves_native_evmYulLean_selector_miss_noMapping_canonical",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("unexpected public theorem" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_theorem_exposing_dispatch_guards(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "4 + fn.params.length * 32 < EvmYul.UInt256.size",
+            "DispatchGuardsSafe fn tx",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("DispatchGuardsSafe" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_compiled_ir_threshold_inventory(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "selectorDispatchedFunctions spec",
+            "irContract.functions",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("selectorDispatchedFunctions spec" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_private_selected_user_body_halt_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "def NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
+            "private def NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "must keep the public exact generated callDispatcher selected user-body halt bridge publicly nameable"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+        self.assertTrue(
+            any(
+                "must not make the public exact generated callDispatcher selected user-body halt bridge private"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_private_success_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "def NativeGeneratedSelectorHitSuccessBridge",
+            "private def NativeGeneratedSelectorHitSuccessBridge",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "must keep the remaining success-case selector-hit bridge publicly nameable"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+        self.assertTrue(
+            any("must not make the remaining success-case selector-hit bridge private" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_theorem_exposing_direct_user_body_bridge(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state\n        observableSlots",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state\n        observableSlots)\n"
+            "    (hSelectedUserBodyExec :\n"
+            "      NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived irContract tx\n"
+            "        state observableSlots",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_theorem_exposing_preservation_bridge(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state\n        observableSlots",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state\n        observableSlots)\n"
+            "    (hPreserves :\n"
+            "      NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel irContract tx",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_theorem_exposing_generated_prefix_continuation(self) -> None:
+        end_to_end_text = self.replace_in_theorem_signature(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state\n        observableSlots",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state\n        observableSlots)\n"
+            "    (hGeneratedPrefixCont :\n"
+            "      NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation irContract\n"
+            "        tx state observableSlots",
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_exact_call_dispatcher_wrapper_deprecation_target(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "attribute [deprecated nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported\n"
+            "  (since := \"2026-05-07\")]",
+            "attribute [deprecated nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_exec_bridge_success_only_atFuel_revived_and_continuation\n"
+            "  (since := \"2026-05-07\")]",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compatibility wrappers must be deprecated" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_exact_wrapper_deprecation(self) -> None:
+        removed_wrapper = (
+            "  nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_empty_selected_body\n"
+        )
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            removed_wrapper,
+            "",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("empty_selected_body" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_interpret_wrapper_deprecation_target(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "attribute [deprecated compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match\n"
+            "  (since := \"2026-05-07\")]",
+            "attribute [deprecated compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match\n"
+            "  (since := \"2026-05-07\")]",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("interpretIRRuntimeNative compatibility wrappers" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_interpret_wrapper_deprecation(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "  compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_mapping_dispatcher_ofIR_environment\n"
+            "  compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_mapping_dispatcher_ofIR_globalDefaults\n",
+            "  compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_mapping_dispatcher_ofIR_environment\n",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("match_mapping_dispatcher_ofIR_globalDefaults" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_interpret_eq_wrapper_deprecation_target(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "attribute [deprecated nativeGeneratedCallDispatcherResultOf\n"
+            "  (since := \"2026-05-07\")]",
+            "attribute [deprecated nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported\n"
+            "  (since := \"2026-05-07\")]",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("interpretIRRuntimeNative equality wrappers" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_interpret_eq_wrapper_deprecation(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "  nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported_except_mapping_writes_stmt_safety\n",
+            "",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("except_mapping_writes_stmt_safety" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_exec_only_body_bridge_split(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "def NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived",
+            "def NativeGeneratedSelectorHitUserBodyExecHiddenBridgeAtFuelRevived",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_direct_user_body_exec_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "def NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
+            "def NativeGeneratedSelectedUserBodyExecHiddenBridgeAtFuelRevived",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_direct_user_body_result_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "def NativeGeneratedSelectedUserBodyResultBridgeAtFuel",
+            "def NativeGeneratedSelectedUserBodyHiddenResultBridgeAtFuel",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyResultBridgeAtFuel" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_preservation_body_bridge_split(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "def NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel",
+            "def NativeGeneratedSelectorHitUserBodyHiddenPreservesBridgeAtFuel",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_generated_prefix_continuation_split(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "def NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation",
+            "def NativeGeneratedSelectorHitUserBodyHiddenGeneratedPrefixContinuation",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_exec_only_bridge_projection(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_exec_bridge",
+            "theorem NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("ExecOnlyBridgeAtFuelRevived.of_exec_bridge" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_direct_user_body_exec_projection(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_selected_user_body_exec_only",
+            "theorem NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_selected_user_body_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("of_selected_user_body_exec_only" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_preservation_bridge_projection(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_exec_bridge",
+            "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("PreservesBridgeAtFuel.of_exec_bridge" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_preservation_bridge_constructor(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_forall_stmt_write_not_mem",
+            "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("of_forall_stmt_write_not_mem" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_block_fresh_preservation_bridge_constructor(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_nativeStmtsWriteNames_not_mem",
+            "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_nativeStmtsWriteNames_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("of_nativeStmtsWriteNames_not_mem" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_body_bridge_recombiner(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_exec_only_and_preserves",
+            "theorem NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_exec_only_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("of_exec_only_and_preserves" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_result_bridge_constructor(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_preserves",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("ResultBridgeAtFuel.of_exec_only_and_preserves" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_block_fresh_result_bridge_constructor(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_nativeStmtsWriteNames_not_mem",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_nativeStmtsWriteNames_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "ResultBridgeAtFuel.of_exec_only_and_nativeStmtsWriteNames_not_mem" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_mapping_straight_result_bridge_constructor(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mapping",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "ResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mapping" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_mapping_free_straight_result_bridge_constructor(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree",
+            "private theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_noMappingHidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "ResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_mapping_free_dispatcher_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_noMappingHidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_selector_miss_exists_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_exists_of_compile_ok_supported",
+            "theorem nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_hidden_of_compile_ok_supported",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("selector_miss_matchesIR_exists_of_compile_ok_supported" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_nonpayable_guard_exists_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_exists_of_compile_ok_supported",
+            "theorem nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_hidden_of_compile_ok_supported",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "selector_hit_nonpayable_nonzero_revert_matchesIR_exists_of_compile_ok_supported" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_args_short_guard_exists_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_exists_of_compile_ok_supported",
+            "theorem nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_hidden_of_compile_ok_supported",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "selector_hit_args_short_revert_matchesIR_exists_of_compile_ok_supported" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_hit_error_exists_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_exists_of_compile_ok_supported",
+            "theorem nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_hidden_of_compile_ok_supported",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("selector_hit_error_matchesIR_exists_of_compile_ok_supported" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_lower_runtime_exists_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem lowerRuntimeContractNative_of_compile_ok_supported_exists",
+            "theorem lowerRuntimeContractNative_of_compile_ok_supported_hidden",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("lowerRuntimeContractNative_of_compile_ok_supported_exists" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_selected_body_lowering_handoff(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem selectedFunctionBodyBridgedAndLowered_of_compile_ok_supported",
+            "theorem selectedFunctionBodyBridgedAndLowered_hidden_of_compile_ok_supported",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("selectedFunctionBodyBridgedAndLowered_of_compile_ok_supported" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_success_user_body_artifact_exists_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported",
+            "theorem nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_hidden_of_compile_ok_supported",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_leave_exec_only_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body",
+            "theorem NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_hidden_body",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_stop_halt_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_stop_body",
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_hidden_stop_body",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_stop_body" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_stop_result_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_stop_body",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_hidden_stop_body",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_stop_body" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_stop_dispatcher_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_stop_body",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compile_ok_supported_stop_body" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_literal_return_halt_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_lit_return32",
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_hidden_lit_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_literal_return_result_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_lit_return32",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_hidden_lit_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_literal_return_dispatcher_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_lit_return32",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_lit_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compile_ok_supported_mstore0_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_literal_return_halt_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_lit_return32",
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_hidden_zeroParam_lit_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_literal_return_result_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_lit_return32",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_hidden_zeroParam_lit_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_literal_return_dispatcher_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_lit_return32",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_zeroParam_lit_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compile_ok_supported_zeroParam_mstore0_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_literal_return_source_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_lit_return32",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_source_zeroParam_lit_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compile_ok_supported_source_zeroParam_lit_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_sload_return_halt_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_sload0_return32",
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_hidden_zeroParam_sload0_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_sload0_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_sload_return_result_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_sload0_return32",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_hidden_zeroParam_sload0_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_sload0_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_sload_return_dispatcher_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_sload0_return32",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_zeroParam_sload0_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compile_ok_supported_zeroParam_mstore0_sload0_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_zero_param_sload_return_source_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_sload0_return32",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_source_zeroParam_sload0_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compile_ok_supported_source_zeroParam_sload0_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_calldataload_return_halt_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_calldataload4_return32",
+            "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_hidden_calldataload4_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_calldataload4_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_calldataload_return_result_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_calldataload4_return32",
+            "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_hidden_calldataload4_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_calldataload4_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_missing_calldataload_return_dispatcher_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload4_return32",
+            "private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_hidden_calldataload4_return32",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("compile_ok_supported_mstore0_calldataload4_return32" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_unsafe_leave_preservation_bridge(self) -> None:
+        native_harness_text = (
+            check.NATIVE_HARNESS.read_text(encoding="utf-8")
+            + "\ntheorem NativeStmtPreservesWord_leave : True := by trivial\n"
+        )
+        errors = check.check_public_theorem_target(
+            check.END_TO_END.read_text(encoding="utf-8"),
+            native_harness_text,
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "must not close the selected-body result bridge" in error
+                and "raw `leave`" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_public_exec_only_body_bridge_split(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private def NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived",
+            "def NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "must keep the selected selector-hit bridge seam private" in error
+                and "NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_public_direct_user_body_exec_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private def NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
+            "def NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "must keep the selected selector-hit bridge seam private" in error
+                and "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_public_direct_user_body_result_bridge(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private def NativeGeneratedSelectedUserBodyResultBridgeAtFuel",
+            "def NativeGeneratedSelectedUserBodyResultBridgeAtFuel",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "must keep the selected selector-hit bridge seam private" in error
+                and "NativeGeneratedSelectedUserBodyResultBridgeAtFuel" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_public_body_bridge_recombiner(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "private theorem NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_exec_only_and_preserves",
+            "theorem NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_exec_only_and_preserves",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any(
+                "must keep the selected selector-hit bridge seam private" in error
+                and "of_exec_only_and_preserves" in error
+                for error in errors
+            ),
             errors,
         )
 
@@ -241,6 +1586,24 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
         )
         self.assertTrue(
             any("lowered_generated_callDispatcher_mapping" in error for error in errors),
+            errors,
+        )
+
+    def test_public_theorem_target_guard_rejects_undeprecated_call_dispatcher_wrapper(self) -> None:
+        end_to_end_text = check.END_TO_END.read_text(encoding="utf-8").replace(
+            "@[deprecated compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match\n"
+            "  (since := \"2026-05-07\")]\n"
+            "private theorem compile_preserves_native_evmYulLean_callDispatcher_of_generated_callDispatcher_match",
+            "theorem compile_preserves_native_evmYulLean_callDispatcher_of_generated_callDispatcher_match",
+            1,
+        )
+        errors = check.check_public_theorem_target(
+            end_to_end_text,
+            check.NATIVE_HARNESS.read_text(encoding="utf-8"),
+            check.RETARGET.read_text(encoding="utf-8"),
+        )
+        self.assertTrue(
+            any("must be marked deprecated" in error for error in errors),
             errors,
         )
 

@@ -83,6 +83,7 @@ BUILTINS = (
     / "Builtins.lean"
 )
 PRESERVATION = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Preservation.lean"
+YULGEN_README = ROOT / "Compiler" / "Proofs" / "YulGeneration" / "README.md"
 NATIVE_ADAPTER = (
     ROOT
     / "Compiler"
@@ -208,6 +209,78 @@ REQUIRED_SNIPPETS = (
     "`selfbalance` also fails closed on the selected native runtime path",
     "EvmYul.MIN_BASE_FEE_PER_BLOB_GAS",
     "`initialState_unbridgedEnvironmentDefaults`",
+    "remaining success-path blocker is the selected user-body result boundary",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel",
+    "generic native execution proof for",
+    "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
+    "lowered selected `fn.body` at dispatcher fuel to `execIRFunction`",
+    "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
+    "`compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher`",
+    "returns the lowered native runtime witness",
+    "public theorem no longer exposes full `DispatchGuardsSafe`",
+    "Legacy premise-taking `compile_preserves_native_evmYulLean_*`",
+    "wrappers are file-local",
+    "public `compile_preserves_native_evmYulLean_*` surface is limited",
+    "source-level selected function calldata-threshold inventory",
+    "generatedFunctionCalldataThreshold_of_compile_ok_supported",
+    "transports that inventory across `compile`",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mapping",
+    "mapping-helper straight-body preservation path",
+    "NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_bridgedStraightStmts",
+    "no-mapping helper-free straight-body preservation bridge",
+    "NativeMappingFreeBridgedExpr",
+    "NativeMappingFreePreservableStraightStmt",
+    "NativeExprPreservesWord_lowerExprNative_of_mappingFreeBridgedExpr",
+    "NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_mappingFreePreservableStraightStmts",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_mappingFreePreservableStraightStmts",
+    "NativeMappingFreeSideConditionForBridgedStraightStmt",
+    "NativeMappingFreePreservableStraightStmts.of_bridgedStraightStmts",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree",
+    "singleton-`leave` base case",
+    "execIRStmts_single_leave_succ_succ",
+    "exec_block_leave_ok_add_ten",
+    "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body",
+    "native `leave` exits through a revivable checkpoint",
+    "singleton-`stop` base case",
+    "execIRFunction_single_stop",
+    "exec_block_stop_halt_add_ten",
+    "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_stop_body",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_stop_body",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body",
+    "literal external returns",
+    "execIRFunction_mstore0_lit_return32",
+    "exec_lowerExprNative_mstore_lit_lit_ok_fuel",
+    "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_lit_return32",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_lit_return32",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_lit_return32",
+    "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_lit_return32",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_lit_return32",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_lit_return32",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_lit_return32",
+    "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_sload0_return32",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_sload0_return32",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_sload0_return32",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_sload0_return32",
+    "execIRFunction_oneParam_store0_value_stop",
+    "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_oneParam_store0_value_stop",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_oneParam_store0_value_stop",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_oneParam_store0_value_stop",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_oneParam_store0_value_stop",
+    "compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher_source_oneParam_store0_value_stop",
+    "Single-argument external returns",
+    "execIRFunction_mstore0_calldataload4_return32_of_args_cons",
+    "exec_lowerExprNative_mstore_lit_calldataload_lit_ok_fuel",
+    "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_calldataload4_return32",
+    "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_calldataload4_return32",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload4_return32",
+    "reusable aligned-calldata return seams",
+    "execIRFunction_mstore0_calldataload_aligned_return32",
+    "initialState_calldataload_aligned_arg_word",
+    "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload_aligned_return32",
+    "4 + 32 * idx < 2^64",
+    "remaining normal-return blocker is the generic body-shape discovery path",
+    "supply the mapping-free straight-body predicate automatically",
 )
 
 FORBIDDEN_SNIPPETS = (
@@ -227,7 +300,7 @@ def theorem_signature(text: str, theorem_name: str) -> str:
     """Return the theorem statement through its `:= by` proof delimiter."""
 
     match = re.search(
-        r"^\s*theorem\s+" + re.escape(theorem_name) + r"\b",
+        r"^\s*(?:private\s+)?theorem\s+" + re.escape(theorem_name) + r"\b",
         text,
         re.MULTILINE,
     )
@@ -381,6 +454,11 @@ def check_public_theorem_target(
         "theorem nativeIRRuntimeMatchesIR_of_compiled_generated_lowered_dispatcherExec_project_body_closure_ofIR_globalDefaults",
         "theorem generatedRuntimeNativeFragment_of_compile_ok_supported_safe",
         "theorem validateGeneratedRuntimeNativeFragment_of_compile_ok_supported_safe",
+        "theorem generatedRuntimeSelectedFunctionBodyBridged_of_compile_ok_supported",
+        "theorem lowerStmtsNativeWithSwitchIds_selectedFunctionBody_exists_of_compile_ok_supported",
+        "theorem selectedFunctionBodyBridgedAndLowered_of_compile_ok_supported",
+        "theorem nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported",
+        "theorem lowerRuntimeContractNative_of_compile_ok_supported_exists",
         "theorem lowerRuntimeContractNative_of_compile_ok_supported_noMapping",
         "theorem lowerRuntimeContractNative_of_compile_ok_supported_noMapping_ok_dispatcher",
         "theorem lowerRuntimeContractNative_of_compile_ok_supported_mapping_reserved",
@@ -452,6 +530,65 @@ def check_public_theorem_target(
         "theorem simpleStorageNativeRetrieveHitMatchBridge_proved",
         "theorem simpleStorageNativeStoreHitMatchBridge_proved",
         "theorem simpleStorageNativeSelectorMissMatchBridge_proved",
+        "theorem nativeGeneratedCallDispatcherResult_selector_miss_matchesIR_exists_of_compile_ok_supported",
+        "theorem nativeGeneratedCallDispatcherResult_selector_hit_nonpayable_nonzero_revert_matchesIR_exists_of_compile_ok_supported",
+        "theorem nativeGeneratedCallDispatcherResult_selector_hit_args_short_revert_matchesIR_exists_of_compile_ok_supported",
+        "theorem nativeGeneratedCallDispatcherResult_selector_hit_error_matchesIR_exists_of_compile_ok_supported",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+        "theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher",
+        "theorem DispatchGuardsSafe.of_value_safe_of_threshold",
+        "theorem compiledFunctionCalldataThreshold_of_forall₂",
+        "theorem generatedFunctionCalldataThreshold_of_compile_ok_supported",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_store0_calldataload4_stop",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_sload0_return32",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_stop_body",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_stop_body",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_lit_return32",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_lit_return32",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_lit_return32",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_lit_return32",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_lit_return32",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_lit_return32",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_lit_return32",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_sload0_return32",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_sload0_return32",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_sload0_return32",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_sload0_return32",
+        "theorem execIRFunction_oneParam_store0_value_stop",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_oneParam_store0_value_stop",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_oneParam_store0_value_stop",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_oneParam_store0_value_stop",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_oneParam_store0_value_stop",
+        "theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher_source_oneParam_store0_value_stop",
+        "theorem NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_calldataload4_return32",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_calldataload4_return32",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload4_return32",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload_aligned_return32",
+        "def NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
+        "def NativeGeneratedSelectedUserBodyResultBridgeAtFuel",
+        "def NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived",
+        "def NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel",
+        "def NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation",
+        "theorem NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_halt",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_preserves",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_nativeStmtsWriteNames_not_mem",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mapping",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_mappingFreePreservableStraightStmts",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree",
+        "theorem NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_empty_body",
+        "theorem NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_exec_bridge",
+        "theorem NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_selected_user_body_exec_only",
+        "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_exec_bridge",
+        "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_forall_stmt_write_not_mem",
+        "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_nativeStmtsWriteNames_not_mem",
+        "theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_mappingFreePreservableStraightStmts",
+        "theorem NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_exec_only_and_preserves",
+        "theorem NativeGeneratedSelectorHitBridge.of_success_predicate_and_generated_guard_reverts_threshold",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_success_bridge_threshold",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree",
+        "theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_result_threshold",
     ):
         if required_native_seam not in normalized_end_to_end:
             errors.append(
@@ -459,6 +596,435 @@ def check_public_theorem_target(
                 f"`{required_native_seam}` explicit until the generated-fragment "
                 "native bridge is discharged"
             )
+
+    unsafe_leave_preservation_patterns = (
+        r"(?m)^[ \t]*(?:private\s+)?theorem\s+NativeStmtPreservesWord_leave\b",
+        r"(?m)^[ \t]*(?:private\s+)?theorem\s+NativeBlockPreservesWord_leave\b",
+        r"(?m)^[ \t]*(?:private\s+)?theorem\s+NativeBlockPreservesWord_single_leave\b",
+    )
+    for pattern in unsafe_leave_preservation_patterns:
+        if re.search(pattern, native_harness_text) or re.search(pattern, end_to_end_text):
+            errors.append(
+                "The native transition must not close the selected-body result "
+                "bridge by asserting matched-flag preservation for raw `leave`: "
+                "`leave` exits through a revivable checkpoint, so preserve the "
+                "exec-only bridge until a checkpoint-aware dispatcher invariant "
+                "is proved."
+            )
+
+    private_selected_hit_seams = (
+        ("def", "NativeGeneratedSelectorHitBridge"),
+        ("def", "NativeGeneratedSelectorHitBodyBridge"),
+        ("def", "NativeGeneratedSelectorHitUserBodyBridge"),
+        ("def", "NativeGeneratedSelectorHitUserBodyBridgeAtFuel"),
+        ("def", "NativeGeneratedSelectorHitUserBodyBridgeAtFuelRestored"),
+        ("def", "NativeGeneratedSelectorHitUserBodyBridgeAtFuelRevived"),
+        ("def", "NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived"),
+        ("def", "NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived"),
+        ("def", "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived"),
+        ("def", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel"),
+        ("def", "NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel"),
+        ("def", "NativeGeneratedSelectorHitArtifactBridge"),
+        ("def", "NativeGeneratedSelectorHitDispatcherContinuation"),
+        ("def", "NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_halt"),
+        (
+            "theorem",
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_preserves",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_nativeStmtsWriteNames_not_mem",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mapping",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mappingFree",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body",
+        ),
+        ("theorem", "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_stop_body"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_stop_body"),
+        ("theorem", "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_lit_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_lit_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_lit_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_lit_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_zeroParam_mstore0_sload0_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_zeroParam_mstore0_sload0_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_oneParam_store0_value_stop"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_oneParam_store0_value_stop"),
+        ("theorem", "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel.of_mstore0_calldataload4_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_mstore0_calldataload4_return32"),
+        ("theorem", "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_empty_body"),
+        ("theorem", "NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_exec_bridge"),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitUserBodyExecOnlyBridgeAtFuelRevived.of_selected_user_body_exec_only",
+        ),
+        ("theorem", "NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_exec_bridge"),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_forall_stmt_write_not_mem",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_nativeStmtsWriteNames_not_mem",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_exec_only_and_preserves",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitUserBodyBridgeAtFuelRevived.of_execIRFunction",
+        ),
+        ("theorem", "NativeGeneratedSelectorHitUserBodyBridgeAtFuelRestored.of_revived"),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitUserBodyBridgeAtFuelRestored.of_execIRFunction",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_lit_return32",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_lit_return32",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_lit_return32",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_zeroParam_mstore0_sload0_return32",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_zeroParam_sload0_return32",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_oneParam_store0_value_stop",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_source_oneParam_store0_value_stop",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload4_return32",
+        ),
+        (
+            "theorem",
+            "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_mstore0_calldataload_aligned_return32",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitArtifactBridge.of_body_bridge_and_continuation",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitArtifactBridge.of_user_body_bridge_and_continuation",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitArtifactBridge.of_user_body_bridge_atFuel_and_continuation",
+        ),
+        ("theorem", "NativeGeneratedSelectorHitBridge.of_artifact_bridge"),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitBridge.of_success_bridge_and_generated_guard_reverts",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitBridge.of_success_predicate_and_generated_guard_reverts",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitBridge.of_success_predicate_and_generated_guard_reverts_threshold",
+        ),
+        (
+            "theorem",
+            "NativeGeneratedSelectorHitSuccessBridge.of_user_body_exec_bridge_atFuel_revived_and_continuation",
+        ),
+    )
+    for kind, name in private_selected_hit_seams:
+        private_decl = f"private {kind} {name}"
+        if private_decl not in normalized_end_to_end:
+            errors.append(
+                "Compiler/Proofs/EndToEnd.lean must keep the selected "
+                "selector-hit bridge seam private: "
+                f"`{private_decl}`"
+            )
+        public_decl_pattern = re.compile(
+            rf"(?m)^[ \t]*(?!private\b){kind}\s+{re.escape(name)}\b"
+        )
+        if public_decl_pattern.search(end_to_end_text):
+            errors.append(
+                "Compiler/Proofs/EndToEnd.lean must not expose the selected "
+                "selector-hit bridge seam publicly: "
+                f"`{kind} {name}`"
+            )
+
+    exact_generated_theorem = "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported"
+    source_generated_theorem = (
+        "compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher"
+    )
+    public_halt_bridge_pattern = re.compile(
+        r"(?m)^[ \t]*def\s+NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel\b"
+    )
+    private_halt_bridge_pattern = re.compile(
+        r"(?m)^[ \t]*private\s+def\s+NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel\b"
+    )
+    public_success_bridge_pattern = re.compile(
+        r"(?m)^[ \t]*def\s+NativeGeneratedSelectorHitSuccessBridge\b"
+    )
+    private_success_bridge_pattern = re.compile(
+        r"(?m)^[ \t]*private\s+def\s+NativeGeneratedSelectorHitSuccessBridge\b"
+    )
+    if public_halt_bridge_pattern.search(end_to_end_text) is None:
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean must keep the public exact "
+            "generated callDispatcher selected user-body halt bridge publicly nameable: "
+            "`def NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel`"
+        )
+    if private_halt_bridge_pattern.search(end_to_end_text):
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean must not make the public exact "
+            "generated callDispatcher selected user-body halt bridge private while the public "
+            "theorem exposes it: "
+            "`NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel`"
+        )
+    if public_success_bridge_pattern.search(end_to_end_text) is None:
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean must keep the remaining "
+            "success-case selector-hit bridge publicly nameable: "
+            "`def NativeGeneratedSelectorHitSuccessBridge`"
+        )
+    if private_success_bridge_pattern.search(end_to_end_text):
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean must not make the remaining "
+            "success-case selector-hit bridge private while private adapters "
+            "still close over it: "
+            "`NativeGeneratedSelectorHitSuccessBridge`"
+        )
+
+    exact_generated_signature = theorem_signature(end_to_end_text, exact_generated_theorem)
+    if not exact_generated_signature:
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean must keep the public exact generated "
+            f"callDispatcher theorem `{exact_generated_theorem}` explicit"
+        )
+    else:
+        for required_exact_signature_target in (
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
+            "nativeGeneratedCallDispatcherResultOf",
+            "selectorDispatchedFunctions spec",
+        ):
+            if required_exact_signature_target not in exact_generated_signature:
+                errors.append(
+                    "Compiler/Proofs/EndToEnd.lean public exact generated "
+                    f"callDispatcher theorem `{exact_generated_theorem}` must "
+                    f"expose `{required_exact_signature_target}` in its signature"
+                )
+        for forbidden_exact_signature_target in (
+            "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
+            "NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel",
+            "NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation",
+            "DispatchGuardsSafe",
+        ):
+            if forbidden_exact_signature_target in exact_generated_signature:
+                errors.append(
+                    "Compiler/Proofs/EndToEnd.lean public exact generated "
+                    f"callDispatcher theorem `{exact_generated_theorem}` must "
+                    "hide the selected user-body adapter or full guard detail "
+                    f"`{forbidden_exact_signature_target}` behind "
+                    "`NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel`"
+                )
+        if "interpretIRRuntimeNative" in exact_generated_signature:
+            errors.append(
+                "Compiler/Proofs/EndToEnd.lean public exact generated "
+                f"callDispatcher theorem `{exact_generated_theorem}` must not "
+                "expose `interpretIRRuntimeNative` as its public result target"
+            )
+
+    source_generated_signature = theorem_signature(end_to_end_text, source_generated_theorem)
+    if not source_generated_signature:
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean must keep the public source-level "
+            f"generated callDispatcher theorem `{source_generated_theorem}` explicit"
+        )
+    else:
+        for required_source_signature_target in (
+            "sourceResultMatchesNativeOn",
+            "lowerRuntimeContractNative",
+            "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
+            "nativeGeneratedCallDispatcherResultOf",
+        ):
+            if required_source_signature_target not in source_generated_signature:
+                errors.append(
+                    "Compiler/Proofs/EndToEnd.lean public source-level generated "
+                    f"callDispatcher theorem `{source_generated_theorem}` must "
+                    f"expose `{required_source_signature_target}` in its signature"
+                )
+        for forbidden_source_signature_target in (
+            "DispatchGuardsSafe",
+            "NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived",
+            "interpretIRRuntimeNative",
+        ):
+            if forbidden_source_signature_target in source_generated_signature:
+                errors.append(
+                    "Compiler/Proofs/EndToEnd.lean public source-level generated "
+                    f"callDispatcher theorem `{source_generated_theorem}` must "
+                    "hide the selected user-body adapter or older runtime target "
+                    f"`{forbidden_source_signature_target}`"
+                )
+
+    allowed_public_compile_preserves = {
+        "compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match",
+        source_generated_theorem,
+    }
+    public_compile_preserves_pattern = re.compile(
+        r"(?m)^[ \t]*(?!private\b)theorem\s+"
+        r"(compile_preserves_native_evmYulLean_[A-Za-z0-9_']+)\b"
+    )
+    for public_match in public_compile_preserves_pattern.finditer(end_to_end_text):
+        public_name = public_match.group(1)
+        if public_name not in allowed_public_compile_preserves:
+            errors.append(
+                "Compiler/Proofs/EndToEnd.lean must keep legacy "
+                "`compile_preserves_native_evmYulLean_*` wrappers private; "
+                f"unexpected public theorem `{public_name}`"
+            )
+
+    deprecated_exact_wrappers = (
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_exec_bridge_success_only_atFuel_revived_and_continuation",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_body_halt_bridge_atFuel",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_body_bridge_and_continuation",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_bridge_and_continuation",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_bridge_atFuel_and_continuation",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_bridge_atFuel_restored_and_continuation",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_bridge_atFuel_revived_and_continuation",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_exec_bridge_atFuel_revived_and_continuation",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_exec_bridge_success_only_atFuel_revived",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_empty_selected_body",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_preserves",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_exec_only_and_bridgedStraightStmts_mappingFree",
+        "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_result",
+    )
+    deprecated_exact_pattern = re.compile(
+        r"attribute\s+\[deprecated\s+"
+        + re.escape(exact_generated_theorem)
+        + r"\s+\(since\s*:=\s*\"2026-05-07\"\)\]\s+"
+        + r"(?P<wrapper_block>(?:\s*(?:"
+        + "|".join(
+            re.escape(wrapper)
+            for wrapper in sorted(deprecated_exact_wrappers, key=len, reverse=True)
+        )
+        + r"))+)",
+        re.MULTILINE,
+    )
+    deprecated_exact_match = deprecated_exact_pattern.search(end_to_end_text)
+    if deprecated_exact_match is None:
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean exact generated callDispatcher "
+            "compatibility wrappers must be deprecated in favor of "
+            f"`{exact_generated_theorem}`"
+        )
+    else:
+        wrapper_block = deprecated_exact_match.group("wrapper_block")
+        for wrapper in deprecated_exact_wrappers:
+            if wrapper not in wrapper_block:
+                errors.append(
+                    "Compiler/Proofs/EndToEnd.lean exact generated "
+                    f"callDispatcher compatibility wrapper `{wrapper}` must "
+                    f"be included in the deprecation block for `{exact_generated_theorem}`"
+                )
+
+    deprecated_interpret_wrappers = (
+        "compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match",
+        "compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_ofIR_environment",
+        "compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_ofIR_globalDefaults",
+        "compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_noMapping_dispatcher_ofIR_environment",
+        "compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_noMapping_dispatcher_ofIR_globalDefaults",
+        "compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_mapping_dispatcher_ofIR_environment",
+        "compile_preserves_native_evmYulLean_of_interpretIRRuntimeNative_match_mapping_dispatcher_ofIR_globalDefaults",
+    )
+    deprecated_interpret_pattern = re.compile(
+        r"attribute\s+\[deprecated\s+"
+        r"compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match"
+        r"\s+\(since\s*:=\s*\"2026-05-07\"\)\]\s+"
+        + r"(?P<wrapper_block>(?:\s*(?:"
+        + "|".join(
+            re.escape(wrapper)
+            for wrapper in sorted(deprecated_interpret_wrappers, key=len, reverse=True)
+        )
+        + r"))+)",
+        re.MULTILINE,
+    )
+    deprecated_interpret_match = deprecated_interpret_pattern.search(end_to_end_text)
+    if deprecated_interpret_match is None:
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean interpretIRRuntimeNative "
+            "compatibility wrappers must be deprecated in favor of "
+            "`compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match`"
+        )
+    else:
+        wrapper_block = deprecated_interpret_match.group("wrapper_block")
+        for wrapper in deprecated_interpret_wrappers:
+            if wrapper not in wrapper_block:
+                errors.append(
+                    "Compiler/Proofs/EndToEnd.lean interpretIRRuntimeNative "
+                    f"compatibility wrapper `{wrapper}` must be included in "
+                    "the deprecation block for "
+                    "`compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match`"
+                )
+
+    deprecated_interpret_eq_wrappers = (
+        "nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported",
+        "nativeGeneratedCallDispatcherResultOf_eq_interpretIRRuntimeNative_of_lowerRuntimeContractNative_supported_except_mapping_writes_stmt_safety",
+    )
+    deprecated_interpret_eq_pattern = re.compile(
+        r"attribute\s+\[deprecated\s+nativeGeneratedCallDispatcherResultOf"
+        r"\s+\(since\s*:=\s*\"2026-05-07\"\)\]\s+"
+        + r"(?P<wrapper_block>(?:\s*(?:"
+        + "|".join(
+            re.escape(wrapper)
+            for wrapper in sorted(deprecated_interpret_eq_wrappers, key=len, reverse=True)
+        )
+        + r"))+)",
+        re.MULTILINE,
+    )
+    deprecated_interpret_eq_match = deprecated_interpret_eq_pattern.search(end_to_end_text)
+    if deprecated_interpret_eq_match is None:
+        errors.append(
+            "Compiler/Proofs/EndToEnd.lean interpretIRRuntimeNative equality "
+            "wrappers must be deprecated in favor of "
+            "`nativeGeneratedCallDispatcherResultOf`"
+        )
+    else:
+        wrapper_block = deprecated_interpret_eq_match.group("wrapper_block")
+        for wrapper in deprecated_interpret_eq_wrappers:
+            if wrapper not in wrapper_block:
+                errors.append(
+                    "Compiler/Proofs/EndToEnd.lean interpretIRRuntimeNative "
+                    f"equality wrapper `{wrapper}` must be included in the "
+                    "deprecation block for `nativeGeneratedCallDispatcherResultOf`"
+                )
 
     for public_call_dispatcher_theorem in (
         "compile_preserves_native_evmYulLean_callDispatcher_of_generated_callDispatcher_match",
@@ -478,6 +1044,20 @@ def check_public_theorem_target(
                 "Compiler/Proofs/EndToEnd.lean public generated "
                 f"`{public_call_dispatcher_theorem}` theorem must not expose "
                 "`interpretIRRuntimeNative` as its public result target"
+            )
+        deprecated_pattern = re.compile(
+            r"@\[deprecated\s+"
+            r"compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match"
+            r"\s+\(since\s*:=\s*\"2026-05-07\"\)\]\s*"
+            r"(?:private\s+)?theorem\s+" + re.escape(public_call_dispatcher_theorem) + r"\b",
+            re.MULTILINE,
+        )
+        if not deprecated_pattern.search(end_to_end_text):
+            errors.append(
+                "Compiler/Proofs/EndToEnd.lean generated callDispatcher "
+                f"compatibility wrapper `{public_call_dispatcher_theorem}` "
+                "must be marked deprecated in favor of "
+                "`compile_preserves_native_evmYulLean_of_nativeGeneratedCallDispatcherResult_match`"
             )
 
     if re.search(
@@ -1005,6 +1585,18 @@ def check_public_theorem_target(
         "theorem NativeExprPreservesWord_call_user_of_nativeEvalArgs_call_preserves",
         "theorem NativeExprPreservesWord_lowerExprNative_call_userFunction_of_evalArgs_call_preserves",
         "theorem NativeExprPreservesWord_lowerExprNative_call_userFunction_of_nativeEvalArgs_call_preserves",
+        "inductive NativeMappingFreeBridgedExpr",
+        "theorem NativeExprPreservesWord_lowerExprNative_of_mappingFreeBridgedExpr",
+        "theorem NativeEvalArgsPreservesWord_lowerExprNative_reverse_of_mappingFreeBridgedExprs",
+        "inductive NativeMappingFreePreservableStraightStmt",
+        "def NativeMappingFreeSideConditionForBridgedExpr",
+        "theorem NativeMappingFreeBridgedExpr.of_bridgedExpr",
+        "def NativeMappingFreeSideConditionForBridgedStraightStmt",
+        "theorem NativeMappingFreePreservableStraightStmt.of_bridgedStraightStmt",
+        "theorem NativeMappingFreePreservableStraightStmts.of_bridgedStraightStmts",
+        "theorem NativeStmtPreservesWord_lowerStmtGroupNativeWithSwitchIds_of_mappingFreePreservableStraightStmt",
+        "theorem NativeStmtPreservesWord_of_mem_lowerStmtsNativeWithSwitchIds_of_mappingFreePreservableStraightStmts",
+        "theorem NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_mappingFreePreservableStraightStmts",
         "theorem NativeStmtPreservesWord_exprStmtCall_prim_of_evalArgs_primCall_preserves",
         "theorem NativeStmtPreservesWord_exprStmtCall_user_of_evalArgs_call_preserves",
         "theorem NativeStmtPreservesWord_exprStmtCall_prim_of_nativeEvalArgs_primCall_preserves",
@@ -1326,6 +1918,38 @@ def check_legacy_proof_boundary(
                 f"`{match.group(2)}` as public proof authority"
             )
 
+    return errors
+
+
+def check_yul_generation_readme(text: str) -> list[str]:
+    """Keep the Layer 3 README aligned with the native dispatcher retarget."""
+
+    errors: list[str] = []
+    required_snippets = (
+        "Legacy reference-oracle stack complete",
+        "`EvmYul.Yul.callDispatcher` theorem stack",
+        "not the fuel-parametric proof-interpreter preservation theorem",
+        "**`Preservation.lean`** - Legacy Layer 3 preservation theorem",
+        "**`Backends/EvmYulLeanNativeHarness.lean`** - Native EVMYulLean execution",
+        "**`Backends/EvmYulLeanRetarget.lean`** - Bridged-fragment backend equivalence",
+        "Does not export contract-level proof-interpreter preservation as public",
+    )
+    for snippet in required_snippets:
+        if snippet not in text:
+            errors.append(
+                "Compiler/Proofs/YulGeneration/README.md must describe the "
+                f"native dispatcher retarget boundary with `{snippet}`"
+            )
+    forbidden_snippets = (
+        "**Status**: Complete (PR #42)",
+        "**`Preservation.lean`** - Main Layer 3 preservation theorem",
+    )
+    for snippet in forbidden_snippets:
+        if snippet in text:
+            errors.append(
+                "Compiler/Proofs/YulGeneration/README.md must not describe the "
+                f"legacy proof-interpreter path as current public authority: `{snippet}`"
+            )
     return errors
 
 
@@ -1893,6 +2517,9 @@ def main() -> int:
     errors = check_doc(DOC.read_text(encoding="utf-8"))
     errors.extend(
         check_definition_of_done_doc(DOD_DOC.read_text(encoding="utf-8"))
+    )
+    errors.extend(
+        check_yul_generation_readme(YULGEN_README.read_text(encoding="utf-8"))
     )
     errors.extend(
         check_public_theorem_target(

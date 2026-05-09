@@ -312,6 +312,18 @@ scope so the native path does not look more complete than it is:
   `lowerStmtsNativeWithSwitchIds_selectedFunctionBody_exists_of_compile_ok_supported`,
   `selectedFunctionBodyBridgedAndLowered_of_compile_ok_supported`, and
   `nativeGeneratedSelectorHitSuccessUserBodyLoweredArtifacts_exists_of_compile_ok_supported`.
+  A fully closed
+  `NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_compile_ok_supported`
+  lemma is still missing. The proof cannot be completed from the current
+  handoff facts alone: the dispatcher-facing adapters also need the generic
+  selected-body execution predicate
+  `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived`, straight-body
+  preservation inputs (`BridgedStraightStmts` plus the mapping/no-mapping side
+  conditions), and a lowered-body freshness proof showing the generated matched
+  flag is absent from `nativeStmtsWriteNames bodyNative`. The compile-supported
+  handoff currently gives `BridgedStmts fn.body` and successful native
+  lowering, but not those stronger execution, straight-fragment, side-condition,
+  or matched-temp freshness facts.
   The normal-return execution side now has a sound singleton-`leave` base case:
   `execIRStmts_single_leave_succ_succ`,
   `exec_block_leave_ok_add_ten`, and

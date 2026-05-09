@@ -137,7 +137,7 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
 
     def test_rejects_missing_threshold_only_public_guard_caveat(self) -> None:
         text = check.DOC.read_text(encoding="utf-8").replace(
-            "selected function calldata-threshold inventory",
+            "`SupportedSpec` carries the selected function calldata-threshold inventory",
             "selected function full guard inventory",
             1,
         )
@@ -470,7 +470,7 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
         end_to_end_text = self.replace_in_theorem_signature(
             check.END_TO_END.read_text(encoding="utf-8"),
             "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
-            "4 + fn.params.length * 32 < EvmYul.UInt256.size",
+            "4 + tx.args.length * 32 < EvmYul.UInt256.size",
             "DispatchGuardsSafe fn tx",
         )
         errors = check.check_public_theorem_target(
@@ -483,12 +483,12 @@ class NativeTransitionDocCheckTests(unittest.TestCase):
             errors,
         )
 
-    def test_public_theorem_target_guard_rejects_compiled_ir_threshold_inventory(self) -> None:
+    def test_public_theorem_target_guard_rejects_public_source_threshold_inventory(self) -> None:
         end_to_end_text = self.replace_in_theorem_signature(
             check.END_TO_END.read_text(encoding="utf-8"),
             "nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported",
+            "hUserBodyHalt",
             "selectorDispatchedFunctions spec",
-            "irContract.functions",
         )
         errors = check.check_public_theorem_target(
             end_to_end_text,

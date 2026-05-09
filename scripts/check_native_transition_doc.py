@@ -221,7 +221,7 @@ REQUIRED_SNIPPETS = (
     "Legacy premise-taking `compile_preserves_native_evmYulLean_*`",
     "wrappers are file-local",
     "public `compile_preserves_native_evmYulLean_*` surface is limited",
-    "source-level selected function calldata-threshold inventory",
+    "`SupportedSpec` carries the selected function calldata-threshold inventory",
     "generatedFunctionCalldataThreshold_of_compile_ok_supported",
     "transports that inventory across `compile`",
     "NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_exec_only_and_bridgedStraightStmts_mapping",
@@ -833,7 +833,6 @@ def check_public_theorem_target(
         for required_exact_signature_target in (
             "NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel",
             "nativeGeneratedCallDispatcherResultOf",
-            "selectorDispatchedFunctions spec",
         ):
             if required_exact_signature_target not in exact_generated_signature:
                 errors.append(
@@ -846,6 +845,7 @@ def check_public_theorem_target(
             "NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel",
             "NativeGeneratedSelectorHitUserBodyGeneratedPrefixContinuation",
             "DispatchGuardsSafe",
+            "selectorDispatchedFunctions spec",
         ):
             if forbidden_exact_signature_target in exact_generated_signature:
                 errors.append(

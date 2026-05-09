@@ -290,9 +290,6 @@ private theorem generatedFunctionCalldataThreshold_of_compile_ok_supported
     (irContract : IRContract)
     (tx : IRTransaction)
     (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
-    (hSourceThreshold :
-      ∀ fn, fn ∈ selectorDispatchedFunctions spec →
-        4 + fn.params.length * 32 < EvmYul.UInt256.size)
     (irFn : IRFunction)
     (hFind :
       irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
@@ -302,7 +299,10 @@ private theorem generatedFunctionCalldataThreshold_of_compile_ok_supported
     Compiler.Proofs.IRGeneration.Contract.compile_ok_yields_compiled_functions
       spec selectors hSupported irContract hcompile
   exact
-    compiledFunctionCalldataThreshold_of_forall₂ spec tx hSourceThreshold
+    compiledFunctionCalldataThreshold_of_forall₂ spec tx
+      (fun fn hfn => by
+        simpa [Compiler.Constants.evmModulus, EvmYul.UInt256.size] using
+          hSupported.selectorFunctionParamCalldataThreshold hfn)
       (pairs := SourceSemantics.selectorFunctionPairs spec selectors)
       (irFns := irContract.functions)
       (fun entry hMem =>
@@ -20307,8 +20307,7 @@ private theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_s
       hThreshold
 
 /-- Public generated `callDispatcher` result theorem from `SupportedSpec +
-compile`, modulo the source-level calldata-threshold inventory and exact-fuel
-selected user-body halt bridge.
+compile`, modulo the exact-fuel selected user-body halt bridge.
 
 Selector miss and generated selector-hit guard failures are discharged
 internally. For `stop`/`return`-style selected bodies, callers provide the
@@ -20327,10 +20326,6 @@ theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported
       ∀ selector, selector ∈ selectors →
         selector < Compiler.Constants.selectorModulus)
     (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
-    (hSourceThreshold :
-      ∀ fn,
-        fn ∈ selectorDispatchedFunctions spec →
-        4 + fn.params.length * 32 < EvmYul.UInt256.size)
     (hUserBodyHalt :
       NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx state
         observableSlots) :
@@ -20349,8 +20344,7 @@ theorem nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported
         irContract tx state observableSlots hUserBodyHalt)
       (fun fn hFind =>
         generatedFunctionCalldataThreshold_of_compile_ok_supported
-          spec selectors hSupported irContract tx hcompile hSourceThreshold fn
-          hFind)
+          spec selectors hSupported irContract tx hcompile fn hFind)
 
 /-- Source-level native compiler correctness for the generated
 `EvmYul.Yul.callDispatcher` projection.
@@ -20375,10 +20369,6 @@ theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_ca
       ∀ selector, selector ∈ selectors →
         selector < Compiler.Constants.selectorModulus)
     (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
-    (hSourceThreshold :
-      ∀ fn,
-        fn ∈ selectorDispatchedFunctions spec →
-        4 + fn.params.length * 32 < EvmYul.UInt256.size)
     (hUserBodyHalt :
       NativeGeneratedSelectedUserBodyHaltExecBridgeAtFuel irContract tx
         (FunctionBody.initialIRStateForTx spec tx initialWorld)
@@ -20397,7 +20387,7 @@ theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_ca
         spec selectors hSupported irContract tx
         (FunctionBody.initialIRStateForTx spec tx initialWorld)
         observableSlots hcompile hSelectorRange hSelectorsRange hNoWrap
-        hSourceThreshold hUserBodyHalt with
+        hUserBodyHalt with
     ⟨nativeContract, hLower, hMatch⟩
   exact
     ⟨nativeContract, hLower,
@@ -30791,10 +30781,6 @@ private theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_gene
       ∀ selector, selector ∈ selectors →
         selector < Compiler.Constants.selectorModulus)
     (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
-    (hSourceThreshold :
-      ∀ fn,
-        fn ∈ selectorDispatchedFunctions spec →
-        4 + fn.params.length * 32 < EvmYul.UInt256.size)
     (hSourceParams :
       ∀ entry, entry ∈ SourceSemantics.selectorFunctionPairs spec selectors →
         entry.2 = tx.functionSelector →
@@ -30828,8 +30814,7 @@ private theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_gene
         observableSlots hcompile hSelectorRange hSelectorsRange hNoWrap
         (fun fn hFind =>
           generatedFunctionCalldataThreshold_of_compile_ok_supported
-            spec selectors hSupported irContract tx hcompile hSourceThreshold fn
-            hFind)
+            spec selectors hSupported irContract tx hcompile fn hFind)
         hSourceParams hSourceBody hArgsCons with
     ⟨nativeContract, hLower, hMatch⟩
   exact
@@ -32792,10 +32777,6 @@ private theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_gene
       ∀ selector, selector ∈ selectors →
         selector < Compiler.Constants.selectorModulus)
     (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
-    (hSourceThreshold :
-      ∀ fn,
-        fn ∈ selectorDispatchedFunctions spec →
-        4 + fn.params.length * 32 < EvmYul.UInt256.size)
     (value : Nat)
     (hValueRange : value < EvmYul.UInt256.size)
     (hSourceParams :
@@ -32830,8 +32811,7 @@ private theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_gene
         observableSlots hcompile hSelectorRange hSelectorsRange hNoWrap
         (fun fn hFind =>
           generatedFunctionCalldataThreshold_of_compile_ok_supported
-            spec selectors hSupported irContract tx hcompile hSourceThreshold fn
-            hFind)
+            spec selectors hSupported irContract tx hcompile fn hFind)
         value hValueRange hSourceParams hSourceBody with
     ⟨nativeContract, hLower, hMatch⟩
   exact
@@ -32855,10 +32835,6 @@ private theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_gene
       ∀ selector, selector ∈ selectors →
         selector < Compiler.Constants.selectorModulus)
     (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
-    (hSourceThreshold :
-      ∀ fn,
-        fn ∈ selectorDispatchedFunctions spec →
-        4 + fn.params.length * 32 < EvmYul.UInt256.size)
     (hSourceParams :
       ∀ entry, entry ∈ SourceSemantics.selectorFunctionPairs spec selectors →
         entry.2 = tx.functionSelector →
@@ -32891,8 +32867,7 @@ private theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_gene
         observableSlots hcompile hSelectorRange hSelectorsRange hNoWrap
         (fun fn hFind =>
           generatedFunctionCalldataThreshold_of_compile_ok_supported
-            spec selectors hSupported irContract tx hcompile hSourceThreshold fn
-            hFind)
+            spec selectors hSupported irContract tx hcompile fn hFind)
         hSourceParams hSourceBody with
     ⟨nativeContract, hLower, hMatch⟩
   exact

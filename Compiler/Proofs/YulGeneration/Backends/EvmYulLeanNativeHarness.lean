@@ -34516,4 +34516,104 @@ def nativeResultsMatchOn
       ir.events = yul.events
   | .error _ => False
 
+/-- General append-equation helper for native `.Block` execution.
+
+If the left half of a `.Block` evaluates to `.ok mid` at the standard
+`fuel + left.length + k` fuel budget, then executing the appended block
+`left ++ right` at the same total fuel coincides with executing the right
+half on `mid` at the remaining `fuel + k` fuel. This is the equation form
+of `exec_block_append_ok`, allowing callers to splice an arbitrary right
+suffix without committing in advance to what the suffix evaluates to. -/
+theorem exec_block_append_eq_of_continue
+    (fuel k : Nat) (left right : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (state mid : EvmYul.Yul.State)
+    (hLeft :
+      EvmYul.Yul.exec (fuel + left.length + k) (.Block left) codeOverride state =
+        .ok mid) :
+    EvmYul.Yul.exec (fuel + left.length + k) (.Block (left ++ right))
+        codeOverride state =
+      EvmYul.Yul.exec (fuel + k) (.Block right) codeOverride mid := by
+  induction left generalizing fuel state with
+  | nil =>
+      cases hRem : fuel + k with
+      | zero => simp [hRem, EvmYul.Yul.exec] at hLeft
+      | succ remaining' =>
+          have hLeftS : EvmYul.Yul.exec (Nat.succ remaining') (.Block [])
+              codeOverride state = .ok mid := by
+            simpa [hRem] using hLeft
+          simp [EvmYul.Yul.exec] at hLeftS
+          cases hLeftS; simp [hRem]
+  | cons stmt rest ih =>
+      have hSucc : fuel + (stmt :: rest).length + k =
+          Nat.succ (fuel + rest.length + k) := by
+        simp only [List.length_cons]; omega
+      rw [hSucc] at hLeft ⊢
+      rw [List.cons_append]
+      simp only [EvmYul.Yul.exec] at hLeft ⊢
+      cases hHead :
+          EvmYul.Yul.exec (fuel + rest.length + k) stmt codeOverride state with
+      | error err => rw [hHead] at hLeft; simp at hLeft
+      | ok next =>
+          rw [hHead] at hLeft
+          simp at hLeft
+          exact ih fuel next hLeft
+
+/-- Variant of `exec_block_leave_ok_add_ten` that splices a
+`NativePreservableStraightStmts`-derived prefix in front of `.Leave`.
+
+If the native lowering of the prefix evaluates to `.ok mid` at the
+`fuel + suffixLen + 10` budget already used by the dispatcher harness, then
+appending `.Leave` to the lowered prefix runs at `fuel + suffixLen + native.length + 10`
+and produces `.ok mid.setLeave`. The total fuel is the standard
+`+ 10` padding plus the `native.length` cons-steps required to walk through
+the prefix on the way to the trailing `.Leave`. -/
+theorem exec_block_lowerStmtsNativeWithSwitchIds_with_leave_ok_eq_of_NativeBlockPreservesWord
+    (fuel suffixLen : Nat)
+    (native : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (initial mid : EvmYul.Yul.State)
+    (hPre :
+      EvmYul.Yul.exec (fuel + suffixLen + native.length + 10)
+          (.Block native) codeOverride initial = .ok mid) :
+    EvmYul.Yul.exec (fuel + suffixLen + native.length + 10)
+        (.Block (native ++ [.Leave])) codeOverride initial =
+      .ok mid.setLeave := by
+  have hFuel :
+      fuel + suffixLen + native.length + 10 =
+        (fuel + suffixLen + 9) + native.length + 1 := by omega
+  have hLeft :
+      EvmYul.Yul.exec ((fuel + suffixLen + 9) + native.length + 1)
+          (.Block native) codeOverride initial = .ok mid := hFuel ▸ hPre
+  rw [hFuel,
+      exec_block_append_eq_of_continue (fuel + suffixLen + 9) 1 native [.Leave]
+        codeOverride initial mid hLeft]
+  show EvmYul.Yul.exec ((fuel + suffixLen + 9) + 1) (.Block [.Leave])
+      codeOverride mid = .ok mid.setLeave
+  have hLeaveFuel :
+      (fuel + suffixLen + 9) + 1 = Nat.succ (Nat.succ (fuel + suffixLen + 8)) := by
+    omega
+  rw [hLeaveFuel]
+  simp [EvmYul.Yul.exec]
+
+/-- No-leave variant: a `.Block (lower preStmts)` with per-slot preservation
+exits with `.ok mid`, packaged at the standard `+ 10` fuel-padding form so
+the dispatcher harness can splice it into a switch case body.
+
+This is the trivial fuel-padded form of the prefix execution: given that the
+lowered prefix already evaluates to `.ok mid`, restating the equation at the
+canonical `fuel + suffixLen + native.length + 10` budget keeps the consumer
+free of fuel-arithmetic plumbing. -/
+theorem exec_block_lowerStmtsNativeWithSwitchIds_ok_eq_of_NativeBlockPreservesWord
+    (fuel suffixLen : Nat)
+    (native : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (initial mid : EvmYul.Yul.State)
+    (hPre :
+      EvmYul.Yul.exec (fuel + suffixLen + native.length + 10)
+          (.Block native) codeOverride initial = .ok mid) :
+    EvmYul.Yul.exec (fuel + suffixLen + native.length + 10)
+        (.Block (native ++ [])) codeOverride initial = .ok mid := by
+  simpa [List.append_nil] using hPre
+
 end Compiler.Proofs.YulGeneration.Backends.Native

@@ -1418,9 +1418,130 @@ the deep generic case at step 6 lands.
   post-`execIRStmts` extraction with the dispatcher's outer block exit. Key
   delta: source side returns `.continue state'` with no explicit terminator;
   must show this projects observationally identical to native's
-  `.Block lower(preStmts)` `.ok` exit. Likely also needs an
-  `execIRFunction_continue_extract_eq` lemma showing the IR function's return
-  extraction at no-return-vars fn is a no-op.
+  `.Block lower(preStmts)` `.ok` exit.
+
+  Tighter constructor / proof sketch (refined for S7):
+
+  The constructor signature mirrors `.of_leave_body` but takes the bridged
+  predicate plus its native side conditions, in addition to a `fn.returnVars
+  = []` premise that pins the source-side fall-through to the same projected
+  shape as the native exit:
+  ```
+  private theorem
+      NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived
+        .of_bridgedStraightStmts_falling_through
+      (irContract : IRContract)
+      (tx : IRTransaction)
+      (state : IRState)
+      (observableSlots : List Nat)
+      (hStraight :
+        ∀ fn,
+          irContract.functions.find?
+            (fun fn => fn.selector == tx.functionSelector) = some fn →
+          ∃ preStmts,
+            fn.body = preStmts ∧
+            fn.returnVars = [] ∧
+            Compiler.Proofs.YulGeneration.Backends.BridgedStraightStmts
+              preStmts ∧
+            ∀ stmt, stmt ∈ preStmts →
+              NativePreservableSideConditionForBridgedStraightStmt stmt) :
+      NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived irContract
+        tx state observableSlots
+  ```
+
+  Three independently provable substructures fall out of this signature, in
+  order of estimated proof length:
+
+  1. **Companion IR-interpreter lemma** (parallels the `pre_leave` lemma from
+     S5, file `Compiler/Proofs/IRGeneration/IRInterpreter.lean`):
+     ```
+     theorem execIRStmts_continue_of_nativePreservableStraightStmts_falling_through
+         (fuel : Nat) (state : IRState) (preStmts : List YulStmt)
+         (hStmts : NativePreservableStraightStmts preStmts)
+         (hFuel : sizeOf preStmts < fuel) :
+         ∃ state',
+           execIRStmts fuel state preStmts = .continue state' ∧
+           (∀ slot, state'.storage.getD slot 0 = state.storage.getD slot 0) ∧
+           state'.events = state.events ∧
+           state'.returnValue = state.returnValue
+     ```
+     Proof by induction on `preStmts`:
+     - `[]`: `execIRStmts _ state [] = .continue state` directly; storage,
+       events, and returnValue identical.
+     - `stmt :: rest`: case-split on the `NativePreservableStraightStmt`
+       constructor for `stmt`. Each constructor case (`comment`, `let_`,
+       `letMany`, `assign`, `if_` of preserving body, …) reduces to either a
+       `.continue state` step (no observable side effects on storage/events)
+       or to a recursive call. The constructor list is finite and matches
+       the cases already enumerated in
+       `EvmYulLeanNativeHarness.lean:18411-18560`. The
+       `state'.returnValue = state.returnValue` clause is the only extension
+       beyond the S5 lemma: it follows immediately from the fact that none
+       of the preservable constructors writes `returnValue` (no `assign` to
+       a returnVar — guaranteed by `fn.returnVars = []`).
+     - The `fuel` premise (`sizeOf preStmts < fuel`) ensures we stay in the
+       `Nat.succ fuel` branches of `execIRStmts`/`execIRStmt`, mirroring the
+       `pre_leave` lemma's fuel structure.
+
+  2. **New harness lemma** (file
+     `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeHarness.lean`,
+     near `exec_block_leave_ok_add_ten`):
+     ```
+     theorem exec_block_lowerStmtsNativeWithSwitchIds_ok_eq_of_NativeBlockPreservesWord
+         (fuel suffixLen : Nat)
+         (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+         (state : EvmYul.Yul.State)
+         (native : List EvmYul.Yul.Ast.Stmt)
+         (hPreserve :
+           ∀ slot ∈ observableSlots,
+             NativeBlockPreservesWord
+               (Backends.observableStorageSlotName slot)
+               (state[Backends.observableStorageSlotName slot]!)
+               native codeOverride) :
+         ∃ final,
+           EvmYul.Yul.exec (fuel + suffixLen + 10) (.Block native)
+             codeOverride state = .ok final ∧
+           ∀ slot ∈ observableSlots,
+             final[Backends.observableStorageSlotName slot]! =
+               state[Backends.observableStorageSlotName slot]!
+     ```
+     This is the no-leave dual of `exec_block_leave_ok_add_ten`: the
+     dispatcher's outer block exits with `.ok final` (no leave checkpoint
+     needed because there is no terminator on the source side), and each
+     observable slot is preserved by the per-slot `NativeBlockPreservesWord`
+     hypothesis. The existence of `final` is delivered by a fuel-bound
+     induction on `native`; preservation per slot follows directly from the
+     per-slot hypothesis applied to the resulting `.ok` proof.
+
+  3. **The bridge constructor itself**, which combines (1) and (2) with
+     `NativeBlockPreservesWord_lowerStmtsNativeWithSwitchIds_of_nativePreservableStraightStmts`
+     to discharge the `hPreserve` hypothesis. The native exit produces
+     `final.reviveJump = EvmYul.Yul.State.Ok shared store` with `shared`,
+     `store` derived by inversion of the `.ok final` shape (no leave flag is
+     ever set, so `reviveJump` is identity). The
+     `nativeResultsMatchOn_execIRFunction_*_markedPrefix` companion lemma
+     reduces — at `fn.returnVars = []` — to the same `nativeResultsMatchOn`
+     conclusion as `.of_empty_body`, because `execIRFunction` with a
+     `.continue s` result and no return vars produces an `IRResult` whose
+     observable storage / events agree with `s` (which agrees with the
+     starting `state` per (1)), exactly matching the projection of the
+     native `.ok final` (which agrees with the starting native state per
+     (2)).
+
+  An `execIRFunction_continue_extract_eq` lemma is *not* required: the
+  shape of `execIRFunction`'s `.continue` branch already exposes
+  `s.returnValue`, `s.storage`, `s.events` directly, and the
+  `nativeResultsMatchOn` projection only inspects those three fields.
+
+  Substructures (1) and (2) are each independently shippable, mirroring the
+  pyramid pattern of S1–S5. (3) is the only piece whose proof obligation
+  spans both the source-side IR interpreter and the native dispatcher in a
+  single lemma; if (3) cannot be discharged in one commit it can be split
+  by introducing an intermediate
+  `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived
+    .of_per_slot_preservation_falling_through` constructor that takes
+  per-slot `NativeBlockPreservesWord` as a hypothesis (matching the
+  pragmatic-scope-reduction option 3 from the original work plan).
 - **Step 7 (success-bridge wiring + `.of_comment_cons` collapse)** —
   **remaining**. Extend `NativeGeneratedSelectorHitSuccessBridge.of_selected_*`
   adapters to take per-leaf Revived constructors and inject the

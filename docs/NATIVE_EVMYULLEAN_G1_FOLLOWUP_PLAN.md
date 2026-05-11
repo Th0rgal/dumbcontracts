@@ -276,3 +276,204 @@ When this PR is converted into actual work via orchestrator workers
 - `docs/NATIVE_EVMYULLEAN_DONE_GRAPH.md` — overall transition graph.
 - `docs/NATIVE_EVMYULLEAN_FULL_TRANSITION_DONE.md` — completion contract.
 - PR #1822 — shipped foundation (S1–S4 + public-surface retarget).
+
+## Implementation Research Addendum
+
+This section captures concrete code-level facts gathered during a follow-up
+review of the post-#1822 tree. It is intended to compress onboarding cost for
+future implementers (human or agent).
+
+### Verified shipped artifacts (post-#1822)
+
+All four leaf Revived constructors landed in
+`Compiler/Proofs/EndToEnd.lean`:
+
+| Leaf                                                                                       | Line   |
+|--------------------------------------------------------------------------------------------|--------|
+| `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_empty_body`                 | (in #1822 — present pre-1822 baseline) |
+| `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body`                 | 16822  |
+| `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_block_leave`                | 16936  |
+| `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_block_empty`                | 17048  |
+| `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_singleton_comment`          | 17163  |
+
+The success-bridge chain is shipped only for `of_empty_body`:
+
+| Chain                                                       | Line   |
+|-------------------------------------------------------------|--------|
+| `NativeGeneratedSelectorHitSuccessBridge.of_empty_body`     | 21401  |
+
+**Correction to the plan above:** the E2 chain
+(`NativeGeneratedSelectorHitSuccessBridge.of_leave_body`) is **not**
+pre-existing — the original plan was wrong about that. E2 must be authored
+alongside E3, E4, E5.
+
+### Chain-wiring template (for E2–E5, E6, E7)
+
+Each new `NativeGeneratedSelectorHitSuccessBridge.of_<leaf>` follows this
+shape, derived from the working `of_empty_body` chain at line 21401:
+
+```lean
+private theorem NativeGeneratedSelectorHitSuccessBridge.of_<leaf>
+    (spec : CompilationModel.CompilationModel) (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors)
+    (irContract : IRContract) (tx : IRTransaction) (state : IRState)
+    (observableSlots : List Nat)
+    (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
+    (hSelectorRange : tx.functionSelector < Compiler.Constants.selectorModulus)
+    (hSelectorsRange : ∀ selector, selector ∈ selectors → selector < ...)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (hShape : <body-shape predicate for the leaf>) :
+    NativeGeneratedSelectorHitSuccessBridge irContract tx state observableSlots :=
+  -- Option A (used by of_empty_body): convert leaf to user-body exec bridge
+  --   first, then go through of_user_body_exec_bridge_atFuel_revived.
+  -- Option B (probably needed for the new leaves): use
+  --   NativeGeneratedSelectorHitSuccessBridge.of_selected_user_body_exec_only_and_preserves
+  --   at EndToEnd.lean:21333 with both
+  --     - the matching Revived leaf constructor, and
+  --     - a NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel
+  --       obtained from .of_nativeStmtsWriteNames_not_mem
+  --       (EndToEnd.lean:17574) on the body shape.
+  …
+```
+
+**Concrete observation:** every new leaf except `of_empty_body` produces an
+`ExecOnlyBridgeAtFuelRevived` (the *Selected* variant). To reach the success
+bridge, route through
+`NativeGeneratedSelectorHitSuccessBridge.of_selected_user_body_exec_only_and_preserves`
+(`EndToEnd.lean:21333`) which requires a paired
+`NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel`.
+
+### Preservation-bridge construction (the actual blocker for E2–E5)
+
+The paired preservation premise is produced via
+`NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_nativeStmtsWriteNames_not_mem`
+(`EndToEnd.lean:17574`). For each leaf body shape:
+
+| Body shape         | Lowered native shape | Per-stmt preservation lemma in `EvmYulLeanNativeHarness.lean`         |
+|--------------------|----------------------|------------------------------------------------------------------------|
+| `[]`               | `[]`                 | trivial (empty list)                                                   |
+| `[.leave]`         | `[.Leave]`           | needs a `NativeStmtPreservesWord_leave` lemma (not yet shipped)         |
+| `[.block []]`      | `[.Block []]`        | `NativeStmtPreservesWord_empty_block` at `EvmYulLeanNativeHarness.lean:14335` ✅ |
+| `[.block [.leave]]`| `[.Block [.Leave]]`  | needs `NativeStmtPreservesWord_block` applied to a single `Leave` child |
+| `[.comment text]`  | `[.Block []]`        | `NativeStmtPreservesWord_lowerStmtGroupNativeWithSwitchIds_comment` at `EvmYulLeanNativeHarness.lean:14343` ✅ |
+
+So the **per-statement preservation half** is **already shipped** for the
+`[.block []]` and `[.comment]` shapes, **partially shipped** for the bare
+`[.leave]` and `[.block [.leave]]` shapes (no top-level `Leave` preservation
+lemma — needs a 4-line addition), and **not yet shipped** for any
+`NativePreservableStraightStmts` prefix (Layer D's eventual responsibility).
+
+The **freshness half** (matched temp name fresh in the lowered body) is
+discharged by the same `nativeSwitchTempsFreshForNativeBodies` machinery
+already used at `EndToEnd.lean:21088`. Each new chain needs to plumb a
+freshness witness through; the easiest path is to follow the pattern of the
+`hSwitchFresh` argument in
+`of_selected_user_body_exec_only_and_bridgedStraightStmts_mapping_switchFresh`
+(`EndToEnd.lean:21075`).
+
+### Layer A — IR-side lemmas, concrete file location
+
+All three Layer A lemmas (`A1`, `A2`, `A3`) belong in
+`Compiler/Proofs/IRGeneration/IRInterpreter.lean` (4762 lines). The existing
+`execIRStmts` definition + supporting projection lemmas live there. There is
+no existing per-`NativePreservableStraightStmt` companion lemma — the
+straight-stmt induction is the new work.
+
+### Layer B — Harness-side lemmas, concrete file location
+
+`Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeHarness.lean` already
+contains the leaf-only harness lemmas (`exec_block_leave_ok_add_ten` etc.).
+The generalised
+`exec_block_lowerStmtsNativeWithSwitchIds_with_leave_ok_eq_of_NativeBlockPreservesWord`
+(B1) and its no-leave cousin (B2) are net-new. The general append helper (B3)
+should be stated as:
+
+```lean
+theorem exec_block_append_eq_of_continue
+    (fuel : Nat) (xs ys : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (state mid : EvmYul.Yul.State)
+    (hxs : EvmYul.Yul.exec fuel (.Block xs) codeOverride state = .ok mid) :
+    ∀ suffixFuel,
+      EvmYul.Yul.exec (fuel + suffixFuel) (.Block (xs ++ ys)) codeOverride state
+        = EvmYul.Yul.exec suffixFuel (.Block ys) codeOverride mid := by
+  …
+```
+
+Note: the `.Block` reduction rule in `EvmYul.Yul.exec` resets the leave flag
+on entry and threads it through children, so B3 needs to be careful with the
+`.continue`/`.leave` flag — likely two variants are needed in practice.
+
+### Layer D — Revived constructors, exact file insertion point
+
+D1 and D2 belong **immediately after** `of_singleton_comment` at
+`EndToEnd.lean:17163` (i.e. right after the last shipped leaf in the same
+section). They must:
+
+- Take a `NativePreservableStraightStmts` witness for the prefix.
+- For D1, additionally accept a `Leave` terminator (same as `of_leave_body`'s
+  finishing argument).
+- For D2, take a `fn.returnVars = []` witness so the fall-through projects to
+  `.continue`-shaped final state.
+
+The matching source-side helpers
+(`nativeResultsMatchOn_execIRFunction_nativePreservableStraightStmts_leave_body_markedPrefix`
+and its fall-through cousin) follow the template of
+`nativeResultsMatchOn_execIRFunction_leave_body_markedPrefix` and
+`nativeResultsMatchOn_execIRFunction_block_leave_body_markedPrefix` already
+in the same file.
+
+### Layer F — `_with_label_prefix` strategy
+
+Each `_with_label_prefix` variant operates at the **success-bridge layer**:
+given a body of shape `.comment label :: <leaf body>`, it strips the leading
+comment using the **already shipped** harness lemma
+`exec_block_noop_block_head_eq` (search the harness file for the name) and
+delegates to the bare-leaf Ei chain.
+
+**Critical observation:** F1 (label prefix on `of_empty_body`) and E5
+(`of_singleton_comment`) describe **exactly the same** dispatched-body shape
+`[.comment text]`. F1 is therefore redundant once E5 lands and can be dropped
+from the plan; only F2..F5/F6/F7 remain as new theorems.
+
+### Layer G — premise drop, exact call-site list
+
+`hUserBodyHalt` appears in the signature of
+`compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher`
+in `EndToEnd.lean`. Downstream call sites that pass it in:
+
+```
+$ grep -rn "hUserBodyHalt\|userBodyHalt" \
+    Compiler/Proofs/EndToEnd.lean \
+    Compiler/Proofs/EvmYulLeanRetarget.lean \
+    Compiler/Proofs/SimpleStorage*.lean
+```
+
+This produces the **complete list** of touch sites the G-worker must update.
+The G commit's lake-build smoke test is: every existing call site that
+discharged `hUserBodyHalt` via a body-shape case split now closes through one
+of E2–E7 / F2–F7.
+
+### Realistic effort estimate (revised)
+
+PR #1822 shipped ~3 working days of senior-engineer Lean work for S1–S4
+(four leaf constructors + chain wiring + retarget infrastructure). The S5–S8
+delta requires:
+
+- **A** (3 IR-side lemmas, ~20-constructor induction): 1–2 days
+- **B** (3 harness lemmas, careful `.Block` reduction reasoning): 1–2 days
+- **D1+D2** (two Revived constructors + two source helpers): 1 day
+- **E2–E7** (six chain wirings + freshness plumbing): 1–2 days
+- **F2–F7** (six label-prefix variants): 0.5–1 day
+- **G** (premise drop + call-site sweep): 0.5 day
+
+**Total: 5–9 senior-engineer days**, not parallelizable beyond the 4-wave DAG
+above (because each wave's downstream layer mechanically depends on the
+upstream theorems being elaborated and in scope).
+
+This effort estimate is **not compatible with a single autonomous coding
+session**; the orchestrator-worker approach (PR #1822 trial) repeatedly
+stalled or fabricated phantom branches under the same scope. The pragmatic
+path forward is for a human engineer (or a sequence of bounded agent
+sessions, each with its own PR for one DAG node) to land the layers
+incrementally.

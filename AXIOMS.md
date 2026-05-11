@@ -121,8 +121,8 @@ the EVM.
   public EndToEnd EVMYulLean target, and the concrete `native_decide`
   bridge-equivalence tests.
 - `.github/workflows/evmyullean-fork-conformance.yml` runs the conformance probe
-  weekly; after the burn-in ending 2026-05-04, scheduled/manual failures fail
-  the workflow and open or update a GitHub issue for drift triage.
+  weekly; scheduled or manual failures fail the workflow and
+  open or update a GitHub issue for drift triage.
 
 ## External Call Module (ECM) Assumptions
 

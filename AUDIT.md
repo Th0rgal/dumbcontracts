@@ -54,9 +54,8 @@ theorem is proved.
   adapter report, rebuilds adapter correctness and the public EndToEnd
   EVMYulLean target, and runs the concrete bridge-equivalence tests.
 - `.github/workflows/evmyullean-fork-conformance.yml` runs the EVMYulLean fork
-  conformance probe weekly. During the burn-in ending 2026-05-04, failures are
-  warnings; after burn-in, scheduled/manual failures open or update a GitHub
-  issue and fail the workflow.
+  conformance probe weekly. Scheduled or manual failures fail the workflow and
+  open or update a GitHub issue for drift triage.
 
 ## Update Checklist
 

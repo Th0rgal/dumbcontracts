@@ -5189,6 +5189,9 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.Native.interpretIRRuntimeNative_eq_callDispatcher_of_lowerRuntimeContractNative
   Compiler.Proofs.YulGeneration.Backends.Native.interpretIRRuntimeNative_succ_eq_contractDispatcherBlockResult_of_lowerRuntimeContractNative
   Compiler.Proofs.YulGeneration.Backends.Native.interpretIRRuntimeNative_succ_eq_contractDispatcherExecResult_of_lowerRuntimeContractNative
+  Compiler.Proofs.YulGeneration.Backends.Native.exec_block_append_eq_of_continue
+  Compiler.Proofs.YulGeneration.Backends.Native.exec_block_lowerStmtsNativeWithSwitchIds_with_leave_ok_eq_of_NativeBlockPreservesWord
+  Compiler.Proofs.YulGeneration.Backends.Native.exec_block_lowerStmtsNativeWithSwitchIds_ok_eq_of_NativeBlockPreservesWord
 
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeSignedArithLemmas.lean
   -- Compiler.Proofs.YulGeneration.Backends.fin_val_mul_neg1  -- private
@@ -5498,4 +5501,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5212 theorems/lemmas (3508 public, 1704 private, 0 sorry'd)
+-- Total: 5215 theorems/lemmas (3511 public, 1704 private, 0 sorry'd)

@@ -413,7 +413,7 @@ private def collectProxyUpgradeabilityMechanicsFromMechanics (mechanics : List S
 
 private def isRuntimeIntrospectionMechanic (mechanic : String) : Bool :=
   match mechanic with
-  | "blockNumber" | "contractAddress" | "chainid" => true
+  | "blockNumber" | "contractAddress" | "chainid" | "blobbasefee" => true
   | _ => false
 
 private def collectRuntimeIntrospectionMechanicsFromMechanics (mechanics : List String) : List String :=
@@ -555,7 +555,7 @@ def collectEventEmissionMechanics (spec : CompilationModel) : List String :=
 private def isDeniedLowLevelMechanic (mechanic : String) : Bool :=
   match mechanic with
   | "call" | "staticcall" | "delegatecall" | "returndataSize" | "returndataCopy"
-  | "revertReturndata" | "returndataOptionalBoolAt" => true
+  | "revertReturndata" | "returndataOptionalBoolAt" | "blobbasefee" => true
   | _ => false
 
 private def collectDeniedLowLevelMechanicsFromMechanics (mechanics : List String) : List String :=
@@ -582,6 +582,7 @@ private partial def collectRuntimeIntrospectionExprMechanics : Expr → List Str
   | .contractAddress => ["contractAddress"]
   | .chainid => ["chainid"]
   | .blockNumber => ["blockNumber"]
+  | .blobbasefee => ["blobbasefee"]
   | .externalCall _ args
   | .internalCall _ args =>
       args.flatMap collectRuntimeIntrospectionExprMechanics

@@ -393,6 +393,23 @@ private def runtimeIntrospectionTrustSurfaceSpec : CompilationModel := {
   ]
 }
 
+private def blobbasefeeTrustSurfaceSpec : CompilationModel := {
+  name := "BlobbasefeeTrustSurface"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "exerciseBlobbasefee"
+      params := []
+      returnType := none
+      returns := [ParamType.uint256]
+      body := [
+        Stmt.letVar "fee" Expr.blobbasefee,
+        Stmt.returnValues [Expr.localVar "fee"]
+      ]
+    }
+  ]
+}
+
 private def primitiveOnlyTrustSurfaceSpec : CompilationModel := {
   name := "PrimitiveOnlyTrustSurface"
   fields := [{ name := "digest", ty := FieldType.uint256 }]
@@ -1754,6 +1771,26 @@ unsafe def runTests : IO Unit := do
   if !deniedRuntimeIntrospectionTrustReportWritten then
     throw (IO.userError "✗ denied runtime-introspection compile still writes trust report file")
   IO.println "✓ denied runtime-introspection compile still writes trust report file"
+
+  -- Regression for issue #1829: blobbasefee must fail closed under
+  -- --deny-runtime-introspection because the proof interpreters do not
+  -- model the post-Dencun environment opcode.
+  let deniedBlobbasefeeRuntimeReportPath := s!"{trustReportDir}/trust-report-denied-blobbasefee-runtime.json"
+  expectFailureContains
+    "compileSpecsWithOptions rejects blobbasefee under deny-runtime-introspection"
+    (compileSpecsWithOptions
+      [blobbasefeeTrustSurfaceSpec] outDir false [] {} none (some deniedBlobbasefeeRuntimeReportPath) none none false false false false false false false true false)
+    "Partially modeled runtime-introspection mechanics remain:\n- BlobbasefeeTrustSurface [function:exerciseBlobbasefee]: blobbasefee"
+
+  -- Regression for issue #1829: blobbasefee must also fail closed under
+  -- --deny-low-level-mechanics, because the low-level mechanics report
+  -- continues to surface it as a modeled low-level builtin.
+  let deniedBlobbasefeeLowLevelReportPath := s!"{trustReportDir}/trust-report-denied-blobbasefee-lowlevel.json"
+  expectFailureContains
+    "compileSpecsWithOptions rejects blobbasefee under deny-low-level-mechanics"
+    (compileSpecsWithOptions
+      [blobbasefeeTrustSurfaceSpec] outDir false [] {} none (some deniedBlobbasefeeLowLevelReportPath) none none false false false false false false true false false)
+    "Low-level mechanics remain:\n- BlobbasefeeTrustSurface [function:exerciseBlobbasefee]: blobbasefee"
 
   let deniedProxyUpgradeabilityTrustReportPath := s!"{trustReportDir}/trust-report-denied-proxy-upgradeability.json"
   expectFailureContains

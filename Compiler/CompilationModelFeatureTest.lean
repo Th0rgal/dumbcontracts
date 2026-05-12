@@ -4518,6 +4518,12 @@ set_option maxRecDepth 4096 in
   expectTrue "macro blobbasefee trust report surfaces the post-core builtin"
     (contains macroBlobbasefeeTrustReport "\"modeledLowLevelMechanics\"" &&
       contains macroBlobbasefeeTrustReport "\"blobbasefee\"")
+  -- Regression for issue #1829: blobbasefee must also surface under the
+  -- runtime-introspection category so that --deny-runtime-introspection
+  -- fails closed on the post-Dencun environment opcode.
+  expectTrue "macro blobbasefee trust report classifies the builtin under runtime introspection"
+    (contains macroBlobbasefeeTrustReport
+      "\"partiallyModeledRuntimeIntrospection\":[\"blobbasefee\"]")
   let macroExternalYul ←
     expectCompileToYul "macro external smoke spec" MacroExternalSmoke.MacroExternal.spec
   expectTrue "macro externalCall lowers to the linked external symbol"

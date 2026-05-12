@@ -1203,6 +1203,49 @@ theorem IRStmtPreservesObsAt_of_mstore
   refine ⟨{ state with memory := fun x => if x = o then v else state.memory x }, ?_⟩
   simp only [execIRStmt, ho, hv]
 
+/-- Cross-cast for `.expr (.call "mstore8" [offset, val])`: the IR evaluator
+treats `mstore8` opaquely (the fallthrough `.continue state` branch), so the
+stmt continues with state unchanged provided the call's args evaluate.
+Note: the IR model does NOT capture mstore8's byte-write effect on memory;
+the bridge to native relies on the harness side projection rather than the
+IR side update. -/
+theorem IRStmtPreservesObsAt_of_mstore8
+    (state : IRState) (offsetExpr valExpr : YulExpr)
+    (hEval : ∃ v, evalIRExpr state
+      (.call "mstore8" [offsetExpr, valExpr]) = some v) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "mstore8" [offsetExpr, valExpr])) := by
+  intro fuel
+  obtain ⟨v, hv⟩ := hEval
+  refine ⟨state, ?_⟩
+  simp only [execIRStmt, isYulLogName, hv]
+
+/-- Cross-cast for `.expr (.call "calldatacopy" [dst, src, sz])`: opaque
+fallthrough, continues with state unchanged given the call evaluates. -/
+theorem IRStmtPreservesObsAt_of_calldatacopy
+    (state : IRState) (dstExpr srcExpr sizeExpr : YulExpr)
+    (hEval : ∃ v, evalIRExpr state
+      (.call "calldatacopy" [dstExpr, srcExpr, sizeExpr]) = some v) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "calldatacopy" [dstExpr, srcExpr, sizeExpr])) := by
+  intro fuel
+  obtain ⟨v, hv⟩ := hEval
+  refine ⟨state, ?_⟩
+  simp only [execIRStmt, isYulLogName, hv]
+
+/-- Cross-cast for `.expr (.call "returndatacopy" [dst, src, sz])`: opaque
+fallthrough. -/
+theorem IRStmtPreservesObsAt_of_returndatacopy
+    (state : IRState) (dstExpr srcExpr sizeExpr : YulExpr)
+    (hEval : ∃ v, evalIRExpr state
+      (.call "returndatacopy" [dstExpr, srcExpr, sizeExpr]) = some v) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "returndatacopy" [dstExpr, srcExpr, sizeExpr])) := by
+  intro fuel
+  obtain ⟨v, hv⟩ := hEval
+  refine ⟨state, ?_⟩
+  simp only [execIRStmt, isYulLogName, hv]
+
 /-- IR-side analog of `NativePreservableStraightStmt`: a statement whose IR
 execution terminates in `.continue _` (does not return / stop / revert /
 otherwise terminate the function body).

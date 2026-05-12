@@ -1526,6 +1526,24 @@ def StmtsContinueFrom (state : IRState) :
       ∃ state', (∀ n, execIRStmt (n + 1) state stmt = .continue state') ∧
                 StmtsContinueFrom state' rest
 
+/-- Trivial nil construction for `StmtsContinueFrom`. -/
+@[simp] theorem StmtsContinueFrom_nil (state : IRState) :
+    StmtsContinueFrom state ([] : List YulStmt) := trivial
+
+/-- Cons constructor: assemble `StmtsContinueFrom` from a head
+`IRStmtPreservesObsAt` witness plus a tail builder. The tail builder receives
+the actual next state (from the head's existential) so it can construct
+`StmtsContinueFrom` for `rest` at that specific state. -/
+theorem StmtsContinueFrom_cons_of_IRStmtPreservesObsAt
+    (state : IRState) (stmt : YulStmt) (rest : List YulStmt)
+    (hHead : IRStmtPreservesObsAt state stmt)
+    (hRest : ∀ state',
+      (∀ n, execIRStmt (n + 1) state stmt = .continue state') →
+      StmtsContinueFrom state' rest) :
+    StmtsContinueFrom state (stmt :: rest) := by
+  obtain ⟨state', hAll⟩ := hHead
+  exact ⟨state', hAll, hRest state' hAll⟩
+
 /-- A1 (state-threaded): for a `stmts ++ [.leave]` prefix where the prefix
 satisfies `StmtsContinueFrom`, IR execution at sufficient fuel ends in
 `.continue` for some final state. -/
@@ -1579,6 +1597,39 @@ theorem execIRStmts_continue_of_StmtsContinueFrom_falling_through
         simp only [List.length_cons]; omega
       rw [hLen]
       simp only [execIRStmts, hHeadAll, hRecEq]
+
+/-! ## Composition helpers for `StmtsContinueFrom`
+
+Trivial introduction lemmas that match the shape of `IRStmtPreservesObsAt`
+(which is `∃ state', ∀ fuel, …`). The cross-cast lemmas produce exactly
+this shape, so building a `StmtsContinueFrom` witness for a prefix amounts
+to chaining `cons` constructors with the head's `IRStmtPreservesObsAt`
+witness destructured. -/
+
+@[simp] theorem StmtsContinueFrom_nil (state : IRState) :
+    StmtsContinueFrom state ([] : List YulStmt) := trivial
+
+/-- Cons-shape introduction: combine a head witness with a tail witness. -/
+theorem StmtsContinueFrom.cons_of_witness
+    {state state' : IRState} {stmt : YulStmt} {rest : List YulStmt}
+    (hStep : ∀ n, execIRStmt (n + 1) state stmt = .continue state')
+    (hRest : StmtsContinueFrom state' rest) :
+    StmtsContinueFrom state (stmt :: rest) :=
+  ⟨state', hStep, hRest⟩
+
+/-- Cons-shape introduction from an `IRStmtPreservesObsAt` witness. The
+witness packages the next state as part of its existential, so we destructure
+and rebuild — but `cases` on the predicate exposes the same `state'` shape
+expected by `StmtsContinueFrom`. -/
+theorem StmtsContinueFrom.cons_of_IRStmtPreservesObsAt
+    {state : IRState} {stmt : YulStmt} {rest : List YulStmt}
+    (hHead : IRStmtPreservesObsAt state stmt)
+    (hRest : ∀ state',
+              (∀ n, execIRStmt (n + 1) state stmt = .continue state') →
+              StmtsContinueFrom state' rest) :
+    StmtsContinueFrom state (stmt :: rest) := by
+  obtain ⟨state', hStep⟩ := hHead
+  exact ⟨state', hStep, hRest state' hStep⟩
 
 /-! ## IR Function Execution -/
 

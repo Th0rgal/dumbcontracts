@@ -274,6 +274,7 @@ def exprReadsStateOrEnv : Expr → Bool
       if name == builtinExpName then exprListReadsStateOrEnv args else true
   | Expr.internalCall _ _ => true
   | Expr.arrayLength _ => false
+  | Expr.paramDynamicHeadWord _ _ => false
   | Expr.storageArrayLength _ => true
   | Expr.storageArrayElement _ index => true || exprReadsStateOrEnv index
   | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _ => exprReadsStateOrEnv index
@@ -1145,6 +1146,7 @@ def exprContainsAdtConstruct : Expr → Bool
   | Expr.blobbasefee | Expr.calldatasize | Expr.returndataSize
   | Expr.localVar _
   | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.paramDynamicHeadWord _ _
   | Expr.adtTag _ _ | Expr.adtField _ _ _ _ _ =>
       false
 termination_by e => sizeOf e

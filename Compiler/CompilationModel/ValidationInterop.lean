@@ -6,6 +6,8 @@ import Compiler.CompilationModel.AbiHelpers
 import Compiler.CompilationModel.IssueRefs
 import Compiler.CompilationModel.SelectorInteropHelpers
 
+set_option maxHeartbeats 0
+
 namespace Compiler.CompilationModel
 
 def lowLevelCallUnsupportedError (context : String) (name : String) : Except String Unit :=

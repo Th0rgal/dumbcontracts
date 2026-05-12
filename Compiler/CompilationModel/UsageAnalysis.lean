@@ -158,7 +158,7 @@ def exprUsesArrayElementKind (includePlain includeWord : Bool) : Expr → Bool
     Expr.ceilDiv a b =>
       exprUsesArrayElementKind includePlain includeWord a ||
         exprUsesArrayElementKind includePlain includeWord b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprUsesArrayElementKind includePlain includeWord a ||
         exprUsesArrayElementKind includePlain includeWord b ||
         exprUsesArrayElementKind includePlain includeWord c
@@ -329,7 +329,7 @@ def exprUsesArrayElement : Expr → Bool
     Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b |
     Expr.ceilDiv a b =>
       exprUsesArrayElement a || exprUsesArrayElement b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprUsesArrayElement a || exprUsesArrayElement b || exprUsesArrayElement c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesArrayElement a
@@ -511,7 +511,9 @@ partial def exprUsesParamDynamicHeadWord : Expr → Bool
     | Expr.le a b | Expr.logicalAnd a b | Expr.logicalOr a b
     | Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b | Expr.ceilDiv a b =>
         exprUsesParamDynamicHeadWord a || exprUsesParamDynamicHeadWord b
-    | Expr.mulDivDown a b c | Expr.mulDivUp a b c | Expr.ite a b c =>
+    | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+    | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c
+    | Expr.ite a b c =>
         exprUsesParamDynamicHeadWord a || exprUsesParamDynamicHeadWord b ||
         exprUsesParamDynamicHeadWord c
     | _ => false
@@ -567,6 +569,93 @@ def contractUsesParamDynamicHeadWord (spec : CompilationModel) : Bool :=
     | none => false
     | some ctor => ctor.body.any stmtUsesParamDynamicHeadWord) ||
   spec.functions.any (fun fn => fn.body.any stmtUsesParamDynamicHeadWord)
+
+/-- Whether the given expression syntactically contains an
+    `Expr.mulDiv512Down` or `Expr.mulDiv512Up` (verity#1761). -/
+partial def exprUsesMulDiv512 : Expr → Bool
+  | Expr.mulDiv512Down _ _ _ | Expr.mulDiv512Up _ _ _ => true
+  | e => match e with
+    | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _
+    | Expr.mappingUint _ key | Expr.structMember _ key _
+    | Expr.storageArrayElement _ key | Expr.arrayElement _ key
+    | Expr.arrayElementWord _ key _ _ | Expr.arrayElementDynamicWord _ key _ =>
+        exprUsesMulDiv512 key
+    | Expr.mappingChain _ keys => keys.any exprUsesMulDiv512
+    | Expr.mapping2 _ k1 k2 | Expr.mapping2Word _ k1 k2 _ | Expr.structMember2 _ k1 k2 _ =>
+        exprUsesMulDiv512 k1 || exprUsesMulDiv512 k2
+    | Expr.call gas target value inOffset inSize outOffset outSize =>
+        [gas, target, value, inOffset, inSize, outOffset, outSize].any exprUsesMulDiv512
+    | Expr.staticcall gas target inOffset inSize outOffset outSize
+    | Expr.delegatecall gas target inOffset inSize outOffset outSize =>
+        [gas, target, inOffset, inSize, outOffset, outSize].any exprUsesMulDiv512
+    | Expr.extcodesize a | Expr.mload a | Expr.tload a | Expr.calldataload a
+    | Expr.returndataOptionalBoolAt a | Expr.bitNot a | Expr.logicalNot a =>
+        exprUsesMulDiv512 a
+    | Expr.keccak256 a b =>
+        exprUsesMulDiv512 a || exprUsesMulDiv512 b
+    | Expr.externalCall _ args | Expr.internalCall _ args | Expr.adtConstruct _ _ args =>
+        args.any exprUsesMulDiv512
+    | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.sdiv a b
+    | Expr.mod a b | Expr.smod a b
+    | Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b
+    | Expr.sar a b | Expr.signextend a b
+    | Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.sgt a b | Expr.lt a b | Expr.slt a b
+    | Expr.le a b | Expr.logicalAnd a b | Expr.logicalOr a b
+    | Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b | Expr.ceilDiv a b =>
+        exprUsesMulDiv512 a || exprUsesMulDiv512 b
+    | Expr.mulDivDown a b c | Expr.mulDivUp a b c | Expr.ite a b c =>
+        exprUsesMulDiv512 a || exprUsesMulDiv512 b || exprUsesMulDiv512 c
+    | _ => false
+
+partial def stmtUsesMulDiv512 : Stmt → Bool
+  | Stmt.letVar _ value | Stmt.assignVar _ value | Stmt.setStorage _ value
+  | Stmt.setStorageAddr _ value | Stmt.setStorageWord _ _ value
+  | Stmt.storageArrayPush _ value | Stmt.return value | Stmt.require value _ =>
+      exprUsesMulDiv512 value
+  | Stmt.setStorageArrayElement _ index value =>
+      exprUsesMulDiv512 index || exprUsesMulDiv512 value
+  | Stmt.requireError cond _ args =>
+      exprUsesMulDiv512 cond || args.any exprUsesMulDiv512
+  | Stmt.revertError _ args | Stmt.emit _ args | Stmt.returnValues args =>
+      args.any exprUsesMulDiv512
+  | Stmt.mstore offset value | Stmt.tstore offset value =>
+      exprUsesMulDiv512 offset || exprUsesMulDiv512 value
+  | Stmt.calldatacopy a b c | Stmt.returndataCopy a b c =>
+      exprUsesMulDiv512 a || exprUsesMulDiv512 b || exprUsesMulDiv512 c
+  | Stmt.setMapping _ k v | Stmt.setMappingWord _ k _ v
+  | Stmt.setMappingPackedWord _ k _ _ v | Stmt.setMappingUint _ k v
+  | Stmt.setStructMember _ k _ v =>
+      exprUsesMulDiv512 k || exprUsesMulDiv512 v
+  | Stmt.setMappingChain _ keys v =>
+      keys.any exprUsesMulDiv512 || exprUsesMulDiv512 v
+  | Stmt.setMapping2 _ k1 k2 v | Stmt.setMapping2Word _ k1 k2 _ v
+  | Stmt.setStructMember2 _ k1 k2 _ v =>
+      exprUsesMulDiv512 k1 || exprUsesMulDiv512 k2 || exprUsesMulDiv512 v
+  | Stmt.ite cond thenBranch elseBranch =>
+      exprUsesMulDiv512 cond ||
+      thenBranch.any stmtUsesMulDiv512 ||
+      elseBranch.any stmtUsesMulDiv512
+  | Stmt.forEach _ count body =>
+      exprUsesMulDiv512 count || body.any stmtUsesMulDiv512
+  | Stmt.unsafeBlock _ body =>
+      body.any stmtUsesMulDiv512
+  | Stmt.matchAdt _ scrutinee branches =>
+      exprUsesMulDiv512 scrutinee ||
+        branches.any (fun (_, _, body) => body.any stmtUsesMulDiv512)
+  | Stmt.internalCall _ args | Stmt.internalCallAssign _ _ args
+  | Stmt.externalCallBind _ _ args | Stmt.tryExternalCallBind _ _ _ args
+  | Stmt.ecm _ args =>
+      args.any exprUsesMulDiv512
+  | Stmt.rawLog topics dataOffset dataSize =>
+      topics.any exprUsesMulDiv512 ||
+      exprUsesMulDiv512 dataOffset || exprUsesMulDiv512 dataSize
+  | _ => false
+
+def contractUsesMulDiv512 (spec : CompilationModel) : Bool :=
+  (match spec.constructor with
+    | none => false
+    | some ctor => ctor.body.any stmtUsesMulDiv512) ||
+  spec.functions.any (fun fn => fn.body.any stmtUsesMulDiv512)
 
 private def nestedPlainWithWordIndex : Expr :=
   Expr.arrayElement "plain" (Expr.arrayElementWord "word" (Expr.literal 0) 1 0)
@@ -628,7 +717,7 @@ def exprUsesStorageArrayElement : Expr → Bool
     Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b |
     Expr.ceilDiv a b =>
       exprUsesStorageArrayElement a || exprUsesStorageArrayElement b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprUsesStorageArrayElement a || exprUsesStorageArrayElement b || exprUsesStorageArrayElement c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesStorageArrayElement a
@@ -772,7 +861,7 @@ def exprUsesDynamicBytesEq : Expr → Bool
   | Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b
   | Expr.ceilDiv a b =>
       exprUsesDynamicBytesEq a || exprUsesDynamicBytesEq b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprUsesDynamicBytesEq a || exprUsesDynamicBytesEq b || exprUsesDynamicBytesEq c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprUsesDynamicBytesEq a

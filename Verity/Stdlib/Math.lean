@@ -94,6 +94,24 @@ def mulDiv512Up? (a b c : Uint256) : Option Uint256 :=
     let q := (((a : Nat) * (b : Nat)) + ((c : Nat) - 1)) / (c : Nat)
     if q > MAX_UINT256 then none else some (Core.Uint256.ofNat q)
 
+/-- `mulDiv512Down(a, b, c)` = full-precision `floor((a * b) / c)`,
+    matching the IR's revert-on-overflow Yul helper. The Lean def
+    short-circuits on the failure boundary by returning `0`; the
+    proof surface `mulDiv512Down?` (`Option Uint256`) is the
+    correctness witness when the quotient fits. (verity#1761) -/
+def mulDiv512Down (a b c : Uint256) : Uint256 :=
+  match mulDiv512Down? a b c with
+  | some r => r
+  | none => 0
+
+/-- `mulDiv512Up(a, b, c)` = full-precision `ceil((a * b) / c)`,
+    matching the IR's revert-on-overflow Yul helper.  Defined
+    analogously to `mulDiv512Down` via `mulDiv512Up?`. (verity#1761) -/
+def mulDiv512Up (a b c : Uint256) : Uint256 :=
+  match mulDiv512Up? a b c with
+  | some r => r
+  | none => 0
+
 /-- `ceilDiv(a, b)` = `ceil(a / b)`, matching Solidity's Math256.ceilDiv / OpenZeppelin.
     Uses the overflow-safe formula: `a == 0 ? 0 : (a - 1) / b + 1`.
     Note: When `b = 0` and `a > 0`, EVM `DIV` returns 0, so this yields 1.

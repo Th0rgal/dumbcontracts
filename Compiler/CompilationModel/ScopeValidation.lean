@@ -264,6 +264,20 @@ def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
+  | Expr.mulDiv512Down a b c => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
+  | Expr.mulDiv512Up a b c => do
+      -- Unlike `mulDivUp` (which inlines `cc` twice in the emitted Yul),
+      -- `mulDiv512Up` lowers to a single function call
+      -- `__verity_full_mul_div_up(ca, cb, cc)` where each operand is
+      -- evaluated exactly once at the call site. The `denominator`
+      -- duplication only exists between the helper's local copies, so we
+      -- do NOT need `validateArithDuplicatedOperandPurity` here. (verity#1761)
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
   | Expr.logicalAnd a b | Expr.logicalOr a b => do
       validateLogicalOperandPurity context a b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a

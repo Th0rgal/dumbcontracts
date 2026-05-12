@@ -110,6 +110,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.Smoke.SafeMulRequireSmoke.spec
   , Contracts.Smoke.ArithmeticPanicSmoke.spec
+  , Contracts.Smoke.MulDiv512Smoke.spec
   , Contracts.Smoke.SignedBuiltinSmoke.spec
   , Contracts.Smoke.StatelessSmoke.spec
   , Contracts.Smoke.MutabilitySmoke.spec

@@ -149,6 +149,14 @@ Already-supported items that should not become new roadmap work:
 - Named struct field access for calldata array elements is already available
   through `struct` declarations and `arrayElement` field projection, lowering to
   `Expr.arrayElementDynamicWord` where needed.
+- Named struct field access for *direct* struct parameters whose ABI encoding
+  is dynamic (carries nested dynamic members) lowers to
+  `Expr.paramDynamicHeadWord` (#1832 / #1843), with the param loader producing
+  a correctly-positioned `_data_offset` thanks to #1839 / #1841.
+- `requires(<role>)` accepts both scalar Address-typed slots (the canonical
+  `onlyOwner` shape) and `Address → Uint256` mapping fields (the
+  `onlyRelayer` / `onlyMinter` role-as-mapping shape) without writing the
+  3-line preamble by hand (#1837 / #1840).
 - ERC-20 `balanceOf`, `allowance`, and `totalSupply` ECMs already exist under
   `Compiler/Modules/ERC20.lean` alongside the safe token write modules.
 
@@ -165,14 +173,17 @@ Translation tracking:
 - The verity-benchmark case
   [`cases/unlink_xyz/pool/`](https://github.com/lfglabs-dev/verity-benchmark/tree/main/cases/unlink_xyz/pool)
   is the canonical Verity model of `UnlinkPool` and the verified-DSL surface
-  side of [#1760](https://github.com/lfglabs-dev/verity/issues/1760). It is
-  currently at `stage: scoped` because three public ZK entry points (`transfer`,
-  `withdraw`, `adapterWithdraw`) take struct-array parameters with nested
-  dynamic members (`uint256[] nullifierHashes`, `uint256[] newCommitments`,
-  `Ciphertext[] ciphertexts`, `Call[] calls`). The macro currently rejects
-  struct-parameter projection from an ABI-dynamic root at
-  `Verity/Macro/Translate.lean:1715`. Promotion to `build_green` is the
-  Unlink-side trigger for closing #1760.
+  side of [#1760](https://github.com/lfglabs-dev/verity/issues/1760). The macro
+  surface that previously blocked it — struct-parameter projection from an
+  ABI-dynamic root for single-word static leaves — shipped as
+  `Expr.paramDynamicHeadWord` via [#1843](https://github.com/lfglabs-dev/verity/pull/1843)
+  on top of the prerequisite param-loader fix
+  ([#1841](https://github.com/lfglabs-dev/verity/pull/1841)) and the
+  validator-wildcard refactor that escapes Lean's `_mutual.eq_def` heartbeat
+  ceiling ([#1842](https://github.com/lfglabs-dev/verity/pull/1842)).
+  Promotion to `build_green` now requires the benchmark to bump its lakefile
+  pin past those merges and fill in the `transfer`, `withdraw`, and
+  `emergencyWithdraw` entry-point bodies from `UnlinkPool.sol:309-583`.
 
 ---
 

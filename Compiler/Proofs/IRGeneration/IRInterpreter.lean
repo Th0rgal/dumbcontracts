@@ -1148,6 +1148,41 @@ theorem IRStmtPreservesObs_iff_forall_state (stmt : YulStmt) :
   refine ⟨state, ?_⟩
   simp only [execIRStmt]
 
+/-- Cross-cast for `.let_ name value`: at any state where `value` evaluates,
+the stmt continues, binding `name` to the evaluated result. -/
+theorem IRStmtPreservesObsAt_of_let_
+    (state : IRState) (name : String) (value : YulExpr)
+    (hEval : ∃ v, evalIRExpr state value = some v) :
+    IRStmtPreservesObsAt state (.let_ name value) := by
+  intro fuel
+  obtain ⟨v, hv⟩ := hEval
+  refine ⟨state.setVar name v, ?_⟩
+  simp only [execIRStmt, hv]
+
+/-- Cross-cast for `.assign name value`: at any state where `value` evaluates,
+the stmt continues, updating `name`'s binding. -/
+theorem IRStmtPreservesObsAt_of_assign
+    (state : IRState) (name : String) (value : YulExpr)
+    (hEval : ∃ v, evalIRExpr state value = some v) :
+    IRStmtPreservesObsAt state (.assign name value) := by
+  intro fuel
+  obtain ⟨v, hv⟩ := hEval
+  refine ⟨state.setVar name v, ?_⟩
+  simp only [execIRStmt, hv]
+
+/-- Cross-cast for `.expr (.call "sstore" [slot, val])` with literal slot:
+at any state where `val` evaluates, the stmt continues, updating storage. -/
+theorem IRStmtPreservesObsAt_of_sstore_lit_expr
+    (state : IRState) (slot : Nat) (valExpr : YulExpr)
+    (hEval : ∃ v, evalIRExpr state valExpr = some v) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "sstore" [.lit slot, valExpr])) := by
+  intro fuel
+  obtain ⟨v, hv⟩ := hEval
+  refine ⟨{ state with storage :=
+      Compiler.Proofs.abstractStoreStorageOrMapping state.storage slot v }, ?_⟩
+  simp only [execIRStmt, evalIRExpr, hv]
+
 /-- IR-side analog of `NativePreservableStraightStmt`: a statement whose IR
 execution terminates in `.continue _` (does not return / stop / revert /
 otherwise terminate the function body).

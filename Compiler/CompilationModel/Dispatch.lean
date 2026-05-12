@@ -365,10 +365,12 @@ def validateCompileInputs (spec : CompilationModel) (selectors : List Nat) : Exc
   let mappingHelpersRequired := usesMapping fields
   let arrayHelpersRequired := contractUsesPlainArrayElement spec
   let arrayElementWordHelpersRequired := contractUsesArrayElementWord spec
+  let paramDynamicHeadWordHelpersRequired := contractUsesParamDynamicHeadWord spec
   let storageArrayHelpersRequired := contractUsesStorageArrayElement spec
   let dynamicBytesEqHelpersRequired := contractUsesDynamicBytesEq spec
   match firstReservedExternalCollision
       spec mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
+        paramDynamicHeadWordHelpersRequired
         storageArrayHelpersRequired dynamicBytesEqHelpersRequired with
   | some name =>
       if name.startsWith internalFunctionPrefix then

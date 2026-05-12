@@ -13,6 +13,7 @@ namespace Compiler.CompilationModel
 
 def reservedExternalNames
     (mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
+      paramDynamicHeadWordHelpersRequired
       storageArrayHelpersRequired dynamicBytesEqHelpersRequired : Bool) : List String :=
   let mappingHelpers := if mappingHelpersRequired then ["mappingSlot"] else []
   let arrayHelpers :=
@@ -32,9 +33,12 @@ def reservedExternalNames
     else
       []
   let paramDynamicHeadWordHelpers :=
-    [ checkedParamDynamicHeadWordCalldataHelperName
-    , checkedParamDynamicHeadWordMemoryHelperName
-    ]
+    if paramDynamicHeadWordHelpersRequired then
+      [ checkedParamDynamicHeadWordCalldataHelperName
+      , checkedParamDynamicHeadWordMemoryHelperName
+      ]
+    else
+      []
   let storageArrayHelpers :=
     if storageArrayHelpersRequired then
       [checkedStorageArrayElementHelperName]
@@ -52,6 +56,7 @@ def reservedExternalNames
 def firstReservedExternalCollision
     (spec : CompilationModel)
     (mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
+      paramDynamicHeadWordHelpersRequired
       storageArrayHelpersRequired dynamicBytesEqHelpersRequired : Bool) : Option String :=
   (spec.externals.map (·.name)).find? (fun name =>
     name.startsWith internalFunctionPrefix ||
@@ -59,6 +64,7 @@ def firstReservedExternalCollision
         mappingHelpersRequired
         arrayHelpersRequired
         arrayElementWordHelpersRequired
+        paramDynamicHeadWordHelpersRequired
         storageArrayHelpersRequired
         dynamicBytesEqHelpersRequired).contains name)
 

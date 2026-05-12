@@ -1392,7 +1392,48 @@ theorem IRStmtPreservesObsAt_of_sstore_add
   obtain ⟨v, hv⟩ := hValEval
   refine ⟨{ state with storage :=
       Compiler.Proofs.abstractStoreStorageOrMapping state.storage s v }, ?_⟩
-  simp only [execIRStmt, hs, hv]
+  -- The outer slot-shape match (.call "mappingSlot" vs _) needs explicit
+  -- reduction; CI's stricter Lean does not reduce the String-literal
+  -- branch of the inner match via `simp only`. Use `simp` to fully reduce.
+  simp [execIRStmt, hs, hv]
+
+/-- General cross-cast for `.expr (.call func args)` where `func` is NOT one
+of the special builtins (sstore/mstore/tstore/stop/return/revert/log*). The
+call falls through `execIRStmt`'s opaque-eval branch: requires the call to
+evaluate; yields `.continue state` with state unchanged. -/
+theorem IRStmtPreservesObsAt_of_expr_call_opaque
+    (state : IRState) (func : String) (args : List YulExpr)
+    (hNotSStore : func ≠ "sstore")
+    (hNotMStore : func ≠ "mstore")
+    (hNotTStore : func ≠ "tstore")
+    (hNotStop : ¬(func = "stop" ∧ args = []))
+    (hNotRevert : ∀ a b, ¬(func = "revert" ∧ args = [a, b]))
+    (hNotReturn : ∀ a b, ¬(func = "return" ∧ args = [a, b]))
+    (hNotLog : Compiler.Proofs.YulGeneration.isYulLogName func = false)
+    (hEval : ∃ v, evalIRExpr state (.call func args) = some v) :
+    IRStmtPreservesObsAt state (.expr (.call func args)) := by
+  intro fuel
+  obtain ⟨v, hv⟩ := hEval
+  refine ⟨state, ?_⟩
+  cases args with
+  | nil =>
+      have hStopFalse : func ≠ "stop" := fun h => hNotStop ⟨h, rfl⟩
+      simp only [execIRStmt, hStopFalse, hNotLog, hv]
+  | cons a rest =>
+      cases rest with
+      | nil =>
+          simp only [execIRStmt, hNotLog, hv]
+      | cons b rest' =>
+          cases rest' with
+          | nil =>
+              have hReturnFalse : func ≠ "return" := fun h =>
+                hNotReturn a b ⟨h, rfl⟩
+              have hRevertFalse : func ≠ "revert" := fun h =>
+                hNotRevert a b ⟨h, rfl⟩
+              simp only [execIRStmt, hNotSStore, hNotMStore, hNotTStore,
+                hReturnFalse, hRevertFalse, hNotLog, hv]
+          | cons c rest'' =>
+              simp only [execIRStmt, hNotLog, hv]
 
 /-- IR-side analog of `NativePreservableStraightStmt`: a statement whose IR
 execution terminates in `.continue _` (does not return / stop / revert /

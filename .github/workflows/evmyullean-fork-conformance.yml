@@ -8,11 +8,8 @@ name: EVMYulLean fork conformance
 # public EndToEnd EVMYulLean target still builds, and all 123 concrete
 # `native_decide` bridge-equivalence tests still pass.
 #
-# Burn-in: the probe step is captured with `continue-on-error: true`
-# during the two-week window starting 2026-04-20 (see issue #1722 plan
-# C4 risk analysis). Before 2026-05-04 failures are reported as
-# warnings. After that cutoff, scheduled/manual failures open or update
-# a tracking issue and the job exits red.
+# On scheduled or manual failure the probe job exits red and the
+# follow-up job opens or updates a tracking issue.
 
 on:
   schedule:
@@ -75,9 +72,6 @@ on:
 permissions:
   contents: read
 
-env:
-  BURN_IN_END_UTC: '2026-05-04T00:00:00Z'
-
 concurrency:
   group: evmyullean-fork-conformance-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'schedule' }}
@@ -98,7 +92,6 @@ jobs:
 
       - name: Run EVMYulLean fork conformance probe
         id: probe
-        continue-on-error: true
         run: make test-evmyullean-fork
 
       - name: Report probe outcome
@@ -107,22 +100,7 @@ jobs:
           if [ "${{ steps.probe.outcome }}" = "success" ]; then
             echo "::notice::EVMYulLean fork conformance probe passed."
           else
-            now_epoch="$(date -u +%s)"
-            burn_in_epoch="$(date -u -d "$BURN_IN_END_UTC" +%s)"
-            if [ "$now_epoch" -lt "$burn_in_epoch" ]; then
-              echo "::warning::EVMYulLean fork conformance probe failed during burn-in window (ends $BURN_IN_END_UTC). Investigate locally with 'make test-evmyullean-fork'."
-            else
-              echo "::error::EVMYulLean fork conformance probe failed after burn-in. Investigate locally with 'make test-evmyullean-fork'."
-            fi
-          fi
-
-      - name: Fail after burn-in conformance failure
-        if: steps.probe.outcome != 'success'
-        run: |
-          now_epoch="$(date -u +%s)"
-          burn_in_epoch="$(date -u -d "$BURN_IN_END_UTC" +%s)"
-          if [ "$now_epoch" -ge "$burn_in_epoch" ]; then
-            exit 1
+            echo "::error::EVMYulLean fork conformance probe failed. Investigate locally with 'make test-evmyullean-fork'."
           fi
 
   open-drift-issue:
@@ -135,19 +113,8 @@ jobs:
     steps:
       - name: Open or update drift issue
         uses: actions/github-script@v7
-        env:
-          BURN_IN_END_UTC: ${{ env.BURN_IN_END_UTC }}
         with:
           script: |
-            const burnInEnd = Date.parse(process.env.BURN_IN_END_UTC);
-            if (!Number.isFinite(burnInEnd)) {
-              throw new Error(`Invalid BURN_IN_END_UTC: ${process.env.BURN_IN_END_UTC}`);
-            }
-            if (Date.now() < burnInEnd) {
-              core.notice(`EVMYulLean probe failed during burn-in; no issue opened until ${process.env.BURN_IN_END_UTC}.`);
-              return;
-            }
-
             const marker = "<!-- evmyullean-fork-conformance-failure -->";
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -155,7 +122,7 @@ jobs:
             const title = "EVMYulLean fork conformance probe failed";
             const bodyLines = [
               marker,
-              "The EVMYulLean fork conformance probe failed after the burn-in window.",
+              "The EVMYulLean fork conformance probe failed.",
               "",
               `Run: ${runUrl}`,
               `Workflow: ${context.workflow}`,

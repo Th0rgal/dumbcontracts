@@ -38,10 +38,16 @@ class EvmYulLeanForkConformanceWorkflowTests(unittest.TestCase):
                 f"{path.relative_to(ROOT)} should not contain stale concrete bridge-test counts",
             )
 
-    def test_post_burn_in_failures_open_or_update_issue(self) -> None:
+    def test_scheduled_failures_open_or_update_issue(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
 
-        self.assertIn("BURN_IN_END_UTC: '2026-05-04T00:00:00Z'", text)
+        # The burn-in window ended 2026-05-04; the workflow now fails hard on
+        # any probe failure and the drift issue is unconditionally opened or
+        # updated for scheduled/manual runs.
+        self.assertNotIn("BURN_IN_END_UTC", text)
+        self.assertNotIn("burn-in", text)
+        self.assertNotIn("burnInEnd", text)
+        self.assertNotIn("continue-on-error", text)
         for path in [
             "Compiler/Proofs/EndToEnd.lean",
             "scripts/generate_evmyullean_adapter_report.py",
@@ -109,23 +115,12 @@ class EvmYulLeanForkConformanceWorkflowTests(unittest.TestCase):
             re.S,
         )
         self.assertIsNotNone(issue_step)
-        body = issue_step.group("body")
-        self.assertIn("Date.now() < burnInEnd", body)
 
-        fail_step = re.search(
-            r"- name: Fail after burn-in conformance failure\n(?P<body>.*?)(?=\n      - name:|\Z)",
-            text,
-            re.S,
-        )
-        self.assertIsNotNone(fail_step)
-        self.assertIn('if [ "$now_epoch" -ge "$burn_in_epoch" ]; then', fail_step.group("body"))
-        self.assertIn("exit 1", fail_step.group("body"))
-
-    def test_trust_assumptions_describe_post_burn_in_issue_path(self) -> None:
+    def test_trust_assumptions_describe_scheduled_issue_path(self) -> None:
         text = TRUST_ASSUMPTIONS.read_text(encoding="utf-8")
         self.assertIn("weekly scheduled GitHub Actions workflow", text)
-        self.assertIn("two-week `continue-on-error` burn-in ending 2026-05-04", text)
         self.assertIn("automatically opened or updated GitHub issue", text)
+        self.assertNotIn("burn-in", text)
 
     def test_axioms_document_non_axiom_evmyullean_controls(self) -> None:
         text = AXIOMS.read_text(encoding="utf-8")
@@ -133,6 +128,7 @@ class EvmYulLeanForkConformanceWorkflowTests(unittest.TestCase):
         self.assertIn("make test-evmyullean-fork", text)
         self.assertIn(".github/workflows/evmyullean-fork-conformance.yml", text)
         self.assertIn("open or update a GitHub issue", text)
+        self.assertNotIn("burn-in", text)
 
 
 if __name__ == "__main__":

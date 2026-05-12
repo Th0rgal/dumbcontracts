@@ -17,6 +17,13 @@ import Contracts.StringArrayErrorSmoke
 import Contracts.StringArrayEventSmoke
 import Verity.Macro.Translate
 
+-- The `unnecessarySeqFocus` linter recurses through every tactic block in the
+-- file; on the very large smoke-test goals here it overflows the C stack
+-- (SIGABRT 134 in `Batteries.Linter.UnnecessarySeqFocus.markUsedTacticsList`).
+-- Disable it at file scope, matching the precedent in
+-- `Compiler/Proofs/IRGeneration/GenericInduction.lean`.
+set_option linter.unnecessarySeqFocus false
+
 namespace Compiler.CompilationModelFeatureTest
 
 open Compiler

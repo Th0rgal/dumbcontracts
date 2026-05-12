@@ -350,6 +350,14 @@ inductive Expr
       nested dynamic members; `wordOffset` indexes the element head after the
       ABI element offset has been resolved. -/
   | arrayElementDynamicWord (name : String) (index : Expr) (wordOffset : Nat)
+  /-- Checked word access inside the head of a directly-passed struct/tuple
+      parameter whose ABI encoding is dynamic.  `wordOffset` indexes the
+      parameter's head section after the outer offset pointer has been
+      resolved by the parameter loader.  Used for `param.field` projections
+      where `param` is a struct that carries nested dynamic members and the
+      projected field is a single-word static leaf at a fixed head offset.
+      (verity#1832) -/
+  | paramDynamicHeadWord (name : String) (wordOffset : Nat)
   | storageArrayLength (field : String)  -- Read the length word of a storage dynamic array (#1571)
   | storageArrayElement (field : String) (index : Expr)  -- Checked element access of a storage dynamic array (#1571)
   /-- Equality on direct `bytes` / `string` parameters loaded from calldata or memory.
@@ -390,6 +398,18 @@ inductive Expr
   /-- `mulDivUp(a, b, c)` = `(a * b + c - 1) / c` (round away from zero).
       Compiles to `div(add(mul(a, b), sub(c, 1)), c)`. (#928) -/
   | mulDivUp (a b c : Expr)
+  /-- `mulDiv512Down(a, b, c)` = full-precision `(a * b) / c` (round toward
+      zero). Unlike `mulDivDown`, the intermediate product is handled at
+      full 512-bit precision and may exceed `2^256` as long as the final
+      quotient fits in `uint256`. Reverts on zero divisor or when the
+      quotient does not fit. Matches OpenZeppelin `Math.mulDiv` / Solmate
+      `FullMath.mulDiv` semantics (verity#1761). -/
+  | mulDiv512Down (a b c : Expr)
+  /-- `mulDiv512Up(a, b, c)` = full-precision `ceil(a * b / c)`. Same
+      semantics as `mulDiv512Down`, rounded up by 1 when the division is
+      not exact. Matches OpenZeppelin `Math.mulDiv(..., Rounding.Ceil)`
+      semantics (verity#1761). -/
+  | mulDiv512Up (a b c : Expr)
   /-- `wMulDown(a, b)` = `a * b / WAD` (WAD = 1e18, round down).
       Sugar for `mulDivDown a b (literal WAD)`. (#928) -/
   | wMulDown (a b : Expr)

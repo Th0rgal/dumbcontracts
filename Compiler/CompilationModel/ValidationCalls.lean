@@ -13,6 +13,8 @@ namespace Compiler.CompilationModel
 
 def reservedExternalNames
     (mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
+      paramDynamicHeadWordHelpersRequired
+      mulDiv512HelpersRequired
       storageArrayHelpersRequired dynamicBytesEqHelpersRequired : Bool) : List String :=
   let mappingHelpers := if mappingHelpersRequired then ["mappingSlot"] else []
   let arrayHelpers :=
@@ -31,6 +33,20 @@ def reservedExternalNames
       ]
     else
       []
+  let paramDynamicHeadWordHelpers :=
+    if paramDynamicHeadWordHelpersRequired then
+      [ checkedParamDynamicHeadWordCalldataHelperName
+      , checkedParamDynamicHeadWordMemoryHelperName
+      ]
+    else
+      []
+  let mulDiv512Helpers :=
+    if mulDiv512HelpersRequired then
+      [ fullMulDivHelperName
+      , fullMulDivUpHelperName
+      ]
+    else
+      []
   let storageArrayHelpers :=
     if storageArrayHelpersRequired then
       [checkedStorageArrayElementHelperName]
@@ -43,11 +59,13 @@ def reservedExternalNames
       []
   let builtins := [builtinExpName]
   let entrypoints := ["fallback", "receive"]
-  (mappingHelpers ++ arrayHelpers ++ arrayElementWordHelpers ++ storageArrayHelpers ++ dynamicBytesEqHelpers ++ builtins ++ entrypoints).eraseDups
+  (mappingHelpers ++ arrayHelpers ++ arrayElementWordHelpers ++ paramDynamicHeadWordHelpers ++ mulDiv512Helpers ++ storageArrayHelpers ++ dynamicBytesEqHelpers ++ builtins ++ entrypoints).eraseDups
 
 def firstReservedExternalCollision
     (spec : CompilationModel)
     (mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
+      paramDynamicHeadWordHelpersRequired
+      mulDiv512HelpersRequired
       storageArrayHelpersRequired dynamicBytesEqHelpersRequired : Bool) : Option String :=
   (spec.externals.map (·.name)).find? (fun name =>
     name.startsWith internalFunctionPrefix ||
@@ -55,6 +73,8 @@ def firstReservedExternalCollision
         mappingHelpersRequired
         arrayHelpersRequired
         arrayElementWordHelpersRequired
+        paramDynamicHeadWordHelpersRequired
+        mulDiv512HelpersRequired
         storageArrayHelpersRequired
         dynamicBytesEqHelpersRequired).contains name)
 
@@ -155,7 +175,8 @@ def validateInternalCallShapesInExpr
     Expr.ceilDiv a b => do
       validateInternalCallShapesInExpr functions callerName a
       validateInternalCallShapesInExpr functions callerName b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c => do
       validateInternalCallShapesInExpr functions callerName a
       validateInternalCallShapesInExpr functions callerName b
       validateInternalCallShapesInExpr functions callerName c
@@ -165,7 +186,26 @@ def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName cond
       validateInternalCallShapesInExpr functions callerName thenVal
       validateInternalCallShapesInExpr functions callerName elseVal
-  | _ =>
+  | Expr.externalCall _ args =>
+      validateInternalCallShapesInExprList functions callerName args
+  | Expr.adtConstruct _ _ args =>
+      validateInternalCallShapesInExprList functions callerName args
+  -- Pure leaves: nothing to validate. Listed explicitly (rather than via
+  -- `| _ => pure ()`) so the equation-lemma deriver does not have to
+  -- enumerate the complement of every pattern above. Avoids the
+  -- `_mutual.eq_def` 200 000-heartbeat ceiling when new `Expr` constructors
+  -- land (e.g. verity#1832's `paramDynamicHeadWord`).
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _
+  | Expr.storage _ | Expr.storageAddr _
+  | Expr.caller | Expr.contractAddress | Expr.chainid
+  | Expr.msgValue | Expr.selfBalance
+  | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
+  | Expr.calldatasize | Expr.returndataSize
+  | Expr.localVar _
+  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.paramDynamicHeadWord _ _
+  | Expr.dynamicBytesEq _ _
+  | Expr.adtTag _ _ | Expr.adtField _ _ _ _ _ =>
       pure ()
 termination_by e => sizeOf e
 decreasing_by all_goals simp_wf; all_goals omega
@@ -392,7 +432,8 @@ def validateExternalCallTargetsInExpr
     Expr.ceilDiv a b => do
       validateExternalCallTargetsInExpr externals context a
       validateExternalCallTargetsInExpr externals context b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c => do
       validateExternalCallTargetsInExpr externals context a
       validateExternalCallTargetsInExpr externals context b
       validateExternalCallTargetsInExpr externals context c
@@ -402,7 +443,24 @@ def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context cond
       validateExternalCallTargetsInExpr externals context thenVal
       validateExternalCallTargetsInExpr externals context elseVal
-  | _ =>
+  | Expr.adtConstruct _ _ args =>
+      validateExternalCallTargetsInExprList externals context args
+  -- Pure leaves: nothing to validate. Listed explicitly (rather than via
+  -- `| _ => pure ()`) so the equation-lemma deriver does not have to
+  -- enumerate the complement of every pattern above. Avoids the
+  -- `_mutual.eq_def` 200 000-heartbeat ceiling when new `Expr` constructors
+  -- land (e.g. verity#1832's `paramDynamicHeadWord`).
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _
+  | Expr.storage _ | Expr.storageAddr _
+  | Expr.caller | Expr.contractAddress | Expr.chainid
+  | Expr.msgValue | Expr.selfBalance
+  | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
+  | Expr.calldatasize | Expr.returndataSize
+  | Expr.localVar _
+  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.paramDynamicHeadWord _ _
+  | Expr.dynamicBytesEq _ _
+  | Expr.adtTag _ _ | Expr.adtField _ _ _ _ _ =>
       pure ()
 termination_by e => sizeOf e
 decreasing_by all_goals simp_wf; all_goals omega

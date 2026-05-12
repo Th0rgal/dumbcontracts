@@ -293,6 +293,14 @@ def compileExpr (fields : List Field)
         indexExpr,
         YulExpr.lit wordOffset
       ])
+  | Expr.paramDynamicHeadWord name wordOffset => do
+      let helperName := match dynamicSource with
+        | .calldata => checkedParamDynamicHeadWordCalldataHelperName
+        | .memory => checkedParamDynamicHeadWordMemoryHelperName
+      pure (YulExpr.call helperName [
+        YulExpr.ident s!"{name}_data_offset",
+        YulExpr.lit wordOffset
+      ])
   | Expr.storageArrayLength field =>
       match findFieldWithResolvedSlot fields field with
       | some (f, slot) =>
@@ -383,6 +391,20 @@ def compileExpr (fields : List Field)
         ],
         cc
       ])
+  -- verity#1761: full-precision `a * b / c` using the OpenZeppelin /
+  -- Solmate `FullMath.mulDiv` algorithm. The intermediate product is
+  -- handled at 512-bit precision; the helper reverts on zero divisor
+  -- or when the quotient does not fit in `uint256`.
+  | Expr.mulDiv512Down a b c => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      let cc ← compileExpr fields dynamicSource c
+      pure (YulExpr.call fullMulDivHelperName [ca, cb, cc])
+  | Expr.mulDiv512Up a b c => do
+      let ca ← compileExpr fields dynamicSource a
+      let cb ← compileExpr fields dynamicSource b
+      let cc ← compileExpr fields dynamicSource c
+      pure (YulExpr.call fullMulDivUpHelperName [ca, cb, cc])
   | Expr.wMulDown a b => do
       let ca ← compileExpr fields dynamicSource a
       let cb ← compileExpr fields dynamicSource b

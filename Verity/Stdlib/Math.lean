@@ -94,6 +94,24 @@ def mulDiv512Up? (a b c : Uint256) : Option Uint256 :=
     let q := (((a : Nat) * (b : Nat)) + ((c : Nat) - 1)) / (c : Nat)
     if q > MAX_UINT256 then none else some (Core.Uint256.ofNat q)
 
+/-- `mulDiv512Down(a, b, c)` = full-precision `floor((a * b) / c)`,
+    matching the IR's revert-on-overflow Yul helper. The Lean def
+    short-circuits on the failure boundary by returning `0`; the
+    proof surface `mulDiv512Down?` (`Option Uint256`) is the
+    correctness witness when the quotient fits. (verity#1761) -/
+def mulDiv512Down (a b c : Uint256) : Uint256 :=
+  match mulDiv512Down? a b c with
+  | some r => r
+  | none => 0
+
+/-- `mulDiv512Up(a, b, c)` = full-precision `ceil((a * b) / c)`,
+    matching the IR's revert-on-overflow Yul helper.  Defined
+    analogously to `mulDiv512Down` via `mulDiv512Up?`. (verity#1761) -/
+def mulDiv512Up (a b c : Uint256) : Uint256 :=
+  match mulDiv512Up? a b c with
+  | some r => r
+  | none => 0
+
 /-- `ceilDiv(a, b)` = `ceil(a / b)`, matching Solidity's Math256.ceilDiv / OpenZeppelin.
     Uses the overflow-safe formula: `a == 0 ? 0 : (a - 1) / b + 1`.
     Note: When `b = 0` and `a > 0`, EVM `DIV` returns 0, so this yields 1.
@@ -124,6 +142,45 @@ def requireSomeUint (opt : Option Uint256) (message : String) : Contract Uint256
     -- This line is unreachable in real execution (require would revert)
     -- Return 0 as a fallback for type checking
     return 0
+
+/-! ### Solidity-0.8 default-revert arithmetic (verity#1752)
+
+These wrappers expose the same semantics as Solidity 0.8's `a + b` / `a - b` /
+`a * b` / `a / b` on `uint256`, where overflow / underflow / division-by-zero
+reverts with `Panic(0x11)` / `Panic(0x12)` rather than wrapping mod `2^256`.
+
+They are thin compositions of `safeAdd` / `safeSub` / `safeMul` / `safeDiv` with
+`requireSomeUint`, recognised by the `verity_contract` macro as ergonomic bind
+sources so contract authors can write the Solidity-faithful form on one line:
+
+```lean
+let total ← addPanic total amount
+```
+
+instead of the visually divergent
+
+```lean
+let total ← requireSomeUint (safeAdd total amount) "Overflow"
+```
+
+The macro lowers `let x ← addPanic a b` directly to the same IR as
+`let x ← requireSomeUint (safeAdd a b) "Panic(0x11): arithmetic overflow"`. -/
+
+/-- `a + b` on `Uint256` with Solidity-0.8 panic-on-overflow semantics. -/
+def addPanic (a b : Uint256) : Contract Uint256 :=
+  requireSomeUint (safeAdd a b) "Panic(0x11): arithmetic overflow"
+
+/-- `a - b` on `Uint256` with Solidity-0.8 panic-on-underflow semantics. -/
+def subPanic (a b : Uint256) : Contract Uint256 :=
+  requireSomeUint (safeSub a b) "Panic(0x11): arithmetic underflow"
+
+/-- `a * b` on `Uint256` with Solidity-0.8 panic-on-overflow semantics. -/
+def mulPanic (a b : Uint256) : Contract Uint256 :=
+  requireSomeUint (safeMul a b) "Panic(0x11): arithmetic overflow"
+
+/-- `a / b` on `Uint256` with Solidity-0.8 panic-on-division-by-zero semantics. -/
+def divPanic (a b : Uint256) : Contract Uint256 :=
+  requireSomeUint (safeDiv a b) "Panic(0x12): division by zero"
 
 -- Full-result simp lemmas for requireSomeUint
 @[simp] theorem requireSomeUint_some (v : Uint256) (msg : String) (s : ContractState) :

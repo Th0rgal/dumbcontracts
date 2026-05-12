@@ -1208,60 +1208,96 @@ private def mkInitGuardedBody
                   $[$elems:doElem]*)
       | _ => throwErrorAt fn.body "function body must be a do block"
 
+/-- Classifies a `requires(role)` annotation by the shape of the named storage
+    field. `scalarAddress` is the canonical `onlyOwner` shape — a scalar
+    Address-typed slot; the macro injects `require (caller == storage[slot])`.
+    `mappingAddress` is the role-as-mapping shape (e.g. `onlyRelayer`,
+    `onlyMinter`) — a `mapping(address => uint256)` slot used as a 0/1 flag;
+    the macro injects `require (storage[slot][caller] != 0)`. (verity#1837) -/
+private inductive RoleKind where
+  | scalarAddress
+  | mappingAddress
+
 /-- Resolve the storage field referenced by a `requires(role)` annotation.
-    The role must be an Address-typed scalar storage field. -/
+    Accepts either an Address-typed scalar field (`onlyOwner`-style) or an
+    `Address → Uint256` mapping field (`onlyRelayer`-style, verity#1837). -/
 private def resolveRoleField
     (fields : Array StorageFieldDecl) (roleIdent : Ident) (fnIdent : Ident)
-    : CommandElabM StorageFieldDecl := do
+    : CommandElabM (StorageFieldDecl × RoleKind) := do
   let roleName := toString roleIdent.getId
   match fields.find? (fun f => f.name == roleName) with
   | none =>
       throwErrorAt roleIdent s!"function '{toString fnIdent.getId}': requires references unknown storage field '{roleName}'; known fields: {(fields.map (·.name)).toList}"
   | some field =>
       match field.ty with
-      | .scalar .address | .scalar (.newtype _ .address) => pure field
-      | _ => throwErrorAt roleIdent s!"function '{toString fnIdent.getId}': requires({roleName}) must reference an Address-typed storage field, but '{roleName}' has a different type"
+      | .scalar .address | .scalar (.newtype _ .address) =>
+          pure (field, .scalarAddress)
+      | .mappingAddressToUint256 =>
+          pure (field, .mappingAddress)
+      | _ => throwErrorAt roleIdent s!"function '{toString fnIdent.getId}': requires({roleName}) must reference an Address-typed scalar storage field or an Address→Uint256 mapping (role-as-mapping), but '{roleName}' has a different type"
 
 /-- Generate IR-level prelude statements for a `requires(role)` annotation.
-    Injects `Stmt.require (Expr.eq Expr.caller (Expr.storage roleField)) "Access denied: only role"`.
-    (#1728, Axis 2 Step 2c) -/
+    Scalar Address: injects `Stmt.require (Expr.eq Expr.caller (Expr.storageAddr roleField)) message`.
+    Address→Uint256 mapping: injects `Stmt.require (Expr.mapping roleField Expr.caller) message`
+    (the truthy check works because the value is 0 or non-zero).
+    (#1728, Axis 2 Step 2c; mapping-keyed extension verity#1837) -/
 private def roleGuardPreludeStmtTerms
     (fields : Array StorageFieldDecl)
     (fn : FunctionDecl) : CommandElabM (Array Term) := do
   match fn.requiresRole with
   | none => pure #[]
   | some roleIdent =>
-      let field ← resolveRoleField fields roleIdent fn.ident
+      let (field, kind) ← resolveRoleField fields roleIdent fn.ident
       let message := strTerm s!"Access denied: caller is not {field.name}"
-      pure #[
-        ← `(Compiler.CompilationModel.Stmt.require
-              (Compiler.CompilationModel.Expr.eq
-                (Compiler.CompilationModel.Expr.caller)
-                (Compiler.CompilationModel.Expr.storageAddr $(strTerm field.name)))
-              $message)
-      ]
+      match kind with
+      | .scalarAddress =>
+          pure #[
+            ← `(Compiler.CompilationModel.Stmt.require
+                  (Compiler.CompilationModel.Expr.eq
+                    (Compiler.CompilationModel.Expr.caller)
+                    (Compiler.CompilationModel.Expr.storageAddr $(strTerm field.name)))
+                  $message)
+          ]
+      | .mappingAddress =>
+          pure #[
+            ← `(Compiler.CompilationModel.Stmt.require
+                  (Compiler.CompilationModel.Expr.mapping $(strTerm field.name)
+                    Compiler.CompilationModel.Expr.caller)
+                  $message)
+          ]
 
 /-- Transform the source-level do-block body to inject a role access control check
-    at the start.  Injects `let __sender ← msgSender; let __roleHolder ← getStorageAddr field;
-    require (__sender == __roleHolder) "Access denied: caller is not role"`.
-    (#1728, Axis 2 Step 2c) -/
+    at the start. Scalar Address: `let __sender ← msgSender; let __roleHolder ← getStorageAddr field;
+    require (__sender == __roleHolder) message`. Address→Uint256 mapping:
+    `let __sender ← msgSender; let __roleValue ← getMapping field __sender;
+    require (__roleValue != 0) message`.
+    (#1728, Axis 2 Step 2c; mapping-keyed extension verity#1837) -/
 private def mkRoleGuardedBody
     (fields : Array StorageFieldDecl)
     (fn : FunctionDecl) : CommandElabM Term := do
   match fn.requiresRole with
   | none => pure fn.body
   | some roleIdent =>
-      let field ← resolveRoleField fields roleIdent fn.ident
+      let (field, kind) ← resolveRoleField fields roleIdent fn.ident
       let senderVar := mkIdent (Name.mkSimple s!"__verity_role_sender_{field.name}")
-      let holderVar := mkIdent (Name.mkSimple s!"__verity_role_holder_{field.name}")
       let message := strTerm s!"Access denied: caller is not {field.name}"
       match fn.body with
       | `(term| do $[$elems:doElem]*) =>
-          `(do
-              let $senderVar ← msgSender
-              let $holderVar ← getStorageAddr $field.ident
-              require ($senderVar == $holderVar) $message
-              $[$elems:doElem]*)
+          match kind with
+          | .scalarAddress =>
+              let holderVar := mkIdent (Name.mkSimple s!"__verity_role_holder_{field.name}")
+              `(do
+                  let $senderVar ← msgSender
+                  let $holderVar ← getStorageAddr $field.ident
+                  require ($senderVar == $holderVar) $message
+                  $[$elems:doElem]*)
+          | .mappingAddress =>
+              let valueVar := mkIdent (Name.mkSimple s!"__verity_role_value_{field.name}")
+              `(do
+                  let $senderVar ← msgSender
+                  let $valueVar ← getMapping $field.ident $senderVar
+                  require ($valueVar != 0) $message
+                  $[$elems:doElem]*)
       | _ => throwErrorAt fn.body "function body must be a do block"
 
 private def mkImmutableBoundBody
@@ -1696,23 +1732,51 @@ private def paramStructProjection?
   else
     none
 
+/-- Resolve a `param.field[.field2…]` projection where `param` is a struct
+    parameter whose ABI encoding is dynamic (carries nested dynamic
+    members) and the projected leaf is a single-word static value at a
+    fixed head offset. Returns `(paramName, fieldTy, wordOffset)`. The
+    word offset is the head-word index relative to the parameter's
+    `{name}_data_offset`, which after verity#1839 points at the first
+    head word of the encoded tuple (no length prefix). (verity#1832) -/
+private def paramDynamicHeadProjection?
+    (params : Array ParamDecl)
+    (stx : Term) : Option (String × ValueType × Nat) := do
+  let (root, path) ←
+    match (stripParens stx).raw with
+    | .ident _ raw _ _ =>
+        let parts := raw.toString.splitOn "."
+        let rec findParamPath : List String → Option (String × List String)
+          | [] | [_] => none
+          | rootName :: fieldName :: rest =>
+              if params.any (fun p => p.name == rootName) then
+                some (rootName, fieldName :: rest)
+              else
+                findParamPath (fieldName :: rest)
+        findParamPath parts
+    | _ =>
+        let (rootStx, path) ← structProjectionPath? stx
+        match stripParens rootStx with
+        | `(term| $id:ident) => some (toString id.getId, path)
+        | _ => none
+  let param ← params.find? (fun p => p.name == root)
+  if !valueTypeUsesDynamicData param.ty then
+    none
+  else
+    let (fieldTy, wordOffset) ← structFieldHeadOffset? param.ty path
+    if isSingleWordStaticValueType fieldTy then
+      some (root, fieldTy, wordOffset)
+    else
+      none
+
 private def isParamStructNonLeafProjection (params : Array ParamDecl) (stx : Term) : Bool :=
   match paramStructProjectionResolved? params stx with
   | some (_, fieldTy, _) => !isSingleWordStaticValueType fieldTy
   | none => false
 
-private def isParamStructDynamicRootProjection (params : Array ParamDecl) (stx : Term) : Bool :=
-  match paramStructProjectionResolved? params stx with
-  | some (_, fieldTy, rootTy) => isSingleWordStaticValueType fieldTy && valueTypeUsesDynamicData rootTy
-  | none => false
-
 private def throwStructNonLeafProjectionError (stx : Term) : CommandElabM α :=
   throwErrorAt stx
-    "non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead"
-
-private def throwStructDynamicRootProjectionError (stx : Term) : CommandElabM α :=
-  throwErrorAt stx
-    "struct parameter projection from an ABI-dynamic root is not supported; use a static struct parameter or wait for nested-dynamic ABI decoding"
+    "non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)"
 
 private def renderValueType (ty : ValueType) : String :=
   reprStr ty
@@ -2155,8 +2219,8 @@ private partial def inferPureExprType
     requireWordLikeType index "arrayElement index" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals index visitingConstants)
     pure fieldTy
   else
-  if isParamStructDynamicRootProjection params stx then
-    throwStructDynamicRootProjectionError stx
+  if let some (_, fieldTy, _) := paramDynamicHeadProjection? params stx then
+    pure fieldTy
   else
   if isParamStructNonLeafProjection params stx then
     throwStructNonLeafProjectionError stx
@@ -2328,6 +2392,10 @@ private partial def inferPureExprType
   | `(term| mulDivDown $a $b $c) | `(term| mulDivUp $a $b $c) => do
       for arg in [a, b, c] do
         requireWordLikeType arg "mulDiv" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
+      pure .uint256
+  | `(term| mulDiv512Down $a $b $c) | `(term| mulDiv512Up $a $b $c) => do
+      for arg in [a, b, c] do
+        requireWordLikeType arg "mulDiv512" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
       pure .uint256
   | `(term| ite $cond $thenVal $elseVal) => do
       requireBoolType cond "ite condition" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals cond visitingConstants)
@@ -2573,6 +2641,20 @@ private partial def inferBindSourceType
           requireWordLikeType b "safe uint helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals b)
           pure .uint256
       | _ => throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd, safeSub, safeMul, or safeDiv"
+  -- Solidity-0.8 default-revert arithmetic (verity#1752). `addPanic`,
+  -- `subPanic`, `mulPanic`, `divPanic` are ergonomic shorthands for the
+  -- corresponding `requireSomeUint (safeXxx a b) <fixed Panic-style message>`
+  -- pattern.  They match the surface of Solidity's `a + b` / `a - b` / `a * b`
+  -- / `a / b` operators on `uint256`, where overflow / underflow / division
+  -- by zero reverts with `Panic(0x11)` / `Panic(0x12)` rather than wrapping
+  -- mod 2^256.
+  | `(term| addPanic $a:term $b:term)
+  | `(term| subPanic $a:term $b:term)
+  | `(term| mulPanic $a:term $b:term)
+  | `(term| divPanic $a:term $b:term) => do
+      requireWordLikeType a "panic uint helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals a)
+      requireWordLikeType b "panic uint helper" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals b)
+      pure .uint256
   | _ =>
       match ← resolveLocalFunctionApp? fields constDecls immutableDecls externalDecls functions params locals rhs with
       | some (fn, _argTerms) =>
@@ -2997,8 +3079,13 @@ partial def translatePureExprWithTypes
         $(natTerm elementWords)
         $(natTerm wordOffset))
   else
-  if isParamStructDynamicRootProjection params stx then
-    throwStructDynamicRootProjectionError stx
+  -- Direct dynamic-tuple parameter leaf projection (verity#1832): read a
+  -- single-word static field at a fixed head offset from a dynamically
+  -- encoded struct parameter.
+  if let some (paramName, _fieldTy, wordOffset) := paramDynamicHeadProjection? params stx then
+    `(Compiler.CompilationModel.Expr.paramDynamicHeadWord
+      $(strTerm paramName)
+      $(natTerm wordOffset))
   else
   if isParamStructNonLeafProjection params stx then
     throwStructNonLeafProjectionError stx
@@ -3234,6 +3321,16 @@ partial def translatePureExprWithTypes
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))
   | `(term| mulDivUp $a $b $c) =>
       `(Compiler.CompilationModel.Expr.mulDivUp
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals a visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals b visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))
+  | `(term| mulDiv512Down $a $b $c) =>
+      `(Compiler.CompilationModel.Expr.mulDiv512Down
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals a visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals b visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))
+  | `(term| mulDiv512Up $a $b $c) =>
+      `(Compiler.CompilationModel.Expr.mulDiv512Up
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals a visitingConstants)
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals b visitingConstants)
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))
@@ -4011,6 +4108,59 @@ private def translateSafeRequireBind
           ])
       | _ =>
           throwErrorAt rhs "unsupported requireSomeUint source; expected safeAdd, safeSub, safeMul, or safeDiv"
+  -- Solidity-0.8 default-revert arithmetic (verity#1752): `let x ← addPanic a b`
+  -- lowers to the same IR as
+  -- `let x ← requireSomeUint (safeAdd a b) "Panic(0x11): arithmetic overflow"`,
+  -- and analogously for `subPanic` / `mulPanic` / `divPanic`. The fixed
+  -- message mirrors Solidity 0.8's `Panic(0x11)` (overflow / underflow)
+  -- and `Panic(0x12)` (division by zero) opcodes.
+  | `(term| addPanic $a:term $b:term) =>
+      let msgLit := strTerm "Panic(0x11): arithmetic overflow"
+      let aExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals a
+      let bExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals b
+      let valueExpr : Term ← `(Compiler.CompilationModel.Expr.add $aExpr $bExpr)
+      let guardExpr : Term ← `(Compiler.CompilationModel.Expr.ge $valueExpr $aExpr)
+      pure (some #[
+        (← `(Compiler.CompilationModel.Stmt.require $guardExpr $msgLit)),
+        (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $valueExpr))
+      ])
+  | `(term| subPanic $a:term $b:term) =>
+      let msgLit := strTerm "Panic(0x11): arithmetic underflow"
+      let aExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals a
+      let bExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals b
+      let valueExpr : Term ← `(Compiler.CompilationModel.Expr.sub $aExpr $bExpr)
+      let guardExpr : Term ← `(Compiler.CompilationModel.Expr.ge $aExpr $bExpr)
+      pure (some #[
+        (← `(Compiler.CompilationModel.Stmt.require $guardExpr $msgLit)),
+        (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $valueExpr))
+      ])
+  | `(term| mulPanic $a:term $b:term) =>
+      let msgLit := strTerm "Panic(0x11): arithmetic overflow"
+      let aExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals a
+      let bExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals b
+      let valueExpr : Term ← `(Compiler.CompilationModel.Expr.mul $aExpr $bExpr)
+      let zeroExpr : Term ← `(Compiler.CompilationModel.Expr.literal 0)
+      let divisorZeroExpr : Term ← `(Compiler.CompilationModel.Expr.eq $bExpr $zeroExpr)
+      let quotientExpr : Term ← `(Compiler.CompilationModel.Expr.div $valueExpr $bExpr)
+      let noOverflowExpr : Term ← `(Compiler.CompilationModel.Expr.eq $quotientExpr $aExpr)
+      let guardExpr : Term ← `(Compiler.CompilationModel.Expr.logicalOr $divisorZeroExpr $noOverflowExpr)
+      pure (some #[
+        (← `(Compiler.CompilationModel.Stmt.require $guardExpr $msgLit)),
+        (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $valueExpr))
+      ])
+  | `(term| divPanic $a:term $b:term) =>
+      let msgLit := strTerm "Panic(0x12): division by zero"
+      let aExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals a
+      let bExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals b
+      let valueExpr : Term ← `(Compiler.CompilationModel.Expr.div $aExpr $bExpr)
+      let zeroExpr : Term ← `(Compiler.CompilationModel.Expr.literal 0)
+      let guardExpr : Term ←
+        `(Compiler.CompilationModel.Expr.logicalNot
+            (Compiler.CompilationModel.Expr.eq $bExpr $zeroExpr))
+      pure (some #[
+        (← `(Compiler.CompilationModel.Stmt.require $guardExpr $msgLit)),
+        (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm varName) $valueExpr))
+      ])
   | _ => pure none
 
 private def lookupFunctionByNameAndArity
@@ -5677,22 +5827,17 @@ private def mkFindIdxParamSimpCommands
     cmds := cmds ++ fnCmds
   pure cmds
 
-/-- Convert a big-endian `ByteArray` to a `Nat`, treating byte 0 as most
-    significant.  Used for storage namespace computation (#1730, Axis 4). -/
-private def byteArrayToNatBE (ba : ByteArray) : Nat :=
-  ba.foldl (fun acc byte => acc * 256 + byte.toNat) 0
-
 /-- Compute the storage namespace for a contract.
     `storageNamespace("Foo") = keccak256("Foo.storage.v0")` as a 256-bit Nat.
     The result can be used as a base offset so different contracts never collide
     in the shared 2^256 storage address space.
     (#1730, Axis 4 Step 4a) -/
 def computeStorageNamespace (contractName : String) : Nat :=
-  byteArrayToNatBE (KeccakEngine.keccak256_str s!"{contractName}.storage.v0")
+  KeccakEngine.keccak256_str_nat s!"{contractName}.storage.v0"
 
 /-- Compute a storage namespace from an explicit user-provided namespace key. -/
 def computeStorageNamespaceKey (key : String) : Nat :=
-  byteArrayToNatBE (KeccakEngine.keccak256_str key)
+  KeccakEngine.keccak256_str_nat key
 
 def parseContractSyntax
     (stx : Syntax)

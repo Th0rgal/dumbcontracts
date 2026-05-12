@@ -41,7 +41,8 @@ partial def exprContainsCallLike (expr : Expr) : Bool :=
     Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b |
     Expr.ceilDiv a b =>
       exprContainsCallLike a || exprContainsCallLike b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprContainsCallLike a || exprContainsCallLike b || exprContainsCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsCallLike a
@@ -55,6 +56,7 @@ partial def exprContainsCallLike (expr : Expr) : Bool :=
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.selfBalance | Expr.blockTimestamp
   | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.paramDynamicHeadWord _ _
   | Expr.adtTag _ _ =>
       false
 partial def exprListContainsCallLike : List Expr → Bool
@@ -78,6 +80,11 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
   | Expr.mulDivUp a b c =>
       exprContainsCallLike c ||
+      exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
+  | Expr.mulDiv512Up a b c =>
+      -- `mulDiv512Up` lowers to a single helper-function call where each
+      -- operand is evaluated once at the call site, so a call-like `c` is
+      -- safe (no duplication). Treat it like `mulDiv512Down`. (verity#1761)
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.wDivUp a b =>
       exprContainsCallLike b ||
@@ -129,7 +136,8 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.sgt a b | Expr.lt a b | Expr.slt a b | Expr.le a b |
     Expr.wMulDown a b | Expr.ceilDiv a b =>
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
-  | Expr.mulDivDown a b c =>
+  | Expr.mulDivDown a b c
+  | Expr.mulDiv512Down a b c =>
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsUnsafeLogicalCallLike a
@@ -146,6 +154,7 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.selfBalance | Expr.blockTimestamp
   | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.paramDynamicHeadWord _ _
   | Expr.adtTag _ _ =>
       false
 termination_by sizeOf expr

@@ -66,6 +66,7 @@ with the existing sync scripts and boundary checks.
 | Array length | `Expr.arrayLength` | ok | ok | -- | -- | proved |
 | Array element | `Expr.arrayElement` | ok | ok | -- | -- | proved |
 | Dynamic struct-array head word | `Expr.arrayElementDynamicWord` | **0** | **0** | -- | -- | n/m |
+| Direct dynamic-struct param head word | `Expr.paramDynamicHeadWord` | **0** | **0** | -- | -- | n/m |
 
 Legend: **ok** = supported, **0** = returns 0 (not modeled), **del** = delegated to Verity path, **--** = not applicable at this layer, **n/m** = not modeled in proofs.
 
@@ -183,27 +184,27 @@ Legend: **ok** = native evaluation.
 
 | Category | Proved | Assumed | Partial | Not Modeled |
 |---|---|---|---|---|
-| Expression features | 24 | 1 (`externalCall`) | 6 | 5 (`keccak256`, `call`, `staticcall`, `delegatecall`, `arrayElementDynamicWord`) |
+| Expression features | 24 | 1 (`externalCall`) | 6 | 6 (`keccak256`, `call`, `staticcall`, `delegatecall`, `arrayElementDynamicWord`, `paramDynamicHeadWord`) |
 | Statement features | 25 | 0 | 1 (`mstore`) | 6 (`calldatacopy`, `returndataCopy`, `revertReturndata`, `rawLog`, `externalCallBind`, `ecm`) |
 | Builtins (agreement) | 36 | 0 | 0 | 0 (delegated) |
 
-Proof-boundary features split across two buckets. Partially modeled features currently include runtime introspection (`blockNumber`, `contractAddress`, `chainid`) and single-word linear-memory forms (`mload`, `mstore`, `returndataOptionalBoolAt`). `selfBalance` is also partially modeled: it is compiler-supported and source-executable, but not yet included in the generic proof interpreter fragment. Fully not-modeled features currently include `keccak256`, low-level call / returndata plumbing (`call`, `staticcall`, `delegatecall`, `calldatacopy`, `returndataCopy`, `revertReturndata`), event emission (`rawLog`), and external call modules (`externalCallBind`, `ecm`). Dynamic struct-array head-word decoding (`arrayElementDynamicWord`) is also not modeled by proof interpreters yet. These features are still compiler-supported and are validated by differential testing (70,000+ test vectors against actual EVM execution).
+Proof-boundary features split across two buckets. Partially modeled features currently include runtime introspection (`blockNumber`, `contractAddress`, `chainid`) and single-word linear-memory forms (`mload`, `mstore`, `returndataOptionalBoolAt`). `selfBalance` is also partially modeled: it is compiler-supported and source-executable, but not yet included in the generic proof interpreter fragment. Fully not-modeled features currently include `keccak256`, low-level call / returndata plumbing (`call`, `staticcall`, `delegatecall`, `calldatacopy`, `returndataCopy`, `revertReturndata`), event emission (`rawLog`), and external call modules (`externalCallBind`, `ecm`). Dynamic struct-array head-word decoding (`arrayElementDynamicWord`) and direct dynamic-struct parameter head-word decoding (`paramDynamicHeadWord`) are also not modeled by proof interpreters yet. These features are still compiler-supported and are validated by differential testing (70,000+ test vectors against actual EVM execution).
 
 ---
 
 ## Known Limitations
 
-1. **Nested dynamic ABI decoding**: The compiler can read checked static leaf words from calldata arrays whose tuple/struct elements contain nested dynamic members via `Expr.arrayElementDynamicWord`. This is a compilation-level ABI decoder surface for Unlink-style transaction arrays; proof interpreters do not model those decoded words yet.
+1. **Nested dynamic ABI decoding**: The compiler can read checked static leaf words from calldata arrays whose tuple/struct elements contain nested dynamic members via `Expr.arrayElementDynamicWord`, and from direct struct parameters whose ABI encoding is dynamic via `Expr.paramDynamicHeadWord` (#1832). These are compilation-level ABI decoder surfaces for Unlink-style transaction arrays and the `Transaction` / `WithdrawalTransaction` / `AdapterTransaction` direct-parameter shapes; proof interpreters do not model those decoded words yet.
 
 2. **Runtime environment reads**: `address(this).balance` lowers to Yul `selfbalance()` and runs against `ContractState.selfBalance` on the executable source path, with Foundry differential coverage against Solidity. The current generic proof interpreters do not model this balance read yet.
 
 3. **Linear memory**: The IRInterpreter has single-word memory support. `mload`, `mstore`, `calldatacopy`, `returndataCopy`, and `returndataOptionalBoolAt` therefore remain only partially modeled or not modeled in the proof interpreters today. Full linear memory coverage requires EVMYulLean semantic integration.
 
-4. **Low-level calls**: `call`/`staticcall`/`delegatecall` and `externalCallBind`/`ecm` are compiler-only features validated by Foundry testing, not modeled in proof interpreters. The standard `Calls.callWithValue` and `Calls.callWithValueBytes` ECMs are part of this compiler-only surface for generic `call{value:v}` adapter/router flows and are surfaced as assumed ECMs in trust reports. `delegatecall` additionally remains a dedicated proxy / upgradeability trust boundary; use `--trust-report` / `--deny-proxy-upgradeability` when those semantics must stay outside the selected verification envelope (issue [#1420](https://github.com/lfglabs-dev/verity/issues/1420)).
+4. **Low-level calls**: `call`/`staticcall`/`delegatecall` and `externalCallBind`/`ecm` are compiler-only features validated by Foundry testing, not modeled in proof interpreters. The standard `Calls.callWithValue` and `Calls.callWithValueBytes` ECMs are part of this compiler-only surface for generic `call{value:v}` adapter/router flows and are surfaced as assumed ECMs in trust reports. The EVM precompile ECMs (`Precompiles.ecrecover` 0x01, `Precompiles.sha256Memory`/`sha256` 0x02, and the BN254 curve precompiles `Precompiles.bn256Add` 0x06, `Precompiles.bn256ScalarMul` 0x07, `Precompiles.bn256Pairing` 0x08) also fall in this compiler-only ECM bucket; each precompile carries its own `evm_*_precompile` trust assumption documented in [`docs/EXTERNAL_CALL_MODULES.md`](EXTERNAL_CALL_MODULES.md) and [`AXIOMS.md`](../AXIOMS.md). `delegatecall` additionally remains a dedicated proxy / upgradeability trust boundary; use `--trust-report` / `--deny-proxy-upgradeability` when those semantics must stay outside the selected verification envelope (issue [#1420](https://github.com/lfglabs-dev/verity/issues/1420)).
 
 5. **Internal helper compositional proofs**: `Stmt.internalCall` / `Expr.internalCall` execute in the fuel-based interpreter path, but helper-level theorem reuse across callers is not yet surfaced as a first-class proof interface. The `verity_contract` user surface for these is ordinary direct function-name calls; `internalCall` / `internalCallAssign` remain lower-level compilation-model constructors. The current proof-level gap is tracked under the Layer 2 completeness roadmap in [#1630](https://github.com/lfglabs-dev/verity/issues/1630), with the interface/boundary refactor in [#1633](https://github.com/lfglabs-dev/verity/pull/1633).
 
 ---
 
-**Last Updated**: 2026-05-02
+**Last Updated**: 2026-05-11
 **Machine-readable artifact**: `artifacts/interpreter_feature_matrix.json`

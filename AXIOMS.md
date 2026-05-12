@@ -121,8 +121,8 @@ the EVM.
   public EndToEnd EVMYulLean target, and the concrete `native_decide`
   bridge-equivalence tests.
 - `.github/workflows/evmyullean-fork-conformance.yml` runs the conformance probe
-  weekly; after the burn-in ending 2026-05-04, scheduled/manual failures fail
-  the workflow and open or update a GitHub issue for drift triage.
+  weekly; scheduled or manual failures fail the workflow and
+  open or update a GitHub issue for drift triage.
 
 ## External Call Module (ECM) Assumptions
 
@@ -160,6 +160,10 @@ compilation fail if any assumption hasn't been reviewed.
 | `ERC4626.deposit` | `erc4626_deposit_interface` | Target implements `deposit(uint256,address)` and returns a `uint256` |
 | `Oracle.oracleReadUint256` | `oracle_read_uint256_interface` | Target implements the selected oracle read interface and returns a `uint256` |
 | `Precompiles.ecrecover` | `evm_ecrecover_precompile` | EVM precompile at address 0x01 behaves per Yellow Paper |
+| `Precompiles.sha256Memory` / `Precompiles.sha256` | `evm_sha256_precompile` | EVM precompile at address 0x02 behaves per Yellow Paper |
+| `Precompiles.bn256Add` | `evm_bn256_add_precompile` | EVM precompile at address 0x06 behaves per EIP-196 (BN254 point addition) |
+| `Precompiles.bn256ScalarMul` | `evm_bn256_scalar_mul_precompile` | EVM precompile at address 0x07 behaves per EIP-196 (BN254 scalar multiplication) |
+| `Precompiles.bn256Pairing` | `evm_bn256_pairing_precompile` | EVM precompile at address 0x08 behaves per EIP-197 (BN254 optimal-Ate pairing) |
 | `Callbacks.callback` | `callback_target_interface` | Callback target processes ABI-encoded arguments correctly |
 | `Calls.withReturn` | `external_call_abi_interface` | Target contract function matches declared selector and ABI |
 
@@ -204,4 +208,4 @@ Any commit that adds, removes, renames, or moves an axiom must update this file 
 
 If this file is stale, trust analysis is stale.
 
-**Last Updated**: 2026-04-09
+**Last Updated**: 2026-05-12

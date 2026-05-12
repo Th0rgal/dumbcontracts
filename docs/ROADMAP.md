@@ -140,6 +140,8 @@ Priority work for Verity core:
 | P1 | Multi-value internal return verification/docs | Confirm helper functions can return multiple values and callers can bind them cleanly from macro syntax. | A smoke or feature test demonstrates `_buildPublicSignals`-style helper returns, including `Stmt.internalCallAssign` or equivalent macro syntax; docs point users to the pattern. |
 | P1 | `abiEncodePacked` helper | Reduce hash-preimage offset mistakes in ZK/audit models. | `Compiler.Modules.Hashing.abiEncodePackedWords` covers the static 32-byte word subset, with `abiEncodePacked` as a short alias for the same semantics; `Compiler.Modules.Hashing.abiEncodePackedStaticSegments` covers static 1- to 32-byte segments such as address-sized values. Both lower to contiguous memory writes plus exact-length `keccak256` and have generated-Yul/trust-report tests. Dynamic Solidity packed encoding remains future work. |
 | P1 | `sha256` / `sha256Packed` helper | Avoid hand-rolled SHA-256 precompile calls in public-signal construction. | `Compiler.Modules.Precompiles.sha256Memory` covers existing memory slices, with `sha256` as a short alias; `Compiler.Modules.Hashing.sha256PackedWords` covers static-word packed preimages, with `sha256Packed` as a short alias; `Compiler.Modules.Hashing.sha256PackedStaticSegments` covers static 1- to 32-byte segments. SHA-256 helpers route through precompile 0x02 with failure reverts and generated-Yul/trust-report tests. |
+| P1 | BN254 curve precompile ECMs | Avoid hand-rolled assembly for Groth16-style verifiers and other zkSNARK postcondition checks at the EVM boundary. | `Compiler.Modules.Precompiles.bn256Add` (0x06), `bn256ScalarMul` (0x07), and `bn256Pairing` (0x08) lower to staticcall against the EIP-196/EIP-197 precompiles, bind output coordinates / boolean word from scratch memory, revert on precompile failure, and surface a single `evm_bn256_*_precompile` trust assumption each; generated-Yul + trust-report smoke tests live in `Compiler/CompilationModelFeatureTest.lean`. |
+| P1 | `keccak256_lit` compile-time literal sugar | Make ERC-7201 namespaces and other Keccak-of-string constants safe and reviewable inside `verity_contract` bodies without ad-hoc Lean. | `Verity.Macro.KeccakLit` exposes `keccak256_nat` / `keccak256_lit` backed by the in-tree pure Keccak engine (`Compiler.Keccak.Sponge`) so authors can write `constants STORAGE_NAMESPACE : Uint256 := keccak256_lit "MyContract.storage.v0"`; the helpers are pure Lean definitions (no new trust assumption) with `native_decide`-checked test vectors against the official Keccak-256 empty-string digest. |
 | P2 | BN254 scalar field helper | Improve readability of circuit-facing reductions. | `Verity.Stdlib.Math` exposes documented `SNARK_SCALAR_FIELD` and `modField` helpers with basic simp lemmas. |
 
 Already-supported items that should not become new roadmap work:
@@ -147,6 +149,14 @@ Already-supported items that should not become new roadmap work:
 - Named struct field access for calldata array elements is already available
   through `struct` declarations and `arrayElement` field projection, lowering to
   `Expr.arrayElementDynamicWord` where needed.
+- Named struct field access for *direct* struct parameters whose ABI encoding
+  is dynamic (carries nested dynamic members) lowers to
+  `Expr.paramDynamicHeadWord` (#1832 / #1843), with the param loader producing
+  a correctly-positioned `_data_offset` thanks to #1839 / #1841.
+- `requires(<role>)` accepts both scalar Address-typed slots (the canonical
+  `onlyOwner` shape) and `Address → Uint256` mapping fields (the
+  `onlyRelayer` / `onlyMinter` role-as-mapping shape) without writing the
+  3-line preamble by hand (#1837 / #1840).
 - ERC-20 `balanceOf`, `allowance`, and `totalSupply` ECMs already exist under
   `Compiler/Modules/ERC20.lean` alongside the safe token write modules.
 
@@ -157,6 +167,23 @@ Package-boundary rule for the Unlink audit:
   axiom names, proof-status tags, and a trust manifest.
 - Keep Verity-core additions protocol-agnostic. A feature belongs in Verity core
   only if it models ordinary Solidity/EVM behavior or reusable audit ergonomics.
+
+Translation tracking:
+
+- The verity-benchmark case
+  [`cases/unlink_xyz/pool/`](https://github.com/lfglabs-dev/verity-benchmark/tree/main/cases/unlink_xyz/pool)
+  is the canonical Verity model of `UnlinkPool` and the verified-DSL surface
+  side of [#1760](https://github.com/lfglabs-dev/verity/issues/1760). The macro
+  surface that previously blocked it — struct-parameter projection from an
+  ABI-dynamic root for single-word static leaves — shipped as
+  `Expr.paramDynamicHeadWord` via [#1843](https://github.com/lfglabs-dev/verity/pull/1843)
+  on top of the prerequisite param-loader fix
+  ([#1841](https://github.com/lfglabs-dev/verity/pull/1841)) and the
+  validator-wildcard refactor that escapes Lean's `_mutual.eq_def` heartbeat
+  ceiling ([#1842](https://github.com/lfglabs-dev/verity/pull/1842)).
+  Promotion to `build_green` now requires the benchmark to bump its lakefile
+  pin past those merges and fill in the `transfer`, `withdraw`, and
+  `emergencyWithdraw` entry-point bodies from `UnlinkPool.sol:309-583`.
 
 ---
 
@@ -370,5 +397,5 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines and [`VE
 
 ---
 
-**Last Updated**: 2026-04-18
+**Last Updated**: 2026-05-11
 **Status**: Layer 1 is complete for the current contract set; Layer 2 now has a generic whole-contract theorem for the current supported fragment, with remaining [#1510](https://github.com/lfglabs-dev/verity/issues/1510) work focused on fragment widening and legacy bridge migration; Layer 3 is complete. Trust reduction 1/3 done. Sum properties complete (7/7 proven). CompilationModel now supports real-world contracts (loops, branching, events, multi-mappings, internal call mechanics, verified externs).

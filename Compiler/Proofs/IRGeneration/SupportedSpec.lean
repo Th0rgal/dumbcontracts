@@ -580,10 +580,15 @@ def exprTouchesUnsupportedConstructorRawCalldataSurface : Expr → Bool
       exprTouchesUnsupportedConstructorRawCalldataSurface a ||
         exprTouchesUnsupportedConstructorRawCalldataSurface b
   | .dynamicBytesEq _ _ => false
-  | .ite c t e | .mulDivDown c t e | .mulDivUp c t e =>
+  | .ite c t e | .mulDivDown c t e | .mulDivUp c t e
+  | .mulDiv512Down c t e | .mulDiv512Up c t e =>
       exprTouchesUnsupportedConstructorRawCalldataSurface c ||
         exprTouchesUnsupportedConstructorRawCalldataSurface t ||
         exprTouchesUnsupportedConstructorRawCalldataSurface e
+  -- `paramDynamicHeadWord` reads the head section of an ABI-decoded
+  -- parameter; like `param _` it does not touch raw calldata, so the
+  -- constructor-arg precondition is unaffected.
+  | .paramDynamicHeadWord _ _ => false
   | .mappingChain _ keys | .internalCall _ keys | .externalCall _ keys =>
       exprListTouchesUnsupportedConstructorRawCalldataSurface keys
   | .keccak256 a b =>
@@ -705,6 +710,11 @@ def exprTouchesUnsupportedCoreSurface : Expr → Bool
   | .slt a b | .sgt a b | .sdiv a b | .smod a b | .sar a b | .signextend a b =>
       exprTouchesUnsupportedCoreSurface a || exprTouchesUnsupportedCoreSurface b
   | .mload a | .tload a | .calldataload a => exprTouchesUnsupportedCoreSurface a
+  -- `mulDiv512Down/Up` (verity#1761) and `paramDynamicHeadWord` (verity#1832)
+  -- are codegen-only additions whose runtime Yul helpers the current core
+  -- proof framework does not model yet. They join `arrayElement*` /
+  -- `dynamicBytesEq` in the unsupported-core surface so `SupportedSpec`
+  -- continues to exclude contracts that use them.
   | .mapping _ _ | .mappingWord _ _ _ | .mappingPackedWord _ _ _ _
   | .mapping2 _ _ _ | .mapping2Word _ _ _ _ | .mappingUint _ _ | .mappingChain _ _
   | .structMember _ _ _ | .structMember2 _ _ _ _
@@ -714,6 +724,8 @@ def exprTouchesUnsupportedCoreSurface : Expr → Bool
   | .returndataOptionalBoolAt _ | .externalCall _ _ | .internalCall _ _
   | .arrayLength _ | .arrayElement _ _ | .arrayElementWord _ _ _ _
   | .arrayElementDynamicWord _ _ _
+  | .paramDynamicHeadWord _ _
+  | .mulDiv512Down _ _ _ | .mulDiv512Up _ _ _
   | .storageArrayLength _ | .storageArrayElement _ _
   | .dynamicBytesEq _ _
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -743,7 +755,8 @@ def exprTouchesUnsupportedStateSurface : Expr → Bool
         exprTouchesUnsupportedStateSurface elseVal
   | .shl a b | .shr a b | .sar a b | .signextend a b =>
       exprTouchesUnsupportedStateSurface a || exprTouchesUnsupportedStateSurface b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       exprTouchesUnsupportedStateSurface a || exprTouchesUnsupportedStateSurface b ||
         exprTouchesUnsupportedStateSurface c
   | .constructorArg _ | .blobbasefee | .keccak256 _ _
@@ -752,6 +765,7 @@ def exprTouchesUnsupportedStateSurface : Expr → Bool
   | .returndataOptionalBoolAt _ | .externalCall _ _ | .internalCall _ _
   | .arrayLength _ | .arrayElement _ _ | .arrayElementWord _ _ _ _
   | .arrayElementDynamicWord _ _ _
+  | .paramDynamicHeadWord _ _
   | .dynamicBytesEq _ _ => false
   | .mload a | .tload a | .calldataload a => exprTouchesUnsupportedStateSurface a
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -767,6 +781,7 @@ def exprTouchesUnsupportedCallSurface : Expr → Bool
   | .constructorArg _ | .blobbasefee
   | .calldatasize | .returndataSize | .extcodesize _
   | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .paramDynamicHeadWord _ _
   | .storageArrayLength _ => false
   | .mload a | .tload a | .calldataload a => exprTouchesUnsupportedCallSurface a
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
@@ -789,7 +804,8 @@ def exprTouchesUnsupportedCallSurface : Expr → Bool
         exprTouchesUnsupportedCallSurface elseVal
   | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
       exprTouchesUnsupportedCallSurface a || exprTouchesUnsupportedCallSurface b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       exprTouchesUnsupportedCallSurface a ||
         exprTouchesUnsupportedCallSurface b ||
         exprTouchesUnsupportedCallSurface c
@@ -808,6 +824,7 @@ def exprTouchesUnsupportedHelperSurface : Expr → Bool
   | .constructorArg _ | .blobbasefee
   | .calldatasize | .returndataSize | .extcodesize _
   | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .paramDynamicHeadWord _ _
   | .storageArrayLength _ | .externalCall _ _ => false
   | .mload a | .tload a | .calldataload a => exprTouchesUnsupportedHelperSurface a
   | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _ => false
@@ -831,7 +848,8 @@ def exprTouchesUnsupportedHelperSurface : Expr → Bool
         exprTouchesUnsupportedHelperSurface elseVal
   | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
       exprTouchesUnsupportedHelperSurface a || exprTouchesUnsupportedHelperSurface b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       exprTouchesUnsupportedHelperSurface a ||
         exprTouchesUnsupportedHelperSurface b ||
         exprTouchesUnsupportedHelperSurface c
@@ -858,6 +876,7 @@ def exprTouchesInternalHelperSurface : Expr → Bool
   | .constructorArg _ | .blobbasefee
   | .calldatasize | .returndataSize | .extcodesize _
   | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .paramDynamicHeadWord _ _
   | .storageArrayLength _ | .externalCall _ _ => false
   | .mload a | .tload a | .calldataload a => exprTouchesInternalHelperSurface a
   | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _ => false
@@ -883,7 +902,8 @@ def exprTouchesInternalHelperSurface : Expr → Bool
         exprTouchesInternalHelperSurface elseVal
   | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
       exprTouchesInternalHelperSurface a || exprTouchesInternalHelperSurface b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       exprTouchesInternalHelperSurface a ||
         exprTouchesInternalHelperSurface b ||
         exprTouchesInternalHelperSurface c
@@ -902,6 +922,7 @@ def exprTouchesUnsupportedForeignSurface : Expr → Bool
   | .constructorArg _ | .blobbasefee
   | .calldatasize | .returndataSize | .extcodesize _
   | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .paramDynamicHeadWord _ _
   | .storageArrayLength _ | .internalCall _ _ => false
   | .mload a | .tload a | .calldataload a => exprTouchesUnsupportedForeignSurface a
   | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _ => false
@@ -925,7 +946,8 @@ def exprTouchesUnsupportedForeignSurface : Expr → Bool
         exprTouchesUnsupportedForeignSurface elseVal
   | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
       exprTouchesUnsupportedForeignSurface a || exprTouchesUnsupportedForeignSurface b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       exprTouchesUnsupportedForeignSurface a ||
         exprTouchesUnsupportedForeignSurface b ||
         exprTouchesUnsupportedForeignSurface c
@@ -944,6 +966,7 @@ def exprTouchesUnsupportedLowLevelSurface : Expr → Bool
   | .constructorArg _ | .blobbasefee
   | .calldatasize | .returndataSize | .extcodesize _
   | .returndataOptionalBoolAt _ | .keccak256 _ _ | .arrayLength _
+  | .paramDynamicHeadWord _ _
   | .storageArrayLength _ | .internalCall _ _ | .externalCall _ _ => false
   | .mload a | .tload a | .calldataload a => exprTouchesUnsupportedLowLevelSurface a
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
@@ -966,7 +989,8 @@ def exprTouchesUnsupportedLowLevelSurface : Expr → Bool
         exprTouchesUnsupportedLowLevelSurface elseVal
   | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
       exprTouchesUnsupportedLowLevelSurface a || exprTouchesUnsupportedLowLevelSurface b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       exprTouchesUnsupportedLowLevelSurface a ||
         exprTouchesUnsupportedLowLevelSurface b ||
         exprTouchesUnsupportedLowLevelSurface c
@@ -1014,6 +1038,8 @@ def exprTouchesUnsupportedContractSurface (expr : Expr) : Bool :=
   | .returndataOptionalBoolAt _ | .externalCall _ _ | .internalCall _ _
   | .arrayLength _ | .arrayElement _ _ | .arrayElementWord _ _ _ _
   | .arrayElementDynamicWord _ _ _
+  | .paramDynamicHeadWord _ _
+  | .mulDiv512Down _ _ _ | .mulDiv512Up _ _ _
   | .storageArrayLength _ | .storageArrayElement _ _
   | .dynamicBytesEq _ _
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -1646,7 +1672,8 @@ mutual
     | .slt a b | .le a b | .logicalAnd a b | .logicalOr a b | .wMulDown a b
     | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
         exprInternalHelperCallNames a ++ exprInternalHelperCallNames b
-    | .mulDivDown a b c | .mulDivUp a b c =>
+    | .mulDivDown a b c | .mulDivUp a b c
+    | .mulDiv512Down a b c | .mulDiv512Up a b c =>
         exprInternalHelperCallNames a ++ exprInternalHelperCallNames b ++
           exprInternalHelperCallNames c
     | .bitNot a | .logicalNot a =>
@@ -1656,7 +1683,21 @@ mutual
           exprInternalHelperCallNames elseVal
     | .externalCall _ args =>
         exprListInternalHelperCallNames args
-    | _ =>
+    -- Pure leaves: no internal helper calls. Listed explicitly (rather than
+    -- via `| _ => []`) so the equation-lemma deriver does not have to
+    -- enumerate the complement of every pattern above. This avoids the
+    -- `_mutual.eq_def` 200 000-heartbeat ceiling when new `Expr` constructors
+    -- land (verity#1842 captured the same pitfall for the Expr→Except
+    -- validators).
+    | .literal _ | .param _ | .constructorArg _
+    | .storage _ | .storageAddr _
+    | .caller | .contractAddress | .chainid | .msgValue | .selfBalance
+    | .blockTimestamp | .blockNumber | .blobbasefee
+    | .calldatasize | .returndataSize
+    | .localVar _ | .arrayLength _ | .storageArrayLength _
+    | .paramDynamicHeadWord _ _
+    | .dynamicBytesEq _ _
+    | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ =>
         []
   termination_by e => sizeOf e
   decreasing_by all_goals simp_wf; all_goals omega
@@ -3111,6 +3152,7 @@ mutual
     | blockTimestamp | blockNumber | localVar _ | storage _ | storageAddr _
     | constructorArg _ | blobbasefee | calldatasize | returndataSize
     | arrayLength _ | storageArrayLength _ | dynamicBytesEq _ _
+    | paramDynamicHeadWord _ _
     | externalCall _ _ =>
         simp [exprTouchesInternalHelperSurface]
     | adtConstruct _ _ _ | adtTag _ _ | adtField _ _ _ _ _ =>
@@ -3172,7 +3214,8 @@ mutual
         simp [exprTouchesInternalHelperSurface,
           exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed ha,
           exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed hb]
-    | mulDivDown a b c | mulDivUp a b c =>
+    | mulDivDown a b c | mulDivUp a b c
+  | mulDiv512Down a b c | mulDiv512Up a b c =>
         simp only [exprTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
         simp [exprTouchesInternalHelperSurface,
           exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed hsurface.1.1,
@@ -3498,6 +3541,7 @@ private theorem exprTouchesUnsupportedCallSurface_eq_featureOr
   | literal _ | param _ | caller | contractAddress
   | chainid | msgValue | selfBalance | blockTimestamp | blockNumber
   | localVar _ | storage _ | storageAddr _
+  | paramDynamicHeadWord _ _
   | constructorArg _ | blobbasefee | calldatasize | returndataSize =>
       simp [exprTouchesUnsupportedCallSurface, exprTouchesUnsupportedHelperSurface,
         exprTouchesUnsupportedForeignSurface, exprTouchesUnsupportedLowLevelSurface]
@@ -3574,7 +3618,8 @@ private theorem exprTouchesUnsupportedCallSurface_eq_featureOr
       rw [exprTouchesUnsupportedCallSurface_eq_featureOr a,
           exprTouchesUnsupportedCallSurface_eq_featureOr b]
       simp [Bool.or_assoc, Bool.or_left_comm, Bool.or_comm]
-  | mulDivDown a b c | mulDivUp a b c =>
+  | mulDivDown a b c | mulDivUp a b c
+  | mulDiv512Down a b c | mulDiv512Up a b c =>
       simp only [exprTouchesUnsupportedCallSurface, exprTouchesUnsupportedHelperSurface,
         exprTouchesUnsupportedForeignSurface, exprTouchesUnsupportedLowLevelSurface]
       rw [exprTouchesUnsupportedCallSurface_eq_featureOr a,
@@ -3702,6 +3747,8 @@ private theorem exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed
       simp [exprTouchesUnsupportedCoreSurface] at hcore
   | storage _ | storageAddr _ =>
       cases hstate
+  | paramDynamicHeadWord _ _ =>
+      cases hcore
   | constructorArg _
   | returndataSize | arrayLength _ | storageArrayLength _
   | returndataOptionalBoolAt _ | extcodesize _
@@ -3769,6 +3816,8 @@ private theorem exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed
         exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed a hcore.1.1 hstate.1.1 hcalls.1.1,
         exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed b hcore.1.2 hstate.1.2 hcalls.1.2,
         exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed c hcore.2 hstate.2 hcalls.2]
+  | mulDiv512Down _ _ _ | mulDiv512Up _ _ _ =>
+      simp [exprTouchesUnsupportedCoreSurface] at hcore
   | logicalNot a =>
       simp only [exprTouchesUnsupportedCoreSurface] at hcore
       simp only [exprTouchesUnsupportedStateSurface] at hstate
@@ -4082,6 +4131,7 @@ theorem exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed
   | mapping2 _ _ _ | mapping2Word _ _ _ _ | mappingUint _ _
   | structMember _ _ _ | structMember2 _ _ _ _
   | arrayElement _ _ | arrayElementWord _ _ _ _ | arrayElementDynamicWord _ _ _
+  | paramDynamicHeadWord _ _
   | storageArrayElement _ _
   | mappingChain _ _ =>
       simp [exprTouchesUnsupportedContractSurface] at hsurface
@@ -4114,6 +4164,8 @@ theorem exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed
         exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed hsurface.1.1,
         exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed hsurface.1.2,
         exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed hsurface.2]
+  | mulDiv512Down _ _ _ | mulDiv512Up _ _ _ =>
+      simp [exprTouchesUnsupportedContractSurface] at hsurface
   | ite cond thenVal elseVal =>
       simp only [exprTouchesUnsupportedContractSurface, Bool.or_eq_false_iff] at hsurface
       simp [exprTouchesUnsupportedHelperSurface,

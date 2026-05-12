@@ -321,6 +321,8 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.StorageWordsBoolSmoke.spec
   , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.Smoke.SafeMulRequireSmoke.spec
+  , Contracts.Smoke.ArithmeticPanicSmoke.spec
+  , Contracts.Smoke.MulDiv512Smoke.spec
   , Contracts.Smoke.SignedBuiltinSmoke.spec
   , Contracts.Smoke.StatelessSmoke.spec
   , Contracts.Smoke.MutabilitySmoke.spec
@@ -338,6 +340,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.BytesEqSmoke.spec
   , Contracts.Smoke.TupleSmoke.spec
   , Contracts.Smoke.NamedStructParamSmoke.spec
+  , Contracts.Smoke.NamedStructDynamicRootLeafProjection.spec
   , Contracts.Smoke.CurveCutArraySmoke.spec
   , Contracts.Smoke.DynamicStructArraySmoke.spec
   , Contracts.Smoke.PackedStorageWriteSmoke.spec
@@ -369,6 +372,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.CEISmoke.spec
   , Contracts.Smoke.CEILadderSmoke.spec
   , Contracts.Smoke.RolesSmoke.spec
+  , Contracts.Smoke.RolesMappingSmoke.spec
   , Contracts.Smoke.NewtypeSmoke.spec
   , Contracts.Smoke.NewtypeStorageSmoke.spec
   , Contracts.Smoke.NamespacedStorageSmoke.spec
@@ -432,6 +436,8 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("StorageWordsBoolSmoke", ["extSloadsLike(bool[])"])
   , ("CustomErrorSmoke", ["echo(uint256)"])
   , ("SafeMulRequireSmoke", ["multiplyStored(uint256)", "divideStored(uint256)"])
+  , ("ArithmeticPanicSmoke", ["deposit(uint256)", "withdraw(uint256)", "scaleStored(uint256)", "shareStored(uint256)"])
+  , ("MulDiv512Smoke", ["storeFloor(uint256,uint256,uint256)", "storeCeil(uint256,uint256,uint256)"])
   , ("SignedBuiltinSmoke", ["signedDiv(uint256,uint256)", "signedMod(uint256,uint256)", "signedLt(uint256,uint256)",
       "signedGt(uint256,uint256)", "arithmeticShift(uint256,uint256)", "signExtended()", "shiftedMask()",
       "signedDivSurface(int256,int256)", "signedModSurface(int256,int256)", "signedDivViaLocal(uint256,int256)",
@@ -457,6 +463,7 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("TupleSmoke", ["setFromPair((uint256,uint256))", "getPair(uint256)", "processConfig((address,address,uint256))"])
   , ("NamedStructParamSmoke", ["readBorrowFee((uint256,uint256))", "storeNestedFee(((uint256,uint256),address),uint256)",
       "readNestedMaker(((uint256,uint256),address))"])
+  , ("NamedStructDynamicRootLeafProjection", ["goodDynamicLeaf((uint256[],address))"])
   , ("CurveCutArraySmoke", ["firstCutXt((uint256,uint256,int256)[])", "returnCut((uint256,uint256,int256)[],uint256)",
       "storeCut((uint256,uint256,int256)[],uint256)", "storeTwoCuts((uint256,uint256,int256)[],uint256,uint256)"])
   , ("DynamicStructArraySmoke", ["tokenOf((uint256[],(address,uint256,bytes32),(uint256[],bytes32)[],address,uint256)[],uint256)",
@@ -500,6 +507,7 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("CEISmoke", ["increment()", "getCounter()", "updateThenCall(uint256)", "callThenUpdate(uint256)"])
   , ("CEILadderSmoke", ["callThenStoreGuarded(uint256)", "callThenStoreProved(uint256)", "storeThenCall(uint256)", "increment()"])
   , ("RolesSmoke", ["setCounter(uint256)", "getCounter()"])
+  , ("RolesMappingSmoke", ["setCounter(uint256)", "getCounter()"])
   , ("NewtypeSmoke", ["mint(uint256,uint256)", "setMinter(address)", "getNextTokenId()"])
   , ("NewtypeStorageSmoke", ["setTokenId(uint256)", "getTokenId()", "setAdmin(address)", "getAdmin()"])
   , ("NamespacedStorageSmoke", ["deposit(uint256)", "getOwner()"])
@@ -558,6 +566,8 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("StorageWordsBoolSmoke", ["0x873bc011"])
   , ("CustomErrorSmoke", ["0x6279e43c"])
   , ("SafeMulRequireSmoke", ["0x678f717b", "0x2b0262e3"])
+  , ("ArithmeticPanicSmoke", ["0xb6b55f25", "0x2e1a7d4d", "0xb219df1a", "0xc712757d"])
+  , ("MulDiv512Smoke", ["0xed2e06d0", "0x70dee752"])
   , ("SignedBuiltinSmoke", ["0x5aafa47b", "0x1c781eb5", "0x2ff7ce03", "0x5f28fa76", "0x49795601",
       "0xcc634d7f", "0x7c4ab1e5", "0x44b95b1e", "0x17ea5a3e", "0x6344ce8c", "0xf6814165", "0xae1a9a3e",
       "0x6622d274", "0x176a2ce1", "0x504d2488", "0xd5451d16", "0x22cfe3c6"])
@@ -577,6 +587,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("BytesEqSmoke", ["0xfc39552e", "0x2c16057d", "0x3eb6f0de"])
   , ("TupleSmoke", ["0x712ea680", "0xbdf391cc", "0x01b427d2"])
   , ("NamedStructParamSmoke", ["0xa01f780b", "0x38946c6d", "0x596635bb"])
+  , ("NamedStructDynamicRootLeafProjection", ["0x08ec4886"])
   , ("CurveCutArraySmoke", ["0xefca8f0f", "0x6f413e6b", "0x0d7610a3", "0xbea7dfd2"])
   , ("DynamicStructArraySmoke", ["0xcbe2b47b", "0x587d08b7", "0x0b7d2799", "0x1fae5c19"])
   , ("PackedStorageWriteSmoke", ["0xa0522387", "0x233ab149"])
@@ -612,6 +623,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("CEISmoke", ["0xd09de08a", "0x8ada066e", "0x8c468aed", "0x4955cfdb"])
   , ("CEILadderSmoke", ["0xaf0ac94c", "0xe9ab4836", "0xb6fbe456", "0xd09de08a"])
   , ("RolesSmoke", ["0x8bb5d9c3", "0x8ada066e"])
+  , ("RolesMappingSmoke", ["0x8bb5d9c3", "0x8ada066e"])
   , ("NewtypeSmoke", ["0x1b2ef1ca", "0xfca3b5aa", "0xcaa0f92a"])
   , ("NewtypeStorageSmoke", ["0xc929ccf3", "0x010a38f5", "0x704b6c02", "0x6e9960c3"])
   , ("NamespacedStorageSmoke", ["0xb6b55f25", "0x893d20e8"])
@@ -729,6 +741,10 @@ private def checkMutabilitySmoke : IO Unit := do
   let _ := @Contracts.Smoke.RolesSmoke.setCounter_requires_role
   -- getCounter has no requires → gets normal _cei_compliant
   let _ := @Contracts.Smoke.RolesSmoke.getCounter_cei_compliant
+  -- Mapping-keyed roles (verity#1837): setCounter with requires(relayers : Address → Uint256)
+  -- still produces the _requires_role theorem.
+  let _ := @Contracts.Smoke.RolesMappingSmoke.setCounter_requires_role
+  let _ := @Contracts.Smoke.RolesMappingSmoke.getCounter_cei_compliant
   -- Verify NewtypeSmoke generates standard _cei_compliant theorems (#1727, Axis 1 Step 3a).
   -- Newtypes are erased — functions compile with base types.
   let _ := @Contracts.Smoke.NewtypeSmoke.mint_cei_compliant

@@ -167,6 +167,21 @@ def validateScopedExprIdentifiers
       | none =>
           throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayElementDynamicWord"
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount index
+  | Expr.paramDynamicHeadWord name wordOffset => do
+      match findParamType params name with
+      | some ty@(ParamType.tuple _) =>
+          if isDynamicParamType ty then
+            let expectedWords := paramLocalHeadWords ty
+            if wordOffset < expectedWords then
+              pure ()
+            else
+              throw s!"Compilation error: {context} Expr.paramDynamicHeadWord '{name}' wordOffset {wordOffset} is outside head width {expectedWords} for {repr ty}"
+          else
+            throw s!"Compilation error: {context} Expr.paramDynamicHeadWord '{name}' requires a dynamically-encoded tuple parameter, got {repr ty}"
+      | some ty =>
+          throw s!"Compilation error: {context} Expr.paramDynamicHeadWord '{name}' requires a tuple parameter, got {repr ty}"
+      | none =>
+          throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.paramDynamicHeadWord"
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ =>
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount key
@@ -246,6 +261,20 @@ def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
   | Expr.mulDivUp a b c => do
       validateArithDuplicatedOperandPurity context [c]
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
+  | Expr.mulDiv512Down a b c => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
+  | Expr.mulDiv512Up a b c => do
+      -- Unlike `mulDivUp` (which inlines `cc` twice in the emitted Yul),
+      -- `mulDiv512Up` lowers to a single function call
+      -- `__verity_full_mul_div_up(ca, cb, cc)` where each operand is
+      -- evaluated exactly once at the call site. The `denominator`
+      -- duplication only exists between the helper's local copies, so we
+      -- do NOT need `validateArithDuplicatedOperandPurity` here. (verity#1761)
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c

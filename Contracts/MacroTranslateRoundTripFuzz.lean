@@ -109,6 +109,8 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.StorageWordsBoolSmoke.spec
   , Contracts.Smoke.CustomErrorSmoke.spec
   , Contracts.Smoke.SafeMulRequireSmoke.spec
+  , Contracts.Smoke.ArithmeticPanicSmoke.spec
+  , Contracts.Smoke.MulDiv512Smoke.spec
   , Contracts.Smoke.SignedBuiltinSmoke.spec
   , Contracts.Smoke.StatelessSmoke.spec
   , Contracts.Smoke.MutabilitySmoke.spec
@@ -122,6 +124,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.TypedImmutableSmoke.spec
   , Contracts.Smoke.TupleSmoke.spec
   , Contracts.Smoke.NamedStructParamSmoke.spec
+  , Contracts.Smoke.NamedStructDynamicRootLeafProjection.spec
   , Contracts.Smoke.CurveCutArraySmoke.spec
   , Contracts.Smoke.DynamicStructArraySmoke.spec
   , Contracts.Smoke.PackedStorageWriteSmoke.spec
@@ -152,6 +155,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.CEISmoke.spec
   , Contracts.Smoke.CEILadderSmoke.spec
   , Contracts.Smoke.RolesSmoke.spec
+  , Contracts.Smoke.RolesMappingSmoke.spec
   , Contracts.Smoke.NewtypeSmoke.spec
   , Contracts.Smoke.NewtypeStorageSmoke.spec
   , Contracts.Smoke.NamespacedStorageSmoke.spec

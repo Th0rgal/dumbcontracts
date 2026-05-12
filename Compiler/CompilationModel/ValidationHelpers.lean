@@ -78,6 +78,7 @@ def collectExprNames : Expr → List String
   | Expr.externalCall name args => name :: collectExprListNames args
   | Expr.internalCall name args => name :: collectExprListNames args
   | Expr.arrayLength name => [name]
+  | Expr.paramDynamicHeadWord name _ => [name]
   | Expr.arrayElement name index | Expr.arrayElementWord name index _ _
   | Expr.arrayElementDynamicWord name index _ =>
       name :: collectExprNames index
@@ -112,6 +113,8 @@ def collectExprNames : Expr → List String
   | Expr.ceilDiv a b => collectExprNames a ++ collectExprNames b
   | Expr.mulDivDown a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
   | Expr.mulDivUp a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
+  | Expr.mulDiv512Down a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
+  | Expr.mulDiv512Up a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
   | Expr.wMulDown a b => collectExprNames a ++ collectExprNames b
   | Expr.wDivUp a b => collectExprNames a ++ collectExprNames b
   | Expr.min a b => collectExprNames a ++ collectExprNames b

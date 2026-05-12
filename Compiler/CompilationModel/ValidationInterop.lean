@@ -94,7 +94,8 @@ def validateInteropExpr (context : String) : Expr → Except String Unit
     Expr.ceilDiv a b => do
       validateInteropExpr context a
       validateInteropExpr context b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c => do
       validateInteropExpr context a
       validateInteropExpr context b
       validateInteropExpr context c
@@ -104,7 +105,21 @@ def validateInteropExpr (context : String) : Expr → Except String Unit
       validateInteropExpr context cond
       validateInteropExpr context thenVal
       validateInteropExpr context elseVal
-  | _ =>
+  | Expr.adtConstruct _ _ args =>
+      validateInteropExprList context args
+  -- Pure leaves and constant scalars: nothing to validate. Listed explicitly
+  -- (rather than via `| _ => pure ()`) so the equation-lemma deriver does
+  -- not have to enumerate the complement of every pattern above. This avoids
+  -- the `_mutual.eq_def` 200 000-heartbeat ceiling when new `Expr`
+  -- constructors land (e.g. verity#1832's `paramDynamicHeadWord`).
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _
+  | Expr.storage _ | Expr.storageAddr _
+  | Expr.caller | Expr.blockTimestamp | Expr.blockNumber
+  | Expr.localVar _
+  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.paramDynamicHeadWord _ _
+  | Expr.dynamicBytesEq _ _
+  | Expr.adtTag _ _ | Expr.adtField _ _ _ _ _ =>
       pure ()
 termination_by e => sizeOf e
 decreasing_by all_goals simp_wf; all_goals omega

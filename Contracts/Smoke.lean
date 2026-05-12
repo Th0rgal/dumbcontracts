@@ -12,7 +12,6 @@ import Contracts.ERC20.ERC20
 import Contracts.ERC721.ERC721
 import Compiler.Modules.Calls
 import Compiler.Modules.ERC20
-import Compiler.Modules.Calls
 import Compiler.Modules.Oracle
 
 namespace Contracts.Smoke
@@ -342,6 +341,69 @@ verity_contract SafeMulRequireSmoke where
     let next ← requireSomeUint (safeDiv current divisor) "Division by zero"
     setStorage product next
     return next
+
+-- Solidity-0.8 default-revert arithmetic (verity#1752).
+--
+-- `addPanic` / `subPanic` / `mulPanic` / `divPanic` are ergonomic bind
+-- sources that model the Solidity 0.8 default semantics for `a + b`,
+-- `a - b`, `a * b`, `a / b` on `uint256`: revert with `Panic(0x11)` on
+-- overflow / underflow and `Panic(0x12)` on division by zero, rather
+-- than wrapping mod `2^256`. They desugar to the same IR as
+-- `let x ← requireSomeUint (safeXxx a b) "<fixed message>"`, which
+-- collapses the visual divergence from the Solidity source while
+-- still reverting on the same boundary conditions.
+verity_contract ArithmeticPanicSmoke where
+  storage
+    balance : Uint256 := slot 0
+
+  function deposit (amount : Uint256) : Uint256 := do
+    let current ← getStorage balance
+    let next ← addPanic current amount
+    setStorage balance next
+    return next
+
+  function withdraw (amount : Uint256) : Uint256 := do
+    let current ← getStorage balance
+    let next ← subPanic current amount
+    setStorage balance next
+    return next
+
+  function scaleStored (factor : Uint256) : Uint256 := do
+    let current ← getStorage balance
+    let next ← mulPanic current factor
+    setStorage balance next
+    return next
+
+  function shareStored (divisor : Uint256) : Uint256 := do
+    let current ← getStorage balance
+    let next ← divPanic current divisor
+    setStorage balance next
+    return next
+
+-- Full-precision multiply-divide (verity#1761).
+--
+-- `mulDiv512Down(a, b, c)` and `mulDiv512Up(a, b, c)` compile to a Yul
+-- helper that performs `floor((a * b) / c)` / `ceil((a * b) / c)` at
+-- 512-bit precision using the OpenZeppelin/Solmate `FullMath.mulDiv`
+-- algorithm. They revert on division by zero and on quotient overflow.
+-- Unlike `mulDivDown` / `mulDivUp` (which compile to `div(mul(a, b), c)`
+-- and require the intermediate product to fit in 256 bits), the
+-- 512-bit variants handle the full Solidity `Math.mulDiv` semantics
+-- needed by Cork Phoenix and other DeFi math.
+verity_contract MulDiv512Smoke where
+  storage
+    lastFloor : Uint256 := slot 0
+    lastCeil  : Uint256 := slot 1
+
+  function storeFloor (a : Uint256, b : Uint256, c : Uint256) : Uint256 := do
+    let q := mulDiv512Down a b c
+    setStorage lastFloor q
+    return q
+
+  function storeCeil (a : Uint256, b : Uint256, c : Uint256) : Uint256 := do
+    let q := mulDiv512Up a b c
+    setStorage lastCeil q
+    return q
 
 verity_contract SignedBuiltinSmoke where
   storage
@@ -1006,7 +1068,7 @@ verity_contract NamedStructStorageRejected where
     return 0
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead
+error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
 -/
 #guard_msgs in
 verity_contract NamedStructNonLeafProjectionRejected where
@@ -1025,7 +1087,7 @@ verity_contract NamedStructNonLeafProjectionRejected where
     return feeConfig.borrowTakerFeeRatio
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead
+error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
 -/
 #guard_msgs in
 verity_contract NamedStructTupleProjectionRejected where
@@ -1040,7 +1102,7 @@ verity_contract NamedStructTupleProjectionRejected where
     return pair_0
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead
+error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
 -/
 #guard_msgs in
 verity_contract NamedStructDynamicProjectionRejected where
@@ -1054,18 +1116,17 @@ verity_contract NamedStructDynamicProjectionRejected where
     let notes := config.notes
     return 0
 
-/--
-error: struct parameter projection from an ABI-dynamic root is not supported; use a static struct parameter or wait for nested-dynamic ABI decoding
--/
-#guard_msgs in
-verity_contract NamedStructDynamicRootLeafProjectionRejected where
+-- Dynamic-root leaf projection (verity#1832): a single-word static field
+-- on a struct parameter whose ABI encoding is dynamic (carries nested
+-- dynamic members) is now supported. Lowers to `Expr.paramDynamicHeadWord`.
+verity_contract NamedStructDynamicRootLeafProjection where
   storage
 
   struct DynamicConfig where
     notes : Array Uint256,
     maker : Address
 
-  function badDynamicLeaf (config : DynamicConfig) : Address := do
+  function goodDynamicLeaf (config : DynamicConfig) : Address := do
     return config.maker
 
 /--
@@ -1892,11 +1953,14 @@ end SpecGenSmoke
 #check_contract StorageWordsSmoke
 #check_contract CustomErrorSmoke
 #check_contract SafeMulRequireSmoke
+#check_contract ArithmeticPanicSmoke
+#check_contract MulDiv512Smoke
 #check_contract SignedBuiltinSmoke
 #check_contract StatelessSmoke
 #check_contract SpecialEntrypointSmoke
 #check_contract TupleSmoke
 #check_contract NamedStructParamSmoke
+#check_contract NamedStructDynamicRootLeafProjection
 #check_contract CurveCutArraySmoke
 #check_contract DynamicStructArraySmoke
 #check_contract PackedStorageWriteSmoke
@@ -2487,6 +2551,32 @@ verity_contract RolesSmoke where
     let current ← getStorage counter
     return current
 
+-- Mapping-keyed roles / requires(<mapping>) smoke test (verity#1837)
+--
+-- For role-as-mapping access control (the `onlyRelayer` / `onlyMinter`
+-- pattern), the role storage is a `mapping(address => uint256)` (0/1 flag)
+-- instead of a scalar Address. `requires(relayers)` then auto-injects
+-- `require(storage[relayers][caller] != 0) "Access denied: caller is not relayers"`.
+verity_contract RolesMappingSmoke where
+  storage
+    relayers : Address → Uint256 := slot 0
+    counter  : Uint256 := slot 1
+
+  constructor (initialRelayer : Address) := do
+    setMapping relayers initialRelayer 1
+
+  -- requires(relayers) auto-injects:
+  --   let sender ← msgSender
+  --   let value  ← getMapping relayers sender
+  --   require (value != 0) "Access denied: caller is not relayers"
+  function setCounter (value : Uint256) requires(relayers) : Unit := do
+    setStorage counter value
+
+  -- Normal function without access control
+  function getCounter () : Uint256 := do
+    let current ← getStorage counter
+    return current
+
 -- Newtype smoke test (#1727, Axis 1 Step 3a)
 -- Declares semantic newtypes that are erased to base types at EVM level
 verity_contract NewtypeSmoke where
@@ -2517,6 +2607,7 @@ verity_contract NewtypeSmoke where
     return current
 
 #check_contract RolesSmoke
+#check_contract RolesMappingSmoke
 #check_contract NewtypeSmoke
 
 -- Smoke test for newtype-TYPED storage fields (not just newtype params).

@@ -1246,6 +1246,103 @@ theorem IRStmtPreservesObsAt_of_returndatacopy
   refine ⟨state, ?_⟩
   simp only [execIRStmt, isYulLogName, hv]
 
+/-- Cross-cast for `.expr (.call "log0" [offset, size])`. Updates events by
+appending a Yul log entry. -/
+theorem IRStmtPreservesObsAt_of_log0
+    (state : IRState) (offsetExpr sizeExpr : YulExpr)
+    (hOffsetEval : ∃ o, evalIRExpr state offsetExpr = some o)
+    (hSizeEval : ∃ s, evalIRExpr state sizeExpr = some s) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "log0" [offsetExpr, sizeExpr])) := by
+  intro fuel
+  obtain ⟨o, ho⟩ := hOffsetEval
+  obtain ⟨s, hs⟩ := hSizeEval
+  refine ⟨state.appendYulLog o s [], ?_⟩
+  simp only [execIRStmt, isYulLogName, evalIRExprs, ho, hs,
+    Option.bind, applyYulLogCall?]
+  rfl
+
+/-- Cross-cast for `.expr (.call "log1" [offset, size, topic0])`. -/
+theorem IRStmtPreservesObsAt_of_log1
+    (state : IRState) (offsetExpr sizeExpr topic0Expr : YulExpr)
+    (hOffsetEval : ∃ o, evalIRExpr state offsetExpr = some o)
+    (hSizeEval : ∃ s, evalIRExpr state sizeExpr = some s)
+    (hTopic0Eval : ∃ t, evalIRExpr state topic0Expr = some t) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "log1" [offsetExpr, sizeExpr, topic0Expr])) := by
+  intro fuel
+  obtain ⟨o, ho⟩ := hOffsetEval
+  obtain ⟨s, hs⟩ := hSizeEval
+  obtain ⟨t, ht⟩ := hTopic0Eval
+  refine ⟨state.appendYulLog o s [t], ?_⟩
+  simp only [execIRStmt, isYulLogName, evalIRExprs, ho, hs, ht,
+    Option.bind, applyYulLogCall?]
+  rfl
+
+/-- Cross-cast for `.expr (.call "log2" [...])`. -/
+theorem IRStmtPreservesObsAt_of_log2
+    (state : IRState) (offsetExpr sizeExpr t0Expr t1Expr : YulExpr)
+    (hOffsetEval : ∃ o, evalIRExpr state offsetExpr = some o)
+    (hSizeEval : ∃ s, evalIRExpr state sizeExpr = some s)
+    (hT0Eval : ∃ t, evalIRExpr state t0Expr = some t)
+    (hT1Eval : ∃ t, evalIRExpr state t1Expr = some t) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "log2" [offsetExpr, sizeExpr, t0Expr, t1Expr])) := by
+  intro fuel
+  obtain ⟨o, ho⟩ := hOffsetEval
+  obtain ⟨s, hs⟩ := hSizeEval
+  obtain ⟨t0, ht0⟩ := hT0Eval
+  obtain ⟨t1, ht1⟩ := hT1Eval
+  refine ⟨state.appendYulLog o s [t0, t1], ?_⟩
+  simp only [execIRStmt, isYulLogName, evalIRExprs, ho, hs, ht0, ht1,
+    Option.bind, applyYulLogCall?]
+  rfl
+
+/-- Cross-cast for `.expr (.call "log3" [...])`. -/
+theorem IRStmtPreservesObsAt_of_log3
+    (state : IRState) (offsetExpr sizeExpr t0Expr t1Expr t2Expr : YulExpr)
+    (hOffsetEval : ∃ o, evalIRExpr state offsetExpr = some o)
+    (hSizeEval : ∃ s, evalIRExpr state sizeExpr = some s)
+    (hT0Eval : ∃ t, evalIRExpr state t0Expr = some t)
+    (hT1Eval : ∃ t, evalIRExpr state t1Expr = some t)
+    (hT2Eval : ∃ t, evalIRExpr state t2Expr = some t) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "log3" [offsetExpr, sizeExpr, t0Expr, t1Expr, t2Expr])) := by
+  intro fuel
+  obtain ⟨o, ho⟩ := hOffsetEval
+  obtain ⟨s, hs⟩ := hSizeEval
+  obtain ⟨t0, ht0⟩ := hT0Eval
+  obtain ⟨t1, ht1⟩ := hT1Eval
+  obtain ⟨t2, ht2⟩ := hT2Eval
+  refine ⟨state.appendYulLog o s [t0, t1, t2], ?_⟩
+  simp only [execIRStmt, isYulLogName, evalIRExprs, ho, hs, ht0, ht1, ht2,
+    Option.bind, applyYulLogCall?]
+  rfl
+
+/-- Cross-cast for `.expr (.call "log4" [...])`. -/
+theorem IRStmtPreservesObsAt_of_log4
+    (state : IRState) (offsetExpr sizeExpr t0Expr t1Expr t2Expr t3Expr : YulExpr)
+    (hOffsetEval : ∃ o, evalIRExpr state offsetExpr = some o)
+    (hSizeEval : ∃ s, evalIRExpr state sizeExpr = some s)
+    (hT0Eval : ∃ t, evalIRExpr state t0Expr = some t)
+    (hT1Eval : ∃ t, evalIRExpr state t1Expr = some t)
+    (hT2Eval : ∃ t, evalIRExpr state t2Expr = some t)
+    (hT3Eval : ∃ t, evalIRExpr state t3Expr = some t) :
+    IRStmtPreservesObsAt state
+      (.expr (.call "log4"
+        [offsetExpr, sizeExpr, t0Expr, t1Expr, t2Expr, t3Expr])) := by
+  intro fuel
+  obtain ⟨o, ho⟩ := hOffsetEval
+  obtain ⟨s, hs⟩ := hSizeEval
+  obtain ⟨t0, ht0⟩ := hT0Eval
+  obtain ⟨t1, ht1⟩ := hT1Eval
+  obtain ⟨t2, ht2⟩ := hT2Eval
+  obtain ⟨t3, ht3⟩ := hT3Eval
+  refine ⟨state.appendYulLog o s [t0, t1, t2, t3], ?_⟩
+  simp only [execIRStmt, isYulLogName, evalIRExprs, ho, hs, ht0, ht1, ht2, ht3,
+    Option.bind, applyYulLogCall?]
+  rfl
+
 /-- IR-side analog of `NativePreservableStraightStmt`: a statement whose IR
 execution terminates in `.continue _` (does not return / stop / revert /
 otherwise terminate the function body).

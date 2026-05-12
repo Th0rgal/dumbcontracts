@@ -366,11 +366,13 @@ def validateCompileInputs (spec : CompilationModel) (selectors : List Nat) : Exc
   let arrayHelpersRequired := contractUsesPlainArrayElement spec
   let arrayElementWordHelpersRequired := contractUsesArrayElementWord spec
   let paramDynamicHeadWordHelpersRequired := contractUsesParamDynamicHeadWord spec
+  let mulDiv512HelpersRequired := contractUsesMulDiv512 spec
   let storageArrayHelpersRequired := contractUsesStorageArrayElement spec
   let dynamicBytesEqHelpersRequired := contractUsesDynamicBytesEq spec
   match firstReservedExternalCollision
       spec mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
         paramDynamicHeadWordHelpersRequired
+        mulDiv512HelpersRequired
         storageArrayHelpersRequired dynamicBytesEqHelpersRequired with
   | some name =>
       if name.startsWith internalFunctionPrefix then
@@ -398,6 +400,7 @@ def compileValidatedCore (spec : CompilationModel) (selectors : List Nat) : Exce
   let arrayHelpersRequired := contractUsesPlainArrayElement spec
   let arrayElementWordHelpersRequired := contractUsesArrayElementWord spec
   let paramDynamicHeadWordHelpersRequired := contractUsesParamDynamicHeadWord spec
+  let mulDiv512HelpersRequired := contractUsesMulDiv512 spec
   let storageArrayHelpersRequired := contractUsesStorageArrayElement spec
   let dynamicBytesEqHelpersRequired := contractUsesDynamicBytesEq spec
   let fallbackSpec ← pickUniqueFunctionByName "fallback" spec.functions
@@ -423,6 +426,15 @@ def compileValidatedCore (spec : CompilationModel) (selectors : List Nat) : Exce
     (if paramDynamicHeadWordHelpersRequired then
       [ checkedParamDynamicHeadWordCalldataHelper
       , checkedParamDynamicHeadWordMemoryHelper
+      ]
+    else
+      []) ++
+    -- verity#1761: full-precision multiply-divide. `fullMulDivUpHelper`
+    -- calls `fullMulDivHelperName`, so emit the down helper unconditionally
+    -- when either is used.
+    (if mulDiv512HelpersRequired then
+      [ fullMulDivHelper
+      , fullMulDivUpHelper
       ]
     else
       [])

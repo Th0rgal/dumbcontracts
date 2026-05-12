@@ -14,6 +14,7 @@ namespace Compiler.CompilationModel
 def reservedExternalNames
     (mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
       paramDynamicHeadWordHelpersRequired
+      mulDiv512HelpersRequired
       storageArrayHelpersRequired dynamicBytesEqHelpersRequired : Bool) : List String :=
   let mappingHelpers := if mappingHelpersRequired then ["mappingSlot"] else []
   let arrayHelpers :=
@@ -39,6 +40,13 @@ def reservedExternalNames
       ]
     else
       []
+  let mulDiv512Helpers :=
+    if mulDiv512HelpersRequired then
+      [ fullMulDivHelperName
+      , fullMulDivUpHelperName
+      ]
+    else
+      []
   let storageArrayHelpers :=
     if storageArrayHelpersRequired then
       [checkedStorageArrayElementHelperName]
@@ -51,12 +59,13 @@ def reservedExternalNames
       []
   let builtins := [builtinExpName]
   let entrypoints := ["fallback", "receive"]
-  (mappingHelpers ++ arrayHelpers ++ arrayElementWordHelpers ++ paramDynamicHeadWordHelpers ++ storageArrayHelpers ++ dynamicBytesEqHelpers ++ builtins ++ entrypoints).eraseDups
+  (mappingHelpers ++ arrayHelpers ++ arrayElementWordHelpers ++ paramDynamicHeadWordHelpers ++ mulDiv512Helpers ++ storageArrayHelpers ++ dynamicBytesEqHelpers ++ builtins ++ entrypoints).eraseDups
 
 def firstReservedExternalCollision
     (spec : CompilationModel)
     (mappingHelpersRequired arrayHelpersRequired arrayElementWordHelpersRequired
       paramDynamicHeadWordHelpersRequired
+      mulDiv512HelpersRequired
       storageArrayHelpersRequired dynamicBytesEqHelpersRequired : Bool) : Option String :=
   (spec.externals.map (·.name)).find? (fun name =>
     name.startsWith internalFunctionPrefix ||
@@ -65,6 +74,7 @@ def firstReservedExternalCollision
         arrayHelpersRequired
         arrayElementWordHelpersRequired
         paramDynamicHeadWordHelpersRequired
+        mulDiv512HelpersRequired
         storageArrayHelpersRequired
         dynamicBytesEqHelpersRequired).contains name)
 
@@ -165,7 +175,8 @@ def validateInternalCallShapesInExpr
     Expr.ceilDiv a b => do
       validateInternalCallShapesInExpr functions callerName a
       validateInternalCallShapesInExpr functions callerName b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c => do
       validateInternalCallShapesInExpr functions callerName a
       validateInternalCallShapesInExpr functions callerName b
       validateInternalCallShapesInExpr functions callerName c
@@ -421,7 +432,8 @@ def validateExternalCallTargetsInExpr
     Expr.ceilDiv a b => do
       validateExternalCallTargetsInExpr externals context a
       validateExternalCallTargetsInExpr externals context b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c => do
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c => do
       validateExternalCallTargetsInExpr externals context a
       validateExternalCallTargetsInExpr externals context b
       validateExternalCallTargetsInExpr externals context c

@@ -2393,6 +2393,10 @@ private partial def inferPureExprType
       for arg in [a, b, c] do
         requireWordLikeType arg "mulDiv" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
       pure .uint256
+  | `(term| mulDiv512Down $a $b $c) | `(term| mulDiv512Up $a $b $c) => do
+      for arg in [a, b, c] do
+        requireWordLikeType arg "mulDiv512" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
+      pure .uint256
   | `(term| ite $cond $thenVal $elseVal) => do
       requireBoolType cond "ite condition" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals cond visitingConstants)
       let thenTy ← inferPureExprType fields constDecls immutableDecls externalDecls params locals thenVal visitingConstants
@@ -3317,6 +3321,16 @@ partial def translatePureExprWithTypes
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))
   | `(term| mulDivUp $a $b $c) =>
       `(Compiler.CompilationModel.Expr.mulDivUp
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals a visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals b visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))
+  | `(term| mulDiv512Down $a $b $c) =>
+      `(Compiler.CompilationModel.Expr.mulDiv512Down
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals a visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals b visitingConstants)
+          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))
+  | `(term| mulDiv512Up $a $b $c) =>
+      `(Compiler.CompilationModel.Expr.mulDiv512Up
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals a visitingConstants)
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals b visitingConstants)
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals c visitingConstants))

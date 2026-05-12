@@ -264,6 +264,18 @@ def validateScopedExprIdentifiers
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
+  | Expr.mulDiv512Down a b c => do
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
+  | Expr.mulDiv512Up a b c => do
+      -- mulDiv512Up's Yul helper duplicates `c` (the denominator) — used in
+      -- both the helper call and the inline remainder/rounding step. Match
+      -- the mulDivUp purity guard on `c`.
+      validateArithDuplicatedOperandPurity context [c]
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount b
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount c
   | Expr.logicalAnd a b | Expr.logicalOr a b => do
       validateLogicalOperandPurity context a b
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount a

@@ -113,6 +113,8 @@ def collectExprNames : Expr → List String
   | Expr.ceilDiv a b => collectExprNames a ++ collectExprNames b
   | Expr.mulDivDown a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
   | Expr.mulDivUp a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
+  | Expr.mulDiv512Down a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
+  | Expr.mulDiv512Up a b c => collectExprNames a ++ collectExprNames b ++ collectExprNames c
   | Expr.wMulDown a b => collectExprNames a ++ collectExprNames b
   | Expr.wDivUp a b => collectExprNames a ++ collectExprNames b
   | Expr.min a b => collectExprNames a ++ collectExprNames b

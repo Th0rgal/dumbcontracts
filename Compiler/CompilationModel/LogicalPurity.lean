@@ -41,7 +41,8 @@ partial def exprContainsCallLike (expr : Expr) : Bool :=
     Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b |
     Expr.ceilDiv a b =>
       exprContainsCallLike a || exprContainsCallLike b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprContainsCallLike a || exprContainsCallLike b || exprContainsCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsCallLike a
@@ -77,7 +78,8 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
   | Expr.logicalAnd a b | Expr.logicalOr a b =>
       (exprContainsCallLike a || exprContainsCallLike b) ||
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
-  | Expr.mulDivUp a b c =>
+  | Expr.mulDivUp a b c
+  | Expr.mulDiv512Up a b c =>
       exprContainsCallLike c ||
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.wDivUp a b =>
@@ -130,7 +132,8 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
     Expr.eq a b | Expr.ge a b | Expr.gt a b | Expr.sgt a b | Expr.lt a b | Expr.slt a b | Expr.le a b |
     Expr.wMulDown a b | Expr.ceilDiv a b =>
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b
-  | Expr.mulDivDown a b c =>
+  | Expr.mulDivDown a b c
+  | Expr.mulDiv512Down a b c =>
       exprContainsUnsafeLogicalCallLike a || exprContainsUnsafeLogicalCallLike b || exprContainsUnsafeLogicalCallLike c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprContainsUnsafeLogicalCallLike a

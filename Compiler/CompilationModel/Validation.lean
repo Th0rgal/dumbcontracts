@@ -287,7 +287,8 @@ def exprReadsStateOrEnv : Expr → Bool
     Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b |
     Expr.ceilDiv a b =>
       exprReadsStateOrEnv a || exprReadsStateOrEnv b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprReadsStateOrEnv a || exprReadsStateOrEnv b || exprReadsStateOrEnv c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprReadsStateOrEnv a
@@ -311,7 +312,8 @@ def exprWritesState : Expr → Bool
     Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b |
     Expr.ceilDiv a b =>
       exprWritesState a || exprWritesState b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprWritesState a || exprWritesState b || exprWritesState c
   | Expr.bitNot a | Expr.logicalNot a =>
       exprWritesState a
@@ -492,7 +494,8 @@ def exprHasUntrackableWrites : Expr → Bool
   | Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b
   | Expr.ceilDiv a b =>
       exprHasUntrackableWrites a || exprHasUntrackableWrites b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprHasUntrackableWrites a || exprHasUntrackableWrites b || exprHasUntrackableWrites c
   | Expr.bitNot a | Expr.logicalNot a | Expr.extcodesize a =>
       exprHasUntrackableWrites a
@@ -515,7 +518,19 @@ def exprHasUntrackableWrites : Expr → Bool
       exprHasUntrackableWrites offset || exprHasUntrackableWrites size
   | Expr.adtConstruct _ _ args =>
       exprListHasUntrackableWrites args
-  | _ => false
+  -- Pure leaves: cannot write state. Listed explicitly to avoid
+  -- `_mutual.eq_def` heartbeat-ceiling failures when new constructors land.
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _ | Expr.storage _ | Expr.storageAddr _
+  | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.selfBalance
+  | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
+  | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _
+  | Expr.storageArrayLength _
+  | Expr.paramDynamicHeadWord _ _
+  | Expr.dynamicBytesEq _ _
+  | Expr.externalCall _ _ | Expr.call _ _ _ _ _ _ _
+  | Expr.staticcall _ _ _ _ _ _ | Expr.delegatecall _ _ _ _ _ _
+  | Expr.adtTag _ _ | Expr.adtField _ _ _ _ _ =>
+      false
 termination_by e => sizeOf e
 decreasing_by all_goals simp_wf; all_goals omega
 
@@ -616,7 +631,8 @@ def exprContainsExternalCall : Expr → Bool
   | Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b
   | Expr.ceilDiv a b =>
       exprContainsExternalCall a || exprContainsExternalCall b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprContainsExternalCall a || exprContainsExternalCall b || exprContainsExternalCall c
   | Expr.bitNot a | Expr.logicalNot a | Expr.extcodesize a =>
       exprContainsExternalCall a
@@ -682,7 +698,8 @@ def exprMayContainExternalCall : Expr → Bool
   | Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b
   | Expr.ceilDiv a b =>
       exprMayContainExternalCall a || exprMayContainExternalCall b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprMayContainExternalCall a || exprMayContainExternalCall b || exprMayContainExternalCall c
   | Expr.bitNot a | Expr.logicalNot a | Expr.extcodesize a =>
       exprMayContainExternalCall a
@@ -1129,7 +1146,8 @@ def exprContainsAdtConstruct : Expr → Bool
   | Expr.wMulDown a b | Expr.wDivUp a b | Expr.min a b | Expr.max a b
   | Expr.ceilDiv a b =>
       exprContainsAdtConstruct a || exprContainsAdtConstruct b
-  | Expr.mulDivDown a b c | Expr.mulDivUp a b c =>
+  | Expr.mulDivDown a b c | Expr.mulDivUp a b c
+  | Expr.mulDiv512Down a b c | Expr.mulDiv512Up a b c =>
       exprContainsAdtConstruct a || exprContainsAdtConstruct b || exprContainsAdtConstruct c
   | Expr.bitNot a | Expr.logicalNot a | Expr.extcodesize a
   | Expr.mload a | Expr.tload a | Expr.calldataload a

@@ -79,7 +79,8 @@ private partial def collectLowLevelExprMechanics : Expr → List String
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
       collectLowLevelExprMechanics a ++ collectLowLevelExprMechanics b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       collectLowLevelExprMechanics a ++ collectLowLevelExprMechanics b ++ collectLowLevelExprMechanics c
   | .bitNot a | .logicalNot a =>
       collectLowLevelExprMechanics a
@@ -136,7 +137,8 @@ private partial def collectAxiomatizedExprPrimitives : Expr → List String
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
       collectAxiomatizedExprPrimitives a ++ collectAxiomatizedExprPrimitives b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       collectAxiomatizedExprPrimitives a ++ collectAxiomatizedExprPrimitives b ++ collectAxiomatizedExprPrimitives c
   | .bitNot a | .logicalNot a =>
       collectAxiomatizedExprPrimitives a
@@ -455,7 +457,8 @@ private partial def collectEventEmissionExprMechanics : Expr → List String
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
       collectEventEmissionExprMechanics a ++ collectEventEmissionExprMechanics b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       collectEventEmissionExprMechanics a ++ collectEventEmissionExprMechanics b ++
         collectEventEmissionExprMechanics c
   | .bitNot a | .logicalNot a =>
@@ -618,7 +621,8 @@ private partial def collectRuntimeIntrospectionExprMechanics : Expr → List Str
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
       collectRuntimeIntrospectionExprMechanics a ++ collectRuntimeIntrospectionExprMechanics b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       collectRuntimeIntrospectionExprMechanics a ++ collectRuntimeIntrospectionExprMechanics b ++
         collectRuntimeIntrospectionExprMechanics c
   | .bitNot a | .logicalNot a =>
@@ -773,7 +777,8 @@ private partial def collectExternalExprNames : Expr → List String
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
       collectExternalExprNames a ++ collectExternalExprNames b
-  | .mulDivDown a b c | .mulDivUp a b c =>
+  | .mulDivDown a b c | .mulDivUp a b c
+  | .mulDiv512Down a b c | .mulDiv512Up a b c =>
       collectExternalExprNames a ++ collectExternalExprNames b ++ collectExternalExprNames c
   | .bitNot a | .logicalNot a =>
       collectExternalExprNames a

@@ -2503,7 +2503,6 @@ end Verity.AxiomAudit
   Compiler.Proofs.IRGeneration.NotTerminator_let_
   Compiler.Proofs.IRGeneration.NotTerminator_assign
   Compiler.Proofs.IRGeneration.NotTerminator_leave
-  Compiler.Proofs.IRGeneration.IRStmtPreservesObs_iff_forall_state
   Compiler.Proofs.IRGeneration.IRStmtPreservesObsAt_comment
   Compiler.Proofs.IRGeneration.IRStmtPreservesObsAt_leave
   Compiler.Proofs.IRGeneration.IRStmtPreservesObsAt_of_let_
@@ -5519,4 +5518,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5233 theorems/lemmas (3529 public, 1704 private, 0 sorry'd)
+-- Total: 5232 theorems/lemmas (3528 public, 1704 private, 0 sorry'd)

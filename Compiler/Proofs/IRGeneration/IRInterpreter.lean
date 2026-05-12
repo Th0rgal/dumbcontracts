@@ -1126,16 +1126,6 @@ def IRStmtPreservesObsAt (state : IRState) (stmt : YulStmt) : Prop :=
   ∀ fuel, ∃ state',
     execIRStmt (fuel + 1) state stmt = .continue state'
 
-/-- `IRStmtPreservesObs stmt ↔ ∀ state, IRStmtPreservesObsAt state stmt`. -/
-theorem IRStmtPreservesObs_iff_forall_state (stmt : YulStmt) :
-    IRStmtPreservesObs stmt ↔ ∀ state, IRStmtPreservesObsAt state stmt := by
-  constructor
-  · intro h state fuel
-    obtain ⟨state', heq⟩ := h fuel state
-    exact ⟨state', heq⟩
-  · intro h fuel state
-    exact h state fuel
-
 @[simp] theorem IRStmtPreservesObsAt_comment (state : IRState) (text : String) :
     IRStmtPreservesObsAt state (.comment text) := by
   intro fuel

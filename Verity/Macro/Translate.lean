@@ -1708,11 +1708,11 @@ private def isParamStructDynamicRootProjection (params : Array ParamDecl) (stx :
 
 private def throwStructNonLeafProjectionError (stx : Term) : CommandElabM α :=
   throwErrorAt stx
-    "non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead"
+    "non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)"
 
 private def throwStructDynamicRootProjectionError (stx : Term) : CommandElabM α :=
   throwErrorAt stx
-    "struct parameter projection from an ABI-dynamic root is not supported; use a static struct parameter or wait for nested-dynamic ABI decoding"
+    "struct parameter projection from an ABI-dynamic root is not supported; use a static struct parameter or wait for nested-dynamic ABI decoding (#1832)"
 
 private def renderValueType (ty : ValueType) : String :=
   reprStr ty

@@ -1006,7 +1006,7 @@ verity_contract NamedStructStorageRejected where
     return 0
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead
+error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
 -/
 #guard_msgs in
 verity_contract NamedStructNonLeafProjectionRejected where
@@ -1025,7 +1025,7 @@ verity_contract NamedStructNonLeafProjectionRejected where
     return feeConfig.borrowTakerFeeRatio
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead
+error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
 -/
 #guard_msgs in
 verity_contract NamedStructTupleProjectionRejected where
@@ -1040,7 +1040,7 @@ verity_contract NamedStructTupleProjectionRejected where
     return pair_0
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead
+error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
 -/
 #guard_msgs in
 verity_contract NamedStructDynamicProjectionRejected where
@@ -1055,7 +1055,7 @@ verity_contract NamedStructDynamicProjectionRejected where
     return 0
 
 /--
-error: struct parameter projection from an ABI-dynamic root is not supported; use a static struct parameter or wait for nested-dynamic ABI decoding
+error: struct parameter projection from an ABI-dynamic root is not supported; use a static struct parameter or wait for nested-dynamic ABI decoding (#1832)
 -/
 #guard_msgs in
 verity_contract NamedStructDynamicRootLeafProjectionRejected where

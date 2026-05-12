@@ -165,7 +165,25 @@ def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName cond
       validateInternalCallShapesInExpr functions callerName thenVal
       validateInternalCallShapesInExpr functions callerName elseVal
-  | _ =>
+  | Expr.externalCall _ args =>
+      validateInternalCallShapesInExprList functions callerName args
+  | Expr.adtConstruct _ _ args =>
+      validateInternalCallShapesInExprList functions callerName args
+  -- Pure leaves: nothing to validate. Listed explicitly (rather than via
+  -- `| _ => pure ()`) so the equation-lemma deriver does not have to
+  -- enumerate the complement of every pattern above. Avoids the
+  -- `_mutual.eq_def` 200 000-heartbeat ceiling when new `Expr` constructors
+  -- land (e.g. verity#1832's `paramDynamicHeadWord`).
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _
+  | Expr.storage _ | Expr.storageAddr _
+  | Expr.caller | Expr.contractAddress | Expr.chainid
+  | Expr.msgValue | Expr.selfBalance
+  | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
+  | Expr.calldatasize | Expr.returndataSize
+  | Expr.localVar _
+  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.dynamicBytesEq _ _
+  | Expr.adtTag _ _ | Expr.adtField _ _ _ _ _ =>
       pure ()
 termination_by e => sizeOf e
 decreasing_by all_goals simp_wf; all_goals omega
@@ -402,7 +420,23 @@ def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExpr externals context cond
       validateExternalCallTargetsInExpr externals context thenVal
       validateExternalCallTargetsInExpr externals context elseVal
-  | _ =>
+  | Expr.adtConstruct _ _ args =>
+      validateExternalCallTargetsInExprList externals context args
+  -- Pure leaves: nothing to validate. Listed explicitly (rather than via
+  -- `| _ => pure ()`) so the equation-lemma deriver does not have to
+  -- enumerate the complement of every pattern above. Avoids the
+  -- `_mutual.eq_def` 200 000-heartbeat ceiling when new `Expr` constructors
+  -- land (e.g. verity#1832's `paramDynamicHeadWord`).
+  | Expr.literal _ | Expr.param _ | Expr.constructorArg _
+  | Expr.storage _ | Expr.storageAddr _
+  | Expr.caller | Expr.contractAddress | Expr.chainid
+  | Expr.msgValue | Expr.selfBalance
+  | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
+  | Expr.calldatasize | Expr.returndataSize
+  | Expr.localVar _
+  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.dynamicBytesEq _ _
+  | Expr.adtTag _ _ | Expr.adtField _ _ _ _ _ =>
       pure ()
 termination_by e => sizeOf e
 decreasing_by all_goals simp_wf; all_goals omega

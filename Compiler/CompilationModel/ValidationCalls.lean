@@ -164,7 +164,8 @@ def validateInternalCallShapesInExpr
   | Expr.storageArrayElement _ index
   | Expr.arrayElement _ index
   | Expr.arrayElementWord _ index _ _
-  | Expr.arrayElementDynamicWord _ index _ =>
+  | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberLength _ index _ =>
       validateInternalCallShapesInExpr functions callerName index
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.sdiv a b | Expr.mod a b | Expr.smod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |
@@ -421,7 +422,8 @@ def validateExternalCallTargetsInExpr
   | Expr.storageArrayElement _ index
   | Expr.arrayElement _ index
   | Expr.arrayElementWord _ index _ _
-  | Expr.arrayElementDynamicWord _ index _ =>
+  | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberLength _ index _ =>
       validateExternalCallTargetsInExpr externals context index
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.sdiv a b | Expr.mod a b | Expr.smod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b |

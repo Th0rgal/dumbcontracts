@@ -277,7 +277,8 @@ def exprReadsStateOrEnv : Expr → Bool
   | Expr.paramDynamicHeadWord _ _ => false
   | Expr.storageArrayLength _ => true
   | Expr.storageArrayElement _ index => true || exprReadsStateOrEnv index
-  | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _ => exprReadsStateOrEnv index
+  | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberLength _ index _ => exprReadsStateOrEnv index
   | Expr.add a b | Expr.sub a b | Expr.mul a b | Expr.div a b | Expr.sdiv a b
   | Expr.mod a b | Expr.smod a b |
     Expr.bitAnd a b | Expr.bitOr a b | Expr.bitXor a b | Expr.shl a b | Expr.shr a b
@@ -353,7 +354,8 @@ def exprWritesState : Expr → Bool
       false
   | Expr.storageArrayElement _ index =>
       exprWritesState index
-  | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _ =>
+  | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberLength _ index _ =>
       exprWritesState index
   -- Pure leaves: no state writes. Listed explicitly to avoid `_mutual.eq_def`
   -- heartbeat-ceiling failures when new constructors land.
@@ -504,6 +506,7 @@ def exprHasUntrackableWrites : Expr → Bool
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberLength _ key _
   | Expr.storageArrayElement _ key =>
       exprHasUntrackableWrites key
   | Expr.mappingChain _ keys =>
@@ -641,6 +644,7 @@ def exprContainsExternalCall : Expr → Bool
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberLength _ key _
   | Expr.storageArrayElement _ key =>
       exprContainsExternalCall key
   | Expr.mappingChain _ keys =>
@@ -708,6 +712,7 @@ def exprMayContainExternalCall : Expr → Bool
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberLength _ key _
   | Expr.storageArrayElement _ key =>
       exprMayContainExternalCall key
   | Expr.mappingChain _ keys =>
@@ -1153,7 +1158,8 @@ def exprContainsAdtConstruct : Expr → Bool
   | Expr.mload a | Expr.tload a | Expr.calldataload a
   | Expr.returndataOptionalBoolAt a
   | Expr.storageArrayElement _ a | Expr.arrayElement _ a | Expr.arrayElementWord _ a _ _
-  | Expr.arrayElementDynamicWord _ a _ =>
+  | Expr.arrayElementDynamicWord _ a _
+  | Expr.arrayElementDynamicMemberLength _ a _ =>
       exprContainsAdtConstruct a
   | Expr.ite cond thenVal elseVal =>
       exprContainsAdtConstruct cond || exprContainsAdtConstruct thenVal ||

@@ -80,7 +80,8 @@ def collectExprNames : Expr → List String
   | Expr.arrayLength name => [name]
   | Expr.paramDynamicHeadWord name _ => [name]
   | Expr.arrayElement name index | Expr.arrayElementWord name index _ _
-  | Expr.arrayElementDynamicWord name index _ =>
+  | Expr.arrayElementDynamicWord name index _
+  | Expr.arrayElementDynamicMemberLength name index _ =>
       name :: collectExprNames index
   | Expr.storageArrayLength field => [field]
   | Expr.storageArrayElement field index => field :: collectExprNames index

@@ -1022,6 +1022,25 @@ private theorem evalExpr_keccak256
     (a b : Expr) :
     evalExpr fields state (.keccak256 a b) = none := rfl
 
+private theorem evalExpr_mulDiv512Down
+    (fields : List Field)
+    (state : RuntimeState)
+    (a b c : Expr) :
+    evalExpr fields state (.mulDiv512Down a b c) = none := rfl
+
+private theorem evalExpr_mulDiv512Up
+    (fields : List Field)
+    (state : RuntimeState)
+    (a b c : Expr) :
+    evalExpr fields state (.mulDiv512Up a b c) = none := rfl
+
+private theorem evalExpr_paramDynamicHeadWord
+    (fields : List Field)
+    (state : RuntimeState)
+    (name : String)
+    (wordOffset : Nat) :
+    evalExpr fields state (.paramDynamicHeadWord name wordOffset) = none := rfl
+
 private theorem evalExpr_call
     (fields : List Field)
     (state : RuntimeState)
@@ -2688,7 +2707,21 @@ mutual
     | .calldataload offset => do
         let resolvedOffset ← evalExprWithHelpers spec fields fuel state offset
         some (Compiler.Proofs.YulGeneration.calldataloadWord state.selector state.world.calldata resolvedOffset)
-    | _ => none
+    -- Unmodeled / codegen-only constructors (no helper-aware semantics yet).
+    -- Listed explicitly rather than via `| _ => none` so the
+    -- `_mutual.eq_def` deriver does not enumerate the complement and trip
+    -- the 200 000-heartbeat ceiling whenever a new `Expr` constructor
+    -- lands (verity#1842).
+    | .mulDiv512Down _ _ _ | .mulDiv512Up _ _ _
+    | .paramDynamicHeadWord _ _
+    | .arrayLength _ | .arrayElement _ _
+    | .arrayElementWord _ _ _ _ | .arrayElementDynamicWord _ _ _
+    | .extcodesize _ | .returndataSize | .returndataOptionalBoolAt _
+    | .keccak256 _ _
+    | .call _ _ _ _ _ _ _ | .staticcall _ _ _ _ _ _ | .delegatecall _ _ _ _ _ _
+    | .externalCall _ _ | .mappingChain _ _
+    | .dynamicBytesEq _ _
+    | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => none
   termination_by expr => (fuel, sizeOf expr)
   decreasing_by all_goals (simp_wf; omega)
   def evalExprListWithHelpers
@@ -3731,6 +3764,10 @@ mutual
         have hc :=
           evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed spec fields fuel state c hsurface.2
         simpa [evalExprWithHelpers, evalExpr_mulDivDown, evalExpr_mulDivUp, ha, hb, hc]
+    | mulDiv512Down _ _ _ | mulDiv512Up _ _ _ =>
+        simp [evalExprWithHelpers, evalExpr_mulDiv512Down, evalExpr_mulDiv512Up]
+    | paramDynamicHeadWord _ _ =>
+        simp [evalExprWithHelpers, evalExpr_paramDynamicHeadWord]
     | ite cond thenVal elseVal =>
         simp only [exprTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
         have hcond :=

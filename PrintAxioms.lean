@@ -2710,6 +2710,9 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_extcodesize  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_returndataOptionalBoolAt  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_keccak256  -- private
+  -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_mulDiv512Down  -- private
+  -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_mulDiv512Up  -- private
+  -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_paramDynamicHeadWord  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_call  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_staticcall  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_delegatecall  -- private
@@ -2987,6 +2990,24 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.IRGeneration.stmtListUsesStorageArrayElement_eq_any  -- private
   -- Compiler.Proofs.IRGeneration.stmtListUsesDynamicBytesEq_eq_any  -- private
   -- Compiler.Proofs.IRGeneration.listAny_eq_false_of_mem_eq_false  -- private
+  -- Compiler.Proofs.IRGeneration.exprCompileCore_usesMulDiv512_false  -- private
+  -- Compiler.Proofs.IRGeneration.exprCompileCore_usesParamDynamicHeadWord_false  -- private
+  -- Compiler.Proofs.IRGeneration.exprListCompileCore_usesMulDiv512_false  -- private
+  -- Compiler.Proofs.IRGeneration.exprListCompileCore_usesParamDynamicHeadWord_false  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListCompileCore_usesMulDiv512_false  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListCompileCore_usesParamDynamicHeadWord_false  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListTerminalCore_usesMulDiv512_false  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListTerminalCore_usesParamDynamicHeadWord_false  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListUsesMulDiv512_append  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListUsesParamDynamicHeadWord_append  -- private
+  -- Compiler.Proofs.IRGeneration.supportedStmtList_usesMulDiv512_false  -- private
+  -- Compiler.Proofs.IRGeneration.supportedStmtList_usesParamDynamicHeadWord_false  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListUsesMulDiv512_eq_any  -- private
+  -- Compiler.Proofs.IRGeneration.stmtListUsesParamDynamicHeadWord_eq_any  -- private
+  Compiler.Proofs.IRGeneration.SupportedSpec.contractUsesMulDiv512_eq_false
+  Compiler.Proofs.IRGeneration.SupportedSpec.contractUsesParamDynamicHeadWord_eq_false
+  Compiler.Proofs.IRGeneration.SupportedSpecExceptMappingWrites.contractUsesMulDiv512_eq_false
+  Compiler.Proofs.IRGeneration.SupportedSpecExceptMappingWrites.contractUsesParamDynamicHeadWord_eq_false
   Compiler.Proofs.IRGeneration.SupportedSpec.noInternalFunctions
   Compiler.Proofs.IRGeneration.SupportedSpecExceptMappingWrites.noInternalFunctions
   Compiler.Proofs.IRGeneration.SupportedSpec.contractUsesArrayElement_eq_false
@@ -5498,4 +5519,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5212 theorems/lemmas (3508 public, 1704 private, 0 sorry'd)
+-- Total: 5233 theorems/lemmas (3512 public, 1721 private, 0 sorry'd)

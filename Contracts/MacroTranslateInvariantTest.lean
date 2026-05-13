@@ -9,6 +9,7 @@ import Contracts
 import Contracts.Smoke
 import Contracts.Smoke.ArrayElementDynamicMemberElementSmoke
 import Contracts.Smoke.ArrayElementDynamicMemberLengthSmoke
+import Contracts.Smoke.UnlinkPoolShapeCheckSmoke
 import Contracts.Smoke.MathlibReservedBinderEscape
 import Contracts.Smoke.PackedHashECMSmoke
 import Contracts.Smoke.SelfBalanceSmoke
@@ -359,6 +360,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.MathlibReservedBinderEscape.spec
   , Contracts.Smoke.ArrayElementDynamicMemberLengthSmoke.spec
   , Contracts.Smoke.ArrayElementDynamicMemberElementSmoke.spec
+  , Contracts.Smoke.UnlinkPoolShapeCheckSmoke.spec
   , Contracts.Smoke.StructMappingSmoke.spec
   , Contracts.Smoke.ExternalCallSmoke.spec
   , Contracts.Smoke.TryExternalCallSmoke.spec
@@ -492,6 +494,10 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("MathlibReservedBinderEscape", ["transferLike(address,uint256)", "transferLikeFrom(address,address,uint256)"])
   , ("ArrayElementDynamicMemberLengthSmoke", ["proofLength((uint256[],address,uint256)[],uint256)"])
   , ("ArrayElementDynamicMemberElementSmoke", ["proofAt((uint256[],address,uint256)[],uint256,uint256)"])
+  , ("UnlinkPoolShapeCheckSmoke", ["nullifierCountOf((uint256,uint256[],uint256[],uint256)[],uint256)",
+      "commitmentCountOf((uint256,uint256[],uint256[],uint256)[],uint256)",
+      "nullifierAt((uint256,uint256[],uint256[],uint256)[],uint256,uint256)",
+      "commitmentAt((uint256,uint256[],uint256[],uint256)[],uint256,uint256)"])
   , ("StructMappingSmoke", ["setPosition(address,uint256,uint256,address)", "totalPositionShares(address)",
       "delegateOf(address)", "setApproval(address,address,uint256,uint256)", "approvalOf(address,address)",
       "approvalNonce(address,address)"])
@@ -614,6 +620,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("MathlibReservedBinderEscape", ["0x4fee5360", "0x4d1b4491"])
   , ("ArrayElementDynamicMemberLengthSmoke", ["0xfbb81f5b"])
   , ("ArrayElementDynamicMemberElementSmoke", ["0x1ffe901b"])
+  , ("UnlinkPoolShapeCheckSmoke", ["0x4b6e2141", "0xdb1ca006", "0x41620c25", "0x76524b94"])
   , ("StructMappingSmoke", ["0x468c900e", "0xe7933b6a", "0x8d22ea2a", "0xf4536007", "0xcb01943e",
       "0x6c241120"])
   , ("ExternalCallSmoke", ["0x32fdff86", "0x21209dbd"])

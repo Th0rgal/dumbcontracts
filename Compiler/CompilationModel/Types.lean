@@ -358,6 +358,14 @@ inductive Expr
       projected field is a single-word static leaf at a fixed head offset.
       (verity#1832) -/
   | paramDynamicHeadWord (name : String) (wordOffset : Nat)
+  /-- Length of a dynamic member inside a struct-array element.  Given a
+      struct-array parameter `name` indexed at `index`, dereferences the
+      head pointer at `wordOffset` (relative to the element's head
+      section), then reads the length word at that pointer.  Used for
+      `arrayLength (arrayElement <param> <i>).<dynamicField>` projections,
+      e.g. `txn.nullifierHashes.length` where `txn` is an element of a
+      struct-array parameter.  (verity#1849, G1) -/
+  | arrayElementDynamicMemberLength (name : String) (index : Expr) (wordOffset : Nat)
   | storageArrayLength (field : String)  -- Read the length word of a storage dynamic array (#1571)
   | storageArrayElement (field : String) (index : Expr)  -- Checked element access of a storage dynamic array (#1571)
   /-- Equality on direct `bytes` / `string` parameters loaded from calldata or memory.

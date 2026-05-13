@@ -38,7 +38,8 @@ def exprBoundNames : Expr → List String
   | .adtTag _ field => [field]
   | .adtField _ _ _ _ storageField => [storageField]
   | .arrayElement name index | .arrayElementWord name index _ _
-  | .arrayElementDynamicWord name index _ => name :: exprBoundNames index
+  | .arrayElementDynamicWord name index _
+  | .arrayElementDynamicMemberLength name index _ => name :: exprBoundNames index
   | .paramDynamicHeadWord name _ => [name]
   | .arrayLength name => [name]
   | .storageArrayLength name => [name]

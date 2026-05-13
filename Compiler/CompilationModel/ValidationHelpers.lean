@@ -83,6 +83,8 @@ def collectExprNames : Expr → List String
   | Expr.arrayElementDynamicWord name index _
   | Expr.arrayElementDynamicMemberLength name index _ =>
       name :: collectExprNames index
+  | Expr.arrayElementDynamicMemberElement name index _ innerIndex =>
+      name :: (collectExprNames index ++ collectExprNames innerIndex)
   | Expr.storageArrayLength field => [field]
   | Expr.storageArrayElement field index => field :: collectExprNames index
   | Expr.dynamicBytesEq lhsName rhsName => [lhsName, rhsName]

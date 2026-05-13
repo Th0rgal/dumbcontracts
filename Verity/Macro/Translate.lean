@@ -2409,8 +2409,20 @@ private partial def inferPureExprType
         | none => throwErrorAt name "unknown array value"
   | `(term| arrayElement $name:term $index:term) => do
       requireWordLikeType index "arrayElement index" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals index visitingConstants)
-      let sourceTy ← requireDirectParamRef name "arrayElement" params
-      requireSupportedArrayElementSourceType name "arrayElement" sourceTy
+      -- verity#1849, G2: accept `arrayElement (arrayElement <param> <i>).<dynField> <k>`
+      -- when `<dynField>` is `Array <wordLike>`. Returns the word-like element type.
+      if let some (_, _, fieldTy, _, _) := arrayElementDynamicMemberProjection? params name then
+        match fieldTy with
+        | .array elemTy =>
+            if isSingleWordStaticValueType elemTy then
+              pure elemTy
+            else
+              throwErrorAt name s!"arrayElement on a dynamic member of a struct-array element currently supports only Array<wordLike> members, got Array {renderValueType elemTy}"
+        | _ =>
+            throwErrorAt name s!"arrayElement on a struct-array element projection requires an Array-typed dynamic member, got {renderValueType fieldTy}"
+      else
+        let sourceTy ← requireDirectParamRef name "arrayElement" params
+        requireSupportedArrayElementSourceType name "arrayElement" sourceTy
   | `(term| mulDivDown $a $b $c) | `(term| mulDivUp $a $b $c) => do
       for arg in [a, b, c] do
         requireWordLikeType arg "mulDiv" (← inferPureExprType fields constDecls immutableDecls externalDecls params locals arg visitingConstants)
@@ -3340,9 +3352,21 @@ partial def translatePureExprWithTypes
       else
         `(Compiler.CompilationModel.Expr.arrayLength $(strTerm (← expectStringOrIdent name)))
   | `(term| arrayElement $name:term $index:term) =>
-      `(Compiler.CompilationModel.Expr.arrayElement
-          $(strTerm (← expectStringOrIdent name))
-          $(← translatePureExprWithTypes fields constDecls immutableDecls params locals index visitingConstants))
+      -- verity#1849, G2: `arrayElement (arrayElement <param> <i>).<dynField> <k>`
+      -- lowers through `Expr.arrayElementDynamicMemberElement`.
+      if let some (paramName, outerIndex, _fieldTy, _elemTy, wordOffset) :=
+          arrayElementDynamicMemberProjection? params name then
+        let outerIndexExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals outerIndex visitingConstants
+        let innerIndexExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals index visitingConstants
+        `(Compiler.CompilationModel.Expr.arrayElementDynamicMemberElement
+            $(strTerm paramName)
+            $outerIndexExpr
+            $(natTerm wordOffset)
+            $innerIndexExpr)
+      else
+        `(Compiler.CompilationModel.Expr.arrayElement
+            $(strTerm (← expectStringOrIdent name))
+            $(← translatePureExprWithTypes fields constDecls immutableDecls params locals index visitingConstants))
   | `(term| ceilDiv $a $b) =>
       `(Compiler.CompilationModel.Expr.ceilDiv
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals a visitingConstants)

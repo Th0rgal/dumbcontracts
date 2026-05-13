@@ -426,6 +426,9 @@ def compileValidatedCore (spec : CompilationModel) (selectors : List Nat) : Exce
       -- correct and avoids a separate predicate.
       , checkedArrayElementDynamicMemberLengthCalldataHelper
       , checkedArrayElementDynamicMemberLengthMemoryHelper
+      -- verity#1849 G2: dynamic-member element helpers gated the same way.
+      , checkedArrayElementDynamicMemberElementCalldataHelper
+      , checkedArrayElementDynamicMemberElementMemoryHelper
       ]
     else
       []) ++

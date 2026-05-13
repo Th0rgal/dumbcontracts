@@ -8691,6 +8691,68 @@ def NativeStmtPreservesWord
       EvmYul.Yul.exec fuel stmt codeOverride state = .ok final →
         final[name]! = value
 
+/-! ## reviveJump simp lemmas
+
+These helpers project `Yul.State` through `reviveJump` which sends Checkpoint
+variants back to their inner store via `revive`. They support the new
+`_revived` preservation predicates used by Leave-ending body bridges (E2/E4
+in `EndToEnd.lean`). -/
+
+@[simp] theorem reviveJump_Ok_eq
+    (shared : EvmYul.SharedState EvmYul.OperationType.Yul)
+    (store : EvmYul.Yul.VarStore) :
+    (EvmYul.Yul.State.Ok shared store).reviveJump =
+      EvmYul.Yul.State.Ok shared store := rfl
+
+@[simp] theorem reviveJump_OutOfFuel_eq :
+    EvmYul.Yul.State.OutOfFuel.reviveJump = EvmYul.Yul.State.OutOfFuel := rfl
+
+@[simp] theorem reviveJump_Leave_eq
+    (shared : EvmYul.SharedState EvmYul.OperationType.Yul)
+    (store : EvmYul.Yul.VarStore) :
+    (EvmYul.Yul.State.Checkpoint (.Leave shared store)).reviveJump =
+      EvmYul.Yul.State.Ok shared store := rfl
+
+@[simp] theorem reviveJump_Continue_eq
+    (shared : EvmYul.SharedState EvmYul.OperationType.Yul)
+    (store : EvmYul.Yul.VarStore) :
+    (EvmYul.Yul.State.Checkpoint (.Continue shared store)).reviveJump =
+      EvmYul.Yul.State.Ok shared store := rfl
+
+@[simp] theorem reviveJump_Break_eq
+    (shared : EvmYul.SharedState EvmYul.OperationType.Yul)
+    (store : EvmYul.Yul.VarStore) :
+    (EvmYul.Yul.State.Checkpoint (.Break shared store)).reviveJump =
+      EvmYul.Yul.State.Ok shared store := rfl
+
+/-! ## NativeBlockPreservesWord_revived
+
+Parallel preservation predicate that reads the revived store on both the
+hypothesis and the conclusion. This is the form that handles Leave-ending
+bodies: `final = Checkpoint (.Leave shared store)` has `final.reviveJump =
+Ok shared store`, so the lookup reads the inner store rather than falling
+through to ⟨0⟩ via the empty `default` Finmap. -/
+
+def NativeBlockPreservesWord_revived
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (body : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) : Prop :=
+  ∀ fuel state final,
+    state.reviveJump[name]! = value →
+      EvmYul.Yul.exec fuel (.Block body) codeOverride state = .ok final →
+        final.reviveJump[name]! = value
+
+def NativeStmtPreservesWord_revived
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (stmt : EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) : Prop :=
+  ∀ fuel state final,
+    state.reviveJump[name]! = value →
+      EvmYul.Yul.exec fuel stmt codeOverride state = .ok final →
+        final.reviveJump[name]! = value
+
 def NativeExprPreservesWord
     (name : EvmYul.Identifier)
     (value : EvmYul.Literal)
@@ -12712,6 +12774,59 @@ theorem NativeBlockPreservesWord_singleton
   exact NativeBlockPreservesWord_cons_stmt name value stmt [] codeOverride
     hStmt (NativeBlockPreservesWord_nil name value codeOverride)
 
+/-! ## `_revived` block preservation: nil and Leave-singleton
+
+These are the building blocks the Leave-ending body bridges (E2, E4) need.
+For the nil case `.Block []`, the result equals the input, so the bridge is
+purely an identity-cast through `reviveJump`. -/
+
+theorem NativeBlockPreservesWord_revived_nil
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
+    NativeBlockPreservesWord_revived name value [] codeOverride := by
+  intro fuel state final hLookup hExec
+  cases fuel with
+  | zero => simp [EvmYul.Yul.exec] at hExec
+  | succ fuel' =>
+      simp [EvmYul.Yul.exec] at hExec
+      subst hExec
+      exact hLookup
+
+/-- Given a `_revived` head-stmt witness and a `_revived` rest-block witness,
+build the cons block witness. Mirrors `NativeBlockPreservesWord_cons` for
+the revived form. -/
+theorem NativeBlockPreservesWord_revived_cons
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (stmt : EvmYul.Yul.Ast.Stmt)
+    (rest : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (hHead : NativeStmtPreservesWord_revived name value stmt codeOverride)
+    (hRest : NativeBlockPreservesWord_revived name value rest codeOverride) :
+    NativeBlockPreservesWord_revived name value (stmt :: rest) codeOverride := by
+  intro fuel state final hLookup hExec
+  cases fuel with
+  | zero => simp [EvmYul.Yul.exec] at hExec
+  | succ fuel' =>
+      simp [EvmYul.Yul.exec] at hExec
+      cases hStmt : EvmYul.Yul.exec fuel' stmt codeOverride state with
+      | error err => simp [hStmt] at hExec
+      | ok next =>
+          simp [hStmt] at hExec
+          have hNext := hHead fuel' state next hLookup hStmt
+          exact hRest fuel' next final hNext hExec
+
+theorem NativeBlockPreservesWord_revived_singleton
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (stmt : EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (hStmt : NativeStmtPreservesWord_revived name value stmt codeOverride) :
+    NativeBlockPreservesWord_revived name value [stmt] codeOverride :=
+  NativeBlockPreservesWord_revived_cons name value stmt [] codeOverride hStmt
+    (NativeBlockPreservesWord_revived_nil name value codeOverride)
+
 theorem NativeBlockPreservesWord_of_forall_stmt
     (name : EvmYul.Identifier)
     (value : EvmYul.Literal)
@@ -14339,6 +14454,50 @@ theorem NativeStmtPreservesWord_empty_block
     NativeStmtPreservesWord name expected (.Block []) codeOverride :=
   NativeStmtPreservesWord_block name expected [] codeOverride
     (NativeBlockPreservesWord_nil name expected codeOverride)
+
+/-! ## Leave preservation in the revived form
+
+The standard `NativeStmtPreservesWord_leave` is structurally false because
+`exec fuel .Leave _ (Ok shared store) = Checkpoint (.Leave shared store)`, and
+the lookup on Checkpoint reads the empty default store. The `_revived`
+variant looks up through `reviveJump`, which revives Checkpoint to its inner
+store, allowing the matched flag to be preserved across the Leave. -/
+theorem NativeStmtPreservesWord_revived_leave
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
+    NativeStmtPreservesWord_revived name value .Leave codeOverride := by
+  intro fuel state final hLookup hExec
+  cases fuel with
+  | zero => simp [EvmYul.Yul.exec] at hExec
+  | succ fuel' =>
+      simp [EvmYul.Yul.exec] at hExec
+      cases state with
+      | Ok shared store =>
+          subst final
+          simp [EvmYul.Yul.State.setLeave, reviveJump_Leave_eq, reviveJump_Ok_eq]
+          simpa [reviveJump_Ok_eq] using hLookup
+      | OutOfFuel =>
+          subst final
+          simpa [EvmYul.Yul.State.setLeave] using hLookup
+      | Checkpoint jump =>
+          subst final
+          simpa [EvmYul.Yul.State.setLeave] using hLookup
+
+/-- Empty-block preservation in the `_revived` form. `exec _ (.Block []) _ s`
+returns `s` unchanged, so the conclusion is just the hypothesis. -/
+theorem NativeStmtPreservesWord_revived_empty_block
+    (name : EvmYul.Identifier)
+    (expected : EvmYul.Literal)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
+    NativeStmtPreservesWord_revived name expected (.Block []) codeOverride := by
+  intro fuel state final hLookup hExec
+  cases fuel with
+  | zero => simp [EvmYul.Yul.exec] at hExec
+  | succ fuel' =>
+      simp [EvmYul.Yul.exec] at hExec
+      subst hExec
+      exact hLookup
 
 theorem NativeStmtPreservesWord_lowerStmtGroupNativeWithSwitchIds_comment
     (name : EvmYul.Identifier)

@@ -25,7 +25,7 @@ FUNCTION_RE = re.compile(
     r"^\s*function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*:\s*(.+?)\s*:=\s*",
 )
 CONSTRUCTOR_RE = re.compile(r"^\s*constructor\s*\(([^)]*)\)\s*:=\s*")
-PARAM_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+?)\s*$")
+PARAM_RE = re.compile(r"^\s*«?([A-Za-z_][A-Za-z0-9_]*)»?\s*:\s*(.+?)\s*$")
 NEWTYPE_RE = re.compile(
     r"^\s*([A-Z][A-Za-z0-9_]*)\s*:\s*([A-Za-z0-9_]+)\s*$",
 )

@@ -1355,11 +1355,7 @@ verity_contract MultiReturnHelperSmoke where
     let (head, tail) ← summarize seed
     return (add head tail)
 
-/--
-error: `total` cannot be mutated, only variables declared using `let mut` can be mutated. If you did not intend to mutate but define `total`, consider using `let total` instead
--/
-#guard_msgs in
-verity_contract ForEachMutableLocalMacroRejected where
+verity_contract ForEachMutableLocalSmoke where
   storage
 
   function sumValues (values : Array Uint256) : Uint256 := do
@@ -1368,6 +1364,24 @@ verity_contract ForEachMutableLocalMacroRejected where
       let value := arrayElement values i
       total := add total value)
     return total
+
+example :
+    ForEachMutableLocalSmoke.sumValues_modelBody =
+      [ Compiler.CompilationModel.Stmt.letVar "total"
+          (Compiler.CompilationModel.Expr.literal 0)
+      , Compiler.CompilationModel.Stmt.forEach "i"
+          (Compiler.CompilationModel.Expr.arrayLength "values")
+          [ Compiler.CompilationModel.Stmt.letVar "value"
+              (Compiler.CompilationModel.Expr.arrayElement "values"
+                (Compiler.CompilationModel.Expr.localVar "i"))
+          , Compiler.CompilationModel.Stmt.assignVar "total"
+              (Compiler.CompilationModel.Expr.add
+                (Compiler.CompilationModel.Expr.localVar "total")
+                (Compiler.CompilationModel.Expr.localVar "value"))
+          ]
+      , Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.localVar "total")
+      ] := rfl
 
 /--
 error: helper call 'consumePayload' uses a parameter or return type that direct macro helper lowering does not support yet; only static non-fallback/non-receive helpers can be lowered to internal specs
@@ -1966,6 +1980,7 @@ end SpecGenSmoke
 #check_contract PackedStorageWriteSmoke
 #check_contract DirectHelperCallSmoke
 #check_contract MultiReturnHelperSmoke
+#check_contract ForEachMutableLocalSmoke
 #check_contract Uint8Smoke
 #check_contract AddressHelpersSmoke
 #check_contract ZeroAddressShadowSmoke

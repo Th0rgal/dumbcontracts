@@ -499,7 +499,8 @@ private def expectedExternalSignatures : List (String × List String) :=
       "nullifierAt((uint256,uint256[],uint256[],uint256)[],uint256,uint256)",
       "commitmentAt((uint256,uint256[],uint256[],uint256)[],uint256,uint256)",
       "validateInputShape((uint256,uint256[],uint256[],uint256)[],uint256,uint256)",
-      "validateOutputShape((uint256,uint256[],uint256[],uint256)[],uint256,uint256)"])
+      "validateOutputShape((uint256,uint256[],uint256[],uint256)[],uint256,uint256)",
+      "validateBatch((uint256,uint256[],uint256[],uint256)[],uint256,uint256)"])
   , ("StructMappingSmoke", ["setPosition(address,uint256,uint256,address)", "totalPositionShares(address)",
       "delegateOf(address)", "setApproval(address,address,uint256,uint256)", "approvalOf(address,address)",
       "approvalNonce(address,address)"])
@@ -623,7 +624,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("ArrayElementDynamicMemberLengthSmoke", ["0xfbb81f5b"])
   , ("ArrayElementDynamicMemberElementSmoke", ["0x1ffe901b"])
   , ("UnlinkPoolShapeCheckSmoke", ["0x4b6e2141", "0xdb1ca006", "0x41620c25", "0x76524b94",
-      "0xfc01c1ec", "0xe4a609b8"])
+      "0xfc01c1ec", "0xe4a609b8", "0x2e759c7f"])
   , ("StructMappingSmoke", ["0x468c900e", "0xe7933b6a", "0x8d22ea2a", "0xf4536007", "0xcb01943e",
       "0x6c241120"])
   , ("ExternalCallSmoke", ["0x32fdff86", "0x21209dbd"])

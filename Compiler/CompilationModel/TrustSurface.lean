@@ -63,6 +63,8 @@ private partial def collectLowLevelExprMechanics : Expr → List String
   | .arrayElementDynamicWord _ key _
   | .arrayElementDynamicMemberLength _ key _ =>
       collectLowLevelExprMechanics key
+  | .arrayElementDynamicMemberElement _ key _ innerKey =>
+      collectLowLevelExprMechanics key ++ collectLowLevelExprMechanics innerKey
   | .mload key =>
       ["mload"] ++ collectLowLevelExprMechanics key
   | .calldataload key =>
@@ -130,6 +132,8 @@ private partial def collectAxiomatizedExprPrimitives : Expr → List String
   | .arrayElementDynamicWord _ key _
   | .arrayElementDynamicMemberLength _ key _ =>
       collectAxiomatizedExprPrimitives key
+  | .arrayElementDynamicMemberElement _ key _ innerKey =>
+      collectAxiomatizedExprPrimitives key ++ collectAxiomatizedExprPrimitives innerKey
   | .externalCall _ args
   | .internalCall _ args =>
       args.flatMap collectAxiomatizedExprPrimitives
@@ -454,6 +458,8 @@ private partial def collectEventEmissionExprMechanics : Expr → List String
   | .arrayElementDynamicWord _ key _
   | .arrayElementDynamicMemberLength _ key _ =>
       collectEventEmissionExprMechanics key
+  | .arrayElementDynamicMemberElement _ key _ innerKey =>
+      collectEventEmissionExprMechanics key ++ collectEventEmissionExprMechanics innerKey
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
   | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .signextend a b
   | .eq a b | .gt a b | .sgt a b | .lt a b | .slt a b | .ge a b | .le a b
@@ -619,6 +625,8 @@ private partial def collectRuntimeIntrospectionExprMechanics : Expr → List Str
   | .arrayElementDynamicWord _ key _
   | .arrayElementDynamicMemberLength _ key _ =>
       collectRuntimeIntrospectionExprMechanics key
+  | .arrayElementDynamicMemberElement _ key _ innerKey =>
+      collectRuntimeIntrospectionExprMechanics key ++ collectRuntimeIntrospectionExprMechanics innerKey
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
   | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .signextend a b
   | .eq a b | .gt a b | .sgt a b | .lt a b | .slt a b | .ge a b | .le a b
@@ -774,6 +782,8 @@ private partial def collectExternalExprNames : Expr → List String
   | .arrayElementDynamicWord _ key _
   | .arrayElementDynamicMemberLength _ key _ =>
       collectExternalExprNames key
+  | .arrayElementDynamicMemberElement _ key _ innerKey =>
+      collectExternalExprNames key ++ collectExternalExprNames innerKey
   | .internalCall _ args =>
       args.flatMap collectExternalExprNames
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b

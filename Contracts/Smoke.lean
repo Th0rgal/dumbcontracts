@@ -1689,6 +1689,117 @@ example :
           (Compiler.CompilationModel.Expr.localVar "h")
       ] := rfl
 
+verity_contract LinkedExternalProjectedArrayArgSmoke where
+  storage
+
+  struct Transaction where
+    merkleRoot : Uint256,
+    nullifierHashes : Array Uint256,
+    newCommitments : Array Uint256
+
+  linked_externals
+    external hashArray(Array Uint256) -> (Uint256)
+    external hashArray_try(Array Uint256) -> (Bool, Uint256)
+
+  function tryHashNullifiers (txs : Array Transaction, idx : Uint256) : Uint256 := do
+    let (_success, h) ← tryExternalCall "hashArray" [(arrayElement txs idx).nullifierHashes]
+    return h
+
+example :
+    LinkedExternalProjectedArrayArgSmoke.tryHashNullifiers_modelBody =
+      [ Compiler.CompilationModel.Stmt.tryExternalCallBind
+          "_success"
+          ["h"]
+          "hashArray"
+          [ Compiler.CompilationModel.Expr.arrayElementDynamicMemberDataOffset
+              "txs"
+              (Compiler.CompilationModel.Expr.param "idx")
+              1
+          , Compiler.CompilationModel.Expr.arrayElementDynamicMemberLength
+              "txs"
+              (Compiler.CompilationModel.Expr.param "idx")
+              1
+          ]
+      , Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.localVar "h")
+      ] := rfl
+
+verity_contract NestedStructArrayProjectionSmoke where
+  storage
+
+  struct Proof where
+    pA : FixedArray Uint256 2,
+    pB : FixedArray (FixedArray Uint256 2) 2,
+    pC : FixedArray Uint256 2
+
+  struct Note where
+    npk : Uint256,
+    token : Address,
+    amount : Uint256
+
+  struct WithdrawalTransaction where
+    proof : Proof,
+    circuitId : Uint256,
+    merkleRoot : Uint256,
+    nullifierHashes : Array Uint256,
+    newCommitments : Array Uint256,
+    contextHash : Uint256,
+    withdrawal : Note,
+    ciphertexts : Array Uint256
+
+  function withdrawalAmount (txs : Array WithdrawalTransaction, idx : Uint256) : Uint256 := do
+    return (arrayElement txs idx).withdrawal.amount
+
+  function consumeNullifiers (nullifiers : Array Uint256) : Unit := do
+    let _len := arrayLength nullifiers
+    pure ()
+
+  function withdrawalAmountViaHelper (txs : Array WithdrawalTransaction, idx : Uint256) : Uint256 := do
+    let amount ← withdrawalAmount txs idx
+    return amount
+
+  function consumeNullifiersViaHelper (txs : Array WithdrawalTransaction, idx : Uint256) : Unit := do
+    consumeNullifiers (arrayElement txs idx).nullifierHashes
+
+example :
+    NestedStructArrayProjectionSmoke.withdrawalAmount_modelBody =
+      [ Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.arrayElementDynamicWord
+            "txs"
+            (Compiler.CompilationModel.Expr.param "idx")
+            15)
+      ] := rfl
+
+example :
+    NestedStructArrayProjectionSmoke.withdrawalAmountViaHelper_modelBody =
+      [ Compiler.CompilationModel.Stmt.letVar
+          "amount"
+          (Compiler.CompilationModel.Expr.internalCall
+            "internal_withdrawalAmount"
+            [ Compiler.CompilationModel.Expr.param "txs_data_offset"
+            , Compiler.CompilationModel.Expr.param "txs_length"
+            , Compiler.CompilationModel.Expr.param "idx"
+            ])
+      , Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.localVar "amount")
+      ] := rfl
+
+example :
+    NestedStructArrayProjectionSmoke.consumeNullifiersViaHelper_modelBody =
+      [ Compiler.CompilationModel.Stmt.internalCall
+          "internal_consumeNullifiers"
+          [ Compiler.CompilationModel.Expr.arrayElementDynamicMemberDataOffset
+              "txs"
+              (Compiler.CompilationModel.Expr.param "idx")
+              10
+          , Compiler.CompilationModel.Expr.arrayElementDynamicMemberLength
+              "txs"
+              (Compiler.CompilationModel.Expr.param "idx")
+              10
+          ]
+      , Compiler.CompilationModel.Stmt.stop
+      ] := rfl
+
 example :
     LinkedExternalDynamicArgSmoke.hashPayload_modelBody =
       [ Compiler.CompilationModel.Stmt.return
@@ -2111,6 +2222,8 @@ end SpecGenSmoke
 #check_contract ExternalCallSmoke
 #check_contract TryExternalCallSmoke
 #check_contract LinkedExternalDynamicArgSmoke
+#check_contract LinkedExternalProjectedArrayArgSmoke
+#check_contract NestedStructArrayProjectionSmoke
 #check_contract ExternalCallMultiReturn
 #check_contract Contracts.Vault
 

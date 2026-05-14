@@ -24,6 +24,7 @@ partial def exprContainsCallLike (expr : Expr) : Bool :=
   | Expr.arrayElement _ index
   | Expr.arrayElementWord _ index _ _
   | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ =>
       exprContainsCallLike index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex =>
@@ -126,6 +127,7 @@ def exprContainsUnsafeLogicalCallLike (expr : Expr) : Bool :=
       exprContainsUnsafeLogicalCallLike key1 || exprContainsUnsafeLogicalCallLike key2
   | Expr.storageArrayElement _ index | Expr.arrayElement _ index
   | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _
   | Expr.returndataOptionalBoolAt index =>
       exprContainsUnsafeLogicalCallLike index

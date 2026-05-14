@@ -27,6 +27,8 @@ EXCLUDED_CONTRACTS = {
     "ArrayElementDynamicMemberElementSmoke",
     "UnlinkPoolShapeCheckSmoke",
     "FixedArrayStructSmoke",
+    "LinkedExternalProjectedArrayArgSmoke",
+    "NestedStructArrayProjectionSmoke",
     # The generated no-revert stub cannot currently fund the contract before
     # exercising `callWithValue`; Lean/Yul/trust-report tests cover this ECM.
     "CallWithValueSmoke",

@@ -101,6 +101,9 @@ def exprUsesArrayElementKind (includePlain includeWord : Bool) : Expr → Bool
   | Expr.arrayElementDynamicWord _ index _ =>
       let nested := exprUsesArrayElementKind includePlain includeWord index
       if nested then true else includeWord
+  | Expr.arrayElementDynamicMemberDataOffset _ index _ =>
+      let nested := exprUsesArrayElementKind includePlain includeWord index
+      if nested then true else includeWord
   | Expr.arrayElementDynamicMemberLength _ index _ =>
       let nested := exprUsesArrayElementKind includePlain includeWord index
       if nested then true else includeWord
@@ -301,6 +304,7 @@ attribute [simp] exprUsesArrayElementKind exprListUsesArrayElementKind
 mutual
 def exprUsesArrayElement : Expr → Bool
   | Expr.arrayElement _ _ | Expr.arrayElementWord _ _ _ _ | Expr.arrayElementDynamicWord _ _ _
+  | Expr.arrayElementDynamicMemberDataOffset _ _ _
   | Expr.arrayElementDynamicMemberLength _ _ _
   | Expr.arrayElementDynamicMemberElement _ _ _ _ =>
       true
@@ -495,6 +499,7 @@ def exprUsesParamDynamicHeadWord : Expr → Bool
   | Expr.mappingUint _ key | Expr.structMember _ key _
   | Expr.storageArrayElement _ key | Expr.arrayElement _ key
   | Expr.arrayElementWord _ key _ _ | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberDataOffset _ key _
   | Expr.arrayElementDynamicMemberLength _ key _ =>
       exprUsesParamDynamicHeadWord key
   | Expr.arrayElementDynamicMemberElement _ key _ innerKey =>
@@ -634,6 +639,7 @@ def exprUsesMulDiv512 : Expr → Bool
   | Expr.mappingUint _ key | Expr.structMember _ key _
   | Expr.storageArrayElement _ key | Expr.arrayElement _ key
   | Expr.arrayElementWord _ key _ _ | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberDataOffset _ key _
   | Expr.arrayElementDynamicMemberLength _ key _ =>
       exprUsesMulDiv512 key
   | Expr.arrayElementDynamicMemberElement _ key _ innerKey =>
@@ -832,6 +838,7 @@ def exprUsesStorageArrayElement : Expr → Bool
   | Expr.adtTag _ _ =>
       false
   | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ =>
       exprUsesStorageArrayElement index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex =>
@@ -954,6 +961,7 @@ def exprUsesDynamicBytesEq : Expr → Bool
       exprListUsesDynamicBytesEq args
   | Expr.storageArrayElement _ index | Expr.arrayElement _ index
   | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ => exprUsesDynamicBytesEq index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex =>
       exprUsesDynamicBytesEq index || exprUsesDynamicBytesEq innerIndex

@@ -185,6 +185,22 @@ def validateScopedExprIdentifiers
       | none =>
           throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayElementDynamicMemberLength"
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount index
+  | Expr.arrayElementDynamicMemberDataOffset name index wordOffset => do
+      match findParamType params name with
+      | some ty@(ParamType.array elemTy) =>
+          if isDynamicParamType elemTy then
+            let expectedWords := paramLocalHeadWords elemTy
+            if wordOffset < expectedWords then
+              pure ()
+            else
+              throw s!"Compilation error: {context} Expr.arrayElementDynamicMemberDataOffset '{name}' wordOffset {wordOffset} is outside dynamic element head width {expectedWords} for {repr ty}"
+          else
+            throw s!"Compilation error: {context} Expr.arrayElementDynamicMemberDataOffset '{name}' requires an array parameter with dynamic ABI elements, got {repr ty}"
+      | some ty =>
+          throw s!"Compilation error: {context} Expr.arrayElementDynamicMemberDataOffset '{name}' requires array parameter, got {repr ty}"
+      | none =>
+          throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayElementDynamicMemberDataOffset"
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount index
   | Expr.arrayElementDynamicMemberElement name index wordOffset innerIndex => do
       match findParamType params name with
       | some ty@(ParamType.array elemTy) =>

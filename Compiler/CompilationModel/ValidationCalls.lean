@@ -79,7 +79,7 @@ def firstReservedExternalCollision
         dynamicBytesEqHelpersRequired).contains name)
 
 def internalDynamicParamSupported : ParamType → Bool
-  | ParamType.array elemTy => isSingleWordStaticParamType elemTy
+  | ParamType.array _ => true
   | _ => false
 
 def firstUnsupportedInternalDynamicParam
@@ -96,7 +96,7 @@ def firstUnsupportedInternalDynamicParam
   goFns fns
 
 def internalCallYulArgCountForParam : ParamType → Nat
-  | ParamType.array elemTy => if isSingleWordStaticParamType elemTy then 2 else 1
+  | ParamType.array _ => 2
   | _ => 1
 
 def internalCallYulArgCount (params : List Param) : Nat :=
@@ -185,6 +185,7 @@ def validateInternalCallShapesInExpr
   | Expr.arrayElement _ index
   | Expr.arrayElementWord _ index _ _
   | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ =>
       validateInternalCallShapesInExpr functions callerName index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex => do
@@ -449,6 +450,7 @@ def validateExternalCallTargetsInExpr
   | Expr.arrayElement _ index
   | Expr.arrayElementWord _ index _ _
   | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ =>
       validateExternalCallTargetsInExpr externals context index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex => do

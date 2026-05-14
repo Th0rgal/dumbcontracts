@@ -16765,6 +16765,37 @@ private theorem NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_em
         Compiler.Proofs.YulGeneration.Backends.Native.nativeSwitchHasSelectorStore
         hBody
 
+/-- S6: Selected user bodies of shape `preStmts` (no terminator) with all
+statements in the `BridgedStraightStmts` fragment and `fn.returnVars = []`
+execute as a native falling-through and project to the same observable result.
+
+CURRENTLY LIMITED: this version only handles `preStmts = []` (degenerate empty
+case). The general case requires the per-`BridgedStraightStmt`
+observation-equivalence framework (P1 in the stage-2 DAG). Once that framework
+lands, this constructor generalizes by replacing the `hOnlyEmpty` hypothesis
+with a list induction over `BridgedStraightStmts preStmts`. -/
+private theorem NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_bridgedStraightStmts_falling_through
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (state : IRState)
+    (observableSlots : List Nat)
+    (preStmts : List Compiler.Yul.YulStmt)
+    (_hBridged : Compiler.Proofs.YulGeneration.Backends.BridgedStraightStmts preStmts)
+    (hOnlyEmpty : preStmts = [])
+    (hBody : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.body = preStmts)
+    (_hReturnVars : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.returnVars = []) :
+    NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived irContract tx
+      state observableSlots := by
+  apply NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_empty_body
+  intro fn hFind
+  rw [hBody fn hFind, hOnlyEmpty]
+
 /-- Selected user bodies containing only `leave` execute as a native checkpoint
 and project to the same observable result as `execIRFunction`.
 

@@ -2082,10 +2082,15 @@ private partial def hasDynamicInternalHelperType (ty : ValueType) : Bool :=
   | .struct _ fields => fields.any (fun field => hasDynamicInternalHelperType field.snd)
   | _ => false
 
+private def supportsInternalHelperParamType (ty : ValueType) : Bool :=
+  match ty with
+  | .array elemTy => isSingleWordStaticValueType elemTy
+  | _ => !hasDynamicInternalHelperType ty
+
 private def supportsInternalHelperSpec (fn : FunctionDecl) : Bool :=
   fn.name != "fallback" &&
     fn.name != "receive" &&
-    fn.params.all (fun param => !hasDynamicInternalHelperType param.ty) &&
+    fn.params.all (fun param => supportsInternalHelperParamType param.ty) &&
     !hasDynamicInternalHelperType fn.returnTy
 
 private def ensureSupportsInternalHelperSpec
@@ -3830,6 +3835,34 @@ private def tupleReturnValueExprs?
       | _ =>
           pure none
 
+private def translateInternalHelperCallArgs
+    (fields : Array StorageFieldDecl)
+    (constDecls : Array ConstantDecl)
+    (immutableDecls : Array ImmutableDecl)
+    (params : Array ParamDecl)
+    (locals : Array TypedLocal)
+    (fn : FunctionDecl)
+    (argTerms : Array Term) : CommandElabM (Array Term) := do
+  let mut out : Array Term := #[]
+  for idx in [:argTerms.size] do
+    let some arg := argTerms[idx]? | pure ()
+    let some fnParam := fn.params[idx]? | pure ()
+    match fnParam.ty with
+    | .array elemTy =>
+        if isSingleWordStaticValueType elemTy then
+          match directParamNameWithType? params arg with
+          | some (name, _) =>
+              out := out.push (← `(Compiler.CompilationModel.Expr.param $(strTerm s!"{name}_data_offset")))
+              out := out.push (← `(Compiler.CompilationModel.Expr.param $(strTerm s!"{name}_length")))
+          | none =>
+              throwErrorAt arg
+                s!"helper call '{fn.name}' Array parameter '{fnParam.name}' currently requires a direct Array parameter reference"
+        else
+          out := out.push (← translatePureExprWithTypes fields constDecls immutableDecls params locals arg)
+    | _ =>
+        out := out.push (← translatePureExprWithTypes fields constDecls immutableDecls params locals arg)
+  pure out
+
 private def tupleInternalCallAssignStmt?
     (fields : Array StorageFieldDecl)
     (constDecls : Array ConstantDecl)
@@ -3855,8 +3888,8 @@ private def tupleInternalCallAssignStmt?
   match ← resolveLocalFunctionApp? fields constDecls immutableDecls externalDecls functions params locals rhs with
   | some (fn, argTerms) =>
       ensureSupportsInternalHelperSpec rhs fn
-      let argExprs ← argTerms.mapM
-        (translatePureExprWithTypes fields constDecls immutableDecls params locals)
+      let argExprs ← translateInternalHelperCallArgs
+        fields constDecls immutableDecls params locals fn argTerms
       pure (some (← `(Compiler.CompilationModel.Stmt.internalCallAssign
         [ $[$resultNameTerms],* ]
         $(strTerm (internalHelperSpecNameFor fn))
@@ -4146,8 +4179,8 @@ private def translateBindSource
       match ← resolveLocalFunctionApp? fields constDecls immutableDecls externalDecls functions params locals rhs with
       | some (fn, argTerms) =>
           ensureSupportsInternalHelperSpec rhs fn
-          let argExprs ← argTerms.mapM
-            (translatePureExprWithTypes fields constDecls immutableDecls params locals)
+          let argExprs ← translateInternalHelperCallArgs
+            fields constDecls immutableDecls params locals fn argTerms
           `(Compiler.CompilationModel.Expr.internalCall
               $(strTerm (internalHelperSpecNameFor fn))
               [ $[$argExprs],* ])
@@ -5041,8 +5074,8 @@ private def translateEffectStmt
           if fn.returnTy != .unit then
             throwErrorAt stx
               s!"helper call '{fn.name}' returns {renderValueType fn.returnTy}; use `let ... ← {fn.name} ...` or tuple destructuring"
-          let argExprs ← argTerms.mapM
-            (translatePureExprWithTypes fields constDecls immutableDecls params locals)
+          let argExprs ← translateInternalHelperCallArgs
+            fields constDecls immutableDecls params locals fn argTerms
           `(Compiler.CompilationModel.Stmt.internalCall
               $(strTerm (internalHelperSpecNameFor fn))
               [ $[$argExprs],* ])

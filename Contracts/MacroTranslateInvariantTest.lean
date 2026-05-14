@@ -334,6 +334,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.LeanDefHelperSmoke.spec
   , Contracts.Smoke.DirectHelperCallSmoke.spec
   , Contracts.Smoke.MultiReturnHelperSmoke.spec
+  , Contracts.Smoke.ArrayHelperCallSmoke.spec
   , Contracts.Smoke.InitializerSmoke.spec
   , Contracts.Smoke.ConstantSmoke.spec
   , Contracts.Smoke.ImmutableSmoke.spec
@@ -459,6 +460,7 @@ private def expectedExternalSignatures : List (String × List String) :=
   , ("DirectHelperCallSmoke", ["addToTotal(uint256)", "readTotalPlus(uint256)", "pairWithTotal(uint256)",
       "runHelpers(uint256,uint256,uint256)", "snapshot()"])
   , ("MultiReturnHelperSmoke", ["summarize(uint256)", "useSummary(uint256)"])
+  , ("ArrayHelperCallSmoke", ["first(uint256[])", "useFirst(uint256[])"])
   , ("InitializerSmoke", ["initOwner(address)", "upgradeToV2()"])
   , ("ConstantSmoke", ["feeOn(uint256)", "treasuryAddr()"])
   , ("ImmutableSmoke", ["supplyCap()", "treasuryAddr()", "shadowed(uint256)"])
@@ -597,6 +599,7 @@ private def expectedExternalSelectors : List (String × List String) :=
   , ("LeanDefHelperSmoke", ["0x42dbad08", "0x9ca603a4"])
   , ("DirectHelperCallSmoke", ["0x623f577a", "0xe9696d56", "0xe176587e", "0xa392867e", "0x9711715a"])
   , ("MultiReturnHelperSmoke", ["0x9c9c9cd5", "0xbe1e29cd"])
+  , ("ArrayHelperCallSmoke", ["0x665cb27f", "0x3a11b9c7"])
   , ("InitializerSmoke", ["0x0d009297", "0xcc01053e"])
   , ("ConstantSmoke", ["0x9c421eb5", "0x30d9a62a"])
   , ("ImmutableSmoke", ["0x8f770ad0", "0x30d9a62a", "0x655b96ec"])
@@ -987,6 +990,17 @@ private def checkMultiReturnHelperSmoke : IO Unit := do
         helperName == "internal_summarize"
     | _ => false)
 
+private def checkArrayHelperCallSmoke : IO Unit := do
+  expectTrue
+    "ArrayHelperCallSmoke: dynamic Array helper arg expands to offset/length Yul args"
+    (match Contracts.Smoke.ArrayHelperCallSmoke.useFirst_modelBody with
+    | [Stmt.letVar "x"
+          (Expr.internalCall "internal_first"
+            [Expr.param "xs_data_offset", Expr.param "xs_length"]),
+        Stmt.setStorage "ok" (Expr.localVar "x"),
+        Stmt.stop] => true
+    | _ => false)
+
 private def checkNamedStructParamSmoke : IO Unit := do
   expectTrue
     "NamedStructParamSmoke: nested struct leaf projection uses recursive tuple binding"
@@ -1180,6 +1194,7 @@ private def checkSpec (spec : CompilationModel) : IO Unit := do
   checkSpecialEntrypointSmoke
   checkDirectHelperCallSmoke
   checkMultiReturnHelperSmoke
+  checkArrayHelperCallSmoke
   checkNamedStructParamSmoke
   checkCurveCutArraySmoke
   checkDynamicStructArraySmoke

@@ -2445,8 +2445,6 @@ mutual
       (fields : List Field)
       (fuel : Nat)
       (state : RuntimeState) : Expr → Option Nat
-    | .arrayElementDynamicMemberLength _ _ _ => none
-    | .arrayElementDynamicMemberElement _ _ _ _ => none
     | .literal n => some (wordNormalize n)
     | .param name => some (lookupValue state.bindings name)
       | .storage fieldName =>

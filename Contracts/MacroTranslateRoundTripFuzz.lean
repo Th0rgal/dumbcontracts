@@ -122,6 +122,7 @@ private def macroSpecs : List CompilationModel :=
   , Contracts.Smoke.LeanDefHelperSmoke.spec
   , Contracts.Smoke.DirectHelperCallSmoke.spec
   , Contracts.Smoke.MultiReturnHelperSmoke.spec
+  , Contracts.Smoke.ArrayHelperCallSmoke.spec
   , Contracts.Smoke.InitializerSmoke.spec
   , Contracts.Smoke.ConstantSmoke.spec
   , Contracts.Smoke.ImmutableSmoke.spec

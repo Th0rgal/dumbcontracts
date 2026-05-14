@@ -16903,6 +16903,34 @@ private theorem NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_le
         Compiler.Proofs.YulGeneration.Backends.Native.nativeSwitchHasSelectorStore
         hBody
 
+/-- S5: Selected user bodies of shape `preStmts ++ [.leave]` with all statements
+in the `NativePreservableStraightStmts` fragment execute as a native checkpoint
+and project to the same observable result as `execIRFunction`.
+
+CURRENTLY LIMITED: this version only handles `preStmts = []` (body =
+`[] ++ [.leave] = [.leave]`, reducing to `of_leave_body`). The general case
+requires the per-stmt `NativeStmtPreservesWord_revived` framework (P1 in the
+stage-2 DAG). Once that framework lands, this constructor generalizes by
+removing `hOnlyEmpty` and inducting over `NativePreservableStraightStmts preStmts`. -/
+private theorem NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_nativePreservableStraightStmts_leave
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (state : IRState)
+    (observableSlots : List Nat)
+    (preStmts : List Compiler.Yul.YulStmt)
+    (_hPreservable :
+      Compiler.Proofs.YulGeneration.Backends.Native.NativePreservableStraightStmts preStmts)
+    (hOnlyEmpty : preStmts = [])
+    (hBody : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.body = preStmts ++ [.leave]) :
+    NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived irContract tx
+      state observableSlots := by
+  apply NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_leave_body
+  intro fn hFind
+  rw [hBody fn hFind, hOnlyEmpty, List.nil_append]
+
 /-- Selected user bodies consisting of a single `.block [.leave]` produce the
 same observable result as the bare `.leave` body.
 

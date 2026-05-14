@@ -217,6 +217,13 @@ def arrayElementChecked {α : Type} (values : Array α) (index : Uint256) : Cont
     ContractResult.success (values[(index : Nat)]'h) state
   else
     ContractResult.revert "Array index out of bounds" state
+def allocArray (len : Uint256) : Contract (Array Uint256) :=
+  pure (Array.replicate (len : Nat) 0)
+def setMemoryArrayElement (values : Array Uint256) (index value : Uint256) : Contract Unit :=
+  let _ := values
+  let _ := index
+  let _ := value
+  pure ()
 def returnArray {α : Type} (values : Array α) : Contract (Array α) := pure values
 def returnValues (_values : List Uint256) : Contract Unit := pure ()
 def returnBytes {α : Type} (value : α) : Contract α := pure value

@@ -532,7 +532,17 @@ def validateScopedStmtIdentifiers
           throw s!"Compilation error: {context} ECM '{mod.name}' redeclares result '{rv}' in the same scope"
         scope := rv :: scope
       pure scope
-  | Stmt.returnArray _ | Stmt.returnBytes _ | Stmt.returnStorageWords _
+  | Stmt.returnArray name =>
+      match findParamType params name with
+      | some (ParamType.array _) => pure localScope
+      | some ty =>
+          throw s!"Compilation error: {context} Stmt.returnArray '{name}' requires array parameter or memory-array local, got {repr ty}"
+      | none =>
+          if localScope.contains s!"{name}_data_offset" && localScope.contains s!"{name}_length" then
+            pure localScope
+          else
+            throw s!"Compilation error: {context} Stmt.returnArray '{name}' requires parameter '{name}' or local bindings '{name}_data_offset' and '{name}_length'"
+  | Stmt.returnBytes _ | Stmt.returnStorageWords _
   | Stmt.revertReturndata | Stmt.stop =>
       pure localScope
 termination_by s => sizeOf s

@@ -14617,6 +14617,68 @@ theorem NativeBlockPreservesWord_of_never_ok
   intro fuel state final _hLookup hExec
   exact absurd hExec (hNeverOk fuel state final)
 
+/-- `_revived` block preservation for the singleton revert body
+`[nativeRevertZeroZeroStmt]`. Proved via the vacuity helper: revert always
+errors, so `exec ... = .ok final` is structurally unsatisfiable.
+
+This is the first leaf of the parallel `_revived` upstream chain needed by
+the dispatcher continuation provider — mirror of the OLD-form
+`NativeBlockPreservesWord_nativeRevertZeroZero` (in EndToEnd.lean) without
+going through the (currently missing) `_revived` primitive call chain. -/
+theorem NativeBlockPreservesWord_revived_nativeRevertZeroZero
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
+    NativeBlockPreservesWord_revived name value
+      [nativeRevertZeroZeroStmt] codeOverride := by
+  apply NativeBlockPreservesWord_revived_of_never_ok
+  intro fuel state final hExec
+  -- For fuel = n + 7, use exec_revert_zero_zero_error + exec_block_cons_error
+  match fuel, hExec with
+  | n + 7, hExec =>
+    have hStmt :
+        EvmYul.Yul.exec (n + 6) nativeRevertZeroZeroStmt codeOverride state =
+          .error EvmYul.Yul.Exception.Revert :=
+      exec_revert_zero_zero_error n state codeOverride
+    have hBlock :
+        EvmYul.Yul.exec (Nat.succ (n + 6)) (.Block [nativeRevertZeroZeroStmt])
+          codeOverride state = .error EvmYul.Yul.Exception.Revert :=
+      exec_block_cons_error (n + 6) nativeRevertZeroZeroStmt [] codeOverride
+        state EvmYul.Yul.Exception.Revert hStmt
+    have hFuelEq : n + 7 = Nat.succ (n + 6) := rfl
+    rw [hFuelEq, hBlock] at hExec
+    cases hExec
+  | 0, hExec => simp [EvmYul.Yul.exec] at hExec
+  | 1, hExec =>
+      simp [EvmYul.Yul.exec, nativeRevertZeroZeroStmt] at hExec
+  | 2, hExec =>
+      have : EvmYul.Yul.exec (0 + 6) nativeRevertZeroZeroStmt codeOverride state =
+        .error EvmYul.Yul.Exception.Revert := exec_revert_zero_zero_error 0 state codeOverride
+      simp [EvmYul.Yul.exec, nativeRevertZeroZeroStmt,
+        EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalTail,
+        EvmYul.Yul.execPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
+        EvmYul.Yul.multifill'] at hExec
+  | 3, hExec =>
+      simp [EvmYul.Yul.exec, nativeRevertZeroZeroStmt,
+        EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalTail,
+        EvmYul.Yul.execPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
+        EvmYul.Yul.multifill'] at hExec
+  | 4, hExec =>
+      simp [EvmYul.Yul.exec, nativeRevertZeroZeroStmt,
+        EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalTail,
+        EvmYul.Yul.execPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
+        EvmYul.Yul.multifill'] at hExec
+  | 5, hExec =>
+      simp [EvmYul.Yul.exec, nativeRevertZeroZeroStmt,
+        EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalTail,
+        EvmYul.Yul.execPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
+        EvmYul.Yul.multifill'] at hExec
+  | 6, hExec =>
+      simp [EvmYul.Yul.exec, nativeRevertZeroZeroStmt,
+        EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalTail,
+        EvmYul.Yul.execPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
+        EvmYul.Yul.multifill'] at hExec
+
 /-- `_revived` block preservation for the body shape `[.Block [], .Block [.Leave]]`
 — the lowered form of an IR `[.block [], .block [.leave]]` body (F4's body
 shape). Used by the future label-prefix lift for the block-leave case. -/

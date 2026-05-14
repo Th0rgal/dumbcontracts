@@ -532,3 +532,38 @@ substrate hit `orphan_no_runner` and freeze failures on 4/4 spawn attempts
 for Layer D and Layer EF, with no convergence in this session. Direct
 implementation across multiple turns is the only working path until the
 substrate (sandboxed.sh) is fixed.
+
+## Stage 2 Plan (after #1826 foundation merge)
+
+The `_revived` foundation is now landed in main (#1826). Stage 2 carries
+the remaining Layer D / E / F / G work in this stacked PR.
+
+### Stage 2 scope (all deferred from #1826)
+
+- **D1 / S5**: `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_nativePreservableStraightStmts_leave`
+  + new source-side helper
+  `nativeResultsMatchOn_execIRFunction_nativePreservableStraightStmts_leave_body_markedPrefix`
+- **D2 / S6**: `NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_bridgedStraightStmts_falling_through`
+  + new source-side helper
+  `nativeResultsMatchOn_execIRFunction_bridgedStraightStmts_falling_through_body_markedPrefix`
+- **E2/E4/E6/E7 / S7**: success-bridge wiring via `_revived` cascade
+- **F2/F4/F6/F7**: label-prefix variants
+- **G / S8**: drop `hUserBodyHalt` premise
+
+### Architectural prerequisite
+
+D1 and D2 both require a per-`BridgedStraightStmt`-constructor IR↔native
+observation-equivalence theorem that does not currently exist as generic
+infrastructure. The existing concrete-body helpers (e.g.
+`store0_calldataload4_stop_markedPrefix`) hand-roll their own equivalence
+inline. Stage 2's first task is to build the generic compositional
+theorem (~500-1000 LoC of inductive proof per direction).
+
+### Stage 2 sequencing
+
+1. Build the per-`BridgedStraightStmt` IR↔native observation correspondence
+2. D2 (simpler — falling-through case)
+3. D1 (preStmts ++ [.leave] case)
+4. E2/E4/E6/E7 success-bridge cascade (Path B chains using `_revived`)
+5. F2/F4/F6/F7 label-prefix variants
+6. S8 dispatcher refactor

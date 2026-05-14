@@ -366,6 +366,11 @@ inductive Expr
       e.g. `txn.nullifierHashes.length` where `txn` is an element of a
       struct-array parameter.  (verity#1849, G1) -/
   | arrayElementDynamicMemberLength (name : String) (index : Expr) (wordOffset : Nat)
+  /-- Data offset of a dynamic word-array member nested inside a
+      struct-array element.  The returned word points at the first element
+      word (immediately after the member's ABI length word), matching the
+      `_data_offset` convention used for direct dynamic-array parameters. -/
+  | arrayElementDynamicMemberDataOffset (name : String) (index : Expr) (wordOffset : Nat)
   /-- Element access into a dynamic word-array member nested inside a
       struct-array element.  Given a struct-array parameter `name` indexed
       at `index`, dereferences the head pointer at `wordOffset` (relative

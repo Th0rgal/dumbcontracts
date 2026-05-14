@@ -84,6 +84,7 @@ def validateInteropExpr (context : String) : Expr → Except String Unit
   | Expr.storageArrayElement _ index =>
       validateInteropExpr context index
   | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ =>
       validateInteropExpr context index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex => do

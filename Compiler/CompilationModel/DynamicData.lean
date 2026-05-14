@@ -44,6 +44,12 @@ def checkedArrayElementDynamicMemberLengthCalldataHelperName : String :=
 def checkedArrayElementDynamicMemberLengthMemoryHelperName : String :=
   "__verity_array_element_dynamic_member_length_memory_checked"
 
+def checkedArrayElementDynamicMemberDataOffsetCalldataHelperName : String :=
+  "__verity_array_element_dynamic_member_data_offset_calldata_checked"
+
+def checkedArrayElementDynamicMemberDataOffsetMemoryHelperName : String :=
+  "__verity_array_element_dynamic_member_data_offset_memory_checked"
+
 def checkedArrayElementDynamicMemberElementCalldataHelperName : String :=
   "__verity_array_element_dynamic_member_element_calldata_checked"
 
@@ -266,6 +272,70 @@ def checkedArrayElementDynamicMemberLengthCalldataHelper : YulStmt :=
 def checkedArrayElementDynamicMemberLengthMemoryHelper : YulStmt :=
   checkedArrayElementDynamicMemberLengthHelper
     checkedArrayElementDynamicMemberLengthMemoryHelperName
+    "mload"
+    none
+
+/-- Yul helper for `Expr.arrayElementDynamicMemberDataOffset`.
+    It follows the same ABI walk as the dynamic-member length helper, but
+    returns the offset of the first element word after the member length
+    word.  This matches the `_data_offset` convention used for direct
+    dynamic-array parameters. -/
+private def checkedArrayElementDynamicMemberDataOffsetHelper
+    (helperName loadOp : String) (sizeExpr? : Option YulExpr) : YulStmt :=
+  let offsetTableBytes := YulExpr.call "mul" [YulExpr.ident "length", YulExpr.lit 32]
+  let elementOffsetSlot := YulExpr.call "add" [
+    YulExpr.ident "data_offset",
+    YulExpr.call "mul" [YulExpr.ident "index", YulExpr.lit 32]
+  ]
+  let elementHeadPos := YulExpr.call "add" [
+    YulExpr.ident "data_offset",
+    YulExpr.ident "__element_rel_offset"
+  ]
+  let memberHeadSlot := YulExpr.call "add" [
+    YulExpr.ident "__element_head_pos",
+    YulExpr.call "mul" [YulExpr.ident "word_offset", YulExpr.lit 32]
+  ]
+  let memberDataPos := YulExpr.call "add" [
+    YulExpr.ident "__element_head_pos",
+    YulExpr.ident "__member_rel_offset"
+  ]
+  let sizeCheck :=
+    match sizeExpr? with
+    | some sizeExpr =>
+        [YulStmt.if_ (YulExpr.call "gt" [
+          YulExpr.ident "__member_data_pos",
+          YulExpr.call "sub" [sizeExpr, YulExpr.lit 32]
+        ]) [
+          YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+        ]]
+    | none => []
+  YulStmt.funcDef helperName ["data_offset", "length", "index", "word_offset"] ["word"] (
+    [
+      YulStmt.if_ (YulExpr.call "iszero" [
+        YulExpr.call "lt" [YulExpr.ident "index", YulExpr.ident "length"]
+      ]) [
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+      ],
+      YulStmt.let_ "__element_rel_offset" (YulExpr.call loadOp [elementOffsetSlot]),
+      YulStmt.if_ (YulExpr.call "lt" [YulExpr.ident "__element_rel_offset", offsetTableBytes]) [
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.lit 0])
+      ],
+      YulStmt.let_ "__element_head_pos" elementHeadPos,
+      YulStmt.let_ "__member_rel_offset" (YulExpr.call loadOp [memberHeadSlot]),
+      YulStmt.let_ "__member_data_pos" memberDataPos
+    ] ++ sizeCheck ++ [
+      YulStmt.assign "word" (YulExpr.call "add" [YulExpr.ident "__member_data_pos", YulExpr.lit 32])
+    ])
+
+def checkedArrayElementDynamicMemberDataOffsetCalldataHelper : YulStmt :=
+  checkedArrayElementDynamicMemberDataOffsetHelper
+    checkedArrayElementDynamicMemberDataOffsetCalldataHelperName
+    "calldataload"
+    (some (YulExpr.call "calldatasize" []))
+
+def checkedArrayElementDynamicMemberDataOffsetMemoryHelper : YulStmt :=
+  checkedArrayElementDynamicMemberDataOffsetHelper
+    checkedArrayElementDynamicMemberDataOffsetMemoryHelperName
     "mload"
     none
 

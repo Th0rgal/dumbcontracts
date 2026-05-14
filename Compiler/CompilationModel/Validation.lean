@@ -278,6 +278,7 @@ def exprReadsStateOrEnv : Expr → Bool
   | Expr.storageArrayLength _ => true
   | Expr.storageArrayElement _ index => true || exprReadsStateOrEnv index
   | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ => exprReadsStateOrEnv index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex =>
       exprReadsStateOrEnv index || exprReadsStateOrEnv innerIndex
@@ -357,6 +358,7 @@ def exprWritesState : Expr → Bool
   | Expr.storageArrayElement _ index =>
       exprWritesState index
   | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ =>
       exprWritesState index
   | Expr.arrayElementDynamicMemberElement _ index _ innerIndex =>
@@ -510,6 +512,7 @@ def exprHasUntrackableWrites : Expr → Bool
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberDataOffset _ key _
   | Expr.arrayElementDynamicMemberLength _ key _
   | Expr.storageArrayElement _ key =>
       exprHasUntrackableWrites key
@@ -650,6 +653,7 @@ def exprContainsExternalCall : Expr → Bool
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberDataOffset _ key _
   | Expr.arrayElementDynamicMemberLength _ key _
   | Expr.storageArrayElement _ key =>
       exprContainsExternalCall key
@@ -720,6 +724,7 @@ def exprMayContainExternalCall : Expr → Bool
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
   | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
+  | Expr.arrayElementDynamicMemberDataOffset _ key _
   | Expr.arrayElementDynamicMemberLength _ key _
   | Expr.storageArrayElement _ key =>
       exprMayContainExternalCall key
@@ -1169,6 +1174,7 @@ def exprContainsAdtConstruct : Expr → Bool
   | Expr.returndataOptionalBoolAt a
   | Expr.storageArrayElement _ a | Expr.arrayElement _ a | Expr.arrayElementWord _ a _ _
   | Expr.arrayElementDynamicWord _ a _
+  | Expr.arrayElementDynamicMemberDataOffset _ a _
   | Expr.arrayElementDynamicMemberLength _ a _ =>
       exprContainsAdtConstruct a
   | Expr.arrayElementDynamicMemberElement _ a _ b =>

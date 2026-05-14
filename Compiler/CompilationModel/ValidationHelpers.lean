@@ -81,6 +81,7 @@ def collectExprNames : Expr → List String
   | Expr.paramDynamicHeadWord name _ => [name]
   | Expr.arrayElement name index | Expr.arrayElementWord name index _ _
   | Expr.arrayElementDynamicWord name index _
+  | Expr.arrayElementDynamicMemberDataOffset name index _
   | Expr.arrayElementDynamicMemberLength name index _ =>
       name :: collectExprNames index
   | Expr.arrayElementDynamicMemberElement name index _ innerIndex =>

@@ -312,6 +312,17 @@ def compileExpr (fields : List Field)
         indexExpr,
         YulExpr.lit wordOffset
       ])
+  | Expr.arrayElementDynamicMemberDataOffset name index wordOffset => do
+      let indexExpr ← compileExpr fields dynamicSource index
+      let helperName := match dynamicSource with
+        | .calldata => checkedArrayElementDynamicMemberDataOffsetCalldataHelperName
+        | .memory => checkedArrayElementDynamicMemberDataOffsetMemoryHelperName
+      pure (YulExpr.call helperName [
+        YulExpr.ident s!"{name}_data_offset",
+        YulExpr.ident s!"{name}_length",
+        indexExpr,
+        YulExpr.lit wordOffset
+      ])
   | Expr.arrayElementDynamicMemberElement name index wordOffset innerIndex => do
       let indexExpr ← compileExpr fields dynamicSource index
       let innerIndexExpr ← compileExpr fields dynamicSource innerIndex

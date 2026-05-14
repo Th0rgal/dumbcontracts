@@ -29,11 +29,8 @@ def freshInternalRetNames (returns : List ParamType) (usedNames : List String) :
 def internalFunctionYulParamNames (params : List Param) : List String :=
   params.flatMap fun param =>
     match param.ty with
-    | ParamType.array elemTy =>
-        if isSingleWordStaticParamType elemTy then
-          [s!"{param.name}_data_offset", s!"{param.name}_length"]
-        else
-          [param.name]
+    | ParamType.array _ =>
+        [s!"{param.name}_data_offset", s!"{param.name}_length"]
     | _ => [param.name]
 
 -- Compile internal function to a Yul function definition (#181)
@@ -436,6 +433,8 @@ def compileValidatedCore (spec : CompilationModel) (selectors : List Nat) : Exce
       -- correct and avoids a separate predicate.
       , checkedArrayElementDynamicMemberLengthCalldataHelper
       , checkedArrayElementDynamicMemberLengthMemoryHelper
+      , checkedArrayElementDynamicMemberDataOffsetCalldataHelper
+      , checkedArrayElementDynamicMemberDataOffsetMemoryHelper
       -- verity#1849 G2: dynamic-member element helpers gated the same way.
       , checkedArrayElementDynamicMemberElementCalldataHelper
       , checkedArrayElementDynamicMemberElementMemoryHelper

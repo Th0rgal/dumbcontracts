@@ -1263,6 +1263,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selected_user_body_result_threshold  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_stop_body  -- private
   Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported
+  Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher_via_result
   Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_body_bridge_and_continuation  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_bridge_and_continuation  -- private
@@ -5595,4 +5596,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5309 theorems/lemmas (3564 public, 1745 private, 0 sorry'd)
+-- Total: 5310 theorems/lemmas (3565 public, 1745 private, 0 sorry'd)

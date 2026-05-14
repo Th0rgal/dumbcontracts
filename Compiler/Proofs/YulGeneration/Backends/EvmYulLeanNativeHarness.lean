@@ -6619,6 +6619,32 @@ theorem eval_lowerExprNative_lt_calldatasize_ok_fuel
     EvmYul.Yul.evalPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
     EvmYul.Yul.head', EvmYul.Yul.State.executionEnv]
 
+/-- At fuel `n + 8` with Ok input state, the dispatcher's `lt(calldatasize, k)`
+guard eval returns the same Ok state, so `final.reviveJump = state.reviveJump`.
+Direct corollary of `eval_lowerExprNative_lt_calldatasize_ok_fuel`. Used to
+discharge the `hCondReviveJump` premise of the parallel `_revived`
+switchCaseBody chain when the caller can establish (a) sufficient fuel and
+(b) Ok input form. Universal-input discharge (handling Checkpoint/OutOfFuel
+input and fuel < 8) is a follow-up. -/
+theorem eval_lt_calldatasize_lit_preserves_reviveJump_of_ok_at_fuel
+    (k : Nat)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (shared : EvmYul.SharedState .Yul)
+    (store : EvmYul.Yul.VarStore)
+    (n : Nat) :
+    ∀ final v,
+      EvmYul.Yul.eval (n + 8)
+          (Backends.lowerExprNative
+            (Yul.YulExpr.call "lt"
+              [Yul.YulExpr.call "calldatasize" [],
+               Yul.YulExpr.lit k]))
+          codeOverride (.Ok shared store) = .ok (final, v) →
+        final.reviveJump = (EvmYul.Yul.State.Ok shared store).reviveJump := by
+  intro final v hEval
+  rw [eval_lowerExprNative_lt_calldatasize_ok_fuel] at hEval
+  obtain ⟨hStateEq, _⟩ := Prod.mk.inj (Except.ok.inj hEval)
+  rw [hStateEq]
+
 /-- Native evaluation of the lowered `sload(lit slot)` Yul expression. At any
     fuel `≥ fuel + 6`, the eval reduces to the closed-form pair returned by
     EVMYulLean's `SLOAD` primitive: the new `SharedState` carries the

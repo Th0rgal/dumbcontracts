@@ -19071,6 +19071,47 @@ private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived.o
           reservedNames n0))
       (EvmYul.UInt256.ofNat 1) (some nativeContract)
 
+/-- Leave-only selected user bodies preserve the generated matched flag in the
+revived form. Body `[.leave]` lowers to `[.Leave]`, and
+`NativeStmtPreservesWord_revived_leave` discharges the preservation through
+the `reviveJump` projection.
+
+This is the breakthrough constructor: in the OLD form it was structurally
+impossible (because `Yul.State.store` returns `default = ⟨0⟩` for the
+Checkpoint produced by `.Leave`); in the `_revived` form `state.reviveJump`
+projects the Checkpoint back to its inner `Ok` state so the matched-flag
+lookup reads the actual store value. -/
+private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived.of_leave_body
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (hLeave :
+      ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+          some fn →
+        fn.body = [.leave]) :
+    NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived irContract tx := by
+  intro nativeContract fn reservedNames n0 cases' body' bodyNative bodyStart
+    bodyEnd userBodyStart _hLowerRuntime hFind _hCase _hBodyLower
+    hUserBodyLower _pre _suffix _hCases
+  have hBody : fn.body = [.leave] := hLeave fn hFind
+  rw [hBody] at hUserBodyLower
+  simp [Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds_cons,
+    Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds_nil,
+    Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_leave,
+    Bind.bind, Except.bind, Pure.pure, Except.pure, List.append_nil] at hUserBodyLower
+  rcases hUserBodyLower with ⟨rfl, _rfl⟩
+  exact
+    Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived_singleton
+      (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0))
+      (EvmYul.UInt256.ofNat 1) .Leave (some nativeContract)
+      (Compiler.Proofs.YulGeneration.Backends.Native.NativeStmtPreservesWord_revived_leave
+        (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+          (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+            reservedNames n0))
+        (EvmYul.UInt256.ofNat 1) (some nativeContract))
+
 /-- Selected user bodies of shape `[.block []]` lower to `[.Block []]`, which
 preserves the generated matched flag via `NativeStmtPreservesWord_empty_block`. -/
 private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_block_empty

@@ -567,3 +567,45 @@ theorem (~500-1000 LoC of inductive proof per direction).
 4. E2/E4/E6/E7 success-bridge cascade (Path B chains using `_revived`)
 5. F2/F4/F6/F7 label-prefix variants
 6. S8 dispatcher refactor
+
+### Stage 2 progress (2026-05-14)
+
+**Shipped degenerate slots** (hOnlyEmpty narrowing — preStmts = []):
+
+- D1/S5 degenerate (`193537a5`), D2/S6 degenerate (`7b9c2e86`)
+- E7 degenerate (`c272db72`) + 5-commit `_revived` Preserves chain
+- E2/E4/E6 SuccessBridge slots (`f1c087fc`) — conditional on
+  `LeaveAwareCallDispatcherContinuation`
+- S8 `_via_result` private variant (`e0dd38ad` + `cebb0325`)
+- F2/F4/F6 direct (`62f662ea` + `b4863167`), F7 via E3 delegation
+  (`eb9b9735` + `a52accfd`)
+
+**Parallel `_revived` upstream chain** (so the OLD-form
+`NativeBlockPreservesWord` is mirrored end-to-end on the dispatcher result
+stack — discharges `LeaveAwareCallDispatcherContinuation` unconditionally):
+
+- `NativeBlockPreservesWord_revived_nativeRevertZeroZero` (`b89b43cb` +
+  `9ba14c3d` refactor) — vacuity leaf
+- `NativeStmtPreservesWord_revived_if_of_cond_preserves_reviveJump`
+  (`0b4151d6`) — takes a `reviveJump`-stated cond premise
+- `NativeBlockPreservesWord_revived_switchCaseBody_payable_of_user_body`
+  (`b002443a`)
+- `NativeBlockPreservesWord_revived_switchCaseBody_nonpayable_of_user_body`
+  (`b5410c1a`)
+- **Remaining**: cond-`reviveJump` premise discharge for the dispatcher's
+  specific `lt(calldatasize, k)` and `callvalue()` guards (the existing
+  `eval_lowerExprNative_lt_calldatasize_ok_fuel` handles Ok input states;
+  non-Ok input requires per-state-form eval analysis — see memory
+  `yul-state-lookup-bracket-vs-lookup`). Plus the parallel
+  `nativeGeneratedCallDispatcherResult_..._supported` dispatcher continuation
+  provider yielding `_revived` form.
+
+**Per-`BridgedStraightStmt` framework** — still REMAINING LONG POLE. Until
+shipped, D1/D2/E6/E7 strengthening blocked behind the `hOnlyEmpty :
+preStmts = []` narrowing.
+
+**Conflicts**: upstream main absorbed (merge commit `60d38ba8`) — incorporated
+PRs #1858-#1862 which added new IR Expr constructors
+(`arrayElementDynamicDataOffset`, `arrayElementDynamicMemberDataOffset`,
+`paramDynamicMember{Length,DataOffset,Element}`) that the fork conformance
+probe relies on.

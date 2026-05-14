@@ -13398,6 +13398,51 @@ theorem NativeStmtPreservesWord_if_of_cond_preserves_and_nativeStmtsWriteNames_n
     (NativeBlockPreservesWord_of_nativeStmtsWriteNames_not_mem
       name value body codeOverride hFresh hPreserves)
 
+/-- `_revived` mirror of `NativeStmtPreservesWord_if_of_cond_preserves` using a
+condition-state-preservation premise stated via `reviveJump` (instead of OLD-form
+`NativeExprPreservesWord` which is unsound on Checkpoint inputs — see memory
+`yul-state-lookup-bracket-vs-lookup`).
+
+The premise `hCondReviveJump` is per-condition; for the dispatcher's
+`lt(calldatasize, k)` and `callvalue` guards on Ok input, it follows from
+`eval_lowerExprNative_*_ok_fuel` (eval returns the same state). -/
+theorem NativeStmtPreservesWord_revived_if_of_cond_preserves_reviveJump
+    (name : EvmYul.Identifier)
+    (value : EvmYul.Literal)
+    (cond : EvmYul.Yul.Ast.Expr)
+    (body : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (hCondReviveJump :
+      ∀ fuel state final v,
+        EvmYul.Yul.eval fuel cond codeOverride state = .ok (final, v) →
+          final.reviveJump = state.reviveJump)
+    (hBody : NativeBlockPreservesWord_revived name value body codeOverride) :
+    NativeStmtPreservesWord_revived name value (.If cond body) codeOverride := by
+  intro fuel state final hLookup hExec
+  cases fuel with
+  | zero =>
+      simp [EvmYul.Yul.exec] at hExec
+  | succ fuel' =>
+      simp [EvmYul.Yul.exec] at hExec
+      cases hEval : EvmYul.Yul.eval fuel' cond codeOverride state with
+      | error err =>
+          simp [hEval] at hExec
+      | ok condResult =>
+          rcases condResult with ⟨condState, condValue⟩
+          have hReviveEq : condState.reviveJump = state.reviveJump :=
+            hCondReviveJump fuel' state condState condValue hEval
+          have hCondLookup : condState.reviveJump[name]! = value := by
+            rw [hReviveEq]; exact hLookup
+          simp [hEval] at hExec
+          by_cases hCondNonzero : condValue ≠ ⟨0⟩
+          · simp [hCondNonzero] at hExec
+            exact hBody fuel' condState final hCondLookup hExec
+          · have hCondZero : condValue = ⟨0⟩ :=
+              Decidable.not_not.mp hCondNonzero
+            simp [hCondZero] at hExec
+            cases hExec
+            exact hCondLookup
+
 theorem nativeSwitchBranchFold_ok_preserves_word
     (name : EvmYul.Identifier)
     (value cond : EvmYul.Literal)

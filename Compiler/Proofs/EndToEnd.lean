@@ -19241,6 +19241,29 @@ private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived.o
   intro fn hFind
   rw [hBody fn hFind, hOnlyEmpty]
 
+/-- E6 Preserves slot for the `_revived` chain: bodies of shape
+`preStmts ++ [.leave]` with `NativePreservableStraightStmts preStmts`.
+
+CURRENTLY LIMITED: only handles `preStmts = []` (body = `[.leave]`, reduces to
+the REAL `of_leave_body`). The general case requires per-stmt preservation
+lemmas discharged via the per-`NativePreservableStraightStmt` lowering
+sequence (which builds on PR #1826's `_revived` foundation). -/
+private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived.of_nativePreservableStraightStmts_leave
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (preStmts : List Compiler.Yul.YulStmt)
+    (_hPreservable :
+      Compiler.Proofs.YulGeneration.Backends.Native.NativePreservableStraightStmts preStmts)
+    (hOnlyEmpty : preStmts = [])
+    (hBody : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.body = preStmts ++ [.leave]) :
+    NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived irContract tx := by
+  apply NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived.of_leave_body
+  intro fn hFind
+  rw [hBody fn hFind, hOnlyEmpty, List.nil_append]
+
 /-- Selected user bodies of shape `[.block []]` lower to `[.Block []]`, which
 preserves the generated matched flag via `NativeStmtPreservesWord_empty_block`. -/
 private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_block_empty

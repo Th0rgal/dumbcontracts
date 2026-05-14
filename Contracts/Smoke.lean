@@ -1355,6 +1355,40 @@ verity_contract MultiReturnHelperSmoke where
     let (head, tail) ← summarize seed
     return (add head tail)
 
+verity_contract ArrayHelperCallSmoke where
+  storage
+    ok : Uint256 := slot 0
+
+  function first (xs : Array Uint256) : Uint256 := do
+    return arrayElement xs 0
+
+  function allow_post_interaction_writes useFirst (xs : Array Uint256) : Unit := do
+    let x ← first xs
+    setStorage ok x
+
+example :
+    ArrayHelperCallSmoke.first_modelBody =
+      [ Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.arrayElement
+            "xs"
+            (Compiler.CompilationModel.Expr.literal 0))
+      ] := rfl
+
+example :
+    ArrayHelperCallSmoke.useFirst_modelBody =
+      [ Compiler.CompilationModel.Stmt.letVar
+          "x"
+          (Compiler.CompilationModel.Expr.internalCall
+            "internal_first"
+            [ Compiler.CompilationModel.Expr.param "xs_data_offset"
+            , Compiler.CompilationModel.Expr.param "xs_length"
+            ])
+      , Compiler.CompilationModel.Stmt.setStorage
+          "ok"
+          (Compiler.CompilationModel.Expr.localVar "x")
+      , Compiler.CompilationModel.Stmt.stop
+      ] := rfl
+
 verity_contract ForEachMutableLocalSmoke where
   storage
     seen : Uint256 := slot 0
@@ -1999,6 +2033,7 @@ end SpecGenSmoke
 #check_contract PackedStorageWriteSmoke
 #check_contract DirectHelperCallSmoke
 #check_contract MultiReturnHelperSmoke
+#check_contract ArrayHelperCallSmoke
 #check_contract ForEachMutableLocalSmoke
 #check_contract Uint8Smoke
 #check_contract AddressHelpersSmoke

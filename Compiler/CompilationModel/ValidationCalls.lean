@@ -78,7 +78,11 @@ def firstReservedExternalCollision
         storageArrayHelpersRequired
         dynamicBytesEqHelpersRequired).contains name)
 
-def firstInternalDynamicParam
+def internalDynamicParamSupported : ParamType → Bool
+  | ParamType.array elemTy => isSingleWordStaticParamType elemTy
+  | _ => false
+
+def firstUnsupportedInternalDynamicParam
     (fns : List FunctionSpec) : Option (String × String × ParamType) :=
   let rec goFns : List FunctionSpec → Option (String × String × ParamType)
     | [] => none
@@ -86,10 +90,17 @@ def firstInternalDynamicParam
         if !fn.isInternal then
           goFns rest
         else
-          match fn.params.find? (fun p => isDynamicParamType p.ty) with
+          match fn.params.find? (fun p => isDynamicParamType p.ty && !internalDynamicParamSupported p.ty) with
           | some p => some (fn.name, p.name, p.ty)
           | none => goFns rest
   goFns fns
+
+def internalCallYulArgCountForParam : ParamType → Nat
+  | ParamType.array elemTy => if isSingleWordStaticParamType elemTy then 2 else 1
+  | _ => 1
+
+def internalCallYulArgCount (params : List Param) : Nat :=
+  params.foldl (fun acc param => acc + internalCallYulArgCountForParam param.ty) 0
 
 def findInternalFunctionByName (functions : List FunctionSpec)
     (callerName calleeName : String) : Except String FunctionSpec := do
@@ -107,8 +118,9 @@ def validateInternalCallShapesInExpr
   | Expr.internalCall calleeName args => do
       validateInternalCallShapesInExprList functions callerName args
       let callee ← findInternalFunctionByName functions callerName calleeName
-      if args.length != callee.params.length then
-        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
+      let expectedArgs := internalCallYulArgCount callee.params
+      if args.length != expectedArgs then
+        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} Yul arg(s), expected {expectedArgs} ({issue625Ref})."
       let returns ← functionReturns callee
       if returns.length != 1 then
         throw s!"Compilation error: function '{callerName}' uses Expr.internalCall '{calleeName}' but callee returns {returns.length} values; use Stmt.internalCallAssign for multi-return calls ({issue625Ref})."
@@ -287,8 +299,9 @@ def validateInternalCallShapesInStmt
   | Stmt.internalCall calleeName args => do
       validateInternalCallShapesInExprList functions callerName args
       let callee ← findInternalFunctionByName functions callerName calleeName
-      if args.length != callee.params.length then
-        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
+      let expectedArgs := internalCallYulArgCount callee.params
+      if args.length != expectedArgs then
+        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} Yul arg(s), expected {expectedArgs} ({issue625Ref})."
       let returns ← functionReturns callee
       if !returns.isEmpty then
         throw s!"Compilation error: function '{callerName}' uses Stmt.internalCall '{calleeName}' but callee returns {returns.length} values; use Expr.internalCall for single-return or Stmt.internalCallAssign for multi-return calls ({issue625Ref})."
@@ -309,8 +322,9 @@ def validateInternalCallShapesInStmt
           pure ()
       validateInternalCallShapesInExprList functions callerName args
       let callee ← findInternalFunctionByName functions callerName calleeName
-      if args.length != callee.params.length then
-        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} args, expected {callee.params.length} ({issue625Ref})."
+      let expectedArgs := internalCallYulArgCount callee.params
+      if args.length != expectedArgs then
+        throw s!"Compilation error: function '{callerName}' calls internal function '{calleeName}' with {args.length} Yul arg(s), expected {expectedArgs} ({issue625Ref})."
       let returns ← functionReturns callee
       if returns.length != names.length then
         throw s!"Compilation error: function '{callerName}' binds {names.length} values from internal function '{calleeName}', but callee returns {returns.length} ({issue625Ref})."

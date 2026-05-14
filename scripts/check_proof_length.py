@@ -1108,7 +1108,7 @@ ALLOWLIST_REGEXES: tuple[re.Pattern[str], ...] = tuple(
         r"^NativeStmtPreservesWord_(?:lowerStmtGroupNativeWithSwitchIds|"
         r"of_mem_lowerStmtsNativeWithSwitchIds)_of_mappingFreePreservableStraightStmt",
         r"^NativeStmtPreservesWord_let(?:Many)?_lowerExprNative_of_mappingFreeBridgedExpr$",
-        r"^NativeBlockPreservesWord_switchCaseBody_"
+        r"^NativeBlockPreservesWord(?:_revived)?_switchCaseBody_"
         r"(?:payable|nonpayable)_of_user_body$",
         r"^native_(?:mappingSlot_call_preserves_lookup|"
         r"mappingSlot_call_preserves_lookup_state|"

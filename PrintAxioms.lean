@@ -4555,6 +4555,7 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_nil_ok_add_ten
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_leave_ok_add_ten
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_block_leave_ok_add_ten
+  Compiler.Proofs.YulGeneration.Backends.Native.exec_block_label_prefix_leave_ok_add_ten
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_block_nil_ok_add_ten
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_stop_halt_add_ten
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_noop_block_head_eq
@@ -5606,4 +5607,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5320 theorems/lemmas (3568 public, 1752 private, 0 sorry'd)
+-- Total: 5321 theorems/lemmas (3569 public, 1752 private, 0 sorry'd)

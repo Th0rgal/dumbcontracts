@@ -19077,6 +19077,28 @@ private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_singl
             reservedNames n0))
         (EvmYul.UInt256.ofNat 1) (some nativeContract))
 
+/-- E7 Preserves prereq: Selected user bodies of shape `preStmts` (no terminator)
+with all statements in the `BridgedStraightStmts` fragment preserve the
+generated matched flag.
+
+CURRENTLY LIMITED: this version only handles `preStmts = []` (reduces to
+`of_empty_body`). The general case requires per-stmt preservation lemmas
+discharged via the per-`BridgedStraightStmt` observation framework. -/
+private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_bridgedStraightStmts_falling_through
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (preStmts : List Compiler.Yul.YulStmt)
+    (_hBridged : Compiler.Proofs.YulGeneration.Backends.BridgedStraightStmts preStmts)
+    (hOnlyEmpty : preStmts = [])
+    (hBody : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.body = preStmts) :
+    NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel irContract tx := by
+  apply NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_empty_body
+  intro fn hFind
+  rw [hBody fn hFind, hOnlyEmpty]
+
 /-- Empty selected user bodies discharge the full revived selector-hit user-body
 bridge. -/
 private theorem NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_empty_body
@@ -21619,6 +21641,48 @@ private theorem NativeGeneratedSelectorHitSuccessBridge.of_singleton_comment
       irContract tx state observableSlots hComment)
     (NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_singleton_comment
       irContract tx hComment)
+
+/-- E7 (S7 component): Selected user bodies of shape `preStmts` (no terminator)
+with all statements in the `BridgedStraightStmts` fragment supply the named
+selector-hit success bridge by composing the exec-only Revived leaf S6 with
+the matching Preserves bridge.
+
+CURRENTLY LIMITED: this version only handles `preStmts = []` (reduces to a
+chain of `of_empty_body` constructors). The general case requires the
+per-`BridgedStraightStmt` observation framework + list induction. -/
+private theorem NativeGeneratedSelectorHitSuccessBridge.of_bridgedStraightStmts_falling_through
+    (spec : CompilationModel.CompilationModel) (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors)
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (state : IRState)
+    (observableSlots : List Nat)
+    (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
+    (hSelectorRange : tx.functionSelector < Compiler.Constants.selectorModulus)
+    (hSelectorsRange :
+      ∀ selector, selector ∈ selectors →
+        selector < Compiler.Constants.selectorModulus)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (preStmts : List Compiler.Yul.YulStmt)
+    (hBridged : Compiler.Proofs.YulGeneration.Backends.BridgedStraightStmts preStmts)
+    (hOnlyEmpty : preStmts = [])
+    (hBody : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.body = preStmts)
+    (hReturnVars : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.returnVars = []) :
+    NativeGeneratedSelectorHitSuccessBridge irContract tx state
+      observableSlots :=
+  NativeGeneratedSelectorHitSuccessBridge.of_selected_user_body_exec_only_and_preserves
+    spec selectors hSupported irContract tx state observableSlots hcompile
+    hSelectorRange hSelectorsRange hNoWrap
+    (NativeGeneratedSelectedUserBodyExecOnlyBridgeAtFuelRevived.of_bridgedStraightStmts_falling_through
+      irContract tx state observableSlots preStmts hBridged hOnlyEmpty hBody hReturnVars)
+    (NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_bridgedStraightStmts_falling_through
+      irContract tx preStmts hBridged hOnlyEmpty hBody)
 
 /-- Generated `callDispatcher` result theorem from `SupportedSpec + compile`,
 modulo the exact-fuel lowered-user-body proof stated against

@@ -1203,6 +1203,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_empty_body  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_block_empty  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_singleton_comment  -- private
+  -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_bridgedStraightStmts_falling_through  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevived.of_empty_body  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectedUserBodyResultBridgeAtFuel.of_empty_body  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitUserBodyBridgeAtFuelRevived.of_execIRFunction  -- private
@@ -1233,6 +1234,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitSuccessBridge.of_empty_body  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitSuccessBridge.of_block_empty  -- private
   -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitSuccessBridge.of_singleton_comment  -- private
+  -- Compiler.Proofs.EndToEnd.NativeGeneratedSelectorHitSuccessBridge.of_bridgedStraightStmts_falling_through  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_exec_bridge_success_only_atFuel_revived_and_continuation  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_with_selector_hit_user_body_exec_bridge_success_only_atFuel_revived  -- private
   -- Compiler.Proofs.EndToEnd.nativeGeneratedCallDispatcherMatchesIR_of_compile_ok_supported_empty_selected_body  -- private
@@ -5579,4 +5581,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5293 theorems/lemmas (3564 public, 1729 private, 0 sorry'd)
+-- Total: 5295 theorems/lemmas (3564 public, 1731 private, 0 sorry'd)

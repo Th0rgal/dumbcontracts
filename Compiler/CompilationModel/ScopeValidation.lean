@@ -117,6 +117,11 @@ def validateScopedExprIdentifiers
           throw s!"Compilation error: {context} Expr.arrayLength '{name}' requires array parameter, got {repr ty}"
       | none =>
           throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayLength"
+  | Expr.memoryArrayLength name =>
+      if localScope.contains s!"{name}_data_offset" && localScope.contains s!"{name}_length" then
+        pure ()
+      else
+        throw s!"Compilation error: {context} Expr.memoryArrayLength '{name}' requires local bindings '{name}_data_offset' and '{name}_length'"
   | Expr.storageArrayLength _ =>
       pure ()
   | Expr.storageArrayElement _ index => do
@@ -132,6 +137,12 @@ def validateScopedExprIdentifiers
           throw s!"Compilation error: {context} Expr.arrayElement '{name}' requires array parameter, got {repr ty}"
       | none =>
           throw s!"Compilation error: {context} references unknown parameter '{name}' in Expr.arrayElement"
+      validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount index
+  | Expr.memoryArrayElement name index => do
+      if localScope.contains s!"{name}_data_offset" && localScope.contains s!"{name}_length" then
+        pure ()
+      else
+        throw s!"Compilation error: {context} Expr.memoryArrayElement '{name}' requires local bindings '{name}_data_offset' and '{name}_length'"
       validateScopedExprIdentifiers context params paramScope dynamicParams localScope constructorArgCount index
   | Expr.arrayElementWord name index elementWords wordOffset => do
       if elementWords == 0 then

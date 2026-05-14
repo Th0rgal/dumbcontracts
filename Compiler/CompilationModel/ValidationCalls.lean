@@ -199,6 +199,7 @@ def validateInternalCallShapesInExpr
       validateInternalCallShapesInExpr functions callerName key
   | Expr.storageArrayElement _ index
   | Expr.arrayElement _ index
+  | Expr.memoryArrayElement _ index
   | Expr.arrayElementWord _ index _ _
   | Expr.arrayElementDynamicWord _ index _
   | Expr.arrayElementDynamicDataOffset _ index
@@ -246,7 +247,7 @@ def validateInternalCallShapesInExpr
   | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize
   | Expr.localVar _
-  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.arrayLength _ | Expr.memoryArrayLength _ | Expr.storageArrayLength _
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
   | Expr.paramDynamicMemberDataOffset _ _
@@ -470,6 +471,7 @@ def validateExternalCallTargetsInExpr
       validateExternalCallTargetsInExprList externals context args
   | Expr.storageArrayElement _ index
   | Expr.arrayElement _ index
+  | Expr.memoryArrayElement _ index
   | Expr.arrayElementWord _ index _ _
   | Expr.arrayElementDynamicWord _ index _
   | Expr.arrayElementDynamicDataOffset _ index
@@ -515,7 +517,7 @@ def validateExternalCallTargetsInExpr
   | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize
   | Expr.localVar _
-  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.arrayLength _ | Expr.memoryArrayLength _ | Expr.storageArrayLength _
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
   | Expr.paramDynamicMemberDataOffset _ _

@@ -270,14 +270,15 @@ def exprReadsStateOrEnv : Expr → Bool
   | Expr.externalCall name args =>
       if name == builtinExpName then exprListReadsStateOrEnv args else true
   | Expr.internalCall _ _ => true
-  | Expr.arrayLength _ => false
+  | Expr.arrayLength _ | Expr.memoryArrayLength _ => false
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
   | Expr.paramDynamicMemberDataOffset _ _ => false
   | Expr.paramDynamicMemberElement _ _ innerIndex => exprReadsStateOrEnv innerIndex
   | Expr.storageArrayLength _ => true
   | Expr.storageArrayElement _ index => true || exprReadsStateOrEnv index
-  | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElement _ index | Expr.memoryArrayElement _ index
+  | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
   | Expr.arrayElementDynamicDataOffset _ index
   | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ => exprReadsStateOrEnv index
@@ -358,7 +359,8 @@ def exprWritesState : Expr → Bool
       false
   | Expr.storageArrayElement _ index =>
       exprWritesState index
-  | Expr.arrayElement _ index | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
+  | Expr.arrayElement _ index | Expr.memoryArrayElement _ index
+  | Expr.arrayElementWord _ index _ _ | Expr.arrayElementDynamicWord _ index _
   | Expr.arrayElementDynamicDataOffset _ index
   | Expr.arrayElementDynamicMemberDataOffset _ index _
   | Expr.arrayElementDynamicMemberLength _ index _ =>
@@ -371,6 +373,7 @@ def exprWritesState : Expr → Bool
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.selfBalance
   | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _
+  | Expr.memoryArrayLength _
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
   | Expr.paramDynamicMemberDataOffset _ _
@@ -516,7 +519,8 @@ def exprHasUntrackableWrites : Expr → Bool
   | Expr.ite cond thenVal elseVal =>
       exprHasUntrackableWrites cond || exprHasUntrackableWrites thenVal || exprHasUntrackableWrites elseVal
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
-  | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
+  | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.memoryArrayElement _ key
+  | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
   | Expr.arrayElementDynamicDataOffset _ key
   | Expr.arrayElementDynamicMemberDataOffset _ key _
@@ -543,6 +547,7 @@ def exprHasUntrackableWrites : Expr → Bool
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.selfBalance
   | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _
+  | Expr.memoryArrayLength _
   | Expr.storageArrayLength _
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
@@ -662,7 +667,8 @@ def exprContainsExternalCall : Expr → Bool
   | Expr.ite cond thenVal elseVal =>
       exprContainsExternalCall cond || exprContainsExternalCall thenVal || exprContainsExternalCall elseVal
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
-  | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
+  | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.memoryArrayElement _ key
+  | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
   | Expr.arrayElementDynamicDataOffset _ key
   | Expr.arrayElementDynamicMemberDataOffset _ key _
@@ -694,6 +700,7 @@ def exprContainsExternalCall : Expr → Bool
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.selfBalance
   | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _
+  | Expr.memoryArrayLength _
   | Expr.storageArrayLength _
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
@@ -738,7 +745,8 @@ def exprMayContainExternalCall : Expr → Bool
   | Expr.ite cond thenVal elseVal =>
       exprMayContainExternalCall cond || exprMayContainExternalCall thenVal || exprMayContainExternalCall elseVal
   | Expr.mapping _ key | Expr.mappingWord _ key _ | Expr.mappingPackedWord _ key _ _ | Expr.mappingUint _ key
-  | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.arrayElementWord _ key _ _
+  | Expr.structMember _ key _ | Expr.arrayElement _ key | Expr.memoryArrayElement _ key
+  | Expr.arrayElementWord _ key _ _
   | Expr.arrayElementDynamicWord _ key _
   | Expr.arrayElementDynamicDataOffset _ key
   | Expr.arrayElementDynamicMemberDataOffset _ key _
@@ -768,6 +776,7 @@ def exprMayContainExternalCall : Expr → Bool
   | Expr.caller | Expr.contractAddress | Expr.chainid | Expr.msgValue | Expr.selfBalance
   | Expr.blockTimestamp | Expr.blockNumber | Expr.blobbasefee
   | Expr.calldatasize | Expr.returndataSize | Expr.localVar _ | Expr.arrayLength _
+  | Expr.memoryArrayLength _
   | Expr.storageArrayLength _
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
@@ -1193,7 +1202,8 @@ def exprContainsAdtConstruct : Expr → Bool
   | Expr.bitNot a | Expr.logicalNot a | Expr.extcodesize a
   | Expr.mload a | Expr.tload a | Expr.calldataload a
   | Expr.returndataOptionalBoolAt a
-  | Expr.storageArrayElement _ a | Expr.arrayElement _ a | Expr.arrayElementWord _ a _ _
+  | Expr.storageArrayElement _ a | Expr.arrayElement _ a | Expr.memoryArrayElement _ a
+  | Expr.arrayElementWord _ a _ _
   | Expr.arrayElementDynamicWord _ a _
   | Expr.arrayElementDynamicDataOffset _ a
   | Expr.arrayElementDynamicMemberDataOffset _ a _
@@ -1236,7 +1246,7 @@ def exprContainsAdtConstruct : Expr → Bool
   | Expr.chainid | Expr.msgValue | Expr.selfBalance | Expr.blockTimestamp | Expr.blockNumber
   | Expr.blobbasefee | Expr.calldatasize | Expr.returndataSize
   | Expr.localVar _
-  | Expr.arrayLength _ | Expr.storageArrayLength _
+  | Expr.arrayLength _ | Expr.memoryArrayLength _ | Expr.storageArrayLength _
   | Expr.paramDynamicHeadWord _ _
   | Expr.paramDynamicMemberLength _ _
   | Expr.paramDynamicMemberDataOffset _ _

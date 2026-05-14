@@ -2652,13 +2652,13 @@ private def internalAddressArrayReturnSpec : CompilationModel := {
     },
     { name := "countEchoed"
       params := [{ name := "recipients", ty := ParamType.array ParamType.address }]
-      returnType := none
+      returnType := some FieldType.address
       body := [
         Stmt.internalCallAssign
           ["echoed_data_offset", "echoed_length"]
           "echoArray"
           [Expr.param "recipients_data_offset", Expr.param "recipients_length"],
-        Stmt.stop
+        Stmt.return (Expr.memoryArrayElement "echoed" (Expr.literal 0))
       ]
     }
   ]
@@ -4253,6 +4253,13 @@ set_option maxRecDepth 4096 in
     | _ => false
   expectTrue "internal address[] helper return binds data offset and length"
     internalAddressArrayReturnShape
+  let internalAddressArrayReturnYul ←
+    expectCompileToYul
+      "internal address[] helper return can be read as memory array"
+      internalAddressArrayReturnSpec
+  expectTrue "internal array return callers read returned array data from memory"
+    (contains internalAddressArrayReturnYul
+      s!"{checkedArrayElementMemoryHelperName}(echoed_data_offset, echoed_length, 0)")
   let addressStorageWordReturnCompiled :=
     match Compiler.CompilationModel.compile addressStorageWordReturnSpec
         (selectorsFor addressStorageWordReturnSpec) with

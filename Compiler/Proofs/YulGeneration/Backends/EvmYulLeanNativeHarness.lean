@@ -14488,7 +14488,7 @@ theorem NativeStmtPreservesWord_revived_leave
       cases state with
       | Ok shared store =>
           subst final
-          simp [EvmYul.Yul.State.setLeave, reviveJump_Leave_eq, reviveJump_Ok_eq]
+          simp [EvmYul.Yul.State.setLeave, reviveJump_Leave_eq]
           simpa [reviveJump_Ok_eq] using hLookup
       | OutOfFuel =>
           subst final

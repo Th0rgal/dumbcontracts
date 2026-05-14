@@ -17409,6 +17409,46 @@ private def NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel
             reservedNames n0))
         (EvmYul.UInt256.ofNat 1) bodyNative (some nativeContract)
 
+/-- Parallel `_revived` form of the matched-flag preservation bridge.
+
+This uses `NativeBlockPreservesWord_revived` (which reads through `reviveJump`)
+instead of `NativeBlockPreservesWord`. The `_revived` form is the one that
+handles Leave-ending bodies correctly — `final = Checkpoint (.Leave shared
+store)` has `final.reviveJump = Ok shared store`, so the lookup reads the
+inner store rather than falling through to ⟨0⟩ via the empty `default` Finmap.
+
+Used by the `_revived` chain for E2/E4/E6/E7 (Leave-ending success bridges)
+and by S7 components that need to preserve matched-flag through bodies whose
+exec path enters a Leave checkpoint. -/
+private def NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived
+    (irContract : IRContract)
+    (tx : IRTransaction) : Prop :=
+  ∀ (nativeContract : EvmYul.Yul.Ast.YulContract) (fn : IRFunction)
+    (reservedNames : List String) (n0 : Nat)
+    (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt))
+    (body' bodyNative : List EvmYul.Yul.Ast.Stmt)
+    (bodyStart bodyEnd userBodyStart : Nat),
+    Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative
+        (Compiler.emitYul irContract).runtimeCode = .ok nativeContract →
+    irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+        some fn →
+    cases'.find? (fun entry => entry.1 == tx.functionSelector) =
+        some (tx.functionSelector, body') →
+    Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+        reservedNames bodyStart
+        (Compiler.Proofs.YulGeneration.Backends.Native.switchCaseBody fn) =
+          .ok (body', bodyEnd) →
+    Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds
+        reservedNames userBodyStart fn.body =
+          .ok (bodyNative, bodyEnd) →
+    ∀ pre suffix,
+      cases' = pre ++ (tx.functionSelector, body') :: suffix →
+      Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived
+        (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+          (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+            reservedNames n0))
+        (EvmYul.UInt256.ofNat 1) bodyNative (some nativeContract)
+
 /-- Unified selected-user-body result boundary.
 
 Native lowered function bodies can finish either by returning normally to the
@@ -19001,6 +19041,31 @@ private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuel.of_empty
   rcases hUserBodyLower with ⟨rfl, _rfl⟩
   exact
     Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_nil
+      (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
+        (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
+          reservedNames n0))
+      (EvmYul.UInt256.ofNat 1) (some nativeContract)
+
+/-- Empty selected user bodies preserve the generated matched flag (revived
+form). Mirrors `of_empty_body` but uses `NativeBlockPreservesWord_revived_nil`
+so it can be composed with Leave-ending revived chains. -/
+private theorem NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived.of_empty_body
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (hEmpty :
+      ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+          some fn →
+        fn.body = []) :
+    NativeGeneratedSelectorHitUserBodyPreservesBridgeAtFuelRevived irContract tx := by
+  intro nativeContract fn reservedNames n0 cases' body' bodyNative bodyStart
+    bodyEnd userBodyStart _hLowerRuntime hFind _hCase _hBodyLower
+    hUserBodyLower _pre _suffix _hCases
+  have hBody : fn.body = [] := hEmpty fn hFind
+  simp [hBody] at hUserBodyLower
+  rcases hUserBodyLower with ⟨rfl, _rfl⟩
+  exact
+    Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived_nil
       (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
         (Compiler.Proofs.YulGeneration.Backends.freshNativeSwitchId
           reservedNames n0))

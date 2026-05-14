@@ -22431,6 +22431,118 @@ private theorem NativeGeneratedSelectorHitSuccessBridge.of_bridgedStraightStmts_
     hSelectorRange hSelectorsRange hNoWrap
     (fun fn hFind => by rw [hBody fn hFind, hOnlyEmpty])
 
+/-- F2 (label-prefix variant of E2): Selected user bodies of shape
+`[.block [], .leave]` supply the named selector-hit success bridge.
+
+CONDITIONAL: takes a body-shape-specific `ExecBridgeAtFuelRevivedLeaveAware`
+and the `LeaveAwareCallDispatcherContinuation` as hypotheses. The body-shape
+ExecBridge for `[.block [], .leave]` is TODO — needs a lift via
+`exec_block_noop_block_head_eq` (peel the `.Block []` head and reduce to the
+existing `ExecBridgeAtFuelRevivedLeaveAware.of_leave_body`). ~80-100 LoC of
+proof engineering. -/
+private theorem NativeGeneratedSelectorHitSuccessBridge.of_leave_body_with_label_prefix
+    (spec : CompilationModel.CompilationModel) (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors)
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (state : IRState)
+    (observableSlots : List Nat)
+    (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
+    (hSelectorRange : tx.functionSelector < Compiler.Constants.selectorModulus)
+    (hSelectorsRange :
+      ∀ selector, selector ∈ selectors →
+        selector < Compiler.Constants.selectorModulus)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (_hLabelLeave :
+      ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+          some fn →
+        fn.body = [.block [], .leave])
+    (hExecBridge :
+      NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevivedLeaveAware irContract tx
+        state observableSlots)
+    (hCont : LeaveAwareCallDispatcherContinuation irContract tx state observableSlots) :
+    NativeGeneratedSelectorHitSuccessBridge irContract tx state
+      observableSlots := by
+  intro nativeContract fn hLowerRuntime hFind hguards hArgs
+  exact
+    nativeGeneratedSelectorHit_success_of_user_body_exec_bridge_atFuel_revivedLeaveAware_and_continuation
+      spec selectors hSupported irContract tx state observableSlots hcompile
+      hSelectorRange hSelectorsRange hNoWrap hExecBridge hCont
+      nativeContract fn hLowerRuntime hFind hguards hArgs
+
+/-- F4 (label-prefix variant of E4): Selected user bodies of shape
+`[.block [], .block [.leave]]`. Same conditional pattern as F2 — body-shape
+ExecBridge for the prefixed shape is TODO. -/
+private theorem NativeGeneratedSelectorHitSuccessBridge.of_block_leave_with_label_prefix
+    (spec : CompilationModel.CompilationModel) (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors)
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (state : IRState)
+    (observableSlots : List Nat)
+    (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
+    (hSelectorRange : tx.functionSelector < Compiler.Constants.selectorModulus)
+    (hSelectorsRange :
+      ∀ selector, selector ∈ selectors →
+        selector < Compiler.Constants.selectorModulus)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (_hLabelBlockLeave :
+      ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+          some fn →
+        fn.body = [.block [], .block [.leave]])
+    (hExecBridge :
+      NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevivedLeaveAware irContract tx
+        state observableSlots)
+    (hCont : LeaveAwareCallDispatcherContinuation irContract tx state observableSlots) :
+    NativeGeneratedSelectorHitSuccessBridge irContract tx state
+      observableSlots := by
+  intro nativeContract fn hLowerRuntime hFind hguards hArgs
+  exact
+    nativeGeneratedSelectorHit_success_of_user_body_exec_bridge_atFuel_revivedLeaveAware_and_continuation
+      spec selectors hSupported irContract tx state observableSlots hcompile
+      hSelectorRange hSelectorsRange hNoWrap hExecBridge hCont
+      nativeContract fn hLowerRuntime hFind hguards hArgs
+
+/-- F6 (label-prefix variant of E6, degenerate): Selected user bodies of shape
+`.block [] :: preStmts ++ [.leave]` with `NativePreservableStraightStmts preStmts`
+and `preStmts = []` (degenerate empty case) supply the named selector-hit
+success bridge by delegating to F2 (`of_leave_body_with_label_prefix`) via
+`List.nil_append` rewriting. -/
+private theorem NativeGeneratedSelectorHitSuccessBridge.of_nativePreservableStraightStmts_leave_with_label_prefix
+    (spec : CompilationModel.CompilationModel) (selectors : List Nat)
+    (hSupported : SupportedSpec spec selectors)
+    (irContract : IRContract)
+    (tx : IRTransaction)
+    (state : IRState)
+    (observableSlots : List Nat)
+    (hcompile : CompilationModel.compile spec selectors = Except.ok irContract)
+    (hSelectorRange : tx.functionSelector < Compiler.Constants.selectorModulus)
+    (hSelectorsRange :
+      ∀ selector, selector ∈ selectors →
+        selector < Compiler.Constants.selectorModulus)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (preStmts : List Compiler.Yul.YulStmt)
+    (_hPreservable :
+      Compiler.Proofs.YulGeneration.Backends.Native.NativePreservableStraightStmts preStmts)
+    (hOnlyEmpty : preStmts = [])
+    (hBody : ∀ fn,
+        irContract.functions.find? (fun fn => fn.selector == tx.functionSelector) =
+            some fn →
+        fn.body = .block [] :: preStmts ++ [.leave])
+    (hExecBridge :
+      NativeGeneratedSelectorHitUserBodyExecBridgeAtFuelRevivedLeaveAware irContract tx
+        state observableSlots)
+    (hCont : LeaveAwareCallDispatcherContinuation irContract tx state observableSlots) :
+    NativeGeneratedSelectorHitSuccessBridge irContract tx state
+      observableSlots :=
+  NativeGeneratedSelectorHitSuccessBridge.of_leave_body_with_label_prefix
+    spec selectors hSupported irContract tx state observableSlots hcompile
+    hSelectorRange hSelectorsRange hNoWrap
+    (fun fn hFind => by rw [hBody fn hFind, hOnlyEmpty]; rfl)
+    hExecBridge hCont
+
 /-- E2 (S7 component): Selected user bodies of shape `[.leave]` supply the
 named selector-hit success bridge through the `_revived` Leave-aware chain.
 

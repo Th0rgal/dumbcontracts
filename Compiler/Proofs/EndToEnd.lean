@@ -23333,7 +23333,7 @@ bridge from `SupportedSpec` + body-shape dispatch by case-analyzing on
 the supported body shapes and applying the appropriate S5/S6/S7 chain. That
 requires the per-stmt observation framework to discharge the non-degenerate
 cases of S5/S6/E6/E7. -/
-theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher_via_result
+private theorem compile_preserves_native_evmYulLean_of_compile_ok_supported_generated_callDispatcher_via_result
     (spec : CompilationModel.CompilationModel) (selectors : List Nat)
     (hSupported : SupportedSpec spec selectors)
     (irContract : IRContract)

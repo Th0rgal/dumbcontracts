@@ -1995,6 +1995,14 @@ private def localMemoryArray?
   | .memoryArray, .array elemTy => some (name, elemTy)
   | _, _ => none
 
+private def requireSupportedMemoryArrayLocal
+    (stx : Term)
+    (context : String)
+    (locals : Array TypedLocal) : CommandElabM (String × ValueType) := do
+  match localMemoryArray? locals stx with
+  | some (name, elemTy) => pure (name, elemTy)
+  | none => throwErrorAt stx s!"{context} requires a memory-backed Array local"
+
 private def localArrayElementStructProjectionResolved?
     (locals : Array TypedLocal)
     (stx : Term) : Option (String × Term × ValueType × ValueType × Nat) := do
@@ -5068,16 +5076,25 @@ private partial def validateDoElemExprTypes
               requireSupportedLocalBindingType name s!"local binding '{toString name.getId}'" ty
               pure <| locals.push (mkTypedLocal (toString name.getId) ty)
       | `(doElem| let $name:ident ← $rhs:term) =>
-          match ← localInternalArrayReturnBind? fields constDecls immutableDecls externalDecls functions params locals rhs with
-          | some (_, _, elemTy) =>
+          match stripParens rhs with
+          | `(term| allocArray $len:term) =>
+              requireWordLikeType len "allocArray length"
+                (← inferPureExprType fields constDecls immutableDecls externalDecls params locals len)
               pure <| locals.push
                 { name := toString name.getId
-                  ty := .array elemTy
+                  ty := .array .uint256
                   source := .memoryArray }
-          | none =>
-              let ty ← inferBindSourceType fields constDecls immutableDecls externalDecls functions params locals rhs
-              requireSupportedLocalBindingType name s!"local binding '{toString name.getId}'" ty
-              pure <| locals.push (mkTypedLocal (toString name.getId) ty)
+          | _ =>
+              match ← localInternalArrayReturnBind? fields constDecls immutableDecls externalDecls functions params locals rhs with
+              | some (_, _, elemTy) =>
+                  pure <| locals.push
+                    { name := toString name.getId
+                      ty := .array elemTy
+                      source := .memoryArray }
+              | none =>
+                  let ty ← inferBindSourceType fields constDecls immutableDecls externalDecls functions params locals rhs
+                  requireSupportedLocalBindingType name s!"local binding '{toString name.getId}'" ty
+                  pure <| locals.push (mkTypedLocal (toString name.getId) ty)
       | `(doElem| $name:ident := $rhs:term) =>
           let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals rhs
           pure locals
@@ -5197,6 +5214,15 @@ private partial def validateEffectStmtExprTypes
       for key in (← expectMappingKeyTerms keys) do
         let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals key
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
+  | `(term| setMemoryArrayElement $name:term $index:term $value:term) => do
+      let (_, elemTy) ← requireSupportedMemoryArrayLocal name "setMemoryArrayElement" locals
+      unless isSingleWordStaticValueType elemTy do
+        throwErrorAt name s!"setMemoryArrayElement currently supports only Array<wordLike> memory locals, got Array {renderValueType elemTy}"
+      requireWordLikeType index "memory array index"
+        (← inferPureExprType fields constDecls immutableDecls externalDecls params locals index)
+      requireDeclaredValueType value "setMemoryArrayElement value" elemTy
+        (← inferPureExprType fields constDecls immutableDecls externalDecls params locals value)
+      pure ()
   | `(term| mstore $offset:term $value:term) | `(term| tstore $offset:term $value:term) => do
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals offset
       let _ ← inferPureExprType fields constDecls immutableDecls externalDecls params locals value
@@ -5225,8 +5251,13 @@ private partial def validateEffectStmtExprTypes
         args "ECM argument"
       pure ()
   | `(term| returnArray $name:term) => do
-      let ty ← requireDirectParamRef name "returnArray" params
-      requireSupportedReturnArrayType name "returnArray" ty
+      match localMemoryArray? locals name with
+      | some (_, elemTy) =>
+          unless isSingleWordStaticValueType elemTy do
+            throwErrorAt name s!"returnArray currently supports only Array<wordLike> memory locals, got Array {renderValueType elemTy}"
+      | none =>
+          let ty ← requireDirectParamRef name "returnArray" params
+          requireSupportedReturnArrayType name "returnArray" ty
   | `(term| returnBytes $name:term) => do
       let ty ← requireDirectParamRef name "returnBytes" params
       requireSupportedReturnBytesType name "returnBytes" ty
@@ -5653,6 +5684,21 @@ private def translateEffectStmt
       `(Compiler.CompilationModel.Stmt.require
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals cond)
           $(strTerm (← expectStringLiteral msg)))
+  | `(term| setMemoryArrayElement $name:term $index:term $value:term) => do
+      let (arrayName, elemTy) ← requireSupportedMemoryArrayLocal name "setMemoryArrayElement" locals
+      unless isSingleWordStaticValueType elemTy do
+        throwErrorAt name s!"setMemoryArrayElement currently supports only Array<wordLike> memory locals, got Array {renderValueType elemTy}"
+      let indexExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals index
+      let valueExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals value
+      let dataOffsetExpr : Term ←
+        `(Compiler.CompilationModel.Expr.localVar $(strTerm (memoryArrayDataOffsetName arrayName)))
+      let elementOffsetExpr : Term ←
+        `(Compiler.CompilationModel.Expr.add
+            $dataOffsetExpr
+            (Compiler.CompilationModel.Expr.mul $indexExpr (Compiler.CompilationModel.Expr.literal 32)))
+      `(Compiler.CompilationModel.Stmt.unsafeBlock
+          "write memory-backed uint256 array element"
+          [Compiler.CompilationModel.Stmt.mstore $elementOffsetExpr $valueExpr])
   | `(term| mstore $offset:term $value:term) =>
       `(Compiler.CompilationModel.Stmt.mstore
           $(← translatePureExprWithTypes fields constDecls immutableDecls params locals offset)
@@ -5992,6 +6038,40 @@ private partial def translateDoElem
                         $(strTerm targetFn)
                         [ $[$argExprs],* ]))],
                   locals.push (mkTypedLocal varName .bool),
+                  mutableLocals)
+          | `(term| allocArray $len:term) =>
+              requireWordLikeType len "allocArray length"
+                (← inferPureExprType fields constDecls immutableDecls externalDecls params locals len)
+              let lenExpr ← translatePureExprWithTypes fields constDecls immutableDecls params locals len
+              let lengthName := memoryArrayLengthName varName
+              let dataOffsetName := memoryArrayDataOffsetName varName
+              let lengthLocal : Term ← `(Compiler.CompilationModel.Expr.localVar $(strTerm lengthName))
+              let dataOffsetLocal : Term ← `(Compiler.CompilationModel.Expr.localVar $(strTerm dataOffsetName))
+              let dataOffsetExpr : Term ←
+                `(Compiler.CompilationModel.Expr.add
+                    (Compiler.CompilationModel.Expr.mload (Compiler.CompilationModel.Expr.literal 64))
+                    (Compiler.CompilationModel.Expr.literal 32))
+              let arrayHeadExpr : Term ←
+                `(Compiler.CompilationModel.Expr.sub $dataOffsetLocal (Compiler.CompilationModel.Expr.literal 32))
+              let freePtrExpr : Term ←
+                `(Compiler.CompilationModel.Expr.add
+                    $dataOffsetLocal
+                    (Compiler.CompilationModel.Expr.mul $lengthLocal (Compiler.CompilationModel.Expr.literal 32)))
+              pure
+                (#[
+                    (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm lengthName) $lenExpr)),
+                    (← `(Compiler.CompilationModel.Stmt.letVar $(strTerm dataOffsetName) $dataOffsetExpr)),
+                    (← `(Compiler.CompilationModel.Stmt.unsafeBlock
+                          "allocate memory-backed uint256 array"
+                          [Compiler.CompilationModel.Stmt.mstore $arrayHeadExpr $lengthLocal,
+                           Compiler.CompilationModel.Stmt.mstore
+                            (Compiler.CompilationModel.Expr.literal 64)
+                            $freePtrExpr]))
+                  ],
+                  locals.push
+                    { name := varName
+                      ty := .array .uint256
+                      source := .memoryArray },
                   mutableLocals)
           | _ =>
               match ← localInternalArrayReturnBind? fields constDecls immutableDecls externalDecls functions params locals rhs with

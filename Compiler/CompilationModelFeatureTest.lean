@@ -1668,6 +1668,25 @@ verity_contract MacroDynamicArray where
     let forwarded ← echoAmounts echoed
     return (arrayElement forwarded 0)
 
+  function compactAmounts (amounts : Array Uint256) : Array Uint256 := do
+    let mut count := 0
+    forEach "i" (arrayLength amounts) (do
+      let value := arrayElement amounts i
+      if value != 0 then
+        count := add count 1
+      else
+        pure ())
+    let compacted ← allocArray count
+    let mut j := 0
+    forEach "i" (arrayLength amounts) (do
+      let value := arrayElement amounts i
+      if value != 0 then
+        setMemoryArrayElement compacted j value
+        j := add j 1
+      else
+        pure ())
+    returnArray compacted
+
   function echoRecipients (recipients : Array Address) : Array Address := do
     returnArray recipients
 
@@ -1731,6 +1750,46 @@ def forwardedEchoedAmountPassesMemoryArray : Bool :=
   | _ => false
 
 example : forwardedEchoedAmountPassesMemoryArray = true := by native_decide
+
+def compactAmountsAllocatesMemoryArray : Bool :=
+  let body := MacroDynamicArray.compactAmounts_modelBody
+  body.any (fun stmt =>
+    match stmt with
+    | Stmt.letVar "compacted_length" (Expr.localVar "count") => true
+    | _ => false) &&
+  body.any (fun stmt =>
+    match stmt with
+    | Stmt.letVar "compacted_data_offset"
+        (Expr.add (Expr.mload (Expr.literal 64)) (Expr.literal 32)) => true
+    | _ => false) &&
+  body.any (fun stmt =>
+    match stmt with
+    | Stmt.returnArray "compacted" => true
+    | _ => false)
+
+example : compactAmountsAllocatesMemoryArray = true := by native_decide
+
+def compactAmountsWritesMemoryArray : Bool :=
+  let body := MacroDynamicArray.compactAmounts_modelBody
+  body.any (fun stmt =>
+    match stmt with
+    | Stmt.forEach "i" (Expr.arrayLength "amounts") loopBody =>
+        loopBody.any (fun inner =>
+          match inner with
+          | Stmt.ite _ thenBranch _ =>
+              thenBranch.any (fun branchStmt =>
+                match branchStmt with
+                | Stmt.unsafeBlock "write memory-backed uint256 array element"
+                    [Stmt.mstore
+                      (Expr.add (Expr.localVar "compacted_data_offset")
+                        (Expr.mul (Expr.localVar "j") (Expr.literal 32)))
+                      (Expr.localVar "value")] =>
+                    true
+                | _ => false)
+          | _ => false)
+    | _ => false)
+
+example : compactAmountsWritesMemoryArray = true := by native_decide
 
 def echoRecipientsModelUsesReturnArray : Bool :=
   match MacroDynamicArray.echoRecipients_modelBody with

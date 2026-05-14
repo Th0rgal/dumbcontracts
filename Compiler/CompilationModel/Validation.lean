@@ -66,7 +66,7 @@ def validateStmtParamReferences (fnName : String) (params : List Param) :
           else
             throw s!"Compilation error: function '{fnName}' returnArray '{name}' requires an array parameter with single-word static elements, got {repr ty}"
       | none =>
-          throw s!"Compilation error: function '{fnName}' returnArray references unknown parameter '{name}'"
+          pure ()
   | Stmt.returnBytes name =>
       match findParamType params name with
       | some ParamType.bytes | some ParamType.string => pure ()
@@ -147,7 +147,14 @@ def validateReturnShapesInStmt (fnName : String) (params : List Param)
           else
             throw s!"Compilation error: function '{fnName}' uses Stmt.returnArray to return parameter '{name}' of type {repr ty}, but declared returns are {repr expectedReturns}"
       | none =>
-          throw s!"Compilation error: function '{fnName}' returnArray references unknown parameter '{name}'"
+          match expectedReturns with
+          | [ty] =>
+              if isWordArrayParam ty then
+                pure ()
+              else
+                throw s!"Compilation error: function '{fnName}' uses Stmt.returnArray with memory array '{name}', but declared return type {repr ty} is not a supported word array"
+          | _ =>
+              throw s!"Compilation error: function '{fnName}' returnArray references unknown parameter '{name}'"
   | Stmt.returnBytes name =>
       if isInternal then
         throw s!"Compilation error: internal function '{fnName}' cannot use Stmt.returnBytes; only static returns via Stmt.return/Stmt.returnValues are supported ({issue625Ref})."

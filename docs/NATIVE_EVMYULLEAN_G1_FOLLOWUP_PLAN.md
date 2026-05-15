@@ -612,13 +612,31 @@ Commits: `ce401bf0` (state-generic foundation), `b0611174` (callvalue
 universal), `a2e91c49` (lt-calldatasize universal), `35e998f5` (drop
 cond premises from `_revived_switchCaseBody_*`).
 
-**Polish**: `EvmYulLeanRetarget.lean` (1631 LoC) deleted (`2eac7c6d`) —
-its 7 theorems had no external callers beyond auto-generated PrintAxioms.
-DoD-5 second half (legacyExecYulFuel removal — 136 refs across 10 files)
-still remaining.
+**Polish (DoD-5) ✓ COMPLETE**:
+- `EvmYulLeanRetarget.lean` (1631 LoC) deleted (`2eac7c6d`)
+- 9 more legacy modules deleted in `0751d4ac`
+  (Preservation, StatementEquivalence, Equivalence, Codegen, Lemmas in
+  YulGeneration/; AdapterCorrectness, NativeSmokeTest,
+  NativeDispatchOracleTest in YulGeneration/Backends/; ReferenceOracle/Semantics)
+  plus the two MacroTranslate{InvariantTest,RoundTripFuzz} legacy regression
+  files (1240 + 389 LoC).
+- 7058 lines removed total.
+- CI plumbing cleanup (`6307373a`, `a563505a`): verify.yml macro-fuzz job
+  removed, sync spec updated, dependent Python scripts and tests adjusted.
+- `legacyExecYulFuel` references: 0. `git grep` returns nothing.
 
-**Per-`BridgedStraightStmt` framework** — still REMAINING LONG POLE
-(~2–4 weeks). Until shipped, D1/D2/E6/E7 strengthening blocked behind the
+**DoD-6 ✓** sorry count 5 ≤ upstream/main 7; axiom count 0 = 0.
+**DoD-7 ✓** `lake clean && lake build` green (5m12s).
+**DoD-8 ✓** `make check` green (1m41s).
+**DoD-10 ✓** TRUST_ASSUMPTIONS.md / AUDIT.md / AXIOMS.md updated (`5d1010d1`).
+
+### Remaining (DoD-1, DoD-2, DoD-3)
+
+**Per-`BridgedStraightStmt` framework** — REMAINING LONG POLE (~2–4 weeks
+standalone). For each of ~20 statement constructors in
+`NativePreservableStraightStmt`, prove that IR-side execution and
+native-generated execution are observationally equivalent on storage slots
+and events. Until shipped, D1/D2/E6/E7 strengthening blocked behind the
 `hOnlyEmpty : preStmts = []` narrowing.
 
 **Parallel `_revived` dispatcher continuation provider** — REMAINING. The
@@ -626,8 +644,11 @@ still remaining.
 required by E2/E4/E6/E7 and F2/F4/F6/F7. Building this is a parallel
 copy-modify of `nativeGeneratedCallDispatcherResult_selector_hit_ok_matchesIR_forall_of_compile_ok_supported`
 (~700 LoC), but the proof body needs `_revived` semantics threaded through
-the dispatcher chain. Estimated 3–7 days standalone, blocked on the
-per-stmt observation framework for the user-body preservation discharge.
+the dispatcher chain. Estimated 3–7 days standalone; blocked on the per-stmt
+observation framework for the user-body preservation discharge of Leave-
+ending bodies (the OLD-form provider's NativeBlockPreservesWord fails on
+Leave-ending bodies because OLD's `final[name]!` returns `default` for
+Checkpoint Leave states — see memory `yul-state-lookup-bracket-vs-lookup`).
 
 **Conflicts**: upstream main absorbed twice (merge commits `60d38ba8` and
 `3358dc56`) — currently 0 commits behind upstream/main.

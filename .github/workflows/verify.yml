@@ -32,6 +32,7 @@ on:
       - 'README.md'
       - 'TRUST_ASSUMPTIONS.md'
   pull_request:
+    types: [opened, synchronize, reopened, closed]
     paths:
       - '.github/actions/**'
       - '.github/ISSUE_TEMPLATE/**'
@@ -91,7 +92,16 @@ env:
   VERIFY_LOCAL_ARTIFACT_ROOT: /srv/verity-ci-cache/artifacts
 
 jobs:
+  closed-pr-cleanup:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: [self-hosted, Linux, verity, fastlane]
+    timeout-minutes: 2
+    steps:
+      - name: Mark closed PR cleanup
+        run: echo "Closed PR cleanup run; stale Verify proofs runs are canceled by concurrency."
+
   changes:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: [self-hosted, linux, ARM64, dgx-spark, verity, fastlane]
     timeout-minutes: 5
     outputs:
@@ -201,6 +211,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   checks:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: [self-hosted, linux, ARM64, dgx-spark, verity, fastlane]
     timeout-minutes: 10
     permissions:

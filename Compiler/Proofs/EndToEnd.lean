@@ -37129,22 +37129,13 @@ families remain file-local transition evidence. EndToEnd no longer defines
 compatibility wrappers over the older backend-parameterized proof-interpreter
 surface.
 
-The retargeting module (`EvmYulLeanRetarget.lean`) still internally records the
-bridge-history facts: `backends_agree_on_bridged_builtins`, `BridgedExpr`
-expression lifting, statement-fragment helpers for straight-line, block, if,
-switch, and for cases, and recursive `BridgedTarget` execution equivalence.
-Those file-local facts remain useful as transition evidence for the bridged
-fragment, but they are no longer composed into this file's compiler-correctness theorems. The
-retargeting module also proves
-`emitYul_runtimeCode_bridged`, the emitted-runtime closure witness conditional
-on bridged IR function, entrypoint, and internal helper bodies, and
-  `emitYul_runtimeCode_evmYulLean_eq_on_bridged_bodies`, the corresponding
-  emitted-runtime equality between the transition proof-interpreter backend and
-  the EVMYulLean backend executor under those body witnesses. These theorems compose the
-  fully proven builtin bridge equivalences. This file intentionally does not
-  define EndToEnd wrappers over that proof-interpreter backend target; the
-  public EndToEnd theorem family targets native dispatcher execution through
-  the direct projected `nativeGeneratedCallDispatcherResultOf` result.
+The retargeting module (`EvmYulLeanRetarget.lean`) that previously recorded
+bridge-history facts has been removed (DoD 5 of the EVMYulLean transition).
+The file-local `runtimeCode_bridged_local` lemma in this module retains the
+emitted-runtime closure witness, and the SupportedSpec-discharged variants
+`emitYul_runtimeCode_bridged_of_compile_ok_supported` and
+`emitYul_runtimeCode_bridged_of_compile_ok_supported_except_mapping_writes_stmt_safety`
+expose the public surface this file needs.
   The body-closure increments prove that generated external function bodies can
   discharge raw `BridgedStmts` witnesses from `SupportedSpec`, static-parameter
   witnesses, and `BridgedSafeStmts` source-body witnesses.
@@ -37202,8 +37193,10 @@ on bridged IR function, entrypoint, and internal helper bodies, and
   and needs separate simulation work before it can be admitted into the
   safe-body EndToEnd wrapper.
 
-See `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanRetarget.lean` for
-the Phase 4 retargeting theorems.
+The Phase 4 retargeting module has been removed; the equivalent
+proof-interpreter-backed retargeting theorems are no longer needed because the
+public EndToEnd surface targets EVMYulLean's native dispatcher execution
+directly via `nativeGeneratedCallDispatcherResultOf`.
 -/
 
 end Compiler.Proofs.EndToEnd

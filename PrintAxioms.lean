@@ -58,7 +58,6 @@ import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgePredicates
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeSignedArithLemmas
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanPureBuiltinLemmas
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanRetarget
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanSignedArithSpec
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanSourceExprClosure
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanStateBridge
@@ -5413,85 +5412,6 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_shl_native
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_shr_native
 
-  -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanRetarget.lean
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_add  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_sub  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_mul  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_div  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_mod  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_lt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_gt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_iszero  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_and  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_or  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_xor  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_not  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_shl  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_shr  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_addmod  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_mulmod  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_byte  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_slt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_sgt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_exp  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_sdiv  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_smod  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_sar  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_signextend  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_caller  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_address  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_callvalue  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_timestamp  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_number  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_chainid  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_blobbasefee  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_calldataload  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_calldatasize  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_sload  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_mappingSlot  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_on_bridged_builtins  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.backends_agree_on_keccak256  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evalYulExprWithBackend_evmYulLean_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evalYulExprsWithBackend_evmYulLean_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evalYulExprWithBackend_eq_on_bridged  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evalYulExprsWithBackend_eq_on_bridged  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evalYulExpr_evmYulLean_eq_on_bridged  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_evmYulLean_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_let_eq_on_bridged  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_assign_eq_on_bridged  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_eq_on_bridged_straight_stmt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_eq_on_bridged_straight_stmts  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_block_eq_on_bridged_straight_stmts  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_if_eq_on_bridged_body  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_switch_eq_on_bridged_cases  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_for_eq_on_bridged_parts  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_callvalue  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_calldatasize  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_selector  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_selectorExpr  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evalYulExpr_selectorExpr_semantics  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evalYulExprWithBackend_evmYulLean_selectorExpr_semantics  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_calldatasize_lt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_has_selector  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_empty_calldata  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_iszero_ident  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.callvalueGuard_bridged  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.calldatasizeGuard_bridged  -- private
-  Compiler.Proofs.YulGeneration.Backends.dispatchBody_bridged
-  Compiler.Proofs.YulGeneration.Backends.defaultDispatchCase_bridged
-  Compiler.Proofs.YulGeneration.Backends.switchCases_bridged
-  Compiler.Proofs.YulGeneration.Backends.buildSwitch_bridged
-  Compiler.Proofs.YulGeneration.Backends.mappingSlotFuncAt_bridged
-  Compiler.Proofs.YulGeneration.Backends.runtimeCode_bridged
-  Compiler.Proofs.YulGeneration.Backends.emitYul_runtimeCode_bridged
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_eq_on_bridged_target  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_eq_on_bridged_stmt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.execYulFuelWithBackend_eq_on_bridged_stmts  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.emitYul_runtimeCode_evmYulLean_eq_on_bridged_bodies  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.interpretYulRuntimeWithBackend_evmYulLean_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.interpretYulFromIR_evmYulLean_eq_on_bridged_bodies  -- private
-
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSignedArithSpec.lean
   Compiler.Proofs.YulGeneration.Backends.SignedArithSpec.specSignBit_lt_specModulus
   Compiler.Proofs.YulGeneration.Backends.SignedArithSpec.specModulus_pos
@@ -5639,4 +5559,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5353 theorems/lemmas (3582 public, 1771 private, 0 sorry'd)
+-- Total: 5276 theorems/lemmas (3575 public, 1701 private, 0 sorry'd)

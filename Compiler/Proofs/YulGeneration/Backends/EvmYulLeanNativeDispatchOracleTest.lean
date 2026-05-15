@@ -322,9 +322,7 @@ private def memoryRevertDispatchSmokeContract : IRContract :=
     ]
     usesMapping := false }
 
-/- Regression-only comparison oracle for this executable smoke test. The
-production retarget executor in `EvmYulLeanRetarget.lean` stays private so it
-cannot become public proof authority. -/
+/- Regression-only comparison oracle for this executable smoke test. -/
 mutual
 
 private def referenceEvalYulExprsWithBackend

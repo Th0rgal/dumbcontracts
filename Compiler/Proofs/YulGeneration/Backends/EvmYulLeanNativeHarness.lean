@@ -6619,13 +6619,49 @@ theorem eval_lowerExprNative_lt_calldatasize_ok_fuel
     EvmYul.Yul.evalPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
     EvmYul.Yul.head', EvmYul.Yul.State.executionEnv]
 
+/-- State-generic native evaluation of the lowered `lt(calldatasize(), k)`
+expression. At any fuel ≥ 8, eval returns the SAME state unchanged with value
+`lt(s.executionEnv.calldata.size, k)`. Works for any state form (Ok,
+OutOfFuel, Checkpoint) because the underlying `executionEnvOp` and
+`dispatchBinary` are state-preserving (no shape-match on state). -/
+theorem eval_lowerExprNative_lt_calldatasize_fuel
+    (fuel : Nat)
+    (s : EvmYul.Yul.State)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (k : Nat) :
+    EvmYul.Yul.eval (fuel + 8)
+        (Backends.lowerExprNative
+          (Yul.YulExpr.call "lt"
+            [Yul.YulExpr.call "calldatasize" [],
+             Yul.YulExpr.lit k]))
+        codeOverride s =
+      .ok (s,
+        EvmYul.UInt256.lt
+          (EvmYul.UInt256.ofNat s.executionEnv.calldata.size)
+          (EvmYul.UInt256.ofNat k)) := by
+  simp [Backends.lowerExprNative, Backends.lookupRuntimePrimOp,
+    EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalTail,
+    EvmYul.Yul.evalPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
+    EvmYul.Yul.head']
+
+/-- State-generic native evaluation of the lowered `callvalue()` expression.
+At any fuel ≥ 5, eval returns the SAME state unchanged with value
+`s.executionEnv.weiValue`. Works for any state form. -/
+theorem eval_lowerExprNative_callvalue_fuel
+    (fuel : Nat)
+    (s : EvmYul.Yul.State)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
+    EvmYul.Yul.eval (fuel + 5)
+        (Backends.lowerExprNative (Yul.YulExpr.call "callvalue" []))
+        codeOverride s =
+      .ok (s, s.executionEnv.weiValue) := by
+  simp [Backends.lowerExprNative, Backends.lookupRuntimePrimOp,
+    EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalPrimCall,
+    EvmYul.Yul.reverse', EvmYul.Yul.head']
+
 /-- At fuel `n + 8` with Ok input state, the dispatcher's `lt(calldatasize, k)`
 guard eval returns the same Ok state, so `final.reviveJump = state.reviveJump`.
-Direct corollary of `eval_lowerExprNative_lt_calldatasize_ok_fuel`. Used to
-discharge the `hCondReviveJump` premise of the parallel `_revived`
-switchCaseBody chain when the caller can establish (a) sufficient fuel and
-(b) Ok input form. Universal-input discharge (handling Checkpoint/OutOfFuel
-input and fuel < 8) is a follow-up. -/
+Direct corollary of `eval_lowerExprNative_lt_calldatasize_ok_fuel`. -/
 theorem eval_lt_calldatasize_lit_preserves_reviveJump_of_ok_at_fuel
     (k : Nat)
     (codeOverride : Option EvmYul.Yul.Ast.YulContract)
@@ -6664,6 +6700,41 @@ theorem eval_callvalue_preserves_reviveJump_of_ok_at_fuel
         final.reviveJump = (EvmYul.Yul.State.Ok shared store).reviveJump := by
   intro final v hEval
   rw [eval_lowerExprNative_callvalue_ok_fuel] at hEval
+  obtain ⟨hStateEq, _⟩ := Prod.mk.inj (Except.ok.inj hEval)
+  rw [hStateEq]
+
+/-- State-generic reviveJump preservation for `lt(calldatasize, k)` at
+fuel ≥ 8. -/
+theorem eval_lt_calldatasize_lit_preserves_reviveJump_at_fuel_ge_8
+    (k : Nat)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (s : EvmYul.Yul.State)
+    (n : Nat) :
+    ∀ final v,
+      EvmYul.Yul.eval (n + 8)
+          (Backends.lowerExprNative
+            (Yul.YulExpr.call "lt"
+              [Yul.YulExpr.call "calldatasize" [],
+               Yul.YulExpr.lit k]))
+          codeOverride s = .ok (final, v) →
+        final.reviveJump = s.reviveJump := by
+  intro final v hEval
+  rw [eval_lowerExprNative_lt_calldatasize_fuel] at hEval
+  obtain ⟨hStateEq, _⟩ := Prod.mk.inj (Except.ok.inj hEval)
+  rw [hStateEq]
+
+/-- State-generic reviveJump preservation for `callvalue()` at fuel ≥ 5. -/
+theorem eval_callvalue_preserves_reviveJump_at_fuel_ge_5
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (s : EvmYul.Yul.State)
+    (n : Nat) :
+    ∀ final v,
+      EvmYul.Yul.eval (n + 5)
+          (Backends.lowerExprNative (Yul.YulExpr.call "callvalue" []))
+          codeOverride s = .ok (final, v) →
+        final.reviveJump = s.reviveJump := by
+  intro final v hEval
+  rw [eval_lowerExprNative_callvalue_fuel] at hEval
   obtain ⟨hStateEq, _⟩ := Prod.mk.inj (Except.ok.inj hEval)
   rw [hStateEq]
 

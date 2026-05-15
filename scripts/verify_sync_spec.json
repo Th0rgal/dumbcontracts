@@ -46,6 +46,7 @@
   ],
   "require_workflow_dispatch": true,
   "expected_jobs": [
+    "closed-pr-cleanup",
     "changes",
     "checks",
     "timeout-watchdog",
@@ -64,6 +65,7 @@
     "failure-hints"
   ],
   "expected_job_needs": {
+    "closed-pr-cleanup": [],
     "changes": [],
     "checks": [],
     "timeout-watchdog": [
@@ -140,8 +142,9 @@
     ]
   },
   "expected_job_if_conditions": {
-    "changes": null,
-    "checks": null,
+    "closed-pr-cleanup": "github.event_name == 'pull_request' && github.event.action == 'closed'",
+    "changes": "github.event_name != 'pull_request' || github.event.action != 'closed'",
+    "checks": "github.event_name != 'pull_request' || github.event.action != 'closed'",
     "timeout-watchdog": "needs.checks.result == 'success' && !(github.event_name == 'workflow_dispatch' && inputs.clean_build)",
     "build": "needs.checks.result == 'success' && needs.changes.outputs.build == 'true'",
     "prepare-macro-fuzz": "needs.checks.result == 'success' && needs.build.result == 'success' && needs.changes.outputs.macro_fuzz == 'true'",
@@ -158,6 +161,7 @@
     "failure-hints": "always() && github.event_name == 'pull_request' && contains(join(needs.*.result, ','), 'failure')"
   },
   "expected_job_runs_on": {
+    "closed-pr-cleanup": "[self-hosted, linux, ARM64, dgx-spark, verity, fastlane]",
     "changes": "[self-hosted, linux, ARM64, dgx-spark, verity, fastlane]",
     "checks": "[self-hosted, linux, ARM64, dgx-spark, verity, fastlane]",
     "timeout-watchdog": "[self-hosted, linux, ARM64, dgx-spark, verity, fastlane]",
@@ -176,6 +180,7 @@
     "failure-hints": "[self-hosted, linux, ARM64, dgx-spark, verity, fastlane]"
   },
   "expected_job_timeouts": {
+    "closed-pr-cleanup": 5,
     "changes": 5,
     "checks": 10,
     "timeout-watchdog": 5,
@@ -206,6 +211,10 @@
     }
   },
   "expected_job_permissions": {
+    "closed-pr-cleanup": {
+      "actions": "write",
+      "contents": "read"
+    },
     "checks": {
       "contents": "write"
     },
@@ -222,7 +231,7 @@
     "contents": "read"
   },
   "expected_workflow_concurrency": {
-    "group": "${{ github.workflow }}-${{ github.ref }}",
+    "group": "${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}",
     "cancel-in-progress": "${{ github.event_name != 'schedule' }}"
   },
   "expected_workflow_env": {

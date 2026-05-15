@@ -18899,9 +18899,8 @@ private theorem NativeBlockPreservesWord_switchCaseBody_nonpayable_of_user_body
       · exact hUserPreserves
 
 /-- `_revived` mirror of `NativeBlockPreservesWord_switchCaseBody_payable_of_user_body`.
-Takes the cond-reviveJump premise as hypothesis until a discharge lemma exists
-for the dispatcher's specific `lt(calldatasize, k)` condition over all input
-state forms (see memory `yul-state-lookup-bracket-vs-lookup` for why). -/
+The cond-reviveJump premise is discharged internally via the universal
+`eval_lt_calldatasize_lit_preserves_reviveJump` lemma (any fuel, any state). -/
 private theorem NativeBlockPreservesWord_revived_switchCaseBody_payable_of_user_body
     (fn : IRFunction)
     (nativeContract : EvmYul.Yul.Ast.YulContract)
@@ -18925,15 +18924,6 @@ private theorem NativeBlockPreservesWord_revived_switchCaseBody_payable_of_user_
                Compiler.Yul.YulExpr.lit (4 + fn.params.length * 32)]))
           guardBody ::
         bodyNative)
-    (hCondReviveJump :
-      ∀ fuel state final v,
-        EvmYul.Yul.eval fuel
-            (Compiler.Proofs.YulGeneration.Backends.lowerExprNative
-              (Compiler.Yul.YulExpr.call "lt"
-                [Compiler.Yul.YulExpr.call "calldatasize" [],
-                 Compiler.Yul.YulExpr.lit (4 + fn.params.length * 32)]))
-            (some nativeContract) state = .ok (final, v) →
-          final.reviveJump = state.reviveJump)
     (hUserPreserves :
       Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived
         (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
@@ -18969,14 +18959,15 @@ private theorem NativeBlockPreservesWord_revived_switchCaseBody_payable_of_user_
         _ _ _ _ _ ?_ ?_
     · exact
         Compiler.Proofs.YulGeneration.Backends.Native.NativeStmtPreservesWord_revived_if_of_cond_preserves_reviveJump
-          _ _ _ _ _ hCondReviveJump
+          _ _ _ _ _
+          (Compiler.Proofs.YulGeneration.Backends.Native.eval_lt_calldatasize_lit_preserves_reviveJump
+            (4 + fn.params.length * 32) (some nativeContract))
           (Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived_nativeRevertZeroZero _ _ _)
     · exact hUserPreserves
 
 /-- `_revived` mirror of `NativeBlockPreservesWord_switchCaseBody_nonpayable_of_user_body`.
-Takes two cond-reviveJump premises (one for `callvalue()`, one for
-`lt(calldatasize, k)`) as hypotheses; both are discharged trivially when the
-input state is Ok and eval doesn't modify state. -/
+Both cond-reviveJump premises (callvalue and lt-calldatasize) are discharged
+internally via the universal-input discharge lemmas. -/
 private theorem NativeBlockPreservesWord_revived_switchCaseBody_nonpayable_of_user_body
     (fn : IRFunction)
     (nativeContract : EvmYul.Yul.Ast.YulContract)
@@ -19005,22 +18996,6 @@ private theorem NativeBlockPreservesWord_revived_switchCaseBody_nonpayable_of_us
                Compiler.Yul.YulExpr.lit (4 + fn.params.length * 32)]))
           calldataGuardBody ::
         bodyNative)
-    (hCallvalueReviveJump :
-      ∀ fuel state final v,
-        EvmYul.Yul.eval fuel
-            (Compiler.Proofs.YulGeneration.Backends.lowerExprNative
-              (Compiler.Yul.YulExpr.call "callvalue" []))
-            (some nativeContract) state = .ok (final, v) →
-          final.reviveJump = state.reviveJump)
-    (hCalldataReviveJump :
-      ∀ fuel state final v,
-        EvmYul.Yul.eval fuel
-            (Compiler.Proofs.YulGeneration.Backends.lowerExprNative
-              (Compiler.Yul.YulExpr.call "lt"
-                [Compiler.Yul.YulExpr.call "calldatasize" [],
-                 Compiler.Yul.YulExpr.lit (4 + fn.params.length * 32)]))
-            (some nativeContract) state = .ok (final, v) →
-          final.reviveJump = state.reviveJump)
     (hUserPreserves :
       Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived
         (Compiler.Proofs.YulGeneration.Backends.nativeSwitchMatchedTempName
@@ -19062,14 +19037,18 @@ private theorem NativeBlockPreservesWord_revived_switchCaseBody_nonpayable_of_us
         _ _ _ _ _ ?_ ?_
     · exact
         Compiler.Proofs.YulGeneration.Backends.Native.NativeStmtPreservesWord_revived_if_of_cond_preserves_reviveJump
-          _ _ _ _ _ hCallvalueReviveJump
+          _ _ _ _ _
+          (Compiler.Proofs.YulGeneration.Backends.Native.eval_callvalue_preserves_reviveJump
+            (some nativeContract))
           (Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived_nativeRevertZeroZero _ _ _)
     · refine
         Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived_cons
           _ _ _ _ _ ?_ ?_
       · exact
           Compiler.Proofs.YulGeneration.Backends.Native.NativeStmtPreservesWord_revived_if_of_cond_preserves_reviveJump
-            _ _ _ _ _ hCalldataReviveJump
+            _ _ _ _ _
+            (Compiler.Proofs.YulGeneration.Backends.Native.eval_lt_calldatasize_lit_preserves_reviveJump
+              (4 + fn.params.length * 32) (some nativeContract))
             (Compiler.Proofs.YulGeneration.Backends.Native.NativeBlockPreservesWord_revived_nativeRevertZeroZero _ _ _)
       · exact hUserPreserves
 

@@ -621,9 +621,16 @@ cond premises from `_revived_switchCaseBody_*`).
   plus the two MacroTranslate{InvariantTest,RoundTripFuzz} legacy regression
   files (1240 + 389 LoC).
 - 7058 lines removed total.
-- CI plumbing cleanup (`6307373a`, `a563505a`): verify.yml macro-fuzz job
-  removed, sync spec updated, dependent Python scripts and tests adjusted.
+- CI plumbing cleanup (`6307373a`, `a563505a`, `c3ffd809`): verify.yml
+  macro-fuzz job removed, fork-conformance path filters scrubbed, sync spec
+  updated, dependent Python scripts and tests adjusted.
 - Legacy fuel-based executor references: 0. `git grep` returns nothing.
+- Final scrub (`aafc0e26`): all `legacyExecYulFuel` mentions removed from
+  TRUST_ASSUMPTIONS.md, INTERPRETER_FEATURE_MATRIX.md,
+  NATIVE_EVMYULLEAN_TRANSITION.md, NATIVE_EVMYULLEAN_G1_FOLLOWUP_PLAN.md,
+  VERIFICATION_STATUS.md, check_lean_hygiene.py, check_proof_length.py,
+  test_check_lean_hygiene.py — DoD-5's `git grep -n legacyExecYulFuel = 0`
+  strictly satisfied.
 
 **DoD-6 ✓** sorry count 5 ≤ upstream/main 7; axiom count 0 = 0.
 **DoD-7 ✓** `lake clean && lake build` green (5m12s).

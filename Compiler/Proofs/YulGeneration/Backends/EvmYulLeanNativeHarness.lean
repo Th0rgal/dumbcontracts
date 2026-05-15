@@ -6644,6 +6644,27 @@ theorem eval_lowerExprNative_lt_calldatasize_fuel
     EvmYul.Yul.evalPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
     EvmYul.Yul.head']
 
+/-- Tight (minimum-fuel) state-generic version: eval succeeds at fuel ≥ 6. -/
+theorem eval_lowerExprNative_lt_calldatasize_fuel_ge_6
+    (fuel : Nat)
+    (s : EvmYul.Yul.State)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (k : Nat) :
+    EvmYul.Yul.eval (fuel + 6)
+        (Backends.lowerExprNative
+          (Yul.YulExpr.call "lt"
+            [Yul.YulExpr.call "calldatasize" [],
+             Yul.YulExpr.lit k]))
+        codeOverride s =
+      .ok (s,
+        EvmYul.UInt256.lt
+          (EvmYul.UInt256.ofNat s.executionEnv.calldata.size)
+          (EvmYul.UInt256.ofNat k)) := by
+  simp [Backends.lowerExprNative, Backends.lookupRuntimePrimOp,
+    EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalTail,
+    EvmYul.Yul.evalPrimCall, EvmYul.Yul.reverse', EvmYul.Yul.cons',
+    EvmYul.Yul.head']
+
 /-- State-generic native evaluation of the lowered `callvalue()` expression.
 At any fuel ≥ 5, eval returns the SAME state unchanged with value
 `s.executionEnv.weiValue`. Works for any state form. -/
@@ -6652,6 +6673,19 @@ theorem eval_lowerExprNative_callvalue_fuel
     (s : EvmYul.Yul.State)
     (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
     EvmYul.Yul.eval (fuel + 5)
+        (Backends.lowerExprNative (Yul.YulExpr.call "callvalue" []))
+        codeOverride s =
+      .ok (s, s.executionEnv.weiValue) := by
+  simp [Backends.lowerExprNative, Backends.lookupRuntimePrimOp,
+    EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalPrimCall,
+    EvmYul.Yul.reverse', EvmYul.Yul.head']
+
+/-- Tight (minimum-fuel) state-generic version: eval succeeds at fuel ≥ 2. -/
+theorem eval_lowerExprNative_callvalue_fuel_ge_2
+    (fuel : Nat)
+    (s : EvmYul.Yul.State)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
+    EvmYul.Yul.eval (fuel + 2)
         (Backends.lowerExprNative (Yul.YulExpr.call "callvalue" []))
         codeOverride s =
       .ok (s, s.executionEnv.weiValue) := by
@@ -6737,6 +6771,47 @@ theorem eval_callvalue_preserves_reviveJump_at_fuel_ge_5
   rw [eval_lowerExprNative_callvalue_fuel] at hEval
   obtain ⟨hStateEq, _⟩ := Prod.mk.inj (Except.ok.inj hEval)
   rw [hStateEq]
+
+/-- For fuel < 2, eval of the lowered `callvalue()` expression errors out:
+the outer `.Call` decrement plus inner `evalArgs 0` returns `.error
+.OutOfFuel`. -/
+private theorem eval_lowerExprNative_callvalue_lt2_not_ok
+    (fuel : Nat) (hLT : fuel < 2)
+    (s : EvmYul.Yul.State)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (result : EvmYul.Yul.State × EvmYul.Literal) :
+    EvmYul.Yul.eval fuel
+        (Backends.lowerExprNative (Yul.YulExpr.call "callvalue" []))
+        codeOverride s ≠ .ok result := by
+  intro hEval
+  rcases fuel with _ | _ | _
+  all_goals first
+    | omega
+    | (simp [Backends.lowerExprNative, Backends.lookupRuntimePrimOp,
+        EvmYul.Yul.eval, EvmYul.Yul.evalArgs, EvmYul.Yul.evalPrimCall,
+        EvmYul.Yul.reverse', EvmYul.Yul.head'] at hEval)
+
+/-- UNIVERSAL-INPUT reviveJump discharge for the dispatcher's `callvalue()`
+guard: for ANY fuel and ANY state, a successful eval preserves `reviveJump`.
+This is the closed lemma that callers of
+`NativeStmtPreservesWord_revived_if_of_cond_preserves_reviveJump` apply
+blind for the callvalue guard. -/
+theorem eval_callvalue_preserves_reviveJump
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract) :
+    ∀ fuel state final v,
+      EvmYul.Yul.eval fuel
+          (Backends.lowerExprNative (Yul.YulExpr.call "callvalue" []))
+          codeOverride state = .ok (final, v) →
+        final.reviveJump = state.reviveJump := by
+  intro fuel state final v hEval
+  by_cases hFuel : fuel ≥ 2
+  · obtain ⟨n, rfl⟩ : ∃ n, fuel = n + 2 := ⟨fuel - 2, by omega⟩
+    rw [eval_lowerExprNative_callvalue_fuel_ge_2] at hEval
+    obtain ⟨hStateEq, _⟩ := Prod.mk.inj (Except.ok.inj hEval)
+    rw [hStateEq]
+  · exact absurd hEval
+      (eval_lowerExprNative_callvalue_lt2_not_ok fuel (by omega)
+        state codeOverride (final, v))
 
 /-- Native evaluation of the lowered `sload(lit slot)` Yul expression. At any
     fuel `≥ fuel + 6`, the eval reduces to the closed-form pair returned by

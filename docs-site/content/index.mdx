@@ -1,58 +1,44 @@
 ---
 title: Verity
-description: A Lean 4 EDSL for writing human-readable specs and formally verified smart contract implementations
+description: A Lean-native language for verified smart contracts
 ---
 
 import { Callout } from 'nextra/components'
+import { VerityHero } from '../components/VerityHero'
+import { CodeCompare } from '../components/CodeCompare'
+import { ReportCallout } from '../components/ReportCallout'
 
-# Verity
+<VerityHero />
 
-<Callout type="info">
-**Are you an AI?** Check [/llms.txt](/llms.txt) or add `.md` to any page URL to get raw markdown and save tokens.
-</Callout>
+<CodeCompare />
 
-## Vision
-
-Write smart contracts three times:
-
-1. **Human-readable specification**: What should the contract do?
-2. **Implementation in Lean**: Code that matches the spec
-3. **Formal proof**: Machine-checked verification that implementation meets specification
-
-Then compile the verified Lean implementation to EVM bytecode with automatic IR generation.
-
-<Callout type="success">
-**✅ Compilation Milestone**: All contracts compile automatically from declarative specs to Yul/EVM bytecode. The compiler pipeline and Yul codegen preservation proofs live in `Compiler/Proofs/`. See [Compiler](/compiler) for details.
-</Callout>
-
-## Why Lean?
-
-[Lean 4](https://lean-lang.org/) is a programming language and theorem prover. Code and proofs live in the same file, checked by the same compiler. Unlike traditional testing (which checks specific inputs), formal proofs verify all possible inputs.
-
-This project uses Lean to:
-- Define what smart contracts should do (specifications)
-- Implement the contracts (executable code)
-- Prove the implementations satisfy the specifications (theorems)
-
-**Current status**: A compact EDSL core, verified example contracts, and automatic compilation to EVM bytecode. See [/verification](/verification) for current theorem counts and coverage.
+<ReportCallout title="Current verification posture">
+Verity is a compact Lean EDSL with verified example contracts, automatic compilation
+to EVM artifacts, and explicit proof boundaries for the compiler model. The docs are
+written as a manual: start with a contract, inspect the compiler model, then review
+the theorem and assumption inventory. Layer 2 proof status is tracked in
+`Compiler/Proofs/IRGeneration/Contract.lean` (generic whole-contract
+`CompilationModel -> IR` theorem for the current supported fragment).
+</ReportCallout>
 
 ## The Three-Layer Structure
 
-Each contract has three files:
+Each contract is written as a specification, an executable Lean implementation, and
+a proof that connects the two.
 
-**1. Specification** (`Contracts/SimpleToken/Spec.lean`)
+### Specification
+
 ```verity
--- What should mint do?
 def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
-  s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧  -- balance increases
-  s'.storage 2 = add (s.storage 2) amount ∧               -- supply increases
-  storageMapUnchangedExceptKeyAtSlot 1 to s s' ∧          -- other balances unchanged
-  sameContext s s'                                         -- context preserved
+  s'.storageMap 1 to = add (s.storageMap 1 to) amount ∧
+  s'.storage 2 = add (s.storage 2) amount ∧
+  storageMapUnchangedExceptKeyAtSlot 1 to s s' ∧
+  sameContext s s'
 ```
 
-**2. Implementation** (`Contracts/SimpleToken/SimpleToken.lean`)
+### Implementation
+
 ```verity
--- How to implement mint (with overflow protection)
 def mint (to : Address) (amount : Uint256) : Contract Unit := do
   onlyOwner
   let currentBalance ← getMapping balances to
@@ -63,108 +49,31 @@ def mint (to : Address) (amount : Uint256) : Contract Unit := do
   setStorage totalSupply newSupply
 ```
 
-**3. Proof** (`Contracts/SimpleToken/Proofs/Basic.lean`)
+### Proof
+
 ```verity
--- Proof that implementation satisfies specification
 theorem mint_meets_spec (s : ContractState) (to : Address) (amount : Uint256)
   (h_owner : s.sender = s.storageAddr 0) :
   let s' := ((mint to amount).run s).snd
   mint_spec to amount s s' := by
-  simp only [mint, onlyOwner, getMapping, setMapping, ...]
+  simp only [mint, onlyOwner, getMapping, setMapping]
   simp [h_owner]
 ```
 
 The Lean compiler verifies every proof. If a proof is wrong, compilation fails.
 
-## Where things live
+## What the Manual Covers
 
-- **User-facing specs**: `Verity/Specs/<Name>/Spec.lean` (+ `Invariants.lean`)
-- **Implementations (EDSL)**: `Verity/Examples/<Name>.lean`
-- **Contract-specific specification proofs**: `Verity/Proofs/<Name>/Basic.lean` + `Correctness.lean`
-- **Compilation correctness**: `Compiler/TypedIRCompilerCorrectness.lean` (frontend typed-IR theorem) + `Compiler/Proofs/IRGeneration/Contract.lean` (generic whole-contract `CompilationModel -> IR` theorem for the current supported fragment).
-- **Reusable proof infrastructure**: `Verity/Proofs/Stdlib/` (spec interpreter + automation)
-- **Compiler specs (for codegen)**: `Compiler/Specs.lean` (separate from user specs)
-- **Compiler proofs**: `Compiler/Proofs/` (IR generation + Yul preservation)
+| Section | Use it for |
+|---|---|
+| [Getting Started](/getting-started) | Local setup, Lean prerequisites, and first verification run |
+| [First Contract](/guides/first-contract) | A guided spec-to-proof walkthrough |
+| [Compiler](/compiler) | The EDSL-to-EVM pipeline, trust model, and reports |
+| [Verification](/verification) | Current theorem inventory and proof status |
+| [Solidity to Verity](/guides/solidity-to-verity) | Translation patterns for Solidity contracts |
+| [Production Solidity Patterns](/guides/production-solidity-patterns) | Modifiers, linked externals, ABI projection, events, and oracle boundaries |
 
-## Adding a Contract (Checklist)
-
-Use `python3 scripts/generate_contract.py <Name>` to scaffold all boilerplate files, then:
-
-1. Write a small, human-readable spec in `Contracts/<Name>/Spec.lean`.
-2. Add any invariants in `Contracts/<Name>/Invariants.lean` (optional but encouraged).
-3. Implement the contract in `Contracts/<Name>/<Name>.lean` using the EDSL.
-4. Prove the implementation meets the spec in `Contracts/<Name>/Proofs/Basic.lean`.
-5. Add compiler-level spec glue in `Compiler/Specs.lean` and any IR/Yul proofs in `Compiler/Proofs/` if new patterns are introduced.
-6. Add tests in `test/` (unit + property + differential if applicable).
-
-See [Add a Contract](/add-contract) for the full guide.
-
-In this repo, "Layer 1" refers specifically to the EDSL-to-`CompilationModel` semantic bridge in the compiler pipeline. The files under `Contracts/<Name>/Proofs/` are contract-level specification proofs.
-
-## Example Contracts
-
-Eight contracts are formally verified (plus one unverified linker demo):
-
-| Contract | Demonstrates |
-|----------|--------------|
-| SimpleStorage | Basic storage read/write, state isolation |
-| Counter | Arithmetic operations, composition |
-| SafeCounter | Overflow/underflow prevention with checked arithmetic |
-| Owned | Access control patterns, ownership transfer |
-| OwnedCounter | Combining patterns (owned + counter) |
-| Ledger | Balance tracking, deposit/withdraw/transfer, conservation laws |
-| SimpleToken | Token minting/transfer, supply conservation, storage isolation |
-| ReentrancyExample | Reentrancy vulnerability vs safe withdrawal patterns |
-
-**Unverified example**: [CryptoHash](/examples#cryptohash) demonstrates external library linking via the Linker but has no specs or proofs.
-
-Plus a math standard library with safe arithmetic theorems (`safeMul`, `safeDiv`, etc.).
-
-See [/verification](/verification) for the complete, always-current theorem list.
-
-## Introduction to Formal Verification
-
-**What's a theorem?** A mathematical statement that's been proven true. In this project, theorems are statements about smart contract behavior.
-
-**What's a proof?** A step-by-step logical argument that shows why a theorem must be true. Lean checks every step.
-
-**What's `sorry`?** A placeholder in Lean that says "I'll prove this later." It's how incomplete proofs compile. This project currently has 0 `sorry` placeholders across the proof modules.
-
-**What are axioms?** Statements assumed true without proof. This project currently has 0 documented Lean axioms. See [AXIOMS.md](https://github.com/lfglabs-dev/verity/blob/main/AXIOMS.md) for details.
-
-Example proof technique (simplified):
-```lean
--- Claim: After storing 42, retrieving gives 42
-theorem store_retrieve : store 42 >> retrieve = pure 42 := by
-  unfold store retrieve  -- Expand definitions
-  simp                   -- Simplify with built-in rules
-  -- Proof complete
-```
-
-## Documentation
-
-**Guides**:
-- **[Getting Started](/getting-started)**: Install prerequisites, build, and run tests
-- **[First Contract](/guides/first-contract)**: Step-by-step walkthrough (spec, implement, prove, test)
-- **[Solidity to Verity](/guides/solidity-to-verity)**: Practical syntax and semantic mappings for Solidity ports
-- **[Production Solidity Patterns](/guides/production-solidity-patterns)**: Agent checklist for production ports, reusable Verity surfaces, and oracle/spec boundaries
-- **[Debugging Proofs](/guides/debugging-proofs)**: Common proof strategies and error messages
-- **[Linking Libraries](/guides/linking-libraries)**: Use external Yul libraries (Poseidon, etc.) with verified contracts
-
-**Reference**:
-- **[Verification](/verification)**: Full theorem list by contract
-- **[Examples](/examples)**: All 9 example contracts and what they demonstrate
-- **[Core](/core)**: How the core EDSL works
-- **[Research](/research)**: Design decisions and proof techniques
-
-## Learning Resources
-
-- [Lean 4 Manual](https://lean-lang.org/lean4/doc/): Official documentation
-- [Theorem Proving in Lean 4](https://lean-lang.org/theorem_proving_in_lean4/): Introductory book
-- [Lean Zulip Chat](https://leanprover.zulipchat.com/): Community forum
-- [Lean GitHub](https://github.com/leanprover/lean4): Source code and examples
-
-## Project Links
-
-- [GitHub Repository](https://github.com/lfglabs-dev/verity): Source code
-- [Build Status](https://github.com/lfglabs-dev/verity/actions): CI verification runs
+<Callout type="info">
+**For agents and tooling:** check [/llms.txt](/llms.txt) or add `.md` to any page
+URL to retrieve raw markdown.
+</Callout>

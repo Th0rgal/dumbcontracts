@@ -2,6 +2,7 @@ import { Layout, Navbar } from 'nextra-theme-docs'
 import { Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
+import './verity-site.css'
 import './verity-code.css'
 
 export const metadata = {
@@ -10,11 +11,21 @@ export const metadata = {
     template: '%s – Verity',
   },
   description: 'Minimal Lean 4 EDSL for Smart Contracts with Formal Verification',
+  icons: {
+    icon: '/verity.svg',
+    shortcut: '/verity.svg',
+    apple: '/verity.svg',
+  },
 }
 
 const navbar = (
   <Navbar
-    logo={<strong>Verity</strong>}
+    logo={
+      <span className="verity-brand">
+        <img src="/verity.svg" alt="" width="22" height="22" />
+        <strong>Verity</strong>
+      </span>
+    }
     projectLink="https://github.com/Th0rgal/verity"
   />
 )

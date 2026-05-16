@@ -1,0 +1,109 @@
+{
+  "$schema": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/schema.json",
+  "name": "Verity Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#15140F",
+    "editor.foreground": "#E6E1D5",
+    "editorLineNumber.foreground": "#6F634E",
+    "editor.selectionBackground": "#3A3324",
+    "editor.inactiveSelectionBackground": "#262116"
+  },
+  "tokenColors": [
+    {
+      "scope": ["comment", "punctuation.definition.comment"],
+      "settings": {
+        "foreground": "#AFA389",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "scope": ["string", "string.quoted.double", "string.quoted.double.verity"],
+      "settings": {
+        "foreground": "#D8C56E"
+      }
+    },
+    {
+      "scope": ["constant.numeric", "constant.numeric.hex", "constant.numeric.decimal", "constant.numeric.storage-slot", "constant.language.boolean", "constant.language.boolean.verity"],
+      "settings": {
+        "foreground": "#E9B06D",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["keyword", "keyword.declaration.contract.verity", "keyword.declaration.function.verity", "keyword.declaration.modifier.verity", "keyword.declaration.external.verity", "keyword.other.section.verity", "keyword.other.section.linked-externals.verity", "keyword.declaration.lean.verity", "source.lean keyword"],
+      "settings": {
+        "foreground": "#F0C46F",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["keyword.control.modifier-clause.verity", "storage.modifier.verity", "storage.modifier.reentrancy.verity", "keyword.control.do.verity", "keyword.control.lean.verity", "keyword.operator.assignment.verity", "keyword.operator", "punctuation.definition.parameters", "punctuation.separator", "punctuation.accessor.verity"],
+      "settings": {
+        "foreground": "#D8B989"
+      }
+    },
+    {
+      "scope": ["entity.name.type.contract.verity", "storage.type.verity", "support.type", "entity.name.type", "storage.type"],
+      "settings": {
+        "foreground": "#D9B7FF",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["entity.name.function.verity", "source.lean entity.name.function", "support.function.tactic.verity", "support.function.storage.verity", "support.function.context.verity", "support.function.arithmetic.verity", "support.function.spec.verity"],
+      "settings": {
+        "foreground": "#86D6C8",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["entity.name.function.external.verity", "support.function.external-call.verity"],
+      "settings": {
+        "foreground": "#91C9FF",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["entity.name.function.event.verity", "support.function.event.verity"],
+      "settings": {
+        "foreground": "#A7E39B",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["entity.name.function.modifier.verity", "variable.other.property.verity"],
+      "settings": {
+        "foreground": "#F3D38C",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["support.function.guard.verity", "entity.name.exception.custom-error.verity"],
+      "settings": {
+        "foreground": "#FF9E8A",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["support.function.loop.verity", "support.function.abi.verity"],
+      "settings": {
+        "foreground": "#D5B3FF",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": ["variable.other.storage.verity", "variable.language.verity", "variable.other", "identifier"],
+      "settings": {
+        "foreground": "#D7E4F2"
+      }
+    },
+    {
+      "scope": ["meta.block.linked-externals.verity"],
+      "settings": {
+        "foreground": "#C7BDA4"
+      }
+    }
+  ],
+  "semanticHighlighting": false
+}

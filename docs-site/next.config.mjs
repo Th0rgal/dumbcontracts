@@ -8,6 +8,7 @@ const configDir = dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV !== "production";
 const verityGrammar = JSON.parse(readFileSync(`${configDir}/syntaxes/verity.tmLanguage.json`, "utf8"));
 const lfglabsCreamTheme = JSON.parse(readFileSync(`${configDir}/themes/lfglabs-cream.json`, "utf8"));
+const verityDarkTheme = JSON.parse(readFileSync(`${configDir}/themes/verity-dark.json`, "utf8"));
 
 const withNextra = nextra({
   latex: true,
@@ -16,7 +17,10 @@ const withNextra = nextra({
   },
   mdxOptions: {
     rehypePrettyCodeOptions: {
-      theme: lfglabsCreamTheme,
+      theme: {
+        light: lfglabsCreamTheme,
+        dark: verityDarkTheme,
+      },
       getHighlighter(options) {
         const langs = Object.keys(bundledLanguages).filter((lang) => lang !== "mermaid");
 
@@ -24,6 +28,7 @@ const withNextra = nextra({
           ...options,
           themes: [
             lfglabsCreamTheme,
+            verityDarkTheme,
             ...((options.themes ?? options.theme) ? [] : []),
           ],
           langs: [

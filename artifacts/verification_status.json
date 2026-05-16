@@ -15,14 +15,14 @@
     "suites": 50
   },
   "theorems": {
-    "categories": 11,
-    "coverage_percent": 92,
+    "categories": 12,
+    "coverage_percent": 90,
     "covered": 255,
-    "excluded": 22,
-    "non_stdlib_total": 277,
+    "excluded": 28,
+    "non_stdlib_total": 283,
     "per_contract": {
       "Counter": 28,
-      "ERC20": 19,
+      "ERC20": 22,
       "ERC721": 11,
       "Ledger": 33,
       "LocalObligationMacroSmoke": 4,
@@ -31,11 +31,12 @@
       "ReentrancyExample": 5,
       "SafeCounter": 25,
       "SimpleStorage": 20,
-      "SimpleToken": 61
+      "SimpleToken": 61,
+      "Vault": 3
     },
-    "proven": 277,
+    "proven": 283,
     "stdlib": 0,
-    "total": 277
+    "total": 283
   },
   "toolchain": {
     "lean": "leanprover/lean4:v4.22.0",

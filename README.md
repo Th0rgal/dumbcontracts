@@ -22,11 +22,11 @@ Verity is a formally verified smart contract compiler written in [Lean 4](https:
 <!-- BEGIN GENERATED STATS -->
 | Metric | Value |
 |--------|-------|
-| Theorems | 277 (277 proven, 0 sorry) |
+| Theorems | 283 (283 proven, 0 sorry) |
 | Axioms | 0 |
-| Foundry tests | 520 (239 property) |
-| Verified contracts | 11 |
-| Core EDSL | 635 lines |
+| Foundry tests | 522 (239 property) |
+| Verified contracts | 12 |
+| Core EDSL | 649 lines |
 | Lean | 4.22.0 |
 <!-- END GENERATED STATS -->
 

@@ -1,4 +1,14 @@
 {
+  "ERC20": [
+    "erc20Minimal_functions_bridged",
+    "erc20Minimal_runtime_lowers_native",
+    "erc20Minimal_totalSupply_nativeResultsMatchOn_revert_of_nonzero_value"
+  ],
+  "Vault": [
+    "vaultMinimal_functions_bridged",
+    "vaultMinimal_runtime_lowers_native",
+    "vaultMinimal_totalAssets_nativeResultsMatchOn_revert_of_nonzero_value"
+  ],
   "Counter": [
     "getStorage_reads_count",
     "setStorage_preserves_addr_storage",

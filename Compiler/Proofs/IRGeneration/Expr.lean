@@ -80,6 +80,49 @@ def counterIRContract : IRContract :=
     ]
     usesMapping := false }
 
+/-- Minimal concrete ERC-4626-Vault IR fixture exposing the `totalAssets()`
+view function. Same IR shape as `simpleStorageIRContract.retrieve` but with
+the ERC-4626 standard `totalAssets()` selector (`0x01e1d114`). Used by the
+G3 native theorem in `Contracts/Vault/Proofs/Native.lean`. -/
+def vaultMinimalIRContract : IRContract :=
+  { name := "VaultMinimal"
+    deploy := []
+    functions := [
+      { name := "totalAssets"
+        selector := 0x01e1d114
+        params := []
+        ret := IRType.uint256
+        body := [
+          YulStmt.expr (YulExpr.call "mstore"
+            [YulExpr.lit 0, YulExpr.call "sload" [YulExpr.lit 0]]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      }
+    ]
+    usesMapping := false }
+
+/-- Minimal concrete ERC-20 IR fixture exposing the `totalSupply()` view
+function. Same IR shape as `simpleStorageIRContract.retrieve` but with the
+ERC-20 standard `totalSupply()` selector (`0x18160ddd`) and storage at the
+canonical totalSupply slot 1. Used by the G3 native theorem in
+`Contracts/ERC20/Proofs/Native.lean`. -/
+def erc20MinimalIRContract : IRContract :=
+  { name := "ERC20Minimal"
+    deploy := []
+    functions := [
+      { name := "totalSupply"
+        selector := 0x18160ddd
+        params := []
+        ret := IRType.uint256
+        body := [
+          YulStmt.expr (YulExpr.call "mstore"
+            [YulExpr.lit 0, YulExpr.call "sload" [YulExpr.lit 1]]),
+          YulStmt.expr (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
+        ]
+      }
+    ]
+    usesMapping := false }
+
 def safeCounterOverflowRevert : List YulStmt :=
   [
     YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex errorStringSelectorWord]),

@@ -10,11 +10,11 @@ Lean 4 framework for writing smart contracts with machine-checked proofs. Three-
 
 <!-- BEGIN GENERATED QUICK FACTS -->
 - **Language**: Lean 4.22.0
-- **Core Size**: 635 lines
-- **Verified Contracts**: 11 (Counter, ERC20, ERC721, Ledger, LocalObligationMacroSmoke, Owned, OwnedCounter, ReentrancyExample, SafeCounter, SimpleStorage, SimpleToken)
-- **Theorems**: 277 across 11 categories, 277 fully proven
+- **Core Size**: 649 lines
+- **Verified Contracts**: 12 (Counter, ERC20, ERC721, Ledger, LocalObligationMacroSmoke, Owned, OwnedCounter, ReentrancyExample, SafeCounter, SimpleStorage, SimpleToken, Vault)
+- **Theorems**: 283 across 12 categories, 283 fully proven
 - **Axioms**: 0 documented Lean axioms (see AXIOMS.md)
-- **Tests**: 520 Foundry tests, 239 property tests
+- **Tests**: 522 Foundry tests, 239 property tests
 - **Build**: `lake build` verifies all proofs
 - **Repository**: https://github.com/lfglabs-dev/verity
 <!-- END GENERATED QUICK FACTS -->

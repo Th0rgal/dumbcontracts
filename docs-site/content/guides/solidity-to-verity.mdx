@@ -9,6 +9,12 @@ It focuses on:
 3. A worked translation walkthrough.
 4. Common pitfalls that cause incorrect translations.
 
+For production contracts with inheritance, modifiers, external protocols, packed
+hashes, precompiles, and ZK boundaries, pair this page with
+[Production Solidity Patterns](/guides/production-solidity-patterns). That guide
+is the agent-facing checklist for reusing Verity's existing surfaces instead of
+inventing parallel helpers.
+
 ## 1. Direct Mappings
 
 Use this table as your first-pass conversion checklist.
@@ -228,5 +234,6 @@ A selector mismatch can make proofs pass while runtime dispatch is wrong.
 If you are starting from zero, pair this with:
 
 - [Adding Your First Contract](/guides/first-contract)
+- [Production Solidity Patterns](/guides/production-solidity-patterns)
 - [Compiler](/compiler)
 - [Formal Verification](/verification)

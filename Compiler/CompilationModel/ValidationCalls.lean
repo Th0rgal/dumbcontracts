@@ -653,9 +653,12 @@ def validateExternalCallTargetsInStmt
               if tryExt.params != ext.params then
                 throw s!"Compilation error: try wrapper '{tryName}' must take the same parameters as external function '{externalName}'."
               let tryReturns ← externalFunctionReturns tryExt
-              let expectedTryReturns := 1 + linkedExternalReturnYulCount returns
-              let actualTryReturns := linkedExternalReturnYulCount tryReturns
-              if actualTryReturns != expectedTryReturns then
+              let validTryReturns :=
+                match tryReturns with
+                | ParamType.bool :: tryTail =>
+                    linkedExternalReturnYulCount tryTail == linkedExternalReturnYulCount returns
+                | _ => false
+              if !validTryReturns then
                 throw s!"Compilation error: try wrapper '{tryName}' must return Bool followed by the flattened return values of external function '{externalName}'."
           let allVars := successVar :: resultVars
           let rec checkDuplicateTryVars (seen : List String) : List String → Except String Unit

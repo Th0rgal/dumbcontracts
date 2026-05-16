@@ -2064,6 +2064,22 @@ verity_contract ExternalCallTupleReturn where
   function noop () : Unit := do
     pure ()
 
+verity_contract ExternalCallTryWrapperMissingBoolRejected where
+  storage
+  linked_externals
+    external pair(Uint256) -> (Uint256, Uint256)
+    external pair_try(Uint256) -> (Uint256, Uint256, Uint256)
+
+  function badTry (x : Uint256) : Uint256 := do
+    let (_success, a, b) ← tryExternalCall "pair" [x]
+    return add a b
+
+/--
+error: #check_contract failed for 'Contracts.Smoke.ExternalCallTryWrapperMissingBoolRejected': Compilation error: try wrapper 'pair_try' must return Bool followed by the flattened return values of external function 'pair'.
+-/
+#guard_msgs in
+#check_contract ExternalCallTryWrapperMissingBoolRejected
+
 /--
 error: ecmDo requires an effect-only ECM module, but 'oracleReadUint256' binds 1 result value(s)
 -/

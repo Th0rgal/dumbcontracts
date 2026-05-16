@@ -142,6 +142,11 @@ aside.nextra-sidebar-container,
   box-shadow: 1px 0 0 rgba(201, 169, 97, 0.06) inset;
 }
 
+.nextra-mobile-nav {
+  background: var(--verity-sidebar) !important;
+  color: var(--verity-ink) !important;
+}
+
 .nextra-toc {
   border-left-color: var(--verity-rule) !important;
   font-family: var(--verity-font-ui);
@@ -154,6 +159,8 @@ aside.nextra-sidebar-container,
 
 .nextra-sidebar a,
 .nextra-sidebar-container a,
+.nextra-mobile-nav a,
+.nextra-mobile-nav button,
 .nextra-toc a,
 nav a {
   color: var(--verity-muted) !important;
@@ -163,6 +170,8 @@ nav a {
 
 .dark .nextra-sidebar a,
 .dark .nextra-sidebar-container a,
+.dark .nextra-mobile-nav a,
+.dark .nextra-mobile-nav button,
 .dark .nextra-toc a,
 .dark nav a {
   color: var(--verity-muted) !important;
@@ -170,6 +179,8 @@ nav a {
 
 .nextra-sidebar a:hover,
 .nextra-sidebar-container a:hover,
+.nextra-mobile-nav a:hover,
+.nextra-mobile-nav button:hover,
 .nextra-toc a:hover,
 nav a:hover {
   color: var(--verity-accent) !important;
@@ -184,6 +195,10 @@ nav a:hover {
 .nextra-sidebar-container a[class*="x:bg-primary"],
 .nextra-sidebar-container a[class*="x:text-primary-800"],
 .nextra-sidebar-container li.active > a,
+.nextra-mobile-nav a[aria-current="page"],
+.nextra-mobile-nav a[class*="x:bg-primary"],
+.nextra-mobile-nav a[class*="x:text-primary-800"],
+.nextra-mobile-nav li.active > a,
 .nextra-toc a[aria-current="true"],
 .nextra-toc a[aria-selected="true"] {
   color: var(--verity-heading) !important;

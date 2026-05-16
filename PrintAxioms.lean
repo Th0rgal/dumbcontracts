@@ -4062,6 +4062,8 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.BridgedStmt.of_userFunctionCallExpr
   Compiler.Proofs.YulGeneration.Backends.BridgedStmt.of_userFunctionCallBind
   Compiler.Proofs.YulGeneration.Backends.BridgedStmts_of_userFunctionCallStmts
+  Compiler.Proofs.YulGeneration.Backends.compileStmt_internalCall_bridged
+  Compiler.Proofs.YulGeneration.Backends.compileStmtList_internalCall_bridged
 
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeHarness.lean
   Compiler.Proofs.YulGeneration.Backends.Native.observableSlot_mem_materializedStorageSlots
@@ -5539,4 +5541,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5259 theorems/lemmas (3579 public, 1680 private, 0 sorry'd)
+-- Total: 5261 theorems/lemmas (3581 public, 1680 private, 0 sorry'd)

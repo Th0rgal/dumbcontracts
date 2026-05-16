@@ -1,6 +1,8 @@
 # Solidity-to-Verity Translation Guide
 
-This guide is the practical path for converting a Solidity contract into Verity EDSL + proofs.
+This guide is the practical path for converting a Solidity contract into the
+`verity_contract` surface. Add proofs once the source shape and generated model
+are stable.
 
 It focuses on:
 
@@ -21,27 +23,35 @@ Use this table as your first-pass conversion checklist.
 
 | Solidity | Verity EDSL |
 |---|---|
-| `uint256 public x;` | `def xSlot : StorageSlot Uint256 := ⟨0⟩` |
-| `mapping(address => uint256) balances;` | `def balances : StorageSlot (Address → Uint256) := ⟨1⟩` |
+| `uint256 public x;` | `x : Uint256 := slot 0` inside `storage` |
+| `mapping(address => uint256) balances;` | `balances : Address -> Uint256 := slot 1` |
+| `mapping(bytes32 => Circuit) circuits;` | `circuits : MappingStruct(Uint256,[...]) := slot n` |
+| ERC-7201 storage root | `storage_namespace erc7201 "package.storage.Name"` before that root's fields |
+| nested storage struct | `state : StorageStruct [...] := slot n` |
+| `bytes calldata data` | `data : Bytes` |
+| `Transaction[] calldata txs` | `txs : Array Transaction` |
 | `msg.sender` | `msgSender` |
 | `require(cond, "msg")` | `require cond "msg"` |
+| `revert CustomError(...)` | `revertError CustomError(...)` |
 | `x = y + z` (checked) | `let sum <- requireSomeUint (safeAdd y z) "overflow"` then `setStorage xSlot sum` |
 | `x = y - z` (checked) | `let d <- requireSomeUint (safeSub y z) "underflow"` then `setStorage xSlot d` |
 | `x = y * z` (checked) | `let p <- requireSomeUint (safeMul y z) "overflow"` then `setStorage xSlot p` |
 | `x = y / z` (checked) | `let q <- requireSomeUint (safeDiv y z) "division by zero"` then `setStorage xSlot q` |
 | `balances[a]` | `let m <- getStorage balances; pure (m a)` |
 | `balances[a] = v` | `let m <- getStorage balances; setStorage balances (fun k => if k == a then v else m k)` |
-| `emit Transfer(from, to, amount)` | `emit [from.toNat, to.toNat, amount.toNat]` (or contract-specific event encoding) |
+| `emit Transfer(from, to, amount)` | `emit "Transfer" [from, to, amount]` |
 | `return v;` | `pure v` |
 
 ## 2. Patterns That Need Restructuring
 
 Some Solidity features are not 1:1 in the current EDSL/compiler pipeline.
 
-### Inheritance -> Composition
+### Inheritance -> Explicit Composition
 
 - Solidity: `contract Child is Ownable, ERC20 { ... }`
-- Verity: flatten state slots and compose helper functions explicitly.
+- Verity: compose the inherited storage roots, guards, and helpers explicitly.
+- Use `storage_namespace erc7201 "..."` for each inherited ERC-7201 root when
+  the source uses namespaced storage.
 - Put shared checks in reusable EDSL helpers (for example `onlyOwner`).
 
 ### Modifiers -> Guard Helpers
@@ -100,13 +110,72 @@ Raw `keccak256` hashing also compiles through the typed intrinsic surface, but i
 
 ### Reentrancy guard primitive
 
-Not first-class yet (see issue `#1160`).
-Model guard manually with a dedicated storage slot (`entered : Bool` encoded as `Uint256`).
+Use `nonreentrant(lockSlot)` on the external entrypoint when the Solidity source
+uses `nonReentrant`. The lock must be a scalar `Uint256` storage field.
+
+```verity
+function nonreentrant(reentrancyLockSlot) deposit (...) with onlyRelayer : Unit := do
+  ...
+```
 
 ### String-heavy logic
 
 ABI-level `String` support exists today for macro parsing, calldata flow, `returnBytes`, event payloads, custom-error payloads, and direct parameter `==` / `!=` checks (see issue `#1159`).
 String storage/layout, dynamic linked externals, dynamic local aliases, and broader word-style operators over `String` remain unsupported, so prefer numeric/address/bytes-based logic unless you only need ABI transport or a direct parameter equality check.
+
+### Internal helpers with dynamic calldata-shaped parameters
+
+Preserve Solidity helper boundaries when Verity accepts the parameter shape.
+For example, a Solidity helper such as:
+
+```solidity
+function _transferWithBalanceCheck(
+  PermitTransferFrom calldata permit,
+  address depositor,
+  bytes calldata signature,
+  uint256 totalAmount,
+  bytes32 witness
+) internal { ... }
+```
+
+translates as a same-contract helper:
+
+```verity
+function transferWithBalanceCheck
+    (permit : PermitTransferFrom, depositor : Address, signature : Bytes,
+     totalAmount : Uint256, witness : Bytes32) : Unit := do
+  ...
+```
+
+Call it directly from the entrypoint (`transferWithBalanceCheck permit depositor
+signature totalAmount witness`). Do not inline it only to work around helper
+lowering unless the concrete source type is still unsupported.
+
+### Namespaced and structured storage
+
+Use one `storage_namespace` item per source root. Subsequent storage declarations
+belong to that root until another `storage_namespace` item switches the active
+namespace.
+
+```verity
+storage
+  storage_namespace erc7201 "unlink.storage.State"
+  state : StorageStruct [
+    nextLeafIndex : Uint256 @word 0,
+    merkleTree : StorageStruct [
+      root : Uint256 @word 0,
+      depth : Uint256 @word 1
+    ] @word 1,
+    verifierRouter : Address @word 10
+  ] := slot 0
+
+  storage_namespace erc7201 "unlink.storage.UnlinkPoolRelayers"
+  relayersSlot : Address -> Uint256 := slot 0
+```
+
+For Solidity `mapping(K => Struct)` and nested mappings to structs, prefer
+`MappingStruct(...)` / `MappingStruct2(...)` and named member access through
+`structMember`, `structMembers`, `setStructMember`, and their `2` variants.
 
 ## 3. Worked Walkthrough: Minimal ERC20 Transfer Path
 
@@ -225,7 +294,7 @@ A selector mismatch can make proofs pass while runtime dispatch is wrong.
 
 ## 5. Translation Workflow Checklist
 
-1. Port storage layout first.
+1. Port storage layout first, including ERC-7201 namespace roots and struct-valued mappings.
 2. Port one function at a time.
 3. Add specs immediately for each function.
 4. Prove basic safety/correctness properties before adding next function.

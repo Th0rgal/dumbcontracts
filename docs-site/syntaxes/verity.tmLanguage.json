@@ -130,6 +130,21 @@
           "match": "^\\s*\\b(storage|types|inductive|errors|event_defs|constants|immutables|linked_externals)\\b"
         },
         {
+          "name": "meta.storage-namespace.verity",
+          "match": "^\\s*(storage_namespace)\\b(?:\\s+(erc7201))?(?:\\s+(\"[^\"]*\"))?",
+          "captures": {
+            "1": {
+              "name": "keyword.other.storage-namespace.verity"
+            },
+            "2": {
+              "name": "keyword.other.storage-namespace.kind.verity"
+            },
+            "3": {
+              "name": "string.quoted.double.storage-namespace.verity"
+            }
+          }
+        },
+        {
           "name": "meta.block.linked-externals.verity",
           "begin": "^\\s*(linked_externals)\\b",
           "beginCaptures": {
@@ -192,6 +207,60 @@
             },
             "6": {
               "name": "constant.numeric.storage-slot.verity"
+            }
+          }
+        },
+        {
+          "name": "meta.storage-struct-field.verity",
+          "match": "^\\s*([a-zA-Z_][A-Za-z0-9_']*)\\s*(:)\\s*(StorageStruct)\\b",
+          "captures": {
+            "1": {
+              "name": "variable.other.storage.verity"
+            },
+            "2": {
+              "name": "punctuation.separator.type.verity"
+            },
+            "3": {
+              "name": "storage.type.verity"
+            }
+          }
+        },
+        {
+          "name": "meta.storage-struct-member.verity",
+          "match": "\\b([a-zA-Z_][A-Za-z0-9_']*)\\s*(:)\\s*([A-Z][A-Za-z0-9_']*)\\s*(@word)\\s+(0x[0-9A-Fa-f]+|[0-9]+)(?:\\s*(packed)\\s*(\\()\\s*([0-9]+)\\s*(,)\\s*([0-9]+)\\s*(\\)))?",
+          "captures": {
+            "1": {
+              "name": "variable.other.storage.member.verity"
+            },
+            "2": {
+              "name": "punctuation.separator.type.verity"
+            },
+            "3": {
+              "name": "storage.type.verity"
+            },
+            "4": {
+              "name": "keyword.other.word-offset.verity"
+            },
+            "5": {
+              "name": "constant.numeric.storage-slot.verity"
+            },
+            "6": {
+              "name": "keyword.other.packed.verity"
+            },
+            "7": {
+              "name": "punctuation.definition.parameters.begin.verity"
+            },
+            "8": {
+              "name": "constant.numeric.decimal.verity"
+            },
+            "9": {
+              "name": "punctuation.separator.comma.verity"
+            },
+            "10": {
+              "name": "constant.numeric.decimal.verity"
+            },
+            "11": {
+              "name": "punctuation.definition.parameters.end.verity"
             }
           }
         },
@@ -379,7 +448,7 @@
       "patterns": [
         {
           "name": "support.function.storage.verity",
-          "match": "\\b(getStorage|setStorage|getStorageAddr|setStorageAddr|getMapping|getMappingUint|getMapping2|setMapping|setMappingUint|setMapping2|structMembers|structMembers2|arrayLength|arrayElement)\\b"
+          "match": "\\b(getStorage|setStorage|getStorageAddr|setStorageAddr|getMapping|getMappingUint|getMapping2|setMapping|setMappingUint|setMapping2|structMember|structMember2|structMembers|structMembers2|setStructMember|setStructMember2|arrayLength|arrayElement|allocArray|arrayPush)\\b"
         },
         {
           "name": "support.function.context.verity",
@@ -419,7 +488,7 @@
       "patterns": [
         {
           "name": "support.function.abi.verity",
-          "match": "\\b(abiEncode|abiHeadWord|abiWord|abiBytes|abiArray|abiDynamicHeadWord|abiDynamicTail)\\b"
+          "match": "\\b(abiEncode|abiHeadWord|abiWord|abiBytes|abiArray|abiDynamicHeadWord|abiDynamicTail|returnBytes|returnArray)\\b"
         }
       ]
     },
@@ -455,7 +524,7 @@
       "patterns": [
         {
           "name": "storage.type.verity",
-          "match": "\\b(Contract|ContractState|StorageSlot|Address|Uint256|Uint128|Uint64|Uint32|Uint16|Uint8|Bool|Unit|String|Bytes|List|Option|Tuple|MappingStruct|MappingStruct2|Prop|Nat|Int)\\b"
+          "match": "\\b(Contract|ContractState|StorageSlot|Address|Uint256|Uint128|Uint64|Uint32|Uint16|Uint8|Int256|Bytes32|Bool|Unit|String|Bytes|Array|List|Option|Tuple|StorageStruct|MappingStruct|MappingStruct2|Prop|Nat|Int)\\b"
         },
         {
           "name": "constant.language.boolean.verity",

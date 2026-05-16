@@ -10,6 +10,13 @@ const theme = JSON.parse(readFileSync(join(docsRoot, "themes/lfglabs-cream.json"
 
 const sample = `verity_contract UnlinkPool where
   storage
+    storage_namespace erc7201 "unlink.storage.State"
+    state : StorageStruct [
+      nextLeafIndex : Uint256 @word 0,
+      verifierRouter : Address @word 10
+    ] := slot 0
+
+    storage_namespace erc7201 "unlink.storage.UnlinkPoolRelayers"
     relayersSlot : Address -> Uint256 := slot 0
 
   linked_externals
@@ -75,8 +82,16 @@ const expectations = [
   ["verity_contract", "keyword.declaration.contract.verity"],
   ["UnlinkPool", "entity.name.type.contract.verity"],
   ["storage", "keyword.other.section.verity"],
+  ["storage_namespace", "keyword.other.storage-namespace.verity"],
+  ["erc7201", "keyword.other.storage-namespace.kind.verity"],
+  ["\"unlink.storage.State\"", "string.quoted.double.storage-namespace.verity"],
+  ["state", "variable.other.storage.verity"],
+  ["StorageStruct", "storage.type.verity"],
+  ["nextLeafIndex", "variable.other.storage.member.verity"],
+  ["@word", "keyword.other.word-offset.verity"],
   ["relayersSlot", "variable.other.storage.verity"],
   ["Address", "storage.type.verity"],
+  ["Array", "storage.type.verity"],
   ["slot", "keyword.other.slot.verity"],
   ["external", "keyword.declaration.external.verity"],
   ["getCircuit", "entity.name.function.external.verity"],

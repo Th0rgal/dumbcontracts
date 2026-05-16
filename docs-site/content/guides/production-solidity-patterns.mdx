@@ -19,7 +19,8 @@ surfaces.
 | `initializer` | `initializer(initializedSlot)` | Mirrors upgradeable-contract bootstrap guards. |
 | `immutable` values | `immutables` block | Constructor-visible values become read-only bindings in functions. |
 | `bytes32 constant X = keccak256("...")` | `constants` plus `keccak256_lit` when the expression is a plain string hash | For multi-step derivations, cross-check the literal with a nearby `#guard` or source comment. |
-| ERC-7201 namespace slots | `storage_namespace` and explicit flattened storage | Flatten inherited storage and document the source slot derivation. |
+| ERC-7201 namespace slots | One `storage_namespace erc7201 "..."` item per root | Preserve separate roots instead of merging them into one storage block. |
+| Nested storage structs | `StorageStruct [...]` with nested members and explicit `@word` offsets | Use this for Solidity storage structs that must remain layout-reviewable. |
 | `struct` calldata params / arrays | `struct` declarations, `arrayLength`, `arrayElement`, field projection, `abiHeadWord` when the ABI root is dynamic | Keep Solidity field names in Verity structs so the translation remains reviewable. |
 | Loops with accumulators | `let mut x := ...` plus `forEach` and `x := ...` | This lowers to `Stmt.assignVar`; do not invent a separate accumulator combinator. |
 | Internal helper returning multiple values | Return a struct or tuple-like value and bind once at the call site | This maps to Verity's internal helper-return machinery; do not split into parallel getters unless the source really does. |
@@ -37,7 +38,8 @@ the verifier should inspect:
 
 - Access control gates and role membership checks.
 - Reentrancy, initializer, ownership, and upgrade-authorization guards.
-- Storage layout, including flattened inheritance and ERC-7201-style namespaces.
+- Storage layout, including inherited roots, ERC-7201-style namespaces, and
+  reviewable nested storage structs.
 - Bounds checks, custom errors, and revert ordering.
 - Balance-accounting invariants around token transfers.
 - Array loops that filter, count, sum, or write storage.
@@ -103,20 +105,28 @@ Verity pattern:
 
 ```lean
 verity_contract Pool where
-  storage_namespace "unlink.storage.UnlinkPoolRelayers"
-
   storage
     initializedSlot : Uint256 := slot 0
     ownerSlot : Address := slot 1
     pendingOwnerSlot : Address := slot 2
     reentrancyLockSlot : Uint256 := slot 3
-    stateMerkleRoot : Uint256 := slot 4
-    stateRootSeen : Uint256 -> Uint256 := slot 5
-    relayersSlot : Address -> Uint256 := slot 11
+
+    storage_namespace erc7201 "unlink.storage.State"
+    state : StorageStruct [
+      nextLeafIndex : Uint256 @word 0,
+      merkleTree : StorageStruct [
+        root : Uint256 @word 0,
+        depth : Uint256 @word 1
+      ] @word 1,
+      verifierRouter : Address @word 10
+    ] := slot 0
+
+    storage_namespace erc7201 "unlink.storage.UnlinkPoolRelayers"
+    relayersSlot : Address -> Uint256 := slot 0
 ```
 
-Keep comments grouped by the Solidity parent contract. This makes slot review
-possible without re-reading every inherited source file.
+Keep comments grouped by the Solidity parent contract/root. This makes slot
+review possible without re-reading every inherited source file.
 
 ### Use modifiers for reusable guards
 

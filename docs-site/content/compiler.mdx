@@ -337,6 +337,31 @@ approvals : MappingStruct2(Address,Address,[
 
 Members can carry packed bit metadata, so common `uint128`-style packed subfields stay declarative instead of becoming hand-written masking arithmetic in user code.
 
+For ERC-7201 and other namespaced layouts, `verity_contract` can switch the
+active storage root inside the `storage` block. Use one namespace item per
+source root, then declare fields below it:
+
+```lean
+storage
+  storage_namespace erc7201 "unlink.storage.State"
+  state : StorageStruct [
+    nextLeafIndex : Uint256 @word 0,
+    merkleTree : StorageStruct [
+      root : Uint256 @word 0,
+      depth : Uint256 @word 1
+    ] @word 1,
+    verifierRouter : Address @word 10
+  ] := slot 0
+
+  storage_namespace erc7201 "unlink.storage.UnlinkPoolRelayers"
+  relayersSlot : Address -> Uint256 := slot 0
+```
+
+`StorageStruct` is for explicit storage layout trees. Named `struct`
+declarations remain the ABI/source type surface for parameters and local values.
+Use `MappingStruct(...)` / `MappingStruct2(...)` when the source has
+`mapping(K => Struct)` rather than a top-level storage struct root.
+
 **Statements** (`Stmt`): key constructors:
 
 | Constructor | Description | Yul Output |

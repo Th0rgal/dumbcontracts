@@ -400,7 +400,22 @@ let (assets, shares) ← preview seed
 
 The macro lowers effect-only helper calls such as `storeBump x` to `Stmt.internalCall`, helper result bindings such as `let y ← bump x` to `Stmt.internalCallAssign`, and expression-position helper calls to `Expr.internalCall`. Those IR nodes are useful when writing `CompilationModel` values by hand, but direct helper-call syntax is the supported `verity_contract` authoring surface.
 
-Direct helper lowering currently supports static non-dynamic parameter and return types. Helpers whose parameters or return values contain dynamic data such as `String`, `Bytes`, or arrays are still outside this direct internal-helper path.
+Direct helper lowering supports the source shapes used by ordinary same-contract
+helpers, including scalar parameters, static tuple/struct payloads, and direct
+`Bytes` / dynamic-array parameter forwarding when those values come from the
+caller ABI. Dynamic returns still use the explicit supported return surfaces:
+single static values, static tuples via `return (..)`, and byte payloads through
+the dedicated bytes return path.
+
+For Solidity helper boundaries that include calldata-shaped dynamic payloads,
+preserve the helper when possible:
+
+```verity
+function transferWithBalanceCheck
+    (permit : PermitTransferFrom, depositor : Address, signature : Bytes,
+     totalAmount : Uint256, witness : Bytes32) : Unit := do
+  ...
+```
 
 ## Tuple Surface
 
@@ -595,7 +610,7 @@ let first := arrayElement recipients 0
 returnArray amounts
 ```
 
-`arrayLength arr` lowers to `Expr.arrayLength "arr"`, `arrayElement arr idx` lowers to `Expr.arrayElement "arr" idx`, and `returnArray arr` lowers to `Stmt.returnArray "arr"`. Today `arrayElement` and `returnArray` are restricted to arrays whose elements occupy exactly one ABI word (`Array Uint256`, `Array Address`, `Array Bool`, `Array Uint8`, `Array Bytes32`). Dynamic-element arrays such as `Array Bytes` and `Array String` still support `arrayLength`, but indexed element reads and direct `returnArray` lowering are rejected until the compiler grows offset-aware element lowering for those payloads. `arrayElement` remains bounds-checked on the compiled path, and the executable fallback in `Contracts/Common.lean` now mirrors that by reverting on out-of-range indices instead of silently defaulting.
+`arrayLength arr` lowers to `Expr.arrayLength "arr"`, `arrayElement arr idx` lowers to `Expr.arrayElement "arr" idx`, and `returnArray arr` lowers to `Stmt.returnArray "arr"`. `arrayElement` supports word-sized scalar arrays and the ABI-decodable static/nested struct-array shapes used by Solidity calldata structs. Dynamic members inside a struct element should be accessed through field projection plus `arrayLength` / `arrayElement` on that member rather than treating the member as a scalar word. Dynamic-element arrays such as `Array Bytes` and `Array String` still support `arrayLength`, but indexed element reads and direct `returnArray` lowering are rejected until the compiler grows offset-aware element lowering for those payloads. `arrayElement` remains bounds-checked on the compiled path, and the executable fallback in `Contracts/Common.lean` now mirrors that by reverting on out-of-range indices instead of silently defaulting.
 
 String and bytes values remain intentionally bounded. ABI transport is supported (`returnBytes`, custom-error payloads, event payloads, parameter flow), and direct parameter `==` / `!=` checks lower through the dynamic-bytes equality helper. Other word-level operators such as `<`, `add`, or the numeric `logicalAnd` helpers still remain restricted to Bool or word-backed scalar values, and dynamic local aliases are still rejected on the compilation-model path, so unsupported `String` / `Bytes` expressions fail fast at macro elaboration time instead of silently lowering to bogus word comparisons. That validation applies uniformly to function bodies, constructor bodies, contract constants, and immutable initializers.
 

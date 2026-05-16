@@ -3168,11 +3168,11 @@ verity_contract MultiNamespaceStorageSmoke where
 #check_contract MultiNamespaceStorageSmoke
 
 example : MultiNamespaceStorageSmoke.stateMerkleRoot.slot =
-    0xd7df6c02d48ad87762ead6689b0b308617a10b99ac21276cc6fd199681dcb000 := by native_decide
+    0xd7df6c02d48ad87762ead6689b0b308617a10b99ac21276cc6fd199681dcb000 := by decide
 example : MultiNamespaceStorageSmoke.stateVerifierRouter.slot =
-    0xd7df6c02d48ad87762ead6689b0b308617a10b99ac21276cc6fd199681dcb004 := by native_decide
+    0xd7df6c02d48ad87762ead6689b0b308617a10b99ac21276cc6fd199681dcb004 := by decide
 example : MultiNamespaceStorageSmoke.relayersSlot.slot =
-    0xd8b607728433c567965c4023813a35a19b26751353d5652c8798f8eea4b19b00 := by native_decide
+    0xd8b607728433c567965c4023813a35a19b26751353d5652c8798f8eea4b19b00 := by decide
 example : MultiNamespaceStorageSmoke.stateMerkleRoot.slot ≠ MultiNamespaceStorageSmoke.relayersSlot.slot := by decide
 example : MultiNamespaceStorageSmoke.spec.storageNamespace.isSome = true := rfl
 

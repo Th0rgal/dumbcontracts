@@ -52,4 +52,5 @@ inductive ContractResult (a : Type) where
 - Core: https://veritylang.com/core
 - Compiler: https://veritylang.com/compiler
 - Guides: https://veritylang.com/guides/first-contract
+- Production Solidity patterns: https://veritylang.com/guides/production-solidity-patterns
 - Add `.md` to any URL for raw markdown (saves tokens).

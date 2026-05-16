@@ -1,0 +1,279 @@
+# Production Solidity Translation Patterns
+
+This guide is for agents porting non-trivial Solidity contracts into Verity. Use
+it after the first-pass syntax translation in [Solidity to Verity Translation](/guides/solidity-to-verity).
+
+The main rule is: preserve Solidity control flow and accounting logic in Verity,
+but keep protocol-specific cryptography, off-chain systems, and third-party
+contract promises behind explicit boundaries with specs and trust-report names.
+
+## Start From Existing Surfaces
+
+Before adding new syntax, raw Yul, or package-local helpers, check these built-in
+surfaces.
+
+| Solidity pattern | Prefer this Verity surface | Notes |
+|---|---|---|
+| `onlyOwner`, role gates | `requires(ownerSlot)` or a named `modifier` | Use a mapping-backed modifier for role sets such as relayers. |
+| `nonReentrant` | `nonreentrant(reentrancyLockSlot)` | Keep the external entrypoint guard instead of sprinkling manual lock writes. |
+| `initializer` | `initializer(initializedSlot)` | Mirrors upgradeable-contract bootstrap guards. |
+| `immutable` values | `immutables` block | Constructor-visible values become read-only bindings in functions. |
+| `bytes32 constant X = keccak256("...")` | `constants` plus `keccak256_lit` when the expression is a plain string hash | For multi-step derivations, cross-check the literal with a nearby `#guard` or source comment. |
+| ERC-7201 namespace slots | `storage_namespace` and explicit flattened storage | Flatten inherited storage and document the source slot derivation. |
+| `struct` calldata params / arrays | `struct` declarations, `arrayLength`, `arrayElement`, field projection, `abiHeadWord` when the ABI root is dynamic | Keep Solidity field names in Verity structs so the translation remains reviewable. |
+| Loops with accumulators | `let mut x := ...` plus `forEach` and `x := ...` | This lowers to `Stmt.assignVar`; do not invent a separate accumulator combinator. |
+| Internal helper returning multiple values | Return a struct or tuple-like value and bind once at the call site | This maps to Verity's internal helper-return machinery; do not split into parallel getters unless the source really does. |
+| ERC-20 writes and reads | `Compiler.Modules.ERC20.safeTransfer`, `safeTransferFrom`, `balanceOf`, `allowance`, `totalSupply` | These preserve the SafeERC20-style optional-bool boundary. |
+| Generic `call{value: v}(data)` | `Compiler.Modules.Calls.bubblingValueCall` or `bubblingValueCallNoOutput` | Generic call mechanics belong in Verity; callee behavior remains a package-local assumption. |
+| SHA-256 precompile | `Compiler.Modules.Precompiles.sha256` / `sha256Memory` | Use for existing memory slices. |
+| Static packed hash preimages | `Compiler.Modules.Hashing.abiEncodePackedWords`, `sha256PackedWords`, or static segment variants | Use explicit segment widths for address-sized or other sub-word values. |
+| BN254 EVM precompiles | `Compiler.Modules.Precompiles.bn256Add`, `bn256ScalarMul`, `bn256Pairing` | Good for deployment probes and verifier plumbing; verifier correctness is still a boundary. |
+| BN254 scalar reduction | `Verity.Stdlib.Math.SNARK_SCALAR_FIELD` and `modField` | Avoid copying the modulus into each model unless the source constant itself is under audit. |
+
+## Rewrite In Verity
+
+Rewrite code in Verity when the Solidity logic is ordinary contract behavior that
+the verifier should inspect:
+
+- Access control gates and role membership checks.
+- Reentrancy, initializer, ownership, and upgrade-authorization guards.
+- Storage layout, including flattened inheritance and ERC-7201-style namespaces.
+- Bounds checks, custom errors, and revert ordering.
+- Balance-accounting invariants around token transfers.
+- Array loops that filter, count, sum, or write storage.
+- Merkle-tree bookkeeping when the step function is simple enough to express
+  with Verity storage, arrays, and first-class hash/precompile helpers.
+- Event payload construction when the emitted data is part of the observable
+  contract behavior.
+
+For Unlink-style pools, this means the pool entrypoints, relayer checks, note
+field validation, nullifier spending, leaf insertion, root-seen updates,
+withdrawal recipient checks, and symmetric ERC-20 balance checks should stay in
+Verity rather than being collapsed into one opaque "pool transition" oracle.
+
+## Model As An Oracle Or Spec Boundary
+
+Use an explicit external declaration, package-local ECM, or spec oracle when the
+source depends on behavior outside Verity's generic Solidity/EVM model:
+
+- Cryptographic libraries whose implementation is not being proved in Verity,
+  such as Poseidon.
+- Verifier contracts and Groth16 proof validity.
+- Permit2 signature, witness, nonce, and allowance semantics.
+- Off-chain circuit guarantees, witness-shape guarantees, and prover honesty.
+- Large protocol registries whose storage logic is not the target of the current
+  proof.
+- Dynamic ABI encodings that are mandated by another system but not worth
+  expanding unless byte-layout correctness is itself under audit.
+
+The boundary should be narrow. For example, prefer an oracle named
+`verifySpend(verifier, proof, merkleRoot, contextHash, nullifierHashes,
+newCommitments)` over an oracle named `transferTransactionIsValid`. The first
+boundary isolates verifier behavior; the second hides pool validation logic that
+should remain visible in Verity.
+
+Every boundary needs:
+
+- A precise name in `linked_externals` or the ECM `axioms` field.
+- A short comment saying which Solidity call or library it mirrors.
+- A local spec explaining the assumed pre/postcondition.
+- A trust-report entry that an auditor can find with `--trust-report`.
+
+For Unlink specifically, keep Poseidon, Permit2, Lazy-IMT high-level assumptions,
+Groth16 verifier correctness, and the complete Unlink model in `unlink-verity`
+or another dependent package. Verity core should only own reusable EVM mechanics
+such as low-level calls, precompile wrappers, ABI/hash helpers, loop assignment,
+helper returns, and trust reporting.
+
+## Unlink-Inspired Translation Shapes
+
+These patterns come from the `UnlinkPool` Solidity contract and its Verity model
+in `lfglabs-dev/verity-benchmark`.
+
+### Flatten inheritance, keep source sections
+
+Solidity:
+
+```solidity
+contract UnlinkPool is Initializable, UUPSUpgradeable,
+  Ownable2StepUpgradeable, ReentrancyGuardTransient, State { ... }
+```
+
+Verity pattern:
+
+```lean
+verity_contract Pool where
+  storage_namespace "unlink.storage.UnlinkPoolRelayers"
+
+  storage
+    initializedSlot : Uint256 := slot 0
+    ownerSlot : Address := slot 1
+    pendingOwnerSlot : Address := slot 2
+    reentrancyLockSlot : Uint256 := slot 3
+    stateMerkleRoot : Uint256 := slot 4
+    stateRootSeen : Uint256 -> Uint256 := slot 5
+    relayersSlot : Address -> Uint256 := slot 11
+```
+
+Keep comments grouped by the Solidity parent contract. This makes slot review
+possible without re-reading every inherited source file.
+
+### Use modifiers for reusable guards
+
+```lean
+modifier onlyRelayer := do
+  let sender <- msgSender
+  let active <- getMapping relayersSlot sender
+  requireError (active != 0) PoolUnauthorizedRelayer()
+
+function nonreentrant(reentrancyLockSlot) deposit (...) with onlyRelayer : Unit := do
+  ...
+```
+
+Do not inline the relayer preamble into every function. The modifier makes the
+guard auditable and keeps parity with Solidity's `onlyRelayer nonReentrant`.
+
+### Keep accumulator loops as loops
+
+Solidity:
+
+```solidity
+uint256 totalAmount;
+for (uint256 i = 0; i < notes.length;) {
+  totalAmount += notes[i].amount;
+  unchecked { ++i; }
+}
+```
+
+Verity pattern:
+
+```lean
+function sumNoteAmounts (notes : Array Note) : Uint256 := do
+  let mut totalAmount := 0
+  forEach "i" (arrayLength notes) (do
+    let amount := abiHeadWord (arrayElement notes i) 2
+    totalAmount := add totalAmount amount)
+  return totalAmount
+```
+
+This is the intended `forEach` mutable-local pattern. Avoid replacing it with a
+bespoke fold helper unless the source contract has an abstract fold-like helper.
+
+### Use arrays for filter-and-copy helpers
+
+For helpers like `_realCommitments`, first count, allocate exactly once, then
+fill:
+
+```lean
+let len := arrayLength newCommitments
+let mut count := 0
+forEach "i" len (do
+  let commitment := arrayElement newCommitments i
+  if i != excludeIndex then
+    if commitment != 0 then count := add count 1 else pure ()
+  else
+    pure ())
+
+let leaves <- allocArray count
+let mut j := 0
+forEach "i" len (do
+  let commitment := arrayElement newCommitments i
+  if i != excludeIndex then
+    if commitment != 0 then
+      setMemoryArrayElement leaves j commitment
+      j := add j 1
+    else
+      pure ()
+  else
+    pure ())
+returnArray leaves
+```
+
+This preserves the Solidity two-pass allocation shape and keeps event payloads
+and inserted leaves inspectable.
+
+### Keep registry reads narrow
+
+If Solidity reads a registry struct:
+
+```solidity
+VerifierRouter.Circuit memory c =
+  VerifierRouter(_getVerifierRouter()).getCircuit(txn.circuitId);
+```
+
+Use a single external returning the same logical record:
+
+```lean
+linked_externals
+  external getCircuit(Address, Uint256) -> (Circuit)
+  external getCircuit_try(Address, Uint256) -> (Bool, Circuit)
+```
+
+Then keep the pool checks in Verity:
+
+```lean
+let (success, circuit) <- tryExternalCall "getCircuit" [verifierRouter, txn.circuitId]
+requireError success PoolCircuitNotRegistered()
+requireError (circuit.verifier != 0) PoolCircuitNotRegistered()
+requireError (circuit.active != 0) PoolCircuitInactive()
+requireError ((arrayLength txn.nullifierHashes) == circuit.inputCount) PoolInvalidInputShape()
+```
+
+The external boundary is the registry read, not the validation sequence.
+
+### Isolate cryptography without hiding accounting
+
+Poseidon hash calls can be externals:
+
+```lean
+linked_externals
+  external poseidonT3(Uint256, Uint256) -> (Uint256)
+  external poseidonT4(Uint256, Uint256, Uint256) -> (Uint256)
+```
+
+But callers should still perform visible checks around them:
+
+```lean
+requireError ((npk != 0) && (npk < SNARK_SCALAR_FIELD)) PoolInvalidNoteNPK()
+let leaf <- hashNote npk token amount
+setMemoryArrayElement newLeaves i leaf
+```
+
+This lets the proof state "if Poseidon returns the assumed field hash, the pool
+stores and accounts for the resulting leaf correctly" instead of assuming the
+whole deposit is correct.
+
+### Prefer standard ECMs for low-level EVM mechanics
+
+Use standard precompile and call modules before writing `unsafe` Yul:
+
+```lean
+let pairOk <- ecmCall Compiler.Modules.Precompiles.bn256PairingModule [0, 384, 0]
+requireError (pairOk == 1) PoolPrecompileUnavailable()
+```
+
+For arbitrary adapter execution:
+
+```lean
+ecmDo Compiler.Modules.Calls.bubblingValueCallNoOutputModule
+  [target, value, inputOffset, inputSize]
+```
+
+The ECM captures call mechanics, mutability, and trust-report metadata. The
+callee's protocol-specific meaning still belongs in the dependent package spec.
+
+## Completion Checklist For Agents
+
+Before opening a PR for a production translation:
+
+1. Confirm every Solidity storage slot or namespace has a Verity counterpart or
+   a documented reason it is out of scope.
+2. Search `Compiler/Modules` and `Verity.Stdlib` before adding a helper.
+3. Mark every external/protocol boundary with a precise axiom or linked external
+   name.
+4. Keep guard and revert ordering aligned with Solidity.
+5. Use `forEach` plus mutable locals for loop counters and accumulators.
+6. Keep balance checks, nullifier/root updates, and event payload construction
+   in Verity unless they are explicitly outside the proof objective.
+7. Run the narrow contract build/tests plus `--trust-report` or the relevant
+   trust-report check, and read the report before calling the model complete.

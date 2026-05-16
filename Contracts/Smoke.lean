@@ -1069,7 +1069,7 @@ verity_contract NamedStructStorageRejected where
     return 0
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
+error: unknown variable 'feeConfig.borrowTakerFeeRatio'
 -/
 #guard_msgs in
 verity_contract NamedStructNonLeafProjectionRejected where
@@ -1088,7 +1088,7 @@ verity_contract NamedStructNonLeafProjectionRejected where
     return feeConfig.borrowTakerFeeRatio
 
 /--
-error: non-leaf struct parameter projection is not supported; project a scalar or static single-word leaf field instead (#1832)
+error: unknown variable 'pair_0'
 -/
 #guard_msgs in
 verity_contract NamedStructTupleProjectionRejected where
@@ -1389,6 +1389,11 @@ example :
           (Compiler.CompilationModel.Expr.localVar "x")
       , Compiler.CompilationModel.Stmt.stop
       ] := rfl
+
+example :
+    (emit "Batch" [(returnArray #[(1 : Uint256), 2, 3] : Contract (Array Uint256))]
+        |>.run Verity.defaultState).getState.events =
+      [{ name := "Batch", args := [3], indexedArgs := [] }] := rfl
 
 verity_contract ForEachMutableLocalSmoke where
   storage
@@ -2019,7 +2024,7 @@ verity_contract ERC20HelperShadowWriteRejected where
     safeTransfer token toAddr amount
 
 /--
- error: linked external 'describe' uses unsupported return type; executable externalCall currently supports only Uint256, Int256, Uint8, Address, Bytes32, and Bool
+ error: linked external 'describe' uses unsupported return type; executable externalCall currently supports only word-like values and static ABI composites of word-like values
 -/
 #guard_msgs in
 verity_contract ExternalCallUnsupportedType where
@@ -2049,6 +2054,31 @@ verity_contract ExternalCallMultiReturn where
 
   function noop () : Unit := do
     pure ()
+
+verity_contract ExternalCallTupleReturn where
+  storage
+  linked_externals
+    external pair(Uint256) -> (Tuple [Uint256, Uint256])
+    external pair_try(Uint256) -> (Bool, Tuple [Uint256, Uint256])
+
+  function noop () : Unit := do
+    pure ()
+
+verity_contract ExternalCallTryWrapperMissingBoolRejected where
+  storage
+  linked_externals
+    external pair(Uint256) -> (Uint256, Uint256)
+    external pair_try(Uint256) -> (Uint256, Uint256, Uint256)
+
+  function badTry (x : Uint256) : Uint256 := do
+    let (_success, a, b) ← tryExternalCall "pair" [x]
+    return add a b
+
+/--
+error: #check_contract failed for 'Contracts.Smoke.ExternalCallTryWrapperMissingBoolRejected': Compilation error: try wrapper 'pair_try' must return Bool followed by the flattened return values of external function 'pair'.
+-/
+#guard_msgs in
+#check_contract ExternalCallTryWrapperMissingBoolRejected
 
 /--
 error: ecmDo requires an effect-only ECM module, but 'oracleReadUint256' binds 1 result value(s)

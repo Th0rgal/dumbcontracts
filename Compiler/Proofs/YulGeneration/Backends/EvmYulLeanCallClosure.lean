@@ -156,6 +156,72 @@ theorem BridgedStmts_of_userFunctionCallStmts
     | head => exact BridgedStmt.of_userFunctionCallBind hHead
     | tail _ hTail => exact ih stmt hTail
 
+/-- Cons-inversion of `compileStmtList`, parametric over all compilation
+arguments (the upstream `FunctionBody.compileStmtList_cons_ok_inv` is
+specialized to `.calldata` / empty internalRetNames / isInternal=false). -/
+private theorem compileStmtList_cons_ok_inv_generic
+    {fields : List Field} {events : List EventDef} {errors : List ErrorDef}
+    {dynamicSource : DynamicDataSource} {internalRetNames : List String}
+    {isInternal : Bool} {adtTypes : List AdtTypeDef}
+    {stmt : Stmt} {rest : List Stmt} {inScopeNames : List String}
+    {bodyIR : List YulStmt}
+    (hOk : compileStmtList fields events errors dynamicSource internalRetNames
+      isInternal inScopeNames adtTypes (stmt :: rest) = .ok bodyIR) :
+    ∃ headIR tailIR,
+      compileStmt fields events errors dynamicSource internalRetNames
+          isInternal inScopeNames adtTypes stmt = .ok headIR ∧
+      compileStmtList fields events errors dynamicSource internalRetNames
+          isInternal (collectStmtNames stmt ++ inScopeNames) adtTypes rest =
+        .ok tailIR ∧
+      bodyIR = headIR ++ tailIR := by
+  simp only [compileStmtList, bind, Except.bind] at hOk
+  cases hHead : compileStmt fields events errors dynamicSource internalRetNames
+    isInternal inScopeNames adtTypes stmt with
+  | error _ => simp [hHead] at hOk
+  | ok headIR =>
+    simp [hHead] at hOk
+    cases hTail : compileStmtList fields events errors dynamicSource
+      internalRetNames isInternal (collectStmtNames stmt ++ inScopeNames)
+      adtTypes rest with
+    | error _ => simp [hTail] at hOk
+    | ok tailIR =>
+      simp [hTail, Pure.pure, Except.pure] at hOk
+      exact ⟨headIR, tailIR, rfl, rfl, hOk.symm⟩
+
+/-- Generic list-level lift: given a per-statement compilation-closure
+property `perStmt`, a list of statements all satisfying `perStmt` compiles
+to a `BridgedStmts` output. -/
+private theorem compileStmtList_bridged_of_perStmtBridge
+    {fields : List Field} {events : List EventDef} {errors : List ErrorDef}
+    {dynamicSource : DynamicDataSource} {internalRetNames : List String}
+    {isInternal : Bool} {adtTypes : List AdtTypeDef}
+    {perStmt : Stmt → Prop}
+    (perStmtClosure : ∀ {s : Stmt} {inScopeNames : List String}
+      {out : List YulStmt},
+      perStmt s →
+      compileStmt fields events errors dynamicSource internalRetNames
+          isInternal inScopeNames adtTypes s = .ok out →
+      BridgedStmts out) :
+    ∀ (stmts : List Stmt), (∀ s ∈ stmts, perStmt s) →
+      ∀ (inScopeNames : List String) {out : List YulStmt},
+        compileStmtList fields events errors dynamicSource internalRetNames
+          isInternal inScopeNames adtTypes stmts = .ok out →
+        BridgedStmts out := by
+  intro stmts
+  induction stmts with
+  | nil =>
+    intro _ _ _ hOk
+    simp [compileStmtList, Pure.pure, Except.pure] at hOk
+    subst hOk; intro _ hMem; cases hMem
+  | cons s ss ih =>
+    intro hAll inScopeNames out hOk
+    obtain ⟨headOut, tailOut, hHead, hTail, hEq⟩ :=
+      compileStmtList_cons_ok_inv_generic hOk
+    subst hEq
+    exact BridgedStmts_append
+      (perStmtClosure (hAll s List.mem_cons_self) hHead)
+      (ih (fun s' hMem => hAll s' (List.mem_cons_of_mem s hMem)) _ hTail)
+
 /-! ## Phase 2: source-level closure for `Stmt.internalCall` / `Stmt.internalCallAssign`
 
 Given a `BridgedFunctionTable` whose keys are the compiled internal-function
@@ -230,13 +296,9 @@ theorem compileStmt_internalCall_bridged
             argExprs hArgsBridged hFn))
 
 /-- A list of source statements, each in `BridgedSourceInternalCallStmt`. -/
-inductive BridgedSourceInternalCallStmts
-    (table : BridgedFunctionTable) : List Stmt → Prop
-  | nil : BridgedSourceInternalCallStmts table []
-  | cons {stmt : Stmt} {rest : List Stmt}
-      (hHead : BridgedSourceInternalCallStmt table stmt)
-      (hRest : BridgedSourceInternalCallStmts table rest) :
-      BridgedSourceInternalCallStmts table (stmt :: rest)
+def BridgedSourceInternalCallStmts (table : BridgedFunctionTable)
+    (stmts : List Stmt) : Prop :=
+  ∀ s ∈ stmts, BridgedSourceInternalCallStmt table s
 
 /-- List-level closure: `compileStmtList` over a list of internal-call source
 statements (with table-resolving callees) yields a `BridgedStmts` output. -/
@@ -244,47 +306,18 @@ theorem compileStmtList_internalCall_bridged
     {table : BridgedFunctionTable}
     (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
     (dynamicSource : DynamicDataSource) (internalRetNames : List String)
-    (isInternal : Bool) (adtTypes : List AdtTypeDef) :
-    ∀ (stmts : List Stmt) (inScopeNames : List String),
-      BridgedSourceInternalCallStmts table stmts →
-      ∀ {out : List YulStmt},
-        compileStmtList fields events errors dynamicSource internalRetNames
-          isInternal inScopeNames adtTypes stmts = .ok out →
-        BridgedStmts out := by
-  intro stmts
-  induction stmts with
-  | nil =>
-    intro _ _ _ hOk
-    simp [compileStmtList, Pure.pure, Except.pure] at hOk
-    subst hOk
-    intro _ hMem
-    cases hMem
-  | cons s ss ih =>
-    intro inScopeNames hStmts out hOk
-    cases hStmts with
-    | cons hHead hRest =>
-      simp only [compileStmtList, bind, Except.bind] at hOk
-      cases hHeadOk : compileStmt fields events errors dynamicSource
-        internalRetNames isInternal inScopeNames adtTypes s with
-      | error _ => simp [hHeadOk] at hOk
-      | ok headOut =>
-        simp [hHeadOk] at hOk
-        cases hTailOk : compileStmtList fields events errors dynamicSource
-          internalRetNames isInternal (collectStmtNames s ++ inScopeNames)
-          adtTypes ss with
-        | error _ => simp [hTailOk] at hOk
-        | ok tailOut =>
-          simp [hTailOk, Pure.pure, Except.pure] at hOk
-          subst out
-          have hHeadBridged : BridgedStmts headOut :=
-            compileStmt_internalCall_bridged fields events errors dynamicSource
-              internalRetNames isInternal inScopeNames adtTypes hHead hHeadOk
-          have hTailBridged : BridgedStmts tailOut :=
-            ih _ hRest hTailOk
-          intro yulStmt hMem
-          rcases List.mem_append.mp hMem with hHead' | hTail'
-          · exact hHeadBridged yulStmt hHead'
-          · exact hTailBridged yulStmt hTail'
+    (isInternal : Bool) (adtTypes : List AdtTypeDef)
+    (stmts : List Stmt) (hStmts : BridgedSourceInternalCallStmts table stmts)
+    (inScopeNames : List String) {out : List YulStmt}
+    (hOk : compileStmtList fields events errors dynamicSource internalRetNames
+      isInternal inScopeNames adtTypes stmts = .ok out) :
+    BridgedStmts out :=
+  compileStmtList_bridged_of_perStmtBridge
+    (perStmt := BridgedSourceInternalCallStmt table)
+    (fun h hOk' =>
+      compileStmt_internalCall_bridged fields events errors dynamicSource
+        internalRetNames isInternal _ adtTypes h hOk')
+    stmts hStmts inScopeNames hOk
 
 /-! ## Phase 2.3: source-level closure for `Stmt.externalCallBind`
 
@@ -352,61 +385,28 @@ theorem compileStmt_externalCallBind_bridged
 
 /-- A list of `Stmt.externalCallBind` source statements, all in
 `BridgedSourceExternalCallBindStmt`. -/
-inductive BridgedSourceExternalCallBindStmts
-    (table : BridgedFunctionTable) : List Stmt → Prop
-  | nil : BridgedSourceExternalCallBindStmts table []
-  | cons {stmt : Stmt} {rest : List Stmt}
-      (hHead : BridgedSourceExternalCallBindStmt table stmt)
-      (hRest : BridgedSourceExternalCallBindStmts table rest) :
-      BridgedSourceExternalCallBindStmts table (stmt :: rest)
+def BridgedSourceExternalCallBindStmts (table : BridgedFunctionTable)
+    (stmts : List Stmt) : Prop :=
+  ∀ s ∈ stmts, BridgedSourceExternalCallBindStmt table s
 
 /-- List-level closure for `Stmt.externalCallBind`. -/
 theorem compileStmtList_externalCallBind_bridged
     {table : BridgedFunctionTable}
     (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
     (dynamicSource : DynamicDataSource) (internalRetNames : List String)
-    (isInternal : Bool) (adtTypes : List AdtTypeDef) :
-    ∀ (stmts : List Stmt) (inScopeNames : List String),
-      BridgedSourceExternalCallBindStmts table stmts →
-      ∀ {out : List YulStmt},
-        compileStmtList fields events errors dynamicSource internalRetNames
-          isInternal inScopeNames adtTypes stmts = .ok out →
-        BridgedStmts out := by
-  intro stmts
-  induction stmts with
-  | nil =>
-    intro _ _ _ hOk
-    simp [compileStmtList, Pure.pure, Except.pure] at hOk
-    subst hOk
-    intro _ hMem
-    cases hMem
-  | cons s ss ih =>
-    intro inScopeNames hStmts out hOk
-    cases hStmts with
-    | cons hHead hRest =>
-      simp only [compileStmtList, bind, Except.bind] at hOk
-      cases hHeadOk : compileStmt fields events errors dynamicSource
-        internalRetNames isInternal inScopeNames adtTypes s with
-      | error _ => simp [hHeadOk] at hOk
-      | ok headOut =>
-        simp [hHeadOk] at hOk
-        cases hTailOk : compileStmtList fields events errors dynamicSource
-          internalRetNames isInternal (collectStmtNames s ++ inScopeNames)
-          adtTypes ss with
-        | error _ => simp [hTailOk] at hOk
-        | ok tailOut =>
-          simp [hTailOk, Pure.pure, Except.pure] at hOk
-          subst out
-          have hHeadBridged : BridgedStmts headOut :=
-            compileStmt_externalCallBind_bridged fields events errors
-              dynamicSource internalRetNames isInternal inScopeNames adtTypes
-              hHead hHeadOk
-          have hTailBridged : BridgedStmts tailOut :=
-            ih _ hRest hTailOk
-          intro yulStmt hMem
-          rcases List.mem_append.mp hMem with hHead' | hTail'
-          · exact hHeadBridged yulStmt hHead'
-          · exact hTailBridged yulStmt hTail'
+    (isInternal : Bool) (adtTypes : List AdtTypeDef)
+    (stmts : List Stmt)
+    (hStmts : BridgedSourceExternalCallBindStmts table stmts)
+    (inScopeNames : List String) {out : List YulStmt}
+    (hOk : compileStmtList fields events errors dynamicSource internalRetNames
+      isInternal inScopeNames adtTypes stmts = .ok out) :
+    BridgedStmts out :=
+  compileStmtList_bridged_of_perStmtBridge
+    (perStmt := BridgedSourceExternalCallBindStmt table)
+    (fun h hOk' =>
+      compileStmt_externalCallBind_bridged fields events errors dynamicSource
+        internalRetNames isInternal _ adtTypes h hOk')
+    stmts hStmts inScopeNames hOk
 
 /-! ## Phase 2.4: source-level closure for `Stmt.ecm`
 
@@ -464,58 +464,25 @@ theorem compileStmt_ecm_bridged
         exact hBridgeable _ argExprs out hArgsBridged hOk
 
 /-- A list of `Stmt.ecm` source statements, all in `BridgedSourceEcmStmt`. -/
-inductive BridgedSourceEcmStmts : List Stmt → Prop
-  | nil : BridgedSourceEcmStmts []
-  | cons {stmt : Stmt} {rest : List Stmt}
-      (hHead : BridgedSourceEcmStmt stmt)
-      (hRest : BridgedSourceEcmStmts rest) :
-      BridgedSourceEcmStmts (stmt :: rest)
+def BridgedSourceEcmStmts (stmts : List Stmt) : Prop :=
+  ∀ s ∈ stmts, BridgedSourceEcmStmt s
 
 /-- List-level closure for `Stmt.ecm`. -/
 theorem compileStmtList_ecm_bridged
     (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
     (dynamicSource : DynamicDataSource) (internalRetNames : List String)
-    (isInternal : Bool) (adtTypes : List AdtTypeDef) :
-    ∀ (stmts : List Stmt) (inScopeNames : List String),
-      BridgedSourceEcmStmts stmts →
-      ∀ {out : List YulStmt},
-        compileStmtList fields events errors dynamicSource internalRetNames
-          isInternal inScopeNames adtTypes stmts = .ok out →
-        BridgedStmts out := by
-  intro stmts
-  induction stmts with
-  | nil =>
-    intro _ _ _ hOk
-    simp [compileStmtList, Pure.pure, Except.pure] at hOk
-    subst hOk
-    intro _ hMem
-    cases hMem
-  | cons s ss ih =>
-    intro inScopeNames hStmts out hOk
-    cases hStmts with
-    | cons hHead hRest =>
-      simp only [compileStmtList, bind, Except.bind] at hOk
-      cases hHeadOk : compileStmt fields events errors dynamicSource
-        internalRetNames isInternal inScopeNames adtTypes s with
-      | error _ => simp [hHeadOk] at hOk
-      | ok headOut =>
-        simp [hHeadOk] at hOk
-        cases hTailOk : compileStmtList fields events errors dynamicSource
-          internalRetNames isInternal (collectStmtNames s ++ inScopeNames)
-          adtTypes ss with
-        | error _ => simp [hTailOk] at hOk
-        | ok tailOut =>
-          simp [hTailOk, Pure.pure, Except.pure] at hOk
-          subst out
-          have hHeadBridged : BridgedStmts headOut :=
-            compileStmt_ecm_bridged fields events errors dynamicSource
-              internalRetNames isInternal inScopeNames adtTypes hHead hHeadOk
-          have hTailBridged : BridgedStmts tailOut :=
-            ih _ hRest hTailOk
-          intro yulStmt hMem
-          rcases List.mem_append.mp hMem with hHead' | hTail'
-          · exact hHeadBridged yulStmt hHead'
-          · exact hTailBridged yulStmt hTail'
+    (isInternal : Bool) (adtTypes : List AdtTypeDef)
+    (stmts : List Stmt) (hStmts : BridgedSourceEcmStmts stmts)
+    (inScopeNames : List String) {out : List YulStmt}
+    (hOk : compileStmtList fields events errors dynamicSource internalRetNames
+      isInternal inScopeNames adtTypes stmts = .ok out) :
+    BridgedStmts out :=
+  compileStmtList_bridged_of_perStmtBridge
+    (perStmt := BridgedSourceEcmStmt)
+    (fun h hOk' =>
+      compileStmt_ecm_bridged fields events errors dynamicSource
+        internalRetNames isInternal _ adtTypes h hOk')
+    stmts hStmts inScopeNames hOk
 
 /-! ## Phase 3: composition machinery for mixed bodies
 

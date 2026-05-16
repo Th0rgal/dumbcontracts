@@ -22,6 +22,7 @@ import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgePredicates
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanSourceExprClosure
 import Compiler.CompilationModel.Compile
 import Compiler.CompilationModel.InternalNaming
+import Compiler.ECM
 
 namespace Compiler.Proofs.YulGeneration.Backends
 
@@ -400,6 +401,115 @@ theorem compileStmtList_externalCallBind_bridged
             compileStmt_externalCallBind_bridged fields events errors
               dynamicSource internalRetNames isInternal inScopeNames adtTypes
               hHead hHeadOk
+          have hTailBridged : BridgedStmts tailOut :=
+            ih _ hRest hTailOk
+          intro yulStmt hMem
+          rcases List.mem_append.mp hMem with hHead' | hTail'
+          · exact hHeadBridged yulStmt hHead'
+          · exact hTailBridged yulStmt hTail'
+
+/-! ## Phase 2.4: source-level closure for `Stmt.ecm`
+
+ECM (External Call Module) statements have opaque per-module Yul output;
+`mod.compile ctx args` is provided by the module author and produces an
+arbitrary `List YulStmt`. Closure under `BridgedStmts` therefore can't be
+proved generically — instead each ECM module that wishes to be in the
+bridged closure must discharge a `ECMBridgeable` obligation: "for every
+input where each `YulExpr` arg is `BridgedExpr`, the module's output is
+in `BridgedStmts`."
+
+Concrete modules (e.g., `Compiler.Modules.SafeTransfer`) can be added to
+the closure once their compilation output is shown to satisfy the
+obligation. -/
+
+/-- Bridge obligation for an ECM module: whenever the args presented to
+`mod.compile` are all `BridgedExpr`, the emitted Yul-statement list is
+`BridgedStmts`. -/
+def ECMBridgeable (mod : ECM.ExternalCallModule) : Prop :=
+  ∀ (ctx : ECM.CompilationContext) (args : List YulExpr) (out : List YulStmt),
+    (∀ a ∈ args, BridgedExpr a) → mod.compile ctx args = .ok out → BridgedStmts out
+
+/-- A source `Stmt.ecm` whose argument expressions are `BridgedSourceExpr`
+and whose target module satisfies `ECMBridgeable`. -/
+inductive BridgedSourceEcmStmt : Stmt → Prop
+  | mk (mod : ECM.ExternalCallModule) (args : List Expr)
+      (hArgs : ∀ a ∈ args, BridgedSourceExpr a)
+      (hBridgeable : ECMBridgeable mod) :
+      BridgedSourceEcmStmt (.ecm mod args)
+
+/-- Phase 2.4: compiling a `Stmt.ecm` whose args are bridged and whose
+module is `ECMBridgeable` yields a `BridgedStmts` output. -/
+theorem compileStmt_ecm_bridged
+    (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
+    (dynamicSource : DynamicDataSource) (internalRetNames : List String)
+    (isInternal : Bool) (inScopeNames : List String) (adtTypes : List AdtTypeDef)
+    {stmt : Stmt} (hStmt : BridgedSourceEcmStmt stmt)
+    {out : List YulStmt}
+    (hOk : compileStmt fields events errors dynamicSource internalRetNames
+      isInternal inScopeNames adtTypes stmt = .ok out) :
+    BridgedStmts out := by
+  cases hStmt with
+  | mk mod args hArgs hBridgeable =>
+    simp only [compileStmt] at hOk
+    split at hOk
+    · simp only [bind, Except.bind] at hOk
+      cases hOk
+    · simp only [Pure.pure, Except.pure, bind, Except.bind] at hOk
+      cases hExprs : compileExprList fields dynamicSource args with
+      | error _ => simp [hExprs] at hOk
+      | ok argExprs =>
+        simp [hExprs] at hOk
+        have hArgsBridged : ∀ y ∈ argExprs, BridgedExpr y :=
+          compileExprList_bridgedSource fields dynamicSource hArgs hExprs
+        exact hBridgeable _ argExprs out hArgsBridged hOk
+
+/-- A list of `Stmt.ecm` source statements, all in `BridgedSourceEcmStmt`. -/
+inductive BridgedSourceEcmStmts : List Stmt → Prop
+  | nil : BridgedSourceEcmStmts []
+  | cons {stmt : Stmt} {rest : List Stmt}
+      (hHead : BridgedSourceEcmStmt stmt)
+      (hRest : BridgedSourceEcmStmts rest) :
+      BridgedSourceEcmStmts (stmt :: rest)
+
+/-- List-level closure for `Stmt.ecm`. -/
+theorem compileStmtList_ecm_bridged
+    (fields : List Field) (events : List EventDef) (errors : List ErrorDef)
+    (dynamicSource : DynamicDataSource) (internalRetNames : List String)
+    (isInternal : Bool) (adtTypes : List AdtTypeDef) :
+    ∀ (stmts : List Stmt) (inScopeNames : List String),
+      BridgedSourceEcmStmts stmts →
+      ∀ {out : List YulStmt},
+        compileStmtList fields events errors dynamicSource internalRetNames
+          isInternal inScopeNames adtTypes stmts = .ok out →
+        BridgedStmts out := by
+  intro stmts
+  induction stmts with
+  | nil =>
+    intro _ _ _ hOk
+    simp [compileStmtList, Pure.pure, Except.pure] at hOk
+    subst hOk
+    intro _ hMem
+    cases hMem
+  | cons s ss ih =>
+    intro inScopeNames hStmts out hOk
+    cases hStmts with
+    | cons hHead hRest =>
+      simp only [compileStmtList, bind, Except.bind] at hOk
+      cases hHeadOk : compileStmt fields events errors dynamicSource
+        internalRetNames isInternal inScopeNames adtTypes s with
+      | error _ => simp [hHeadOk] at hOk
+      | ok headOut =>
+        simp [hHeadOk] at hOk
+        cases hTailOk : compileStmtList fields events errors dynamicSource
+          internalRetNames isInternal (collectStmtNames s ++ inScopeNames)
+          adtTypes ss with
+        | error _ => simp [hTailOk] at hOk
+        | ok tailOut =>
+          simp [hTailOk, Pure.pure, Except.pure] at hOk
+          subst out
+          have hHeadBridged : BridgedStmts headOut :=
+            compileStmt_ecm_bridged fields events errors dynamicSource
+              internalRetNames isInternal inScopeNames adtTypes hHead hHeadOk
           have hTailBridged : BridgedStmts tailOut :=
             ih _ hRest hTailOk
           intro yulStmt hMem

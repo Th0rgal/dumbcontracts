@@ -10,6 +10,9 @@
       "include": "#comments"
     },
     {
+      "include": "#errors-and-events"
+    },
+    {
       "include": "#strings"
     },
     {
@@ -22,10 +25,19 @@
       "include": "#functions"
     },
     {
+      "include": "#modifiers"
+    },
+    {
       "include": "#declarations"
     },
     {
       "include": "#edsl"
+    },
+    {
+      "include": "#abi"
+    },
+    {
+      "include": "#field-access"
     },
     {
       "include": "#types"
@@ -118,6 +130,48 @@
           "match": "^\\s*\\b(storage|types|inductive|errors|event_defs|constants|immutables|linked_externals)\\b"
         },
         {
+          "name": "meta.block.linked-externals.verity",
+          "begin": "^\\s*(linked_externals)\\b",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.other.section.linked-externals.verity"
+            }
+          },
+          "end": "^(?=\\s*(?:storage|types|inductive|errors|event_defs|constants|immutables|function|constructor|receive|fallback|modifier|local_obligations)\\b)",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "name": "meta.external.typed.verity",
+              "match": "\\b(external)\\s+([a-zA-Z_][A-Za-z0-9_']*)\\s*(\\()",
+              "captures": {
+                "1": {
+                  "name": "keyword.declaration.external.verity"
+                },
+                "2": {
+                  "name": "entity.name.function.external.verity"
+                },
+                "3": {
+                  "name": "punctuation.definition.parameters.begin.verity"
+                }
+              }
+            },
+            {
+              "include": "#types"
+            },
+            {
+              "include": "#operators"
+            },
+            {
+              "include": "#numbers"
+            }
+          ]
+        },
+        {
           "name": "meta.storage-field.verity",
           "match": "^\\s*([a-zA-Z_][A-Za-z0-9_']*)\\s*(:)\\s*([^:=]+?)\\s*(:=)\\s*(slot)\\s+(0x[0-9A-Fa-f]+|[0-9]+)",
           "captures": {
@@ -179,26 +233,66 @@
     "functions": {
       "patterns": [
         {
-          "name": "meta.function.verity",
-          "match": "^\\s*(function)\\s+((?:(?:payable|view|no_external_calls|allow_post_interaction_writes|cei_safe|nonreentrant\\([^)]*\\))\\s+)*)?([a-zA-Z_][A-Za-z0-9_']*)\\s*(\\()",
-          "captures": {
+          "name": "meta.function.header.verity",
+          "begin": "^\\s*(function)\\b",
+          "beginCaptures": {
             "1": {
               "name": "keyword.declaration.function.verity"
+            }
+          },
+          "end": "(:=)\\s*(do)\\b",
+          "endCaptures": {
+            "1": {
+              "name": "keyword.operator.assignment.verity"
             },
             "2": {
-              "name": "storage.modifier.verity"
-            },
-            "3": {
-              "name": "entity.name.function.verity"
-            },
-            "4": {
-              "name": "punctuation.definition.parameters.begin.verity"
+              "name": "keyword.control.do.verity"
             }
-          }
+          },
+          "patterns": [
+            {
+              "name": "storage.modifier.reentrancy.verity",
+              "match": "\\bnonreentrant\\s*\\([^)]*\\)"
+            },
+            {
+              "name": "storage.modifier.verity",
+              "match": "\\b(payable|view|no_external_calls|allow_post_interaction_writes|cei_safe|initializer|reinitializer)\\b"
+            },
+            {
+              "name": "meta.modifier.clause.verity",
+              "match": "\\b(with)\\s+([a-zA-Z_][A-Za-z0-9_']*)",
+              "captures": {
+                "1": {
+                  "name": "keyword.control.modifier-clause.verity"
+                },
+                "2": {
+                  "name": "entity.name.function.modifier.verity"
+                }
+              }
+            },
+            {
+              "name": "entity.name.function.verity",
+              "match": "\\b[a-zA-Z_][A-Za-z0-9_']*(?=\\s*(?:\\(|:|with|$))"
+            },
+            {
+              "include": "#types"
+            },
+            {
+              "include": "#operators"
+            },
+            {
+              "name": "punctuation.definition.parameters.begin.verity",
+              "match": "\\("
+            },
+            {
+              "name": "punctuation.definition.parameters.end.verity",
+              "match": "\\)"
+            }
+          ]
         },
         {
           "name": "meta.constructor.verity",
-          "match": "^\\s*(constructor|receive|fallback|modifier)\\b\\s*([a-zA-Z_][A-Za-z0-9_']*)?",
+          "match": "^\\s*(constructor|receive|fallback)\\b\\s*([a-zA-Z_][A-Za-z0-9_']*)?",
           "captures": {
             "1": {
               "name": "keyword.declaration.function.verity"
@@ -207,10 +301,6 @@
               "name": "entity.name.function.verity"
             }
           }
-        },
-        {
-          "name": "storage.modifier.verity",
-          "match": "\\b(payable|view|no_external_calls|allow_post_interaction_writes|cei_safe|nonreentrant|initializer|reinitializer|requires|modifies|with)\\b"
         },
         {
           "name": "meta.local-obligation.verity",
@@ -232,6 +322,43 @@
         }
       ]
     },
+    "modifiers": {
+      "patterns": [
+        {
+          "name": "meta.modifier.declaration.verity",
+          "begin": "^\\s*(modifier)\\s+([a-zA-Z_][A-Za-z0-9_']*)\\b",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.declaration.modifier.verity"
+            },
+            "2": {
+              "name": "entity.name.function.modifier.verity"
+            }
+          },
+          "end": "(:=)\\s*(do)\\b|$",
+          "endCaptures": {
+            "1": {
+              "name": "keyword.operator.assignment.verity"
+            },
+            "2": {
+              "name": "keyword.control.do.verity"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#types"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "name": "storage.modifier.verity",
+          "match": "\\b(requires|modifies|with)\\b"
+        }
+      ]
+    },
     "declarations": {
       "patterns": [
         {
@@ -240,7 +367,7 @@
         },
         {
           "name": "keyword.control.lean.verity",
-          "match": "\\b(do|by|let|mut|if|then|else|match|with|return|pure|for|in|have|show|from|fun|forall)\\b"
+          "match": "\\b(do|by|let|mut|if|then|else|match|return|pure|for|in|have|show|from|fun|forall)\\b"
         },
         {
           "name": "support.function.tactic.verity",
@@ -252,15 +379,27 @@
       "patterns": [
         {
           "name": "support.function.storage.verity",
-          "match": "\\b(getStorage|setStorage|getStorageAddr|setStorageAddr|getMapping|getMappingUint|getMapping2|setMapping|setMappingUint|setMapping2|structMembers|structMembers2)\\b"
+          "match": "\\b(getStorage|setStorage|getStorageAddr|setStorageAddr|getMapping|getMappingUint|getMapping2|setMapping|setMappingUint|setMapping2|structMembers|structMembers2|arrayLength|arrayElement)\\b"
         },
         {
           "name": "support.function.context.verity",
           "match": "\\b(msgSender|msgValue|blockTimestamp|blockNumber|contractAddress|chainid|blobbasefee|defaultState)\\b"
         },
         {
-          "name": "support.function.control.verity",
-          "match": "\\b(require|requireSomeUint|requireError|revert|revertError|tryCatch|ecmBind|ecmCall|ecmDo|emitEvent|emit)\\b"
+          "name": "support.function.guard.verity",
+          "match": "\\b(require|requireSomeUint|requireError|revert|revertError)\\b"
+        },
+        {
+          "name": "support.function.external-call.verity",
+          "match": "\\b(tryExternalCall|externalCall|ecmBind|ecmCall|ecmDo|tryCatch)\\b"
+        },
+        {
+          "name": "support.function.event.verity",
+          "match": "\\b(emitEvent|emit)\\b"
+        },
+        {
+          "name": "support.function.loop.verity",
+          "match": "\\b(forEach|forEach2)\\b"
         },
         {
           "name": "support.function.arithmetic.verity",
@@ -273,6 +412,42 @@
         {
           "name": "variable.language.verity",
           "match": "\\b(self|sender|thisAddress|totalSupply|owner|balances|allowances)\\b"
+        }
+      ]
+    },
+    "abi": {
+      "patterns": [
+        {
+          "name": "support.function.abi.verity",
+          "match": "\\b(abiEncode|abiHeadWord|abiWord|abiBytes|abiArray|abiDynamicHeadWord|abiDynamicTail)\\b"
+        }
+      ]
+    },
+    "errors-and-events": {
+      "patterns": [
+        {
+          "name": "entity.name.exception.custom-error.verity",
+          "match": "\\b[A-Z][A-Za-z0-9_']*Error\\b|\\bPool[A-Za-z0-9_']*(?=\\s*\\()"
+        },
+        {
+          "name": "entity.name.function.event.verity",
+          "match": "\"(?:[A-Z][A-Za-z0-9_']*(?:ed|n|d|red|redn|Transfer|Approval|Withdrawn|Transferred|Deposited))\""
+        }
+      ]
+    },
+    "field-access": {
+      "patterns": [
+        {
+          "name": "meta.field-access.verity",
+          "match": "(\\.)([a-zA-Z_][A-Za-z0-9_']*)",
+          "captures": {
+            "1": {
+              "name": "punctuation.accessor.verity"
+            },
+            "2": {
+              "name": "variable.other.property.verity"
+            }
+          }
         }
       ]
     },

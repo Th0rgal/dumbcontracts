@@ -7,6 +7,7 @@ import { bundledLanguages, createHighlighter } from "shiki";
 const configDir = dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV !== "production";
 const verityGrammar = JSON.parse(readFileSync(`${configDir}/syntaxes/verity.tmLanguage.json`, "utf8"));
+const lfglabsCreamTheme = JSON.parse(readFileSync(`${configDir}/themes/lfglabs-cream.json`, "utf8"));
 
 const withNextra = nextra({
   latex: true,
@@ -15,11 +16,16 @@ const withNextra = nextra({
   },
   mdxOptions: {
     rehypePrettyCodeOptions: {
+      theme: lfglabsCreamTheme,
       getHighlighter(options) {
         const langs = Object.keys(bundledLanguages).filter((lang) => lang !== "mermaid");
 
         return createHighlighter({
           ...options,
+          themes: [
+            lfglabsCreamTheme,
+            ...((options.themes ?? options.theme) ? [] : []),
+          ],
           langs: [
             ...langs,
             {

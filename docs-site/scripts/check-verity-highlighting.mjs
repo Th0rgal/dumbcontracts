@@ -6,26 +6,47 @@ import { bundledLanguages, createHighlighter } from "shiki";
 const here = dirname(fileURLToPath(import.meta.url));
 const docsRoot = join(here, "..");
 const grammar = JSON.parse(readFileSync(join(docsRoot, "syntaxes/verity.tmLanguage.json"), "utf8"));
+const theme = JSON.parse(readFileSync(join(docsRoot, "themes/lfglabs-cream.json"), "utf8"));
 
-const sample = `verity_contract Token where
+const sample = `verity_contract UnlinkPool where
   storage
-    balances : Address -> Uint256 := slot 0
+    relayersSlot : Address -> Uint256 := slot 0
 
   linked_externals
-    external quote(Uint256) -> (Uint256)
+    external getCircuit(Address, Uint256) -> (Circuit)
+    external getCircuit_try(Address, Uint256) -> (Bool, Circuit)
 
-  function transfer (to : Address, amount : Uint256) : Bool := do
+  modifier onlyRelayer := do
     let sender ← msgSender
-    let bal ← getMapping balances sender
-    let next ← requireSomeUint (safeSub bal amount) "insufficient"
-    require (amount > 0) "zero amount"
-    setMapping balances sender next
-    emitEvent "Transfer" [amount] [sender]
-    return true
+    let isR ← getMapping relayersSlot sender
+    requireError (isR != 0) PoolUnauthorizedRelayer()
+
+  function nonreentrant(reentrancyLockSlot) transfer
+      (transactions : Array Transaction) with onlyRelayer : Unit := do
+    let txLen := arrayLength transactions
+    requireError (txLen != 0) PoolEmptyTransactions()
+    forEach "i" txLen (do
+      let txn := arrayElement transactions i
+      let verifierRouter ← getStorageAddr stateVerifierRouter
+      let (success, circuit) ← tryExternalCall "getCircuit"
+        [verifierRouter, txn.circuitId]
+      requireError success PoolCircuitNotRegistered()
+      requireError (circuit.verifier != 0) PoolCircuitNotRegistered()
+      let (proofOk, ok) ← tryExternalCall "verifySpend"
+        [circuit.verifier, abiEncode txn.proof, txn.merkleRoot,
+         txn.contextHash, txn.nullifierHashes, txn.newCommitments]
+      requireError proofOk PoolProofVerificationFailed()
+      requireError ok PoolProofVerificationFailed()
+      let leaves ← realCommitments txn.newCommitments maxUint
+      let startIndex ← nextLeafIndex
+      let newRoot ← insertLeaves leaves
+      emit "Transferred"
+        [newRoot, startIndex, leaves,
+         realNullifiers txn.nullifierHashes, txn.ciphertexts])
 `;
 
 const highlighter = await createHighlighter({
-  themes: ["github-light"],
+  themes: [theme],
   langs: [
     ...Object.keys(bundledLanguages).filter((lang) => lang !== "mermaid"),
     {
@@ -38,36 +59,44 @@ const highlighter = await createHighlighter({
 
 const tokens = highlighter.codeToTokens(sample, {
   lang: "verity",
-  theme: "github-light",
+  theme: "LFGLabs Cream",
   includeExplanation: true,
 }).tokens.flat();
 
 function scopesFor(content) {
   return tokens.flatMap((token) =>
     token.explanation
-      .filter((part) => part.content.trim() === content)
+      .filter((part) => part.content.trim() === content || part.content.includes(content))
       .flatMap((part) => part.scopes.map((scope) => scope.scopeName))
   );
 }
 
 const expectations = [
   ["verity_contract", "keyword.declaration.contract.verity"],
-  ["Token", "entity.name.type.contract.verity"],
+  ["UnlinkPool", "entity.name.type.contract.verity"],
   ["storage", "keyword.other.section.verity"],
-  ["balances", "variable.other.storage.verity"],
+  ["relayersSlot", "variable.other.storage.verity"],
   ["Address", "storage.type.verity"],
   ["slot", "keyword.other.slot.verity"],
   ["external", "keyword.declaration.external.verity"],
-  ["quote", "entity.name.function.external.verity"],
+  ["getCircuit", "entity.name.function.external.verity"],
+  ["modifier", "keyword.declaration.modifier.verity"],
+  ["onlyRelayer", "entity.name.function.modifier.verity"],
   ["function", "keyword.declaration.function.verity"],
+  ["nonreentrant", "storage.modifier.reentrancy.verity"],
   ["transfer", "entity.name.function.verity"],
+  ["with", "keyword.control.modifier-clause.verity"],
   ["msgSender", "support.function.context.verity"],
   ["getMapping", "support.function.storage.verity"],
-  ["requireSomeUint", "support.function.control.verity"],
-  ["safeSub", "support.function.arithmetic.verity"],
-  ["setMapping", "support.function.storage.verity"],
-  ["emitEvent", "support.function.control.verity"],
-  ["true", "constant.language.boolean.verity"],
+  ["requireError", "support.function.guard.verity"],
+  ["arrayLength", "support.function.storage.verity"],
+  ["forEach", "support.function.loop.verity"],
+  ["tryExternalCall", "support.function.external-call.verity"],
+  ["abiEncode", "support.function.abi.verity"],
+  ["proof", "variable.other.property.verity"],
+  ["PoolCircuitNotRegistered", "entity.name.exception.custom-error.verity"],
+  ["emit", "support.function.event.verity"],
+  ["\"Transferred\"", "entity.name.function.event.verity"],
 ];
 
 const failures = expectations.filter(([content, expectedScope]) => {

@@ -237,29 +237,31 @@ def returnBytes {α : Type} (value : α) : Contract α := pure value
 def returnStorageWords {α : Type} (_slots : Array α) : Contract (Array Uint256) := pure #[]
 
 inductive EventArg where
-  | word (value : Uint256)
-  | dynamicArray (length : Uint256)
-deriving Repr, DecidableEq
+  | word (value : Contract Uint256)
+  | dynamicArray (length : Contract Uint256)
 
 namespace EventArg
 
-def toWord : EventArg → Uint256
+def toWord : EventArg → Contract Uint256
   | .word value => value
   | .dynamicArray length => length
 
 end EventArg
 
 instance : Coe Uint256 EventArg where
-  coe value := EventArg.word value
+  coe value := EventArg.word (pure value)
 
 instance (α : Type) : CoeTC (Array α) EventArg where
-  coe values := EventArg.dynamicArray values.size
+  coe values := EventArg.dynamicArray (pure values.size)
 
 instance (α : Type) : CoeTC (Contract (Array α)) EventArg where
-  coe _ := EventArg.dynamicArray 0
+  coe values := EventArg.dynamicArray (do
+    let array ← values
+    pure array.size)
 
-def emit (name : String) (args : List EventArg) : Contract Unit :=
-  emitEvent name (args.map EventArg.toWord)
+def emit (name : String) (args : List EventArg) : Contract Unit := do
+  let words ← args.mapM EventArg.toWord
+  emitEvent name words
 def setPackedStorage {α : Type} (rootSlot : StorageSlot α) (wordOffset : Nat)
     (word : Uint256) : Contract Unit := fun state =>
   let targetSlot := (rootSlot.slot + wordOffset) % Compiler.Constants.evmModulus

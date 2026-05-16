@@ -1390,6 +1390,11 @@ example :
       , Compiler.CompilationModel.Stmt.stop
       ] := rfl
 
+example :
+    (emit "Batch" [(returnArray #[(1 : Uint256), 2, 3] : Contract (Array Uint256))]
+        |>.run Verity.defaultState).getState.events =
+      [{ name := "Batch", args := [3], indexedArgs := [] }] := rfl
+
 verity_contract ForEachMutableLocalSmoke where
   storage
     seen : Uint256 := slot 0

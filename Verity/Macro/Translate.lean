@@ -5490,7 +5490,7 @@ private partial def validateDoElemExprTypes
                 | none =>
                     let _ ← inferEmitArgExprType fields constDecls immutableDecls externalDecls params branchLocals arg
                     pure ()
-              pure branchLocals
+              pure locals
           | _ => throwErrorAt values "expected list literal [..]"
       | `(doElem| $stmt:term) =>
           validateEffectStmtExprTypes fields constDecls immutableDecls externalDecls functions params locals stmt
@@ -6599,7 +6599,7 @@ private partial def translateDoElem
                 | none =>
                     emitArgs := emitArgs.push (← translateEmitArgExpr fields constDecls immutableDecls params branchLocals arg)
               stmts := stmts.push (← `(Compiler.CompilationModel.Stmt.emit $(strTerm evName) [ $[$emitArgs],* ]))
-              pure (stmts, branchLocals, mutableLocals)
+              pure (stmts, locals, mutableLocals)
           | _ => throwErrorAt values "expected list literal [..]"
       | `(doElem| $stmt:term) =>
           pure (#[(← translateEffectStmt fields constDecls immutableDecls externalDecls functions params locals stmt)], locals, mutableLocals)
@@ -7416,7 +7416,7 @@ def mkStructDefCommandPublic (decl : StructDecl) : CommandElabM Cmd := do
 def mkStructEventArgInstanceCommandPublic (decl : StructDecl) : CommandElabM Cmd := do
   let structId := decl.ident
   `(command| instance : CoeTC $structId _root_.Contracts.EventArg where
-      coe _ := _root_.Contracts.EventArg.word (0 : _root_.Verity.Uint256))
+      coe _ := _root_.Contracts.EventArg.word (pure (0 : _root_.Verity.Uint256)))
 
 /-- Generate a `def storageNamespace : Nat := <keccak-value>` command for
     the current contract.  Uses the resolved namespace value from

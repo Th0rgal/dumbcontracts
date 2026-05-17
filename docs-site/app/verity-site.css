@@ -712,7 +712,24 @@ a[role="button"] {
   max-width: 60rem;
   display: flex;
   flex-direction: column;
-  gap: clamp(1.1rem, 2vw, 1.5rem);
+  /* No flex gap; per-element margins so the kicker hugs the title
+     while the CTA gets more space. */
+}
+
+.verity-hero__head > * {
+  margin: 0;
+}
+
+.verity-hero__head > .verity-kicker + h1 {
+  margin-top: 0.6rem;
+}
+
+.verity-hero__head > h1 + .verity-hero__dek {
+  margin-top: 1.4rem;
+}
+
+.verity-hero__head > .verity-hero__dek + .verity-hero__links {
+  margin-top: clamp(1.6rem, 3vw, 2.25rem);
 }
 
 .verity-hero h1 {

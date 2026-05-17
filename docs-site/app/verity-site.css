@@ -361,7 +361,17 @@ article main h6 {
 article main h1 {
   font-size: clamp(2.4rem, 5.5vw, 4.6rem) !important;
   margin-top: 0 !important;
+  margin-bottom: 1.25rem !important;
   letter-spacing: -0.015em !important;
+}
+
+/* Lead paragraph — the first paragraph after the h1 — gets a touch more
+   air and a slightly lighter weight, like a preprint abstract opener. */
+article main h1 + p {
+  font-size: 1.18rem !important;
+  line-height: 1.62 !important;
+  color: var(--verity-ink) !important;
+  font-weight: 400 !important;
 }
 
 article main h2 {
@@ -435,6 +445,33 @@ article main a:hover,
 
 .subheading-anchor {
   color: var(--verity-muted) !important;
+}
+
+.nextra-breadcrumb {
+  font-family: var(--verity-font-ui);
+  font-size: 0.78rem !important;
+  letter-spacing: 0.01em;
+  color: var(--verity-muted) !important;
+  text-transform: none;
+}
+
+.nextra-breadcrumb a {
+  color: var(--verity-muted) !important;
+  text-decoration: none !important;
+}
+
+.nextra-breadcrumb a:hover {
+  color: var(--verity-accent) !important;
+}
+
+/* "Last updated on …" footer line — give it a research-footer feel */
+[class*="nextra-content-width"] > p:has(> time),
+[class*="nextra-content-width"] p:last-child:has(time) {
+  color: var(--verity-muted) !important;
+  font-family: var(--verity-font-ui) !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.02em;
+  font-style: italic;
 }
 
 article main hr {

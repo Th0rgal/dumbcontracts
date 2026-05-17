@@ -1,5 +1,10 @@
 const primaryLink = { href: '/guides/first-contract', label: 'Start with a contract' }
 
+const paperLink = {
+  href: 'https://lfglabs.dev/papers/verity.pdf',
+  label: 'Read the paper',
+}
+
 const secondaryLinks = [
   { href: '/compiler', label: 'Compiler model' },
   { href: '/verification', label: 'Verification status' },
@@ -28,10 +33,36 @@ export function VerityHero() {
         </p>
 
         <nav className="verity-hero__links" aria-label="Primary documentation links">
-          <a className="verity-hero__cta" href={primaryLink.href}>
-            {primaryLink.label}
-            <span aria-hidden="true">→</span>
-          </a>
+          <div className="verity-hero__cta-row">
+            <a className="verity-hero__cta" href={primaryLink.href}>
+              {primaryLink.label}
+              <span aria-hidden="true">→</span>
+            </a>
+            <a
+              className="verity-hero__paper"
+              href={paperLink.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 20"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2 1.5h7l5 5v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1Z" />
+                <path d="M9 1.5V6.5h5" />
+                <path d="M4 11h8M4 14h8M4 8h3" />
+              </svg>
+              {paperLink.label}
+              <span aria-hidden="true" className="verity-hero__paper-arrow">↗</span>
+            </a>
+          </div>
           <ul className="verity-hero__more">
             {secondaryLinks.map((link) => (
               <li key={link.href}>

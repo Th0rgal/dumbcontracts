@@ -901,6 +901,13 @@ a[role="button"] {
   margin-top: 1.75rem;
 }
 
+.verity-hero__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .verity-hero__cta {
   display: inline-flex;
   align-items: center;
@@ -918,6 +925,50 @@ a[role="button"] {
   line-height: 1.1;
   text-decoration: none !important;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.verity-hero__paper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  padding: 0.65rem 1.05rem;
+  border: 1px solid var(--verity-accent) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--verity-accent) !important;
+  font-family: var(--verity-font-ui);
+  font-size: 0.97rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1.1;
+  text-decoration: none !important;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.verity-hero__paper svg {
+  flex: 0 0 auto;
+}
+
+.verity-hero__paper-arrow {
+  font-size: 0.85em;
+  opacity: 0.7;
+  transition: transform 0.18s ease;
+}
+
+.verity-hero__paper:hover {
+  background: color-mix(in srgb, var(--verity-accent) 10%, transparent) !important;
+  color: var(--verity-heading) !important;
+  border-color: color-mix(in srgb, var(--verity-accent) 84%, var(--verity-heading)) !important;
+}
+
+.verity-hero__paper:hover .verity-hero__paper-arrow {
+  transform: translate(0.12rem, -0.12rem);
+}
+
+.verity-hero__paper:focus-visible {
+  outline: 2px solid var(--verity-accent);
+  outline-offset: 2px;
 }
 
 .verity-hero__cta span {
@@ -1475,7 +1526,15 @@ a[role="button"] {
     font-size: 1.15rem;
   }
 
-  .verity-hero__cta {
+  .verity-hero__cta-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    width: 100%;
+  }
+
+  .verity-hero__cta,
+  .verity-hero__paper {
     width: 100%;
     justify-content: center;
   }

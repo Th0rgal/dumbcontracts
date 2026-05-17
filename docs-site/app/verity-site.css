@@ -166,7 +166,7 @@ body {
 input[type="search"] {
   background: var(--verity-surface) !important;
   border: 1px solid var(--verity-rule) !important;
-  border-radius: 0.3rem !important;
+  border-radius: 0 !important;
   color: var(--verity-ink) !important;
   font-family: var(--verity-font-ui) !important;
   font-size: 0.9rem !important;
@@ -344,7 +344,36 @@ body {
 .nextra-toc a[aria-selected="true"] {
   color: var(--verity-heading) !important;
   background: color-mix(in srgb, var(--verity-accent-soft) 52%, transparent) !important;
-  border-radius: 0.25rem !important;
+  border-radius: 0 !important;
+  box-shadow: inset 2px 0 0 var(--verity-accent);
+}
+
+.dark .nextra-sidebar a[aria-current="page"],
+.dark .nextra-sidebar li.active > a,
+.dark .nextra-sidebar-container a[aria-current="page"],
+.dark .nextra-sidebar-container li.active > a,
+.dark .nextra-mobile-nav a[aria-current="page"],
+.dark .nextra-mobile-nav li.active > a,
+.dark .nextra-toc a[aria-current="true"],
+.dark .nextra-toc a[aria-selected="true"] {
+  box-shadow: inset 2px 0 0 var(--verity-accent);
+}
+
+/* Square corners across all sidebar / nav items, including hover states
+   and collapsible-section chevron buttons that Nextra rounds by default. */
+.nextra-sidebar a,
+.nextra-sidebar button,
+.nextra-sidebar li,
+.nextra-sidebar-container a,
+.nextra-sidebar-container button,
+.nextra-sidebar-container li,
+.nextra-mobile-nav a,
+.nextra-mobile-nav button,
+.nextra-mobile-nav li,
+.nextra-sidebar-footer button,
+.nextra-toc a,
+.nextra-toc button {
+  border-radius: 0 !important;
 }
 
 .dark .nextra-sidebar-container a[aria-current="page"],
@@ -585,7 +614,7 @@ article :not(pre) > code,
 code.nextra-code:not(pre code) {
   background: color-mix(in srgb, var(--verity-sidebar) 28%, var(--verity-surface)) !important;
   border: 1px solid color-mix(in srgb, var(--verity-rule) 55%, transparent) !important;
-  border-radius: 0.22rem !important;
+  border-radius: 0 !important;
   color: var(--verity-heading) !important;
   font-family: var(--verity-font-code) !important;
   font-size: 0.88em !important;
@@ -618,7 +647,7 @@ article main blockquote,
   background: color-mix(in srgb, var(--verity-surface) 82%, transparent) !important;
   border: 1px solid var(--verity-rule) !important;
   border-left: 0.22rem solid var(--verity-accent) !important;
-  border-radius: 0.25rem !important;
+  border-radius: 0 !important;
   color: var(--verity-ink) !important;
   box-shadow: none !important;
 }
@@ -626,7 +655,7 @@ article main blockquote,
 button,
 .nextra-button,
 a[role="button"] {
-  border-radius: 0.25rem !important;
+  border-radius: 0 !important;
   font-family: var(--verity-font-ui) !important;
 }
 
@@ -739,7 +768,7 @@ a[role="button"] {
   min-height: 2.6rem;
   padding: 0.65rem 1.05rem;
   border: 1px solid var(--verity-accent) !important;
-  border-radius: 0.3rem;
+  border-radius: 0 !important;
   background: var(--verity-accent) !important;
   color: var(--verity-accent-ink) !important;
   font-family: var(--verity-font-ui);
@@ -898,7 +927,7 @@ a[role="button"] {
   border: 1px solid var(--verity-rule);
   background: var(--verity-code-surface);
   box-shadow: var(--verity-shadow);
-  border-radius: 0.35rem;
+  border-radius: 0;
   overflow: hidden;
   transition: border-color 0.35s ease;
 }
@@ -943,25 +972,30 @@ a[role="button"] {
   display: inline-flex;
   flex: 0 0 auto;
   border: 1px solid var(--verity-rule);
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--verity-code-surface);
-  padding: 0.15rem;
-  gap: 0.1rem;
+  padding: 0;
+  gap: 0;
 }
 
 .code-switcher__tabs button {
   appearance: none;
   border: 0;
+  border-left: 1px solid var(--verity-rule);
   background: transparent;
   color: var(--verity-muted);
   font-family: var(--verity-font-ui);
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  padding: 0.32rem 0.85rem;
-  border-radius: 999px;
+  padding: 0.42rem 1rem;
+  border-radius: 0 !important;
   cursor: pointer;
   transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.code-switcher__tabs button:first-child {
+  border-left: 0;
 }
 
 .code-switcher__tabs button:hover {

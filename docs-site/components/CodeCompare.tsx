@@ -116,8 +116,8 @@ export async function CodeCompare() {
         <p className="verity-kicker">Side by side</p>
         <h2 id="code-compare-title">The same contract, lifted into Lean.</h2>
         <p>
-          Recognizable Solidity structure — guards, ABI, events, external calls —
-          all visible to proofs.
+          Same shape as Solidity — guards, ABI, events, externals — all
+          visible to proofs.
         </p>
       </div>
       <CodeCompareSwitcher

@@ -3815,6 +3815,56 @@ private def erc20BalanceOfSmokeSpec : CompilationModel := {
   ]
 }
 
+private def erc20SafeTransferSmokeSpec : CompilationModel := {
+  name := "ERC20SafeTransferSmoke"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "send"
+      params := [
+        { name := "token", ty := ParamType.address }
+        , { name := "recipient", ty := ParamType.address }
+        , { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      returns := []
+      body := [
+        Compiler.Modules.ERC20.safeTransfer
+          (Expr.param "token")
+          (Expr.param "recipient")
+          (Expr.param "amount"),
+        Stmt.stop
+      ]
+    }
+  ]
+}
+
+private def erc20SafeTransferFromSmokeSpec : CompilationModel := {
+  name := "ERC20SafeTransferFromSmoke"
+  fields := []
+  «constructor» := none
+  functions := [
+    { name := "pull"
+      params := [
+        { name := "token", ty := ParamType.address }
+        , { name := "owner", ty := ParamType.address }
+        , { name := "recipient", ty := ParamType.address }
+        , { name := "amount", ty := ParamType.uint256 }
+      ]
+      returnType := none
+      returns := []
+      body := [
+        Compiler.Modules.ERC20.safeTransferFrom
+          (Expr.param "token")
+          (Expr.param "owner")
+          (Expr.param "recipient")
+          (Expr.param "amount"),
+        Stmt.stop
+      ]
+    }
+  ]
+}
+
 private def callWithValueSmokeSpec : CompilationModel := {
   name := "CallWithValueSmoke"
   fields := []
@@ -4767,16 +4817,18 @@ set_option maxRecDepth 4096 in
       contains bn256PairingTrustReport "\"status\":\"assumed\"")
   let abiEncodePackedWordsYul ←
     expectCompileToYul "abiEncodePackedWords smoke spec" abiEncodePackedWordsSmokeSpec
-  expectTrue "abiEncodePackedWords evaluates source words before clobbering scratch memory"
+  expectTrue "abiEncodePackedWords evaluates source words before writing the hash preimage"
     (contains abiEncodePackedWordsYul "let __packed_word_0 := a" &&
       contains abiEncodePackedWordsYul "let __packed_word_1 := b" &&
       contains abiEncodePackedWordsYul "let __packed_word_2 := c")
-  expectTrue "abiEncodePackedWords stores static words contiguously"
-    (contains abiEncodePackedWordsYul "mstore(0, __packed_word_0)" &&
-      contains abiEncodePackedWordsYul "mstore(32, __packed_word_1)" &&
-      contains abiEncodePackedWordsYul "mstore(64, __packed_word_2)")
+  expectTrue "abiEncodePackedWords stores static words contiguously without clobbering the free-memory pointer"
+    (contains abiEncodePackedWordsYul "let __digest_packed_words_ptr := mload(64)" &&
+      contains abiEncodePackedWordsYul "mstore(add(__digest_packed_words_ptr, 0), __packed_word_0)" &&
+      contains abiEncodePackedWordsYul "mstore(add(__digest_packed_words_ptr, 32), __packed_word_1)" &&
+      contains abiEncodePackedWordsYul "mstore(add(__digest_packed_words_ptr, 64), __packed_word_2)" &&
+      contains abiEncodePackedWordsYul "mstore(64, add(__digest_packed_words_ptr, 96))")
   expectTrue "abiEncodePackedWords hashes the exact packed byte length"
-    (contains abiEncodePackedWordsYul "let digest := keccak256(0, 96)")
+    (contains abiEncodePackedWordsYul "let digest := keccak256(__digest_packed_words_ptr, 96)")
   let abiEncodeStaticArrayYul ←
     expectCompileToYul "abiEncodeStaticArray smoke spec" abiEncodeStaticArraySmokeSpec
   expectTrue "abiEncodeStaticArray writes the single dynamic argument head and length"
@@ -4946,6 +4998,28 @@ set_option maxRecDepth 4096 in
     (contains erc20BalanceOfYul "if iszero(eq(returndatasize(), 32)) {")
   expectTrue "erc20 balanceOf ECM ABI-encodes the selector"
     (contains erc20BalanceOfYul "mstore(0, shl(224, 0x70a08231))")
+  let erc20SafeTransferYul ←
+    expectCompileToYul "erc20 safeTransfer smoke spec" erc20SafeTransferSmokeSpec
+  expectTrue "erc20 safeTransfer ECM allocates calldata from the free-memory pointer"
+    (contains erc20SafeTransferYul "let __st_ptr := mload(64)" &&
+      contains erc20SafeTransferYul "mstore(__st_ptr, 0xa9059cbb00000000000000000000000000000000000000000000000000000000)" &&
+      contains erc20SafeTransferYul "call(gas(), token, 0, __st_ptr, 68, 0, 32)")
+  expectTrue "erc20 safeTransfer ECM advances the free-memory pointer"
+    (contains erc20SafeTransferYul "mstore(64, and(add(add(__st_ptr, 68), 31), not(31)))")
+  expectTrue "erc20 safeTransfer ECM forwards revert returndata"
+    (contains erc20SafeTransferYul "returndatacopy(0, 0, __st_rds)" &&
+      contains erc20SafeTransferYul "revert(0, __st_rds)")
+  let erc20SafeTransferFromYul ←
+    expectCompileToYul "erc20 safeTransferFrom smoke spec" erc20SafeTransferFromSmokeSpec
+  expectTrue "erc20 safeTransferFrom ECM allocates calldata from the free-memory pointer"
+    (contains erc20SafeTransferFromYul "let __stf_ptr := mload(64)" &&
+      contains erc20SafeTransferFromYul "mstore(__stf_ptr, 0x23b872dd00000000000000000000000000000000000000000000000000000000)" &&
+      contains erc20SafeTransferFromYul "call(gas(), token, 0, __stf_ptr, 100, 0, 32)")
+  expectTrue "erc20 safeTransferFrom ECM advances the free-memory pointer"
+    (contains erc20SafeTransferFromYul "mstore(64, and(add(add(__stf_ptr, 100), 31), not(31)))")
+  expectTrue "erc20 safeTransferFrom ECM forwards revert returndata"
+    (contains erc20SafeTransferFromYul "returndatacopy(0, 0, __stf_rds)" &&
+      contains erc20SafeTransferFromYul "revert(0, __stf_rds)")
   let callWithValueYul ←
     expectCompileToYul "generic callWithValue smoke spec" callWithValueSmokeSpec
   expectTrue "callWithValue ECM lowers to an ETH-aware generic call"

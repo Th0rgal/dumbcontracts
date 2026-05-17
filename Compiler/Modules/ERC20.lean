@@ -94,15 +94,29 @@ def safeTransferModule : ExternalCallModule where
       | _ => throw "safeTransfer expects 3 arguments (token, to, amount)"
     let selectorWord := 0xa9059cbb00000000000000000000000000000000000000000000000000000000
     pure [YulStmt.block ([
-      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorWord]),
-      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, toExpr]),
-      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, amountExpr]),
+      YulStmt.let_ "__st_ptr" (YulExpr.call "mload" [YulExpr.lit 64]),
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.ident "__st_ptr", YulExpr.hex selectorWord]),
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__st_ptr", YulExpr.lit 4], toExpr]),
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__st_ptr", YulExpr.lit 36], amountExpr]),
       YulStmt.let_ "__st_success" (YulExpr.call "call" [
         YulExpr.call "gas" [], tokenExpr, YulExpr.lit 0,
-        YulExpr.lit 0, YulExpr.lit 68, YulExpr.lit 0, YulExpr.lit 32
+        YulExpr.ident "__st_ptr", YulExpr.lit 68, YulExpr.lit 0, YulExpr.lit 32
       ]),
-      YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__st_success"])
-        (revertWithMessage "transfer reverted"),
+      YulStmt.expr (YulExpr.call "mstore" [
+        YulExpr.lit 64,
+        YulExpr.call "and" [
+          YulExpr.call "add" [
+            YulExpr.call "add" [YulExpr.ident "__st_ptr", YulExpr.lit 68],
+            YulExpr.lit 31
+          ],
+          YulExpr.call "not" [YulExpr.lit 31]
+        ]
+      ]),
+      YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__st_success"]) [
+        YulStmt.let_ "__st_rds" (YulExpr.call "returndatasize" []),
+        YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__st_rds"]),
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__st_rds"])
+      ],
       YulStmt.if_ (YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
         YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "mload" [YulExpr.lit 0]])
           (revertWithMessage "transfer returned false")
@@ -128,16 +142,30 @@ def safeTransferFromModule : ExternalCallModule where
       | _ => throw "safeTransferFrom expects 4 arguments (token, from, to, amount)"
     let selectorWord := 0x23b872dd00000000000000000000000000000000000000000000000000000000
     pure [YulStmt.block ([
-      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 0, YulExpr.hex selectorWord]),
-      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 4, fromExpr]),
-      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 36, toExpr]),
-      YulStmt.expr (YulExpr.call "mstore" [YulExpr.lit 68, amountExpr]),
+      YulStmt.let_ "__stf_ptr" (YulExpr.call "mload" [YulExpr.lit 64]),
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.ident "__stf_ptr", YulExpr.hex selectorWord]),
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__stf_ptr", YulExpr.lit 4], fromExpr]),
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__stf_ptr", YulExpr.lit 36], toExpr]),
+      YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__stf_ptr", YulExpr.lit 68], amountExpr]),
       YulStmt.let_ "__stf_success" (YulExpr.call "call" [
         YulExpr.call "gas" [], tokenExpr, YulExpr.lit 0,
-        YulExpr.lit 0, YulExpr.lit 100, YulExpr.lit 0, YulExpr.lit 32
+        YulExpr.ident "__stf_ptr", YulExpr.lit 100, YulExpr.lit 0, YulExpr.lit 32
       ]),
-      YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__stf_success"])
-        (revertWithMessage "transferFrom reverted"),
+      YulStmt.expr (YulExpr.call "mstore" [
+        YulExpr.lit 64,
+        YulExpr.call "and" [
+          YulExpr.call "add" [
+            YulExpr.call "add" [YulExpr.ident "__stf_ptr", YulExpr.lit 100],
+            YulExpr.lit 31
+          ],
+          YulExpr.call "not" [YulExpr.lit 31]
+        ]
+      ]),
+      YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__stf_success"]) [
+        YulStmt.let_ "__stf_rds" (YulExpr.call "returndatasize" []),
+        YulStmt.expr (YulExpr.call "returndatacopy" [YulExpr.lit 0, YulExpr.lit 0, YulExpr.ident "__stf_rds"]),
+        YulStmt.expr (YulExpr.call "revert" [YulExpr.lit 0, YulExpr.ident "__stf_rds"])
+      ],
       YulStmt.if_ (YulExpr.call "eq" [YulExpr.call "returndatasize" [], YulExpr.lit 32]) [
         YulStmt.if_ (YulExpr.call "iszero" [YulExpr.call "mload" [YulExpr.lit 0]])
           (revertWithMessage "transferFrom returned false")

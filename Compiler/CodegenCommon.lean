@@ -48,6 +48,12 @@ private def yulReturnRuntime : YulStmt :=
     YulExpr.call "datasize" [YulExpr.str "runtime"]
   ])
 
+private def initFreeMemoryPointer : YulStmt :=
+  YulStmt.expr (YulExpr.call "mstore" [
+    YulExpr.lit Compiler.Constants.freeMemoryPointer,
+    YulExpr.lit 128
+  ])
+
 def mappingSlotFuncAt (scratchBase : Nat) : YulStmt :=
   let keyPtr := scratchBase
   let slotPtr := scratchBase + 32
@@ -124,6 +130,7 @@ def buildSwitch
   )
   let defaultCase := defaultDispatchCase fallback receive
   YulStmt.block [
+    initFreeMemoryPointer,
     YulStmt.let_ "__has_selector"
       (YulExpr.call "iszero" [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]),
     YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) defaultCase,
@@ -181,7 +188,7 @@ private def deployCodeWithProfile (contract : IRContract) (profile : BackendProf
   let valueGuard := if contract.constructorPayable then [] else [callvalueGuard]
   let mapping := if contract.usesMapping then [mappingSlotFuncAt mappingSlotScratchBase] else []
   let internals := internalHelpersForProfile profile contract.internalFunctions
-  valueGuard ++ mapping ++ internals ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
+  [initFreeMemoryPointer] ++ valueGuard ++ mapping ++ internals ++ contract.deploy ++ [yulDatacopy, yulReturnRuntime]
 
 private def deployCode (contract : IRContract) : List YulStmt :=
   deployCodeWithProfile contract .semantic

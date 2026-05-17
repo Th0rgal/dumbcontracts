@@ -25,6 +25,13 @@ private def packedWordBindings (words : List YulExpr) : List YulStmt :=
   words.zipIdx.map fun (word, idx) =>
     YulStmt.let_ (packedWordTempName idx) word
 
+private def packedWordTempStoresAt (base : YulExpr) (wordCount : Nat) : List YulStmt :=
+  (List.range wordCount).map fun idx =>
+    YulStmt.expr (YulExpr.call "mstore" [
+      YulExpr.call "add" [base, YulExpr.lit (idx * 32)],
+      YulExpr.ident (packedWordTempName idx)
+    ])
+
 private def packedWordTempStores (wordCount : Nat) : List YulStmt :=
   (List.range wordCount).map fun idx =>
     YulStmt.expr (YulExpr.call "mstore" [
@@ -80,10 +87,19 @@ def abiEncodePackedWordsModule (resultVar : String) (wordCount : Nat) : External
     if args.length != wordCount then
       throw s!"abiEncodePackedWords expects {wordCount} static word argument(s)"
     let size := wordCount * 32
-    pure [
-      YulStmt.block (packedWordBindings args ++ packedWordTempStores wordCount),
-      YulStmt.let_ resultVar (YulExpr.call "keccak256" [YulExpr.lit 0, YulExpr.lit size])
-    ]
+    let ptrName := s!"__{resultVar}_packed_words_ptr"
+    let ptr := YulExpr.ident ptrName
+    pure <|
+      packedWordBindings args ++
+      [YulStmt.let_ ptrName (YulExpr.call "mload" [YulExpr.lit freeMemoryPointer])] ++
+      packedWordTempStoresAt ptr wordCount ++
+      [
+      YulStmt.expr (YulExpr.call "mstore" [
+        YulExpr.lit freeMemoryPointer,
+        YulExpr.call "add" [ptr, YulExpr.lit (alignUp32 size)]
+      ]),
+      YulStmt.let_ resultVar (YulExpr.call "keccak256" [ptr, YulExpr.lit size])
+      ]
 
 /-- Convenience constructor for static-word packed Keccak hashing. -/
 def abiEncodePackedWords (resultVar : String) (words : List Expr) : Stmt :=

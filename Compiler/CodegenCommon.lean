@@ -48,7 +48,7 @@ private def yulReturnRuntime : YulStmt :=
     YulExpr.call "datasize" [YulExpr.str "runtime"]
   ])
 
-private def initFreeMemoryPointer : YulStmt :=
+def initFreeMemoryPointer : YulStmt :=
   YulStmt.expr (YulExpr.call "mstore" [
     YulExpr.lit Compiler.Constants.freeMemoryPointer,
     YulExpr.lit 128
@@ -130,7 +130,6 @@ def buildSwitch
   )
   let defaultCase := defaultDispatchCase fallback receive
   YulStmt.block [
-    initFreeMemoryPointer,
     YulStmt.let_ "__has_selector"
       (YulExpr.call "iszero" [YulExpr.call "lt" [YulExpr.call "calldatasize" [], YulExpr.lit 4]]),
     YulStmt.if_ (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]) defaultCase,
@@ -141,7 +140,9 @@ def buildSwitch
 def runtimeCode (contract : IRContract) : List YulStmt :=
   let mapping := if contract.usesMapping then [mappingSlotFuncAt 0] else []
   let internals := contract.internalFunctions
-  mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
+  mapping ++ internals ++
+    [initFreeMemoryPointer,
+     buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
 
 private def profileSortsOutput (profile : BackendProfile) : Bool :=
   match profile with
@@ -181,7 +182,7 @@ private def runtimeCodeWithEmitOptions (contract : IRContract) (options : YulEmi
   let internals := internalHelpersForProfile options.backendProfile contract.internalFunctions
   let sortCases := profileSortsDispatchCases options.backendProfile
   let switchStmt := buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint sortCases
-  mapping ++ internals ++ [switchStmt]
+  mapping ++ internals ++ [initFreeMemoryPointer, switchStmt]
 
 private def deployCodeWithProfile (contract : IRContract) (profile : BackendProfile)
     (mappingSlotScratchBase : Nat := 0) : List YulStmt :=

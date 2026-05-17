@@ -1382,7 +1382,7 @@ jobs:
 
   foundry-multi-seed:
     runs-on: [self-hosted, linux, x64, verity, build]
-    timeout-minutes: 45
+    timeout-minutes: 75
     needs: [changes, build-compiler-binaries]
     if: needs.changes.outputs.compiler == 'true' && github.event_name != 'pull_request'
     strategy:

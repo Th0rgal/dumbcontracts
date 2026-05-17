@@ -16,7 +16,9 @@ export function VerityHero() {
   return (
     <section className="verity-hero" aria-labelledby="verity-hero-title">
       <header className="verity-hero__head">
-        <p className="verity-kicker">Lean-native verification language</p>
+        <p className="verity-kicker">
+          Lean&nbsp;4 <span aria-hidden="true">·</span> Formal verification <span aria-hidden="true">·</span> EVM
+        </p>
         <h1 id="verity-hero-title">
           Verity<span aria-hidden="true" className="verity-hero__terminal">.</span>
         </h1>

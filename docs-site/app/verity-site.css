@@ -685,6 +685,12 @@ a[role="button"] {
   text-transform: uppercase;
 }
 
+.verity-hero .verity-kicker span {
+  margin: 0 0.55em;
+  color: color-mix(in srgb, var(--verity-accent) 60%, transparent);
+  font-weight: 400;
+}
+
 .verity-hero {
   display: grid;
   grid-template-rows: auto auto;

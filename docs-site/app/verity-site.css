@@ -689,25 +689,52 @@ a[role="button"] {
   line-height: 1.25;
 }
 
-.code-panel pre {
+.code-panel__pre,
+.code-panel__pre > pre {
   min-height: 31rem;
   max-height: 37rem;
   margin: 0;
   overflow: auto;
-  background: var(--verity-code-surface);
-  color: var(--verity-ink);
+  background: var(--verity-code-surface) !important;
+  color: var(--verity-ink) !important;
   font-family: var(--verity-font-code);
-  font-size: 0.78rem;
-  line-height: 1.62;
+  font-size: 0.82rem;
+  line-height: 1.65;
   tab-size: 2;
   white-space: pre;
+  border: 0 !important;
 }
 
-.code-panel code {
+.code-panel__pre > pre code {
   display: block;
   width: max-content;
   min-width: 100%;
-  padding: 1rem;
+  padding: 1.05rem 1.15rem;
+  background: transparent !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+}
+
+.code-panel__pre > pre code .line {
+  display: inline-block;
+  width: 100%;
+}
+
+/* Shiki dual-theme colors via CSS variables */
+.code-panel__pre span {
+  color: var(--shiki-light, inherit);
+  background-color: var(--shiki-light-bg, transparent);
+  font-style: var(--shiki-light-font-style, inherit);
+  font-weight: var(--shiki-light-font-weight, inherit);
+  text-decoration: var(--shiki-light-text-decoration, inherit);
+}
+
+.dark .code-panel__pre span {
+  color: var(--shiki-dark, inherit);
+  background-color: var(--shiki-dark-bg, transparent);
+  font-style: var(--shiki-dark-font-style, inherit);
+  font-weight: var(--shiki-dark-font-weight, inherit);
+  text-decoration: var(--shiki-dark-text-decoration, inherit);
 }
 
 .code-panel--verity {

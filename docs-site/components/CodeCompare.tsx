@@ -1,6 +1,9 @@
-'use client'
+import { readFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { codeToHtml } from 'shiki'
 
-import { useState } from 'react'
+import { CodeCompareMobileTabs } from './CodeCompareMobileTabs'
 
 const verityCode = `verity_contract Escrow where
   storage
@@ -65,11 +68,47 @@ const solidityCode = `contract Escrow {
 const notes = [
   'Reusable modifiers are ordinary verified helpers, not compiler magic.',
   'Typed external calls expose oracle and ABI assumptions at the language boundary.',
-  'Event definitions and storage slots remain visible to specs, proofs, and compiler reports.',
+  'Event definitions and storage slots stay visible to specs, proofs, and compiler reports.',
 ]
 
-export function CodeCompare() {
-  const [active, setActive] = useState<'verity' | 'solidity'>('verity')
+const moduleDir = dirname(fileURLToPath(import.meta.url))
+const grammarPath = resolve(moduleDir, '..', 'syntaxes', 'verity.tmLanguage.json')
+const lightThemePath = resolve(moduleDir, '..', 'themes', 'lfglabs-cream.json')
+const darkThemePath = resolve(moduleDir, '..', 'themes', 'verity-dark.json')
+
+async function readJson(path: string) {
+  return JSON.parse(await readFile(path, 'utf8'))
+}
+
+async function highlight(code: string, lang: 'verity' | 'solidity') {
+  const [grammar, lightTheme, darkTheme] = await Promise.all([
+    readJson(grammarPath),
+    readJson(lightThemePath),
+    readJson(darkThemePath),
+  ])
+
+  return codeToHtml(code, {
+    lang: lang === 'verity'
+      ? {
+          ...grammar,
+          name: 'verity',
+          aliases: ['vty'],
+        }
+      : lang,
+    themes: {
+      light: lightTheme,
+      dark: darkTheme,
+    },
+    defaultColor: false,
+    cssVariablePrefix: '--shiki-',
+  })
+}
+
+export async function CodeCompare() {
+  const [verityHtml, solidityHtml] = await Promise.all([
+    highlight(verityCode, 'verity'),
+    highlight(solidityCode, 'solidity'),
+  ])
 
   return (
     <section className="code-compare" aria-labelledby="code-compare-title">
@@ -77,42 +116,25 @@ export function CodeCompare() {
         <p className="verity-kicker">Semantic contract surface</p>
         <h2 id="code-compare-title">Solidity patterns, lifted into proof-carrying code.</h2>
         <p>
-          Verity keeps production smart-contract structure recognizable while making guards,
-          ABI projection, event emission, and external calls available to Lean proofs.
+          Verity keeps production smart-contract structure recognizable while exposing guards,
+          ABI projection, event emission, and external calls to Lean proofs.
         </p>
       </div>
-      <div className="code-compare__switch" role="tablist" aria-label="Compare languages">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active === 'verity'}
-          onClick={() => setActive('verity')}
-        >
-          Verity
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active === 'solidity'}
-          onClick={() => setActive('solidity')}
-        >
-          Solidity
-        </button>
-      </div>
+      <CodeCompareMobileTabs />
       <div className="code-compare__grid">
-        <figure className="code-panel code-panel--verity" data-mobile-active={active === 'verity'}>
+        <figure className="code-panel code-panel--verity" data-panel="verity">
           <figcaption>
             <span>Verity</span>
             <strong>Typed contract, proof-visible behavior</strong>
           </figcaption>
-          <pre data-language="verity"><code>{verityCode}</code></pre>
+          <div className="code-panel__pre" dangerouslySetInnerHTML={{ __html: verityHtml }} />
         </figure>
-        <figure className="code-panel code-panel--solidity" data-mobile-active={active === 'solidity'}>
+        <figure className="code-panel code-panel--solidity" data-panel="solidity">
           <figcaption>
             <span>Solidity</span>
             <strong>Runtime implementation surface</strong>
           </figcaption>
-          <pre data-language="solidity"><code>{solidityCode}</code></pre>
+          <div className="code-panel__pre" dangerouslySetInnerHTML={{ __html: solidityHtml }} />
         </figure>
       </div>
       <ul className="code-compare__notes">

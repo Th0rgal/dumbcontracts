@@ -1,6 +1,7 @@
 
-# screenshots/snap script used during design iteration
+# screenshots/snap scripts used during design iteration
 docs-site/snap.cjs
+docs-site/crop.cjs
 build/
 .lake/
 lake-packages/

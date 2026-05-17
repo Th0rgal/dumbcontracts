@@ -191,6 +191,39 @@ aside.nextra-sidebar-container,
   background: var(--verity-sidebar) !important;
   border-right: 1px solid var(--verity-rule) !important;
   font-family: var(--verity-font-ui);
+  position: relative;
+}
+
+/* Extend the sidebar tint to the viewport's left edge on wide screens
+   where the layout's max-w-(--nextra-content-width) leaves an empty
+   strip of page bg there. */
+aside.nextra-sidebar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 100%;
+  width: 100vw;
+  background: var(--verity-sidebar);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark aside.nextra-sidebar::before {
+  background: var(--verity-surface);
+}
+
+/* The aside is sticky, so its children paint over the ::before naturally,
+   but the masked scroll area would otherwise sit *under* it. Keep that
+   div above the faux background. */
+aside.nextra-sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+html,
+body {
+  overflow-x: clip;
 }
 
 .nextra-sidebar > div,
@@ -857,35 +890,41 @@ a[role="button"] {
   line-height: 1.5;
 }
 
-.code-compare__switch {
-  display: none;
-}
-
-.code-compare__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.code-panel {
-  min-width: 0;
+/* Single-panel switcher: a tabbed header above one panel that swaps
+   between Solidity and Verity. */
+.code-switcher {
+  position: relative;
   margin: 0;
   border: 1px solid var(--verity-rule);
   background: var(--verity-code-surface);
   box-shadow: var(--verity-shadow);
+  border-radius: 0.35rem;
+  overflow: hidden;
+  transition: border-color 0.35s ease;
 }
 
-.code-panel figcaption {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.75rem 0.9rem;
+.code-switcher[data-active="verity"] {
+  border-color: color-mix(in srgb, var(--verity-accent) 46%, var(--verity-rule));
+}
+
+.code-switcher__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.95rem;
   border-bottom: 1px solid var(--verity-rule);
   background: var(--verity-surface);
   font-family: var(--verity-font-ui);
 }
 
-.code-panel figcaption span {
+.code-switcher__caption {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.code-switcher__caption span {
   color: var(--verity-accent);
   font-size: 0.72rem;
   font-weight: 800;
@@ -893,22 +932,93 @@ a[role="button"] {
   text-transform: uppercase;
 }
 
-.code-panel figcaption strong {
+.code-switcher__caption strong {
   color: var(--verity-heading);
   font-size: 0.92rem;
+  font-weight: 600;
   line-height: 1.25;
+}
+
+.code-switcher__tabs {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 1px solid var(--verity-rule);
+  border-radius: 999px;
+  background: var(--verity-code-surface);
+  padding: 0.15rem;
+  gap: 0.1rem;
+}
+
+.code-switcher__tabs button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--verity-muted);
+  font-family: var(--verity-font-ui);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.32rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.code-switcher__tabs button:hover {
+  color: var(--verity-heading);
+}
+
+.code-switcher__tabs button[data-active="true"] {
+  background: var(--verity-accent);
+  color: var(--verity-accent-ink);
+}
+
+.code-switcher__tabs button:focus-visible {
+  outline: 2px solid var(--verity-accent);
+  outline-offset: 2px;
+}
+
+.code-switcher__panels {
+  position: relative;
+}
+
+.code-switcher__panels .code-panel {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Stack the two panels; the active one becomes visible with a soft
+   fade so the transition reads as a lift rather than a tab swap. */
+.code-switcher__panels .code-panel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.code-switcher__panels .code-panel[data-active="true"] {
+  position: relative;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.code-panel {
+  min-width: 0;
 }
 
 .code-panel__pre,
 .code-panel__pre > pre {
-  min-height: 31rem;
-  max-height: 37rem;
+  min-height: 26rem;
+  max-height: 32rem;
   margin: 0;
   overflow: auto;
   background: var(--verity-code-surface) !important;
   color: var(--verity-ink) !important;
   font-family: var(--verity-font-code);
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   line-height: 1.65;
   tab-size: 2;
   white-space: pre;
@@ -947,13 +1057,11 @@ a[role="button"] {
   text-decoration: var(--shiki-dark-text-decoration, inherit);
 }
 
-.code-panel--verity {
-  border-color: color-mix(in srgb, var(--verity-accent) 46%, var(--verity-rule));
-}
-
-.code-panel--verity pre {
+/* Subtle accent wash on the Verity panel so the lift to a proof-carrying
+   surface reads visually as well as semantically. */
+.code-switcher[data-active="verity"] .code-switcher__panels {
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--verity-accent) 10%, transparent), transparent 15rem),
+    linear-gradient(90deg, color-mix(in srgb, var(--verity-accent) 8%, transparent), transparent 15rem),
     var(--verity-code-surface);
 }
 
@@ -1008,13 +1116,14 @@ a[role="button"] {
     grid-template-columns: 1fr;
   }
 
-  .code-compare__intro,
-  .code-compare__grid {
+  .code-compare__intro {
     grid-template-columns: 1fr;
   }
 
-  .code-panel pre {
-    min-height: 24rem;
+  .code-panel__pre,
+  .code-panel__pre > pre {
+    min-height: 22rem;
+    max-height: 28rem;
   }
 
   .code-compare__notes {
@@ -1072,46 +1181,26 @@ a[role="button"] {
     margin-top: 1rem;
   }
 
-  .code-compare__switch {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    margin: 0.5rem 0 0.75rem;
-    border: 1px solid var(--verity-rule);
-    background: var(--verity-surface);
+  .code-switcher__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
   }
 
-  .code-compare__switch button {
-    min-height: 2.55rem;
-    border: 0;
-    border-left: 1px solid var(--verity-rule);
-    background: transparent;
-    color: var(--verity-muted);
-    font-family: var(--verity-font-ui);
-    font-weight: 800;
+  .code-switcher__tabs {
+    align-self: stretch;
+    justify-content: stretch;
   }
 
-  .code-compare__switch button:first-child {
-    border-left: 0;
+  .code-switcher__tabs button {
+    flex: 1 1 0;
   }
 
-  .code-compare__switch button[aria-selected="true"] {
-    background: var(--verity-accent);
-    color: var(--verity-accent-ink);
-  }
-
-  .code-panel {
-    display: none;
-  }
-
-  .code-panel[data-mobile-active="true"] {
-    display: block;
-  }
-
-  .code-panel pre {
-    min-height: 28rem;
-    max-height: 33rem;
-    font-size: 0.74rem;
+  .code-panel__pre,
+  .code-panel__pre > pre {
+    min-height: 22rem;
+    max-height: 30rem;
+    font-size: 0.76rem;
   }
 
   article main table {

@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { codeToHtml } from 'shiki'
 
-import { CodeCompareMobileTabs } from './CodeCompareMobileTabs'
+import { CodeCompareSwitcher } from './CodeCompareSwitcher'
 
 const verityCode = `verity_contract Escrow where
   storage
@@ -120,23 +120,10 @@ export async function CodeCompare() {
           ABI projection, event emission, and external calls to Lean proofs.
         </p>
       </div>
-      <CodeCompareMobileTabs />
-      <div className="code-compare__grid">
-        <figure className="code-panel code-panel--verity" data-panel="verity">
-          <figcaption>
-            <span>Verity</span>
-            <strong>Typed contract, proof-visible behavior</strong>
-          </figcaption>
-          <div className="code-panel__pre" dangerouslySetInnerHTML={{ __html: verityHtml }} />
-        </figure>
-        <figure className="code-panel code-panel--solidity" data-panel="solidity">
-          <figcaption>
-            <span>Solidity</span>
-            <strong>Runtime implementation surface</strong>
-          </figcaption>
-          <div className="code-panel__pre" dangerouslySetInnerHTML={{ __html: solidityHtml }} />
-        </figure>
-      </div>
+      <CodeCompareSwitcher
+        verityHtml={verityHtml}
+        solidityHtml={solidityHtml}
+      />
       <ul className="code-compare__notes">
         {notes.map((note) => (
           <li key={note}>{note}</li>

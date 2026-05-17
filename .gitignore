@@ -2,6 +2,8 @@
 # screenshots/snap scripts used during design iteration
 docs-site/snap.cjs
 docs-site/crop.cjs
+docs-site/snap-scroll.cjs
+docs-site/sample-pixels.cjs
 build/
 .lake/
 lake-packages/
@@ -26,3 +28,4 @@ out/
 cache/
 .sandboxed-sh_context.json
 __pycache__/
+.vercel

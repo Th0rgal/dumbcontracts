@@ -62,14 +62,16 @@ Lean checks every proof at compile time. A broken proof is a broken build.
 
 ## Read next
 
-| Section | Use it for |
-|---|---|
-| [Getting Started](/getting-started) | Local setup and your first verification run |
-| [First Contract](/guides/first-contract) | A guided spec-to-proof walkthrough |
-| [Compiler](/compiler) | The EDSL-to-EVM pipeline and trust model |
-| [Verification](/verification) | Theorem inventory and proof status |
-| [Solidity to Verity](/guides/solidity-to-verity) | Translation patterns from Solidity |
-| [Production patterns](/guides/production-solidity-patterns) | Modifiers, externals, ABI, events, oracles |
+import { ReadingList } from '../components/ReadingList'
+
+<ReadingList items={[
+  { href: '/getting-started', title: 'Getting Started', note: 'Local setup and your first verification run.' },
+  { href: '/guides/first-contract', title: 'First Contract', note: 'A guided spec-to-proof walkthrough.' },
+  { href: '/compiler', title: 'Compiler', note: 'The EDSL-to-EVM pipeline and trust model.' },
+  { href: '/verification', title: 'Verification', note: 'Theorem inventory and proof status.' },
+  { href: '/guides/solidity-to-verity', title: 'Solidity to Verity', note: 'Translation patterns from Solidity.' },
+  { href: '/guides/production-solidity-patterns', title: 'Production patterns', note: 'Modifiers, externals, ABI, events, oracles.' },
+]} />
 
 <Callout type="info">
 **For agents and tooling:** see [/llms.txt](/llms.txt), or add `.md` to any

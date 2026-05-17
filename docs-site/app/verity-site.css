@@ -542,6 +542,11 @@ article main a:hover,
   text-transform: none;
 }
 
+/* Hide the homepage breadcrumb — it just says "Home" and adds noise. */
+article:has(.verity-hero) .nextra-breadcrumb {
+  display: none !important;
+}
+
 .nextra-breadcrumb a {
   color: var(--verity-muted) !important;
   text-decoration: none !important;
@@ -1132,6 +1137,76 @@ a[role="button"] {
   font-family: var(--verity-font-prose);
   font-size: 0.97rem;
   line-height: 1.45;
+}
+
+/* Reading list — a quiet alternative to the section/cells table.
+   Each row is title + one-line note, with a → on hover. */
+.verity-reading-list {
+  list-style: none;
+  margin: 1.5rem 0 2rem !important;
+  padding: 0 !important;
+  border-top: 1px solid var(--verity-rule);
+}
+
+.verity-reading-list li {
+  margin: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--verity-rule) 70%, transparent);
+}
+
+.verity-reading-list__row {
+  display: grid !important;
+  grid-template-columns: minmax(11rem, 17rem) 1fr auto;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.8rem 0.2rem !important;
+  color: var(--verity-ink) !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease, transform 0.15s ease;
+  font-weight: 500 !important;
+}
+
+.verity-reading-list__title {
+  color: var(--verity-heading) !important;
+  font-family: var(--verity-font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.verity-reading-list__note {
+  color: var(--verity-muted) !important;
+  font-family: var(--verity-font-prose);
+  font-size: 0.95rem;
+  font-weight: 400 !important;
+  line-height: 1.5;
+}
+
+.verity-reading-list__arrow {
+  color: var(--verity-muted);
+  font-size: 1.05rem;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.verity-reading-list__row:hover {
+  background: color-mix(in srgb, var(--verity-surface) 70%, transparent) !important;
+}
+
+.verity-reading-list__row:hover .verity-reading-list__title {
+  color: var(--verity-accent) !important;
+}
+
+.verity-reading-list__row:hover .verity-reading-list__arrow {
+  color: var(--verity-accent);
+  transform: translateX(0.2rem);
+}
+
+@media (max-width: 767px) {
+  .verity-reading-list__row {
+    grid-template-columns: 1fr auto;
+  }
+  .verity-reading-list__note {
+    grid-column: 1 / -1;
+  }
 }
 
 .report-callout {

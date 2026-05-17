@@ -27,6 +27,7 @@ export function CodeCompareSwitcher({
   // Start on Solidity so visitors land on the familiar surface,
   // then briefly lift to Verity as a demonstration.
   const [active, setActive] = useState<Lang>('solidity')
+  const rootRef = useRef<HTMLDivElement>(null)
   const interactedRef = useRef(false)
   const autoSwitchedRef = useRef(false)
 
@@ -36,12 +37,30 @@ export function CodeCompareSwitcher({
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion) return
 
-    const t = window.setTimeout(() => {
-      if (interactedRef.current) return
-      autoSwitchedRef.current = true
-      setActive('verity')
-    }, AUTO_SWITCH_DELAY_MS)
-    return () => window.clearTimeout(t)
+    // Wait until the switcher is actually visible before firing the
+    // auto-switch — otherwise users who scroll down miss the lift.
+    let timer: number | undefined
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && !interactedRef.current && !autoSwitchedRef.current) {
+            timer = window.setTimeout(() => {
+              if (interactedRef.current) return
+              autoSwitchedRef.current = true
+              setActive('verity')
+            }, AUTO_SWITCH_DELAY_MS)
+            observer.disconnect()
+            break
+          }
+        }
+      },
+      { threshold: 0.4 },
+    )
+    if (rootRef.current) observer.observe(rootRef.current)
+    return () => {
+      observer.disconnect()
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
   }, [])
 
   const pick = (lang: Lang) => {
@@ -49,10 +68,8 @@ export function CodeCompareSwitcher({
     setActive(lang)
   }
 
-  const html = active === 'verity' ? verityHtml : solidityHtml
-
   return (
-    <div className="code-switcher" data-active={active}>
+    <div ref={rootRef} className="code-switcher" data-active={active}>
       <div className="code-switcher__head">
         <div className="code-switcher__caption">
           <span className="code-switcher__kicker">{captions[active].kicker}</span>

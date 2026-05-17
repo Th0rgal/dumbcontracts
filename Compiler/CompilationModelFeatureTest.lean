@@ -4736,13 +4736,15 @@ set_option maxRecDepth 4096 in
   let ecrecoverYul ←
     expectCompileToYul "ecrecover smoke spec" ecrecoverSmokeSpec
   expectTrue "ecrecover ECM lowers to precompile staticcall"
-    (contains ecrecoverYul "staticcall(gas(), 1, 0, 128, 0, 32)")
+    (contains ecrecoverYul "staticcall(gas(), 1, __ecr_ptr, 128, __ecr_ptr, 32)")
   expectTrue "ecrecover ECM reverts when the precompile call fails"
     (contains ecrecoverYul "if iszero(__ecr_success) {")
-  expectTrue "ecrecover ECM zeroes scratch memory on empty returndata"
-    (contains ecrecoverYul "if iszero(returndatasize()) {")
+  expectTrue "ecrecover ECM zeroes free-memory output on empty returndata"
+    (contains ecrecoverYul "let __ecr_ptr := mload(64)" &&
+      contains ecrecoverYul "mstore(64, add(__ecr_ptr, 128))" &&
+      contains ecrecoverYul "if iszero(returndatasize()) {")
   expectTrue "ecrecover ECM masks recovered address to 160 bits"
-    (contains ecrecoverYul "let signer := and(mload(0), 0xffffffffffffffffffffffffffffffffffffffff)")
+    (contains ecrecoverYul "signer := and(mload(__ecr_ptr), 0xffffffffffffffffffffffffffffffffffffffff)")
   let sha256MemoryYul ←
     expectCompileToYul "sha256 memory smoke spec" sha256MemorySmokeSpec
   expectTrue "sha256Memory ECM binds output offset once before the precompile call"
@@ -4775,19 +4777,21 @@ set_option maxRecDepth 4096 in
   let bn256AddYul ←
     expectCompileToYul "bn256Add smoke spec" bn256AddSmokeSpec
   expectTrue "bn256Add ECM stores 4 input words contiguously"
-    (contains bn256AddYul "mstore(0, x1)" &&
-      contains bn256AddYul "mstore(32, y1)" &&
-      contains bn256AddYul "mstore(64, x2)" &&
-      contains bn256AddYul "mstore(96, y2)")
+    (contains bn256AddYul "let __bn256_add_ptr := mload(64)" &&
+      contains bn256AddYul "mstore(__bn256_add_ptr, x1)" &&
+      contains bn256AddYul "mstore(add(__bn256_add_ptr, 32), y1)" &&
+      contains bn256AddYul "mstore(add(__bn256_add_ptr, 64), x2)" &&
+      contains bn256AddYul "mstore(add(__bn256_add_ptr, 96), y2)" &&
+      contains bn256AddYul "mstore(64, add(__bn256_add_ptr, 128))")
   expectTrue "bn256Add ECM lowers to precompile 0x06 staticcall"
-    (contains bn256AddYul "staticcall(gas(), 6, 0, 128, 0, 64)")
+    (contains bn256AddYul "staticcall(gas(), 6, __bn256_add_ptr, 128, __bn256_add_ptr, 64)")
   expectTrue "bn256Add ECM reverts when the precompile call fails"
     (contains bn256AddYul "if iszero(__bn256_add_success) {")
-  expectTrue "bn256Add ECM binds two output result variables from scratch memory"
+  expectTrue "bn256Add ECM binds two output result variables from free memory"
     (contains bn256AddYul "let x3 := 0" &&
       contains bn256AddYul "let y3 := 0" &&
-      contains bn256AddYul "x3 := mload(0)" &&
-      contains bn256AddYul "y3 := mload(32)")
+      contains bn256AddYul "x3 := mload(__bn256_add_ptr)" &&
+      contains bn256AddYul "y3 := mload(add(__bn256_add_ptr, 32))")
   expectCompileErrorContains
     "bn256Add ECM rejects invalid argument counts"
     bn256AddBadAritySpec
@@ -4800,18 +4804,20 @@ set_option maxRecDepth 4096 in
   let bn256ScalarMulYul ←
     expectCompileToYul "bn256ScalarMul smoke spec" bn256ScalarMulSmokeSpec
   expectTrue "bn256ScalarMul ECM stores 3 input words contiguously"
-    (contains bn256ScalarMulYul "mstore(0, x)" &&
-      contains bn256ScalarMulYul "mstore(32, y)" &&
-      contains bn256ScalarMulYul "mstore(64, k)")
+    (contains bn256ScalarMulYul "let __bn256_mul_ptr := mload(64)" &&
+      contains bn256ScalarMulYul "mstore(__bn256_mul_ptr, x)" &&
+      contains bn256ScalarMulYul "mstore(add(__bn256_mul_ptr, 32), y)" &&
+      contains bn256ScalarMulYul "mstore(add(__bn256_mul_ptr, 64), k)" &&
+      contains bn256ScalarMulYul "mstore(64, add(__bn256_mul_ptr, 96))")
   expectTrue "bn256ScalarMul ECM lowers to precompile 0x07 staticcall"
-    (contains bn256ScalarMulYul "staticcall(gas(), 7, 0, 96, 0, 64)")
+    (contains bn256ScalarMulYul "staticcall(gas(), 7, __bn256_mul_ptr, 96, __bn256_mul_ptr, 64)")
   expectTrue "bn256ScalarMul ECM reverts when the precompile call fails"
     (contains bn256ScalarMulYul "if iszero(__bn256_mul_success) {")
-  expectTrue "bn256ScalarMul ECM binds two output result variables from scratch memory"
+  expectTrue "bn256ScalarMul ECM binds two output result variables from free memory"
     (contains bn256ScalarMulYul "let x2 := 0" &&
       contains bn256ScalarMulYul "let y2 := 0" &&
-      contains bn256ScalarMulYul "x2 := mload(0)" &&
-      contains bn256ScalarMulYul "y2 := mload(32)")
+      contains bn256ScalarMulYul "x2 := mload(__bn256_mul_ptr)" &&
+      contains bn256ScalarMulYul "y2 := mload(add(__bn256_mul_ptr, 32))")
   expectCompileErrorContains
     "bn256ScalarMul ECM rejects invalid argument counts"
     bn256ScalarMulBadAritySpec
@@ -5260,7 +5266,7 @@ set_option maxRecDepth 4096 in
   let macroEcrecoverYul ←
     expectCompileToYul "macro ecrecover smoke spec" MacroEcrecoverSmoke.MacroEcrecover.spec
   expectTrue "macro ecrecover bind elaborates to the same ECM lowering"
-    (contains macroEcrecoverYul "staticcall(gas(), 1, 0, 128, 0, 32)")
+    (contains macroEcrecoverYul "staticcall(gas(), 1, __ecr_ptr, 128, __ecr_ptr, 32)")
   let macroTrustReport := emitTrustReportJson [MacroEcrecoverSmoke.MacroEcrecover.spec]
   expectTrue "macro ecrecover trust report surfaces the precompile assumption"
     (contains macroTrustReport "\"module\":\"ecrecover\"" &&

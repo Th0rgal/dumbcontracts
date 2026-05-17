@@ -7589,7 +7589,7 @@ theorem exec_block_leave_ok_add_ten
       fuel + suffixLen + 10 = Nat.succ (Nat.succ (fuel + suffixLen + 8)) := by
     omega
   rw [hFuel]
-  simp [EvmYul.Yul.exec]
+  cases state <;> simp [EvmYul.Yul.exec, EvmYul.Yul.State.setLeave]
 
 /-- Executing the native lowering of a source `.block [.leave]` user body.
 
@@ -7612,7 +7612,7 @@ theorem exec_block_block_leave_ok_add_ten
         Nat.succ (Nat.succ (Nat.succ (Nat.succ (fuel + suffixLen + 6)))) := by
     omega
   rw [hFuel]
-  simp [EvmYul.Yul.exec]
+  cases state <;> simp [EvmYul.Yul.exec, EvmYul.Yul.State.setLeave]
 
 /-- Executing the native lowering of a source `[.block [], .leave]` user body
 (F2's body shape).
@@ -7634,7 +7634,7 @@ theorem exec_block_label_prefix_leave_ok_add_ten
         Nat.succ (Nat.succ (Nat.succ (Nat.succ (fuel + suffixLen + 6)))) := by
     omega
   rw [hFuel]
-  simp [EvmYul.Yul.exec]
+  cases state <;> simp [EvmYul.Yul.exec, EvmYul.Yul.State.setLeave]
 
 /-- Executing the native lowering of a source `[.block [], .block [.leave]]`
 user body (F4's body shape).
@@ -7657,7 +7657,7 @@ theorem exec_block_label_prefix_block_leave_ok_add_ten
           (fuel + suffixLen + 4)))))) := by
     omega
   rw [hFuel]
-  simp [EvmYul.Yul.exec]
+  cases state <;> simp [EvmYul.Yul.exec, EvmYul.Yul.State.setLeave]
 
 /-- Executing the native lowering of a source `.block []` user body.
 
@@ -7678,7 +7678,7 @@ theorem exec_block_block_nil_ok_add_ten
         Nat.succ (Nat.succ (Nat.succ (fuel + suffixLen + 7))) := by
     omega
   rw [hFuel]
-  simp [EvmYul.Yul.exec]
+  cases state <;> simp [EvmYul.Yul.exec]
 
 theorem exec_block_stop_halt_add_ten
     (fuel suffixLen : Nat)
@@ -7713,6 +7713,8 @@ theorem exec_block_noop_block_head_eq
       EvmYul.Yul.exec (Nat.succ fuel) (.Block rest) codeOverride state :=
   exec_block_cons_ok_eq (Nat.succ fuel) (.Block []) rest codeOverride state
     state (exec_block_nil_ok fuel codeOverride state)
+
+def nativeSwitchHasSelectorName : EvmYul.Identifier := "__has_selector"
 
 def nativeSwitchPrefixStmts
     (discrName matchedName : EvmYul.Identifier) :
@@ -7808,9 +7810,9 @@ theorem exec_nativeSwitchPrefix_selector_initialState_ok_fuel
   rw [hFuel]
   rw [nativeSwitchPrefixStmts]
   apply exec_block_cons_ok (fuel + 11)
-      (.Let [discrName]
+        (.Let [discrName]
         (some (Backends.lowerExprNative Compiler.Proofs.YulGeneration.selectorExpr)))
-      [.Let [matchedName] (some (.Lit (EvmYul.UInt256.ofNat 0)))]
+        [.Let [matchedName] (some (.Lit (EvmYul.UInt256.ofNat 0)))]
       (some contract) initState discrState matchedState
   · exact exec_let_lowerExprNative_selectorExpr_initialState_ok_fuel
       fuel contract tx storage observableSlots discrName
@@ -8197,7 +8199,8 @@ theorem exec_block_singleton_eq
       EvmYul.Yul.exec (fuel + 1) stmt codeOverride state := by
   cases h : EvmYul.Yul.exec (fuel + 1) stmt codeOverride state with
   | error e => simp [EvmYul.Yul.exec, h]
-  | ok s' => simp [EvmYul.Yul.exec, h]
+  | ok s' =>
+      cases s' <;> simp [EvmYul.Yul.exec, h]
 
 /-- Native dispatcher inner-block chain peel of `Let` + `If1`-skip on
     `nativeSwitchInitialOkState`: under the calldata no-wrap bound, the
@@ -8403,6 +8406,16 @@ private theorem uint256_land_zero_left (value : EvmYul.UInt256) :
     apply Fin.ext
     change (0 &&& (raw : Nat)) % EvmYul.UInt256.size = 0
     simp [Nat.zero_and]
+
+private theorem uint256_land_zero_right (value : EvmYul.UInt256) :
+    EvmYul.UInt256.land value (EvmYul.UInt256.ofNat 0) =
+      EvmYul.UInt256.ofNat 0 := by
+  cases value with
+  | mk raw =>
+    apply congrArg EvmYul.UInt256.mk
+    apply Fin.ext
+    change ((raw : Nat) &&& 0) % EvmYul.UInt256.size = 0
+    simp [Nat.and_zero]
 
 /-- Once the lazy lowered switch matched flag is set, later case guards evaluate
     to zero independently of the discriminator value. -/
@@ -8701,8 +8714,6 @@ theorem exec_if_nativeSwitchGuardedMatch_matched_fuel
       (eval_nativeSwitchGuardedMatch_matched_ok_fuel fuel state codeOverride
         discrName matchedName tag hMatched))
 
-/-- Native evaluation of the lazy lowered switch default guard peels to
-    `ISZERO(matched)`. -/
 theorem eval_nativeSwitchDefaultGuard_ok
     (state : EvmYul.Yul.State)
     (codeOverride : Option EvmYul.Yul.Ast.YulContract)
@@ -9012,6 +9023,33 @@ in `EndToEnd.lean`). -/
     (store : EvmYul.Yul.VarStore) :
     (EvmYul.Yul.State.Checkpoint (.Break shared store)).reviveJump =
       EvmYul.Yul.State.Ok shared store := rfl
+
+theorem reviveJump_eq_ok_ne_outOfFuel
+    (final : EvmYul.Yul.State)
+    (shared : EvmYul.SharedState EvmYul.OperationType.Yul)
+    (store : EvmYul.Yul.VarStore)
+    (hRevive : final.reviveJump = EvmYul.Yul.State.Ok shared store) :
+    final ≠ EvmYul.Yul.State.OutOfFuel := by
+  intro hFinal
+  subst hFinal
+  simp [EvmYul.Yul.State.reviveJump] at hRevive
+
+/-- A selected body that projects through `reviveJump` to an `Ok` endpoint
+    cannot have produced the raw `.OutOfFuel` state. This keeps the checkpoint
+    dispatcher stack from considering the impossible out-of-fuel endpoint when
+    a selected case body returned `.ok final`. -/
+theorem selected_body_ok_reviveJump_ne_outOfFuel
+    (fuel : Nat)
+    (body : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (state final : EvmYul.Yul.State)
+    (shared : EvmYul.SharedState EvmYul.OperationType.Yul)
+    (store : EvmYul.Yul.VarStore)
+    (_hBody :
+      EvmYul.Yul.exec fuel (.Block body) codeOverride state = .ok final)
+    (hRevive : final.reviveJump = EvmYul.Yul.State.Ok shared store) :
+    final ≠ EvmYul.Yul.State.OutOfFuel :=
+  reviveJump_eq_ok_ne_outOfFuel final shared store hRevive
 
 /-! ## NativeBlockPreservesWord_revived
 
@@ -20721,6 +20759,74 @@ theorem exec_nativeSwitchCaseIfs_with_default_matched_fuel
         Nat.add_left_comm] using hCases)
       hDefault
 
+/-- Checkpoint-specialized form of `exec_nativeSwitchCaseIfs_matched_fuel`.
+    Checkpoint lookup reads the jump store, so a matched flag already set to one
+    makes every generated suffix case a no-op without reviving the raw state. -/
+theorem exec_nativeSwitchCaseIfs_checkpoint_matched_fuel
+    (fuel : Nat)
+    (cases : List (Nat × List EvmYul.Yul.Ast.Stmt))
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (jump : EvmYul.Yul.Jump)
+    (discrName matchedName : EvmYul.Identifier)
+    (hMatched :
+      (EvmYul.Yul.State.Checkpoint jump)[matchedName]! =
+        EvmYul.UInt256.ofNat 1) :
+    EvmYul.Yul.exec (fuel + cases.length + 9)
+      (.Block (nativeSwitchCaseIfs discrName matchedName cases))
+      codeOverride (EvmYul.Yul.State.Checkpoint jump) =
+        .ok (EvmYul.Yul.State.Checkpoint jump) :=
+  exec_nativeSwitchCaseIfs_matched_fuel fuel cases codeOverride
+    (EvmYul.Yul.State.Checkpoint jump) discrName matchedName hMatched
+
+/-- Checkpoint-specialized form of `exec_nativeSwitchDefaultIf_matched_caseTail_fuel`.
+    The generated default tail is skipped directly on the raw checkpoint when
+    the checkpoint store records the matched flag as one. -/
+theorem exec_nativeSwitchDefaultIf_checkpoint_matched_caseTail_fuel
+    (fuel : Nat)
+    (defaultBody : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (jump : EvmYul.Yul.Jump)
+    (matchedName : EvmYul.Identifier)
+    (hMatched :
+      (EvmYul.Yul.State.Checkpoint jump)[matchedName]! =
+        EvmYul.UInt256.ofNat 1) :
+    EvmYul.Yul.exec (fuel + 9)
+      (.Block (nativeSwitchDefaultIf matchedName defaultBody))
+      codeOverride (EvmYul.Yul.State.Checkpoint jump) =
+        .ok (EvmYul.Yul.State.Checkpoint jump) :=
+  exec_nativeSwitchDefaultIf_matched_caseTail_fuel fuel defaultBody
+    codeOverride (EvmYul.Yul.State.Checkpoint jump) matchedName hMatched
+
+/-- Checkpoint-specialized no-op for the generated case suffix plus optional
+    default tail. This is the raw-state counterpart to the revived dispatcher
+    projection: the tail does not change the checkpoint before projection. -/
+theorem exec_nativeSwitchCaseIfs_with_default_checkpoint_matched_fuel
+    (fuel : Nat)
+    (cases : List (Nat × List EvmYul.Yul.Ast.Stmt))
+    (defaultBody : List EvmYul.Yul.Ast.Stmt)
+    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
+    (jump : EvmYul.Yul.Jump)
+    (discrName matchedName : EvmYul.Identifier)
+    (hMatched :
+      (EvmYul.Yul.State.Checkpoint jump)[matchedName]! =
+        EvmYul.UInt256.ofNat 1) :
+    EvmYul.Yul.exec (fuel + cases.length + 9)
+      (.Block
+        (nativeSwitchCaseIfs discrName matchedName cases ++
+          nativeSwitchDefaultIf matchedName defaultBody))
+      codeOverride (EvmYul.Yul.State.Checkpoint jump) =
+        .ok (EvmYul.Yul.State.Checkpoint jump) := by
+  have hCases :
+      EvmYul.Yul.exec (fuel + cases.length + 9)
+        (.Block (nativeSwitchCaseIfs discrName matchedName cases))
+        codeOverride (EvmYul.Yul.State.Checkpoint jump) =
+          .ok (EvmYul.Yul.State.Checkpoint jump) :=
+    exec_nativeSwitchCaseIfs_checkpoint_matched_fuel fuel cases codeOverride
+      jump discrName matchedName hMatched
+  exact exec_nativeSwitchCaseIfs_with_default_matched_fuel fuel cases
+    defaultBody codeOverride (EvmYul.Yul.State.Checkpoint jump)
+    (EvmYul.Yul.State.Checkpoint jump) discrName matchedName hCases hMatched
+
 /-- Selector-hit execution for the generated case chain followed by the
     generated optional default statement list. The selected body must preserve
     the matched flag so the default guard and suffix cases skip. -/
@@ -23780,9 +23886,20 @@ theorem exec_singleton_block_eq_exec_block
     EvmYul.Yul.exec (Nat.succ (Nat.succ fuel)) (.Block [.Block body])
         codeOverride state =
       EvmYul.Yul.exec (Nat.succ fuel) (.Block body) codeOverride state := by
-  simp [EvmYul.Yul.exec]
-  cases EvmYul.Yul.exec (Nat.succ fuel) (.Block body) codeOverride state <;>
-    simp
+  cases hInner :
+      EvmYul.Yul.exec (Nat.succ fuel) (.Block body) codeOverride state with
+  | error err =>
+      exact
+        exec_block_cons_error (Nat.succ fuel) (.Block body) [] codeOverride
+          state err hInner
+  | ok middle =>
+      have hRight :
+          EvmYul.Yul.exec (Nat.succ fuel) (.Block []) codeOverride middle =
+            .ok middle := by
+        simp [EvmYul.Yul.exec]
+      exact
+        exec_block_cons_ok (Nat.succ fuel) (.Block body) [] codeOverride
+          state middle middle hInner hRight
 
 /-- Raw dispatcher execution for a lowered contract whose dispatcher is already
     a block reduces to direct execution of that block from the native initial
@@ -26822,6 +26939,51 @@ theorem exec_block_lowerNativeSwitchBlock_selector_find_hit_hasSelectorState_ok_
           "__has_selector" (EvmYul.UInt256.ofNat 1)) = .ok final ∧
     projectResult tx storage initialEvents (.ok (final, [])) = nativeYul := by
   refine ⟨?_, hProject⟩
+  have hEndpoint :=
+    exec_lowerNativeSwitchBlock_selector_find_hit_preserved_store_fuel
+      fuel selector switchId tag cases defaultBody body contract tx storage
+      observableSlots nativeSwitchHasSelectorStore final hSelector hFind
+      hSelectorRange hTagsRange hBody hPreservesMatched
+  have hFuelEq : fuel + cases.length + 13 = (fuel + cases.length + 12).succ := by
+    omega
+  rw [nativeSwitchInitialOkState_insert_hasSelector_eq, hFuelEq]
+  exact exec_block_cons_ok (fuel + cases.length + 12) _ [] _ _ final final
+    hEndpoint (by simp [EvmYul.Yul.exec])
+
+/-- Bridge-shape selector-hit success projection on the post-`__has_selector`
+    state, with the final matched-flag fact supplied directly. This is the
+    checkpoint-aware endpoint used when the selected body proves preservation
+    through `reviveJump` for the actual final state rather than as a raw
+    whole-body preservation predicate. -/
+theorem exec_block_lowerNativeSwitchBlock_selector_find_hit_hasSelectorState_ok_projectResult_eq_finalMatched
+    (fuel selector switchId tag : Nat)
+    (cases : List (Nat × List EvmYul.Yul.Ast.Stmt))
+    (defaultBody body : List EvmYul.Yul.Ast.Stmt)
+    (contract : EvmYul.Yul.Ast.YulContract) (tx : YulTransaction)
+    (storage : IRStorageSlot → IRStorageWord)
+    (initialEvents : List (List Nat)) (observableSlots : List Nat)
+    (final : EvmYul.Yul.State) (nativeYul : YulResult)
+    (hSelector : selector = tx.functionSelector % Compiler.Constants.selectorModulus)
+    (hFind : cases.find? (fun entry => entry.1 == selector) = some (tag, body))
+    (hSelectorRange : selector < EvmYul.UInt256.size)
+    (hTagsRange : ∀ tag' body', (tag', body') ∈ cases → tag' < EvmYul.UInt256.size)
+    (hBody : ∀ pre suffix, cases = pre ++ (tag, body) :: suffix →
+      EvmYul.Yul.exec ((fuel + 1) + suffix.length + 7) (.Block body)
+        (some contract) (nativeSwitchStoreMarkedPrefixStateForId contract tx
+          storage observableSlots switchId nativeSwitchHasSelectorStore) = .ok final)
+    (hFinalMatched :
+      ∀ matchedName : EvmYul.Identifier,
+        matchedName = Backends.nativeSwitchMatchedTempName switchId →
+          final[matchedName]! = EvmYul.UInt256.ofNat 1)
+    (hProject : projectResult tx storage initialEvents (.ok (final, [])) = nativeYul) :
+    EvmYul.Yul.exec (fuel + cases.length + 13)
+      (.Block [Backends.lowerNativeSwitchBlock
+        Compiler.Proofs.YulGeneration.selectorExpr switchId cases defaultBody])
+      (some contract)
+      ((nativeSwitchInitialOkState contract tx storage observableSlots).insert
+          "__has_selector" (EvmYul.UInt256.ofNat 1)) = .ok final ∧
+    projectResult tx storage initialEvents (.ok (final, [])) = nativeYul := by
+  refine ⟨?_, hProject⟩
   have hEndpoint :
       EvmYul.Yul.exec (fuel + cases.length + 12)
         (Backends.lowerNativeSwitchBlock
@@ -26829,10 +26991,10 @@ theorem exec_block_lowerNativeSwitchBlock_selector_find_hit_hasSelectorState_ok_
         (some contract)
         (nativeSwitchHasSelectorInitialState contract tx storage observableSlots) =
       .ok final := by
-    exact exec_lowerNativeSwitchBlock_selector_find_hit_preserved_store_fuel
+    exact exec_lowerNativeSwitchBlock_selector_find_hit_finalMatched_store_fuel
       fuel selector switchId tag cases defaultBody body contract tx storage
       observableSlots nativeSwitchHasSelectorStore final hSelector hFind
-      hSelectorRange hTagsRange hBody hPreservesMatched
+      hSelectorRange hTagsRange hBody hFinalMatched
   have hFuelEq : fuel + cases.length + 13 = (fuel + cases.length + 12).succ := by
     omega
   rw [nativeSwitchInitialOkState_insert_hasSelector_eq, hFuelEq]
@@ -32137,6 +32299,228 @@ theorem contractDispatcherExecResult_buildSwitch_noFallback_noReceive_selector_f
       observableSlots final nativeYul hSelector hCase hSelectorRange hTagsRange
       hBody' hPreservesMatched hProject
 
+/-- Polymorphic-final companion with a direct raw matched-flag endpoint fact. -/
+theorem contractDispatcherExecResult_buildSwitch_noFallback_noReceive_selector_find_some_ok_atFuel_projectResult_eq_finalMatched_forall
+    (fuel' selector : Nat)
+    (funcs : List IRFunction) (fn : IRFunction)
+    (inner : List EvmYul.Yul.Ast.Stmt)
+    (functions : NativeFunctionMap)
+    (tx : YulTransaction)
+    (storage : IRStorageSlot → IRStorageWord)
+    (initialEvents : List (List Nat))
+    (observableSlots : List Nat)
+    (hLower :
+      Backends.lowerStmtsNative
+          [Compiler.CodegenCommon.buildSwitch funcs none none] =
+        .ok [.Block inner])
+    (hSelector :
+      selector = tx.functionSelector % Compiler.Constants.selectorModulus)
+    (hFind : funcs.find? (fun f => f.selector == selector) = some fn)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (hSelectorRange : selector < EvmYul.UInt256.size)
+    (hFunctionSelectorsRange :
+      ∀ fn, fn ∈ funcs → fn.selector < EvmYul.UInt256.size) :
+    ∃ (reservedNames : List String) (n0 : Nat)
+      (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt))
+      (midN : Nat) (body' : List EvmYul.Yul.Ast.Stmt)
+      (bodyStart bodyEnd : Nat),
+      let contract : EvmYul.Yul.Ast.YulContract :=
+        { dispatcher := .Block [.Block inner], functions := functions }
+      Backends.lowerSwitchCasesNativeWithSwitchIds reservedNames
+        (Backends.freshNativeSwitchId reservedNames n0 + 1)
+        (buildSwitchSourceCases funcs) = .ok (cases', midN) ∧
+      cases'.find? (fun entry => entry.1 == selector) =
+        some (selector, body') ∧
+      Backends.lowerStmtsNativeWithSwitchIds reservedNames bodyStart
+        (switchCaseBody fn) = .ok (body', bodyEnd) ∧
+      (∀ final nativeYul,
+        cases'.length + 19 ≤ fuel' →
+        (∀ pre suffix, cases' = pre ++ (selector, body') :: suffix →
+          EvmYul.Yul.exec (((fuel' - (cases'.length + 19)) + 1) +
+              suffix.length + 7) (.Block body')
+            (some contract)
+            (nativeSwitchStoreMarkedPrefixStateForId contract tx storage
+              observableSlots (Backends.freshNativeSwitchId reservedNames n0)
+              nativeSwitchHasSelectorStore) = .ok final) →
+        (∀ matchedName : EvmYul.Identifier,
+          matchedName = Backends.nativeSwitchMatchedTempName
+              (Backends.freshNativeSwitchId reservedNames n0) →
+            final[matchedName]! = EvmYul.UInt256.ofNat 1) →
+        projectResult tx storage initialEvents (.ok (final, [])) = nativeYul →
+        contractDispatcherExecResult fuel'
+            contract (initialState contract tx storage observableSlots) =
+          .ok final ∧
+        projectResult tx storage initialEvents (.ok (final, [])) = nativeYul) := by
+  obtain ⟨body1, reservedNames, n0, cases', midN, body', bodyStart, bodyEnd,
+      hInner, hLowerCases, hCase, hBodyLower⟩ :=
+    buildSwitch_noFallback_noReceive_lowered_inner_find?_some_of_find_function
+      funcs inner selector fn hLower hFind
+  refine ⟨reservedNames, n0, cases', midN, body', bodyStart, bodyEnd,
+    ?_, ?_, ?_, ?_⟩
+  · exact hLowerCases
+  · exact hCase
+  · exact hBodyLower
+  · intro final nativeYul hFuel hBody hFinalMatched hProject
+    let fuel := fuel' - (cases'.length + 19)
+    have hFuelShape : fuel' = fuel + cases'.length + 19 := by
+      dsimp [fuel]
+      exact (Nat.sub_add_cancel hFuel).symm
+    let contract : EvmYul.Yul.Ast.YulContract :=
+      { dispatcher := .Block [.Block inner], functions := functions }
+    have hTagsEq :
+        cases'.map (·.1) = (buildSwitchSourceCases funcs).map (·.1) :=
+      Backends.lowerSwitchCasesNativeWithSwitchIds_tags_eq reservedNames
+        (Backends.freshNativeSwitchId reservedNames n0 + 1) midN
+        (buildSwitchSourceCases funcs) cases' hLowerCases
+    have hTagsRange :
+        ∀ tag body, (tag, body) ∈ cases' → tag < EvmYul.UInt256.size := by
+      intro tag body hmem
+      have hTagMem : tag ∈ cases'.map (·.1) := by
+        exact List.mem_map_of_mem (f := Prod.fst) hmem
+      rw [hTagsEq] at hTagMem
+      simp [buildSwitchSourceCases] at hTagMem
+      rcases hTagMem with ⟨fn, hFn, hTag⟩
+      subst hTag
+      exact hFunctionSelectorsRange fn hFn
+    have hBody' :
+        ∀ pre suffix, cases' = pre ++ (selector, body') :: suffix →
+          EvmYul.Yul.exec ((fuel + 1) + suffix.length + 7) (.Block body')
+            (some contract)
+            (nativeSwitchStoreMarkedPrefixStateForId contract tx storage
+              observableSlots (Backends.freshNativeSwitchId reservedNames n0)
+              nativeSwitchHasSelectorStore) = .ok final := by
+      intro pre suffix hcases
+      simpa [fuel, contract, Nat.add_assoc] using hBody pre suffix hcases
+    have hPeel :
+        contractDispatcherExecResult fuel'
+            contract (initialState contract tx storage observableSlots) =
+          EvmYul.Yul.exec (fuel + cases'.length + 13)
+            (.Block
+              [Backends.lowerNativeSwitchBlock
+                (YulExpr.call "shr"
+                  [YulExpr.lit Compiler.Constants.selectorShift,
+                   YulExpr.call "calldataload" [YulExpr.lit 0]])
+                (Backends.freshNativeSwitchId reservedNames n0) cases'
+                [nativeRevertZeroZeroStmt]])
+            (some contract)
+            ((nativeSwitchInitialOkState contract tx storage observableSlots).insert
+              "__has_selector" (EvmYul.UInt256.ofNat 1)) := by
+      rw [hFuelShape]
+      have hPeelStructural :
+          contractDispatcherExecResult (fuel + cases'.length + 19)
+              contract (initialState contract tx storage observableSlots) =
+            EvmYul.Yul.exec (fuel + cases'.length + 13)
+              (.Block
+                [Backends.lowerNativeSwitchBlock
+                  (YulExpr.call "shr"
+                    [YulExpr.lit Compiler.Constants.selectorShift,
+                     YulExpr.call "calldataload" [YulExpr.lit 0]])
+                  (Backends.freshNativeSwitchId reservedNames n0) cases'
+                  [nativeRevertZeroZeroStmt]])
+              (some contract)
+              ((nativeSwitchInitialOkState contract tx storage observableSlots).insert
+                "__has_selector" (EvmYul.UInt256.ofNat 1)) := by
+        let contract' : EvmYul.Yul.Ast.YulContract :=
+          { dispatcher := .Block [.Block inner], functions := functions }
+        have hFuelShape' :
+            fuel + cases'.length + 19 =
+              Nat.succ (Nat.succ (Nat.succ (fuel + cases'.length + 16))) := by
+          omega
+        have hDispatcherPeel :
+            contractDispatcherExecResult (fuel + cases'.length + 19)
+                contract' (initialState contract' tx storage observableSlots) =
+              EvmYul.Yul.exec (fuel + cases'.length + 17)
+                (.Block inner) (some contract')
+                (nativeSwitchInitialOkState contract' tx storage observableSlots) := by
+          rw [hFuelShape']
+          change
+            contractDispatcherExecResult
+                (Nat.succ (Nat.succ (Nat.succ (fuel + cases'.length + 16))))
+                { dispatcher := .Block [.Block inner], functions := functions }
+                (initialState
+                  { dispatcher := .Block [.Block inner], functions := functions }
+                  tx storage observableSlots) =
+              EvmYul.Yul.exec (fuel + cases'.length + 17)
+                (.Block inner)
+                (some { dispatcher := .Block [.Block inner], functions := functions })
+                (nativeSwitchInitialOkState
+                  { dispatcher := .Block [.Block inner], functions := functions }
+                  tx storage observableSlots)
+          rw [contractDispatcherExecResult_block_dispatcher_eq_exec_block
+            (Nat.succ (fuel + cases'.length + 16)) [.Block inner] functions
+            tx storage observableSlots]
+          rw [exec_singleton_block_eq_exec_block (fuel + cases'.length + 16) inner
+            (some { dispatcher := .Block [.Block inner], functions := functions })
+            (nativeSwitchInitialOkState
+              { dispatcher := .Block [.Block inner], functions := functions }
+              tx storage observableSlots)]
+        calc
+          contractDispatcherExecResult (fuel + cases'.length + 19)
+              contract (initialState contract tx storage observableSlots)
+              = EvmYul.Yul.exec (fuel + cases'.length + 17)
+                  (.Block inner) (some contract)
+                  (nativeSwitchInitialOkState contract tx storage observableSlots) := hDispatcherPeel
+          _ = EvmYul.Yul.exec (fuel + cases'.length + 17)
+                (.Block
+                  [EvmYul.Yul.Ast.Stmt.Let ["__has_selector"]
+                      (some
+                        (Backends.lowerExprNative
+                          (YulExpr.call "iszero"
+                            [YulExpr.call "lt"
+                              [YulExpr.call "calldatasize" [],
+                               YulExpr.lit 4]]))),
+                   EvmYul.Yul.Ast.Stmt.If
+                      (Backends.lowerExprNative
+                        (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]))
+                      body1,
+                   EvmYul.Yul.Ast.Stmt.If
+                      (Backends.lowerExprNative (YulExpr.ident "__has_selector"))
+                      [Backends.lowerNativeSwitchBlock
+                        (YulExpr.call "shr"
+                          [YulExpr.lit Compiler.Constants.selectorShift,
+                           YulExpr.call "calldataload" [YulExpr.lit 0]])
+                        (Backends.freshNativeSwitchId reservedNames n0) cases'
+                        [nativeRevertZeroZeroStmt]]])
+                (some contract)
+                (nativeSwitchInitialOkState contract tx storage observableSlots) := by
+              exact congrArg
+                (fun body =>
+                  EvmYul.Yul.exec (fuel + cases'.length + 17)
+                    (.Block body) (some contract)
+                    (nativeSwitchInitialOkState contract tx storage observableSlots))
+                hInner
+          _ = EvmYul.Yul.exec (fuel + cases'.length + 13)
+                (.Block
+                  [Backends.lowerNativeSwitchBlock
+                    (YulExpr.call "shr"
+                      [YulExpr.lit Compiler.Constants.selectorShift,
+                       YulExpr.call "calldataload" [YulExpr.lit 0]])
+                    (Backends.freshNativeSwitchId reservedNames n0) cases'
+                    [nativeRevertZeroZeroStmt]])
+                (some contract)
+                ((nativeSwitchInitialOkState contract tx storage observableSlots).insert
+                  "__has_selector" (EvmYul.UInt256.ofNat 1)) := by
+              have hExec :=
+                exec_block_letSelector_if1Skip_if2Take_initialState_fuel
+                  (fuel + cases'.length + 5) contract tx storage observableSlots
+                  "__has_selector" body1
+                  [Backends.lowerNativeSwitchBlock
+                    (YulExpr.call "shr"
+                      [YulExpr.lit Compiler.Constants.selectorShift,
+                       YulExpr.call "calldataload" [YulExpr.lit 0]])
+                    (Backends.freshNativeSwitchId reservedNames n0) cases'
+                    [nativeRevertZeroZeroStmt]]
+                  hNoWrap
+              simpa only [Nat.add_assoc] using hExec
+      exact hPeelStructural
+    rw [hPeel]
+    exact exec_block_lowerNativeSwitchBlock_selector_find_hit_hasSelectorState_ok_projectResult_eq_finalMatched
+      fuel selector (Backends.freshNativeSwitchId reservedNames n0) selector
+      cases' [nativeRevertZeroZeroStmt] body' contract tx storage initialEvents
+      observableSlots final nativeYul hSelector hCase hSelectorRange hTagsRange
+      hBody' hFinalMatched hProject
+
+
 /-- Reserved-context companion of
 `contractDispatcherExecResult_buildSwitch_noFallback_noReceive_selector_find_some_error_projectResult_eq`. -/
 theorem contractDispatcherExecResult_buildSwitch_noFallback_noReceive_selector_find_some_error_withSwitchIds_projectResult_eq
@@ -33820,6 +34204,228 @@ theorem contractDispatcherExecResult_buildSwitch_noFallback_noReceive_selector_f
       observableSlots final nativeYul hSelector hCase hSelectorRange hTagsRange
       hBody' hPreservesMatched hProject
 
+/-- Polymorphic-final reserved-context companion with a direct raw matched-flag endpoint fact. -/
+theorem contractDispatcherExecResult_buildSwitch_noFallback_noReceive_selector_find_some_ok_withSwitchIds_atFuel_projectResult_eq_finalMatched_forall
+    (fuel' selector : Nat)
+    (reservedNames : List String) (n0 : Nat)
+    (funcs : List IRFunction) (fn : IRFunction)
+    (inner : List EvmYul.Yul.Ast.Stmt) (next : Nat)
+    (functions : NativeFunctionMap)
+    (tx : YulTransaction)
+    (storage : IRStorageSlot → IRStorageWord)
+    (initialEvents : List (List Nat))
+    (observableSlots : List Nat)
+    (hLower :
+      Backends.lowerStmtsNativeWithSwitchIds reservedNames n0
+          [Compiler.CodegenCommon.buildSwitch funcs none none] =
+        .ok ([.Block inner], next))
+    (hSelector :
+      selector = tx.functionSelector % Compiler.Constants.selectorModulus)
+    (hFind : funcs.find? (fun f => f.selector == selector) = some fn)
+    (hNoWrap : 4 + tx.args.length * 32 < EvmYul.UInt256.size)
+    (hSelectorRange : selector < EvmYul.UInt256.size)
+    (hFunctionSelectorsRange :
+      ∀ fn, fn ∈ funcs → fn.selector < EvmYul.UInt256.size) :
+    ∃ (switchStart : Nat)
+      (cases' : List (Nat × List EvmYul.Yul.Ast.Stmt)) (midN : Nat)
+      (body' : List EvmYul.Yul.Ast.Stmt) (bodyStart bodyEnd : Nat),
+      let contract : EvmYul.Yul.Ast.YulContract :=
+        { dispatcher := .Block [.Block inner], functions := functions }
+      Backends.lowerSwitchCasesNativeWithSwitchIds reservedNames
+        (Backends.freshNativeSwitchId reservedNames switchStart + 1)
+        (buildSwitchSourceCases funcs) = .ok (cases', midN) ∧
+      cases'.find? (fun entry => entry.1 == selector) =
+        some (selector, body') ∧
+      Backends.lowerStmtsNativeWithSwitchIds reservedNames bodyStart
+        (switchCaseBody fn) = .ok (body', bodyEnd) ∧
+      (∀ final nativeYul,
+        cases'.length + 19 ≤ fuel' →
+        (∀ pre suffix, cases' = pre ++ (selector, body') :: suffix →
+          EvmYul.Yul.exec (((fuel' - (cases'.length + 19)) + 1) +
+              suffix.length + 7) (.Block body')
+            (some contract)
+            (nativeSwitchStoreMarkedPrefixStateForId contract tx storage
+              observableSlots (Backends.freshNativeSwitchId reservedNames switchStart)
+              nativeSwitchHasSelectorStore) = .ok final) →
+        (∀ matchedName : EvmYul.Identifier,
+          matchedName = Backends.nativeSwitchMatchedTempName
+              (Backends.freshNativeSwitchId reservedNames switchStart) →
+            final[matchedName]! = EvmYul.UInt256.ofNat 1) →
+        projectResult tx storage initialEvents (.ok (final, [])) = nativeYul →
+        contractDispatcherExecResult fuel'
+            contract (initialState contract tx storage observableSlots) =
+          .ok final ∧
+        projectResult tx storage initialEvents (.ok (final, [])) = nativeYul) := by
+  obtain ⟨body1, switchStart, cases', midN, body', bodyStart, bodyEnd,
+      hInner, hLowerCases, hCase, hBodyLower⟩ :=
+    buildSwitch_noFallback_noReceive_lowered_inner_find?_some_of_find_function_withSwitchIds
+      reservedNames n0 funcs inner next selector fn hLower hFind
+  refine ⟨switchStart, cases', midN, body', bodyStart, bodyEnd,
+    ?_, ?_, ?_, ?_⟩
+  · exact hLowerCases
+  · exact hCase
+  · exact hBodyLower
+  · intro final nativeYul hFuel hBody hFinalMatched hProject
+    let fuel := fuel' - (cases'.length + 19)
+    have hFuelShape : fuel' = fuel + cases'.length + 19 := by
+      dsimp [fuel]
+      exact (Nat.sub_add_cancel hFuel).symm
+    let contract : EvmYul.Yul.Ast.YulContract :=
+      { dispatcher := .Block [.Block inner], functions := functions }
+    have hTagsEq :
+        cases'.map (·.1) = (buildSwitchSourceCases funcs).map (·.1) :=
+      Backends.lowerSwitchCasesNativeWithSwitchIds_tags_eq reservedNames
+        (Backends.freshNativeSwitchId reservedNames switchStart + 1) midN
+        (buildSwitchSourceCases funcs) cases' hLowerCases
+    have hTagsRange :
+        ∀ tag body, (tag, body) ∈ cases' → tag < EvmYul.UInt256.size := by
+      intro tag body hmem
+      have hTagMem : tag ∈ cases'.map (·.1) := by
+        exact List.mem_map_of_mem (f := Prod.fst) hmem
+      rw [hTagsEq] at hTagMem
+      simp [buildSwitchSourceCases] at hTagMem
+      rcases hTagMem with ⟨fn, hFn, hTag⟩
+      subst hTag
+      exact hFunctionSelectorsRange fn hFn
+    have hBody' :
+        ∀ pre suffix, cases' = pre ++ (selector, body') :: suffix →
+          EvmYul.Yul.exec ((fuel + 1) + suffix.length + 7) (.Block body')
+            (some contract)
+            (nativeSwitchStoreMarkedPrefixStateForId contract tx storage
+              observableSlots (Backends.freshNativeSwitchId reservedNames switchStart)
+              nativeSwitchHasSelectorStore) = .ok final := by
+      intro pre suffix hcases
+      simpa [fuel, contract, Nat.add_assoc] using hBody pre suffix hcases
+    have hPeel :
+        contractDispatcherExecResult fuel'
+            contract (initialState contract tx storage observableSlots) =
+          EvmYul.Yul.exec (fuel + cases'.length + 13)
+            (.Block
+              [Backends.lowerNativeSwitchBlock
+                (YulExpr.call "shr"
+                  [YulExpr.lit Compiler.Constants.selectorShift,
+                   YulExpr.call "calldataload" [YulExpr.lit 0]])
+                (Backends.freshNativeSwitchId reservedNames switchStart) cases'
+                [nativeRevertZeroZeroStmt]])
+            (some contract)
+            ((nativeSwitchInitialOkState contract tx storage observableSlots).insert
+              "__has_selector" (EvmYul.UInt256.ofNat 1)) := by
+      rw [hFuelShape]
+      have hPeelStructural :
+          contractDispatcherExecResult (fuel + cases'.length + 19)
+              contract (initialState contract tx storage observableSlots) =
+            EvmYul.Yul.exec (fuel + cases'.length + 13)
+              (.Block
+                [Backends.lowerNativeSwitchBlock
+                  (YulExpr.call "shr"
+                    [YulExpr.lit Compiler.Constants.selectorShift,
+                     YulExpr.call "calldataload" [YulExpr.lit 0]])
+                  (Backends.freshNativeSwitchId reservedNames switchStart) cases'
+                  [nativeRevertZeroZeroStmt]])
+              (some contract)
+              ((nativeSwitchInitialOkState contract tx storage observableSlots).insert
+                "__has_selector" (EvmYul.UInt256.ofNat 1)) := by
+        let contract' : EvmYul.Yul.Ast.YulContract :=
+          { dispatcher := .Block [.Block inner], functions := functions }
+        have hFuelShape' :
+            fuel + cases'.length + 19 =
+              Nat.succ (Nat.succ (Nat.succ (fuel + cases'.length + 16))) := by
+          omega
+        have hDispatcherPeel :
+            contractDispatcherExecResult (fuel + cases'.length + 19)
+                contract' (initialState contract' tx storage observableSlots) =
+              EvmYul.Yul.exec (fuel + cases'.length + 17)
+                (.Block inner) (some contract')
+                (nativeSwitchInitialOkState contract' tx storage observableSlots) := by
+          rw [hFuelShape']
+          change
+            contractDispatcherExecResult
+                (Nat.succ (Nat.succ (Nat.succ (fuel + cases'.length + 16))))
+                { dispatcher := .Block [.Block inner], functions := functions }
+                (initialState
+                  { dispatcher := .Block [.Block inner], functions := functions }
+                  tx storage observableSlots) =
+              EvmYul.Yul.exec (fuel + cases'.length + 17)
+                (.Block inner)
+                (some { dispatcher := .Block [.Block inner], functions := functions })
+                (nativeSwitchInitialOkState
+                  { dispatcher := .Block [.Block inner], functions := functions }
+                  tx storage observableSlots)
+          rw [contractDispatcherExecResult_block_dispatcher_eq_exec_block
+            (Nat.succ (fuel + cases'.length + 16)) [.Block inner] functions
+            tx storage observableSlots]
+          rw [exec_singleton_block_eq_exec_block (fuel + cases'.length + 16) inner
+            (some { dispatcher := .Block [.Block inner], functions := functions })
+            (nativeSwitchInitialOkState
+              { dispatcher := .Block [.Block inner], functions := functions }
+              tx storage observableSlots)]
+        calc
+          contractDispatcherExecResult (fuel + cases'.length + 19)
+              contract (initialState contract tx storage observableSlots)
+              = EvmYul.Yul.exec (fuel + cases'.length + 17)
+                  (.Block inner) (some contract)
+                  (nativeSwitchInitialOkState contract tx storage observableSlots) := hDispatcherPeel
+          _ = EvmYul.Yul.exec (fuel + cases'.length + 17)
+                (.Block
+                  [EvmYul.Yul.Ast.Stmt.Let ["__has_selector"]
+                      (some
+                        (Backends.lowerExprNative
+                          (YulExpr.call "iszero"
+                            [YulExpr.call "lt"
+                              [YulExpr.call "calldatasize" [],
+                               YulExpr.lit 4]]))),
+                   EvmYul.Yul.Ast.Stmt.If
+                      (Backends.lowerExprNative
+                        (YulExpr.call "iszero" [YulExpr.ident "__has_selector"]))
+                      body1,
+                   EvmYul.Yul.Ast.Stmt.If
+                      (Backends.lowerExprNative (YulExpr.ident "__has_selector"))
+                      [Backends.lowerNativeSwitchBlock
+                        (YulExpr.call "shr"
+                          [YulExpr.lit Compiler.Constants.selectorShift,
+                           YulExpr.call "calldataload" [YulExpr.lit 0]])
+                        (Backends.freshNativeSwitchId reservedNames switchStart) cases'
+                        [nativeRevertZeroZeroStmt]]])
+                (some contract)
+                (nativeSwitchInitialOkState contract tx storage observableSlots) := by
+              exact congrArg
+                (fun body =>
+                  EvmYul.Yul.exec (fuel + cases'.length + 17)
+                    (.Block body) (some contract)
+                    (nativeSwitchInitialOkState contract tx storage observableSlots))
+                hInner
+          _ = EvmYul.Yul.exec (fuel + cases'.length + 13)
+                (.Block
+                  [Backends.lowerNativeSwitchBlock
+                    (YulExpr.call "shr"
+                      [YulExpr.lit Compiler.Constants.selectorShift,
+                       YulExpr.call "calldataload" [YulExpr.lit 0]])
+                    (Backends.freshNativeSwitchId reservedNames switchStart) cases'
+                    [nativeRevertZeroZeroStmt]])
+                (some contract)
+                ((nativeSwitchInitialOkState contract tx storage observableSlots).insert
+                  "__has_selector" (EvmYul.UInt256.ofNat 1)) := by
+              have hExec :=
+                exec_block_letSelector_if1Skip_if2Take_initialState_fuel
+                  (fuel + cases'.length + 5) contract tx storage observableSlots
+                  "__has_selector" body1
+                  [Backends.lowerNativeSwitchBlock
+                    (YulExpr.call "shr"
+                      [YulExpr.lit Compiler.Constants.selectorShift,
+                       YulExpr.call "calldataload" [YulExpr.lit 0]])
+                    (Backends.freshNativeSwitchId reservedNames switchStart) cases'
+                    [nativeRevertZeroZeroStmt]]
+                  hNoWrap
+              simpa only [Nat.add_assoc] using hExec
+      exact hPeelStructural
+    rw [hPeel]
+    exact exec_block_lowerNativeSwitchBlock_selector_find_hit_hasSelectorState_ok_projectResult_eq_finalMatched
+      fuel selector (Backends.freshNativeSwitchId reservedNames switchStart) selector
+      cases' [nativeRevertZeroZeroStmt] body' contract tx storage initialEvents
+      observableSlots final nativeYul hSelector hCase hSelectorRange hTagsRange
+      hBody' hFinalMatched hProject
+
+
 /-- Reserved-context variant of
 `contractDispatcherExecResult_buildSwitch_noFallback_noReceive_selector_find_none_projectResult_eq`.
 
@@ -35162,49 +35768,6 @@ def nativeResultsMatchOn
       ir.events = yul.events
   | .error _ => False
 
-/-- General append-equation helper for native `.Block` execution.
-
-If the left half of a `.Block` evaluates to `.ok mid` at the standard
-`fuel + left.length + k` fuel budget, then executing the appended block
-`left ++ right` at the same total fuel coincides with executing the right
-half on `mid` at the remaining `fuel + k` fuel. This is the equation form
-of `exec_block_append_ok`, allowing callers to splice an arbitrary right
-suffix without committing in advance to what the suffix evaluates to. -/
-theorem exec_block_append_eq_of_continue
-    (fuel k : Nat) (left right : List EvmYul.Yul.Ast.Stmt)
-    (codeOverride : Option EvmYul.Yul.Ast.YulContract)
-    (state mid : EvmYul.Yul.State)
-    (hLeft :
-      EvmYul.Yul.exec (fuel + left.length + k) (.Block left) codeOverride state =
-        .ok mid) :
-    EvmYul.Yul.exec (fuel + left.length + k) (.Block (left ++ right))
-        codeOverride state =
-      EvmYul.Yul.exec (fuel + k) (.Block right) codeOverride mid := by
-  induction left generalizing fuel state with
-  | nil =>
-      cases hRem : fuel + k with
-      | zero => simp [hRem, EvmYul.Yul.exec] at hLeft
-      | succ remaining' =>
-          have hLeftS : EvmYul.Yul.exec (Nat.succ remaining') (.Block [])
-              codeOverride state = .ok mid := by
-            simpa [hRem] using hLeft
-          simp [EvmYul.Yul.exec] at hLeftS
-          cases hLeftS; simp [hRem]
-  | cons stmt rest ih =>
-      have hSucc : fuel + (stmt :: rest).length + k =
-          Nat.succ (fuel + rest.length + k) := by
-        simp only [List.length_cons]; omega
-      rw [hSucc] at hLeft ⊢
-      rw [List.cons_append]
-      simp only [EvmYul.Yul.exec] at hLeft ⊢
-      cases hHead :
-          EvmYul.Yul.exec (fuel + rest.length + k) stmt codeOverride state with
-      | error err => rw [hHead] at hLeft; simp at hLeft
-      | ok next =>
-          rw [hHead] at hLeft
-          simp at hLeft
-          exact ih fuel next hLeft
-
 /-- Variant of `exec_block_leave_ok_add_ten` that splices a
 `NativePreservableStraightStmts`-derived prefix in front of `.Leave`.
 
@@ -35229,16 +35792,18 @@ theorem exec_block_lowerStmtsNativeWithSwitchIds_with_leave_ok_eq_of_NativeBlock
   have hLeft :
       EvmYul.Yul.exec ((fuel + suffixLen + 9) + native.length + 1)
           (.Block native) codeOverride initial = .ok mid := hFuel ▸ hPre
-  rw [hFuel,
-      exec_block_append_eq_of_continue (fuel + suffixLen + 9) 1 native [.Leave]
-        codeOverride initial mid hLeft]
-  show EvmYul.Yul.exec ((fuel + suffixLen + 9) + 1) (.Block [.Leave])
-      codeOverride mid = .ok mid.setLeave
-  have hLeaveFuel :
-      (fuel + suffixLen + 9) + 1 = Nat.succ (Nat.succ (fuel + suffixLen + 8)) := by
-    omega
-  rw [hLeaveFuel]
-  simp [EvmYul.Yul.exec]
+  have hRight :
+      EvmYul.Yul.exec ((fuel + suffixLen + 9) + 1) (.Block [.Leave])
+          codeOverride mid = .ok mid.setLeave := by
+    have hLeaveFuel :
+        (fuel + suffixLen + 9) + 1 =
+          Nat.succ (Nat.succ (fuel + suffixLen + 8)) := by
+      omega
+    rw [hLeaveFuel]
+    cases mid <;> simp [EvmYul.Yul.exec, EvmYul.Yul.State.setLeave]
+  rw [hFuel]
+  exact exec_block_append_ok (fuel + suffixLen + 9) 1 native [.Leave]
+    codeOverride initial mid mid.setLeave hLeft hRight
 
 /-- No-leave variant: a `.Block (lower preStmts)` with per-slot preservation
 exits with `.ok mid`, packaged at the standard `+ 10` fuel-padding form so

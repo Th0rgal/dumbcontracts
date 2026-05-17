@@ -177,16 +177,28 @@ aside.nextra-sidebar-container,
 
 .nextra-sidebar-footer,
 .nextra-sidebar .nextra-sidebar-footer {
-  width: 100% !important;
-  min-width: 100% !important;
+  position: sticky !important;
+  width: auto !important;
+  min-width: 0 !important;
   align-self: stretch !important;
   box-sizing: border-box !important;
   display: flex !important;
-  margin-inline: 0 !important;
-  padding-inline: 1rem !important;
-  background: var(--verity-sidebar) !important;
-  background-color: var(--verity-sidebar) !important;
-  border-top: 1px solid color-mix(in srgb, var(--verity-rule) 82%, var(--verity-sidebar-strong)) !important;
+  margin-inline: 1rem !important;
+  padding-inline: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-top: 0 !important;
+  isolation: isolate;
+}
+
+.nextra-sidebar-footer::before,
+.nextra-sidebar .nextra-sidebar-footer::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 -1rem;
+  background: var(--verity-sidebar);
+  border-top: 1px solid color-mix(in srgb, var(--verity-rule) 82%, var(--verity-sidebar-strong));
 }
 
 .nextra-sidebar-footer > button:first-child {
@@ -208,6 +220,12 @@ aside.nextra-sidebar-container,
   background-color: var(--verity-surface) !important;
   border-right-color: var(--verity-rule) !important;
   box-shadow: 1px 0 0 rgba(201, 169, 97, 0.06) inset;
+}
+
+.dark .nextra-sidebar-footer::before,
+.dark .nextra-sidebar .nextra-sidebar-footer::before {
+  background: var(--verity-surface);
+  border-top-color: var(--verity-rule);
 }
 
 .nextra-mobile-nav {

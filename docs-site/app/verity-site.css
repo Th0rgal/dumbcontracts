@@ -322,53 +322,103 @@ article [class*="x:text-slate"] {
   color: var(--verity-ink) !important;
 }
 
-article.nextra-body-typesetting-article {
+article main {
   font-family: var(--verity-font-prose);
-  font-size: 1.06rem;
-  line-height: 1.78;
+  font-size: 1.045rem !important;
+  line-height: 1.72 !important;
+  font-feature-settings: "kern", "liga", "calt", "onum", "lnum" off;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  counter-reset: section;
 }
 
-article.nextra-body-typesetting-article > :not(.verity-hero):not(.code-compare):not(.report-callout) {
-  max-width: 48rem;
+article main > :not(.verity-hero):not(.code-compare):not(.report-callout) {
+  max-width: 46rem;
 }
 
-article.nextra-body-typesetting-article h1,
-article.nextra-body-typesetting-article h2,
-article.nextra-body-typesetting-article h3,
-article.nextra-body-typesetting-article h4 {
-  color: var(--verity-heading);
-  font-family: var(--verity-font-display);
+article main p {
+  font-size: 1.045rem !important;
+  line-height: 1.72 !important;
+  color: var(--verity-ink) !important;
+}
+
+article main h1,
+article main h2,
+article main h3,
+article main h4,
+article main h5,
+article main h6 {
+  color: var(--verity-heading) !important;
+  font-family: var(--verity-font-display) !important;
   font-optical-sizing: auto;
-  font-weight: 760;
-  letter-spacing: 0;
-  line-height: 1.08;
+  font-weight: 700 !important;
+  letter-spacing: -0.008em !important;
+  line-height: 1.16 !important;
+  text-wrap: balance;
+  border: 0 !important;
 }
 
-article.nextra-body-typesetting-article h1 {
-  font-size: clamp(2.55rem, 6vw, 5.4rem);
-  margin-top: 0;
+article main h1 {
+  font-size: clamp(2.4rem, 5.5vw, 4.6rem) !important;
+  margin-top: 0 !important;
+  letter-spacing: -0.015em !important;
 }
 
-article.nextra-body-typesetting-article h2 {
-  border-top: 1px solid var(--verity-rule);
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
-  margin-top: 4rem;
-  padding-top: 1.1rem;
+article main h2 {
+  font-size: clamp(1.7rem, 2.9vw, 2.35rem) !important;
+  margin-top: 3.2rem !important;
+  padding-top: 1.2rem !important;
+  padding-bottom: 0 !important;
+  position: relative !important;
+  counter-increment: section;
+  border-top: 1px solid var(--verity-rule) !important;
 }
 
-article.nextra-body-typesetting-article h3 {
-  font-size: 1.45rem;
+article main h2::after {
+  content: "§ " counter(section, decimal);
+  position: absolute;
+  top: 1.5rem;
+  right: 0;
+  color: var(--verity-muted);
+  font-family: var(--verity-font-ui);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
 }
 
-article.nextra-body-typesetting-article p,
-article.nextra-body-typesetting-article li,
-article.nextra-body-typesetting-article blockquote {
+article main h3 {
+  font-size: 1.4rem !important;
+  margin-top: 2.2rem !important;
+  letter-spacing: -0.005em !important;
+}
+
+article main h4 {
+  font-size: 1.12rem !important;
+  margin-top: 1.6rem !important;
+}
+
+/* CodeCompare's heading sits inline with its kicker — override the section number/border there */
+.code-compare h2 {
+  border-top: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0.25rem !important;
+  counter-increment: none !important;
+}
+
+.code-compare h2::after {
+  content: none !important;
+}
+
+article main p,
+article main li,
+article main blockquote {
   color: var(--verity-ink);
 }
 
 article a,
 article a[class*="x:text-primary"],
-article.nextra-body-typesetting-article a {
+article main a {
   color: var(--verity-accent) !important;
   font-weight: 600;
   text-decoration-color: color-mix(in srgb, var(--verity-accent) 45%, transparent) !important;
@@ -376,7 +426,7 @@ article.nextra-body-typesetting-article a {
 }
 
 article a:hover,
-article.nextra-body-typesetting-article a:hover,
+article main a:hover,
 .nextra-breadcrumb a:hover,
 .nextra-pagination a:hover,
 .nextra-toc-footer a:hover {
@@ -387,11 +437,11 @@ article.nextra-body-typesetting-article a:hover,
   color: var(--verity-muted) !important;
 }
 
-article.nextra-body-typesetting-article hr {
+article main hr {
   border-color: var(--verity-rule);
 }
 
-article.nextra-body-typesetting-article table {
+article main table {
   display: table;
   width: 100%;
   border-collapse: collapse;
@@ -405,25 +455,25 @@ article.nextra-body-typesetting-article table {
 article tr,
 article tr:nth-child(even),
 article tr[class*="x:even:bg-gray"],
-article.nextra-body-typesetting-article tr,
-article.nextra-body-typesetting-article tr:nth-child(even),
-article.nextra-body-typesetting-article tr[class*="x:even:bg-gray"] {
+article main tr,
+article main tr:nth-child(even),
+article main tr[class*="x:even:bg-gray"] {
   background: var(--verity-surface) !important;
 }
 
 article tbody tr:nth-child(even),
-article.nextra-body-typesetting-article tbody tr:nth-child(even) {
+article main tbody tr:nth-child(even) {
   background: color-mix(in srgb, var(--verity-sidebar) 35%, var(--verity-surface)) !important;
 }
 
-article.nextra-body-typesetting-article th {
+article main th {
   background: var(--verity-surface-strong);
   color: var(--verity-heading);
   font-weight: 700;
 }
 
-article.nextra-body-typesetting-article th,
-article.nextra-body-typesetting-article td {
+article main th,
+article main td {
   border-color: var(--verity-rule) !important;
   padding: 0.7rem 0.85rem;
 }
@@ -432,8 +482,8 @@ article pre,
 article pre[class*="nextra"],
 article pre[class*="x:bg-white"],
 article pre[class*="x:ring-gray"],
-article.nextra-body-typesetting-article pre,
-article.nextra-body-typesetting-article pre[class*="nextra"],
+article main pre,
+article main pre[class*="nextra"],
 figure[data-rehype-pretty-code-figure] pre {
   background: var(--verity-code-surface) !important;
   border: 1px solid var(--verity-rule) !important;
@@ -441,14 +491,14 @@ figure[data-rehype-pretty-code-figure] pre {
   color: var(--verity-ink) !important;
 }
 
-article.nextra-body-typesetting-article :not(pre) > code,
+article main :not(pre) > code,
 code.nextra-code:not(pre code) {
   background: color-mix(in srgb, var(--verity-sidebar) 34%, var(--verity-surface)) !important;
   border: 1px solid color-mix(in srgb, var(--verity-rule) 74%, transparent) !important;
   color: var(--verity-heading) !important;
 }
 
-article.nextra-body-typesetting-article blockquote,
+article main blockquote,
 .nextra-callout {
   background: color-mix(in srgb, var(--verity-surface) 82%, transparent) !important;
   border: 1px solid var(--verity-rule) !important;
@@ -905,7 +955,7 @@ a[role="button"] {
     background: var(--verity-bg);
   }
 
-  article.nextra-body-typesetting-article {
+  article main {
     font-size: 1rem;
   }
 
@@ -973,7 +1023,7 @@ a[role="button"] {
     font-size: 0.74rem;
   }
 
-  article.nextra-body-typesetting-article table {
+  article main table {
     display: block;
     overflow-x: auto;
   }

@@ -175,7 +175,7 @@
     "foundry-gas-calibration": 15,
     "foundry": 30,
     "foundry-patched": 60,
-    "foundry-multi-seed": 45
+    "foundry-multi-seed": 75
   },
   "expected_job_strategy_fail_fast": {
     "foundry": false,

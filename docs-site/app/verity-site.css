@@ -185,6 +185,23 @@ input[type="search"]::placeholder {
   opacity: 0.85;
 }
 
+/* Square corners on the CTRL+K shortcut hint and search results panel. */
+.nextra-search kbd,
+header kbd {
+  border-radius: 0 !important;
+  background: color-mix(in srgb, var(--verity-sidebar) 38%, var(--verity-surface)) !important;
+  border: 1px solid var(--verity-rule) !important;
+  color: var(--verity-muted) !important;
+  font-family: var(--verity-font-ui) !important;
+}
+
+/* Search results popover and its inner items */
+[class*="x:absolute"][class*="rounded"]:has(.nextra-search-results),
+.nextra-search ul,
+.nextra-search [role="listbox"] {
+  border-radius: 0 !important;
+}
+
 aside.nextra-sidebar-container,
 .nextra-sidebar-container,
 .nextra-sidebar {

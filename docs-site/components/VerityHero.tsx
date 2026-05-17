@@ -6,7 +6,7 @@ const secondaryLinks = [
   { href: '/research', label: 'Research notes' },
 ]
 
-const brief = [
+const facts = [
   { label: 'Pipeline', value: <>Spec&nbsp;→ EDSL&nbsp;→ IR&nbsp;→ Yul</> },
   { label: 'Surface', value: 'Storage, guards, events, typed externals' },
   { label: 'Assurance', value: 'Machine-checked claims, explicit assumptions' },
@@ -24,40 +24,33 @@ export function VerityHero() {
           Write smart contracts in Lean. Compile to EVM.{' '}
           <em>Prove&nbsp;them correct</em>.
         </p>
+
+        <nav className="verity-hero__links" aria-label="Primary documentation links">
+          <a className="verity-hero__cta" href={primaryLink.href}>
+            {primaryLink.label}
+            <span aria-hidden="true">→</span>
+          </a>
+          <ul className="verity-hero__more">
+            {secondaryLinks.map((link) => (
+              <li key={link.href}>
+                <a href={link.href}>
+                  {link.label}
+                  <span aria-hidden="true">↗</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </header>
 
-      <div className="verity-hero__body">
-        <div className="verity-hero__copy">
-          <nav className="verity-hero__links" aria-label="Primary documentation links">
-            <a className="verity-hero__cta" href={primaryLink.href}>
-              {primaryLink.label}
-              <span aria-hidden="true">→</span>
-            </a>
-            <ul className="verity-hero__more">
-              {secondaryLinks.map((link) => (
-                <li key={link.href}>
-                  <a href={link.href}>
-                    {link.label}
-                    <span aria-hidden="true">↗</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-
-        <aside className="verity-hero__brief" aria-label="Verification brief">
-          <p className="verity-hero__brief-label">At a glance</p>
-          <dl>
-            {brief.map((item) => (
-              <div key={item.label}>
-                <dt>{item.label}</dt>
-                <dd>{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </aside>
-      </div>
+      <dl className="verity-hero__facts" aria-label="At a glance">
+        {facts.map((item) => (
+          <div key={item.label}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   )
 }

@@ -572,6 +572,39 @@ article:has(.verity-hero) .nextra-breadcrumb {
   font-style: italic;
 }
 
+/* Nextra renders a "next page" pagination block at the bottom of each
+   article in display-text size. Quieten it so it reads as a footer
+   navigator, not a competing heading. */
+article > div:last-child:has(> a[title]) {
+  margin-top: 1.75rem !important;
+  margin-bottom: 2rem !important;
+  padding-top: 1.25rem !important;
+  border-top-color: var(--verity-rule) !important;
+}
+
+article > div:last-child > a[title] {
+  font-family: var(--verity-font-ui) !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: var(--verity-accent) !important;
+  text-decoration: none !important;
+  padding: 0.4rem 0 !important;
+}
+
+article > div:last-child > a[title]:hover {
+  color: var(--verity-heading) !important;
+}
+
+article > div:last-child > a[title] svg {
+  width: 1em;
+  height: 1em;
+  transition: transform 0.18s ease;
+}
+
+article > div:last-child > a[title]:hover svg {
+  transform: translateX(0.15rem);
+}
+
 article main hr {
   border-color: var(--verity-rule);
 }

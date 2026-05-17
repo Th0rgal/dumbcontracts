@@ -1285,11 +1285,17 @@ a[role="button"] {
 }
 
 .report-callout {
-  margin: 2.5rem 0 3rem;
+  margin: 2rem 0 2.5rem;
   padding: 1rem 1.15rem;
   border-top: 2px solid var(--verity-accent);
-  border-bottom: 1px solid var(--verity-rule);
   background: color-mix(in srgb, var(--verity-surface) 70%, transparent);
+}
+
+/* When the callout is followed by an h2 (which carries its own top
+   rule), drop our bottom border so we don't show two rules in a row. */
+.report-callout:has(+ h2),
+.report-callout {
+  border-bottom: none;
 }
 
 .report-callout strong {

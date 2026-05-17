@@ -1,6 +1,9 @@
-'use client'
+import { readFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { codeToHtml } from 'shiki'
 
-import { useState } from 'react'
+import { CodeCompareSwitcher } from './CodeCompareSwitcher'
 
 const verityCode = `verity_contract Escrow where
   storage
@@ -63,63 +66,78 @@ const solidityCode = `contract Escrow {
 }`
 
 const notes = [
-  'Reusable modifiers are ordinary verified helpers, not compiler magic.',
-  'Typed external calls expose oracle and ABI assumptions at the language boundary.',
-  'Event definitions and storage slots remain visible to specs, proofs, and compiler reports.',
+  { label: 'Modifiers', text: 'Plain verified helpers, no compiler magic.' },
+  { label: 'External calls', text: 'Typed at the boundary; oracle assumptions are explicit.' },
+  { label: 'Storage & events', text: 'Visible to specs, proofs, and compiler reports.' },
 ]
 
-export function CodeCompare() {
-  const [active, setActive] = useState<'verity' | 'solidity'>('verity')
+const moduleDir = dirname(fileURLToPath(import.meta.url))
+const grammarPath = resolve(moduleDir, '..', 'syntaxes', 'verity.tmLanguage.json')
+const lightThemePath = resolve(moduleDir, '..', 'themes', 'lfglabs-cream.json')
+const darkThemePath = resolve(moduleDir, '..', 'themes', 'verity-dark.json')
+
+async function readJson(path: string) {
+  return JSON.parse(await readFile(path, 'utf8'))
+}
+
+type ShikiAssets = {
+  grammar: any
+  lightTheme: any
+  darkTheme: any
+}
+
+function highlight(code: string, lang: 'verity' | 'solidity', assets: ShikiAssets) {
+  return codeToHtml(code, {
+    lang: lang === 'verity'
+      ? {
+          ...assets.grammar,
+          name: 'verity',
+          aliases: ['vty'],
+        }
+      : lang,
+    themes: {
+      light: assets.lightTheme,
+      dark: assets.darkTheme,
+    },
+    defaultColor: false,
+    cssVariablePrefix: '--shiki-',
+  })
+}
+
+export async function CodeCompare() {
+  const [grammar, lightTheme, darkTheme] = await Promise.all([
+    readJson(grammarPath),
+    readJson(lightThemePath),
+    readJson(darkThemePath),
+  ])
+  const assets: ShikiAssets = { grammar, lightTheme, darkTheme }
+  const [verityHtml, solidityHtml] = await Promise.all([
+    highlight(verityCode, 'verity', assets),
+    highlight(solidityCode, 'solidity', assets),
+  ])
 
   return (
     <section className="code-compare" aria-labelledby="code-compare-title">
       <div className="code-compare__intro">
-        <p className="verity-kicker">Semantic contract surface</p>
-        <h2 id="code-compare-title">Solidity patterns, lifted into proof-carrying code.</h2>
+        <p className="verity-kicker">Side by side</p>
+        <h2 id="code-compare-title">The same contract, lifted into Lean.</h2>
         <p>
-          Verity keeps production smart-contract structure recognizable while making guards,
-          ABI projection, event emission, and external calls available to Lean proofs.
+          Same shape as Solidity: guards, ABI, events, externals.
+          All of it visible to proofs.
         </p>
       </div>
-      <div className="code-compare__switch" role="tablist" aria-label="Compare languages">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active === 'verity'}
-          onClick={() => setActive('verity')}
-        >
-          Verity
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active === 'solidity'}
-          onClick={() => setActive('solidity')}
-        >
-          Solidity
-        </button>
-      </div>
-      <div className="code-compare__grid">
-        <figure className="code-panel code-panel--verity" data-mobile-active={active === 'verity'}>
-          <figcaption>
-            <span>Verity</span>
-            <strong>Typed contract, proof-visible behavior</strong>
-          </figcaption>
-          <pre data-language="verity"><code>{verityCode}</code></pre>
-        </figure>
-        <figure className="code-panel code-panel--solidity" data-mobile-active={active === 'solidity'}>
-          <figcaption>
-            <span>Solidity</span>
-            <strong>Runtime implementation surface</strong>
-          </figcaption>
-          <pre data-language="solidity"><code>{solidityCode}</code></pre>
-        </figure>
-      </div>
-      <ul className="code-compare__notes">
+      <CodeCompareSwitcher
+        verityHtml={verityHtml}
+        solidityHtml={solidityHtml}
+      />
+      <dl className="code-compare__notes">
         {notes.map((note) => (
-          <li key={note}>{note}</li>
+          <div key={note.label}>
+            <dt>{note.label}</dt>
+            <dd>{note.text}</dd>
+          </div>
         ))}
-      </ul>
+      </dl>
     </section>
   )
 }

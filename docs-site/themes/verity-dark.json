@@ -103,6 +103,158 @@
       "settings": {
         "foreground": "#C7BDA4"
       }
+    },
+
+    {
+      "scope": [
+        "storage.type.contract",
+        "storage.type.event",
+        "storage.type.function",
+        "storage.type.function.modifier",
+        "storage.type.modifier",
+        "storage.type.interface",
+        "storage.type.library",
+        "storage.type.struct",
+        "storage.type.enum",
+        "storage.type.error",
+        "storage.type.mapping",
+        "storage.type.constructor",
+        "keyword.control",
+        "keyword.control.flow",
+        "keyword.control.import",
+        "keyword.control.pragma",
+        "keyword.control.using",
+        "keyword.control.for"
+      ],
+      "settings": {
+        "foreground": "#E5C98A",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "storage.type.modifier.access",
+        "storage.type.modifier.payable",
+        "storage.type.modifier.readonly",
+        "storage.type.modifier.extendedscope",
+        "storage.modifier.is"
+      ],
+      "settings": {
+        "foreground": "#D8B989",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "support.type.primitive"
+      ],
+      "settings": {
+        "foreground": "#D8B989",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.type.contract",
+        "entity.name.type.contract.extend",
+        "entity.name.type.interface",
+        "entity.name.type.library",
+        "entity.name.type.struct",
+        "entity.name.type.enum",
+        "entity.name.type.event",
+        "entity.name.type.error",
+        "entity.name.type.userType"
+      ],
+      "settings": {
+        "foreground": "#D6B36F",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "entity.name.function.modifier"
+      ],
+      "settings": {
+        "foreground": "#86D6C8"
+      }
+    },
+    {
+      "scope": [
+        "support.function.math",
+        "support.function.string",
+        "keyword.control.exceptions",
+        "keyword.control.contract"
+      ],
+      "settings": {
+        "foreground": "#E5A98A",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "variable.parameter.function",
+        "variable.parameter.event",
+        "variable.parameter.other"
+      ],
+      "settings": {
+        "foreground": "#D9D0C0"
+      }
+    },
+    {
+      "scope": [
+        "support.variable.property"
+      ],
+      "settings": {
+        "foreground": "#C9A961"
+      }
+    },
+    {
+      "scope": [
+        "variable.language.this",
+        "variable.language.super",
+        "variable.language.builtin.abi",
+        "variable.language.transaction",
+        "variable.language.type"
+      ],
+      "settings": {
+        "foreground": "#E5C98A",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "constant.numeric.decimal",
+        "constant.numeric.hexadecimal",
+        "constant.numeric.scientific",
+        "constant.language.boolean",
+        "constant.language.currency",
+        "constant.language.time"
+      ],
+      "settings": {
+        "foreground": "#C9A961"
+      }
+    },
+    {
+      "scope": [
+        "string.quoted.double",
+        "string.quoted.single"
+      ],
+      "settings": {
+        "foreground": "#A7E39B"
+      }
+    },
+    {
+      "scope": [
+        "keyword.operator.mapping",
+        "keyword.operator.arithmetic",
+        "keyword.operator.assignment",
+        "keyword.operator.logic",
+        "keyword.operator.binary"
+      ],
+      "settings": {
+        "foreground": "#B8AA95"
+      }
     }
   ],
   "semanticHighlighting": false

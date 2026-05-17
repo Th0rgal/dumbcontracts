@@ -52,22 +52,27 @@
 
 .dark {
   color-scheme: dark;
-  --verity-bg: #000000;
-  --verity-surface: #0B0A07;
-  --verity-surface-strong: #15140F;
-  --verity-ink: #E6E1D5;
-  --verity-heading: #F5F1E8;
-  --verity-muted: #B8AA95;
-  --verity-rule: #373126;
-  --verity-code-bg: #15140F;
-  --verity-code-surface: #0F0E0A;
-  --verity-accent: #C9A961;
-  --verity-accent-ink: #000000;
+  /* Warmer "vellum at night" instead of pure black */
+  --verity-bg: #0B0908;
+  --verity-page: #0B0908;
+  --verity-sidebar: #100D0A;
+  --verity-sidebar-strong: #18130E;
+  --verity-surface: #14110D;
+  --verity-surface-strong: #1B1813;
+  --verity-ink: #E8E2D2;
+  --verity-heading: #F6F1E5;
+  --verity-muted: #B7A993;
+  --verity-rule: #2E281E;
+  --verity-code-bg: #14110D;
+  --verity-code-surface: #100D0A;
+  --verity-accent: #CFA968;
+  --verity-accent-soft: #6B501F;
+  --verity-accent-ink: #0B0908;
   --verity-shadow: none;
-  --nextra-primary-hue: 44deg;
-  --nextra-primary-saturation: 49%;
-  --nextra-primary-lightness: 58%;
-  --nextra-bg: 0, 0, 0;
+  --nextra-primary-hue: 39deg;
+  --nextra-primary-saturation: 54%;
+  --nextra-primary-lightness: 60%;
+  --nextra-bg: 11, 9, 8;
 }
 
 html,
@@ -116,24 +121,35 @@ body {
 }
 
 .dark body {
-  background: #000000;
+  background: var(--verity-bg);
 }
 
 ::selection {
   background: color-mix(in srgb, var(--verity-accent) 28%, transparent);
 }
 
+/* Navbar — warm middle-tone between page cream and sidebar tan so it
+   doesn't read as a stark white slab above the sidebar.
+
+   The blur is removed (was creating a translucent "white square" effect
+   over the top of the sidebar during scroll under prior cream-bg). */
 .nextra-nav-container-blur,
-.nextra-nav-container {
-  background: color-mix(in srgb, var(--verity-page) 94%, transparent) !important;
+.nextra-nav-container,
+.nextra-navbar-blur,
+header.nextra-navbar > div:first-child {
+  background: color-mix(in srgb, var(--verity-sidebar) 55%, var(--verity-page)) !important;
+  background-color: color-mix(in srgb, var(--verity-sidebar) 55%, var(--verity-page)) !important;
   border-bottom: 1px solid var(--verity-rule) !important;
   box-shadow: none !important;
-  backdrop-filter: blur(10px);
+  backdrop-filter: none !important;
 }
 
 .dark .nextra-nav-container-blur,
-.dark .nextra-nav-container {
-  background: color-mix(in srgb, var(--verity-surface) 94%, transparent) !important;
+.dark .nextra-nav-container,
+.dark .nextra-navbar-blur,
+.dark header.nextra-navbar > div:first-child {
+  background: var(--verity-surface) !important;
+  background-color: var(--verity-surface) !important;
   border-bottom-color: var(--verity-rule) !important;
 }
 
@@ -142,9 +158,10 @@ body {
   align-items: center;
   gap: 0.55rem;
   color: var(--verity-heading);
-  font-family: var(--verity-font-ui);
-  font-size: 0.95rem;
-  letter-spacing: 0.02em;
+  font-family: var(--verity-font-display);
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
 }
 
 .verity-brand img {
@@ -152,12 +169,71 @@ body {
   height: 1.35rem;
 }
 
+.verity-brand strong {
+  font-weight: inherit;
+}
+
 .nextra-search input,
 input[type="search"] {
   background: var(--verity-surface) !important;
   border: 1px solid var(--verity-rule) !important;
+  border-radius: 0 !important;
   color: var(--verity-ink) !important;
   font-family: var(--verity-font-ui) !important;
+  font-size: 0.9rem !important;
+}
+
+.nextra-search input:focus,
+input[type="search"]:focus {
+  outline: 2px solid var(--verity-accent) !important;
+  outline-offset: 1px !important;
+  border-color: var(--verity-accent) !important;
+}
+
+.nextra-search input::placeholder,
+input[type="search"]::placeholder {
+  color: var(--verity-muted) !important;
+  opacity: 0.85;
+}
+
+/* Square corners on the CTRL+K shortcut hint and search results panel. */
+.nextra-search kbd,
+header kbd {
+  border-radius: 0 !important;
+  background: color-mix(in srgb, var(--verity-sidebar) 38%, var(--verity-surface)) !important;
+  border: 1px solid var(--verity-rule) !important;
+  color: var(--verity-muted) !important;
+  font-family: var(--verity-font-ui) !important;
+}
+
+/* Search results popover and its inner items */
+[class*="x:absolute"][class*="rounded"]:has(.nextra-search-results),
+.nextra-search ul,
+.nextra-search [role="listbox"],
+.nextra-search a[class*="x:rounded-md"],
+[role="listbox"] a {
+  border-radius: 0 !important;
+}
+
+/* "Copy page" widget at the top of each article */
+[class*="x:rounded-md"]:has(> button),
+[class*="x:rounded-md"]:has(> button) * {
+  border-radius: 0 !important;
+}
+
+article [class*="x:rounded-md"]:has(button) {
+  border-color: var(--verity-rule) !important;
+  background: var(--verity-surface) !important;
+}
+
+article [class*="x:rounded-md"]:has(button) button {
+  font-family: var(--verity-font-ui) !important;
+  color: var(--verity-ink) !important;
+  font-size: 0.85rem !important;
+}
+
+article [class*="x:rounded-md"]:has(button) button:hover {
+  background: color-mix(in srgb, var(--verity-sidebar) 30%, var(--verity-surface)) !important;
 }
 
 aside.nextra-sidebar-container,
@@ -166,6 +242,35 @@ aside.nextra-sidebar-container,
   background: var(--verity-sidebar) !important;
   border-right: 1px solid var(--verity-rule) !important;
   font-family: var(--verity-font-ui);
+}
+
+/* Extend the sidebar tint to the viewport's left edge on wide screens
+   where the layout's max-w-(--nextra-content-width) container is
+   centered, leaving a strip of page bg to its left.
+
+   A fixed-position ::before on the body paints that strip in the
+   sidebar color from the bottom of the navbar to the viewport bottom.
+   Width clamps to 0 when the viewport is narrower than the content
+   width, so it has no effect on tablet/mobile layouts. */
+body::before {
+  content: "";
+  position: fixed;
+  top: var(--nextra-navbar-height);
+  left: 0;
+  bottom: 0;
+  width: max(0px, calc((100vw - var(--nextra-content-width)) / 2));
+  background: var(--verity-sidebar);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark body::before {
+  background: var(--verity-sidebar);
+}
+
+html,
+body {
+  overflow-x: clip;
 }
 
 .nextra-sidebar > div,
@@ -238,6 +343,17 @@ aside.nextra-sidebar-container,
   font-family: var(--verity-font-ui);
 }
 
+/* "On This Page" heading — quieter, kicker-like */
+.nextra-toc p.x\:font-semibold,
+.nextra-toc p[class*="font-semibold"] {
+  color: var(--verity-accent) !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 0.5rem !important;
+}
+
 .dark .nextra-toc {
   background: color-mix(in srgb, var(--verity-bg) 84%, var(--verity-surface)) !important;
   border-left-color: var(--verity-rule) !important;
@@ -247,8 +363,7 @@ aside.nextra-sidebar-container,
 .nextra-sidebar-container a,
 .nextra-mobile-nav a,
 .nextra-mobile-nav button,
-.nextra-toc a,
-nav a {
+.nextra-toc a {
   color: var(--verity-muted) !important;
   background: transparent !important;
   text-decoration: none !important;
@@ -258,8 +373,7 @@ nav a {
 .dark .nextra-sidebar-container a,
 .dark .nextra-mobile-nav a,
 .dark .nextra-mobile-nav button,
-.dark .nextra-toc a,
-.dark nav a {
+.dark .nextra-toc a {
   color: var(--verity-muted) !important;
 }
 
@@ -267,8 +381,7 @@ nav a {
 .nextra-sidebar-container a:hover,
 .nextra-mobile-nav a:hover,
 .nextra-mobile-nav button:hover,
-.nextra-toc a:hover,
-nav a:hover {
+.nextra-toc a:hover {
   color: var(--verity-accent) !important;
   background: color-mix(in srgb, var(--verity-accent-soft) 34%, transparent) !important;
 }
@@ -289,7 +402,36 @@ nav a:hover {
 .nextra-toc a[aria-selected="true"] {
   color: var(--verity-heading) !important;
   background: color-mix(in srgb, var(--verity-accent-soft) 52%, transparent) !important;
-  border-radius: 0.25rem !important;
+  border-radius: 0 !important;
+  box-shadow: inset 2px 0 0 var(--verity-accent);
+}
+
+.dark .nextra-sidebar a[aria-current="page"],
+.dark .nextra-sidebar li.active > a,
+.dark .nextra-sidebar-container a[aria-current="page"],
+.dark .nextra-sidebar-container li.active > a,
+.dark .nextra-mobile-nav a[aria-current="page"],
+.dark .nextra-mobile-nav li.active > a,
+.dark .nextra-toc a[aria-current="true"],
+.dark .nextra-toc a[aria-selected="true"] {
+  box-shadow: inset 2px 0 0 var(--verity-accent);
+}
+
+/* Square corners across all sidebar / nav items, including hover states
+   and collapsible-section chevron buttons that Nextra rounds by default. */
+.nextra-sidebar a,
+.nextra-sidebar button,
+.nextra-sidebar li,
+.nextra-sidebar-container a,
+.nextra-sidebar-container button,
+.nextra-sidebar-container li,
+.nextra-mobile-nav a,
+.nextra-mobile-nav button,
+.nextra-mobile-nav li,
+.nextra-sidebar-footer button,
+.nextra-toc a,
+.nextra-toc button {
+  border-radius: 0 !important;
 }
 
 .dark .nextra-sidebar-container a[aria-current="page"],
@@ -320,53 +462,128 @@ article [class*="x:text-slate"] {
   color: var(--verity-ink) !important;
 }
 
-article.nextra-body-typesetting-article {
+article main {
   font-family: var(--verity-font-prose);
-  font-size: 1.06rem;
-  line-height: 1.78;
+  font-size: 1.045rem !important;
+  line-height: 1.72 !important;
+  font-feature-settings: "kern", "liga", "calt", "onum", "lnum" off;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  counter-reset: section;
 }
 
-article.nextra-body-typesetting-article > :not(.verity-hero):not(.code-compare):not(.report-callout) {
-  max-width: 48rem;
+article main > :not(.verity-hero):not(.code-compare):not(.report-callout) {
+  max-width: 46rem;
 }
 
-article.nextra-body-typesetting-article h1,
-article.nextra-body-typesetting-article h2,
-article.nextra-body-typesetting-article h3,
-article.nextra-body-typesetting-article h4 {
-  color: var(--verity-heading);
-  font-family: var(--verity-font-display);
+article main p {
+  font-size: 1.045rem !important;
+  line-height: 1.72 !important;
+  color: var(--verity-ink) !important;
+}
+
+article main h1,
+article main h2,
+article main h3,
+article main h4,
+article main h5,
+article main h6 {
+  color: var(--verity-heading) !important;
+  font-family: var(--verity-font-display) !important;
   font-optical-sizing: auto;
-  font-weight: 760;
-  letter-spacing: 0;
-  line-height: 1.08;
+  font-weight: 700 !important;
+  letter-spacing: -0.008em !important;
+  line-height: 1.16 !important;
+  text-wrap: balance;
+  border: 0 !important;
 }
 
-article.nextra-body-typesetting-article h1 {
-  font-size: clamp(2.55rem, 6vw, 5.4rem);
-  margin-top: 0;
+article main h1 {
+  font-size: clamp(2.4rem, 5.5vw, 4.6rem) !important;
+  margin-top: 0 !important;
+  margin-bottom: 1.25rem !important;
+  letter-spacing: -0.015em !important;
 }
 
-article.nextra-body-typesetting-article h2 {
-  border-top: 1px solid var(--verity-rule);
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
-  margin-top: 4rem;
-  padding-top: 1.1rem;
+/* Lead paragraph — the first paragraph after the h1 — gets a touch more
+   air and a slightly lighter weight, like a preprint abstract opener. */
+article main h1 + p {
+  font-size: 1.18rem !important;
+  line-height: 1.62 !important;
+  color: var(--verity-ink) !important;
+  font-weight: 400 !important;
 }
 
-article.nextra-body-typesetting-article h3 {
-  font-size: 1.45rem;
+article main h2 {
+  font-size: clamp(1.7rem, 2.9vw, 2.35rem) !important;
+  margin-top: 3.2rem !important;
+  padding-top: 1.2rem !important;
+  padding-bottom: 0 !important;
+  position: relative !important;
+  counter-increment: section;
+  border-top: 1px solid var(--verity-rule) !important;
 }
 
-article.nextra-body-typesetting-article p,
-article.nextra-body-typesetting-article li,
-article.nextra-body-typesetting-article blockquote {
+article main h2::after {
+  content: "§ " counter(section, decimal);
+  position: absolute;
+  top: 1.5rem;
+  right: 0;
+  color: var(--verity-muted);
+  font-family: var(--verity-font-ui);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+}
+
+article main h3 {
+  font-size: 1.4rem !important;
+  margin-top: 2.2rem !important;
+  letter-spacing: -0.005em !important;
+}
+
+/* Italic continuation in h3 (e.g. "Specification — *what should be true*")
+   gets a slightly muted weight + color so the section noun stays primary. */
+article main h3 em,
+article main h4 em {
+  color: var(--verity-muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+article main h4 {
+  font-size: 1.12rem !important;
+  margin-top: 1.6rem !important;
+}
+
+/* CodeCompare's heading sits inline with its kicker — override the section number/border there */
+.code-compare h2 {
+  border-top: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0.25rem !important;
+  counter-increment: none !important;
+}
+
+.code-compare h2::after {
+  content: none !important;
+}
+
+/* Drop the § N marker on the home page — the page is short and
+   numbered sections feel formal there. Keep them on doc pages. */
+article:has(.verity-hero) main h2::after {
+  content: none !important;
+}
+
+article main p,
+article main li,
+article main blockquote {
   color: var(--verity-ink);
 }
 
 article a,
 article a[class*="x:text-primary"],
-article.nextra-body-typesetting-article a {
+article main a {
   color: var(--verity-accent) !important;
   font-weight: 600;
   text-decoration-color: color-mix(in srgb, var(--verity-accent) 45%, transparent) !important;
@@ -374,7 +591,7 @@ article.nextra-body-typesetting-article a {
 }
 
 article a:hover,
-article.nextra-body-typesetting-article a:hover,
+article main a:hover,
 .nextra-breadcrumb a:hover,
 .nextra-pagination a:hover,
 .nextra-toc-footer a:hover {
@@ -385,11 +602,76 @@ article.nextra-body-typesetting-article a:hover,
   color: var(--verity-muted) !important;
 }
 
-article.nextra-body-typesetting-article hr {
+.nextra-breadcrumb {
+  font-family: var(--verity-font-ui);
+  font-size: 0.78rem !important;
+  letter-spacing: 0.01em;
+  color: var(--verity-muted) !important;
+  text-transform: none;
+}
+
+/* Hide the homepage breadcrumb — it just says "Home" and adds noise. */
+article:has(.verity-hero) .nextra-breadcrumb {
+  display: none !important;
+}
+
+.nextra-breadcrumb a {
+  color: var(--verity-muted) !important;
+  text-decoration: none !important;
+}
+
+.nextra-breadcrumb a:hover {
+  color: var(--verity-accent) !important;
+}
+
+/* "Last updated on …" footer line — give it a research-footer feel */
+[class*="nextra-content-width"] > p:has(> time),
+[class*="nextra-content-width"] p:last-child:has(time) {
+  color: var(--verity-muted) !important;
+  font-family: var(--verity-font-ui) !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.02em;
+  font-style: italic;
+}
+
+/* Nextra renders a "next page" pagination block at the bottom of each
+   article in display-text size. Quieten it so it reads as a footer
+   navigator, not a competing heading. */
+article > div:last-child:has(> a[title]) {
+  margin-top: 1.75rem !important;
+  margin-bottom: 2rem !important;
+  padding-top: 1.25rem !important;
+  border-top-color: var(--verity-rule) !important;
+}
+
+article > div:last-child > a[title] {
+  font-family: var(--verity-font-ui) !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: var(--verity-accent) !important;
+  text-decoration: none !important;
+  padding: 0.4rem 0 !important;
+}
+
+article > div:last-child > a[title]:hover {
+  color: var(--verity-heading) !important;
+}
+
+article > div:last-child > a[title] svg {
+  width: 1em;
+  height: 1em;
+  transition: transform 0.18s ease;
+}
+
+article > div:last-child > a[title]:hover svg {
+  transform: translateX(0.15rem);
+}
+
+article main hr {
   border-color: var(--verity-rule);
 }
 
-article.nextra-body-typesetting-article table {
+article main table {
   display: table;
   width: 100%;
   border-collapse: collapse;
@@ -403,25 +685,25 @@ article.nextra-body-typesetting-article table {
 article tr,
 article tr:nth-child(even),
 article tr[class*="x:even:bg-gray"],
-article.nextra-body-typesetting-article tr,
-article.nextra-body-typesetting-article tr:nth-child(even),
-article.nextra-body-typesetting-article tr[class*="x:even:bg-gray"] {
+article main tr,
+article main tr:nth-child(even),
+article main tr[class*="x:even:bg-gray"] {
   background: var(--verity-surface) !important;
 }
 
 article tbody tr:nth-child(even),
-article.nextra-body-typesetting-article tbody tr:nth-child(even) {
+article main tbody tr:nth-child(even) {
   background: color-mix(in srgb, var(--verity-sidebar) 35%, var(--verity-surface)) !important;
 }
 
-article.nextra-body-typesetting-article th {
+article main th {
   background: var(--verity-surface-strong);
   color: var(--verity-heading);
   font-weight: 700;
 }
 
-article.nextra-body-typesetting-article th,
-article.nextra-body-typesetting-article td {
+article main th,
+article main td {
   border-color: var(--verity-rule) !important;
   padding: 0.7rem 0.85rem;
 }
@@ -430,28 +712,54 @@ article pre,
 article pre[class*="nextra"],
 article pre[class*="x:bg-white"],
 article pre[class*="x:ring-gray"],
-article.nextra-body-typesetting-article pre,
-article.nextra-body-typesetting-article pre[class*="nextra"],
+article main pre,
+article main pre[class*="nextra"],
 figure[data-rehype-pretty-code-figure] pre {
   background: var(--verity-code-surface) !important;
   border: 1px solid var(--verity-rule) !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
   color: var(--verity-ink) !important;
 }
 
-article.nextra-body-typesetting-article :not(pre) > code,
+article :not(pre) > code,
 code.nextra-code:not(pre code) {
-  background: color-mix(in srgb, var(--verity-sidebar) 34%, var(--verity-surface)) !important;
-  border: 1px solid color-mix(in srgb, var(--verity-rule) 74%, transparent) !important;
+  background: color-mix(in srgb, var(--verity-sidebar) 28%, var(--verity-surface)) !important;
+  border: 1px solid color-mix(in srgb, var(--verity-rule) 55%, transparent) !important;
+  border-radius: 0 !important;
+  color: var(--verity-heading) !important;
+  font-family: var(--verity-font-code) !important;
+  font-size: 0.88em !important;
+  font-weight: 500 !important;
+  padding: 0.05em 0.36em !important;
+}
+
+.dark article :not(pre) > code,
+.dark code.nextra-code:not(pre code) {
+  background: color-mix(in srgb, var(--verity-surface-strong) 80%, transparent) !important;
+  border-color: var(--verity-rule) !important;
   color: var(--verity-heading) !important;
 }
 
-article.nextra-body-typesetting-article blockquote,
+/* When an inline code chip sits in a heading or strong, drop the chip
+   chrome so the heading keeps its serif rhythm. */
+article h1 :not(pre) > code,
+article h2 :not(pre) > code,
+article h3 :not(pre) > code,
+article h4 :not(pre) > code {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  font-size: 0.86em !important;
+  color: inherit !important;
+}
+
+article main blockquote,
 .nextra-callout {
   background: color-mix(in srgb, var(--verity-surface) 82%, transparent) !important;
   border: 1px solid var(--verity-rule) !important;
   border-left: 0.22rem solid var(--verity-accent) !important;
-  border-radius: 0.25rem !important;
+  border-radius: 0 !important;
   color: var(--verity-ink) !important;
   box-shadow: none !important;
 }
@@ -459,7 +767,7 @@ article.nextra-body-typesetting-article blockquote,
 button,
 .nextra-button,
 a[role="button"] {
-  border-radius: 0.25rem !important;
+  border-radius: 0 !important;
   font-family: var(--verity-font-ui) !important;
 }
 
@@ -473,195 +781,377 @@ a[role="button"] {
   text-transform: uppercase;
 }
 
-.verity-hero {
-  display: grid;
-  grid-template-columns: minmax(20rem, 1fr) minmax(16rem, 0.58fr);
-  gap: clamp(1.2rem, 3vw, 2.75rem);
-  align-items: end;
-  min-height: calc(92vh - var(--nextra-navbar-height));
-  padding: clamp(2.5rem, 6vw, 5.5rem) 0 clamp(2rem, 4vw, 3.5rem);
-  border-bottom: 1px solid var(--verity-rule);
+.verity-hero .verity-kicker {
+  text-wrap: balance;
 }
 
-.verity-hero__copy {
-  max-width: 49rem;
+.verity-hero .verity-kicker span {
+  margin: 0 0.55em;
+  color: color-mix(in srgb, var(--verity-accent) 60%, transparent);
+  font-weight: 400;
+}
+
+@media (max-width: 480px) {
+  .verity-hero .verity-kicker span {
+    margin: 0 0.35em;
+  }
+}
+
+.verity-hero {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: clamp(2rem, 4vw, 3.25rem);
+  padding: clamp(1.75rem, 4vw, 3.25rem) 0 clamp(0.5rem, 1vw, 1rem);
+}
+
+.verity-hero__head {
+  max-width: 60rem;
+  display: flex;
+  flex-direction: column;
+  /* No flex gap; per-element margins so the kicker hugs the title
+     while the CTA gets more space. */
+}
+
+.verity-hero__head > * {
+  margin: 0;
+}
+
+.verity-hero__head > .verity-kicker + h1 {
+  margin-top: 0.6rem;
+}
+
+.verity-hero__head > h1 + .verity-hero__dek {
+  margin-top: 1.4rem;
+}
+
+.verity-hero__head > .verity-hero__dek + .verity-hero__links {
+  margin-top: clamp(1.6rem, 3vw, 2.25rem);
 }
 
 .verity-hero h1 {
-  margin: 0.35rem 0 0;
+  margin: 0;
   color: var(--verity-heading);
   font-family: var(--verity-font-display);
-  font-size: clamp(4rem, 10vw, 7.5rem);
-  font-weight: 820;
-  line-height: 0.88;
+  font-size: clamp(3.6rem, 9vw, 6.4rem);
+  font-weight: 760;
+  letter-spacing: -0.012em;
+  line-height: 0.92;
   overflow-wrap: normal;
   word-break: normal;
 }
 
+.verity-hero__terminal {
+  color: var(--verity-accent);
+  margin-left: -0.04em;
+  /* Slight optical bump so the dot reads as part of the logotype,
+     not an afterthought punctuation mark. */
+  font-size: 1.08em;
+  line-height: 1;
+}
+
 .verity-hero__dek {
-  max-width: 38rem;
-  margin: 1.4rem 0 0;
+  max-width: 44rem;
+  margin: 0;
   color: var(--verity-heading) !important;
   font-family: var(--verity-font-display);
-  font-size: clamp(1.55rem, 4vw, 3.2rem);
-  font-weight: 620;
-  line-height: 1.04;
+  font-size: clamp(1.3rem, 2.4vw, 1.85rem);
+  font-weight: 420;
+  letter-spacing: -0.005em;
+  line-height: 1.32;
 }
 
-.verity-claim-list {
-  display: grid;
-  gap: 0.55rem;
-  max-width: 39rem;
-  margin: 1.6rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.verity-claim-list li {
-  position: relative;
-  padding-left: 1.35rem;
-  color: var(--verity-muted) !important;
-  font-family: var(--verity-font-ui);
-  font-size: 1rem;
-  line-height: 1.45;
-}
-
-.verity-claim-list li::before {
-  content: "";
-  position: absolute;
-  top: 0.65em;
-  left: 0;
-  width: 0.52rem;
-  height: 1px;
-  background: var(--verity-accent);
+.verity-hero__dek em {
+  font-style: italic;
+  font-weight: 500;
 }
 
 .verity-hero__links {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+
+.verity-hero__cta-row {
+  display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 1.9rem;
-}
-
-.verity-hero__links a {
-  display: inline-flex;
-  min-height: 2.55rem;
   align-items: center;
-  border: 1px solid var(--verity-rule);
-  border-radius: 0.25rem;
-  background: var(--verity-surface);
-  color: var(--verity-heading) !important;
-  font-family: var(--verity-font-ui);
-  font-size: 0.94rem;
-  font-weight: 700;
-  line-height: 1.1;
-  padding: 0.62rem 0.82rem;
-  text-decoration: none !important;
+  gap: 0.75rem;
 }
 
-.verity-hero__links a:first-child {
-  background: var(--verity-accent);
-  border-color: var(--verity-accent);
+.verity-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.6rem;
+  padding: 0.65rem 1.05rem;
+  border: 1px solid var(--verity-accent) !important;
+  border-radius: 0 !important;
+  background: var(--verity-accent) !important;
+  color: var(--verity-accent-ink) !important;
+  font-family: var(--verity-font-ui);
+  font-size: 0.97rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1.1;
+  text-decoration: none !important;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.verity-hero__paper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  padding: 0.65rem 1.05rem;
+  border: 1px solid var(--verity-accent) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--verity-accent) !important;
+  font-family: var(--verity-font-ui);
+  font-size: 0.97rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1.1;
+  text-decoration: none !important;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.verity-hero__paper svg {
+  flex: 0 0 auto;
+}
+
+.verity-hero__paper-arrow {
+  font-size: 0.85em;
+  opacity: 0.7;
+  transition: transform 0.18s ease;
+}
+
+.verity-hero__paper:hover {
+  background: color-mix(in srgb, var(--verity-accent) 10%, transparent) !important;
+  color: var(--verity-heading) !important;
+  border-color: color-mix(in srgb, var(--verity-accent) 84%, var(--verity-heading)) !important;
+}
+
+.verity-hero__paper:hover .verity-hero__paper-arrow {
+  transform: translate(0.12rem, -0.12rem);
+}
+
+.verity-hero__paper:focus-visible {
+  outline: 2px solid var(--verity-accent);
+  outline-offset: 2px;
+}
+
+.verity-hero__cta span {
+  display: inline-block;
+  font-size: 1.05em;
+  transition: transform 0.18s ease;
+}
+
+.verity-hero__cta:hover {
+  background: color-mix(in srgb, var(--verity-accent) 84%, var(--verity-heading)) !important;
+  border-color: color-mix(in srgb, var(--verity-accent) 84%, var(--verity-heading)) !important;
   color: var(--verity-accent-ink) !important;
 }
 
-.verity-hero__brief {
-  display: grid;
-  gap: 0;
-  border-top: 1px solid var(--verity-rule);
-  border-bottom: 1px solid var(--verity-rule);
-  background: color-mix(in srgb, var(--verity-surface) 72%, transparent);
+.verity-hero__cta:hover span {
+  transform: translateX(0.18rem);
 }
 
-.verity-hero__brief div {
-  padding: 1rem 0;
-  border-top: 1px solid var(--verity-rule);
+.verity-hero__cta:focus-visible,
+.verity-hero__more a:focus-visible {
+  outline: 2px solid var(--verity-accent);
+  outline-offset: 2px;
 }
 
-.verity-hero__brief div:first-child {
-  border-top: 0;
+.verity-hero__more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.verity-hero__brief span,
-.verity-hero__brief strong {
-  display: block;
-}
-
-.verity-hero__brief span {
-  color: var(--verity-muted);
+.verity-hero__more a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  color: var(--verity-accent) !important;
   font-family: var(--verity-font-ui);
-  font-size: 0.76rem;
+  font-size: 0.94rem;
+  font-weight: 500;
+  text-decoration: none !important;
+  transition: color 0.15s ease;
+}
+
+.verity-hero__more a span {
+  font-size: 0.85em;
+  opacity: 0.7;
+  transition: transform 0.18s ease;
+}
+
+.verity-hero__more a:hover {
+  color: var(--verity-heading) !important;
+}
+
+.verity-hero__more a:hover span {
+  transform: translate(0.12rem, -0.12rem);
+}
+
+/* Bottom-of-hero "facts" strip — replaces the older right-aligned
+   abstract panel with a wide three-column row, divided by hairline
+   rules above. Reads quietly as a sub-byline. */
+.verity-hero__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 clamp(1.5rem, 3vw, 2.5rem);
+  margin: 0;
+  padding: 1rem 0 0;
+  border-top: 1px solid var(--verity-rule);
+}
+
+.verity-hero__facts > div {
+  margin: 0;
+  padding: 0;
+}
+
+.verity-hero__facts dt {
+  margin: 0 0 0.25rem;
+  color: var(--verity-accent);
+  font-family: var(--verity-font-ui);
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.verity-hero__brief strong {
-  margin-top: 0.35rem;
+.verity-hero__facts dd {
+  margin: 0;
   color: var(--verity-heading);
-  font-family: var(--verity-font-caption);
-  font-size: 1.12rem;
-  line-height: 1.28;
+  font-family: var(--verity-font-prose);
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* (legacy) brief-panel class names kept for any cache misses; safe to
+   remove once stale clients are gone. */
+.verity-hero__brief {
+  position: relative;
+  padding: 0.4rem 0 0;
+  border-top: 1px solid var(--verity-rule);
+  background: transparent;
+  font-family: var(--verity-font-prose);
+}
+
+.verity-hero__brief-label {
+  margin: 0 0 0.65rem;
+  color: var(--verity-accent);
+  font-family: var(--verity-font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.verity-hero__brief dl {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+
+.verity-hero__brief dl > div {
+  padding: 0.85rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--verity-rule) 70%, transparent);
+}
+
+.verity-hero__brief dl > div:first-child {
+  border-top: 0;
+  padding-top: 0.15rem;
+}
+
+.verity-hero__brief dt {
+  margin: 0;
+  color: var(--verity-muted);
+  font-family: var(--verity-font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.verity-hero__brief dd {
+  margin: 0.3rem 0 0;
+  color: var(--verity-heading);
+  font-family: var(--verity-font-prose);
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.36;
 }
 
 .code-compare {
-  margin: 2rem 0 4rem;
-  padding: clamp(1.35rem, 3vw, 2.25rem) 0;
-  border-bottom: 1px solid var(--verity-rule);
+  margin: 1.5rem 0 2.5rem;
+  padding: clamp(1.35rem, 3vw, 2rem) 0 clamp(0.5rem, 1vw, 1rem);
 }
 
 .code-compare__intro {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(16rem, 0.55fr);
-  gap: 1.2rem 2rem;
-  align-items: end;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.5rem;
+  max-width: 56rem;
 }
 
 .code-compare__intro h2 {
-  margin: 0.25rem 0 0 !important;
+  margin: 0.55rem 0 0 !important;
   padding: 0 !important;
   border: 0 !important;
   max-width: 42rem;
 }
 
 .code-compare__intro p:not(.verity-kicker) {
-  margin: 0;
+  margin: 0.85rem 0 0;
   color: var(--verity-muted) !important;
   font-family: var(--verity-font-ui);
   font-size: 1rem;
   line-height: 1.5;
+  max-width: 42rem;
 }
 
-.code-compare__switch {
-  display: none;
-}
-
-.code-compare__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.code-panel {
-  min-width: 0;
+/* Single-panel switcher: a tabbed header above one panel that swaps
+   between Solidity and Verity. */
+.code-switcher {
+  position: relative;
   margin: 0;
   border: 1px solid var(--verity-rule);
   background: var(--verity-code-surface);
   box-shadow: var(--verity-shadow);
+  border-radius: 0;
+  overflow: hidden;
+  transition: border-color 0.35s ease;
 }
 
-.code-panel figcaption {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.75rem 0.9rem;
+.code-switcher[data-active="verity"] {
+  border-color: color-mix(in srgb, var(--verity-accent) 46%, var(--verity-rule));
+}
+
+.code-switcher__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.95rem;
   border-bottom: 1px solid var(--verity-rule);
   background: var(--verity-surface);
   font-family: var(--verity-font-ui);
 }
 
-.code-panel figcaption span {
+.code-switcher__caption {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.code-switcher__caption span {
   color: var(--verity-accent);
   font-size: 0.72rem;
   font-weight: 800;
@@ -669,72 +1159,256 @@ a[role="button"] {
   text-transform: uppercase;
 }
 
-.code-panel figcaption strong {
+.code-switcher__caption strong {
   color: var(--verity-heading);
   font-size: 0.92rem;
+  font-weight: 600;
   line-height: 1.25;
 }
 
-.code-panel pre {
-  min-height: 31rem;
-  max-height: 37rem;
-  margin: 0;
-  overflow: auto;
+.code-switcher__tabs {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 1px solid var(--verity-rule);
+  border-radius: 0;
   background: var(--verity-code-surface);
-  color: var(--verity-ink);
-  font-family: var(--verity-font-code);
-  font-size: 0.78rem;
-  line-height: 1.62;
-  tab-size: 2;
-  white-space: pre;
+  padding: 0;
+  gap: 0;
 }
 
-.code-panel code {
+.code-switcher__tabs button {
+  appearance: none;
+  border: 0;
+  border-left: 1px solid var(--verity-rule);
+  background: transparent;
+  color: var(--verity-muted);
+  font-family: var(--verity-font-ui);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.42rem 1rem;
+  border-radius: 0 !important;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.code-switcher__tabs button:first-child {
+  border-left: 0;
+}
+
+.code-switcher__tabs button:hover {
+  color: var(--verity-heading);
+}
+
+.code-switcher__tabs button[data-active="true"] {
+  background: var(--verity-accent);
+  color: var(--verity-accent-ink);
+}
+
+.code-switcher__tabs button:focus-visible {
+  outline: 2px solid var(--verity-accent);
+  outline-offset: 2px;
+}
+
+.code-switcher__panels {
+  position: relative;
+}
+
+.code-switcher__panels .code-panel {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Stack the two panels; the active one becomes visible with a soft
+   fade so the transition reads as a lift rather than a tab swap. */
+.code-switcher__panels .code-panel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-switcher__panels .code-panel {
+    transition: none;
+  }
+}
+
+.code-switcher__panels .code-panel[data-active="true"] {
+  position: relative;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.code-panel {
+  min-width: 0;
+}
+
+.code-panel__pre,
+.code-panel__pre > pre {
+  min-height: 26rem;
+  max-height: 32rem;
+  margin: 0;
+  overflow: auto;
+  background: var(--verity-code-surface) !important;
+  color: var(--verity-ink) !important;
+  font-family: var(--verity-font-code);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+  border: 0 !important;
+}
+
+.code-panel__pre > pre code {
   display: block;
   width: max-content;
   min-width: 100%;
-  padding: 1rem;
+  padding: 1.05rem 1.15rem;
+  background: transparent !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
 }
 
-.code-panel--verity {
-  border-color: color-mix(in srgb, var(--verity-accent) 46%, var(--verity-rule));
+.code-panel__pre > pre code .line {
+  display: inline-block;
+  width: 100%;
 }
 
-.code-panel--verity pre {
+/* Shiki dual-theme colors via CSS variables */
+.code-panel__pre span {
+  color: var(--shiki-light, inherit);
+  background-color: var(--shiki-light-bg, transparent);
+  font-style: var(--shiki-light-font-style, inherit);
+  font-weight: var(--shiki-light-font-weight, inherit);
+  text-decoration: var(--shiki-light-text-decoration, inherit);
+}
+
+.dark .code-panel__pre span {
+  color: var(--shiki-dark, inherit);
+  background-color: var(--shiki-dark-bg, transparent);
+  font-style: var(--shiki-dark-font-style, inherit);
+  font-weight: var(--shiki-dark-font-weight, inherit);
+  text-decoration: var(--shiki-dark-text-decoration, inherit);
+}
+
+/* Subtle accent wash on the Verity panel so the lift to a proof-carrying
+   surface reads visually as well as semantically. Apply to the visible pre
+   so the solid code-surface !important above doesn't obscure it. */
+.code-switcher[data-active="verity"] .code-panel--verity .code-panel__pre,
+.code-switcher[data-active="verity"] .code-panel--verity .code-panel__pre > pre {
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--verity-accent) 10%, transparent), transparent 15rem),
-    var(--verity-code-surface);
+    linear-gradient(90deg, color-mix(in srgb, var(--verity-accent) 8%, transparent), transparent 15rem),
+    var(--verity-code-surface) !important;
 }
 
 .code-compare__notes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  margin: 1rem 0 0;
+  gap: 0 2rem;
+  margin: 1.25rem 0 0;
   padding: 0;
-  border-top: 1px solid var(--verity-rule);
-  border-bottom: 1px solid var(--verity-rule);
-  list-style: none;
 }
 
-.code-compare__notes li {
-  padding: 0.9rem 1rem;
-  border-left: 1px solid var(--verity-rule);
-  color: var(--verity-muted) !important;
+.code-compare__notes > div {
+  padding: 0;
+}
+
+.code-compare__notes dt {
+  margin: 0 0 0.2rem;
+  color: var(--verity-accent);
   font-family: var(--verity-font-ui);
-  font-size: 0.93rem;
-  line-height: 1.42;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.code-compare__notes li:first-child {
-  border-left: 0;
+.code-compare__notes dd {
+  margin: 0;
+  color: var(--verity-ink);
+  font-family: var(--verity-font-prose);
+  font-size: 0.97rem;
+  line-height: 1.45;
+}
+
+/* Reading list — a quiet alternative to the section/cells table.
+   Each row is title + one-line note, with a → on hover. */
+.verity-reading-list {
+  list-style: none;
+  margin: 1.5rem 0 2rem !important;
+  padding: 0 !important;
+  border-top: 1px solid var(--verity-rule);
+}
+
+.verity-reading-list li {
+  margin: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--verity-rule) 70%, transparent);
+}
+
+.verity-reading-list__row {
+  display: grid !important;
+  grid-template-columns: minmax(11rem, 17rem) 1fr auto;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.8rem 0.2rem !important;
+  color: var(--verity-ink) !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease, transform 0.15s ease;
+  font-weight: 500 !important;
+}
+
+.verity-reading-list__title {
+  color: var(--verity-heading) !important;
+  font-family: var(--verity-font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.verity-reading-list__note {
+  color: var(--verity-muted) !important;
+  font-family: var(--verity-font-prose);
+  font-size: 0.95rem;
+  font-weight: 400 !important;
+  line-height: 1.5;
+}
+
+.verity-reading-list__arrow {
+  color: var(--verity-muted);
+  font-size: 1.05rem;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.verity-reading-list__row:hover {
+  background: color-mix(in srgb, var(--verity-surface) 70%, transparent) !important;
+}
+
+.verity-reading-list__row:hover .verity-reading-list__title {
+  color: var(--verity-accent) !important;
+}
+
+.verity-reading-list__row:hover .verity-reading-list__arrow {
+  color: var(--verity-accent);
+  transform: translateX(0.2rem);
+}
+
+@media (max-width: 767px) {
+  .verity-reading-list__row {
+    grid-template-columns: 1fr auto;
+  }
+  .verity-reading-list__note {
+    grid-column: 1 / -1;
+  }
 }
 
 .report-callout {
-  margin: 2.5rem 0 3rem;
+  margin: 2rem 0 2.5rem;
   padding: 1rem 1.15rem;
   border-top: 2px solid var(--verity-accent);
-  border-bottom: 1px solid var(--verity-rule);
   background: color-mix(in srgb, var(--verity-surface) 70%, transparent);
 }
 
@@ -753,109 +1427,118 @@ a[role="button"] {
 }
 
 @media (max-width: 1024px) {
-  .verity-hero {
+  .verity-hero__facts {
     grid-template-columns: 1fr;
-    min-height: auto;
+    gap: 0;
   }
 
-  .code-compare__intro,
-  .code-compare__grid {
+  .verity-hero__facts > div {
+    padding: 0.85rem 0;
+    border-top: 1px solid color-mix(in srgb, var(--verity-rule) 70%, transparent);
+  }
+
+  .verity-hero__facts > div:first-child {
+    padding-top: 0.2rem;
+    border-top: 0;
+  }
+
+  .code-compare__intro {
     grid-template-columns: 1fr;
   }
 
-  .code-panel pre {
-    min-height: 24rem;
+  .code-panel__pre,
+  .code-panel__pre > pre {
+    min-height: 22rem;
+    max-height: 28rem;
   }
 
   .code-compare__notes {
     grid-template-columns: 1fr;
   }
 
-  .code-compare__notes li,
-  .code-compare__notes li:first-child {
+  .code-compare__notes > div {
     border-left: 0;
     border-top: 1px solid var(--verity-rule);
+    padding-top: 0.75rem;
   }
 
-  .code-compare__notes li:first-child {
+  .code-compare__notes > div:first-child {
     border-top: 0;
+    padding-top: 0;
   }
 }
 
 @media (max-width: 767px) {
   body {
-    background: var(--verity-bg);
+    background: var(--verity-page);
   }
 
-  article.nextra-body-typesetting-article {
-    font-size: 1rem;
+  article main {
+    font-size: 1rem !important;
   }
 
   .verity-hero {
     padding-top: 1.75rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .verity-hero__head {
+    max-width: 100%;
   }
 
   .verity-hero h1 {
-    font-size: clamp(3.8rem, 21vw, 5.1rem);
+    font-size: clamp(3.6rem, 18vw, 4.6rem);
   }
 
-  .verity-hero__links {
-    display: grid;
-    grid-template-columns: 1fr;
+  .verity-hero__dek {
+    font-size: 1.15rem;
   }
 
-  .verity-hero__links a {
-    justify-content: center;
+  .verity-hero__cta-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
     width: 100%;
+  }
+
+  .verity-hero__cta,
+  .verity-hero__paper {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .verity-hero__more {
+    flex-direction: column;
+    gap: 0.4rem;
   }
 
   .code-compare {
     margin-top: 1rem;
   }
 
-  .code-compare__switch {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    margin: 0.5rem 0 0.75rem;
-    border: 1px solid var(--verity-rule);
-    background: var(--verity-surface);
+  .code-switcher__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
   }
 
-  .code-compare__switch button {
-    min-height: 2.55rem;
-    border: 0;
-    border-left: 1px solid var(--verity-rule);
-    background: transparent;
-    color: var(--verity-muted);
-    font-family: var(--verity-font-ui);
-    font-weight: 800;
+  .code-switcher__tabs {
+    align-self: stretch;
+    justify-content: stretch;
   }
 
-  .code-compare__switch button:first-child {
-    border-left: 0;
+  .code-switcher__tabs button {
+    flex: 1 1 0;
   }
 
-  .code-compare__switch button[aria-selected="true"] {
-    background: var(--verity-accent);
-    color: var(--verity-accent-ink);
+  .code-panel__pre,
+  .code-panel__pre > pre {
+    min-height: 22rem;
+    max-height: 30rem;
+    font-size: 0.76rem;
   }
 
-  .code-panel {
-    display: none;
-  }
-
-  .code-panel[data-mobile-active="true"] {
-    display: block;
-  }
-
-  .code-panel pre {
-    min-height: 28rem;
-    max-height: 33rem;
-    font-size: 0.74rem;
-  }
-
-  article.nextra-body-typesetting-article table {
+  article main table {
     display: block;
     overflow-x: auto;
   }

@@ -24,7 +24,7 @@ theorem and assumption inventory.
 Every contract is three things at once: a **specification** of what it should do,
 an **implementation** that runs, and a **proof** that ties them together.
 
-### Specification
+### Specification — *what should be true*
 
 ```verity
 def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
@@ -34,7 +34,7 @@ def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   sameContext s s'
 ```
 
-### Implementation
+### Implementation — *what runs on chain*
 
 ```verity
 def mint (to : Address) (amount : Uint256) : Contract Unit := do
@@ -47,7 +47,7 @@ def mint (to : Address) (amount : Uint256) : Contract Unit := do
   setStorage totalSupply newSupply
 ```
 
-### Proof
+### Proof — *they agree*
 
 ```verity
 theorem mint_meets_spec (s : ContractState) (to : Address) (amount : Uint256)

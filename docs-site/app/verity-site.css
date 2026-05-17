@@ -481,6 +481,15 @@ article main h3 {
   letter-spacing: -0.005em !important;
 }
 
+/* Italic continuation in h3 (e.g. "Specification — *what should be true*")
+   gets a slightly muted weight + color so the section noun stays primary. */
+article main h3 em,
+article main h4 em {
+  color: var(--verity-muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
 article main h4 {
   font-size: 1.12rem !important;
   margin-top: 1.6rem !important;

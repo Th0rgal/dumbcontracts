@@ -202,6 +202,27 @@ header kbd {
   border-radius: 0 !important;
 }
 
+/* "Copy page" widget at the top of each article */
+[class*="x:rounded-md"]:has(> button),
+[class*="x:rounded-md"]:has(> button) * {
+  border-radius: 0 !important;
+}
+
+article [class*="x:rounded-md"]:has(button) {
+  border-color: var(--verity-rule) !important;
+  background: var(--verity-surface) !important;
+}
+
+article [class*="x:rounded-md"]:has(button) button {
+  font-family: var(--verity-font-ui) !important;
+  color: var(--verity-ink) !important;
+  font-size: 0.85rem !important;
+}
+
+article [class*="x:rounded-md"]:has(button) button:hover {
+  background: color-mix(in srgb, var(--verity-sidebar) 30%, var(--verity-surface)) !important;
+}
+
 aside.nextra-sidebar-container,
 .nextra-sidebar-container,
 .nextra-sidebar {

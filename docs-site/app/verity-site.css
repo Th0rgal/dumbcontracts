@@ -128,17 +128,28 @@ body {
   background: color-mix(in srgb, var(--verity-accent) 28%, transparent);
 }
 
+/* Navbar — warm middle-tone between page cream and sidebar tan so it
+   doesn't read as a stark white slab above the sidebar.
+
+   The blur is removed (was creating a translucent "white square" effect
+   over the top of the sidebar during scroll under prior cream-bg). */
 .nextra-nav-container-blur,
-.nextra-nav-container {
-  background: color-mix(in srgb, var(--verity-page) 94%, transparent) !important;
+.nextra-nav-container,
+.nextra-navbar-blur,
+header.nextra-navbar > div:first-child {
+  background: color-mix(in srgb, var(--verity-sidebar) 55%, var(--verity-page)) !important;
+  background-color: color-mix(in srgb, var(--verity-sidebar) 55%, var(--verity-page)) !important;
   border-bottom: 1px solid var(--verity-rule) !important;
   box-shadow: none !important;
-  backdrop-filter: blur(10px);
+  backdrop-filter: none !important;
 }
 
 .dark .nextra-nav-container-blur,
-.dark .nextra-nav-container {
-  background: color-mix(in srgb, var(--verity-surface) 94%, transparent) !important;
+.dark .nextra-nav-container,
+.dark .nextra-navbar-blur,
+.dark header.nextra-navbar > div:first-child {
+  background: var(--verity-surface) !important;
+  background-color: var(--verity-surface) !important;
   border-bottom-color: var(--verity-rule) !important;
 }
 

@@ -15,7 +15,7 @@ import { ReportCallout } from '../components/ReportCallout'
 <ReportCallout title="Where the trust comes from">
 A small, audited Lean EDSL with example contracts that compile to EVM artifacts.
 Every claim is machine-checked and every assumption is documented. Read the docs
-as a short manual — start with a contract, inspect the compiler, then check the
+as a short manual: start with a contract, inspect the compiler, then check the
 theorem and assumption inventory.
 </ReportCallout>
 
@@ -24,7 +24,7 @@ theorem and assumption inventory.
 Every contract is three things at once: a **specification** of what it should do,
 an **implementation** that runs, and a **proof** that ties them together.
 
-### Specification — *what should be true*
+### Specification &nbsp;·&nbsp; *what should be true*
 
 ```verity
 def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
@@ -34,7 +34,7 @@ def mint_spec (to : Address) (amount : Uint256) (s s' : ContractState) : Prop :=
   sameContext s s'
 ```
 
-### Implementation — *what runs on chain*
+### Implementation &nbsp;·&nbsp; *what runs on chain*
 
 ```verity
 def mint (to : Address) (amount : Uint256) : Contract Unit := do
@@ -47,7 +47,7 @@ def mint (to : Address) (amount : Uint256) : Contract Unit := do
   setStorage totalSupply newSupply
 ```
 
-### Proof — *they agree*
+### Proof &nbsp;·&nbsp; *they agree*
 
 ```verity
 theorem mint_meets_spec (s : ContractState) (to : Address) (amount : Uint256)

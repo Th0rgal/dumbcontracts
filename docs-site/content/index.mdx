@@ -16,7 +16,9 @@ import { ReportCallout } from '../components/ReportCallout'
 A small, audited Lean EDSL with example contracts that compile to EVM artifacts.
 Every claim is machine-checked and every assumption is documented. Read the docs
 as a short manual: start with a contract, inspect the compiler, then check the
-theorem and assumption inventory.
+theorem and assumption inventory. Layer 2 proof status is tracked in
+`Compiler/Proofs/IRGeneration/Contract.lean` (generic whole-contract
+`CompilationModel -> IR` theorem for the current supported fragment).
 </ReportCallout>
 
 ## The Three-Layer Structure

@@ -265,7 +265,7 @@ body::before {
 }
 
 .dark body::before {
-  background: var(--verity-surface);
+  background: var(--verity-sidebar);
 }
 
 html,
@@ -865,34 +865,6 @@ a[role="button"] {
   font-weight: 500;
 }
 
-.verity-claim-list {
-  display: grid;
-  gap: 0.55rem;
-  max-width: 39rem;
-  margin: 1.6rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.verity-claim-list li {
-  position: relative;
-  padding-left: 1.35rem;
-  color: var(--verity-muted) !important;
-  font-family: var(--verity-font-ui);
-  font-size: 1rem;
-  line-height: 1.45;
-}
-
-.verity-claim-list li::before {
-  content: "";
-  position: absolute;
-  top: 0.65em;
-  left: 0;
-  width: 0.52rem;
-  height: 1px;
-  background: var(--verity-accent);
-}
-
 .verity-hero__links {
   display: flex;
   flex-direction: column;
@@ -1324,11 +1296,13 @@ a[role="button"] {
 }
 
 /* Subtle accent wash on the Verity panel so the lift to a proof-carrying
-   surface reads visually as well as semantically. */
-.code-switcher[data-active="verity"] .code-switcher__panels {
+   surface reads visually as well as semantically. Apply to the visible pre
+   so the solid code-surface !important above doesn't obscure it. */
+.code-switcher[data-active="verity"] .code-panel--verity .code-panel__pre,
+.code-switcher[data-active="verity"] .code-panel--verity .code-panel__pre > pre {
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--verity-accent) 8%, transparent), transparent 15rem),
-    var(--verity-code-surface);
+    var(--verity-code-surface) !important;
 }
 
 .code-compare__notes {
@@ -1438,13 +1412,6 @@ a[role="button"] {
   background: color-mix(in srgb, var(--verity-surface) 70%, transparent);
 }
 
-/* When the callout is followed by an h2 (which carries its own top
-   rule), drop our bottom border so we don't show two rules in a row. */
-.report-callout:has(+ h2),
-.report-callout {
-  border-bottom: none;
-}
-
 .report-callout strong {
   display: block;
   color: var(--verity-heading);
@@ -1489,14 +1456,15 @@ a[role="button"] {
     grid-template-columns: 1fr;
   }
 
-  .code-compare__notes li,
-  .code-compare__notes li:first-child {
+  .code-compare__notes > div {
     border-left: 0;
     border-top: 1px solid var(--verity-rule);
+    padding-top: 0.75rem;
   }
 
-  .code-compare__notes li:first-child {
+  .code-compare__notes > div:first-child {
     border-top: 0;
+    padding-top: 0;
   }
 }
 

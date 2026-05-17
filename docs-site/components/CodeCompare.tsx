@@ -80,24 +80,24 @@ async function readJson(path: string) {
   return JSON.parse(await readFile(path, 'utf8'))
 }
 
-async function highlight(code: string, lang: 'verity' | 'solidity') {
-  const [grammar, lightTheme, darkTheme] = await Promise.all([
-    readJson(grammarPath),
-    readJson(lightThemePath),
-    readJson(darkThemePath),
-  ])
+type ShikiAssets = {
+  grammar: any
+  lightTheme: any
+  darkTheme: any
+}
 
+function highlight(code: string, lang: 'verity' | 'solidity', assets: ShikiAssets) {
   return codeToHtml(code, {
     lang: lang === 'verity'
       ? {
-          ...grammar,
+          ...assets.grammar,
           name: 'verity',
           aliases: ['vty'],
         }
       : lang,
     themes: {
-      light: lightTheme,
-      dark: darkTheme,
+      light: assets.lightTheme,
+      dark: assets.darkTheme,
     },
     defaultColor: false,
     cssVariablePrefix: '--shiki-',
@@ -105,9 +105,15 @@ async function highlight(code: string, lang: 'verity' | 'solidity') {
 }
 
 export async function CodeCompare() {
+  const [grammar, lightTheme, darkTheme] = await Promise.all([
+    readJson(grammarPath),
+    readJson(lightThemePath),
+    readJson(darkThemePath),
+  ])
+  const assets: ShikiAssets = { grammar, lightTheme, darkTheme }
   const [verityHtml, solidityHtml] = await Promise.all([
-    highlight(verityCode, 'verity'),
-    highlight(solidityCode, 'solidity'),
+    highlight(verityCode, 'verity', assets),
+    highlight(solidityCode, 'solidity', assets),
   ])
 
   return (

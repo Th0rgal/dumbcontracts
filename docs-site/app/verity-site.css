@@ -978,26 +978,24 @@ a[role="button"] {
 }
 
 .code-compare__intro {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(16rem, 0.55fr);
-  gap: 1.2rem 2rem;
-  align-items: end;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.5rem;
+  max-width: 56rem;
 }
 
 .code-compare__intro h2 {
-  margin: 0.25rem 0 0 !important;
+  margin: 0.55rem 0 0 !important;
   padding: 0 !important;
   border: 0 !important;
   max-width: 42rem;
 }
 
 .code-compare__intro p:not(.verity-kicker) {
-  margin: 0;
+  margin: 0.85rem 0 0;
   color: var(--verity-muted) !important;
   font-family: var(--verity-font-ui);
   font-size: 1rem;
   line-height: 1.5;
+  max-width: 42rem;
 }
 
 /* Single-panel switcher: a tabbed header above one panel that swaps

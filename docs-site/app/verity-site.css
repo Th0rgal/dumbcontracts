@@ -210,8 +210,14 @@ header.nextra-navbar > div:first-child {
   font-feature-settings: "kern", "liga", "calt";
 }
 
-.verity-brand:hover {
+.verity-brand:hover,
+.verity-brand:focus-visible {
   color: var(--verity-accent);
+}
+
+.verity-brand:active {
+  color: var(--verity-accent-strong, var(--verity-accent));
+  opacity: 0.85;
 }
 
 .verity-brand img {

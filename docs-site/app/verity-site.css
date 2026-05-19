@@ -105,6 +105,24 @@ html[dir] {
   background: var(--verity-bg);
   font-family: var(--verity-font-prose);
   text-rendering: optimizeLegibility;
+  /* Smooth scrolling for TOC anchor jumps; in conjunction with the
+     scroll-margin-top on h2/h3 this means clicking a TOC entry slides
+     the section heading into view under the sticky navbar instead of
+     snapping abruptly behind it. */
+  scroll-behavior: smooth;
+}
+
+/* Honour user preference for reduced motion: turn off smooth scroll
+   and the slide-in transitions on CTAs / arrows / panels. */
+@media (prefers-reduced-motion: reduce) {
+  html, html:root, html[dir] {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {
@@ -559,6 +577,13 @@ article main h6 {
   line-height: 1.16 !important;
   text-wrap: balance;
   border: 0 !important;
+  /* Anchor links / TOC clicks jump to a section heading. Without
+     scroll-margin the heading lands flush against the top of the
+     viewport (and on doc pages it slides under the sticky navbar).
+     Push the scroll target down by the navbar height + a small
+     breathing-room offset so the heading reads as the top of its
+     section. */
+  scroll-margin-top: calc(var(--nextra-navbar-height, 64px) + 0.75rem);
 }
 
 article main h1 {

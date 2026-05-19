@@ -20,24 +20,26 @@ Every primitive is a `Contract α = ContractState → ContractResult α`. Read-o
 
 | Function | Type |
 |----------|------|
-| `getStorage` | `StorageSlot Uint256 → Contract Uint256` |
-| `setStorage` | `StorageSlot Uint256 → Uint256 → Contract Unit` |
-| `getStorageAddr` | `StorageSlot Address → Contract Address` |
-| `setStorageAddr` | `StorageSlot Address → Address → Contract Unit` |
-| `getMapping` | `StorageSlot (Address → Uint256) → Address → Contract Uint256` |
-| `setMapping` | `StorageSlot (Address → Uint256) → Address → Uint256 → Contract Unit` |
-| `getMappingUint` | `StorageSlot (Uint256 → Uint256) → Uint256 → Contract Uint256` |
-| `setMappingUint` | `StorageSlot (Uint256 → Uint256) → Uint256 → Uint256 → Contract Unit` |
-| `getMapping2` | `StorageSlot (Address → Address → Uint256) → Address → Address → Contract Uint256` |
-| `setMapping2` | `StorageSlot (Address → Address → Uint256) → Address → Address → Uint256 → Contract Unit` |
+| `getStorage` / `setStorage` | `StorageSlot Uint256 → …` |
+| `getStorageAddr` / `setStorageAddr` | `StorageSlot Address → …` |
+| `getMapping` / `setMapping` | `StorageSlot (Address → Uint256) → Address → …` |
+| `getMappingAddr` / `setMappingAddr` | Address-keyed mapping with address values (`wordToAddress` under the hood) |
+| `getMappingUint` / `setMappingUint` | `StorageSlot (Uint256 → Uint256) → Uint256 → …` |
+| `getMappingUintAddr` / `setMappingUintAddr` | Uint-keyed mapping with address values |
+| `getMapping2` / `setMapping2` | `StorageSlot (Address → Address → Uint256) → Address → Address → …` |
+| `getStorageArrayLength` / `getStorageArrayElement` / `setStorageArrayElement` | Dynamic in-storage arrays with `[StorageArrayElem α]` typeclass |
+| `pushStorageArray` / `popStorageArray` | Append / remove tail element of an in-storage array |
 
 ```verity
-let bal <- getMapping balances msgSenderAddr
+let bal   <- getMapping balances msgSenderAddr
+let owner <- getMappingUintAddr tokenOwners tokenId
 setMapping balances msgSenderAddr (bal - amount)
 
 let allow <- getMapping2 allowances owner spender
 setMapping2 allowances owner spender (allow - amount)
 ```
+
+The `addressToWord` / `wordToAddress` helpers convert between the two representations; the `*Addr` mapping variants apply them automatically.
 
 ## Control flow
 
@@ -53,6 +55,14 @@ require (amount > 0) "amount must be nonzero"
 let x <- getStorage counterSlot
 setStorage counterSlot (x + 1)
 ```
+
+### `Contract.tryCatch`
+
+```verity
+def Contract.tryCatch {α : Type} (attempt : Contract α) (handler : String → Contract Unit) : Contract α
+```
+
+If `attempt` reverts with message `msg`, `tryCatch` runs `handler msg` on the state *before* the revert and returns whatever `handler` returns (or the original revert if `handler` itself reverts). Useful for fallback paths inside a contract. See `Verity/Core.lean` for the exact semantics.
 
 ### `forEach`
 

@@ -151,6 +151,36 @@ def transfer (to : Address) (amount : Uint256) : Contract Unit := do
 
 Proofs cover mint/transfer correctness, supply conservation equations, and storage isolation across all three slot types.
 
+## Vault (minimal ERC-4626)
+
+A conservative ERC-4626-style vault with 1:1 asset/share accounting. Deposits mint shares equal to assets; withdrawals burn 1:1. The shape exercises the canonical vault surface without complicating the share-price math.
+
+```verity
+verity_contract Vault where
+  storage
+    totalAssetsSlot   : Uint256 := slot 0
+    totalSupplySlot   : Uint256 := slot 1
+    shareBalancesSlot : Address → Uint256 := slot 2
+
+  constructor () := do
+    setStorage totalAssetsSlot 0
+    setStorage totalSupplySlot 0
+
+  function deposit (assets : Uint256) : Unit := do
+    let sender ← msgSender
+    let currentShares ← getMapping shareBalancesSlot sender
+    let newShares ← requireSomeUint (safeAdd currentShares assets) "Share balance overflow"
+    let currentAssets ← getStorage totalAssetsSlot
+    let newAssets ← requireSomeUint (safeAdd currentAssets assets) "Total assets overflow"
+    let currentSupply ← getStorage totalSupplySlot
+    let newSupply ← requireSomeUint (safeAdd currentSupply assets) "Total supply overflow"
+    setMapping shareBalancesSlot sender newShares
+    setStorage totalAssetsSlot newAssets
+    setStorage totalSupplySlot newSupply
+```
+
+The spec layer (`deposit_spec`, `withdraw_spec`, isolation predicates) lives in `Contracts/Vault/Spec.lean`. Native IR-lowering proofs are checked in [`Contracts/Vault/Proofs/Native.lean`](https://github.com/lfglabs-dev/verity/blob/main/Contracts/Vault/Proofs/Native.lean); deeper Basic/Correctness/Conservation coverage is tracked under issue [#1163](https://github.com/lfglabs-dev/verity/issues/1163).
+
 ## ReentrancyExample
 
 Two parallel bank contracts, one vulnerable, one safe, demonstrating that reentrancy is a *provable* property, not just a testing concern.
@@ -199,6 +229,24 @@ Source: [`Contracts/CryptoHash/Contract.lean`](https://github.com/lfglabs-dev/ve
 ## ERC20
 
 Baseline-verified ERC20 with `mint`, `transfer`, `approve`, `transferFrom` and formal spec/invariant modules. Source: [`Contracts/ERC20/`](https://github.com/lfglabs-dev/verity/tree/main/Contracts/ERC20).
+
+## ERC721
+
+Standards-shaped NFT contract demonstrating multi-mapping storage: uint-keyed `owners` and `tokenApprovals`, address-keyed `balances`, and double-mapping `operatorApprovals`. Exercises `getMappingUint`, `getMapping2`, `addressToWord`/`wordToAddress`, and constructor parameters.
+
+```verity
+verity_contract ERC721 where
+  storage
+    owner             : Address := slot 0
+    totalSupply       : Uint256 := slot 1
+    nextTokenId       : Uint256 := slot 2
+    balances          : Address → Uint256 := slot 3
+    owners            : Uint256 → Uint256 := slot 4
+    tokenApprovals    : Uint256 → Uint256 := slot 5
+    operatorApprovals : Address → Address → Uint256 := slot 6
+```
+
+Source: [`Contracts/ERC721/`](https://github.com/lfglabs-dev/verity/tree/main/Contracts/ERC721).
 
 ## Source
 

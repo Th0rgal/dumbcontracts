@@ -5,34 +5,47 @@ description: Theorem inventory by contract, plus the compiler-proof structure.
 
 # Verification Status
 
-All three pipeline layers (EDSL → CompilationModel → IR → Yul) are complete and machine-checked by `lake build`. Zero `sorry`. For *how* these proofs are built, see [Proof Techniques](/proof-techniques); for *what is trusted vs verified*, see [Trust Model](/trust-model).
+All three pipeline layers (EDSL → CompilationModel → IR → Yul) are complete and machine-checked by `lake build`. Zero `sorry`. For *how* these proofs are built, see [Proof Techniques](/proof-techniques); for *what is trusted vs verified*, see [Trust Model](/trust-model). The authoritative axiom list lives in [AXIOMS.md](https://github.com/lfglabs-dev/verity/blob/main/AXIOMS.md).
 
-The authoritative source for axioms is [AXIOMS.md](https://github.com/lfglabs-dev/verity/blob/main/AXIOMS.md).
+## Per-contract proof coverage
 
-## Theorems by contract
+Counts are theorems in each module. Read the actual statements in [`Contracts/<Name>/Proofs/`](https://github.com/lfglabs-dev/verity/tree/main/Contracts) — Lean is the source of truth.
 
-| Contract | Basic | Correctness | Conservation | Isolation | Total |
-|----------|-------|-------------|--------------|-----------|-------|
-| SimpleStorage | 13 | 7 | — | — | 20 |
-| Counter | 19 | 10 | — | — | 29 |
-| Owned | 19 | 4 | — | — | 23 |
-| OwnedCounter | 29 | 5 | — | 14 | 48 |
-| SafeCounter | 17 | 8 | — | — | 25 |
-| Ledger | 20 | 6 | 7 | — | 33 |
-| SimpleToken | 37 | 10 | 5 (supply) | 9 | 61 |
-| ERC721 | 6 | 5 | — | — | 11 |
-| ReentrancyExample | — | — | — | — | 5 (inline) |
+| Contract | Basic | Correctness | Conservation / Supply | Isolation | Native | Total |
+|----------|-------|-------------|----------------------|-----------|--------|-------|
+| SimpleStorage | 13 | 7 | — | — | — | 20 |
+| Counter | 19 | 9 | — | — | — | 28 |
+| SafeCounter | 20 | 8 | — | — | — | 28 |
+| Owned | 19 | 4 | — | — | — | 23 |
+| OwnedCounter | 33 | 6 | — | 14 | — | 53 |
+| Ledger | 24 | 6 | 7 (conservation) | — | — | 37 |
+| SimpleToken | 40 | 10 | 6 (supply) | 12 | — | 68 |
+| ERC20 | 15 | 7 | — | — | 3 | 25 |
+| ERC721 | 6 | 5 | — | — | — | 11 |
+| Vault (ERC-4626) | scaffold | scaffold | scaffold | — | 3 | 3 |
+| ReentrancyExample | 5 inline (vulnerability witness + safety proofs) | | | | | 5 |
 
-**Stdlib**: Math 25, Automation 56, MappingAutomation 37, ListSum 7, AddressAutomation 24 (2 shared between Automation and MappingAutomation).
+The **Native** column counts theorems that pin the IR / Yul lowering to the EVMYulLean-bridged backend (`Contracts/<Name>/Proofs/Native.lean`).
 
-Read theorem statements and proofs directly in [`Contracts/{Name}/Proofs/`](https://github.com/lfglabs-dev/verity/tree/main/Contracts) — Lean is the source of truth.
+Vault carries a verified surface spec and full IR-lowering coverage; the spec-level Basic/Correctness/Conservation proofs are intentionally scaffold (issue [#1163](https://github.com/lfglabs-dev/verity/issues/1163)).
+
+## Stdlib
+
+Reusable proof infrastructure in `Verity/Proofs/Stdlib/`:
+
+| Module | Theorems | What it covers |
+|--------|----------|----------------|
+| `Math` | ~148 | `safeAdd/Sub/Mul/Div`, `mulDivDown/Up`, `wMulDown/wDivUp`, full-precision `mulDiv512Down?/Up?`, `SNARK_SCALAR_FIELD` / `modField` |
+| `Automation` | ~108 | Full-result and `runState`/`runValue` lemmas for storage, address storage, context, events, require |
+| `MappingAutomation` | ~48 | Mapping, uint-keyed mapping, double-mapping automation |
+| `ListSum` | ~8 | Sum reasoning for conservation proofs (`countOcc`, `balanceSum`) |
 
 ## Compiler proofs
 
 - **Layer 2 (whole-contract)**: `Compiler/Proofs/IRGeneration/Contract.lean` — `CompilationModel.compile` correctness for the supported fragment.
 - **End-to-end**: `Compiler/Proofs/EndToEnd.lean`.
-- **Typed IR**: `Compiler/TypedIRCompilerCorrectness.lean` — 36 supported statement fragments, including ABI-head tuples, bytes, fixed/dynamic arrays, and strings as word-typed inputs.
-- **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/`.
+- **Typed IR**: `Compiler/TypedIRCompilerCorrectness.lean` — 36 supported statement fragments including ABI-head tuples, bytes, fixed/dynamic arrays, and strings as word-typed inputs.
+- **Yul semantics + preservation**: `Compiler/Proofs/YulGeneration/`, with an EVMYulLean-bridged native backend in `Compiler/Proofs/YulGeneration/Backends/`.
 
 ## See also
 

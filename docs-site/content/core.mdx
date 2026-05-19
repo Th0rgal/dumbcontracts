@@ -27,22 +27,31 @@ structure StorageSlot (α : Type) where
 
 ```verity
 structure ContractState where
-  storage : Nat → Uint256                         -- Uint256 storage
-  storageAddr : Nat → Address                      -- Address storage
-  storageMap : Nat → Address → Uint256            -- Mapping storage (address-keyed)
-  storageMapUint : Nat → Uint256 → Uint256        -- Mapping storage (uint256-keyed)
-  storageMap2 : Nat → Address → Address → Uint256 -- Double mapping storage
-  sender : Address
-  thisAddress : Address
-  msgValue : Uint256
-  blockTimestamp : Uint256
-  knownAddresses : Nat → FiniteAddressSet          -- Tracked addresses per slot
-  events : List Event := []                        -- Emitted events (append-only)
+  -- Persistent storage spaces, indexed by slot
+  storage         : Nat → Uint256                          -- uint256 slots
+  storageAddr     : Nat → Address                          -- address slots
+  storageMap      : Nat → Address → Uint256                -- address-keyed mapping
+  storageMapUint  : Nat → Uint256 → Uint256                -- uint-keyed mapping
+  storageMap2     : Nat → Address → Address → Uint256      -- double mapping
+  storageArray    : Nat → List Uint256                     -- dynamic in-storage arrays
+  -- EIP-1153 transient storage
+  transientStorage : Nat → Uint256
+  -- EVM context
+  sender, thisAddress : Address
+  msgValue, selfBalance : Uint256
+  blockTimestamp, blockNumber, chainId, blobBaseFee : Uint256
+  -- Calldata and memory
+  calldataSize : Uint256
+  calldata : List Nat
+  memory   : Nat → Uint256
+  -- Bookkeeping
+  knownAddresses : Nat → FiniteAddressSet                  -- tracked per slot, for conservation
+  events         : List Event                              -- append-only log
 ```
 
-Five independent storage spaces: `storage` for Uint256 values, `storageAddr` for addresses, `storageMap` for address-keyed mappings (e.g., `balances[owner]`), `storageMapUint` for uint256-keyed mappings, and `storageMap2` for double mappings (e.g., `allowances[owner][spender]`). Each is indexed by a natural number (the slot).
+Six persistent storage spaces plus transient storage. `storage` for Uint256 values, `storageAddr` for addresses, `storageMap` / `storageMapUint` / `storageMap2` for the three mapping shapes, `storageArray` for dynamic arrays. Each is indexed by a natural number (the slot).
 
-The state also carries: the `sender` address, the contract's own `thisAddress`, EVM context fields (`msgValue`, `blockTimestamp`), `knownAddresses` for tracking which addresses have been seen per slot (used in conservation proofs), and an append-only `events` log.
+`knownAddresses` tracks which addresses have been seen per slot and is used by conservation proofs. EVM context fields (`msgValue`, `blockTimestamp`, `blockNumber`, `chainId`, `blobBaseFee`, `selfBalance`) and calldata/memory are modeled so EDSL proofs can reason about them; the `verity_contract` macro routes context accessors and `tstore`/`tload` through these fields.
 
 ## ContractResult
 

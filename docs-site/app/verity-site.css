@@ -750,6 +750,37 @@ figure[data-rehype-pretty-code-figure] pre {
   color: var(--verity-ink) !important;
 }
 
+/* Thinner, teal-tinged scrollbar on overflowing code blocks so the
+   scroll affordance feels like part of the typography rather than
+   borrowed chrome. */
+article pre::-webkit-scrollbar,
+.code-panel__pre::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+article pre::-webkit-scrollbar-track,
+.code-panel__pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+article pre::-webkit-scrollbar-thumb,
+.code-panel__pre::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--verity-accent) 30%, transparent);
+  border-radius: 0;
+}
+
+article pre::-webkit-scrollbar-thumb:hover,
+.code-panel__pre::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--verity-accent) 60%, transparent);
+}
+
+article pre,
+.code-panel__pre {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--verity-accent) 30%, transparent) transparent;
+}
+
 article :not(pre) > code,
 code.nextra-code:not(pre code) {
   background: color-mix(in srgb, var(--verity-sidebar) 50%, var(--verity-surface)) !important;

@@ -899,6 +899,8 @@ a[role="button"] {
 .verity-hero__dek em {
   font-style: italic;
   font-weight: 500;
+  color: var(--verity-accent-strong, var(--verity-accent));
+  font-feature-settings: "kern", "liga", "calt", "ss01";
 }
 
 .verity-hero__links {
@@ -1598,6 +1600,27 @@ a[role="button"] {
     max-height: 28rem;
     font-size: 0.74rem;
     line-height: 1.55;
+  }
+
+  /* Fade the right edge of horizontally-scrolling code so it reads as
+     scrollable rather than cut-off. */
+  .code-switcher__panels {
+    position: relative;
+  }
+
+  .code-switcher__panels::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1.75rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--verity-code-surface) 92%
+    );
   }
 
   article main table {

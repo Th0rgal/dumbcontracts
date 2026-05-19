@@ -1844,18 +1844,22 @@ input:focus-visible,
   }
 
   /* Fade the right edge of horizontally-scrolling code so it reads as
-     scrollable rather than cut-off. */
-  .code-switcher__panels {
+     scrollable rather than cut-off. The same treatment applies to
+     stand-alone shiki figures (getting-started, EDSL reference, etc.)
+     where a long line otherwise just clips at the chip border. */
+  .code-switcher__panels,
+  figure[data-rehype-pretty-code-figure] {
     position: relative;
   }
 
-  .code-switcher__panels::after {
+  .code-switcher__panels::after,
+  figure[data-rehype-pretty-code-figure]::after {
     content: "";
     position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 1.75rem;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    width: 1.5rem;
     pointer-events: none;
     background: linear-gradient(
       to right,

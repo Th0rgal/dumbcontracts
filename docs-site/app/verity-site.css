@@ -1774,6 +1774,17 @@ input:focus-visible,
     overflow: visible !important;
   }
 
+  /* Inside table cells the article-column ellipsis doesn't help —
+     the table already provides horizontal scroll. Let chips show full
+     text there so a hurried reader sees the path without scrolling
+     past the chip ellipsis they couldn't tap on. */
+  article main td :not(pre) > code,
+  article main th :not(pre) > code {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
   article main > :not(.verity-hero):not(.code-compare):not(.report-callout) {
     max-width: 100%;
   }
@@ -1931,6 +1942,20 @@ input:focus-visible,
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    /* Tabular numerals so columns of digits (Iteration #, etc.) stay
+       aligned across rows. */
+    font-feature-settings: "tnum", "lnum";
+    /* Thin teal scrollbar to match code blocks. */
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--verity-accent) 30%, transparent) transparent;
+  }
+
+  article main table::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  article main table::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--verity-accent) 30%, transparent);
   }
 
   /* The serif body uses hyphenation; on narrow screens this can

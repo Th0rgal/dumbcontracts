@@ -1712,7 +1712,7 @@ input:focus-visible,
   color: var(--verity-ink) !important;
   font-family: var(--verity-font-code);
   font-size: 0.85rem;
-  line-height: 1.65;
+  line-height: 1.72;
   tab-size: 2;
   white-space: pre;
   border: 0 !important;

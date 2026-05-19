@@ -1004,6 +1004,35 @@ article main ol ul > li::before {
   line-height: 1;
 }
 
+/* GFM task-list items ("- [x] Done") render as <li class="task-list-item">
+   with an <input type="checkbox"> child. Our en-dash ::before marker
+   would collide with the checkbox, producing a "– ☐ Done" visual
+   double-bullet. Suppress the marker on task-list rows and let the
+   checkbox itself be the marker; also remove the bullet-clearing
+   left padding so the checkbox sits at the same x as the en-dash
+   markers on regular bullets. */
+article main ul > li.task-list-item::before,
+article main ul > li:has(> input[type="checkbox"])::before {
+  content: none;
+}
+
+article main ul:has(> li.task-list-item),
+article main ul:has(> li > input[type="checkbox"]) {
+  padding-left: 0;
+  list-style: none;
+}
+
+article main ul > li.task-list-item,
+article main ul > li:has(> input[type="checkbox"]) {
+  padding-left: 0;
+}
+
+article main ul > li > input[type="checkbox"] {
+  accent-color: var(--verity-accent);
+  margin-right: 0.45em;
+  vertical-align: -0.08em;
+}
+
 article main table {
   display: table;
   width: 100%;
@@ -1123,13 +1152,24 @@ code.nextra-code:not(pre code) {
 /* When an inline chip sits inside a link, hovering the link shows a
    gentle teal-tinted chip background so the chip reads as "part of
    the interactive element" instead of decoration that floats next
-   to it. */
-article main a:hover :not(pre) > code,
-article main a:focus-visible :not(pre) > code {
+   to it. The transition is declared on the chip-in-link base state
+   (not just the :hover override) so the fade is symmetric — hover-in
+   and hover-out both animate.
+
+   Nextra renders chip-in-link as <a><code>...</code></a> directly,
+   so the selector targets <code> as a direct child of <a>. */
+article main a > code,
+article main a > :not(pre) > code {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+article main a:hover > code,
+article main a:focus-visible > code,
+article main a:hover > :not(pre) > code,
+article main a:focus-visible > :not(pre) > code {
   background: color-mix(in srgb, var(--verity-accent) 14%, var(--verity-surface)) !important;
   border-color: color-mix(in srgb, var(--verity-accent) 35%, var(--verity-rule)) !important;
   color: var(--verity-accent) !important;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 /* When an inline code chip sits in a heading or strong, drop the chip
@@ -1222,9 +1262,13 @@ input:focus-visible,
   }
 
   /* On these very narrow screens the Copy-page widget can drop to
-     about 100px so the kicker doesn't stack into four lines. */
+     about 100px so the kicker doesn't stack into four lines. The
+     !important is necessary because the broader (max-width: 767px)
+     media query later in the file targets the same selector with
+     equal specificity, and the later-source rule would otherwise
+     win at ≤360px. */
   .verity-hero__head > .verity-kicker {
-    padding-right: 6rem;
+    padding-right: 6rem !important;
   }
 }
 
@@ -1688,7 +1732,11 @@ input:focus-visible,
   color: var(--verity-accent-ink);
 }
 
-.code-switcher__tabs button:active {
+/* Only apply the :active press background to tabs that are NOT the
+   currently-selected tab — otherwise it overrides the full-accent
+   active-tab background with a 60% mix, causing a visible contrast
+   dip when the user taps the already-active tab. */
+.code-switcher__tabs button:not([data-active="true"]):active {
   background: color-mix(in srgb, var(--verity-accent) 60%, var(--verity-surface));
 }
 
@@ -2053,19 +2101,29 @@ input:focus-visible,
     /* Treat the chip as an atomic inline-block: it either fits on the
        current line or wraps as a whole to a new line. This kills the
        "one orphan letter" wrap that was happening when a path got
-       broken mid-word as a last resort. */
+       broken mid-word as a last resort. When the chip is still too
+       long for one line (rare — only on very long paths), the chip
+       becomes horizontally scrollable so the user can swipe to read
+       the rest, instead of clipping content with an ellipsis that
+       has no tap affordance. */
     display: inline-block;
     max-width: 100%;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-x: auto;
+    overflow-y: hidden;
     vertical-align: baseline;
+    /* Hide the inline-scrollbar — the swipe affordance is enough. */
+    scrollbar-width: none;
+  }
+
+  article :not(pre) > code::-webkit-scrollbar,
+  code.nextra-code:not(pre code)::-webkit-scrollbar {
+    display: none;
   }
 
   /* For chip-style h3 headings (e.g. `getStorage` / `setStorage`) we
-     still want the chip to wrap as a whole rather than be ellipsised. */
+     still want the chip to be fully visible rather than scrollable. */
   article main h3 :not(pre) > code {
-    text-overflow: clip !important;
     overflow: visible !important;
   }
 

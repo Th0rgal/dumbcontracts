@@ -669,6 +669,31 @@ article main a:hover,
   color: var(--verity-muted) !important;
 }
 
+/* The right-rail "Question? Give us feedback / Edit this page" footer
+   shouldn't compete with the TOC headings. Quieten it to muted body
+   ink with a small UI font, and lift to accent on hover. */
+.nextra-toc-footer,
+.nextra-toc + nav,
+.nextra-toc div:has(> a[href*="github.com"][href*="edit"]) {
+  font-family: var(--verity-font-ui);
+  font-size: 0.78rem !important;
+  letter-spacing: 0.01em;
+}
+
+.nextra-toc-footer a,
+.nextra-toc + nav a,
+[class*="nextra-toc"] a[href*="github.com"][href*="edit"] {
+  color: var(--verity-muted) !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+}
+
+.nextra-toc-footer a:hover,
+.nextra-toc + nav a:hover,
+[class*="nextra-toc"] a[href*="github.com"][href*="edit"]:hover {
+  color: var(--verity-accent) !important;
+}
+
 .nextra-breadcrumb {
   font-family: var(--verity-font-ui);
   font-size: 0.78rem !important;

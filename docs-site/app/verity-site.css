@@ -994,6 +994,20 @@ article main ul > li::before {
   font-weight: 500;
 }
 
+/* Suppress the en-dash on lists that already provide their own
+   visual structure (hero secondary links, the homepage reading list,
+   etc.). Those lists are styled as link/card rows, not paragraph
+   enumerations, so a bullet on the left reads as an artifact. */
+.verity-hero__more,
+.verity-reading-list {
+  padding-left: 0;
+}
+
+.verity-hero__more > li::before,
+.verity-reading-list > li::before {
+  content: none;
+}
+
 /* Don't touch the nested list markers — they're rare and the default
    is fine. */
 article main ul ul > li::before,

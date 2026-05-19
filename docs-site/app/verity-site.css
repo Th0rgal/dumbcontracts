@@ -235,6 +235,32 @@ header kbd {
   border-radius: 0 !important;
 }
 
+/* Themed search-result popover panel */
+[role="listbox"]:has(.nextra-search-result),
+.nextra-search [role="listbox"] {
+  background: var(--verity-surface) !important;
+  border: 1px solid var(--verity-rule) !important;
+  box-shadow: var(--verity-shadow) !important;
+  font-family: var(--verity-font-ui) !important;
+}
+
+[role="listbox"] a {
+  color: var(--verity-ink) !important;
+  border-bottom: 1px solid var(--verity-rule-soft, var(--verity-rule)) !important;
+}
+
+[role="listbox"] a:hover,
+[role="listbox"] a[aria-selected="true"] {
+  background: color-mix(in srgb, var(--verity-accent) 10%, transparent) !important;
+  color: var(--verity-heading) !important;
+}
+
+[role="listbox"] mark {
+  background: color-mix(in srgb, var(--verity-accent) 28%, transparent) !important;
+  color: var(--verity-heading) !important;
+  padding: 0 0.12em;
+}
+
 /* "Copy page" widget at the top of each article */
 [class*="x:rounded-md"]:has(> button),
 [class*="x:rounded-md"]:has(> button) * {

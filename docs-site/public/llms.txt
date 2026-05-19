@@ -54,7 +54,6 @@ inductive ContractResult (a : Type) where
 - Core: https://veritylang.com/core
 - EDSL API reference: https://veritylang.com/edsl-api-reference
 - Compiler & CLI: https://veritylang.com/compiler
-- Compiler architecture: https://veritylang.com/compiler-architecture
 - Glossary: https://veritylang.com/glossary
 - FAQ: https://veritylang.com/faq
 - First contract guide: https://veritylang.com/first-contract

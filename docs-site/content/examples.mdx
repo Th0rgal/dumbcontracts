@@ -194,30 +194,12 @@ def storeHashTwo (a b : Uint256) : Contract Unit := do
 
 The EDSL uses a placeholder function (`add`) for the hash. At compile time, the [Linker](/guides/linking-libraries) replaces the compiled output with a call to the real Poseidon library via `Expr.externalCall` in the CompilationModel layer.
 
-Source: [`Contracts/CryptoHash/Contract.lean`](https://github.com/Th0rgal/verity/blob/main/Contracts/CryptoHash/Contract.lean)
+Source: [`Contracts/CryptoHash/Contract.lean`](https://github.com/lfglabs-dev/verity/blob/main/Contracts/CryptoHash/Contract.lean)
 
-## ERC20 (Foundation Scaffold)
+## ERC20
 
-Baseline-verified ERC20 foundation scaffold with executable logic (`mint`, `transfer`, `approve`, `transferFrom`) and formal spec/invariant modules.
-
-Source:
-- Implementation: [`Contracts/ERC20/ERC20.lean`](https://github.com/Th0rgal/verity/blob/main/Contracts/ERC20/ERC20.lean)
-- Spec: [`Contracts/ERC20/Spec.lean`](https://github.com/Th0rgal/verity/blob/main/Contracts/ERC20/Spec.lean)
-- Invariants: [`Contracts/ERC20/Invariants.lean`](https://github.com/Th0rgal/verity/blob/main/Contracts/ERC20/Invariants.lean)
-
-## Pattern progression
-
-1. **SimpleStorage**: single slot
-2. **Counter**: arithmetic
-3. **SafeCounter**: stdlib integration
-4. **Owned**: access control
-5. **OwnedCounter**: composition (Owned + Counter)
-6. **Ledger**: mapping storage
-7. **SimpleToken**: full composition (Owned + Ledger + supply tracking)
-8. **ReentrancyExample**: vulnerability modeling and safety proofs
-9. **CryptoHash**: external library linking (unverified)
-10. **ERC20**: standards-oriented token scaffold with baseline proofs and specs/invariants
+Baseline-verified ERC20 with `mint`, `transfer`, `approve`, `transferFrom` and formal spec/invariant modules. Source: [`Contracts/ERC20/`](https://github.com/lfglabs-dev/verity/tree/main/Contracts/ERC20).
 
 ## Source
 
-All contracts are in [`Contracts/`](https://github.com/Th0rgal/verity/tree/main/Contracts).
+All contracts: [`Contracts/`](https://github.com/lfglabs-dev/verity/tree/main/Contracts).

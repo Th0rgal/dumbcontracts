@@ -21,10 +21,6 @@ export default {
   glossary: 'Glossary',
 
   '-- explanation': { type: 'separator', title: 'Explanation' },
-  'compiler-architecture': 'Compiler Architecture',
   'proof-techniques': 'Proof Techniques',
   faq: 'FAQ',
-
-  '-- project': { type: 'separator', title: 'Project' },
-  'syntax-highlighting': 'Syntax Highlighting',
 };

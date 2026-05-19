@@ -82,20 +82,7 @@ create`, `cast`, raw RPC, etc.
 
 ## Is this production-ready?
 
-Verity is suitable for verifying a precisely-scoped class of contracts today,
-not as a drop-in replacement for general Solidity development. The current
-verified example set covers SimpleStorage, Counter, Owned, OwnedCounter,
-Ledger, SimpleToken, SafeCounter, ERC721, plus the ReentrancyExample (inline
-proofs). Several features compile but are not yet end-to-end modeled in the
-proof interpreter: parts of low-level call mechanics, linear-memory primitives
-(`mload`/`mstore`/`calldatacopy`/`returndatacopy`), raw `rawLog` events, and
-`keccak256` (still axiomatized). Each is exposed via a `--deny-*` flag for
-proof-strict builds.
-
-There is no multi-contract interaction model, no reentrancy semantics, and no
-gas modeling. The honest version is: if your contract sits inside the
-supported fragment, you get strong machine-checked guarantees; if it doesn't,
-the trust report tells you exactly which assumptions are doing the work.
+Verity verifies a precisely-scoped class of contracts today — not a drop-in replacement for general Solidity. Inside the supported fragment, you get strong machine-checked guarantees; outside it, the trust report tells you exactly which assumptions are doing the work. Several features compile but are not yet end-to-end modeled (low-level call mechanics, linear-memory primitives, `rawLog`, `keccak256`); each has a `--deny-*` flag for proof-strict builds. There is no multi-contract interaction model, no reentrancy semantics, and no gas modeling.
 
 ## Where can I see verified contracts?
 

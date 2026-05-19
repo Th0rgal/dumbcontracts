@@ -1,11 +1,34 @@
 ---
 title: Compiler & CLI
-description: Command-line usage, audit-artifact flags, and validated contract set for the Verity compiler.
+description: The Verity compiler — pipeline, CLI usage, and the CompilationModel surface.
 ---
 
 # Compiler & CLI
 
-Reference for the `verity-compiler` binary, the audit-artifact flags, and the validated contract set. For the architecture and pipeline narrative, see [Compiler Architecture](/compiler-architecture). For the trust boundary, see [Trust Model](/trust-model).
+How verified EDSL contracts become deployable EVM bytecode, plus the CLI reference. For the trust boundary, see [Trust Model](/trust-model).
+
+## Pipeline
+
+```
+EDSL Contract  →  CompilationModel  →  IR  →  Yul  →  EVM Bytecode
+```
+
+`CompilationModel` is the declarative surface: storage fields, function bodies, constructor params, events. The compiler infers slots, looks up selectors, lowers expressions/statements to IR, generates Yul, and hands off to `solc` for the final bytecode step.
+
+> Verity has two **distinct** "spec" concepts:
+> 1. **Logical specs** in `Contracts/<Name>/Spec.lean` — `Prop` statements used for proofs.
+> 2. **Compiler specs** in `Compiler/Specs.lean` — `CompilationModel` values used for code generation.
+
+### Modules
+
+| Module | Role |
+|--------|------|
+| `Compiler/CompilationModel.lean` | Declarative DSL: expressions, statements, constructors, storage inference. |
+| `Compiler/Specs.lean` | The validated contract specs, registered via `allSpecs`. |
+| `Compiler/Selector.lean` | Canonical selector computation; kernel-checkable `keccak256_first_4_bytes`; CI cross-check against `solc --hashes`. |
+| `Compiler/Codegen.lean` | IR → Yul: dispatcher, mapping-slot helper, deploy/runtime split. |
+| `Compiler/Linker.lean` | External Yul library linking with reference validation. |
+| `Compiler/Yul/*` | Yul AST and pretty printer. |
 
 ## Compile all contracts
 
@@ -13,16 +36,11 @@ Reference for the `verity-compiler` binary, the audit-artifact flags, and the va
 cd /path/to/verity
 export PATH="$HOME/.elan/bin:$PATH"
 
-# Build compiler
 lake build verity-compiler
-
-# Generate Yul for all contracts
-lake exe verity-compiler
-
-# Output: artifacts/yul/*.yul
+lake exe verity-compiler           # writes artifacts/yul/*.yul
 ```
 
-For contracts that use external libraries (e.g. Poseidon hash):
+For contracts that use external libraries (e.g. Poseidon):
 
 ```bash
 lake exe verity-compiler --link examples/external-libs/PoseidonT3.yul -o artifacts/yul/
@@ -32,85 +50,160 @@ See the [Linking External Libraries](/guides/linking-libraries) guide.
 
 ## Audit artifacts
 
-The CLI emits machine-readable audit artifacts alongside Yul/ABI output:
+The CLI emits machine-readable audit artifacts alongside Yul/ABI:
 
 - `--trust-report <path>` — proof-boundary and assumption data.
-- `--assumption-report <path>` — flattened assumption inventory grouped by contract and usage site. If a constructor or function uses direct assembly-shaped primitives without any `local_obligations [...]`, compilation now fails closed.
-- `--layout-report <path>` — resolved storage-slot metadata, including effective alias writes and reserved-slot policies for upgrade/layout reviews.
-- `--layout-compat-report <path>` — compares the first selected contract as the baseline layout and the second as the candidate upgrade layout, then writes a machine-readable compatibility summary.
+- `--assumption-report <path>` — flattened assumption inventory grouped by contract and usage site. Direct assembly-shaped primitives without any `local_obligations [...]` fail closed.
+- `--layout-report <path>` — resolved storage-slot metadata, alias writes, reserved-slot policy.
+- `--layout-compat-report <path>` — baseline vs candidate layout compatibility for upgrade reviews. Pair with `--deny-layout-incompatibility` to fail closed on incompatible upgrades.
 
-See the [Glossary](/glossary) for one-line definitions of each artifact, and [Trust Model](/trust-model) for what they bound.
+For proof-strict builds, deny flags lock down the trust surface: `--deny-linear-memory-mechanics`, `--deny-event-emission`, `--deny-axiomatized-primitives`, `--deny-proxy-upgradeability`, `--deny-local-obligations`. See [Glossary](/glossary) for one-line definitions.
+
+## Example: SimpleStorage
+
+**EDSL** (`Contracts/SimpleStorage/SimpleStorage.lean`):
+
+```verity
+def storedData : StorageSlot Uint256 := ⟨0⟩
+
+def store (value : Uint256) : Contract Unit := do
+  setStorage storedData value
+
+def retrieve : Contract Uint256 := do
+  getStorage storedData
+```
+
+**CompilationModel** (`Compiler/Specs.lean`):
+
+```verity
+def simpleStorageSpec : CompilationModel := {
+  name := "SimpleStorage"
+  fields := [{ name := "storedData", ty := FieldType.uint256 }]
+  functions := [
+    { name := "store"
+      params := [{ name := "value", ty := ParamType.uint256 }]
+      returnType := none
+      body := [
+        Stmt.setStorage "storedData" (Expr.param "value"),
+        Stmt.stop
+      ]
+    },
+    { name := "retrieve"
+      params := []
+      returnType := some FieldType.uint256
+      body := [Stmt.return (Expr.storage "storedData")]
+    }
+  ]
+}
+```
+
+**Generated Yul** (`artifacts/yul/SimpleStorage.yul`):
+
+```yul
+object "SimpleStorage" {
+  code { datacopy(0, dataoffset("runtime"), datasize("runtime"))
+         return(0, datasize("runtime")) }
+  object "runtime" {
+    code {
+      switch shr(224, calldataload(0))
+      case 0x6057361d { let value := calldataload(4); sstore(0, value); stop() }
+      case 0x2e64cec1 { mstore(0, sload(0)); return(0, 32) }
+      default { revert(0, 0) }
+    }
+  }
+}
+```
+
+## CompilationModel surface
+
+**Storage inference**: slots assigned in field order; no manual slot management.
+
+```verity
+fields := [
+  { name := "owner",       ty := FieldType.address },                            -- slot 0
+  { name := "balances",    ty := FieldType.mappingTyped (.simple .address) },    -- slot 1
+  { name := "totalSupply", ty := FieldType.uint256 }                             -- slot 2
+]
+```
+
+**Constructor parameters**: loaded from end of deployment bytecode (Solidity convention).
+
+```verity
+constructor := some {
+  params := [{ name := "initialOwner", ty := ParamType.address }]
+  body := [Stmt.setStorage "owner" (Expr.constructorArg 0)]
+}
+```
+
+**Expressions** cover literals, parameters, storage and mapping reads, EVM context (`caller`, `chainid`, `msgValue`, `blockTimestamp`, `blockNumber`, `blobbasefee`), memory primitives (`mload`, `keccak256`), low-level calls (`call`, `staticcall`, `delegatecall`), arithmetic, bitwise, comparisons, logical operators.
+
+**Statements** cover local variables, storage and mapping writes, `require`, `return`, memory writes, returndata copy and revert bubbling, `stop`, `ite` branching, bounded `forEach` loops, event emission, and internal calls.
+
+Low-level calls, linear-memory primitives, `rawLog`, and `keccak256` compile but remain partially modeled in the proof interpreter. Functions or constructors that use direct assembly-shaped primitives without `localObligations [...]` fail closed under `--deny-axiomatized-primitives`.
+
+**Internal functions** via `isInternal := true` and `Stmt.internalCall`; **events** via the `events` block and `Stmt.emit` (topic0 computed from the event signature); **double mappings** via `mapping2`/`setMapping2`; **uint256-keyed mappings**; **dynamic, fixed-size, and bytes array parameters** with ABI offset-based decoding.
+
+## Add a new contract
+
+1. Declare it with `verity_contract` in `Contracts/<Name>/<Name>.lean`:
+
+   ```verity
+   verity_contract MyContract where
+     storage
+       value : Uint256 := slot 0
+     function setValue (x : Uint256) : Unit := do
+       setStorage value x
+     function getValue () : Uint256 := do
+       return (← getStorage value)
+   ```
+
+   Stateless contracts may leave the `storage` block empty.
+
+2. Register it in `Compiler/Specs.lean` under `allSpecs`:
+
+   ```lean
+   Contracts.MyContract.spec
+   ```
+
+3. Recompile:
+
+   ```bash
+   lake build verity-compiler
+   lake exe verity-compiler
+   ```
+
+Handwritten `Compiler.Specs.*Spec` definitions are retained for migration only; they are not the canonical compile path.
+
+For the full authoring checklist (specs, invariants, proofs, tests), see [First Contract](/first-contract).
 
 ## Test compiled contracts
 
 ```bash
-# Run all Foundry tests (difftest profile enables FFI for Yul compilation)
-FOUNDRY_PROFILE=difftest forge test
-
-# Expected: all current difftest suites pass
+FOUNDRY_PROFILE=difftest forge test       # FFI enables Yul compilation
+lake build                                # verifies all Lean proofs
 ```
-
-**Lean Proofs**: `lake build` verifies the current proof set. See [VERIFICATION_STATUS.md](https://github.com/Th0rgal/verity/blob/main/docs/VERIFICATION_STATUS.md) for the live totals.
-
-```bash
-$ lake build
-Build completed successfully.
-```
-
-**Coverage**: unit, property, and differential tests across EDSL and compiled Yul. See `test/` for suites.
-
-## Add a new contract
-
-1. **Add a macro contract declaration** in `Contracts/<Name>/<Name>.lean`:
-
-```verity
-verity_contract MyContract where
-  storage
-    value : Uint256 := slot 0
-  function setValue (x : Uint256) : Unit := do
-    setStorage value x
-  function getValue () : Uint256 := do
-    return (← getStorage value)
-```
-
-If a contract is stateless, the `storage` block may be left empty instead of inventing a dummy slot.
-
-2. **Register it in** `Compiler/Specs.lean` **under** `allSpecs`:
-
-```lean
-Contracts.MyContract.spec
-```
-
-3. **Recompile**:
-
-```bash
-lake build verity-compiler
-lake exe verity-compiler
-```
-
-4. **Done!** Contract generated in `artifacts/yul/MyContract.yul`.
-
-Legacy note: handwritten `Compiler.Specs.*Spec` definitions are retained only for migration/special workflows and are not the canonical CLI compile path.
-
-For the full authoring checklist (specs, invariants, proofs, tests), see [Add a Contract](/guides/add-contract).
 
 ## Validated contracts
 
-All current example contracts compile and pass tests:
+| Contract | What it shows |
+|----------|---------------|
+| SimpleStorage | Basic storage operations |
+| Counter | Arithmetic |
+| Owned | Access control with constructor args |
+| OwnedCounter | Pattern composition |
+| Ledger | Mapping balances |
+| SimpleToken | ERC20-like token with constructor |
+| SafeCounter | Checked arithmetic with underflow protection |
 
-- **SimpleStorage** — basic storage operations
-- **Counter** — arithmetic operations
-- **Owned** — access control with constructor args
-- **OwnedCounter** — pattern composition with constructor
-- **Ledger** — mapping-based balances
-- **SimpleToken** — ERC20-like token with constructor
-- **SafeCounter** — checked arithmetic with underflow protection
+Not compiled: `ReentrancyExample` (inline proofs only). `CryptoHash` compiles via `--link` with external Poseidon and is validated in CI.
 
-**Not compiled**: `ReentrancyExample` (proofs are embedded inline, no compiler spec). `CryptoHash` compiles via `--link` with external Poseidon libraries and is validated in CI.
+## Trust boundary
+
+Three verified layers — EDSL ↔ CompilationModel, CompilationModel ↔ IR, IR ↔ Yul. The `solc` Yul-to-bytecode step and the EVM execution model itself are trusted, not verified. See [Trust Model](/trust-model).
 
 ## See also
 
-- [Compiler Architecture](/compiler-architecture) — pipeline narrative, design decisions, SimpleStorage walkthrough.
 - [Trust Model](/trust-model) — what the audit artifacts bound.
-- [Verification Status](/verification) — live theorem inventory.
-- [Examples Gallery](/examples) — the validated contract set with code excerpts.
+- [Verification Status](/verification) — theorem inventory.
+- [Examples](/examples) — the validated contract set with code excerpts.
+- [Linking External Libraries](/guides/linking-libraries).

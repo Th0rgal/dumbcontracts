@@ -21,7 +21,7 @@ structure StorageSlot (α : Type) where
 
 `Uint256` is a dedicated 256-bit modular integer type, so `+`, `-`, `*`, `/`, and `%` wrap exactly like the EVM.
 
-> **Note**: This matches EVM wrapping semantics, not Solidity's default checked arithmetic (^0.8). Use `require` guards to match Solidity behavior. See [TRUST_ASSUMPTIONS.md](https://github.com/Th0rgal/verity/blob/main/TRUST_ASSUMPTIONS.md#8-arithmetic-semantics-wrapping-vs-checked) for details.
+> **Note**: This matches EVM wrapping semantics, not Solidity's default checked arithmetic (^0.8). Use `require` guards to match Solidity behavior. See [TRUST_ASSUMPTIONS.md](https://github.com/lfglabs-dev/verity/blob/main/TRUST_ASSUMPTIONS.md#8-arithmetic-semantics-wrapping-vs-checked) for details.
 
 ## ContractState
 
@@ -54,7 +54,7 @@ inductive ContractResult (α : Type) where
 
 Every contract operation returns either `success` with a value and updated state, or `revert` with an error message and the state at the point of failure.
 
-> **Important**: On revert, the returned state may include mutations from operations that executed *before* the revert. This differs from EVM semantics where REVERT discards all state changes. Contracts must follow the **checks-before-effects pattern** — all `require` guards before any `setStorage`/`setMapping` calls — to ensure the revert state equals the original input state. See [TRUST_ASSUMPTIONS.md](https://github.com/Th0rgal/verity/blob/main/TRUST_ASSUMPTIONS.md) and [#254](https://github.com/Th0rgal/verity/issues/254) for details.
+> **Important**: On revert, the returned state may include mutations from operations that executed *before* the revert. This differs from EVM semantics where REVERT discards all state changes. Contracts must follow the **checks-before-effects pattern** — all `require` guards before any `setStorage`/`setMapping` calls — to ensure the revert state equals the original input state. See [TRUST_ASSUMPTIONS.md](https://github.com/lfglabs-dev/verity/blob/main/TRUST_ASSUMPTIONS.md) and [#254](https://github.com/lfglabs-dev/verity/issues/254) for details.
 
 ## Contract monad
 
@@ -127,73 +127,20 @@ let wrong ← getStorage owner  -- Type error: owner is Address, not Uint256
 
 ## Spec helpers (`Verity/Specs/Common.lean`)
 
-Specs express what a function **did not change**. `Common.lean` provides named predicates so specs don't repeat field-by-field equality.
+Specs express what a function **did not change**. `Common.lean` provides named predicates so specs don't repeat field-by-field equality. Import with `import Verity.Specs.Common` and `open Verity.Specs`.
 
-Import with `import Verity.Specs.Common` and `open Verity.Specs`.
+Three layers, narrowest first:
 
-### Atomic helpers (single field)
+- **Atomic** — one field at a time: `sameStorage`, `sameStorageAddr`, `sameStorageMap`, `sameStorageMapUint`, `sameStorageMap2`, `sameContext`.
+- **Mixed** (most common in practice) — two storage checks + `sameContext`:
+  - `sameAddrMapContext` — use when only `setStorage` (uint256 slot) writes.
+  - `sameStorageMapContext` — use when only `setStorageAddr` writes.
+  - `sameStorageAddrContext` — use when only `setMapping` writes.
+- **Composite** (strictest) — everything except one storage type: `sameExceptStorage`, `sameExceptStorageAddr`, `sameExceptStorageMap`, `sameExceptStorageMapUint`, `sameExceptStorageMap2`. `sameAllStorage` covers context-only writes. All composites include `sameContext`.
+- **Fine-grained** — for single-entry mapping updates: `storageUnchangedExcept slot`, `storageAddrUnchangedExcept slot`, `storageMapUnchangedExceptKeyAtSlot slot addr`, `storageMapUnchangedExceptKeysAtSlot slot a1 a2` (transfers), `storageMapUintUnchangedExceptSlot`, `storageMapUintUnchangedExceptKey`, `storageMap2UnchangedExceptSlot`.
 
-| Helper | Asserts |
-|--------|---------|
-| `sameStorage s s'` | `s'.storage = s.storage` |
-| `sameStorageAddr s s'` | `s'.storageAddr = s.storageAddr` |
-| `sameStorageMap s s'` | `s'.storageMap = s.storageMap` |
-| `sameStorageMapUint s s'` | `s'.storageMapUint = s.storageMapUint` |
-| `sameStorageMap2 s s'` | `s'.storageMap2 = s.storageMap2` |
-| `sameContext s s'` | sender, thisAddress, msgValue, blockTimestamp unchanged |
-
-### Composite helpers
-
-Use these instead of conjunctions of atomics:
-
-| Helper | Meaning | Use when operation only writes... |
-|--------|---------|-----------------------------------|
-| `sameAllStorage s s'` | All 5 storage types unchanged | Context fields only |
-| `sameExceptStorage s s'` | Everything except `storage` unchanged | `setStorage` |
-| `sameExceptStorageAddr s s'` | Everything except `storageAddr` unchanged | `setStorageAddr` |
-| `sameExceptStorageMap s s'` | Everything except `storageMap` unchanged | `setMapping` |
-| `sameExceptStorageMapUint s s'` | Everything except `storageMapUint` unchanged | `setMappingUint` |
-| `sameExceptStorageMap2 s s'` | Everything except `storageMap2` unchanged | `setMapping2` |
-
-All composites include `sameContext`.
-
-### Mixed storage+context helpers
-
-These combine two atomic storage checks with `sameContext`. They are the most commonly used helpers in practice — appearing in nearly every spec:
-
-| Helper | Meaning | Use when operation only writes... |
-|--------|---------|-----------------------------------|
-| `sameAddrMapContext s s'` | `sameStorageAddr ∧ sameStorageMap ∧ sameContext` | `setStorage` (uint256 slot only) |
-| `sameStorageMapContext s s'` | `sameStorage ∧ sameStorageMap ∧ sameContext` | `setStorageAddr` (address slot only) |
-| `sameStorageAddrContext s s'` | `sameStorage ∧ sameStorageAddr ∧ sameContext` | `setMapping` (mapping only) |
-
-**Example**: A counter's `increment` spec modifies a uint256 storage slot, so the unchanged-state predicate is `sameAddrMapContext` (address storage, mapping storage, and context are all unchanged).
-
-### Fine-grained helpers (specific slot or key)
-
-For operations that modify a single entry in a mapping:
-
-| Helper | Asserts |
-|--------|---------|
-| `storageUnchangedExcept slot s s'` | All uint256 slots except `slot` unchanged |
-| `storageAddrUnchangedExcept slot s s'` | All address slots except `slot` unchanged |
-| `storageMapUnchangedExceptKeyAtSlot slot addr s s'` | Mapping unchanged except `slot`/`addr` |
-| `storageMapUnchangedExceptKeysAtSlot slot a1 a2 s s'` | Mapping unchanged except `slot`/`a1`/`a2` (transfers) |
-| `storageMapUintUnchangedExceptSlot slot s s'` | Uint256-keyed mapping unchanged except `slot` |
-| `storageMapUintUnchangedExceptKey slot key s s'` | Uint256-keyed mapping at `slot` unchanged except `key` |
-| `storageMap2UnchangedExceptSlot slot s s'` | Double mapping unchanged except `slot` |
-
-### Choosing the right helper
-
-| Operation | Mixed (most common) | Composite (strictest) | Fine-grained |
-|-----------|---------------------|----------------------|--------------|
-| `setStorage count v` | `sameAddrMapContext` | `sameExceptStorage` | `storageUnchangedExcept count.slot` |
-| `setStorageAddr owner v` | `sameStorageMapContext` | `sameExceptStorageAddr` | `storageAddrUnchangedExcept owner.slot` |
-| `setMapping balances addr v` | `sameStorageAddrContext` | `sameExceptStorageMap` | `storageMapUnchangedExceptKeyAtSlot balances.slot addr` |
-| ERC20 transfer (two keys) | `sameStorageAddrContext` | `sameExceptStorageMap` | `storageMapUnchangedExceptKeysAtSlot balances.slot from to` |
-| `setMappingUint prices id v` | — | `sameExceptStorageMapUint` | `storageMapUintUnchangedExceptKey prices.slot id` |
-| Read-only (`getStorage`, etc.) | — | `sameAllStorage ∧ sameContext` | — |
+A counter's `increment` writes only the uint256 count slot, so the unchanged-state predicate is `sameAddrMapContext`. An ERC20 `transfer` (two mapping keys) uses `storageMapUnchangedExceptKeysAtSlot balances.slot from to`.
 
 ## Source
 
-[`Verity/Core.lean`](https://github.com/Th0rgal/verity/blob/main/Verity/Core.lean) · [`Verity/Specs/Common.lean`](https://github.com/Th0rgal/verity/blob/main/Verity/Specs/Common.lean)
+[`Verity/Core.lean`](https://github.com/lfglabs-dev/verity/blob/main/Verity/Core.lean) · [`Verity/Specs/Common.lean`](https://github.com/lfglabs-dev/verity/blob/main/Verity/Specs/Common.lean)

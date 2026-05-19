@@ -65,8 +65,7 @@ same binary emits machine-readable audit artifacts: `--trust-report`,
 `--assumption-report`, `--layout-report`, and `--layout-compat-report`. The
 linker (`Compiler/Linker.lean`) splices external Yul libraries (`--link`) into
 the runtime section after validating that every non-builtin call site is
-satisfied. See [`/compiler-architecture`](/compiler-architecture) for the
-narrative and [`/compiler`](/compiler) for the CLI reference.
+satisfied. See [`/compiler`](/compiler) for the pipeline narrative and CLI reference.
 
 ## Verification layers (1 / 2 / 3)
 
@@ -85,6 +84,6 @@ live theorem inventory.
 
 - [Getting Started](/getting-started) — local setup and your first verification run.
 - [First Contract](/first-contract) — guided spec-to-proof walkthrough.
-- [Compiler Architecture](/compiler-architecture) — the pipeline in detail.
+- [Compiler & CLI](/compiler) — the pipeline in detail, plus CLI flags.
 - [Trust Model](/trust-model) — what you trust when you trust a Verity contract.
 - [EDSL API Reference](/edsl-api-reference) — canonical primitive reference.

@@ -55,7 +55,7 @@ outside the proof envelope.
 ## Axioms and assumptions
 
 All axioms used anywhere in the proof tree are listed in
-[`AXIOMS.md`](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md). That file
+[`AXIOMS.md`](https://github.com/lfglabs-dev/verity/blob/main/AXIOMS.md). That file
 is the source of truth. The compiler can also export a flat per-build
 inventory: `--assumption-report <path>` writes every assumption used by the
 selected contracts, grouped by contract and usage site, including any
@@ -77,7 +77,7 @@ compilation unit.
 - **Pre-computed function selectors.** Selectors are derived from
   `keccak256` of canonical signatures; CI cross-checks against
   `solc --hashes`.
-- **The axioms in [`AXIOMS.md`](https://github.com/Th0rgal/verity/blob/main/AXIOMS.md).**
+- **The axioms in [`AXIOMS.md`](https://github.com/lfglabs-dev/verity/blob/main/AXIOMS.md).**
   Currently a short list, including the residual `keccak256` primitive and
   a small number of EVM-side primitives.
 

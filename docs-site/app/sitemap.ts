@@ -22,11 +22,8 @@ const ROUTES = [
   '/verification',
   '/glossary',
   // Explanation
-  '/compiler-architecture',
   '/proof-techniques',
   '/faq',
-  // Project
-  '/syntax-highlighting',
 ]
 
 export default function sitemap(): MetadataRoute.Sitemap {

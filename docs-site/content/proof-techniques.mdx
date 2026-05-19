@@ -92,28 +92,7 @@ Two approaches coexist for overflow safety:
 
 ## Known limitations
 
-- **Uint256**: `Uint256` is a dedicated 256-bit modular type; `+`, `-`, `*`,
-  `/`, and `%` wrap at `2^256`.
-- **No multi-contract interaction**: composition across contracts is not
-  modeled in the EDSL semantics.
-- **No reentrancy modeling**: cross-call control flow is not in the proof
-  envelope.
-- **Self-transfer**: modeled as a no-op; transfer theorems no longer require
-  `sender != to`.
-- **Supply = sum of balances**: requires a finite address model. Proven as
-  exact sum equations with `countOcc`, not as a global invariant over all
-  addresses. `supply_bounds_balances` is not preserved for lists with duplicates;
-  exact sum equations are proven instead.
-- **`ContractResult.fst`**: returns `default` on revert, requiring `[Inhabited α]`.
-  Proofs using `.fst` always show the result is `success` first.
-- **No gas modeling**: the EDSL models storage and control flow only;
-  verification assumes infinite gas.
-- **Events**: the CompilationModel DSL supports event emission (`Stmt.emit`),
-  but the EDSL core does not yet model events in proofs.
-- **Nested mappings**: the CompilationModel DSL supports double mappings
-  (`mapping2`/`setMapping2`), but EDSL-level proofs for nested mapping
-  semantics are still limited.
-- **No Mathlib**: `set`, `ring`, `linarith` unavailable, as noted above.
+No multi-contract interaction, no reentrancy modeling, no gas modeling. The CompilationModel supports events and double mappings, but EDSL-level proofs for those are still limited. Conservation is proven as exact `countOcc`-based sum equations, not as a global invariant over all addresses; transfer theorems treat self-transfer as a no-op. `ContractResult.fst` returns `default` on revert (requires `[Inhabited α]`), so proofs using `.fst` show `success` first. Mathlib tactics (`set`, `ring`, `linarith`) are unavailable.
 
 ## See also
 

@@ -58,12 +58,16 @@ export default withNextra({
   // links don't 404 after the restructure.
   async redirects() {
     return [
-      // Tutorial moved from /guides/ to top-level.
       { source: "/guides/first-contract", destination: "/first-contract", permanent: true },
-      // The "Add a Contract" page moved into /guides/.
       { source: "/add-contract", destination: "/guides/add-contract", permanent: true },
-      // Syntax-highlighting page moved out of /guides/ to top-level.
-      { source: "/guides/verity-syntax-highlighting", destination: "/syntax-highlighting", permanent: true },
+      // Compiler architecture merged into /compiler.
+      { source: "/compiler-architecture", destination: "/compiler", permanent: true },
+      // Syntax highlighting moved to the docs-site README (contributor reference, not user docs).
+      { source: "/guides/verity-syntax-highlighting", destination: "/", permanent: true },
+      { source: "/syntax-highlighting", destination: "/", permanent: true },
+      // Research log retired.
+      { source: "/research", destination: "/", permanent: true },
+      { source: "/research/iterations", destination: "/", permanent: true },
     ];
   },
 });

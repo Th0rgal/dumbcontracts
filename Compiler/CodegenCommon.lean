@@ -140,7 +140,7 @@ def buildSwitch
 def runtimeCode (contract : IRContract) : List YulStmt :=
   let mapping := if contract.usesMapping then [mappingSlotFuncAt 0] else []
   let internals := contract.internalFunctions
-  mapping ++ internals ++ [buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
+  mapping ++ internals ++ [initFreeMemoryPointer, buildSwitch contract.functions contract.fallbackEntrypoint contract.receiveEntrypoint]
 
 private def profileSortsOutput (profile : BackendProfile) : Bool :=
   match profile with

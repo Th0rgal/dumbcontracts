@@ -107,7 +107,7 @@ def safeTransferModule : ExternalCallModule where
       | _ => throw "safeTransfer expects 3 arguments (token, to, amount)"
     let selectorWord := 0xa9059cbb00000000000000000000000000000000000000000000000000000000
     pure [YulStmt.block ([
-      YulStmt.let_ "__st_ptr" (YulExpr.call "mload" [YulExpr.lit 64]),
+      YulStmt.let_ "__st_ptr" (YulExpr.call "mload" [YulExpr.lit freeMemoryPointer]),
       YulStmt.expr (YulExpr.call "mstore" [YulExpr.ident "__st_ptr", YulExpr.hex selectorWord]),
       YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__st_ptr", YulExpr.lit 4], toExpr]),
       YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__st_ptr", YulExpr.lit 36], amountExpr]),
@@ -116,7 +116,7 @@ def safeTransferModule : ExternalCallModule where
         YulExpr.ident "__st_ptr", YulExpr.lit 68, YulExpr.ident "__st_ptr", YulExpr.lit 32
       ]),
       YulStmt.expr (YulExpr.call "mstore" [
-        YulExpr.lit 64,
+        YulExpr.lit freeMemoryPointer,
         YulExpr.call "and" [
           YulExpr.call "add" [
             YulExpr.call "add" [YulExpr.ident "__st_ptr", YulExpr.lit 68],
@@ -155,7 +155,7 @@ def safeTransferFromModule : ExternalCallModule where
       | _ => throw "safeTransferFrom expects 4 arguments (token, from, to, amount)"
     let selectorWord := 0x23b872dd00000000000000000000000000000000000000000000000000000000
     pure [YulStmt.block ([
-      YulStmt.let_ "__stf_ptr" (YulExpr.call "mload" [YulExpr.lit 64]),
+      YulStmt.let_ "__stf_ptr" (YulExpr.call "mload" [YulExpr.lit freeMemoryPointer]),
       YulStmt.expr (YulExpr.call "mstore" [YulExpr.ident "__stf_ptr", YulExpr.hex selectorWord]),
       YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__stf_ptr", YulExpr.lit 4], fromExpr]),
       YulStmt.expr (YulExpr.call "mstore" [YulExpr.call "add" [YulExpr.ident "__stf_ptr", YulExpr.lit 36], toExpr]),
@@ -165,7 +165,7 @@ def safeTransferFromModule : ExternalCallModule where
         YulExpr.ident "__stf_ptr", YulExpr.lit 100, YulExpr.ident "__stf_ptr", YulExpr.lit 32
       ]),
       YulStmt.expr (YulExpr.call "mstore" [
-        YulExpr.lit 64,
+        YulExpr.lit freeMemoryPointer,
         YulExpr.call "and" [
           YulExpr.call "add" [
             YulExpr.call "add" [YulExpr.ident "__stf_ptr", YulExpr.lit 100],

@@ -4861,7 +4861,7 @@ set_option maxRecDepth 4096 in
       contains abiEncodePackedWordsYul "mstore(add(__digest_packed_words_ptr, 64), __packed_word_2)" &&
       contains abiEncodePackedWordsYul "mstore(64, add(__digest_packed_words_ptr, 96))")
   expectTrue "abiEncodePackedWords hashes the exact packed byte length"
-    (contains abiEncodePackedWordsYul "let digest := keccak256(__digest_packed_words_ptr, 96)")
+    (contains abiEncodePackedWordsYul "digest := keccak256(__digest_packed_words_ptr, 96)")
   let abiEncodeStaticArrayYul ←
     expectCompileToYul "abiEncodeStaticArray smoke spec" abiEncodeStaticArraySmokeSpec
   expectTrue "abiEncodeStaticArray writes the single dynamic argument head and length"
@@ -4890,18 +4890,23 @@ set_option maxRecDepth 4096 in
       contains abiEncodeStaticArrayTrustReport "\"assumption\":\"keccak256_memory_slice_matches_evm\"")
   let sha256PackedWordsYul ←
     expectCompileToYul "sha256PackedWords smoke spec" sha256PackedWordsSmokeSpec
-  expectTrue "sha256PackedWords evaluates source words before clobbering scratch memory"
+  expectTrue "sha256PackedWords evaluates source words before writing the hash preimage"
     (contains sha256PackedWordsYul "let __packed_word_0 := root" &&
       contains sha256PackedWordsYul "let __packed_word_1 := context")
   expectTrue "sha256PackedWords stores static words contiguously"
-    (contains sha256PackedWordsYul "mstore(0, __packed_word_0)" &&
-      contains sha256PackedWordsYul "mstore(32, __packed_word_1)")
+    (contains sha256PackedWordsYul "let __digest_sha256_packed_words_ptr := mload(64)" &&
+      contains sha256PackedWordsYul
+        "mstore(add(__digest_sha256_packed_words_ptr, 0), __packed_word_0)" &&
+      contains sha256PackedWordsYul
+        "mstore(add(__digest_sha256_packed_words_ptr, 32), __packed_word_1)")
   expectTrue "sha256PackedWords hashes the exact packed byte length through precompile 0x02"
-    (contains sha256PackedWordsYul "staticcall(gas(), 2, 0, 64, 64, 32)")
+    (contains sha256PackedWordsYul
+      "staticcall(gas(), 2, __digest_sha256_packed_words_ptr, 64, __digest_sha256_packed_words_output, 32)")
   expectTrue "sha256PackedWords reverts when the precompile call fails"
     (contains sha256PackedWordsYul "if iszero(__sha256_packed_success) {")
-  expectTrue "sha256PackedWords returns the digest word from non-overlapping output memory"
-    (contains sha256PackedWordsYul "let digest := mload(64)")
+  expectTrue "sha256PackedWords returns the digest word and advances free memory"
+    (contains sha256PackedWordsYul "digest := mload(__digest_sha256_packed_words_output)" &&
+      contains sha256PackedWordsYul "mstore(64, add(__digest_sha256_packed_words_output, 32))")
   expectCompileErrorContains
     "sha256PackedWords ECM rejects invalid argument counts"
     sha256PackedWordsBadAritySpec
@@ -4916,11 +4921,11 @@ set_option maxRecDepth 4096 in
     expectCompileToYul "abiEncodePackedStaticSegments smoke spec" abiEncodePackedStaticSegmentsSmokeSpec
   expectTrue "abiEncodePackedStaticSegments masks and left-aligns sub-word static values"
     (contains abiEncodePackedStaticSegmentsYul
-      "mstore(0, shl(96, and(__packed_word_0, 0xffffffffffffffffffffffffffffffffffffffff)))")
+      "mstore(add(__digest_packed_segments_ptr, 0), shl(96, and(__packed_word_0, 0xffffffffffffffffffffffffffffffffffffffff)))")
   expectTrue "abiEncodePackedStaticSegments places the next segment at the byte-precise offset"
-    (contains abiEncodePackedStaticSegmentsYul "mstore(20, __packed_word_1)")
+    (contains abiEncodePackedStaticSegmentsYul "mstore(add(__digest_packed_segments_ptr, 20), __packed_word_1)")
   expectTrue "abiEncodePackedStaticSegments hashes the exact byte length"
-    (contains abiEncodePackedStaticSegmentsYul "let digest := keccak256(0, 52)")
+    (contains abiEncodePackedStaticSegmentsYul "digest := keccak256(__digest_packed_segments_ptr, 52)")
   expectCompileErrorContains
     "abiEncodePackedStaticSegments rejects invalid segment widths"
     abiEncodePackedStaticSegmentsBadWidthSpec
@@ -4939,11 +4944,13 @@ set_option maxRecDepth 4096 in
     expectCompileToYul "sha256PackedStaticSegments smoke spec" sha256PackedStaticSegmentsSmokeSpec
   expectTrue "sha256PackedStaticSegments masks and left-aligns sub-word static values"
     (contains sha256PackedStaticSegmentsYul
-      "mstore(0, shl(96, and(__packed_word_0, 0xffffffffffffffffffffffffffffffffffffffff)))")
+      "mstore(add(__digest_sha256_packed_segments_ptr, 0), shl(96, and(__packed_word_0, 0xffffffffffffffffffffffffffffffffffffffff)))")
   expectTrue "sha256PackedStaticSegments hashes the exact byte length through precompile 0x02"
-    (contains sha256PackedStaticSegmentsYul "staticcall(gas(), 2, 0, 52, 64, 32)")
-  expectTrue "sha256PackedStaticSegments returns the digest from aligned non-overlapping output memory"
-    (contains sha256PackedStaticSegmentsYul "let digest := mload(64)")
+    (contains sha256PackedStaticSegmentsYul
+      "staticcall(gas(), 2, __digest_sha256_packed_segments_ptr, 52, __digest_sha256_packed_segments_output, 32)")
+  expectTrue "sha256PackedStaticSegments returns the digest and advances free memory"
+    (contains sha256PackedStaticSegmentsYul "digest := mload(__digest_sha256_packed_segments_output)" &&
+      contains sha256PackedStaticSegmentsYul "mstore(64, add(__digest_sha256_packed_segments_output, 32))")
   expectCompileErrorContains
     "sha256PackedStaticSegments rejects invalid segment widths"
     sha256PackedStaticSegmentsBadWidthSpec

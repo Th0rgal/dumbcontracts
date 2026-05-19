@@ -1881,4 +1881,34 @@ input:focus-visible,
     color: var(--verity-muted) !important;
     font-style: italic;
   }
+
+  /* Don't expand URLs inside code chips or section anchors. */
+  article main a[href^="http"] code::after,
+  article main .subheading-anchor::after,
+  article main h1 a::after,
+  article main h2 a::after,
+  article main h3 a::after,
+  article main h4 a::after {
+    content: none !important;
+  }
+
+  .report-callout,
+  article main blockquote,
+  .nextra-callout {
+    border: 1px solid var(--verity-rule) !important;
+    border-left: 3px solid var(--verity-accent) !important;
+    background: #fafafa !important;
+    page-break-inside: avoid;
+  }
+
+  /* Drop the side-by-side switcher to its currently-active panel only —
+     printing both panels is just noise. */
+  .code-switcher__tabs,
+  .code-switcher__head {
+    display: none !important;
+  }
+
+  .code-panel[data-active="false"] {
+    display: none !important;
+  }
 }

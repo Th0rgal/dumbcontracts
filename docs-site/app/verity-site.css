@@ -1958,6 +1958,15 @@ input:focus-visible,
     white-space: nowrap !important;
   }
 
+  /* Tighter cell padding on phones so a 4-column reference table
+     keeps more horizontal space for actual content. */
+  article main th,
+  article main td {
+    padding: 0.55rem 0.6rem !important;
+    font-size: 0.92rem !important;
+    line-height: 1.45 !important;
+  }
+
   article main > :not(.verity-hero):not(.code-compare):not(.report-callout) {
     max-width: 100%;
   }

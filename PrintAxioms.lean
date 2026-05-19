@@ -970,6 +970,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.switchCases_bridged_local  -- private
   -- Compiler.Proofs.EndToEnd.buildSwitch_bridged_local  -- private
   -- Compiler.Proofs.EndToEnd.mappingSlotFuncAt_bridged_local  -- private
+  -- Compiler.Proofs.EndToEnd.initFreeMemoryPointer_bridged_local  -- private
   -- Compiler.Proofs.EndToEnd.runtimeCode_bridged_local  -- private
   Compiler.Proofs.EndToEnd.switchCaseBody_bridged_of_body
   Compiler.Proofs.EndToEnd.generatedRuntimeSwitchCaseBodiesBridged_of_compile_ok_supported
@@ -5578,4 +5579,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5292 theorems/lemmas (3604 public, 1688 private, 0 sorry'd)
+-- Total: 5293 theorems/lemmas (3604 public, 1689 private, 0 sorry'd)

@@ -57,7 +57,22 @@ The CLI emits machine-readable audit artifacts alongside Yul/ABI:
 - `--layout-report <path>` — resolved storage-slot metadata, alias writes, reserved-slot policy.
 - `--layout-compat-report <path>` — baseline vs candidate layout compatibility for upgrade reviews. Pair with `--deny-layout-incompatibility` to fail closed on incompatible upgrades.
 
-For proof-strict builds, deny flags lock down the trust surface: `--deny-linear-memory-mechanics`, `--deny-event-emission`, `--deny-axiomatized-primitives`, `--deny-proxy-upgradeability`, `--deny-local-obligations`. See [Glossary](/glossary) for one-line definitions.
+For proof-strict builds, deny flags lock down the trust surface. Each one fails the build closed when the corresponding category of assumption appears:
+
+| Flag | Fails closed on |
+|------|-----------------|
+| `--deny-unchecked-dependencies` | Module dependencies that haven't been checked |
+| `--deny-assumed-dependencies` | Dependencies marked as assumed rather than verified |
+| `--deny-axiomatized-primitives` | Primitives still treated as axioms (e.g., raw `keccak256`) |
+| `--deny-local-obligations` | Any undischarged `local_obligations [...]` |
+| `--deny-linear-memory-mechanics` | `mload` / `mstore` / `calldatacopy` / `returndatacopy` use |
+| `--deny-event-emission` | `rawLog` and not-yet-modeled event emission |
+| `--deny-low-level-mechanics` | Raw `call` / `staticcall` / `delegatecall` constructs |
+| `--deny-runtime-introspection` | Runtime calldata/returndata size and memory introspection |
+| `--deny-proxy-upgradeability` | `delegatecall` and proxy upgrade patterns |
+| `--deny-layout-incompatibility` | Candidate storage layout breaks baseline (paired with `--layout-compat-report`) |
+
+See [Glossary](/glossary) for one-line definitions of each report.
 
 ## Example: SimpleStorage
 

@@ -1883,7 +1883,7 @@ input:focus-visible,
   }
 
   /* Don't expand URLs inside code chips or section anchors. */
-  article main a[href^="http"] code::after,
+  article main a[href^="http"]:has(code)::after,
   article main .subheading-anchor::after,
   article main h1 a::after,
   article main h2 a::after,

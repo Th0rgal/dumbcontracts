@@ -1784,3 +1784,76 @@ input:focus-visible,
     font-size: 0.65rem !important;
   }
 }
+
+/* Print stylesheet — when the docs are printed or exported to PDF,
+   shed the navbar / sidebar / TOC / search chrome and leave the
+   article column on the page. Headings, §-numbering and code blocks
+   remain so the output reads like a proper printed appendix. */
+@media print {
+  :root {
+    --verity-bg: #ffffff;
+    --verity-page: #ffffff;
+    --verity-surface: #ffffff;
+    --verity-code-surface: #fafafa;
+    --verity-ink: #000000;
+    --verity-heading: #000000;
+    --verity-muted: #555555;
+    --verity-rule: #cccccc;
+    --verity-accent: #0B6E62;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  header.nextra-navbar,
+  .nextra-nav-container,
+  .nextra-sidebar-container,
+  .nextra-sidebar,
+  .nextra-toc,
+  .nextra-breadcrumb,
+  .nextra-search,
+  [aria-label*="back to top" i],
+  [class*="x:rounded-md"]:has(> button),
+  article > div:last-child:has(> a[title]),
+  body::before {
+    display: none !important;
+  }
+
+  article main {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  article main h2 {
+    page-break-after: avoid;
+    border-top: 1px solid var(--verity-rule) !important;
+  }
+
+  article main h3,
+  article main h4 {
+    page-break-after: avoid;
+  }
+
+  article pre,
+  .code-panel__pre {
+    page-break-inside: avoid;
+    border: 1px solid var(--verity-rule) !important;
+    background: #fafafa !important;
+  }
+
+  article main a,
+  article a {
+    color: #000000 !important;
+    text-decoration: underline !important;
+  }
+
+  /* Expand link URLs after the link text — paper readers can't click. */
+  article main a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.78em;
+    color: var(--verity-muted) !important;
+    font-style: italic;
+  }
+}

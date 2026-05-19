@@ -2028,6 +2028,16 @@ input:focus-visible,
     background: color-mix(in srgb, var(--verity-accent) 30%, transparent);
   }
 
+  /* Don't hyphenate inside table cells on phones — wrapping a short
+     word like "property" as "prop-/erty" reads as truncated text on
+     a phone screen and the column has the width to wrap naturally
+     instead. */
+  article main td,
+  article main th {
+    hyphens: manual !important;
+    -webkit-hyphens: manual !important;
+  }
+
   /* The serif body uses hyphenation; on narrow screens this can
      hyphenate every other line. Loosen so words break only on the rare
      overflow case. */

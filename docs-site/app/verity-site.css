@@ -177,6 +177,13 @@ header.nextra-navbar > div:first-child {
   height: 1.35rem;
 }
 
+/* The V mark is a faceted gray polygon; in dark mode the dark facets
+   blend into the navbar. Lift it with a slight invert + teal tint so
+   it reads as cold metal rather than dim charcoal. */
+.dark .verity-brand img {
+  filter: invert(0.78) hue-rotate(140deg) saturate(0.55);
+}
+
 .verity-brand strong {
   font-weight: inherit;
 }
@@ -633,14 +640,20 @@ article:has(.verity-hero) .nextra-breadcrumb {
   color: var(--verity-accent) !important;
 }
 
-/* "Last updated on …" footer line — give it a research-footer feel */
+/* "Last updated on …" footer line — give it a research-footer feel
+   with a hairline rule above and an italic small-caps treatment, like
+   a journal article colophon. */
 [class*="nextra-content-width"] > p:has(> time),
 [class*="nextra-content-width"] p:last-child:has(time) {
+  margin-top: 2.5rem !important;
+  padding-top: 0.85rem !important;
+  border-top: 1px solid var(--verity-rule-soft, var(--verity-rule)) !important;
   color: var(--verity-muted) !important;
   font-family: var(--verity-font-ui) !important;
-  font-size: 0.78rem !important;
-  letter-spacing: 0.02em;
+  font-size: 0.76rem !important;
+  letter-spacing: 0.04em;
   font-style: italic;
+  text-align: right;
 }
 
 /* Nextra renders a "next page" pagination block at the bottom of each
@@ -703,6 +716,12 @@ article main tr[class*="x:even:bg-gray"] {
 article tbody tr:nth-child(even),
 article main tbody tr:nth-child(even) {
   background: color-mix(in srgb, var(--verity-sidebar) 35%, var(--verity-surface)) !important;
+}
+
+article main tbody tr:hover,
+article tbody tr:hover {
+  background: color-mix(in srgb, var(--verity-accent) 6%, var(--verity-surface)) !important;
+  transition: background-color 0.12s ease;
 }
 
 article main th {

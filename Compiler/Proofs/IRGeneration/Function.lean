@@ -2107,6 +2107,7 @@ private theorem compileExpr_constructor_mode_eq
   | .shl a b, hcore, hraw
   | .shr a b, hcore, hraw
   | .sar a b, hcore, hraw
+  | .byte a b, hcore, hraw
   | .signextend a b, hcore, hraw
   | .eq a b, hcore, hraw
   | .ge a b, hcore, hraw

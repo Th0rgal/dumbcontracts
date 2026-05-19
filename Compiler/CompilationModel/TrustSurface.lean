@@ -78,7 +78,7 @@ private partial def collectLowLevelExprMechanics : Expr → List String
   | .internalCall _ args =>
       args.flatMap collectLowLevelExprMechanics
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
-  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .signextend a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b
   | .eq a b | .gt a b | .sgt a b | .lt a b | .slt a b | .ge a b | .le a b
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
@@ -140,7 +140,7 @@ private partial def collectAxiomatizedExprPrimitives : Expr → List String
   | .internalCall _ args =>
       args.flatMap collectAxiomatizedExprPrimitives
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
-  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .signextend a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b
   | .eq a b | .gt a b | .sgt a b | .lt a b | .slt a b | .ge a b | .le a b
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
@@ -464,7 +464,7 @@ private partial def collectEventEmissionExprMechanics : Expr → List String
   | .arrayElementDynamicMemberElement _ key _ innerKey =>
       collectEventEmissionExprMechanics key ++ collectEventEmissionExprMechanics innerKey
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
-  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .signextend a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b
   | .eq a b | .gt a b | .sgt a b | .lt a b | .slt a b | .ge a b | .le a b
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
@@ -632,7 +632,7 @@ private partial def collectRuntimeIntrospectionExprMechanics : Expr → List Str
   | .arrayElementDynamicMemberElement _ key _ innerKey =>
       collectRuntimeIntrospectionExprMechanics key ++ collectRuntimeIntrospectionExprMechanics innerKey
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
-  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .signextend a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b
   | .eq a b | .gt a b | .sgt a b | .lt a b | .slt a b | .ge a b | .le a b
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
@@ -792,7 +792,7 @@ private partial def collectExternalExprNames : Expr → List String
   | .internalCall _ args =>
       args.flatMap collectExternalExprNames
   | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
-  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .signextend a b
+  | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b
   | .eq a b | .gt a b | .sgt a b | .lt a b | .slt a b | .ge a b | .le a b
   | .logicalAnd a b | .logicalOr a b
   | .wMulDown a b | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>

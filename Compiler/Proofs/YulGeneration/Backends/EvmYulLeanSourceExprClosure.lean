@@ -193,6 +193,8 @@ inductive BridgedSourceExpr : Expr → Prop
       BridgedSourceExpr (.shr s v)
   | sar {s v} (hs : BridgedSourceExpr s) (hv : BridgedSourceExpr v) :
       BridgedSourceExpr (.sar s v)
+  | byte {i v} (hi : BridgedSourceExpr i) (hv : BridgedSourceExpr v) :
+      BridgedSourceExpr (.byte i v)
   | signextend {b v} (hb : BridgedSourceExpr b) (hv : BridgedSourceExpr v) :
       BridgedSourceExpr (.signextend b v)
   -- direct comparison binops
@@ -1235,6 +1237,12 @@ theorem compileExpr_bridgedSource
       obtain ⟨ca, cb, hA, hB, hEq⟩ := compileExpr_yulBinOp_ok hOk
       subst hEq
       exact bridgedExpr_yulBinOp (by simp [bridgedBuiltins]) (ihs hA) (ihv hB)
+  | byte _ _ ihi ihv =>
+      intro out hOk
+      simp only [compileExpr] at hOk
+      obtain ⟨ca, cb, hA, hB, hEq⟩ := compileExpr_yulBinOp_ok hOk
+      subst hEq
+      exact bridgedExpr_yulBinOp (by simp [bridgedBuiltins]) (ihi hA) (ihv hB)
   | signextend _ _ ihb ihv =>
       intro out hOk
       simp only [compileExpr] at hOk
@@ -1556,6 +1564,9 @@ theorem compileRequireFailCond_bridgedSource
         (by simpa [compileRequireFailCond] using hOk)
   | sar hs hv =>
       exact compileRequireFailCond_default_bridgedSource (.sar hs hv)
+        (by simpa [compileRequireFailCond] using hOk)
+  | byte hi hv =>
+      exact compileRequireFailCond_default_bridgedSource (.byte hi hv)
         (by simpa [compileRequireFailCond] using hOk)
   | signextend hb hv =>
       exact compileRequireFailCond_default_bridgedSource (.signextend hb hv)

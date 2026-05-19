@@ -1767,6 +1767,7 @@ end Verity.AxiomAudit
   Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_sdiv_of_eval
   Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_smod_of_eval
   Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_sar_of_eval
+  Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_byte_of_eval
   Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_signextend_of_eval
   Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_and_of_eval
   Compiler.Proofs.IRGeneration.FunctionBody.evalIRExpr_or_of_eval
@@ -1817,6 +1818,7 @@ end Verity.AxiomAudit
   Compiler.Proofs.IRGeneration.FunctionBody.compileExpr_sdiv_ok
   Compiler.Proofs.IRGeneration.FunctionBody.compileExpr_smod_ok
   Compiler.Proofs.IRGeneration.FunctionBody.compileExpr_sar_ok
+  Compiler.Proofs.IRGeneration.FunctionBody.compileExpr_byte_ok
   Compiler.Proofs.IRGeneration.FunctionBody.compileExpr_signextend_ok
   Compiler.Proofs.IRGeneration.FunctionBody.compileExpr_gt_ok
   Compiler.Proofs.IRGeneration.FunctionBody.compileExpr_ge_ok
@@ -1858,6 +1860,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.IRGeneration.FunctionBody.evalExpr_sdiv_of_values  -- private
   -- Compiler.Proofs.IRGeneration.FunctionBody.evalExpr_smod_of_values  -- private
   -- Compiler.Proofs.IRGeneration.FunctionBody.evalExpr_sar_of_values  -- private
+  -- Compiler.Proofs.IRGeneration.FunctionBody.evalExpr_byte_of_values  -- private
   -- Compiler.Proofs.IRGeneration.FunctionBody.evalExpr_signextend_of_values  -- private
   -- Compiler.Proofs.IRGeneration.FunctionBody.evalExpr_gt_of_values  -- private
   -- Compiler.Proofs.IRGeneration.FunctionBody.evalExpr_add_of_values  -- private
@@ -1872,6 +1875,7 @@ end Verity.AxiomAudit
   Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_sdiv_of_compiled
   Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_smod_of_compiled
   Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_sar_of_compiled
+  Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_byte_of_compiled
   Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_signextend_of_compiled
   Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_gt_of_compiled
   Compiler.Proofs.IRGeneration.FunctionBody.eval_compileExpr_ge_of_compiled
@@ -2831,6 +2835,7 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_shl  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_shr  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_sar  -- private
+  -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_byte  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_signextend  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_logicalNot  -- private
   -- Compiler.Proofs.IRGeneration.SourceSemantics.evalExpr_min  -- private
@@ -5577,4 +5582,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5291 theorems/lemmas (3603 public, 1688 private, 0 sorry'd)
+-- Total: 5296 theorems/lemmas (3606 public, 1690 private, 0 sorry'd)

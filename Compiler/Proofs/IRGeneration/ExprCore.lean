@@ -59,7 +59,7 @@ def exprBoundNames : Expr → List String
   | .ge a b | .gt a b | .sgt a b | .lt a b | .slt a b | .le a b
   | .logicalAnd a b | .logicalOr a b | .wMulDown a b
   | .wDivUp a b | .min a b | .max a b | .ceilDiv a b
-  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+  | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b =>
       exprBoundNames a ++ exprBoundNames b
   | .mulDivDown a b c | .mulDivUp a b c
   | .mulDiv512Down a b c | .mulDiv512Up a b c =>
@@ -170,6 +170,8 @@ inductive ExprCompileCore : Expr → Prop where
       ExprCompileCore lhs → ExprCompileCore rhs → ExprCompileCore (.smod lhs rhs)
   | sar {lhs rhs : Expr} :
       ExprCompileCore lhs → ExprCompileCore rhs → ExprCompileCore (.sar lhs rhs)
+  | byte {lhs rhs : Expr} :
+      ExprCompileCore lhs → ExprCompileCore rhs → ExprCompileCore (.byte lhs rhs)
   | signextend {lhs rhs : Expr} :
       ExprCompileCore lhs → ExprCompileCore rhs → ExprCompileCore (.signextend lhs rhs)
   | tload {offset : Expr} :

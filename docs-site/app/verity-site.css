@@ -66,7 +66,7 @@
   --verity-surface-strong: #16241F;
   --verity-ink: #DDE8E5;
   --verity-heading: #F1F7F4;
-  --verity-muted: #8FA09B;
+  --verity-muted: #9DAEA9;
   --verity-rule: #1E2A26;
   --verity-rule-soft: #16241F;
   --verity-code-bg: #0B1614;
@@ -525,9 +525,13 @@ article main h1 {
    air and a slightly lighter weight, like a preprint abstract opener. */
 article main h1 + p {
   font-size: 1.18rem !important;
-  line-height: 1.62 !important;
+  line-height: 1.6 !important;
+  letter-spacing: -0.002em;
   color: var(--verity-ink) !important;
   font-weight: 400 !important;
+  margin-top: 0.6rem !important;
+  margin-bottom: 1.8rem !important;
+  max-width: 44rem !important;
 }
 
 article main h2 {

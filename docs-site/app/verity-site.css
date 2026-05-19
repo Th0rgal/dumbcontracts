@@ -170,7 +170,26 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--verity-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--verity-accent) 30%, transparent);
+  color: var(--verity-heading);
+}
+
+.dark ::selection {
+  /* On a deep slate background the 30% mix reads almost black; use a
+     stronger teal-on-ink combo so highlighted text remains legible. */
+  background: color-mix(in srgb, var(--verity-accent) 38%, var(--verity-bg));
+  color: var(--verity-heading);
+}
+
+/* <mark> — semantically-highlighted text inside the article body.
+   Currently unused but content authors might wrap a key term in a
+   <mark> and expect a subtle yellow-highlighter. Use our palette so
+   it reads as "emphasised" without breaking the cold theme. */
+article main mark,
+mark {
+  background: color-mix(in srgb, var(--verity-accent) 22%, transparent);
+  color: var(--verity-heading);
+  padding: 0 0.18em;
 }
 
 /* Navbar — warm middle-tone between page cream and sidebar tan so it

@@ -5,16 +5,35 @@ import 'nextra-theme-docs/style.css'
 import './verity-site.css'
 import './verity-code.css'
 
+const SITE_URL = 'https://veritylang.com'
+const SITE_TITLE = 'Verity'
+const SITE_DESCRIPTION =
+  'A Lean-native EDSL for verified smart contracts. Write the spec, write the implementation, and prove they agree — every claim is machine-checked at compile time.'
+
 export const metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Verity',
+    default: SITE_TITLE,
     template: '%s',
   },
-  description: 'Minimal Lean 4 EDSL for Smart Contracts with Formal Verification',
+  description: SITE_DESCRIPTION,
   icons: {
     icon: '/verity.svg',
     shortcut: '/verity.svg',
     apple: '/verity.svg',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: SITE_TITLE,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 }
 

@@ -707,6 +707,29 @@ article main a:hover,
 
 .subheading-anchor {
   color: var(--verity-muted) !important;
+  /* The Nextra subheading anchor is a `#` that appears beside a
+     heading on hover (desktop). Subtly fade it in so it doesn't
+     blink-attack the reader, and on mobile (where the heading is
+     never hovered) keep it hidden so we don't reserve gutter space
+     for it. */
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+article main h1:hover .subheading-anchor,
+article main h2:hover .subheading-anchor,
+article main h3:hover .subheading-anchor,
+article main h4:hover .subheading-anchor,
+article main h5:hover .subheading-anchor,
+article main h6:hover .subheading-anchor,
+.subheading-anchor:focus-visible {
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .subheading-anchor {
+    display: none !important;
+  }
 }
 
 /* The right-rail "Question? Give us feedback / Edit this page" footer
@@ -1192,6 +1215,18 @@ input:focus-visible,
 
 .verity-hero__cta:hover span {
   transform: translateX(0.18rem);
+}
+
+/* Tap feedback on phones — :hover is unreliable on touch, so give
+   both buttons a visible :active state that reads as "pressed". */
+.verity-hero__cta:active {
+  transform: translateY(1px);
+  background: var(--verity-accent-strong, var(--verity-accent)) !important;
+}
+
+.verity-hero__paper:active {
+  transform: translateY(1px);
+  background: color-mix(in srgb, var(--verity-accent) 18%, transparent) !important;
 }
 
 .verity-hero__cta:focus-visible,

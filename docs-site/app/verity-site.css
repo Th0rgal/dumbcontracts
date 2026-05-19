@@ -130,6 +130,9 @@ body {
   background: var(--verity-page);
   color: var(--verity-ink);
   font-family: var(--verity-font-prose);
+  /* iOS Safari's default tap highlight is a translucent grey rect;
+     replace with a faint teal that matches the palette. */
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--verity-accent) 18%, transparent);
 }
 
 [class*="x:text-blue"],
@@ -561,6 +564,10 @@ article main p {
   font-size: 1.045rem !important;
   line-height: 1.72 !important;
   color: var(--verity-ink) !important;
+  /* Modern browsers: `text-wrap: pretty` lets the browser balance the
+     last few lines of a paragraph so we don't end on a single
+     "widow" word. Falls back gracefully on Safari. */
+  text-wrap: pretty;
 }
 
 article main h1,
@@ -685,6 +692,9 @@ article main a {
   font-weight: 600;
   text-decoration-color: color-mix(in srgb, var(--verity-accent) 45%, transparent) !important;
   text-underline-offset: 0.16em;
+  /* Finer hairline-style underline that doesn't fight the serif. */
+  text-decoration-thickness: 1px;
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--verity-accent) 15%, transparent);
 }
 
 article a:hover,

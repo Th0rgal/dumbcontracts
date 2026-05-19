@@ -925,6 +925,20 @@ input:focus-visible,
   }
 }
 
+/* On very narrow screens (iPhone SE etc), the kicker's wide tracking
+   forces line breaks between every word. Tighten so it reads as one
+   or two clean lines instead of four. */
+@media (max-width: 360px) {
+  .verity-hero .verity-kicker {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+  }
+
+  .verity-hero .verity-kicker span {
+    margin: 0 0.3em;
+  }
+}
+
 .verity-hero {
   display: grid;
   grid-template-rows: auto auto;

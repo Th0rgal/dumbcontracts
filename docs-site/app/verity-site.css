@@ -753,6 +753,14 @@ article main a {
   -webkit-tap-highlight-color: color-mix(in srgb, var(--verity-accent) 15%, transparent);
 }
 
+/* Override the browser default :visited (often purple) — visited
+   links stay in our palette but pick up a touch of muted weight so
+   you can still tell them apart on long reference pages. */
+article a:visited,
+article main a:visited {
+  color: color-mix(in srgb, var(--verity-accent) 75%, var(--verity-muted)) !important;
+}
+
 article a:hover,
 article main a:hover,
 .nextra-breadcrumb a:hover,

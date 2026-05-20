@@ -3,7 +3,8 @@ import Compiler.Proofs.IRGeneration.ParamLoading
 import Compiler.Proofs.IRGeneration.SourceSemantics
 import Compiler.Proofs.IRGeneration.SupportedSpec
 import Compiler.Proofs.IRGeneration.ExprCore
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeLemmas
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBuiltinSemantics
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanPureBuiltinLemmas
 
 set_option linter.unnecessarySimpa false
 set_option linter.unusedSimpArgs false
@@ -700,7 +701,9 @@ theorem evalIRExpr_byte_of_eval
       some (Verity.Core.Uint256.byte
         (Verity.Core.Uint256.ofNat (indexVal % Compiler.Constants.evmModulus))
         (Verity.Core.Uint256.ofNat (valueVal % Compiler.Constants.evmModulus))).val := by
-  simp [evalIRExpr, evalIRCall, evalIRExprs, hindex, hvalue]
+  simp [evalIRExpr, evalIRCall, evalIRExprs, hindex, hvalue,
+    Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithEvmYulLeanContext,
+    Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallViaEvmYulLean]
 
 theorem evalIRExpr_signextend_of_eval
     {state : IRState}

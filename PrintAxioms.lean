@@ -52,12 +52,13 @@ import Compiler.Proofs.IRGeneration.SupportedSpec
 import Compiler.Proofs.KeccakBound
 import Compiler.Proofs.MappingSlot
 import Compiler.Proofs.StorageBounds
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBodyClosure
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeLemmas
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgePredicates
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBuiltinSemantics
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanCallClosure
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeSignedArithLemmas
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanPureBuiltinLemmas
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanSignedArithSpec
@@ -1342,9 +1343,6 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_selector_hit_ok_mapping_canonical_ofIR_globalDefaults  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_selector_hit_ok_mapping_canonical_preserved_ofIR_environment  -- private
   -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_selector_hit_ok_mapping_canonical_preserved_ofIR_globalDefaults  -- private
-  -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_callDispatcher_of_generated_callDispatcher_match  -- private
-  -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_of_lowered_generated_callDispatcher_noMapping  -- private
-  -- Compiler.Proofs.EndToEnd.compile_preserves_native_evmYulLean_of_lowered_generated_callDispatcher_mapping  -- private
   -- Compiler.Proofs.EndToEnd.layers2_3_ir_matches_native_evmYulLean_of_generated_dispatcherExec_project_match  -- private
   -- Compiler.Proofs.EndToEnd.layers2_3_ir_matches_native_evmYulLean_of_generated_dispatcherExec_positive_body_closure  -- private
   -- Compiler.Proofs.EndToEnd.layers2_3_ir_matches_native_evmYulLean_of_generated_dispatcherExec_positive_body_closure_ofIR_environment  -- private
@@ -3208,35 +3206,6 @@ end Verity.AxiomAudit
   Compiler.Proofs.StorageBounds.writeStorageArray_storage_unchanged
   Compiler.Proofs.StorageBounds.writeStorageArray_events_unchanged
 
-  -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanAdapter.lean
-  Compiler.Proofs.YulGeneration.Backends.lowerExprNative_call_runtimePrimOp
-  Compiler.Proofs.YulGeneration.Backends.lowerExprNative_call_userFunction
-  Compiler.Proofs.YulGeneration.Backends.lowerNativeSwitchBlock_eq
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds_nil
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds_cons
-  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_nil
-  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_cons
-  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_find?_none
-  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_find?_some
-  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_tags_eq
-  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_length_eq
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_comment
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_let
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_letMany
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_assign
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_expr
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_leave
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_if
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_for
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_switch
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_block
-  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_funcDef
-  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_nil
-  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_funcDef_cons
-  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_funcDef_cons_empty_of_lowerFunctionDefinition
-  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_stmt_cons
-  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative_empty
-
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanBodyClosure.lean
   Compiler.Proofs.YulGeneration.Backends.isDynamicParamType_false_of_static_scalar
   -- Compiler.Proofs.YulGeneration.Backends.bridgedExpr_calldataload_lit  -- private
@@ -3855,8 +3824,6 @@ end Verity.AxiomAudit
   -- Compiler.Proofs.YulGeneration.Backends.verity_eval_byte_normalized  -- private
   -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_byte_normalized  -- private
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_byte_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallViaEvmYulLean_byte_uint256
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithEvmYulLeanContext_byte_uint256
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_byte_bridge
   -- Compiler.Proofs.YulGeneration.Backends.verity_eval_slt_normalized  -- private
   -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_slt_normalized  -- private
@@ -4098,6 +4065,10 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.BridgedStmts_cons_log
   Compiler.Proofs.YulGeneration.Backends.BridgedStmts_singleton_funcDef
   Compiler.Proofs.YulGeneration.Backends.BridgedStmts_cons_funcDef
+
+  -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanBuiltinSemantics.lean
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallViaEvmYulLean_byte_uint256
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithEvmYulLeanContext_byte_uint256
 
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanCallClosure.lean
   Compiler.Proofs.YulGeneration.Backends.BridgedFunctionTable.bodies_bridged
@@ -5423,6 +5394,35 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_lowerStmtsNativeWithSwitchIds_with_leave_ok_eq_of_NativeBlockPreservesWord
   Compiler.Proofs.YulGeneration.Backends.Native.exec_block_lowerStmtsNativeWithSwitchIds_ok_eq_of_NativeBlockPreservesWord
 
+  -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeLowering.lean
+  Compiler.Proofs.YulGeneration.Backends.lowerExprNative_call_runtimePrimOp
+  Compiler.Proofs.YulGeneration.Backends.lowerExprNative_call_userFunction
+  Compiler.Proofs.YulGeneration.Backends.lowerNativeSwitchBlock_eq
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds_nil
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtsNativeWithSwitchIds_cons
+  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_nil
+  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_cons
+  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_find?_none
+  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_find?_some
+  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_tags_eq
+  Compiler.Proofs.YulGeneration.Backends.lowerSwitchCasesNativeWithSwitchIds_length_eq
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_comment
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_let
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_letMany
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_assign
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_expr
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_leave
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_if
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_for
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_switch
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_block
+  Compiler.Proofs.YulGeneration.Backends.lowerStmtGroupNativeWithSwitchIds_funcDef
+  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_nil
+  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_funcDef_cons
+  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_funcDef_cons_empty_of_lowerFunctionDefinition
+  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNativeAux_stmt_cons
+  Compiler.Proofs.YulGeneration.Backends.lowerRuntimeContractNative_empty
+
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeSignedArithLemmas.lean
   -- Compiler.Proofs.YulGeneration.Backends.fin_val_mul_neg1  -- private
   -- Compiler.Proofs.YulGeneration.Backends.natAbs_ofNat_sub  -- private
@@ -5504,6 +5504,9 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_not_native
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_shl_native
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_shr_native
+  -- Compiler.Proofs.YulGeneration.Backends.nat_land_0xFF  -- private
+  -- Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_byte_normalized  -- private
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_byte_native
 
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSignedArithSpec.lean
   Compiler.Proofs.YulGeneration.Backends.SignedArithSpec.specSignBit_lt_specModulus
@@ -5636,4 +5639,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5350 theorems/lemmas (3639 public, 1711 private, 0 sorry'd)
+-- Total: 5350 theorems/lemmas (3640 public, 1710 private, 0 sorry'd)

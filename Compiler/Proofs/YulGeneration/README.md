@@ -17,14 +17,16 @@ trust boundary, not an alternate compiler-correctness target.
   - Proves agreement with the EVMYulLean-backed builtin evaluator
   - Kept out of the public EndToEnd semantic target
 
-- **`ReferenceOracle/State.lean`** - Compatibility re-export for shared
-  runtime state types
-
 - **`Backends/EvmYulLeanNativeHarness.lean`** - Native EVMYulLean execution
   harness
   - Lowers emitted runtime code to executable EVMYulLean contracts
   - Provides the native `callDispatcher` result surface used by the active
     end-to-end theorem stack
+
+- **`Backends/EvmYulLeanNativeLowering.lean`** - Native runtime lowering
+  - Maps supported emitted Yul builtins to EVMYulLean primops
+  - Lowers generated runtime statements and function definitions into native
+    EVMYulLean contracts
 
 - **`Backends/EvmYulLeanBodyClosure.lean`** - Native safe-body closure layer
   - Packages supported source fragments into `BridgedSafeStmts`

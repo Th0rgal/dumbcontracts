@@ -1,5 +1,6 @@
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter
+import Compiler.Constants
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanSignedArithSpec
+import EvmYul.UInt256
 import Mathlib.Data.Nat.Bitwise
 import Verity.Core.Int256
 import Verity.Core.Uint256

@@ -11,7 +11,6 @@ Mode: incremental (cached) build
 | 1 | `Compiler.MainTest` | 5.52 |
 | 2 | `Compiler.Proofs.EndToEnd` | 0.88 |
 | 3 | `Compiler.Proofs.YulGeneration.StatementEquivalence` | 0.77 |
-| 4 | `Compiler.Proofs.YulGeneration.Preservation` | 0.76 |
 
 ## Full Profile
 
@@ -20,7 +19,6 @@ Mode: incremental (cached) build
 | `Compiler.MainTest` | 5.52 |
 | `Compiler.Proofs.EndToEnd` | 0.88 |
 | `Compiler.Proofs.YulGeneration.StatementEquivalence` | 0.77 |
-| `Compiler.Proofs.YulGeneration.Preservation` | 0.76 |
 | `Compiler.TypedIRCompilerCorrectness` | 0.60 |
 
 ## Next Actions

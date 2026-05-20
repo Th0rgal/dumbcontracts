@@ -70,8 +70,9 @@ verify-packages: ## Verify split Lake packages build independently
 	python3 scripts/check_split_package_builds.py
 
 verify-targeted: ## Fast local iteration on hotspot modules before full verify
-	lake build Compiler.Proofs.SemanticBridge
-	lake build Compiler.Proofs.YulGeneration.Preservation
+	lake build Compiler.Proofs.IRGeneration.SourceSemantics
+	lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBuiltinSemantics
+	lake build Compiler.Proofs.IRGeneration.FunctionBody
 	lake build Compiler.Proofs.EndToEnd
 
 profile-lean: ## Profile Lean module build time and update docs/LEAN_PERF_QUEUE.md

@@ -35,9 +35,10 @@ comparison oracle stack to conformance-only coverage. `IRGeneration/FunctionBody
 now consumes direct EVMYulLean builtin facts, and `scripts/check_yul.py`
 enforces the native `EvmYulLeanBuiltinSemantics` boundary rather than requiring
 the reference oracle as the builtin boundary. `ReferenceOracle/Builtins.lean`
-is no longer on that production proof import path. Removing it outright would
-still break the legacy bridge test, the bridge lemma module, and axiom-report
-coverage.
+is no longer on that production proof import path, and `make verify-targeted`
+now builds the direct native builtin semantics path instead of the legacy bridge
+comparison module. Removing the reference oracle outright would still break the
+legacy bridge test, the bridge lemma module, and axiom-report coverage.
 
 ## Current Inventory
 
@@ -53,6 +54,7 @@ coverage.
 | Builtin reference oracle | `ReferenceOracle/Builtins.lean` | Keep as conformance/reporting scaffolding until replaced | Directly imported by `EvmYulLeanBridgeLemmas.lean`, `EvmYulLeanBridgeTest.lean`, and `PrintAxioms.lean`; defines `legacyEvalBuiltinCall*` and backend comparison dispatch. |
 | Builtin bridge lemmas | `EvmYulLeanBridgeLemmas.lean` | Keep as conformance/reporting scaffolding until replaced | Proves EVMYulLean builtin behavior agrees with legacy builtin formulas; imported by bridge tests and `PrintAxioms.lean`, but no longer by `IRGeneration/FunctionBody.lean`. |
 | Builtin bridge test | `EvmYulLeanBridgeTest.lean` | Keep as conformance test, or move under a test-only namespace | Referenced by `Makefile` and fork conformance workflow. No production proof imports it. |
+| Targeted native proof iteration | `make verify-targeted` | Native production path enforced | Builds `EvmYulLeanBuiltinSemantics`, `FunctionBody`, and `EndToEnd`; legacy builtin comparison is covered by the fork conformance target instead. |
 | Yul builtin-boundary CI check | `scripts/check_yul.py` | Native boundary enforced | The checker now requires `IRInterpreter.lean` to import `EvmYulLeanBuiltinSemantics` and call `evalBuiltinCallWithEvmYulLeanContext`; reference-oracle calls no longer satisfy this boundary. |
 | Reference state re-export | removed | Removed in the cleanup PR | It had no direct imports and only re-exported `RuntimeTypes`. |
 | Removed retarget stack | `EvmYulLeanRetarget.lean`, older adapter-correctness modules | Already removed | Only mentioned in docs/comments. |

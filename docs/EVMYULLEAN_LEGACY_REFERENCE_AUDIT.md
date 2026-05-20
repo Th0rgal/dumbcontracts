@@ -41,7 +41,8 @@ Until that is done, removing `ReferenceOracle/Builtins.lean` or
 | --- | --- | --- | --- |
 | Native public target | `Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeHarness.lean`, `Compiler/Proofs/EndToEnd.lean` | Keep | Provides native runtime lowering, `callDispatcher`, checkpoint-aware switch tails, and EndToEnd composition. |
 | Native state projection | `EvmYulLeanStateBridge.lean` | Keep | Converts Verity `YulState`/IR storage views to EVMYulLean shared state. Directly imported by the native harness. |
-| Runtime adapter | `EvmYulLeanAdapter.lean` | Keep for now | Native lowering lives here, but the file also contains historical structural lowering. Split later. |
+| Runtime adapter | `EvmYulLeanAdapter.lean` | Keep for compatibility | Historical structural lowering remains here for tests and report compatibility. Native runtime lowering has moved to `EvmYulLeanNativeLowering.lean`. |
+| Native runtime lowering | `EvmYulLeanNativeLowering.lean` | Keep | Maps emitted Yul builtins to EVMYulLean primops and lowers generated runtime statements/functions into native contracts. |
 | Bridge predicates | `EvmYulLeanBridgePredicates.lean` | Keep for now | Current body closure and native harness consume `BridgedExpr`, `BridgedStmts`, and related admissibility predicates. |
 | Body closure | `EvmYulLeanBodyClosure.lean` | Keep | Imported by EndToEnd and proves supported source bodies satisfy native bridge predicates. |
 | Source/call closure | `EvmYulLeanSourceExprClosure.lean`, `EvmYulLeanCallClosure.lean` | Keep or demote to development-only after checking `PrintAxioms` policy | Source closure is imported by body closure. Call closure is only imported by `PrintAxioms.lean` and docs in this audit. |
@@ -61,14 +62,16 @@ Direct imports found in the current tree:
   - `Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeTest`
   - `PrintAxioms`
 - The removed reference state re-export had no direct imports.
-- `EvmYulLeanAdapter.lean` is imported by:
+- `EvmYulLeanNativeLowering.lean` is imported by:
   - `Compiler.Proofs.ArithmeticProfile`
+  - `EvmYulLeanAdapter`
   - `EvmYulLeanBridgeLemmas`
-  - `EvmYulLeanBridgeTest`
   - `EvmYulLeanBuiltinSemantics`
   - `EvmYulLeanNativeHarness`
   - `EvmYulLeanNativeSignedArithLemmas`
   - `EvmYulLeanPureBuiltinLemmas`
+- `EvmYulLeanAdapter.lean` is imported by:
+  - `EvmYulLeanBridgeTest`
   - `PrintAxioms`
 - `EvmYulLeanBridgeLemmas.lean` is imported by:
   - `Compiler.Proofs.IRGeneration.FunctionBody`
@@ -165,19 +168,10 @@ so they no longer read as "bridge from a legacy semantics."
 
 ### `EvmYulLeanAdapter.lean`
 
-Keep for now, but split later. It currently mixes:
-
-- historical structural lowering (`lowerExpr`, `lowerStmtGroup`, `lowerProgram`);
-- native runtime lowering (`lookupRuntimePrimOp`, runtime lowering helpers);
-- builtin helpers consumed by native proof modules.
-
-The native path still imports this file. Removing it wholesale is not safe.
-The right cleanup is a staged extraction:
-
-1. move native runtime lowering and builtin helpers into a native module;
-2. update `EvmYulLeanNativeHarness.lean` and builtin proofs to import the native
-   module directly;
-3. demote historical structural lowering to tests or remove it if unused.
+Keep for compatibility. It now contains the historical structural lowering
+surface (`lowerExpr`, `lowerStmtGroup`, `lowerProgram`) and imports
+`EvmYulLeanNativeLowering.lean` so older imports still see native declarations.
+Production native proof modules import the native lowering module directly.
 
 ### `EvmYulLeanBodyClosure.lean` and `EvmYulLeanSourceExprClosure.lean`
 

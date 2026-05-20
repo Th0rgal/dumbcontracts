@@ -23,6 +23,11 @@ trust boundary, not an alternate compiler-correctness target.
   - Provides the native `callDispatcher` result surface used by the active
     end-to-end theorem stack
 
+- **`Backends/EvmYulLeanNativeLowering.lean`** - Native runtime lowering
+  - Maps supported emitted Yul builtins to EVMYulLean primops
+  - Lowers generated runtime statements and function definitions into native
+    EVMYulLean contracts
+
 - **`Backends/EvmYulLeanBodyClosure.lean`** - Native safe-body closure layer
   - Packages supported source fragments into `BridgedSafeStmts`
   - Proves emitted Yul fragments satisfy native bridge predicates

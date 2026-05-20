@@ -1,4 +1,4 @@
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering
 
 namespace Compiler.Proofs.YulGeneration.Backends
 

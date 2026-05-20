@@ -33371,21 +33371,23 @@ private theorem simpleStorageNativeDispatcherStmts_lowering_ok :
         [Compiler.CodegenCommon.buildSwitch
           simpleStorageIRContract.functions none none] =
       .ok simpleStorageNativeDispatcherStmts := by
-  have hOk :
-      (match Compiler.Proofs.YulGeneration.Backends.lowerStmtsNative
-          [Compiler.CodegenCommon.buildSwitch
-            simpleStorageIRContract.functions none none] with
-      | .ok _ => true
-      | .error _ => false) = true := by
-    native_decide
-  cases hLower : Compiler.Proofs.YulGeneration.Backends.lowerStmtsNative
+  obtain ⟨lowered, hLower⟩ :=
+    Compiler.Proofs.YulGeneration.Backends.Native.lowerStmtsNative_ok_of_yulStmtsContainFuncDef_false
       [Compiler.CodegenCommon.buildSwitch
-        simpleStorageIRContract.functions none none] with
-  | ok lowered =>
-      simp [simpleStorageNativeDispatcherStmts, hLower]
-  | error err =>
-      rw [hLower] at hOk
-      cases hOk
+        simpleStorageIRContract.functions none none] (by
+          have hBodies :
+              ∀ fn, fn ∈ simpleStorageIRContract.functions →
+                Compiler.Proofs.YulGeneration.Backends.Native.yulStmtsContainFuncDef
+                  fn.body = false := by
+            intro fn hmem
+            simp [simpleStorageIRContract] at hmem ⊢
+            rcases hmem with rfl | rfl <;> rfl
+          have hSwitch :=
+            Compiler.Proofs.YulGeneration.Backends.Native.buildSwitch_noFuncDefs_noFallback_noReceive
+              simpleStorageIRContract.functions hBodies
+          simpa [Compiler.Proofs.YulGeneration.Backends.Native.yulStmtsContainFuncDef,
+            hSwitch])
+  simp [simpleStorageNativeDispatcherStmts, hLower]
 
 /-- The SimpleStorage native dispatcher statement list is a singleton `.Block`.
 

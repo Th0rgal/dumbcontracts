@@ -96,7 +96,7 @@ jobs:
               command=(make check)
               ;;
             evmyullean-smoke)
-              command=(lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeSmokeTest)
+              command=(lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness)
               ;;
             print-axioms)
               command=(lake build PrintAxioms)

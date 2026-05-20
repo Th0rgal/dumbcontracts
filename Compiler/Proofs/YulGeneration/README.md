@@ -17,9 +17,6 @@ trust boundary, not an alternate compiler-correctness target.
   - Proves agreement with the EVMYulLean-backed builtin evaluator
   - Kept out of the public EndToEnd semantic target
 
-- **`ReferenceOracle/State.lean`** - Compatibility re-export for shared
-  runtime state types
-
 - **`Backends/EvmYulLeanNativeHarness.lean`** - Native EVMYulLean execution
   harness
   - Lowers emitted runtime code to executable EVMYulLean contracts

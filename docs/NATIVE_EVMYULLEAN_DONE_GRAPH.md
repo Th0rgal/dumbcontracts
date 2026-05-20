@@ -164,7 +164,6 @@ N8 public Layer 3 theorem flip
 - **Verification**:
   - `lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanStateBridge`
   - `lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness`
-  - `lake env lean Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeSmokeTest.lean`
 
 ### N2: Native Result Projection
 
@@ -226,7 +225,6 @@ N8 public Layer 3 theorem flip
     restricted by generated-fragment invariants.
 - **Verification**:
   - `lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness`
-  - `lake env lean Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeSmokeTest.lean`
 
 ### N3: Native Dispatcher Skeleton
 

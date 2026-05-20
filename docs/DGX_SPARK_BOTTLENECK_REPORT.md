@@ -48,7 +48,6 @@ Selected module `:olean` rebuild times after priming dependencies with `lake bui
 | `Compiler.TypedIRCompilerCorrectness` | 8.1s |
 | `Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeLemmas` | 7.5s |
 | `Compiler.Proofs.YulGeneration.StatementEquivalence` | 4.8s |
-| `Compiler.Proofs.YulGeneration.Preservation` | 4.0s |
 
 ## Bottlenecks
 

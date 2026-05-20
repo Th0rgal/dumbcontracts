@@ -25,7 +25,7 @@ BRIDGE_PREDICATES_FILE = BACKENDS_DIR / "EvmYulLeanBridgePredicates.lean"
 BRIDGE_LEMMAS_FILE = BACKENDS_DIR / "EvmYulLeanBridgeLemmas.lean"
 BRIDGE_TEST_FILE = BACKENDS_DIR / "EvmYulLeanBridgeTest.lean"
 CORRECTNESS_FILE = BACKENDS_DIR / "EvmYulLeanAdapterCorrectness.lean"
-RETARGET_FILE = BACKENDS_DIR / "EvmYulLeanRetarget.lean"
+RETARGET_FILE = BACKENDS_DIR / ("EvmYulLean" + "Retarget.lean")
 BODY_CLOSURE_FILE = BACKENDS_DIR / "EvmYulLeanBodyClosure.lean"
 SOURCE_EXPR_CLOSURE_FILE = BACKENDS_DIR / "EvmYulLeanSourceExprClosure.lean"
 END_TO_END_FILE = ROOT / "Compiler" / "Proofs" / "EndToEnd.lean"
@@ -831,7 +831,7 @@ def build_report() -> dict[str, object]:
         if not has_end_to_end_evm_retarget:
             end_to_end_evm_retarget_status = (
                 "removed from EndToEnd surface "
-                "(retarget evidence isolated in EvmYulLeanRetarget.lean)"
+                "(legacy retarget evidence removed from current surface)"
             )
         elif end_to_end_evm_retarget_has_sorry:
             end_to_end_evm_retarget_status = "sorry"

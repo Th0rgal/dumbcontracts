@@ -487,9 +487,8 @@ ALLOWLIST: set[str] = {
     # Projected native dispatcher result wrapper has a short proof body, but
     # the scanner includes the following public runtime-harness doc block.
     "nativeDispatcherExecMatchesIRPositive_of_project_eq_match",
-    # Private transition wrapper retained only in EvmYulLeanRetarget; the proof
-    # is a thin composition but its statement carries the full bridged-body
-    # hypotheses for the isolated legacy regression boundary.
+    # Historical private transition wrapper retained in the allowlist only for
+    # old reports; current native proofs no longer build a retarget module.
     "interpretYulFromIR_evmYulLean_eq_on_bridged_bodies",
     # Scalar parameter body closure is a structural induction over the six
     # scalar ABI cases emitted by `genParamLoadBodyFrom`.

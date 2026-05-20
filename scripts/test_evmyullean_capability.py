@@ -29,7 +29,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
             builtins_file = Path(tmpdir) / "Builtins.lean"
             builtins_file.write_text(
                 "namespace X\n\n"
-                "def legacyEvalBuiltinCallWithContext (func : String) (argVals : List Nat) : Option Nat :=\n"
+                "def evalBuiltinCallWithEvmYulLeanContext (func : String) (argVals : List Nat) : Option Nat :=\n"
                 "  let op := \"create\"\n"
                 "  if func = op then\n"
                 "    some 1\n"
@@ -51,7 +51,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
                 "namespace X\n\n"
                 "def evalBuiltinCallWithBackendContext (func : String) : Option Nat :=\n"
                 "  if func = \"address\" then some 1 else none\n\n"
-                "def legacyEvalBuiltinCallWithContext (func : String) : Option Nat :=\n"
+                "def evalBuiltinCallWithEvmYulLeanContext (func : String) : Option Nat :=\n"
                 "  if func = \"add\" then some 1 else none\n",
                 encoding="utf-8",
             )
@@ -67,7 +67,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
             builtins_file = Path(tmpdir) / "Builtins.lean"
             builtins_file.write_text(
                 "namespace X\n\n"
-                "def evalBuiltinCall (func : String) (argVals : List Nat) : Option Nat :=\n"
+                "def evalBuiltinCallViaEvmYulLean (func : String) (argVals : List Nat) : Option Nat :=\n"
                 "  if func = op then\n"
                 "    some 1\n"
                 "  else\n"
@@ -86,7 +86,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
             builtins_file = Path(tmpdir) / "Builtins.lean"
             builtins_file.write_text(
                 "namespace X\n\n"
-                "private def evalBuiltinCall (func : String) (argVals : List Nat) : Option Nat :=\n"
+                "private def evalBuiltinCallViaEvmYulLean (func : String) (argVals : List Nat) : Option Nat :=\n"
                 "  if func = \"calldatasize\" then\n"
                 "    some 1\n"
                 "  else\n"
@@ -105,7 +105,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
             builtins_file = Path(tmpdir) / "Builtins.lean"
             builtins_file.write_text(
                 "namespace X\n\n"
-                "def evalBuiltinCall (func : String) (argVals : List Nat) : Option Nat :=\n"
+                "def evalBuiltinCallViaEvmYulLean (func : String) (argVals : List Nat) : Option Nat :=\n"
                 "  let base : String := \"extcodecopy\"\n"
                 "  let op := base\n"
                 "  if func = op then\n"
@@ -126,7 +126,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
             builtins_file = Path(tmpdir) / "Builtins.lean"
             builtins_file.write_text(
                 "namespace X\n\n"
-                "def evalBuiltinCall (func : String) (argVals : List Nat) : Option Nat :=\n"
+                "def evalBuiltinCallViaEvmYulLean (func : String) (argVals : List Nat) : Option Nat :=\n"
                 "  let op := (\"create2\")\n"
                 "  if func = op then\n"
                 "    some 1\n"
@@ -146,7 +146,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
             builtins_file = Path(tmpdir) / "Builtins.lean"
             builtins_file.write_text(
                 "namespace X\n\n"
-                "def evalBuiltinCall (func : String) (argVals : List Nat) : Option Nat :=\n"
+                "def evalBuiltinCallViaEvmYulLean (func : String) (argVals : List Nat) : Option Nat :=\n"
                 "  if func = op then\n"
                 "    some 1\n"
                 "  else\n"

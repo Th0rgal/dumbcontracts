@@ -65,7 +65,6 @@ import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanSignedArithSpec
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanSourceExprClosure
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanStateBridge
 import Compiler.Proofs.YulGeneration.IRFuel
-import Compiler.Proofs.YulGeneration.ReferenceOracle.Builtins
 import Compiler.Proofs.YulGeneration.RuntimeTypes
 
 import Lean
@@ -3753,48 +3752,45 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.compileStmtList_always_noFuncDefs
 
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanBridgeLemmas.lean
-  -- Compiler.Proofs.YulGeneration.Backends.word_lt_uint256_size  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_ofNat_mod_evmModulus  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_add_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_add_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_sub_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_sub_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_mul_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_mul_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_div_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_div_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_mod_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_mod_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_eq_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_eq_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_iszero_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_iszero_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_lt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_lt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_gt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_gt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_and_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_or_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_xor_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.xor_all_ones_uint256_word  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_not_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_shl_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_shr_normalized  -- private
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_add_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sub_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_mul_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_div_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_mod_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_eq_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_iszero_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_addmod_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_mulmod_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_exp_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sdiv_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_smod_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_lt_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_gt_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_slt_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sgt_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_eq_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_iszero_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_and_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_or_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_xor_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_not_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_shl_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_shr_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sar_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_signextend_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_byte_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_sload
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_caller
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_address
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_callvalue
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_timestamp
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_number
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_chainid
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_blobbasefee
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_calldataload
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_calldatasize
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_mappingSlot
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_calldataload_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sload_bridge
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_mappingSlot_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_add_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_sub_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_mul_bridge
@@ -3810,124 +3806,16 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_not_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_shl_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_shr_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_addmod_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.eq0_true_of_val_eq_zero  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.eq0_false_of_val_ne_zero  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_addmod_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_mulmod_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_mulmod_normalized  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_addmod_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_mulmod_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_addmod_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_mulmod_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.nat_land_0xFF  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_byte_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_byte_normalized  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_byte_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_byte_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_slt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_slt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_sgt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_sgt_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_ofNat_lt_iff  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_sub_lt_sub_iff  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_neg_lt_pos_evm  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_pos_not_lt_neg_evm  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.toNat_fromBool  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_lt_iff_nat_lt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.slt_int256_eq_sltBool  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_slt_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_slt_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.sgt_int256_eq_sgtBool  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sgt_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_sgt_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_exp_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_exp_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_mul_toNat  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evmModulus_eq_uint256Size  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_toNat_lt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.modPowAux_eq_powAux  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.exp_natModPow_eq_uint256Exp  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_exp_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_exp_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_sdiv_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_sdiv_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.fin_val_mul_neg1  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.natAbs_ofNat_sub  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.sdiv_int256_eq_uint256Sdiv  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sdiv_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_sdiv_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_smod_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_smod_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_ofInt_nat_toUint256_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_ofInt_neg_nat_toUint256_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_ofUint256_coe_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.evmModulus_eq_specModulus  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_modulus_eq_specModulus  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.signedAbsNat_of_ofUint256  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_coe_lt_zero_iff  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_coe_eq_zero_iff  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_mod_toUint256_val_eq_smodSpec  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_abs_toNat_eq_specAbs  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_mod_toNat_of_nonzero  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_toSigned_ofNat_toNat_of_lt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_toSigned_negSucc_toNat_of_lt  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_smod_toNat_eq_smodSpec  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.smod_int256_eq_uint256Smod  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_smod_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_smod_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_sar_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_sar_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_lt_zero_false  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_complement_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_complement_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_shiftRight_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.uint256_sar_toNat_eq_sarSpec  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_two_pow_eq_nat  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_fdiv_ofNat_two_pow  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_sub_modulus_eq_negSucc  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int_fdiv_neg_raw_two_pow  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_ofInt_negSucc_toUint256_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.int256_sar_toUint256_val_eq_sarSpec  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.sar_int256_eq_uint256Sar  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sar_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_sar_bridge
-  -- Compiler.Proofs.YulGeneration.Backends.verity_eval_signextend_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.bridge_eval_signextend_normalized  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_uint256_eq_of_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_lor_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_land_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_sub_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_tb_pow_sub_pow  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_tb_ne_zero  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_tb_eq_zero  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_set_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_clear_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_tb_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_shiftLeft_one_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_val_val_of_eq  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_sign_set  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_sign_clear  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_nat_to_sign  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_verity_ofNat  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.se_size_to_uint256_val  -- private
-  -- Compiler.Proofs.YulGeneration.Backends.signextend_uint256_eq  -- private
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_signextend_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackend_evmYulLean_signextend_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_sload
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_caller
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_address
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_callvalue
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_timestamp
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_number
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_chainid
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_blobbasefee
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_calldataload
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_calldataload_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_sload_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCall_mappingSlot_bridge
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_calldatasize
-  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_mappingSlot
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackendContext_evmYulLean_add_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackendContext_evmYulLean_sub_bridge
   Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackendContext_evmYulLean_mul_bridge
@@ -5617,26 +5505,9 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.execIRStmtsFuel_cons
   Compiler.Proofs.YulGeneration.execIRFunctionFuel_adequate
 
-  -- Compiler/Proofs/YulGeneration/ReferenceOracle/Builtins.lean
-  -- Compiler.Proofs.YulGeneration.defaultBuiltinBackend_eq_evmYulLean  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_callvalue_nil  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_callvalue_context  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_calldatasize_nil  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_caller_nil  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_address_nil  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_timestamp_nil  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_number_nil  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_chainid_nil  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_blobbasefee_nil  -- private
-  -- Compiler.Proofs.YulGeneration.calldataloadWord_offset4  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_calldataload_offset4_single  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend_calldataload_offset4_single  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCall_sload_single  -- private
-  -- Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackend_sload_single  -- private
-
   -- Compiler/Proofs/YulGeneration/RuntimeTypes.lean
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_sender
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5350 theorems/lemmas (3640 public, 1710 private, 0 sorry'd)
+-- Total: 5224 theorems/lemmas (3640 public, 1584 private, 0 sorry'd)

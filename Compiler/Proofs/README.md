@@ -25,8 +25,7 @@ All three layers carry zero project-specific axioms.
 | [`IRGeneration/GenericInduction.lean`](IRGeneration/GenericInduction.lean) | Helper-aware induction interfaces |
 | [`YulGeneration/Backends/EvmYulLeanNativeHarness.lean`](YulGeneration/Backends/EvmYulLeanNativeHarness.lean) | Native EVMYulLean runtime lowering and dispatcher-exec harness |
 | [`YulGeneration/Backends/EvmYulLeanBodyClosure.lean`](YulGeneration/Backends/EvmYulLeanBodyClosure.lean) | Safe-body closure predicates and native bridge witnesses |
-| [`YulGeneration/Backends/EvmYulLeanBridgeLemmas.lean`](YulGeneration/Backends/EvmYulLeanBridgeLemmas.lean) | Builtin equivalence lemmas against EVMYulLean semantics |
-| [`YulGeneration/ReferenceOracle/Builtins.lean`](YulGeneration/ReferenceOracle/Builtins.lean) | Legacy builtin comparison oracle used below the native trust boundary |
+| [`YulGeneration/Backends/EvmYulLeanBridgeLemmas.lean`](YulGeneration/Backends/EvmYulLeanBridgeLemmas.lean) | Native builtin routing lemmas for EVMYulLean semantics |
 
 ## Layer 2 Boundary Status
 

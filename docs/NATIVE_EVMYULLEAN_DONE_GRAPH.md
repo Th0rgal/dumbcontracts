@@ -292,8 +292,7 @@ N8 public Layer 3 theorem flip
     comparisons, calldata, memory, storage, keccak/slot computations, selector
     extraction, and supported builtins.
 - **Verification**:
-  - `lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanRetarget`
-  - `lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapterCorrectness`
+  - `lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering`
   - `lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness`
 
 ### N6: Whole Runtime Native/Interpreter Agreement

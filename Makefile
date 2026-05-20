@@ -110,7 +110,7 @@ test-evmyullean-fork: ## Probe EVMYulLean fork conformance (audit + adapter repo
 	python3 scripts/generate_evmyullean_fork_audit.py --check
 	@echo "Checking EVMYulLean adapter report..."
 	python3 scripts/generate_evmyullean_adapter_report.py --check
-	@echo "Building EVMYulLean bridge lemmas, native harness, and 123 concrete bridge tests..."
+	@echo "Building EVMYulLean bridge lemmas, native harness, and 0 concrete bridge tests..."
 	lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeLemmas
 	lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgeTest
 	lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness

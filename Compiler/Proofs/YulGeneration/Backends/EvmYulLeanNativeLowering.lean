@@ -1037,8 +1037,8 @@ def evalPureBuiltinViaEvmYulLean
     `storageLookup_projectStorage` in `EvmYulLeanStateBridge.lean` (projecting
     the abstract `storage : IRStorageSlot → IRStorageWord` into EVMYulLean's `Storage` recovers the
     same value). `mappingSlot` is bridged by routing through
-    `abstractMappingSlot` — the same keccak-faithful Solidity mapping-slot
-    derivation used by Verity's `legacyEvalBuiltinCallWithContext`; both backends
+    `abstractMappingSlot` — the keccak-faithful Solidity mapping-slot
+    derivation used by the native proof boundary; both backend projections
     ultimately compute `keccak256(abi.encode(key, baseSlot))`. Remaining
     context-dependent builtins (`caller`, `address`, `timestamp`, ...) are
     routed at the `evalBuiltinCallWithBackendContext` level. -/

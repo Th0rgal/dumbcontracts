@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Enforce EVMYulLean capability boundary for reference-oracle Yul builtins.
+"""Enforce EVMYulLean capability boundary for native Yul builtins.
 
 Issue #294 tracks replacing hand-rolled semantics with EVMYulLean. This check
-keeps `Compiler/Proofs/YulGeneration/ReferenceOracle/Builtins.lean` within an explicitly
-supported builtin surface so migration cannot silently expand into unsupported
-operations.
+keeps the native builtin dispatch within an explicitly supported builtin
+surface so migration cannot silently expand into unsupported operations.
 """
 
 from __future__ import annotations

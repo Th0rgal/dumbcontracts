@@ -1053,9 +1053,8 @@ theorem execIRStmts_single_block_stop_length_insufficient
 
 These are the IR-side companions to `NativePreservableStraightStmt`
 (`Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeHarness.lean:17864`).
-We use **option (b)** of the Layer A design (see
-`docs/NATIVE_EVMYULLEAN_G1_FOLLOWUP_PLAN.md`, Layer A): inline an IR-side
-analog predicate (`IRStmtPreservesObs`) here so that this module does not
+We use **option (b)** of the Layer A design: inline an IR-side analog predicate
+(`IRStmtPreservesObs`) here so that this module does not
 need to import the native-harness file (which would form a cycle via
 `Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter` →
 `Compiler.Proofs.IRGeneration.IRStorageWord`). The cross-cast from

@@ -61,7 +61,6 @@ class EvmYulLeanForkConformanceWorkflowTests(unittest.TestCase):
             "Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSignedArithSpec.lean",
             "Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSourceExprClosure.lean",
             "Compiler/Proofs/YulGeneration/Backends/EvmYulLeanStateBridge.lean",
-            "Compiler/Proofs/YulGeneration/ReferenceOracle/Builtins.lean",
         ]:
             self.assertEqual(
                 text.count(path),

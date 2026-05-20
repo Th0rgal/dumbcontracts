@@ -38,9 +38,6 @@ export const metadata = {
   creator: 'LFG Labs',
   publisher: 'LFG Labs',
   category: 'technology',
-  alternates: {
-    canonical: SITE_URL,
-  },
   icons: {
     icon: '/verity.svg',
     shortcut: '/verity.svg',
@@ -55,17 +52,18 @@ export const metadata = {
     locale: 'en_US',
     images: [
       {
-        url: '/verity.svg',
-        width: 512,
-        height: 512,
-        alt: 'Verity — Formally Verified Smart Contract Compiler',
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'Verity — Formally Verified Smart Contract Compiler (Lean 4)',
       },
     ],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    images: ['/og.png'],
     site: '@lfglabsdev',
     creator: '@lfglabsdev',
   },

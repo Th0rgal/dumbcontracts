@@ -8,11 +8,7 @@ The SimpleStorage native theorem discharges its retrieve, store, and selector
 bridge cases, and the public generated-dispatcher theorem family targets native
 EVMYulLean dispatcher execution. Removed transition evidence used to record a
 Verity-side Yul statement-interpreter path through the EVMYulLean-backed builtin
-backend:
-
-```lean
-interpretYulRuntimeWithBackend .evmYulLean
-```
+backend.
 
 The removed transition theorem name
 `yulCodegen_preserves_semantics_evmYulLeanBackend_via_reference_oracle` marks
@@ -64,8 +60,8 @@ The transition is done only when all criteria in this section are true on
 ### 1. Public Theorem Target
 
 - The generic Layer 3 and end-to-end compiler-correctness theorem statements
-  target native EVMYulLean execution, not
-  `interpretYulRuntimeWithBackend .evmYulLean`.
+  target native EVMYulLean execution, not the removed backend-parameterized
+  interpreter path.
 - The theorem-facing native target is either `Native.interpretIRRuntimeNative`
   or a narrower wrapper that internally lowers to EVMYulLean and executes via
   `EvmYul.Yul.callDispatcher`.
@@ -351,7 +347,6 @@ Work style:
 Before declaring the transition complete, verify these exact facts:
 
 ```bash
-! rg "interpretYulRuntimeWithBackend \\.evmYulLean" Compiler/Proofs/EndToEnd.lean
 ! rg "nativeIRRuntimeAgreesWithEvmYulLeanFuelWrapper|nativeCallDispatcherAgreesWithEvmYulLeanFuelWrapper" Compiler/Proofs/EndToEnd.lean
 ! rg "\\bsorry\\b|\\badmit\\b|^axiom " Compiler Verity Contracts
 python3 scripts/check_axioms.py

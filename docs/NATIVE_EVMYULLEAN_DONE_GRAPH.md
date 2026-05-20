@@ -332,14 +332,15 @@ N8 public Layer 3 theorem flip
 - **Depends on**: N6, N7, N9
 - **Blocks**: N10, N11
 - **Status**: done. The public path targets native EVMYulLean dispatcher
-  execution rather than `interpretYulRuntimeWithBackend .evmYulLean`.
+  execution rather than the removed backend-parameterized interpreter path.
 - **Definition of done**:
   - Layer 3 theorem statements and generated proof plumbing target
     `interpretIRRuntimeNative` or an equivalent native `callDispatcher` wrapper.
   - The theorem no longer depends on an alternate interpreter for the public
     semantic claim.
 - **Verification**:
-  - `! rg "interpretYulRuntimeWithBackend \\.evmYulLean" Compiler/Proofs/EndToEnd.lean`
+  - grep for the former backend-interpreter name in `Compiler/Proofs/EndToEnd.lean`
+    and confirm it has no matches.
   - `lake build Compiler.Proofs.EndToEnd`
 
 ### N9: Issue-Scope Semantic Closure

@@ -37,7 +37,7 @@ def extract_native_lowering_gaps() -> list[dict[str, str]]:
         )
 
     branch_re = re.compile(r"^\s*\|\s*\.(?P<node>[A-Za-z0-9_]+)\b")
-    gap_re = re.compile(r'\.error\s+"(?P<reason>[^"]+)"')
+    gap_re = re.compile(r'(?:\.error|throw)\s+(?:s!)?"(?P<reason>[^"]+)"')
 
     current_node: str | None = None
     gaps: list[dict[str, str]] = []
@@ -49,7 +49,9 @@ def extract_native_lowering_gaps() -> list[dict[str, str]]:
 
         gap_match = gap_re.search(line)
         if gap_match and current_node:
-            gaps.append({"node": current_node, "reason": gap_match.group("reason")})
+            gap = {"node": current_node, "reason": gap_match.group("reason")}
+            if gap not in gaps:
+                gaps.append(gap)
             current_node = None
 
     return gaps

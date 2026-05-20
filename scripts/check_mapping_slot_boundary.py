@@ -26,7 +26,6 @@ REQUIRED_ABSTRACTION_IMPORTS = {
 
 LEGACY_SYMBOL_FORBIDDEN_FILES = REQUIRED_ABSTRACTION_IMPORTS
 
-BUILTINS_FILE = PROOFS_DIR / "YulGeneration" / "ReferenceOracle" / "Builtins.lean"
 IR_INTERPRETER_FILE = PROOFS_DIR / "IRGeneration" / "IRInterpreter.lean"
 
 IMPORT_MAPPING_ENCODING_RE = re.compile(r"^\s*import\s+Compiler\.Proofs\.MappingEncoding\s*$", re.MULTILINE)
@@ -168,18 +167,6 @@ def main() -> int:
                 "(mappingTag/encodeMappingSlot/decodeMappingSlot/encodeNestedMappingSlot/normalizeMappingBaseSlot) "
                 "are disallowed; use MappingSlot/solidityMappingSlot-based names directly"
             )
-
-    builtins_text = scrub_lean_code(BUILTINS_FILE.read_text(encoding="utf-8"))
-    builtins_rel = BUILTINS_FILE.relative_to(ROOT)
-
-    if not IMPORT_MAPPING_SLOT_RE.search(builtins_text):
-        errors.append(f"{builtins_rel}: missing required import Compiler.Proofs.MappingSlot")
-
-    if not ABSTRACT_SLOT_REF_RE.search(builtins_text):
-        errors.append(f"{builtins_rel}: missing reference to Compiler.Proofs.abstractMappingSlot")
-
-    if not ABSTRACT_LOAD_REF_RE.search(builtins_text):
-        errors.append(f"{builtins_rel}: missing reference to Compiler.Proofs.abstractLoadStorageOrMapping")
 
     state_text = scrub_lean_code(IR_INTERPRETER_FILE.read_text(encoding="utf-8"))
     state_rel = IR_INTERPRETER_FILE.relative_to(ROOT)

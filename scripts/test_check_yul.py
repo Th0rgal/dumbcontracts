@@ -72,13 +72,12 @@ def evalExpr :=
         failures = self._run_boundary_check(body)
         self.assertEqual(failures, [])
 
-    def test_reference_oracle_call_no_longer_satisfies_boundary(self) -> None:
-        body = """import Compiler.Proofs.YulGeneration.ReferenceOracle.Builtins
+    def test_backend_wrapper_call_no_longer_satisfies_boundary(self) -> None:
+        body = """import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBuiltinSemantics
 def evalExpr :=
-  Compiler.Proofs.YulGeneration.evalBuiltinCallWithBackendContext
+  Compiler.Proofs.YulGeneration.Backends.evalBuiltinCallWithBackendContext
 """
         failures = self._run_boundary_check(body)
-        self.assertTrue(any("missing import" in failure for failure in failures))
         self.assertTrue(any("missing call" in failure for failure in failures))
 
     def test_native_ir_interpreter_boundary(self) -> None:

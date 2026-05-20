@@ -87,6 +87,5 @@ PR.
 ## Status
 
 Superseded for the public native SimpleStorage theorem. The direct store-hit
-proof is `simpleStorageNativeStoreHitMatchBridge_proved`; the generic
-compatibility cleanup remains tracked in
-[`NATIVE_EVMYULLEAN_TRANSITION.md`](NATIVE_EVMYULLEAN_TRANSITION.md).
+proof is `simpleStorageNativeStoreHitMatchBridge_proved`; remaining generic
+compatibility work is tracked in the active native EndToEnd theorem surface.

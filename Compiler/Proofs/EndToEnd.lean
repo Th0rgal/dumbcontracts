@@ -41397,8 +41397,8 @@ families remain file-local transition evidence. EndToEnd no longer defines
 compatibility wrappers over the older backend-parameterized proof-interpreter
 surface.
 
-The retargeting module (`EvmYulLeanRetarget.lean`) that previously recorded
-bridge-history facts has been removed (DoD 5 of the EVMYulLean transition).
+The private retargeting module that previously recorded bridge-history facts
+has been removed (DoD 5 of the EVMYulLean transition).
 The file-local `runtimeCode_bridged_local` lemma in this module retains the
 emitted-runtime closure witness, and the SupportedSpec-discharged variants
 `emitYul_runtimeCode_bridged_of_compile_ok_supported` and

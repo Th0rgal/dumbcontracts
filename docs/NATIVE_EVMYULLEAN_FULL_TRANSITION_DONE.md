@@ -165,8 +165,7 @@ The transition is done only when all criteria in this section are true on
 
 ### 8. Documentation And Trust Boundary
 
-- `README.md`, `AUDIT.md`, `TRUST_ASSUMPTIONS.md`,
-  `docs/NATIVE_EVMYULLEAN_TRANSITION.md`, and
+- `README.md`, `AUDIT.md`, `TRUST_ASSUMPTIONS.md`, and
   `docs/VERIFICATION_STATUS.md` describe native EVMYulLean as the
   authoritative semantic target only after the theorem target has flipped.
 - Legacy custom-interpreter files are documented as reference-oracle or
@@ -187,7 +186,7 @@ The transition is done only when all criteria in this section are true on
 
 ```bash
 lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness
-lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanRetarget
+lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering
 lake build Compiler.Proofs.EndToEnd
 lake build Compiler
 lake build Contracts
@@ -251,7 +250,6 @@ Before doing anything:
        "$VERITY_MEMORY_DIR"/MEMORY.md
        any native EVMYulLean transition memory files
        any IRStorageWord / IRStorageSlot memory files
-       docs/NATIVE_EVMYULLEAN_TRANSITION.md
        docs/NATIVE_EVMYULLEAN_DONE_GRAPH.md
        docs/NATIVE_EVMYULLEAN_FULL_TRANSITION_DONE.md
   4. git fetch --all --prune
@@ -318,7 +316,7 @@ Validation for proof PRs:
   Run the smallest relevant Lean target first, then the broader stack:
 
     lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeHarness
-    lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanRetarget
+    lake build Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering
     lake build Compiler.Proofs.EndToEnd
     lake build Compiler
     lake build Contracts

@@ -8,10 +8,11 @@ from pathlib import Path
 from property_utils import ROOT
 
 BUILTINS_FILE = (
-    ROOT / "Compiler" / "Proofs" / "YulGeneration" / "ReferenceOracle" / "Builtins.lean"
+    ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Backends" / "EvmYulLeanNativeLowering.lean"
 )
 
-BUILTIN_NAME_RE = re.compile(r'func\s*=\s*"([^"]+)"')
+BUILTIN_NAME_RE = re.compile(r'\|\s*"([^"]+)"')
+MATCH_ARM_RE = re.compile(r'^\s*\|\s*"([^"]+)"')
 FUNC_COMPARE_RE = re.compile(r"\bfunc\s*=\s*(.+?)\s+then\b")
 STRING_LITERAL_RE = re.compile(r'^"([^"]+)"$')
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
@@ -19,7 +20,7 @@ LET_BINDING_RE = re.compile(
     r"^\s*let\s+([A-Za-z_][A-Za-z0-9_']*)(?:\s*:\s*[^:=]+)?\s*:=\s*(.+?)\s*$"
 )
 DISPATCH_DEF_RE = re.compile(
-    r"^\s*(?:private\s+)?def\s+(legacyEvalBuiltinCallWithContext|evalBuiltinCall)\b"
+    r"^\s*(?:private\s+)?def\s+(evalPureBuiltinViaEvmYulLean|evalBuiltinCallViaEvmYulLean|evalBuiltinCallWithEvmYulLeanContext)\b"
 )
 
 
@@ -83,7 +84,7 @@ EVMYULLEAN_OVERLAP_BUILTINS = {
 VERITY_HELPER_BUILTINS = {"mappingSlot"}
 
 # Explicitly unsupported in the planned EVMYulLean-backed path (per #294
-# research notes). Presence here in Builtins.lean should block CI.
+# research notes). Presence in the native builtin dispatch should block CI.
 EVMYULLEAN_UNSUPPORTED_BUILTINS = {
     "create",
     "create2",
@@ -94,7 +95,7 @@ EVMYULLEAN_UNSUPPORTED_BUILTINS = {
 
 
 def extract_found_builtins(builtins_file: Path = BUILTINS_FILE) -> set[str]:
-    """Extract builtin names from Builtins.lean."""
+    """Extract builtin names from the native EVMYulLean dispatch."""
     found, _diagnostics = extract_found_builtins_with_diagnostics(builtins_file)
     return found
 
@@ -151,6 +152,9 @@ def extract_found_builtins_with_diagnostics(
 
         compare_match = FUNC_COMPARE_RE.search(line)
         if not compare_match:
+            match_arm = MATCH_ARM_RE.match(line)
+            if match_arm:
+                found.add(match_arm.group(1))
             continue
 
         rhs = compare_match.group(1).strip()
@@ -173,7 +177,7 @@ def extract_found_builtins_with_diagnostics(
             f"line {line_no}: unsupported non-literal dispatch `func = {rhs}`"
         )
 
-    # Backward-compatible fallback in case evalBuiltinCall was not detected.
+    # Fallback for native match arms such as `| "add", [a, b] => ...`.
     if not found and not diagnostics:
         found = set(BUILTIN_NAME_RE.findall(text))
 

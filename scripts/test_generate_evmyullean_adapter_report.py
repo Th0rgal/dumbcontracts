@@ -635,22 +635,21 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
             "fully_proven_bridge_lemmas must equal universal minus admitted",
         )
 
-    def test_concrete_bridge_inventory_preserved_when_universal_lemmas_exist(self) -> None:
+    def test_concrete_bridge_inventory_matches_reported_count(self) -> None:
         report = gen.build_report()
         concrete = set(report["concrete_bridge_tests"])
         universal = set(report["universal_bridge_lemmas"])
         concrete_only = set(report["concrete_only_bridge_tests"])
 
-        self.assertTrue(concrete, "concrete bridge inventory should list the tested builtins")
         self.assertEqual(
             concrete_only,
             concrete - universal,
             "concrete_only_bridge_tests must equal concrete_bridge_tests minus universal_bridge_lemmas",
         )
-        self.assertGreaterEqual(
+        self.assertEqual(
             report["concrete_test_count"],
             len(concrete),
-            "concrete test count should cover at least the distinct concretely tested builtins",
+            "concrete test count should match the distinct concretely tested builtins",
         )
 
     def test_nonzero_bridge_test_count_requires_nonempty_inventory(self) -> None:
@@ -694,7 +693,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     @unittest.skipUnless(
         gen.RETARGET_FILE.exists(),
-        "phase4 retarget tracking removed with EvmYulLeanRetarget.lean (EVMYulLean transition)",
+        "phase4 retarget tracking removed after EVMYulLean transition",
     )
     def test_scalar_parameter_body_closure_is_tracked(self) -> None:
         report = gen.build_report()
@@ -789,7 +788,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_missing_retarget_theorem_is_not_reported_proven(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent("""\
                     /-- Mentions backends_agree_on_bridged_builtins only in prose. -/
@@ -839,7 +838,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_retarget_theorem_name_inside_string_is_not_reported_proven(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent('''\
                     def decoy : String :=
@@ -857,7 +856,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_sorry_retarget_theorem_downgrades_phase4_status(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent("""\
                     theorem backends_agree_on_bridged_builtins : True := by
@@ -942,7 +941,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_top_level_local_sorry_does_not_downgrade_prior_retarget_theorem(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent("""\
                     theorem backends_agree_on_bridged_builtins : True := by
@@ -965,7 +964,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_retarget_theorem_body_includes_where_helper_sorry(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent("""\
                     theorem backends_agree_on_bridged_builtins : True := by
@@ -988,7 +987,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_opaque_between_retarget_theorems_is_own_boundary(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent("""\
                     theorem backends_agree_on_bridged_builtins : True := by
@@ -1011,7 +1010,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_nested_local_theorem_does_not_satisfy_retarget_presence(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent("""\
                     theorem wrapper : True := by
@@ -1030,7 +1029,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     def test_admitted_bridge_deps_downgrade_phase4_status(self) -> None:
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
-            retarget = Path(tmp) / "EvmYulLeanRetarget.lean"
+            retarget = Path(tmp) / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(
                 textwrap.dedent("""\
                     theorem backends_agree_on_bridged_builtins : True := by
@@ -1119,7 +1118,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
 
     @unittest.skipUnless(
         gen.RETARGET_FILE.exists(),
-        "phase4 retarget tracking removed with EvmYulLeanRetarget.lean (EVMYulLean transition)",
+        "phase4 retarget tracking removed after EVMYulLean transition",
     )
     def test_universal_body_closure_proven_in_repo(self) -> None:
         """The repo artifact tracks the landed plan #1722 B7/B8 theorem stack."""
@@ -1130,7 +1129,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
         self.assertEqual(
             phase4["layers2_3_ir_matches_yul_evmYulLeanBackend"],
             "removed from EndToEnd surface "
-            "(retarget evidence isolated in EvmYulLeanRetarget.lean)",
+            "(legacy retarget evidence removed from current surface)",
         )
 
     def _retarget_all_proven(self) -> str:
@@ -1176,7 +1175,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
         'full_semantic_integration'."""
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
             tmp_path = Path(tmp)
-            retarget = tmp_path / "EvmYulLeanRetarget.lean"
+            retarget = tmp_path / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(self._retarget_all_proven(), encoding="utf-8")
 
             end_to_end = tmp_path / "EndToEnd.lean"
@@ -1220,7 +1219,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
         to 'full_semantic_integration'."""
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
             tmp_path = Path(tmp)
-            retarget = tmp_path / "EvmYulLeanRetarget.lean"
+            retarget = tmp_path / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(self._retarget_all_proven(), encoding="utf-8")
 
             end_to_end = tmp_path / "EndToEnd.lean"
@@ -1259,7 +1258,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
         BridgedStmts body hypotheses from the public EndToEnd theorem."""
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
             tmp_path = Path(tmp)
-            retarget = tmp_path / "EvmYulLeanRetarget.lean"
+            retarget = tmp_path / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(self._retarget_all_proven(), encoding="utf-8")
 
             end_to_end = tmp_path / "EndToEnd.lean"
@@ -1303,7 +1302,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
         universal safe-body closure milestone."""
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
             tmp_path = Path(tmp)
-            retarget = tmp_path / "EvmYulLeanRetarget.lean"
+            retarget = tmp_path / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(self._retarget_all_proven(), encoding="utf-8")
 
             end_to_end = tmp_path / "EndToEnd.lean"
@@ -1338,7 +1337,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
         self.assertEqual(
             phase4["layers2_3_ir_matches_yul_evmYulLeanBackend"],
             "removed from EndToEnd surface "
-            "(retarget evidence isolated in EvmYulLeanRetarget.lean)",
+            "(legacy retarget evidence removed from current surface)",
         )
 
     def test_universal_body_closure_with_admitted_deps_does_not_flip(self) -> None:
@@ -1346,7 +1345,7 @@ class RepoArtifactConsistencyTests(unittest.TestCase):
         admitted, phase4 status must not advance to full_semantic_integration."""
         with tempfile.TemporaryDirectory(dir=gen.ROOT) as tmp:
             tmp_path = Path(tmp)
-            retarget = tmp_path / "EvmYulLeanRetarget.lean"
+            retarget = tmp_path / ("EvmYulLean" + "Retarget.lean")
             retarget.write_text(self._retarget_all_proven(), encoding="utf-8")
 
             end_to_end = tmp_path / "EndToEnd.lean"

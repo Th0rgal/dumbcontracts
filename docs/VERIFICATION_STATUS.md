@@ -80,7 +80,7 @@ Tracking:
 - Generic: supported statement-list compilation and the whole-contract theorem itself
 - Proved generically: initial-state normalization between `withTransactionContext` and `initialIRStateForTx`, under explicit transaction-context normalization hypotheses
 - No Lean axioms remain in Layer 2; 0 `sorry` placeholders remain. The `storageLookup_projectStorage` proof (previously a sorry) is now complete, using `Batteries.RBMap.find?_insert` lemmas with an injectivity argument over in-range storage slots.
-- 6 stateful environment-reading builtins now have bridge proofs connecting Verity's `legacyEvalBuiltinCallWithContext` to the EVMYulLean state constructed by `toSharedState`: `callvalue`, `timestamp`, `number`, `caller` (requires valid address hypothesis), `address` (requires valid address hypothesis), and `calldatasize` (now reduced into UInt256 word semantics, so no extra size bound is needed)
+- Stateful environment-reading builtins route through native EVMYulLean context construction: `callvalue`, `timestamp`, `number`, `caller`, `address`, and `calldatasize`.
 - Additional explicit precondition: the generic theorem surface now requires the observed transaction-context fields (`sender`, `thisAddress`, `msgValue`, `blockTimestamp`, `blockNumber`, `chainId`) to already fit the bounded source-side `Address`/`Uint256` domains
 - Outside the current generic theorem or current proof model: events/logs, proxy/delegatecall upgradeability, linked externals, local unsafe obligations, and other trust-surfaced features not captured by the current supported whole-contract fragment
 
@@ -105,10 +105,8 @@ Key files: [`EndToEnd.lean`](../Compiler/Proofs/EndToEnd.lean), [`EvmYulLeanNati
 ### Phase 4: EVMYulLean Native Dispatcher (safe-body EndToEnd target)
 
 The retargeting module that bridged the legacy `.verity` proof-interpreter
-backend to the `.evmYulLean` backend (`EvmYulLeanRetarget.lean` plus
-`ReferenceOracle.Semantics`, `YulGeneration.{Preservation, Equivalence,
-StatementEquivalence, Codegen, Lemmas}`, and the smoke-test scaffolding) was
-**removed in DoD-5** of the EVMYulLean transition. The native EvmYulLean
+backend to the `.evmYulLean` backend, together with the old preservation and
+equivalence scaffolding, was **removed in DoD-5** of the EVMYulLean transition. The native EvmYulLean
 dispatcher is now the sole runtime authority; there is no longer a private
 proof-interpreter chain to keep in sync.
 
@@ -148,11 +146,11 @@ closure now has a universal safe-body aggregation theorem for
 dispatcher execution through `interpretIRRuntimeNative` and keeps the
 external-call/function-table family carved out where needed.
 
-Native-runtime transition status: the public theorem target is native EVMYulLean dispatcher execution. The executable native EVMYulLean path lives in [`EvmYulLeanNativeHarness.lean`](../Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeHarness.lean), and the remaining theorem-transition plan is tracked in [`NATIVE_EVMYULLEAN_TRANSITION.md`](NATIVE_EVMYULLEAN_TRANSITION.md). The public native EndToEnd surface is the native result comparison/composition surface, the generated call-dispatcher and dispatcher-exec theorem family, and the concrete SimpleStorage theorem; the fuel-indexed `nativeIRRuntimeMatchesIR` seams and positive dispatcher-exec match family are file-local instead of public theorem authority. The no-mapping and mapping generated-dispatcher wrappers consume concrete dispatcher lowering and construct full emitted-runtime native lowering internally, while the call-dispatcher variants expose the actual generated `EvmYul.Yul.callDispatcher` premise and derive the dispatcher-exec projection internally.
+Native-runtime transition status: the public theorem target is native EVMYulLean dispatcher execution. The executable native EVMYulLean path lives in [`EvmYulLeanNativeHarness.lean`](../Compiler/Proofs/YulGeneration/Backends/EvmYulLeanNativeHarness.lean). The public native EndToEnd surface is the native result comparison/composition surface, the generated call-dispatcher and dispatcher-exec theorem family, and the concrete SimpleStorage theorem; the fuel-indexed `nativeIRRuntimeMatchesIR` seams and positive dispatcher-exec match family are file-local instead of public theorem authority. The no-mapping and mapping generated-dispatcher wrappers consume concrete dispatcher lowering and construct full emitted-runtime native lowering internally, while the call-dispatcher variants expose the actual generated `EvmYul.Yul.callDispatcher` premise and derive the dispatcher-exec projection internally.
 
 Trust boundary (public EndToEnd target): native `EvmYul.Yul.callDispatcher`
-execution is the public semantic target. The retained `ReferenceOracle`
-module contains builtin comparison helpers used by bridge lemmas; it is not a
+execution is the public semantic target. The old reference-oracle builtin
+comparison module has been removed; it is not a
 runtime authority for public compiler correctness.
 
 Not yet proven in this module:
